@@ -1,0 +1,81 @@
+{%- if mcp_module | lower != "enabled" %}
+"""MCP tooling disabled.
+
+Enable via `mcp_module=enabled` to scaffold FastMCP-compatible helpers.
+"""
+
+
+def list_tools() -> list[str]:
+    """Return an empty tool list when the MCP module is disabled."""
+
+    return []
+{%- else %}
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, Iterable
+
+try:
+    from fastmcp import registry as fastmcp_registry  # type: ignore
+except ImportError:  # pragma: no cover - FastMCP is optional
+    fastmcp_registry = None  # type: ignore[assignment]
+
+
+@dataclass(slots=True)
+class Tool:
+    """Simple tool descriptor used by the local registry."""
+
+    name: str
+    description: str
+    handler: Callable[..., Any]
+
+
+class ToolRegistry:
+    """Minimal in-memory registry that mirrors FastMCP expectations."""
+
+    def __init__(self) -> None:
+        self._tools: Dict[str, Tool] = {}
+
+    def register(self, name: str, description: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+        def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+            self._tools[name] = Tool(name=name, description=description, handler=func)
+            if fastmcp_registry is not None and hasattr(fastmcp_registry, "register_tool"):
+                fastmcp_registry.register_tool(name=name, description=description)(func)
+            return func
+
+        return decorator
+
+    def list(self) -> Iterable[Tool]:
+        return self._tools.values()
+
+    def dispatch(self, name: str, *args: Any, **kwargs: Any) -> Any:
+        tool = self._tools.get(name)
+        if not tool:
+            raise KeyError(f"Tool '{name}' is not registered.")
+        return tool.handler(*args, **kwargs)
+
+
+registry = ToolRegistry()
+
+
+@registry.register(name="quickstart-status", description="Summarise the baseline quickstart result.")
+def quickstart_status() -> dict[str, Any]:
+    return {"status": "ok", "summary": "Baseline quickstart completed"}
+
+
+@registry.register(name="list-optional-modules", description="List optional modules selected during render.")
+def list_optional_modules() -> dict[str, Any]:
+    return {
+        "cli_module": "{{ cli_module }}",
+        "api_tracks": "{{ api_tracks }}",
+        "mcp_module": "{{ mcp_module }}",
+        "docs_site": "{{ docs_site }}",
+        "shared_logic": "{{ shared_logic }}",
+    }
+
+
+def list_tools() -> list[str]:
+    """List the registered tool names."""
+
+    return [tool.name for tool in registry.list()]
+{%- endif %}

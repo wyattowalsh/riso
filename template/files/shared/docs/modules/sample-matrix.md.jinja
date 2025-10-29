@@ -1,0 +1,17 @@
+# Sample Matrix
+
+The template ships with curated sample renders stored in `samples/`. Use this
+matrix to regenerate and validate each variant.
+
+| Variant | Description | Prompt Overrides | Suggested Commands |
+|---------|-------------|------------------|--------------------|
+| `default` | Baseline Python-only render. | Defaults | `./scripts/render-samples.sh --variant default --answers samples/default/copier-answers.yml`<br>`uv run python -m {{ package_name }}.quickstart` |
+| `cli-docs` | CLI + shared logic + Fumadocs docs. | `cli_module=enabled`, `docs_site=fumadocs`, `shared_logic=enabled` | `uv sync --group cli`<br>`uv run pytest tests/test_cli.py` |
+| `api-monorepo` | Monorepo with FastAPI + Fastify + shared logic. | `project_layout=monorepo`, `api_tracks=python+node`, `shared_logic=enabled` | `uv sync --group api_python`<br>`pnpm --filter api-node test` |
+| `full-stack` | All modules enabled (CLI, APIs, FastMCP, docs). | `cli_module=enabled`, `api_tracks=python+node`, `mcp_module=enabled`, `docs_site=fumadocs`, `shared_logic=enabled`, `project_layout=monorepo` | `uv sync --group cli`<br>`uv sync --group api_python`<br>`uv sync --group mcp`<br>`pnpm --filter api-node test` |
+
+## Regeneration Checklist
+
+1. Run `./scripts/render-samples.sh` (defaults or targeted variants).
+2. Execute `python scripts/ci/render_matrix.py` to capture metadata.
+3. Upload evidence stored under `samples/metadata/` with your pull request.

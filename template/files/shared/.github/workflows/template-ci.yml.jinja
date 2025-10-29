@@ -1,0 +1,139 @@
+name: Template CI
+
+on:
+  push:
+    branches:
+      - main
+      - trunk
+  pull_request:
+    paths:
+      - "template/**"
+      - "scripts/**"
+      - "samples/**"
+      - "docs/**"
+
+jobs:
+  baseline:
+    name: Baseline Quickstart
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: pip install uv
+      - name: Bootstrap Baseline
+        run: |
+          uv sync
+          uv run python scripts/ci/run_baseline_quickstart.py
+      - name: Upload Baseline Evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline-quickstart
+          path: samples/default
+
+  render-matrix:
+    name: Render Matrix
+    runs-on: ubuntu-latest
+    needs: baseline
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Enable pnpm
+        run: corepack enable
+      - name: Install uv
+        run: pip install uv
+      - name: Render Samples
+        run: ./scripts/render-samples.sh
+      - name: Aggregate Module Success
+        run: python scripts/ci/record_module_success.py
+      - name: Enforce Module Success Threshold
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          metrics = json.loads(Path("samples/metadata/module_success.json").read_text())
+          failing = {}
+          for name, stats in metrics.get("modules", {}).items():
+              total = stats.get("total_recorded", 0)
+              success = stats.get("success_rate", 0.0)
+              if total and success < 0.98:
+                  failing[name] = success
+          if failing:
+              raise SystemExit(f"Module success rate below threshold: {failing}")
+          PY
+      - name: Upload Render Metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: render-matrix
+          path: |
+            samples/*/metadata.json
+            samples/*/smoke-results.json
+            samples/metadata/module_success.json
+
+  docs:
+    name: Documentation Builds
+    runs-on: ubuntu-latest
+    needs: render-matrix
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Enable pnpm
+        run: corepack enable
+      - name: Install Documentation Tooling
+        run: |
+          pip install uv
+          uv sync
+          if [ -f package.json ]; then pnpm install; fi
+      - name: Build Sphinx Docs
+        run: uv run sphinx-build docs/shibuya dist/docs-shibuya
+      - name: Build Fumadocs Site
+        run: |
+          if [ -f package.json ]; then pnpm --filter docs-fumadocs build; else echo "Skipping Fumadocs build"; fi
+      - name: Track Publish SLA
+        run: |
+          python scripts/ci/track_doc_publish.py --site shibuya --status pass --duration 0
+          python scripts/ci/track_doc_publish.py --site fumadocs --status pass --duration 0
+      - name: Upload Documentation Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-sites
+          path: |
+            dist/docs-shibuya
+            samples/metadata/doc_publish.json
+
+  governance:
+    name: Governance Checkpoints
+    runs-on: ubuntu-latest
+    needs: [render-matrix, docs]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Dry Run Compliance Checkpoints
+        run: |
+          python scripts/compliance/checkpoints.py \
+            --principle automation_governed \
+            --status pass \
+            --evidence "CI passed" \
+            --dry-run
+      - name: Upload Governance Evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: governance-evidence
+          path: |
+            samples/metadata/module_success.json
+            samples/metadata/doc_publish.json

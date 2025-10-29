@@ -1,0 +1,34 @@
+{%- if api_tracks | lower not in ["node", "python+node"] %}
+export interface ApiNodeConfig {
+  host: string;
+  port: number;
+  serviceName: string;
+}
+
+export function loadConfig(): ApiNodeConfig {
+  throw new Error("Node API track disabled for this render.");
+}
+{%- else %}
+export interface ApiNodeConfig {
+  host: string;
+  port: number;
+  serviceName: string;
+}
+
+const DEFAULT_HOST = "0.0.0.0";
+const DEFAULT_PORT = 3000;
+const SERVICE_NAME = "api-node";
+
+function parsePort(value: string | undefined): number {
+  const parsed = Number.parseInt(value ?? "", 10);
+  return Number.isNaN(parsed) ? DEFAULT_PORT : parsed;
+}
+
+export function loadConfig(): ApiNodeConfig {
+  return {
+    host: process.env.RISO_API_NODE_HOST ?? DEFAULT_HOST,
+    port: parsePort(process.env.RISO_API_NODE_PORT),
+    serviceName: SERVICE_NAME,
+  };
+}
+{%- endif %}

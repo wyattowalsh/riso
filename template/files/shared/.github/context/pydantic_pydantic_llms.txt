@@ -1,0 +1,2230 @@
+---
+LIBRARY: pydantic/pydantic
+SOURCE_ROOT: https://github.com/pydantic/pydantic/blob/main
+UPDATED_AT: September 7, 2025 at 1:53 AM UTC
+---
+
+================================
+CODE SNIPPETS
+================================
+
+TITLE: Using `typing.TypeVar` for Type Hinting in Pydantic
+DESCRIPTION: Demonstrates how to use `typing.TypeVar` with Pydantic models to define unconstrained, constrained, and bound type variables for flexible type hinting. This allows specifying types like `Any`, `float`, or `Union[int, str]` for model fields, enhancing type safety and code clarity.
+SOURCE: /docs/api/standard_library_types.md
+
+```python
+from typing import TypeVar
+
+from pydantic import BaseModel
+
+Foobar = TypeVar('Foobar')
+BoundFloat = TypeVar('BoundFloat', bound=float)
+IntStr = TypeVar('IntStr', int, str)
+
+class Model(BaseModel):
+a: Foobar  # equivalent of ": Any"
+b: BoundFloat  # equivalent of ": float"
+c: IntStr  # equivalent of ": Union[int, str]"
+
+print(Model(a=[1], b=4.2, c='x'))
+#> a=[1] b=4.2 c='x'
+
+# a may be None
+print(Model(a=None, b=1, c=1))
+#> a=None b=1.0 c=1
+```
+
+---
+TITLE: Handling Field Aliases and Validation in Pydantic
+DESCRIPTION: Demonstrates how to use field aliases in Pydantic models, including handling type checker compatibility with `alias` and `validation_alias`. Illustrates the use of `Annotated` for type hints and `serialization_alias` to override `alias` during serialization, ensuring correct data handling and validation.
+SOURCE: /docs/concepts/fields.md
+
+```plaintext
+1. *Not* accepted by type checkers.  
+If you still want type checkers to use the field name and not the alias, the [annotated pattern](#the-annotated-pattern)
+can be used (which is only understood by Pydantic):  
+```
+
+```plaintext
+1. Accepted by type checkers.
+2. *Not* accepted by type checkers.  
+<h3>Validation Alias</h3>  
+Even though Pydantic treats `alias` and `validation_alias` the same when creating model instances, type checkers
+only understand the `alias` field parameter. As a workaround, you can instead specify both an `alias` and
+`serialization_alias` (identical to the field name), as the `serialization_alias` will override the `alias` during
+serialization:  
+```
+
+```plaintext
+with:  
+```
+
+---
+TITLE: Handling Missing Field Values with `MISSING` Sentinel
+DESCRIPTION: Illustrates the use of the experimental `MISSING` sentinel in Pydantic to represent absent field values during validation and serialization, allowing for exclusion of fields with default values from the output. This is useful when `None` has a specific meaning and relies on PEP 661 for sentinel implementation, with limitations on static type checking and pickling.
+SOURCE: /docs/concepts/experimental.md
+
+```python
+from typing import Union
+
+from pydantic import BaseModel
+from pydantic.experimental.missing_sentinel import MISSING
+
+class Configuration(BaseModel):
+timeout: Union[int, None, MISSING] = MISSING
+
+# configuration defaults, stored somewhere else:
+defaults = {'timeout': 200}
+
+conf = Configuration()
+
+# `timeout` is excluded from the serialization output:
+conf.model_dump()
+# {}
+# The `MISSING` value doesn't appear in the JSON Schema:
+Configuration.model_json_schema()['properties']['timeout']
+#> {'anyOf': [{'type': 'integer'}, {'type': 'null'}], 'title': 'Timeout'}}
+
+# `is` can be used to discrimate between the sentinel and other values:
+timeout = conf.timeout if conf.timeout is not MISSING else defaults['timeout']
+```
+
+---
+TITLE: Implementing Field Serializers with Pydantic
+DESCRIPTION: Demonstrates how to use field serializers in Pydantic models to control serialization behavior for individual fields, including using the `@field_serializer` decorator to apply a function to multiple fields. This allows for customization of serialization logic, such as capitalizing strings, and can be applied to specific parts of annotations like list items.
+SOURCE: /docs/concepts/serialization.md
+
+```plaintext
+1. As mentioned in the [annotated pattern](./fields.md#the-annotated-pattern) documentation,
+we can also make use of serializers for specific parts of the annotation (in this case,
+serialization is applied for list items, but not the whole list).  
+It is also easier to understand which serializers are applied to a type, by just looking at the field annotation.  
+##### Using the decorator pattern
+One of the key benefits of using the [`@field_serializer`][pydantic.field_serializer] decorator is to apply
+the function to multiple fields:  
+```
+
+---
+TITLE: Handling Serialization of Unparametrized Generic Type Variables in Pydantic
+DESCRIPTION: Illustrates how Pydantic handles serialization of unparametrized type variables in generic models, specifically when using upper bounds, constraints, or default values, and demonstrates the use of `SerializeAsAny` to override default serialization behavior. This is important for controlling the output format of Pydantic models with generics, ensuring data is serialized as `Any` or according to defined constraints.
+SOURCE: /docs/concepts/models.md
+
+```python
+from typing import Generic, TypeVar
+
+from pydantic import BaseModel
+
+class ErrorDetails(BaseModel):
+foo: str
+
+ErrorDataT = TypeVar('ErrorDataT', bound=ErrorDetails)
+
+class Error(BaseModel, Generic[ErrorDataT]):
+message: str
+details: ErrorDataT
+
+class MyErrorDetails(ErrorDetails):
+bar: str
+
+# serialized as Any
+error = Error(
+message='We just had an error',
+details=MyErrorDetails(foo='var', bar='var2'),
+)
+assert error.model_dump() == {
+'message': 'We just had an error',
+'details': {
+'foo': 'var',
+'bar': 'var2',
+},
+}
+
+# serialized using the concrete parametrization
+# note that `'bar': 'var2'` is missing
+error = Error[ErrorDetails](
+details=ErrorDetails(foo='var'),
+)
+assert error.model_dump() == {
+'message': 'We just had an error',
+'details': {
+'foo': 'var',
+},
+}
+```
+
+```python
+from typing import Generic, TypeVar
+
+from pydantic import BaseModel
+
+TBound = TypeVar('TBound', bound=BaseModel)
+TNoBound = TypeVar('TNoBound')
+
+class IntValue(BaseModel):
+value: int
+
+class ItemBound(BaseModel, Generic[TBound]):
+item: TBound
+
+class ItemNoBound(BaseModel, Generic[TNoBound]):
+item: TNoBound
+
+item_bound_inferred = ItemBound(item=IntValue(value=3))
+item_bound_explicit = ItemBound[IntValue](item=IntValue(value=3))
+item_no_bound_inferred = ItemNoBound(item=IntValue(value=3))
+item_no_bound_explicit = ItemNoBound[IntValue](item=IntValue(value=3))
+
+# calling `print(x.model_dump())` on any of the above instances results in the following:
+#> {'item': {'value': 3}}
+```
+
+---
+TITLE: Implementing Field Validators in Pydantic
+DESCRIPTION: Demonstrates how to implement field validators in Pydantic using `WrapValidator`, `PlainValidator`, `BeforeValidator`, `AfterValidator`, and `field_validator`. It illustrates the use of both the annotated pattern and the decorator syntax for defining validators that perform checks, coerce values, and handle raw input before or after Pydantic's internal validation.
+SOURCE: /docs/concepts/validators.md
+
+```python
+from typing import Annotated
+
+from pydantic import AfterValidator, BaseModel, ValidationError
+
+def is_even(value: int) -> int:
+if value % 2 == 1:
+raise ValueError(f'{value} is not an even number')
+return value  # (1)!
+
+class Model(BaseModel):
+number: Annotated[int, AfterValidator(is_even)]
+
+try:
+Model(number=1)
+except ValidationError as err:
+print(err)
+"""
+1 validation error for Model
+number
+Value error, 1 is not an even number [type=value_error, input_value=1, input_type=int]
+"""
+```
+
+```plaintext
+1. `'after'` is the default mode for the decorator, and can be omitted.
+2. Note that it is important to return the validated value.  
+??? example "Example mutating the value"
+Here is an example of a validator making changes to the validated value (no exception is raised).  
+=== "Annotated pattern"  
+```
+
+```plaintext
+=== "Decorator"  
+```
+
+```plaintext
+1. `'after'` is the default mode for the decorator, and can be omitted.  
+* ***Before* validators**: run before Pydantic's internal parsing and validation (e.g. coercion of a `str` to an `int`).
+These are more flexible than [*after* validators](#field-after-validator), but they also have to deal with the raw input, which
+in theory could be any arbitrary object. You should also avoid mutating the value directly if you are raising a
+[validation error](#raising-validation-errors) later in your validator function, as the mutated value may be passed to other
+validators if using [unions](./unions.md).
+{#field-before-validator}  
+The value returned from this callable is then validated against the provided type annotation by Pydantic.  
+=== "Annotated pattern"  
+```
+
+```plaintext
+1. Notice the use of [`Any`][typing.Any] as a type hint for `value`. *Before* validators take the raw input, which
+can be anything.  
+2. Note that you might want to check for other sequence types (such as tuples) that would normally successfully
+validate against the `list` type. *Before* validators give you more flexibility, but you have to account for
+every possible case.  
+3. Pydantic still performs validation against the `int` type, no matter if our `ensure_list` validator
+did operations on the original input type.  
+=== "Decorator"  
+```
+
+---
+TITLE: Validating XML Files with Pydantic Models
+DESCRIPTION: Demonstrates how to validate data from an XML file using `pydantic` models. It parses an XML file with `xml.etree.ElementTree`, extracts the data, and then validates it against a `pydantic` model defining the expected structure and data types, ensuring data integrity and type safety.
+SOURCE: /docs/examples/files.md
+
+```xml
+<?xml version="1.0"?>
+<person>
+<name>John Doe</name>
+<age>30</age>
+<email>john@example.com</email>
+</person>
+```
+
+---
+TITLE: Handling Circular Reference Schema Errors
+DESCRIPTION: Illustrates how the library handles circular reference schemas that would cause infinite recursion. It demonstrates valid and invalid type alias examples, such as `type A = list[A] | None` (valid) versus `type A = A` (invalid), highlighting the error prevention mechanism.
+SOURCE: /docs/errors/usage_errors.md
+
+```plaintext
+while these are not:  
+```
+
+---
+TITLE: Handling Invalid Discriminator Validators in Pydantic Models
+DESCRIPTION: Illustrates the `PydanticUserError` raised when using validators on discriminator fields in Pydantic models, which is disallowed because the discriminator determines the model type. Demonstrates a workaround by using a standard `Union` without a discriminator to allow validation, showcasing how to modify the `pet_type` field using a `@field_validator`.
+SOURCE: /docs/errors/usage_errors.md
+
+```python
+from typing import Literal, Union
+
+from pydantic import BaseModel, Field, PydanticUserError, field_validator
+
+class Cat(BaseModel):
+pet_type: Literal['cat']
+
+@field_validator('pet_type', mode='before')
+@classmethod
+def validate_pet_type(cls, v):
+if v == 'kitten':
+return 'cat'
+return v
+
+class Dog(BaseModel):
+pet_type: Literal['dog']
+
+try:
+
+class Model(BaseModel):
+pet: Union[Cat, Dog] = Field(discriminator='pet_type')
+number: int
+
+except PydanticUserError as exc_info:
+assert exc_info.code == 'discriminator-validator'
+```
+
+---
+TITLE: Controlling Field Inclusion/Exclusion During Pydantic Serialization
+DESCRIPTION: Demonstrates how to control field inclusion and exclusion during serialization using Pydantic's `model_dump()` method. Illustrates excluding/including specific fields by name or value, including nested fields and list elements, and using `exclude_defaults`, `exclude_none`, and `exclude_unset` for conditional exclusion based on field values.
+SOURCE: /docs/concepts/serialization.md
+
+```plaintext
+The `exclude` parameter can be used to specify which fields should be excluded (including the others), and vice-versa
+using the `include` parameter.  
+# using a set:
+print(t.model_dump(exclude={'user', 'value'}))
+#> {'id': '1234567890'}
+
+# using a dictionary:
+print(t.model_dump(exclude={'user': {'username', 'password'}, 'value': True}))
+#> {'id': '1234567890', 'user': {'id': 42}}
+
+# same configuration using `include`:
+print(t.model_dump(include={'id': True, 'user': {'id'}}))
+#> {'id': '1234567890', 'user': {'id': 42}}
+```
+
+```plaintext
+1. The equivalent call with `include` would be:  
+```
+
+```plaintext
+The special key `'__all__'` can be used to apply an exclusion/inclusion pattern to all members:  
+print(user.model_dump(exclude={'hobbies': {'__all__': {'info'}}}))
+#> {'hobbies': [{'name': 'Programming'}, {'name': 'Gaming'}]}
+```
+
+---
+TITLE: Handling Integer Parsing Size Validation Error
+DESCRIPTION: Demonstrates how `pydantic` raises an `int_parsing_size` `ValidationError` when parsing strings to integers that exceed Python's maximum size limit, both from Python code and JSON input using `model_validate_json`.
+SOURCE: /docs/errors/validation_errors.md
+
+```python
+import json
+
+from pydantic import BaseModel, ValidationError
+
+class Model(BaseModel):
+x: int
+
+# from Python
+assert Model(x='1' * 4_300).x == int('1' * 4_300)  # OK
+
+too_long = '1' * 4_301
+try:
+Model(x=too_long)
+except ValidationError as exc:
+print(repr(exc.errors()[0]['type']))
+#> 'int_parsing_size'
+
+# from JSON
+try:
+Model.model_validate_json(json.dumps({'x': too_long}))
+except ValidationError as exc:
+print(repr(exc.errors()[0]['type']))
+#> 'int_parsing_size'
+```
+
+---
+TITLE: Implementing Abstract Base Classes with Pydantic Models
+DESCRIPTION: Demonstrates how to use Python's Abstract Base Classes (`abc.ABC`) with Pydantic `BaseModel` to define abstract models with required attributes and methods. This allows for creating a base model with enforced structure and behavior, ensuring that subclasses implement specific interfaces.
+SOURCE: /docs/concepts/models.md
+
+```python
+import abc
+
+from pydantic import BaseModel
+
+class FooBarModel(BaseModel, abc.ABC):
+a: str
+b: int
+
+@abc.abstractmethod
+def my_abstract_method(self):
+pass
+```
+
+---
+TITLE: Defining Named Type Aliases with Pydantic
+DESCRIPTION: Demonstrates how to define named type aliases in Pydantic using the `type` statement (PEP 695) for improved JSON schema definition and recursive type support, highlighting the limitations regarding field-specific metadata like `alias` or `default`. This approach is beneficial when reusing type aliases multiple times within a model definition, ensuring a single definition in the JSON schema.
+SOURCE: /docs/concepts/types.md
+
+```python
+from typing import Annotated
+
+from annotated_types import Gt
+from typing_extensions import TypeAliasType
+
+from pydantic import BaseModel
+
+PositiveIntList = TypeAliasType('PositiveIntList', list[Annotated[int, Gt(0)]])
+
+class Model(BaseModel):
+x: PositiveIntList
+y: PositiveIntList
+
+print(Model.model_json_schema())  # (1)!
+"""
+{
+'$defs': {
+'PositiveIntList': {
+'items': {'exclusiveMinimum': 0, 'type': 'integer'},
+'type': 'array',
+}
+},
+'properties': {
+'x': {'$ref': '#/$defs/PositiveIntList'},
+'y': {'$ref': '#/$defs/PositiveIntList'},
+},
+'required': ['x', 'y'],
+'title': 'Model',
+'type': 'object',
+}
+"""
+```
+
+```plaintext
+!!! warning "When to use named type aliases"  
+While (named) PEP 695 and implicit type aliases are meant to be equivalent for static type checkers,
+Pydantic will *not* understand field-specific metadata inside named aliases. That is, metadata such as
+`alias`, `default`, `deprecated`, *cannot* be used:  
+```
+
+```plaintext
+=== "Python 3.12 and above (new syntax)"  
+```
+
+```plaintext
+Only metadata that can be applied to the annotated type itself is allowed
+(e.g. [validation constraints](./fields.md#field-constraints) and JSON metadata).
+Trying to support field-specific metadata would require eagerly inspecting the
+type alias's [`__value__`][typing.TypeAliasType.__value__], and as such Pydantic
+wouldn't be able to have the alias stored as a JSON Schema definition.  
+!!! note
+As with implicit type aliases, [type variables][typing.TypeVar] can also be used inside the generic alias:  
+=== "Python 3.9 and above"  
+```
+
+```plaintext
+=== "Python 3.12 and above (new syntax)"  
+```
+
+---
+TITLE: Handling `none_required` Validation Error in Pydantic
+DESCRIPTION: Demonstrates the `none_required` validation error in Pydantic, which occurs when a field requiring `None` receives a different value. This error can also arise from naming collisions between a field and its type, especially when the field's default value is `None`.
+SOURCE: /docs/errors/validation_errors.md
+
+```python
+from pydantic import BaseModel, ValidationError
+
+class Model(BaseModel):
+x: None
+
+try:
+Model(x=1)
+except ValidationError as exc:
+print(repr(exc.errors()[0]['type']))
+#> 'none_required'
+```
+
+---
+TITLE: Handling `int_parsing` Errors in Pydantic Models
+DESCRIPTION: Demonstrates how to handle `int_parsing` errors in Pydantic models when a value cannot be parsed as an integer. This error occurs during data validation when a field annotated as `int` receives a non-integer value, triggering a `ValidationError`.
+SOURCE: /docs/errors/validation_errors.md
+
+```python
+from pydantic import BaseModel, ValidationError
+
+class Model(BaseModel):
+x: int
+
+try:
+Model(x='test')
+except ValidationError as exc:
+print(repr(exc.errors()[0]['type']))
+#> 'int_parsing'
+```
+
+---
+TITLE: Validating Data Using Pydantic `BaseModel`
+DESCRIPTION: Demonstrates data validation using Pydantic's `BaseModel` class with type hints. It shows how to define a data model, parse external data, and access validated attributes, highlighting Pydantic's ability to automatically convert data types and provide data validation.
+SOURCE: /README.md
+
+```python
+from datetime import datetime
+from typing import Optional
+from pydantic import BaseModel
+
+class User(BaseModel):
+id: int
+name: str = 'John Doe'
+signup_ts: Optional[datetime] = None
+friends: list[int] = []
+
+external_data = {'id': '123', 'signup_ts': '2017-06-01 12:22', 'friends': [1, '2', b'3']}
+user = User(**external_data)
+print(user)
+#> User id=123 name='John Doe' signup_ts=datetime.datetime(2017, 6, 1, 12, 22) friends=[1, 2, 3]
+print(user.id)
+#> 123
+```
+
+---
+TITLE: Implementing Validators and Initialization Hooks in Dataclasses
+DESCRIPTION: Demonstrates using `@field_validator` and `__post_init__` with Pydantic dataclasses for data validation and initialization logic. Illustrates how `__post_init__` is called between *before* and *after* model validators, allowing for custom initialization after validation.
+SOURCE: /docs/concepts/dataclasses.md
+
+```python
+from pydantic import field_validator
+from pydantic.dataclasses import dataclass
+
+@dataclass
+class DemoDataclass:
+product_id: str  # should be a five-digit string, may have leading zeros
+
+@field_validator('product_id', mode='before')
+@classmethod
+def convert_int_serial(cls, v):
+if isinstance(v, int):
+v = str(v).zfill(5)
+return v
+
+print(DemoDataclass(product_id='01234'))
+#> DemoDataclass(product_id='01234')
+print(DemoDataclass(product_id=2468))
+#> DemoDataclass(product_id='02468')
+```
+
+```python
+from pydantic_core import ArgsKwargs
+from typing_extensions import Self
+
+from pydantic import model_validator
+from pydantic.dataclasses import dataclass
+
+@dataclass
+class Birth:
+year: int
+month: int
+day: int
+
+@dataclass
+class User:
+birth: Birth
+
+@model_validator(mode='before')
+@classmethod
+def before(cls, values: ArgsKwargs) -> ArgsKwargs:
+print(f'First: {values}')  # (1)!
+"""
+First: ArgsKwargs((), {'birth': {'year': 1995, 'month': 3, 'day': 2}})
+"""
+return values
+
+@model_validator(mode='after')
+def after(self) -> Self:
+print(f'Third: {self}')
+#> Third: User(birth=Birth(year=1995, month=3, day=2))
+return self
+
+def __post_init__(self):
+print(f'Second: {self.birth}')
+#> Second: Birth(year=1995, month=3, day=2)
+
+user = User(**{'birth': {'year': 1995, 'month': 3, 'day': 2}})
+```
+
+---
+TITLE: Defining Private Model Attributes with Pydantic
+DESCRIPTION: Illustrates how to define private attributes in Pydantic models using a leading underscore and `PrivateAttr`, which are excluded from validation and schema generation. This approach prevents conflicts with model fields and allows for storing internal data, such as a timestamp or secret value, that should not be exposed or validated.
+SOURCE: /docs/concepts/models.md
+
+```python
+from datetime import datetime
+from random import randint
+from typing import Any
+
+from pydantic import BaseModel, PrivateAttr
+
+class TimeAwareModel(BaseModel):
+_processed_at: datetime = PrivateAttr(default_factory=datetime.now)
+_secret_value: str
+
+def model_post_init(self, context: Any) -> None:
+# this could also be done with `default_factory`:
+self._secret_value = randint(1, 5)
+
+m = TimeAwareModel()
+print(m._processed_at)
+#> 2032-01-02 03:04:05.000006
+print(m._secret_value)
+#> 3
+```
+
+---
+TITLE: Resolving Annotations at Class Definition in Pydantic
+DESCRIPTION: Illustrates how Pydantic resolves type annotations during class definition, considering namespaces from base classes, module dictionaries, and local scopes. Explains limitations and backwards compatibility concerns related to annotation resolution, including potential inconsistencies and the handling of forward references, especially when using `model_rebuild()`.
+SOURCE: /docs/internals/resolving_annotations.md
+
+```plaintext
+When the `Model` class is being built, different [namespaces][namespace] are at play. For each base class
+of the `Model`'s [MRO][method resolution order] (in reverse order — that is, starting with `Base`), the
+following logic is applied:  
+1. Fetch the `__annotations__` key from the current base class' `__dict__`, if present. For `Base`, this will be
+`{'f1': 'MyType'}`.
+2. Iterate over the `__annotations__` items and try to evaluate the annotation [^1] using a custom wrapper around
+the built-in [`eval()`][eval] function. This function takes two `globals` and `locals` arguments:
+* The current module's `__dict__` is naturally used as `globals`. For `Base`, this will be
+`sys.modules['module1'].__dict__`.
+* For the `locals` argument, Pydantic will try to resolve symbols in the following namespaces, sorted by highest priority:
+* A namespace created on the fly, containing the current class name (`{cls.__name__: cls}`). This is done
+in order to support recursive references.
+* The locals of the current class (i.e. `cls.__dict__`). For `Model`, this will include `LocalType`.
+* The parent namespace of the class, if different from the globals described above. This is the
+[locals][frame.f_locals] of the frame where the class is being defined. For `Base`, because the class is being
+defined in the module directly, this namespace won't be used as it will result in the globals being used again.
+For `Model`, the parent namespace is the locals of the frame of `inner()`.
+3. If the annotation failed to evaluate, it is kept as is, so that the model can be rebuilt at a later stage. This will
+be the case for `f5`.  
+The following table lists the resolved type annotations for every field, once the `Model` class has been created:  
+| Field name | Resolved annotation |
+|------------|---------------------|
+| `f1`       | [`int`][]           |
+| `f2`       | [`str`][]           |
+| `f3`       | [`bool`][]          |
+| `f4`       | [`bytes`][]         |
+| `f5`       | `'UnknownType'`     |
+
+## Limitations and backwards compatibility concerns
+
+While the namespace fetching logic is trying to be as accurate as possible, we still face some limitations:  
+<div class="annotate" markdown>  
+* The locals of the current class (`cls.__dict__`) may include irrelevant entries, most of them being dunder attributes.
+This means that the following annotation: `f: '__doc__'` will successfully (and unexpectedly) be resolved.
+* When the `Model` class is being created inside a function, we keep a copy of the [locals][frame.f_locals] of the frame.
+This copy only includes the symbols defined in the locals when `Model` is being defined, meaning `InnerType2` won't be included
+(and will **not be** if doing a model rebuild at a later point!).
+* To avoid memory leaks, we use [weak references][weakref] to the locals of the function, meaning some forward references might
+not resolve outside the function (1).
+* Locals of the function are only taken into account for Pydantic models, but this pattern does not apply to dataclasses, typed
+dictionaries or named tuples.  
+</div>  
+1. Here is an example:  
+```
+
+```plaintext
+For backwards compatibility reasons, and to be able to support valid use cases without having to rebuild models,
+the namespace logic described above is a bit different when it comes to core schema generation.
+Taking the following example:
+{#backwards-compatibility-logic}  
+```
+
+```plaintext
+Once the fields for `Bar` have been collected (meaning annotations resolved), the `GenerateSchema` class converts
+every field into a core schema. When it encounters another class-like field type (such as a dataclass), it will
+try to evaluate annotations, following roughly the same logic as [described above](#resolving-annotations-at-class-definition).
+However, to evaluate the `'Bar | None'` annotation, `Bar` needs to be present in the globals or locals, which is normally
+*not* the case: `Bar` is being created, so it is not "assigned" to the current module's `__dict__` at that point.  
+To avoid having to call [`model_rebuild()`][pydantic.BaseModel.model_rebuild] on `Bar`, both the parent namespace
+(if `Bar` was to be defined inside a function, and [the namespace provided during a model rebuild](#model-rebuild-semantics))
+and the `{Bar.__name__: Bar}` namespace are included in the locals during annotations evaluation of `Foo`
+(with the lowest priority) (1).
+{ .annotate }  
+1. This backwards compatibility logic can introduce some inconsistencies, such as the following:  
+```
+
+---
+TITLE: Handling Invalid `model_serializer` Signatures in Pydantic
+DESCRIPTION: Illustrates how Pydantic raises a `PydanticUserError` with code `model-serializer-signature` when the `model_serializer` function has an invalid signature. Demonstrates the valid signatures for `model_serializer` including the use of `SerializationInfo` and `SerializerFunctionWrapHandler`.
+SOURCE: /docs/errors/usage_errors.md
+
+```python
+from pydantic import BaseModel, PydanticUserError, model_serializer
+
+try:
+
+class MyModel(BaseModel):
+a: int
+
+@model_serializer
+def _serialize(self, x, y, z):
+return self
+
+except PydanticUserError as exc_info:
+assert exc_info.code == 'model-serializer-signature'
+```
+
+---
+TITLE: Generating Aliases Using Callable `alias_generator` in Pydantic
+DESCRIPTION: Demonstrates using a callable with the `alias_generator` parameter in Pydantic's `ConfigDict` to automatically generate aliases for model fields. This approach is useful for applying consistent naming conventions without specifying aliases individually.
+SOURCE: /docs/concepts/alias.md
+
+```python
+from pydantic import BaseModel, ConfigDict
+
+class Tree(BaseModel):
+model_config = ConfigDict(
+alias_generator=lambda field_name: field_name.upper()
+)
+
+age: int
+height: float
+kind: str
+
+t = Tree.model_validate({'AGE': 12, 'HEIGHT': 1.2, 'KIND': 'oak'})
+print(t.model_dump(by_alias=True))
+#> {'AGE': 12, 'HEIGHT': 1.2, 'KIND': 'oak'}
+```
+
+---
+TITLE: Serializing Subclasses with Duck Typing in Pydantic
+DESCRIPTION: Demonstrates how to serialize subclasses in Pydantic using duck typing with the `SerializeAsAny` annotation and the `serialize_as_any` runtime setting. This allows serializing model instances based on actual field values, including fields from subclasses, providing flexibility in data serialization.
+SOURCE: /docs/concepts/serialization.md
+
+```python
+from pydantic import BaseModel, SerializeAsAny
+
+class User(BaseModel):
+name: str
+
+class UserLogin(User):
+password: str
+
+class OuterModel(BaseModel):
+as_any: SerializeAsAny[User]
+as_user: User
+
+user = UserLogin(name='pydantic', password='password')
+
+print(OuterModel(as_any=user, as_user=user).model_dump())
+"""
+{
+'as_any': {'name': 'pydantic', 'password': 'password'},
+'as_user': {'name': 'pydantic'},
+}
+"""
+```
+
+---
+TITLE: Handling Timezone-Naive Datetime Validation Errors in Pydantic
+DESCRIPTION: Illustrates how Pydantic raises a `ValidationError` with the `timezone_naive` error type when a timezone-aware `datetime` object is assigned to a `NaiveDatetime` field. This occurs because `NaiveDatetime` expects a `datetime` object without timezone information, ensuring data consistency and preventing unexpected behavior related to timezone conversions.
+SOURCE: /docs/errors/validation_errors.md
+
+```python
+from datetime import datetime, timezone
+
+from pydantic import BaseModel, NaiveDatetime, ValidationError
+
+class Model(BaseModel):
+x: NaiveDatetime
+
+try:
+Model(x=datetime.now(tz=timezone.utc))
+except ValidationError as exc:
+print(repr(exc.errors()[0]['type']))
+#> 'timezone_naive'
+```
+
+---
+TITLE: Handling `callable_type` Validation Errors in Pydantic
+DESCRIPTION: Demonstrates how Pydantic raises a `callable_type` `ValidationError` when a field annotated with `ImportString[Callable]` receives a value that is not a callable. This error occurs when the imported string does not resolve to a callable object, ensuring type safety and preventing runtime errors.
+SOURCE: /docs/errors/validation_errors.md
+
+```python
+from typing import Any, Callable
+
+from pydantic import BaseModel, ImportString, ValidationError
+
+class Model(BaseModel):
+x: ImportString[Callable[[Any], Any]]
+
+Model(x='math:cos')  # OK
+
+try:
+Model(x='os.path')
+except ValidationError as exc:
+print(repr(exc.errors()[0]['type']))
+#> 'callable_type'
+```
+
+---
+TITLE: Enabling Strict Mode for Dataclasses and TypedDict
+DESCRIPTION: Demonstrates how to enable strict mode for dataclasses and `TypedDict` using `ConfigDict` and the `__pydantic_config__` attribute. This allows for stricter validation of data, ensuring that types are enforced even when working with vanilla dataclasses or third-party types, and raises a `ValidationError` when the input does not match the expected type.
+SOURCE: /docs/concepts/strict_mode.md
+
+```python
+from typing_extensions import TypedDict
+
+from pydantic import ConfigDict, TypeAdapter, ValidationError
+
+class Inner(TypedDict):
+y: int
+
+Inner.__pydantic_config__ = ConfigDict(strict=True)
+
+class Outer(TypedDict):
+x: int
+inner: Inner
+
+adapter = TypeAdapter(Outer)
+print(adapter.validate_python({'x': '1', 'inner': {'y': 2}}))
+#> {'x': 1, 'inner': {'y': 2}}
+
+try:
+adapter.validate_python({'x': '1', 'inner': {'y': '2'}})
+except ValidationError as exc:
+print(exc)
+"""
+1 validation error for Outer
+inner.y
+Input should be a valid integer [type=int_type, input_value='2', input_type=str]
+"""
+```
+
+---
+TITLE: Using `Field()` for Function Parameter Validation in Pydantic
+DESCRIPTION: Demonstrates using the `Field()` function within the `@validate_call` decorator to provide extra information and validations for function parameters in Pydantic. It illustrates how to define constraints like `gt` (greater than) and use aliases, ensuring type checkers recognize required parameters and enabling runtime validation of function inputs.
+SOURCE: /docs/concepts/validation_decorator.md
+
+```python
+from typing import Annotated
+
+from pydantic import Field, ValidationError, validate_call
+
+@validate_call
+def how_many(num: Annotated[int, Field(gt=10)]):
+return num
+
+try:
+how_many(1)
+except ValidationError as e:
+print(e)
+"""
+1 validation error for how_many
+0
+Input should be greater than 10 [type=greater_than, input_value=1, input_type=int]
+"""
+
+@validate_call
+def return_value(value: str = Field(default='default value')):
+return value
+
+print(return_value())
+#> default value
+```
+
+```python
+from typing import Annotated
+
+from pydantic import Field, validate_call
+
+@validate_call
+def how_many(num: Annotated[int, Field(gt=10, alias='number')]):
+return num
+
+how_many(number=42)
+```
+
+---
+TITLE: Handling `datetime_future` Validation Error in Pydantic
+DESCRIPTION: Illustrates how Pydantic raises a `ValidationError` with the `datetime_future` error type when a `FutureDatetime` field receives a past datetime value. This ensures that datetime values are validated to be in the future, preventing incorrect data and improving application reliability.
+SOURCE: /docs/errors/validation_errors.md
+
+```python
+from datetime import datetime
+
+from pydantic import BaseModel, FutureDatetime, ValidationError
+
+class Model(BaseModel):
+x: FutureDatetime
+
+try:
+Model(x=datetime(2000, 1, 1))
+except ValidationError as exc:
+print(repr(exc.errors()[0]['type']))
+#> 'datetime_future'
+```
+
+---
+TITLE: Defining Enums with Pydantic for Data Validation
+DESCRIPTION: Demonstrates how to define and use Python's `enum.Enum` with Pydantic for data validation, ensuring that input values conform to predefined choices within a `BaseModel`. This approach is beneficial for creating type-safe and self-documenting models, raising `ValidationError` when invalid enum values are provided.
+SOURCE: /docs/api/standard_library_types.md
+
+```python
+from enum import Enum, IntEnum
+
+from pydantic import BaseModel, ValidationError
+
+class FruitEnum(str, Enum):
+pear = 'pear'
+banana = 'banana'
+
+class ToolEnum(IntEnum):
+spanner = 1
+wrench = 2
+
+class CookingModel(BaseModel):
+fruit: FruitEnum = FruitEnum.pear
+tool: ToolEnum = ToolEnum.spanner
+
+print(CookingModel())
+#> fruit=<FruitEnum.pear: 'pear'> tool=<ToolEnum.spanner: 1>
+print(CookingModel(tool=2, fruit='banana'))
+#> fruit=<FruitEnum.banana: 'banana'> tool=<ToolEnum.wrench: 2>
+try:
+CookingModel(fruit='other')
+except ValidationError as e:
+print(e)
+"""
+1 validation error for CookingModel
+fruit
+Input should be 'pear' or 'banana' [type=enum, input_value='other', input_type=str]
+"""
+```
+
+---
+TITLE: Handling Datetime Parsing Errors with `datetime_from_date_parsing`
+DESCRIPTION: Illustrates how `pydantic` raises a `datetime_from_date_parsing` error when a string cannot be parsed into a `datetime` object. This error occurs during model validation when a field annotated with `datetime` receives an invalid date string, such as '2023-13-01'.
+SOURCE: /docs/errors/validation_errors.md
+
+```python
+from datetime import datetime
+
+from pydantic import BaseModel, ValidationError
+
+class Model(BaseModel):
+x: datetime
+
+try:
+# there is no 13th month
+Model(x='2023-13-01')
+except ValidationError as exc:
+print(repr(exc.errors()[0]['type']))
+#> 'datetime_from_date_parsing'
+```
+
+---
+TITLE: Configuring Pydantic-Mypy Plugin Settings
+DESCRIPTION: Configures the `pydantic.mypy` plugin within `mypy.ini` or `pyproject.toml` to enable strictness flags such as `init_forbid_extra`, `init_typed`, and `warn_required_dynamic_aliases`. This allows for customized type checking behavior when using Pydantic models with MyPy.
+SOURCE: /docs/integrations/mypy.md
+
+```ini
+[mypy]
+plugins = pydantic.mypy
+
+follow_imports = silent
+warn_redundant_casts = True
+warn_unused_ignores = True
+disallow_any_generics = True
+no_implicit_reexport = True
+disallow_untyped_defs = True
+
+[pydantic-mypy]
+init_forbid_extra = True
+init_typed = True
+warn_required_dynamic_aliases = True
+```
+
+```toml
+[tool.mypy]
+plugins = ["pydantic.mypy"]
+
+follow_imports = "silent"
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_any_generics = true
+no_implicit_reexport = true
+disallow_untyped_defs = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+```
+
+---
+TITLE: Handling `bytes_type` Validation Errors in Pydantic
+DESCRIPTION: Demonstrates how Pydantic raises a `bytes_type` `ValidationError` when a field annotated as `bytes` receives an invalid type. This error occurs when the input is not a valid `bytes` object, ensuring data integrity and type safety in Pydantic models.
+SOURCE: /docs/errors/validation_errors.md
+
+```python
+from pydantic import BaseModel, ValidationError
+
+class Model(BaseModel):
+x: bytes
+
+try:
+Model(x=123)
+except ValidationError as exc:
+print(repr(exc.errors()[0]['type']))
+#> 'bytes_type'
+```
+
+---
+TITLE: Troubleshooting Missing Package Metadata for `email-validator`
+DESCRIPTION: Addresses the "No package metadata was found for `email-validator`" error in AWS Lambda deployments, which arises due to incompatibility with `importlib.metadata`. Explains how to resolve this by adjusting `serverless.yml` settings (e.g., `slim: false`) or ensuring the `dist-info` directory is included in `.zip` archives, referencing similar issues with libraries like `jsonschema`.
+SOURCE: /docs/integrations/aws_lambda.md
+
+```yaml
+pythonRequirements:
+dockerizePip: non-linux
+slim: false
+fileName: requirements.txt
+```
+
+---
+TITLE: Handling Iterable Type Validation Error in Pydantic
+DESCRIPTION: Demonstrates how Pydantic raises a `ValidationError` with the `iterable_type` error when a field annotated as `Iterable` receives a non-iterable value. This example shows how to catch this specific validation error when defining models with iterable type hints using `collections.abc.Iterable`.
+SOURCE: /docs/errors/validation_errors.md
+
+```python
+from collections.abc import Iterable
+
+from pydantic import BaseModel, ValidationError
+
+class Model(BaseModel):
+y: Iterable[str]
+
+try:
+Model(y=123)
+except ValidationError as exc:
+print(repr(exc.errors()[0]['type']))
+#> 'iterable_type'
+```
+
+---
+TITLE: Enabling the `pydantic.mypy` Plugin
+DESCRIPTION: Configures the `mypy` plugin for `pydantic` to enable static type checking. To enable the plugin, add `pydantic.mypy` (or `pydantic.v1.mypy` for `pydantic.v1` models) to the `plugins` list in your `mypy.ini` or `pyproject.toml` configuration file.
+SOURCE: /docs/integrations/mypy.md
+
+```ini
+[mypy]
+plugins = pydantic.mypy
+```
+
+```toml
+[tool.mypy]
+plugins = ['pydantic.mypy']
+```
+
+---
+TITLE: Serializing Subclasses of Supported Types in Pydantic
+DESCRIPTION: Demonstrates how Pydantic serializes subclasses of supported types like `date`. When a `BaseModel` field is typed as a supported type, instances of its subclasses are serialized as if they were instances of the superclass, as shown with `MyDate` being serialized as a `date` object.
+SOURCE: /docs/concepts/serialization.md
+
+```python
+from datetime import date
+
+from pydantic import BaseModel
+
+class MyDate(date):
+@property
+def my_date_format(self) -> str:
+return self.strftime('%d/%m/%Y')
+
+class FooModel(BaseModel):
+date: date
+
+m = FooModel(date=MyDate(2023, 1, 1))
+print(m.model_dump_json())
+#> {"date":"2023-01-01"}
+```
+
+---
+TITLE: Validating HTTP Responses with Pydantic and `httpx`
+DESCRIPTION: Demonstrates how to validate HTTP responses from the `httpx` library using Pydantic models and `TypeAdapter`. This approach ensures data integrity and type safety when consuming APIs, particularly useful for handling JSON data and defining data structures.
+SOURCE: /docs/examples/requests.md
+
+```plaintext
+The [`TypeAdapter`][pydantic.type_adapter.TypeAdapter] tool from Pydantic often comes in quite
+handy when working with HTTP requests. Consider a similar example where we are validating a list of users:  
+from pprint import pprint
+
+import httpx
+
+from pydantic import BaseModel, EmailStr, TypeAdapter
+
+class User(BaseModel):
+id: int
+name: str
+email: EmailStr
+
+url = 'https://jsonplaceholder.typicode.com/users/'  # (1)!
+
+response = httpx.get(url)
+response.raise_for_status()
+
+users_list_adapter = TypeAdapter(list[User])
+
+users = users_list_adapter.validate_python(response.json())
+pprint([u.name for u in users])
+"""
+['Leanne Graham',
+'Ervin Howell',
+'Clementine Bauch',
+'Patricia Lebsack',
+'Chelsey Dietrich',
+'Mrs. Dennis Schulist',
+'Kurtis Weissnat',
+'Nicholas Runolfsdottir V',
+'Glenna Reichert',
+'Clementina DuBuque']
+"""
+```
+
+---
+TITLE: Customizing JSON Schema Sorting in Pydantic
+DESCRIPTION: Demonstrates customizing JSON schema generation by overriding the `sort` method in a subclass of `GenerateJsonSchema` to disable sorting, preserving the order of fields and `json_schema_extra` keys; this is useful when field order is significant and should be maintained in the generated schema.
+SOURCE: /docs/concepts/json_schema.md
+
+```python
+import json
+from typing import Optional
+
+from pydantic import BaseModel, Field
+from pydantic.json_schema import GenerateJsonSchema, JsonSchemaValue
+
+class MyGenerateJsonSchema(GenerateJsonSchema):
+def sort(
+self, value: JsonSchemaValue, parent_key: Optional[str] = None
+) -> JsonSchemaValue:
+"""No-op, we don't want to sort schema values at all."""
+return value
+
+class Bar(BaseModel):
+c: str
+b: str
+a: str = Field(json_schema_extra={'c': 'hi', 'b': 'hello', 'a': 'world'})
+
+json_schema = Bar.model_json_schema(schema_generator=MyGenerateJsonSchema)
+print(json.dumps(json_schema, indent=2))
+"""
+{
+"type": "object",
+"properties": {
+"c": {
+"type": "string",
+"title": "C"
+},
+"b": {
+"type": "string",
+"title": "B"
+},
+"a": {
+"type": "string",
+"c": "hi",
+"b": "hello",
+"a": "world",
+"title": "A"
+}
+},
+"required": [
+"c",
+"b",
+"a"
+],
+"title": "Bar"
+}
+"""
+```
+
+---
+TITLE: Understanding Limitations of Pydantic Experimental Partial Validation
+DESCRIPTION: Highlights the limitations of Pydantic's experimental partial validation feature using `TypeAdapter`, including supported types (`list`, `set`, `dict`, `TypedDict`) and scenarios where validation might accept incomplete or invalid JSON due to `jiter`. Demonstrates how errors in the last field of the input are ignored, potentially leading to unexpected validation results.
+SOURCE: /docs/concepts/experimental.md
+
+```python
+from typing import Annotated
+
+from annotated_types import MinLen
+
+from pydantic import BaseModel, TypeAdapter, ValidationError
+
+class MyModel(BaseModel):
+a: int = 1
+b: list[Annotated[str, MinLen(5)]] = []  # (1)!
+
+ta = TypeAdapter(MyModel)
+try:
+v = ta.validate_json(
+'{"a": 1, "b": ["12345", "12', experimental_allow_partial=True
+)
+except ValidationError as e:
+print(e)
+"""
+1 validation error for MyModel
+b.1
+String should have at least 5 characters [type=string_too_short, input_value='12', input_type=str]
+"""
+```
+
+```plaintext
+1. This will pass validation as expected although the last field will be omitted as it failed validation.
+2. This will also pass validation since the binary representation of the JSON data passed to pydantic-core is indistinguishable from the previous case.  
+#### Any error in the last field of the input will be ignored
+As described [above](#2-ignore-errors-in-last), many errors can result from truncating the input. Rather than trying to specifically ignore errors that could result from truncation, Pydantic ignores all errors in the last element of the input in partial validation mode.  
+This means clearly invalid data will pass validation if the error is in the last field of the input:  
+```
+
+---
+TITLE: Handling Model Field Missing Annotation in Pydantic
+DESCRIPTION: Illustrates how to resolve the `model-field-missing-annotation` error in Pydantic when a model field lacks type annotation, by using `ClassVar` or updating `model_config['ignored_types']`. This prevents errors when a field is not intended to be a Pydantic field, or when ignoring specific types.
+SOURCE: /docs/errors/usage_errors.md
+
+```python
+from pydantic import BaseModel, Field, PydanticUserError
+
+try:
+
+class Model(BaseModel):
+a = Field('foobar')
+b = None
+
+except PydanticUserError as exc_info:
+assert exc_info.code == 'model-field-missing-annotation'
+```
+
+```plaintext
+Or updating `model_config['ignored_types']`:  
+from pydantic import BaseModel, ConfigDict
+
+class IgnoredType:
+pass
+
+class MyModel(BaseModel):
+model_config = ConfigDict(ignored_types=(IgnoredType,))
+
+_a = IgnoredType()
+_b: int = IgnoredType()
+_c: IgnoredType
+_d: IgnoredType = IgnoredType()
+```
+
+---
+TITLE: Handling Cyclic References in Pydantic Models
+DESCRIPTION: Demonstrates how Pydantic handles cyclic references during validation and serialization, raising `ValidationError` and `ValueError` respectively. It shows how to detect and suppress `ValidationError` with `is_recursion_validation_error` and `suppress_recursion_validation_error`, and how to use `field_serializer` to handle circular references during serialization, preventing `RecursionError`.
+SOURCE: /docs/concepts/forward_annotations.md
+
+```python
+from typing import Optional
+
+from pydantic import BaseModel, ValidationError
+
+class ModelA(BaseModel):
+b: 'Optional[ModelB]' = None
+
+class ModelB(BaseModel):
+a: Optional[ModelA] = None
+
+cyclic_data = {}
+cyclic_data['a'] = {'b': cyclic_data}
+print(cyclic_data)
+#> {'a': {'b': {...}}}
+
+try:
+ModelB.model_validate(cyclic_data)
+except ValidationError as exc:
+print(exc)
+"""
+1 validation error for ModelB
+a.b
+Recursion error - cyclic reference detected [type=recursion_loop, input_value={'a': {'b': {...}}}, input_type=dict]
+"""
+```
+
+```plaintext
+Similarly, if Pydantic encounters a recursive reference during *serialization*, rather than waiting
+for the maximum recursion depth to be exceeded, a [`ValueError`][] is raised immediately:  
+from pydantic import TypeAdapter
+
+# Create data with cyclic references representing the graph 1 -> 2 -> 3 -> 1
+node_data = {'id': 1, 'children': [{'id': 2, 'children': [{'id': 3}]}]}
+node_data['children'][0]['children'][0]['children'] = [node_data]
+
+try:
+# Try serializing the circular reference as JSON
+TypeAdapter(dict).dump_json(node_data)
+except ValueError as exc:
+print(exc)
+"""
+Error serializing to JSON: ValueError: Circular reference detected (id repeated)
+"""
+```
+
+```python
+from dataclasses import field
+from typing import Any
+
+from pydantic import (
+SerializerFunctionWrapHandler,
+TypeAdapter,
+field_serializer,
+)
+from pydantic.dataclasses import dataclass
+
+@dataclass
+class NodeReference:
+id: int
+
+@dataclass
+class Node(NodeReference):
+children: list['Node'] = field(default_factory=list)
+
+@field_serializer('children', mode='wrap')
+def serialize(
+self, children: list['Node'], handler: SerializerFunctionWrapHandler
+) -> Any:
+"""
+Serialize a list of nodes, handling circular references by excluding the children.
+"""
+try:
+return handler(children)
+except ValueError as exc:
+if not str(exc).startswith('Circular reference'):
+raise exc
+
+result = []
+for node in children:
+try:
+serialized = handler([node])
+except ValueError as exc:
+if not str(exc).startswith('Circular reference'):
+raise exc
+result.append({'id': node.id})
+else:
+result.append(serialized)
+return result
+
+# Create a cyclic graph:
+nodes = [Node(id=1), Node(id=2), Node(id=3)]
+nodes[0].children.append(nodes[1])
+nodes[1].children.append(nodes[2])
+nodes[2].children.append(nodes[0])
+
+print(nodes[0])
+#> Node(id=1, children=[Node(id=2, children=[Node(id=3, children=[...])])])
+
+# Serialize the cyclic graph:
+print(TypeAdapter(Node).dump_python(nodes[0]))
+"""
+{
+'id': 1,
+'children': [{'id': 2, 'children': [{'id': 3, 'children': [{'id': 1}]}]}],
+}
+"""
+```
+
+---
+TITLE: Handling `union_tag_not_found` Error in Pydantic
+DESCRIPTION: Demonstrates how to handle the `union_tag_not_found` error in Pydantic when a discriminator value is missing or cannot be extracted from the input data for a `Union` field. This error occurs when Pydantic cannot determine which type within the `Union` to instantiate based on the provided discriminator.
+SOURCE: /docs/errors/validation_errors.md
+
+```python
+from typing import Literal, Union
+
+from pydantic import BaseModel, Field, ValidationError
+
+class BlackCat(BaseModel):
+pet_type: Literal['blackcat']
+
+class WhiteCat(BaseModel):
+pet_type: Literal['whitecat']
+
+class Model(BaseModel):
+cat: Union[BlackCat, WhiteCat] = Field(discriminator='pet_type')
+
+try:
+Model(cat={'name': 'blackcat'})
+except ValidationError as exc:
+print(repr(exc.errors()[0]['type']))
+#> 'union_tag_not_found'
+```
+
+---
+TITLE: Generating JSON Schema Field Titles Programmatically
+DESCRIPTION: Demonstrates how to use the `field_title_generator` parameter in Pydantic to programmatically generate titles for fields based on their name and `FieldInfo`. This allows for dynamic customization of the JSON schema generated by `model_json_schema`.
+SOURCE: /docs/concepts/json_schema.md
+
+```python
+import json
+
+from pydantic import BaseModel, Field
+from pydantic.fields import FieldInfo
+
+def make_title(field_name: str, field_info: FieldInfo) -> str:
+return field_name.upper()
+
+class Person(BaseModel):
+name: str = Field(field_title_generator=make_title)
+age: int = Field(field_title_generator=make_title)
+
+print(json.dumps(Person.model_json_schema(), indent=2))
+"""
+{
+"properties": {
+"name": {
+"title": "NAME",
+"type": "string"
+},
+"age": {
+"title": "AGE",
+"type": "integer"
+}
+},
+"required": [
+"name",
+"age"
+],
+"title": "Person",
+"type": "object"
+}
+"""
+```
+
+---
+TITLE: Handling Invalid `validate_by_alias` and `validate_by_name` Configuration
+DESCRIPTION: Demonstrates the error raised when both `validate_by_alias` and `validate_by_name` are set to `False` in a `pydantic` model's `ConfigDict`, which is disallowed because it prevents attribute population. This configuration is invalid and results in a `PydanticUserError` with the code `validate-by-alias-and-name-false`.
+SOURCE: /docs/errors/usage_errors.md
+
+```python
+from pydantic import BaseModel, ConfigDict, Field, PydanticUserError
+
+try:
+
+class Model(BaseModel):
+a: int = Field(alias='A')
+
+model_config = ConfigDict(
+validate_by_alias=False, validate_by_name=False
+)
+
+except PydanticUserError as exc_info:
+assert exc_info.code == 'validate-by-alias-and-name-false'
+```
+
+---
+TITLE: Handling `int_type` Validation Errors in Pydantic
+DESCRIPTION: Demonstrates how Pydantic raises an `int_type` `ValidationError` when a value cannot be coerced to an integer for an `int` field. This error handling is crucial for data validation and ensuring type safety in Pydantic models.
+SOURCE: /docs/errors/validation_errors.md
+
+```python
+from pydantic import BaseModel, ValidationError
+
+class Model(BaseModel):
+x: int
+
+try:
+Model(x=None)
+except ValidationError as exc:
+print(repr(exc.errors()[0]['type']))
+#> 'int_type'
+```
+
+---
+TITLE: Configuring Field Inclusion and Exclusion with Pydantic
+DESCRIPTION: Demonstrates configuring field inclusion and exclusion at the field level in Pydantic using the `exclude` and `exclude_if` parameters within the `Field()` function. This approach allows fine-grained control over which fields are serialized, taking priority over global inclusion settings.
+SOURCE: /docs/concepts/serialization.md
+
+```python
+from pydantic import BaseModel, Field
+
+class Transaction(BaseModel):
+id: int
+private_id: int = Field(exclude=True)
+value: int = Field(ge=0, exclude_if=lambda v: v == 0)
+
+print(Transaction(id=1, private_id=2, value=0).model_dump())
+#> {'id': 1}
+```
+
+---
+TITLE: Handling Datetime Parsing Errors in Pydantic
+DESCRIPTION: Demonstrates how Pydantic raises a `datetime_parsing` error when a string cannot be parsed as a `datetime` for a field with `strict=True`. This error handling is crucial for validating data and ensuring data integrity when working with `datetime` fields in Pydantic models.
+SOURCE: /docs/errors/validation_errors.md
+
+```python
+import json
+from datetime import datetime
+
+from pydantic import BaseModel, Field, ValidationError
+
+class Model(BaseModel):
+x: datetime = Field(strict=True)
+
+try:
+Model.model_validate_json(json.dumps({'x': 'not a datetime'}))
+except ValidationError as exc:
+print(repr(exc.errors()[0]['type']))
+#> 'datetime_parsing'
+```
+
+---
+TITLE: Handling `validate_call` with `@classmethod`, `@staticmethod`, `@property`
+DESCRIPTION: Illustrates how to correctly use the `validate_call` decorator with `@classmethod`, `@staticmethod`, and `@property` decorators in Pydantic, ensuring the method decorators are applied before `validate_call` to avoid `PydanticUserError` with code `validate-call-type`. This ensures proper validation of class methods, static methods, and properties when using `validate_call`.
+SOURCE: /docs/errors/usage_errors.md
+
+```python
+from pydantic import PydanticUserError, validate_call
+
+# error
+try:
+
+class A:
+@validate_call
+@classmethod
+def f1(cls): ...
+
+except PydanticUserError as exc_info:
+assert exc_info.code == 'validate-call-type'
+
+# correct
+@classmethod
+@validate_call
+def f2(cls): ...
+```
+
+---
+TITLE: Handling `frozen_set_type` Validation Error in Pydantic
+DESCRIPTION: Illustrates how Pydantic raises a `ValidationError` with the `frozen_set_type` error when a value is not a valid `frozenset` for a field defined with type `frozenset`. This error handling is crucial for ensuring data integrity and type safety in Pydantic models.
+SOURCE: /docs/errors/validation_errors.md
+
+```python
+from pydantic import BaseModel, ValidationError
+
+class Model(BaseModel):
+x: frozenset
+
+try:
+model = Model(x='test')
+except ValidationError as exc:
+print(repr(exc.errors()[0]['type']))
+#> 'frozen_set_type'
+```
+
+---
+TITLE: Validating Function Parameter Types with `validate_call`
+DESCRIPTION: Demonstrates how `validate_call` infers and coerces function parameter types based on type annotations, including Pydantic models and custom types, allowing for automatic data conversion. Explains how to enable strict mode for validation and how to validate the return value using the `validate_return` argument.
+SOURCE: /docs/concepts/validation_decorator.md
+
+```python
+from datetime import date
+
+from pydantic import validate_call
+
+@validate_call
+def greater_than(d1: date, d2: date, *, include_equal=False) -> date:  # (1)!
+if include_equal:
+return d1 >= d2
+else:
+return d1 > d2
+
+d1 = '2000-01-01'  # (2)!
+d2 = date(2001, 1, 1)
+greater_than(d1, d2, include_equal=True)
+```
+
+---
+TITLE: Implementing Discriminated Unions with Callable `Discriminator`
+DESCRIPTION: Demonstrates how to use a callable `Discriminator` with `pydantic` `Union` types to efficiently validate and serialize data based on custom logic. This approach is useful when a uniform field is not available across all union members, requiring the callable to handle both `dict` and model inputs for validation and serialization, and returns `None` if a discriminator value is not found.
+SOURCE: /docs/concepts/unions.md
+
+```python
+from typing import Annotated, Any, Literal, Union
+
+from pydantic import BaseModel, Discriminator, Tag
+
+class Pie(BaseModel):
+time_to_cook: int
+num_ingredients: int
+
+class ApplePie(Pie):
+fruit: Literal['apple'] = 'apple'
+
+class PumpkinPie(Pie):
+filling: Literal['pumpkin'] = 'pumpkin'
+
+def get_discriminator_value(v: Any) -> str:
+if isinstance(v, dict):
+return v.get('fruit', v.get('filling'))
+return getattr(v, 'fruit', getattr(v, 'filling', None))
+
+class ThanksgivingDinner(BaseModel):
+dessert: Annotated[
+Union[
+Annotated[ApplePie, Tag('apple')],
+Annotated[PumpkinPie, Tag('pumpkin')],
+],
+Discriminator(get_discriminator_value),
+]
+
+apple_variation = ThanksgivingDinner.model_validate(
+{'dessert': {'fruit': 'apple', 'time_to_cook': 60, 'num_ingredients': 8}}
+)
+print(repr(apple_variation))
+"""
+ThanksgivingDinner(dessert=ApplePie(time_to_cook=60, num_ingredients=8, fruit='apple'))
+"""
+
+pumpkin_variation = ThanksgivingDinner.model_validate(
+{
+'dessert': {
+'filling': 'pumpkin',
+'time_to_cook': 40,
+'num_ingredients': 6,
+}
+}
+)
+print(repr(pumpkin_variation))
+"""
+ThanksgivingDinner(dessert=PumpkinPie(time_to_cook=40, num_ingredients=6, filling='pumpkin'))
+"""
+```
+
+```plaintext
+1. Notice the callable discriminator function returns `None` if a discriminator value is not found.
+When `None` is returned, this `union_tag_not_found` error is raised.  
+!!! note
+Using the [annotated pattern](./fields.md#the-annotated-pattern) can be handy to regroup
+the `Union` and `discriminator` information. See the next example for more details.  
+There are a few ways to set a discriminator for a field, all varying slightly in syntax.  
+For `str` discriminators:  
+```
+
+```plaintext
+For callable `Discriminator`s:  
+some_field: Union[...] = Field(discriminator=Discriminator(...))
+some_field: Annotated[Union[...], Discriminator(...)]
+some_field: Annotated[Union[...], Field(discriminator=Discriminator(...))]
+```
+
+---
+TITLE: Avoiding Primitive Subclasses for Pydantic Performance
+DESCRIPTION: Demonstrates how to avoid subclassing primitive types in Pydantic models for performance reasons. Using `BaseModel` with type annotations is more efficient than subclassing `str` or other primitives when adding extra information like `done` status.
+SOURCE: /docs/concepts/performance.md
+
+```python
+class CompletedStr(str):
+def __init__(self, s: str):
+self.s = s
+self.done = False
+```
+
+```python
+from pydantic import BaseModel
+
+class CompletedModel(BaseModel):
+s: str
+done: bool = False
+```
+
+---
+TITLE: Implementing Strict Mode with Pydantic Fields
+DESCRIPTION: Demonstrates how to use the `strict` parameter within Pydantic's `Field` to enable strict mode validation, which throws an error instead of coercing data during validation. This ensures data integrity and type safety by preventing implicit conversions on fields where `strict=True`.
+SOURCE: /docs/concepts/fields.md
+
+```python
+from pydantic import BaseModel, Field
+
+class User(BaseModel):
+name: str = Field(strict=True)
+age: int = Field(strict=False)  # (1)!
+
+user = User(name='John', age='42')  # (2)!
+print(user)
+#> name='John' age=42
+```
+
+---
+TITLE: Configuring Mypy Plugins for Pydantic V2
+DESCRIPTION: Configures the `mypy` plugin for Pydantic V2, including enabling `pydantic.mypy` and optionally `pydantic.v1.mypy` when using V1 features, through `mypy.ini` or `pyproject.toml`. This ensures proper type checking and validation when using Pydantic models.
+SOURCE: /docs/migration.md
+
+```ini
+[mypy]
+plugins = pydantic.mypy, pydantic.v1.mypy  # include `.v1.mypy` if required.
+```
+
+```toml
+[tool.mypy]
+plugins = [
+"pydantic.mypy",
+"pydantic.v1.mypy",  # include `.v1.mypy` if required.
+]
+```
+
+---
+TITLE: Constraining Decimals Using `max_digits` and `decimal_places`
+DESCRIPTION: Demonstrates how to constrain `Decimal` fields in Pydantic models using `max_digits` and `decimal_places` to limit the total number of digits and decimal places, respectively, ensuring data conforms to specific precision requirements. This is useful when precise control over decimal representation is needed, such as in financial applications.
+SOURCE: /docs/concepts/fields.md
+
+```python
+from decimal import Decimal
+
+from pydantic import BaseModel, Field
+
+class Foo(BaseModel):
+precise: Decimal = Field(max_digits=5, decimal_places=2)
+
+foo = Foo(precise=Decimal('123.45'))
+print(foo)
+#> precise=Decimal('123.45')
+```
+
+---
+TITLE: Validating Data with Pydantic's `model_validate` Methods
+DESCRIPTION: Demonstrates data validation using Pydantic's `model_validate`, `model_validate_json`, and `model_validate_strings` methods for parsing data from dictionaries, JSON strings, and string-based dictionaries, respectively, raising a `ValidationError` if validation fails. It also highlights the importance of `revalidate_instances` in the model's config to ensure validation is performed on model instances.
+SOURCE: /docs/concepts/models.md
+
+```python
+from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, ValidationError
+
+class User(BaseModel):
+id: int
+name: str = 'John Doe'
+signup_ts: Optional[datetime] = None
+
+m = User.model_validate({'id': 123, 'name': 'James'})
+print(m)
+#> id=123 name='James' signup_ts=None
+
+try:
+User.model_validate(['not', 'a', 'dict'])
+except ValidationError as e:
+print(e)
+"""
+1 validation error for User
+Input should be a valid dictionary or instance of User [type=model_type, input_value=['not', 'a', 'dict'], input_type=list]
+"""
+
+m = User.model_validate_json('{"id": 123, "name": "James"}')
+print(m)
+#> id=123 name='James' signup_ts=None
+
+try:
+m = User.model_validate_json('{"id": 123, "name": 123}')
+except ValidationError as e:
+print(e)
+"""
+1 validation error for User
+name
+Input should be a valid string [type=string_type, input_value=123, input_type=int]
+"""
+
+try:
+m = User.model_validate_json('invalid JSON')
+except ValidationError as e:
+print(e)
+"""
+1 validation error for User
+Invalid JSON: expected value at line 1 column 1 [type=json_invalid, input_value='invalid JSON', input_type=str]
+"""
+
+m = User.model_validate_strings({'id': '123', 'name': 'James'})
+print(m)
+#> id=123 name='James' signup_ts=None
+
+m = User.model_validate_strings(
+{'id': '123', 'name': 'James', 'signup_ts': '2024-04-01T12:00:00'}
+)
+print(m)
+#> id=123 name='James' signup_ts=datetime.datetime(2024, 4, 1, 12, 0)
+
+try:
+m = User.model_validate_strings(
+{'id': '123', 'name': 'James', 'signup_ts': '2024-04-01'}, strict=True
+)
+except ValidationError as e:
+print(e)
+"""
+1 validation error for User
+signup_ts
+Input should be a valid datetime, invalid datetime separator, expected `T`, `t`, `_` or space [type=datetime_parsing, input_value='2024-04-01', input_type=str]
+```
+
+```python
+from pydantic import BaseModel
+
+class Model(BaseModel):
+a: int
+
+m = Model(a=0)
+# note: setting `validate_assignment` to `True` in the config can prevent this kind of misbehavior.
+m.a = 'not an int'
+
+# doesn't raise a validation error even though m is invalid
+m2 = Model.model_validate(m)
+```
+
+---
+TITLE: Handling Complex String Parsing Errors in Pydantic
+DESCRIPTION: Demonstrates how Pydantic raises a `complex_str_parsing` error when a string cannot be parsed as a complex number according to Python's `complex()` function rules. This error occurs during model validation using `model_validate_json` when the input string does not represent a valid complex number format.
+SOURCE: /docs/errors/validation_errors.md
+
+```python
+from pydantic import BaseModel, ValidationError
+
+class Model(BaseModel):
+num: complex
+
+try:
+# Complex numbers in json are expected to be valid complex strings.
+# This value `abc` is not a valid complex string.
+Model.model_validate_json('{"num": "abc"}')
+except ValidationError as exc:
+print(repr(exc.errors()[0]['type']))
+#> 'complex_str_parsing'
+```
+
+---
+TITLE: Defining Nested Models with Pydantic
+DESCRIPTION: Demonstrates how to define complex hierarchical data structures in Pydantic using nested models as type annotations. Illustrates the use of `BaseModel` to create `Foo`, `Bar`, and `Spam` models, where `Spam` contains instances of `Foo` and a list of `Bar` models, showcasing Pydantic's ability to handle nested data structures.
+SOURCE: /docs/concepts/models.md
+
+```python
+from typing import Optional
+
+from pydantic import BaseModel
+
+class Foo(BaseModel):
+count: int
+size: Optional[float] = None
+
+class Bar(BaseModel):
+apple: str = 'x'
+banana: str = 'y'
+
+class Spam(BaseModel):
+foo: Foo
+bars: list[Bar]
+
+m = Spam(foo={'count': 4}, bars=[{'apple': 'x1'}, {'apple': 'x2'}])
+print(m)
+"""
+foo=Foo(count=4, size=None) bars=[Bar(apple='x1', banana='y'), Bar(apple='x2', banana='y')]
+"""
+print(m.model_dump())
+"""
+{
+'foo': {'count': 4, 'size': None},
+'bars': [{'apple': 'x1', 'banana': 'y'}, {'apple': 'x2', 'banana': 'y'}],
+}
+"""
+```
+
+---
+TITLE: Defining Pydantic Models with Core Schemas
+DESCRIPTION: Defines how `pydantic` uses core schemas to communicate model definitions to `pydantic-core` for validation and serialization. It illustrates the structure of a core schema, including the `type` key and additional properties, and demonstrates how custom serialization functions can be integrated using the `field_serializer` decorator.
+SOURCE: /docs/internals/architecture.md
+
+```plaintext
+When defining a Pydantic model with a boolean field:  
+```
+
+```plaintext
+The core schema for the `foo` field will look like:  
+{
+'type': 'bool',
+'strict': True,
+}
+```
+
+```plaintext
+```python {lint="skip" test="skip"}
+{
+'type': 'function-plain',
+'function': <function Model.serialize_foo at 0x111>,
+'is_field_serializer': True,
+'info_arg': False,
+'return_schema': {'type': 'int'},
+}
+```
+
+---
+TITLE: Handling Infinite Generators with Pydantic `Iterable`
+DESCRIPTION: Demonstrates using `Iterable` in Pydantic to handle infinite generators without eagerly consuming them, validating yielded values at yield time and raising `ValidationError` when appropriate. This approach is useful for remote data loaders or infinite streams where eager validation is not feasible.
+SOURCE: /docs/api/standard_library_types.md
+
+```python
+from collections.abc import Iterable
+
+from pydantic import BaseModel
+
+class Model(BaseModel):
+infinite: Iterable[int]
+
+def infinite_ints():
+i = 0
+while True:
+yield i
+i += 1
+
+m = Model(infinite=infinite_ints())
+print(m)
+"""
+infinite=ValidatorIterator(index=0, schema=Some(Int(IntValidator { strict: false })))
+"""
+
+for i in m.infinite:
+print(i)
+#> 0
+#> 1
+#> 2
+#> 3
+#> 4
+#> 5
+#> 6
+#> 7
+#> 8
+#> 9
+#> 10
+if i == 10:
+break
+```
+
+---
+TITLE: Using Callable Types for Pydantic Model Fields
+DESCRIPTION: Demonstrates how to use the `Callable` type hint from the `typing` module as a field type in a Pydantic `BaseModel` to accept callable objects. Note that Pydantic only checks if the argument is callable and does not perform validation of arguments, their types, or the return type.
+SOURCE: /docs/api/standard_library_types.md
+
+```python
+from typing import Callable
+
+from pydantic import BaseModel
+
+class Foo(BaseModel):
+callback: Callable[[int], int]
+
+m = Foo(callback=lambda x: x)
+print(m)
+#> callback=<function <lambda> at 0x0123456789ab>
+```
+
+---
+TITLE: Handling `decimal_max_places` Validation Error in Pydantic
+DESCRIPTION: Illustrates how Pydantic raises a `decimal_max_places` `ValidationError` when a `Decimal` field exceeds the specified `decimal_places`. This error occurs during model validation when the number of digits after the decimal point is greater than allowed, ensuring data integrity and preventing unexpected behavior.
+SOURCE: /docs/errors/validation_errors.md
+
+```python
+from decimal import Decimal
+
+from pydantic import BaseModel, Field, ValidationError
+
+class Model(BaseModel):
+x: Decimal = Field(decimal_places=3)
+
+try:
+Model(x='42.1234')
+except ValidationError as exc:
+print(repr(exc.errors()[0]['type']))
+#> 'decimal_max_places'
+```
+
+---
+TITLE: Handling `Unpack` without `TypedDict` in Pydantic
+DESCRIPTION: Illustrates the `PydanticUserError` raised when using `typing_extensions.Unpack` with a type other than `typing.TypedDict` for variadic keyword parameters. This error, with code `unpack-typed-dict`, occurs during `validate_call` when type hinting `**kwargs` incorrectly, as specified in PEP 692.
+SOURCE: /docs/errors/usage_errors.md
+
+```python
+from typing_extensions import Unpack
+
+from pydantic import PydanticUserError, validate_call
+
+try:
+
+@validate_call
+def func(**kwargs: Unpack[int]):
+pass
+
+except PydanticUserError as exc_info:
+assert exc_info.code == 'unpack-typed-dict'
+```
+
+---
+TITLE: Handling `dataclass` on Pydantic `BaseModel` Subclass
+DESCRIPTION: Illustrates the error raised when using the `@dataclass` decorator from `pydantic.dataclasses` on a class that already inherits from `pydantic.BaseModel`. This usage is invalid and results in a `PydanticUserError` with the code `dataclass-on-model`.
+SOURCE: /docs/errors/usage_errors.md
+
+```python
+from pydantic import BaseModel, PydanticUserError
+from pydantic.dataclasses import dataclass
+
+try:
+
+@dataclass
+class Model(BaseModel):
+bar: str
+
+except PydanticUserError as exc_info:
+assert exc_info.code == 'dataclass-on-model'
+```
+
+---
+TITLE: Validating Data with Pydantic: Dataclasses and TypeAdapters
+DESCRIPTION: Demonstrates how Pydantic validates data using `BaseModel`, Pydantic dataclasses, `TypeAdapter`, and `validate_call`, including validating `TypedDict` and `NamedTuple` types. This approach allows for flexible schema creation and validation, offering benefits over standard dataclasses by providing built-in validation and serialization capabilities.
+SOURCE: /docs/why.md
+
+```python
+from datetime import datetime
+
+from typing_extensions import NotRequired, TypedDict
+
+from pydantic import TypeAdapter
+
+class Meeting(TypedDict):
+when: datetime
+where: bytes
+why: NotRequired[str]
+
+meeting_adapter = TypeAdapter(Meeting)
+m = meeting_adapter.validate_python(  # (1)!
+{'when': '2020-01-01T12:00', 'where': 'home'}
+)
+print(m)
+#> {'when': datetime.datetime(2020, 1, 1, 12, 0), 'where': b'home'}
+meeting_adapter.dump_python(m, exclude={'where'})  # (2)!
+
+print(meeting_adapter.json_schema())  # (3)!
+"""
+{
+'properties': {
+'when': {'format': 'date-time', 'title': 'When', 'type': 'string'},
+'where': {'format': 'binary', 'title': 'Where', 'type': 'string'},
+'why': {'title': 'Why', 'type': 'string'},
+},
+'required': ['when', 'where'],
+'title': 'Meeting',
+'type': 'object',
+}
+"""
+```
+
+---
+TITLE: Handling Boolean Validation with Pydantic
+DESCRIPTION: Demonstrates how Pydantic handles boolean validation for `bool` fields, accepting `True`, `False`, integers `0` and `1`, and string representations like `'true'`, `'false'`, `'yes'`, `'no'`. It illustrates the `ValidationError` raised when invalid input types, such as lists, are provided, and suggests using `StrictBool` for stricter boolean logic.
+SOURCE: /docs/api/standard_library_types.md
+
+```python
+from pydantic import BaseModel, ValidationError
+
+class BooleanModel(BaseModel):
+bool_value: bool
+
+print(BooleanModel(bool_value=False))
+#> bool_value=False
+print(BooleanModel(bool_value='False'))
+#> bool_value=False
+print(BooleanModel(bool_value=1))
+#> bool_value=True
+try:
+BooleanModel(bool_value=[])
+except ValidationError as e:
+print(str(e))
+"""
+1 validation error for BooleanModel
+bool_value
+Input should be a valid boolean [type=bool_type, input_value=[], input_type=list]
+"""
+```
+
+---
+TITLE: Handling Multiple Field Serializers in Pydantic
+DESCRIPTION: Illustrates how Pydantic raises a `PydanticUserError` when multiple `field_serializer` decorators are defined for the same field. This prevents ambiguity in serialization logic and ensures a single, well-defined transformation for each field during model serialization.
+SOURCE: /docs/errors/usage_errors.md
+
+```python
+from pydantic import BaseModel, PydanticUserError, field_serializer
+
+try:
+
+class MyModel(BaseModel):
+x: int
+y: int
+
+@field_serializer('x', 'y')
+def serializer1(v):
+return f'{v:,}'
+
+@field_serializer('x')
+def serializer2(v):
+return v
+
+except PydanticUserError as exc_info:
+assert exc_info.code == 'multiple-field-serializers'
+```
+
+---
+TITLE: Migrating from `str` Inheritance for `Url` and `Dsn` Types
+DESCRIPTION: Details the migration from Pydantic V1 to V2 regarding `Url` and `Dsn` types in `pydantic.networks`, which no longer inherit from `str`. Explains the change to using `Annotated` with `Url` and `MultiHostUrl` classes and the need to convert these types to `str` using `str(url)` when expected by APIs, highlighting differences in URL validation due to the Rust `Url` crate.
+SOURCE: /docs/migration.md
+
+```python
+from pydantic import AnyUrl
+
+assert str(AnyUrl(url='https://google.com')) == 'https://google.com/'
+assert str(AnyUrl(url='https://google.com/')) == 'https://google.com/'
+assert str(AnyUrl(url='https://google.com/api')) == 'https://google.com/api'
+assert str(AnyUrl(url='https://google.com/api/')) == 'https://google.com/api/'
+```
+
+---
+TITLE: Using Serialization Info and Context in Pydantic
+DESCRIPTION: Demonstrates how to use the `info` argument in Pydantic serializers to access serialization context and other parameters. This allows passing custom data, such as a `stopwords` list, to field serializers via the `context` property of `SerializationInfo`, enabling dynamic serialization based on external factors.
+SOURCE: /docs/concepts/serialization.md
+
+```python
+from pydantic import BaseModel, FieldSerializationInfo, field_serializer
+
+class Model(BaseModel):
+text: str
+
+@field_serializer('text', mode='plain')
+@classmethod
+def remove_stopwords(cls, v: str, info: FieldSerializationInfo) -> str:
+if isinstance(info.context, dict):
+stopwords = info.context.get('stopwords', set())
+v = ' '.join(w for w in v.split() if w.lower() not in stopwords)
+return v
+
+model = Model(text='This is an example document')
+print(model.model_dump())  # no context
+#> {'text': 'This is an example document'}
+print(model.model_dump(context={'stopwords': ['this', 'is', 'an']}))
+#> {'text': 'example document'}
+```
+
+---
+TITLE: Handling Discriminator Alias Type Errors in Pydantic
+DESCRIPTION: Demonstrates how Pydantic raises a `PydanticUserError` with code `discriminator-alias-type` when a non-string alias is defined on a discriminator field using `AliasChoices`. This error prevents incorrect model definitions and ensures proper type handling for discriminator fields.
+SOURCE: /docs/errors/usage_errors.md
+
+```python
+from typing import Literal, Union
+
+from pydantic import AliasChoices, BaseModel, Field, PydanticUserError
+
+class Cat(BaseModel):
+pet_type: Literal['cat'] = Field(
+validation_alias=AliasChoices('Pet', 'PET')
+)
+c: str
+
+class Dog(BaseModel):
+pet_type: Literal['dog']
+d: str
+
+try:
+
+class Model(BaseModel):
+pet: Union[Cat, Dog] = Field(discriminator='pet_type')
+number: int
+
+except PydanticUserError as exc_info:
+assert exc_info.code == 'discriminator-alias-type'
+```
+
+---
+TITLE: Handling Validation Errors with Pydantic `ValidationError`
+DESCRIPTION: Demonstrates how Pydantic raises a `ValidationError` exception when data validation fails, providing information about all errors encountered. This example shows how to catch and inspect `ValidationError` to understand validation issues within a `BaseModel`.
+SOURCE: /docs/concepts/models.md
+
+```python
+from pydantic import BaseModel, ValidationError
+
+class Model(BaseModel):
+list_of_ints: list[int]
+a_float: float
+
+data = dict(
+list_of_ints=['1', 2, 'bad'],
+a_float='not a float',
+)
+
+try:
+Model(**data)
+except ValidationError as e:
+print(e)
+"""
+2 validation errors for Model
+list_of_ints.2
+Input should be a valid integer, unable to parse string as an integer [type=int_parsing, input_value='bad', input_type=str]
+a_float
+Input should be a valid number, unable to parse string as a number [type=float_parsing, input_value='not a float', input_type=str]
+"""
+```
+
+---
+TITLE: Handling `date_future` Validation Error in Pydantic
+DESCRIPTION: Illustrates the `date_future` validation error raised by Pydantic when a `FutureDate` field receives a past date. Demonstrates how to catch this `ValidationError` and access the error type, ensuring that date inputs are validated to be in the future.
+SOURCE: /docs/errors/validation_errors.md
+
+```python
+from datetime import date
+
+from pydantic import BaseModel, FutureDate, ValidationError
+
+class Model(BaseModel):
+x: FutureDate
+
+try:
+Model(x=date(2000, 1, 1))
+except ValidationError as exc:
+print(repr(exc.errors()[0]['type']))
+#> 'date_future'
+```
+
+---
+TITLE: Handling `datetime.time` Types with Pydantic
+DESCRIPTION: Demonstrates how Pydantic handles the `datetime.time` type, accepting `time` objects or strings in `HH:MM[:SS[.ffffff]][Z or [±]HH[:]MM]` format. This allows for easy validation and serialization of time data within Pydantic models.
+SOURCE: /docs/api/standard_library_types.md
+
+```python
+from datetime import time
+
+from pydantic import BaseModel
+
+class Meeting(BaseModel):
+t: time = None
+
+m = Meeting(t=time(4, 8, 16))
+
+print(m.model_dump())
+#> {'t': datetime.time(4, 8, 16)}
+```

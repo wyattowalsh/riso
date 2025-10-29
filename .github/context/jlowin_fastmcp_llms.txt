@@ -1,0 +1,4382 @@
+---
+LIBRARY: jlowin/fastmcp
+SOURCE_ROOT: https://github.com/jlowin/fastmcp/blob/main
+UPDATED_AT: September 6, 2025 at 5:15 PM UTC
+---
+
+================================
+CODE SNIPPETS
+================================
+
+TITLE: Configuring Google OAuth Authentication for FastMCP Server
+DESCRIPTION: Demonstrates configuring Google OAuth 2.0 authentication to protect a FastMCP server. It guides through creating a Google OAuth client, setting environment variables for `FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_ID` and `FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_SECRET`, and running the `server.py` and `client.py` examples.
+SOURCE: /examples/auth/google_oauth/README.md
+
+```bash
+export FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_ID="your-client-id.apps.googleusercontent.com"
+export FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_SECRET="your-client-secret"
+```
+
+```bash
+python server.py
+```
+
+```bash
+python client.py
+```
+
+---
+TITLE: Using Contrib Modules in FastMCP
+DESCRIPTION: Demonstrates how to import and use community-contributed modules from the `fastmcp.contrib` package. These modules extend FastMCP's functionality but may have different dependencies and stability guarantees than the core library, requiring careful consideration of their respective READMEs and dependency files.
+SOURCE: /src/fastmcp/contrib/README.md
+
+```python
+from fastmcp.contrib import my_module
+```
+
+---
+TITLE: Implementing OpenAPI Endpoints with OpenAPITool in FastMCP
+DESCRIPTION: Implements the `OpenAPITool` class for handling OpenAPI endpoints within a FastMCP server. This tool executes HTTP requests based on route configurations, enabling the integration of OpenAPI specifications with FastMCP for building API-driven applications.
+SOURCE: /docs/python-sdk/fastmcp-server-openapi.mdx
+
+```python
+run(self, arguments: dict[str, Any]) -> ToolResult
+```
+
+---
+TITLE: Converting RootsList to List of mcp.types.Root
+DESCRIPTION: Converts a `RootsList` object into a standard Python list of `mcp.types.Root` objects. This function is used internally within the `fastmcp` library to transform root data into a more manageable format for further processing.
+SOURCE: /docs/python-sdk/fastmcp-client-roots.mdx
+
+```python
+convert_roots_list(roots: RootsList) -> list[mcp.types.Root]
+```
+
+---
+TITLE: Managing Resources and Templates with FastMCP Server
+DESCRIPTION: Demonstrates the `FastMCP` class for managing resources and templates in a FastMCP server, including adding resources, templates, and registering functions as resources using the `@resource` decorator. This class provides an ergonomic interface for building MCP servers, allowing for dynamic resource generation and handling of context objects.
+SOURCE: /docs/python-sdk/fastmcp-server-server.mdx
+
+```plaintext
+#### `add_resource` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/server.py#L1074" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+```
+
+```plaintext
+Add a resource to the server.  
+**Args:**
+- `resource`: A Resource instance to add  
+**Returns:**
+- The resource instance that was added to the server.  
+#### `add_template` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/server.py#L1096" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+add_template(self, template: ResourceTemplate) -> ResourceTemplate
+```
+
+```plaintext
+Add a resource or template to the server from a function.  
+If the URI contains parameters (e.g. "resource://{param}") or the function
+has parameters, it will be registered as a template resource.  
+**Args:**
+- `fn`: The function to register as a resource
+- `uri`: The URI for the resource
+- `name`: Optional name for the resource
+- `description`: Optional description of the resource
+- `mime_type`: Optional MIME type for the resource
+- `tags`: Optional set of tags for categorizing the resource  
+#### `resource` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/server.py#L1156" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+resource(self, uri: str) -> Callable[[AnyFunction], Resource | ResourceTemplate]
+```
+
+```python
+@server.resource("resource://my-resource")
+def get_data() -> str:
+return "Hello, world!"
+
+@server.resource("resource://my-resource")
+async get_data() -> str:
+data = await fetch_data()
+return f"Hello, world! {data}"
+
+@server.resource("resource://{city}/weather")
+def get_weather(city: str) -> str:
+return f"Weather for {city}"
+
+@server.resource("resource://{city}/weather")
+def get_weather_with_context(city: str, ctx: Context) -> str:
+ctx.info(f"Fetching weather for {city}")
+return f"Weather for {city}"
+
+@server.resource("resource://{city}/weather")
+async def get_weather(city: str) -> str:
+data = await fetch_weather(city)
+return f"Weather for {city}: {data}"
+```
+
+---
+TITLE: Verifying Static JWT Tokens with FastMCP
+DESCRIPTION: Implements `StaticTokenVerifier` for validating JWT tokens against a predefined dictionary in FastMCP, useful for local development and testing. This approach simulates authentication without a real OAuth server, enabling predictable tokens for automated tests and prototyping API key-style authentication, but should never be used in production due to plain text storage of tokens.
+SOURCE: /docs/python-sdk/fastmcp-server-auth-providers-jwt.mdx
+
+```python
+verify_token(self, token: str) -> AccessToken | None
+```
+
+---
+TITLE: Running the FastMCP Server with Permit.io Authorization
+DESCRIPTION: Starts the FastMCP server, enabling the Permit.io middleware to intercept and authorize all MCP requests based on defined policies. This ensures that requests are validated against your Permit.io configuration, using user identification and mapping MCP methods to authorization resources.
+SOURCE: /docs/integrations/permit.mdx
+
+```bash
+python server.py
+```
+
+---
+TITLE: Creating Base Starlette App with FastMCP HTTP
+DESCRIPTION: Creates a base `Starlette` application using `fastmcp.server.http.create_base_app`, configuring routes and middleware. This function simplifies the setup of HTTP servers within FastMCP, providing a foundation for building API endpoints and handling requests.
+SOURCE: /docs/python-sdk/fastmcp-server-http.mdx
+
+```python
+create_base_app(routes: list[BaseRoute], middleware: list[Middleware], debug: bool = False, lifespan: Callable | None = None) -> StarletteWithLifespan
+```
+
+---
+TITLE: Customizing Route Mapping in FastMCP OpenAPI Server
+DESCRIPTION: Demonstrates how to customize route mappings in the new FastMCP OpenAPI server implementation using the `RouteMap` class. This allows forcing specific operations to be treated as either `tool` or `resource` endpoints, providing fine-grained control over API behavior.
+SOURCE: /src/fastmcp/experimental/server/openapi/README.md
+
+```python
+from fastmcp.server.openapi_new.routing import RouteMap
+
+custom_routes = RouteMap({
+"GET:/users": "tool",        # Force specific operations to be tools
+"GET:/status": "resource",   # Force specific operations to be resources
+})
+```
+
+---
+TITLE: Configuring Stdio MCP Servers in fastmcp
+DESCRIPTION: Configures `StdioMCPServer` for MCP servers using stdio transport in `fastmcp`. It defines the canonical configuration format and provides the `to_transport` method to create a `StdioTransport` instance.
+SOURCE: /docs/python-sdk/fastmcp-mcp_config.mdx
+
+```python
+to_transport(self) -> StdioTransport
+```
+
+---
+TITLE: Installing MCP Server in Cursor using FastMCP CLI
+DESCRIPTION: Installs an MCP server within the Cursor IDE using the `fastmcp.cli.install.cursor` module and the `cursor_command` function. This allows for seamless integration of MCP server management directly within the development environment, streamlining the deployment process.
+SOURCE: /docs/python-sdk/fastmcp-cli-install-cursor.mdx
+
+```python
+cursor_command(server_spec: str) -> None
+```
+
+---
+TITLE: Handling Proxy Client for Fastmcp Server Interactions
+DESCRIPTION: Implements the `ProxyClient` class in `fastmcp.server.proxy` to forward interactions between a remote MCP server and connected clients, supporting roots, sampling, elicitation, logging, and progress notifications. This class provides default handlers for sampling, elicitation, log, and progress messages, enabling seamless communication and control in a proxy environment.
+SOURCE: /docs/python-sdk/fastmcp-server-proxy.mdx
+
+```python
+default_sampling_handler(cls, messages: list[mcp.types.SamplingMessage], params: mcp.types.CreateMessageRequestParams, context: RequestContext[ClientSession, LifespanContextT]) -> mcp.types.CreateMessageResult
+```
+
+```plaintext
+A handler that forwards the elicitation request from the remote server to the proxy's connected clients and relays the response back to the remote server.  
+#### `default_log_handler` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/proxy.py#L609" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+default_log_handler(cls, message: LogMessage) -> None
+```
+
+---
+TITLE: Decorating Class Methods with FastMCP Tools
+DESCRIPTION: Illustrates the correct way to decorate class methods when using `fastmcp.tool` to avoid `ValueError` exceptions. Demonstrates registering class methods after class definition to ensure proper parameter exposure to the LLM, hiding the `cls` parameter implementation detail.
+SOURCE: /docs/patterns/decorating-methods.mdx
+
+```python
+from fastmcp import FastMCP
+
+mcp = FastMCP()
+
+class MyClass:
+@classmethod
+@mcp.tool  # This won't work but won't raise an error
+def from_string_v1(cls, s):
+return cls(s)
+
+@mcp.tool
+@classmethod  # This will raise a helpful ValueError
+def from_string_v2(cls, s):
+return cls(s)
+```
+
+```python
+from fastmcp import FastMCP
+
+mcp = FastMCP()
+
+class MyClass:
+@classmethod
+def from_string(cls, s):
+return cls(s)
+
+# Register the class method after the class is defined
+mcp.tool(MyClass.from_string)
+```
+
+---
+TITLE: Validating Elicitation JSON Schema in Fastmcp Server
+DESCRIPTION: Validates a JSON schema against MCP elicitation requirements using `validate_elicitation_json_schema`, ensuring compatibility by checking for object schema type, primitive field types (string, number, integer, boolean), flatness (no nested objects), and allowance of `const` and `enum` fields; raises a `TypeError` if the schema does not meet these requirements.
+SOURCE: /docs/python-sdk/fastmcp-server-elicitation.mdx
+
+```python
+validate_elicitation_json_schema(schema: dict[str, Any]) -> None
+```
+
+---
+TITLE: Checking Subclass Relationships Safely with `issubclass_safe`
+DESCRIPTION: Verifies if a class `cls` is a subclass of another class `base`, even when `cls` is a type variable, using the `issubclass_safe` function from `fastmcp.utilities.types`. This function provides a safe way to determine inheritance relationships in Python, handling potential type variable scenarios.
+SOURCE: /docs/python-sdk/fastmcp-utilities-types.mdx
+
+```python
+issubclass_safe(cls: type, base: type) -> bool
+```
+
+---
+TITLE: Matching URI Templates with `fastmcp.resources.template`
+DESCRIPTION: Matching URI templates using the `match_uri_template` function from `fastmcp.resources.template`. This function extracts parameters from a URI based on a provided URI template, returning a dictionary of matched values or `None` if no match is found. Use it to parse URIs according to predefined patterns.
+SOURCE: /docs/python-sdk/fastmcp-resources-template.mdx
+
+```python
+match_uri_template(uri: str, uri_template: str) -> dict[str, str] | None
+```
+
+---
+TITLE: Inspecting FastMCP Instances with `inspect_fastmcp` Utility
+DESCRIPTION: Extracts information from a `FastMCP` instance (v1.x or v2.x) into a `FastMCPInfo` dataclass using the `inspect_fastmcp` function. This utility automatically detects the FastMCP version and uses the appropriate extraction method, providing a convenient way to inspect and analyze FastMCP instances.
+SOURCE: /docs/python-sdk/fastmcp-utilities-inspect.mdx
+
+```python
+inspect_fastmcp(mcp: FastMCP[Any] | FastMCP1x) -> FastMCPInfo
+```
+
+---
+TITLE: Running the ATProto MCP Server Demo
+DESCRIPTION: Demonstrates running the `FastMCP` server demo for interacting with the AT Protocol (Bluesky). This example shows how to execute the `demo.py` script with and without posting enabled, providing a read-only or full-featured interaction with the AT Protocol.
+SOURCE: /examples/atproto_mcp/README.md
+
+```bash
+# Run demo (read-only)
+uv run python demo.py
+
+# Run demo with posting enabled
+uv run python demo.py --post
+```
+
+---
+TITLE: Handling Warnings with `mcp.tool` in Configuration
+DESCRIPTION: Demonstrates how to use the `ctx.warning` method within an `mcp.tool` function to log warnings for deprecated configuration options or potentially problematic values, such as a high timeout. This approach allows for non-fatal alerts during configuration validation, providing users with informative feedback without halting execution.
+SOURCE: /docs/servers/logging.mdx
+
+```python
+@mcp.tool
+async def validate_config(config: dict, ctx: Context) -> dict:
+"""Validate configuration with warnings for deprecated options."""
+if "old_api_key" in config:
+await ctx.warning(
+"Using deprecated 'old_api_key' field. Please use 'api_key' instead",
+extra={"deprecated_field": "old_api_key"}
+)
+
+if config.get("timeout", 30) > 300:
+await ctx.warning(
+"Timeout value is very high (>5 minutes), this may cause issues",
+extra={"timeout_value": config.get("timeout")}
+)
+
+return {"status": "valid", "warnings": "see logs"}
+```
+
+---
+TITLE: Managing Fastmcp Client Session and Resource Retrieval
+DESCRIPTION: Implements the `Client` class in `fastmcp.client.client` for managing session state and retrieving resources. It provides methods like `list_resources`, `list_resource_templates`, `read_resource`, and their MCP protocol counterparts for interacting with the server and accessing resource information, ensuring clean separation of configuration and session state.
+SOURCE: /docs/python-sdk/fastmcp-client-client.mdx
+
+```python
+list_resources(self) -> list[mcp.types.Resource]
+```
+
+```plaintext
+Send a resources/listResourceTemplates request and return the complete MCP protocol result.  
+**Returns:**
+- mcp.types.ListResourceTemplatesResult: The complete response object from the protocol,
+containing the list of resource templates and any additional metadata.  
+**Raises:**
+#### `list_resource_templates` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/client/client.py#L584" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+list_resource_templates(self) -> list[mcp.types.ResourceTemplate]
+```
+
+```plaintext
+Send a resources/read request and return the complete MCP protocol result.  
+**Args:**
+- `uri`: The URI of the resource to read. Can be a string or an AnyUrl object.  
+- mcp.types.ReadResourceResult: The complete response object from the protocol,
+containing the resource contents and any additional metadata.  
+**Raises:**
+#### `read_resource` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/client/client.py#L620" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+read_resource(self, uri: AnyUrl | str) -> list[mcp.types.TextResourceContents | mcp.types.BlobResourceContents]
+```
+
+---
+TITLE: Proxying OAuth with Dynamic Client Registration in FastMCP
+DESCRIPTION: Implements an `OAuthProxy` class that acts as a transparent proxy for upstream OAuth Authorization Servers, enabling Dynamic Client Registration (DCR) for providers that don't natively support it, handling authorization, token exchange, and state management while translating between MCP client requests and upstream IDP requirements, enhancing compatibility with enterprise identity providers.
+SOURCE: /docs/python-sdk/fastmcp-server-auth-oauth_proxy.mdx
+
+```python
+get_client(self, client_id: str) -> OAuthClientInformationFull | None
+```
+
+```plaintext
+Register a client locally  
+When a client registers, we create a ProxyDCRClient that is more
+forgiving about validating redirect URIs, since the DCR client's
+redirect URI will likely be localhost or unknown to the proxied IDP. The
+proxied IDP only knows about this server's fixed redirect URI.  
+#### `authorize` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/auth/oauth_proxy.py#L421" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+authorize(self, client: OAuthClientInformationFull, params: AuthorizationParams) -> str
+```
+
+```plaintext
+Load authorization code for validation.  
+Look up our client code and return authorization code object
+with PKCE challenge for validation.  
+#### `exchange_authorization_code` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/auth/oauth_proxy.py#L546" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+exchange_authorization_code(self, client: OAuthClientInformationFull, authorization_code: AuthorizationCode) -> OAuthToken
+```
+
+---
+TITLE: Configuring Azure Authentication Environment Variables for FastMCP
+DESCRIPTION: Configures Azure authentication for `FastMCP` using environment variables, providing a secure alternative to hardcoding credentials. It defines the required environment variables such as `FASTMCP_SERVER_AUTH_AZURE_CLIENT_ID`, `FASTMCP_SERVER_AUTH_AZURE_CLIENT_SECRET`, and `FASTMCP_SERVER_AUTH_AZURE_TENANT_ID` for setting up the Azure provider and OAuth flow, enabling secure access to tools like `protected_tool`.
+SOURCE: /docs/integrations/azure.mdx
+
+```bash
+# Use the Azure provider
+FASTMCP_SERVER_AUTH=fastmcp.server.auth.providers.azure.AzureProvider
+
+# Azure OAuth credentials
+FASTMCP_SERVER_AUTH_AZURE_CLIENT_ID=835f09b6-0f0f-40cc-85cb-f32c5829a149
+FASTMCP_SERVER_AUTH_AZURE_CLIENT_SECRET=your-client-secret-here
+FASTMCP_SERVER_AUTH_AZURE_TENANT_ID=08541b6e-646d-43de-a0eb-834e6713d6d5
+FASTMCP_SERVER_AUTH_AZURE_BASE_URL=https://your-server.com
+FASTMCP_SERVER_AUTH_AZURE_REQUIRED_SCOPES=User.Read,email,profile
+```
+
+```python
+from fastmcp import FastMCP
+
+# Authentication is automatically configured from environment
+mcp = FastMCP(name="Azure Secured App")
+
+@mcp.tool
+async def protected_tool(query: str) -> str:
+"""A tool that requires Azure authentication to access."""
+# Your tool implementation here
+return f"Processing authenticated request: {query}"
+```
+
+---
+TITLE: Iterating Exceptions in `fastmcp.utilities.exceptions`
+DESCRIPTION: Implements the `iter_exc` function to iterate through exceptions within a `BaseExceptionGroup` in the `fastmcp.utilities.exceptions` module. This function is useful for handling grouped exceptions and processing them individually.
+SOURCE: /docs/python-sdk/fastmcp-utilities-exceptions.mdx
+
+```python
+iter_exc(group: BaseExceptionGroup)
+```
+
+---
+TITLE: Configuring WorkOS OAuth Environment Variables
+DESCRIPTION: Configures the environment variables required for the WorkOS OAuth example, including `WORKOS_CLIENT_ID`, `WORKOS_API_KEY`, and optional variables for enterprise SSO like `WORKOS_ORGANIZATION_ID` and `WORKOS_CONNECTION_ID`. This setup is essential for authenticating users with WorkOS in FastMCP servers.
+SOURCE: /examples/auth/workos_oauth/README.md
+
+```bash
+# Required WorkOS credentials
+WORKOS_CLIENT_ID=client_123
+WORKOS_API_KEY=sk_test_456  # Your WorkOS API key (client secret)
+
+# Server URL (optional, defaults to http://localhost:8000)
+# WORKOS_BASE_URL=http://localhost:8000
+# Optional: For enterprise SSO connections
+# WORKOS_ORGANIZATION_ID=org_123  # Route to specific organization's SSO
+# WORKOS_CONNECTION_ID=conn_456    # Route to specific SSO connection
+# Optional: Required scopes
+# FASTMCP_SERVER_AUTH_WORKOS_REQUIRED_SCOPES=["profile", "email"]
+```
+
+---
+TITLE: Handling Tool Errors with Exception-Based Error Handling
+DESCRIPTION: Demonstrates exception-based error handling using `ToolError` when calling tools with `client.call_tool()`. This approach allows developers to catch and handle tool execution failures gracefully, providing informative error messages.
+SOURCE: /docs/clients/tools.mdx
+
+```python
+from fastmcp.exceptions import ToolError
+
+async with client:
+try:
+result = await client.call_tool("potentially_failing_tool", {"param": "value"})
+print("Tool succeeded:", result.data)
+except ToolError as e:
+print(f"Tool failed: {e}")
+```
+
+---
+TITLE: Disabling Resources in MCP
+DESCRIPTION: Demonstrates how to disable and enable resources in MCP using the `enabled` parameter in the `@mcp.resource` decorator and the `.disable()` and `.enable()` methods. Disabling resources prevents them from appearing in resource lists and returns an "Unknown resource" error when accessed, allowing for control over resource visibility and availability.
+SOURCE: /docs/servers/resources.mdx
+
+```python
+@mcp.resource("data://secret", enabled=False)
+def get_secret_data():
+"""This resource is currently disabled."""
+return "Secret data"
+```
+
+```python
+@mcp.resource("data://config")
+def get_config(): return {"version": 1}
+
+# Disable and re-enable the resource
+get_config.disable()
+get_config.enable()
+```
+
+---
+TITLE: Providing Logging Context in Fastmcp Server Handlers
+DESCRIPTION: Defines the `Context` class in `fastmcp.server.context` for passing log arguments to client-side handlers, mirroring Python's standard logging interface for structured logging. It includes methods like `debug`, `info`, `warning`, and `error` to send log messages and `list_roots` to retrieve available server roots.
+SOURCE: /docs/python-sdk/fastmcp-server-context.mdx
+
+```python
+debug(self, message: str, logger_name: str | None = None, extra: Mapping[str, Any] | None = None) -> None
+```
+
+```plaintext
+Send an info log message.  
+#### `warning` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/context.py#L321" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+warning(self, message: str, logger_name: str | None = None, extra: Mapping[str, Any] | None = None) -> None
+```
+
+```plaintext
+Send an error log message.  
+#### `list_roots` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/context.py#L343" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+list_roots(self) -> list[Root]
+```
+
+---
+TITLE: Extracting HTTP Headers in Fastmcp Server Dependencies
+DESCRIPTION: Extracts HTTP headers from the current request using `get_http_headers` within the `fastmcp.server.dependencies` module, returning an empty dictionary if no request is active. This function allows for selectively including all headers or stripping problematic ones like `content-length`.
+SOURCE: /docs/python-sdk/fastmcp-server-dependencies.mdx
+
+```python
+get_http_headers(include_all: bool = False) -> dict[str, str]
+```
+
+---
+TITLE: Listing Static Resources with `list_resources()`
+DESCRIPTION: Demonstrates how to retrieve all static resources available on the server using the `list_resources()` method. This allows access to resource URIs, names, descriptions, MIME types, and tags, providing comprehensive metadata for resource management.
+SOURCE: /docs/clients/resources.mdx
+
+```python
+async with client:
+resources = await client.list_resources()
+# resources -> list[mcp.types.Resource]
+
+for resource in resources:
+print(f"Resource URI: {resource.uri}")
+print(f"Name: {resource.name}")
+print(f"Description: {resource.description}")
+print(f"MIME Type: {resource.mimeType}")
+# Access tags and other metadata
+if hasattr(resource, '_meta') and resource._meta:
+fastmcp_meta = resource._meta.get('_fastmcp', {})
+print(f"Tags: {fastmcp_meta.get('tags', [])}")
+```
+
+---
+TITLE: Managing Client Sessions in fastmcp
+DESCRIPTION: Defines the `Client` class in `fastmcp.client.client`, which manages session-related state, separating configuration from session data. It provides methods like `list_prompts_mcp`, `list_prompts`, `get_prompt_mcp`, `get_prompt`, and `complete_mcp` for interacting with the MCP protocol and retrieving prompt information.
+SOURCE: /docs/python-sdk/fastmcp-client-client.mdx
+
+```python
+list_prompts_mcp(self) -> mcp.types.ListPromptsResult
+```
+
+```plaintext
+Retrieve a list of prompts available on the server.  
+**Returns:**
+- list\[mcp.types.Prompt]: A list of Prompt objects.  
+**Raises:**
+#### `get_prompt_mcp` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/client/client.py#L687" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+get_prompt_mcp(self, name: str, arguments: dict[str, Any] | None = None) -> mcp.types.GetPromptResult
+```
+
+```plaintext
+Retrieve a rendered prompt message list from the server.  
+**Args:**
+- mcp.types.GetPromptResult: The complete response object from the protocol,
+containing the prompt messages and any additional metadata.  
+**Raises:**
+#### `complete_mcp` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/client/client.py#L744" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+complete_mcp(self, ref: mcp.types.ResourceReference | mcp.types.PromptReference, argument: dict[str, str]) -> mcp.types.CompleteResult
+```
+
+---
+TITLE: Reporting Progress and Multi-Stage Operations
+DESCRIPTION: Demonstrates how to report progress as a percentage using `ctx.report_progress` and how to break down complex operations into multiple stages, reporting progress for each stage to provide users with detailed feedback on long-running tasks. This pattern is useful when you need to provide granular updates on the status of a process, such as data migration or file downloads.
+SOURCE: /docs/servers/progress.mdx
+
+```plaintext
+
+## Multi-Stage Operations
+
+Break complex operations into stages with progress for each:  
+```
+
+---
+TITLE: Handling Collection Types as Tool Parameters in FastMCP
+DESCRIPTION: Demonstrates how FastMCP supports standard Python collection types like `list`, `dict`, `set`, and `tuple` as tool parameter annotations, enabling the creation of tools that can handle complex data structures. This allows developers to define tools that accept collections of data, which are automatically parsed from JSON strings, providing flexibility in tool design.
+SOURCE: /docs/servers/tools.mdx
+
+```python
+@mcp.tool
+def analyze_data(
+values: list[float],           # List of numbers
+properties: dict[str, str],    # Dictionary with string keys and values
+unique_ids: set[int],          # Set of unique integers
+coordinates: tuple[float, float],  # Tuple with fixed structure
+mixed_data: dict[str, list[int]] # Nested collections
+):
+"""Analyze collections of data."""
+# Implementation...
+```
+
+---
+TITLE: Configuring Argument Transforms with `ArgTransformConfig`
+DESCRIPTION: Configures the `ArgTransformConfig` class for requesting argument transformations in FastMCP. It defines a model for specifying a single argument transform and includes a `to_arg_transform` method to convert the configuration to a FastMCP `ArgTransform` object.
+SOURCE: /docs/python-sdk/fastmcp-tools-tool_transform.mdx
+
+```python
+to_arg_transform(self) -> ArgTransform
+```
+
+---
+TITLE: Extending FastMCP RemoteAuthProvider with Custom Endpoints
+DESCRIPTION: Demonstrates extending the `RemoteAuthProvider` class in FastMCP to add custom endpoints beyond standard OAuth protected resources. This allows for providing authorization server metadata forwarding, enabling MCP clients to discover identity provider capabilities through the MCP server, simplifying client configuration and improving security.
+SOURCE: /docs/servers/auth/remote-oauth.mdx
+
+```python
+import httpx
+from starlette.responses import JSONResponse
+from starlette.routing import Route
+
+class CompanyAuthProvider(RemoteAuthProvider):
+def __init__(self):
+token_verifier = JWTVerifier(
+jwks_uri="https://auth.yourcompany.com/.well-known/jwks.json",
+issuer="https://auth.yourcompany.com",
+audience="mcp-production-api"
+)
+
+super().__init__(
+token_verifier=token_verifier,
+authorization_servers=[AnyHttpUrl("https://auth.yourcompany.com")],
+base_url="https://api.yourcompany.com"  # Your server base URL
+)
+
+def get_routes(self) -> list[Route]:
+"""Add custom endpoints to the standard protected resource routes."""
+
+# Get the standard OAuth protected resource routes
+routes = super().get_routes()
+
+# Add authorization server metadata forwarding for client convenience
+async def authorization_server_metadata(request):
+async with httpx.AsyncClient() as client:
+response = await client.get(
+"https://auth.yourcompany.com/.well-known/oauth-authorization-server"
+)
+response.raise_for_status()
+return JSONResponse(response.json())
+
+routes.append(
+Route("/.well-known/oauth-authorization-server", authorization_server_metadata)
+)
+
+return routes
+
+mcp = FastMCP(name="Company API", auth=CompanyAuthProvider())
+```
+
+---
+TITLE: Implementing FastMCP Components with FastMCPComponent Class
+DESCRIPTION: Defines the `FastMCPComponent` class within the `fastmcp.utilities.components` module, providing a base for creating Fast Message Component Protocol (FastMCP) components. It includes a `copy` method for creating copies of component instances, useful for maintaining state or creating variations of existing components.
+SOURCE: /docs/python-sdk/fastmcp-utilities-components.mdx
+
+```python
+copy(self) -> Self
+```
+
+---
+TITLE: Filtering Tools by Tags Using `meta` Field
+DESCRIPTION: Demonstrates filtering tools based on tags within the `meta` field, specifically using the `_fastmcp` namespace for FastMCP servers. This allows developers to discover tools with specific characteristics, controlled by the server's `include_fastmcp_meta` setting, enhancing tool selection and management.
+SOURCE: /docs/clients/tools.mdx
+
+```python
+async with client:
+tools = await client.list_tools()
+
+# Filter tools by tag
+analysis_tools = [
+tool for tool in tools
+if hasattr(tool, 'meta') and tool.meta and
+tool.meta.get('_fastmcp', {}) and
+'analysis' in tool.meta.get('_fastmcp', {}).get('tags', [])
+]
+
+print(f"Found {len(analysis_tools)} analysis tools")
+```
+
+---
+TITLE: Skipping Source Preparation with FastMCP CLI Commands
+DESCRIPTION: Demonstrates using the `--skip-source` flag with FastMCP CLI commands like `run`, `dev`, `inspect`, and `install` to bypass source code download or cloning when the source is already available, such as in CI/CD pipelines or local development. This optimizes workflow by skipping unnecessary preparation steps for filesystem sources or when iterating on existing code.
+SOURCE: /docs/deployment/server-configuration.mdx
+
+```bash
+fastmcp run fastmcp.json --skip-source
+```
+
+---
+TITLE: Setting Up Windows Development Environment with uv
+DESCRIPTION: Configures a Windows development environment using `uv`. It demonstrates how to create a virtual environment, activate it, and install the package in editable mode with development dependencies using `uv venv`, `.venv\Scripts\activate`, and `uv pip install -e ".[dev]"`.
+SOURCE: /Windows_Notes.md
+
+```bash
+uv venv
+.venv\Scripts\activate
+uv pip install -e ".[dev]"
+```
+
+---
+TITLE: Fixing `AttributeError: module 'collections' has no attribute 'Callable'`
+DESCRIPTION: Addresses the `AttributeError: module 'collections' has no attribute 'Callable'` error in `pyreadline` by replacing `collections.Callable` with `Callable` imported from `collections.abc` in the `py3k_compat.py` file. This resolves compatibility issues with newer Python versions where `Callable` is moved to `collections.abc`.
+SOURCE: /Windows_Notes.md
+
+```plaintext
+from collections.abc import Callable
+return isinstance(x, Callable)
+```
+
+---
+TITLE: Creating a FastMCP Server with Eunomia Authorization
+DESCRIPTION: Demonstrates how to create a `FastMCP` server and integrate the `eunomia-mcp` middleware for authorization using a policy file. This setup adds policy-based access control to your server, enhancing security by leveraging the `create_eunomia_middleware` function and `mcp.add_middleware` method.
+SOURCE: /docs/integrations/eunomia-authorization.mdx
+
+```bash
+pip install eunomia-mcp
+```
+
+```python
+from fastmcp import FastMCP
+from eunomia_mcp import create_eunomia_middleware
+
+# Create your FastMCP server
+mcp = FastMCP("Secure MCP Server 🔒")
+
+@mcp.tool()
+def add(a: int, b: int) -> int:
+"""Add two numbers"""
+return a + b
+
+# Add middleware to your server
+middleware = create_eunomia_middleware(policy_file="mcp_policies.json")
+mcp.add_middleware(middleware)
+
+if __name__ == "__main__":
+mcp.run()
+```
+
+---
+TITLE: Generating JSON Schema for fastmcp.json Configuration
+DESCRIPTION: Generates a JSON schema for `fastmcp.json` configuration files, enabling IDE validation and auto-completion. This function, `generate_schema`, can either return the schema as a dictionary or write it to a file specified by `output_path`.
+SOURCE: /docs/python-sdk/fastmcp-utilities-mcp_server_config-v1-mcp_server_config.mdx
+
+```python
+generate_schema(output_path: Path | str | None = None) -> dict[str, Any] | None
+```
+
+---
+TITLE: Creating OpenAPI Tools with FastMCP Server
+DESCRIPTION: Implements the `_create_tool` method for generating `OpenAPITool` instances within the FastMCP server. This logic leverages `HTTPRoute` data and a `RequestDirector` to ensure consistent request building for OpenAPI integrations, replacing the legacy `/server/openapi.py` implementation.
+SOURCE: /src/fastmcp/experimental/server/openapi/README.md
+
+```python
+def _create_tool(self, route: HTTPRoute) -> Tool:
+# All tools use RequestDirector for consistent, high-performance request building
+return OpenAPITool(
+client=self._client,
+route=route,
+director=self._director,
+name=tool_name,
+description=description,
+parameters=flat_param_schema
+)
+```
+
+---
+TITLE: Listing Prompt Templates with `list_prompts()`
+DESCRIPTION: Demonstrates how to retrieve all available prompt templates using the `list_prompts()` function. This allows developers to access and iterate through a list of `Prompt` objects, displaying their names, descriptions, arguments, and tags, enabling dynamic prompt selection and management.
+SOURCE: /docs/clients/prompts.mdx
+
+```python
+async with client:
+prompts = await client.list_prompts()
+# prompts -> list[mcp.types.Prompt]
+
+for prompt in prompts:
+print(f"Prompt: {prompt.name}")
+print(f"Description: {prompt.description}")
+if prompt.arguments:
+print(f"Arguments: {[arg.name for arg in prompt.arguments]}")
+# Access tags and other metadata
+if hasattr(prompt, '_meta') and prompt._meta:
+fastmcp_meta = prompt._meta.get('_fastmcp', {})
+print(f"Tags: {fastmcp_meta.get('tags', [])}")
+```
+
+---
+TITLE: Configuring Python Version and Project Directory with FastMcp
+DESCRIPTION: Configures the Python version and project directory for `fastmcp` installations. This allows specifying a particular Python interpreter using the `--python` flag or running `fastmcp` commands within a specific project directory using the `--project` flag, ensuring the correct environment for execution.
+SOURCE: /docs/integrations/mcp-json-configuration.mdx
+
+```bash
+# Use specific Python version
+fastmcp install mcp-json server.py --python 3.11
+
+# Run within a project directory
+fastmcp install mcp-json server.py --project /path/to/project
+```
+
+---
+TITLE: Combining Middleware in FastMCP Server
+DESCRIPTION: Demonstrates how to combine built-in middleware like `ErrorHandlingMiddleware`, `RateLimitingMiddleware`, `TimingMiddleware`, and `LoggingMiddleware` in a `FastMCP` server. This configuration provides comprehensive monitoring, protection, and observability for MCP servers by handling errors, limiting request rates, timing execution, and logging activity.
+SOURCE: /docs/servers/middleware.mdx
+
+```python
+from fastmcp import FastMCP
+from fastmcp.server.middleware.timing import TimingMiddleware
+from fastmcp.server.middleware.logging import LoggingMiddleware
+from fastmcp.server.middleware.rate_limiting import RateLimitingMiddleware
+from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
+
+mcp = FastMCP("Production Server")
+
+# Add middleware in logical order
+mcp.add_middleware(ErrorHandlingMiddleware())  # Handle errors first
+mcp.add_middleware(RateLimitingMiddleware(max_requests_per_second=50))
+mcp.add_middleware(TimingMiddleware())  # Time actual execution
+mcp.add_middleware(LoggingMiddleware())  # Log everything
+
+@mcp.tool
+def my_tool(data: str) -> str:
+return f"Processed: {data}"
+```
+
+---
+TITLE: Calling Gemini API with FastMCP Client Session
+DESCRIPTION: Demonstrates how to call the Gemini API using a `FastMCP` client session. This allows Gemini to access tools from MCP servers by passing the `mcp_client.session` to the `tools` parameter in `genai.types.GenerateContentConfig`, enabling interaction with MCP-exposed functionalities like `list_tools`.
+SOURCE: /docs/integrations/gemini.mdx
+
+```bash
+pip install google-genai
+```
+
+```plaintext
+Gemini's SDK interacts directly with the MCP client session. To call the server, you'll need to instantiate a FastMCP client, enter its connection context, and pass the client session to the Gemini SDK.  
+```
+
+```plaintext
+If you run this code, you'll see output like:  
+```
+
+---
+TITLE: Preparing FastMCP Project with `fastmcp prepare` Command
+DESCRIPTION: Prepares a FastMCP project by creating a persistent uv environment using the `fastmcp prepare` command. This command creates a `pyproject.toml` file, installs Python packages into a `.venv` directory, and prepares the source code (e.g., git clone), enabling faster startup times for CI/CD pipelines, Docker images, and production deployments.
+SOURCE: /docs/python-sdk/fastmcp-cli-cli.mdx
+
+```python
+prepare(config_path: Annotated[str | None, cyclopts.Parameter(help='Path to fastmcp.json configuration file')] = None, output_dir: Annotated[str | None, cyclopts.Parameter(help='Directory to create the persistent environment in')] = None, skip_source: Annotated[bool, cyclopts.Parameter(help='Skip source preparation (e.g., git clone)')] = False) -> None
+```
+
+---
+TITLE: Capturing FastMCP Logs with `caplog_for_fastmcp` Context Manager
+DESCRIPTION: Captures logs from FastMCP loggers, even when propagation is disabled, using the `caplog_for_fastmcp` context manager. This is useful in testing scenarios where you need to verify log output from FastMCP components.
+SOURCE: /docs/python-sdk/fastmcp-utilities-tests.mdx
+
+```python
+caplog_for_fastmcp(caplog)
+```
+
+---
+TITLE: Copying MCP JSON Configuration to Clipboard
+DESCRIPTION: Demonstrates copying the MCP JSON configuration directly to the clipboard using the `fastmcp install` command with the `--copy` flag, requiring the `pyperclip` Python package for seamless pasting. This simplifies configuration deployment and reduces manual entry errors.
+SOURCE: /docs/integrations/mcp-json-configuration.mdx
+
+```bash
+fastmcp install mcp-json server.py --copy
+```
+
+---
+TITLE: Handling OAuth Callback Responses with `fastmcp.client`
+DESCRIPTION: Implements the `CallbackResponse` class within `fastmcp.client.oauth_callback` for managing OAuth authorization code flow redirects. This class provides `from_dict` and `to_dict` methods for converting between dictionary representations and `CallbackResponse` objects, facilitating data handling in OAuth authentication processes.
+SOURCE: /docs/python-sdk/fastmcp-client-oauth_callback.mdx
+
+```python
+from_dict(cls, data: dict[str, str]) -> CallbackResponse
+```
+
+---
+TITLE: Implementing Middleware for Fastmcp Server Requests
+DESCRIPTION: Implements the `Middleware` class in `fastmcp.server.middleware.middleware`, providing hooks for intercepting and processing requests like `on_get_prompt`, `on_list_tools`, `on_list_resources`, `on_list_resource_templates`, and `on_list_prompts`. This allows for custom logic to be applied before or after the default handlers, enabling features like authentication, authorization, logging, or request modification.
+SOURCE: /docs/python-sdk/fastmcp-server-middleware-middleware.mdx
+
+```python
+on_get_prompt(self, context: MiddlewareContext[mt.GetPromptRequestParams], call_next: CallNext[mt.GetPromptRequestParams, mt.GetPromptResult]) -> mt.GetPromptResult
+```
+
+```plaintext
+#### `on_list_resources` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/middleware/middleware.py#L175" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+on_list_resources(self, context: MiddlewareContext[mt.ListResourcesRequest], call_next: CallNext[mt.ListResourcesRequest, list[Resource]]) -> list[Resource]
+```
+
+```plaintext
+#### `on_list_prompts` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/middleware/middleware.py#L189" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+on_list_prompts(self, context: MiddlewareContext[mt.ListPromptsRequest], call_next: CallNext[mt.ListPromptsRequest, list[Prompt]]) -> list[Prompt]
+```
+
+---
+TITLE: Pre-building Environments with `fastmcp project prepare`
+DESCRIPTION: Demonstrates using `fastmcp project prepare` to create a persistent `uv` project with pre-installed dependencies, separating environment setup from server execution. This pattern is useful for deployment scenarios to speed up server startup by pre-building the environment.
+SOURCE: /docs/deployment/server-configuration.mdx
+
+```bash
+# Create a persistent environment
+fastmcp project prepare fastmcp.json --output-dir ./env
+
+# Use the pre-built environment to run the server
+fastmcp run fastmcp.json --project ./env
+```
+
+---
+TITLE: Handling Typed Prompt Arguments in FastMCP
+DESCRIPTION: Demonstrates how FastMCP automatically converts string arguments from MCP clients to the expected types defined in Python prompts, using type annotations like `list[int]` and `dict[str, str]`, and generates JSON schema descriptions for client-side formatting, enhancing developer experience and simplifying integration with LLMs.
+SOURCE: /docs/servers/prompts.mdx
+
+```python
+@mcp.prompt
+def analyze_data(
+numbers: list[int],
+metadata: dict[str, str],
+threshold: float
+) -> str:
+"""Analyze numerical data."""
+avg = sum(numbers) / len(numbers)
+return f"Average: {avg}, above threshold: {avg > threshold}"
+```
+
+```json
+{
+"name": "analyze_data",
+"description": "Analyze numerical data.",
+"arguments": [
+{
+"name": "numbers",
+"description": "Provide as a JSON string matching the following schema: {\"items\":{\"type\":\"integer\"},\"type\":\"array\"}",
+"required": true
+},
+{
+"name": "metadata",
+"description": "Provide as a JSON string matching the following schema: {\"additionalProperties\":{\"type\":\"string\"},\"type\":\"object\"}",
+"required": true
+},
+{
+"name": "threshold",
+"description": "Provide as a JSON string matching the following schema: {\"type\":\"number\"}",
+"required": true
+}
+]
+}
+```
+
+```json
+{
+"numbers": "[1, 2, 3, 4, 5]",
+"metadata": "{\"source\": \"api\", \"version\": \"1.0\"}",
+"threshold": "2.5"
+}
+```
+
+```python
+# This also works for direct calls
+result = await prompt.render({
+"numbers": [1, 2, 3, 4, 5],
+"metadata": {"source": "api", "version": "1.0"},
+"threshold": 2.5
+})
+```
+
+---
+TITLE: Calling Anthropic Messages API with FastMCP Servers
+DESCRIPTION: Demonstrates how to call an MCP server using the Anthropic Messages API. It configures the `anthropic` Python SDK, sets the `ANTHROPIC_API_KEY` environment variable, and uses the `client.beta.messages.create` method with `mcp_servers` and `extra_headers` parameters to interact with a server deployed at a specified URL.
+SOURCE: /docs/integrations/anthropic.mdx
+
+```bash
+pip install anthropic
+```
+
+```plaintext
+Here is an example of how to call your server from Python. Note that you'll need to replace `https://your-server-url.com` with the actual URL of your server. In addition, we use `/mcp/` as the endpoint because we deployed a streamable-HTTP server with the default path; you may need to use a different endpoint if you customized your server's deployment. **At this time you must also include the `extra_headers` parameter with the `anthropic-beta` header.**  
+```
+
+```plaintext
+If you run this code, you'll see something like the following output:  
+```
+
+---
+TITLE: Running FastMCP Servers Using the FastMCP CLI
+DESCRIPTION: Demonstrates how to run FastMCP servers using the `fastmcp` command-line interface without modifying source code. The CLI automatically finds and runs a FastMCP instance (named `mcp`, `server`, or `app`) with specified options, simplifying testing different transports and configurations.
+SOURCE: /docs/deployment/running-server.mdx
+
+```bash
+fastmcp run server.py
+```
+
+---
+TITLE: Running ASGI Applications with Uvicorn
+DESCRIPTION: Demonstrates how to run an ASGI application using `uvicorn`, either programmatically within a Python script or from the command line. This is essential for deploying and serving ASGI-compatible applications, providing a simple and efficient way to handle asynchronous requests.
+SOURCE: /docs/integrations/asgi.mdx
+
+```python
+import uvicorn
+
+if __name__ == "__main__":
+uvicorn.run(app, host="0.0.0.0", port=8000)
+```
+
+```bash
+uvicorn path.to.your.app:app --host 0.0.0.0 --port 8000
+```
+
+---
+TITLE: Understanding FastMCP OpenAPI Integration Architecture
+DESCRIPTION: Explains the architecture of FastMCP's OpenAPI integration, detailing the flow from OpenAPI specification parsing to the creation of MCP components and the FastMCP server. This overview helps developers understand how `server/openapi.py` and `utilities/openapi.py` work together to implement OpenAPI functionality within FastMCP.
+SOURCE: /README_OPENAPI.md
+
+```plaintext
+OpenAPI Spec → Parse → HTTPRoute IR → Create MCP Components → FastMCP Server
+```
+
+---
+TITLE: Configuring Access Policies with Permit.io
+DESCRIPTION: Configures access policies in Permit.io using resources, actions, and roles, demonstrating policy definition via the Permit.io dashboard and Terraform provider for managing authorization in code, including RBAC and ABAC examples. This setup requires a Permit.io account and a running Policy Decision Point (PDP).
+SOURCE: /docs/integrations/permit.mdx
+
+```terraform
+# Resources
+resource "permitio_resource" "mcp_server" {
+name = "mcp_server"
+key  = "mcp_server"
+
+actions = {
+"greet" = { name = "greet" }
+"add"   = { name = "add" }
+}
+}
+
+resource "permitio_resource" "mcp_server_tools" {
+name = "mcp_server_tools"
+key  = "mcp_server_tools"
+
+actions = {
+"list" = { name = "list" }
+}
+}
+
+# Roles
+resource "permitio_role" "Admin" {
+key         = "Admin"
+name        = "Admin"
+permissions = [
+"mcp_server:greet",
+"mcp_server:add",
+"mcp_server_tools:list"
+]
+}
+```
+
+---
+TITLE: Configuring System Messages for Prompt Configuration
+DESCRIPTION: Demonstrates configuring system messages using the `client.get_prompt` method. This pattern is useful for setting the `role` and `expertise` of an LLM, allowing for customized behavior and responses by defining a `system_message` with `role="system"`.
+SOURCE: /docs/clients/prompts.mdx
+
+```python
+async with client:
+result = await client.get_prompt("system_configuration", {
+"role": "helpful assistant",
+"expertise": "python programming"
+})
+
+# Typically returns messages with role="system"
+system_message = result.messages[0]
+print(f"System prompt: {system_message.content}")
+```
+
+---
+TITLE: Setting Up Component Manager in FastMCP
+DESCRIPTION: Demonstrates basic setup of the `Component Manager` contrib module for FastMCP. It illustrates how to initialize a `FastMCP` server and use the `set_up_component_manager` function to enable dynamic control over components at runtime, facilitating feature toggling and automation workflows.
+SOURCE: /src/fastmcp/contrib/component_manager/README.md
+
+```python
+from fastmcp import FastMCP
+from fastmcp.contrib.component_manager import set_up_component_manager
+
+mcp = FastMCP(name="Component Manager", instructions="This is a test server with component manager.")
+set_up_component_manager(server=mcp)
+```
+
+---
+TITLE: Configuring Remote MCP Server with `fastmcp.mcp_config`
+DESCRIPTION: Configures the `RemoteMCPServer` class within `fastmcp.mcp_config` for defining MCP server configurations using HTTP/SSE transport. This class serves as the canonical configuration format for remote MCP servers and provides the `to_transport` method to generate `StreamableHttpTransport` or `SSETransport` instances.
+SOURCE: /docs/python-sdk/fastmcp-mcp_config.mdx
+
+```python
+to_transport(self) -> StreamableHttpTransport | SSETransport
+```
+
+---
+TITLE: Building Regular Expressions from Templates in fastmcp
+DESCRIPTION: Generating regular expressions from string templates using the `build_regex` function in the `fastmcp.resources.template` module. This function allows for dynamic creation of regular expressions based on user-defined templates, enabling flexible pattern matching and data extraction.
+SOURCE: /docs/python-sdk/fastmcp-resources-template.mdx
+
+```python
+build_regex(template: str) -> re.Pattern
+```
+
+---
+TITLE: Creating Lazy-Loaded Resources with `FunctionResource` in FastMCP
+DESCRIPTION: Defines `FunctionResource`, a FastMCP class that defers data loading by wrapping a function, enabling lazy loading of potentially expensive data. This is useful when listing resources, as the function is only called when the resource is accessed, improving performance.
+SOURCE: /docs/python-sdk/fastmcp-resources-resource.mdx
+
+```python
+from_function(cls, fn: Callable[..., Any], uri: str | AnyUrl, name: str | None = None, title: str | None = None, description: str | None = None, mime_type: str | None = None, tags: set[str] | None = None, enabled: bool | None = None, annotations: Annotations | None = None, meta: dict[str, Any] | None = None) -> FunctionResource
+```
+
+---
+TITLE: Managing FastMCP Resources with the `Resource` Class
+DESCRIPTION: Defines the base `Resource` class in `fastmcp.resources.resource` for handling FastMCP resources, providing methods like `read` to access content and `to_mcp_resource` to convert to `MCPResource`. It also includes a `key` method for internal component identification, crucial for resource management within FastMCP.
+SOURCE: /docs/python-sdk/fastmcp-resources-resource.mdx
+
+```python
+read(self) -> str | bytes
+```
+
+```plaintext
+Convert the resource to an MCPResource.  
+#### `key` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/resources/resource.py#L140" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+key(self) -> str
+```
+
+---
+TITLE: Running the FastMCP Server with Eunomia Authorization
+DESCRIPTION: Demonstrates running the FastMCP server with Eunomia authorization middleware to intercept requests and enforce policies based on agent identification headers like `X-Agent-ID` and `Authorization`. This setup enables policy-based access control for MCP methods, mapping them to authorization resources and actions.
+SOURCE: /docs/integrations/eunomia-authorization.mdx
+
+```bash
+python server.py
+```
+
+---
+TITLE: Extending FastMCP Server with Custom Routes and Tools
+DESCRIPTION: Extends the `FastMCP` server class by adding custom HTTP routes using the `custom_route` decorator and registering tools with `add_tool`. This allows for adding arbitrary endpoints and functionalities beyond the standard MCP protocol, useful for OAuth callbacks, health checks, or custom APIs.
+SOURCE: /docs/python-sdk/fastmcp-server-server.mdx
+
+```python
+custom_route(self, path: str, methods: list[str], name: str | None = None, include_in_schema: bool = True) -> Callable[[Callable[[Request], Awaitable[Response]]], Callable[[Request], Awaitable[Response]]]
+```
+
+```plaintext
+Add a tool to the server.  
+The tool function can optionally request a Context object by adding a parameter
+with the Context type annotation. See the @tool decorator for examples.  
+**Args:**
+- `tool`: The Tool instance to register  
+**Returns:**
+- The tool instance that was added to the server.  
+#### `remove_tool` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/server.py#L881" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+remove_tool(self, name: str) -> None
+```
+
+```plaintext
+Add a tool transformation.  
+#### `remove_tool_transformation` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/server.py#L907" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+remove_tool_transformation(self, tool_name: str) -> None
+```
+
+---
+TITLE: Defining MCP Server Configuration with `fastmcp.mcp_config`
+DESCRIPTION: Defines the canonical configuration format for Model Context Protocol (MCP) servers using `fastmcp.mcp_config`. This module provides a client-agnostic and extensible format supporting stdio and remote transports, enabling comprehensive configuration of server metadata, authentication, and execution parameters for MCP implementations.
+SOURCE: /docs/python-sdk/fastmcp-mcp_config.mdx
+
+```json
+{
+"mcpServers": {
+"my-server": {
+"command": "npx",
+"args": ["-y", "@my/mcp-server"],
+"env": {"API_KEY": "secret"},
+"timeout": 30000,
+"description": "My MCP server"
+}
+}
+}
+```
+
+---
+TITLE: Testing Azure Authentication with FastMcp Client
+DESCRIPTION: Demonstrates testing an Azure-protected server using the `fastmcp` `Client` with OAuth authentication. This allows developers to simulate user authentication flows and test protected tools like `get_user_info` by automatically handling Azure OAuth and caching tokens for subsequent runs.
+SOURCE: /docs/integrations/azure.mdx
+
+```python
+from fastmcp import Client
+import asyncio
+
+async def main():
+# The client will automatically handle Azure OAuth
+async with Client("http://localhost:8000/mcp/", auth="oauth") as client:
+# First-time connection will open Azure login in your browser
+print("✓ Authenticated with Azure!")
+
+# Test the protected tool
+result = await client.call_tool("get_user_info")
+print(f"Azure user: {result['email']}")
+print(f"Name: {result['name']}")
+
+if __name__ == "__main__":
+asyncio.run(main())
+```
+
+---
+TITLE: Building Stateless HTTP Requests with OpenAPI Spec
+DESCRIPTION: Illustrates building stateless HTTP requests from an OpenAPI spec using `HTTPRoute` models and the `RequestDirector`. This process involves parsing the OpenAPI spec, setting up the `RequestDirector` with `openapi-core`, creating components, building the HTTP request from flat parameters, executing the request with an `httpx` client, and processing the response into a structured MCP response.
+SOURCE: /src/fastmcp/experimental/server/openapi/README.md
+
+```plaintext
+OpenAPI Spec → HTTPRoute with Pre-calculated Fields → RequestDirector → HTTP Request → Structured Response
+```
+
+---
+TITLE: Verifying FastMCP Installation
+DESCRIPTION: Verifies the correct installation of FastMCP by running the `fastmcp version` command. This command displays the installed versions of FastMCP, MCP, Python, the platform, and the FastMCP root path, ensuring the environment is properly configured.
+SOURCE: /docs/getting-started/installation.mdx
+
+```bash
+fastmcp version
+```
+
+```bash
+$ fastmcp version
+
+FastMCP version:                           2.11.3
+MCP version:                               1.12.4
+Python version:                            3.12.2
+Platform:            macOS-15.3.1-arm64-arm-64bit
+FastMCP root path:            ~/Developer/fastmcp
+```
+
+---
+TITLE: Implementing HTTP Transport (Streamable) in FastMCP
+DESCRIPTION: Implements the Streamable HTTP transport protocol in `FastMCP` for network-based communication, enabling multiple concurrent clients and bidirectional communication. This transport allows exposing an MCP server as a web service accessible via a URL, supporting all MCP operations including streaming responses, and is recommended for remote deployments.
+SOURCE: /docs/deployment/running-server.mdx
+
+```python
+from fastmcp import FastMCP
+
+mcp = FastMCP("MyServer")
+
+@mcp.tool
+def hello(name: str) -> str:
+return f"Hello, {name}!"
+
+if __name__ == "__main__":
+# Start an HTTP server on port 8000
+mcp.run(transport="http", host="127.0.0.1", port=8000)
+```
+
+---
+TITLE: Defining Required and Optional Prompt Parameters
+DESCRIPTION: Illustrates how to define required and optional parameters in `@mcp.prompt` decorated functions. Demonstrates that parameters without default values are considered required, while those with default values are optional, influencing how the client interacts with the function, such as the `data_uri`, `analysis_type`, and `include_charts` parameters.
+SOURCE: /docs/servers/prompts.mdx
+
+```python
+@mcp.prompt
+def data_analysis_prompt(
+data_uri: str,                        # Required - no default value
+analysis_type: str = "summary",       # Optional - has default value
+include_charts: bool = False          # Optional - has default value
+) -> str:
+"""Creates a request to analyze data with specific parameters."""
+prompt = f"Please perform a '{analysis_type}' analysis on the data found at {data_uri}."
+if include_charts:
+prompt += " Include relevant charts and visualizations."
+return prompt
+```
+
+---
+TITLE: Tagging FastMCP Components for Enhanced Organization
+DESCRIPTION: Illustrates how to add tags to FastMCP components using `RouteMap` and global `tags` parameters for improved categorization and filtering. Demonstrates how FastMCP automatically includes OpenAPI tags from the specification in the component's metadata, accessible via `_meta._fastmcp.tags` for client-side filtering.
+SOURCE: /docs/integrations/openapi.mdx
+
+```python
+from fastmcp.server.openapi import RouteMap, MCPType
+
+mcp = FastMCP.from_openapi(
+openapi_spec=spec,
+client=client,
+route_maps=[
+# Add custom tags to all POST endpoints
+RouteMap(
+methods=["POST"],
+pattern=r".*",
+mcp_type=MCPType.TOOL,
+mcp_tags={"write-operation", "api-mutation"}
+),
+
+# Add different tags to detail view endpoints
+RouteMap(
+methods=["GET"],
+pattern=r".*\{.*\}.*",
+mcp_type=MCPType.RESOURCE_TEMPLATE,
+mcp_tags={"detail-view", "parameterized"}
+),
+
+# Add tags to list endpoints
+RouteMap(
+methods=["GET"],
+pattern=r".*",
+mcp_type=MCPType.RESOURCE,
+mcp_tags={"list-data", "collection"}
+),
+],
+)
+```
+
+```plaintext
+#### OpenAPI Tags in Client Meta
+FastMCP automatically includes OpenAPI tags from your specification in the component's metadata. These tags are available to MCP clients through the `_meta._fastmcp.tags` field, allowing clients to filter and organize components based on the original OpenAPI tagging:  
+<CodeGroup>
+```
+
+```plaintext
+```python {6-9} Access OpenAPI tags in MCP client
+async with client:
+tools = await client.list_tools()
+for tool in tools:
+if hasattr(tool, '_meta') and tool._meta:
+# OpenAPI tags are now available in _fastmcp namespace!
+fastmcp_meta = tool._meta.get('_fastmcp', {})
+openapi_tags = fastmcp_meta.get('tags', [])
+if 'users' in openapi_tags:
+print(f"Found user-related tool: {tool.name}")
+```
+
+---
+TITLE: Handling Prompt Return Values in FastMCP
+DESCRIPTION: Demonstrates how FastMCP handles different return types from prompt functions, including `str`, `PromptMessage`, and `list[PromptMessage | str]`. It illustrates automatic conversion to `PromptMessage` and direct usage of provided message types, simplifying prompt creation and conversation management.
+SOURCE: /docs/servers/prompts.mdx
+
+```python
+from fastmcp.prompts.prompt import Message, PromptResult
+
+@mcp.prompt
+def roleplay_scenario(character: str, situation: str) -> PromptResult:
+"""Sets up a roleplaying scenario with initial messages."""
+return [
+Message(f"Let's roleplay. You are {character}. The situation is: {situation}"),
+Message("Okay, I understand. I am ready. What happens next?", role="assistant")
+]
+```
+
+---
+TITLE: Managing STDIO Transport Session Persistence in Fastmcp
+DESCRIPTION: Illustrates how to manage session persistence with `StdioTransport` in Fastmcp, controlling whether subprocesses persist between client connections using the `keep_alive` parameter for performance or isolation; use `keep_alive=False` for complete isolation, such as in test suites, to avoid state issues between connections.
+SOURCE: /docs/clients/transports.mdx
+
+```python
+from fastmcp.client.transports import StdioTransport
+
+transport = StdioTransport(
+command="python",
+args=["server.py"]
+)
+client = Client(transport)
+
+async def efficient_multiple_operations():
+async with client:
+await client.ping()
+
+async with client:  # Reuses the same subprocess
+await client.call_tool("process_data", {"file": "data.csv"})
+```
+
+```python
+transport = StdioTransport(
+command="python",
+args=["server.py"],
+keep_alive=False
+)
+client = Client(transport)
+```
+
+---
+TITLE: Handling Images with `fastmcp.utilities.types.Image`
+DESCRIPTION: Defines the `Image` class within `fastmcp.utilities.types` for representing images returned from tools, providing a `to_image_content` method to convert the image to MCP `ImageContent`. This class simplifies image handling and integration with the FastMCP ecosystem.
+SOURCE: /docs/python-sdk/fastmcp-utilities-types.mdx
+
+```python
+to_image_content(self, mime_type: str | None = None, annotations: Annotations | None = None) -> mcp.types.ImageContent
+```
+
+---
+TITLE: Formatting FastMCP Server Information with `format_info`
+DESCRIPTION: Formats server information from a `FastMCP` instance into JSON bytes using the `format_info` function. This function supports 'fastmcp' and 'mcp' output formats and can optionally use pre-extracted `FastMCPInfo` for efficiency.
+SOURCE: /docs/python-sdk/fastmcp-utilities-inspect.mdx
+
+```python
+format_info(mcp: FastMCP[Any] | FastMCP1x, format: InspectFormat | Literal['fastmcp', 'mcp'], info: FastMCPInfo | None = None) -> bytes
+```
+
+---
+TITLE: Customizing MCP Components with `mcp_component_fn`
+DESCRIPTION: Demonstrates how to customize MCP components in FastMCP using the `mcp_component_fn` when creating the MCP server, allowing modification of components in-place, such as adding LLM-specific instructions or tags to `OpenAPITool`, `OpenAPIResource`, or `OpenAPIResourceTemplate` instances. This enables fine-grained control over component metadata derived from the OpenAPI specification.
+SOURCE: /docs/integrations/openapi.mdx
+
+```python
+from fastmcp.server.openapi import (
+HTTPRoute,
+OpenAPITool,
+OpenAPIResource,
+OpenAPIResourceTemplate,
+)
+
+# If using experimental parser, import from experimental module:
+# from fastmcp.experimental.server.openapi import (
+# HTTPRoute,
+# OpenAPITool,
+# OpenAPIResource,
+# OpenAPIResourceTemplate,
+# )
+def customize_components(
+route: HTTPRoute,
+component: OpenAPITool | OpenAPIResource | OpenAPIResourceTemplate,
+) -> None:
+# Add custom tags to all components
+component.tags.add("openapi")
+
+# Customize based on component type
+if isinstance(component, OpenAPITool):
+component.description = f"🔧 {component.description} (via API)"
+
+if isinstance(component, OpenAPIResource):
+component.description = f"📊 {component.description}"
+component.tags.add("data")
+
+mcp = FastMCP.from_openapi(
+openapi_spec=spec,
+client=client,
+mcp_component_fn=customize_components,
+)
+```
+
+---
+TITLE: Managing MCP Client Sessions with `fastmcp.client.Client`
+DESCRIPTION: Implements the `Client` class in `fastmcp.client.client` for managing MCP client sessions, providing reentrant context management and handling connection establishment via a `Transport` instance; it addresses race conditions related to `list_tools()` and `call_tool()` by using reference counting and background tasks to ensure reliable coordination in concurrent scenarios.
+SOURCE: /docs/python-sdk/fastmcp-client-client.mdx
+
+```python
+# Connect to FastMCP server
+client = Client("http://localhost:8080")
+
+async with client:
+# List available resources
+resources = await client.list_resources()
+
+# Call a tool
+result = await client.call_tool("my_tool", {"param": "value"})
+```
+
+```plaintext
+Get the current active session. Raises RuntimeError if not connected.  
+#### `initialize_result` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/client/client.py#L293" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+initialize_result(self) -> mcp.types.InitializeResult
+```
+
+```plaintext
+Set the roots for the client. This does not automatically call `send_roots_list_changed`.  
+#### `set_sampling_callback` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/client/client.py#L305" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+set_sampling_callback(self, sampling_callback: ClientSamplingHandler) -> None
+```
+
+---
+TITLE: Handling Duplicate Resources in FastMCP Server
+DESCRIPTION: Configures how the `FastMCP` server handles duplicate resource registration attempts using the `on_duplicate_resources` setting, allowing options like `warn`, `error`, `replace`, and `ignore` to manage conflicts when registering resources with the same URI, preventing potential `ValueError` exceptions.
+SOURCE: /docs/servers/resources.mdx
+
+```python
+from fastmcp import FastMCP
+
+mcp = FastMCP(
+name="ResourceServer",
+on_duplicate_resources="error" # Raise error on duplicates
+)
+
+@mcp.resource("data://config")
+def get_config_v1(): return {"version": 1}
+
+# This registration attempt will raise a ValueError because
+# "data://config" is already registered and the behavior is "error".
+# @mcp.resource("data://config")
+# def get_config_v2(): return {"version": 2}
+```
+
+---
+TITLE: Authenticating OpenAI Responses API with FastMCP Servers
+DESCRIPTION: Demonstrates how to authenticate requests to an OpenAI `Responses API` server using `FastMCP` with a `JWTVerifier`. This ensures that the server only accepts requests with a valid `Authorization` header containing a `Bearer` token, enhancing security and preventing unauthorized access to the server's tools.
+SOURCE: /docs/integrations/openai.mdx
+
+```python
+from fastmcp.server.auth.providers.jwt import RSAKeyPair
+
+key_pair = RSAKeyPair.generate()
+access_token = key_pair.create_token(audience="dice-server")
+```
+
+```python
+from fastmcp import FastMCP
+from fastmcp.server.auth import JWTVerifier
+
+auth = JWTVerifier(
+public_key=key_pair.public_key,
+audience="dice-server",
+)
+
+mcp = FastMCP(name="Dice Roller", auth=auth)
+```
+
+```python
+from fastmcp import FastMCP
+from fastmcp.server.auth import JWTVerifier
+from fastmcp.server.auth.providers.jwt import RSAKeyPair
+import random
+
+key_pair = RSAKeyPair.generate()
+access_token = key_pair.create_token(audience="dice-server")
+
+auth = JWTVerifier(
+public_key=key_pair.public_key,
+audience="dice-server",
+)
+
+mcp = FastMCP(name="Dice Roller", auth=auth)
+
+@mcp.tool
+def roll_dice(n_dice: int) -> list[int]:
+"""Roll `n_dice` 6-sided dice and return the results."""
+return [random.randint(1, 6) for _ in range(n_dice)]
+
+if __name__ == "__main__":
+print(f"
+---
+
+🔑 Dice Roller access token:
+
+{access_token}
+
+---
+")
+mcp.run(transport="http", port=8000)
+```
+
+```python
+pythonAPIStatusError: Error code: 424 - {
+"error": {
+"message": "Error retrieving tool list from MCP server: 'dice_server'. Http status code: 401 (Unauthorized)",
+"type": "external_connector_error",
+"param": "tools",
+"code": "http_error"
+}
+}
+```
+
+---
+TITLE: Managing Dependencies with FastMCP CLI and `uv`
+DESCRIPTION: Demonstrates dependency management in FastMCP using the CLI and `uv`. It illustrates how to specify Python versions, include additional packages with `--with`, use requirements files with `--with-requirements`, and define a project directory with `--project` when running `server.py`.
+SOURCE: /docs/deployment/running-server.mdx
+
+```bash
+# Run with a specific Python version
+fastmcp run server.py --python 3.11
+
+# Run with additional packages
+fastmcp run server.py --with pandas --with numpy
+
+# Run with dependencies from a requirements file
+fastmcp run server.py --with-requirements requirements.txt
+
+# Combine multiple options
+fastmcp run server.py --python 3.10 --with httpx --transport http
+
+# Run within a specific project directory
+fastmcp run server.py --project /path/to/project
+```
+
+---
+TITLE: Using Streamable HTTP Transport in FastMCP
+DESCRIPTION: Demonstrates how to establish a bidirectional streaming connection to a FastMCP server using the `StreamableHttpTransport`. This transport is recommended for production deployments and supports custom headers for authentication, as shown with the `BearerAuth` helper, providing a secure and efficient communication channel.
+SOURCE: /docs/clients/transports.mdx
+
+```python
+from fastmcp.client.transports import StreamableHttpTransport
+
+# Basic connection
+transport = StreamableHttpTransport(url="https://api.example.com/mcp")
+client = Client(transport)
+
+# With custom headers for authentication
+transport = StreamableHttpTransport(
+url="https://api.example.com/mcp",
+headers={
+"Authorization": "Bearer your-token-here",
+"X-Custom-Header": "value"
+}
+)
+client = Client(transport)
+```
+
+```python
+from fastmcp.client.auth import BearerAuth
+
+client = Client(
+"https://api.example.com/mcp",
+auth=BearerAuth("your-token-here")
+)
+```
+
+---
+TITLE: Configuring FastMCP Endpoint and Server Access
+DESCRIPTION: Configures the FastMCP endpoint path using the `mcp.http_app()` function, allowing customization of the URL. Demonstrates accessing the FastMCP server instance via `request.app.state.fastmcp_server` within middleware or routes, enabling server-side logic and control.
+SOURCE: /docs/integrations/asgi.mdx
+
+```python
+# Custom endpoint path
+http_app = mcp.http_app(path="/custom-mcp-path")
+
+# Access the FastMCP server from middleware/routes
+# The server is available at: request.app.state.fastmcp_server
+```
+
+---
+TITLE: Running FastMCP `dev` Server with Entrypoints
+DESCRIPTION: Demonstrates different entrypoints for running a local FastMCP development server using the `fastmcp dev` command, including inferred server instances (`server.py`), explicit entrypoints (`server.py:custom_name`), factory functions (`server.py:create_server`), and declarative configuration via `fastmcp.json`. The `dev` command only supports local files and `fastmcp.json` configuration.
+SOURCE: /docs/patterns/cli.mdx
+
+```bash
+# Run dev server with editable mode and additional packages
+fastmcp dev server.py -e . --with pandas --with matplotlib
+
+# Run dev server with fastmcp.json configuration (auto-detects)
+fastmcp dev
+
+# Run dev server with explicit fastmcp.json file
+fastmcp dev dev.fastmcp.json
+
+# Run dev server with specific Python version
+fastmcp dev server.py --python 3.11
+
+# Run dev server with requirements file
+fastmcp dev server.py --with-requirements requirements.txt
+
+# Run dev server within a specific project directory
+fastmcp dev server.py --project /path/to/project
+```
+
+---
+TITLE: Transforming Tool Arguments with `Tool.from_tool`
+DESCRIPTION: Demonstrates transforming specific arguments when creating a new `Tool` instance using `Tool.from_tool`. This allows for selective modification of tool configurations while preserving other settings from a parent tool.
+SOURCE: /docs/python-sdk/fastmcp-tools-tool_transform.mdx
+
+```python
+Tool.from_tool(parent, transform_args={"old": "new"})  # Others unchanged
+```
+
+---
+TITLE: Locating Claude Configuration Path with fastmcp
+DESCRIPTION: Retrieves the Claude configuration directory path based on the operating system using `get_claude_config_path` from the `fastmcp.cli.claude` module. This function is useful for applications needing to access or modify Claude's configuration settings programmatically within the fastmcp ecosystem.
+SOURCE: /docs/python-sdk/fastmcp-cli-claude.mdx
+
+```python
+get_claude_config_path() -> Path | None
+```
+
+---
+TITLE: Installing FastMCP Server in Claude Code
+DESCRIPTION: Installs a FastMCP server within Claude Code using the `install_claude_code` function. This function configures the server with options for file path, server object name, environment variables, Python version, and package dependencies, returning `True` if the installation is successful.
+SOURCE: /docs/python-sdk/fastmcp-cli-install-claude_code.mdx
+
+```python
+install_claude_code(file: Path, server_object: str | None, name: str) -> bool
+```
+
+---
+TITLE: Rendering Remote Server Prompts using `ProxyPrompt` in Fastmcp
+DESCRIPTION: Implements the `ProxyPrompt` class within `fastmcp.server.proxy` to render prompts from a remote server. It uses the `from_mcp_prompt` factory method to create `ProxyPrompt` instances from raw MCP prompt schemas and the `render` method to generate `PromptMessage` lists by communicating with the remote server through a client.
+SOURCE: /docs/python-sdk/fastmcp-server-proxy.mdx
+
+```python
+from_mcp_prompt(cls, client: Client, mcp_prompt: mcp.types.Prompt) -> ProxyPrompt
+```
+
+---
+TITLE: Leveraging Type Annotations for FastMCP Tool Parameters
+DESCRIPTION: Illustrates the use of Python type annotations for defining FastMCP tool parameters, enabling data validation, JSON schema generation, and clear communication of expected data types to the LLM. FastMCP supports various types, including basic types, collections, optionals, unions, constrained types, paths, UUIDs, and Pydantic models, enhancing tool functionality and data integrity.
+SOURCE: /docs/servers/tools.mdx
+
+```python
+@mcp.tool
+def analyze_text(
+text: str,
+max_tokens: int = 100,
+language: str | None = None
+) -> dict:
+"""Analyze the provided text."""
+# Implementation...
+```
+
+---
+TITLE: Converting MCP Server Type to Servers and Transports
+DESCRIPTION: Converts an `MCPServerTypes` entry from an MCP configuration into a tuple containing a server name (`str`), a `FastMCP` server instance, and a `ClientTransport`. This utility function, `mcp_server_type_to_servers_and_transports`, simplifies the process of configuring and initializing MCP servers and their associated transports within the `fastmcp` library.
+SOURCE: /docs/python-sdk/fastmcp-utilities-mcp_config.mdx
+
+```python
+mcp_server_type_to_servers_and_transports(name: str, mcp_server: MCPServerTypes) -> tuple[str, FastMCP[Any], ClientTransport]
+```
+
+---
+TITLE: Managing Client Sessions in fastmcp.client.client
+DESCRIPTION: Manages session-related state for a `Client` instance in `fastmcp.client.client`, ensuring clean separation of configuration and session data. This approach guarantees fresh session state for each new client instance, enhancing reliability and preventing data conflicts.
+SOURCE: /docs/python-sdk/fastmcp-client-client.mdx
+
+```python
+generate_name(cls, name: str | None = None) -> str
+```
+
+---
+TITLE: Reading Resources Using Resource Templates
+DESCRIPTION: Demonstrates reading resources from a resource template using the `client.read_resource` method. This allows for dynamic resource URIs with parameters, such as `weather://{{city}}/current`, enabling flexible data retrieval based on user-defined inputs.
+SOURCE: /docs/clients/resources.mdx
+
+```python
+async with client:
+# Read a resource generated from a template
+# For example, a template like "weather://{{city}}/current"
+weather_content = await client.read_resource("weather://london/current")
+
+# Access the generated content
+print(weather_content[0].text)  # Assuming text JSON response
+```
+
+---
+TITLE: Implementing Tools for LLM Actions with FastMCP
+DESCRIPTION: Implements `Tools` in FastMCP, enabling LLMs to execute Python functions for actions like API calls and computations. FastMCP handles schema generation from type hints and docstrings, supporting various return types, including text, JSON, images, and audio, using media helper classes.
+SOURCE: /README.md
+
+```python
+@mcp.tool
+def multiply(a: float, b: float) -> float:
+"""Multiplies two numbers."""
+return a * b
+```
+
+---
+TITLE: Handling Structured Logs with `LogMessage` Parameters
+DESCRIPTION: Illustrates how to handle structured logs using the `LogMessage` object, which contains the log payload (`msg` and `extra` data) from the server. This enables structured logging, allowing you to receive rich, contextual information for debugging complex applications.
+SOURCE: /docs/clients/logging.mdx
+
+```python
+async def detailed_log_handler(message: LogMessage):
+msg = message.data.get('msg')
+extra = message.data.get('extra')
+
+if message.level == "error":
+print(f"ERROR: {msg} | Details: {extra}")
+elif message.level == "warning":
+print(f"WARNING: {msg} | Details: {extra}")
+else:
+print(f"{message.level.upper()}: {msg}")
+```
+
+---
+TITLE: Configuring Global Server Settings in FastMCP
+DESCRIPTION: Configures global settings for FastMCP servers, including `log_level`, `mask_error_details`, `resource_prefix_format`, and `include_fastmcp_meta`, which can be set via environment variables (prefixed with `FASTMCP_`) or in a `.env` file. These settings affect all FastMCP servers and allow customization of logging, error detail masking, resource prefix formatting, and metadata inclusion.
+SOURCE: /docs/servers/server.mdx
+
+```python
+import fastmcp
+
+# Access global settings
+print(fastmcp.settings.log_level)        # Default: "INFO"
+print(fastmcp.settings.mask_error_details)  # Default: False
+print(fastmcp.settings.resource_prefix_format)  # Default: "path"
+print(fastmcp.settings.include_fastmcp_meta)   # Default: True
+```
+
+---
+TITLE: Mirroring and Modifying Mirrored Components in FastMCP
+DESCRIPTION: Demonstrates how to work with mirrored components from a proxy server in FastMCP by creating a local copy for modification. This allows enabling or disabling tools, resources, or prompts without directly altering the remote server's state, ensuring local components take precedence.
+SOURCE: /docs/servers/proxy.mdx
+
+```python
+# Create your own server
+my_server = FastMCP("MyServer")
+
+# Get a proxy server
+proxy = FastMCP.as_proxy("backend_server.py")
+
+# Get mirrored components from proxy
+mirrored_tool = await proxy.get_tool("useful_tool")
+
+# Create a local copy that you can modify
+local_tool = mirrored_tool.copy()
+
+# Add the local copy to your server
+my_server.add_tool(local_tool)
+
+# Now you can disable YOUR copy
+local_tool.disable()
+```
+
+---
+TITLE: Handling Array Parameters in FastMCP OpenAPI Requests
+DESCRIPTION: Demonstrates how FastMCP handles array parameters in OpenAPI requests, including query arrays serialized based on the `explode` parameter and path arrays serialized as comma-separated values. This ensures proper data transmission and interpretation according to OpenAPI specifications.
+SOURCE: /docs/integrations/openapi.mdx
+
+```python
+# Query array with explode=true (default)
+# ?tags=red&tags=blue&tags=green
+# Query array with explode=false
+# ?tags=red,blue,green
+# Path array (always comma-separated)
+# /items/red,blue,green
+```
+
+---
+TITLE: Creating Dynamic Resources Using `ResourceTemplate` in fastmcp
+DESCRIPTION: Defines the `ResourceTemplate` class for dynamically creating resources in fastmcp, providing methods to `enable`, `disable`, and match URIs against templates. It also includes a `from_function` method to create resource templates from functions, enhancing flexibility in resource definition.
+SOURCE: /docs/python-sdk/fastmcp-resources-template.mdx
+
+```python
+enable(self) -> None
+```
+
+```plaintext
+#### `from_function` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/resources/template.py#L89" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+from_function(fn: Callable[..., Any], uri_template: str, name: str | None = None, title: str | None = None, description: str | None = None, mime_type: str | None = None, tags: set[str] | None = None, enabled: bool | None = None, annotations: Annotations | None = None, meta: dict[str, Any] | None = None) -> FunctionResourceTemplate
+```
+
+```plaintext
+Set default MIME type if not provided.  
+#### `matches` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/resources/template.py#L122" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+matches(self, uri: str) -> dict[str, Any] | None
+```
+
+---
+TITLE: Creating Elicitation Callback with FastMCP Client
+DESCRIPTION: Defines `create_elicitation_callback` function within the `fastmcp.client.elicitation` module to generate a callback function for handling elicitation events using a provided `ElicitationHandler`. This function simplifies the process of setting up event-driven interactions within the FastMCP client.
+SOURCE: /docs/python-sdk/fastmcp-client-elicitation.mdx
+
+```python
+create_elicitation_callback(elicitation_handler: ElicitationHandler) -> ElicitationFnT
+```
+
+---
+TITLE: Inspecting FastMCP v2 Instances with `inspect_fastmcp_v2`
+DESCRIPTION: Extracts information from a `FastMCP` v2.x instance using the `inspect_fastmcp_v2` function, returning a `FastMCPInfo` dataclass. This utility is useful for programmatically accessing details about a FastMCP instance, such as its configuration and state.
+SOURCE: /docs/python-sdk/fastmcp-utilities-inspect.mdx
+
+```python
+inspect_fastmcp_v2(mcp: FastMCP[Any]) -> FastMCPInfo
+```
+
+---
+TITLE: Defining FastAPI Operation IDs for MCP Components
+DESCRIPTION: Illustrates how to define meaningful `operation_id` values in FastAPI to ensure proper naming of MCP components. Using explicit `operation_id` values, instead of auto-generated names, improves component identification and management within the MCP ecosystem.
+SOURCE: /docs/integrations/fastapi.mdx
+
+```python
+# Good - explicit operation_id
+@app.get("/users/{user_id}", operation_id="get_user_by_id")
+def get_user(user_id: int):
+return {"id": user_id}
+
+# Less ideal - auto-generated name
+@app.get("/users/{user_id}")
+def get_user(user_id: int):
+return {"id": user_id}
+```
+
+---
+TITLE: Retrieving Prompts Using `get_prompt()` in MCP
+DESCRIPTION: Demonstrates how to retrieve a rendered prompt using the `get_prompt()` method in the MCP client. This allows developers to access pre-defined prompts and integrate them into their applications, simplifying the process of generating dynamic content based on configured prompts.
+SOURCE: /docs/clients/prompts.mdx
+
+```python
+async with client:
+# Simple prompt without arguments
+result = await client.get_prompt("welcome_message")
+# result -> mcp.types.GetPromptResult
+
+# Access the generated messages
+for message in result.messages:
+print(f"Role: {message.role}")
+print(f"Content: {message.content}")
+```
+
+---
+TITLE: Testing OpenAPI Server Implementation with FastMCP
+DESCRIPTION: Demonstrates a testing strategy for the new FastMCP OpenAPI server implementation, including server integration, request handling, parameter collision management, and OpenAPI feature compliance. The example showcases a test pattern for verifying stateless `RequestDirector` functionality and fast server initialization using `FastMCPOpenAPI` with a valid OpenAPI specification.
+SOURCE: /src/fastmcp/experimental/server/openapi/README.md
+
+```python
+async def test_stateless_request_building():
+"""Test that server works with stateless RequestDirector approach."""
+
+# Test server initialization is fast
+start_time = time.time()
+server = FastMCPOpenAPI(spec=valid_spec, client=client)
+init_time = time.time() - start_time
+assert init_time < 0.01  # Should be very fast
+
+# Verify RequestDirector functionality
+assert hasattr(server, '_director')
+assert hasattr(server, '_spec')
+```
+
+---
+TITLE: Mapping FastAPI Routes to MCP Components
+DESCRIPTION: Demonstrates how to customize the mapping of FastAPI endpoints to MCP components using `RouteMap` in FastMCP. This allows you to define specific rules for converting routes based on HTTP methods and path patterns, enabling fine-grained control over how your API is exposed to LLM clients as MCP resources and tools.
+SOURCE: /docs/integrations/fastapi.mdx
+
+```python
+# Assumes the FastAPI app from above is already defined
+from fastmcp import FastMCP
+from fastmcp.server.openapi import RouteMap, MCPType
+
+# If using experimental parser, import from experimental module:
+# from fastmcp.experimental.server.openapi import RouteMap, MCPType
+# Custom mapping rules
+mcp = FastMCP.from_fastapi(
+app=app,
+route_maps=[
+# GET with path params → ResourceTemplates
+RouteMap(
+methods=["GET"],
+pattern=r".*\{.*\}.*",
+mcp_type=MCPType.RESOURCE_TEMPLATE
+),
+# Other GETs → Resources
+RouteMap(
+methods=["GET"],
+pattern=r".*",
+mcp_type=MCPType.RESOURCE
+),
+# POST/PUT/DELETE → Tools (default)
+],
+)
+
+# Now:
+# - GET /products → Resource
+# - GET /products/{id} → ResourceTemplate
+# - POST/PUT/DELETE → Tools
+```
+
+---
+TITLE: Forwarding Transformed Tool Arguments in fastmcp
+DESCRIPTION: Forwards arguments to a parent tool after applying transformations defined in a transformed tool's custom function using `forward(**kwargs)`. This function handles argument renaming and validation before calling the parent tool, raising errors if called outside the transformed tool context or if arguments don't match the transformed schema.
+SOURCE: /docs/python-sdk/fastmcp-tools-tool_transform.mdx
+
+```python
+forward(**kwargs) -> ToolResult
+```
+
+---
+TITLE: Creating Middleware with FastMCP
+DESCRIPTION: Demonstrates how to create custom middleware for FastMCP by subclassing the `Middleware` class and overriding the `on_message` hook. This allows developers to intercept and process MCP messages, enabling functionalities like logging, authentication, or request modification before they reach the server.
+SOURCE: /docs/servers/middleware.mdx
+
+```python
+from fastmcp import FastMCP
+from fastmcp.server.middleware import Middleware, MiddlewareContext
+
+class LoggingMiddleware(Middleware):
+"""Middleware that logs all MCP operations."""
+
+async def on_message(self, context: MiddlewareContext, call_next):
+"""Called for all MCP messages."""
+print(f"Processing {context.method} from {context.source}")
+
+result = await call_next(context)
+
+print(f"Completed {context.method}")
+return result
+
+# Add middleware to your server
+mcp = FastMCP("MyServer")
+mcp.add_middleware(LoggingMiddleware())
+```
+
+---
+TITLE: Configuring Advanced FastMcp JSON Configuration
+DESCRIPTION: Demonstrates advanced configuration of `fastmcp` using JSON, showcasing how to specify project details, Python version, requirements files, and environment variables like `GPU_DEVICE`. This configuration allows for customized deployment and execution of applications managed by `fastmcp`.
+SOURCE: /docs/integrations/mcp-json-configuration.mdx
+
+```bash
+fastmcp install mcp-json ml_server.py \
+--name "ML Analysis Server" \
+--python 3.11 \
+--with-requirements requirements.txt \
+--project /home/user/ml-project \
+--env GPU_DEVICE=0
+```
+
+```json
+{
+"Production API Server": {
+"command": "uv",
+"args": [
+"run",
+"--with",
+"fastmcp",
+"--with",
+"python-dotenv",
+"--with",
+"requests",
+"fastmcp",
+"run",
+"/home/user/api_server.py"
+],
+"env": {
+"API_BASE_URL": "https://api.example.com",
+"TIMEOUT": "30"
+}
+}
+}
+```
+
+```json
+{
+"ML Analysis Server": {
+"command": "uv",
+"args": [
+"run",
+"--python",
+"3.11",
+"--project",
+"/home/user/ml-project",
+"--with",
+"fastmcp",
+"--with-requirements",
+"requirements.txt",
+"fastmcp",
+"run",
+"/home/user/ml_server.py"
+],
+"env": {
+"GPU_DEVICE": "0"
+}
+}
+}
+```
+
+---
+TITLE: Handling Messages with Function-Based Handlers in Fastmcp
+DESCRIPTION: Demonstrates handling incoming messages in `fastmcp` using a function-based handler, where a single function `message_handler` processes all messages received from the server, checking the `message.root.method` attribute to determine the message type and trigger specific actions. This approach simplifies message processing and is useful for applications needing a centralized message handling mechanism.
+SOURCE: /docs/clients/messages.mdx
+
+```python
+from fastmcp import Client
+
+async def message_handler(message):
+"""Handle all MCP messages from the server."""
+if hasattr(message, 'root'):
+method = message.root.method
+print(f"Received: {method}")
+
+# Handle specific notifications
+if method == "notifications/tools/list_changed":
+print("Tools have changed - might want to refresh tool cache")
+elif method == "notifications/resources/list_changed":
+print("Resources have changed")
+
+client = Client(
+"my_mcp_server.py",
+message_handler=message_handler,
+)
+```
+
+---
+TITLE: Managing Tools via Component Manager API Endpoints
+DESCRIPTION: Exposes `POST` endpoints `/tools/{tool_name}/enable` and `/tools/{tool_name}/disable` for dynamically controlling tools within the FastMCP server using the Component Manager. This allows for runtime enabling and disabling of components, facilitating feature toggling, admin interfaces, and automation workflows.
+SOURCE: /src/fastmcp/contrib/component_manager/README.md
+
+```http
+POST /tools/{tool_name}/enable
+POST /tools/{tool_name}/disable
+```
+
+---
+TITLE: Defining Resource Templates with Default Values in FastMCP
+DESCRIPTION: Illustrates how FastMCP resource templates use default values for function parameters not included in the URI. This allows for flexible API designs where clients can omit optional parameters, while developers can still call the underlying function with specific values, and demonstrates defining multiple resource templates for a single function using decorators.
+SOURCE: /docs/servers/resources.mdx
+
+```python
+from fastmcp import FastMCP
+
+mcp = FastMCP(name="DataServer")
+
+@mcp.resource("search://{query}")
+def search_resources(query: str, max_results: int = 10, include_archived: bool = False) -> dict:
+"""Search for resources matching the query string."""
+# Only 'query' is required in the URI, the other parameters use their defaults
+results = perform_search(query, limit=max_results, archived=include_archived)
+return {
+"query": query,
+"max_results": max_results,
+"include_archived": include_archived,
+"results": results
+}
+```
+
+---
+TITLE: Configuring FastMCPOpenAPI Server Options (Experimental)
+DESCRIPTION: Configures the `FastMCPOpenAPI` server with options such as the `openapi_spec`, HTTP client (`httpx_client`), server `name`, custom `route_map`, and `enable_caching`. This allows customization of the server's behavior and integration with specific OpenAPI specifications and routing requirements.
+SOURCE: /src/fastmcp/experimental/server/openapi/README.md
+
+```python
+server = FastMCPOpenAPI(
+openapi_spec=spec,           # Required: OpenAPI specification
+client=httpx_client,         # Required: HTTP client instance
+name="API Server",           # Optional: Server name
+route_map=custom_routes,     # Optional: Custom route mappings
+enable_caching=True,         # Optional: Enable response caching
+)
+```
+
+---
+TITLE: Installing FastMCP with uv or pip
+DESCRIPTION: Demonstrates how to install the `fastmcp` package using either `uv` or `pip`. This allows users to add `fastmcp` as a dependency to their projects or install it directly for immediate use.
+SOURCE: /docs/getting-started/installation.mdx
+
+```bash
+uv add fastmcp
+```
+
+```bash
+uv pip install fastmcp
+```
+
+```bash
+pip install fastmcp
+```
+
+---
+TITLE: Configuring Permit.io with Environment Variables
+DESCRIPTION: Configures the Permit.io middleware using environment variables for settings like `PERMIT_MCP_PERMIT_PDP_URL`, `PERMIT_MCP_PERMIT_API_KEY`, identity mode (`PERMIT_MCP_IDENTITY_MODE`), known methods (`PERMIT_MCP_KNOWN_METHODS`), and audit logging (`PERMIT_MCP_ENABLE_AUDIT_LOGGING`). This approach allows for flexible deployment and management of the Permit.io authorization system.
+SOURCE: /docs/integrations/permit.mdx
+
+```bash
+# Permit.io configuration
+export PERMIT_MCP_PERMIT_PDP_URL="http://localhost:7766"
+export PERMIT_MCP_PERMIT_API_KEY="your-api-key"
+
+# Identity configuration
+export PERMIT_MCP_IDENTITY_MODE="jwt"
+export PERMIT_MCP_IDENTITY_JWT_SECRET="your-jwt-secret"
+
+# Method configuration
+export PERMIT_MCP_KNOWN_METHODS='["tools/list","tools/call"]'
+export PERMIT_MCP_BYPASSED_METHODS='["initialize","ping"]'
+
+# Logging configuration
+export PERMIT_MCP_ENABLE_AUDIT_LOGGING="true"
+```
+
+---
+TITLE: Running the FastMCP Server with Different Transports
+DESCRIPTION: Demonstrates how to run a FastMCP server using the `run()` method with different transports, such as `stdio` for local connections and `http` for remote access, showcasing the configuration of the server's transport layer. This allows developers to choose the appropriate transport based on their deployment needs, enabling both traditional MCP client connections and remote access via HTTP.
+SOURCE: /docs/getting-started/quickstart.mdx
+
+```plaintext
+```python my_server.py (HTTP) {9, 10}
+from fastmcp import FastMCP
+
+mcp = FastMCP("My MCP Server")
+
+@mcp.tool
+def greet(name: str) -> str:
+return f"Hello, {name}!"
+
+if __name__ == "__main__":
+mcp.run(transport="http", port=8000)
+```
+
+---
+TITLE: Handling Binary Data in FastMCP Tool Parameters
+DESCRIPTION: Demonstrates how to handle binary data in FastMCP tool parameters using `bytes` or base64-encoded strings. Explains when to use each approach for processing binary data sent by clients, including manual base64 decoding using the `base64` module.
+SOURCE: /docs/servers/tools.mdx
+
+```python
+@mcp.tool
+def process_binary(data: bytes):
+"""Process binary data directly.
+
+The client can send a binary string, which will be
+converted directly to bytes.
+"""
+# Implementation using binary data
+data_length = len(data)
+# ...
+```
+
+```python
+from typing import Annotated
+from pydantic import Field
+
+@mcp.tool
+def process_image_data(
+image_data: Annotated[str, Field(description="Base64-encoded image data")]
+):
+"""Process an image from base64-encoded string.
+
+The client is expected to provide base64-encoded data as a string.
+You'll need to decode it manually.
+"""
+# Manual base64 decoding
+import base64
+binary_data = base64.b64decode(image_data)
+# Process binary_data...
+```
+
+---
+TITLE: Implementing Custom Middleware with FastMCP
+DESCRIPTION: Demonstrates how to implement custom middleware in FastMCP by extending the `Middleware` base class. This allows developers to add custom logic to the request processing pipeline, such as logging or modifying headers, before and after the main request handler is executed using `call_next`.
+SOURCE: /docs/servers/middleware.mdx
+
+```python
+from fastmcp.server.middleware import Middleware, MiddlewareContext
+
+class CustomHeaderMiddleware(Middleware):
+async def on_request(self, context: MiddlewareContext, call_next):
+# Add custom logic here
+print(f"Processing {context.method}")
+
+result = await call_next(context)
+
+print(f"Completed {context.method}")
+return result
+
+mcp.add_middleware(CustomHeaderMiddleware())
+```
+
+---
+TITLE: Generating MCP JSON Configuration with `fastmcp install`
+DESCRIPTION: Generates standard MCP JSON configuration for use with any MCP-compatible client via the `fastmcp install` command. This is useful for working with unsupported MCP clients, creating CI/CD configurations, sharing server configurations, and integrating with custom tooling, following the standard MCP server configuration format.
+SOURCE: /docs/patterns/cli.mdx
+
+```json
+{
+"server-name": {
+"command": "uv",
+"args": [
+"run",
+"--with",
+"fastmcp",
+"fastmcp",
+"run",
+"/path/to/server.py"
+],
+"env": {
+"API_KEY": "value"
+}
+}
+}
+```
+
+---
+TITLE: Validating Parameters Using Pydantic Fields in FastMCP
+DESCRIPTION: Demonstrates parameter validation in FastMCP using Pydantic's `Field` class, allowing for constraints such as `ge`, `gt`, `le`, `lt`, `multiple_of`, `min_length`, `max_length`, and `pattern` to ensure input values meet specific requirements; this is useful for enforcing data integrity and providing informative validation errors to clients.
+SOURCE: /docs/servers/tools.mdx
+
+```python
+from typing import Annotated
+from pydantic import Field
+
+@mcp.tool
+def analyze_metrics(
+# Numbers with range constraints
+count: Annotated[int, Field(ge=0, le=100)],         # 0 <= count <= 100
+ratio: Annotated[float, Field(gt=0, lt=1.0)],       # 0 < ratio < 1.0
+
+# String with pattern and length constraints
+user_id: Annotated[str, Field(
+pattern=r"^[A-Z]{2}\d{4}$",                     # Must match regex pattern
+description="User ID in format XX0000"
+)],
+
+# String with length constraints
+comment: Annotated[str, Field(min_length=3, max_length=500)] = "",
+
+# Numeric constraints
+factor: Annotated[int, Field(multiple_of=5)] = 10,  # Must be multiple of 5
+):
+"""Analyze metrics with validated parameters."""
+# Implementation...
+```
+
+---
+TITLE: Implementing In-Memory Transport with FastMCPTransport
+DESCRIPTION: Implements `FastMCPTransport`, an in-memory transport for FastMCP servers, enabling direct connections to server instances within the same Python process. This transport supports both FastMCP 2.x and FastMCP 1.0 servers, making it ideal for unit tests and scenarios where client and server coexist in the same runtime environment.
+SOURCE: /docs/python-sdk/fastmcp-client-transports.mdx
+
+```python
+connect_session(self, **session_kwargs: Unpack[SessionKwargs]) -> AsyncIterator[ClientSession]
+```
+
+---
+TITLE: Securing Component Manager Endpoints with Auth Scopes
+DESCRIPTION: Demonstrates securing `FastMCP` component manager endpoints using authentication scopes. This configuration ensures that only authorized users with the specified scopes, such as `write` and `read`, can access and manage components, enhancing security and access control.
+SOURCE: /src/fastmcp/contrib/component_manager/README.md
+
+```python
+mcp = FastMCP(name="Component Manager", instructions="This is a test server with component manager.", auth=auth)
+set_up_component_manager(server=mcp, required_scopes=["write", "read"])
+```
+
+---
+TITLE: Managing Tools with `ToolManager` in FastMcp
+DESCRIPTION: Implements the `ToolManager` class for managing tools within the FastMcp framework, providing methods like `remove_tool` to remove tools by key and `call_tool` to execute tools while respecting filtered protocol paths; this facilitates dynamic tool management and execution within a server environment.
+SOURCE: /docs/python-sdk/fastmcp-tools-tool_manager.mdx
+
+```python
+remove_tool(self, key: str) -> None
+```
+
+---
+TITLE: Implementing ABAC Policies with Tool Arguments in Permit.io
+DESCRIPTION: Demonstrates how to implement Attribute-Based Access Control (ABAC) policies in Permit.io using tool arguments as attributes, enabling granular policy conditions for dynamic resources. This allows for conditional access control, such as allowing the `conditional-greet` tool only when the `number` argument exceeds 10, enhancing authorization logic based on resource attributes.
+SOURCE: /docs/integrations/permit.mdx
+
+```python
+@mcp.tool
+def conditional_greet(name: str, number: int) -> str:
+"""Greet a user only if number > 10"""
+return f"Hello, {name}! Your number is {number}"
+```
+
+---
+TITLE: Handling Files with `fastmcp.utilities.types.File`
+DESCRIPTION: Defines the `File` class within `fastmcp.utilities.types`, a helper for managing audio files returned from tools. It implements the `to_resource_content` method to convert the file into an `mcp.types.EmbeddedResource`, facilitating integration with the FastMCP ecosystem.
+SOURCE: /docs/python-sdk/fastmcp-utilities-types.mdx
+
+```python
+to_resource_content(self, mime_type: str | None = None, annotations: Annotations | None = None) -> mcp.types.EmbeddedResource
+```
+
+---
+TITLE: Running FastMCP Server with Inspector for Development
+DESCRIPTION: Demonstrates running the FastMCP server with the Inspector node.js application for development purposes. This allows inspection of the FastMCP server using a web app launched at `http://localhost:5173/`, requiring node.js and npm to be installed.
+SOURCE: /Windows_Notes.md
+
+```bash
+fastmcp dev server.py
+```
+
+---
+TITLE: Eliciting Scalar Response Types in FastMCP
+DESCRIPTION: Demonstrates how to elicit scalar data types like `string`, `int`, and `bool` using FastMCP, which automatically wraps them in MCP-compatible object schemas for client interaction and unwraps the response to provide the scalar value directly in the `ElicitationResult.data` field, simplifying data handling for developers.
+SOURCE: /docs/servers/elicitation.mdx
+
+```plaintext
+```python {4} title="Request an integer"
+@mcp.tool
+async def pick_a_number(ctx: Context) -> str:
+"""Pick a number."""
+result = await ctx.elicit("Pick a number!", response_type=int)
+
+if result.action == "accept":
+return f"You picked {result.data}"
+return "No number provided"
+```
+
+---
+TITLE: Handling Advanced MCP Features with `ProxyClient`
+DESCRIPTION: Demonstrates how `ProxyClient` automatically forwards advanced MCP protocol features like Roots, Sampling, Elicitation, Logging, and Progress between a backend server and connected clients, ensuring full MCP compatibility. This simplifies the implementation of advanced features in `FastMCP` proxy setups.
+SOURCE: /docs/servers/proxy.mdx
+
+```python
+from fastmcp.server.proxy import ProxyClient
+
+# ProxyClient automatically handles all these features
+backend = ProxyClient("advanced_backend.py")
+proxy = FastMCP.as_proxy(backend)
+
+# When the backend server:
+# - Requests LLM sampling -> forwarded to your client
+# - Logs messages -> appear in your client
+# - Reports progress -> shown in your client
+# - Needs user input -> prompts your client
+```
+
+---
+TITLE: Testing FastMCP Servers Using In-Memory Transport
+DESCRIPTION: Illustrates testing `FastMCP` servers using an in-memory transport for fast and deterministic testing without network overhead. This approach allows direct interaction with the server instance, enabling easy debugging and quick validation of server logic using the `Client` API.
+SOURCE: /docs/development/tests.mdx
+
+```python
+from fastmcp import FastMCP, Client
+
+# Create your server
+server = FastMCP("WeatherServer")
+
+@server.tool
+def get_temperature(city: str) -> dict:
+"""Get current temperature for a city"""
+temps = {"NYC": 72, "LA": 85, "Chicago": 68}
+return {"city": city, "temp": temps.get(city, 70)}
+
+async def test_weather_operations():
+# Pass server directly - no deployment needed
+async with Client(server) as client:
+result = await client.call_tool("get_temperature", {"city": "NYC"})
+assert result.data == {"city": "NYC", "temp": 72}
+```
+
+---
+TITLE: Setting Up Development Environment for FastMCP
+DESCRIPTION: Establishes the development environment for FastMCP using `git clone` and `uv sync`. This setup installs all dependencies, including development tools, necessary for building Model Context Protocol (MCP) servers and clients within the FastMCP framework, ensuring a complete toolkit for the MCP ecosystem.
+SOURCE: /CLAUDE.md
+
+```bash
+git clone <repo>
+cd fastmcp
+uv sync                    # Installs all deps including dev tools
+```
+
+---
+TITLE: Handling Tool Results with Structured Data Access
+DESCRIPTION: Demonstrates how FastMCP's `.data` property provides fully hydrated Python objects, including complex types like `datetime` and `UUID`, instead of just JSON dictionaries, enabling easier and more type-safe data access after calling a tool. This contrasts with standard MCP's raw JSON in `structured_content` and traditional text content in `content`.
+SOURCE: /docs/clients/tools.mdx
+
+```python
+from datetime import datetime
+from uuid import UUID
+
+async with client:
+result = await client.call_tool("get_weather", {"city": "London"})
+
+# FastMCP reconstructs complete Python objects from the server's output schema
+weather = result.data  # Server-defined WeatherReport object
+print(f"Temperature: {weather.temperature}°C at {weather.timestamp}")
+print(f"Station: {weather.station_id}")
+print(f"Humidity: {weather.humidity}%")
+
+# The timestamp is a real datetime object, not a string!
+assert isinstance(weather.timestamp, datetime)
+assert isinstance(weather.station_id, UUID)
+
+# Compare with raw structured JSON (standard MCP)
+print(f"Raw JSON: {result.structured_content}")
+# {"temperature": 20, "timestamp": "2024-01-15T14:30:00Z", "station_id": "123e4567-..."}
+
+# Traditional content blocks (standard MCP)
+print(f"Text content: {result.content[0].text}")
+```
+
+---
+TITLE: Configuring MCP Server with JSON Configuration
+DESCRIPTION: Defines the MCP JSON configuration standard for configuring MCP servers, specifying the `command`, `args`, and `env` fields. This format provides a consistent way to launch MCP servers with specific commands, arguments, and environment variables, ensuring uniformity across the MCP ecosystem.
+SOURCE: /docs/integrations/mcp-json-configuration.mdx
+
+```json
+{
+"command": "python"
+}
+```
+
+```plaintext
+#### `env` (optional)
+An object containing environment variables to set when launching the server. All values must be strings.  
+{
+"env": {
+"API_KEY": "secret-key",
+"DEBUG": "true",
+"PORT": "8080"
+}
+}
+```
+
+---
+TITLE: Defining Optional Tool Arguments in FastMCP
+DESCRIPTION: Illustrates how FastMCP tools define optional arguments using Python's standard function parameter conventions, allowing default values for parameters like `max_results` and `sort_by`. This approach simplifies tool usage by enabling users to provide only the required `query` parameter, while other parameters assume default values if not specified.
+SOURCE: /docs/servers/tools.mdx
+
+```python
+@mcp.tool
+def search_products(
+query: str,                   # Required - no default value
+max_results: int = 10,        # Optional - has default value
+sort_by: str = "relevance",   # Optional - has default value
+category: str | None = None   # Optional - can be None
+) -> list[dict]:
+"""Search the product catalog."""
+# Implementation...
+```
+
+---
+TITLE: Defining Read-Only Resources with FastMCP
+DESCRIPTION: Defines read-only `Resources` in `FastMCP`, which are data sources accessible to the LLM, similar to `GET` requests. Demonstrates how to create resources using the `@mcp.resource` decorator, including resource templates for dynamic data retrieval based on URIs like `users://{user_id}/profile`.
+SOURCE: /docs/tutorials/mcp.mdx
+
+```python
+from fastmcp import FastMCP
+
+mcp = FastMCP()
+
+# This function provides a resource at the URI "system://status"
+@mcp.resource("system://status")
+def get_system_status() -> dict:
+"""Returns the current operational status of the service."""
+return {"status": "all systems normal"}
+```
+
+---
+TITLE: Configuring FastMCP Settings with `Settings` Class
+DESCRIPTION: Configures the `Settings` class in FastMCP for managing application settings, including retrieving and setting nested configurations using `get_setting` and `set_setting`. This class provides backwards compatibility and customisation of settings sources.
+SOURCE: /docs/python-sdk/fastmcp-settings.mdx
+
+```python
+get_setting(self, attr: str) -> Any
+```
+
+```plaintext
+Set a setting. If the setting contains one or more `__`, it will be
+#### `settings_customise_sources` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/settings.py#L116" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+settings_customise_sources(cls, settings_cls: type[BaseSettings], init_settings: PydanticBaseSettingsSource, env_settings: PydanticBaseSettingsSource, dotenv_settings: PydanticBaseSettingsSource, file_secret_settings: PydanticBaseSettingsSource) -> tuple[PydanticBaseSettingsSource, ...]
+```
+
+```plaintext
+This property is for backwards compatibility with FastMCP < 2.8.0,
+which accessed fastmcp.settings.settings  
+#### `normalize_log_level` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/settings.py#L154" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+normalize_log_level(cls, v)
+```
+
+---
+TITLE: Generating MCP JSON Configuration for Manual Use
+DESCRIPTION: Demonstrates how to generate `mcpServers` JSON configuration using the `fastmcp install mcp-json` command. This is useful for advanced use cases, manual configuration, or integration with other tools when the first-class integration isn't suitable.
+SOURCE: /docs/integrations/cursor.mdx
+
+```bash
+# Generate configuration and output to stdout
+fastmcp install mcp-json server.py --server-name "Dice Roller" --with pandas
+
+# Copy configuration to clipboard for easy pasting
+fastmcp install mcp-json server.py --server-name "Dice Roller" --copy
+```
+
+---
+TITLE: Mapping OpenAPI Routes to MCP Components
+DESCRIPTION: Defines how FastMCP maps OpenAPI endpoints to MCP components like `TOOL`, `RESOURCE`, or `EXCLUDE` using `RouteMap` objects, allowing customization of the default behavior where every endpoint becomes a `TOOL`. This enables fine-grained control over which API endpoints are exposed as MCP tools, optimizing for specific use cases and improving serverless compatibility with the experimental parser.
+SOURCE: /docs/integrations/openapi.mdx
+
+```python
+from fastmcp.server.openapi import RouteMap, MCPType
+
+DEFAULT_ROUTE_MAPPINGS = [
+# All routes become tools
+RouteMap(mcp_type=MCPType.TOOL),
+]
+```
+
+---
+TITLE: Testing OpenAPI Parameter Parsing and Route Mapping
+DESCRIPTION: Demonstrates a pattern for testing OpenAPI specification parsing and route mapping in FastMCP. It illustrates how to create an OpenAPI spec, parse it into HTTP routes using `parse_openapi_to_http_routes`, and verify request parameters using an `OpenAPITool` and a mock client, ensuring correct parameter handling and route configuration.
+SOURCE: /README_OPENAPI.md
+
+```python
+async def test_parameter_style():
+# 1. Create OpenAPI spec with specific parameter configuration
+spec = {"openapi": "3.1.0", ...}
+
+# 2. Parse and create components
+routes = parse_openapi_to_http_routes(spec)
+tool = OpenAPITool(mock_client, routes[0], ...)
+
+# 3. Execute and verify request parameters
+await tool.run({"param": "value"})
+actual_params = mock_client.request.call_args.kwargs["params"]
+assert actual_params == expected_params
+```
+
+---
+TITLE: Checking OAuth Authentication Requirement in Fastmcp
+DESCRIPTION: Determines if a Fastmcp endpoint requires authentication using `check_if_auth_required`. This function makes a test request to the specified `mcp_url` and returns `True` if authentication is required, otherwise `False`.
+SOURCE: /docs/python-sdk/fastmcp-client-auth-oauth.mdx
+
+```python
+check_if_auth_required(mcp_url: str, httpx_kwargs: dict[str, Any] | None = None) -> bool
+```
+
+---
+TITLE: Versioning FastMCP for Production Stability
+DESCRIPTION: Explains FastMCP's semantic versioning policy and the importance of pinning to exact versions for production deployments to avoid unexpected breaking changes. Highlights the potential for breaking changes in minor versions and directs users to the full `versioning and release policy` for details on public API, deprecation, and breaking change management.
+SOURCE: /docs/getting-started/installation.mdx
+
+```plaintext
+fastmcp==2.11.0  # Good
+fastmcp>=2.11.0  # Bad - will install breaking changes
+```
+
+---
+TITLE: Importing Contrib Modules in Fastmcp
+DESCRIPTION: Demonstrates how to import contrib modules from the `fastmcp.contrib` package. This allows you to utilize community-contributed functionalities within your `fastmcp` projects.
+SOURCE: /docs/patterns/contrib.mdx
+
+```python
+from fastmcp.contrib import my_module
+```
+
+---
+TITLE: Using STDIO Transport in Fastmcp for Communication
+DESCRIPTION: Demonstrates how to use the `StdioTransport` class in `fastmcp` to communicate with MCP servers through subprocess pipes. It illustrates configuring the transport with command, arguments, environment variables, and working directory, and also shows the simplified usage with file paths for basic scenarios.
+SOURCE: /docs/clients/transports.mdx
+
+```python
+from fastmcp.client.transports import StdioTransport
+
+transport = StdioTransport(
+command="python",
+args=["my_server.py"]
+)
+client = Client(transport)
+```
+
+```python
+transport = StdioTransport(
+command="python",
+args=["my_server.py", "--verbose"],
+env={"LOG_LEVEL": "DEBUG"},
+cwd="/path/to/server"
+)
+client = Client(transport)
+```
+
+```python
+from fastmcp import Client
+
+client = Client("my_server.py")  # Limited - no configuration options
+```
+
+---
+TITLE: Creating Remote Server Proxy with FastMCP
+DESCRIPTION: Demonstrates creating a proxy server using `FastMCP.as_proxy` to forward requests to a remote HTTP server for Claude Desktop integration. This allows users to access remote servers, especially useful for Claude Pro, Max, Team, and Enterprise plans, or as an alternative to direct integrations.
+SOURCE: /docs/integrations/claude-desktop.mdx
+
+```python
+from fastmcp import FastMCP
+
+# Create a proxy to a remote server
+proxy = FastMCP.as_proxy(
+"https://example.com/mcp/sse",
+name="Remote Server Proxy"
+)
+
+if __name__ == "__main__":
+proxy.run()  # Runs via STDIO for Claude Desktop
+```
+
+---
+TITLE: Logging Server Banner in fastmcp Utilities CLI
+DESCRIPTION: Logs a formatted server banner with server information and logo using the `log_server_banner` function in the `fastmcp.utilities.cli` module. This function is used to display server details, including transport protocol (`stdio`, `http`, `sse`, `streamable-http`), server name, host, port, and path, providing a clear visual indication of the server's configuration upon startup.
+SOURCE: /docs/python-sdk/fastmcp-utilities-cli.mdx
+
+```python
+log_server_banner(server: FastMCP[Any], transport: Literal['stdio', 'http', 'sse', 'streamable-http']) -> None
+```
+
+---
+TITLE: Getting FastMCP Access Token (Server Dependency)
+DESCRIPTION: Retrieves the FastMCP access token from the current context, returning it if an authenticated user is available, otherwise returning `None`. This function, `get_access_token`, is used to ensure that only authenticated users can access protected resources within the FastMCP server.
+SOURCE: /docs/python-sdk/fastmcp-server-dependencies.mdx
+
+```python
+get_access_token() -> AccessToken | None
+```
+
+---
+TITLE: Implementing Sliding Window Rate Limiting in FastMCP
+DESCRIPTION: Implements a `SlidingWindowRateLimiter` class for rate limiting in FastMCP servers, protecting against abuse. It provides an `is_allowed` method to check if a request should be processed based on the configured rate limits, enhancing server stability and preventing resource exhaustion.
+SOURCE: /docs/python-sdk/fastmcp-server-middleware-rate_limiting.mdx
+
+```python
+is_allowed(self) -> bool
+```
+
+---
+TITLE: Implementing Timing Middleware in FastMCP Server
+DESCRIPTION: Demonstrates the implementation of timing middleware in FastMCP using `fastmcp.server.middleware.timing` to monitor request performance. Includes examples of basic and detailed timing middleware, showcasing how to measure request duration and log operation-specific timings using `TimingMiddleware` and `DetailedTimingMiddleware`.
+SOURCE: /docs/servers/middleware.mdx
+
+```python
+import time
+from fastmcp.server.middleware import Middleware, MiddlewareContext
+
+class SimpleTimingMiddleware(Middleware):
+async def on_request(self, context: MiddlewareContext, call_next):
+start_time = time.perf_counter()
+
+try:
+result = await call_next(context)
+duration_ms = (time.perf_counter() - start_time) * 1000
+print(f"Request {context.method} completed in {duration_ms:.2f}ms")
+return result
+except Exception as e:
+duration_ms = (time.perf_counter() - start_time) * 1000
+print(f"Request {context.method} failed after {duration_ms:.2f}ms: {e}")
+raise
+```
+
+```python
+from fastmcp.server.middleware.timing import (
+TimingMiddleware,
+DetailedTimingMiddleware
+)
+
+# Basic timing for all requests
+mcp.add_middleware(TimingMiddleware())
+
+# Detailed per-operation timing (tools, resources, prompts)
+mcp.add_middleware(DetailedTimingMiddleware())
+```
+
+---
+TITLE: Parsing Functions with `ParsedFunction` in `fastmcp.tools.tool`
+DESCRIPTION: Defines the `ParsedFunction` class within `fastmcp.tools.tool` for parsing function signatures and arguments. It implements the `from_function` method to extract information from a callable, excluding specified arguments and optionally validating the function's output schema, which is useful for automatically generating tool interfaces.
+SOURCE: /docs/python-sdk/fastmcp-tools-tool.mdx
+
+```python
+from_function(cls, fn: Callable[..., Any], exclude_args: list[str] | None = None, validate: bool = True, wrap_non_object_output_schema: bool = True) -> ParsedFunction
+```
+
+---
+TITLE: Handling OAuth Proxy Dynamic Client Registration in FastMCP
+DESCRIPTION: Implements `ProxyDCRClient` for OAuth proxy in FastMCP, enabling dynamic client registration with configurable redirect URI validation against upstream OAuth providers. This allows MCP clients to authenticate with dynamically registered localhost ports while the proxy uses a fixed redirect URI with the upstream provider, preventing 'Redirect URI not registered' errors and enhancing security.
+SOURCE: /docs/python-sdk/fastmcp-server-auth-oauth_proxy.mdx
+
+```python
+validate_redirect_uri(self, redirect_uri: AnyUrl | None) -> AnyUrl
+```
+
+---
+TITLE: Creating Sampling Callbacks in Fastmcp Client
+DESCRIPTION: Defines `create_sampling_callback` function within the `fastmcp.client.sampling` module. This function generates a sampling callback for handling client-side sampling logic using a `ClientSamplingHandler`.
+SOURCE: /docs/python-sdk/fastmcp-client-sampling.mdx
+
+```python
+create_sampling_callback(sampling_handler: ClientSamplingHandler[LifespanContextT]) -> SamplingFnT
+```
+
+---
+TITLE: Managing Request Context with `fastmcp.server.Context`
+DESCRIPTION: Provides the `fastmcp.server.Context` class for accessing MCP capabilities within tool and resource functions, offering methods for logging, reporting progress, reading resources, and managing state across requests. This context object simplifies interaction with MCP's `RequestContext` and enables structured logging compatible with the Python standard library.
+SOURCE: /docs/python-sdk/fastmcp-server-context.mdx
+
+```python
+@server.tool
+def my_tool(x: int, ctx: Context) -> str:
+# Log messages to the client
+ctx.info(f"Processing {x}")
+ctx.debug("Debug info")
+ctx.warning("Warning message")
+ctx.error("Error message")
+
+# Report progress
+ctx.report_progress(50, 100, "Processing")
+
+# Access resources
+data = ctx.read_resource("resource://data")
+
+# Get request info
+request_id = ctx.request_id
+client_id = ctx.client_id
+
+# Manage state across the request
+ctx.set_state("key", "value")
+value = ctx.get_state("key")
+
+return str(x)
+```
+
+```plaintext
+Get the FastMCP instance.  
+#### `request_context` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/context.py#L159" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+request_context(self) -> RequestContext[ServerSession, Any, Request]
+```
+
+```plaintext
+Report progress for the current operation.  
+**Args:**
+- `progress`: Current progress value e.g. 24
+- `total`: Optional total value e.g. 100  
+#### `read_resource` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/context.py#L196" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+read_resource(self, uri: str | AnyUrl) -> list[ReadResourceContents]
+```
+
+---
+TITLE: Handling Execution Operations with Eunomia Authorization Middleware
+DESCRIPTION: Illustrates how the Eunomia middleware intercepts and authorizes execution operations like `tools/call` and `resources/read` in FastMCP. This middleware acts as a firewall, blocking unauthorized operations based on defined policies, enhancing security by ensuring only authorized requests reach the FastMCP server.
+SOURCE: /docs/integrations/eunomia-authorization.mdx
+
+```mermaid
+sequenceDiagram
+participant MCPClient as MCP Client
+participant EunomiaMiddleware as Eunomia Middleware
+participant MCPServer as FastMCP Server
+participant EunomiaServer as Eunomia Server
+
+MCPClient->>EunomiaMiddleware: MCP Execution Request (e.g., tools/call)
+EunomiaMiddleware->>EunomiaServer: Authorization Check
+EunomiaServer->>EunomiaMiddleware: Authorization Decision
+EunomiaMiddleware-->>MCPClient: MCP Unauthorized Error (if denied)
+EunomiaMiddleware->>MCPServer: MCP Execution Request (if allowed)
+MCPServer-->>EunomiaMiddleware: MCP Execution Response (if allowed)
+EunomiaMiddleware-->>MCPClient: MCP Execution Response (if allowed)
+```
+
+---
+TITLE: Handling Exceptions with `get_catch_handlers` in fastmcp
+DESCRIPTION: Defines the `get_catch_handlers` function within the `fastmcp.utilities.exceptions` module, which provides a mapping of exception types to their corresponding handlers for centralized exception management. This function is useful for implementing custom error handling logic and ensuring consistent responses to different types of exceptions within the fastmcp framework.
+SOURCE: /docs/python-sdk/fastmcp-utilities-exceptions.mdx
+
+```python
+get_catch_handlers() -> Mapping[type[BaseException] | Iterable[type[BaseException]], Callable[[BaseExceptionGroup[Any]], Any]]
+```
+
+---
+TITLE: Building MCP Servers and Clients with FastMCP
+DESCRIPTION: Demonstrates building Model Context Protocol (MCP) servers and clients using `FastMCP`, a Pythonic framework for simplifying the creation of tools, resource exposure, prompt definition, and component connection. This enables developers to easily integrate LLMs with context and tools, streamlining the path to production with features beyond the core MCP specification, such as deployment, auth, and server proxying.
+SOURCE: /README.md
+
+```python
+# server.py
+from fastmcp import FastMCP
+
+mcp = FastMCP("Demo 🚀")
+
+@mcp.tool
+def add(a: int, b: int) -> int:
+"""Add two numbers"""
+return a + b
+
+if __name__ == "__main__":
+mcp.run()
+```
+
+```bash
+fastmcp run server.py
+```
+
+---
+TITLE: Running Pre-Commit Checks for FastMCP Pull Requests
+DESCRIPTION: Executes pre-commit checks using `uv run pre-commit run --all-files` to ensure code quality before submitting pull requests. This process utilizes `Ruff` for linting and formatting, `ty` for static type checking, and `Pytest` for core test suite execution, preventing CI failures and maintaining code standards in FastMCP.
+SOURCE: /docs/development/contributing.mdx
+
+```bash
+# Runs automatically on commit, or manually:
+uv run pre-commit run --all-files
+```
+
+---
+TITLE: Verifying Google OAuth Tokens with `GoogleTokenVerifier`
+DESCRIPTION: Implements Google OAuth token verification using the `GoogleTokenVerifier` class, which calls Google's tokeninfo API to validate tokens and retrieve user information. This is necessary because Google OAuth tokens are opaque and not JWTs, ensuring secure authentication within the `fastmcp` server.
+SOURCE: /docs/python-sdk/fastmcp-server-auth-providers-google.mdx
+
+```python
+verify_token(self, token: str) -> AccessToken | None
+```
+
+---
+TITLE: Creating Dynamic Resources with FunctionResourceTemplate in fastmcp
+DESCRIPTION: Defines the `FunctionResourceTemplate` class within `fastmcp.resources.template` for dynamically creating resources from functions. It allows defining resource content via the `read` method and creating templates using the `from_function` method, enabling flexible resource generation based on function logic.
+SOURCE: /docs/python-sdk/fastmcp-resources-template.mdx
+
+```python
+read(self, arguments: dict[str, Any]) -> str | bytes
+```
+
+---
+TITLE: Configuring AuthKit Authentication via Environment Variables
+DESCRIPTION: Configures AuthKit authentication for `FastMCP` using environment variables, providing a secure alternative to hardcoding credentials. It defines the required environment variables such as `FASTMCP_SERVER_AUTH_AUTHKITPROVIDER_AUTHKIT_DOMAIN`, `FASTMCP_SERVER_AUTH_AUTHKITPROVIDER_BASE_URL`, and `FASTMCP_SERVER_AUTH_AUTHKITPROVIDER_REQUIRED_SCOPES` for setting up the AuthKit provider, whether instantiated manually or via `FASTMCP_SERVER_AUTH`.
+SOURCE: /docs/integrations/authkit.mdx
+
+```bash
+# Use the AuthKit provider
+FASTMCP_SERVER_AUTH=fastmcp.server.auth.providers.workos.AuthKitProvider
+
+# AuthKit configuration
+FASTMCP_SERVER_AUTH_AUTHKITPROVIDER_AUTHKIT_DOMAIN=https://your-project-12345.authkit.app
+FASTMCP_SERVER_AUTH_AUTHKITPROVIDER_BASE_URL=https://your-server.com
+FASTMCP_SERVER_AUTH_AUTHKITPROVIDER_REQUIRED_SCOPES=openid,profile,email
+```
+
+```python
+from fastmcp import FastMCP
+
+# Authentication is automatically configured from environment
+mcp = FastMCP(name="AuthKit Secured App")
+```
+
+---
+TITLE: Creating a FastMCP Server for Dice Rolling
+DESCRIPTION: Demonstrates creating a simple dice-rolling server using `FastMCP`. It defines a `roll_dice` tool that simulates rolling dice and integrates it into the `FastMCP` server, showcasing how to define and run tools within the framework.
+SOURCE: /docs/integrations/claude-code.mdx
+
+```python
+import random
+from fastmcp import FastMCP
+
+mcp = FastMCP(name="Dice Roller")
+
+@mcp.tool
+def roll_dice(n_dice: int) -> list[int]:
+"""Roll `n_dice` 6-sided dice and return the results."""
+return [random.randint(1, 6) for _ in range(n_dice)]
+
+if __name__ == "__main__":
+mcp.run()
+```
+
+---
+TITLE: Managing Resources and Templates with ResourceManager
+DESCRIPTION: Implements the `ResourceManager` class for adding and managing `Resource` and `ResourceTemplate` instances. It provides methods like `add_resource_from_fn`, `add_template_from_fn`, `add_resource`, and `add_template` to register resources and templates, either directly or from functions, using URIs, names, descriptions, MIME types, and tags for categorization.
+SOURCE: /docs/python-sdk/fastmcp-resources-resource_manager.mdx
+
+```python
+add_resource_or_template_from_fn(self, fn: Callable[..., Any], uri: str, name: str | None = None, description: str | None = None, mime_type: str | None = None, tags: set[str] | None = None) -> Resource | ResourceTemplate
+```
+
+```plaintext
+Add a resource to the manager from a function.  
+**Args:**
+- `fn`: The function to register as a resource
+- `uri`: The URI for the resource
+- `name`: Optional name for the resource
+- `description`: Optional description of the resource
+- `mime_type`: Optional MIME type for the resource
+- `tags`: Optional set of tags for categorizing the resource  
+**Returns:**
+- The added resource. If a resource with the same URI already exists,
+- returns the existing resource.  
+#### `add_resource` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/resources/resource_manager.py#L280" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+add_resource(self, resource: Resource) -> Resource
+```
+
+```plaintext
+Create a template from a function.  
+#### `add_template` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/resources/resource_manager.py#L329" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+add_template(self, template: ResourceTemplate) -> ResourceTemplate
+```
+
+---
+TITLE: Eliciting Client Input with FastMCP Context
+DESCRIPTION: Demonstrates how to request structured input from clients during tool execution using the `ctx.elicit` method in FastMCP, enabling interactive workflows. This feature, introduced in MCP spec 6/18/2025, allows for progressive disclosure and is further detailed in the [User Elicitation](/servers/elicitation) documentation.
+SOURCE: /docs/servers/context.mdx
+
+```python
+result = await ctx.elicit("Enter your name:", response_type=str)
+if result.action == "accept":
+name = result.data
+```
+
+---
+TITLE: Calling Your Server with FastMCP Client
+DESCRIPTION: Demonstrates how to call a server using the `fastmcp` client. It illustrates connecting to a server via HTTP transport and calling the `greet` tool with a given name using `client.call_tool` within an `asyncio` context.
+SOURCE: /docs/getting-started/quickstart.mdx
+
+```python
+import asyncio
+from fastmcp import Client
+
+client = Client("http://localhost:8000")
+
+async def call_tool(name: str):
+async with client:
+result = await client.call_tool("greet", {"name": name})
+print(result)
+
+asyncio.run(call_tool("Ford"))
+```
+
+---
+TITLE: Implementing Fresh Sessions with FastMCP ProxyClient
+DESCRIPTION: Demonstrates how `FastMCP` proxies provide session isolation using fresh sessions for each request via `ProxyClient`. This ensures safe concurrent operations and prevents context mixing between requests, which is recommended for most use cases.
+SOURCE: /docs/servers/proxy.mdx
+
+```python
+from fastmcp.server.proxy import ProxyClient
+
+# Each request creates a fresh backend session (recommended)
+proxy = FastMCP.as_proxy(ProxyClient("backend_server.py"))
+
+# Multiple clients can use this proxy simultaneously without interference:
+# - Client A calls a tool -> gets isolated backend session
+# - Client B calls a tool -> gets different isolated backend session
+# - No context mixing between requests
+```
+
+---
+TITLE: Handling Duplicate Tool Registration in FastMCP
+DESCRIPTION: Configures how the `FastMCP` server handles duplicate tool registrations using the `on_duplicate_tools` argument, allowing options like `'warn'`, `'error'`, `'replace'`, and `'ignore'` to control behavior when multiple tools share the same name, preventing potential conflicts or unexpected behavior.
+SOURCE: /docs/servers/tools.mdx
+
+```python
+from fastmcp import FastMCP
+
+mcp = FastMCP(
+name="StrictServer",
+# Configure behavior for duplicate tool names
+on_duplicate_tools="error"
+)
+
+@mcp.tool
+def my_tool(): return "Version 1"
+
+# This will now raise a ValueError because 'my_tool' already exists
+# and on_duplicate_tools is set to "error".
+# @mcp.tool
+# def my_tool(): return "Version 2"
+```
+
+---
+TITLE: Configuring GitHub Authentication Environment Variables in FastMCP
+DESCRIPTION: Configures GitHub authentication for FastMCP using environment variables, providing a secure alternative to hardcoding credentials. It defines variables such as `FASTMCP_SERVER_AUTH_GITHUB_CLIENT_ID`, `FASTMCP_SERVER_AUTH_GITHUB_CLIENT_SECRET`, and `FASTMCP_SERVER_AUTH_GITHUB_REQUIRED_SCOPES` to manage OAuth settings and API access, enabling simplified server-side authentication setup.
+SOURCE: /docs/integrations/github.mdx
+
+```bash
+# Use the GitHub provider
+FASTMCP_SERVER_AUTH=fastmcp.server.auth.providers.github.GitHubProvider
+
+# GitHub OAuth credentials
+FASTMCP_SERVER_AUTH_GITHUB_CLIENT_ID=Ov23liAbcDefGhiJkLmN
+FASTMCP_SERVER_AUTH_GITHUB_CLIENT_SECRET=github_pat_...
+FASTMCP_SERVER_AUTH_GITHUB_BASE_URL=https://your-server.com
+FASTMCP_SERVER_AUTH_GITHUB_REQUIRED_SCOPES=user,repo
+```
+
+```python
+from fastmcp import FastMCP
+
+# Authentication is automatically configured from environment
+mcp = FastMCP(name="GitHub Secured App")
+
+@mcp.tool
+async def list_repos() -> list[str]:
+"""List the authenticated user's repositories."""
+# Your tool implementation here
+pass
+```
+
+---
+TITLE: Handling Tool Errors with Manual Result Checking
+DESCRIPTION: Demonstrates how to manually check for errors when calling a tool using `client.call_tool` with `raise_on_error=False`. This allows developers to handle tool failures gracefully by inspecting the `result.is_error` property and accessing error details from `result.content` instead of relying on automatic exception raising.
+SOURCE: /docs/clients/tools.mdx
+
+```python
+async with client:
+result = await client.call_tool(
+"potentially_failing_tool",
+{"param": "value"},
+raise_on_error=False
+)
+
+if result.is_error:
+print(f"Tool failed: {result.content[0].text}")
+else:
+print(f"Tool succeeded: {result.data}")
+```
+
+---
+TITLE: Using STDIO Transport (Default) in FastMCP
+DESCRIPTION: Demonstrates using the STDIO transport protocol in `FastMCP`, the default when calling `run()` without arguments, for command-line tools and desktop applications like Claude Desktop, where the client spawns a new server process for each session, reading MCP messages from `stdin` and writing responses to `stdout`. STDIO is ideal for local development, testing, and single-user applications.
+SOURCE: /docs/deployment/running-server.mdx
+
+```python
+from fastmcp import FastMCP
+
+mcp = FastMCP("MyServer")
+
+@mcp.tool
+def hello(name: str) -> str:
+return f"Hello, {name}!"
+
+if __name__ == "__main__":
+mcp.run()  # Uses STDIO transport by default
+```
+
+---
+TITLE: Configuring FastMCP Dependencies via `fastmcp.json`
+DESCRIPTION: Demonstrates migrating FastMCP server dependencies from the deprecated Python `dependencies` parameter to the `fastmcp.json` configuration file. This approach centralizes dependency management and simplifies server setup, replacing the previous method of specifying dependencies directly in the Python code.
+SOURCE: /examples/fastmcp_config_demo/README.md
+
+```python
+mcp = FastMCP("Demo Server", dependencies=["pyautogui", "Pillow"])
+```
+
+```json
+{
+"environment": {
+"dependencies": ["pyautogui", "Pillow"]
+}
+}
+```
+
+---
+TITLE: Debugging WorkOS OAuth Authentication with Logging
+DESCRIPTION: Demonstrates enabling debug logging for troubleshooting WorkOS OAuth authentication issues. This is useful when encountering errors like `Invalid client`, `Token validation failed`, or `Redirect URI mismatch` to gain more insight into the authentication flow by setting the logging level to `logging.DEBUG`.
+SOURCE: /examples/auth/workos_oauth/README.md
+
+```python
+import logging
+logging.basicConfig(level=logging.DEBUG)
+```
+
+---
+TITLE: Implementing Server Logging with FastMCP Context
+DESCRIPTION: Demonstrates how to implement server-side logging using the FastMCP `context` object to send debug, info, warning, and error messages back to the MCP client. This provides visibility into function execution and aids in debugging and monitoring server behavior.
+SOURCE: /docs/servers/context.mdx
+
+```python
+await ctx.debug("Starting analysis")
+await ctx.info(f"Processing {len(data)} items")
+await ctx.warning("Deprecated parameter used")
+await ctx.error("Processing failed")
+```
+
+---
+TITLE: Installing Claude Code Servers with FastMCP CLI
+DESCRIPTION: Demonstrates installing Claude Code servers using the `fastmcp` CLI, including dependency management with individual packages (`--with`), requirements files (`--with-requirements`), and editable packages (`--with-editable`). It also covers specifying Python versions (`--python`), project directories (`--project`), and environment variables (`--env`, `--env-file`) for server configuration.
+SOURCE: /docs/integrations/claude-code.mdx
+
+```bash
+fastmcp install claude-code server.py --with pandas --with requests
+```
+
+```plaintext
+**Editable packages**: For local packages under development, use `--with-editable` to install them in editable mode:  
+fastmcp install claude-code server.py --with-editable ./my-local-package
+```
+
+```json
+{
+"$schema": "https://gofastmcp.com/public/schemas/fastmcp.json/v1.json",
+"source": {
+"path": "server.py",
+"entrypoint": "mcp"
+},
+"environment": {
+"dependencies": ["pandas", "requests"]
+}
+}
+```
+
+```plaintext
+**Project directory**: Use `--project` to run your server within a specific project context. This tells `uv` to use the project's configuration files and virtual environment:  
+fastmcp install claude-code server.py --project /path/to/my-project
+```
+
+```bash
+fastmcp install claude-code server.py --server-name "Weather Server" \
+--env API_KEY=your-api-key \
+--env DEBUG=true
+```
+
+---
+TITLE: Configuring MCP Servers with `MCPConfig` in FastMCP
+DESCRIPTION: Configures MCP servers using the `MCPConfig` class in the FastMCP library, which extends the canonical MCP configuration format with FastMCP-specific features like tool transformations and tag filtering. This class provides methods for manipulating server configurations, including `wrap_servers_at_root`, `add_server`, `from_dict`, `to_dict`, and `write_to_file`, enabling flexible management of MCP server settings.
+SOURCE: /docs/python-sdk/fastmcp-mcp_config.mdx
+
+```python
+wrap_servers_at_root(cls, values: dict[str, Any]) -> dict[str, Any]
+```
+
+```plaintext
+Add or update a server in the configuration.  
+#### `from_dict` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/mcp_config.py#L275" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+from_dict(cls, config: dict[str, Any]) -> Self
+```
+
+```plaintext
+Convert MCPConfig to dictionary format, preserving all fields.  
+#### `write_to_file` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/mcp_config.py#L283" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+write_to_file(self, file_path: Path) -> None
+```
+
+---
+TITLE: Creating a FastMCP Server with Tools
+DESCRIPTION: Demonstrates creating a `FastMCP` server with a tool using the `@mcp.tool` decorator. This example defines a `roll_dice` tool that can be called remotely, showcasing the basic server setup and tool registration within the `fastmcp` framework.
+SOURCE: /docs/integrations/anthropic.mdx
+
+```python
+import random
+from fastmcp import FastMCP
+
+mcp = FastMCP(name="Dice Roller")
+
+@mcp.tool
+def roll_dice(n_dice: int) -> list[int]:
+"""Roll `n_dice` 6-sided dice and return the results."""
+return [random.randint(1, 6) for _ in range(n_dice)]
+
+if __name__ == "__main__":
+mcp.run(transport="http", port=8000)
+```
+
+---
+TITLE: Handling Resource Notifications in FastMCP
+DESCRIPTION: Illustrates how FastMCP automatically sends `notifications/resources/list_changed` notifications when resources are added, enabled, or disabled, allowing clients to stay updated without manual polling. Clients can use a [message handler](/clients/messages) to handle these notifications and refresh their resource lists.
+SOURCE: /docs/servers/resources.mdx
+
+```python
+@mcp.resource("data://example")
+def example_resource() -> str:
+return "Hello!"
+
+# These operations trigger notifications:
+mcp.add_resource(example_resource)  # Sends resources/list_changed notification
+example_resource.disable()          # Sends resources/list_changed notification
+example_resource.enable()           # Sends resources/list_changed notification
+```
+
+---
+TITLE: Implementing In-Memory OAuth Provider for FastMcp Testing
+DESCRIPTION: Implements an in-memory OAuth 2.1 provider, `InMemoryOAuthProvider`, for simulating authentication flows in FastMcp without external dependencies, useful for testing purposes. It provides methods like `get_client`, `register_client`, `authorize`, `load_authorization_code`, and `exchange_authorization_code` to manage OAuth client registration, authorization code generation, and token exchange.
+SOURCE: /docs/python-sdk/fastmcp-server-auth-providers-in_memory.mdx
+
+```python
+get_client(self, client_id: str) -> OAuthClientInformationFull | None
+```
+
+```plaintext
+#### `authorize` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/auth/providers/in_memory.py#L76" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+authorize(self, client: OAuthClientInformationFull, params: AuthorizationParams) -> str
+```
+
+```plaintext
+#### `exchange_authorization_code` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/auth/providers/in_memory.py#L142" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+exchange_authorization_code(self, client: OAuthClientInformationFull, authorization_code: AuthorizationCode) -> OAuthToken
+```
+
+---
+TITLE: Passing Arguments to FastMCP Servers via CLI
+DESCRIPTION: Demonstrates passing command-line arguments to FastMCP servers using the `--` separator, enabling configuration via options like `--config` or `--database-path`. This is useful for configuring server runtime options such as configuration files, database paths, and API keys.
+SOURCE: /docs/deployment/running-server.mdx
+
+```bash
+fastmcp run config_server.py -- --config config.json
+fastmcp run database_server.py -- --database-path /tmp/db.sqlite --debug
+```
+
+---
+TITLE: Installing FastMCP: Prerequisites for REST API Tutorial
+DESCRIPTION: Ensures `fastmcp` is installed before proceeding with the REST API tutorial. This step is crucial for setting up the environment and allows users to execute the code examples provided in the tutorial, using `pip install fastmcp` if necessary.
+SOURCE: /docs/tutorials/rest-api.mdx
+
+```bash
+pip install fastmcp
+```
+
+---
+TITLE: Configuring MCP JSON Configuration Transport with Client
+DESCRIPTION: Demonstrates configuring the `MCPConfigTransport` to define multiple servers using the MCP JSON configuration standard. This allows defining servers with different transport mechanisms like HTTP and command-line execution, enabling the `Client` to call tools namespaced by server.
+SOURCE: /docs/clients/transports.mdx
+
+```python
+config = {
+"mcpServers": {
+"weather": {
+"url": "https://weather.example.com/mcp",
+"transport": "http"
+},
+"assistant": {
+"command": "python",
+"args": ["./assistant.py"],
+"env": {"LOG_LEVEL": "INFO"}
+}
+}
+}
+
+client = Client(config)
+
+async with client:
+# Tools are namespaced by server
+weather = await client.call_tool("weather_get_forecast", {"city": "NYC"})
+answer = await client.call_tool("assistant_ask", {"question": "What?"})
+```
+
+---
+TITLE: Handling HTTP Server Lifespan with StarletteWithLifespan
+DESCRIPTION: Implements `StarletteWithLifespan` for managing the lifecycle of a streamable HTTP server using ASGI. This class provides a `lifespan` method to handle startup and shutdown events, ensuring proper resource management within the `fastmcp.server.http` module.
+SOURCE: /docs/python-sdk/fastmcp-server-http.mdx
+
+```python
+lifespan(self) -> Lifespan[Starlette]
+```
+
+---
+TITLE: Implementing Structured Logging with `extra` Parameter
+DESCRIPTION: Demonstrates how to implement structured logging using the `extra` parameter in logging methods like `debug`, `info`, and `error`. This allows sending structured data as a dictionary to the client, enabling rich and queryable logs for improved debugging and analysis.
+SOURCE: /docs/servers/logging.mdx
+
+```python
+@mcp.tool
+async def process_transaction(transaction_id: str, amount: float, ctx: Context):
+await ctx.info(
+f"Processing transaction {transaction_id}",
+extra={
+"transaction_id": transaction_id,
+"amount": amount,
+"currency": "USD"
+}
+)
+# ... processing logic ...
+```
+
+---
+TITLE: Running Unit Tests in FastMCP v2
+DESCRIPTION: Demonstrates how to run the unit test suite for `FastMCP v2` using `pytest`. Includes instructions for generating code coverage reports using `uv run pytest --cov=src --cov=examples --cov-report=html` to ensure comprehensive testing of the `src` and `examples` directories.
+SOURCE: /README.md
+
+```bash
+pytest
+```
+
+```bash
+uv run pytest --cov=src --cov=examples --cov-report=html
+```
+
+---
+TITLE: Defining Static Resources with FastMCP Resource Classes
+DESCRIPTION: Demonstrates how to define and register static resources like files, text, and directories using `FileResource`, `TextResource`, and `DirectoryResource` classes in `fastmcp`. This approach is useful when content is pre-defined or sourced directly from files/URLs, bypassing the need for dynamic content generation with `@mcp.resource`, and allows specifying custom storage keys using `mcp.add_resource()`.
+SOURCE: /docs/servers/resources.mdx
+
+```python
+from pathlib import Path
+from fastmcp import FastMCP
+from fastmcp.resources import FileResource, TextResource, DirectoryResource
+
+mcp = FastMCP(name="DataServer")
+
+# 1. Exposing a static file directly
+readme_path = Path("./README.md").resolve()
+if readme_path.exists():
+# Use a file:// URI scheme
+readme_resource = FileResource(
+uri=f"file://{readme_path.as_posix()}",
+path=readme_path, # Path to the actual file
+name="README File",
+description="The project's README.",
+mime_type="text/markdown",
+tags={"documentation"}
+)
+mcp.add_resource(readme_resource)
+
+# 2. Exposing simple, predefined text
+notice_resource = TextResource(
+uri="resource://notice",
+name="Important Notice",
+text="System maintenance scheduled for Sunday.",
+tags={"notification"}
+)
+mcp.add_resource(notice_resource)
+
+# 3. Using a custom key different from the URI
+special_resource = TextResource(
+uri="resource://common-notice",
+name="Special Notice",
+text="This is a special notice with a custom storage key.",
+)
+mcp.add_resource(special_resource, key="resource://custom-key")
+
+# 4. Exposing a directory listing
+data_dir_path = Path("./app_data").resolve()
+if data_dir_path.is_dir():
+data_listing_resource = DirectoryResource(
+uri="resource://data-files",
+path=data_dir_path, # Path to the directory
+name="Data Directory Listing",
+description="Lists files available in the data directory.",
+recursive=False # Set to True to list subdirectories
+)
+mcp.add_resource(data_listing_resource) # Returns JSON list of files
+```
+
+---
+TITLE: Enforcing Development Workflow with FastMCP Pre-Commit Checks
+DESCRIPTION: Establishes a required development workflow for FastMCP using `uv` and `just` commands to ensure code quality. This workflow mandates running linters, type checkers, and tests before committing changes, preventing integration issues and maintaining code consistency within the `FastMCP` framework.
+SOURCE: /AGENTS.md
+
+```bash
+uv sync                              # Install dependencies
+uv run pre-commit run --all-files    # Ruff + Prettier + ty
+uv run pytest                        # Run full test suite
+```
+
+---
+TITLE: Filtering Resources by Tags in FastMCP
+DESCRIPTION: Demonstrates how to filter resources based on tags using the `_meta` field in FastMCP. This allows you to selectively retrieve resources based on metadata, such as configuration tags, enhancing resource management and organization.
+SOURCE: /docs/clients/resources.mdx
+
+```python
+async with client:
+resources = await client.list_resources()
+
+# Filter resources by tag
+config_resources = [
+resource for resource in resources
+if hasattr(resource, '_meta') and resource._meta and
+resource._meta.get('_fastmcp', {}) and
+'config' in resource._meta.get('_fastmcp', {}).get('tags', [])
+]
+
+print(f"Found {len(config_resources)} config resources")
+```
+
+---
+TITLE: Handling OAuth Callbacks with FastMCP: `create_callback_html`
+DESCRIPTION: Implements a reusable OAuth callback server using `fastmcp.client.oauth_callback` for handling authorization code flows. The `create_callback_html` function generates styled HTML responses for OAuth redirects, providing a user-friendly interface after authorization.
+SOURCE: /docs/python-sdk/fastmcp-client-oauth_callback.mdx
+
+```python
+create_callback_html(message: str, is_success: bool = True, title: str = 'FastMCP OAuth', server_url: str | None = None) -> str
+```
+
+---
+TITLE: Formatting FastMCP Server Info as JSON
+DESCRIPTION: Formats server information from a `FastMCP` or `FastMCP1x` instance into a standard MCP protocol JSON byte string using the `format_mcp_info` function. This utility provides a consistent, camelCase JSON representation of server data, including version metadata, for interoperability with MCP clients.
+SOURCE: /docs/python-sdk/fastmcp-utilities-inspect.mdx
+
+```python
+format_mcp_info(mcp: FastMCP[Any] | FastMCP1x) -> bytes
+```
+
+---
+TITLE: Retrieving Context with `get_context` (FastMCP Server)
+DESCRIPTION: Retrieves the `Context` object using the `get_context` function in the `fastmcp.server.dependencies` module. This function is used to access the application's context, providing access to shared resources and configurations within the FastMCP server environment.
+SOURCE: /docs/python-sdk/fastmcp-server-dependencies.mdx
+
+```python
+get_context() -> Context
+```
+
+---
+TITLE: Implementing FastMCP Server with Prompt Registration
+DESCRIPTION: Implements the `FastMCP` class for creating MCP servers, including the `add_prompt` method for adding prompts and the `prompt` decorator for registering prompts with optional context injection. Demonstrates how to define and register prompts using various calling patterns, enabling flexible and customizable server-side logic.
+SOURCE: /docs/python-sdk/fastmcp-server-server.mdx
+
+```plaintext
+#### `add_prompt` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/server.py#L1293" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+```
+
+```plaintext
+Add a prompt to the server.  
+**Args:**
+- `prompt`: A Prompt instance to add  
+**Returns:**
+- The prompt instance that was added to the server.  
+#### `prompt` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/server.py#L1316" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+prompt(self, name_or_fn: AnyFunction) -> FunctionPrompt
+```
+
+```plaintext
+#### `prompt` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/server/server.py#L1341" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+prompt(self, name_or_fn: str | AnyFunction | None = None) -> Callable[[AnyFunction], FunctionPrompt] | FunctionPrompt
+```
+
+```python
+@server.prompt
+def analyze_table(table_name: str) -> list[Message]:
+schema = read_table_schema(table_name)
+return [
+{
+"role": "user",
+"content": f"Analyze this schema:
+{schema}"
+}
+]
+
+@server.prompt()
+def analyze_with_context(table_name: str, ctx: Context) -> list[Message]:
+ctx.info(f"Analyzing table {table_name}")
+schema = read_table_schema(table_name)
+return [
+{
+"role": "user",
+"content": f"Analyze this schema:
+{schema}"
+}
+]
+
+@server.prompt("custom_name")
+def analyze_file(path: str) -> list[Message]:
+content = await read_file(path)
+return [
+{
+"role": "user",
+"content": {
+"type": "resource",
+"resource": {
+"uri": f"file://{path}",
+"text": content
+}
+}
+}
+]
+
+@server.prompt(name="custom_name")
+def another_prompt(data: str) -> list[Message]:
+return [{"role": "user", "content": data}]
+
+# Direct function call
+server.prompt(my_function, name="custom_name")
+```
+
+---
+TITLE: Preparing FastMCP Server Creation: Installation Prerequisite
+DESCRIPTION: Ensures `fastmcp` is installed before creating a server. This step is crucial because the server creation process depends on the `fastmcp` package being available; install it using `pip install fastmcp`.
+SOURCE: /docs/tutorials/create-mcp-server.mdx
+
+```bash
+pip install fastmcp
+```
+
+---
+TITLE: Testing Google OAuth Authentication with FastMcp Client
+DESCRIPTION: Demonstrates testing a Google-protected server using the `fastmcp` `Client` with OAuth authentication. It illustrates how the client automatically handles Google OAuth flow, including browser-based login and token caching for subsequent authenticated requests to tools like `get_user_info`.
+SOURCE: /docs/integrations/google.mdx
+
+```python
+from fastmcp import Client
+import asyncio
+
+async def main():
+# The client will automatically handle Google OAuth
+async with Client("http://localhost:8000/mcp/", auth="oauth") as client:
+# First-time connection will open Google login in your browser
+print("✓ Authenticated with Google!")
+
+# Test the protected tool
+result = await client.call_tool("get_user_info")
+print(f"Google user: {result['email']}")
+print(f"Name: {result['name']}")
+
+if __name__ == "__main__":
+asyncio.run(main())
+```
+
+---
+TITLE: Setting Context for FastMCP Server Operations
+DESCRIPTION: Establishes the `Context` for server-side operations within the `fastmcp` framework using the `set_context` function. This function configures the execution environment, enabling access to shared resources and facilitating dependency injection for streamlined request handling.
+SOURCE: /docs/python-sdk/fastmcp-server-context.mdx
+
+```python
+set_context(context: Context) -> Generator[Context, None, None]
+```
+
+---
+TITLE: Generating Text with Simple Prompts using `ctx.sample`
+DESCRIPTION: Demonstrates generating text using simple string prompts and system prompts with the `ctx.sample` method. This allows for guiding the LLM's behavior, such as generating summaries or code examples, by providing context and instructions through the `messages` and `system_prompt` parameters, enhancing the quality and relevance of the generated content.
+SOURCE: /docs/servers/sampling.mdx
+
+```plaintext
+
+## System Prompt
+
+Use system prompts to guide the LLM's behavior:  
+```
+
+---
+TITLE: Understanding FastMCP Versioning Policy and Production Use
+DESCRIPTION: Explains the FastMCP versioning scheme, including major, minor, and patch releases, and highlights the potential for breaking changes in minor versions to stay current with the MCP Protocol. Recommends pinning to exact versions in production to avoid unexpected breaking changes, using `fastmcp==2.11.0` instead of `fastmcp>=2.11.0`.
+SOURCE: /docs/development/releases.mdx
+
+```plaintext
+fastmcp==2.11.0  # Good
+fastmcp>=2.11.0  # Bad - will install breaking changes
+```
+
+---
+TITLE: Configuring MCP Servers Using JSON Configuration
+DESCRIPTION: Defines the `mcpServers` JSON configuration standard used across the MCP ecosystem for configuring and launching MCP servers. This format provides a consistent way to specify server commands, arguments, and environment variables, enabling standardized server setup.
+SOURCE: /docs/integrations/mcp-json-configuration.mdx
+
+```json
+{
+"mcpServers": {
+"server-name": {
+"command": "executable",
+"args": ["arg1", "arg2"],
+"env": {
+"VAR": "value"
+}
+}
+}
+}
+```
+
+---
+TITLE: Running a Basic MCP-JSON Configuration Server
+DESCRIPTION: Demonstrates running a basic `MCP-JSON` configuration server using `fastmcp install`. This allows for dynamic configuration of applications using a JSON file, enabling centralized management and simplified updates.
+SOURCE: /docs/integrations/mcp-json-configuration.mdx
+
+```bash
+fastmcp install mcp-json dice_server.py
+```
+
+```json
+{
+"Dice Server": {
+"command": "uv",
+"args": [
+"run",
+"--with",
+"fastmcp",
+"fastmcp",
+"run",
+"/home/user/dice_server.py"
+]
+}
+}
+```
+
+---
+TITLE: Controlling Tool Output Schema in LangChain
+DESCRIPTION: Demonstrates how to control the output schema of transformed tools in LangChain using `Tool.from_tool`. It covers inheriting the schema, providing a custom schema, removing the schema, and using a transform function for full control with `ToolResult`.
+SOURCE: /docs/patterns/tool-transformation.mdx
+
+```python
+Tool.from_tool(parent_tool, name="renamed_tool")
+```
+
+```python
+Tool.from_tool(parent_tool, output_schema={
+"type": "object",
+"properties": {"status": {"type": "string"}}
+})
+```
+
+```python
+Tool.from_tool(parent_tool, output_schema=False)
+```
+
+```python
+async def custom_output(**kwargs) -> ToolResult:
+result = await forward(**kwargs)
+return ToolResult(content=[...], structured_content={...})
+
+Tool.from_tool(parent_tool, transform_fn=custom_output)
+```
+
+---
+TITLE: Managing OAuth Tokens with `FileTokenStorage` in Fastmcp
+DESCRIPTION: Implements file-based storage for OAuth tokens and client information using the `FileTokenStorage` class in the `fastmcp.client.auth.oauth` module, adhering to the `TokenStorage` protocol for secure credential management. This approach provides persistent storage of OAuth tokens, enabling applications to maintain authenticated sessions across restarts by loading and saving tokens and client details to the filesystem.
+SOURCE: /docs/python-sdk/fastmcp-client-auth-oauth.mdx
+
+```python
+get_base_url(url: str) -> str
+```
+
+```plaintext
+Generate a safe filesystem key from the server's base URL.  
+#### `get_tokens` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/client/auth/oauth.py#L94" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+get_tokens(self) -> OAuthToken | None
+```
+
+```plaintext
+Save tokens to file storage.  
+#### `get_client_info` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/client/auth/oauth.py#L143" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+get_client_info(self) -> OAuthClientInformationFull | None
+```
+
+---
+TITLE: Inferring Transport Type from URL in Fastmcp
+DESCRIPTION: Infers the transport type (`http` or `sse`) from a given URL using the `infer_transport_type_from_url` function in the `fastmcp` library. This function simplifies configuration by automatically determining the appropriate transport based on the URL scheme, reducing manual setup and potential errors.
+SOURCE: /docs/python-sdk/fastmcp-mcp_config.mdx
+
+```python
+infer_transport_type_from_url(url: str | AnyUrl) -> Literal['http', 'sse']
+```
+
+---
+TITLE: Accessing Access Tokens in FastMCP (Authentication)
+DESCRIPTION: Demonstrates how to access authenticated user's access token information using the `get_access_token()` dependency function in FastMCP. This allows for user identification, permission checks, multi-tenant application support, and audit logging by extracting data like `client_id`, scopes, and custom claims from the token.
+SOURCE: /docs/servers/context.mdx
+
+```plaintext
+This approach works anywhere within a request's execution flow, not just within your MCP function. It's useful when:  
+1. You need access to HTTP information in helper functions
+2. You're calling nested functions that need HTTP request data
+3. You're working with middleware or other request processing code
+
+## Access Tokens
+
+<VersionBadge version="2.11.0" />  
+When using authentication with your FastMCP server, you can access the authenticated user's access token information using the `get_access_token()` dependency function:  
+```
+
+```plaintext
+This is particularly useful when you need to:  
+1. **Access user identification** - Get the `client_id` or subject from token claims
+2. **Check permissions** - Verify scopes or custom claims before performing operations
+3. **Multi-tenant applications** - Extract tenant information from token claims
+4. **Audit logging** - Track which user performed which actions  
+#### Working with Token Claims
+The `claims` field contains all the data from the original token (JWT claims for JWT tokens, or custom data for other token types):  
+```
+
+---
+TITLE: Creating Tool Results with `fastmcp.tools.tool`
+DESCRIPTION: Defines the `ToolResult` class within `fastmcp.tools.tool`, providing a structured way to represent the outcome of a tool execution, and includes the `to_mcp_result` method for converting the result into a list of `ContentBlock` objects suitable for MCP communication. This class facilitates the integration of custom tools within the fastmcp framework by providing a standardized result format.
+SOURCE: /docs/python-sdk/fastmcp-tools-tool.mdx
+
+```python
+to_mcp_result(self) -> list[ContentBlock] | tuple[list[ContentBlock], dict[str, Any]]
+```
+
+---
+TITLE: Parsing OpenAPI Schemas to HTTP Routes in FastMcp
+DESCRIPTION: Parses an OpenAPI schema dictionary into a list of `HTTPRoute` objects using the `openapi-pydantic` library. This function supports both OpenAPI 3.0.x and 3.1.x versions, enabling the conversion of OpenAPI specifications into a structured format for defining HTTP routes within the FastMcp framework.
+SOURCE: /docs/python-sdk/fastmcp-utilities-openapi.mdx
+
+```python
+parse_openapi_to_http_routes(openapi_dict: dict[str, Any]) -> list[HTTPRoute]
+```
+
+---
+TITLE: Documenting Features and SDK for FastMCP
+DESCRIPTION: Explains the documentation requirements for FastMCP features, emphasizing prose explanations, runnable examples, and registration in `docs.json`. It also details how FastMCP's SDK documentation is auto-generated from source code docstrings using the `just api-ref-all` command and updated via GitHub Actions, ensuring up-to-date API references.
+SOURCE: /docs/development/contributing.mdx
+
+```bash
+# Preview documentation locally
+just docs
+```
+
+```bash
+just api-ref-all
+```
+
+---
+TITLE: Setting Static Roots in FastMcp Client
+DESCRIPTION: Demonstrates configuring static roots for the `Client` in `fastmcp`. It illustrates how to set roots either as a static list of paths or dynamically using a callback function that receives a `RequestContext`.
+SOURCE: /docs/clients/roots.mdx
+
+```python
+from fastmcp import Client
+
+client = Client(
+"my_mcp_server.py",
+roots=["/path/to/root1", "/path/to/root2"]
+)
+```
+
+```python
+from fastmcp import Client
+from fastmcp.client.roots import RequestContext
+
+async def roots_callback(context: RequestContext) -> list[str]:
+print(f"Server requested roots (Request ID: {context.request_id})")
+return ["/path/to/root1", "/path/to/root2"]
+
+client = Client(
+"my_mcp_server.py",
+roots=roots_callback
+)
+```
+
+---
+TITLE: Managing OAuth Token Storage with `FileTokenStorage`
+DESCRIPTION: Implements `FileTokenStorage` for managing OAuth client information in file storage, providing methods like `set_client_info` to save client details, `clear` to remove cached data for a specific server, and `clear_all` to clear cached data for all servers; this is beneficial for persistent storage and retrieval of OAuth tokens in `fastmcp.client.auth.oauth`.
+SOURCE: /docs/python-sdk/fastmcp-client-auth-oauth.mdx
+
+```python
+set_client_info(self, client_info: OAuthClientInformationFull) -> None
+```
+
+```plaintext
+Clear all cached data for this server.  
+#### `clear_all` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/client/auth/oauth.py#L186" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+clear_all(cls, cache_dir: Path | None = None) -> None
+```
+
+---
+TITLE: Verifying GitHub OAuth Tokens with `GitHubTokenVerifier`
+DESCRIPTION: Verifies GitHub OAuth tokens using the `GitHubTokenVerifier` class in `fastmcp.server.auth.providers.github`. It implements token verification by calling the GitHub API to validate tokens and retrieve user information, as GitHub OAuth tokens are opaque and not JWTs.
+SOURCE: /docs/python-sdk/fastmcp-server-auth-providers-github.mdx
+
+```python
+verify_token(self, token: str) -> AccessToken | None
+```
+
+---
+TITLE: Managing FastMCP Components with `FastMCPComponent` Base Class
+DESCRIPTION: Defines the `FastMCPComponent` base class for FastMCP tools, prompts, resources, and resource templates, providing methods like `key`, `get_meta`, `model_copy`, `enable`, and `disable` for managing component behavior and metadata, enabling consistent handling and bookkeeping across different server hierarchies.
+SOURCE: /docs/python-sdk/fastmcp-utilities-components.mdx
+
+```python
+key(self) -> str
+```
+
+```plaintext
+Get the meta information about the component.  
+If include_fastmcp_meta is True, a `_fastmcp` key will be added to the
+meta, containing a `tags` field with the tags of the component.  
+#### `model_copy` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/utilities/components.py#L94" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+model_copy(self) -> Self
+```
+
+```plaintext
+Enable the component.  
+#### `disable` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/utilities/components.py#L131" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+disable(self) -> None
+```
+
+---
+TITLE: Handling Per-Call Progress with `progress_handler`
+DESCRIPTION: Demonstrates overriding the default progress handler for specific tool calls using the `progress_handler` argument in `client.call_tool()`. This allows for customized progress reporting for long-running tasks, providing more granular feedback than the global handler.
+SOURCE: /docs/clients/progress.mdx
+
+```python
+async with client:
+# Override with specific progress handler for this call
+result = await client.call_tool(
+"long_running_task",
+{"param": "value"},
+progress_handler=my_progress_handler
+)
+```
+
+---
+TITLE: Managing Client Sessions in fastmcp.client.client
+DESCRIPTION: Manages session-related state for a `Client` instance in `fastmcp.client.client`, enabling separation of configuration and session state. Provides methods like `set_elicitation_callback`, `is_connected`, `new` (for creating fresh sessions), `close`, and `ping` for client management.
+SOURCE: /docs/python-sdk/fastmcp-client-client.mdx
+
+```python
+set_elicitation_callback(self, elicitation_callback: ElicitationHandler) -> None
+```
+
+```plaintext
+Check if the client is currently connected.  
+#### `new` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/client/client.py#L323" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+new(self) -> Client[ClientTransportT]
+```
+
+```plaintext
+#### `ping` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/client/client.py#L496" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+ping(self) -> bool
+```
+
+---
+TITLE: Managing Stateful Proxy Clients in fastmcp Server
+DESCRIPTION: Implements the `StatefulProxyClient` class within `fastmcp.server.proxy` for managing stateful client factories. This class binds a proxy client to the server session, ensuring disconnection upon session exit, which is useful for stateful MCP servers like Playwright MCP server.
+SOURCE: /docs/python-sdk/fastmcp-server-proxy.mdx
+
+```python
+clear(self)
+```
+
+---
+TITLE: Applying Tool Transformations in fastmcp
+DESCRIPTION: Applies transformations defined in `ToolTransformConfig` to `Tool` objects within a dictionary. This function, `apply_transformations_to_tools`, modifies tools based on specified configurations, leaving tools without transformations unchanged, enhancing tool customization within the fastmcp framework.
+SOURCE: /docs/python-sdk/fastmcp-tools-tool_transform.mdx
+
+```python
+apply_transformations_to_tools(tools: dict[str, Tool], transformations: dict[str, ToolTransformConfig]) -> dict[str, Tool]
+```
+
+---
+TITLE: Disabling Prompts in MCP
+DESCRIPTION: Demonstrates how to disable and enable prompts in MCP using the `enabled` parameter in the `@mcp.prompt` decorator or programmatically with the `disable()` and `enable()` methods. Disabling prompts prevents them from appearing in the list of available prompts and raises an error if called.
+SOURCE: /docs/servers/prompts.mdx
+
+```python
+@mcp.prompt(enabled=False)
+def experimental_prompt():
+"""This prompt is not ready for use."""
+return "This is an experimental prompt."
+```
+
+```python
+@mcp.prompt
+def seasonal_prompt(): return "Happy Holidays!"
+
+# Disable and re-enable the prompt
+seasonal_prompt.disable()
+seasonal_prompt.enable()
+```
+
+---
+TITLE: Using In-Memory Transport with FastMCP for Testing
+DESCRIPTION: Demonstrates using the `FastMCPTransport` for in-memory communication, ideal for testing and development by eliminating network overhead and subprocess management. This approach allows direct access to the Python process's environment, simplifying setup and configuration compared to STDIO transports.
+SOURCE: /docs/clients/transports.mdx
+
+```python
+from fastmcp import FastMCP, Client
+import os
+
+mcp = FastMCP("TestServer")
+
+@mcp.tool
+def greet(name: str) -> str:
+prefix = os.environ.get("GREETING_PREFIX", "Hello")
+return f"{prefix}, {name}!"
+
+client = Client(mcp)
+
+async with client:
+result = await client.call_tool("greet", {"name": "World"})
+```
+
+---
+TITLE: Configuring Client Callback Handlers in FastMcp
+DESCRIPTION: Demonstrates configuring a `Client` with custom callback handlers for logging, progress monitoring, and server-side LLM requests using `log_handler`, `progress_handler`, and `sampling_handler`. This allows for advanced server interactions and integration with LLM services, enhancing the functionality of the `fastmcp` client.
+SOURCE: /docs/clients/client.mdx
+
+```python
+from fastmcp import Client
+from fastmcp.client.logging import LogMessage
+
+async def log_handler(message: LogMessage):
+print(f"Server log: {message.data}")
+
+async def progress_handler(progress: float, total: float | None, message: str | None):
+print(f"Progress: {progress}/{total} - {message}")
+
+async def sampling_handler(messages, params, context):
+# Integrate with your LLM service here
+return "Generated response"
+
+client = Client(
+"my_mcp_server.py",
+log_handler=log_handler,
+progress_handler=progress_handler,
+sampling_handler=sampling_handler,
+timeout=30.0
+)
+```
+
+---
+TITLE: Installing FastMCP Server in Claude Code via CLI
+DESCRIPTION: Demonstrates installing a FastMCP server in Claude Code using the `fastmcp install claude-code` command, including dependency management with `--with`, `--with-requirements`, and `--with-editable` flags, or a `fastmcp.json` configuration file. This simplifies server setup and integrates with Claude Code's MCP management system.
+SOURCE: /docs/integrations/claude-code.mdx
+
+```bash
+fastmcp install claude-code server.py
+```
+
+```plaintext
+The command will automatically configure the server with Claude Code's `claude mcp add` command.  
+#### Dependencies
+FastMCP provides flexible dependency management options for your Claude Code servers:  
+**Individual packages**: Use the `--with` flag to specify packages your server needs. You can use this flag multiple times:  
+fastmcp install claude-code server.py --with pandas --with requests
+```
+
+```plaintext
+**Editable packages**: For local packages under development, use `--with-editable` to install them in editable mode:  
+fastmcp install claude-code server.py --with-editable ./my-local-package
+```
+
+```json
+{
+"$schema": "https://gofastmcp.com/public/schemas/fastmcp.json/v1.json",
+"source": {
+"path": "server.py",
+"entrypoint": "mcp"
+},
+"environment": {
+"dependencies": ["pandas", "requests"]
+}
+}
+```
+
+---
+TITLE: Extending Environment Settings with `ExtendedEnvSettingsSource` in Fastmcp
+DESCRIPTION: Extends environment variable settings using `ExtendedEnvSettingsSource` in the `fastmcp` library, allowing multiple environment variable prefixes. This class raises a deprecation warning if the old `FASTMCP_SERVER_` prefix is used, ensuring a smooth transition to new configurations.
+SOURCE: /docs/python-sdk/fastmcp-settings.mdx
+
+```python
+get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]
+```
+
+---
+TITLE: Modifying `sys.argv` with `with_argv` in FastMCP CLI
+DESCRIPTION: Temporarily replaces `sys.argv` using the `with_argv` context manager in the FastMCP CLI. This function is used to inject server arguments without directly mutating `sys.argv`, preserving the script name and replacing the remaining arguments. It is beneficial for testing and CLI argument manipulation.
+SOURCE: /docs/python-sdk/fastmcp-cli-cli.mdx
+
+```python
+with_argv(args: list[str] | None)
+```
+
+---
+TITLE: Handling Elicitation Actions and Results in FastMCP
+DESCRIPTION: Demonstrates how to handle elicitation actions (`accept`, `decline`, `cancel`) and access the corresponding data in FastMCP using the `action` field of the elicitation result. It also illustrates how to use typed result classes (`AcceptedElicitation`, `DeclinedElicitation`, `CancelledElicitation`) for pattern matching on the `action` field, providing a more structured and type-safe approach.
+SOURCE: /docs/servers/elicitation.mdx
+
+```plaintext
+FastMCP also provides typed result classes for pattern matching on the `action` field:  
+```
+
+---
+TITLE: Understanding Direct vs Proxy Mounting in FastMCP
+DESCRIPTION: Explains the difference between direct and proxy mounting in FastMCP, detailing how `main_mcp.mount()` behaves with and without the `as_proxy` parameter. It illustrates when to use each mounting mode, highlighting that proxy mounting preserves full client lifecycle events and is automatically used when the mounted server has a custom lifespan.
+SOURCE: /docs/servers/composition.mdx
+
+```python
+# Direct mounting (default when no custom lifespan)
+main_mcp.mount(api_server, prefix="api")
+
+# Proxy mounting (preserves full client lifecycle)
+main_mcp.mount(api_server, prefix="api", as_proxy=True)
+
+# Mounting without a prefix (components accessible without prefixing)
+main_mcp.mount(api_server)
+```
+
+---
+TITLE: Composing FastMCP Servers Using `import_server` and `mount`
+DESCRIPTION: Demonstrates composing multiple FastMCP servers using `import_server` for static copies and `mount` for live links, enabling modular application design and server reuse. This approach allows organizing large applications into manageable components and leveraging existing server functionalities.
+SOURCE: /docs/servers/server.mdx
+
+```python
+# Example: Importing a subserver
+from fastmcp import FastMCP
+import asyncio
+
+main = FastMCP(name="Main")
+sub = FastMCP(name="Sub")
+
+@sub.tool
+def hello():
+return "hi"
+
+# Mount directly
+main.mount(sub, prefix="sub")
+```
+
+---
+TITLE: Running FastMCP V1 Server via CLI
+DESCRIPTION: Launches a FastMCP version 1 server using the `run_v1_server` function from the `fastmcp.cli.run` module. This function configures and starts the server, allowing specification of host, port, and transport type for network communication.
+SOURCE: /docs/python-sdk/fastmcp-cli-run.mdx
+
+```python
+run_v1_server(server: FastMCP1x, host: str | None = None, port: int | None = None, transport: TransportType | None = None) -> None
+```
+
+---
+TITLE: Timing Request Performance Using DetailedTimingMiddleware in fastmcp
+DESCRIPTION: Implements timing middleware using `DetailedTimingMiddleware` to measure and log request performance in fastmcp. This middleware provides methods like `on_list_resource_templates` and `on_list_prompts` for timing resource template and prompt listing operations, aiding in performance monitoring and optimization.
+SOURCE: /docs/python-sdk/fastmcp-server-middleware-timing.mdx
+
+```python
+on_list_resource_templates(self, context: MiddlewareContext, call_next: CallNext) -> Any
+```
+
+---
+TITLE: Creating Components at Class Initialization in FastMCP
+DESCRIPTION: Demonstrates how to automatically register instance methods of a class with a `FastMCP` instance during class initialization using the `tool` and `resource` methods. This pattern encapsulates registration logic, ensures proper method binding, and is useful when registering multiple related components together.
+SOURCE: /docs/patterns/decorating-methods.mdx
+
+```python
+from fastmcp import FastMCP
+
+mcp = FastMCP()
+
+class ComponentProvider:
+def __init__(self, mcp_instance):
+# Register methods
+mcp_instance.tool(self.tool_method)
+mcp_instance.resource("resource://data")(self.resource_method)
+
+def tool_method(self, x):
+return x * 2
+
+def resource_method(self):
+return "Resource data"
+
+# The methods are automatically registered when creating the instance
+provider = ComponentProvider(mcp)
+```
+
+---
+TITLE: Creating Prompt Messages with `fastmcp.prompts.prompt.Message`
+DESCRIPTION: Facilitates the creation of `PromptMessage` objects using the `fastmcp.prompts.prompt.Message` function. This function provides a user-friendly constructor, simplifying the process of defining messages within FastMCP prompts by accepting content and role parameters.
+SOURCE: /docs/python-sdk/fastmcp-prompts-prompt.mdx
+
+```python
+Message(content: str | ContentBlock, role: Role | None = None, **kwargs: Any) -> PromptMessage
+```
+
+---
+TITLE: Connecting to MCP Servers Using `MCPConfigTransport`
+DESCRIPTION: Implements the `MCPConfigTransport` class for connecting to multiple MCP servers defined in an `MCPConfig` object, providing a unified interface by creating a composite client with server names as prefixes for tools and resources, simplifying interactions with specialized MCP servers.
+SOURCE: /docs/python-sdk/fastmcp-client-transports.mdx
+
+```python
+from fastmcp import Client
+from fastmcp.utilities.mcp_config import MCPConfig
+
+# Create a config with multiple servers
+config = {
+"mcpServers": {
+"weather": {
+"url": "https://weather-api.example.com/mcp",
+"transport": "http"
+},
+"calendar": {
+"url": "https://calendar-api.example.com/mcp",
+"transport": "http"
+}
+}
+}
+
+# Create a client with the config
+client = Client(config)
+
+async with client:
+# Access tools with prefixes
+weather = await client.call_tool("weather_get_forecast", {"city": "London"})
+events = await client.call_tool("calendar_list_events", {"date": "2023-06-01"})
+
+# Access resources with prefixed URIs
+icons = await client.read_resource("weather://weather/icons/sunny")
+```
+
+```plaintext
+#### `close` <sup><a href="https://github.com/jlowin/fastmcp/blob/main/src/fastmcp/client/transports.py#L925" target="_blank"><Icon icon="github" style="width: 14px; height: 14px;" /></a></sup>
+close(self)
+```
+
+---
+TITLE: Formatting FastMCPInfo as FastMCP-Specific JSON
+DESCRIPTION: Formats `FastMCPInfo` into a FastMCP-specific JSON byte string. This function includes FastMCP-specific fields such as `tags`, `enabled`, and `annotations`, making it useful for inspecting and serializing FastMCP instances.
+SOURCE: /docs/python-sdk/fastmcp-utilities-inspect.mdx
+
+```python
+format_fastmcp_info(info: FastMCPInfo) -> bytes
+```
+
+---
+TITLE: Defining Resource Templates in FastMCP Servers
+DESCRIPTION: Defines resource templates in FastMCP servers using the `@mcp.resource` decorator to create parameterized resources. This allows clients to request specific data by providing parameters like `user_id`, enabling dynamic data retrieval and customized responses.
+SOURCE: /docs/servers/server.mdx
+
+```python
+@mcp.resource("users://{user_id}/profile")
+def get_user_profile(user_id: int) -> dict:
+"""Retrieves a user's profile by ID."""
+# The {user_id} in the URI is extracted and passed to this function
+return {"id": user_id, "name": f"User {user_id}", "status": "active"}
+```
+
+---
+TITLE: Inferring Transports for FastMCP Client Connections
+DESCRIPTION: Demonstrates how the `Client` automatically infers the appropriate `Transport` (in-memory, Stdio, HTTP) based on the input provided, such as a `FastMCP` instance, file path, or URL, simplifying connection setup. This transport inference feature streamlines development and testing by selecting the optimal connection method based on the provided configuration.
+SOURCE: /docs/clients/client.mdx
+
+```python
+from fastmcp import Client, FastMCP
+
+# Examples of transport inference
+client_memory = Client(FastMCP("TestServer"))
+client_script = Client("./server.py")
+client_http = Client("https://api.example.com/mcp")
+```
+
+---
+TITLE: Accessing Resources Using `ctx.read_resource` in FastMCP
+DESCRIPTION: Demonstrates how to read data from registered resources within a FastMCP server using the `ctx.read_resource` method, which returns a list of `ReadResourceContents`. This allows access to files, configuration, or dynamic content, enabling flexible data retrieval within FastMCP applications.
+SOURCE: /docs/servers/context.mdx
+
+```python
+content_list = await ctx.read_resource("resource://config")
+content = content_list[0].content
+```
+
+---
+TITLE: Handling OpenAPI Query Parameters in FastMCP
+DESCRIPTION: Demonstrates how FastMCP automatically filters out query parameters with `None` values or empty strings in OpenAPI requests. This behavior ensures that only relevant parameters are included in the HTTP request, simplifying API calls and improving efficiency.
+SOURCE: /docs/integrations/openapi.mdx
+
+```python
+# When calling this tool...
+await client.call_tool("search_products", {
+"category": "electronics",  # ✅ Included
+"min_price": 100,           # ✅ Included
+"max_price": None,          # ❌ Excluded
+"brand": "",                # ❌ Excluded
+})
+
+# The HTTP request will be: GET /products?category=electronics&min_price=100
+```
+
+---
+TITLE: Getting Claude Desktop Config Path for FastMCP Install
+DESCRIPTION: Retrieves the Claude Desktop configuration directory path based on the operating system platform, enabling integration with `fastmcp.cli.install.claude_desktop`. This function is used during FastMCP installation to locate the necessary configuration files for Claude Desktop.
+SOURCE: /docs/python-sdk/fastmcp-cli-install-claude_desktop.mdx
+
+```python
+get_claude_config_path() -> Path | None
+```
+
+---
+TITLE: Integrating FastMCP with ASGI Applications
+DESCRIPTION: Demonstrates how to integrate a `FastMCP` server into an ASGI application using the `http_app()` method to obtain a Starlette application instance for Streamable HTTP transport, or the `http_app(transport="sse")` method for legacy SSE transport; the MCP server's endpoint is mounted at `/mcp/` or `/sse/` respectively, allowing integration with other ASGI-compatible web frameworks.
+SOURCE: /docs/integrations/asgi.mdx
+
+```python
+from fastmcp import FastMCP
+
+mcp = FastMCP("MyServer")
+
+@mcp.tool
+def hello(name: str) -> str:
+return f"Hello, {name}!"
+
+# Get a Starlette app instance for Streamable HTTP transport (recommended)
+http_app = mcp.http_app()
+
+# For legacy SSE transport (deprecated)
+sse_app = mcp.http_app(transport="sse")
+```
+
+---
+TITLE: Configuring Server Deployment with Environment Variables
+DESCRIPTION: Configures server runtime behavior using the `deployment` field, including network settings, logging levels, and environment variables. It demonstrates how to use environment variable interpolation with `${VAR_NAME}` syntax for dynamic configuration across different deployment environments, such as development, staging, and production.
+SOURCE: /docs/deployment/server-configuration.mdx
+
+```json
+"env": {
+"API_KEY": "secret-key",
+"DATABASE_URL": "postgres://${DB_USER}@${DB_HOST}/mydb"
+}
+```
+
+```plaintext
+</ParamField>
+</Expandable>
+</ParamField>
+</Card>  
+#### Environment Variable Interpolation
+The `env` field in deployment configuration supports runtime interpolation of environment variables using `${VAR_NAME}` syntax. This enables dynamic configuration based on your deployment environment:  
+{
+"deployment": {
+"env": {
+"API_URL": "https://api.${ENVIRONMENT}.example.com",
+"DATABASE_URL": "postgres://${DB_USER}:${DB_PASS}@${DB_HOST}/myapp",
+"CACHE_KEY": "myapp_${ENVIRONMENT}_${VERSION}"
+}
+}
+}
+```
+
+---
+TITLE: Handling Union and Optional Parameter Types in FastMCP
+DESCRIPTION: Demonstrates how to define flexible tool parameters in FastMCP using union types (e.g., `str | int`) and optional types (e.g., `str | None`) for increased flexibility. This allows tools to accept multiple data types or handle omitted parameters, leveraging Pydantic's validation and type coercion capabilities for robust input handling.
+SOURCE: /docs/servers/tools.mdx
+
+```python
+@mcp.tool
+def flexible_search(
+query: str | int,              # Can be either string or integer
+filters: dict[str, str] | None = None,  # Optional dictionary
+sort_field: str | None = None  # Optional string
+):
+"""Search with flexible parameter types."""
+# Implementation...
+```
+
+---
+TITLE: Configuring Gemini MCP Server Manual Configuration
+DESCRIPTION: Demonstrates manual configuration of Gemini MCP servers using the Gemini CLI. This allows direct control over server launch, including specifying Python versions, project directories, environment variables, and server scope using commands like `gemini mcp add`.
+SOURCE: /docs/integrations/gemini-cli.mdx
+
+```bash
+# Add a server with custom configuration
+gemini mcp add dice-roller uv -- run --with fastmcp fastmcp run server.py
+
+# Add with environment variables
+gemini mcp add weather-server -e API_KEY=secret -e DEBUG=true uv -- run --with fastmcp fastmcp run server.py
+
+# Add with specific scope (user, or project)
+gemini mcp add my-server --scope user uv -- run --with fastmcp fastmcp run server.py
+```
+
+```bash
+# With specific Python version
+gemini mcp add ml-server uv -- run --python 3.11 --with fastmcp fastmcp run server.py
+
+# Within a project directory
+gemini mcp add project-server uv -- run --project /path/to/project --with fastmcp fastmcp run server.py
+```
+
+---
+TITLE: Handling Logs with `log_handler` in FastMcp
+DESCRIPTION: Implements a `log_handler` function to integrate `fastmcp` client logs with Python's standard `logging` module, enabling robust logging by converting MCP log levels to Python log levels and forwarding messages to the logging system. This allows developers to leverage familiar logging configurations and tools for monitoring `fastmcp` client behavior.
+SOURCE: /docs/clients/logging.mdx
+
+```python
+import logging
+from fastmcp import Client
+from fastmcp.client.logging import LogMessage
+
+# In a real app, you might configure this in your main entry point
+logging.basicConfig(
+level=logging.INFO,
+format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+# Get a logger for the module where the client is used
+logger = logging.getLogger(__name__)
+
+# This mapping is useful for converting MCP level strings to Python's levels
+LOGGING_LEVEL_MAP = logging.getLevelNamesMapping()
+
+async def log_handler(message: LogMessage):
+"""
+Handles incoming logs from the MCP server and forwards them
+to the standard Python logging system.
+"""
+msg = message.data.get('msg')
+extra = message.data.get('extra')
+
+# Convert the MCP log level to a Python log level
+level = LOGGING_LEVEL_MAP.get(message.level.upper(), logging.INFO)
+
+# Log the message using the standard logging library
+logger.log(level, msg, extra=extra)
+
+client = Client(
+"my_mcp_server.py",
+log_handler=log_handler,
+)
+```
+
+---
+TITLE: Creating FastMCP Servers with the `FastMCP` Class
+DESCRIPTION: Demonstrates how to create a `FastMCP` server instance using the `FastMCP` class. This object manages tools, resources, prompts, and connections, and can be configured with settings like authentication, providing a central point for building MCP applications.
+SOURCE: /README.md
+
+```python
+from fastmcp import FastMCP
+
+# Create a server instance
+mcp = FastMCP(name="MyAssistantServer")
+```
+
+---
+TITLE: Installing FastMCP Server in Claude Code
+DESCRIPTION: Installs an MCP server within a Claude Code environment using the `claude_code_command` function. This command facilitates the deployment of FastMCP by specifying a Python file, optionally with an object suffix, enabling seamless integration and execution within the Claude Code platform.
+SOURCE: /docs/python-sdk/fastmcp-cli-install-claude_code.mdx
+
+```python
+claude_code_command(server_spec: str) -> None
+```
+
+---
+TITLE: Creating an OpenAI Responses API Server
+DESCRIPTION: Demonstrates creating a FastMCP server to expose tools to the OpenAI Responses API. This allows extending AI capabilities with custom functions, specifically by defining a `roll_dice` tool and running the server on port 8000, enabling the Responses API to access and utilize this tool.
+SOURCE: /docs/integrations/openai.mdx
+
+```python
+import random
+from fastmcp import FastMCP
+
+mcp = FastMCP(name="Dice Roller")
+
+@mcp.tool
+def roll_dice(n_dice: int) -> list[int]:
+"""Roll `n_dice` 6-sided dice and return the results."""
+return [random.randint(1, 6) for _ in range(n_dice)]
+
+if __name__ == "__main__":
+mcp.run(transport="http", port=8000)
+```
+
+---
+TITLE: Temporarily Overriding FastMCP Settings for Testing
+DESCRIPTION: Temporarily overrides FastMCP setting values using the `temporary_settings` function, allowing for isolated testing of different configurations. This is useful for testing various scenarios and ensuring that the application behaves as expected under different setting conditions.
+SOURCE: /docs/python-sdk/fastmcp-utilities-tests.mdx
+
+```python
+temporary_settings(**kwargs: Any)
+```
+
+---
+TITLE: Handling Log Messages with `default_log_handler` in fastmcp
+DESCRIPTION: Implements a default log handler, `default_log_handler`, within the `fastmcp.client.logging` module to route server log messages to appropriate log levels. This function ensures proper handling and categorization of log messages for effective debugging and monitoring of fastmcp client applications.
+SOURCE: /docs/python-sdk/fastmcp-client-logging.mdx
+
+```python
+default_log_handler(message: LogMessage) -> None
+```
+
+---
+TITLE: Configuring FastMCP with WorkOS Authentication Provider
+DESCRIPTION: Configures the `FastMCP` server to use the `WorkOSProvider` for authentication. This setup requires a WorkOS account and provides a secure way to protect FastMCP tools, ensuring only authenticated users can access them.
+SOURCE: /docs/integrations/workos.mdx
+
+```python
+from fastmcp import FastMCP
+from fastmcp.server.auth.providers.workos import WorkOSProvider
+
+# Configure WorkOS OAuth
+auth = WorkOSProvider(
+client_id="client_YOUR_CLIENT_ID",
+client_secret="YOUR_CLIENT_SECRET",
+authkit_domain="https://your-app.authkit.app",
+base_url="http://localhost:8000",
+required_scopes=["openid", "profile", "email"]
+)
+
+mcp = FastMCP("WorkOS Protected Server", auth=auth)
+
+@mcp.tool
+def protected_tool(message: str) -> str:
+"""This tool requires authentication."""
+return f"Authenticated user says: {message}"
+
+if __name__ == "__main__":
+mcp.run(transport="http", port=8000)
+```

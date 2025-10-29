@@ -1,0 +1,63 @@
+"""Baseline quickstart workflow executed after rendering the template."""
+
+from __future__ import annotations
+
+import subprocess
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Sequence
+
+COMMANDS: list[list[str]] = [
+    ["uv", "sync"],
+    ["uv", "run", "pytest"],
+    ["uv", "run", "ruff", "check"],
+    ["uv", "run", "mypy"],
+    ["uv", "run", "pylint", "{{ project_slug }}"],
+    ["uv", "run", "python", "-m", "nbclient", "--version"],
+]
+
+
+@dataclass
+class QuickstartResult:
+    status: str
+    commands: Sequence[Sequence[str]]
+    executed: int
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "status": self.status,
+            "commands": [list(cmd) for cmd in self.commands],
+            "executed": self.executed,
+        }
+
+
+def _run_commands(commands: Sequence[Sequence[str]]) -> int:
+    executed = 0
+    for cmd in commands:
+        subprocess.run(cmd, check=True)
+        executed += 1
+    return executed
+
+
+def run_quickstart(*, dry_run: bool = False) -> dict[str, object]:
+    """Execute (or simulate) the baseline quickstart sequence."""
+    executed = 0
+    if not dry_run:
+        executed = _run_commands(COMMANDS)
+    result = QuickstartResult(
+        status="ok",
+        commands=COMMANDS,
+        executed=executed,
+    )
+    return result.as_dict()
+
+
+def write_evidence(destination: Path, payload: dict[str, object]) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(str(payload), encoding="utf-8")
+
+
+if __name__ == "__main__":
+    data = run_quickstart(dry_run=False)
+    evidence_file = Path("samples") / "default" / "quickstart.log"
+    write_evidence(evidence_file, data)

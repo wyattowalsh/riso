@@ -1,0 +1,88 @@
+_min_copier_version: "9.1.0"
+_template: "."
+_faq: true
+_answers_file: ".copier-answers.yml"
+
+metadata:
+  name: "riso-template"
+  version: "0.1.0"
+  description: >
+    Riso is a modular Copier template that defaults to a lightweight Python 3.11
+    stack (uv, pytest, jupyter, ruff, mypy, pylint) and offers opt-in Typer CLI,
+    FastAPI/Fastify services, fastmcp integrations, shared logic, and documentation
+    variants powered by Shibuya/Sphinx and Fumadocs.
+  maintainers:
+    - "Riso Template Working Group"
+  tags:
+    - python
+    - typer
+    - fastapi
+    - fastify
+    - uv
+    - pnpm
+    - fumadocs
+    - sphinx
+
+defaults:
+  project_name: "riso-example"
+  project_slug: "{{ project_name | replace(' ', '-') | lower }}"
+  package_name: "{{ project_slug | replace('-', '_') }}"
+  project_layout: "single-package"
+  cli_module: "disabled"
+  api_tracks: "none"
+  mcp_module: "disabled"
+  docs_site: "starter-guide"
+  shared_logic: "disabled"
+
+prompts:
+  project_name:
+    type: str
+    help: "Human friendly project name"
+  project_layout:
+    type: str
+    help: "Choose the repository layout"
+    choices:
+      - single-package
+      - monorepo
+  cli_module:
+    type: str
+    help: "Enable the Typer CLI scaffolding?"
+    choices:
+      - disabled
+      - enabled
+  api_tracks:
+    type: str
+    help: "Select API tracks to scaffold"
+    choices:
+      - none
+      - python
+      - node
+      - python+node
+  mcp_module:
+    type: str
+    help: "Enable fastmcp tooling module?"
+    choices:
+      - disabled
+      - enabled
+  docs_site:
+    type: str
+    help: "Pick documentation variant"
+    choices:
+      - starter-guide
+      - fumadocs
+  shared_logic:
+    type: str
+    help: "Generate shared logic package?"
+    choices:
+      - disabled
+      - enabled
+
+exclude:
+  - ".git"
+  - "README.md"
+  - "specs/"
+  - "config/"
+
+tasks:
+  post_init:
+    - "scripts/hooks/post-init.sh {{ _copier_conf.answers_file }}"

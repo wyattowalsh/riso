@@ -1,0 +1,1512 @@
+---
+LIBRARY: copier-org/copier
+SOURCE_ROOT: https://github.com/copier-org/copier/blob/master
+UPDATED_AT: September 6, 2025 at 10:30 AM UTC
+---
+
+================================
+CODE SNIPPETS
+================================
+
+TITLE: Aborting a Copier Project Update with Git
+DESCRIPTION: Illustrates how to abort a `copier update` operation using Git commands to revert changes and resolve merge conflicts. Provides a sequence of commands (`git reset`, `git checkout .`, `git clean -d -i`) to discard changes and restore the project to its previous state, useful when an update introduces unwanted conflicts.
+SOURCE: /docs/updating.md
+
+```shell
+git reset           # throw away merge conflict information
+git checkout .      # restore modified files
+git clean -d -i     # remove untracked files and folders
+```
+
+---
+TITLE: Configuring Templates and Patterns Syntax in Copier
+DESCRIPTION: Explains how Copier configures templates using settings and answers, prioritizing command-line arguments, `copier.yml`, and user input. Demonstrates the use of gitignore-style patterns for `exclude` and `skip` options, allowing flexible file filtering during template rendering.
+SOURCE: /docs/configuring.md
+
+```yaml
+_exclude:
+# match all text files...
+- "*.txt"
+# .. but not this one:
+- "!a.txt"
+```
+
+---
+TITLE: Configuring Answers with `.copier-answers.yml` in Copier
+DESCRIPTION: Configures the `.copier-answers.yml` file to store user answers for template updates in Copier. This file, named exactly `{{ _copier_conf.answers_file }}.jinja`, allows Copier to remember previous answers, streamlining future updates and customizations based on the `copier.yml` file.
+SOURCE: /docs/configuring.md
+
+```yaml+jinja
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+{{ _copier_answers|to_nice_yaml -}}
+```
+
+---
+TITLE: Creating Copier Templates: A Minimal Example
+DESCRIPTION: Demonstrates creating a minimal `copier` template, including a `copier.yml` configuration file and templated files using Jinja2. This example illustrates how `copier` copies template files and renders `.jinja` files based on user-provided answers, generating a project with customized content.
+SOURCE: /docs/creating.md
+
+```tree
+my_copier_template                            # your template project
+copier.yml                                # your template configuration
+.git/                                     # your template is a Git repository
+{{project_name}}                          # a folder with a templated name
+{{module_name}}.py.jinja              # a file with a templated name
+{{_copier_conf.answers_file}}.jinja       # answers are recorded here
+```
+
+```yaml
+# questions
+project_name:
+type: str
+help: What is your project name?
+
+module_name:
+type: str
+help: What is your Python module name?
+```
+
+```plaintext
+```yaml+jinja title="{{_copier_conf.answers_file}}.jinja"
+# Changes here will be overwritten by Copier
+{{ _copier_answers|to_nice_yaml -}}
+```
+
+```tree
+generated_project
+super_project
+world.py
+.copier-answers.yml
+```
+
+```python
+print("Hello from world!")
+```
+
+---
+TITLE: Generating Projects with Copier Templates
+DESCRIPTION: Demonstrates how to generate a project from a template using the `copier` command-line tool or the `copier.run_copy()` function, supporting local paths, URLs (GitHub, GitLab), and Git repositories, and allows passing extra context using the `--data` argument or the `data` parameter.
+SOURCE: /docs/generating.md
+
+```shell
+copier copy path/to/project/template path/to/destination
+```
+
+```python
+copier.run_copy("path/to/project/template", "path/to/destination")
+```
+
+---
+TITLE: Handling Git Credentials with Copier Templates
+DESCRIPTION: Addresses how to securely pass credentials to Git when using `copier` templates, preventing storage in the `answers` file. Suggests using SSH with cryptographic key authentication and provides links to resources for managing HTTPS credentials with Git, including `gitcredentials` and credential caching strategies.
+SOURCE: /docs/faq.md
+
+```shell
+copier copy https://myuser:example.com/repo.git .
+```
+
+---
+TITLE: Configuring Template Questions in `copier.yml`
+DESCRIPTION: Configures template questions within the `copier.yml` file for the Copier templating tool. Demonstrates how to define question types, default values, validators, and conditional logic using Jinja templating to customize user prompts and template generation based on user input, including `default`, `secret`, `placeholder`, `multiline`, `validator`, and `when` attributes.
+SOURCE: /docs/configuring.md
+
+```diff
+brackets:
+type: str
+choices:
+- "["
+- "]"
+multiselect: true
+-    default: '[[, ]]'     # ❌ WRONG
++    default: '["[", "]"]' # ✔️ RIGHT
+```
+
+```yaml
+project_creator:
+type: str
+
+project_license:
+type: str
+choices:
+- GPLv3
+- Public domain
+
+copyright_holder:
+type: str
+default: |-
+{% if project_license == 'Public domain' -%}
+{#- Nobody owns public projects -#}
+nobody
+{%- else -%}
+{#- By default, project creator is the owner -#}
+{{ project_creator }}
+{%- endif %}
+# Only ask for copyright if project is not in the public domain
+when: "{{ project_license != 'Public domain' }}"
+```
+
+```yaml
+love_copier:
+type: bool # This makes Copier ask for y/n
+help: Do you love Copier?
+default: yes # Without a default, you force the user to answer
+
+project_name:
+type: str # Any value will be treated raw as a string
+help: An awesome project needs an awesome name. Tell me yours.
+default: paradox-specifier
+validator: >-
+{% if not (project_name | regex_search('^[a-z][a-z0-9\-]+$')) %}
+project_name must start with a letter, followed one or more letters, digits or dashes all lowercase.
+{% endif %}
+
+rocket_launch_password:
+type: str
+secret: true # This value will not be logged into .copier-answers.yml
+placeholder: my top secret password
+
+# I'll avoid default and help here, but you can use them too
+age:
+type: int
+validator: "{% if age <= 0 %}Must be positive{% endif %}"
+
+height:
+type: float
+
+any_json:
+help: Tell me anything, but format it as a one-line JSON string
+type: json
+multiline: true
+
+any_yaml:
+help: Tell me anything, but format it as a one-line YAML string
+type: yaml # This is the default type, also for short syntax questions
+multiline: true
+
+your_favorite_book:
+# User will choose one of these and your template will get the value
+choices:
+- The Bible
+- The Hitchhiker's Guide to the Galaxy
+
+project_license:
+# User will see only the dict key and choose one, but you will
+# get the dict value in your template
+choices:
+MIT: &mit_text |
+Here I can write the full text of the MIT license.
+This will be a long text, shortened here for example purposes.
+Apache2: |
+Full text of Apache2 license.
+# When using choices, the default value is the value, **not** the key;
+# that's why I'm using the YAML anchor declared above to avoid retyping the
+# whole license
+default: *mit_text
+# You can still define the type, to make sure answers that come from --data
+# CLI argument match the type that your template expects
+type: str
+
+close_to_work:
+help: Do you live close to your work?
+# This format works just like the dict one
+choices:
+- [at home, I work at home]
+- [less than 10km, quite close]
+- [more than 10km, not so close]
+- [more than 100km, quite far away]
+```
+
+```yaml
+# default
+username:
+type: str
+
+organization:
+type: str
+
+email:
+type: str
+# Notice that both `username` and `organization` have been already asked
+default: "{{ username }}@{{ organization }}.com"
+
+# help
+copyright_holder:
+type: str
+when: "{% if organization != 'Public domain' %}true{% endif %}"
+help: The person or entity within {{ organization }} that holds copyrights.
+
+# type
+target:
+type: str
+choices:
+- humans
+- machines
+
+user_config:
+type: "{% if target == 'humans' %}yaml{% else %}json{% endif %}"
+
+# choices
+title:
+type: str
+help: Your title within {{ organization }}
+
+contact:
+choices:
+Copyright holder: "{{ copyright_holder }}"
+CEO: Alice Bob
+CTO: Carl Dave
+"{{ title }}": "{{ username }}"
+```
+
+```yaml
+your_age:
+type: int
+
+# Valid
+double_it:
+type: int
+default: "{{ your_age * 2}}"
+
+# Invalid, the templating occurs outside of the parameter value
+did_you_ask:
+type: str
+{% if your_age %}
+default: "yes"
+{% else %}
+placeholder: "nope"
+{% endif %}
+
+# Invalid, `a_random_word` wasn't answered yet
+other_random_word:
+placeholder: "Something different to {{ a_random_word }}"
+
+# Invalid, YAML interprets curly braces
+a_random_word:
+type: str
+default: {{ 'hello' }}
+```
+
+---
+TITLE: Configuring `message_before_update` Setting in Copier Templates
+DESCRIPTION: Configures the `message_before_update` setting in Copier templates, which displays a message to the user before updating a project. This setting, defined in `copier.yml`, allows for providing instructions or information before the update process begins, enhancing user experience during template updates.
+SOURCE: /docs/configuring.md
+
+```yaml
+project_name:
+type: str
+help: An awesome project needs an awesome name. Tell me yours.
+
+_message_before_update: |
+Thanks for updating your project using our template.
+
+You'll be asked a series of questions whose answers are pre-populated
+with previously entered values. Feel free to change them as needed.
+```
+
+---
+TITLE: Configuring Template Subdirectory in Copier
+DESCRIPTION: Configures the `subdirectory` setting in Copier templates to specify the template root. This allows separating template metadata from code and enables recursive templates with updates, but Copier recommends one template per Git repository for optimal update functionality.
+SOURCE: /docs/configuring.md
+
+```yaml
+_subdirectory: template
+```
+
+```tree
+my_copier_template
+copier.yml       # (1)
+.gitignore       # (2)
+template         # (3)
+.gitignore   # (4)
+```
+
+```yaml
+_subdirectory: "{{ python_engine }}"
+python_engine:
+type: str
+choices:
+- poetry
+- pipenv
+```
+
+```tree
+my_copier_template
+copier.yaml # (1)
+poetry
+{{ _copier_conf.answers_file }}.jinja # (2)
+pyproject.toml.jinja
+pipenv
+{{ _copier_conf.answers_file }}.jinja
+Pipfile.jinja
+```
+
+---
+TITLE: Supporting Copier: Adding a Badge to Your Project
+DESCRIPTION: Encourages users to show support for the `copier` library by adding a badge to their project's `README.md`, `README.rst`, or HTML. This promotes the library and provides a visual indication that the project utilizes `copier` for templating.
+SOURCE: /docs/index.md
+
+```md
+[![Copier](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/copier-org/copier/master/img/badge/badge-grayscale-inverted-border-orange.json)](https://github.com/copier-org/copier)
+```
+
+```rst
+.. image:: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/copier-org/copier/master/img/badge/badge-grayscale-inverted-border-orange.json
+:target: https://github.com/copier-org/copier
+:alt: Copier
+```
+
+```html
+<a href="https://github.com/copier-org/copier"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/copier-org/copier/master/img/badge/badge-grayscale-inverted-border-orange.json" alt="Copier" style="max-width:100%;"/></a>
+```
+
+---
+TITLE: Configuring Minimum Copier Version in Templates
+DESCRIPTION: Configures the `min_copier_version` setting in `copier.yml` to specify the minimum Copier version required for a template. This ensures compatibility and prevents project generation with older, potentially incompatible Copier versions, displaying an error to the user if the installed version is too old.
+SOURCE: /docs/configuring.md
+
+```yaml
+_min_copier_version: "4.1.0"
+```
+
+---
+TITLE: Preventing Commit of Merge Conflicts with pre-commit
+DESCRIPTION: Configures `pre-commit` hooks to prevent committing merge conflict markers (using `check-merge-conflict`) and `.rej` files (using `forbidden-files`). This ensures that unresolved merge conflicts are not accidentally committed to the repository, maintaining code integrity.
+SOURCE: /docs/updating.md
+
+```yaml
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+rev: v4.3.0
+hooks:
+# Prevent committing inline conflict markers
+- id: check-merge-conflict
+args: [--assume-in-merge]
+```
+
+---
+TITLE: Configuring Template Questions in Copier's `copier.yml`
+DESCRIPTION: Demonstrates how to configure template questions within the `copier.yml` file in Copier, allowing users to define prompts for gathering information during template instantiation. It illustrates advanced prompt formatting, including specifying data types, providing help text, defining choices with validation, and using dynamic choices for conditional logic, enhancing the flexibility and user experience of Copier templates.
+SOURCE: /docs/configuring.md
+
+```yaml
+name_of_the_project: My awesome project
+number_of_eels: 1234
+your_email: ""
+```
+
+```yaml
+cloud:
+type: str
+help: Which cloud provider do you use?
+choices:
+- Any
+- AWS
+- Azure
+- GCP
+
+iac:
+type: str
+help: Which IaC tool do you use?
+choices:
+Terraform: tf
+Cloud Formation:
+value: cf
+validator: "{% if cloud != 'AWS' %}Requires AWS{% endif %}"
+Azure Resource Manager:
+value: arm
+validator: "{% if cloud != 'Azure' %}Requires Azure{% endif %}"
+Deployment Manager:
+value: dm
+validator: "{% if cloud != 'GCP' %}Requires GCP{% endif %}"
+```
+
+```yaml
+language:
+type: str
+help: Which programming language do you use?
+choices:
+- python
+- node
+
+dependency_manager:
+type: str
+help: Which dependency manager do you use?
+choices: |
+{%- if language == "python" %}
+- poetry
+- pipenv
+{%- else %}
+- npm
+- yarn
+{%- endif %}
+```
+
+```yaml
+pick_one:
+type: yaml # If you are mixing types, better be explicit
+choices:
+Nothing, thanks: "null" # Will be YAML-parsed and converted to null
+Value is key: null # Value will be converted to "Value is key"
+One and a half: 1.5
+"Yes": true
+Nope: no
+Some array: "[yaml, converts, this]"
+```
+
+```yaml
+pick_one:
+type: str
+choices:
+Nothing, thanks: ""
+Value is key: null # Becomes "Value is key", which is a str
+One and a half: "1.5"
+"Yes": "true"
+Nope: "no"
+Some array: "[str, keeps, this, as, a, str]"
+```
+
+---
+TITLE: Configuring Tasks for Post-Template Execution in Copier
+DESCRIPTION: Configures `tasks` in Copier templates to execute commands after project generation or updates. This setting allows automating post-copy operations like initializing Git repositories or running custom scripts, enhancing template usability and streamlining project setup.
+SOURCE: /docs/configuring.md
+
+```yaml
+_tasks:
+# Strings get executed under system's default shell
+- "git init"
+- "rm {{ name_of_the_project }}/README.md"
+# Arrays are executed without shell, saving you the work of escaping arguments
+- [invoke, "--search-root={{ _copier_conf.src_path }}", after-copy]
+# You are able to output the full conf to JSON, to be parsed by your script
+- [invoke, end-process, "--full-conf={{ _copier_conf|to_json }}"]
+# Your script can be run by the same Python environment used to run Copier
+- ["{{ _copier_python }}", task.py]
+# Run a command during the initial copy operation only, excluding updates
+- command: ["{{ _copier_python }}", task.py]
+when: "{{ _copier_operation == 'copy' }}"
+# OS-specific task (supported values are "linux", "macos", "windows" and `None`)
+- command: rm {{ name_of_the_project }}/README.md
+when: "{{ _copier_conf.os in  ['linux', 'macos'] }}"
+- command: Remove-Item {{ name_of_the_project }}\\README.md
+when: "{{ _copier_conf.os == 'windows' }}"
+```
+
+---
+TITLE: Including Dirty Changes in Copier Templates During Development
+DESCRIPTION: Explains why `copier` templates might not include dirty changes during development. Demonstrates how to specify the `HEAD` ref using `copier copy -r HEAD ./src ./dst` to ensure that uncommitted changes are included when copying a template.
+SOURCE: /docs/faq.md
+
+```shell
+$ git -C ./src status --porcelain=v1
+?? new-file.txt
+
+$ git -C ./src tag
+v1.0.0
+v2.0.0
+```
+
+```shell
+$ copier copy ./src ./dst
+```
+
+```shell
+$ copier copy -r HEAD ./src ./dst
+```
+
+---
+TITLE: Applying Copier to Preexisting Projects
+DESCRIPTION: Demonstrates how `copier` can be applied to a preexisting project. This allows for updating projects or applying multiple templates to the same subproject, enabling flexible project management.
+SOURCE: /docs/faq.md
+
+```shell
+copier copy https://github.com/me/my-template.git ./my-preexisting-git-project
+```
+
+---
+TITLE: Configuring Jinja Templates and Macros in Copier
+DESCRIPTION: Demonstrates how to import and include Jinja templates and macros within a Copier template, including usage in `copier.yml`, templated folder names, file names, and file content. It explains how to organize templates and macros in dedicated folders like `includes` and exclude them using the `_exclude` setting.
+SOURCE: /docs/configuring.md
+
+```plaintext
+```jinja title="name-slug.jinja"
+{# For simplicity ... -#}
+{{ name|lower|replace(' ', '-') }}
+```
+
+```tree
+your_template
+copier.yml
+name-slug.jinja
+```
+
+```tree
+your_template
+copier.yml
+name-slug.jinja
+{% include 'name-slug.jinja' %}
+__init__.py
+```
+
+```tree
+your_template
+copier.yml
+name-slug.jinja
+{% include 'name-slug.jinja' %}.py
+```
+
+```toml
+[project]
+name = "{% include 'name-slug.jinja' %}"
+# ...
+```
+
+```jinja
+{# For simplicity ... -#}
+{% macro slugify(value) -%}
+{{ value|lower|replace(' ', '-') }}
+{%- endmacro %}
+```
+
+```yaml
+_exclude:
+- slugify
+
+name:
+type: str
+help: A nice human-readable name
+
+slug:
+type: str
+help: A slug of the name
+default: "{% from 'slugify.jinja' import slugify %}{{ slugify(name) }}"
+```
+
+```plaintext
+Then, make sure to [exclude][exclude] this folder  
+```
+
+---
+TITLE: Configuring Template Message Before Copy in Copier
+DESCRIPTION: Configures the `message_before_copy` setting in Copier templates, which displays a message to the user before the project is generated or regenerated. This setting, defined in `copier.yml`, allows for providing instructions or information to the user before the template questions are presented, enhancing the user experience.
+SOURCE: /docs/configuring.md
+
+```yaml
+project_name:
+type: str
+help: An awesome project needs an awesome name. Tell me yours.
+
+_message_before_copy: |
+Thanks for generating a project using our template.
+
+You'll be asked a series of questions whose answers will be used to
+generate a tailored project for you.
+```
+
+---
+TITLE: Modifying Template Context with Copier's `ContextHook` Extension
+DESCRIPTION: Demonstrates how to use the `ContextHook` extension in Copier to alter the context before rendering templates, allowing you to add, change, or remove variables using Python code within the `extensions/context.py` file; this is useful for dynamically adjusting template content based on user input or other conditions, enabling more flexible and customized project generation.
+SOURCE: /docs/faq.md
+
+```yaml
+_jinja_extensions:
+- copier_templates_extensions.TemplateExtensionLoader
+- extensions/context.py:ContextUpdater
+```
+
+```yaml
+flavor:
+type: str
+choices:
+- docker
+- instances
+- kubernetes
+- none
+```
+
+```python
+from copier_templates_extensions import ContextHook
+
+class ContextUpdater(ContextHook):
+def hook(self, context):
+flavor = context["flavor"]  # user's answer to the "flavor" question
+return {
+"isDocker": flavor == "docker",
+"isK8s": flavor == "kubernetes",
+"isInstances": flavor == "instances",
+"isLite": flavor == "none",
+"isNotDocker": flavor != "docker",
+"isNotK8s": flavor != "kubernetes",
+"isNotInstances": flavor != "instances",
+"isNotLite": flavor != "none",
+"hasContainers": flavor in {"docker", "kubernetes"},
+}
+```
+
+---
+TITLE: Configuring `message_after_update` Setting in Copier Templates
+DESCRIPTION: Configures the `message_after_update` setting in Copier templates, which displays a message after a project is updated. This setting, defined in `copier.yml`, allows customization of post-update messages to guide users, similar to `message_after_copy`.
+SOURCE: /docs/configuring.md
+
+```yaml
+project_name:
+type: str
+help: An awesome project needs an awesome name. Tell me yours.
+
+_message_after_update: |
+Your project "{{ project_name }}" has been updated successfully!
+In case there are any conflicts, please resolve them. Then,
+you're done.
+```
+
+---
+TITLE: Configuring Template Migrations in Copier
+DESCRIPTION: Configures template migrations using the `migrations` setting in `copier.yml` to automate updates. It allows running commands based on template versions, enabling tasks like schema updates or code refactoring during updates, and provides access to version information and stage variables for migration logic.
+SOURCE: /docs/configuring.md
+
+```yaml
+_migrations:
+# {{ _copier_conf.src_path }} points to the path where the template was
+# cloned, so it can be helpful to run migration scripts stored there.
+- invoke -r {{ _copier_conf.src_path }} -c migrations migrate $STAGE $VERSION_FROM $VERSION_TO
+- version: v1.0.0
+command: rm ./old-folder
+when: "{{ _stage == 'before' }}"
+```
+
+---
+TITLE: Installing Copier with Nix Flake for Reproducibility
+DESCRIPTION: Demonstrates installing the latest Copier release using `nix profile install` with a Nix flake for 100% reproducibility. This ensures consistent and reliable installations of `copier` across different environments, leveraging Nix's declarative package management.
+SOURCE: /docs/index.md
+
+```shell
+nix profile install 'https://flakehub.com/f/copier-org/copier/*.tar.gz'
+```
+
+---
+TITLE: Configuring Jinja Environment Options with `envops`
+DESCRIPTION: Configures the Jinja environment using the `envops` setting in Copier templates, allowing customization of Jinja's behavior. It demonstrates how to manage trailing newlines and provides compatibility with older Copier versions by setting `autoescape`, `block_end_string`, `block_start_string`, `comment_end_string`, `comment_start_string`, `keep_trailing_newline`, `variable_end_string`, and `variable_start_string`.
+SOURCE: /docs/configuring.md
+
+```yaml
+_envops:
+autoescape: false
+block_end_string: "%]"
+block_start_string: "[%"
+comment_end_string: "#]"
+comment_start_string: "[#"
+keep_trailing_newline: true
+variable_end_string: "]]"
+variable_start_string: "[["
+```
+
+---
+TITLE: Configuring Templates: Settings, Answers, and Jinja Includes
+DESCRIPTION: Configures Copier templates by defining `settings` and `answers`, prioritizing command-line arguments, user input, and default values from `copier.yml`. Demonstrates how to use Jinja `include` and `import` to reduce code duplication, derive new values, and manage template logic within `copier.yml` and other template files.
+SOURCE: /docs/configuring.md
+
+```yaml
+_exclude:
+- name-slug
+
+name:
+type: str
+help: A nice human-readable name
+
+slug:
+type: str
+help: A slug of the name
+default: "{% include 'name-slug.jinja' %}"
+```
+
+```jinja
+{# For simplicity ... -#}
+{{ name|lower|replace(' ', '-') }}
+```
+
+```tree
+your_template
+copier.yml
+name-slug.jinja
+```
+
+```tree
+your_template
+copier.yml
+name-slug.jinja
+{% include 'name-slug.jinja' %}
+__init__.py
+```
+
+```tree
+your_template
+copier.yml
+name-slug.jinja
+{% include 'name-slug.jinja' %}.py
+```
+
+```toml
+[project]
+name = "{% include 'name-slug.jinja' %}"
+# ...
+```
+
+```jinja
+{# For simplicity ... -#}
+{% macro slugify(value) -%}
+{{ value|lower|replace(' ', '-') }}
+{%- endmacro %}
+```
+
+---
+TITLE: Configuring Trusted Locations in Copier Templates
+DESCRIPTION: Configures trusted locations for Copier templates by defining a list of allowed template repositories or prefixes in the `trust` setting within the `settings.yml` file. This enhances security by restricting template sources, preventing the execution of untrusted code.
+SOURCE: /docs/settings.md
+
+```yaml
+trust:
+- https://github.com/your_account/your_template.git
+- https://github.com/your_account/
+- ~/templates/
+```
+
+---
+TITLE: Generating Projects from Templates with Copier: Quick Start
+DESCRIPTION: Demonstrates how to generate projects from templates using the `copier` library, both via the command-line interface (`copier copy`) and programmatically with `run_copy`. This allows for creating projects from local paths or Git URLs, including shortcuts like `gh:` and `gl:` for GitHub and GitLab repositories, streamlining project initialization.
+SOURCE: /README.md
+
+```shell
+📁 my_copier_template                        # your template project
+├── 📄 copier.yml                            # your template configuration
+├── 📁 .git/                                 # your template is a Git repository
+├── 📁 {{project_name}}                      # a folder with a templated name
+│   └── 📄 {{module_name}}.py.jinja          # a file with a templated name
+└── 📄 {{_copier_conf.answers_file}}.jinja   # answers are recorded here
+```
+
+```yaml
+# questions
+project_name:
+type: str
+help: What is your project name?
+
+module_name:
+type: str
+help: What is your Python module name?
+```
+
+```plaintext
+```yaml+jinja title="{{_copier_conf.answers_file}}.jinja"
+# Changes here will be overwritten by Copier
+{{ _copier_answers|to_nice_yaml -}}
+```
+
+```shell
+copier copy path/to/project/template path/to/destination
+```
+
+```python
+from copier import run_copy
+
+# Create a project from a local path
+run_copy("path/to/project/template", "path/to/destination")
+
+# Or from a Git URL.
+run_copy("https://github.com/copier-org/copier.git", "path/to/destination")
+
+# You can also use "gh:" as a shortcut of "https://github.com/"
+run_copy("gh:copier-org/copier.git", "path/to/destination")
+
+# Or "gl:" as a shortcut of "https://gitlab.com/"
+run_copy("gl:copier-org/copier.git", "path/to/destination")
+```
+
+---
+TITLE: Configuring Templates and Generating Directory Structures
+DESCRIPTION: Configures Copier templates by defining settings in `copier.yml` and obtaining answers from various sources, including command-line arguments and user input. Demonstrates how to generate dynamic directory structures using template answers and the `_copier_conf.sep` variable for cross-platform compatibility.
+SOURCE: /docs/configuring.md
+
+```yaml
+package:
+type: str
+help: Package name
+```
+
+```tree
+your_template
+copier.yml
+{{ package.replace('.', _copier_conf.sep) }}{{ _copier_conf.sep }}__main__.py.jinja
+```
+
+```tree
+your_project
+your_package
+cli
+main
+__main__.py
+```
+
+---
+TITLE: Configuring Template Data via CLI/API in Copier
+DESCRIPTION: Configures the `data` setting in Copier templates to provide answers to questions through the command-line interface (CLI) or application programming interface (API), overriding default values. This setting is useful for automating template rendering and providing specific answers without user interaction, but it cannot be defined directly in the `copier.yml` file.
+SOURCE: /docs/configuring.md
+
+```shell
+copier copy -fd 'user_name=Manuel Calavera' template destination
+```
+
+```shell
+copier copy -fd 'python_versions=[3.10, 3.11, 3.12]'
+```
+
+---
+TITLE: Configuring Templates with `copier.yml` and YAML Includes
+DESCRIPTION: Configures Copier templates using the `copier.yml` file, which supports multiple YAML documents and the `!include` tag for reusing settings and questions from other files. This allows for splitting up larger configurations and reusing common sections across templates, enhancing maintainability and reducing duplication.
+SOURCE: /docs/configuring.md
+
+```yaml
+---
+# Copier will load all these files
+!include shared-conf/common.*.yml
+
+# These 3 lines split the several YAML documents
+---
+# These two documents include common questions for these kind of projects
+!include common-questions/web-app.yml
+---
+!include common-questions/python-project.yml
+---
+
+# Here you can specify any settings or questions specific for your template
+_skip_if_exists:
+- .password.txt
+custom_question: default answer
+```
+
+```yaml
+version:
+type: str
+help: What is the version of your Python project?
+
+# Settings like `_skip_if_exists` are merged
+- "pyproject.toml"
+```
+
+---
+TITLE: Creating Templates with Jinja2 and List Looping
+DESCRIPTION: Demonstrates how to create project templates using Jinja2 templating in `copier`, including looping over lists to generate multiple files and directories based on data defined in `copier.yml` or `copier.yaml`. This allows for dynamic generation of project structures and content, enhancing template flexibility and reducing redundancy.
+SOURCE: /docs/creating.md
+
+```yaml
+commands:
+type: yaml
+multiselect: true
+choices:
+init:
+value: &init
+name: init
+subcommands:
+- config
+- database
+run:
+value: &run
+name: run
+subcommands:
+- server
+- worker
+deploy:
+value: &deploy
+name: deploy
+subcommands:
+- staging
+- production
+default: [*init, *run, *deploy]
+```
+
+```tree
+commands
+{% yield cmd from commands %}{{ cmd.name }}{% endyield %}
+__init__.py
+{% yield subcmd from cmd.subcommands %}{{ subcmd }}{% endyield %}.py.jinja
+```
+
+```tree
+commands
+deploy
+__init__.py
+production.py
+staging.py
+init
+__init__.py
+config.py
+database.py
+run
+__init__.py
+server.py
+worker.py
+```
+
+```python
+print("This is the `config` subcommand in the `init` command")
+```
+
+---
+TITLE: Updating Generated Projects with Copier Templates
+DESCRIPTION: Demonstrates how to update a project generated by Copier to incorporate changes from the original template, including reanswering questions and syncing updates. It explains the prerequisites for seamless updates using `.copier-answers.yml` and Git versioning, and details how to handle conflicts using the `--conflict` option with `.rej` files or inline conflict markers, emphasizing manual review before committing.
+SOURCE: /docs/updating.md
+
+```shell
+copier update
+```
+
+---
+TITLE: Generating Projects: Using Template Versions and Dirty Changes
+DESCRIPTION: Explains how Copier uses template versions from Git tags or local clones. Demonstrates how to override the template version using the `--vcs-ref` argument to specify a branch, tag, or reference, including working with uncommitted modifications in a local template repository.
+SOURCE: /docs/generating.md
+
+```shell
+copier copy --vcs-ref master https://github.com/foo/copier-template.git ./path/to/destination
+```
+
+```shell
+copier copy --vcs-ref HEAD path/to/project/template path/to/destination
+```
+
+---
+TITLE: Updating Projects: How Copier Applies Template Changes
+DESCRIPTION: Explains how `copier` updates projects by regenerating from the current template, comparing versions to get a diff, applying pre-migrations, updating with latest template changes, re-applying the diff, and running post-migrations. This process ensures projects stay up-to-date with template improvements while preserving customizations.
+SOURCE: /docs/updating.md
+
+```mermaid
+graph TD
+
+%% nodes ----------------------------------------------------------
+template_repo("template repository")
+template_current("/tmp/template<br>(current tag)")
+template_latest("/tmp/template<br>(latest tag)")
+
+project_regen("/tmp/project<br>(fresh, current version)")
+project_current("current project")
+project_half("half migrated<br>project")
+project_updated("updated project")
+project_applied("updated project<br>(diff applied)")
+project_full("fully updated<br>and migrated project")
+
+update["update current<br>project in-place<br>(prompting)<br>+ run tasks again"]
+compare["compare to get diff"]
+apply["apply diff"]
+
+diff("diff")
+
+%% edges ----------------------------------------------------------
+template_repo --> |git clone| template_current
+template_repo --> |git clone| template_latest
+
+template_current --> |generate and run tasks| project_regen
+project_current --> compare
+project_current --> |apply pre-migrations| project_half
+project_regen --> compare
+project_half --> update
+template_latest --> update
+update --> project_updated
+compare --> diff
+diff --> apply
+project_updated --> apply
+apply --> project_applied
+project_applied --> |apply post-migrations| project_full
+
+%% style ----------------------------------------------------------
+classDef blackborder stroke:#000;
+class compare,update,apply blackborder;
+```
+
+---
+TITLE: Creating Templates: Minimal Example with Copier
+DESCRIPTION: Demonstrates creating a minimal project template using `copier`. It shows how `copier` copies files, renders `.jinja` templates, and uses a `copier.yml` file to prompt users for input, generating a project with customized files and an `.copier-answers.yml` file.
+SOURCE: /docs/creating.md
+
+```plaintext
+```python+jinja title="{{project_name}}/{{module_name}}.py.jinja"
+print("Hello from {{module_name}}!")
+```
+
+```plaintext
+Generating a project from this template with `super_project` and `world` as answers for
+the `project_name` and `module_name` questions respectively would create in the
+following directory and files:  
+```
+
+```plaintext
+```python title="super_project/world.py"
+print("Hello from world!")
+```
+
+```yaml
+# Changes here will be overwritten by Copier
+_commit: 0.1.0
+_src_path: gh:your_account/your_template
+project_name: super_project
+module_name: world
+```
+
+---
+TITLE: Configuring Copier Templates and `.copier-answers.yml` Files
+DESCRIPTION: Explains how Copier prioritizes settings and answers from command-line arguments, user input, and the `.copier.yml` file, including the use of `.copier-answers.yml` for applying multiple templates to the same subproject. Demonstrates how to manage updates for each template separately using `copier update`.
+SOURCE: /docs/configuring.md
+
+```shell
+mkdir my-project
+cd my-project
+git init
+# Apply framework template
+copier copy -a .copier-answers.main.yml https://github.com/example-framework/framework-template.git .
+git add .
+git commit -m 'Start project based on framework template'
+# Apply pre-commit template
+copier copy -a .copier-answers.pre-commit.yml https://gitlab.com/my-stuff/pre-commit-template.git .
+git add .
+pre-commit run -a  # Just in case 😉
+git commit -am 'Apply pre-commit template'
+# Apply internal CI template
+copier copy -a .copier-answers.ci.yml git@gitlab.example.com:my-company/ci-template.git .
+git add .
+git commit -m 'Apply internal CI template'
+```
+
+```shell
+copier update -a .copier-answers.main.yml
+copier update -a .copier-answers.pre-commit.yml
+copier update -a .copier-answers.ci.yml
+```
+
+---
+TITLE: Creating Computed Values Using `default` and `when: false`
+DESCRIPTION: Demonstrates how to create computed values in `copier.yaml` by combining the `default` and `when: false` settings. This approach allows for dynamic value generation without prompting the user or storing the computed value, useful for calculations like deriving `next_year` from `copyright_year`.
+SOURCE: /docs/faq.md
+
+```yaml
+copyright_year:
+type: int
+default: 2024
+
+next_year:
+type: int
+default: "{{ copyright_year + 1 }}" # This computes the value
+when: false # This makes sure it isn't asked nor stored
+```
+
+---
+TITLE: Updating Copier Projects: Avoiding Manual `.copier-answers.yml` Edits
+DESCRIPTION: Illustrates the correct process for updating Copier subprojects using `copier update`, emphasizing the importance of not manually editing the `.copier-answers.yml` file to prevent unpredictable behavior with the smart diff algorithm; it also demonstrates how to use `--defaults` and `--data` or `--data-file` to update answers, and `--vcs-ref=:current:` to update answers without updating the template.
+SOURCE: /docs/updating.md
+
+```shell
+copier update --defaults
+```
+
+```shell
+copier update --defaults --data updated_question="my new answer"
+```
+
+```shell
+echo "updated_question: my new answer" > /tmp/data-file.yaml
+copier update --defaults --data-file /tmp/data-file.yaml
+```
+
+```shell
+copier update --vcs-ref=:current:
+```
+
+---
+TITLE: Configuring Data File with Copier CLI
+DESCRIPTION: Configures the `data_file` setting in Copier via the command-line interface (CLI) to pass data from a YAML file. Demonstrates how to use `--data-file` as an alternative to `--data` for providing template variables, and explains the precedence of CLI arguments over data files.
+SOURCE: /docs/configuring.md
+
+```yaml
+user_name: Manuel Calavera
+age: 7
+height: 1.83
+```
+
+```shell
+copier copy --data-file input.yml template destination
+```
+
+```shell
+copier copy -d 'user_name=Manuel Calavera' -d 'age=7' -d 'height=1.83' template destination
+```
+
+---
+TITLE: Templating Projects with Copier: Quick Start Guide
+DESCRIPTION: Demonstrates how to use `copier` to generate projects from templates, both locally and from Git URLs. This quick start guide illustrates the basic workflow, including creating a `copier.yml` configuration file and using the `copier copy` command or the `run_copy` function in Python.
+SOURCE: /docs/index.md
+
+```shell
+📁 my_copier_template                        # your template project
+├── 📄 copier.yml                            # your template configuration
+├── 📁 .git/                                 # your template is a Git repository
+├── 📁 {{project_name}}                      # a folder with a templated name
+│   └── 📄 {{module_name}}.py.jinja          # a file with a templated name
+└── 📄 {{_copier_conf.answers_file}}.jinja   # answers are recorded here
+```
+
+```yaml
+# questions
+project_name:
+type: str
+help: What is your project name?
+
+module_name:
+type: str
+help: What is your Python module name?
+```
+
+```plaintext
+```yaml+jinja title="{{_copier_conf.answers_file}}.jinja"
+# Changes here will be overwritten by Copier
+{{ _copier_answers|to_nice_yaml -}}
+```
+
+```shell
+copier copy path/to/project/template path/to/destination
+```
+
+```python
+from copier import run_copy
+
+# Create a project from a local path
+run_copy("path/to/project/template", "path/to/destination")
+
+# Or from a Git URL.
+run_copy("https://github.com/copier-org/copier.git", "path/to/destination")
+
+# You can also use "gh:" as a shortcut of "https://github.com/"
+run_copy("gh:copier-org/copier.git", "path/to/destination")
+
+# Or "gl:" as a shortcut of "https://gitlab.com/"
+run_copy("gl:copier-org/copier.git", "path/to/destination")
+```
+
+---
+TITLE: Configuring Post-Copy Messages with `message_after_copy`
+DESCRIPTION: Configures the `message_after_copy` setting in Copier to display a message after successful project generation or regeneration. This setting allows for customized post-copy instructions or information, and supports Jinja templating for dynamic content, enhancing the user experience.
+SOURCE: /docs/configuring.md
+
+```yaml
+project_name:
+type: str
+help: An awesome project needs an awesome name. Tell me yours.
+
+_message_after_copy: |
+Your project "{{ project_name }}" has been created successfully!
+
+Next steps:
+
+1. Change directory to the project root:
+
+$ cd {{ _copier_conf.dst_path }}
+
+2. Read "CONTRIBUTING.md" and start coding.
+```
+
+---
+TITLE: Configuring Templates and Importing Jinja Macros in Copier
+DESCRIPTION: Explains how Copier reads settings and answers from various sources, prioritizing command-line arguments, user input, and configuration files like `copier.yml`. Demonstrates importing Jinja templates and macros using the `pathjoin` function for POSIX path compatibility, especially when organizing templates in dedicated folders like `includes`.
+SOURCE: /docs/configuring.md
+
+```plaintext
+or in a templated folder name, in a templated file name, or in the templated content of
+a text file.  
+!!! info  
+Import/Include paths are relative to the template root.  
+As the number of imported templates and macros grows, you may want to place them in a
+dedicated folder such as `includes`:  
+```
+
+```plaintext
+Then, make sure to [exclude][exclude] this folder  
+```
+
+```plaintext
+or use a [subdirectory][subdirectory], e.g.:  
+```
+
+```plaintext
+In addition, Jinja include and import statements will need to use a POSIX path separator
+(also on Windows) which is not supported in templated folder and file names. For this
+reason, Copier provides a function
+`pathjoin(*paths: str, mode: Literal["posix", "windows", "native"] = "posix")`:  
+```
+
+```plaintext
+```jinja
+{% from pathjoin('includes', 'slugify.jinja') import slugify %}
+```
+
+---
+TITLE: Configuring Conditional Files and Directories in Copier
+DESCRIPTION: Demonstrates how to conditionally generate files and directories in Copier templates based on user answers in `copier.yml`. This allows for flexible template customization, enabling features like optional `.pre-commit-config.yaml` files or different CI configurations based on user choices.
+SOURCE: /docs/configuring.md
+
+```yaml
+use_precommit:
+type: bool
+default: false
+help: Do you want to use pre-commit?
+```
+
+```tree
+your_template
+copier.yml
+{% if use_precommit %}.pre-commit-config.yaml{% endif %}.jinja
+```
+
+```yaml
+ci:
+type: str
+help: What Continuous Integration service do you want to use?
+choices:
+GitHub CI: github
+GitLab CI: gitlab
+default: github
+```
+
+```tree
+your_template
+copier.yml
+{% if ci == 'github' %}.github{% endif %}
+workflows
+ci.yml
+{% if ci == 'gitlab' %}.gitlab-ci.yml{% endif %}.jinja
+```
+
+---
+TITLE: Configuring User Defaults in Copier Settings
+DESCRIPTION: Configures user-specific default variables within the `settings.yml` file located in the standard Copier configuration directory. This allows users to override default values for template fields, enhancing customization and reusability across projects.
+SOURCE: /docs/settings.md
+
+```yaml
+defaults:
+user_name: "John Doe"
+user_email: john.doe@acme.com
+```
+
+---
+TITLE: Showing Support by Adding Copier Badge
+DESCRIPTION: Demonstrates how to add the Copier badge to a project's `README.md`, `README.rst`, or HTML to show support. This allows users to easily identify projects using Copier and promotes the library's adoption.
+SOURCE: /README.md
+
+```md
+[![Copier](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/copier-org/copier/master/img/badge/badge-grayscale-inverted-border-orange.json)](https://github.com/copier-org/copier)
+```
+
+```rst
+.. image:: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/copier-org/copier/master/img/badge/badge-grayscale-inverted-border-orange.json
+:target: https://github.com/copier-org/copier
+:alt: Copier
+```
+
+```html
+<a href="https://github.com/copier-org/copier"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/copier-org/copier/master/img/badge/badge-grayscale-inverted-border-orange.json" alt="Copier" style="max-width:100%;"/></a>
+```
+
+---
+TITLE: Configuring Answers File Location in Copier Templates
+DESCRIPTION: Configures the `answers_file` setting in Copier templates to specify the path where user answers are recorded. This allows customization of the default `.copier-answers.yml` location, enabling better organization and integration with version control systems for template updates.
+SOURCE: /docs/configuring.md
+
+```yaml
+_answers_file: .my-custom-answers.yml
+```
+
+---
+TITLE: Configuring Template Version with Copier's `vcs_ref` Setting
+DESCRIPTION: Configures the template version to copy or update from a Git-versioned template using the `vcs_ref` setting in Copier, which is stored in the answers file as `_commit`. This setting is useful for specifying a particular version or using the special value `VcsRef.CURRENT` to maintain the existing version.
+SOURCE: /docs/configuring.md
+
+```yaml
+_commit: v1.0.0
+```
+
+---
+TITLE: Running Copier in Docker or Podman using Nix
+DESCRIPTION: Demonstrates how to run `copier` within Docker or Podman containers using `nix`. This approach allows for reproducible builds and ensures consistent execution of `copier` templates in containerized environments.
+SOURCE: /docs/faq.md
+
+```shell
+# Change for docker if needed
+engine=podman
+
+# You can pin the version; example: github:copier-org/copier/v8.0.0
+copier=github:copier-org/copier
+
+$engine container run --rm -it docker.io/nixos/nix \
+nix --extra-experimental-features 'nix-command flakes' --accept-flake-config \
+run $copier -- --help
+```
+
+```shell
+nix bundle --bundler github:NixOS/bundlers#toDockerImage \
+github:copier-org/copier#packages.x86_64-linux.default
+docker load < python*copier*.tar.gz
+```
+
+---
+TITLE: Configuring Jinja2 Extensions in Copier Templates
+DESCRIPTION: Configures the `jinja_extensions` setting in Copier templates to load additional Jinja2 extensions, enabling custom filters, global variables, and tags. This allows template authors to extend Jinja2 functionality, but requires users to install the necessary Python packages alongside Copier, enhancing template capabilities while introducing potential security considerations.
+SOURCE: /docs/configuring.md
+
+```shell
+# with pip, in the same virtualenv where Copier is installed
+pip install jinja2-time
+
+# if Copier was installed with pipx
+pipx inject copier jinja2-time
+# if Copier was installed with uv
+uv tool install --with jinja2-time copier
+```
+
+```yaml
+_jinja_extensions:
+- jinja_markdown.MarkdownExtension
+- jinja2_slug.SlugExtension
+- jinja2_time.TimeExtension
+```
+
+```jinja
+{{ 999999999999999999999999999999999|ans_random|hash('sha512') }}
+```
+
+---
+TITLE: Configuring Secret Questions in Copier Templates
+DESCRIPTION: Configures `secret_questions` in `copier.yml` to mark question variables as secret, especially useful with the simplified prompt format. This is equivalent to setting `secret: true` in the advanced prompt format, ensuring sensitive data like passwords are handled securely during template rendering.
+SOURCE: /docs/configuring.md
+
+```yaml
+_secret_questions:
+- password
+
+user: johndoe
+password: s3cr3t
+```
+
+---
+TITLE: Configuring Template Suffix with `templates_suffix`
+DESCRIPTION: Configures the `templates_suffix` setting in Copier, which defines the file extension used to identify Jinja templates. An empty suffix renders all files, while a specific suffix limits rendering to files with that extension; this setting impacts how Copier processes and renders template files.
+SOURCE: /docs/configuring.md
+
+```yaml
+_templates_suffix: .my-custom-suffix
+```
+
+```yaml
+_templates_suffix: ""
+```
+
+```tree
+my_copier_template
+README.md           # Your template's README, ignored at rendering
+README.md.jinja     # README that will be rendered
+CONTRIBUTING.md     # Used both for the template and the subprojects
+```
+
+---
+TITLE: Configuring File Skipping with `skip_if_exists` in Copier
+DESCRIPTION: Configures the `skip_if_exists` setting in Copier templates to conditionally skip files or folders during updates. This setting, defined in `copier.yml`, uses Jinja templating for dynamic patterns and prevents overwriting existing files, such as generated passwords, while ensuring they are recreated if missing during an `update` operation.
+SOURCE: /docs/configuring.md
+
+```yaml
+_skip_if_exists:
+- .secret_password.yml
+```
+
+```yaml
+{{999999999999999999999999999999999|ans_random|hash('sha512')}}
+```
+
+---
+TITLE: Configuring External Data with `external_data` Setting
+DESCRIPTION: Configures the `external_data` setting in Copier templates to load preexisting data into the rendering context. It demonstrates how to access data from other templates or load secrets from YAML files, enabling template composition and secure configuration management.
+SOURCE: /docs/configuring.md
+
+```yaml
+# Child template defaults to a different answers file, to avoid conflicts
+_answers_file: .copier-answers.child-tpl.yml
+
+# Child template loads parent answers
+_external_data:
+# A dynamic path. Make sure you answer that question
+# before the first access to the data (with `_external_data.parent_tpl`)
+parent_tpl: "{{ parent_tpl_answers_file }}"
+
+# Ask user where they stored parent answers
+parent_tpl_answers_file:
+help: Where did you store answers of the parent template?
+default: .copier-answers.yml
+
+# Use a parent answer as the default value for a child question
+target_version:
+help: What version are you deploying?
+# We already answered the `parent_tpl_answers_file` question, so we can
+# now correctly access the external data from `_external_data.parent_tpl`
+default: "{{ _external_data.parent_tpl.target_version }}"
+```
+
+```yaml
+# Template loads secrets from Git-ignored file
+_external_data:
+# A static path. If missing, it will return an empty dict
+secrets: .secrets.yaml
+
+# Use a secret answers as the default value for a secret question
+password:
+help: What is the password?
+secret: true
+# If `.secrets.yaml` exists, it has been loaded at this point and we can
+# now correctly access the external data from `_external_data.secrets`
+default: "{{ _external_data.secrets.password }}"
+A template might even render `.secrets.yaml` with the answers to secret questions
+similar to this:  
+```
+
+---
+TITLE: Configuring File Exclusion with Copier `exclude` Setting
+DESCRIPTION: Configures the `exclude` setting in Copier templates to prevent specific files and folders from being copied, using patterns defined in `copier.yml` or via CLI flags like `-x` or `--exclude`. This setting allows for templating exclusion patterns with Jinja and extending existing exclusions, offering control over which files are included during template rendering and updates.
+SOURCE: /docs/configuring.md
+
+```yaml
+_exclude:
+- "{% if _copier_operation == 'update' -%}src/*_example.py{% endif %}"
+```
+
+```yaml
+_exclude:
+- "*.bar"
+- ".git"
+```
+
+```shell
+copier copy --exclude '*' --exclude '!file-i-want' ./template ./destination
+```
+
+---
+TITLE: Locking Computed Values with Copier Template Updates
+DESCRIPTION: Demonstrates how to lock a computed value in Copier templates using `default` and `when: false` in `copier.yaml`, ensuring the value persists across updates. This approach, combined with explicitly dumping the value to the `_copier_conf.answers_file`, prevents unintended changes to dynamically computed values like `copyright_year`.
+SOURCE: /docs/faq.md
+
+```yaml
+copyright_year:
+type: str
+default: "{{ copyright_year | default('%Y' | strftime) }}"
+when: false
+```
+
+---
+TITLE: Installing Copier with Nix Flake for Reproducibility
+DESCRIPTION: Demonstrates installing the latest Copier release using `nix profile install` with a Nix flake for 100% reproducibility. This method ensures consistent and reliable installations of `copier` across different environments.
+SOURCE: /README.md
+
+```shell
+nix profile install 'https://flakehub.com/f/copier-org/copier/*.tar.gz'
+```
+
+---

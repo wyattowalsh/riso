@@ -1,0 +1,45 @@
+{%- if api_tracks | lower not in ["node", "python+node"] %}
+export async function buildServer() {
+  throw new Error("Node API track disabled for this render.");
+}
+{%- else %}
+import Fastify from "fastify";
+
+import type { ApiNodeConfig } from "./config";
+import { loadConfig } from "./config";
+import { sharedLogicEnabled, summarizeStatus } from "../../shared-config/logic";
+
+function createServer(config: ApiNodeConfig) {
+  const server = Fastify({
+    logger: true,
+  });
+
+  const includeSummary = sharedLogicEnabled();
+
+  server.get("/health", async () => {
+    const payload = {
+      status: "ok",
+      service: config.serviceName,
+    };
+    if (includeSummary) {
+      payload["summary"] = summarizeStatus(payload);
+    }
+    return payload;
+  });
+
+  return server;
+}
+
+export async function buildServer() {
+  const config = loadConfig();
+  const server = createServer(config);
+  return server;
+}
+
+export async function start() {
+  const config = loadConfig();
+  const server = createServer(config);
+  await server.listen({ host: config.host, port: config.port });
+  return server;
+}
+{%- endif %}

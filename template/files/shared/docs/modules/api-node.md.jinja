@@ -1,0 +1,40 @@
+# Fastify Module
+
+The Node.js API track adds a Fastify server with Vitest smoke coverage and shared logic summaries.
+
+## Enabling the Module
+
+Render the template with `api_tracks=node` (or `python+node`). The generator produces:
+
+- `apps/api-node/src/main.ts`
+- `apps/api-node/src/config.ts`
+- `apps/api-node/tests/test_api_fastify.spec.ts`
+
+The workspace expects a pnpm-based toolchain targeting Node.js 20.
+
+## Configuration
+
+Environment variables prefixed with `RISO_API_NODE_` configure the service:
+
+- `RISO_API_NODE_HOST` *(default: `0.0.0.0`)*
+- `RISO_API_NODE_PORT` *(default: `3000`)*
+
+`loadConfig()` normalises values and exposes them to the server factory.
+
+## Smoke Tests
+
+```bash
+pnpm --filter api-node install
+pnpm --filter api-node test
+```
+
+The Vitest suite validates the `/health` endpoint and configuration overrides. When `shared_logic` is
+enabled, the endpoint also emits a summary derived from the shared helpers.
+
+## Starting the Service
+
+```bash
+pnpm --filter api-node run dev
+```
+
+Adjust logging and plugin registration by editing `apps/api-node/src/main.ts`.

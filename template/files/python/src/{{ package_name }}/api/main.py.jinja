@@ -1,0 +1,80 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""FastAPI service disabled for this render."""
+
+
+def create_app():
+    """Placeholder app when the Python API track is not enabled."""
+
+    raise RuntimeError("FastAPI track disabled. Enable with api_tracks=python or python+node.")
+
+
+app = None
+{%- else %}
+from __future__ import annotations
+
+from typing import Any, Mapping
+
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+from tenacity import retry, stop_after_attempt, wait_fixed
+
+try:
+    from shared.logic import HealthCheckResult, build_health_payload
+except ImportError:  # pragma: no cover - shared logic optional
+
+    class HealthCheckResult:  # type: ignore[override]
+        def __init__(self, name: str, status: str = "ok") -> None:
+            self.name = name
+            self.status = status
+
+        def as_dict(self) -> dict[str, str]:
+            return {"name": self.name, "status": self.status}
+
+    def build_health_payload(
+        service: str, *, checks: list[Mapping[str, Any]] | None = None, dry_run: bool = False
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {"service": service, "status": "ok", "dry_run": dry_run}
+        if checks:
+            payload["checks"] = list(checks)
+        return payload
+
+from .settings import ApiSettings, get_settings
+
+
+def _configure_app(settings: ApiSettings) -> FastAPI:
+    return FastAPI(
+        title=f"{settings.service_name} service",
+        version="0.1.0",
+        docs_url="/docs",
+        redoc_url="/redoc",
+    )
+
+
+def _health_checks() -> list[HealthCheckResult]:
+    return [HealthCheckResult(name="application")]  # future modules can append more checks
+
+
+@retry(
+    stop=stop_after_attempt(get_settings().health_retry_attempts),
+    wait=wait_fixed(get_settings().health_retry_wait_seconds),
+)
+def compute_health_payload(settings: ApiSettings) -> Mapping[str, Any]:
+    return build_health_payload(settings.service_name, checks=_health_checks())
+
+
+def create_app(settings: ApiSettings | None = None) -> FastAPI:
+    """Create and configure the FastAPI application."""
+
+    resolved_settings = settings or get_settings()
+    app = _configure_app(resolved_settings)
+
+    @app.get("/health", response_class=JSONResponse)
+    def health() -> Mapping[str, Any]:
+        payload = compute_health_payload(resolved_settings)
+        return payload
+
+    return app
+
+
+app = create_app()
+{%- endif %}

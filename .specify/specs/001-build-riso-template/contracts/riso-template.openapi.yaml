@@ -1,0 +1,148 @@
+openapi: 3.1.0
+info:
+  title: Riso Template Automation API
+  version: 0.1.0
+  description: >-
+    Contract used by governance automation to render the Riso template, list
+    modules, and record compliance checkpoints for regenerated samples.
+servers:
+  - url: https://ci.example.com/api
+paths:
+  /templates/riso/render:
+    post:
+      summary: Render the Riso template with a specific prompt combination
+      operationId: renderRisoTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - variantName
+                - prompts
+              properties:
+                variantName:
+                  type: string
+                  description: Name of the sample variant (e.g., default, cli-docs).
+                prompts:
+                  type: object
+                  additionalProperties: true
+                  description: Key/value map of copier prompts and selected answers.
+      responses:
+        '200':
+          description: Render completed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - renderId
+                  - artifactPath
+                properties:
+                  renderId:
+                    type: string
+                    description: Unique identifier for the render job.
+                  artifactPath:
+                    type: string
+                    description: Location of the generated sample project archive.
+        '422':
+          description: Invalid prompt combination or validation failure.
+  /templates/riso/modules:
+    get:
+      summary: Retrieve the catalog of optional modules and their defaults
+      operationId: listRisoModules
+      responses:
+        '200':
+          description: Module catalog retrieved.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - modules
+                properties:
+                  modules:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - name
+                        - promptKey
+                        - defaultState
+                        - description
+                        - validationCommands
+                      properties:
+                        name:
+                          type: string
+                        promptKey:
+                          type: string
+                        defaultState:
+                          type: string
+                          enum: [enabled, disabled]
+                        description:
+                          type: string
+                        validationCommands:
+                          type: array
+                          items:
+                            type: string
+  /templates/riso/samples/{variantName}:
+    get:
+      summary: Fetch metadata for a rendered sample artifact
+      operationId: getRisoSample
+      parameters:
+        - name: variantName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Sample metadata returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - variantName
+                  - prompts
+                  - lastRegenerated
+                  - ciPipeline
+                properties:
+                  variantName:
+                    type: string
+                  prompts:
+                    type: object
+                    additionalProperties: true
+                  lastRegenerated:
+                    type: string
+                    format: date-time
+                  ciPipeline:
+                    type: string
+  /templates/riso/compliance-checks:
+    post:
+      summary: Record the results of an automation compliance checkpoint
+      operationId: recordComplianceCheckpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - principle
+                - status
+                - evidence
+              properties:
+                principle:
+                  type: string
+                  enum: [template_sovereignty, deterministic_generation, minimal_baseline, documented_scaffolds, automation_governed]
+                status:
+                  type: string
+                  enum: [pass, fail, needs_review]
+                evidence:
+                  type: string
+                  description: Link or artifact reference supporting the status.
+      responses:
+        '202':
+          description: Compliance checkpoint recorded.

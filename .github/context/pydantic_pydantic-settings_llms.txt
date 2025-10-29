@@ -1,0 +1,1626 @@
+---
+LIBRARY: pydantic/pydantic-settings
+SOURCE_ROOT: https://github.com/pydantic/pydantic-settings/blob/main
+UPDATED_AT: September 7, 2025 at 1:53 AM UTC
+---
+
+================================
+CODE SNIPPETS
+================================
+
+TITLE: Parsing Environment Variable Values with Pydantic Settings
+DESCRIPTION: Demonstrates parsing environment variables in `pydantic-settings`, including handling empty values, simple types, and complex types like lists and dictionaries using JSON encoding and nested delimiters. It illustrates how to use `env_nested_delimiter` and `env_nested_max_split` to configure nested fields and custom sources for complex type population.
+SOURCE: /docs/index.md
+
+```bash
+# your environment
+export V0=0
+export SUB_MODEL='{"v1": "json-1", "v2": "json-2"}'
+export SUB_MODEL__V2=nested-2
+export SUB_MODEL__V3=3
+export SUB_MODEL__DEEP__V4=v4
+```
+
+```py
+from pydantic import BaseModel
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class DeepSubModel(BaseModel):  # (1)!
+v4: str
+
+class SubModel(BaseModel):  # (2)!
+v1: str
+v2: bytes
+v3: int
+deep: DeepSubModel
+
+class Settings(BaseSettings):
+model_config = SettingsConfigDict(env_nested_delimiter='__')
+
+v0: str
+sub_model: SubModel
+
+print(Settings().model_dump())
+"""
+{
+'v0': '0',
+'sub_model': {'v1': 'json-1', 'v2': b'nested-2', 'v3': 3, 'deep': {'v4': 'v4'}},
+}
+"""
+```
+
+```plaintext
+You could load them into the following settings model:  
+```
+
+```plaintext
+Without `env_nested_max_split=1` set, `GENERATION_LLM_API_KEY` would be parsed as `llm.api.key` instead of `llm.api_key`
+and it would raise a `ValidationError`.  
+Nested environment variables take precedence over the top-level environment variable JSON
+(e.g. in the example above, `SUB_MODEL__V2` trumps `SUB_MODEL`).  
+You may also populate a complex type by providing your own source class.  
+import json
+import os
+from typing import Any
+
+from pydantic.fields import FieldInfo
+
+from pydantic_settings import (
+BaseSettings,
+EnvSettingsSource,
+PydanticBaseSettingsSource,
+)
+
+class MyCustomSource(EnvSettingsSource):
+def prepare_field_value(
+self, field_name: str, field: FieldInfo, value: Any, value_is_complex: bool
+) -> Any:
+if field_name == 'numbers':
+return [int(x) for x in value.split(',')]
+return json.loads(value)
+
+class Settings(BaseSettings):
+numbers: list[int]
+
+@classmethod
+def settings_customise_sources(
+cls,
+settings_cls: type[BaseSettings],
+init_settings: PydanticBaseSettingsSource,
+env_settings: PydanticBaseSettingsSource,
+dotenv_settings: PydanticBaseSettingsSource,
+file_secret_settings: PydanticBaseSettingsSource,
+) -> tuple[PydanticBaseSettingsSource, ...]:
+return (MyCustomSource(settings_cls),)
+
+os.environ['numbers'] = '1,2,3'
+print(Settings().model_dump())
+#> {'numbers': [1, 2, 3]}
+```
+
+---
+TITLE: Disabling JSON Parsing with `NoDecode` and `ForceDecode`
+DESCRIPTION: Demonstrates how to disable default JSON parsing of environment variables in `pydantic-settings` using `NoDecode` to allow custom validation, and how to force JSON parsing with `ForceDecode` even when decoding is globally disabled. This is useful when you need to handle specific environment variable formats or bypass global decoding settings for certain fields.
+SOURCE: /docs/index.md
+
+```py
+import os
+from typing import Annotated
+
+from pydantic import field_validator
+
+from pydantic_settings import BaseSettings, NoDecode
+
+class Settings(BaseSettings):
+numbers: Annotated[list[int], NoDecode]  # (1)!
+
+@field_validator('numbers', mode='before')
+@classmethod
+def decode_numbers(cls, v: str) -> list[int]:
+return [int(x) for x in v.split(',')]
+
+os.environ['numbers'] = '1,2,3'
+print(Settings().model_dump())
+#> {'numbers': [1, 2, 3]}
+```
+
+```py
+import os
+
+from pydantic import field_validator
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+model_config = SettingsConfigDict(enable_decoding=False)
+
+numbers: list[int]
+
+@field_validator('numbers', mode='before')
+@classmethod
+def decode_numbers(cls, v: str) -> list[int]:
+return [int(x) for x in v.split(',')]
+
+os.environ['numbers'] = '1,2,3'
+print(Settings().model_dump())
+#> {'numbers': [1, 2, 3]}
+```
+
+---
+TITLE: Creating CLI Applications with Pydantic Settings
+DESCRIPTION: Demonstrates how to create command-line applications using Pydantic models and the `CliApp` class from `pydantic-settings`. It illustrates the use of `CliApp.run` and `CliApp.run_subcommand` for defining and executing CLI commands, including handling positional arguments and subcommands, and overriding default `BaseSettings` configurations.
+SOURCE: /docs/index.md
+
+```py
+from pydantic_settings import BaseSettings, CliApp
+
+class Settings(BaseSettings):
+this_foo: str
+
+def cli_cmd(self) -> None:
+# Print the parsed data
+print(self.model_dump())
+#> {'this_foo': 'is such a foo'}
+
+# Update the parsed data showing cli_cmd ran
+self.this_foo = 'ran the foo cli cmd'
+
+s = CliApp.run(Settings, cli_args=['--this_foo', 'is such a foo'])
+print(s.model_dump())
+#> {'this_foo': 'ran the foo cli cmd'}
+```
+
+---
+TITLE: Serializing CLI Arguments with Pydantic Settings
+DESCRIPTION: Demonstrates how to serialize a Pydantic model into CLI arguments using the `CliApp.serialize` method. This is useful for generating command-line interfaces from Pydantic models, allowing for easy configuration and execution of applications.
+SOURCE: /docs/index.md
+
+```py
+from pydantic import BaseModel
+
+from pydantic_settings import CliApp
+
+class Nested(BaseModel):
+that: int
+
+class Settings(BaseModel):
+this: str
+nested: Nested
+
+print(CliApp.serialize(Settings(this='hello', nested=Nested(that=123))))
+#> ['--this', 'hello', '--nested.that', '123']
+```
+
+---
+TITLE: Creating Mutually Exclusive CLI Argument Groups with Pydantic
+DESCRIPTION: Demonstrates how to create mutually exclusive command-line argument groups using `CliMutuallyExclusiveGroup` in `pydantic-settings`. This prevents users from specifying conflicting arguments, such as both `radius` and `diameter` for a `circle`, ensuring that only one option is selected, and raises a `SettingsError` if conflicting arguments are provided.
+SOURCE: /docs/index.md
+
+```py
+from typing import Optional
+
+from pydantic import BaseModel
+
+from pydantic_settings import CliApp, CliMutuallyExclusiveGroup, SettingsError
+
+class Circle(CliMutuallyExclusiveGroup):
+radius: Optional[float] = None
+diameter: Optional[float] = None
+perimeter: Optional[float] = None
+
+class Settings(BaseModel):
+circle: Circle
+
+try:
+CliApp.run(
+Settings,
+cli_args=['--circle.radius=1', '--circle.diameter=2'],
+cli_exit_on_error=False,
+)
+except SettingsError as e:
+print(e)
+"""
+error parsing CLI: argument --circle.diameter: not allowed with argument --circle.radius
+"""
+```
+
+---
+TITLE: Installing pydantic-settings with pip
+DESCRIPTION: Installs the `pydantic-settings` package using `pip`. This allows developers to use `pydantic` models to manage application settings from environment variables and `.env` files, simplifying configuration management.
+SOURCE: /docs/index.md
+
+```bash
+pip install pydantic-settings
+```
+
+---
+TITLE: Mapping Azure Key Vault Kebab-Case Secrets to Snake_Case
+DESCRIPTION: Demonstrates how to map Azure Key Vault secrets with kebab-case names (e.g., `field-with-dashes`) to Python's snake_case field names (e.g., `field_with_underscore`) using the `dash_to_underscore` option in `AzureKeyVaultSettingsSource`. This allows seamless integration with Key Vault secrets that use dashes, mapping them to Pydantic model fields with underscores.
+SOURCE: /docs/index.md
+
+```py
+import os
+
+from azure.identity import DefaultAzureCredential
+from pydantic import Field
+
+from pydantic_settings import (
+AzureKeyVaultSettingsSource,
+BaseSettings,
+PydanticBaseSettingsSource,
+)
+
+class AzureKeyVaultSettings(BaseSettings):
+field_with_underscore: str
+field_with_alias: str = Field(..., alias='Alias-With-Dashes')
+
+@classmethod
+def settings_customise_sources(
+cls,
+settings_cls: type[BaseSettings],
+init_settings: PydanticBaseSettingsSource,
+env_settings: PydanticBaseSettingsSource,
+dotenv_settings: PydanticBaseSettingsSource,
+file_secret_settings: PydanticBaseSettingsSource,
+) -> tuple[PydanticBaseSettingsSource, ...]:
+az_key_vault_settings = AzureKeyVaultSettingsSource(
+settings_cls,
+os.environ['AZURE_KEY_VAULT_URL'],
+DefaultAzureCredential(),
+dash_to_underscore=True,
+)
+return (az_key_vault_settings,)
+```
+
+---
+TITLE: Using Command Line Argument Parsing with Pydantic Settings
+DESCRIPTION: Demonstrates how to use Pydantic Settings to parse command-line arguments into Pydantic models by setting `cli_parse_args=True`. This allows overriding settings values via the command line, supporting lists, dictionaries, literals, enums, and field aliases, providing a flexible way to configure applications.
+SOURCE: /docs/index.md
+
+```py
+import sys
+
+from pydantic import BaseModel
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class DeepSubModel(BaseModel):
+v4: str
+
+class SubModel(BaseModel):
+v1: str
+v2: bytes
+v3: int
+deep: DeepSubModel
+
+class Settings(BaseSettings):
+model_config = SettingsConfigDict(cli_parse_args=True)
+
+v0: str
+sub_model: SubModel
+
+sys.argv = [
+'example.py',
+'--v0=0',
+'--sub_model={"v1": "json-1", "v2": "json-2"}',
+'--sub_model.v2=nested-2',
+'--sub_model.v3=3',
+'--sub_model.deep.v4=v4',
+]
+
+print(Settings().model_dump())
+"""
+{
+'v0': '0',
+'sub_model': {'v1': 'json-1', 'v2': b'nested-2', 'v3': 3, 'deep': {'v4': 'v4'}},
+}
+"""
+```
+
+```py
+import os
+import sys
+
+from pydantic_settings import (
+BaseSettings,
+CliSettingsSource,
+PydanticBaseSettingsSource,
+)
+
+class Settings(BaseSettings):
+my_foo: str
+
+@classmethod
+def settings_customise_sources(
+cls,
+settings_cls: type[BaseSettings],
+init_settings: PydanticBaseSettingsSource,
+env_settings: PydanticBaseSettingsSource,
+dotenv_settings: PydanticBaseSettingsSource,
+file_secret_settings: PydanticBaseSettingsSource,
+) -> tuple[PydanticBaseSettingsSource, ...]:
+return env_settings, CliSettingsSource(settings_cls, cli_parse_args=True)
+
+os.environ['MY_FOO'] = 'from environment'
+
+sys.argv = ['example.py', '--my_foo=from cli']
+
+print(Settings().model_dump())
+#> {'my_foo': 'from environment'}
+```
+
+```py
+import sys
+
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings, cli_parse_args=True):
+my_list: list[int]
+
+sys.argv = ['example.py', '--my_list', '[1,2]']
+print(Settings().model_dump())
+#> {'my_list': [1, 2]}
+
+sys.argv = ['example.py', '--my_list', '1', '--my_list', '2']
+print(Settings().model_dump())
+#> {'my_list': [1, 2]}
+
+sys.argv = ['example.py', '--my_list', '1,2']
+print(Settings().model_dump())
+#> {'my_list': [1, 2]}
+```
+
+```plaintext
+#### Literals and Enums
+CLI argument parsing of literals and enums are converted into CLI choices.  
+```
+
+```plaintext
+#### Aliases
+Pydantic field aliases are added as CLI argument aliases. Aliases of length one are converted into short options.  
+```
+
+---
+TITLE: Customising Settings Sources by Removing Sources
+DESCRIPTION: Demonstrates how to customise settings sources in `pydantic-settings` by removing default sources. This is achieved by overriding the `settings_customise_sources` method of a `Settings` class, allowing control over the order and inclusion of settings sources like `init_settings`, `env_settings`, and `file_secret_settings`.
+SOURCE: /docs/index.md
+
+```py
+from pydantic import ValidationError
+
+from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
+
+class Settings(BaseSettings):
+my_api_key: str
+
+@classmethod
+def settings_customise_sources(
+cls,
+settings_cls: type[BaseSettings],
+init_settings: PydanticBaseSettingsSource,
+env_settings: PydanticBaseSettingsSource,
+dotenv_settings: PydanticBaseSettingsSource,
+file_secret_settings: PydanticBaseSettingsSource,
+) -> tuple[PydanticBaseSettingsSource, ...]:
+# here we choose to ignore arguments from init_settings
+return env_settings, file_secret_settings
+
+try:
+Settings(my_api_key='this is ignored')
+except ValidationError as exc_info:
+print(exc_info)
+"""
+1 validation error for Settings
+my_api_key
+Field required [type=missing, input_value={}, input_type=dict]
+For further information visit https://errors.pydantic.dev/2/v/missing
+"""
+```
+
+---
+TITLE: Integrating CLI Settings with Existing Parsers
+DESCRIPTION: Demonstrates how to integrate `pydantic-settings` CLI functionality with existing parsers by overriding the default `CliSettingsSource` with a user-defined one that specifies the `root_parser` object. This allows leveraging existing `argparse` configurations while still benefiting from `pydantic-settings`' features for managing settings and configurations.
+SOURCE: /docs/index.md
+
+```py
+import sys
+from argparse import ArgumentParser
+
+from pydantic_settings import BaseSettings, CliApp, CliSettingsSource
+
+parser = ArgumentParser()
+parser.add_argument('--food', choices=['pear', 'kiwi', 'lime'])
+
+class Settings(BaseSettings):
+name: str = 'Bob'
+
+# Set existing `parser` as the `root_parser` object for the user defined settings source
+cli_settings = CliSettingsSource(Settings, root_parser=parser)
+
+# Parse and load CLI settings from the command line into the settings source.
+sys.argv = ['example.py', '--food', 'kiwi', '--name', 'waldo']
+s = CliApp.run(Settings, cli_settings_source=cli_settings)
+print(s.model_dump())
+#> {'name': 'waldo'}
+
+# Load CLI settings from pre-parsed arguments. i.e., the parsing occurs elsewhere and we
+# just need to load the pre-parsed args into the settings source.
+parsed_args = parser.parse_args(['--food', 'kiwi', '--name', 'ralph'])
+s = CliApp.run(Settings, cli_args=parsed_args, cli_settings_source=cli_settings)
+print(s.model_dump())
+#> {'name': 'ralph'}
+```
+
+---
+TITLE: Disabling Default Value Validation in Pydantic Settings
+DESCRIPTION: Demonstrates how to disable default value validation in `BaseSettings` using `validate_default=False` within `model_config` or the `Field` definition. This prevents validation errors when default values do not match the declared type, offering flexibility in configuration.
+SOURCE: /docs/index.md
+
+```py
+from pydantic import Field
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+model_config = SettingsConfigDict(validate_default=False)
+
+# default won't be validated
+foo: int = 'test'
+
+print(Settings())
+#> foo='test'
+
+class Settings1(BaseSettings):
+# default won't be validated
+foo: int = Field('test', validate_default=False)
+
+print(Settings1())
+#> foo='test'
+```
+
+---
+TITLE: Configuring Azure Key Vault Settings with Pydantic Settings
+DESCRIPTION: Demonstrates how to configure `BaseSettings` from Azure Key Vault using `AzureKeyVaultSettingsSource` in `pydantic-settings`. It illustrates fetching secrets from Azure Key Vault, mapping them to `BaseSettings` fields, and using `DefaultAzureCredential` for authentication, requiring the `Key Vault Secrets User` role assignment.
+SOURCE: /docs/index.md
+
+```py
+import os
+
+from azure.identity import DefaultAzureCredential
+from pydantic import BaseModel
+
+from pydantic_settings import (
+AzureKeyVaultSettingsSource,
+BaseSettings,
+PydanticBaseSettingsSource,
+)
+
+class SubModel(BaseModel):
+a: str
+
+class AzureKeyVaultSettings(BaseSettings):
+foo: str
+bar: int
+sub: SubModel
+
+@classmethod
+def settings_customise_sources(
+cls,
+settings_cls: type[BaseSettings],
+init_settings: PydanticBaseSettingsSource,
+env_settings: PydanticBaseSettingsSource,
+dotenv_settings: PydanticBaseSettingsSource,
+file_secret_settings: PydanticBaseSettingsSource,
+) -> tuple[PydanticBaseSettingsSource, ...]:
+az_key_vault_settings = AzureKeyVaultSettingsSource(
+settings_cls,
+os.environ['AZURE_KEY_VAULT_URL'],
+DefaultAzureCredential(),
+)
+return (
+init_settings,
+env_settings,
+dotenv_settings,
+file_secret_settings,
+az_key_vault_settings,
+)
+```
+
+---
+TITLE: Defining CLI Subcommands and Positional Arguments
+DESCRIPTION: Demonstrates how to define command-line subcommands and positional arguments using `CliSubCommand` and `CliPositionalArg` in `pydantic-settings`. It illustrates the use of unions and aliases for subcommands and positional arguments, and how to retrieve parsed subcommands using the `get_subcommand` utility function.
+SOURCE: /docs/index.md
+
+```py
+import sys
+
+from pydantic import BaseModel
+
+from pydantic_settings import (
+BaseSettings,
+CliPositionalArg,
+CliSubCommand,
+SettingsError,
+get_subcommand,
+)
+
+class Init(BaseModel):
+directory: CliPositionalArg[str]
+
+class Clone(BaseModel):
+repository: CliPositionalArg[str]
+directory: CliPositionalArg[str]
+
+class Git(BaseSettings, cli_parse_args=True, cli_exit_on_error=False):
+clone: CliSubCommand[Clone]
+init: CliSubCommand[Init]
+
+# Run without subcommands
+sys.argv = ['example.py']
+cmd = Git()
+assert cmd.model_dump() == {'clone': None, 'init': None}
+
+try:
+# Will raise an error since no subcommand was provided
+get_subcommand(cmd).model_dump()
+except SettingsError as err:
+assert str(err) == 'Error: CLI subcommand is required {clone, init}'
+
+# Will not raise an error since subcommand is not required
+assert get_subcommand(cmd, is_required=False) is None
+
+# Run the clone subcommand
+sys.argv = ['example.py', 'clone', 'repo', 'dest']
+cmd = Git()
+assert cmd.model_dump() == {
+'clone': {'repository': 'repo', 'directory': 'dest'},
+'init': None,
+}
+
+# Returns the subcommand model instance (in this case, 'clone')
+assert get_subcommand(cmd).model_dump() == {
+'directory': 'dest',
+'repository': 'repo',
+}
+```
+
+```py
+import sys
+from typing import Union
+
+from pydantic import BaseModel, Field
+
+from pydantic_settings import (
+BaseSettings,
+CliPositionalArg,
+CliSubCommand,
+get_subcommand,
+)
+
+class Alpha(BaseModel):
+"""Apha Help"""
+
+cmd_alpha: CliPositionalArg[str] = Field(alias='alpha-cmd')
+
+class Beta(BaseModel):
+"""Beta Help"""
+
+opt_beta: str = Field(alias='opt-beta')
+
+class Gamma(BaseModel):
+"""Gamma Help"""
+
+opt_gamma: str = Field(alias='opt-gamma')
+
+class Root(BaseSettings, cli_parse_args=True, cli_exit_on_error=False):
+alpha_or_beta: CliSubCommand[Union[Alpha, Beta]] = Field(alias='alpha-or-beta-cmd')
+gamma: CliSubCommand[Gamma] = Field(alias='gamma-cmd')
+
+sys.argv = ['example.py', 'Alpha', 'hello']
+assert get_subcommand(Root()).model_dump() == {'cmd_alpha': 'hello'}
+
+sys.argv = ['example.py', 'Beta', '--opt-beta=hey']
+assert get_subcommand(Root()).model_dump() == {'opt_beta': 'hey'}
+
+sys.argv = ['example.py', 'gamma-cmd', '--opt-gamma=hi']
+assert get_subcommand(Root()).model_dump() == {'opt_gamma': 'hi'}
+```
+
+---
+TITLE: Configuring AWS Secrets Manager Settings with Pydantic
+DESCRIPTION: Demonstrates configuring `AWSSecretsManagerSettingsSource` to load settings from AWS Secrets Manager using `pydantic-settings`. It illustrates how to define a `BaseSettings` model with nested models and customize settings sources to prioritize AWS Secrets Manager, requiring the `secret_id` environment variable to be set.
+SOURCE: /docs/index.md
+
+```py
+import os
+
+from pydantic import BaseModel
+
+from pydantic_settings import (
+AWSSecretsManagerSettingsSource,
+BaseSettings,
+PydanticBaseSettingsSource,
+)
+
+class SubModel(BaseModel):
+a: str
+
+class AWSSecretsManagerSettings(BaseSettings):
+foo: str
+bar: int
+sub: SubModel
+
+@classmethod
+def settings_customise_sources(
+cls,
+settings_cls: type[BaseSettings],
+init_settings: PydanticBaseSettingsSource,
+env_settings: PydanticBaseSettingsSource,
+dotenv_settings: PydanticBaseSettingsSource,
+file_secret_settings: PydanticBaseSettingsSource,
+) -> tuple[PydanticBaseSettingsSource, ...]:
+aws_secrets_manager_settings = AWSSecretsManagerSettingsSource(
+settings_cls,
+os.environ['AWS_SECRETS_MANAGER_SECRET_ID'],
+)
+return (
+init_settings,
+env_settings,
+dotenv_settings,
+file_secret_settings,
+aws_secrets_manager_settings,
+)
+```
+
+---
+TITLE: Configuring Environment Variable Names with Pydantic Settings
+DESCRIPTION: Demonstrates how to configure environment variable names using `pydantic-settings`, including setting a global `env_prefix` via `SettingsConfigDict` and overriding individual field names with `Field(alias=...)`. Explains that `env_prefix` is ignored for fields with aliases, and the value will be read from the alias environment variable.
+SOURCE: /docs/index.md
+
+```py
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+model_config = SettingsConfigDict(env_prefix='my_prefix_')
+
+auth_key: str = 'xxx'  # will be read from `my_prefix_auth_key`
+```
+
+---
+TITLE: Adding Custom Settings Sources with pydantic-settings
+DESCRIPTION: Demonstrates how to add custom settings sources to `pydantic-settings` by overriding the `settings_customise_sources` method. This allows developers to load settings from custom sources, such as JSON files, and access the results of previous sources using `current_state` and `settings_sources_data`.
+SOURCE: /docs/index.md
+
+```py
+import json
+from pathlib import Path
+from typing import Any
+
+from pydantic.fields import FieldInfo
+
+from pydantic_settings import (
+BaseSettings,
+PydanticBaseSettingsSource,
+SettingsConfigDict,
+)
+
+class JsonConfigSettingsSource(PydanticBaseSettingsSource):
+"""
+A simple settings source class that loads variables from a JSON file
+at the project's root.
+
+Here we happen to choose to use the `env_file_encoding` from Config
+when reading `config.json`
+
+def get_field_value(
+self, field: FieldInfo, field_name: str
+) -> tuple[Any, str, bool]:
+encoding = self.config.get('env_file_encoding')
+file_content_json = json.loads(
+Path('tests/example_test_config.json').read_text(encoding)
+)
+field_value = file_content_json.get(field_name)
+return field_value, field_name, False
+
+def prepare_field_value(
+self, field_name: str, field: FieldInfo, value: Any, value_is_complex: bool
+) -> Any:
+return value
+
+def __call__(self) -> dict[str, Any]:
+d: dict[str, Any] = {}
+
+for field_name, field in self.settings_cls.model_fields.items():
+field_value, field_key, value_is_complex = self.get_field_value(
+field, field_name
+)
+field_value = self.prepare_field_value(
+field_name, field, field_value, value_is_complex
+)
+if field_value is not None:
+d[field_key] = field_value
+
+return d
+
+class Settings(BaseSettings):
+model_config = SettingsConfigDict(env_file_encoding='utf-8')
+
+foobar: str
+
+@classmethod
+def settings_customise_sources(
+cls,
+settings_cls: type[BaseSettings],
+init_settings: PydanticBaseSettingsSource,
+env_settings: PydanticBaseSettingsSource,
+dotenv_settings: PydanticBaseSettingsSource,
+file_secret_settings: PydanticBaseSettingsSource,
+) -> tuple[PydanticBaseSettingsSource, ...]:
+return (
+init_settings,
+JsonConfigSettingsSource(settings_cls),
+env_settings,
+file_secret_settings,
+)
+
+print(Settings())
+#> foobar='test'
+```
+
+```python
+from typing import Any
+
+from pydantic.fields import FieldInfo
+
+from pydantic_settings import PydanticBaseSettingsSource
+
+class MyCustomSource(PydanticBaseSettingsSource):
+def get_field_value(
+self, field: FieldInfo, field_name: str
+) -> tuple[Any, str, bool]: ...
+
+def __call__(self) -> dict[str, Any]:
+# Retrieve the aggregated settings from previous sources
+current_state = self.current_state
+current_state.get('some_setting')
+
+# Retrive settings from all sources individually
+# self.settings_sources_data["SettingsSourceName"]: dict[str, Any]
+settings_sources_data = self.settings_sources_data
+settings_sources_data['SomeSettingsSource'].get('some_setting')
+
+# Your code here...
+```
+
+---
+TITLE: Implementing Command Line Argument Parsing with Pydantic Settings
+DESCRIPTION: Demonstrates how to use `pydantic-settings` to parse command-line arguments into Pydantic models, including the use of field aliases via `AliasChoices` and `AliasPath` for short options and nested data access. This simplifies CLI application development by automatically mapping arguments to model fields.
+SOURCE: /docs/index.md
+
+```plaintext
+#### Aliases
+Pydantic field aliases are added as CLI argument aliases. Aliases of length one are converted into short options.  
+```
+
+---
+TITLE: Handling Case Sensitivity in Pydantic Settings
+DESCRIPTION: Demonstrates how to configure case sensitivity for environment variable names using the `case_sensitive` setting in `pydantic-settings`. When set to `True`, environment variable names must match field names, allowing for more strict configuration and preventing unintended overrides, but may not work on Windows.
+SOURCE: /docs/index.md
+
+```py
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+model_config = SettingsConfigDict(case_sensitive=True)
+
+redis_host: str = 'localhost'
+```
+
+```py
+import os
+
+from pydantic import BaseModel, ValidationError
+
+from pydantic_settings import BaseSettings
+
+class RedisSettings(BaseModel):
+host: str
+port: int
+
+class Settings(BaseSettings, case_sensitive=True):
+redis: RedisSettings
+
+os.environ['redis'] = '{"host": "localhost", "port": 6379}'
+print(Settings().model_dump())
+#> {'redis': {'host': 'localhost', 'port': 6379}}
+os.environ['redis'] = '{"HOST": "localhost", "port": 6379}'  # (1)!
+try:
+Settings()
+except ValidationError as e:
+print(e)
+"""
+1 validation error for Settings
+redis.host
+Field required [type=missing, input_value={'HOST': 'localhost', 'port': 6379}, input_type=dict]
+For further information visit https://errors.pydantic.dev/2/v/missing
+"""
+```
+
+---
+TITLE: Enabling Nested Model Partial Updates in Pydantic Settings
+DESCRIPTION: Demonstrates how to enable partial updates for nested model default objects in `pydantic-settings` using the `nested_model_default_partial_update` flag. This allows updating specific fields within nested models defined as defaults via environment variables, providing more granular configuration options.
+SOURCE: /docs/index.md
+
+```py
+import os
+
+from pydantic import BaseModel
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class SubModel(BaseModel):
+val: int = 0
+flag: bool = False
+
+class SettingsPartialUpdate(BaseSettings):
+model_config = SettingsConfigDict(
+env_nested_delimiter='__', nested_model_default_partial_update=True
+)
+
+nested_model: SubModel = SubModel(val=1)
+
+class SettingsNoPartialUpdate(BaseSettings):
+model_config = SettingsConfigDict(
+env_nested_delimiter='__', nested_model_default_partial_update=False
+)
+
+nested_model: SubModel = SubModel(val=1)
+
+# Apply a partial update to the default object using environment variables
+os.environ['NESTED_MODEL__FLAG'] = 'True'
+
+# When partial update is enabled, the existing SubModel instance is updated
+# with nested_model.flag=True change
+assert SettingsPartialUpdate().model_dump() == {
+'nested_model': {'val': 1, 'flag': True}
+}
+
+# When partial update is disabled, a new SubModel instance is instantiated
+# with nested_model.flag=True change
+assert SettingsNoPartialUpdate().model_dump() == {
+'nested_model': {'val': 0, 'flag': True}
+}
+```
+
+---
+TITLE: Configuring Settings with `BaseSettings` and Environment Variables
+DESCRIPTION: Demonstrates how to use `BaseSettings` to automatically read application configuration from environment variables, overriding default values and using `validation_alias` and `alias` for custom environment variable names. This simplifies configuration management by allowing modifications via environment variables while providing a type-hinted configuration class.
+SOURCE: /docs/index.md
+
+```py
+from collections.abc import Callable
+from typing import Any
+
+from pydantic import (
+AliasChoices,
+AmqpDsn,
+BaseModel,
+Field,
+ImportString,
+PostgresDsn,
+RedisDsn,
+)
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class SubModel(BaseModel):
+foo: str = 'bar'
+apple: int = 1
+
+class Settings(BaseSettings):
+auth_key: str = Field(validation_alias='my_auth_key')  # (1)!
+
+api_key: str = Field(alias='my_api_key')  # (2)!
+
+redis_dsn: RedisDsn = Field(
+'redis://user:pass@localhost:6379/1',
+validation_alias=AliasChoices('service_redis_dsn', 'redis_url'),  # (3)!
+)
+pg_dsn: PostgresDsn = 'postgres://user:pass@localhost:5432/foobar'
+amqp_dsn: AmqpDsn = 'amqp://user:pass@localhost:5672/'
+
+special_function: ImportString[Callable[[Any], Any]] = 'math.cos'  # (4)!
+
+# to override domains:
+# export my_prefix_domains='["foo.com", "bar.com"]'
+domains: set[str] = set()
+
+# to override more_settings:
+# export my_prefix_more_settings='{"foo": "x", "apple": 1}'
+more_settings: SubModel = SubModel()
+
+model_config = SettingsConfigDict(env_prefix='my_prefix_')  # (5)!
+
+print(Settings().model_dump())
+"""
+{
+'auth_key': 'xxx',
+'api_key': 'xxx',
+'redis_dsn': RedisDsn('redis://user:pass@localhost:6379/1'),
+'pg_dsn': PostgresDsn('postgres://user:pass@localhost:5432/foobar'),
+'amqp_dsn': AmqpDsn('amqp://user:pass@localhost:5672/'),
+'special_function': math.cos,
+'domains': set(),
+'more_settings': {'foo': 'bar', 'apple': 1},
+}
+"""
+```
+
+---
+TITLE: Configuring Settings with `pyproject.toml` in Pydantic Settings
+DESCRIPTION: Demonstrates loading settings from a `pyproject.toml` file using `PyprojectTomlConfigSettingsSource`, including specifying a custom table header with `SettingsConfigDict(pyproject_toml_table_header=...)` and searching for the file in parent directories using `SettingsConfigDict(pyproject_toml_depth=<int>)`. Also shows how to provide an explicit file path to the settings source.
+SOURCE: /docs/index.md
+
+```python
+from pydantic_settings import (
+BaseSettings,
+PydanticBaseSettingsSource,
+PyprojectTomlConfigSettingsSource,
+SettingsConfigDict,
+)
+
+class Settings(BaseSettings):
+"""Example loading values from the table used by default."""
+
+field: str
+
+@classmethod
+def settings_customise_sources(
+cls,
+settings_cls: type[BaseSettings],
+init_settings: PydanticBaseSettingsSource,
+env_settings: PydanticBaseSettingsSource,
+dotenv_settings: PydanticBaseSettingsSource,
+file_secret_settings: PydanticBaseSettingsSource,
+) -> tuple[PydanticBaseSettingsSource, ...]:
+return (PyprojectTomlConfigSettingsSource(settings_cls),)
+
+class SomeTableSettings(Settings):
+"""Example loading values from a user defined table."""
+
+model_config = SettingsConfigDict(
+pyproject_toml_table_header=('tool', 'some-table')
+)
+
+class RootSettings(Settings):
+"""Example loading values from the root of a pyproject.toml file."""
+
+model_config = SettingsConfigDict(extra='ignore', pyproject_toml_table_header=())
+```
+
+```toml
+field = "root"
+
+[tool.pydantic-settings]
+field = "default-table"
+
+[tool.some-table]
+field = "some-table"
+```
+
+```python
+from pathlib import Path
+
+from pydantic_settings import (
+BaseSettings,
+PydanticBaseSettingsSource,
+PyprojectTomlConfigSettingsSource,
+SettingsConfigDict,
+)
+
+class DiscoverSettings(BaseSettings):
+"""Example of discovering a pyproject.toml in parent directories in not in `Path.cwd()`."""
+
+model_config = SettingsConfigDict(pyproject_toml_depth=2)
+
+@classmethod
+def settings_customise_sources(
+cls,
+settings_cls: type[BaseSettings],
+init_settings: PydanticBaseSettingsSource,
+env_settings: PydanticBaseSettingsSource,
+dotenv_settings: PydanticBaseSettingsSource,
+file_secret_settings: PydanticBaseSettingsSource,
+) -> tuple[PydanticBaseSettingsSource, ...]:
+return (PyprojectTomlConfigSettingsSource(settings_cls),)
+
+class ExplicitFilePathSettings(BaseSettings):
+"""Example of explicitly providing the path to the file to load."""
+
+field: str
+
+@classmethod
+def settings_customise_sources(
+cls,
+settings_cls: type[BaseSettings],
+init_settings: PydanticBaseSettingsSource,
+env_settings: PydanticBaseSettingsSource,
+dotenv_settings: PydanticBaseSettingsSource,
+file_secret_settings: PydanticBaseSettingsSource,
+) -> tuple[PydanticBaseSettingsSource, ...]:
+return (
+PyprojectTomlConfigSettingsSource(
+settings_cls, Path('~/.config').resolve() / 'pyproject.toml'
+),
+)
+```
+
+---
+TITLE: Customizing CLI Experience with Pydantic Settings
+DESCRIPTION: Demonstrates how to customize the CLI experience using `pydantic-settings`, including enforcing required arguments with `cli_enforce_required`, changing the `None` type parse string with `cli_parse_none_str`, hiding `None` values with `cli_hide_none_type`, avoiding JSON CLI options with `cli_avoid_json`, using class docstrings for group help text with `cli_use_class_docs_for_groups`, and changing the CLI flag prefix character with `cli_flag_prefix_char`.
+SOURCE: /docs/index.md
+
+```plaintext
+#### Enforce Required Arguments at CLI
+Pydantic settings is designed to pull values in from various sources when instantating a model. This means a field that
+is required is not strictly required from any single source (e.g. the CLI). Instead, all that matters is that one of the
+sources provides the required value.  
+However, if your use case [aligns more with #2](#command-line-support), using Pydantic models to define CLIs, you will
+likely want required fields to be _strictly required at the CLI_. We can enable this behavior by using
+`cli_enforce_required`.  
+!!! note
+A required `CliPositionalArg` field is always strictly required (enforced) at the CLI.  
+```
+
+```plaintext
+#### Change the None Type Parse String
+Change the CLI string value that will be parsed (e.g. "null", "void", "None", etc.) into `None` by setting
+`cli_parse_none_str`. By default it will use the `env_parse_none_str` value if set. Otherwise, it will default to "null"
+if `cli_avoid_json` is `False`, and "None" if `cli_avoid_json` is `True`.  
+```
+
+```plaintext
+#### Hide None Type Values
+Hide `None` values from the CLI help text by enabling `cli_hide_none_type`.  
+from typing import Optional
+
+from pydantic import Field
+
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings, cli_parse_args=True, cli_hide_none_type=True):
+v0: Optional[str] = Field(description='the top level v0 option')
+
+try:
+sys.argv = ['example.py', '--help']
+Settings()
+except SystemExit as e:
+print(e)
+#> 0
+"""
+usage: example.py [-h] [--v0 str]
+
+options:
+-h, --help  show this help message and exit
+--v0 str    the top level v0 option (required)
+"""
+```
+
+```plaintext
+#### Use Class Docstring for Group Help Text
+By default, when populating the group help text for nested models it will pull from the field descriptions.
+Alternatively, we can also configure CLI settings to pull from the class docstring instead.  
+!!! note
+If the field is a union of nested models the group help text will always be pulled from the field description;
+even if `cli_use_class_docs_for_groups` is set to `True`.  
+
+from pydantic import BaseModel, Field
+
+from pydantic_settings import BaseSettings
+
+class SubModel(BaseModel):
+"""The help text from the class docstring."""
+
+v1: int = Field(description='the sub model v1 option')
+
+class Settings(BaseSettings, cli_parse_args=True, cli_use_class_docs_for_groups=True):
+"""My application help text."""
+
+sub_model: SubModel = Field(description='The help text from the field description')
+
+try:
+sys.argv = ['example.py', '--help']
+Settings()
+except SystemExit as e:
+print(e)
+#> 0
+"""
+usage: example.py [-h] [--sub_model JSON] [--sub_model.v1 int]
+
+My application help text.
+
+options:
+-h, --help          show this help message and exit
+
+sub_model options:
+The help text from the class docstring.
+
+--sub_model JSON    set sub_model from JSON string
+--sub_model.v1 int  the sub model v1 option (required)
+"""
+```
+
+---
+TITLE: Loading Secrets with Pydantic Settings
+DESCRIPTION: Demonstrates how to load secret values from files using `pydantic-settings`. It configures `BaseSettings` to read secrets from a specified directory via `secrets_dir` in `model_config` or the `_secrets_dir` instantiation argument, prioritizing environment variables and `.env` files over secret files.
+SOURCE: /docs/index.md
+
+```title="/var/run/database_password"
+super_secret_database_password
+```
+
+````py
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+model_config = SettingsConfigDict(secrets_dir='/var/run')
+
+database_password: str
+```
+
+````
+In either case, the value of the passed argument can be any valid directory, either absolute or relative to the
+current working directory. **Note that a non existent directory will only generate a warning**.
+From there, *pydantic* will handle everything for you by loading in your variables and validating them.  
+Even when using a secrets directory, *pydantic* will still read environment variables from a dotenv file or the environment,
+**a dotenv file and environment variables will always take priority over values loaded from the secrets directory**.  
+Passing a file path via the `_secrets_dir` keyword argument on instantiation (method 2) will override
+the value (if any) set on the `model_config` class.  
+If you need to load settings from multiple secrets directories, you can pass multiple paths as a tuple or list. Just like for `env_file`, values from subsequent paths override previous ones.  
+```
+
+---
+TITLE: Customizing Pydantic Settings CLI Argument Parsing
+DESCRIPTION: Demonstrates customizing the CLI experience with `pydantic-settings`, including changing the flag prefix character using `cli_flag_prefix_char`, suppressing fields from help text with `CliSuppress` and `CLI_SUPPRESS`, and defining CLI shortcuts for arguments using `cli_shortcuts` in `SettingsConfigDict`. This allows for more user-friendly and concise CLI argument names.
+SOURCE: /docs/index.md
+
+```plaintext
+#### Change the CLI Flag Prefix Character
+Change The CLI flag prefix character used in CLI optional arguments by settings `cli_flag_prefix_char`.  
+```
+
+```plaintext
+#### Suppressing Fields from CLI Help Text
+To suppress a field from the CLI help text, the `CliSuppress` annotation can be used for field types, or the
+`CLI_SUPPRESS` string constant can be used for field descriptions.  
+import sys
+
+from pydantic import Field
+
+from pydantic_settings import CLI_SUPPRESS, BaseSettings, CliSuppress
+
+class Settings(BaseSettings, cli_parse_args=True):
+"""Suppress fields from CLI help text."""
+
+field_a: CliSuppress[int] = 0
+field_b: str = Field(default=1, description=CLI_SUPPRESS)
+
+try:
+sys.argv = ['example.py', '--help']
+Settings()
+except SystemExit as e:
+print(e)
+#> 0
+"""
+usage: example.py [-h]
+
+Suppress fields from CLI help text.
+
+options:
+-h, --help          show this help message and exit
+"""
+```
+
+```plaintext
+**Nested Example:**  
+```
+
+---
+TITLE: Retrieving Secrets Using Google Cloud Secret Manager
+DESCRIPTION: Demonstrates how to retrieve secrets from Google Cloud Secret Manager using `GoogleSecretManagerSettingsSource` in `pydantic-settings`. This allows you to securely manage and access sensitive information like database passwords within your Pydantic settings, enhancing security and simplifying configuration management.
+SOURCE: /docs/index.md
+
+```py
+from pydantic import BaseModel
+
+from pydantic_settings import (
+BaseSettings,
+GoogleSecretManagerSettingsSource,
+PydanticBaseSettingsSource,
+SettingsConfigDict,
+)
+
+class Database(BaseModel):
+password: str
+user: str
+
+class Settings(BaseSettings):
+database: Database
+
+model_config = SettingsConfigDict(env_nested_delimiter='__')
+
+@classmethod
+def settings_customise_sources(
+cls,
+settings_cls: type[BaseSettings],
+init_settings: PydanticBaseSettingsSource,
+env_settings: PydanticBaseSettingsSource,
+dotenv_settings: PydanticBaseSettingsSource,
+file_secret_settings: PydanticBaseSettingsSource,
+) -> tuple[PydanticBaseSettingsSource, ...]:
+# Create the GCP Secret Manager settings source
+gcp_settings = GoogleSecretManagerSettingsSource(
+settings_cls,
+# If not provided, will use google.auth.default()
+# to get credentials from the environemnt
+# credentials=your_credentials,
+# If not provided, will use google.auth.default()
+# to get project_id from the environemnt
+project_id='your-gcp-project-id',
+)
+
+return (
+init_settings,
+env_settings,
+dotenv_settings,
+file_secret_settings,
+gcp_settings,
+)
+```
+
+---
+TITLE: Changing Settings Source Priority with `settings_customise_sources`
+DESCRIPTION: Demonstrates how to customize the priority of settings sources in `pydantic-settings` by overriding the `settings_customise_sources` method. This allows developers to control the order in which settings are loaded from different sources like environment variables, `__init__` kwargs, and files, enabling precedence configuration for settings values.
+SOURCE: /docs/index.md
+
+```py
+from pydantic import PostgresDsn
+
+from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
+
+class Settings(BaseSettings):
+database_dsn: PostgresDsn
+
+@classmethod
+def settings_customise_sources(
+cls,
+settings_cls: type[BaseSettings],
+init_settings: PydanticBaseSettingsSource,
+env_settings: PydanticBaseSettingsSource,
+dotenv_settings: PydanticBaseSettingsSource,
+file_secret_settings: PydanticBaseSettingsSource,
+) -> tuple[PydanticBaseSettingsSource, ...]:
+return env_settings, init_settings, file_secret_settings
+
+print(Settings(database_dsn='postgres://postgres@localhost:5432/kwargs_db'))
+#> database_dsn=PostgresDsn('postgres://postgres@localhost:5432/kwargs_db')
+```
+
+---
+TITLE: Loading Dotenv Files with Pydantic Settings
+DESCRIPTION: Demonstrates how to load environment variables from `.env` files using `pydantic-settings`. This allows configuration of `BaseSettings` models by specifying the `env_file` in `model_config` or via the `_env_file` instantiation argument, with environment variables taking precedence over dotenv values.
+SOURCE: /docs/index.md
+
+```bash
+# ignore comment
+ENVIRONMENT="production"
+REDIS_ADDRESS=localhost:6379
+MEANING_OF_LIFE=42
+MY_VAR='Hello world'
+```
+
+````py
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
+```
+
+````py
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
+
+settings = Settings(_env_file='prod.env', _env_file_encoding='utf-8')
+```
+
+```py
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+model_config = SettingsConfigDict(
+# `.env.prod` takes priority over `.env`
+env_file=('.env', '.env.prod')
+)
+```
+
+---
+TITLE: Implementing Asynchronous CLI Commands with Pydantic Settings
+DESCRIPTION: Demonstrates how to define and run asynchronous CLI commands using `CliApp.run` and `CliApp.run_subcommand` in Pydantic settings. This allows you to mark CLI entrypoint methods as `async def` and execute them, enabling asynchronous operations within your CLI applications, especially for leaf subcommands to avoid unnecessary thread creation.
+SOURCE: /docs/index.md
+
+```py
+from pydantic_settings import BaseSettings, CliApp
+
+class AsyncSettings(BaseSettings):
+async def cli_cmd(self) -> None:
+print('Hello from an async CLI method!')
+#> Hello from an async CLI method!
+
+# If an event loop is already running, a new thread will be used;
+# otherwise, asyncio.run() is used to execute this async method.
+assert CliApp.run(AsyncSettings, cli_args=[]).model_dump() == {}
+```
+
+```py
+from pydantic import BaseModel
+
+from pydantic_settings import (
+BaseSettings,
+CliApp,
+CliPositionalArg,
+CliSubCommand,
+)
+
+class Clone(BaseModel):
+repository: CliPositionalArg[str]
+directory: CliPositionalArg[str]
+
+async def cli_cmd(self) -> None:
+# Perform async tasks here, e.g. network or I/O operations
+print(f'Cloning async from "{self.repository}" into "{self.directory}"')
+#> Cloning async from "repo" into "dir"
+
+class Git(BaseSettings):
+clone: CliSubCommand[Clone]
+
+def cli_cmd(self) -> None:
+# Run the final subcommand (clone/init). It is recommended to define async methods only at the deepest level.
+CliApp.run_subcommand(self)
+
+CliApp.run(Git, cli_args=['clone', 'repo', 'dir']).model_dump() == {
+'repository': 'repo',
+'directory': 'dir',
+}
+```
+
+---
+TITLE: Reloading Settings In-Place with `pydantic-settings`
+DESCRIPTION: Demonstrates how to reload settings in-place using the `__init__` method of a `BaseSettings` class from `pydantic-settings`. This allows updating settings with new environment variables without creating a new settings instance, useful for dynamic configuration updates.
+SOURCE: /docs/index.md
+
+```py
+import os
+
+from pydantic import Field
+
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings):
+foo: str = Field('foo')
+
+mutable_settings = Settings()
+
+print(mutable_settings.foo)
+#> foo
+
+os.environ['foo'] = 'bar'
+print(mutable_settings.foo)
+#> foo
+
+mutable_settings.__init__()
+print(mutable_settings.foo)
+#> bar
+
+os.environ.pop('foo')
+mutable_settings.__init__()
+print(mutable_settings.foo)
+#> foo
+```
+
+---
+TITLE: Customizing CLI Argument Parsing with Pydantic Settings
+DESCRIPTION: Demonstrates customizing the command-line interface (CLI) experience in `pydantic-settings` using flags like `cli_prog_name`, `cli_implicit_flags`, `cli_ignore_unknown_args`, `cli_kebab_case`, and `cli_exit_on_error`. This allows developers to tailor CLI argument parsing, including boolean flag handling, unknown argument retrieval with `CliUnknownArgs`, kebab-case argument naming, and error handling behavior, providing flexibility when defining CLIs with Pydantic models.
+SOURCE: /docs/index.md
+
+```py
+import sys
+
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings, cli_parse_args=True, cli_prog_name='appdantic'):
+pass
+
+try:
+sys.argv = ['example.py', '--help']
+Settings()
+except SystemExit as e:
+print(e)
+#> 0
+"""
+usage: appdantic [-h]
+
+options:
+-h, --help  show this help message and exit
+"""
+```
+
+```py
+from pydantic_settings import BaseSettings, CliExplicitFlag, CliImplicitFlag
+
+class ExplicitSettings(BaseSettings, cli_parse_args=True):
+"""Boolean fields are explicit by default."""
+
+explicit_req: bool
+"""
+--explicit_req bool   (required)
+"""
+
+explicit_opt: bool = False
+"""
+--explicit_opt bool   (default: False)
+"""
+
+# Booleans are explicit by default, so must override implicit flags with annotation
+implicit_req: CliImplicitFlag[bool]
+"""
+--implicit_req, --no-implicit_req (required)
+"""
+
+implicit_opt: CliImplicitFlag[bool] = False
+"""
+--implicit_opt, --no-implicit_opt (default: False)
+"""
+
+class ImplicitSettings(BaseSettings, cli_parse_args=True, cli_implicit_flags=True):
+"""With cli_implicit_flags=True, boolean fields are implicit by default."""
+
+# Booleans are implicit by default, so must override explicit flags with annotation
+explicit_req: CliExplicitFlag[bool]
+"""
+--explicit_req bool   (required)
+"""
+
+explicit_opt: CliExplicitFlag[bool] = False
+"""
+--explicit_opt bool   (default: False)
+"""
+
+implicit_req: bool
+"""
+--implicit_req, --no-implicit_req (required)
+"""
+
+implicit_opt: bool = False
+"""
+--implicit_opt, --no-implicit_opt (default: False)
+"""
+```
+
+```plaintext
+#### CLI Kebab Case for Arguments
+Change whether CLI arguments should use kebab case by enabling `cli_kebab_case`.  
+
+from pydantic import Field
+
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings, cli_parse_args=True, cli_kebab_case=True):
+my_option: str = Field(description='will show as kebab case on CLI')
+
+try:
+sys.argv = ['example.py', '--help']
+Settings()
+except SystemExit as e:
+print(e)
+#> 0
+"""
+usage: example.py [-h] [--my-option str]
+
+options:
+-h, --help       show this help message and exit
+--my-option str  will show as kebab case on CLI (required)
+"""
+```
+
+```plaintext
+#### Enforce Required Arguments at CLI
+Pydantic settings is designed to pull values in from various sources when instantating a model. This means a field that
+is required is not strictly required from any single source (e.g. the CLI). Instead, all that matters is that one of the
+sources provides the required value.  
+However, if your use case [aligns more with #2](#command-line-support), using Pydantic models to define CLIs, you will
+likely want required fields to be _strictly required at the CLI_. We can enable this behavior by using
+`cli_enforce_required`.  
+!!! note
+A required `CliPositionalArg` field is always strictly required (enforced) at the CLI.  
+```
+
+---
+TITLE: Installing Google Cloud Secret Manager Integration
+DESCRIPTION: Demonstrates installing the Google Cloud Secret Manager integration for `pydantic-settings`. This integration allows retrieving secrets directly from GCP Secret Manager for use in Pydantic settings, requiring the `pydantic-settings[gcp-secret-manager]` dependency.
+SOURCE: /docs/index.md
+
+```bash
+pip install "pydantic-settings[gcp-secret-manager]"
+```
+
+---
+TITLE: Configuring Settings with TOML, YAML, and JSON Files
+DESCRIPTION: Demonstrates how to configure `pydantic-settings` using various file formats like TOML, YAML, and JSON via `JsonConfigSettingsSource`, `PyprojectTomlConfigSettingsSource`, `TomlConfigSettingsSource`, and `YamlConfigSettingsSource`. This allows loading settings from configuration files, providing flexibility in managing application settings.
+SOURCE: /docs/index.md
+
+```py
+toml_file = ['config.default.toml', 'config.custom.toml']
+```
+
+```py
+from pydantic import BaseModel
+
+from pydantic_settings import (
+BaseSettings,
+PydanticBaseSettingsSource,
+SettingsConfigDict,
+TomlConfigSettingsSource,
+)
+
+class Nested(BaseModel):
+nested_field: str
+
+class Settings(BaseSettings):
+foobar: str
+nested: Nested
+model_config = SettingsConfigDict(toml_file='config.toml')
+
+@classmethod
+def settings_customise_sources(
+cls,
+settings_cls: type[BaseSettings],
+init_settings: PydanticBaseSettingsSource,
+env_settings: PydanticBaseSettingsSource,
+dotenv_settings: PydanticBaseSettingsSource,
+file_secret_settings: PydanticBaseSettingsSource,
+) -> tuple[PydanticBaseSettingsSource, ...]:
+return (TomlConfigSettingsSource(settings_cls),)
+```
+
+```toml
+foobar = "Hello"
+[nested]
+nested_field = "world!"
+```
+
+---
+TITLE: Using Docker Secrets with Pydantic Settings
+DESCRIPTION: Demonstrates how to use Docker Secrets to configure a `pydantic` application by specifying the secrets directory in `SettingsConfigDict`. This allows sensitive configuration data to be securely passed to applications running in Docker containers, enhancing security and simplifying deployment.
+SOURCE: /docs/index.md
+
+```py
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+model_config = SettingsConfigDict(secrets_dir='/run/secrets')
+
+my_secret_data: str
+```
+
+```bash
+printf "This is a secret" | docker secret create my_secret_data -
+```
+
+```bash
+docker service create --name pydantic-with-secrets --secret my_secret_data pydantic-app:latest
+```
+
+---
