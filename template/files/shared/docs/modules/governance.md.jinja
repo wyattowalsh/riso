@@ -1,0 +1,41 @@
+# Governance Automation
+
+The governance stack enforces constitutional principles before template changes can merge. It
+operates across three pillars: render determinism, documentation freshness, and compliance evidence.
+
+## Automation Scripts
+
+- `scripts/ci/render_matrix.py` regenerates all declared samples and persists metadata (timings,
+  smoke outcomes, module success summaries).
+- `scripts/ci/record_module_success.py` aggregates permutation pass rates and enforces the ≥98%
+  success threshold required by the workflow.
+- `scripts/ci/track_doc_publish.py` logs documentation build timestamps for both Shibuya/Sphinx and
+  Fumadocs sites, including optional SLA durations.
+- `scripts/compliance/checkpoints.py` posts checkpoint evidence to the governance API, ensuring
+  automation-owned records for each constitutional principle.
+
+## Workflow Enforcement
+
+`.github/workflows/template-ci.yml` wires the scripts into four jobs:
+
+1. **Baseline Quickstart** – validates the default render with `uv sync` and quickstart smoke tests.
+2. **Render Matrix** – regenerates all samples via `scripts/render-samples.sh`, records module success
+   metrics, and blocks if any optional module dips below 98% success.
+3. **Documentation Builds** – builds both docs stacks (Sphinx + Fumadocs) and records publish history
+   through `track_doc_publish.py`.
+4. **Governance Checkpoints** – invokes the compliance script (dry-run by default) so maintainers can
+   broadcast evidence to the automation API.
+
+Every job uploads artifacts (baseline evidence, render metadata, doc outputs, and governance logs) so
+reviewers can audit the run without reproducing it locally.
+
+## Maintenance Guidelines
+
+- Update `samples/*/copier-answers.yml` whenever prompts evolve; re-run the matrix to refresh
+  metadata and module success logs.
+- Keep the automation API base URL in `scripts/automation/render_client.py` aligned with your CI
+  environment; use the `--base-url` CLI flag to override defaults.
+- Teach new optional modules to the success recorder by adding smoke commands inside
+  `scripts/render-samples.sh` and documenting their thresholds here.
+- When SLA expectations change, update both the doc tracker invocations in the workflow and the
+  remediation guidance in this document.

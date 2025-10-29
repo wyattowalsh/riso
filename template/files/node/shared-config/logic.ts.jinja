@@ -1,0 +1,16 @@
+interface HealthPayload {
+  status: string;
+  service: string;
+  dryRun?: boolean;
+}
+
+const ENABLED = {{ "true" if shared_logic | lower == "enabled" else "false" }};
+
+export function summarizeStatus(payload: HealthPayload): string {
+  const suffix = payload.dryRun ? " (dry run)" : "";
+  return `${payload.service} status: ${payload.status}${suffix}`;
+}
+
+export function sharedLogicEnabled(): boolean {
+  return ENABLED;
+}

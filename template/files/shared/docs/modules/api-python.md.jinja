@@ -1,0 +1,42 @@
+# FastAPI Module
+
+The Python API track scaffolds a FastAPI service with typed configuration, tenacity-backed health
+checks, and shared logic integration.
+
+## Enabling the Module
+
+Render the template with `api_tracks=python` (or `python+node` for the hybrid scenario). The generator
+creates:
+
+- `src/{{ package_name }}/api/main.py`
+- `src/{{ package_name }}/api/settings.py`
+- `tests/test_api_fastapi.py`
+
+## Configuration
+
+`ApiSettings` loads environment variables with the `RISO_API_` prefix. Key values include:
+
+- `RISO_API_SERVICE_NAME` *(default: `api-python`)*
+- `RISO_API_HOST` *(default: `0.0.0.0`)*
+- `RISO_API_PORT` *(default: `8000`)*
+- `RISO_API_HEALTH_RETRY_ATTEMPTS` *(default: `3`)*
+- `RISO_API_HEALTH_RETRY_WAIT_SECONDS` *(default: `1`)*
+
+Update `.env` or export environment variables before starting the service.
+
+## Smoke Tests
+
+```bash
+uv run pytest tests/test_api_fastapi.py
+```
+
+The `/health` endpoint aggregates results from `shared.logic` when available and retries transient
+failures with Tenacity.
+
+## Running the Service
+
+```bash
+uv run uvicorn {{ package_name }}.api.main:app --host "${RISO_API_HOST:-0.0.0.0}" --port "${RISO_API_PORT:-8000}"
+```
+
+Set `reload=true` in environment variables for development autoreload.

@@ -1,0 +1,27 @@
+import pytest
+
+{%- if cli_module | lower != "enabled" %}
+pytest.skip("CLI module disabled", allow_module_level=True)
+{%- endif %}
+
+from typer.testing import CliRunner
+
+
+def test_cli_help_lists_quickstart_command():
+    from {{ project_slug }}.cli.__main__ import app
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["--help"])
+
+    assert result.exit_code == 0
+    assert "quickstart" in result.stdout.lower()
+
+
+def test_quickstart_command_runs_in_dry_mode():
+    from {{ project_slug }}.cli.__main__ import app
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["quickstart", "--dry-run"])
+
+    assert result.exit_code == 0
+    assert "quickstart status: ok" in result.stdout.lower()

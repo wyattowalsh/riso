@@ -1,0 +1,42 @@
+{%- if api_tracks | lower not in ["node", "python+node"] %}
+import { describe, it } from "vitest";
+
+describe.skip("api-node", () => {
+  it("skipped because Node API module is disabled", () => {
+    // The Fastify API track is not enabled for this render.
+  });
+});
+{%- else %}
+import { beforeEach, describe, expect, it } from "vitest";
+
+import { buildServer } from "../src/main";
+import { loadConfig } from "../src/config";
+
+describe("fastify api", () => {
+  beforeEach(() => {
+    delete process.env.RISO_API_NODE_HOST;
+    delete process.env.RISO_API_NODE_PORT;
+  });
+
+  it("responds to the health check route", async () => {
+    const server = await buildServer();
+    const response = await server.inject({ method: "GET", url: "/health" });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toMatchObject({
+      status: "ok",
+      service: "api-node",
+    });
+  });
+
+  it("loads host and port from the environment", () => {
+    process.env.RISO_API_NODE_HOST = "127.0.0.1";
+    process.env.RISO_API_NODE_PORT = "5050";
+
+    const config = loadConfig();
+
+    expect(config.host).toBe("127.0.0.1");
+    expect(config.port).toBe(5050);
+  });
+});
+{%- endif %}

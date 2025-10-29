@@ -1,0 +1,38 @@
+# CLI Module
+
+The CLI module extends the baseline project with a [Typer](https://typer.tiangolo.com/) command suite
+powered by Loguru for structured output.
+
+## Enabling the Module
+
+Set the Copier prompt `cli_module=enabled` when rendering the template:
+
+```bash
+copier copy . my-project --data '{"cli_module": "enabled"}'
+```
+
+This scaffolds `src/{{ project_slug }}/cli/` with the `Typer` application and wires smoke tests into
+`tests/test_cli.py`.
+
+## Validation Commands
+
+Run the smoke tests locally before committing:
+
+```bash
+uv run python -m {{ package_name }}.cli --help
+uv run pytest tests/test_cli.py
+```
+
+The `quickstart` command delegates to `run_quickstart(dry_run=...)`, providing the same automation as
+the baseline script with richer logging.
+
+## CI Integration
+
+The module catalog exposes a `cli-smoke` job. Replicate this locally with:
+
+```bash
+uv run pytest tests/test_cli.py -k quickstart
+```
+
+When `shared_logic=enabled`, the CLI automatically enriches its output with summaries from
+`shared.logic`.

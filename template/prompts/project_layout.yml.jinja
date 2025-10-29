@@ -1,0 +1,24 @@
+# Project layout prompt metadata used by documentation and automation.
+layout:
+  key: project_layout
+  default: "{{ project_layout }}"
+  variants:
+    - value: "single-package"
+      title: "Single Package"
+      summary: >
+        Creates a lightweight repository focused on the Python quickstart. Node assets remain
+        optional and no pnpm workspace is generated.
+      bootstrap:
+        - "uv sync"
+        - "uv run pytest"
+        - "uv run ruff check"
+    - value: "monorepo"
+      title: "Monorepo (apps/ + packages/)"
+      summary: >
+        Enables pnpm workspaces with dedicated apps/ and packages/ directories, wiring optional
+        modules into a shared toolchain.
+      bootstrap:
+        - "uv sync"
+        - "pnpm install"
+        - "pnpm --filter api-node test"
+        - "uv run pytest"

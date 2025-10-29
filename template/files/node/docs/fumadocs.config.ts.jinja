@@ -1,0 +1,27 @@
+{%- if docs_site | lower != "fumadocs" -%}
+// Fumadocs configuration is not required because the fumadocs site was not enabled.
+// This placeholder keeps the repository structure stable for downstream upgrades.
+export default {};
+{%- else -%}
+import { defineConfig } from "fumadocs/cli";
+
+const title = "{{ project_name }} Documentation";
+
+export default defineConfig({
+  title,
+  description: "Documentation experience rendered with Fumadocs for the Riso template.",
+  baseUrl: "/",
+  navigation: [
+    { text: "Quickstart", link: "/quickstart" },
+    { text: "Modules", link: "/modules" },
+    { text: "Automation", link: "/automation" },
+  ],
+  metadata: {
+    project: "{{ project_name }}",
+    cliModule: "{{ cli_module }}",
+    apiTracks: "{{ api_tracks }}",
+    docsSite: "{{ docs_site }}",
+    sharedLogic: "{{ shared_logic }}",
+  },
+});
+{%- endif -%}

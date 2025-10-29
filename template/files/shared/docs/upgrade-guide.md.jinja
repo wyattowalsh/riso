@@ -1,0 +1,84 @@
+# Upgrade Guide
+
+This document summarizes the steps required to stay current with the Riso template,
+highlighting module toggles, governance automation, and layout considerations.
+
+## Baseline Update Flow
+
+1. Pull the latest template sources and review `CHANGELOG.md`.
+2. Regenerate your project with Copier:
+
+   ```bash
+   copier update --force
+   ```
+
+3. Re-run the baseline checks:
+
+   ```bash
+   uv sync
+   uv run python -m {{ package_name }}.quickstart
+   ```
+
+## Prompt Summary
+
+| Prompt | Default | Notes |
+|--------|---------|-------|
+| `project_layout` | `{{ project_layout }}` | `single-package` keeps a lean tree, `monorepo` enables pnpm workspaces. |
+| `cli_module` | `{{ cli_module }}` | Enables Typer CLI and CLI smoke tests. |
+| `api_tracks` | `{{ api_tracks }}` | Choose `python`, `node`, or `python+node` for FastAPI/Fastify services. |
+| `mcp_module` | `{{ mcp_module }}` | Adds FastMCP scaffolding and tooling helpers. |
+| `docs_site` | `{{ docs_site }}` | `starter-guide` for Sphinx, `fumadocs` for the Next.js docs experience. |
+| `shared_logic` | `{{ shared_logic }}` | Introduces cross-module helpers shared by CLI/APIs. |
+
+## Module-Specific Post-Update Tasks
+
+- **CLI (`cli_module=enabled`)**
+  - Install CLI deps: `uv sync --group cli`
+  - Re-run smoke tests: `uv run pytest tests/test_cli.py`
+- **FastAPI (`api_tracks` includes `python`)**
+  - Install API deps: `uv sync --group api_python`
+  - Re-run health suite: `uv run pytest tests/test_api_fastapi.py`
+- **Fastify (`api_tracks` includes `node`)**
+  - Install workspace deps: `pnpm install`
+  - Execute tests: `pnpm --filter api-node test`
+- **FastMCP (`mcp_module=enabled`)**
+  - Install tooling: `uv sync --group mcp`
+  - Validate registry: `uv run python -c "from shared.mcp import tooling; print(tooling.list_tools())"`
+- **Notebook (`shared_logic=enabled` or notebooks used)**
+  - Install notebook deps: `uv sync --group notebook`
+  - Re-run notebooks with `nbclient`.
+
+## Layout Migrations
+
+- **Switching to `monorepo`**
+  - Regenerate with `project_layout=monorepo`.
+  - Review generated `pnpm-workspace.yaml`.
+  - Run `pnpm install` followed by module-specific smoke tests.
+- **Returning to `single-package`**
+  - Clean up `apps/` and `packages/` artifacts after regeneration.
+  - Ensure Git workflows stop referencing pnpm-specific paths.
+
+## Governance Checklist
+
+1. Run `./scripts/render-samples.sh` (all variants or targeted) and commit updated `samples/**`.
+2. Execute automation scripts:
+
+   ```bash
+   python scripts/ci/render_matrix.py
+   python scripts/ci/record_module_success.py
+   python scripts/ci/track_doc_publish.py --site shibuya --status pass
+   python scripts/ci/track_doc_publish.py --site fumadocs --status pass
+   python scripts/compliance/checkpoints.py --principle automation_governed --status pass --evidence "local-run" --dry-run
+   ```
+
+3. Upload relevant artifacts to your CI (render metadata, doc publish logs, compliance outputs).
+
+## Context Sync
+
+After each template upgrade:
+
+```bash
+python scripts/ci/verify_context_sync.py
+```
+
+Regenerate `.github/context/` assets or documentation fragments flagged as out of sync before merging.

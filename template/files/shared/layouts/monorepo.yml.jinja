@@ -1,0 +1,24 @@
+name: monorepo
+description: >
+  pnpm-managed workspace with dedicated apps/ and packages/ directories for Node and Python
+  services sharing governance automation.
+directories:
+  - "apps/api-node"
+  - "apps/docs-site"
+  - "packages/shared-logic"
+  - "python/src/{{ package_name }}"
+  - "python/tests"
+bootstrap_commands:
+  python:
+    - "uv sync"
+    - "uv run pytest"
+  node:
+    - "pnpm install"
+    - "pnpm --filter api-node test"
+    - "pnpm --filter docs-fumadocs build"
+governance_requirements:
+  - "Render samples/api-monorepo and samples/full-stack"
+  - "Collect module success metrics via scripts/ci/render_matrix.py"
+notes:
+  - "pnpm-workspace.yaml lists apps/* and packages/* patterns for deterministic installs."
+  - "Shared logic packages expose both Python and TypeScript helpers."

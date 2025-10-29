@@ -1,0 +1,64 @@
+"""Reusable logic helpers shared by CLI and API modules."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Iterable, Mapping
+
+ENABLED = {{ "True" if shared_logic | lower == "enabled" else "False" }}
+
+
+@dataclass(slots=True)
+class HealthCheckResult:
+    """Represents the outcome of a service health check."""
+
+    name: str
+    status: str = "ok"
+    details: Mapping[str, object] | None = None
+
+    def as_dict(self) -> dict[str, object]:
+        payload: dict[str, object] = {"name": self.name, "status": self.status}
+        if self.details:
+            payload["details"] = dict(self.details)
+        return payload
+
+
+def build_health_payload(
+    service: str,
+    *,
+    checks: Iterable[HealthCheckResult] | None = None,
+    dry_run: bool = False,
+) -> dict[str, object]:
+    """Compose a standard health payload for services and CLIs."""
+
+    payload: dict[str, object] = {
+        "service": service,
+        "status": "ok",
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+        "dry_run": dry_run,
+    }
+    if checks:
+        payload["checks"] = [item.as_dict() for item in checks]
+        if any(item.status != "ok" for item in checks):
+            payload["status"] = "degraded"
+
+    if not ENABLED:
+        payload.setdefault("notes", []).append(
+            "Shared logic module disabled during render; using fallback payload."
+        )
+
+    return payload
+
+
+def summarize_payload(payload: Mapping[str, object]) -> str:
+    """Generate a concise human-readable summary for console output."""
+
+    status = payload.get("status", "unknown")
+    service = payload.get("service", "service")
+    dry_run = payload.get("dry_run", False)
+    suffix = " (dry run)" if dry_run else ""
+    return f"{service} status: {status}{suffix}"
+
+
+__all__ = ["HealthCheckResult", "build_health_payload", "summarize_payload", "ENABLED"]

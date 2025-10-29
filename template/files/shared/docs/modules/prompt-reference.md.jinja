@@ -1,0 +1,34 @@
+# Prompt Reference
+
+Use this guide to understand how each Copier prompt shapes the generated project.
+
+## Prompt Matrix
+
+| Prompt | Choices | Default | Description |
+|--------|---------|---------|-------------|
+| `project_layout` | `single-package`, `monorepo` | `{{ project_layout }}` | Choose between a lean Python-first tree or a pnpm-managed monorepo with `apps/` and `packages/`. |
+| `cli_module` | `disabled`, `enabled` | `{{ cli_module }}` | Enables the Typer CLI package, CLI smoke tests, and CLI dependency group. |
+| `api_tracks` | `none`, `python`, `node`, `python+node` | `{{ api_tracks }}` | Adds FastAPI (`python`), Fastify (`node`), or both services with shared logic wiring. |
+| `mcp_module` | `disabled`, `enabled` | `{{ mcp_module }}` | Adds FastMCP tooling, sample registry, and compliance helpers. |
+| `docs_site` | `starter-guide`, `fumadocs` | `{{ docs_site }}` | Switches default docs between Shibuya/Sphinx and Fumadocs/Next.js. |
+| `shared_logic` | `disabled`, `enabled` | `{{ shared_logic }}` | Provides shared helper modules consumed by CLI/APIs. |
+
+## Dependency Groups
+
+Run these as needed after enabling modules:
+
+- **Baseline**: `uv sync`
+- **Tests**: `uv sync --group test`
+- **Code Quality**: `uv sync --group quality`
+- **Notebooks**: `uv sync --group notebook`
+- **CLI** (`cli_module=enabled`): `uv sync --group cli`
+- **FastAPI** (`api_tracks` includes `python`): `uv sync --group api_python`
+- **FastMCP** (`mcp_module=enabled`): `uv sync --group mcp`
+
+For `api_tracks` containing `node`, run `pnpm install` and the relevant `pnpm --filter …` commands.
+
+## Compatibility Notes
+
+- Enabling `cli_module` or any `api_tracks` automatically benefits from `shared_logic=enabled`.
+- `project_layout=monorepo` expects pnpm and Node.js 20+. Ensure `pnpm install` is run before executing Node smoke tests.
+- `docs_site=fumadocs` requires the Node toolchain; keep the Sphinx starter as fallback when minimal environments are preferred.

@@ -1,0 +1,2076 @@
+---
+LIBRARY: astral-sh/uv
+SOURCE_ROOT: https://github.com/astral-sh/uv/blob/main
+UPDATED_AT: September 6, 2025 at 7:24 AM UTC
+---
+
+================================
+CODE SNIPPETS
+================================
+
+TITLE: Enabling Preview Features in uv Configuration
+DESCRIPTION: Configures the `preview` setting to enable experimental features in `uv`. This setting allows users to test and utilize upcoming functionalities before they are officially released, providing early access to new capabilities.
+SOURCE: /docs/reference/settings.md
+
+```toml
+[tool.uv]
+preview = true
+```
+
+```toml
+preview = true
+```
+
+---
+TITLE: Using Installed Tools with `uv` in Docker
+DESCRIPTION: Demonstrates how to use tools installed by `uv` within a Docker container by ensuring the tool bin directory is on the `PATH`. This allows executing commands like `cowsay` directly within the container, leveraging `uv` for tool management.
+SOURCE: /docs/guides/integration/docker.md
+
+```dockerfile
+ENV PATH=/root/.local/bin:$PATH
+RUN uv tool install cowsay
+```
+
+```console
+$ docker run -it $(docker build -q .) /bin/bash -c "cowsay -t hello"
+_____
+| hello |
+=====
+\
+\
+^__^
+(oo)\_______
+(__)\       )\/\
+||----w |
+||     ||
+```
+
+```dockerfile
+ENV UV_TOOL_BIN_DIR=/opt/uv-bin/
+```
+
+---
+TITLE: Configuring `pip` Settings in `uv` for Package Resolution
+DESCRIPTION: Configures `pip` settings within the `uv` package manager, including options like `--no-index` to ignore registry indexes, `--no-sources` to bypass the `tool.uv.sources` table, and `--no-strip-extras` to include extras in the output file. These settings allow for fine-grained control over dependency resolution and package metadata handling, enabling locking against standards-compliant packages and managing extras dependencies.
+SOURCE: /docs/reference/settings.md
+
+```toml
+[tool.uv.pip]
+no-index = true
+```
+
+```toml
+[pip]
+no-index = true
+```
+
+```toml
+[tool.uv.pip]
+no-sources = true
+```
+
+```toml
+[pip]
+no-sources = true
+```
+
+```toml
+[tool.uv.pip]
+no-strip-extras = true
+```
+
+```toml
+[pip]
+no-strip-extras = true
+```
+
+---
+TITLE: Installing uv via PyPI
+DESCRIPTION: Installs the `uv` package manager using `pip` or `pipx` from PyPI. This allows users to quickly get started with `uv` if prebuilt wheels are available for their platform; otherwise, a Rust toolchain is required to build from source.
+SOURCE: /docs/getting-started/installation.md
+
+```console
+$ pipx install uv
+```
+
+---
+TITLE: Configuring `no-index` Option in uv
+DESCRIPTION: Configures the `no-index` setting to ignore registry indexes like PyPI, forcing `uv` to rely solely on direct URL dependencies and `--find-links`. This is useful when working in isolated environments or with private package repositories.
+SOURCE: /docs/reference/settings.md
+
+```toml
+[tool.uv]
+no-index = true
+```
+
+```toml
+no-index = true
+```
+
+---
+TITLE: Locking Environments and Adding Build Constraints
+DESCRIPTION: Explains how to lock dependencies to ensure reproducible environments using `requirements.txt`-like files, and how to add build constraints to control the versions of build-time dependencies, including those specified in `pyproject.toml`, without triggering their installation unless required.
+SOURCE: /docs/pip/compile.md
+
+```toml
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+```
+
+```python
+setuptools==75.0.0
+```
+
+---
+TITLE: Managing Python Packages with uv pip CLI
+DESCRIPTION: Provides a `pip`-compatible interface for managing Python packages using the `uv pip` command-line tool. Includes commands for compiling requirements files (`uv pip compile`), syncing environments (`uv pip sync`), installing (`uv pip install`) and uninstalling packages (`uv pip uninstall`), listing installed packages (`uv pip freeze`, `uv pip list`), showing package information (`uv pip show`), displaying dependency trees (`uv pip tree`), and checking dependency compatibility (`uv pip check`).
+SOURCE: /docs/reference/cli.md
+
+```plaintext
+uv pip [OPTIONS] <COMMAND>
+```
+
+---
+TITLE: Defining Package Indexes with `tool.uv.index` in uv
+DESCRIPTION: Introduces a revamped system for defining package indexes in `pyproject.toml` using the `[[tool.uv.index]]` table, offering an alternative to `--index-url` and `--extra-index-url` for specifying package sources in uv; this allows pinning packages to specific indexes via `tool.uv.sources` and marking indexes as `explicit = true` to control package installation origins.
+SOURCE: /changelogs/0.4.x.md
+
+```toml
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cpu"
+```
+
+```toml
+[tool.uv.sources]
+torch = { index = "pytorch" }
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cpu"
+```
+
+```toml
+[tool.uv.sources]
+torch = { index = "pytorch" }
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+```
+
+---
+TITLE: Configuring Git Credentials with Credential Helpers in uv
+DESCRIPTION: Configures Git credential helpers for private Git repository authentication within `uv`, enabling seamless package installation via SSH or HTTP. This involves using tools like the `gh` CLI (`gh auth login` and `gh auth setup-git`) to securely store and retrieve Git credentials, simplifying access to private repositories.
+SOURCE: /docs/concepts/authentication/git.md
+
+```console
+$ gh auth login
+```
+
+---
+TITLE: Integrating uv with pre-commit for Python Projects
+DESCRIPTION: Demonstrates how to integrate `uv` with `pre-commit` using the `astral-sh/uv-pre-commit` hook to manage dependencies and keep `uv.lock` and `requirements.txt` files synchronized. This setup automates dependency management, ensuring consistency across development environments and streamlining the build process.
+SOURCE: /docs/guides/integration/pre-commit.md
+
+```yaml
+repos:
+- repo: https://github.com/astral-sh/uv-pre-commit
+# uv version.
+rev: 0.8.15
+hooks:
+- id: uv-lock
+```
+
+```plaintext
+To compile requirements files:  
+```
+
+```plaintext
+To compile alternative requirements files, modify `args` and `files`:  
+- repo: https://github.com/astral-sh/uv-pre-commit
+# uv version.
+rev: 0.8.15
+hooks:
+# Compile requirements
+- id: pip-compile
+args: [requirements-dev.in, -o, requirements-dev.txt]
+files: ^requirements-dev\.(in|txt)$
+```
+
+```yaml
+repos:
+- repo: https://github.com/astral-sh/uv-pre-commit
+# uv version.
+rev: 0.8.15
+hooks:
+# Compile requirements
+- id: pip-compile
+name: pip-compile requirements.in
+args: [requirements.in, -o, requirements.txt]
+- id: pip-compile
+name: pip-compile requirements-dev.in
+args: [requirements-dev.in, -o, requirements-dev.txt]
+files: ^requirements-dev\.(in|txt)$
+```
+
+---
+TITLE: Configuring `pip` Build Options in `uv`
+DESCRIPTION: Configures `no-build`, `no-build-isolation`, and `no-build-isolation-package` options for the `pip` command within the `uv` package manager. These settings control how source distributions are built, allowing users to disable builds entirely or bypass isolation for specific packages, useful when build dependencies are pre-installed.
+SOURCE: /docs/reference/settings.md
+
+```toml
+[tool.uv.pip]
+no-build = true
+```
+
+```toml
+[pip]
+no-build = true
+```
+
+```toml
+[tool.uv.pip]
+no-build-isolation = true
+```
+
+```toml
+[pip]
+no-build-isolation = true
+```
+
+```toml
+[tool.uv.pip]
+no-build-isolation-package = ["package1", "package2"]
+```
+
+```toml
+[pip]
+no-build-isolation-package = ["package1", "package2"]
+```
+
+---
+TITLE: Configuring the Pip Interface with `uv pip`
+DESCRIPTION: Configures the `uv pip` command-line interface using the `[tool.uv.pip]` section in `pyproject.toml`. This allows for pip-specific settings, such as `index-url`, without affecting other `uv` commands, providing compatibility with pip's interface while enabling alternative designs for global settings.
+SOURCE: /docs/concepts/configuration-files.md
+
+```toml
+[tool.uv.pip]
+index-url = "https://test.pypi.org/simple"
+```
+
+---
+TITLE: Cross-Compiling Windows Trampolines from Linux with cargo-xwin
+DESCRIPTION: Demonstrates how to cross-compile Windows trampolines from a Linux environment using `cargo-xwin`. This involves installing necessary tools like `llvm`, `clang`, and `lld`, adding `rustup` targets for Windows architectures, and building the trampolines for `i686-pc-windows-msvc`, `x86_64-pc-windows-msvc`, and `aarch64-pc-windows-msvc` targets.
+SOURCE: /crates/uv-trampoline/README.md
+
+```shell
+sudo apt install llvm clang lld
+cargo install cargo-xwin
+rustup toolchain install nightly-2025-03-28
+rustup component add rust-src --toolchain nightly-2025-03-28-x86_64-unknown-linux-gnu
+rustup target add --toolchain nightly-2025-03-28 i686-pc-windows-msvc
+rustup target add --toolchain nightly-2025-03-28 x86_64-pc-windows-msvc
+rustup target add --toolchain nightly-2025-03-28 aarch64-pc-windows-msvc
+```
+
+```shell
+cargo +nightly-2025-03-28 xwin build --xwin-arch x86 --release --target i686-pc-windows-msvc
+cargo +nightly-2025-03-28 xwin build --release --target x86_64-pc-windows-msvc
+cargo +nightly-2025-03-28 xwin build --release --target aarch64-pc-windows-msvc
+```
+
+---
+TITLE: Authenticating with JFrog Artifactory Using JWT Token
+DESCRIPTION: Demonstrates how to authenticate with a JFrog Artifactory package index using a JWT token via environment variables. This approach avoids storing explicit credentials and is useful when integrating with CI/CD pipelines or other automated systems that require authentication to private package registries.
+SOURCE: /docs/guides/integration/alternative-indexes.md
+
+```console
+$ export UV_INDEX_PRIVATE_REGISTRY_USERNAME=""
+$ export UV_INDEX_PRIVATE_REGISTRY_PASSWORD="$JFROG_JWT_TOKEN"
+```
+
+---
+TITLE: Configuring Namespace Packages with uv Build Backend
+DESCRIPTION: Configures namespace packages using the `uv` build backend by setting `module-name` and `namespace` in the `pyproject.toml` file. This approach allows for improved performance and user experience when building namespace packages with `uv`.
+SOURCE: /docs/concepts/build-backend.md
+
+```text
+pyproject.toml
+src
+└── foo
+├── bar
+│   └── __init__.py
+└── baz
+└── __init__.py
+```
+
+```toml
+[tool.uv.build-backend]
+module-name = "foo"
+namespace = true
+```
+
+---
+TITLE: Pinning Python Versions with `uv python pin`
+DESCRIPTION: Configures the Python version used by `uv` by writing it to a `.python-version` file, enabling consistent Python version management across projects. This command supports various version request formats and allows for global or local pinning, with options to manage cache, network access, and Python downloads.
+SOURCE: /docs/reference/cli.md
+
+```plaintext
+uv python pin [OPTIONS] [REQUEST]
+```
+
+---
+TITLE: Changing uv Installer Installation Path
+DESCRIPTION: Configures the installation directory for the `uv` installer. Demonstrates how to use the `UV_INSTALL_DIR` environment variable to specify a custom installation path on macOS, Linux, and Windows, overriding the default `~/.local/bin` or `XDG_BIN_HOME` location.
+SOURCE: /docs/reference/installer.md
+
+```console
+$ curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/custom/path" sh
+```
+
+```pwsh-session
+PS> powershell -ExecutionPolicy ByPass -c {$env:UV_INSTALL_DIR = "C:\Custom\Path";irm https://astral.sh/uv/install.ps1 | iex}
+```
+
+---
+TITLE: Upgrading Locked Package Versions with `uv lock`
+DESCRIPTION: Demonstrates upgrading package versions within a `uv` project using the `uv lock` command with options like `--upgrade` and `--upgrade-package`. This ensures dependency constraints are respected while updating packages to the latest or specific versions, including Git dependencies, and can be used with `uv sync` or `uv run`.
+SOURCE: /docs/concepts/projects/sync.md
+
+```console
+$ uv lock --upgrade
+```
+
+```console
+$ uv lock --upgrade-package <package>
+```
+
+```console
+$ uv lock --upgrade-package <package>==<version>
+```
+
+---
+TITLE: Reinstalling Packages with `reinstall-package` Configuration
+DESCRIPTION: Configures the `reinstall-package` setting to force reinstallation of specified packages, even if already installed, implying `refresh-package`. This is useful for ensuring the latest version of a package is used or resolving dependency issues.
+SOURCE: /docs/reference/settings.md
+
+```toml
+[tool.uv]
+reinstall-package = ["ruff"]
+```
+
+```toml
+reinstall-package = ["ruff"]
+```
+
+---
+TITLE: Configuring `pip` Settings with `uv`: `exclude-newer-package`, `extra`, `extra-build-dependencies`
+DESCRIPTION: Configures `pip` settings within the `uv` tool, including `exclude-newer-package` to limit package versions by date, `extra` to include optional dependencies from `pyproject.toml`, `setup.py`, or `setup.cfg`, and `extra-build-dependencies` to add build dependencies for packages that may assume the presence of packages like `pip`.
+SOURCE: /docs/reference/settings.md
+
+```toml
+[tool.uv.pip]
+exclude-newer-package = { tqdm = "2022-04-04T00:00:00Z" }
+```
+
+```toml
+[pip]
+exclude-newer-package = { tqdm = "2022-04-04T00:00:00Z" }
+```
+
+```toml
+[tool.uv.pip]
+extra = ["dev", "docs"]
+```
+
+```toml
+[pip]
+extra = ["dev", "docs"]
+```
+
+```toml
+[tool.uv.pip]
+extra-build-dependencies = { pytest = ["setuptools"] }
+```
+
+```toml
+[pip]
+extra-build-dependencies = { pytest = ["setuptools"] }
+```
+
+---
+TITLE: Installing uv via Standalone Installer
+DESCRIPTION: Demonstrates installing the `uv` package manager using the standalone installer script for macOS, Linux, and Windows. This method allows for quick and easy installation of `uv` without relying on system package managers, and supports specifying a particular version by including it in the URL.
+SOURCE: /docs/getting-started/installation.md
+
+```console
+$ curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+```plaintext
+Request a specific version by including it in the URL:  
+```
+
+```plaintext
+=== "Windows"  
+Use `irm` to download the script and execute it with `iex`:  
+```
+
+```plaintext
+Changing the [execution policy](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies?view=powershell-7.4#powershell-execution-policies) allows running a script from the internet.  
+Request a specific version by including it in the URL:  
+```
+
+---
+TITLE: Configuring Package Indexes with `uv`
+DESCRIPTION: Configures package indexes for dependency resolution in `uv`, allowing specification of PEP 503 compliant repositories or local directories. It prioritizes indexes based on definition order, with options for explicit index selection via `[tool.uv.sources]` and default index designation to disable the PyPI default index.
+SOURCE: /docs/reference/settings.md
+
+```toml
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu121"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch" }
+```
+
+```toml
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu121"
+```
+
+```toml
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu121"
+```
+
+---
+TITLE: Authenticating Google Artifact Registry Using `keyring` and `keyrings.google-artifactregistry-auth`
+DESCRIPTION: Demonstrates how to authenticate to Google Artifact Registry using the `keyring` package and the `keyrings.google-artifactregistry-auth` plugin with `uv`. This approach leverages `gcloud CLI` to generate and refresh access tokens, storing them securely in the system keyring, and requires pre-installing `keyring` and the plugin from PyPI.
+SOURCE: /docs/guides/integration/alternative-indexes.md
+
+```bash
+# Pre-install keyring and Artifact Registry plugin from the public PyPI
+uv tool install keyring --with keyrings.google-artifactregistry-auth
+
+# Enable keyring authentication
+export UV_KEYRING_PROVIDER=subprocess
+
+# Set the username for the index
+export UV_INDEX_PRIVATE_REGISTRY_USERNAME=oauth2accesstoken
+```
+
+---
+TITLE: Overriding Dependencies with `override-dependencies` in uv
+DESCRIPTION: Configures dependency overrides using the `override-dependencies` setting in `pyproject.toml` for the `uv` package manager, allowing users to force specific package versions regardless of transitive dependencies. This ensures consistent dependency resolution and is particularly useful in workspace root `pyproject.toml` files when using `uv lock`, `uv sync`, and `uv run`.
+SOURCE: /docs/reference/settings.md
+
+```toml
+[tool.uv]
+# Always install Werkzeug 2.3.0, regardless of whether transitive dependencies request
+# a different version.
+override-dependencies = ["werkzeug==2.3.0"]
+```
+
+---
+TITLE: Configuring Package Installation `link-mode` in uv
+DESCRIPTION: Configures the `link-mode` setting in `uv` to specify the method for installing packages from the global cache, supporting options like `clone`, `copy`, `hardlink`, and `symlink`. This setting impacts performance and coupling between the cache and target environment, with `clone` (copy-on-write) and `hardlink` being the recommended defaults.
+SOURCE: /docs/reference/settings.md
+
+```toml
+[tool.uv]
+link-mode = "copy"
+```
+
+```toml
+link-mode = "copy"
+```
+
+---
+TITLE: Deploying FastAPI Applications with uv and Docker
+DESCRIPTION: Demonstrates deploying a FastAPI application using `uv` for dependency management within a Docker container. It illustrates how to create a `Dockerfile` to install `uv`, copy application code, synchronize dependencies with `uv sync`, and run the FastAPI application, enabling efficient and reproducible deployments.
+SOURCE: /docs/guides/integration/fastapi.md
+
+```dockerfile
+FROM python:3.12-slim
+
+# Install uv.
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Copy the application into the container.
+COPY . /app
+
+# Install the application dependencies.
+WORKDIR /app
+RUN uv sync --frozen --no-cache
+
+# Run the application.
+CMD ["/app/.venv/bin/fastapi", "run", "app/main.py", "--port", "80", "--host", "0.0.0.0"]
+```
+
+```console
+$ docker build -t fastapi-app .
+```
+
+```console
+$ docker run -p 8000:80 fastapi-app
+```
+
+---
+TITLE: Configuring `pip` Settings in `uv`
+DESCRIPTION: Configures `pip` settings within the `uv` package, including `require-hashes` for enforcing hash-checking, `resolution` strategy for version selection (`highest`, `lowest`, `lowest-direct`), and `strict` mode for environment validation. These settings control dependency resolution and package integrity when using `uv`.
+SOURCE: /docs/reference/settings.md
+
+```toml
+[tool.uv.pip]
+require-hashes = true
+```
+
+```toml
+[pip]
+require-hashes = true
+```
+
+```toml
+[tool.uv.pip]
+resolution = "lowest-direct"
+```
+
+```toml
+[pip]
+resolution = "lowest-direct"
+```
+
+```toml
+[tool.uv.pip]
+strict = true
+```
+
+```toml
+[pip]
+strict = true
+```
+
+---
+TITLE: Logging Out of a Service with `uv auth logout`
+DESCRIPTION: Facilitates logging out of a specified service using the `uv auth logout` command. This command removes stored credentials for the given service, requiring re-authentication upon subsequent access, and supports options for insecure hosts, cache management, and keyring providers.
+SOURCE: /docs/reference/cli.md
+
+```plaintext
+uv auth logout [OPTIONS] <SERVICE>
+```
+
+---
+TITLE: Requesting Python Versions with `uv`
+DESCRIPTION: Demonstrates how to specify Python versions when running, installing, or upgrading tools using the `uv` package with the `--python` option. This allows users to target specific Python interpreters for tool execution and management, ensuring compatibility and control over the environment.
+SOURCE: /docs/guides/tools.md
+
+```console
+$ uvx --python 3.10 ruff
+```
+
+```console
+$ uv tool install --python 3.10 ruff
+```
+
+```console
+$ uv tool upgrade --python 3.10 ruff
+```
+
+---
+TITLE: Managing Dependencies from Git Sources with uv
+DESCRIPTION: Demonstrates how to manage project dependencies from Git repositories using `tool.uv.sources` in `pyproject.toml`, allowing specification of branches, revisions, and subdirectories. This approach is useful when depending on unreleased code or specific versions of packages hosted on Git, and can be used with `uv add` and `uv remove`.
+SOURCE: /docs/concepts/projects/dependencies.md
+
+```plaintext
+Or, a branch:  
+```
+
+```plaintext
+```toml title="pyproject.toml" hl_lines="7"
+[project]
+dependencies = ["httpx"]
+
+[tool.uv.sources]
+httpx = { git = "https://github.com/encode/httpx", branch = "main" }
+```
+
+```console
+$ uv add git+https://github.com/encode/httpx --rev 326b9431c761e1ef1e00b9f760d1f654c8db48c6
+```
+
+```toml
+[project]
+dependencies = ["httpx"]
+
+[tool.uv.sources]
+httpx = { git = "https://github.com/encode/httpx", rev = "326b9431c761e1ef1e00b9f760d1f654c8db48c6" }
+```
+
+```plaintext
+```toml title="pyproject.toml"
+[project]
+dependencies = ["langchain"]
+
+[tool.uv.sources]
+langchain = { git = "https://github.com/langchain-ai/langchain", subdirectory = "libs/langchain" }
+```
+
+---
+TITLE: Publishing Packages to AWS CodeArtifact with uv
+DESCRIPTION: Demonstrates how to publish Python packages to AWS CodeArtifact using `uv publish`. It configures the `pyproject.toml` file with the `publish-url`, sets environment variables for authentication (`UV_PUBLISH_USERNAME`, `UV_PUBLISH_PASSWORD`, `UV_PUBLISH_URL`), and executes the publish command, highlighting the importance of including the `publish-url` for pre-publication checks.
+SOURCE: /docs/guides/integration/alternative-indexes.md
+
+```toml
+[[tool.uv.index]]
+name = "private-registry"
+url = "https://<DOMAIN>-<ACCOUNT_ID>.d.codeartifact.<REGION>.amazonaws.com/pypi/<REPOSITORY>/simple/"
+publish-url = "https://<DOMAIN>-<ACCOUNT_ID>.d.codeartifact.<REGION>.amazonaws.com/pypi/<REPOSITORY>/"
+```
+
+```console
+$ export UV_PUBLISH_USERNAME=aws
+$ export UV_PUBLISH_PASSWORD="$AWS_CODEARTIFACT_TOKEN"
+```
+
+```console
+$ uv publish --index private-registry
+```
+
+---
+TITLE: Handling Multi-Version Package Resolution with uv
+DESCRIPTION: Illustrates multi-version resolution in `uv`, where a package can have different versions based on platform or Python version, controlled by the `--fork-strategy` setting to balance minimizing versions and selecting the latest versions, impacting consistency and package freshness.
+SOURCE: /docs/concepts/resolution.md
+
+```txt
+numpy==1.24.4 ; python_version == "3.8"
+numpy==2.0.2 ; python_version == "3.9"
+numpy==2.2.0 ; python_version >= "3.10"
+```
+
+---
+TITLE: Adding Project Dependencies with uv
+DESCRIPTION: Demonstrates how to add dependencies to a project using `uv add`, updating the `project.dependencies` field in `pyproject.toml`. It illustrates adding dependencies from package registries and alternative sources like Git, including version constraints and managing `tool.uv.sources`.
+SOURCE: /docs/concepts/projects/dependencies.md
+
+```console
+$ uv add httpx
+```
+
+```toml
+[project]
+name = "example"
+version = "0.1.0"
+dependencies = ["httpx>=0.27.2"]
+```
+
+```console
+$ uv add "httpx>=0.20"
+```
+
+```plaintext
+The `pyproject.toml` will include a [Git source entry](#git):  
+```
+
+---
+TITLE: Running Python Scripts Without Dependencies Using uv
+DESCRIPTION: Demonstrates how to execute Python scripts without external dependencies using `uv run`. This approach simplifies script execution by automatically managing the Python environment, eliminating the need for manual virtual environment setup when dependencies are limited to the standard library.
+SOURCE: /docs/guides/scripts.md
+
+```python
+print("Hello world")
+```
+
+```console
+$ uv run example.py
+Hello world
+```
+
+```plaintext
+```console
+$ uv run example.py
+/Users/astral
+```
+
+```python
+import sys
+
+print(" ".join(sys.argv[1:]))
+```
+
+---
+TITLE: Displaying Dependency Tree with `uv pip tree`
+DESCRIPTION: Displays the dependency tree for a Python environment using the `uv pip tree` command. This command helps visualize project dependencies and identify potential conflicts or outdated packages, offering options to control depth, filter packages, and customize output.
+SOURCE: /docs/reference/cli.md
+
+```plaintext
+uv pip tree [OPTIONS]
+```
+
+---
+TITLE: Declaring Dependencies Using `pyproject.toml`
+DESCRIPTION: Defines project dependencies within a `pyproject.toml` file, the standard Python configuration file, including optional dependencies using extras. This approach promotes reproducible environments and leverages features like `--extra` and `package[<extra>]` for installation, as detailed in the official `pyproject.toml` guide.
+SOURCE: /docs/pip/dependencies.md
+
+```toml
+[project]
+dependencies = [
+"httpx",
+"ruff>=0.3.0"
+]
+```
+
+---
+TITLE: Using Jupyter with uv in a Non-Project Environment
+DESCRIPTION: Demonstrates how to use `uv` with Jupyter notebooks in a virtual environment that is not associated with a project (i.e., lacks a `pyproject.toml` or `uv.lock` file). This approach allows you to install Jupyter and other packages like `pydantic` directly into the environment using `uv pip install` for interactive computing and data analysis.
+SOURCE: /docs/guides/integration/jupyter.md
+
+```console
+$ uv venv --seed
+$ uv pip install pydantic
+$ uv pip install jupyterlab
+$ .venv/bin/jupyter lab
+```
+
+```pwsh-session
+PS> uv venv --seed
+PS> uv pip install pydantic
+PS> uv pip install jupyterlab
+PS> .venv\Scripts\jupyter lab
+```
+
+---
+TITLE: Caching uv Environments in GitHub Actions
+DESCRIPTION: Demonstrates how to cache `uv` environments in GitHub Actions to improve CI times using `astral-sh/setup-uv` or `actions/cache`, including pruning the cache with `uv cache prune --ci` and handling non-ephemeral, self-hosted runners with post-job hooks to manage cache size and location.
+SOURCE: /docs/guides/integration/github.md
+
+```yaml
+- name: Enable caching
+uses: astral-sh/setup-uv@v6
+with:
+enable-cache: true
+```
+
+```plaintext
+The `uv cache prune --ci` command is used to reduce the size of the cache and is optimized for CI.
+Its effect on performance is dependent on the packages being installed.  
+!!! tip  
+If using `uv pip`, use `requirements.txt` instead of `uv.lock` in the cache key.  
+!!! note  
+[post-job-hook]: https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/running-scripts-before-or-after-a-job  
+When using non-ephemeral, self-hosted runners the default cache directory can grow unbounded.
+In this case, it may not be optimal to share the cache between jobs. Instead, move the cache
+inside the GitHub Workspace and remove it once the job finishes using a
+[Post Job Hook][post-job-hook].  
+```
+
+```plaintext
+Using a post job hook requires setting the `ACTIONS_RUNNER_HOOK_JOB_STARTED` environment
+variable on the self-hosted runner to the path of a cleanup script such as the one shown below.  
+```
+
+---
+TITLE: Configuring Package Resolution Strategy in uv
+DESCRIPTION: Configures the `resolution` strategy for selecting package versions in `uv`. It allows specifying `
+SOURCE: /docs/reference/settings.md
+
+```toml
+[tool.uv]
+resolution = "lowest-direct"
+```
+
+```toml
+resolution = "lowest-direct"
+```
+
+---
+TITLE: Displaying Dependency Tree with `uv tree` Command
+DESCRIPTION: Displays the project's dependency tree using the `uv tree` command, allowing users to visualize project dependencies and their relationships. This command supports options for filtering dependencies by group, platform, and Python version, and can be used to identify outdated packages or reverse dependencies.
+SOURCE: /docs/reference/cli.md
+
+```plaintext
+uv tree [OPTIONS]
+```
+
+---
+TITLE: Installing PyTorch with uv: Configuration and Dependencies
+DESCRIPTION: Configures PyTorch installation using `uv`, addressing PyTorch's custom index and accelerator-specific builds (CPU, CUDA). It explains how to manage PyTorch dependencies across different Python versions and platforms, highlighting the use of `torch` and `torchvision` packages and the importance of specifying the correct index based on the desired accelerator.
+SOURCE: /docs/guides/integration/pytorch.md
+
+```toml
+[project]
+name = "project"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+"torch>=2.7.0",
+"torchvision>=0.22.0",
+]
+```
+
+---
+TITLE: Installing Packages from Files with uv pip
+DESCRIPTION: Installs packages from files using `uv pip install` with `--project` and `--group` options. Demonstrates how to specify `pyproject.toml` paths for different groups, noting that `--group` flags do not apply to other sources specified with flags like `-r` or `-e`.
+SOURCE: /docs/pip/packages.md
+
+```console
+$ uv pip install --project some/path/ --group foo --group bar
+```
+
+---
+TITLE: Configuring Dependency Metadata for Package Resolution
+DESCRIPTION: Configures static dependency metadata to override registry queries and source builds during package resolution. This allows specifying package `name`, `version`, `requires-dist`, `requires-python`, and `provides-extras` according to the Metadata 2.3 standard, enabling control over dependency resolution behavior.
+SOURCE: /docs/reference/settings.md
+
+```toml
+[tool.uv]
+dependency-metadata = [
+{ name = "flask", version = "1.0.0", requires-dist = ["werkzeug"], requires-python = ">=3.6" },
+]
+```
+
+```toml
+dependency-metadata = [
+{ name = "flask", version = "1.0.0", requires-dist = ["werkzeug"], requires-python = ">=3.6" },
+]
+```
+
+---
+TITLE: Creating Jupyter Kernels with uv for Project Isolation
+DESCRIPTION: Demonstrates how to create a dedicated Jupyter kernel for a project using `uv`, ensuring that the notebook environment is isolated and packages installed via `!uv add` or `!uv pip install` are correctly managed within the project's virtual environment, leveraging `ipykernel` as a development dependency. This approach allows for consistent dependency management and avoids conflicts between different projects when using Jupyter.
+SOURCE: /docs/guides/integration/jupyter.md
+
+```console
+$ uv add --dev ipykernel
+```
+
+```plaintext
+From there, start the server with:  
+```
+
+---
+TITLE: Managing Python Package Tools with `uv tool`
+DESCRIPTION: Facilitates running and installing commands provided by Python packages using the `uv tool` command-line interface. This allows users to manage tools, upgrade, list, uninstall, and update shell configurations for Python package commands.
+SOURCE: /docs/reference/cli.md
+
+```plaintext
+uv tool [OPTIONS] <COMMAND>
+```
+
+---
+TITLE: Disabling Build Isolation for Packages with uv
+DESCRIPTION: Explains how to disable build isolation for specific packages in `uv` using the `no-build-isolation-package` setting to address compatibility issues or undeclared build dependencies, such as with `flash-attn` and `cchardet`. It also demonstrates alternative approaches like augmenting build dependencies via `extra-build-dependencies` or providing metadata upfront via `dependency-metadata`.
+SOURCE: /docs/concepts/projects/config.md
+
+```plaintext
+Given the above, a user would first sync with the `build` optional group, and then without it to
+remove the build dependencies:  
+```
+
+```plaintext
+Some packages, like `cchardet`, only require build dependencies for the _installation_ phase of
+`uv sync`. Others require their build dependencies to be present even just to resolve the project's
+dependencies during the _resolution_ phase.  
+In such cases, the build dependencies can be installed prior to running any `uv lock` or `uv sync`
+commands, using the lower lower-level `uv pip` API. For example, given:  
+```
+
+```plaintext
+You could run the following sequence of commands to sync `flash-attn`:  
+$ uv venv
+$ uv pip install torch setuptools
+$ uv sync
+```
+
+---
+TITLE: Defining Workspace Sources for uv Project Dependencies
+DESCRIPTION: Illustrates how to define workspace sources in a `pyproject.toml` file using the `tool.uv.sources` table to manage dependencies between workspace members, enabling editable dependencies and overriding root-level sources for specific packages within a `uv` project.
+SOURCE: /docs/concepts/projects/workspaces.md
+
+```toml
+[project]
+name = "albatross"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = ["bird-feeder", "tqdm>=4,<5"]
+
+[tool.uv.sources]
+bird-feeder = { workspace = true }
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[build-system]
+requires = ["uv_build>=0.8.15,<0.9.0"]
+build-backend = "uv_build"
+```
+
+---
+TITLE: Disabling Package Sources with `no-sources` Configuration
+DESCRIPTION: Configures the `no-sources` setting to ignore the `tool.uv.sources` table during dependency resolution, forcing the use of standard, publishable package metadata. This is useful for locking against official releases rather than local or Git sources.
+SOURCE: /docs/reference/settings.md
+
+```toml
+[tool.uv]
+no-sources = true
+```
+
+```toml
+no-sources = true
+```
+
+---
+TITLE: Configuring Python Version Requirement in pyproject.toml
+DESCRIPTION: Configures the required Python version for a project using the `project.requires-python` field in the `pyproject.toml` file. This setting determines allowed Python syntax and influences dependency version selection, ensuring compatibility within the specified Python version range.
+SOURCE: /docs/concepts/projects/config.md
+
+```toml
+[project]
+name = "example"
+version = "0.1.0"
+requires-python = ">=3.12"
+```
+
+---
+TITLE: Managing Development Dependencies with Dependency Groups in uv
+DESCRIPTION: Illustrates managing development dependencies using `dependency-groups` in `pyproject.toml` with uv. It defines how to add dependencies to specific groups like `lint` using `uv add --group lint ruff` and explains the usage of flags like `--all-groups`, `--no-default-groups`, and `--only-group` for including or excluding dependencies, ensuring compatibility across groups or declaring conflicting dependencies.
+SOURCE: /docs/concepts/projects/dependencies.md
+
+```console
+$ uv add --group lint ruff
+```
+
+```toml
+[dependency-groups]
+dev = [
+"pytest"
+]
+lint = [
+"ruff"
+]
+```
+
+---
+TITLE: Using marimo with uv in Non-Project Environments
+DESCRIPTION: Demonstrates how to use `marimo` with `uv` in environments not associated with a project. It shows how to create a virtual environment with `uv venv`, install `numpy` and `marimo` using `uv pip install`, and run `marimo edit` to start the notebook editor, enabling package management through `uv`.
+SOURCE: /docs/guides/integration/marimo.md
+
+```console
+$ uv venv
+$ uv pip install numpy
+$ uv pip install marimo
+$ uv run marimo edit
+```
+
+---
+TITLE: Creating Minimal Projects with `uv init`
+DESCRIPTION: Demonstrates creating a minimal `pyproject.toml` file using `uv init` with the `--bare` option, skipping the creation of Python version pin files, READMEs, source directories, and version control initialization. This approach is useful when starting a project from scratch and only requires a basic `pyproject.toml` configuration.
+SOURCE: /docs/concepts/projects/init.md
+
+```console
+$ uv init example --bare
+```
+
+```plaintext
+uv will also not add extra metadata to the `pyproject.toml`, such as the `description` or `authors`.  
+```
+
+```plaintext
+The `--bare` option can be used with other options like `--lib` or `--build-backend` — in these
+cases uv will still configure a build system but will not create the expected file structure.  
+When `--bare` is used, additional features can still be used opt-in:  
+```
+
+---
+TITLE: Configuring Build Backend with `namespace`, `source-exclude` in uv
+DESCRIPTION: Configures the `build-backend` settings in `pyproject.toml` for namespace packages and source distribution control using `namespace`, `source-exclude`, `source-include`, and `wheel-exclude`. It allows excluding or including files and directories from the source distribution and wheel, enabling fine-grained control over the build process.
+SOURCE: /docs/reference/settings.md
+
+```text
+src
+└── cloud
+└── database
+├── __init__.py
+├── query_builder
+│   └── __init__.py
+└── sql
+├── parser.py
+└── __init__.py
+```
+
+```text
+src
+├── cloud
+│   ├── database
+│   │   ├── __init__.py
+│   │   ├── query_builder
+│   │   │   └── __init__.py
+│   │   └── sql
+│   │       ├── __init__.py
+│   │       └── parser.py
+│   └── database_pro
+│       ├── __init__.py
+│       └── query_builder.py
+└── billing
+└── modules
+└── database_pro
+├── __init__.py
+└── sql.py
+```
+
+```toml
+[tool.uv.build-backend]
+namespace = true
+```
+
+```toml
+[tool.uv.build-backend]
+source-exclude = ["*.bin"]
+```
+
+```toml
+[tool.uv.build-backend]
+source-include = ["tests/**"]
+```
+
+```toml
+[tool.uv.build-backend]
+wheel-exclude = ["*.bin"]
+```
+
+---
+TITLE: Creating Reproducible Examples with Docker Images in uv
+DESCRIPTION: Demonstrates creating reproducible examples for `uv` using Docker images, ensuring consistent behavior across different environments. It illustrates how to define a `Dockerfile` with pinned `uv` versions and platform specifications (`linux/amd64`, `linux/arm64`) to isolate issues and facilitate debugging, including examples of inline file writing and build log generation.
+SOURCE: /docs/reference/troubleshooting/reproducible-examples.md
+
+```Dockerfile
+FROM ghcr.io/astral-sh/uv:0.5.24-debian-slim
+```
+
+```plaintext
+Docker images are best for reproducing issues that can be constructed with commands, e.g.:  
+```
+
+```plaintext
+However, you can also write files into the image inline:  
+```
+
+```plaintext
+If you need to write many files, it's better to create and publish a
+[Git repository](#git-repository). You can combine these approaches and include a `Dockerfile` in
+the repository.  
+When sharing a Docker reproduction, it's helpful to include the build logs. You can see more output
+from the build steps by disabling caching and the fancy output:  
+```
+
+---
+TITLE: Configuring Package Fork Strategy in uv
+DESCRIPTION: Configures the `fork-strategy` setting in `uv` to optimize package version selection across Python versions and platforms. It allows users to choose between minimizing the number of selected versions (`fewest`) or selecting the latest supported version for each Python version (`requires-python`).
+SOURCE: /docs/reference/settings.md
+
+```toml
+[tool.uv]
+fork-strategy = "fewest"
+```
+
+```toml
+fork-strategy = "fewest"
+```
+
+---
+TITLE: Configuring Dependency Sources with `tool.uv.sources`
+DESCRIPTION: Configures alternative dependency sources using the `tool.uv.sources` table in `pyproject.toml` for development with `uv`, enabling features like editable installations and relative paths for dependencies such as `foo` from local directories or Git repositories, which are not supported by standard `project.dependencies`. This allows specifying sources like `index`, `git`, `url`, `path`, and `workspace` members, but these sources are only respected by `uv`.
+SOURCE: /docs/concepts/projects/dependencies.md
+
+```toml
+[project]
+name = "example"
+version = "0.1.0"
+dependencies = ["foo"]
+
+[tool.uv.sources]
+foo = { path = "./packages/foo" }
+```
+
+---
+TITLE: Listing Python Installations with `uv python list`
+DESCRIPTION: Lists available Python installations using the `uv python list` command, including installed versions and available downloads. Use options like `--all-versions`, `--only-installed`, `--managed-python`, and `--no-managed-python` to filter the results based on specific requirements, such as showing all patch versions or only uv-managed Python versions.
+SOURCE: /docs/reference/cli.md
+
+```plaintext
+uv python list [OPTIONS] [REQUEST]
+```
+
+---
+TITLE: Listing Available Python Versions with `uv python list`
+DESCRIPTION: Demonstrates how to view available Python versions using the `uv python list` command. This command allows users to identify the Python interpreters, standard libraries, and supporting files available in their environment, aiding in managing Python environments and dependencies.
+SOURCE: /docs/concepts/python-versions.md
+
+```console
+$ uv python list --only-installed
+```
+
+---
+TITLE: Configuring Dependency Version Bounds with `add-bounds`
+DESCRIPTION: Configures the default version specifier when adding dependencies using the `add-bounds` setting. This setting allows specifying constraints like `lower`, `major`, `minor`, or `exact` to control the version range of added dependencies in `pyproject.toml` or `uv.toml` files.
+SOURCE: /docs/reference/settings.md
+
+```toml
+[tool.uv]
+add-bounds = "major"
+```
+
+```toml
+add-bounds = "major"
+```
+
+---
+TITLE: Understanding Requirements Files in pip Workflows
+DESCRIPTION: Explains how `pip` uses `requirements.txt` files to manage project dependencies, including the use of `pip-tools` for version locking. Demonstrates how `requirements.in` files specify dependencies and constraints, which are then compiled into a locked `requirements.txt` file, ensuring consistent dependency versions across environments.
+SOURCE: /docs/guides/migration/pip-to-project.md
+
+```python
+fastapi
+```
+
+```console
+$ pip install -r requirements.txt
+```
+
+```python
+fastapi
+pydantic>2
+```
+
+```plaintext
+```python title="requirements.txt"
+annotated-types==0.7.0
+# via pydantic
+anyio==4.8.0
+# via starlette
+fastapi==0.115.11
+# via -r requirements.in
+idna==3.10
+# via anyio
+pydantic==2.10.6
+# via
+#   -r requirements.in
+#   fastapi
+pydantic-core==2.27.2
+# via pydantic
+sniffio==1.3.1
+# via anyio
+starlette==0.46.1
+# via fastapi
+typing-extensions==4.12.2
+# via
+#   fastapi
+#   pydantic
+#   pydantic-core
+```
+
+---
+TITLE: Caching Dependencies with `uv` in Docker
+DESCRIPTION: Demonstrates caching dependencies using `uv` within Docker containers to improve build performance. It configures `UV_LINK_MODE` and `UV_PYTHON_CACHE_DIR` with Docker's cache mounts, and explains how to use `UV_NO_CACHE` to reduce image size when caching is not desired.
+SOURCE: /docs/guides/integration/docker.md
+
+```dockerfile
+ENV UV_LINK_MODE=copy
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+uv sync
+```
+
+```dockerfile
+ENV UV_PYTHON_CACHE_DIR=/root/.cache/uv/python
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+uv python install
+```
+
+```dockerfile
+ENV UV_CACHE_DIR=/opt/uv-cache/
+```
+
+---
+TITLE: Creating Packaged Applications with `uv init`
+DESCRIPTION: Demonstrates creating a packaged application using `uv init --package`, which moves source code into a `src` directory and defines a build system in `pyproject.toml`. This approach is useful for command-line interfaces or projects requiring dedicated test directories, enabling installation into the environment and execution with `uv run`.
+SOURCE: /docs/concepts/projects/init.md
+
+```console
+$ uv init --package example-pkg
+```
+
+```plaintext
+A [build system](./config.md#build-systems) is defined, so the project will be installed into the
+environment:  
+```
+
+```plaintext
+!!! tip  
+The `--build-backend` option can be used to request an alternative build system.  
+A [command](./config.md#entry-points) definition is included:  
+```
+
+```plaintext
+The command can be executed with `uv run`:  
+$ cd example-pkg
+$ uv run example-pkg
+Hello from example-pkg!
+```
+
+---
+TITLE: Managing Project Dependencies with Workspace Members
+DESCRIPTION: Configures project dependencies using workspace members in `pyproject.toml` by setting `workspace = true` within the `tool.uv.sources` section, enabling editable dependencies and linking to local packages defined in `tool.uv.workspace.members`. This approach simplifies dependency management within a workspace, ensuring consistent versions and facilitating local development.
+SOURCE: /docs/concepts/projects/dependencies.md
+
+```toml
+[project]
+dependencies = ["foo==0.1.0"]
+
+[tool.uv.sources]
+foo = { workspace = true }
+
+[tool.uv.workspace]
+members = [
+"packages/foo"
+]
+```
+
+---
+TITLE: Handling Build Failures Due to Old Dependencies
+DESCRIPTION: Addresses build failures in `uv` caused by incompatible or outdated build-time dependencies by using the `build-constraint-dependencies` setting or `build-constraints.txt` file to enforce version constraints on build requirements like `setuptools`. This ensures that `uv` selects appropriate versions, preventing build failures due to dependency conflicts.
+SOURCE: /docs/reference/troubleshooting/build-failures.md
+
+```toml
+[tool.uv]
+# Prevent setuptools version 72.0.0 from being used as a build dependency.
+build-constraint-dependencies = ["setuptools!=72.0.0"]
+```
+
+---
+TITLE: Locking Requirements and Environments with `uv pip compile`
+DESCRIPTION: Demonstrates how to lock dependencies and create reproducible environments using `uv pip compile` with `pyproject.toml` and `--group` flags, enabling precise version control for consistent builds. This ensures that dependency versions remain fixed across different tools and platforms, preventing unexpected changes and facilitating reliable deployments.
+SOURCE: /docs/pip/compile.md
+
+```console
+$ uv pip compile pyproject.toml --extra foo
+```
+
+```console
+$ uv pip compile pyproject.toml --all-extras
+```
+
+```console
+$ uv pip compile --group foo
+```
+
+```plaintext
+Alternatively, you can specify a path to a `pyproject.toml` for each group:  
+$ uv pip compile --group some/path/pyproject.toml:foo --group other/pyproject.toml:bar
+```
+
+---
+TITLE: Accessing Private Repositories with uv in GitHub Actions
+DESCRIPTION: Configures `uv` in GitHub Actions to access private GitHub repositories by setting up a personal access token (PAT) and using the `gh` CLI to configure a Git credential helper. This allows `uv` to resolve dependencies from private repositories during workflow execution.
+SOURCE: /docs/guides/integration/github.md
+
+```yaml
+steps:
+- name: Register the personal access token
+run: echo "${{ secrets.MY_PAT }}" | gh auth login --with-token
+- name: Configure the Git credential helper
+run: gh auth setup-git
+```
+
+---
+TITLE: Declaring Dependencies Using `requirements.in`
+DESCRIPTION: Defines project dependencies using a lightweight `requirements.in` file, where each dependency is listed on its own line, distinguishing it from `requirements.txt` for locked dependencies, but it does not support optional dependency groups.
+SOURCE: /docs/pip/dependencies.md
+
+```python
+httpx
+ruff>=0.3.0
+```
+
+---
+TITLE: Configuring Package Locations with `find-links`
+DESCRIPTION: Configures `find-links` to specify locations for searching candidate distributions beyond registry indexes. This setting accepts local directories containing package files (`.whl`, `.tar.gz`, `.zip`) or URLs pointing to flat lists of package file links, enabling the use of custom or private package repositories.
+SOURCE: /docs/reference/settings.md
+
+```toml
+[tool.uv]
+find-links = ["https://download.pytorch.org/whl/torch_stable.html"]
+```
+
+```toml
+find-links = ["https://download.pytorch.org/whl/torch_stable.html"]
+```
+
+---
+TITLE: Building Distributions with `uv build`
+DESCRIPTION: Demonstrates building source distributions (`.tar.gz`) and binary distributions (wheels, `.whl`) for Python projects using the `uv build` command. This allows packaging and distributing your project, placing the artifacts in the `dist/` directory.
+SOURCE: /docs/guides/projects.md
+
+```console
+$ uv build
+$ ls dist/
+hello-world-0.1.0-py3-none-any.whl
+hello-world-0.1.0.tar.gz
+```
+
+---
+TITLE: Configuring Pip Options in uv: `emit-index-url`, `exclude-newer`
+DESCRIPTION: Configures `pip` settings within `uv`, including `emit-index-url` to include index URLs in compiled output and `exclude-newer` to limit package versions based on upload time. These options allow for fine-grained control over dependency resolution and package selection when using `uv pip compile`.
+SOURCE: /docs/reference/settings.md
+
+```toml
+[tool.uv.pip]
+emit-index-url = true
+```
+
+```toml
+[pip]
+emit-index-url = true
+```
+
+```toml
+[tool.uv.pip]
+emit-marker-expression = true
+```
+
+```toml
+[pip]
+emit-marker-expression = true
+```
+
+```toml
+[tool.uv.pip]
+exclude-newer = "2006-12-02T02:07:43Z"
+```
+
+```toml
+[pip]
+exclude-newer = "2006-12-02T02:07:43Z"
+```
+
+---
+TITLE: Creating Virtual Environments with `uv venv`
+DESCRIPTION: Creates a virtual environment using the `uv venv` command, allowing specification of the environment path and various options. This command supports configuring the Python interpreter, package indexes, caching behavior, and other settings to customize the virtual environment creation process.
+SOURCE: /docs/reference/cli.md
+
+```plaintext
+uv venv [OPTIONS] [PATH]
+```
+
+---
+TITLE: Managing uv Project Dependencies from URL Sources
+DESCRIPTION: Demonstrates how to manage project dependencies in `pyproject.toml` using URL sources with `uv`. It illustrates adding dependencies directly from URLs pointing to `.whl` or source distribution files like `.tar.gz`, and explains how to specify a `subdirectory` if needed.
+SOURCE: /docs/concepts/projects/dependencies.md
+
+```console
+$ uv add "https://files.pythonhosted.org/packages/5c/2d/3da5bdf4408b8b2800061c339f240c1802f2e82d55e50bd39c5a881f47f0/httpx-0.27.0.tar.gz"
+```
+
+```toml
+[project]
+dependencies = ["httpx"]
+
+[tool.uv.sources]
+httpx = { url = "https://files.pythonhosted.org/packages/5c/2d/3da5bdf4408b8b2800061c339f240c1802f2e82d55e50bd39c5a881f47f0/httpx-0.27.0.tar.gz" }
+```
+
+---
+TITLE: Configuring Package Reinstallation with `uv`
+DESCRIPTION: Configures the `reinstall` setting in `uv` to force reinstallation of all packages, regardless of their current installation status, implying a `refresh`. This is useful for ensuring the latest versions are used or resolving dependency issues.
+SOURCE: /docs/reference/settings.md
+
+```toml
+[tool.uv]
+reinstall = true
+```
+
+```toml
+reinstall = true
+```
+
+---
+TITLE: Creating Lockfiles with `uv lock`
+DESCRIPTION: Demonstrates creating a `lockfile` using the `uv lock` command. This command explicitly creates or updates the `lockfile`, which resolves project dependencies and is essential for syncing the project environment.
+SOURCE: /docs/concepts/projects/sync.md
+
+```console
+$ uv lock
+```
+
+---
+TITLE: Publishing Python Packages with `uv publish`
+DESCRIPTION: Publishes Python packages to a registry using the `uv publish` command, supporting PyPI tokens, usernames, and passwords, or trusted publishers for GitHub Actions. It handles retries and checks for existing files to avoid accidental publishing of different content for the same version, especially when using custom indexes defined in `pyproject.toml`.
+SOURCE: /docs/guides/package.md
+
+```console
+$ uv publish
+```
+
+```toml
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true
+```
+
+---
+TITLE: Configuring `pip` Settings: `python-version`, `reinstall`, `reinstall-package`
+DESCRIPTION: Configures `pip` settings within `uv`, including `python-version` to specify the minimum Python version, `reinstall` to force reinstallation of all packages, and `reinstall-package` to reinstall specific packages. These settings allow fine-grained control over package installation behavior, ensuring compatibility and resolving dependency issues.
+SOURCE: /docs/reference/settings.md
+
+```toml
+[tool.uv.pip]
+python-version = "3.8"
+```
+
+```toml
+[pip]
+python-version = "3.8"
+```
+
+```toml
+[tool.uv.pip]
+reinstall = true
+```
+
+```toml
+[pip]
+reinstall = true
+```
+
+```toml
+[tool.uv.pip]
+reinstall-package = ["ruff"]
+```
+
+```toml
+[pip]
+reinstall-package = ["ruff"]
+```
+
+---
+TITLE: Updating Shell PATH with `uv tool update-shell`
+DESCRIPTION: Ensures the tool executable directory is on the `PATH` by modifying shell configuration files using `uv tool update-shell`. This command adds the directory to the shell configuration if it's missing, or exits with an error if a configuration blurb exists but the directory is not on the `PATH`, streamlining tool access.
+SOURCE: /docs/reference/cli.md
+
+```plaintext
+uv tool update-shell [OPTIONS]
+```
+
+---
+TITLE: Managing Python Versions with uv: Requiring and Disabling
+DESCRIPTION: Demonstrates how to manage Python versions with `uv` by requiring or disabling managed Python versions using the `--managed-python` and `--no-managed-python` flags, allowing users to control which Python interpreters are used. This configuration can also be set via the `python-preference` setting for persistent behavior.
+SOURCE: /docs/concepts/python-versions.md
+
+```console
+$ uv python list --managed-python
+```
+
+---
+TITLE: Exporting Project Dependencies with `uv export`
+DESCRIPTION: Exports a project's lockfile to alternate formats like `requirements.txt` or `pylock.toml` using the `uv export` command, re-locking the project unless `--locked` or `--frozen` is specified; it supports workspace exports with `--package` and offers options to include or exclude dependency groups and extras, manage package indexes, and control pre-release versions.
+SOURCE: /docs/reference/cli.md
+
+```plaintext
+uv export [OPTIONS]
+```
+
+---
+TITLE: Running Isolated Scripts in uv Projects
+DESCRIPTION: Demonstrates how to run Python scripts with declared dependencies in isolated environments using `uv run`. This ensures that the script's dependencies are managed separately from the project's, preventing conflicts and ensuring reproducibility.
+SOURCE: /docs/concepts/projects/run.md
+
+```python
+# /// script
+# dependencies = [
+# "httpx",
+# ]
+# ///
+import httpx
+
+resp = httpx.get("https://peps.python.org/api/peps.json")
+data = resp.json()
+print([(k, v["title"]) for k, v in data.items()][:10])
+```
+
+---
+TITLE: Configuring Graphical User Interfaces in pyproject.toml
+DESCRIPTION: Defines how to configure graphical user interfaces (GUIs) for a project using the `[project.gui-scripts]` table in `pyproject.toml`, enabling the creation of GUI executables on Windows and command-line interfaces on other platforms. This configuration allows starting applications without a console, differing from standard command-line interfaces primarily on Windows systems.
+SOURCE: /docs/concepts/projects/config.md
+
+```toml
+[project.gui-scripts]
+hello = "example:app"
+```
+
+---
+TITLE: Creating Reproducible Examples with Scripts for Bug Reporting
+DESCRIPTION: Demonstrates how to create a minimal reproducible example (MRE) using a script for reporting platform-specific bugs. It emphasizes including verbose logs with the `-v` flag and providing complete error messages, along with any external state dependencies like Python versions installed with `choco` on PowerShell.
+SOURCE: /docs/reference/troubleshooting/reproducible-examples.md
+
+```bash
+uv init
+uv add pydantic
+uv sync
+uv run -v python -c "import pydantic"
+```
+
+---
+TITLE: Configuring Default Dependency Groups in uv
+DESCRIPTION: Configures the `default-groups` setting in the `pyproject.toml` file for the `uv` tool. This setting defines which dependency groups are installed by default, allowing for customized project setup and dependency management.
+SOURCE: /docs/reference/settings.md
+
+```toml
+[tool.uv]
+default-groups = ["docs"]
+```
+
+---
+TITLE: Disabling Source Distribution Builds with `no-build`
+DESCRIPTION: Configures the `no-build` setting to prevent building source distributions, forcing the reuse of cached wheels and avoiding arbitrary Python code execution during resolution. This is useful for ensuring reproducibility and preventing unexpected build-time behavior.
+SOURCE: /docs/reference/settings.md
+
+```toml
+[tool.uv]
+no-build = true
+```
+
+```toml
+no-build = true
+```
+
+---
+TITLE: Deploying uv with AWS Lambda Workspace Support
+DESCRIPTION: Demonstrates how to deploy an AWS Lambda function using `uv` with workspace support, including local dependencies. This approach ensures that local libraries, defined via `pyproject.toml` and `uv.lock`, are included in the deployment package by updating the `Dockerfile` to copy and install the workspace dependencies.
+SOURCE: /docs/guides/integration/aws-lambda.md
+
+```console
+$ uv init --lib library
+$ uv add ./library
+```
+
+```toml
+[project]
+name = "uv-aws-lambda-example"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+# FastAPI is a modern web framework for building APIs with Python.
+"fastapi",
+# A local library.
+"library",
+# Mangum is a library that adapts ASGI applications to AWS Lambda and API Gateway.
+"mangum",
+]
+
+[dependency-groups]
+dev = [
+# In development mode, include the FastAPI development server.
+"fastapi[standard]",
+]
+
+[tool.uv.workspace]
+members = ["library"]
+
+[tool.uv.sources]
+lib = { workspace = true }
+```
+
+```python
+import logging
+
+from fastapi import FastAPI
+from mangum import Mangum
+
+from library import hello
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+app = FastAPI()
+handler = Mangum(app)
+
+@app.get("/")
+async def root() -> str:
+return hello()
+```
+
+```console
+$ uv run fastapi dev
+```
+
+```dockerfile
+FROM ghcr.io/astral-sh/uv:0.8.15 AS uv
+
+# First, bundle the dependencies into the task root.
+FROM public.ecr.aws/lambda/python:3.13 AS builder
+
+# Enable bytecode compilation, to improve cold-start performance.
+ENV UV_COMPILE_BYTECODE=1
+
+# Disable installer metadata, to create a deterministic layer.
+ENV UV_NO_INSTALLER_METADATA=1
+
+# Enable copy mode to support bind mount caching.
+ENV UV_LINK_MODE=copy
+
+# Bundle the dependencies into the Lambda task root via `uv pip install --target`.
+# # Omit any local packages (`--no-emit-workspace`) and development dependencies (`--no-dev`).
+# This ensures that the Docker layer cache is only invalidated when the `pyproject.toml` or `uv.lock`
+# files change, but remains robust to changes in the application code.
+RUN --mount=from=uv,source=/uv,target=/bin/uv \
+--mount=type=cache,target=/root/.cache/uv \
+--mount=type=bind,source=uv.lock,target=uv.lock \
+--mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+uv export --frozen --no-emit-workspace --no-dev --no-editable -o requirements.txt && \
+uv pip install -r requirements.txt --target "${LAMBDA_TASK_ROOT}"
+
+# If you have a workspace, copy it over and install it too.
+# # By omitting `--no-emit-workspace`, `library` will be copied into the task root. Using a separate
+# `RUN` command ensures that all third-party dependencies are cached separately and remain
+# robust to changes in the workspace.
+RUN --mount=from=uv,source=/uv,target=/bin/uv \
+--mount=type=cache,target=/root/.cache/uv \
+--mount=type=bind,source=uv.lock,target=uv.lock \
+--mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+--mount=type=bind,source=library,target=library \
+uv export --frozen --no-dev --no-editable -o requirements.txt && \
+uv pip install -r requirements.txt --target "${LAMBDA_TASK_ROOT}"
+
+FROM public.ecr.aws/lambda/python:3.13
+
+# Copy the runtime dependencies from the builder stage.
+COPY --from=builder ${LAMBDA_TASK_ROOT} ${LAMBDA_TASK_ROOT}
+
+# Copy the application code.
+COPY ./app ${LAMBDA_TASK_ROOT}/app
+
+# Set the AWS Lambda handler.
+CMD ["app.main.handler"]
+```
+
+---
+TITLE: Using PyTorch Indexes with uv
+DESCRIPTION: Configures `uv` to use custom PyTorch indexes for managing `torch` and `torchvision` dependencies, allowing control over accelerator choices like CPU, CUDA, and ROCm, while falling back to PyPI for other packages; this setup uses `explicit = true` and platform markers to ensure index usage is limited to PyTorch-related packages on specific operating systems.
+SOURCE: /docs/guides/integration/pytorch.md
+
+```toml
+[[tool.uv.index]]
+name = "pytorch-xpu"
+url = "https://download.pytorch.org/whl/xpu"
+explicit = true
+```
+
+```plaintext
+=== "CUDA 11.8"  
+PyTorch doesn't publish CUDA builds for macOS. As such, we gate on `sys_platform` to instruct uv to use
+the PyTorch index on Linux and Windows, but fall back to PyPI on macOS:  
+[tool.uv.sources]
+torch = [
+{ index = "pytorch-cu118", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchvision = [
+{ index = "pytorch-cu118", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+```
+
+```plaintext
+=== "CUDA 12.8"  
+[tool.uv.sources]
+torch = [
+{ index = "pytorch-cu128", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchvision = [
+{ index = "pytorch-cu128", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+```
+
+---
+TITLE: Handling Breaking Changes in uv 0.7.0
+DESCRIPTION: Details breaking changes introduced in `uv` version 0.7.0, including updates to the `uv version` command, authentication failure handling, `uvx` command execution, keyring credential lookups, subcommand flags, Python version support, TOML file handling, dependency object specifiers, and environment variable treatment. These changes may require adjustments to existing workflows, but aim to improve correctness and user experience.
+SOURCE: /changelogs/0.7.x.md
+
+```console
+$ uv init example
+Initialized project `example` at `./example`
+$ cd example
+$ uv version
+example 0.1.0
+$ uv version --bump major
+example 0.1.0 => 1.0.0
+$ uv version --short
+1.0.0
+```
+
+```console
+$ uv version
+warning: failed to read project: No `pyproject.toml` found in current directory or any parent directory
+running `uv self version` for compatibility with old `uv version` command.
+this fallback will be removed soon, pass `--preview` to make this an error.
+
+uv 0.7.0 (4433f41c9 2025-04-29)
+```
+
+```toml
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cpu"
+ignore-error-codes = [401, 403]
+```
+
+---
+TITLE: Handling PEP 517 Build Isolation with uv
+DESCRIPTION: Explains how `uv` handles PEP 517 build isolation by default, similar to `pip install --use-pep517`, and provides guidance on resolving installation failures due to missing build-time dependencies. Describes using `--no-build-isolation` as an escape hatch and links to known issues with PEP 517.
+SOURCE: /docs/pip/compatibility.md
+
+```shell
+uv pip install wheel && uv pip install --no-build-isolation biopython==1.77
+```
+
+---
+TITLE: Resolving Missing Header or Library Build Failures
+DESCRIPTION: Addresses build failures in `uv` due to missing header files or libraries, such as `graphviz/cgraph.h` required by `pygraphviz`. It demonstrates how to install the necessary development packages, like `libgraphviz-dev` on Debian-based systems, to resolve compilation errors during package builds when a compatible wheel is unavailable.
+SOURCE: /docs/reference/troubleshooting/build-failures.md
+
+```hl_lines="18-19"
+× Failed to build `pygraphviz==1.14`
+├─▶ The build backend returned an error
+╰─▶ Call to `setuptools.build_meta.build_wheel` failed (exit status: 1)
+
+[stdout]
+running bdist_wheel
+running build
+running build_py
+...
+gcc -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O3 -Wall -fPIC -DSWIG_PYTHON_STRICT_BYTE_CHAR -I/root/.cache/uv/builds-v0/.tmpgLYPe0/include -I/usr/local/include/python3.12 -c pygraphviz/graphviz_wrap.c -o
+build/temp.linux-x86_64-cpython-312/pygraphviz/graphviz_wrap.o
+
+[stderr]
+...
+pygraphviz/graphviz_wrap.c:9: warning: "SWIG_PYTHON_STRICT_BYTE_CHAR" redefined
+9 | #define SWIG_PYTHON_STRICT_BYTE_CHAR
+|
+<command-line>: note: this is the location of the previous definition
+pygraphviz/graphviz_wrap.c:3023:10: fatal error: graphviz/cgraph.h: No such file or directory
+3023 | #include "graphviz/cgraph.h"
+|          ^~~~~~~~~~~~~~~~~~~
+compilation terminated.
+error: command '/usr/bin/gcc' failed with exit code 1
+
+hint: This error likely indicates that you need to install a library that provides "graphviz/cgraph.h" for `pygraphviz@1.14`
+```
+
+```console
+$ apt install libgraphviz-dev
+```
+
+---
+TITLE: Using Workspaces and Workspace Layouts with uv
+DESCRIPTION: Illustrates how `uv` uses workspaces to manage multiple packages with shared dependencies, similar to Cargo, within a single repository, enabling consistent dependency resolution via a shared lockfile (`uv.lock`). It defines workspace layouts, including a root project with libraries in a `packages` directory, and explains how to specify workspace members in `pyproject.toml`.
+SOURCE: /docs/concepts/projects/workspaces.md
+
+```text
+albatross
+├── packages
+│   ├── bird-feeder
+│   │   ├── pyproject.toml
+│   │   └── src
+│   │       └── bird_feeder
+│   │           ├── __init__.py
+│   │           └── foo.py
+│   └── seeds
+│       ├── pyproject.toml
+│       └── src
+│           └── seeds
+│               ├── __init__.py
+│               └── bar.py
+├── pyproject.toml
+├── README.md
+├── uv.lock
+└── src
+└── albatross
+└── main.py
+```
+
+---
+TITLE: Pinning Packages to Specific Indexes in uv
+DESCRIPTION: Demonstrates how to pin Python packages to specific indexes using the `tool.uv.sources` configuration in `pyproject.toml`, allowing control over where packages like `torch` are installed from. This is useful for using private indexes or different indexes based on platform using environment markers, and for ensuring packages are only installed from explicitly defined indexes.
+SOURCE: /docs/concepts/indexes.md
+
+```toml
+[tool.uv.sources]
+torch = { index = "pytorch" }
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cpu"
+```
+
+```toml
+[project]
+dependencies = ["torch"]
+
+[tool.uv.sources]
+torch = [
+{ index = "pytorch-cu118", marker = "sys_platform == 'darwin'"},
+{ index = "pytorch-cu124", marker = "sys_platform != 'darwin'"},
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu118"
+url = "https://download.pytorch.org/whl/cu118"
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+```
+
+```toml
+[tool.uv.sources]
+torch = { index = "pytorch" }
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+```
+
+---
+TITLE: Augmenting Build Dependencies with `extra-build-dependencies` in uv
+DESCRIPTION: Demonstrates how to augment build dependencies in `uv` using the `extra-build-dependencies` setting in `pyproject.toml` to resolve build isolation issues for packages like `cchardet`, `deepspeed`, `flash-attn`, and `axolotl`. This approach allows specifying additional build dependencies or matching runtime versions of dependencies like `torch`, ensuring compatibility and proper installation.
+SOURCE: /docs/concepts/projects/config.md
+
+```toml
+[project]
+name = "project"
+version = "0.1.0"
+description = "..."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = ["cchardet"]
+
+[tool.uv.extra-build-dependencies]
+cchardet = ["cython"]
+```
+
+```toml
+[project]
+name = "project"
+version = "0.1.0"
+description = "..."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = ["deepspeed", "torch"]
+
+[tool.uv.extra-build-dependencies]
+deepspeed = [{ requirement = "torch", match-runtime = true }]
+```
+
+```plaintext
+!!! note  
+The `FLASH_ATTENTION_SKIP_CUDA_BUILD` environment variable ensures that `flash-attn` is installed
+from a compatible, pre-built wheel, rather than attempting to build it from source, which requires
+access to the CUDA development toolkit. If the CUDA toolkit is not available, the environment variable
+can be omitted, and `flash-attn` will be installed from a pre-built wheel if one is available for the
+current platform, Python version, and PyTorch version.  
+Similarly, [`deep_gemm`](https://github.com/deepseek-ai/DeepGEMM) follows the same pattern:  
+```
+
+```plaintext
+The use of `extra-build-dependencies` and `extra-build-variables` are tracked in the uv cache, such
+that changes to these settings will trigger a reinstall and rebuild of the affected packages. For
+example, in the case of `flash-attn`, upgrading the version of `torch` used in your project would
+subsequently trigger a rebuild of `flash-attn` with the new version of `torch`.  
+#### Dynamic metadata
+The use of `match-runtime = true` is only available for packages like `flash-attn` that declare
+static metadata. If static metadata is unavailable, uv is required to build the package during the
+dependency resolution phase; as such, uv cannot determine the version of the build dependency that
+would ultimately be installed in the project environment.  
+In other words, if `flash-attn` did not declare static metadata, uv would not be able to determine
+the version of `torch` that would be installed in the project environment, since it would need to
+build `flash-attn` prior to resolving the `torch` version.  
+As a concrete example, [`axolotl`](https://pypi.org/project/axolotl/) is a popular package that
+requires augmented build dependencies, but does not declare static metadata, as the package's
+dependencies vary based on the version of `torch` that is installed in the project environment. In
+this case, users should instead specify the exact version of `torch` that they intend to use in
+their project, and then augment the build dependencies with that version.  
+For example, to build `axolotl` against `torch==2.6.0`, include the following in your
+`pyproject.toml`:  
+name = "project"
+version = "0.1.0"
+description = "..."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = ["axolotl[deepspeed, flash-attn]", "torch==2.6.0"]
+
+[tool.uv.extra-build-dependencies]
+axolotl = ["torch==2.6.0"]
+deepspeed = ["torch==2.6.0"]
+flash-attn = ["torch==2.6.0"]
+```
+
+---
+TITLE: Configuring Python Modules with the uv Build Backend
+DESCRIPTION: Configures Python modules within the `uv` build backend, which supports all PEP 517 build backends and provides a native build backend (`uv_build`). It explains how `uv` expects a root module at `src/<package_name>/__init__.py` by default and how to customize the `module-name` and `module-root` settings in `pyproject.toml`.
+SOURCE: /docs/concepts/build-backend.md
+
+```text
+pyproject.toml
+src
+└── foo
+└── __init__.py
+```
+
+```plaintext
+The correct build configuration would be:  
+```
+
+---
+TITLE: Resolving Build Failures: Old Package Version Issue
+DESCRIPTION: Addresses build failures caused by the `uv` resolver attempting to build older, incompatible package versions. Demonstrates how to use constraints in `requirements.txt` or `constraints.txt` (or the `constraint-dependencies` setting) to specify lower bounds, preventing the resolver from selecting unreasonably old packages like `apache-beam` and resolving build errors.
+SOURCE: /docs/reference/troubleshooting/build-failures.md
+
+```title="requirements.txt"
+dill<0.3.9,>=0.2.2
+apache-beam<=2.49.0
+```
+
+```hl_lines="1"
+× Failed to build `apache-beam==2.0.0`
+├─▶ The build backend returned an error
+╰─▶ Call to `setuptools.build_meta:__legacy__.build_wheel` failed (exit status: 1)
+
+[stderr]
+...
+```
+
+---
+TITLE: Running Python Package Commands with `uv tool run`
+DESCRIPTION: `uv tool run` executes commands provided by Python packages, installing them into an ephemeral virtual environment; it's useful for invoking tools like `ruff` or `python` with `uvx`. This command supports version specification, isolated environments, and various options for controlling package resolution, caching, and build processes, making it a versatile tool for managing and running Python-based utilities.
+SOURCE: /docs/reference/cli.md
+
+```plaintext
+uv tool run [OPTIONS] [COMMAND]
+```
+
+---
+TITLE: Installing and Upgrading the `uv` Package Manager
+DESCRIPTION: Demonstrates how to install the `uv` package manager using standalone installers or package managers like `pip`. Explains how to upgrade `uv` using `uv self update` or `pip install --upgrade uv`, and how to disable shell profile modifications with `UV_NO_MODIFY_PATH=1`.
+SOURCE: /docs/getting-started/installation.md
+
+```console
+$ uv self update
+```
+
+```console
+$ pip install --upgrade uv
+```
+
+---
+TITLE: Managing uv Dependencies with Path Sources
+DESCRIPTION: Illustrates configuring `tool.uv.sources` with `path` dependencies in `pyproject.toml`, allowing the use of local files or directories as package sources. This approach supports both direct file paths (e.g., `.whl`) and project directories, with options for editable installations using the `--editable` flag, and is useful for local development and testing before publishing packages.
+SOURCE: /docs/concepts/projects/dependencies.md
+
+```plaintext
+The path may also be a relative path:  
+```
+
+```plaintext
+Or, a path to a project directory:  
+```
+
+```plaintext
+!!! important  
+When using a directory as a path dependency, uv will attempt to build and install the target as
+a package by default. See the [virtual dependency](#virtual-dependencies) documentation for
+details.  
+An [editable installation](#editable-dependencies) is not used for path dependencies by default. An
+editable installation may be requested for project directories:  
+```
+
+```plaintext
+Which will result in a `pyproject.toml` with:  
+```
+
+---
+TITLE: Configuring PyPy Install Mirror for uv
+DESCRIPTION: Configures the `pypy-install-mirror` setting in `uv` to specify a custom mirror URL for downloading managed PyPy installations, allowing users to use alternative sources instead of the default `https://downloads.python.org/pypy`. This is useful for using local directories or private mirrors for PyPy distributions, improving download speeds or accessing specific versions.
+SOURCE: /docs/reference/settings.md
+
+```toml
+[tool.uv]
+pypy-install-mirror = "https://downloads.python.org/pypy"
+```
+
+```toml
+pypy-install-mirror = "https://downloads.python.org/pypy"
+```
+
+---
+TITLE: Testing Windows Trampolines in uv-trampoline
+DESCRIPTION: Demonstrates how to perform a basic smoke test of the Windows trampolines using `cargo` commands. This ensures the trampolines are functioning correctly after building, by creating a virtual environment and installing necessary packages like `black`.
+SOURCE: /crates/uv-trampoline/README.md
+
+```shell
+cargo clean
+cargo run venv
+cargo run pip install black
+.venv\Scripts\black --version
+```
+
+---
+TITLE: Handling Requires-Python Compatibility in uv Resolver
+DESCRIPTION: Explains how uv's resolver handles `requires-python` declarations to ensure compatibility across different Python versions, including forking on Python versions when encountering incompatible `requires-python` constraints. This mechanism, controlled by `--fork-strategy`, allows resolving different package versions based on Python version to address issues with version-dependent C API usage, such as in `numpy`.
+SOURCE: /docs/reference/internals/resolver.md
+
+```plaintext
+numpy==2.0.0; python_version >= "3.9" and python_version < "3.10"
+numpy==2.1.0; python_version >= "3.10"
+```
+
+---
+TITLE: Configuring Dependency Indexes with `index` in uv
+DESCRIPTION: Configures the `index` setting in `pyproject.toml` to specify package indexes for dependency resolution, prioritizing them based on definition order and allowing explicit index selection via `[tool.uv.sources]`. It also supports marking indexes as `default = true` to lower their priority and disable the default PyPI index.
+SOURCE: /docs/reference/settings.md
+
+```toml
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu121"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch" }
+```
+
+```toml
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu121"
+```
+
+---
+TITLE: Configuring JFrog Artifactory as Package Index with uv
+DESCRIPTION: Configures `uv` to use JFrog Artifactory as an alternative package index, specifying the repository URL in `pyproject.toml`. This allows installing packages from a private Artifactory instance, requiring authentication via username/password or JWT token, and addresses potential dependency confusion issues when using multiple indexes.
+SOURCE: /docs/guides/integration/alternative-indexes.md
+
+```toml
+[[tool.uv.index]]
+name = "private-registry"
+url = "https://<organization>.jfrog.io/artifactory/api/pypi/<repository>/simple"
+```

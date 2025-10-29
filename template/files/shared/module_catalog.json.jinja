@@ -1,0 +1,86 @@
+{
+  "modules": [
+    {
+      "name": "cli",
+      "prompt_key": "cli_module",
+      "default_state": "disabled",
+      "selected_state": "{{ 'enabled' if cli_module | lower == 'enabled' else 'disabled' }}",
+      "description": "Typer-powered command-line interface with quickstart automation.",
+      "dependencies": ["typer", "loguru", "shared_logic"],
+      "docs_path": "docs/modules/cli.md",
+      "ci_jobs": ["cli-smoke"],
+      "validation_commands": [
+        "uv run python -m {{ package_name }}.cli --help",
+        "uv run pytest tests/test_cli.py"
+      ]
+    },
+    {
+      "name": "api_python",
+      "prompt_key": "api_tracks",
+      "default_state": "none",
+      "selected_state": "{{ api_tracks }}",
+      "description": "FastAPI service with typed configuration and health checks.",
+      "dependencies": ["fastapi", "uvicorn", "tenacity", "shared_logic"],
+      "docs_path": "docs/modules/api-python.md",
+      "ci_jobs": ["api-python-smoke"],
+      "validation_commands": [
+        "uv run pytest tests/test_api_fastapi.py",
+        "uv run uvicorn {{ package_name }}.api.main:app --host 0.0.0.0 --port 8000"
+      ]
+    },
+    {
+      "name": "api_node",
+      "prompt_key": "api_tracks",
+      "default_state": "none",
+      "selected_state": "{{ api_tracks }}",
+      "description": "Fastify service with shared logic wiring and Vitest smoke tests.",
+      "dependencies": ["pnpm", "fastify", "shared_logic"],
+      "docs_path": "docs/modules/api-node.md",
+      "ci_jobs": ["api-node-smoke"],
+      "validation_commands": [
+        "pnpm --filter api-node install",
+        "pnpm --filter api-node test"
+      ]
+    },
+    {
+      "name": "mcp_module",
+      "prompt_key": "mcp_module",
+      "default_state": "disabled",
+      "selected_state": "{{ 'enabled' if mcp_module | lower == 'enabled' else 'disabled' }}",
+      "description": "FastMCP tooling scaffold with sample tools and contracts.",
+      "dependencies": ["fastmcp"],
+      "docs_path": "docs/modules/mcp.md",
+      "ci_jobs": ["mcp-smoke"],
+      "validation_commands": [
+        "uv run python -c \"from shared.mcp import tooling; print(tooling.list_tools())\""
+      ]
+    },
+    {
+      "name": "docs_site",
+      "prompt_key": "docs_site",
+      "default_state": "starter-guide",
+      "selected_state": "{{ docs_site }}",
+      "description": "Fumadocs/Next.js documentation experience for TypeScript consumers.",
+      "dependencies": ["pnpm", "next", "fumadocs"],
+      "docs_path": "docs/modules/docs-site.md",
+      "ci_jobs": ["docs-site-build"],
+      "validation_commands": [
+        "pnpm --filter docs-fumadocs install",
+        "pnpm --filter docs-fumadocs build"
+      ]
+    },
+    {
+      "name": "shared_logic",
+      "prompt_key": "shared_logic",
+      "default_state": "disabled",
+      "selected_state": "{{ 'enabled' if shared_logic | lower == 'enabled' else 'disabled' }}",
+      "description": "Reusable logic helpers consumed by CLI and API modules.",
+      "dependencies": [],
+      "docs_path": "docs/modules/shared-logic.md",
+      "ci_jobs": ["shared-logic-smoke"],
+      "validation_commands": [
+        "uv run python -c \"from shared.logic import summarize_payload; print(summarize_payload({'service': 'shared', 'status': 'ok'}))\""
+      ]
+    }
+  ]
+}

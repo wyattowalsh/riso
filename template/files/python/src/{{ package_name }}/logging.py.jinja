@@ -1,0 +1,24 @@
+"""Centralised logging helpers built on top of Loguru."""
+
+from __future__ import annotations
+
+from loguru import logger
+
+DEFAULT_FORMAT = (
+    "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+    "<level>{level: <8}</level> | "
+    "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+    "<level>{message}</level>"
+)
+
+
+def configure_logging(level: str = "INFO") -> None:
+    logger.remove()
+    logger.add(
+        sink=lambda message: print(message, end=""),
+        format=DEFAULT_FORMAT,
+        level=level,
+    )
+
+
+__all__ = ["configure_logging", "logger"]
