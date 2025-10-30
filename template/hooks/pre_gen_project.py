@@ -18,6 +18,14 @@ from pathlib import Path
 
 LOG_PATH = Path(".riso/toolchain_provisioning.jsonl")
 
+sys.path.append(str(Path(__file__).resolve().parents[2] / "scripts"))
+
+try:
+    from hooks.quality_tool_check import ensure_python_quality_tools, ToolCheck
+except ModuleNotFoundError:  # pragma: no cover - during template linting
+    ensure_python_quality_tools = lambda: []  # type: ignore
+    ToolCheck = None  # type: ignore
+
 
 class ProvisionResult(dict):
     """Typed helper for logging provisioning attempts."""
@@ -140,6 +148,19 @@ def main() -> None:
         _log_attempt(result)
         if result["status"] == "failed":
             failures.append(result)
+
+    if ToolCheck is not None:
+        for check in ensure_python_quality_tools():
+            entry = ProvisionResult(
+                tool_name=check.name,
+                version_requested="quality-suite",
+                status=check.status,
+                stderr=getattr(check, "stderr", None),
+                next_steps=getattr(check, "next_steps", None),
+            )
+            _log_attempt(entry)
+            if entry["status"] not in {"present", "installed"}:
+                failures.append(entry)
 
     if failures:
         sys.stderr.write(

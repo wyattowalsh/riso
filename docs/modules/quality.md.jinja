@@ -1,0 +1,42 @@
+# Quality Suite
+
+The Riso quality suite standardises linting, type-checking, testing, and coverage collection
+for every rendered project.
+
+## Commands
+
+- `make quality` – preferred aggregator that runs Ruff, Mypy, Pylint, pytest (via coverage), and
+  optional Node checks when `api_tracks` includes `node`.
+- `uv run task quality` – fallback for environments without `make`. Implemented with Taskipy to
+  call `python -m tasks.quality` and log durations to `.riso/quality-durations.json`.
+
+Both commands honour the `QUALITY_PROFILE` environment variable. Projects render with
+`quality_profile={{ quality_profile|default('standard') }}` by default; set
+`QUALITY_PROFILE=strict` to enable stricter Mypy and Ruff rules during local runs or CI.
+
+## Configuration Files
+
+- `ruff.toml`
+- `mypy.ini`
+- `.pylintrc`
+- `coverage.cfg`
+
+These templates live under `template/files/shared/quality/` and are rendered into the project root,
+ensuring consistent defaults and reproducible automation.
+
+## Tooling Expectations
+
+| Tool      | Provisioning                                  | Notes |
+|-----------|-----------------------------------------------|-------|
+| Ruff      | `uv tool install ruff` via pre/post hooks      | Uses shared ignore list |
+| Mypy      | `uv tool install mypy` via pre/post hooks      | Strict mode toggled by profile |
+| Pylint    | `uv tool install pylint` via pre/post hooks    | Simplified baseline config |
+| Coverage  | Included in quality dependency group           | Generates reports for governance |
+| pnpm lint | Runs when Node API track is enabled            | Skipped when Node is disabled |
+
+## Evidence & Governance
+
+- `scripts/render-samples.sh` runs the quality suite for each sample and stores results in
+  `samples/*/smoke-results.json` with recorded durations.
+- CI uploads logs for every lane via the quality matrix workflow (`.github/workflows/quality-matrix.yml`).
+- `.riso/post_gen_metadata.json` records `quality_profile` and `tool_install_attempts` for auditing.

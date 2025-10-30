@@ -7,49 +7,70 @@ Re-render the template with `cli_module=enabled` to scaffold the Typer CLI.
 
 def main() -> None:
     """Entry point placeholder when the CLI is not enabled."""
-
     raise SystemExit("CLI module is disabled for this render.")
 
 
 if __name__ == "__main__":
     main()
 {%- else %}
+"""Typer-powered command-line interface for the Riso quickstart workflow."""
+
 from __future__ import annotations
 
-from typing import Any, Mapping
+from importlib import import_module
+from typing import Annotated, Any, cast
 
-import typer
+import typer  # type: ignore[import-not-found]
 from loguru import logger
 
-try:
-    from shared.logic import build_health_payload, summarize_payload
-except ImportError:  # pragma: no cover - shared logic is optional
+from {{ package_name }}.quickstart import run_quickstart
 
-    def build_health_payload(
-        service: str, *, dry_run: bool = False, checks: list[Mapping[str, Any]] | None = None
+build_health_payload: Any
+summarize_payload: Any
+
+try:
+    _shared_logic = import_module("shared.logic")
+except ModuleNotFoundError:  # pragma: no cover - shared logic is optional
+
+    def _fallback_build_health_payload(
+        service: str,
+        *,
+        dry_run: bool = False,
+        checks: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
+        """Construct a minimal health payload when shared logic is unavailable."""
         payload: dict[str, Any] = {"service": service, "status": "ok", "dry_run": dry_run}
         if checks:
             payload["checks"] = list(checks)
         return payload
 
-    def summarize_payload(payload: Mapping[str, Any]) -> str:
+    def _fallback_summarize_payload(payload: dict[str, Any]) -> str:
+        """Summarise the payload for terminal output."""
         status = str(payload.get("status", "unknown"))
         service = str(payload.get("service", "service"))
         suffix = " (dry run)" if payload.get("dry_run") else ""
         return f"{service} status: {status}{suffix}"
+    build_health_payload = _fallback_build_health_payload
+    summarize_payload = _fallback_summarize_payload
+else:
+    build_health_payload = _shared_logic.build_health_payload
+    summarize_payload = _shared_logic.summarize_payload
 
-from ..quickstart import run_quickstart
+DRY_RUN_DEFAULT = False
+
+DryRunOption = Annotated[
+    bool,
+    typer.Option(
+        default=DRY_RUN_DEFAULT,
+        help="Run validations without executing external commands.",
+    ),
+]
 
 app = typer.Typer(no_args_is_help=True, rich_markup_mode="rich")
 
 
-@app.command()
-def quickstart(
-    dry_run: bool = typer.Option(False, help="Run validations without executing external commands.")
-) -> None:
+def quickstart(dry_run: DryRunOption) -> None:
     """Execute the baseline quickstart workflow."""
-
     logger.info("Starting quickstart workflow (dry_run=%s)", dry_run)
     result = run_quickstart(dry_run=dry_run)
     payload = build_health_payload("cli-quickstart", dry_run=dry_run)
@@ -60,9 +81,11 @@ def quickstart(
     logger.success("Quickstart completed successfully")
 
 
+app.command()(quickstart)
+
+
 def main() -> None:
     """Invoke the Typer application."""
-
     app()
 
 

@@ -95,14 +95,6 @@
 - **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
 - **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
 
-> Tag each requirement as **Baseline** (B) or **Optional** (O) to show whether it belongs in the default render or an opt-in module.
-
-### Template Prompts & Variants
-
-- **Prompt**: `[name]` — **Type**: Baseline/Optional — **Default**: `[value]` — **Implication**: [files, services, or tooling introduced]
-- **Prompt**: `[name]` — **Type**: Baseline/Optional — **Default**: `[value]` — **Implication**: [files, services, or tooling introduced]
-- **Variant Samples**: Update `samples/[variant]` to demonstrate this prompt combination (link to render evidence)
-
 ### Key Entities *(include if feature involves data)*
 
 - **[Entity 1]**: [What it represents, key attributes without implementation]
@@ -121,11 +113,3 @@
 - **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
 - **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
 - **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
-
-## Principle Compliance Evidence *(mandatory)*
-
-- **Template Sovereignty**: [Show how template files encode the change and link to `copier diff` output]
-- **Deterministic Generation**: [Document render tests (platforms, prompts) and attach CI strategy]
-- **Minimal Baseline, Optional Depth**: [Explain baseline impact and how optional modules remain independent]
-- **Documented Scaffolds**: [List docs to update (quickstart, prompt reference, upgrade guide) with owners]
-- **Automation-Governed Compliance**: [Identify automation/policy jobs proving the change cannot merge without gates]

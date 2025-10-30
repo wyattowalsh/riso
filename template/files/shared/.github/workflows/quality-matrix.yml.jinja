@@ -1,0 +1,74 @@
+{% raw %}
+name: Quality Matrix
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  UV_CACHE_DIR: ${{ runner.temp }}/uv-cache
+
+jobs:
+  python-quality:
+    name: Python Quality (${{ matrix.profile }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        profile: ["standard", "strict"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Enable pnpm
+        run: corepack enable
+      - name: Install uv
+        run: pip install uv
+      - name: Run quality suite
+        run: |
+          python scripts/ci/run_quality_suite.py \
+            --profile "${{ matrix.profile }}" \
+            --log-dir "quality-${{ matrix.profile }}"
+      - name: Upload quality artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-${{ matrix.profile }}
+          path: quality-${{ matrix.profile }}
+          retention-days: 90
+
+  aggregate-status:
+    name: Aggregate Quality Status
+    runs-on: ubuntu-latest
+    needs: python-quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: quality-standard
+          path: artifacts/quality-standard
+      - uses: actions/download-artifact@v4
+        with:
+          name: quality-strict
+          path: artifacts/quality-strict
+      - name: Consolidate render matrix
+        run: |
+          python scripts/ci/render_matrix.py \
+            --skip-render \
+            --quality-artifacts \
+              artifacts/quality-standard/quality-results.json \
+              artifacts/quality-strict/quality-results.json \
+            --retention-days 90
+      - name: Upload consolidated summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-summary
+          path: samples/metadata/render_matrix.json
+          retention-days: 90
+{% endraw %}

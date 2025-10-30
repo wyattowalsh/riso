@@ -1,7 +1,7 @@
 # Implementation Plan: Riso Template Foundation
 
-**Branch**: `001-build-riso-template` | **Date**: 2025-10-29 | **Spec**: [specs/001-build-riso-template/spec.md](specs/001-build-riso-template/spec.md)  
-**Input**: Feature specification from `/specs/001-build-riso-template/spec.md`
+**Branch**: `001-build-riso-template` | **Date**: 2025-10-29 | **Spec**: [.specify/specs/001-build-riso-template/spec.md](.specify/specs/001-build-riso-template/spec.md) *(symlinked at `specs/001-build-riso-template/spec.md`)*  
+**Input**: Feature specification from `/.specify/specs/001-build-riso-template/spec.md`
 
 ## Summary
 
@@ -32,7 +32,7 @@ Deliver a copier-driven GitHub template that defaults to a lightweight Python 3.
 ### Documentation (this feature)
 
 ```text
-specs/001-build-riso-template/
+.specify/specs/001-build-riso-template/
 ├── plan.md
 ├── research.md
 ├── data-model.md
@@ -40,6 +40,8 @@ specs/001-build-riso-template/
 ├── contracts/
 └── tasks.md
 ```
+
+> The repository-level `specs/` symlink targets `.specify/specs/` for backwards compatibility.
 
 ### Source Code (repository root)
 

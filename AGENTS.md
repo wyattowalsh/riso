@@ -19,6 +19,7 @@
 - `samples/` – curated answer files, rendered artifacts, `smoke-results.json`, performance metrics.
 - `.github/context/` – canonical context snippets; must match `template/files/shared/.github/context/` (`python scripts/ci/verify_context_sync.py`).
 - `docs/` – Jinja-templated quickstart and module docs rendered into downstream projects.
+- `.specify/specs/` – canonical GitHub Spec Kit workspace (access via `specs/` symlink if tooling expects the legacy location).
 
 ## Render & Validate Default Variant
 ```bash
@@ -27,12 +28,12 @@ cd samples/default/render
 PACKAGE=$(awk -F': ' '$1=="package_name"{print $2}' ../copier-answers.yml)
 uv sync
 uv run python -m ${PACKAGE}.quickstart
-uv run pytest
-uv run ruff check
-uv run mypy
-uv run pylint ${PACKAGE}
+make quality
+# or, when make is unavailable
+QUALITY_PROFILE=standard uv run task quality
 ```
 - The render writes metrics to `samples/default/baseline_quickstart_metrics.json` and smoke logs to `samples/default/smoke-results.json`.
+- The quality suite logs tool durations to `.riso/quality-durations.json`; CI archives the full log bundle with 90-day retention.
 
 ## Render Specific Variant
 ```bash
@@ -43,6 +44,7 @@ uv run pylint ${PACKAGE}
 ## Aggregate & Governance Checks
 - `python scripts/ci/render_matrix.py` – render every `samples/*/copier-answers.yml`, update metadata, and recompute module success.
 - `python scripts/ci/record_module_success.py` – regenerate `samples/metadata/module_success.json` from existing smoke logs.
+- `python scripts/ci/run_quality_suite.py --profile {standard|strict}` – execute make/uv quality lanes and emit artifacts consumed by `.github/workflows/quality-matrix.yml`.
 - `python scripts/ci/run_baseline_quickstart.py` – refresh command timing evidence for downstream documentation.
 - `python scripts/ci/verify_context_sync.py` – ensure shared `.github/context` files stay byte-identical between template and repo.
 
@@ -93,6 +95,8 @@ uv run pylint ${PACKAGE}
 <!-- MANUAL ADDITIONS END -->
 
 ## Recent Changes
+
+- 003-code-quality-integrations: Added unified quality suite (ruff, mypy, pylint, pytest, coverage) with standard/strict profiles, auto-healing tool provisioning, parallelized CI jobs, and 90-day artifact retention
 - 002-docs-template-expansion: Added Python 3.11 (uv-managed), Node.js 20 LTS, TypeScript 5.6, POSIX shell + Fumadocs (Next.js 15), Sphinx 7.4 + Shibuya theme, Docusaurus 3, pnpm ≥8, mise 2024.9+, uv ≥0.4
 - 002-docs-template-expansion: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 

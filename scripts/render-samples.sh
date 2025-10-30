@@ -59,16 +59,34 @@ def collect_modules(config: dict[str, str]) -> list[dict[str, object]]:
         docs_command = None
         docs_reason = "Documentation scaffolding skipped (`docs_site=none`)."
 
+    python_cwd = destination_path / "template" / "files" / "python"
+
     modules: list[dict[str, object]] = [
         {
             "name": "cli",
             "enabled": config.get("cli_module", "").lower() == "enabled",
-            "command": ["uv", "run", "pytest", "tests/test_cli.py"],
+            "command": [
+                "uv",
+                "run",
+                "--group",
+                "test",
+                "pytest",
+                "tests/test_cli.py",
+            ],
+            "cwd": str(python_cwd),
         },
         {
             "name": "api_python",
             "enabled": api_tracks in {"python", "python+node"},
-            "command": ["uv", "run", "pytest", "tests/test_api_fastapi.py"],
+            "command": [
+                "uv",
+                "run",
+                "--group",
+                "test",
+                "pytest",
+                "tests/test_api_fastapi.py",
+            ],
+            "cwd": str(python_cwd),
         },
         {
             "name": "api_node",
@@ -94,14 +112,39 @@ def collect_modules(config: dict[str, str]) -> list[dict[str, object]]:
             "skip_reason": "Shared logic smoke tests pending implementation.",
         },
     ]
+    modules.extend(
+        [
+            {
+                "name": "quality_make",
+                "enabled": True,
+                "command": ["make", "quality"],
+                "cwd": str(python_cwd),
+            },
+            {
+                "name": "quality_uv_task",
+                "enabled": True,
+                "command": [
+                    "uv",
+                    "run",
+                    "--group",
+                    "quality",
+                    "--group",
+                    "test",
+                    "task",
+                    "quality",
+                ],
+                "cwd": str(python_cwd),
+            },
+        ]
+    )
     return modules
 
 
-def run_command(cmd: list[str]) -> tuple[str, dict[str, object]]:
+def run_command(cmd: list[str], cwd: Path | None = None) -> tuple[str, dict[str, object]]:
     try:
         proc = subprocess.run(
             cmd,
-            cwd=destination_path,
+            cwd=cwd or destination_path,
             check=True,
             capture_output=True,
             text=True,
@@ -141,6 +184,7 @@ for module in modules:
         )
         continue
     command = module.get("command")
+    module_cwd = Path(module.get("cwd", destination_path))
     if not command:
         results.append(
             {
@@ -150,12 +194,16 @@ for module in modules:
             }
         )
         continue
-    status, payload = run_command(command)
+    status, payload = run_command(command, module_cwd)
     entry = {"name": module["name"], "status": status}
     entry.update(payload)
     results.append(entry)
 
 summary = {"variant": variant, "results": results}
+durations_path = destination_path / ".riso" / "quality-durations.json"
+if durations_path.exists():
+    summary["quality_durations"] = json.loads(durations_path.read_text(encoding="utf-8"))
+
 Path(log_path).write_text(json.dumps(summary, indent=2), encoding="utf-8")
 print(json.dumps(summary))
 PY
