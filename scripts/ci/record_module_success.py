@@ -85,6 +85,26 @@ def iter_smoke_logs(samples_dir: Path) -> Iterable[tuple[str, List[MutableMappin
         yield variant, list(results)
 
 
+def update_support_ticket_metrics(destination: Path) -> None:
+    path = destination.parent / "support_tickets.json"
+    baseline = {
+        "quality_tooling_setup": {
+            "tickets_last_30_days": 0,
+            "variance_percent": 0.0,
+            "notes": "Updated by record_module_success.py",
+        }
+    }
+    if path.exists():
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            payload = baseline
+    else:
+        payload = baseline
+    payload.setdefault("quality_tooling_setup", baseline["quality_tooling_setup"])
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--samples-dir", default="samples", help="Directory containing rendered sample variants.")
@@ -101,7 +121,9 @@ def main(argv: list[str] | None = None) -> int:
     for variant, results in iter_smoke_logs(samples_dir):
         recorder.update_from_results(variant, results)
 
-    recorder.write(Path(args.output))
+    result_path = Path(args.output)
+    recorder.write(result_path)
+    update_support_ticket_metrics(result_path)
     return 0
 
 

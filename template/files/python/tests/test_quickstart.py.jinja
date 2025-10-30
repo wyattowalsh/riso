@@ -1,7 +1,39 @@
+"""Quickstart workflow quality tests."""
+
 import importlib
+import json
+from pathlib import Path
+
+import pytest
 
 
-def test_quickstart_runs():
-    module = importlib.import_module("{{ project_slug }}.quickstart")
-    result = module.run_quickstart(dry_run=True)
+def test_quickstart_runs(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Simulate a non-dry run and capture executed quality commands."""
+    module = importlib.import_module("{{ package_name }}.quickstart")
+    recorded_commands: list[tuple[tuple[str, ...], bool]] = []
+
+    def fake_run(command: list[str], *, check: bool, shell: bool) -> None:
+        check_flag = bool(check)
+        assert shell is False
+        recorded_commands.append((tuple(command), check_flag))
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+
+    result = module.run_quickstart(dry_run=False)
+
+    expected = [(tuple(cmd), True) for cmd in module.COMMANDS]
+    assert recorded_commands == expected
     assert result["status"] == "ok"
+    assert result["executed"] == len(module.COMMANDS)
+
+
+def test_write_evidence(tmp_path: Path) -> None:
+    """Ensure quality evidence is persisted even when modules are disabled."""
+    module = importlib.import_module("{{ package_name }}.quickstart")
+    destination = tmp_path / "artifacts" / "quickstart.json"
+    payload: dict[str, object] = {"status": "ok", "commands": module.COMMANDS}
+
+    module.write_evidence(destination, payload)
+
+    assert destination.exists()
+    assert json.loads(destination.read_text(encoding="utf-8")) == payload

@@ -1,0 +1,18 @@
+# Upgrade Guide
+
+## Adopting the Quality Integration Suite
+
+1. **Pull new template files** – regenerate your project with the latest template version or copy the following files:
+   - `ruff.toml`, `mypy.ini`, `.pylintrc`, `coverage.cfg`
+   - `Makefile` (quality targets) and `tasks/quality.py`
+   - `.github/workflows/quality-matrix.yml`
+2. **Install Taskipy support** – run `uv sync --group quality --group test` to ensure `task` CLI is available.
+3. **Select a profile** – update your `copier-answers.yml` (or template prompts) with `quality_profile=standard` or `strict`.
+4. **Node projects** – if `api_tracks` includes `node`, run `corepack pnpm install` once so the quality suite can execute ESLint/TypeScript checks.
+5. **Governance evidence** – ensure CI runs the new `quality-matrix` workflow and archives artifacts for 90 days. Update `.riso/post_gen_metadata.json` to keep `quality.tool_install_attempts` entries when backfilling metadata.
+
+## Troubleshooting
+
+- `make quality` fails because `uv` is missing → run `pip install uv` and re-run the command.
+- `uv run task quality` fails with `task` not found → rerun `uv sync --group quality --group test`.
+- Node checks skipped unexpectedly → confirm `api_tracks` includes `node` and `QUALITY_PROFILE` is not set to override your prompt.

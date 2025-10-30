@@ -4,7 +4,7 @@ description: "Task list template for feature implementation"
 
 # Tasks: Riso Template Foundation
 
-**Input**: Design documents from `/specs/001-build-riso-template/`  
+**Input**: Design documents from `/.specify/specs/001-build-riso-template/`  (legacy symlink available at `specs/001-build-riso-template/`)  
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/
 
 **Tests**: Include explicit test scaffolds only when required to validate the user stories’ acceptance criteria.
