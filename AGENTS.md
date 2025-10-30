@@ -1,8 +1,31 @@
 # Riso Template • Agent Operations
 
-> Maintained per [AGENTS.md specification](https://agents.md) (observed: 2025-10-29) and [maintainer field guide](https://github.com/openai/agents.md) (observed: 2025-10-29).
+> Maintained per [AGENTS.md specification](https://agents.md) (observed: 2025-10-30) and [maintainer field guide](https://github.com/openai/agents.md) (observed: 2025-10-30).
+
+## Quickstart
+
+Get started with the default template variant:
+
+```bash
+# Render the default sample
+./scripts/render-samples.sh
+
+# Navigate to the rendered project
+cd samples/default/render
+
+# Set up the environment and run quickstart
+PACKAGE=$(awk -F': ' '$1=="package_name"{print $2}' ../copier-answers.yml)
+uv sync
+uv run python -m ${PACKAGE}.quickstart
+
+# Run quality checks
+make quality
+# or, when make is unavailable
+QUALITY_PROFILE=standard uv run task quality
+```
 
 ## Scope & Ownership
+
 - Riso is a Copier template plus automation helpers; render actual projects with `copier copy` or `scripts/render-samples.sh`.
 - Template maintainers keep sample renders, automation scripts, and documentation synchronized; rendered projects must author their own AGENTS.md.
 - Apply the "lean, link out" pattern—keep this file as the control plane and point to deeper docs like `docs/quickstart.md.jinja`.
@@ -14,12 +37,63 @@
 - Optional: set `COPIER_CMD` to point at a custom Copier binary when invoking automation.
 
 ## Repository Map
+
 - `template/` – Copier payload (Python + Node variants, shared logic, docs, module catalog).
 - `scripts/` – local/CI automation (rendering, metrics, context sync); run from repo root.
 - `samples/` – curated answer files, rendered artifacts, `smoke-results.json`, performance metrics.
 - `.github/context/` – canonical context snippets; must match `template/files/shared/.github/context/` (`python scripts/ci/verify_context_sync.py`).
 - `docs/` – Jinja-templated quickstart and module docs rendered into downstream projects.
-- `.specify/specs/` – canonical GitHub Spec Kit workspace (access via `specs/` symlink if tooling expects the legacy location).
+- `specs/` – GitHub Spec Kit workspace (canonical specifications for features and plans).
+
+## Build & Test Parity
+
+**Local development:**
+
+```bash
+# From repo root - render and test template
+./scripts/render-samples.sh
+cd samples/default/render
+uv sync
+make quality
+```
+
+**CI workflows:** Not yet configured. Local quality checks (`make quality` or `uv run task quality`) serve as the authoritative test suite. CI automation is planned for future implementation.
+
+## Code Quality
+
+Quality tools run via `make quality` or `uv run task quality` in rendered projects:
+
+- **Linting:** ruff (configuration in `pyproject.toml`)
+- **Type checking:** mypy (configuration in `pyproject.toml`)
+- **Static analysis:** pylint (configuration in `pyproject.toml`)
+- **Testing:** pytest with coverage (configuration in `pytest.ini` and `coverage.cfg`)
+- **Profiles:** `QUALITY_PROFILE=standard` (default) or `QUALITY_PROFILE=strict` for enhanced checks
+
+Quality suite implementation:
+
+- `template/files/shared/quality/makefile.quality.jinja` – Makefile targets
+- `template/files/shared/quality/uv_tasks/quality.py.jinja` – uv task definitions
+- `scripts/ci/check_quality_parity.py` – ensures Makefile and uv tasks stay synchronized
+- `scripts/ci/run_quality_suite.py` – CI orchestration script
+
+## Security
+
+**Secrets management:**
+
+- Never commit secrets to the repository
+- Use environment variables for sensitive configuration
+- Rendered projects should implement `.env` files (gitignored by default)
+
+**Production safety:**
+
+- Pre-generation hook (`template/hooks/pre_gen_project.py`) validates required tooling and fails fast on missing dependencies
+- Post-generation hook writes metadata to `.riso/post_gen_metadata.json` for audit trails
+- Quality checks must pass before merging changes
+
+**Security-critical paths:**
+
+- `template/hooks/` – validation and initialization logic
+- `scripts/ci/verify_context_sync.py` – ensures shared context files remain synchronized
 
 ## Render & Validate Default Variant
 ```bash
@@ -98,6 +172,7 @@ QUALITY_PROFILE=standard uv run task quality
 
 - 003-code-quality-integrations: Added unified quality suite (ruff, mypy, pylint, pytest, coverage) with standard/strict profiles, auto-healing tool provisioning, parallelized CI jobs, and 90-day artifact retention
 - 002-docs-template-expansion: Added Python 3.11 (uv-managed), Node.js 20 LTS, TypeScript 5.6, POSIX shell + Fumadocs (Next.js 15), Sphinx 7.4 + Shibuya theme, Docusaurus 3, pnpm ≥8, mise 2024.9+, uv ≥0.4
-- 002-docs-template-expansion: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 
 ## Active Technologies
+
+- Python 3.11 (uv-managed), optional Node.js 20 LTS + ruff, mypy, pylint, pytest, coverage, optional eslint + typescript (003-code-quality-integrations)
