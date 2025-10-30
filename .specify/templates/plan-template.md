@@ -31,11 +31,7 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- ✅ Template Sovereignty: List the template source files you will touch and how the change is mirrored via `copier diff` evidence.
-- ✅ Deterministic Generation: Describe the render validation plan (default + samples) and the CI jobs that will exercise it.
-- ✅ Minimal Baseline, Optional Depth: Explain how the change preserves the lightweight default and how new prompts remain opt-in.
-- ✅ Documented Scaffolds: Enumerate the documentation updates (quickstart, prompt reference, upgrade guide) that will accompany the change.
-- ✅ Automation-Governed Compliance: Note the automation or policy checks proving the principle gates stay enforced post-merge.
+[Gates determined based on constitution file]
 
 ## Project Structure
 

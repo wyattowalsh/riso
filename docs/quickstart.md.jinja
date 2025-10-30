@@ -12,9 +12,15 @@ Welcome to **{{ project_name }}**, the baseline render produced by the Riso temp
 ```bash
 uv sync
 uv run python -m {{ package_name }}.quickstart
+make quality
+# or, if make is unavailable
+uv run task quality
 ```
 
-The quickstart script executes pytest, ruff, mypy, pylint, and confirms nbclient is available.
+The quickstart script executes pytest, ruff, mypy, and pylint. The `quality` target chains all
+quality tools (linting, typing, coverage) and records durations in `.riso/quality-durations.json`
+for governance evidence. The `uv run task quality` fallback relies on the bundled Taskipy
+definition so environments without `make` stay aligned.
 
 ## Optional Modules
 

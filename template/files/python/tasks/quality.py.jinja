@@ -1,0 +1,142 @@
+"""Task runner orchestrating the Python quality toolchain."""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import Final
+
+DEFAULT_PROFILE = "{{ quality_profile|default('standard') }}"
+QUALITY_PROFILE = os.environ.get("QUALITY_PROFILE", DEFAULT_PROFILE).lower()
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+RUFF_FLAGS: list[str] = []
+MYPY_FLAGS: list[str] = []
+PYLINT_FLAGS: list[str] = []
+
+if QUALITY_PROFILE == "strict":
+    RUFF_FLAGS = ["--select", "ALL", "--ignore", "E203,E266,E501"]
+    MYPY_FLAGS = ["--strict"]
+    PYLINT_FLAGS = ["--errors-only"]
+
+COMMANDS: Final[list[tuple[str, list[str]]]] = [
+    (
+        "ruff",
+        [
+            "uv",
+            "run",
+            "--group",
+            "quality",
+            "--group",
+            "test",
+            "ruff",
+            "check",
+            *RUFF_FLAGS,
+        ],
+    ),
+    (
+        "mypy",
+        [
+            "uv",
+            "run",
+            "--group",
+            "quality",
+            "--group",
+            "test",
+            "mypy",
+            *MYPY_FLAGS,
+            "src",
+        ],
+    ),
+    (
+        "pylint",
+        [
+            "uv",
+            "run",
+            "--group",
+            "quality",
+            "--group",
+            "test",
+            "pylint",
+            *PYLINT_FLAGS,
+            "src/{{ package_name }}",
+        ],
+    ),
+    (
+        "coverage",
+        [
+            "uv",
+            "run",
+            "--group",
+            "quality",
+            "--group",
+            "test",
+            "coverage",
+            "run",
+            "-m",
+            "pytest",
+            "-ra",
+        ],
+    ),
+    (
+        "coverage-report",
+        [
+            "uv",
+            "run",
+            "--group",
+            "quality",
+            "coverage",
+            "report",
+            "--rcfile",
+            "coverage.cfg",
+        ],
+    ),
+]
+
+{% if api_tracks in ['node', 'python+node'] %}
+COMMANDS.extend(
+    [
+        (
+            "pnpm-lint",
+            ["pnpm", "--filter", "api-node", "lint"],
+        ),
+        (
+            "pnpm-typecheck",
+            ["pnpm", "--filter", "api-node", "typecheck"],
+        ),
+    ],
+)
+{% endif %}
+
+
+def run_command(label: str, command: list[str]) -> float:
+    """Execute a quality command and return its duration in seconds."""
+    start = time.perf_counter()
+    result = subprocess.run(command, check=False, shell=False)  # noqa: S603
+    duration = time.perf_counter() - start
+    if result.returncode != 0:
+        sys.stderr.write(f"\n[quality] {label} failed with exit code {result.returncode}\n")
+        sys.exit(result.returncode)
+    sys.stdout.write(f"[quality] {label} completed in {duration:.2f}s\n")
+    return duration
+
+
+def main() -> int:
+    """Run the full quality suite and capture timing evidence."""
+    durations: dict[str, float] = {}
+    for label, command in COMMANDS:
+        durations[label] = run_command(label, command)
+    out = PROJECT_ROOT / ".riso" / "quality-durations.json"
+    out.parent.mkdir(exist_ok=True, parents=True)
+
+    out.write_text(json.dumps(durations, indent=2), encoding="utf-8")
+    sys.stdout.write(f"[quality] Durations written to {out}\n")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

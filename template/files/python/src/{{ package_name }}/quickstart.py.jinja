@@ -2,28 +2,37 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
 
 COMMANDS: list[list[str]] = [
-    ["uv", "sync"],
-    ["uv", "run", "pytest"],
-    ["uv", "run", "ruff", "check"],
-    ["uv", "run", "mypy"],
-    ["uv", "run", "pylint", "{{ project_slug }}"],
-    ["uv", "run", "python", "-m", "nbclient", "--version"],
+    ["uv", "sync", "--group", "quality", "--group", "test"],
+    ["make", "quality"],
+    [
+        "uv",
+        "run",
+        "--group",
+        "quality",
+        "--group",
+        "test",
+        "task",
+        "quality",
+    ],
 ]
 
 
 @dataclass
 class QuickstartResult:
+    """Captured execution metadata for the quickstart workflow."""
+
     status: str
-    commands: Sequence[Sequence[str]]
+    commands: list[list[str]]
     executed: int
 
     def as_dict(self) -> dict[str, object]:
+        """Return a JSON-serialisable representation of the result."""
         return {
             "status": self.status,
             "commands": [list(cmd) for cmd in self.commands],
@@ -31,10 +40,11 @@ class QuickstartResult:
         }
 
 
-def _run_commands(commands: Sequence[Sequence[str]]) -> int:
+def _run_commands(commands: list[list[str]]) -> int:
+    """Execute each command sequentially, returning the number executed."""
     executed = 0
     for cmd in commands:
-        subprocess.run(cmd, check=True)
+        subprocess.run(cmd, check=True, shell=False)  # noqa: S603
         executed += 1
     return executed
 
@@ -44,17 +54,14 @@ def run_quickstart(*, dry_run: bool = False) -> dict[str, object]:
     executed = 0
     if not dry_run:
         executed = _run_commands(COMMANDS)
-    result = QuickstartResult(
-        status="ok",
-        commands=COMMANDS,
-        executed=executed,
-    )
+    result = QuickstartResult(status="ok", commands=COMMANDS, executed=executed)
     return result.as_dict()
 
 
 def write_evidence(destination: Path, payload: dict[str, object]) -> None:
+    """Persist quickstart evidence to ``destination`` as formatted JSON."""
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(str(payload), encoding="utf-8")
+    destination.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
 if __name__ == "__main__":

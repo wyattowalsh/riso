@@ -4,44 +4,63 @@
 
 def create_app():
     """Placeholder app when the Python API track is not enabled."""
-
     raise RuntimeError("FastAPI track disabled. Enable with api_tracks=python or python+node.")
 
 
 app = None
 {%- else %}
+"""FastAPI application factory and health endpoint wiring."""
+
 from __future__ import annotations
 
-from typing import Any, Mapping
+from importlib import import_module
+from typing import Any, cast
 
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI  # type: ignore[import-not-found]
+from fastapi.responses import JSONResponse  # type: ignore[import-not-found]
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-try:
-    from shared.logic import HealthCheckResult, build_health_payload
-except ImportError:  # pragma: no cover - shared logic optional
+from .settings import ApiSettings, get_settings
 
-    class HealthCheckResult:  # type: ignore[override]
+build_health_payload: Any
+HealthCheckResult: Any
+
+try:
+    _shared_logic = import_module("shared.logic")
+except ModuleNotFoundError:  # pragma: no cover - shared logic optional
+
+    class _FallbackHealthCheckResult:
+        """Simple health check container used when shared logic is unavailable."""
+
         def __init__(self, name: str, status: str = "ok") -> None:
+            """Initialise the fallback health check representation."""
             self.name = name
             self.status = status
 
         def as_dict(self) -> dict[str, str]:
+            """Return the health check as a serialisable dictionary."""
             return {"name": self.name, "status": self.status}
 
-    def build_health_payload(
-        service: str, *, checks: list[Mapping[str, Any]] | None = None, dry_run: bool = False
+    def _fallback_build_health_payload(
+        service: str,
+        *,
+        checks: list[dict[str, Any]] | None = None,
+        dry_run: bool = False,
     ) -> dict[str, Any]:
+        """Construct a minimal health payload when shared logic is unavailable."""
         payload: dict[str, Any] = {"service": service, "status": "ok", "dry_run": dry_run}
         if checks:
             payload["checks"] = list(checks)
         return payload
 
-from .settings import ApiSettings, get_settings
-
+    HealthCheckResult = _FallbackHealthCheckResult
+    build_health_payload = _fallback_build_health_payload
+else:
+    HealthCheckResult = _shared_logic.HealthCheckResult
+    build_health_payload = _shared_logic.build_health_payload
 
 def _configure_app(settings: ApiSettings) -> FastAPI:
+    """Create a FastAPI instance using the provided settings."""
     return FastAPI(
         title=f"{settings.service_name} service",
         version="0.1.0",
@@ -50,7 +69,8 @@ def _configure_app(settings: ApiSettings) -> FastAPI:
     )
 
 
-def _health_checks() -> list[HealthCheckResult]:
+def _health_checks() -> list[Any]:
+    """Return the baseline list of health checks."""
     return [HealthCheckResult(name="application")]  # future modules can append more checks
 
 
@@ -58,20 +78,22 @@ def _health_checks() -> list[HealthCheckResult]:
     stop=stop_after_attempt(get_settings().health_retry_attempts),
     wait=wait_fixed(get_settings().health_retry_wait_seconds),
 )
-def compute_health_payload(settings: ApiSettings) -> Mapping[str, Any]:
-    return build_health_payload(settings.service_name, checks=_health_checks())
+def compute_health_payload(settings: ApiSettings) -> dict[str, Any]:
+    """Build a health payload, retrying if dependencies fail transiently."""
+    checks = [check.as_dict() for check in _health_checks()]
+    return build_health_payload(settings.service_name, checks=checks)
 
 
 def create_app(settings: ApiSettings | None = None) -> FastAPI:
     """Create and configure the FastAPI application."""
-
     resolved_settings = settings or get_settings()
     app = _configure_app(resolved_settings)
 
-    @app.get("/health", response_class=JSONResponse)
-    def health() -> Mapping[str, Any]:
-        payload = compute_health_payload(resolved_settings)
-        return payload
+    def health() -> dict[str, Any]:
+        """Expose a health payload for uptime checks."""
+        return compute_health_payload(resolved_settings)
+
+    app.add_api_route("/health", health, response_class=JSONResponse, methods=["GET"])
 
     return app
 

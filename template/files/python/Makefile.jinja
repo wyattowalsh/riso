@@ -1,0 +1,45 @@
+UV ?= uv
+QUALITY_PROFILE ?= {{ quality_profile|default('standard') }}
+PACKAGE_NAME ?= {{ package_name }}
+PYTEST_FLAGS ?= -ra
+MYPY_FLAGS ?=
+RUFF_FLAGS ?=
+PYLINT_FLAGS ?=
+COVERAGE_FLAGS ?= -m pytest $(PYTEST_FLAGS)
+
+ifeq ($(QUALITY_PROFILE),strict)
+	MYPY_FLAGS := --strict
+	RUFF_FLAGS := --select ALL --ignore E203,E266,E501
+	PYLINT_FLAGS := --errors-only
+endif
+
+.PHONY: quality quality-python coverage-report format lint {% if api_tracks in ['node', 'python+node'] %}quality-node lint-node{% endif %}
+
+quality: quality-python{% if api_tracks in ['node', 'python+node'] %} quality-node{% endif %}
+
+quality-python:
+	$(UV) run --group quality --group test ruff check $(RUFF_FLAGS)
+	$(UV) run --group quality --group test mypy $(MYPY_FLAGS) src
+	$(UV) run --group quality --group test pylint $(PYLINT_FLAGS) src/{{ package_name }}
+	$(UV) run --group quality --group test coverage run $(COVERAGE_FLAGS)
+	$(UV) run --group quality coverage report --rcfile coverage.cfg
+
+coverage-report:
+	$(UV) run --group quality coverage html --rcfile coverage.cfg
+
+format:
+	$(UV) run --group quality ruff format $(PACKAGE_NAME) tests
+
+lint:
+	$(UV) run --group quality --group test ruff check $(RUFF_FLAGS)
+	$(UV) run --group quality --group test pylint $(PYLINT_FLAGS) $(PACKAGE_NAME) tests
+
+{% if api_tracks in ['node', 'python+node'] %}
+quality-node:
+	@command -v pnpm >/dev/null 2>&1 || { echo "pnpm is required for Node quality checks"; exit 1; }
+	pnpm --filter api-node lint
+	pnpm --filter api-node typecheck
+
+lint-node:
+	pnpm --filter api-node lint
+{% endif %}

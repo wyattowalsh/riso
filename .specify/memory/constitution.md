@@ -1,80 +1,114 @@
-<!--
-Sync Impact Report
-- Version change: N/A → 1.0.0
-- Modified principles: Added I. Template Sovereignty; Added II. Deterministic Generation; Added III. Minimal Baseline, Optional Depth; Added IV. Documented Scaffolds; Added V. Automation-Governed Compliance
-- Added sections: Template Architecture Constraints; Delivery Workflow & Review
-- Removed sections: None
-- Templates requiring updates:
-  - ✅ .specify/templates/plan-template.md
-  - ✅ .specify/templates/spec-template.md
-  - ✅ .specify/templates/tasks-template.md
-  - ⚠ .specify/templates/commands/* (directory absent; add command guidance when commands are introduced)
-- Follow-up TODOs: None
--->
-
-# Riso Constitution
+# Riso Template Constitution
 
 ## Core Principles
 
-### I. Template Sovereignty
-All repository behavior MUST be expressed through the copier template so every rendered project remains identical.
-- Template artifacts (Jinja templates, `copier.yml`, hook scripts) are the single source of truth for generated files.
-- Manual edits applied to generated example projects MUST be mirrored back into the template before merge.
-- Each change MUST include a `copier diff` (or equivalent evidence) proving that regenerated outputs match the template.
-Rationale: This prevents configuration drift across downstream projects and keeps scaffolding reviewable.
+### I. UV-Managed Python Execution (NON-NEGOTIABLE)
 
-### II. Deterministic Generation
-The template MUST render deterministically across supported environments.
-- Default answers MUST render without warnings on macOS, Linux, and Windows CI targets.
-- A golden sample project under `samples/` (or equivalent) MUST be regenerated and validated in CI whenever prompts or hooks change.
-- Hooks and scripts MUST be idempotent and avoid external side effects such as network calls or host-specific paths.
-Rationale: Deterministic output ensures new projects can trust the scaffold and enables reproducible debugging.
+**ALL Python commands MUST be executed via `uv run` to ensure consistent environment management.**
 
-### III. Minimal Baseline, Optional Depth
-The default project MUST remain lightweight while advanced capabilities stay opt-in.
-- Baseline renders MUST include only what is required to run the documented quickstart end-to-end.
-- New capabilities MUST be guarded by descriptive prompts with documented defaults and backwards-compatible migrations.
-- Optional modules MUST compose without forcing unrelated stacks, services, or credentials into the baseline.
-Rationale: Teams adopt the template faster when the core stays small and optional layers remain modular.
+- Direct `python` or `python3` invocations are PROHIBITED
+- Correct: `uv run python -m package.module`, `uv run pytest`, `uv run mypy`
+- Incorrect: `python -m package.module`, `pytest`, `mypy`
+- Exception: Internal `uv` bootstrapping scripts may invoke `python3` to install `uv` itself
+- Rationale: Ensures reproducible builds, prevents dependency drift, enforces virtual environment isolation
 
-### IV. Documented Scaffolds
-Every scaffolded asset MUST ship with authoritative documentation generated alongside the code.
-- `docs/` MUST contain a template quickstart that mirrors the default render and is updated with every change.
-- Each prompt MUST be described in reference docs covering purpose, defaults, side effects, and CI/CD implications.
-- Runtime guidance MUST state how to upgrade existing projects with `copier update` and how to resolve breaking changes.
-Rationale: Paired documentation reduces onboarding friction and keeps downstream teams self-sufficient.
+### II. Automation-Governed Quality
 
-### V. Automation-Governed Compliance
-Quality gates MUST be automated so constitutional compliance cannot be bypassed.
-- CI pipelines MUST execute template linting (`copier lint` or equivalent), render smoke tests, and policy checks on every merge.
-- Release notes MUST summarize principle impacts and link to the latest golden sample diff.
-- Compliance reviews MUST block merges until automation proves all principles remain satisfied.
-Rationale: Automated enforcement keeps the template trustworthy even as contributors and projects change.
+**Quality automation must be deterministic, single-attempt, and evidence-tracked.**
 
-## Template Architecture Constraints
+- Tool provisioning: ONE auto-install attempt per tool via hooks; explicit failure paths required
+- CI must be deterministic with fixed tool versions and cached dependencies
+- Quality evidence (logs, coverage, durations) retained for 90 days minimum
+- No network-dependent operations during template render beyond documented auto-install retries
+- Quality profiles (`standard`/`strict`) must be clearly documented with opt-in/opt-out semantics
 
-- `copier.yml` MUST declare the template semantic version, minimum supported copier version, and default answers for every prompt.
-- Hooks under `hooks/` MUST be cross-platform, self-contained, and unit-tested where logic exceeds trivial shell scripting.
-- Template files MUST avoid hard-coded organization identifiers; use prompts or computed values to support broad reuse.
-- Generated projects MUST include linting, testing, and formatting scripts that succeed immediately after rendering.
+### III. Template Composition Over Inheritance
 
-These constraints keep the scaffold portable and production-ready upon first render.
+**Render targets must compose independent modules with clear boundaries.**
 
-## Delivery Workflow & Review
+- Each module (CLI, API, MCP, docs) scaffolds independently and conditionally
+- Shared logic extracted only when reused across ≥2 modules
+- Module catalog (`module_catalog.json.jinja`) is the single source of truth for module state
+- Jinja2 templating must remain readable; complex logic moves to Python hooks
+- No hidden dependencies between modules; explicit prompt-driven selection
 
-1. Open a design discussion referencing the relevant spec and identify which principles are affected.
-2. Produce an implementation plan that documents template files touched, render validation strategy, and documentation obligations.
-3. Run `copier copy --defaults --pretend` and a full `copier copy` into `samples/` to capture diffs for review.
-4. Update documentation (quickstart, prompt reference, upgrade guide) in the same change set.
-5. Ensure CI runs succeed on regenerated samples and attach evidence (logs or artifacts) to the review.
-6. Secure maintainer approval sign-off explicitly acknowledging principle compliance before merge.
+### IV. Documentation Synchronization
+
+**Documentation must stay synchronized across template and rendered projects.**
+
+- Shared context files (`.github/context/`) must be byte-identical between template and repo root
+- `scripts/ci/verify_context_sync.py` enforces synchronization in CI
+- Quickstart docs (`docs/quickstart.md.jinja`) must reflect actual command sequences
+- Breaking changes require upgrade guide updates (`docs/upgrade-guide.md.jinja`)
+
+### V. Evidence-Driven Governance
+
+**Every automation decision must produce auditable evidence.**
+
+- Sample renders tracked in `samples/*/smoke-results.json` with pass/fail/skip reasoning
+- Module success rates aggregated in `samples/metadata/module_success.json`
+- Baseline quickstart metrics captured in `baseline_quickstart_metrics.json` for SLA tracking
+- Tool install attempts logged in `.riso/post_gen_metadata.json`
+- CI artifacts (quality logs, coverage reports) uploaded with 90-day retention
+
+## Technology Standards
+
+### Required Tooling
+
+- Python ≥3.11 managed via `uv` ≥0.4
+- Node.js 20 LTS + pnpm ≥8 (via `corepack`) for TypeScript/Fumadocs/Fastify tracks
+- Copier ≥9.1.0 for template rendering
+- `mise` ≥2024.9 for optional multi-runtime management
+
+### Code Quality Standards
+
+- **Linting**: Ruff (Python), ESLint (Node)
+- **Type Checking**: Mypy (Python strict optional), TypeScript 5.6+ (Node)
+- **Testing**: pytest (Python), Vitest (Node)
+- **Coverage**: ≥85% for new modules, tracked via `coverage.cfg`
+- **CI Runtime**: `<6m` per quality job (standard profile), `<8m` (strict profile)
+
+### Naming Conventions
+
+- Package names: `snake_case` (Python), `kebab-case` (npm packages)
+- Module files: lowercase with underscores (`shared_logic.py`)
+- Jinja templates: preserve target extension (`.jinja` suffix)
+- Git branches: feature descriptors (`003-code-quality-integrations`)
+
+## Development Workflow
+
+### Render Validation Process
+
+1. Run `./scripts/render-samples.sh` (or variant-specific invocation)
+2. Inspect `samples/*/smoke-results.json` for module health
+3. Execute `make quality` (or `uv run task quality`) inside rendered project
+4. Review `.riso/quality-durations.json` for performance regressions
+5. Commit smoke results + metadata for governance audit trail
+
+### Hook Execution Order
+
+1. **Pre-generation** (`template/hooks/pre_gen_project.py`):
+   - Validate required tooling (uv, Node, pnpm if needed)
+   - Attempt single auto-install pass for missing quality tools
+   - Abort render with actionable instructions on unrecoverable failures
+
+2. **Post-generation** (`template/hooks/post_gen_project.py`):
+   - Record `tool_install_attempts` in `.riso/post_gen_metadata.json`
+   - Emit next-steps guidance to stdout
+   - NO network operations (constitution-compliant determinism)
+
+### CI Quality Gates
+
+- **Required Checks**: python-quality-standard, aggregate-status
+- **Optional Checks**: python-quality-strict (when `quality_profile=strict`)
+- **Artifact Retention**: 90 days for all quality logs and coverage reports
+- **Failure Policy**: Block merge on any required check failure
 
 ## Governance
 
-- This constitution supersedes all other process documents governing the template; conflicts MUST be resolved in favor of this file.
-- Amendments require an RFC linked to this document, majority maintainer approval, and successful regeneration of all declared samples.
-- Version updates MUST follow semantic versioning (MAJOR: breaking principle scope or default render behavior; MINOR: adding principles or governance obligations; PATCH: clarifications and non-obligatory refinements).
-- Ratification and amendments MUST update the version line and Sync Impact Report at the top of this file.
-- A compliance review MUST occur at least quarterly or before each tagged release to confirm automation still enforces every principle.
+- This constitution supersedes all other development practices
+- Amendments require: (1) documented rationale, (2) updated governance section, (3) migration plan for affected samples
+- All PRs must pass constitution compliance checks via `scripts/compliance/checkpoints.py`
+- Principle violations require explicit justification in PR description
 
-**Version**: 1.0.0 | **Ratified**: 2025-10-29 | **Last Amended**: 2025-10-29
+**Version**: 1.0.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-10-30

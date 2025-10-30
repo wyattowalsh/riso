@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+
 from loguru import logger
 
 DEFAULT_FORMAT = (
@@ -13,12 +15,9 @@ DEFAULT_FORMAT = (
 
 
 def configure_logging(level: str = "INFO") -> None:
+    """Configure Loguru to emit structured logs to standard output."""
     logger.remove()
-    logger.add(
-        sink=lambda message: print(message, end=""),
-        format=DEFAULT_FORMAT,
-        level=level,
-    )
+    logger.add(sys.stdout, format=DEFAULT_FORMAT, level=level)
 
 
 __all__ = ["configure_logging", "logger"]

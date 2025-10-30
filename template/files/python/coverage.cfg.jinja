@@ -1,0 +1,35 @@
+{% set optional_tests = [] %}
+{% if cli_module | lower != "enabled" %}
+{% set optional_tests = optional_tests + ["tests/test_cli.py"] %}
+{% endif %}
+{% if api_tracks | lower not in ["python", "python+node"] %}
+{% set optional_tests = optional_tests + ["tests/test_api_fastapi.py"] %}
+{% endif %}
+
+[run]
+branch = True
+source =
+    {{ package_name }}
+    tests
+omit =
+    */__init__.py
+    */migrations/*
+    */node_modules/*
+{% for test in optional_tests %}
+    {{ test }}
+{% endfor %}
+
+[report]
+show_missing = True
+skip_covered = False
+precision = 2
+fail_under = 85.0
+{% if optional_tests %}
+omit =
+{% for test in optional_tests %}
+    {{ test }}
+{% endfor %}
+{% endif %}
+
+[html]
+directory = htmlcov
