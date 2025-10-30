@@ -50,6 +50,28 @@ def layout_guidance(layout: str) -> list[str]:
     return []
 
 
+def docs_guidance(answers: Dict[str, str]) -> list[str]:
+    docs_site = answers.get("docs_site", "fumadocs").lower()
+    if docs_site == "fumadocs":
+        return [
+            "Fumadocs preview: `pnpm --filter docs-fumadocs dev`.",
+            "Fumadocs production build: `pnpm --filter docs-fumadocs build`.",
+        ]
+    if docs_site == "sphinx-shibuya":
+        return [
+            "Sphinx build: `uv run make docs`.",
+            "Link check: `uv run make linkcheck`.",
+        ]
+    if docs_site == "docusaurus":
+        return [
+            "Docusaurus preview: `pnpm --filter docs-docusaurus dev`.",
+            "Docusaurus build: `pnpm --filter docs-docusaurus build`.",
+        ]
+    return [
+        "Documentation scaffolding skipped (`docs_site=none`). Review docs/guidance/none.md for enabling docs later.",
+    ]
+
+
 def optional_module_guidance(answers: Dict[str, str]) -> list[str]:
     guidance: list[str] = []
     if answers.get("cli_module", "").lower() == "enabled":
@@ -61,8 +83,6 @@ def optional_module_guidance(answers: Dict[str, str]) -> list[str]:
         guidance.append("Fastify service: `pnpm --filter api-node run dev`.")
     if answers.get("mcp_module", "").lower() == "enabled":
         guidance.append("List MCP tools: `uv run python -c \"from shared.mcp import tooling; print(tooling.list_tools())\"`.")
-    if answers.get("docs_site", "").lower() == "fumadocs":
-        guidance.append("Fumadocs preview: `pnpm --filter docs-fumadocs run dev`.")
     return guidance
 
 
@@ -72,6 +92,8 @@ def render_guidance(package: str, answers: Dict[str, str]) -> str:
     for item in DEFAULT_GUIDANCE:
         lines.append(f"- {item.format(package=package)}")
     for item in layout_guidance(layout):
+        lines.append(f"- {item.format(package=package)}")
+    for item in docs_guidance(answers):
         lines.append(f"- {item.format(package=package)}")
     for item in optional_module_guidance(answers):
         lines.append(f"- {item.format(package=package)}")
@@ -93,7 +115,7 @@ def main() -> None:
                 "cli_module": answers.get("cli_module", "disabled"),
                 "api_tracks": answers.get("api_tracks", "none"),
                 "mcp_module": answers.get("mcp_module", "disabled"),
-                "docs_site": answers.get("docs_site", "starter-guide"),
+                "docs_site": answers.get("docs_site", "fumadocs"),
                 "shared_logic": answers.get("shared_logic", "disabled"),
             },
         },

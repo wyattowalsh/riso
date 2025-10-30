@@ -91,3 +91,9 @@ uv run pylint ${PACKAGE}
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
+
+## Recent Changes
+- 002-docs-template-expansion: Added Python 3.11 (uv-managed), Node.js 20 LTS, TypeScript 5.6, POSIX shell + Fumadocs (Next.js 15), Sphinx 7.4 + Shibuya theme, Docusaurus 3, pnpm ≥8, mise 2024.9+, uv ≥0.4
+- 002-docs-template-expansion: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
+
+## Active Technologies

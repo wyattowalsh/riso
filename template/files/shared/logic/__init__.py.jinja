@@ -60,5 +60,76 @@ def summarize_payload(payload: Mapping[str, object]) -> str:
     suffix = " (dry run)" if dry_run else ""
     return f"{service} status: {status}{suffix}"
 
+@dataclass(slots=True)
+class ToolchainProvisioningAttempt:
+    """Represents a single toolchain provisioning attempt captured during render."""
 
-__all__ = ["HealthCheckResult", "build_health_payload", "summarize_payload", "ENABLED"]
+    tool_name: str
+    version_requested: str
+    status: str
+    timestamp: str
+    stderr: str | None = None
+    next_steps: str | None = None
+    retry_command: str | None = None
+
+    def to_dict(self) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "tool_name": self.tool_name,
+            "version_requested": self.version_requested,
+            "status": self.status,
+            "timestamp": self.timestamp,
+        }
+        if self.stderr:
+            payload["stderr"] = self.stderr
+        if self.next_steps:
+            payload["next_steps"] = self.next_steps
+        if self.retry_command:
+            payload["retry_command"] = self.retry_command
+        return payload
+
+
+@dataclass(slots=True)
+class SupportTicketMetric:
+    """Snapshot of documentation-related support tickets for governance checks."""
+
+    observed_at: str
+    ticket_count: int
+    variance_percent: float
+    threshold_exceeded: bool
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "observed_at": self.observed_at,
+            "ticket_count": self.ticket_count,
+            "variance_percent": self.variance_percent,
+            "threshold_exceeded": self.threshold_exceeded,
+        }
+
+
+@dataclass(slots=True)
+class ArtifactExpiryAlert:
+    """Represents an impending documentation artifact expiry event."""
+
+    variant_name: str
+    expires_at: str
+    days_remaining: int
+    warning_emitted: bool
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "variant_name": self.variant_name,
+            "expires_at": self.expires_at,
+            "days_remaining": self.days_remaining,
+            "warning_emitted": self.warning_emitted,
+        }
+
+
+__all__ = [
+    "HealthCheckResult",
+    "ToolchainProvisioningAttempt",
+    "SupportTicketMetric",
+    "ArtifactExpiryAlert",
+    "build_health_payload",
+    "summarize_payload",
+    "ENABLED",
+]

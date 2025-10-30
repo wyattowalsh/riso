@@ -94,8 +94,9 @@ A front-end-heavy organization selects the Docusaurus option to produce a docume
 
 - **DocumentationVariant**: Defines the selected documentation framework, required tooling, generated entrypoints, and CI job names.
 - **DocumentationSampleEvidence**: Captures render metadata, smoke status, build durations, and artifact locations per variant to feed governance dashboards.
-- **DocumentationArtifact**: Represents built documentation outputs stored as CI artifacts (variant, timestamp, checksum) rather than checked-in assets.
-- **DocumentationArtifact**: Represents built documentation outputs stored as CI artifacts (with metadata about variant, build timestamp, and checksum) rather than checked-in assets.
+- **DocumentationArtifact**: Represents built documentation outputs stored as CI artifacts (variant, timestamp, checksum, expiry) rather than checked-in assets.
+- **SupportTicketMetric**: Aggregates “docs setup” issues, calculates 30-day variance, and publishes compliance evidence alongside smoke metrics.
+- **ArtifactExpiryAlert**: Tracks artifact retention windows and raises warnings when remaining time drops below 14 days.
 
 ## Success Criteria *(mandatory)*
 
@@ -103,7 +104,7 @@ A front-end-heavy organization selects the Docusaurus option to produce a docume
 
 - **SC-001**: 100% of documentation variants build successfully via the published quickstart commands on a fresh render within 8 minutes.
 - **SC-002**: CI pipelines complete documentation smoke jobs for all variants with zero manual intervention in ≥98% of runs across a rolling 30-day window.
-- **SC-003**: Downstream maintainers report <5% variance in docs setup steps versus the spec by monitoring support tickets tagged “docs setup”.
+- **SC-003**: A compliance job aggregates issues labeled “docs setup” and keeps the 30-day variance in support tickets below 5%, with results published alongside doc smoke metrics.
 - **SC-004**: Documentation prompts and reference materials stay synchronized—automated diff checks detect and block drift in `.github/context/` and docs guides every release.
 
 ## Principle Compliance Evidence *(mandatory)*

@@ -42,6 +42,23 @@ def load_answers(path: Path) -> dict[str, str]:
 
 def collect_modules(config: dict[str, str]) -> list[dict[str, object]]:
     api_tracks = config.get("api_tracks", "").lower()
+    docs_site = config.get("docs_site", "").lower()
+
+    docs_command: list[str] | None
+    docs_reason = "Documentation module disabled."
+    if docs_site == "fumadocs":
+        docs_command = ["pnpm", "--filter", "docs-fumadocs", "build"]
+        docs_reason = "Fumadocs build command configured."
+    elif docs_site == "sphinx-shibuya":
+        docs_command = ["uv", "run", "make", "linkcheck"]
+        docs_reason = "Sphinx Shibuya link check configured."
+    elif docs_site == "docusaurus":
+        docs_command = ["pnpm", "--filter", "docs-docusaurus", "build"]
+        docs_reason = "Docusaurus build command configured."
+    else:
+        docs_command = None
+        docs_reason = "Documentation scaffolding skipped (`docs_site=none`)."
+
     modules: list[dict[str, object]] = [
         {
             "name": "cli",
@@ -62,19 +79,19 @@ def collect_modules(config: dict[str, str]) -> list[dict[str, object]]:
             "name": "mcp_module",
             "enabled": config.get("mcp_module", "").lower() == "enabled",
             "command": None,
-            "skip_reason": "MCP smoke tests pending implementation",
+            "skip_reason": "MCP smoke tests pending implementation.",
         },
         {
             "name": "docs_site",
-            "enabled": config.get("docs_site", "").lower() == "fumadocs",
-            "command": None,
-            "skip_reason": "Docs smoke tests pending implementation",
+            "enabled": docs_site != "none",
+            "command": docs_command,
+            "skip_reason": docs_reason,
         },
         {
             "name": "shared_logic",
             "enabled": config.get("shared_logic", "").lower() == "enabled",
             "command": None,
-            "skip_reason": "Shared logic smoke tests pending implementation",
+            "skip_reason": "Shared logic smoke tests pending implementation.",
         },
     ]
     return modules
