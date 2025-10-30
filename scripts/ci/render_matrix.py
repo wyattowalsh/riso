@@ -8,6 +8,7 @@ other CI helpers (success-rate recorder, doc tracker) can consume.
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import subprocess
@@ -58,23 +59,55 @@ def render_variant(variant: str, answers_file: Path) -> dict[str, object]:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--skip-render", action="store_true")
+    parser.add_argument("--quality-artifacts", nargs="*", default=[])
+    parser.add_argument("--retention-days", type=int, default=90)
+    args = parser.parse_args()
+
     METADATA_DIR.mkdir(parents=True, exist_ok=True)
-    summary: dict[str, object] = {"variants": []}
-    recorder = ModuleSuccessRecorder()
-
-    for variant, answers_file in discover_variants():
-        variant_summary = render_variant(variant, answers_file)
-        summary["variants"].append(variant_summary)
-        smoke_results = variant_summary.get("smoke_results")
-        if smoke_results:
-            recorder.update_from_results(
-                variant_summary["variant"],
-                smoke_results.get("results", []),  # type: ignore[arg-type]
-            )
-
-    module_metrics = recorder.write(METADATA_DIR / "module_success.json")
-    summary["module_success"] = module_metrics
     output_file = METADATA_DIR / "render_matrix.json"
+
+    if args.skip_render and output_file.exists():
+        summary = json.loads(output_file.read_text(encoding="utf-8"))
+        recorder = ModuleSuccessRecorder()
+        for variant_entry in summary.get("variants", []):
+            results = variant_entry.get("smoke_results", {})
+            if results:
+                recorder.update_from_results(
+                    variant_entry.get("variant", "unknown"),
+                    results.get("results", []),  # type: ignore[arg-type]
+                )
+        module_metrics = recorder.write(METADATA_DIR / "module_success.json")
+        summary["module_success"] = module_metrics
+    else:
+        summary: dict[str, object] = {"variants": []}
+        recorder = ModuleSuccessRecorder()
+
+        for variant, answers_file in discover_variants():
+            variant_summary = render_variant(variant, answers_file)
+            summary["variants"].append(variant_summary)
+            smoke_results = variant_summary.get("smoke_results")
+            if smoke_results:
+                recorder.update_from_results(
+                    variant_summary["variant"],
+                    smoke_results.get("results", []),  # type: ignore[arg-type]
+                )
+
+        module_metrics = recorder.write(METADATA_DIR / "module_success.json")
+        summary["module_success"] = module_metrics
+
+    if args.quality_artifacts:
+        quality_runs: list[dict[str, object]] = []
+        for artifact in args.quality_artifacts:
+            path = Path(artifact)
+            if not path.exists():
+                continue
+            quality_runs.append(json.loads(path.read_text(encoding="utf-8")))
+        if quality_runs:
+            summary["quality_runs"] = quality_runs
+            summary["quality_retention_days"] = args.retention_days
+
     output_file.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     print(f"Render matrix complete. Metadata saved to {output_file}")
 

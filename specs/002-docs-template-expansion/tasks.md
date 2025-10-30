@@ -5,7 +5,7 @@ description: "Task list template for feature implementation"
 
 # Tasks: Expanded Documentation Template Options
 
-**Input**: Design documents from `/specs/002-docs-template-expansion/`
+**Input**: Design documents from `/.specify/specs/002-docs-template-expansion/` (legacy symlink available at `specs/002-docs-template-expansion/`)
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/
 
 **Tests**: Focus on docs smoke commands baked into quickstart and CI; add unit tests only where automation requires.

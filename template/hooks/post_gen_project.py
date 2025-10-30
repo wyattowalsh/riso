@@ -11,6 +11,19 @@ import sys
 from datetime import datetime
 from typing import Dict
 
+sys.path.append(str(pathlib.Path(__file__).resolve().parents[2] / "scripts"))
+
+try:
+    from hooks.quality_tool_check import (
+        ensure_node_quality_tools,
+        ensure_python_quality_tools,
+        ToolCheck,
+    )
+except ModuleNotFoundError:  # pragma: no cover - template lint
+    ensure_python_quality_tools = lambda: []  # type: ignore
+    ensure_node_quality_tools = lambda _: []  # type: ignore
+    ToolCheck = None  # type: ignore
+
 DEFAULT_GUIDANCE = [
     "Create a virtual environment with `uv venv` (or activate an existing one).",
     "Install dependencies via `uv sync`.",
@@ -104,6 +117,11 @@ def main() -> None:
     destination = pathlib.Path.cwd()
     package = destination.name.replace("-", "_")
     answers = load_answers(destination)
+    quality_checks = ensure_python_quality_tools() if ToolCheck is not None else []
+    node_checks = []
+    if ToolCheck is not None:
+        node_required = answers.get("api_tracks", "none").lower() in {"node", "python+node"}
+        node_checks = ensure_node_quality_tools(node_required)
 
     record_metadata(
         destination,
@@ -117,6 +135,13 @@ def main() -> None:
                 "mcp_module": answers.get("mcp_module", "disabled"),
                 "docs_site": answers.get("docs_site", "fumadocs"),
                 "shared_logic": answers.get("shared_logic", "disabled"),
+            },
+            "quality": {
+                "profile": answers.get("quality_profile", "standard"),
+                "tool_install_attempts": [
+                    check.to_dict() if hasattr(check, "to_dict") else dict(check.__dict__)
+                    for check in quality_checks + node_checks
+                ],
             },
         },
     )

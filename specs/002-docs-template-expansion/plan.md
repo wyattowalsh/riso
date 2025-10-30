@@ -1,6 +1,6 @@
 # Implementation Plan: Expanded Documentation Template Options
 
-**Branch**: `002-docs-template-expansion` | **Date**: 2025-10-29 | **Spec**: [/specs/002-docs-template-expansion/spec.md](./spec.md)
+**Branch**: `002-docs-template-expansion` | **Date**: 2025-10-29 | **Spec**: [/.specify/specs/002-docs-template-expansion/spec.md](./spec.md) *(symlinked at `specs/002-docs-template-expansion/spec.md`)*
 
 ## Summary
 Deliver three selectable documentation stacks—Fumadocs (Next.js 15 / Tailwind 4 default), Sphinx Shibuya, and Docusaurus 3.9 with DocSearch v4—plus a docs opt-out that strips automation. Hooks will auto-provision Node.js 20 and pnpm via mise, hydrate Python environments through uv, and fail fast when tooling cannot be installed. CI expands to regenerate every docs variant, publish artifacts via `actions/upload-artifact@v4`, and record governance metrics (including support-ticket variance and artifact-expiry warnings) without committing build outputs.
@@ -24,7 +24,7 @@ Deliver three selectable documentation stacks—Fumadocs (Next.js 15 / Tailwind 
 
 ## Project Structure
 ```
-specs/002-docs-template-expansion/
+.specify/specs/002-docs-template-expansion/
 ├── plan.md
 ├── research.md
 ├── data-model.md
@@ -62,6 +62,8 @@ samples/
 
 .github/workflows/template-ci.yml
 ```
+
+> The legacy `specs/` path is maintained as a symlink for compatibility; `.specify/specs/` holds the canonical files.
 
 ## Complexity Tracking
 No constitutional deviations anticipated; optional variants remain prompt-gated and leverage existing automation pipelines.
