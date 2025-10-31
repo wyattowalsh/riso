@@ -14,6 +14,11 @@
 - Q: How should CI handle long-running quality tasks to avoid timeouts? → A: Split the quality suite into parallel CI jobs per tool/profile with shared caching and aggregate the results.
 - Q: What should the default `quality_profile` be for new renders? → A: Default every render to the `standard` profile and treat `strict` as an opt-in upgrade.
 - Q: How long must quality artifacts remain accessible for governance review? → A: Retain quality logs and coverage evidence for 90 days to support quarterly audits.
+- Q: How should concurrent CI jobs writing to shared evidence files (e.g., module_success.json) prevent race conditions? → A: Each parallel job writes to a unique, temporary artifact; a final job aggregates them.
+- Q: What is the expected daily volume of quality artifact sets (logs, coverage reports) to be stored for the 90-day retention period? → A: ~10-20 sets per day.
+- Q: What is the primary key or unique identifier for a QualityRunEvidence instance? → A: Composite key: CI Run ID + Check Name (e.g., 3478129_ruff-lint).
+- Q: Are there any known GitHub Actions usage quotas or rate limits we must design the CI workflow to not exceed? → A: Adhere to free tier limits.
+- Q: Is there a maximum number of parallel CI jobs that can be run for the quality suite? → A: Limit to 10 parallel jobs.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -67,12 +72,13 @@ A downstream team toggles optional modules (Node API, shared logic) and can cust
 - If required Python quality binaries are missing but `uv` is available, the pre/post-generation hooks attempt a single auto-install via `uv`; if the retry still fails, the render aborts with remediation guidance.
 - If Node API tooling is enabled but `pnpm` (and Node quality binaries) are missing, the hooks attempt a one-time `corepack pnpm install` (or equivalent installer) before re-running checks; if the retry fails, the render aborts with guidance.
 - Long-running quality tasks (e.g., strict Mypy) run in parallelized CI jobs per tool/profile with shared caches; aggregated results preserve a unified status while maintaining manageable runtimes.
+- To prevent race conditions with concurrent CI jobs, each parallel job MUST write its results to a unique, temporary artifact. A final, dedicated job MUST then aggregate these individual artifacts into the final evidence file (e.g., `module_success.json`).
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001 (B)**: Generated projects MUST expose a documented `make quality` (with `uv` fallback) target that chains Ruff, Mypy, Pylint, pytest smoke tests, and coverage collection, exiting non-zero when any step fails.
+- **FR-001 (B)**: Generated projects MUST expose a documented `make quality` target (with a `uv run task quality` equivalent) that chains Ruff, Mypy, Pylint, pytest smoke tests, and coverage collection, exiting non-zero when any step fails. The project MUST ensure that the `Makefile` and `uv run` tasks remain in sync through automated testing.
 - **FR-002 (B)**: Template files MUST provide shared configuration (`ruff.toml`, `mypy.ini`, `.pylintrc`, coverage config) that render deterministically into projects and align with published style guides.
 - **FR-003 (B)**: Quickstart documentation and sample metadata MUST instruct maintainers to run the quality target and capture durations in `baseline_quickstart_metrics.json`.
 - **FR-004 (B)**: Template-level CI workflows MUST run Ruff, Mypy, and Pylint against template Python sources plus regenerated samples on every pull request, split these checks into parallel jobs per tool/profile with shared caching, and block merge on failure.
@@ -82,7 +88,6 @@ A downstream team toggles optional modules (Node API, shared logic) and can cust
 - **FR-008 (O)**: A `quality_profile` prompt MUST allow maintainers to choose between `standard` (default) and `strict` suites, toggling additional Pylint plugins, Ruff rulesets, and Mypy strictness.
 - **FR-009 (B)**: Quality artifacts (logs, JUnit exports, coverage reports) MUST be captured to `.riso/post_gen_metadata.json`, surfaced in governance dashboards, and retained for at least 90 days to support quarterly audits.
 - **FR-010 (B)**: Documentation in `docs/modules/quality.md.jinja` MUST enumerate the quality suite, configuration knobs, and troubleshooting steps for downstream teams.
-- **FR-011 (B)**: The template MUST ensure Makefile targets and `uv run` equivalents remain in sync through automation tests, preventing drift between the CLI experiences.
 
 ### Template Prompts & Variants
 
@@ -94,7 +99,7 @@ A downstream team toggles optional modules (Node API, shared logic) and can cust
 ### Key Entities
 
 - **QualitySuite**: Describes the set of tools (Ruff, Mypy, Pylint, pytest, optional ESLint) enabled for a render, their severity levels, and expected runtime budgets.
-- **QualityRunEvidence**: Captures per-tool exit codes, durations, and artifact locations recorded in `smoke-results.json` and governance dashboards.
+- **QualityRunEvidence**: Captures per-tool exit codes, durations, and artifact locations recorded in `smoke-results.json` and governance dashboards. Each instance is uniquely identified by a composite key of the CI Run ID and the Check Name (e.g., `3478129_ruff-lint`).
 - **QualityProfileSelection**: Represents the selected prompt option, mapping to configuration overrides and CI matrix entries.
 
 ## Success Criteria *(mandatory)*
@@ -119,6 +124,8 @@ A downstream team toggles optional modules (Node API, shared logic) and can cust
 - Python 3.11 with `uv`, Ruff, Mypy, and Pylint remain the enforced stack for Python quality checks; optional Node tooling relies on pnpm ≥8.
 - Developers accept Makefile as the primary aggregation surface, with `uv run` shims provided for environments lacking `make`.
 - Quality evidence will be aggregated alongside existing smoke metrics without requiring a new storage backend.
+- The expected daily volume of quality artifact sets (logs, coverage reports) is approximately 10-20, which will be used for sizing storage and cleanup policies for the 90-day retention period.
+- The CI/CD workflow will operate within the usage limits of the standard GitHub Actions free tier.
 
 ## Dependencies & External Inputs
 
@@ -129,7 +136,7 @@ A downstream team toggles optional modules (Node API, shared logic) and can cust
 ## Risks & Mitigations
 
 - **Risk**: Strict profiles may generate noisy false positives. **Mitigation**: Provide documented suppression patterns and keep `standard` as default while tracking strict adoption metrics.
-- **Risk**: Quality runs could extend CI duration. **Mitigation**: Parallelize tool execution where safe and cache dependencies via `uv` and pnpm.
+- **Risk**: Quality runs could extend CI duration. **Mitigation**: Parallelize tool execution where safe (up to a maximum of 10 concurrent jobs) and cache dependencies via `uv` and pnpm.
 - **Risk**: Missing local tooling blocks renders. **Mitigation**: Hooks attempt installs once and emit actionable remediation instructions before aborting.
 
 ## Out of Scope

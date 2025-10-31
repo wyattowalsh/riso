@@ -1,84 +1,78 @@
 # Implementation Plan: Code Quality Integration Suite
 
-**Branch**: `003-code-quality-integrations` | **Date**: 2025-10-30 | **Spec**: `.specify/specs/003-code-quality-integrations/spec.md` (symlinked at `specs/003-code-quality-integrations/spec.md`)
-**Input**: Feature specification from `/.specify/specs/003-code-quality-integrations/spec.md`
+**Branch**: `003-code-quality-integrations` | **Date**: 2025-10-30 | **Spec**: [spec.md](spec.md)
+**Input**: Feature specification from `/specs/003-code-quality-integrations/spec.md`
+
+**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
 
 ## Summary
 
-Unify Riso’s quality automation with a single `make quality` / `uv run task quality` entry point, auto-heal missing Ruff/Mypy/Pylint/ESLint tooling once via `uv` and `corepack pnpm install`, parallelize CI jobs per tool/profile, and retain lint/type evidence for 90 days across baseline and full-stack renders.
+This feature integrates a comprehensive code quality suite (Ruff, Mypy, Pylint, pytest) into the project template. It provides a unified quality gate, CI automation to block regressions, and extensible controls for downstream teams. The implementation will focus on deterministic generation of configuration and CI workflows, with a minimal baseline and optional strictness profiles.
 
 ## Technical Context
 
-**Language/Version**: Python 3.11 (uv-managed), optional Node.js 20 LTS  
-**Primary Dependencies**: ruff, mypy, pylint, pytest, coverage, optional eslint + typescript  
-**Storage**: N/A (evidence stored as CI artifacts)  
-**Testing**: pytest suite, ruff lint, mypy type checks, pylint lint, optional eslint/type-check tasks  
-**Target Platform**: Local macOS (Apple Silicon) renders and GitHub Actions macOS/ubuntu runners  
-**Project Type**: Copier template + automation scripts (monorepo)  
-**Performance Goals**: `<4m` local quality run, `<6m` CI runtime in ≥95% executions  
-**Constraints**: One auto-install attempt per missing tool, CI jobs split per tool/profile with shared caches, quality artifacts retained 90 days, deterministic smoke metrics required  
-**Scale/Scope**: Applies to baseline (`samples/default`) and full-stack (`samples/full-stack`) renders plus matrix regeneration via `scripts/render_matrix.py`
+**Language/Version**: Python 3.11
+**Primary Dependencies**: Ruff, Mypy, Pylint, pytest, uv, pnpm
+**Storage**: File-based artifacts (JSON, logs)
+**Testing**: pytest
+**Target Platform**: GitHub Actions (macOS and Ubuntu runners)
+**Project Type**: Project Template / Code Generation
+**Performance Goals**: Quality runs < 4 min (local) / < 6 min (CI)
+**Constraints**: Adhere to GitHub Actions free tier limits
+**Scale/Scope**: ~10-20 artifact sets per day
 
 ## Constitution Check
 
-*GATE (Pre-Phase 0)*: Constitution file remains a placeholder with unnamed principles. Record follow-up for maintainers to codify principles; proceed assuming existing governance (automation, determinism, documentation, optional depth) — PASS with note.
+*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+
+**WARNING**: The project's constitution file (`.specify/memory/constitution.md`) is a template and does not contain any principles to validate. Proceeding without a constitution increases the risk of rework. All constitutional checks are being skipped.
 
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```text
-.specify/specs/003-code-quality-integrations/
-├── plan.md
-├── research.md
-├── data-model.md
-├── quickstart.md
-├── contracts/
-│   ├── quality-suite.commands.md
-│   └── quality-evidence.schema.json
-└── tasks.md (created by /speckit.tasks)
+specs/[###-feature]/
+├── plan.md              # This file (/speckit.plan command output)
+├── research.md          # Phase 0 output (/speckit.plan command)
+├── data-model.md        # Phase 1 output (/speckit.plan command)
+├── quickstart.md        # Phase 1 output (/speckit.plan command)
+├── contracts/           # Phase 1 output (/speckit.plan command)
+└── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
 ```
-
-> The top-level `specs/` symlink points here for tools that still expect the legacy path.
 
 ### Source Code (repository root)
 
 ```text
 template/
 ├── files/
-│   ├── shared/
-│   │   ├── quality/
-│   │   │   ├── ruff.toml.jinja
-│   │   │   ├── mypy.ini.jinja
-│   │   │   ├── pylintrc.jinja
-│   │   │   ├── coverage.cfg.jinja
-│   │   │   ├── makefile.quality.jinja
-│   │   │   └── uv_tasks/quality.py.jinja
-│   │   └── .github/workflows/quality-matrix.yml.jinja
-│   └── python/
-│       └── shared/hooks/quality_tool_check.py.jinja
-scripts/
-├── render-samples.sh
-├── ci/
-│   ├── render_matrix.py
-│   └── run_quality_suite.py
+│   ├── python/
+│   │   ├── ruff.toml
+│   │   ├── mypy.ini
+│   │   └── .pylintrc
+│   └── shared/
+│       └── ...
 └── hooks/
-    └── quality_tool_check.py
-samples/
-├── default/
-│   ├── baseline_quickstart_metrics.json
-│   └── smoke-results.json
-└── full-stack/
-    ├── baseline_quickstart_metrics.json
-    └── smoke-results.json
+    └── ...
+
+scripts/
+├── ci/
+│   ├── run_quality_suite.py
+│   └── ...
+└── ...
+
+docs/
+└── modules/
+    └── quality.md.jinja
 ```
 
-**Structure Decision**: Extend shared template scaffolding with a dedicated `quality/` bundle, update CI workflows under `.github/workflows` to run parallelized jobs, and ensure scripts + samples capture new quality evidence.
+**Structure Decision**: The implementation will modify the existing project structure, primarily within the `template/` and `scripts/` directories, to add the necessary quality configurations and automation scripts. New files will be added to `template/files/python/` for tool configurations and `scripts/ci/` for CI workflows.
 
 ## Complexity Tracking
 
-No constitution violations identified.
+> **Fill ONLY if Constitution Check has violations that must be justified**
 
-## Constitution Check (Post-Phase 1)
-
-Re-affirm governance alignment after design: automated installs remain single-attempt with explicit failure paths, CI jobs remain deterministic and evidence is retained 90 days. Constitution still placeholder — PASS with same follow-up note.
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
+| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
