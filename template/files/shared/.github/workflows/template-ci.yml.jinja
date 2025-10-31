@@ -52,10 +52,10 @@ jobs:
       - name: Render Samples
         run: ./scripts/render-samples.sh
       - name: Aggregate Module Success
-        run: python scripts/ci/record_module_success.py
+        run: uv run python scripts/ci/record_module_success.py
       - name: Enforce Module Success Threshold
         run: |
-          python - <<'PY'
+          uv run python - <<'PY'
           import json
           from pathlib import Path
 
@@ -109,8 +109,8 @@ jobs:
           if [ -f package.json ]; then pnpm --filter docs-fumadocs build; else echo "Skipping Fumadocs build"; fi
       - name: Track Publish SLA
         run: |
-          python scripts/ci/track_doc_publish.py --site shibuya --status pass --duration 0
-          python scripts/ci/track_doc_publish.py --site fumadocs --status pass --duration 0
+          uv run python scripts/ci/track_doc_publish.py --site shibuya --status pass --duration 0
+          uv run python scripts/ci/track_doc_publish.py --site fumadocs --status pass --duration 0
       - name: Upload Documentation Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -130,7 +130,7 @@ jobs:
           python-version: "3.12"
       - name: Dry Run Compliance Checkpoints
         run: |
-          python scripts/compliance/checkpoints.py \
+          uv run python scripts/compliance/checkpoints.py \
             --principle automation_governed \
             --status pass \
             --evidence "CI passed" \

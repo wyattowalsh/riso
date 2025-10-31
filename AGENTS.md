@@ -17,9 +17,12 @@
 - `template/` – Copier payload (Python + Node variants, shared logic, docs, module catalog).
 - `scripts/` – local/CI automation (rendering, metrics, context sync); run from repo root.
 - `samples/` – curated answer files, rendered artifacts, `smoke-results.json`, performance metrics.
-- `.github/context/` – canonical context snippets; must match `template/files/shared/.github/context/` (`python scripts/ci/verify_context_sync.py`).
+- `.github/context/` – canonical context snippets; must match `template/files/shared/.github/context/` (`uv run python scripts/ci/verify_context_sync.py`).
 - `docs/` – Jinja-templated quickstart and module docs rendered into downstream projects.
 - `.specify/specs/` – canonical GitHub Spec Kit workspace (access via `specs/` symlink if tooling expects the legacy location).
+
+## Python Execution Convention
+**CRITICAL**: All Python scripts MUST be executed via `uv run python` to ensure proper virtual environment isolation and dependency management. Never invoke Python directly (`python`, `python3`, or `python3.11`). This applies to all automation scripts, CI workflows, and local development commands.
 
 ## Render & Validate Default Variant
 ```bash
@@ -42,11 +45,11 @@ QUALITY_PROFILE=standard uv run task quality
 - Output lands in `samples/<variant>/render`; inspect `<variant>/smoke-results.json` for module statuses and `<variant>/metadata.json` for configuration.
 
 ## Aggregate & Governance Checks
-- `python scripts/ci/render_matrix.py` – render every `samples/*/copier-answers.yml`, update metadata, and recompute module success.
-- `python scripts/ci/record_module_success.py` – regenerate `samples/metadata/module_success.json` from existing smoke logs.
-- `python scripts/ci/run_quality_suite.py --profile {standard|strict}` – execute make/uv quality lanes and emit artifacts consumed by `.github/workflows/quality-matrix.yml`.
-- `python scripts/ci/run_baseline_quickstart.py` – refresh command timing evidence for downstream documentation.
-- `python scripts/ci/verify_context_sync.py` – ensure shared `.github/context` files stay byte-identical between template and repo.
+- `uv run python scripts/ci/render_matrix.py` – render every `samples/*/copier-answers.yml`, update metadata, and recompute module success.
+- `uv run python scripts/ci/record_module_success.py` – regenerate `samples/metadata/module_success.json` from existing smoke logs.
+- `uv run python scripts/ci/run_quality_suite.py --profile {standard|strict}` – execute make/uv quality lanes and emit artifacts consumed by `.github/workflows/quality-matrix.yml`.
+- `uv run python scripts/ci/run_baseline_quickstart.py` – refresh command timing evidence for downstream documentation.
+- `uv run python scripts/ci/verify_context_sync.py` – ensure shared `.github/context` files stay byte-identical between template and repo.
 
 ## Module Validation Matrix (run inside a rendered project root)
 - `cli_module=enabled`
