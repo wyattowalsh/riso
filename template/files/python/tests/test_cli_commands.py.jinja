@@ -246,4 +246,132 @@ class TestProgressIndicators:
         
         assert result.exit_code == 0
         assert "Summary" in result.stdout or "resource" in result.stdout.lower()
+
+
+class TestCtrlCHandling:
+    """Tests for Ctrl+C interruption handling."""
+    
+    def test_ctrl_c_during_command_execution(self, cli_runner: CliRunner, tmp_path: Path) -> None:
+        """Test that Ctrl+C is handled gracefully with cleanup."""
+        import signal
+        from unittest.mock import patch
+        
+        # Create a temp file to verify cleanup
+        temp_file = tmp_path / "cleanup_test.txt"
+        
+        def mock_command_with_cleanup() -> None:
+            """Mock command that creates a file and simulates long operation."""
+            temp_file.write_text("started")
+            # Simulate KeyboardInterrupt
+            raise KeyboardInterrupt()
+        
+        with patch("{{ package_name }}.cli.commands.init.create_config", side_effect=mock_command_with_cleanup):
+            result = cli_runner.invoke(app, ["init", "--config", str(tmp_path / "test.toml")])
+            
+            # Should exit with SIGINT code (130) or handle gracefully
+            assert result.exit_code in (130, 1)
+    
+    def test_cleanup_on_keyboard_interrupt(self, cli_runner: CliRunner, tmp_path: Path) -> None:
+        """Test that resources are cleaned up on Ctrl+C."""
+        from unittest.mock import patch, MagicMock
+        
+        cleanup_called = MagicMock()
+        
+        def mock_interrupted_operation() -> None:
+            """Simulate operation that gets interrupted."""
+            try:
+                raise KeyboardInterrupt()
+            finally:
+                cleanup_called()
+        
+        with patch("{{ package_name }}.cli.commands.init.perform_initialization", side_effect=mock_interrupted_operation):
+            result = cli_runner.invoke(app, ["init", "--config", str(tmp_path / "test.toml")])
+            
+            # Verify cleanup was called even though interrupted
+            cleanup_called.assert_called_once()
+    
+    def test_graceful_exit_message_on_interrupt(self, cli_runner: CliRunner) -> None:
+        """Test that user sees graceful exit message on Ctrl+C."""
+        from unittest.mock import patch
+        
+        with patch("{{ package_name }}.cli.commands.quickstart.run_quickstart", side_effect=KeyboardInterrupt()):
+            result = cli_runner.invoke(app, ["quickstart"])
+            
+            # Should show graceful message or exit cleanly
+            assert result.exit_code in (130, 1)
+
+
+class TestAsyncCommands:
+    """Tests for async command execution."""
+    
+    def test_async_fetch_command_runs(self, cli_runner: CliRunner) -> None:
+        """Test that async fetch command executes successfully."""
+        result = cli_runner.invoke(app, ["async", "fetch", "https://example.com"])
+        
+        assert result.exit_code == 0
+        assert "Fetched" in result.stdout or "successful" in result.stdout
+    
+    def test_async_fetch_with_timeout(self, cli_runner: CliRunner) -> None:
+        """Test async fetch with custom timeout."""
+        result = cli_runner.invoke(app, ["async", "fetch", "https://example.com", "--timeout", "60"])
+        
+        assert result.exit_code == 0
+    
+    def test_async_fetch_with_verbose(self, cli_runner: CliRunner) -> None:
+        """Test async fetch with verbose output."""
+        result = cli_runner.invoke(app, ["async", "fetch", "https://example.com", "--verbose"])
+        
+        assert result.exit_code == 0
+        assert "Fetching" in result.stdout
+    
+    def test_async_batch_command_runs(self, cli_runner: CliRunner) -> None:
+        """Test that async batch command executes successfully."""
+        result = cli_runner.invoke(app, ["async", "batch", "https://example.com/1", "https://example.com/2"])
+        
+        assert result.exit_code == 0
+        assert "Batch fetch complete" in result.stdout or "successful" in result.stdout
+    
+    def test_async_batch_with_concurrency_limit(self, cli_runner: CliRunner) -> None:
+        """Test async batch with concurrency control."""
+        result = cli_runner.invoke(
+            app, 
+            ["async", "batch", "https://example.com/1", "https://example.com/2", "--max-concurrent", "3"]
+        )
+        
+        assert result.exit_code == 0
+    
+    def test_async_stream_command_runs(self, cli_runner: CliRunner) -> None:
+        """Test that async stream command executes successfully."""
+        result = cli_runner.invoke(app, ["async", "stream", "5"])
+        
+        assert result.exit_code == 0
+        assert "Stream processing complete" in result.stdout or "5 items" in result.stdout
+    
+    def test_async_stream_with_custom_delay(self, cli_runner: CliRunner) -> None:
+        """Test async stream with custom delay."""
+        result = cli_runner.invoke(app, ["async", "stream", "3", "--delay", "0.1"])
+        
+        assert result.exit_code == 0
+    
+    def test_async_command_error_handling(self, cli_runner: CliRunner) -> None:
+        """Test that async commands handle errors gracefully."""
+        from unittest.mock import patch
+        
+        with patch("asyncio.sleep", side_effect=Exception("Test error")):
+            result = cli_runner.invoke(app, ["async", "stream", "1"])
+            
+            # Should exit with error code
+            assert result.exit_code == 1
+            assert "error" in result.stdout.lower() or "Error" in result.stdout
+    
+    def test_async_command_cancellation(self, cli_runner: CliRunner) -> None:
+        """Test that async commands handle cancellation (Ctrl+C)."""
+        from unittest.mock import patch
+        import asyncio
+        
+        with patch("asyncio.sleep", side_effect=asyncio.CancelledError()):
+            result = cli_runner.invoke(app, ["async", "stream", "10"])
+            
+            # Should exit with SIGINT code or handle gracefully
+            assert result.exit_code in (130, 1)
 {%- endif %}

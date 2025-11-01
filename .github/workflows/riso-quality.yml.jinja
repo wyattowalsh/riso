@@ -70,6 +70,15 @@ jobs:
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           uv run pytest tests/test_cli.py -v
+      
+      - name: Validate shell completion generation
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          # Test that completion scripts can be generated without errors
+          uv run python -m {{ package_name }}.cli --show-completion bash > /dev/null
+          uv run python -m {{ package_name }}.cli --show-completion zsh > /dev/null
+          uv run python -m {{ package_name }}.cli --show-completion fish > /dev/null
+          echo "✓ Shell completion scripts generated successfully"
       {% endif %}
       
       {% if mcp_module == 'enabled' %}

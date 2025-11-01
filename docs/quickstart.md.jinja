@@ -30,6 +30,163 @@ definition so environments without `make` stay aligned.
 
 Refer to `docs/modules/prompt-reference.md` for compatibility details.
 
+{% if cli_module | lower == 'enabled' %}
+## CLI Module Usage
+
+Your project includes a robust Typer CLI with multi-command structure, rich formatting, and plugin support.
+
+### Basic Commands
+
+```bash
+# Show all available commands
+uv run python -m {{ package_name }}.cli --help
+
+# Run quickstart command
+uv run python -m {{ package_name }}.cli quickstart
+
+# Show version information
+uv run python -m {{ package_name }}.cli version
+
+# Initialize configuration
+uv run python -m {{ package_name }}.cli init
+```
+
+### Configuration Management
+
+Manage persistent configuration across command executions:
+
+```bash
+# Set a configuration value
+uv run python -m {{ package_name }}.cli config set api.endpoint https://api.example.com
+
+# Get a configuration value
+uv run python -m {{ package_name }}.cli config get api.endpoint
+
+# List all configuration
+uv run python -m {{ package_name }}.cli config list
+
+# Validate configuration file
+uv run python -m {{ package_name }}.cli config validate
+```
+
+Configuration precedence (highest to lowest):
+1. Command-line arguments
+2. Environment variables (prefix: `{{ package_name | upper }}_`)
+3. Configuration file (`config.toml` or `.{{ package_slug }}.toml`)
+4. Default values
+
+### Interactive Features
+
+Commands support interactive prompts and rich formatting:
+
+```bash
+# Commands prompt for missing parameters
+uv run python -m {{ package_name }}.cli quickstart
+# → Prompts: "What's your name?"
+
+# View formatted output (tables, colors, progress bars)
+uv run python -m {{ package_name }}.cli list --format table
+
+# JSON output for scripting
+uv run python -m {{ package_name }}.cli list --format json
+
+# Verbose output for debugging
+uv run python -m {{ package_name }}.cli quickstart --verbose
+```
+
+### Async Commands
+
+Execute asynchronous operations with progress tracking:
+
+```bash
+# Fetch data asynchronously
+uv run python -m {{ package_name }}.cli async fetch https://api.example.com/data
+
+# Batch operations with concurrency control
+uv run python -m {{ package_name }}.cli async batch url1 url2 url3 --max-concurrent 5
+
+# Stream processing with progress
+uv run python -m {{ package_name }}.cli async stream 100 --delay 0.1
+```
+
+### Shell Completion
+
+Install shell completion for your CLI:
+
+```bash
+# Bash
+uv run python -m {{ package_name }}.cli --install-completion bash
+source ~/.bashrc
+
+# Zsh
+uv run python -m {{ package_name }}.cli --install-completion zsh
+source ~/.zshrc
+
+# Fish
+uv run python -m {{ package_name }}.cli --install-completion fish
+```
+
+After installation, use `<Tab>` to autocomplete commands and options.
+
+### Plugin Development
+
+Extend the CLI with custom commands:
+
+1. Create a new file in `src/{{ package_name }}/cli/plugins/`
+2. Follow the pattern in `example_plugin.py`
+3. Your command will be automatically discovered
+
+Example plugin structure:
+
+```python
+import typer
+
+def my_plugin_command() -> typer.Typer:
+    app = typer.Typer(name="myplugin", help="My custom plugin")
+    
+    @app.command("run")
+    def run(name: str = typer.Argument(..., help="Name parameter")) -> None:
+        """Run my custom command."""
+        print(f"Hello from plugin, {name}!")
+    
+    return app
+
+app = my_plugin_command()
+```
+
+### Adding New Commands
+
+Add a new command in under 5 minutes:
+
+1. Create `src/{{ package_name }}/cli/commands/mycommand.py`
+2. Follow this template:
+
+```python
+import typer
+from {{ package_name }}.cli.core.formatter import get_console
+
+def mycommand_command() -> typer.Typer:
+    app = typer.Typer(name="mycommand", help="My command description")
+    
+    @app.command()
+    def run(
+        name: str = typer.Argument(..., help="Your name"),
+        greeting: str = typer.Option("Hello", help="Greeting message"),
+    ) -> None:
+        """Run my command."""
+        console = get_console()
+        console.print(f"{greeting}, {name}!")
+    
+    return app
+
+app = mycommand_command()
+```
+
+3. Your command is now available: `uv run python -m {{ package_name }}.cli mycommand`
+
+For more details, see `docs/modules/cli.md`.
+{% endif %}
+
 {% if api_tracks | lower in ['python', 'node', 'python+node'] or docs_site | lower == 'fumadocs' %}
 ## Container Quickstart
 
