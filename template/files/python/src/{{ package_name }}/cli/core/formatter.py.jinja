@@ -1,0 +1,219 @@
+{%- if cli_module | lower != "enabled" %}
+# CLI module disabled - this file is not generated
+{%- else %}
+"""Output formatting with Rich library integration.
+
+Provides consistent formatting for tables, JSON, YAML, and plain text output.
+"""
+
+from __future__ import annotations
+
+import json
+from enum import Enum
+from typing import Any, Sequence
+
+from loguru import logger
+from rich.console import Console
+from rich.table import Table
+
+from {{ package_name }}.cli.core.exceptions import ValidationError
+
+
+class OutputFormat(str, Enum):
+    """Supported output formats."""
+    
+    TABLE = "table"
+    JSON = "json"
+    YAML = "yaml"
+    TEXT = "text"
+
+
+class OutputFormatter:
+    """Formats output data in multiple formats with Rich styling."""
+    
+    def __init__(self, console: Console | None = None):
+        """Initialize output formatter.
+        
+        Args:
+            console: Rich console instance (creates default if None)
+        """
+        self.console = console or Console()
+    
+    def format(
+        self,
+        data: Any,
+        format: OutputFormat | str = OutputFormat.TABLE,
+        **kwargs: Any,
+    ) -> None:
+        """Format and print data in specified format.
+        
+        Args:
+            data: Data to format (list, dict, or primitive)
+            format: Output format (table, json, yaml, text)
+            **kwargs: Format-specific options
+        """
+        format_enum = OutputFormat(format) if isinstance(format, str) else format
+        
+        if format_enum == OutputFormat.TABLE:
+            self._format_table(data, **kwargs)
+        elif format_enum == OutputFormat.JSON:
+            self._format_json(data, **kwargs)
+        elif format_enum == OutputFormat.YAML:
+            self._format_yaml(data, **kwargs)
+        elif format_enum == OutputFormat.TEXT:
+            self._format_text(data, **kwargs)
+        else:
+            raise ValidationError(f"Unsupported output format: {format}")
+    
+    def _format_table(self, data: Any, **kwargs: Any) -> None:
+        """Format data as Rich table.
+        
+        Args:
+            data: List of dicts (for rows) or dict (single row)
+            **kwargs: Table options (title, columns, show_header, etc.)
+        """
+        if not data:
+            self.console.print("[dim]No data to display[/dim]")
+            return
+        
+        # Normalize to list of dicts
+        if isinstance(data, dict):
+            rows = [data]
+        elif isinstance(data, (list, tuple)):
+            if not data:
+                self.console.print("[dim]No data to display[/dim]")
+                return
+            if isinstance(data[0], dict):
+                rows = data
+            else:
+                # List of primitives -> single column
+                rows = [{"value": item} for item in data]
+        else:
+            rows = [{"value": data}]
+        
+        # Extract columns
+        columns = kwargs.get("columns")
+        if not columns:
+            # Auto-detect from first row
+            columns = list(rows[0].keys())
+        
+        # Create table
+        table = Table(
+            title=kwargs.get("title"),
+            show_header=kwargs.get("show_header", True),
+            header_style=kwargs.get("header_style", "bold magenta"),
+        )
+        
+        # Add columns
+        for col in columns:
+            table.add_column(
+                col.replace("_", " ").title(),
+                style=kwargs.get("column_style"),
+            )
+        
+        # Add rows
+        for row in rows:
+            values = [str(row.get(col, "")) for col in columns]
+            table.add_row(*values)
+        
+        self.console.print(table)
+    
+    def _format_json(self, data: Any, **kwargs: Any) -> None:
+        """Format data as JSON.
+        
+        Args:
+            data: Any JSON-serializable data
+            **kwargs: JSON options (indent, sort_keys, etc.)
+        """
+        indent = kwargs.get("indent", 2)
+        sort_keys = kwargs.get("sort_keys", False)
+        
+        try:
+            json_str = json.dumps(data, indent=indent, sort_keys=sort_keys, default=str)
+            self.console.print(json_str)
+        except (TypeError, ValueError) as e:
+            logger.error(f"JSON serialization failed: {e}")
+            raise ValidationError(f"Cannot serialize data to JSON: {e}") from e
+    
+    def _format_yaml(self, data: Any, **kwargs: Any) -> None:
+        """Format data as YAML.
+        
+        Args:
+            data: Any YAML-serializable data
+            **kwargs: YAML options
+        """
+        try:
+            import yaml  # type: ignore[import-not-found]
+            
+            yaml_str = yaml.dump(
+                data,
+                default_flow_style=kwargs.get("default_flow_style", False),
+                sort_keys=kwargs.get("sort_keys", False),
+            )
+            self.console.print(yaml_str)
+        except ImportError:
+            self.console.print("[red]YAML support not available. Install 'pyyaml' package.[/red]")
+            logger.error("YAML formatting requested but pyyaml not installed")
+        except Exception as e:
+            logger.error(f"YAML serialization failed: {e}")
+            raise ValidationError(f"Cannot serialize data to YAML: {e}") from e
+    
+    def _format_text(self, data: Any, **kwargs: Any) -> None:
+        """Format data as plain text.
+        
+        Args:
+            data: Any data
+            **kwargs: Text options (style, etc.)
+        """
+        style = kwargs.get("style", "")
+        
+        if isinstance(data, (list, tuple)):
+            for item in data:
+                self.console.print(str(item), style=style)
+        elif isinstance(data, dict):
+            for key, value in data.items():
+                self.console.print(f"{key}: {value}", style=style)
+        else:
+            self.console.print(str(data), style=style)
+    
+    def print(self, message: str, **kwargs: Any) -> None:
+        """Print a message with Rich styling.
+        
+        Args:
+            message: Message to print
+            **kwargs: Rich console.print() options
+        """
+        self.console.print(message, **kwargs)
+    
+    def print_error(self, message: str) -> None:
+        """Print an error message.
+        
+        Args:
+            message: Error message
+        """
+        self.console.print(f"[red]✗[/red] {message}", style="red")
+    
+    def print_success(self, message: str) -> None:
+        """Print a success message.
+        
+        Args:
+            message: Success message
+        """
+        self.console.print(f"[green]✓[/green] {message}", style="green")
+    
+    def print_warning(self, message: str) -> None:
+        """Print a warning message.
+        
+        Args:
+            message: Warning message
+        """
+        self.console.print(f"[yellow]⚠[/yellow] {message}", style="yellow")
+    
+    def print_info(self, message: str) -> None:
+        """Print an info message.
+        
+        Args:
+            message: Info message
+        """
+        self.console.print(f"[blue]ℹ[/blue] {message}", style="blue")
+{%- endif %}

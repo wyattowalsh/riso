@@ -1,0 +1,43 @@
+{%- if cli_module | lower != "enabled" %}
+# CLI module disabled - this file is not generated
+{%- else %}
+"""List command - demonstrates formatted output."""
+
+from __future__ import annotations
+
+import typer
+
+from {{ package_name }}.cli.core import command
+from {{ package_name }}.cli.core.formatter import OutputFormat, OutputFormatter
+
+# Initialize formatter
+formatter = OutputFormatter()
+
+
+@command(
+    name="list",
+    help="List sample data with various output formats",
+)
+def list_command(
+    format: OutputFormat = typer.Option(
+        OutputFormat.TABLE,
+        "--format",
+        "-f",
+        help="Output format (table, json, yaml, text)",
+    ),
+) -> None:
+    """List sample data with formatted output.
+    
+    Args:
+        format: Output format to use
+    """
+    # Sample data for demonstration
+    sample_data = [
+        {"name": "Command Discovery", "status": "Active", "priority": "High"},
+        {"name": "Config Management", "status": "Active", "priority": "Medium"},
+        {"name": "Plugin System", "status": "Active", "priority": "Medium"},
+        {"name": "Rich Formatting", "status": "Active", "priority": "High"},
+    ]
+    
+    formatter.format(sample_data, format=format, title="Features")
+{%- endif %}

@@ -1,0 +1,229 @@
+{%- if cli_module | lower != "enabled" %}
+# CLI module disabled - this file is not generated
+{%- else %}
+# Plugin Development Guide
+
+## Overview
+
+The {{ project_name }} CLI supports extensible plugins that can add new commands without modifying the core application. Plugins are discovered automatically via Python entry points.
+
+## Creating a Plugin
+
+### 1. Basic Plugin Structure
+
+A plugin is a Python module that exports one or more command functions decorated with `@command()`:
+
+```python
+from {{ package_name }}.cli.core import command
+import typer
+
+@command(
+    name="hello",
+    help="Say hello from a plugin",
+)
+def hello_command(
+    name: str = typer.Option("World", "--name", "-n", help="Name to greet"),
+) -> None:
+    """Greet someone from a plugin."""
+    print(f"Hello from plugin, {name}!")
+```
+
+### 2. Registering as Entry Point
+
+In your plugin's `pyproject.toml`:
+
+```toml
+[project.entry-points."{{ package_name }}.cli.plugins"]
+hello = "my_plugin_package.commands:hello_command"
+```
+
+Or in `setup.py`:
+
+```python
+setup(
+    name="my-plugin",
+    entry_points={
+        "{{ package_name }}.cli.plugins": [
+            "hello = my_plugin_package.commands:hello_command",
+        ],
+    },
+)
+```
+
+### 3. Plugin Module Structure
+
+You can export multiple commands from a plugin module:
+
+```python
+# my_plugin_package/commands.py
+from {{ package_name }}.cli.core import command
+
+@command(name="cmd1", help="First command")
+def command1() -> None:
+    pass
+
+@command(name="cmd2", help="Second command")
+def command2() -> None:
+    pass
+
+# Export via commands list
+commands = [command1, command2]
+
+# Or via register() function
+def register():
+    return [command1, command2]
+```
+
+## Plugin Best Practices
+
+### Error Handling
+
+Always handle errors gracefully to avoid crashing the CLI:
+
+```python
+from {{ package_name }}.cli.core import CLIError, command
+import typer
+
+@command(name="safe", help="Safe plugin command")
+def safe_command() -> None:
+    try:
+        # Your logic here
+        pass
+    except Exception as e:
+        raise CLIError(f"Plugin failed: {e}")
+```
+
+### Configuration Access
+
+Plugins can access configuration:
+
+```python
+from {{ package_name }}.cli.core import ConfigManager, command
+
+@command(name="config-aware", help="Command that reads config")
+def config_aware_command() -> None:
+    config = ConfigManager()
+    config.load()
+    
+    value = config.get("plugin.my_setting", default="default_value")
+    print(f"Setting: {value}")
+```
+
+### Output Formatting
+
+Use the OutputFormatter for consistent output:
+
+```python
+from {{ package_name }}.cli.core import OutputFormatter, command
+
+@command(name="formatted", help="Command with formatted output")
+def formatted_command() -> None:
+    formatter = OutputFormatter()
+    
+    data = [
+        {"name": "Item 1", "status": "Active"},
+        {"name": "Item 2", "status": "Inactive"},
+    ]
+    
+    formatter.format(data, format="table", title="Items")
+```
+
+## Testing Plugins
+
+Create tests for your plugin commands:
+
+```python
+import pytest
+from typer.testing import CliRunner
+from my_plugin_package.commands import hello_command
+
+@pytest.fixture
+def cli_runner() -> CliRunner:
+    return CliRunner()
+
+def test_hello_command(cli_runner: CliRunner) -> None:
+    result = cli_runner.invoke(hello_command, ["--name", "Test"])
+    assert result.exit_code == 0
+    assert "Hello" in result.stdout
+```
+
+## Plugin Discovery
+
+The CLI discovers plugins at startup:
+
+1. Scans entry points in `{{ package_name }}.cli.plugins` group
+2. Loads plugins lazily (on first use)
+3. Isolates plugin errors (failed plugin doesn't crash CLI)
+4. Registers commands with main CLI app
+
+To list installed plugins:
+
+```bash
+{{ package_name }} plugin list
+```
+
+## Example: Full Plugin
+
+See `example_plugin.py` in this directory for a complete working example.
+
+## Troubleshooting
+
+### Plugin Not Appearing
+
+- Verify entry point is registered correctly
+- Check plugin package is installed (`pip list | grep my-plugin`)
+- Run `{{ package_name }} plugin list` to see discovered plugins
+
+### Plugin Load Errors
+
+- Check plugin logs for import errors
+- Ensure all dependencies are installed
+- Verify command functions are properly decorated
+
+### Name Conflicts
+
+If two plugins register the same command name, the CLI will:
+- Issue a warning
+- Use the first-loaded plugin's command
+- List both in `plugin list` output
+
+## Advanced Topics
+
+### Async Commands
+
+Plugins support async commands:
+
+```python
+import asyncio
+from {{ package_name }}.cli.core import command
+
+@command(name="async-cmd", help="Async command")
+async def async_command() -> None:
+    await asyncio.sleep(1)
+    print("Done!")
+```
+
+### Command Groups
+
+Plugins can define command groups:
+
+```python
+import typer
+from {{ package_name }}.cli.core import command
+
+group_app = typer.Typer(name="group", help="Command group")
+
+@group_app.command(name="sub1")
+def sub_command_1() -> None:
+    pass
+
+@group_app.command(name="sub2")
+def sub_command_2() -> None:
+    pass
+
+# Register the group
+@command(name="group", help="Group of commands")
+def group_command() -> None:
+    group_app()
+```
+{%- endif %}

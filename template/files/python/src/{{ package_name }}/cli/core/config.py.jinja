@@ -1,0 +1,319 @@
+{%- if cli_module | lower != "enabled" %}
+# CLI module disabled - this file is not generated
+{%- else %}
+"""Configuration management with TOML file support.
+
+Handles configuration loading with precedence: CLI args > env vars > config file > defaults.
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+from typing import Any
+
+from loguru import logger
+
+from {{ package_name }}.cli.core.exceptions import ConfigError
+
+# Import appropriate TOML library based on Python version
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    try:
+        import tomli as tomllib  # type: ignore[import-not-found,no-redef]
+    except ImportError:
+        tomllib = None  # type: ignore[assignment]
+
+
+class ConfigManager:
+    """Manages configuration with multiple sources and precedence rules.
+    
+    Precedence order (highest to lowest):
+    1. CLI arguments (passed directly to commands)
+    2. Environment variables (with configurable prefix)
+    3. Config file (TOML format)
+    4. Default values
+    """
+    
+    def __init__(
+        self,
+        config_file: str | Path | None = None,
+        env_prefix: str = "",
+        defaults: dict[str, Any] | None = None,
+    ):
+        """Initialize configuration manager.
+        
+        Args:
+            config_file: Path to TOML config file (default: ./config.toml or .{app}.toml)
+            env_prefix: Prefix for environment variables (e.g., "MYAPP_")
+            defaults: Default configuration values
+        """
+        self.config_file = Path(config_file) if config_file else None
+        self.env_prefix = env_prefix.upper() if env_prefix else ""
+        self.defaults = defaults or {}
+        self._config_data: dict[str, Any] = {}
+        self._loaded = False
+    
+    def _auto_detect_config_file(self, app_name: str | None = None) -> Path | None:
+        """Auto-detect configuration file in project directory.
+        
+        Args:
+            app_name: Application name for .{app}.toml pattern
+            
+        Returns:
+            Path to config file if found, None otherwise
+        """
+        candidates = [Path("config.toml")]
+        if app_name:
+            candidates.append(Path(f".{app_name}.toml"))
+            candidates.append(Path(f".{app_name.lower()}.toml"))
+        
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+        
+        return None
+    
+    def load(self, app_name: str | None = None) -> None:
+        """Load configuration from file.
+        
+        Args:
+            app_name: Application name for auto-detecting config file
+            
+        Raises:
+            ConfigError: If config file has invalid syntax
+        """
+        if self._loaded:
+            return
+        
+        # Auto-detect config file if not specified
+        if self.config_file is None:
+            detected = self._auto_detect_config_file(app_name)
+            if detected:
+                self.config_file = detected
+                logger.debug(f"Auto-detected config file: {detected}")
+        
+        # Load config file if it exists
+        if self.config_file and self.config_file.exists():
+            try:
+                if tomllib is None:
+                    raise ConfigError(
+                        "TOML support not available. Install 'tomli' package for Python <3.11"
+                    )
+                
+                with open(self.config_file, "rb") as f:
+                    self._config_data = tomllib.load(f)
+                logger.info(f"Loaded configuration from {self.config_file}")
+            except Exception as e:
+                raise ConfigError(
+                    f"Failed to parse config file {self.config_file}: {e}"
+                ) from e
+        
+        self._loaded = True
+    
+    def get(
+        self,
+        key: str,
+        default: Any = None,
+        cli_override: Any = None,
+    ) -> Any:
+        """Get configuration value with precedence rules.
+        
+        Args:
+            key: Configuration key (supports dot-notation for nested keys)
+            default: Fallback value if key not found anywhere
+            cli_override: Value from CLI argument (highest precedence)
+            
+        Returns:
+            Configuration value following precedence order
+        """
+        # Ensure config is loaded
+        if not self._loaded:
+            self.load()
+        
+        # 1. CLI argument (highest precedence)
+        if cli_override is not None:
+            return cli_override
+        
+        # 2. Environment variable
+        env_key = f"{self.env_prefix}{key.upper().replace('.', '_')}"
+        env_value = os.environ.get(env_key)
+        if env_value is not None:
+            logger.debug(f"Config key '{key}' from environment: {env_key}")
+            return self._parse_env_value(env_value)
+        
+        # 3. Config file
+        file_value = self._get_nested_key(key, self._config_data)
+        if file_value is not None:
+            logger.debug(f"Config key '{key}' from file: {self.config_file}")
+            return file_value
+        
+        # 4. Defaults
+        default_value = self._get_nested_key(key, self.defaults)
+        if default_value is not None:
+            return default_value
+        
+        return default
+    
+    def set(self, key: str, value: Any) -> None:
+        """Set configuration value in memory.
+        
+        Note: This does not persist to file. Use save() to persist.
+        
+        Args:
+            key: Configuration key (supports dot-notation)
+            value: Value to set
+        """
+        if not self._loaded:
+            self.load()
+        
+        keys = key.split(".")
+        current = self._config_data
+        
+        for k in keys[:-1]:
+            if k not in current or not isinstance(current[k], dict):
+                current[k] = {}
+            current = current[k]
+        
+        current[keys[-1]] = value
+    
+    def save(self, file_path: Path | None = None) -> None:
+        """Save configuration to TOML file.
+        
+        Args:
+            file_path: Path to save to (default: self.config_file)
+            
+        Raises:
+            ConfigError: If saving fails
+        """
+        target = file_path or self.config_file
+        if not target:
+            raise ConfigError("No config file path specified for saving")
+        
+        try:
+            # Use toml library for writing (not in stdlib)
+            import tomli_w  # type: ignore[import-not-found]
+            
+            with open(target, "wb") as f:
+                tomli_w.dump(self._config_data, f)
+            logger.info(f"Saved configuration to {target}")
+        except ImportError:
+            raise ConfigError(
+                "TOML writing not available. Install 'tomli-w' package"
+            ) from None
+        except Exception as e:
+            raise ConfigError(f"Failed to save config to {target}: {e}") from e
+    
+    def list_all(self) -> dict[str, tuple[Any, str]]:
+        """List all configuration keys with their values and sources.
+        
+        Returns:
+            Dictionary mapping keys to (value, source) tuples
+        """
+        if not self._loaded:
+            self.load()
+        
+        result: dict[str, tuple[Any, str]] = {}
+        
+        # Collect all keys from all sources
+        all_keys = set()
+        all_keys.update(self._flatten_dict(self.defaults).keys())
+        all_keys.update(self._flatten_dict(self._config_data).keys())
+        
+        # Add environment variables
+        for env_key in os.environ:
+            if self.env_prefix and env_key.startswith(self.env_prefix):
+                config_key = env_key[len(self.env_prefix):].lower().replace("_", ".")
+                all_keys.add(config_key)
+        
+        # Determine value and source for each key
+        for key in sorted(all_keys):
+            value = self.get(key)
+            
+            # Determine source
+            env_key = f"{self.env_prefix}{key.upper().replace('.', '_')}"
+            if os.environ.get(env_key) is not None:
+                source = f"env:{env_key}"
+            elif self._get_nested_key(key, self._config_data) is not None:
+                source = f"file:{self.config_file}"
+            elif self._get_nested_key(key, self.defaults) is not None:
+                source = "default"
+            else:
+                source = "unknown"
+            
+            result[key] = (value, source)
+        
+        return result
+    
+    @staticmethod
+    def _get_nested_key(key: str, data: dict[str, Any]) -> Any:
+        """Get value from nested dictionary using dot-notation key.
+        
+        Args:
+            key: Dot-separated key path (e.g., "db.host")
+            data: Dictionary to search
+            
+        Returns:
+            Value if found, None otherwise
+        """
+        keys = key.split(".")
+        current = data
+        
+        for k in keys:
+            if not isinstance(current, dict) or k not in current:
+                return None
+            current = current[k]
+        
+        return current
+    
+    @staticmethod
+    def _flatten_dict(data: dict[str, Any], parent_key: str = "") -> dict[str, Any]:
+        """Flatten nested dictionary to dot-notation keys.
+        
+        Args:
+            data: Dictionary to flatten
+            parent_key: Prefix for keys
+            
+        Returns:
+            Flattened dictionary
+        """
+        items: list[tuple[str, Any]] = []
+        
+        for k, v in data.items():
+            new_key = f"{parent_key}.{k}" if parent_key else k
+            if isinstance(v, dict):
+                items.extend(ConfigManager._flatten_dict(v, new_key).items())
+            else:
+                items.append((new_key, v))
+        
+        return dict(items)
+    
+    @staticmethod
+    def _parse_env_value(value: str) -> Any:
+        """Parse environment variable value to appropriate type.
+        
+        Args:
+            value: String value from environment
+            
+        Returns:
+            Parsed value (bool, int, float, or string)
+        """
+        # Boolean
+        if value.lower() in ("true", "yes", "1", "on"):
+            return True
+        if value.lower() in ("false", "no", "0", "off"):
+            return False
+        
+        # Number
+        try:
+            if "." in value:
+                return float(value)
+            return int(value)
+        except ValueError:
+            pass
+        
+        # String
+        return value
+{%- endif %}

@@ -1,0 +1,248 @@
+{%- if cli_module | lower != "enabled" %}
+# CLI module disabled - this file is not generated
+{%- else %}
+"""Tests for configuration management."""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+import pytest
+from typer.testing import CliRunner
+
+from {{ package_name }}.cli.__main__ import app
+from {{ package_name }}.cli.core import ConfigManager
+
+
+@pytest.fixture
+def cli_runner() -> CliRunner:
+    """Create a CLI test runner."""
+    return CliRunner()
+
+
+@pytest.fixture
+def temp_config(tmp_path: Path) -> Path:
+    """Create a temporary config file."""
+    config_file = tmp_path / "test_config.toml"
+    config_file.write_text("""
+[app]
+name = "test-app"
+version = "1.0.0"
+
+[database]
+host = "localhost"
+port = 5432
+""")
+    return config_file
+
+
+class TestConfigManager:
+    """Tests for ConfigManager core functionality."""
+    
+    def test_config_manager_loads_toml(self, temp_config: Path) -> None:
+        """Test that ConfigManager loads TOML files."""
+        config = ConfigManager(config_file=temp_config)
+        config.load()
+        
+        assert config.get("app.name") == "test-app"
+        assert config.get("database.host") == "localhost"
+    
+    def test_config_manager_respects_precedence(self, temp_config: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test configuration precedence: CLI > env > file > defaults."""
+        # Set environment variable
+        monkeypatch.setenv("TESTAPP_DATABASE_HOST", "env-host")
+        
+        config = ConfigManager(config_file=temp_config, env_prefix="TESTAPP_")
+        config.load()
+        
+        # Env var should override file
+        assert config.get("database.host") == "env-host"
+        
+        # CLI override should win
+        assert config.get("database.host", cli_override="cli-host") == "cli-host"
+    
+    def test_config_manager_handles_nested_keys(self, temp_config: Path) -> None:
+        """Test dot-notation nested key access."""
+        config = ConfigManager(config_file=temp_config)
+        config.load()
+        
+        assert config.get("database.port") == 5432
+    
+    def test_config_manager_auto_detects_config(self, tmp_path: Path) -> None:
+        """Test auto-detection of config.toml."""
+        # Create config in current directory
+        config_file = tmp_path / "config.toml"
+        config_file.write_text("[app]\nname = 'auto'")
+        
+        # Change to temp directory
+        original_dir = Path.cwd()
+        try:
+            os.chdir(tmp_path)
+            
+            config = ConfigManager()
+            config.load()
+            
+            assert config.get("app.name") == "auto"
+        finally:
+            os.chdir(original_dir)
+
+
+class TestConfigSetCommand:
+    """Tests for config set command."""
+    
+    def test_config_set_creates_and_updates(self, cli_runner: CliRunner, tmp_path: Path) -> None:
+        """Test that config set creates and updates values."""
+        config_file = tmp_path / "set_test.toml"
+        
+        result = cli_runner.invoke(
+            app,
+            ["config", "set", "test.key", "test-value", "--config", str(config_file)]
+        )
+        
+        assert result.exit_code == 0
+        assert "test.key" in result.stdout
+        assert config_file.exists()
+    
+    def test_config_set_handles_nested_keys(self, cli_runner: CliRunner, tmp_path: Path) -> None:
+        """Test setting nested configuration keys."""
+        config_file = tmp_path / "nested_test.toml"
+        
+        result = cli_runner.invoke(
+            app,
+            ["config", "set", "database.connection.timeout", "30", "--config", str(config_file)]
+        )
+        
+        assert result.exit_code == 0
+
+
+class TestConfigGetCommand:
+    """Tests for config get command."""
+    
+    def test_config_get_retrieves_value(self, cli_runner: CliRunner, temp_config: Path) -> None:
+        """Test that config get retrieves values."""
+        result = cli_runner.invoke(
+            app,
+            ["config", "get", "app.name", "--config", str(temp_config)]
+        )
+        
+        assert result.exit_code == 0
+        assert "test-app" in result.stdout
+    
+    def test_config_get_shows_source(self, cli_runner: CliRunner, temp_config: Path) -> None:
+        """Test that config get shows value source with --source flag."""
+        result = cli_runner.invoke(
+            app,
+            ["config", "get", "app.name", "--config", str(temp_config), "--source"]
+        )
+        
+        assert result.exit_code == 0
+        assert "file" in result.stdout.lower() or "source" in result.stdout.lower()
+    
+    def test_config_get_handles_missing_key(self, cli_runner: CliRunner, temp_config: Path) -> None:
+        """Test that config get handles missing keys gracefully."""
+        result = cli_runner.invoke(
+            app,
+            ["config", "get", "nonexistent.key", "--config", str(temp_config)]
+        )
+        
+        assert result.exit_code == 1
+        assert "not found" in result.stdout.lower()
+
+
+class TestConfigListCommand:
+    """Tests for config list command."""
+    
+    def test_config_list_shows_all_keys(self, cli_runner: CliRunner, temp_config: Path) -> None:
+        """Test that config list shows all configuration keys."""
+        result = cli_runner.invoke(
+            app,
+            ["config", "list", "--config", str(temp_config)]
+        )
+        
+        assert result.exit_code == 0
+        assert "app.name" in result.stdout
+        assert "database.host" in result.stdout
+    
+    def test_config_list_supports_json_format(self, cli_runner: CliRunner, temp_config: Path) -> None:
+        """Test that config list supports JSON output."""
+        result = cli_runner.invoke(
+            app,
+            ["config", "list", "--config", str(temp_config), "--format", "json"]
+        )
+        
+        assert result.exit_code == 0
+        # Should be valid JSON-like output
+        assert "{" in result.stdout or "[" in result.stdout
+
+
+class TestConfigValidateCommand:
+    """Tests for config validate command."""
+    
+    def test_config_validate_accepts_valid_file(self, cli_runner: CliRunner, temp_config: Path) -> None:
+        """Test that config validate accepts valid TOML files."""
+        result = cli_runner.invoke(
+            app,
+            ["config", "validate", "--config", str(temp_config)]
+        )
+        
+        assert result.exit_code == 0
+        assert "valid" in result.stdout.lower()
+    
+    def test_config_validate_rejects_invalid_file(self, cli_runner: CliRunner, tmp_path: Path) -> None:
+        """Test that config validate rejects invalid TOML files."""
+        invalid_config = tmp_path / "invalid.toml"
+        invalid_config.write_text("this is [ not valid TOML")
+        
+        result = cli_runner.invoke(
+            app,
+            ["config", "validate", "--config", str(invalid_config)]
+        )
+        
+        assert result.exit_code == 1
+        assert "failed" in result.stdout.lower() or "error" in result.stdout.lower()
+    
+    def test_config_validate_handles_missing_file(self, cli_runner: CliRunner, tmp_path: Path) -> None:
+        """Test that config validate handles missing files."""
+        missing_file = tmp_path / "missing.toml"
+        
+        result = cli_runner.invoke(
+            app,
+            ["config", "validate", "--config", str(missing_file)]
+        )
+        
+        assert result.exit_code == 1
+        assert "not found" in result.stdout.lower()
+
+
+class TestEnvironmentVariablePrecedence:
+    """Tests for environment variable precedence."""
+    
+    def test_env_vars_override_file_config(
+        self,
+        temp_config: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that environment variables override file configuration."""
+        monkeypatch.setenv("MYAPP_APP_NAME", "env-override")
+        
+        config = ConfigManager(config_file=temp_config, env_prefix="MYAPP_")
+        config.load()
+        
+        # Env var should override file value
+        assert config.get("app.name") == "env-override"
+    
+    def test_cli_args_override_env_vars(
+        self,
+        temp_config: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that CLI arguments override environment variables."""
+        monkeypatch.setenv("MYAPP_APP_NAME", "env-value")
+        
+        config = ConfigManager(config_file=temp_config, env_prefix="MYAPP_")
+        config.load()
+        
+        # CLI override should win
+        assert config.get("app.name", cli_override="cli-value") == "cli-value"
+{%- endif %}

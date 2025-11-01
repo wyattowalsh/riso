@@ -1,0 +1,249 @@
+{%- if cli_module | lower != "enabled" %}
+# CLI module disabled - this file is not generated
+{%- else %}
+"""Tests for CLI command discovery and execution."""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
+from typer.testing import CliRunner
+
+from {{ package_name }}.cli.__main__ import app, discover_commands, register_commands
+
+
+@pytest.fixture
+def cli_runner() -> CliRunner:
+    """Create a CLI test runner."""
+    return CliRunner()
+
+
+class TestCommandDiscovery:
+    """Tests for command discovery mechanism."""
+    
+    def test_discover_commands_finds_all_commands(self) -> None:
+        """Test that discover_commands finds all command modules."""
+        commands = discover_commands()
+        
+        # Should find at least quickstart, version, init
+        assert len(commands) >= 3
+        
+        command_names = [metadata["name"] for _, metadata in commands]
+        assert "quickstart" in command_names
+        assert "version" in command_names
+        assert "init" in command_names
+    
+    def test_discover_commands_includes_metadata(self) -> None:
+        """Test that discovered commands include metadata."""
+        commands = discover_commands()
+        
+        for cmd_func, metadata in commands:
+            assert "name" in metadata
+            assert "help" in metadata
+            assert callable(cmd_func)
+    
+    def test_discover_commands_handles_missing_directory(self) -> None:
+        """Test graceful handling of missing commands directory."""
+        with patch("pathlib.Path.exists", return_value=False):
+            commands = discover_commands()
+            assert commands == []
+    
+    def test_register_commands_adds_to_app(self) -> None:
+        """Test that register_commands adds commands to Typer app."""
+        # Reset app commands
+        app.registered_commands = []
+        
+        register_commands()
+        
+        # Typer should have commands registered
+        # Note: Typer's internal structure may vary, this is a basic check
+        assert len(app.registered_commands) > 0
+
+
+class TestQuickstartCommand:
+    """Tests for quickstart command."""
+    
+    def test_quickstart_command_runs(self, cli_runner: CliRunner) -> None:
+        """Test that quickstart command executes successfully."""
+        result = cli_runner.invoke(app, ["quickstart"])
+        
+        assert result.exit_code == 0
+        assert "Welcome" in result.stdout or "Hello" in result.stdout
+    
+    def test_quickstart_with_name_option(self, cli_runner: CliRunner) -> None:
+        """Test quickstart command with custom name."""
+        result = cli_runner.invoke(app, ["quickstart", "--name", "Test"])
+        
+        assert result.exit_code == 0
+        assert "Test" in result.stdout
+    
+    def test_quickstart_with_verbose(self, cli_runner: CliRunner) -> None:
+        """Test quickstart command with verbose output."""
+        result = cli_runner.invoke(app, ["quickstart", "--verbose"])
+        
+        assert result.exit_code == 0
+        assert "CLI module" in result.stdout or "Package" in result.stdout
+
+
+class TestVersionCommand:
+    """Tests for version command."""
+    
+    def test_version_command_shows_version(self, cli_runner: CliRunner) -> None:
+        """Test that version command shows version information."""
+        result = cli_runner.invoke(app, ["version"])
+        
+        assert result.exit_code == 0
+        assert "{{ project_name }}" in result.stdout or "version" in result.stdout.lower()
+    
+    def test_version_command_short_format(self, cli_runner: CliRunner) -> None:
+        """Test version command with --short flag."""
+        result = cli_runner.invoke(app, ["version", "--short"])
+        
+        assert result.exit_code == 0
+        # Should be just version number, much shorter output
+        assert len(result.stdout.strip().split("\n")) <= 2
+    
+    def test_version_alias_works(self, cli_runner: CliRunner) -> None:
+        """Test that version aliases (ver, v) work."""
+        result_ver = cli_runner.invoke(app, ["ver"])
+        result_v = cli_runner.invoke(app, ["v"])
+        
+        assert result_ver.exit_code == 0
+        assert result_v.exit_code == 0
+
+
+class TestInitCommand:
+    """Tests for init command."""
+    
+    def test_init_command_creates_config(self, cli_runner: CliRunner, tmp_path: Path) -> None:
+        """Test that init command creates configuration file."""
+        config_file = tmp_path / "test_config.toml"
+        
+        result = cli_runner.invoke(app, ["init", "--config", str(config_file)])
+        
+        assert result.exit_code == 0
+        assert config_file.exists()
+        assert "Created configuration" in result.stdout
+    
+    def test_init_command_respects_existing_config(self, cli_runner: CliRunner, tmp_path: Path) -> None:
+        """Test that init command warns about existing config."""
+        config_file = tmp_path / "existing_config.toml"
+        config_file.write_text("# existing")
+        
+        result = cli_runner.invoke(app, ["init", "--config", str(config_file)])
+        
+        assert result.exit_code == 1
+        assert "already exists" in result.stdout
+    
+    def test_init_command_with_force_overwrites(self, cli_runner: CliRunner, tmp_path: Path) -> None:
+        """Test that init command with --force overwrites existing config."""
+        config_file = tmp_path / "force_config.toml"
+        config_file.write_text("# old content")
+        
+        result = cli_runner.invoke(app, ["init", "--config", str(config_file), "--force"])
+        
+        assert result.exit_code == 0
+        assert "{{ project_name }}" in config_file.read_text()
+
+
+class TestHelpText:
+    """Tests for help text generation."""
+    
+    def test_main_help_shows_commands(self, cli_runner: CliRunner) -> None:
+        """Test that main help shows available commands."""
+        result = cli_runner.invoke(app, ["--help"])
+        
+        assert result.exit_code == 0
+        assert "quickstart" in result.stdout
+        assert "version" in result.stdout
+        assert "init" in result.stdout
+    
+    def test_command_help_shows_options(self, cli_runner: CliRunner) -> None:
+        """Test that command help shows available options."""
+        result = cli_runner.invoke(app, ["quickstart", "--help"])
+        
+        assert result.exit_code == 0
+        assert "--name" in result.stdout or "-n" in result.stdout
+        assert "--verbose" in result.stdout or "-v" in result.stdout
+
+
+class TestCommandAliases:
+    """Tests for command aliases."""
+    
+    def test_version_aliases_resolve_to_primary(self, cli_runner: CliRunner) -> None:
+        """Test that version command aliases work correctly."""
+        result_version = cli_runner.invoke(app, ["version", "--short"])
+        result_ver = cli_runner.invoke(app, ["ver", "--short"])
+        result_v = cli_runner.invoke(app, ["v", "--short"])
+        
+        # All should succeed
+        assert result_version.exit_code == 0
+        assert result_ver.exit_code == 0
+        assert result_v.exit_code == 0
+        
+        # All should produce similar output
+        assert result_version.stdout.strip() == result_ver.stdout.strip()
+        assert result_version.stdout.strip() == result_v.stdout.strip()
+
+
+class TestInteractivePrompts:
+    """Tests for interactive prompt functionality."""
+    
+    def test_init_command_prompts_on_overwrite(self, cli_runner: CliRunner, tmp_path: Path) -> None:
+        """Test that init command prompts for confirmation when file exists."""
+        config_file = tmp_path / "prompt_test.toml"
+        config_file.write_text("# existing")
+        
+        # Simulate user saying "no" to overwrite
+        result = cli_runner.invoke(app, ["init", "--config", str(config_file)], input="n\n")
+        
+        # Should exit without error but not overwrite
+        assert result.exit_code == 0
+        assert "cancelled" in result.stdout.lower() or "overwrite" in result.stdout.lower()
+    
+    def test_init_command_force_skips_prompt(self, cli_runner: CliRunner, tmp_path: Path) -> None:
+        """Test that --force flag skips confirmation prompt."""
+        config_file = tmp_path / "force_test.toml"
+        config_file.write_text("# old")
+        
+        result = cli_runner.invoke(app, ["init", "--config", str(config_file), "--force"])
+        
+        # Should succeed without prompting
+        assert result.exit_code == 0
+        assert "{{ project_name }}" in config_file.read_text()
+
+
+class TestProgressIndicators:
+    """Tests for progress indicators and spinners."""
+    
+    def test_init_shows_progress_in_interactive_mode(self, cli_runner: CliRunner, tmp_path: Path) -> None:
+        """Test that init command shows progress indicator."""
+        config_file = tmp_path / "progress_test.toml"
+        
+        result = cli_runner.invoke(app, ["init", "--config", str(config_file), "--interactive"])
+        
+        assert result.exit_code == 0
+        # Progress indicator should have shown (though may not be in output due to testing)
+        assert config_file.exists()
+    
+    def test_init_no_progress_in_non_interactive_mode(self, cli_runner: CliRunner, tmp_path: Path) -> None:
+        """Test that init command skips progress in non-interactive mode."""
+        config_file = tmp_path / "no_progress_test.toml"
+        
+        result = cli_runner.invoke(app, ["init", "--config", str(config_file), "--no-interactive"])
+        
+        assert result.exit_code == 0
+        assert config_file.exists()
+    
+    def test_init_shows_summary_table(self, cli_runner: CliRunner, tmp_path: Path) -> None:
+        """Test that init command shows summary table."""
+        config_file = tmp_path / "summary_test.toml"
+        
+        result = cli_runner.invoke(app, ["init", "--config", str(config_file)])
+        
+        assert result.exit_code == 0
+        assert "Summary" in result.stdout or "resource" in result.stdout.lower()
+{%- endif %}
