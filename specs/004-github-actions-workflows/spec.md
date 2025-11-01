@@ -5,6 +5,16 @@
 **Status**: Draft  
 **Input**: User description: "GitHub Actions CI/CD Workflows - Implement comprehensive GitHub Actions workflow templates that automate testing, quality checks, building, and deployment for rendered projects. Include matrix builds for Python versions, parallel job execution, caching strategies, and artifact management."
 
+## Clarifications
+
+### Session 2025-10-30
+
+- Q: When a matrix build shows divergent results across Python versions (e.g., tests pass on 3.11 and 3.12 but fail on 3.13), how should the overall PR status be determined? → A: All matrix jobs must pass - Any single version failure blocks merge (strictest quality gate)
+- Q: When a workflow encounters a GitHub Actions service outage or runner availability issue, how should the system communicate this to developers? → A: Retry with exponential backoff and show "Service Issue" badge if persistent after 3 attempts
+- Q: When a rendered project has custom workflow files that conflict with template-provided workflows (e.g., both define `.github/workflows/ci.yml`), what should happen during a copier update? → A: Template workflows use distinctive names (e.g., `riso-quality.yml`) to avoid conflicts; document extension pattern
+- Q: For projects with Node.js API tracks, when should Node.js CI jobs run relative to Python jobs? → A: Always parallel when both enabled - Maximum speed, independent failure reporting
+- Q: What cache key strategy should workflows use to balance cache hit rate with freshness when dependencies change? → A: Hash of lock files with OS/Python version prefix - Automatic invalidation on dependency changes, stable otherwise
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Automated Quality Validation on PR (Priority: P1)
@@ -34,7 +44,7 @@ A project maintainer relies on automated matrix builds to test their package acr
 **Acceptance Scenarios**:
 
 1. **Given** a rendered project with matrix testing enabled, **When** CI runs on a commit, **Then** workflows execute in parallel for each configured Python version (3.11, 3.12, 3.13).
-2. **Given** matrix builds running in parallel, **When** code uses a feature deprecated in Python 3.13, **Then** only the Python 3.13 job fails with clear error messaging.
+2. **Given** matrix builds running in parallel, **When** code uses a feature deprecated in Python 3.13, **Then** only the Python 3.13 job fails with clear error messaging and the overall PR status shows failure (all matrix jobs must pass).
 3. **Given** successful matrix builds, **When** viewing the GitHub Actions summary, **Then** the UI shows individual status for each Python version with execution times.
 
 ---
@@ -49,9 +59,9 @@ A contributor pushes frequent commits during development and benefits from cache
 
 **Acceptance Scenarios**:
 
-1. **Given** a rendered project with caching enabled, **When** CI runs for the first time, **Then** dependencies install fully and the cache saves successfully.
-2. **Given** a cached CI run, **When** a subsequent commit runs with unchanged dependencies, **Then** dependency installation completes in under 10 seconds via cache restoration.
-3. **Given** a PR that updates `pyproject.toml` dependencies, **When** CI runs, **Then** the cache invalidates and dependencies reinstall fresh.
+1. **Given** a rendered project with caching enabled, **When** CI runs for the first time, **Then** dependencies install fully and the cache saves successfully with a key based on lock file hash and OS/Python version.
+2. **Given** a cached CI run, **When** a subsequent commit runs with unchanged lock files, **Then** dependency installation completes in under 10 seconds via cache restoration using the matching cache key.
+3. **Given** a PR that updates `pyproject.toml` dependencies, **When** CI runs, **Then** the lock file hash changes, cache key misses, and dependencies reinstall fresh.
 
 ---
 
@@ -73,11 +83,11 @@ A team lead reviews CI artifacts (test results, coverage reports, build logs) up
 
 ### User Story 5 - Optional Node.js Track CI Integration (Priority: P3)
 
-A full-stack project with both Python and Node API tracks benefits from automated Node.js linting, type checking, and testing that runs in parallel with Python jobs when `api_tracks` includes `node`.
+A full-stack project with both Python and Node API tracks benefits from automated Node.js linting, type checking, and testing that runs in parallel with Python jobs when `api_tracks` includes `node`, maximizing feedback speed.
 
 **Why this priority**: Ensures Node.js modules receive the same quality guarantees as Python modules. Lower priority because it's conditional on optional module selection.
 
-**Independent Test**: Render a project with `api_tracks=python+node`, verify both Python and Node CI jobs appear in the workflow, and confirm they execute in parallel with independent pass/fail status.
+**Independent Test**: Render a project with `api_tracks=python+node`, verify both Python and Node CI jobs appear in the workflow, and confirm they execute in parallel (not sequentially) with independent pass/fail status.
 
 **Acceptance Scenarios**:
 
@@ -89,23 +99,36 @@ A full-stack project with both Python and Node API tracks benefits from automate
 
 ### Edge Cases
 
-- What happens when a workflow runs on a fork with limited GitHub Actions minutes (ensure jobs are efficient and respect free tier limits)?
-- How does the system handle workflow failures due to GitHub Actions service outages (provide clear error messaging distinguishing service issues from code issues)?
-- What if a rendered project has custom workflow files that conflict with template workflows (document conflict resolution strategy)?
-- How are workflows maintained when template updates add new CI capabilities (provide copier update guidance)?
-- What happens when matrix builds across Python versions have divergent results (clear reporting of which versions pass/fail)?
+- What happens when a workflow runs on a fork with limited GitHub Actions minutes (workflows MUST be efficient to respect free tier; document optimization strategies including aggressive timeouts and cache reuse patterns)?
+- How does the system handle workflow failures due to GitHub Actions service outages (retry with exponential backoff per FR-006b, show "Service Issue" badge after 3 failed attempts per FR-006c)?
+- What if a rendered project has custom workflow files that conflict with template workflows (template uses distinctive names like `riso-quality.yml` to avoid conflicts per FR-016; document extension pattern)?
+- How are workflows maintained when template updates add new CI capabilities (provide copier update guidance in upgrade-guide.md.jinja)?
+- What happens when matrix builds across Python versions have divergent results (all matrix jobs must pass per FR-002; any single failure blocks merge)?
+
+---
+
+## Terminology Clarifications
+
+**actionlint**: YAML/workflow validation tool used to check GitHub Actions workflow syntax and semantics. Runs as a command-line tool during post-generation validation.
+
+**workflow_validator.py**: Python wrapper script in `scripts/hooks/` that invokes actionlint and formats output for template hooks. Not a separate validator—merely an integration layer for actionlint.
+
+Usage: Throughout this specification, "actionlint validation" refers to validation performed via the workflow_validator.py wrapper, which in turn calls the actionlint binary.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
 - **FR-001 (B)**: Template MUST generate GitHub Actions workflow files (`.github/workflows/*.yml`) that execute quality suite checks (ruff, mypy, pylint, pytest, coverage) automatically on pull requests and pushes to main branch.
-- **FR-002 (B)**: Workflows MUST implement matrix builds testing code across Python 3.11, 3.12, and 3.13 with parallel job execution.
-- **FR-003 (B)**: Workflows MUST use uv caching strategies to restore dependencies from cache when `pyproject.toml` and `uv.lock` are unchanged, reducing install time by at least 50%.
+- **FR-002 (B)**: Workflows MUST implement matrix builds testing code across Python 3.11, 3.12, and 3.13 with parallel job execution, where all matrix jobs must pass for overall success.
+- **FR-003 (B)**: Workflows MUST use cache keys based on hash of lock files (`uv.lock`, `pnpm-lock.yaml`) with OS/Python version prefix to restore dependencies when lock files are unchanged, achieving at least 50% install time reduction via cache hits.
 - **FR-004 (B)**: Workflows MUST upload test results (JUnit XML), coverage reports (HTML/XML), and quality logs as GitHub Actions artifacts with 90-day retention.
 - **FR-005 (B)**: Workflow status MUST block PR merges when quality checks fail, integrating with GitHub branch protection rules.
-- **FR-006 (B)**: Workflows MUST provide clear, actionable error messages in GitHub UI when jobs fail, including tool output and remediation hints.
-- **FR-007 (O)**: When `api_tracks` includes `node`, workflows MUST generate Node.js CI jobs running pnpm-based linting (ESLint), type checking (TypeScript), and testing (Vitest) in parallel with Python jobs.
+- **FR-006 (B)**: Workflows MUST provide comprehensive error handling including:
+  - **(a)** Clear, actionable error messages in GitHub UI when jobs fail, including tool output and remediation hints
+  - **(b)** Retry logic with exponential backoff (3 attempts) for transient failures
+  - **(c)** "Service Issue" status badge when GitHub Actions service outages persist after retry exhaustion
+- **FR-007 (O)**: When `api_tracks` includes `node`, workflows MUST generate Node.js CI jobs running pnpm-based linting (ESLint), type checking (TypeScript), and testing (Vitest) that execute in parallel with Python jobs for maximum speed.
 - **FR-008 (O)**: When `api_tracks` includes `node`, workflows MUST implement pnpm caching to accelerate Node dependency installation.
 - **FR-009 (B)**: Template MUST include workflow documentation in rendered project README explaining how to view CI status, download artifacts, and debug failures.
 - **FR-010 (B)**: Workflows MUST respect the `quality_profile` setting, executing standard or strict quality checks based on project configuration.
@@ -114,6 +137,7 @@ A full-stack project with both Python and Node API tracks benefits from automate
 - **FR-013 (B)**: Workflows MUST set appropriate timeout limits (10 minutes for standard profiles, 20 minutes for strict) to prevent runaway jobs consuming Actions minutes.
 - **FR-014 (O)**: Template MUST provide sample workflow for scheduled dependency update checks that run weekly and create automated PRs when updates are available.
 - **FR-015 (B)**: Workflows MUST expose environment variables allowing downstream projects to customize behavior (Python versions, cache keys, timeout values) without editing workflow YAML directly.
+- **FR-016 (B)**: Template-generated workflows MUST use distinctive names (e.g., `riso-quality.yml`, `riso-matrix.yml`) to prevent conflicts with custom workflows; documentation MUST describe extension patterns for downstream projects.
 
 ### Template Prompts & Variants
 
@@ -126,7 +150,7 @@ A full-stack project with both Python and Node API tracks benefits from automate
 
 - **WorkflowConfiguration**: Represents generated `.github/workflows/*.yml` files with job definitions, matrix specifications, caching strategies, and artifact upload configs.
 - **MatrixBuildResult**: Captures per-Python-version test outcomes, durations, and artifact locations for trend tracking.
-- **CacheManifest**: Defines cache key patterns for uv (Python) and pnpm (Node) dependencies with invalidation triggers based on lock file changes.
+- **CacheManifest**: Defines cache key patterns using hash of lock files (`uv.lock`, `pnpm-lock.yaml`) with OS/Python version prefix (e.g., `ubuntu-22.04-py3.11-<lock-hash>`) for automatic invalidation on dependency changes while maintaining stability across commits.
 - **ArtifactMetadata**: Stores artifact names, sizes, expiration dates, and download URLs for governance dashboards.
 - **WorkflowValidationReport**: Documents workflow YAML lint results, syntax checks, and conditional logic verification from pre-render hooks.
 

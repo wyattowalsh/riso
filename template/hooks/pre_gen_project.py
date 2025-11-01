@@ -77,6 +77,29 @@ def _load_docs_site(default: str = "fumadocs") -> str:
     return default
 
 
+def _load_ci_platform(default: str = "github-actions") -> str:
+    """Best-effort retrieval of the selected CI platform."""
+
+    candidates = (
+        "COPIER_ANSWERS",
+        "COPIER_JINJA2_CONTEXT",
+        "COPIER_RENDER_CONTEXT",
+    )
+    for key in candidates:
+        raw = os.environ.get(key)
+        if not raw:
+            continue
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(data, dict):
+            value = data.get("ci_platform")
+            if isinstance(value, str) and value:
+                return value
+    return default
+
+
 def _log_attempt(entry: ProvisionResult) -> None:
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with LOG_PATH.open("a", encoding="utf-8") as fh:
@@ -129,6 +152,7 @@ def _attempt_install(tool: str, version: str, mise_spec: str | None) -> Provisio
 
 def main() -> None:
     docs_site = _load_docs_site()
+    ci_platform = _load_ci_platform()
 
     tool_matrix: list[tuple[str, str, str | None]] = [
         ("uv", "0.4", "uv@0.4"),
@@ -141,6 +165,29 @@ def main() -> None:
                 ("pnpm", "8", "pnpm@8"),
             ]
         )
+    
+    # Add actionlint check if GitHub Actions CI platform selected
+    if ci_platform == "github-actions":
+        # Check actionlint availability but don't fail on missing
+        # (post-generation hook will handle validation gracefully)
+        if not shutil.which("actionlint"):
+            _log_attempt(ProvisionResult(
+                tool_name="actionlint",
+                version_requested="latest",
+                status="not_found",
+                next_steps="Install actionlint for workflow validation: brew install actionlint (macOS) or see https://github.com/rhysd/actionlint"
+            ))
+            sys.stderr.write(
+                "⚠️  actionlint not found - workflow validation will be skipped\n"
+                "   Install: brew install actionlint (macOS)\n"
+                "   Or see: https://github.com/rhysd/actionlint\n"
+            )
+        else:
+            _log_attempt(ProvisionResult(
+                tool_name="actionlint",
+                version_requested="latest",
+                status="already_present"
+            ))
 
     failures: list[ProvisionResult] = []
     for tool, version, mise_spec in tool_matrix:

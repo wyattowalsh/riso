@@ -32,12 +32,36 @@ class ModuleStats:
         return data
 
 
+@dataclass
+class CacheMetrics:
+    cache_hit_rate: float = 0.0
+    average_runtime_with_cache_seconds: float | None = None
+    average_runtime_without_cache_seconds: float | None = None
+    cache_efficiency_ratio: float | None = None
+    total_cache_checks: int = 0
+    note: str = "Cache metrics tracked from GitHub Actions workflow runs when ci_platform=github-actions"
+
+    def to_dict(self) -> Dict[str, float | int | str | None]:
+        return asdict(self)
+
+
 class ModuleSuccessRecorder:
     """Tracks module-level success metrics across rendered variants."""
 
     def __init__(self) -> None:
         self.modules: Dict[str, ModuleStats] = {}
         self.variants: List[Dict[str, object]] = []
+        self.workflow_stats = ModuleStats()
+        self.cache_metrics = CacheMetrics()
+
+    def update_workflow_validation(self, status: str) -> None:
+        """Track workflow validation status."""
+        if status == "pass":
+            self.workflow_stats.passed += 1
+        elif status == "fail":
+            self.workflow_stats.failed += 1
+        else:
+            self.workflow_stats.skipped += 1
 
     def update_from_results(self, variant: str, results: Iterable[MutableMapping[str, object]]) -> None:
         variant_summary = {"variant": variant, "results": []}
@@ -64,9 +88,13 @@ class ModuleSuccessRecorder:
         self.variants.append(variant_summary)
 
     def to_dict(self) -> Dict[str, object]:
+        workflow_data: Dict[str, object] = dict(self.workflow_stats.to_dict())
+        workflow_data["ci_cache_performance"] = self.cache_metrics.to_dict()
+        
         return {
             "recorded_at": datetime.now(tz=timezone.utc).isoformat(),
             "modules": {name: stats.to_dict() for name, stats in self.modules.items()},
+            "workflow_generation": workflow_data,
             "variants": self.variants,
         }
 
