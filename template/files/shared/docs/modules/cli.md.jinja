@@ -1,38 +1,208 @@
 # CLI Module
 
-The CLI module extends the baseline project with a [Typer](https://typer.tiangolo.com/) command suite
-powered by Loguru for structured output.
+{%- if cli_module | lower == "enabled" %}
+
+The CLI module provides a full-featured command-line interface built with [Typer](https://typer.tiangolo.com/), [Rich](https://rich.readthedocs.io/) formatting, configuration management, and plugin architecture.
 
 ## Enabling the Module
 
-Set the Copier prompt `cli_module=enabled` when rendering the template:
+Set `cli_module=enabled` when rendering:
 
 ```bash
 copier copy . my-project --data '{"cli_module": "enabled"}'
 ```
 
-This scaffolds `src/{{ project_slug }}/cli/` with the `Typer` application and wires smoke tests into
-`tests/test_cli.py`.
+This scaffolds `src/{{ package_name }}/cli/` with automatic command discovery, config management, plugins, and rich formatting.
+
+## Quick Start
+
+```bash
+# Show available commands
+uv run {{ package_name }} --help
+
+# Run commands
+uv run {{ package_name }} quickstart
+uv run {{ package_name }} version
+uv run {{ package_name }} init
+```
+
+## Adding Commands (< 5 minutes)
+
+1. Create file in `src/{{ package_name }}/cli/commands/mycommand.py`:
+
+```python
+from {{ package_name }}.cli.core import command
+import typer
+
+@command(name="greet", help="Greet someone")
+def greet_command(name: str = typer.Argument(...)) -> None:
+    print(f"Hello, {name}!")
+```
+
+2. Run it - automatically discovered:
+
+```bash
+uv run {{ package_name }} greet Alice
+```
+
+## Architecture
+
+### Command Discovery
+- **Drop-in**: Add `.py` files to `cli/commands/`
+- **Decorator**: Use `@command()` decorator
+- **Auto-registration**: Appears in `--help` automatically
+
+### Components
+- `cli/core/base.py` - BaseCommand, @command() decorator
+- `cli/core/config.py` - ConfigManager (TOML, env vars, precedence)
+- `cli/core/formatter.py` - Rich tables, JSON, YAML output
+- `cli/core/plugin_manager.py` - Plugin discovery via entry points
+- `cli/core/prompts.py` - Interactive prompts and validation
+- `cli/core/exceptions.py` - Custom exception hierarchy
+
+## Configuration Management
+
+### File Format (config.toml)
+```toml
+[app]
+name = "{{ project_name }}"
+
+[database]
+host = "localhost"
+port = 5432
+```
+
+### Precedence Order
+1. CLI arguments (highest)
+2. Environment variables (`MYAPP_DATABASE_HOST`)
+3. Config file
+4. Defaults (lowest)
+
+### Commands
+```bash
+{{ package_name }} config set app.name "My App"
+{{ package_name }} config get app.name --source
+{{ package_name }} config list
+{{ package_name }} config validate
+```
+
+## Rich Formatting
+
+### Output Formats
+```bash
+{{ package_name }} list --format table  # Default
+{{ package_name }} list --format json
+{{ package_name }} list --format yaml
+```
+
+### Using in Code
+```python
+from {{ package_name }}.cli.core.formatter import OutputFormatter
+
+formatter = OutputFormatter()
+formatter.format(data, format="table", title="Results")
+formatter.print_success("Done!")
+formatter.print_error("Failed!")
+```
+
+### Progress Indicators
+```python
+from rich.progress import Progress, SpinnerColumn
+
+with Progress(SpinnerColumn()) as progress:
+    task = progress.add_task("Working...", total=None)
+    # ... do work ...
+```
+
+## Plugin System
+
+### Creating Plugins
+
+See `cli/plugins/README.md` for full guide.
+
+**Quick example:**
+```python
+from {{ package_name }}.cli.core import command
+
+@command(name="hello", help="Plugin command")
+def hello() -> None:
+    print("Hello from plugin!")
+```
+
+**Register in pyproject.toml:**
+```toml
+[project.entry-points."{{ package_name }}.cli.plugins"]
+hello = "my_plugin.commands:hello"
+```
+
+### Plugin Commands
+```bash
+{{ package_name }} plugin list
+{{ package_name }} plugin info hello
+{{ package_name }} plugin validate
+```
+
+## Shell Completion
+
+```bash
+{{ package_name }} --install-completion bash
+{{ package_name }} --install-completion zsh
+{{ package_name }} --install-completion fish
+```
+
+## Testing
+
+```python
+from typer.testing import CliRunner
+from {{ package_name }}.cli.__main__ import app
+
+def test_command():
+    runner = CliRunner()
+    result = runner.invoke(app, ["command", "--option", "value"])
+    assert result.exit_code == 0
+```
+
+## Troubleshooting
+
+### Command Not Found
+- File must be in `cli/commands/`
+- Use `@command()` decorator (not `@app.command()`)
+- Function name shouldn't start with `_`
+
+### Config Not Loading
+- Check file: `config.toml` or `.myapp.toml`
+- Validate: `{{ package_name }} config validate`
+- Remember precedence: env vars override file
+
+### Plugin Not Loading
+- Verify entry point in `pyproject.toml`
+- Check installed: `pip list | grep plugin`
+- Run: `{{ package_name }} plugin list`
 
 ## Validation Commands
 
-Run the smoke tests locally before committing:
-
 ```bash
-uv run python -m {{ package_name }}.cli --help
-uv run pytest tests/test_cli.py
-```
+# Run all CLI tests
+uv run pytest tests/test_cli*.py
 
-The `quickstart` command delegates to `run_quickstart(dry_run=...)`, providing the same automation as
-the baseline script with richer logging.
+# Test specific command
+uv run {{ package_name }} quickstart
+
+# Verify help
+uv run {{ package_name }} --help
+```
 
 ## CI Integration
 
-The module catalog exposes a `cli-smoke` job. Replicate this locally with:
+The module integrates with quality workflows:
+- Command discovery tests
+- Format output tests
+- Config management tests
+- Plugin system tests
+- 90%+ coverage required
 
-```bash
-uv run pytest tests/test_cli.py -k quickstart
-```
+{%- else %}
 
-When `shared_logic=enabled`, the CLI automatically enriches its output with summaries from
-`shared.logic`.
+CLI module disabled. Re-render with `cli_module=enabled` to generate.
+
+{%- endif %}

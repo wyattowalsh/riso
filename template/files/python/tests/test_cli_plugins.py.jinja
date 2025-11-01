@@ -1,0 +1,209 @@
+{%- if cli_module | lower != "enabled" %}
+# CLI module disabled - this file is not generated
+{%- else %}
+"""Tests for plugin system."""
+
+from __future__ import annotations
+
+from unittest.mock import MagicMock, patch
+
+import pytest
+from typer.testing import CliRunner
+
+from {{ package_name }}.cli.__main__ import app
+from {{ package_name }}.cli.core import PluginError, PluginManager
+
+
+@pytest.fixture
+def cli_runner() -> CliRunner:
+    """Create a CLI test runner."""
+    return CliRunner()
+
+
+@pytest.fixture
+def plugin_manager() -> PluginManager:
+    """Create a plugin manager instance."""
+    return PluginManager()
+
+
+class TestPluginDiscovery:
+    """Tests for plugin discovery mechanism."""
+    
+    def test_plugin_manager_discovers_entry_points(self, plugin_manager: PluginManager) -> None:
+        """Test that plugin manager discovers entry points."""
+        plugin_manager.discover()
+        
+        # Should complete without error (may or may not find plugins)
+        assert plugin_manager._discovery_complete
+    
+    def test_plugin_list_returns_discovered_plugins(self, plugin_manager: PluginManager) -> None:
+        """Test listing discovered plugins."""
+        plugin_manager.discover()
+        plugins = plugin_manager.list_plugins()
+        
+        # Should return a list (may be empty)
+        assert isinstance(plugins, list)
+        
+        # Each plugin should have required fields
+        for plugin in plugins:
+            assert "name" in plugin
+            assert "module" in plugin
+    
+    def test_plugin_discovery_handles_no_plugins(self, plugin_manager: PluginManager) -> None:
+        """Test graceful handling when no plugins found."""
+        with patch("importlib.metadata.entry_points", return_value=[]):
+            plugin_manager.discover()
+            plugins = plugin_manager.list_plugins()
+            
+            assert plugins == []
+
+
+class TestLazyPluginLoading:
+    """Tests for lazy plugin loading."""
+    
+    def test_plugin_not_loaded_until_accessed(self, plugin_manager: PluginManager) -> None:
+        """Test that plugins are not loaded during discovery."""
+        plugin_manager.discover()
+        
+        # Should have discovered plugins but not loaded them
+        assert plugin_manager._discovery_complete
+        assert len(plugin_manager._loaded_plugins) == 0
+    
+    def test_plugin_loads_on_first_access(self, plugin_manager: PluginManager) -> None:
+        """Test that plugin loads when first accessed."""
+        # Create a mock plugin
+        mock_plugin = MagicMock()
+        plugin_manager.register_plugin("test_plugin", mock_plugin)
+        
+        assert plugin_manager.is_loaded("test_plugin")
+    
+    def test_plugin_cached_after_loading(self, plugin_manager: PluginManager) -> None:
+        """Test that loaded plugins are cached."""
+        mock_plugin = MagicMock()
+        plugin_manager.register_plugin("test_plugin", mock_plugin)
+        
+        # Load twice
+        plugin1 = plugin_manager.load_plugin("test_plugin")
+        plugin2 = plugin_manager.load_plugin("test_plugin")
+        
+        # Should be the same object
+        assert plugin1 is plugin2
+
+
+class TestPluginErrorIsolation:
+    """Tests for plugin error isolation."""
+    
+    def test_failed_plugin_doesnt_crash_discovery(self, plugin_manager: PluginManager) -> None:
+        """Test that a failing plugin doesn't prevent discovery of others."""
+        # Mock entry points with one that fails
+        mock_ep_good = MagicMock()
+        mock_ep_good.name = "good_plugin"
+        mock_ep_good.load.return_value = MagicMock()
+        
+        mock_ep_bad = MagicMock()
+        mock_ep_bad.name = "bad_plugin"
+        mock_ep_bad.load.side_effect = Exception("Plugin error")
+        
+        with patch("importlib.metadata.entry_points", return_value=[mock_ep_good, mock_ep_bad]):
+            plugin_manager.discover()
+            
+            # Good plugin should still be discovered
+            plugins = plugin_manager.list_plugins()
+            assert any(p["name"] == "good_plugin" for p in plugins)
+    
+    def test_plugin_load_error_raises_plugin_error(self, plugin_manager: PluginManager) -> None:
+        """Test that plugin load errors are wrapped in PluginError."""
+        plugin_manager.discover()
+        
+        with pytest.raises(PluginError) as exc_info:
+            plugin_manager.load_plugin("nonexistent_plugin")
+        
+        assert "not found" in str(exc_info.value).lower()
+    
+    def test_plugin_error_includes_plugin_name(self, plugin_manager: PluginManager) -> None:
+        """Test that PluginError includes the plugin name."""
+        plugin_manager.discover()
+        
+        try:
+            plugin_manager.load_plugin("missing_plugin")
+        except PluginError as e:
+            assert e.plugin_name == "missing_plugin"
+
+
+class TestPluginNameConflicts:
+    """Tests for handling plugin name conflicts."""
+    
+    def test_plugin_name_conflict_detected(self, plugin_manager: PluginManager) -> None:
+        """Test detection of plugin name conflicts."""
+        # Register a plugin
+        plugin_manager.register_plugin("duplicate", MagicMock())
+        
+        # Try to register another with same name (should fail without override)
+        with pytest.raises(PluginError) as exc_info:
+            plugin_manager.register_plugin("duplicate", MagicMock())
+        
+        assert "already registered" in str(exc_info.value).lower()
+    
+    def test_plugin_name_conflict_can_override(self, plugin_manager: PluginManager) -> None:
+        """Test that plugin conflicts can be overridden explicitly."""
+        plugin1 = MagicMock()
+        plugin2 = MagicMock()
+        
+        plugin_manager.register_plugin("name", plugin1)
+        plugin_manager.register_plugin("name", plugin2, override=True)
+        
+        # Should have the second plugin
+        loaded = plugin_manager.load_plugin("name")
+        assert loaded is plugin2
+
+
+class TestPluginCommands:
+    """Tests for plugin list command."""
+    
+    def test_plugin_list_command_runs(self, cli_runner: CliRunner) -> None:
+        """Test that plugin list command executes."""
+        result = cli_runner.invoke(app, ["plugin", "list"])
+        
+        # Should run without error
+        assert result.exit_code == 0
+    
+    def test_plugin_list_shows_no_plugins_message(self, cli_runner: CliRunner) -> None:
+        """Test message when no plugins found."""
+        with patch("{{ package_name }}.cli.core.plugin_manager.entry_points", return_value=[]):
+            result = cli_runner.invoke(app, ["plugin", "list"])
+            
+            assert result.exit_code == 0
+            assert "no plugins" in result.stdout.lower() or "0 plugin" in result.stdout.lower()
+    
+    def test_plugin_validate_command_runs(self, cli_runner: CliRunner) -> None:
+        """Test that plugin validate command executes."""
+        result = cli_runner.invoke(app, ["plugin", "validate"])
+        
+        # Should run (may report no plugins)
+        assert result.exit_code in (0, 1)  # 1 if no plugins or validation failed
+
+
+class TestPluginProgrammaticRegistration:
+    """Tests for programmatic plugin registration."""
+    
+    def test_register_plugin_adds_to_loaded(self, plugin_manager: PluginManager) -> None:
+        """Test that registering a plugin adds it to loaded plugins."""
+        mock_plugin = MagicMock()
+        plugin_manager.register_plugin("manual_plugin", mock_plugin)
+        
+        assert plugin_manager.is_loaded("manual_plugin")
+    
+    def test_unregister_plugin_removes_from_loaded(self, plugin_manager: PluginManager) -> None:
+        """Test that unregistering removes a plugin."""
+        mock_plugin = MagicMock()
+        plugin_manager.register_plugin("temp_plugin", mock_plugin)
+        
+        plugin_manager.unregister_plugin("temp_plugin")
+        
+        assert not plugin_manager.is_loaded("temp_plugin")
+    
+    def test_unregister_nonexistent_plugin_raises_error(self, plugin_manager: PluginManager) -> None:
+        """Test that unregistering non-existent plugin raises error."""
+        with pytest.raises(PluginError):
+            plugin_manager.unregister_plugin("nonexistent")
+{%- endif %}
