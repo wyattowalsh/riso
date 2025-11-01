@@ -9,6 +9,12 @@
 
 This feature provides production-ready containerization and deployment infrastructure for Riso-generated projects. It extends the existing CI/CD foundation (feature 004) with Docker build automation, local development orchestration via docker-compose, and container registry publishing patterns.
 
+### Session 2025-11-01
+
+- Q: For containerized applications running as non-root users, what specific user configuration should the Dockerfile templates enforce? → A: Non-root user with explicit UID 1000 and security hardening (USER 1000:1000, no sudo)
+- Q: What health check protocol and configuration should be used for API service containers? → A: HTTP health checks with /health endpoint, 5s timeout, 3 retries with 2s interval
+- Q: How should docker-compose handle database services (PostgreSQL, Redis) for different project configurations? → A: Conditional database services rendered only when API tracks enabled, with explicit opt-in via copier prompt
+
 **Key Design Decisions:**
 
 1. **Multi-stage Docker builds**: Separate builder and runtime stages to minimize image size and attack surface
@@ -78,7 +84,7 @@ DevOps teams need CI/CD workflow templates that build, scan, tag, and publish co
 - **Empty project (all modules disabled)**: Dockerfile should provide minimal Python runtime with `uv run python` entrypoint
 - **CLI-only mode**: Container CMD defaults to `--help` output; users override with `docker run image command`
 - **Docs-only mode**: Fumadocs/Sphinx containers serve static builds via Nginx/Caddy
-- **No database in docker-compose**: PostgreSQL/Redis services are conditional based on template inspection or explicit flag
+- **Database services**: PostgreSQL/Redis rendered in docker-compose only when `api_tracks` includes python/node AND explicit copier prompt `include_databases` is enabled; CLI-only and docs-only projects exclude databases
 - **Local vs. production Dockerfile**: Single Dockerfile with ARG-based dev/prod modes (or separate `Dockerfile.dev`)
 - **Large dependency trees**: Multi-stage builds cache uv/pnpm lock files for faster rebuilds
 - **Healthcheck failures**: Container orchestrators (Docker Compose, Kubernetes) respect health check failures and restart policies
@@ -91,11 +97,11 @@ DevOps teams need CI/CD workflow templates that build, scan, tag, and publish co
 
 - **FR-001 (B)**: System MUST generate production-ready Dockerfile templates that adapt to `api_tracks`, `cli_module`, `docs_site`, and `shared_logic` module selections
 - **FR-002 (B)**: System MUST implement multi-stage Docker builds with separate builder and runtime stages to minimize final image size
-- **FR-003 (B)**: System MUST configure containers to run as non-root users (UID 1000+) with minimal privileges
-- **FR-004 (B)**: System MUST include HTTP health check endpoints for API services (`/health` or `/healthz`) that return 200 OK when ready
+- **FR-003 (B)**: System MUST configure containers to run as non-root users with explicit UID 1000 and GID 1000 (USER 1000:1000), no sudo capabilities, and minimal privileges for security hardening
+- **FR-004 (B)**: System MUST include HTTP health check endpoints for API services at `/health` that return 200 OK when ready, with 5-second timeout, 3 retry attempts, and 2-second intervals between retries
 - **FR-005 (B)**: System MUST generate `.dockerignore` files that exclude development artifacts, test files, and CI metadata
 - **FR-006 (B)**: System MUST provide docker-compose templates for monorepo layouts with service orchestration, networking, and volume management
-- **FR-007 (B)**: System MUST render docker-compose with conditional services based on enabled modules (API, docs, shared logic, databases)
+- **FR-007 (B)**: System MUST render docker-compose with conditional services based on enabled modules (API, docs, shared logic) and explicit database opt-in via copier prompt (PostgreSQL/Redis services only when API tracks enabled and database prompt answered affirmatively)
 - **FR-008 (O)**: System MUST generate GitHub Actions workflows for container building, scanning, and registry publishing
 - **FR-009 (O)**: System MUST integrate Trivy or Grype security scanning into container build workflows with configurable severity thresholds
 - **FR-010 (O)**: System MUST support semantic version tagging for container images derived from Git tags or conventional commits
@@ -121,7 +127,7 @@ DevOps teams need CI/CD workflow templates that build, scan, tag, and publish co
 - **NFR-003 (Performance)**: docker-compose services MUST achieve healthy status within 30 seconds of `docker-compose up`
 - **NFR-004 (Security)**: Containers MUST pass Trivy/Grype scans with zero HIGH or CRITICAL vulnerabilities (MEDIUM acceptable with justification)
 - **NFR-005 (Security)**: Dockerfiles MUST pass hadolint linting with zero errors (warnings acceptable)
-- **NFR-006 (Reliability)**: Container health checks MUST succeed within 5 seconds of service readiness
+- **NFR-006 (Reliability)**: Container health checks MUST succeed within 5 seconds of service readiness, with 3 retry attempts and 2-second intervals to prevent false negatives during startup
 - **NFR-007 (Maintainability)**: Dockerfile templates MUST use official base images (python:3.11-slim, node:20-alpine) with pinned digests
 - **NFR-008 (Maintainability)**: docker-compose configurations MUST support both local development (hot reload) and CI testing modes
 - **NFR-009 (Observability)**: Container workflows MUST upload build logs, scan reports, and SBOMs as GitHub Actions artifacts with 90-day retention
@@ -193,7 +199,7 @@ DevOps teams need CI/CD workflow templates that build, scan, tag, and publish co
 - **Feature 004 (GitHub Actions)**: Container workflows extend existing CI/CD infrastructure with build/publish jobs
 - **Feature 003 (Quality Suite)**: Security scanning integrates with quality gates (Trivy/Grype → artifacts → merge checks)
 - **Feature 001 (Template Foundation)**: Module catalog and smoke testing infrastructure
-- **copier.yml prompts**: Existing `api_tracks`, `cli_module`, `docs_site`, `shared_logic` selections drive Dockerfile rendering
+- **copier.yml prompts**: Existing `api_tracks`, `cli_module`, `docs_site`, `shared_logic` selections drive Dockerfile rendering; new `include_databases` prompt controls PostgreSQL/Redis services in docker-compose (only shown when `api_tracks` includes python or node)
 
 ### Base Images
 
