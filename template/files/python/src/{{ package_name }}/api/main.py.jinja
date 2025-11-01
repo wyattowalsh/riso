@@ -21,6 +21,7 @@ from fastapi.responses import JSONResponse  # type: ignore[import-not-found]
 from tenacity import retry, stop_after_attempt, wait_fixed
 
 from .settings import ApiSettings, get_settings
+from .health import router as health_router
 
 build_health_payload: Any
 HealthCheckResult: Any
@@ -89,11 +90,8 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
     resolved_settings = settings or get_settings()
     app = _configure_app(resolved_settings)
 
-    def health() -> dict[str, Any]:
-        """Expose a health payload for uptime checks."""
-        return compute_health_payload(resolved_settings)
-
-    app.add_api_route("/health", health, response_class=JSONResponse, methods=["GET"])
+    # Register containerhealth router (simple /health endpoint for Docker/K8s)
+    app.include_router(health_router)
 
     return app
 

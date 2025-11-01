@@ -1,0 +1,65 @@
+/**
+ * Health check endpoint for container orchestration.
+ * 
+ * Provides a simple HTTP health check endpoint at /health that returns 200 OK
+ * when the Fastify service is ready to accept requests. Designed for Docker
+ * HEALTHCHECK directives, Kubernetes liveness/readiness probes, and load
+ * balancer health checks.
+ */
+
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+
+export interface HealthResponse {
+  /** Service health status ("healthy" when operational) */
+  status: string;
+  /** Service identifier */
+  service: string;
+  /** Optional API version string */
+  version?: string;
+}
+
+/**
+ * Register health check routes on the Fastify instance.
+ * 
+ * @param app - Fastify application instance
+ */
+export function registerHealthRoutes(app: FastifyInstance): void {
+  app.get<{ Reply: HealthResponse }>(
+    '/health',
+    {
+      schema: {
+        description: 'Service health check for container orchestrators',
+        tags: ['health'],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              status: { type: 'string' },
+              service: { type: 'string' },
+              version: { type: 'string' },
+            },
+            required: ['status', 'service'],
+          },
+        },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply): Promise<HealthResponse> => {
+      /**
+       * HTTP health check endpoint.
+       * 
+       * Returns 200 OK when the service is healthy and ready to accept requests.
+       * This endpoint has no side effects and requires no authentication.
+       * 
+       * @returns HealthResponse with status="healthy" and service identifier
+       * 
+       * @example
+       * GET /health
+       * Response: {"status": "healthy", "service": "api-node"}
+       */
+      return {
+        status: 'healthy',
+        service: 'api-node',
+      };
+    }
+  );
+}

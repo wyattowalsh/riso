@@ -7,6 +7,7 @@ import Fastify from "fastify";
 
 import type { ApiNodeConfig } from "./config";
 import { loadConfig } from "./config";
+import { registerHealthRoutes } from "./health";
 import { sharedLogicEnabled, summarizeStatus } from "../../shared-config/logic";
 
 function createServer(config: ApiNodeConfig) {
@@ -14,18 +15,8 @@ function createServer(config: ApiNodeConfig) {
     logger: true,
   });
 
-  const includeSummary = sharedLogicEnabled();
-
-  server.get("/health", async () => {
-    const payload = {
-      status: "ok",
-      service: config.serviceName,
-    };
-    if (includeSummary) {
-      payload["summary"] = summarizeStatus(payload);
-    }
-    return payload;
-  });
+  // Register container health check endpoint
+  registerHealthRoutes(server);
 
   return server;
 }

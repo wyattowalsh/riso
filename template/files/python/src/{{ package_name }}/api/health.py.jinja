@@ -1,0 +1,52 @@
+"""Health check endpoint for container orchestration.
+
+This module provides a simple HTTP health check endpoint at /health that
+returns 200 OK when the FastAPI service is ready to accept requests.
+Designed for Docker HEALTHCHECK directives, Kubernetes liveness/readiness
+probes, and load balancer health checks.
+"""
+
+from fastapi import APIRouter, status
+from pydantic import BaseModel
+
+router = APIRouter(tags=["health"])
+
+
+class HealthResponse(BaseModel):
+    """Health check response model.
+
+    Attributes:
+        status: Service health status ("healthy" when operational)
+        service: Service identifier
+        version: Optional API version string
+    """
+
+    status: str
+    service: str
+    version: str | None = None
+
+
+@router.get(
+    "/health",
+    response_model=HealthResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Service health check",
+    description="Returns service health status for container orchestrators",
+)
+async def health_check() -> HealthResponse:
+    """HTTP health check endpoint.
+
+    Returns 200 OK when the service is healthy and ready to accept requests.
+    This endpoint has no side effects and requires no authentication.
+
+    Returns:
+        HealthResponse with status="healthy" and service identifier
+
+    Example:
+        GET /health
+        Response: {"status": "healthy", "service": "api-python"}
+    """
+    return HealthResponse(
+        status="healthy",
+        service="api-python",
+    )

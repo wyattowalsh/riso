@@ -45,6 +45,21 @@ class CacheMetrics:
         return asdict(self)
 
 
+@dataclass
+class ContainerMetrics:
+    total_checked: int = 0
+    files_present: int = 0
+    validated: int = 0
+    lint_errors: int = 0
+    files_missing: int = 0
+    not_applicable: int = 0
+    success_rate: float = 0.0
+    note: str = "Container metrics tracked from rendered samples with api_tracks or docs_site"
+
+    def to_dict(self) -> Dict[str, float | int | str]:
+        return asdict(self)
+
+
 class ModuleSuccessRecorder:
     """Tracks module-level success metrics across rendered variants."""
 
@@ -53,6 +68,7 @@ class ModuleSuccessRecorder:
         self.variants: List[Dict[str, object]] = []
         self.workflow_stats = ModuleStats()
         self.cache_metrics = CacheMetrics()
+        self.container_metrics = ContainerMetrics()
 
     def update_workflow_validation(self, status: str) -> None:
         """Track workflow validation status."""
@@ -62,6 +78,28 @@ class ModuleSuccessRecorder:
             self.workflow_stats.failed += 1
         else:
             self.workflow_stats.skipped += 1
+    
+    def update_container_status(self, status: str) -> None:
+        """Track container validation status."""
+        self.container_metrics.total_checked += 1
+        
+        if status == "files_present":
+            self.container_metrics.files_present += 1
+        elif status == "validated":
+            self.container_metrics.validated += 1
+        elif status == "lint_errors":
+            self.container_metrics.lint_errors += 1
+        elif status == "files_missing":
+            self.container_metrics.files_missing += 1
+        elif status == "not_applicable":
+            self.container_metrics.not_applicable += 1
+        
+        # Calculate success rate (validated / (total - not_applicable))
+        applicable = self.container_metrics.total_checked - self.container_metrics.not_applicable
+        if applicable > 0:
+            self.container_metrics.success_rate = round(
+                self.container_metrics.validated / applicable, 4
+            )
 
     def update_from_results(self, variant: str, results: Iterable[MutableMapping[str, object]]) -> None:
         variant_summary = {"variant": variant, "results": []}
@@ -90,6 +128,7 @@ class ModuleSuccessRecorder:
     def to_dict(self) -> Dict[str, object]:
         workflow_data: Dict[str, object] = dict(self.workflow_stats.to_dict())
         workflow_data["ci_cache_performance"] = self.cache_metrics.to_dict()
+        workflow_data["container_validation"] = self.container_metrics.to_dict()
         
         return {
             "recorded_at": datetime.now(tz=timezone.utc).isoformat(),

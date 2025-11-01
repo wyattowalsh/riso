@@ -30,6 +30,87 @@ definition so environments without `make` stay aligned.
 
 Refer to `docs/modules/prompt-reference.md` for compatibility details.
 
+{% if api_tracks | lower in ['python', 'node', 'python+node'] or docs_site | lower == 'fumadocs' %}
+## Container Quickstart
+
+Your project includes production-ready Docker support with multi-stage builds, security hardening, and health checks.
+
+### Single Service Build
+
+Build and run a container for your API or docs:
+
+```bash
+# Build production image
+docker build -f .docker/Dockerfile --target runtime-python -t {{ project_slug }}:latest .
+
+# Run with health checks
+docker run -d -p 8000:8000 --name {{ project_slug }}-api {{ project_slug }}:latest
+
+# Verify health
+curl http://localhost:8000/health
+# Expected: {"status":"healthy"}
+
+# Check non-root execution
+docker exec {{ project_slug }}-api id
+# Expected: uid=1000(appuser) gid=1000(appuser)
+```
+
+### Multi-Service Orchestration
+
+Use docker-compose to run API, database, and docs together:
+
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Update credentials in .env (POSTGRES_PASSWORD, REDIS_PASSWORD)
+
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f api-python
+
+# Health check all services
+{% if api_tracks | lower in ['python', 'python+node'] %}
+curl http://localhost:8000/health  # Python API
+{% endif %}
+{% if api_tracks | lower in ['node', 'python+node'] %}
+curl http://localhost:3000/health  # Node.js API
+{% endif %}
+{% if docs_site | lower == 'fumadocs' %}
+curl http://localhost:3001          # Fumadocs site
+{% endif %}
+
+# Stop services
+docker-compose down
+```
+
+### Development Mode
+
+For hot-reload during development:
+
+```bash
+# Use development compose override
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+# Source code changes reload automatically
+# Python: uvicorn --reload
+# Node: pnpm dev
+```
+
+### CI Testing Mode
+
+Optimized for GitHub Actions with faster health checks and BuildKit caching:
+
+```bash
+export RISO_CI_MODE=true
+docker-compose -f docker-compose.yml -f docker-compose.ci.yml up -d
+```
+
+See `docs/modules/containers.md` for architecture details, performance tuning, and troubleshooting.
+{% endif %}
+
 {% if ci_platform == 'github-actions' %}
 ## Continuous Integration
 
@@ -193,6 +274,39 @@ Cache miss - no matching cache key found
 - Cache hit rate target: ≥70%
 
 See `docs/modules/workflows.md` for advanced cache debugging.
+
+{% if api_tracks | lower in ['python', 'node', 'python+node'] or docs_site | lower == 'fumadocs' %}
+### Container Debugging
+
+**Build Failures:**
+
+```bash
+# Validate Dockerfiles with hadolint
+docker run --rm -i hadolint/hadolint < .docker/Dockerfile
+
+# Check lock files are committed
+git ls-files | grep -E '(uv.lock|pnpm-lock.yaml)'
+```
+
+**Health Check Failures:**
+
+```bash
+# Check container logs
+docker logs {{ project_slug }}-api
+
+# Manual health test inside container
+docker exec {{ project_slug }}-api curl http://localhost:8000/health
+```
+
+**Permission Errors:**
+
+```bash
+# Fix ownership (files created by root)
+sudo chown -R 1000:1000 .
+```
+
+See `docs/modules/containers.md` for detailed troubleshooting.
+{% endif %}
 
 For more details, see `docs/modules/workflows.md`.
 {% endif %}
