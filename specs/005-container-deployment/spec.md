@@ -101,10 +101,10 @@ DevOps teams need CI/CD workflow templates that build, scan, tag, and publish co
 - **FR-004 (B)**: System MUST include HTTP health check endpoints for API services at `/health` that return 200 OK when ready, with 5-second timeout, 3 retry attempts, and 2-second intervals between retries
 - **FR-005 (B)**: System MUST generate `.dockerignore` files that exclude development artifacts, test files, and CI metadata
 - **FR-006 (B)**: System MUST provide docker-compose templates for monorepo layouts with service orchestration, networking, and volume management
-- **FR-007 (B)**: System MUST render docker-compose with conditional services based on enabled modules (API, docs, shared logic) and explicit database opt-in via copier prompt (PostgreSQL/Redis services only when API tracks enabled and database prompt answered affirmatively)
+- **FR-007 (B)**: System MUST render docker-compose with conditional services based on enabled modules (API, docs, shared logic) and explicit database opt-in via copier prompt. Database rendering logic: PostgreSQL and Redis services are rendered if and only if BOTH conditions are true: (1) `api_tracks` is one of `['python', 'node', 'python+node']` (API track enabled), AND (2) `include_databases` prompt equals `'yes'` (explicit user opt-in). Truth table: `api_tracks=none` + `include_databases=yes` → No databases (no API to connect to), `api_tracks=python` + `include_databases=no` → No databases (user declined), `api_tracks=python` + `include_databases=yes` → Render PostgreSQL + Redis, `cli_module=enabled` + `include_databases=yes` → No databases (CLI-only projects don't need databases), `docs_site=fumadocs` + `include_databases=yes` → No databases (docs-only projects don't need databases)
 - **FR-008 (O)**: System MUST generate GitHub Actions workflows for container building, scanning, and registry publishing
 - **FR-009 (O)**: System MUST integrate Trivy or Grype security scanning into container build workflows with configurable severity thresholds
-- **FR-010 (O)**: System MUST support semantic version tagging for container images derived from Git tags or conventional commits
+- **FR-010 (O)**: System MUST support semantic version tagging for container images with the following logic: (1) Primary: Parse Git tags matching semver pattern `v?[0-9]+\.[0-9]+\.[0-9]+` using `git describe --tags`, (2) Validate semver format and extract version components, (3) Generate multiple tags: `latest`, `v{major}.{minor}.{patch}`, `v{major}.{minor}`, `v{major}`, (4) Fallback: If no valid Git tag exists, use `latest` tag only and log warning, (5) For conventional commits: Extract version from commit message if following `chore(release): v1.2.3` pattern
 - **FR-011 (O)**: System MUST provide template examples for GitHub Container Registry (ghcr.io), Docker Hub, and AWS ECR authentication
 - **FR-012 (O)**: System MUST document container registry authentication patterns (OIDC, username/password, service accounts)
 - **FR-013 (B)**: System MUST generate container build documentation covering local builds, docker-compose usage, and CI/CD integration
@@ -128,7 +128,7 @@ DevOps teams need CI/CD workflow templates that build, scan, tag, and publish co
 - **NFR-004 (Security)**: Containers MUST pass Trivy/Grype scans with zero HIGH or CRITICAL vulnerabilities (MEDIUM acceptable with justification)
 - **NFR-005 (Security)**: Dockerfiles MUST pass hadolint linting with zero errors (warnings acceptable)
 - **NFR-006 (Reliability)**: Container health checks MUST succeed within 5 seconds of service readiness, with 3 retry attempts and 2-second intervals to prevent false negatives during startup
-- **NFR-007 (Maintainability)**: Dockerfile templates MUST use official base images (python:3.11-slim, node:20-alpine) with pinned digests
+- **NFR-007 (Maintainability)**: Dockerfile templates MUST use official base images (python:3.11-slim-bookworm, node:20-alpine, nginx:1.25-alpine) with pinned SHA256 digests in format `@sha256:<64-char-hex>`, validated by `scripts/ci/validate_dockerfiles.py` to ensure reproducible builds and supply-chain security
 - **NFR-008 (Maintainability)**: docker-compose configurations MUST support both local development (hot reload) and CI testing modes
 - **NFR-009 (Observability)**: Container workflows MUST upload build logs, scan reports, and SBOMs as GitHub Actions artifacts with 90-day retention
 - **NFR-010 (Compatibility)**: Container templates MUST support Docker Engine 24+, Docker Compose v2, and Kubernetes 1.28+ deployment targets
@@ -146,7 +146,7 @@ DevOps teams need CI/CD workflow templates that build, scan, tag, and publish co
 - **SC-007**: Documentation includes container quickstart, docker-compose usage, registry authentication, and troubleshooting guides validated by render smoke tests
 - **SC-008**: Inter-service communication tests pass in docker-compose (API → shared logic → database) for monorepo layouts
 - **SC-009**: Container entrypoints correctly invoke CLI commands, API servers, or documentation builds based on module selections
-- **SC-010**: 90%+ of users successfully deploy rendered containers to local Docker Desktop, GitHub Container Registry, or cloud platforms without manual Dockerfile edits
+- **SC-010**: 90%+ of users successfully deploy rendered containers to local Docker Desktop, GitHub Container Registry, or cloud platforms without manual Dockerfile edits (measured via: GitHub issue labels tracking deployment failures, optional telemetry in rendered projects with user consent, community survey responses quarterly)
 
 ## Principle Compliance Evidence *(mandatory)*
 

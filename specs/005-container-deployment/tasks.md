@@ -32,7 +32,7 @@
 - [ ] T006 [P] [Foundation] Create `.hadolint.yaml.jinja` config in `template/files/shared/` (ignore DL3008, DL3009, failure-threshold=error)
 - [ ] T007 [P] [Foundation] Implement health check endpoint for FastAPI in `template/files/python/src/{{ package_name }}/api/health.py.jinja` (GET /health → {"status": "healthy", "service": "api-python"})
 - [ ] T008 [P] [Foundation] Implement health check endpoint for Fastify in `template/files/node/apps/api-node/src/health.ts.jinja` (GET /health → {"status": "healthy", "service": "api-node"})
-- [ ] T009 [Foundation] Create `scripts/ci/validate_dockerfiles.py` (hadolint validation with exit codes: 0=pass, 1=errors, 2=tool error)
+- [ ] T009 [Foundation] Create `scripts/ci/validate_dockerfiles.py` - Python 3.11+ script using subprocess to invoke hadolint binary (install via `brew install hadolint` on macOS, `wget` on Linux), accepts directory path as argument, scans all Dockerfile* files recursively, invokes `hadolint --format json <file>` for each Dockerfile, aggregates results, outputs JSON error summary for CI parsing, exit codes: 0=all pass, 1=linting errors found, 2=hadolint tool error or not installed
 - [ ] T010 [Foundation] Extend `scripts/render-samples.sh` with container build validation (add --validate-containers flag)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
@@ -81,13 +81,15 @@
 - [ ] T029 [US2] Add service dependencies with health check conditions (API services depend on databases when enabled)
 - [ ] T030 [US2] Add volume declarations for database persistence (postgres_data, redis_data)
 - [ ] T031 [US2] Add network declarations for service isolation (default network sufficient for P2)
-- [ ] T032 [US2] Add environment variable configuration (.env file template with database credentials)
+- [ ] T032 [US2] Add environment variable configuration (.env.example template with placeholder database credentials: POSTGRES_USER=riso, POSTGRES_PASSWORD=CHANGE_IN_PRODUCTION, POSTGRES_DB=riso_db, REDIS_PASSWORD=CHANGE_IN_PRODUCTION, with security warning comment at top of file)
+- [ ] T032b [US2] Add CI testing mode configuration to docker-compose.yml.jinja (conditional profile that disables volume mounts for source code, uses BuildKit cache, reduces healthcheck intervals, optimized for GitHub Actions environment when RISO_CI_MODE=true)
 - [ ] T033 [US2] Implement Node.js builder stage in Dockerfile.jinja (FROM node:20-alpine AS builder-node, pnpm install with cache mounts)
 - [ ] T034 [US2] Implement Node.js runtime stage in Dockerfile.jinja (FROM node:20-alpine AS runtime-node, non-root UID 1000:1000, COPY from builder)
 - [ ] T035 [US2] Add conditional Node.js API entrypoint in Dockerfile.jinja (CMD with `node apps/api-node/dist/main.js` when api_tracks includes node)
 - [ ] T036 [US2] Update `samples/api-monorepo/copier-answers.yml` with `api_tracks: python+node`, `include_databases: yes`
 - [ ] T037 [US2] Test api-monorepo sample docker-compose up completes with all services healthy in <30s
 - [ ] T038 [US2] Test inter-service communication (Python API → shared logic → PostgreSQL connection)
+- [ ] T038b [US2] Implement inter-service communication test script `tests/integration/test_inter_service.py` that: (1) Starts docker-compose services, (2) Waits for all health checks to pass, (3) Makes HTTP request to Python API endpoint that calls shared logic function, (4) Verifies shared logic queries PostgreSQL and returns expected data structure, (5) Asserts response contains database query results, (6) Cleans up containers after test completion
 - [ ] T039 [US2] Test volume mounts enable hot reload for local development
 - [ ] T040 [US2] Validate docker-compose down -v cleans up all containers and volumes without orphans
 
@@ -110,7 +112,7 @@
 - [ ] T045 [US3] Implement Trivy scan job (aquasecurity/trivy-action@0.20.0, fail on HIGH/CRITICAL, generate SBOM)
 - [ ] T046 [US3] Implement artifact upload job (build logs, scan report, SBOM with 90-day retention)
 - [ ] T047 [US3] Implement ghcr.io publishing with OIDC authentication (GITHUB_TOKEN, permissions: packages: write)
-- [ ] T048 [US3] Implement semantic version tagging (extract from git tags or conventional commits, tag latest + v1.2.3 + v1.2 + v1)
+- [ ] T048 [US3] Implement semantic version tagging with the following logic: (1) Run `git describe --tags --match 'v[0-9]*' --abbrev=0` to find latest semver tag, (2) Validate tag format matches `v?[0-9]+\.[0-9]+\.[0-9]+` regex, (3) Extract major, minor, patch components, (4) Generate multiple tags: `latest`, `v{major}.{minor}.{patch}`, `v{major}.{minor}`, `v{major}` (e.g., v1.2.3, v1.2, v1), (5) Fallback: If no valid Git tag exists, use `latest` tag only and log warning to workflow summary, (6) Optional: Parse conventional commit messages for `chore(release): v1.2.3` pattern as secondary source
 - [ ] T049 [P] [US3] Add Docker Hub authentication template in publish workflow (optional, via secrets.DOCKERHUB_USERNAME/DOCKERHUB_TOKEN)
 - [ ] T050 [P] [US3] Add AWS ECR authentication template in publish workflow (optional, via OIDC or secrets.AWS_ACCESS_KEY_ID)
 - [ ] T051 [US3] Test container build workflow in samples/default with artifact uploads
@@ -128,7 +130,7 @@
 
 - [ ] T055 [P] [Docs] Create container module documentation `docs/modules/containers.md.jinja` (Dockerfile structure, multi-stage builds, security hardening, health checks)
 - [ ] T056 [P] [Docs] Update quickstart guide `docs/quickstart.md.jinja` with container section (build, run, docker-compose, registry push)
-- [ ] T057 [P] [Docs] Create container context file `.github/context/containers.md` (extension patterns, custom builds, multi-arch, private registries)
+- [ ] T057 [P] [Docs] Create container context file `.github/context/containers.md` with comprehensive coverage of: (1) OIDC authentication for GitHub Container Registry (ghcr.io) using GITHUB_TOKEN with automatic permissions, (2) Username/password authentication for Docker Hub with secrets.DOCKERHUB_USERNAME and secrets.DOCKERHUB_TOKEN, (3) IAM role authentication for AWS ECR using OIDC or secrets.AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY, (4) Extension patterns for custom builds, (5) Multi-architecture builds with buildx, (6) Private registry integration examples
 - [ ] T058 [P] [Docs] Add container troubleshooting section to containers.md (build failures, health check issues, permission errors, registry auth)
 - [ ] T059 [P] [Docs] Update upgrade guide `docs/upgrade-guide.md.jinja` with container feature (migration notes for projects adding containers)
 - [ ] T060 [Docs] Create container quickstart `specs/005-container-deployment/quickstart.md` based on existing draft (10-section deployment guide)
@@ -141,12 +143,12 @@
 
 - [ ] T061 [Validation] Extend `scripts/ci/render_matrix.py` to include container validation (build, scan, compose up/down)
 - [ ] T062 [Validation] Add container metrics capture to sample metadata (build time, image size, scan results)
-- [ ] T063 [P] [Validation] Validate samples/default renders and builds successfully with containers
-- [ ] T064 [P] [Validation] Validate samples/cli-docs renders with CLI-only Dockerfile
-- [ ] T065 [P] [Validation] Validate samples/api-monorepo renders with docker-compose multi-service
-- [ ] T066 [P] [Validation] Validate samples/full-stack renders with all container features (API + docs + databases)
-- [ ] T067 [Validation] Update `.github/workflows/template-ci.yml` with container validation job (calls validate_dockerfiles.py)
-- [ ] T068 [Validation] Test template CI workflow runs container validation on PR branches
+- [ ] T063 [P] [Validation] Validate samples/api-monorepo renders with docker-compose multi-service (additional validation beyond Phase 4 T037, includes CI mode testing)
+- [ ] T064 [P] [Validation] Validate samples/full-stack renders with all container features (API + docs + databases, additional validation beyond individual component tests)
+- [ ] T065 [Validation] Update `.github/workflows/template-ci.yml` with container validation job (calls validate_dockerfiles.py)
+- [ ] T066 [Validation] Test template CI workflow runs container validation on PR branches
+
+**Note**: samples/default and samples/cli-docs validation already covered by Phase 3 tasks (T019-T022). Phase 7 focuses on complex multi-service variants.
 
 ---
 
@@ -188,6 +190,7 @@
 - **User Story 1 (P1)**: Can start after Foundational (Phase 2) - No dependencies on other stories
 - **User Story 2 (P2)**: **DEPENDS ON US1** - Requires Dockerfile.jinja template from T011-T017 for docker-compose build contexts
 - **User Story 3 (P3)**: **DEPENDS ON US1** - Requires Dockerfile.jinja template to build images for registry publishing
+- **US2 and US3 Parallel Work**: US2 and US3 can proceed in parallel after US1 completes, with coordination required: US2 adds Node.js builder/runtime stages (T033-T035) to Dockerfile.jinja, US3 adds workflow integration and references Dockerfile.jinja without modification. To avoid conflicts: (1) US2 team owns Dockerfile.jinja modifications for Node stages, (2) US3 team waits for T033-T035 completion if working in parallel, or (3) US3 proceeds sequentially after US2 if single developer. Communication required if both stories active simultaneously.
 
 ### Critical Path
 
@@ -277,18 +280,18 @@ With multiple developers:
 - **Phase 1 (Setup)**: 4 tasks
 - **Phase 2 (Foundational)**: 6 tasks
 - **Phase 3 (US1 - P1 MVP)**: 12 tasks
-- **Phase 4 (US2 - P2)**: 18 tasks
+- **Phase 4 (US2 - P2)**: 19 tasks (added T032b for CI mode, T038b for inter-service test)
 - **Phase 5 (US3 - P3)**: 14 tasks
 - **Phase 6 (Documentation)**: 6 tasks
-- **Phase 7 (Validation)**: 8 tasks
+- **Phase 7 (Validation)**: 6 tasks (consolidated T063-T066 to remove duplication with Phase 3)
 - **Phase 8 (Polish)**: 12 tasks
 
-**Total**: 80 tasks
+**Total**: 79 tasks (updated from 80 after consolidation)
 
 **Estimated Effort**:
 - Setup + Foundational: 1-2 days
 - User Story 1 (MVP): 2-3 days
-- User Story 2: 3-4 days
+- User Story 2: 3-4 days (increased slightly due to CI mode and inter-service test additions)
 - User Story 3: 2-3 days
 - Documentation + Validation + Polish: 2-3 days
 - **Total**: 10-15 days (single developer, sequential)

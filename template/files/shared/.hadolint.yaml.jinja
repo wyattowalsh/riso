@@ -1,0 +1,26 @@
+# Hadolint configuration for Riso-generated Dockerfiles
+# Enforces best practices with pragmatic exceptions for slim base images
+
+failure-threshold: error  # Warnings allowed, errors block builds
+
+ignored:
+  # DL3008: Pin versions in apt-get install
+  # - Not applicable when using slim-bookworm/alpine images with minimal packages
+  - DL3008
+  
+  # DL3009: Delete apt-get lists after installing
+  # - Already handled by slim base images
+  - DL3009
+
+  # DL3013: Pin versions in pip install
+  # - Using uv with lock files ensures reproducibility
+  - DL3013
+
+  # DL3018: Pin versions in apk add
+  # - Using alpine-based images with minimal packages
+  - DL3018
+
+# Optional: Add custom rules here
+# trustedRegistries:
+#   - docker.io
+#   - ghcr.io

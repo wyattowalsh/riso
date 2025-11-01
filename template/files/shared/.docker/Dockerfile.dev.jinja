@@ -1,0 +1,134 @@
+# syntax=docker/dockerfile:1
+
+# Development Dockerfile with hot reload support
+# Optimized for local development with volume mounts and live code reloading
+# 
+# Key differences from production Dockerfile:
+# - Single-stage build (no optimization needed for dev)
+# - Source code mounted as volumes (not copied)
+# - Development dependencies installed
+# - Auto-reload enabled for FastAPI/Fastify
+# - Debug tooling included (debugpy, nodemon)
+
+{%- if api_tracks | lower in ["python", "python+node"] or cli_module == "enabled" %}
+
+# =============================================================================
+# Python Development Runtime
+# =============================================================================
+FROM python:3.11-slim-bookworm AS dev-python
+
+# Install uv and development tools
+RUN pip install --no-cache-dir uv debugpy
+
+# Create non-root user with UID 1000
+RUN groupadd -g 1000 appuser && \
+    useradd -r -u 1000 -g appuser -s /bin/bash -m appuser
+
+WORKDIR /app
+
+# Copy dependency manifests
+COPY --chown=1000:1000 pyproject.toml uv.lock ./
+
+# Install ALL dependencies (including dev)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen
+
+# NOTE: Source code mounted as volume at runtime for hot reload
+# Mount points:
+# - ./src:/app/src:ro (read-only source)
+# - ./tests:/app/tests:ro (read-only tests)
+
+# Add venv to PATH
+ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+USER 1000:1000
+
+{%- if api_tracks | lower in ["python", "python+node"] %}
+EXPOSE 8000 5678
+# Port 5678 for debugpy remote debugging
+
+# Development command with auto-reload
+CMD ["python", "-m", "uvicorn", "{{ package_name }}.api.main:app", \
+     "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+{%- elif cli_module == "enabled" %}
+# Development command: Interactive Python shell
+CMD ["python"]
+{%- endif %}
+
+{%- endif %}
+
+{%- if api_tracks | lower in ["node", "python+node"] %}
+
+# =============================================================================
+# Node.js Development Runtime
+# =============================================================================
+FROM node:20-alpine AS dev-node
+
+# Install pnpm and nodemon globally
+RUN npm install -g pnpm nodemon
+
+# Create non-root user with UID 1000
+RUN addgroup -g 1000 appuser && \
+    adduser -u 1000 -G appuser -s /bin/sh -D appuser
+
+WORKDIR /app
+
+# Copy dependency manifests
+COPY --chown=1000:1000 package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+{%- if api_tracks | lower in ["node", "python+node"] %}
+COPY --chown=1000:1000 apps/api-node/package.json ./apps/api-node/
+{%- endif %}
+{%- if docs_site == "fumadocs" %}
+COPY --chown=1000:1000 apps/docs-fumadocs/package.json ./apps/docs-fumadocs/
+{%- endif %}
+{%- if shared_logic == "enabled" %}
+COPY --chown=1000:1000 apps/shared-config/package.json ./apps/shared-config/
+{%- endif %}
+
+# Install ALL dependencies (including dev)
+RUN --mount=type=cache,target=/root/.pnpm-store \
+    pnpm install --frozen-lockfile
+
+# NOTE: Source code mounted as volume at runtime for hot reload
+# Mount points:
+# - ./apps:/app/apps:ro (read-only source)
+# - ./tsconfig.json:/app/tsconfig.json:ro
+
+USER 1000:1000
+
+{%- if api_tracks | lower in ["node", "python+node"] %}
+EXPOSE 3000 9229
+# Port 9229 for Node.js inspector debugging
+
+# Development command with auto-reload using tsx
+CMD ["pnpm", "--filter", "api-node", "dev"]
+
+{%- elif docs_site == "fumadocs" %}
+EXPOSE 3001
+
+# Development command with Next.js hot reload
+CMD ["pnpm", "--filter", "docs-fumadocs", "dev"]
+{%- endif %}
+
+{%- endif %}
+
+{%- if api_tracks == "none" and cli_module == "disabled" %}
+
+# =============================================================================
+# Minimal Development Baseline
+# =============================================================================
+FROM python:3.11-slim-bookworm AS dev-baseline
+
+RUN groupadd -g 1000 appuser && \
+    useradd -r -u 1000 -g appuser -s /bin/bash -m appuser
+
+WORKDIR /app
+
+USER 1000:1000
+
+CMD ["python", "--version"]
+
+{%- endif %}
