@@ -1,0 +1,146 @@
+{%- if cli_module | lower != "enabled" %}
+# CLI module disabled - this file is not generated
+{%- else %}
+"""Plugin management commands."""
+
+from __future__ import annotations
+
+import typer
+
+from {{ package_name }}.cli.core import PluginManager, command
+from {{ package_name }}.cli.core.formatter import OutputFormatter
+
+# Initialize components
+formatter = OutputFormatter()
+plugin_manager = PluginManager()
+
+# Create plugin sub-app
+plugin_app = typer.Typer(name="plugin", help="Manage CLI plugins")
+
+
+@plugin_app.command(name="list")
+def plugin_list(
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed plugin information"),
+) -> None:
+    """List all discovered CLI plugins.
+    
+    Args:
+        verbose: Whether to show detailed information
+    """
+    plugin_manager.discover()
+    plugins = plugin_manager.list_plugins(include_loaded=True)
+    
+    if not plugins:
+        formatter.print_warning("No plugins discovered")
+        formatter.print_info(f"Plugins can be registered via entry points in '{{ package_name }}.cli.plugins' group")
+        return
+    
+    if verbose:
+        formatter.format(plugins, format="table", title="Installed Plugins")
+    else:
+        # Simple list
+        for plugin in plugins:
+            status = "✓" if plugin.get("loaded") else "○"
+            formatter.print(f"{status} {plugin['name']}")
+        
+        formatter.print(f"\n{len(plugins)} plugin(s) found")
+        formatter.print_info("Use --verbose for details")
+
+
+@plugin_app.command(name="info")
+def plugin_info(
+    name: str = typer.Argument(..., help="Plugin name to show information for"),
+) -> None:
+    """Show detailed information about a specific plugin.
+    
+    Args:
+        name: Plugin name
+    """
+    plugin_manager.discover()
+    plugins = plugin_manager.list_plugins(include_loaded=True)
+    
+    # Find the plugin
+    plugin_data = next((p for p in plugins if p["name"] == name), None)
+    
+    if not plugin_data:
+        formatter.print_error(f"Plugin '{name}' not found")
+        available = ", ".join(p["name"] for p in plugins)
+        if available:
+            formatter.print_info(f"Available plugins: {available}")
+        raise typer.Exit(code=1)
+    
+    formatter.print(f"[bold cyan]Plugin: {name}[/bold cyan]")
+    formatter.print(f"Module: {plugin_data['module']}")
+    formatter.print(f"Loaded: {'Yes' if plugin_data.get('loaded') else 'No'}")
+    
+    # Try to get commands from the plugin
+    if plugin_data.get("loaded"):
+        try:
+            commands = plugin_manager.get_plugin_commands(name)
+            formatter.print(f"Commands: {len(commands)}")
+            
+            if commands:
+                formatter.print("\n[bold]Available Commands:[/bold]")
+                for cmd in commands:
+                    cmd_name = getattr(cmd, "_cli_name", cmd.__name__)
+                    cmd_help = getattr(cmd, "_cli_help", cmd.__doc__ or "")
+                    formatter.print(f"  • {cmd_name}: {cmd_help.split('.')[0]}")
+        
+        except Exception as e:
+            formatter.print_warning(f"Could not retrieve plugin commands: {e}")
+
+
+@plugin_app.command(name="validate")
+def plugin_validate(
+    name: str = typer.Argument(None, help="Plugin name to validate (omit to validate all)"),
+) -> None:
+    """Validate plugin(s) can be loaded successfully.
+    
+    Args:
+        name: Optional plugin name (validates all if not provided)
+    """
+    plugin_manager.discover()
+    plugins = plugin_manager.list_plugins(include_loaded=False)
+    
+    if not plugins:
+        formatter.print_warning("No plugins to validate")
+        return
+    
+    # Filter to specific plugin if requested
+    if name:
+        plugins = [p for p in plugins if p["name"] == name]
+        if not plugins:
+            formatter.print_error(f"Plugin '{name}' not found")
+            raise typer.Exit(code=1)
+    
+    formatter.print(f"Validating {len(plugins)} plugin(s)...\n")
+    
+    results = []
+    for plugin in plugins:
+        plugin_name = plugin["name"]
+        try:
+            plugin_manager.load_plugin(plugin_name)
+            results.append({"plugin": plugin_name, "status": "✓ Valid", "error": ""})
+            formatter.print_success(f"{plugin_name}: Valid")
+        except Exception as e:
+            error_msg = str(e).split("\n")[0][:50]  # First line, truncated
+            results.append({"plugin": plugin_name, "status": "✗ Failed", "error": error_msg})
+            formatter.print_error(f"{plugin_name}: Failed - {error_msg}")
+    
+    # Summary
+    valid_count = sum(1 for r in results if "Valid" in r["status"])
+    formatter.print(f"\n{valid_count}/{len(results)} plugin(s) validated successfully")
+    
+    if valid_count < len(results):
+        raise typer.Exit(code=1)
+
+
+# Register the plugin command group as a command
+@command(
+    name="plugin",
+    help="Manage CLI plugins (list, info, validate)",
+)
+def plugin_command() -> None:
+    """Plugin management command group."""
+    plugin_app()
+{%- endif %}
