@@ -1,0 +1,97 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""API response models disabled - enable with api_tracks=python or python+node."""
+{%- else %}
+"""Pydantic models for API responses.
+
+This module contains all response models used throughout the API.
+All models include proper validation, documentation, and examples for
+automatic OpenAPI schema generation.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from pydantic import BaseModel, Field
+
+
+class ErrorResponse(BaseModel):
+    """Standard error response format.
+    
+    Used for all error responses throughout the API to maintain consistency.
+    Includes request tracking for debugging.
+    
+    Attributes:
+        detail: Human-readable error message or list of validation errors.
+        status_code: HTTP status code for the error.
+        request_id: Unique identifier for request tracking (optional).
+    
+    Example:
+        {
+            "detail": "Resource not found",
+            "status_code": 404,
+            "request_id": "abc123-def456"
+        }
+    """
+    
+    detail: str | list[dict[str, Any]] = Field(
+        ...,
+        description="Error message or list of validation errors",
+        examples=["Resource not found", "Validation failed"],
+    )
+    status_code: int = Field(
+        ...,
+        ge=400,
+        le=599,
+        description="HTTP status code",
+        examples=[400, 404, 500],
+    )
+    request_id: str | None = Field(
+        default=None,
+        description="Request identifier for tracing",
+        examples=["req_abc123def456"],
+    )
+
+
+class HealthResponse(BaseModel):
+    """Health check response.
+    
+    Returns application health status and version information.
+    Used by container orchestrators and load balancers.
+    
+    Attributes:
+        status: Health status (healthy, unhealthy, degraded).
+        version: Application version string.
+        timestamp: ISO 8601 timestamp of the health check.
+        checks: Optional dictionary of individual health checks.
+    
+    Example:
+        {
+            "status": "healthy",
+            "version": "0.1.0",
+            "timestamp": "2025-11-01T22:00:00Z",
+            "checks": {"database": "healthy", "cache": "healthy"}
+        }
+    """
+    
+    status: str = Field(
+        ...,
+        description="Overall health status",
+        examples=["healthy", "unhealthy", "degraded"],
+    )
+    version: str = Field(
+        ...,
+        description="Application version",
+        examples=["0.1.0", "1.2.3"],
+    )
+    timestamp: str = Field(
+        ...,
+        description="Health check timestamp (ISO 8601)",
+        examples=["2025-11-01T22:00:00Z"],
+    )
+    checks: dict[str, str] | None = Field(
+        default=None,
+        description="Individual health check results",
+        examples=[{"database": "healthy", "cache": "degraded"}],
+    )
+{%- endif %}

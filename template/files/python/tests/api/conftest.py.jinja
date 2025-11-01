@@ -1,0 +1,41 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""Test fixtures disabled - enable with api_tracks=python or python+node."""
+{%- else %}
+"""Pytest fixtures for API testing.
+
+This module provides common fixtures used across all API tests,
+including the FastAPI test client.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Generator
+
+import pytest
+
+if TYPE_CHECKING:
+    from fastapi.testclient import TestClient
+
+
+@pytest.fixture
+def test_client() -> Generator[TestClient, None, None]:
+    """Create a FastAPI test client.
+    
+    Provides an httpx-based test client for making requests to the API
+    in tests without running an actual server.
+    
+    Yields:
+        TestClient: Configured test client instance.
+    
+    Example:
+        def test_health(test_client):
+            response = test_client.get("/health/")
+            assert response.status_code == 200
+    """
+    from fastapi.testclient import TestClient
+    
+    from {{ package_name }}.api.main import app
+    
+    with TestClient(app) as client:
+        yield client
+{%- endif %}

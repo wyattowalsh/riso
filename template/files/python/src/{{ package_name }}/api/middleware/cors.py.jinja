@@ -1,0 +1,41 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""CORS middleware disabled - enable with api_tracks=python or python+node."""
+{%- else %}
+"""CORS middleware configuration.
+
+This module configures Cross-Origin Resource Sharing (CORS) for the API.
+CORS settings are loaded from the application configuration.
+"""
+
+from __future__ import annotations
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from ..config import ApiSettings
+
+
+def add_cors_middleware(app: FastAPI, settings: ApiSettings) -> None:
+    """Add CORS middleware to the FastAPI application.
+    
+    Configures allowed origins, methods, and headers for cross-origin requests.
+    Settings are loaded from the application configuration.
+    
+    Args:
+        app: FastAPI application instance.
+        settings: Application settings with CORS configuration.
+    
+    Example:
+        >>> from fastapi import FastAPI
+        >>> from {{ package_name }}.api.config import get_settings
+        >>> app = FastAPI()
+        >>> add_cors_middleware(app, get_settings())
+    """
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+{%- endif %}

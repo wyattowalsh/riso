@@ -1,0 +1,152 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""Python API module disabled for this render.
+
+Enable via `api_tracks=python` or `api_tracks=python+node` to scaffold settings.
+"""
+
+
+class ApiSettings:  # pragma: no cover - placeholder for disabled module
+    service_name: str = "api-python"
+    host: str = "0.0.0.0"
+    port: int = 8000
+    reload: bool = False
+    cors_origins: list[str] = ["http://localhost:3000"]
+    app_name: str = "{{ project_name }}"
+    version: str = "0.1.0"
+    log_level: str = "info"
+    environment: str = "development"
+
+
+def get_settings() -> ApiSettings:
+    return ApiSettings()
+{%- else %}
+"""Configuration for the FastAPI service.
+
+This module provides environment-based configuration using Pydantic Settings.
+All settings can be overridden via environment variables with the RISO_API_ prefix.
+
+Environment Variables:
+    RISO_API_HOST: Server bind address (default: 0.0.0.0)
+    RISO_API_PORT: Server port (default: 8000)
+    RISO_API_RELOAD: Enable auto-reload in development (default: False)
+    RISO_API_CORS_ORIGINS: Comma-separated allowed CORS origins (default: http://localhost:3000)
+    RISO_API_APP_NAME: Application name (default: {{ project_name }})
+    RISO_API_VERSION: Application version (default: 0.1.0)
+    RISO_API_LOG_LEVEL: Logging level (default: info)
+    RISO_API_ENVIRONMENT: Deployment environment (default: development)
+
+Example:
+    >>> from {{ package_name }}.api.config import get_settings
+    >>> settings = get_settings()
+    >>> print(settings.host, settings.port)
+    0.0.0.0 8000
+"""
+
+from __future__ import annotations
+
+from functools import lru_cache
+
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class ApiSettings(BaseSettings):
+    """Configuration for the FastAPI service.
+    
+    This class loads configuration from environment variables and .env files.
+    All fields include validation and detailed descriptions for documentation.
+    
+    Attributes:
+        host: Server bind address. Use 0.0.0.0 for all interfaces, 127.0.0.1 for local only.
+        port: Server port. Must be between 1024-65535 for non-root users.
+        reload: Enable auto-reload on code changes. Should be False in production.
+        cors_origins: List of allowed CORS origins. Use specific origins in production.
+        app_name: Application display name used in API documentation.
+        version: Semantic version string for API versioning.
+        log_level: Logging level (debug, info, warning, error, critical).
+        environment: Deployment environment (development, staging, production).
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="RISO_API_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+    )
+
+    host: str = Field(
+        default="0.0.0.0",
+        description="Bind address for the ASGI server. Use 0.0.0.0 to accept connections on all interfaces.",
+    )
+    port: int = Field(
+        default=8000,
+        ge=1024,
+        le=65535,
+        description="Port exposed by the ASGI server. Must be 1024-65535 for non-root users.",
+    )
+    reload: bool = Field(
+        default=False,
+        description="Enable uvicorn autoreload on code changes. Recommended for development only.",
+    )
+    cors_origins: list[str] = Field(
+        default=["http://localhost:3000"],
+        description="List of allowed CORS origins. Use explicit origins in production, avoid wildcards.",
+    )
+    app_name: str = Field(
+        default="{{ project_name }}",
+        min_length=1,
+        max_length=100,
+        description="Application name displayed in API documentation and logs.",
+    )
+    version: str = Field(
+        default="0.1.0",
+        description="Semantic version string (e.g., 1.0.0) for API versioning.",
+    )
+    log_level: str = Field(
+        default="info",
+        description="Logging level: debug, info, warning, error, or critical.",
+    )
+    environment: str = Field(
+        default="development",
+        description="Deployment environment: development, staging, or production.",
+    )
+
+    @field_validator("log_level")
+    @classmethod
+    def validate_log_level(cls, v: str) -> str:
+        """Ensure log level is valid."""
+        valid_levels = {"debug", "info", "warning", "error", "critical"}
+        if v.lower() not in valid_levels:
+            raise ValueError(f"log_level must be one of {valid_levels}")
+        return v.lower()
+
+    @field_validator("environment")
+    @classmethod
+    def validate_environment(cls, v: str) -> str:
+        """Ensure environment is valid."""
+        valid_envs = {"development", "staging", "production"}
+        if v.lower() not in valid_envs:
+            raise ValueError(f"environment must be one of {valid_envs}")
+        return v.lower()
+
+    @field_validator("reload")
+    @classmethod
+    def validate_reload_production(cls, v: bool, info) -> bool:
+        """Warn if reload is enabled in production."""
+        # Note: We can't access other fields in validator, this is a placeholder
+        # for future enhancement with model_validator
+        return v
+
+
+@lru_cache
+def get_settings() -> ApiSettings:
+    """Return cached settings instance.
+    
+    Settings are cached to avoid repeated environment variable lookups.
+    Clear the cache with get_settings.cache_clear() if needed.
+    
+    Returns:
+        ApiSettings: Cached configuration instance.
+    """
+    return ApiSettings()
+{%- endif %}
