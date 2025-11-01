@@ -1,7 +1,7 @@
 # Research: FastAPI API Scaffold
 
 **Date**: November 1, 2025  
-**Feature**: 001-fastapi-api-scaffold  
+**Feature**: 006-fastapi-api-scaffold  
 **Phase**: 0 - Research & Technical Decisions
 
 ## Overview

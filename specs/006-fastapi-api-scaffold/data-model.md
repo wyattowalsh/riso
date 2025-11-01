@@ -1,7 +1,7 @@
 # Data Model: FastAPI API Scaffold
 
 **Date**: November 1, 2025  
-**Feature**: 001-fastapi-api-scaffold  
+**Feature**: 006-fastapi-api-scaffold  
 **Phase**: 1 - Design & Contracts
 
 ## Overview
@@ -135,6 +135,118 @@ This document defines the data entities and validation rules for the FastAPI API
 - ID must be valid UUID
 - Timestamps must be valid ISO 8601 format
 - All request validation rules apply to corresponding fields
+
+## Additional Entities
+
+### 6. Metrics Response
+
+**Purpose**: Prometheus-compatible metrics for monitoring
+
+**Attributes**:
+
+| Field | Type | Validation | Required | Description |
+|-------|------|------------|----------|-------------|
+| metrics | `str` | Prometheus text format | Yes | Metrics in Prometheus exposition format |
+
+**Relationships**: None (computed on demand)
+
+**State Transitions**: N/A (real-time metrics)
+
+**Validation Rules**:
+
+- Must follow Prometheus text exposition format
+- Metric names must follow naming conventions
+- Labels must be valid key-value pairs
+
+### 7. Middleware Context
+
+**Purpose**: Request context passed through middleware chain
+
+**Attributes**:
+
+| Field | Type | Validation | Required | Description |
+|-------|------|------------|----------|-------------|
+| request_id | `str` | UUID format | Yes | Unique request identifier |
+| start_time | `float` | Unix timestamp | Yes | Request start time |
+| user_agent | `str` | Non-empty | No | Client user agent |
+| ip_address | `str` | Valid IP | No | Client IP address |
+
+**Relationships**: Attached to each request
+
+**State Transitions**: Created → Enriched → Completed
+
+**Validation Rules**:
+
+- Request ID must be unique per request
+- Start time must be in the past
+- IP address must be valid IPv4 or IPv6
+
+### 8. Circuit Breaker State
+
+**Purpose**: Track external dependency health and circuit breaker status
+
+**Attributes**:
+
+| Field | Type | Validation | Required | Description |
+|-------|------|------------|----------|-------------|
+| service_name | `str` | 1-100 characters | Yes | External service identifier |
+| state | `str` | Enum: open, closed, half_open | Yes | Circuit breaker state |
+| failure_count | `int` | Non-negative | Yes | Consecutive failures |
+| last_failure_time | `str` | ISO 8601 datetime | No | Last failure timestamp |
+| next_attempt_time | `str` | ISO 8601 datetime | No | When to retry (if open) |
+
+**Relationships**: One per external dependency
+
+**State Transitions**: Closed → Open → Half-Open → Closed (or back to Open)
+
+**Validation Rules**:
+
+- State must be valid enum value
+- Failure count resets when state changes to closed
+- Next attempt time required when state is open
+
+### 9. Security Headers
+
+**Purpose**: Standard security headers included in responses
+
+**Attributes**:
+
+| Field | Type | Validation | Required | Description |
+|-------|------|------------|----------|-------------|
+| x_content_type_options | `str` | Fixed: "nosniff" | Yes | Prevent MIME sniffing |
+| x_frame_options | `str` | Enum: DENY, SAMEORIGIN | Yes | Clickjacking protection |
+| content_security_policy | `str` | Valid CSP | No | Content Security Policy |
+| strict_transport_security | `str` | Valid HSTS | No | Force HTTPS |
+
+**Relationships**: None (applied to all responses)
+
+**State Transitions**: N/A (static configuration)
+
+**Validation Rules**:
+
+- CSP must be valid policy syntax
+- HSTS must include max-age directive
+
+### 10. Log Entry
+
+**Purpose**: Structured log entry format
+
+**Attributes**:
+
+| Field | Type | Validation | Required | Description |
+|-------|------|------------|----------|-------------|
+| timestamp | `str` | ISO 8601 datetime | Yes | Log entry timestamp |
+| level | `str` | Enum: DEBUG, INFO, WARNING, ERROR, CRITICAL | Yes | Log level |
+| message | `str` | Non-empty | Yes | Log message |
+| request_id | `str` | UUID format | No | Associated request ID |
+| logger_name | `str` | Non-empty | Yes | Logger name |
+| extra | `dict` | Valid JSON | No | Additional context |
+
+**Relationships**: Associated with request via request_id
+
+**State Transitions**: N/A (immutable once created)
+
+**Validation Rules**:
 
 ## Request/Response Patterns
 

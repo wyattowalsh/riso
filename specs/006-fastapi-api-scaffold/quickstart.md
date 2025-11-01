@@ -1,6 +1,6 @@
 # Quickstart: FastAPI API Scaffold
 
-**Feature**: 001-fastapi-api-scaffold  
+**Feature**: 006-fastapi-api-scaffold  
 **Audience**: Developers implementing the FastAPI scaffold feature  
 **Prerequisites**: Riso template repository cloned, uv installed, Python 3.11+
 

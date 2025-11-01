@@ -1,7 +1,7 @@
 # Tasks: FastAPI API Scaffold
 
-**Feature**: 001-fastapi-api-scaffold  
-**Input**: Design documents from `/specs/001-fastapi-api-scaffold/`  
+**Feature**: 006-fastapi-api-scaffold  
+**Input**: Design documents from `/specs/006-fastapi-api-scaffold/`  
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/
 
 **Tests**: Tests are included as this is a scaffold feature that requires comprehensive test examples per FR-011.
