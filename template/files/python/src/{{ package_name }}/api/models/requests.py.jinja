@@ -1,0 +1,126 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""Request models disabled for this render."""
+{%- else %}
+"""API request models.
+
+This module contains Pydantic models for API request validation.
+"""
+
+from __future__ import annotations
+
+from pydantic import BaseModel, Field, field_validator
+
+
+class ExampleCreateRequest(BaseModel):
+    """Example resource creation request.
+
+    Attributes:
+        name: Example name (1-100 characters)
+        value: Non-negative integer value
+        description: Optional description (max 500 characters)
+        tags: Optional tags (max 10, each 1-50 characters)
+    """
+
+    name: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="Example name",
+        examples=["Test Example"],
+    )
+    value: int = Field(
+        ...,
+        ge=0,
+        description="Non-negative integer value",
+        examples=[42],
+    )
+    description: str | None = Field(
+        default=None,
+        max_length=500,
+        description="Optional description",
+        examples=["This is an example"],
+    )
+    tags: list[str] | None = Field(
+        default=None,
+        max_length=10,
+        description="Optional tags (max 10)",
+        examples=[["demo", "test"]],
+    )
+
+    @field_validator("name")
+    @classmethod
+    def name_must_not_be_whitespace(cls, v: str) -> str:
+        """Validate name is not whitespace-only."""
+        if not v.strip():
+            raise ValueError("Name cannot be whitespace only")
+        return v.strip()
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tag_length(cls, v: list[str] | None) -> list[str] | None:
+        """Validate each tag is 1-50 characters."""
+        if v is None:
+            return v
+        for tag in v:
+            if not 1 <= len(tag) <= 50:
+                raise ValueError(f"Tag '{tag}' must be 1-50 characters")
+        return v
+
+
+class ExampleUpdateRequest(BaseModel):
+    """Example resource update request.
+
+    All fields are optional. At least one field must be provided.
+
+    Attributes:
+        name: Example name (1-100 characters, optional)
+        value: Non-negative integer value (optional)
+        description: Optional description (max 500 characters, optional)
+        tags: Optional tags (max 10, each 1-50 characters, optional)
+    """
+
+    name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=100,
+        description="Example name",
+        examples=["Updated Example"],
+    )
+    value: int | None = Field(
+        default=None,
+        ge=0,
+        description="Non-negative integer value",
+        examples=[100],
+    )
+    description: str | None = Field(
+        default=None,
+        max_length=500,
+        description="Optional description",
+        examples=["Updated description"],
+    )
+    tags: list[str] | None = Field(
+        default=None,
+        max_length=10,
+        description="Optional tags (max 10)",
+        examples=[["updated"]],
+    )
+
+    @field_validator("name")
+    @classmethod
+    def name_must_not_be_whitespace(cls, v: str | None) -> str | None:
+        """Validate name is not whitespace-only."""
+        if v is not None and not v.strip():
+            raise ValueError("Name cannot be whitespace only")
+        return v.strip() if v else v
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tag_length(cls, v: list[str] | None) -> list[str] | None:
+        """Validate each tag is 1-50 characters."""
+        if v is None:
+            return v
+        for tag in v:
+            if not 1 <= len(tag) <= 50:
+                raise ValueError(f"Tag '{tag}' must be 1-50 characters")
+        return v
+{%- endif %}

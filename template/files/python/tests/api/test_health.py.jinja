@@ -1,0 +1,66 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""Health endpoint tests disabled for this render."""
+{%- else %}
+"""Tests for health check endpoints."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import pytest
+
+if TYPE_CHECKING:
+    from fastapi.testclient import TestClient
+
+
+def test_health_check(client: TestClient) -> None:
+    """Test the main health check endpoint.
+
+    Args:
+        client: FastAPI test client fixture
+    """
+    response = client.get("/health/")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "healthy"
+    assert "version" in data
+    assert "timestamp" in data
+
+
+def test_readiness_check(client: TestClient) -> None:
+    """Test the readiness probe endpoint.
+
+    Args:
+        client: FastAPI test client fixture
+    """
+    response = client.get("/health/ready")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ready"
+
+
+def test_liveness_check(client: TestClient) -> None:
+    """Test the liveness probe endpoint.
+
+    Args:
+        client: FastAPI test client fixture
+    """
+    response = client.get("/health/live")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "alive"
+
+
+def test_root_endpoint(client: TestClient) -> None:
+    """Test the root endpoint returns welcome message with docs URLs.
+
+    Args:
+        client: FastAPI test client fixture
+    """
+    response = client.get("/")
+    assert response.status_code == 200
+    data = response.json()
+    assert "message" in data
+    assert data["docs"] == "/docs"
+    assert data["redoc"] == "/redoc"
+{%- endif %}

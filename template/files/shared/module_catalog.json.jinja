@@ -33,13 +33,25 @@
       "prompt_key": "api_tracks",
       "default_state": "none",
       "selected_state": "{{ api_tracks }}",
-      "description": "FastAPI service with typed configuration and health checks.",
-      "dependencies": ["fastapi", "uvicorn", "tenacity", "shared_logic"],
-      "docs_path": "docs/modules/api-python.md",
-      "ci_jobs": ["api-python-smoke"],
+      "description": "Production-ready FastAPI application with comprehensive scaffolding, health checks, CRUD examples, and auto-documentation.",
+      "dependencies": ["fastapi", "uvicorn", "pydantic", "pydantic-settings", "python-dotenv", "httpx", "pytest-asyncio"],
+      "docs_path": "docs/modules/api-fastapi.md",
+      "ci_jobs": ["api-python-smoke", "api-python-integration"],
       "validation_commands": [
-        "uv run pytest tests/test_api_fastapi.py",
+        "uv run pytest tests/api/",
         "uv run uvicorn {{ package_name }}.api.main:app --host 0.0.0.0 --port 8000"
+      ],
+      "features": [
+        "Modular routing with APIRouter",
+        "Pydantic models for request/response validation",
+        "Environment-based configuration with validation",
+        "Health check endpoints (/health/, /health/ready, /health/live)",
+        "Example CRUD endpoints with pagination",
+        "CORS middleware configuration",
+        "Global error handlers with request tracing",
+        "Auto-generated OpenAPI documentation (Swagger UI, ReDoc)",
+        "Comprehensive test suite with TestClient",
+        "Docker support with multi-stage builds and health checks"
       ]
     },
     {
@@ -94,6 +106,28 @@
       "ci_jobs": ["shared-logic-smoke"],
       "validation_commands": [
         "uv run python -c \"from shared.logic import summarize_payload; print(summarize_payload({'service': 'shared', 'status': 'ok'}))\""
+      ]
+    },
+    {
+      "name": "workflow_generation",
+      "prompt_key": "ci_platform",
+      "default_state": "none",
+      "selected_state": "{{ ci_platform }}",
+      "description": "GitHub Actions CI/CD workflows with quality checks, matrix testing, caching, and artifacts.",
+      "dependencies": ["actionlint"],
+      "docs_path": "docs/modules/workflows.md",
+      "ci_jobs": ["python-quality", "python-matrix", "matrix-summary"],
+      "validation_commands": [
+        "actionlint .github/workflows/riso-quality.yml",
+        "actionlint .github/workflows/riso-matrix.yml"
+      ],
+      "features": [
+        "Automated quality validation (ruff, mypy, pylint, pytest)",
+        "Matrix testing across Python 3.11, 3.12, 3.13",
+        "Dependency caching with 70%+ hit rate target",
+        "90-day artifact retention",
+        "Conditional Node.js job support",
+        "Retry logic with exponential backoff"
       ]
     }
   ]

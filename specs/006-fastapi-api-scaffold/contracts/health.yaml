@@ -1,0 +1,151 @@
+openapi: 3.1.0
+info:
+  title: Health Check API
+  description: Health check endpoints for monitoring and orchestration
+  version: 0.1.0
+
+paths:
+  /health/:
+    get:
+      summary: Health Check
+      description: Returns overall application health status
+      operationId: health_check
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Application is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                healthy:
+                  value:
+                    status: healthy
+                    version: "0.1.0"
+                    timestamp: "2025-11-01T12:00:00Z"
+        '503':
+          description: Application is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                unhealthy:
+                  value:
+                    status: unhealthy
+                    version: "0.1.0"
+                    timestamp: "2025-11-01T12:00:00Z"
+                    checks:
+                      database: fail
+                      cache: pass
+
+  /health/ready:
+    get:
+      summary: Readiness Check
+      description: Kubernetes readiness probe - checks if application can serve traffic
+      operationId: readiness_check
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Application is ready to serve traffic
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+              examples:
+                ready:
+                  value:
+                    status: ready
+        '503':
+          description: Application is not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+              examples:
+                not_ready:
+                  value:
+                    status: not_ready
+                    reason: "Database connection unavailable"
+
+  /health/live:
+    get:
+      summary: Liveness Check
+      description: Kubernetes liveness probe - checks if application is alive
+      operationId: liveness_check
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Application is alive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LivenessResponse'
+              examples:
+                alive:
+                  value:
+                    status: alive
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - version
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy, degraded]
+          description: Overall health status
+          example: healthy
+        version:
+          type: string
+          pattern: '^\d+\.\d+\.\d+$'
+          description: Application version (semver)
+          example: "0.1.0"
+        timestamp:
+          type: string
+          format: date-time
+          description: Response timestamp (ISO 8601)
+          example: "2025-11-01T12:00:00Z"
+        checks:
+          type: object
+          additionalProperties:
+            type: string
+            enum: [pass, fail]
+          description: Individual health check results
+          example:
+            database: pass
+            cache: pass
+
+    ReadinessResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [ready, not_ready]
+          description: Readiness status
+          example: ready
+        reason:
+          type: string
+          description: Reason if not ready
+          example: "Waiting for database migration"
+
+    LivenessResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [alive]
+          description: Liveness status (always 'alive' if responding)
+          example: alive

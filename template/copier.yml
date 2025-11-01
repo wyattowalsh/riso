@@ -30,11 +30,13 @@ defaults:
   package_name: "{{ project_slug | replace('-', '_') }}"
   project_layout: "single-package"
   quality_profile: "standard"
+  python_versions: ["3.11", "3.12", "3.13"]
   cli_module: "disabled"
   api_tracks: "none"
   mcp_module: "disabled"
   docs_site: "fumadocs"
   shared_logic: "disabled"
+  ci_platform: "github-actions"
 
 prompts:
   project_name:
@@ -86,12 +88,28 @@ prompts:
     choices:
       - disabled
       - enabled
+  include_databases:
+    type: str
+    help: "Include PostgreSQL and Redis services in docker-compose?"
+    choices:
+      - "no"
+      - "yes"
+    when: "{{ api_tracks in ['python', 'node', 'python+node'] }}"
+  ci_platform:
+    type: str
+    help: "Select CI/CD platform"
+    choices:
+      - github-actions
+      - none
 
 exclude:
   - ".git"
+  - ".github"
   - "README.md"
   - "specs/"
   - "config/"
+  - "samples/"
+  - "scripts/"
 
 tasks:
   post_init:

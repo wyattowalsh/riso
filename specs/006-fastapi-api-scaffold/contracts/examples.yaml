@@ -1,0 +1,316 @@
+openapi: 3.1.0
+info:
+  title: Examples API
+  description: Example CRUD endpoints demonstrating FastAPI patterns
+  version: 0.1.0
+
+paths:
+  /examples:
+    get:
+      summary: List Examples
+      description: Retrieve all examples
+      operationId: list_examples
+      tags:
+        - Examples
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of results to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: offset
+          in: query
+          description: Number of results to skip
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of examples
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExampleResponse'
+              examples:
+                examples_list:
+                  value:
+                    - id: "550e8400-e29b-41d4-a716-446655440000"
+                      name: "Example 1"
+                      value: 42
+                      tags: ["demo", "test"]
+                      created_at: "2025-11-01T12:00:00Z"
+                      updated_at: "2025-11-01T12:00:00Z"
+                    - id: "550e8400-e29b-41d4-a716-446655440001"
+                      name: "Example 2"
+                      value: 100
+                      description: "Another example"
+                      tags: ["sample"]
+                      created_at: "2025-11-01T12:05:00Z"
+                      updated_at: "2025-11-01T12:05:00Z"
+
+    post:
+      summary: Create Example
+      description: Create a new example
+      operationId: create_example
+      tags:
+        - Examples
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExampleCreateRequest'
+            examples:
+              create_example:
+                value:
+                  name: "New Example"
+                  value: 42
+                  description: "A new example"
+                  tags: ["demo"]
+      responses:
+        '201':
+          description: Example created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleResponse'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /examples/{example_id}:
+    get:
+      summary: Get Example
+      description: Retrieve a specific example by ID
+      operationId: get_example
+      tags:
+        - Examples
+      parameters:
+        - name: example_id
+          in: path
+          description: Example ID (UUID)
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Example details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleResponse'
+        '404':
+          description: Example not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update Example
+      description: Update an existing example
+      operationId: update_example
+      tags:
+        - Examples
+      parameters:
+        - name: example_id
+          in: path
+          description: Example ID (UUID)
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExampleUpdateRequest'
+      responses:
+        '200':
+          description: Example updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleResponse'
+        '404':
+          description: Example not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete Example
+      description: Delete an existing example
+      operationId: delete_example
+      tags:
+        - Examples
+      parameters:
+        - name: example_id
+          in: path
+          description: Example ID (UUID)
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Example deleted successfully
+        '404':
+          description: Example not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    ExampleCreateRequest:
+      type: object
+      required:
+        - name
+        - value
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Example name
+          example: "Test Example"
+        value:
+          type: integer
+          minimum: 0
+          description: Non-negative integer value
+          example: 42
+        description:
+          type: string
+          maxLength: 500
+          description: Optional description
+          example: "This is an example"
+        tags:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            minLength: 1
+            maxLength: 50
+          description: Optional tags
+          example: ["demo", "test"]
+
+    ExampleUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Example name
+          example: "Updated Example"
+        value:
+          type: integer
+          minimum: 0
+          description: Non-negative integer value
+          example: 100
+        description:
+          type: string
+          maxLength: 500
+          description: Optional description
+          example: "Updated description"
+        tags:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            minLength: 1
+            maxLength: 50
+          description: Optional tags
+          example: ["updated"]
+
+    ExampleResponse:
+      type: object
+      required:
+        - id
+        - name
+        - value
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Example identifier
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        name:
+          type: string
+          description: Example name
+          example: "Test Example"
+        value:
+          type: integer
+          description: Example value
+          example: 42
+        description:
+          type: string
+          description: Optional description
+          example: "This is an example"
+        tags:
+          type: array
+          items:
+            type: string
+          description: Optional tags
+          example: ["demo", "test"]
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp (ISO 8601)
+          example: "2025-11-01T12:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp (ISO 8601)
+          example: "2025-11-01T12:00:00Z"
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: object
+          description: Error message or validation errors
+          examples:
+            - "Example not found"
+            - [{"loc": ["body", "name"], "msg": "field required", "type": "value_error.missing"}]
+        status_code:
+          type: integer
+          minimum: 400
+          maximum: 599
+          description: HTTP status code
+          example: 404
+        request_id:
+          type: string
+          format: uuid
+          description: Request identifier for tracing
+          example: "550e8400-e29b-41d4-a716-446655440000"

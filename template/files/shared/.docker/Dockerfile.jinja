@@ -1,0 +1,213 @@
+# syntax=docker/dockerfile:1
+
+# Multi-stage Dockerfile for Riso-generated projects
+# Supports Python 3.11+, Node.js 20, and conditional module configurations
+#
+# PRODUCTION NOTE: Pin base images with SHA256 digests for reproducibility:
+#   python:3.11-slim-bookworm@sha256:abc123...
+#   node:20-alpine@sha256:def456...
+# Find current digests: docker pull <image> && docker inspect <image> | grep -A1 RepoDigests
+# 
+# Build stages:
+# - builder-python: Python dependency installation with uv
+# - builder-node: Node.js dependency installation with pnpm
+# - runtime-python: Minimal Python runtime
+# - runtime-node: Minimal Node.js runtime
+# - runtime: Final consolidated runtime (selected based on enabled modules)
+
+{%- if api_tracks | lower in ["python", "python+node"] or cli_module == "enabled" %}
+
+# =============================================================================
+# Python Builder Stage
+# =============================================================================
+FROM python:3.11-slim-bookworm AS builder-python
+
+# Install uv for fast dependency management
+RUN pip install --no-cache-dir uv
+
+WORKDIR /build
+
+# Copy dependency manifests first for layer caching
+COPY pyproject.toml uv.lock ./
+{%- if cli_module == "enabled" or api_tracks | lower in ["python", "python+node"] %}
+COPY README.md ./
+{%- endif %}
+
+# Install dependencies with uv (uses BuildKit cache mounts for speed)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
+
+# Copy application source
+COPY src/ ./src/
+{%- if cli_module == "enabled" %}
+COPY tests/ ./tests/
+{%- endif %}
+
+# =============================================================================
+# Python Runtime Stage
+# =============================================================================
+FROM python:3.11-slim-bookworm AS runtime-python
+
+# Create non-root user with UID 1000 (Kubernetes/security best practice)
+RUN groupadd -g 1000 appuser && \
+    useradd -r -u 1000 -g appuser -s /bin/bash -m appuser
+
+WORKDIR /app
+
+# Copy virtual environment from builder
+COPY --from=builder-python --chown=1000:1000 /build/.venv /app/.venv
+COPY --from=builder-python --chown=1000:1000 /build/src /app/src
+{%- if cli_module == "enabled" %}
+COPY --from=builder-python --chown=1000:1000 /build/tests /app/tests
+{%- endif %}
+
+# Add venv to PATH
+ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
+
+USER 1000:1000
+
+{%- if api_tracks | lower in ["python", "python+node"] %}
+# Expose FastAPI port
+EXPOSE 8000
+
+# Health check for container orchestration
+HEALTHCHECK --interval=2s --timeout=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()" || exit 1
+
+# Default command: Run FastAPI with uvicorn
+CMD ["python", "-m", "uvicorn", "{{ package_name }}.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+{%- elif cli_module == "enabled" %}
+# Default command: Show CLI help
+CMD ["python", "-m", "{{ package_name }}.cli", "--help"]
+
+{%- else %}
+# Minimal baseline: Python runtime only
+CMD ["python", "--version"]
+{%- endif %}
+
+{%- endif %}
+
+{%- if api_tracks | lower in ["node", "python+node"] %}
+
+# =============================================================================
+# Node.js Builder Stage
+# =============================================================================
+FROM node:20-alpine AS builder-node
+
+# Install pnpm globally
+RUN npm install -g pnpm
+
+WORKDIR /build
+
+# Copy dependency manifests first for layer caching
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+{%- if api_tracks | lower in ["node", "python+node"] %}
+COPY apps/api-node/package.json ./apps/api-node/
+{%- endif %}
+{%- if docs_site == "fumadocs" %}
+COPY apps/docs-fumadocs/package.json ./apps/docs-fumadocs/
+{%- endif %}
+{%- if shared_logic == "enabled" %}
+COPY apps/shared-config/package.json ./apps/shared-config/
+{%- endif %}
+
+# Install dependencies with pnpm (uses BuildKit cache mounts for speed)
+RUN --mount=type=cache,target=/root/.pnpm-store \
+    pnpm install --frozen-lockfile
+
+# Copy application source
+COPY apps/ ./apps/
+COPY tsconfig.json ./
+
+# Build TypeScript applications
+{%- if api_tracks | lower in ["node", "python+node"] %}
+RUN pnpm --filter api-node build
+{%- endif %}
+{%- if docs_site == "fumadocs" %}
+RUN pnpm --filter docs-fumadocs build
+{%- endif %}
+
+# =============================================================================
+# Node.js Runtime Stage
+# =============================================================================
+FROM node:20-alpine AS runtime-node
+
+# Create non-root user with UID 1000
+RUN addgroup -g 1000 appuser && \
+    adduser -u 1000 -G appuser -s /bin/sh -D appuser
+
+WORKDIR /app
+
+# Install pnpm globally
+RUN npm install -g pnpm
+
+# Copy built artifacts and production dependencies
+COPY --from=builder-node --chown=1000:1000 /build/package.json /build/pnpm-workspace.yaml /build/pnpm-lock.yaml ./
+COPY --from=builder-node --chown=1000:1000 /build/node_modules ./node_modules
+{%- if api_tracks | lower in ["node", "python+node"] %}
+COPY --from=builder-node --chown=1000:1000 /build/apps/api-node/dist ./apps/api-node/dist
+COPY --from=builder-node --chown=1000:1000 /build/apps/api-node/package.json ./apps/api-node/
+{%- endif %}
+{%- if docs_site == "fumadocs" %}
+COPY --from=builder-node --chown=1000:1000 /build/apps/docs-fumadocs/.next ./apps/docs-fumadocs/.next
+COPY --from=builder-node --chown=1000:1000 /build/apps/docs-fumadocs/public ./apps/docs-fumadocs/public
+COPY --from=builder-node --chown=1000:1000 /build/apps/docs-fumadocs/package.json ./apps/docs-fumadocs/
+{%- endif %}
+{%- if shared_logic == "enabled" %}
+COPY --from=builder-node --chown=1000:1000 /build/apps/shared-config ./apps/shared-config
+{%- endif %}
+
+USER 1000:1000
+
+{%- if api_tracks | lower in ["node", "python+node"] %}
+# Expose Fastify port
+EXPOSE 3000
+
+# Health check for container orchestration
+HEALTHCHECK --interval=2s --timeout=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+# Default command: Run Fastify API
+CMD ["node", "apps/api-node/dist/main.js"]
+
+{%- elif docs_site == "fumadocs" %}
+# Expose Next.js port
+EXPOSE 3001
+
+# Default command: Serve Fumadocs with Next.js
+CMD ["pnpm", "--filter", "docs-fumadocs", "start"]
+{%- endif %}
+
+{%- endif %}
+
+{%- if api_tracks | lower == "python+node" %}
+
+# =============================================================================
+# Combined Runtime Stage (Python + Node)
+# =============================================================================
+# For monorepo setups, use docker-compose to orchestrate separate services
+# This Dockerfile supports building individual service images
+
+{%- endif %}
+
+{%- if api_tracks == "none" and cli_module == "disabled" %}
+
+# =============================================================================
+# Minimal Baseline (No API or CLI)
+# =============================================================================
+FROM python:3.11-slim-bookworm AS runtime
+
+# Create non-root user
+RUN groupadd -g 1000 appuser && \
+    useradd -r -u 1000 -g appuser -s /bin/bash -m appuser
+
+WORKDIR /app
+
+USER 1000:1000
+
+# Minimal runtime - shows Python version
+CMD ["python", "--version"]
+
+{%- endif %}
