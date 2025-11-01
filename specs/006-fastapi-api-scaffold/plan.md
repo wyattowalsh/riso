@@ -1,7 +1,7 @@
 # Implementation Plan: FastAPI API Scaffold
 
-**Branch**: `001-fastapi-api-scaffold` | **Date**: November 1, 2025 | **Spec**: [spec.md](./spec.md)
-**Input**: Feature specification from `/specs/001-fastapi-api-scaffold/spec.md`
+**Branch**: `006-fastapi-api-scaffold` | **Date**: November 1, 2025 | **Spec**: [spec.md](./spec.md)
+**Input**: Feature specification from `/specs/006-fastapi-api-scaffold/spec.md`
 
 **Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
 
@@ -90,7 +90,7 @@ Create a Copier template module that generates FastAPI applications with standar
 ### Documentation (this feature)
 
 ```text
-specs/001-fastapi-api-scaffold/
+specs/006-fastapi-api-scaffold/
 ├── spec.md              # Feature specification
 ├── plan.md              # This file (/speckit.plan output)
 ├── research.md          # Phase 0: Technology decisions and patterns
