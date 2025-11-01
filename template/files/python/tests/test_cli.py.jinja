@@ -14,8 +14,8 @@ typer_testing = pytest.importorskip(
 CliRunner = typer_testing.CliRunner
 
 
-def test_cli_help_lists_quickstart_command() -> None:
-    """CLI help should reference the quickstart command."""
+def test_cli_help_lists_commands() -> None:
+    """CLI help should list all available commands."""
     from {{ package_name }}.cli.__main__ import app  # noqa: PLC0415
 
     runner = CliRunner()
@@ -23,14 +23,48 @@ def test_cli_help_lists_quickstart_command() -> None:
 
     assert result.exit_code == 0
     assert "quickstart" in result.stdout.lower()
+    assert "version" in result.stdout.lower()
+    assert "init" in result.stdout.lower()
 
 
-def test_quickstart_command_runs_in_dry_mode() -> None:
-    """Quickstart command executes without side effects in dry mode."""
+def test_multi_command_structure() -> None:
+    """Validate multi-command CLI structure."""
+    from {{ package_name }}.cli.__main__ import discover_commands  # noqa: PLC0415
+
+    commands = discover_commands()
+    
+    # Should have multiple commands
+    assert len(commands) >= 3
+    
+    # Each command should have metadata
+    for cmd_func, metadata in commands:
+        assert callable(cmd_func)
+        assert "name" in metadata
+        assert "help" in metadata
+
+
+def test_command_discovery_mechanism() -> None:
+    """Test that commands are discovered from commands/ directory."""
     from {{ package_name }}.cli.__main__ import app  # noqa: PLC0415
 
     runner = CliRunner()
-    result = runner.invoke(app, ["quickstart", "--dry-run"])
+    
+    # Test that discovered commands work
+    result_quickstart = runner.invoke(app, ["quickstart", "--help"])
+    result_version = runner.invoke(app, ["version", "--help"])
+    result_init = runner.invoke(app, ["init", "--help"])
+    
+    assert result_quickstart.exit_code == 0
+    assert result_version.exit_code == 0
+    assert result_init.exit_code == 0
+
+
+def test_quickstart_command_runs() -> None:
+    """Quickstart command executes successfully."""
+    from {{ package_name }}.cli.__main__ import app  # noqa: PLC0415
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["quickstart"])
 
     assert result.exit_code == 0
-    assert "quickstart status: ok" in result.stdout.lower()
+    assert "welcome" in result.stdout.lower() or "hello" in result.stdout.lower()

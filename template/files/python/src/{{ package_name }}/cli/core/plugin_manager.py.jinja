@@ -1,0 +1,253 @@
+{%- if cli_module | lower != "enabled" %}
+# CLI module disabled - this file is not generated
+{%- else %}
+"""Plugin system with lazy loading and entry point discovery.
+
+Supports dynamic command registration via setuptools entry points.
+"""
+
+from __future__ import annotations
+
+import sys
+from importlib.metadata import entry_points
+from typing import TYPE_CHECKING, Any, Callable
+
+from loguru import logger
+
+from {{ package_name }}.cli.core.exceptions import PluginError
+
+if TYPE_CHECKING:
+    from importlib.metadata import EntryPoint
+
+
+class PluginManager:
+    """Manages plugin discovery and lazy loading.
+    
+    Plugins are discovered via setuptools entry points in the '{{ package_name }}.cli.plugins' group.
+    Commands are loaded on-demand to minimize startup time.
+    """
+    
+    def __init__(self, entry_point_group: str = "{{ package_name }}.cli.plugins"):
+        """Initialize plugin manager.
+        
+        Args:
+            entry_point_group: Entry point group name for plugin discovery
+        """
+        self.entry_point_group = entry_point_group
+        self._discovered_plugins: dict[str, EntryPoint] = {}
+        self._loaded_plugins: dict[str, Any] = {}
+        self._discovery_complete = False
+    
+    def discover(self) -> None:
+        """Discover plugins via entry points.
+        
+        Scans for entry points in the configured group without loading them.
+        """
+        if self._discovery_complete:
+            return
+        
+        try:
+            # Python 3.10+ API
+            if sys.version_info >= (3, 10):
+                eps = entry_points(group=self.entry_point_group)
+            # Python 3.9 API
+            else:
+                all_eps = entry_points()
+                eps = all_eps.get(self.entry_point_group, [])  # type: ignore[assignment]
+            
+            for ep in eps:
+                self._discovered_plugins[ep.name] = ep
+                logger.debug(f"Discovered plugin: {ep.name} -> {ep.value}")
+        except Exception as e:
+            logger.warning(f"Plugin discovery failed: {e}")
+        
+        self._discovery_complete = True
+        logger.info(f"Discovered {len(self._discovered_plugins)} plugin(s)")
+    
+    def list_plugins(self, include_loaded: bool = True) -> list[dict[str, Any]]:
+        """List all discovered plugins.
+        
+        Args:
+            include_loaded: Include loading status in results
+            
+        Returns:
+            List of plugin metadata dictionaries
+        """
+        if not self._discovery_complete:
+            self.discover()
+        
+        plugins = []
+        for name, ep in self._discovered_plugins.items():
+            plugin_info = {
+                "name": name,
+                "module": ep.value,
+            }
+            if include_loaded:
+                plugin_info["loaded"] = name in self._loaded_plugins
+            plugins.append(plugin_info)
+        
+        return plugins
+    
+    def load_plugin(self, name: str, force_reload: bool = False) -> Any:
+        """Load a specific plugin by name (lazy loading).
+        
+        Args:
+            name: Plugin name (entry point name)
+            force_reload: Force reload even if already loaded
+            
+        Returns:
+            Loaded plugin object
+            
+        Raises:
+            PluginError: If plugin not found or loading fails
+        """
+        if not self._discovery_complete:
+            self.discover()
+        
+        # Return cached plugin if already loaded
+        if name in self._loaded_plugins and not force_reload:
+            return self._loaded_plugins[name]
+        
+        # Check if plugin exists
+        if name not in self._discovered_plugins:
+            raise PluginError(
+                f"Plugin '{name}' not found. "
+                f"Available: {', '.join(self._discovered_plugins.keys()) or 'none'}",
+                plugin_name=name,
+            )
+        
+        # Load the plugin
+        ep = self._discovered_plugins[name]
+        try:
+            plugin = ep.load()
+            self._loaded_plugins[name] = plugin
+            logger.info(f"Loaded plugin: {name}")
+            return plugin
+        except Exception as e:
+            raise PluginError(
+                f"Failed to load plugin '{name}': {e}",
+                plugin_name=name,
+            ) from e
+    
+    def load_all_plugins(self) -> dict[str, Any]:
+        """Load all discovered plugins.
+        
+        Returns:
+            Dictionary mapping plugin names to loaded plugin objects
+            
+        Raises:
+            PluginError: If any plugin fails to load
+        """
+        if not self._discovery_complete:
+            self.discover()
+        
+        for name in self._discovered_plugins:
+            if name not in self._loaded_plugins:
+                self.load_plugin(name)
+        
+        return self._loaded_plugins.copy()
+    
+    def get_plugin_commands(self, name: str) -> list[Callable[..., Any]]:
+        """Get all commands provided by a plugin.
+        
+        Args:
+            name: Plugin name
+            
+        Returns:
+            List of command functions/classes from the plugin
+            
+        Raises:
+            PluginError: If plugin not found or has no commands
+        """
+        plugin = self.load_plugin(name)
+        
+        # Plugin can be a module with commands or a single command
+        commands = []
+        
+        # Check for commands attribute (list of commands)
+        if hasattr(plugin, "commands"):
+            commands = plugin.commands
+        # Check for register function (returns list of commands)
+        elif hasattr(plugin, "register"):
+            commands = plugin.register()
+        # Single command function/class
+        elif hasattr(plugin, "_cli_command") and plugin._cli_command:
+            commands = [plugin]
+        # Module with decorated functions
+        else:
+            for attr_name in dir(plugin):
+                if attr_name.startswith("_"):
+                    continue
+                attr = getattr(plugin, attr_name)
+                if hasattr(attr, "_cli_command") and attr._cli_command:
+                    commands.append(attr)
+        
+        if not commands:
+            raise PluginError(
+                f"Plugin '{name}' has no commands",
+                plugin_name=name,
+            )
+        
+        return commands
+    
+    def register_plugin(
+        self,
+        name: str,
+        plugin: Any,
+        override: bool = False,
+    ) -> None:
+        """Register a plugin programmatically (without entry point).
+        
+        Args:
+            name: Plugin name
+            plugin: Plugin object (module, function, or class)
+            override: Allow overriding existing plugin
+            
+        Raises:
+            PluginError: If plugin already exists and override=False
+        """
+        if name in self._loaded_plugins and not override:
+            raise PluginError(
+                f"Plugin '{name}' already registered. Use override=True to replace.",
+                plugin_name=name,
+            )
+        
+        self._loaded_plugins[name] = plugin
+        logger.info(f"Registered plugin: {name}")
+    
+    def unregister_plugin(self, name: str) -> None:
+        """Unregister a loaded plugin.
+        
+        Args:
+            name: Plugin name
+            
+        Raises:
+            PluginError: If plugin not found
+        """
+        if name not in self._loaded_plugins:
+            raise PluginError(
+                f"Plugin '{name}' not loaded",
+                plugin_name=name,
+            )
+        
+        del self._loaded_plugins[name]
+        logger.info(f"Unregistered plugin: {name}")
+    
+    def is_loaded(self, name: str) -> bool:
+        """Check if a plugin is loaded.
+        
+        Args:
+            name: Plugin name
+            
+        Returns:
+            True if plugin is loaded
+        """
+        return name in self._loaded_plugins
+    
+    def clear_cache(self) -> None:
+        """Clear all loaded plugins (forces re-discovery and reload)."""
+        self._loaded_plugins.clear()
+        self._discovered_plugins.clear()
+        self._discovery_complete = False
+        logger.info("Cleared plugin cache")
+{%- endif %}

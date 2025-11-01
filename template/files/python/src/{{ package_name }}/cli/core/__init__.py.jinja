@@ -1,0 +1,57 @@
+{%- if cli_module | lower != "enabled" %}
+# CLI module disabled - this file is not generated
+{%- else %}
+"""Core CLI framework components.
+
+Provides base classes, decorators, and utilities for building CLI applications.
+"""
+
+from {{ package_name }}.cli.core.base import (
+    BaseCommand,
+    command,
+    get_command_metadata,
+    validate_command,
+)
+from {{ package_name }}.cli.core.config import ConfigManager
+from {{ package_name }}.cli.core.exceptions import (
+    CLIError,
+    ConfigError,
+    PluginError,
+    ValidationError,
+)
+from {{ package_name }}.cli.core.formatter import OutputFormat, OutputFormatter
+from {{ package_name }}.cli.core.plugin_manager import PluginManager
+from {{ package_name }}.cli.core.prompts import (
+    confirm,
+    prompt_if_missing,
+    validate_choice,
+    validate_not_empty,
+    validate_positive_int,
+)
+
+__all__ = [
+    # Base classes and decorators
+    "BaseCommand",
+    "command",
+    "get_command_metadata",
+    "validate_command",
+    # Configuration
+    "ConfigManager",
+    # Exceptions
+    "CLIError",
+    "ConfigError",
+    "PluginError",
+    "ValidationError",
+    # Output formatting
+    "OutputFormat",
+    "OutputFormatter",
+    # Plugin system
+    "PluginManager",
+    # Interactive prompts
+    "confirm",
+    "prompt_if_missing",
+    "validate_choice",
+    "validate_not_empty",
+    "validate_positive_int",
+]
+{%- endif %}
