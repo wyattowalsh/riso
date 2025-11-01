@@ -1,27 +1,167 @@
-import shutil
-import subprocess
+"""Post-generation hook for the Riso template.
+
+The hook emits guidance for next steps without invoking network-dependent
+commands so that renders remain deterministic and constitution-compliant.
+"""
+
+from __future__ import annotations
+import json
+import pathlib
 import sys
+from datetime import datetime
+from typing import Dict
 
-def main():
-    tools = ["ruff", "mypy", "pylint"]
-    missing_tools = []
+sys.path.append(str(pathlib.Path(__file__).resolve().parents[2] / "scripts"))
 
-    for tool in tools:
-        if not shutil.which(tool):
-            missing_tools.append(tool)
+try:
+    from hooks.quality_tool_check import (
+        ensure_node_quality_tools,
+        ensure_python_quality_tools,
+        ToolCheck,
+    )
+    from hooks.workflow_validator import validate_workflows_directory
+except ModuleNotFoundError:  # pragma: no cover - template lint
+    ensure_python_quality_tools = lambda: []  # type: ignore
+    ensure_node_quality_tools = lambda _: []  # type: ignore
+    ToolCheck = None  # type: ignore
+    validate_workflows_directory = lambda *_: 0  # type: ignore
 
-    if missing_tools:
-        print(f"Missing quality tools: {', '.join(missing_tools)}")
-        print("Attempting to install with uv...")
-        try:
-            subprocess.run(["uv", "pip", "install"] + missing_tools, check=True)
-            print("Installation successful.")
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            print("Failed to install missing tools with uv.", file=sys.stderr)
-            print("Please install the missing tools manually.", file=sys.stderr)
-            sys.exit(1)
+DEFAULT_GUIDANCE = [
+    "Create a virtual environment with `uv venv` (or activate an existing one).",
+    "Install dependencies via `uv sync`.",
+    "Run the baseline quickstart script: `uv run python -m {package}.quickstart`.",
+    "Review docs/modules/prompt-reference.md for module-specific commands.",
+]
 
-    print("All quality tools are available.")
+
+def record_metadata(destination: pathlib.Path, data: dict[str, object]) -> None:
+    metadata_file = destination / ".riso" / "post_gen_metadata.json"
+    metadata_file.parent.mkdir(parents=True, exist_ok=True)
+    metadata_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def load_answers(destination: pathlib.Path) -> Dict[str, str]:
+    answers_path = destination / ".copier-answers.yml"
+    if not answers_path.exists():
+        return {}
+    answers: Dict[str, str] = {}
+    for raw_line in answers_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        answers[key.strip()] = value.strip()
+    return answers
+
+
+def layout_guidance(layout: str) -> list[str]:
+    if layout == "monorepo":
+        return [
+            "Install workspace dependencies: `pnpm install`.",
+            "Run Python validations: `uv run pytest`.",
+            "Execute Node API smoke tests: `pnpm --filter api-node test`.",
+            "Build documentation (if enabled): `pnpm --filter docs-fumadocs build`.",
+        ]
+    return []
+
+
+def docs_guidance(answers: Dict[str, str]) -> list[str]:
+    docs_site = answers.get("docs_site", "fumadocs").lower()
+    if docs_site == "fumadocs":
+        return [
+            "Fumadocs preview: `pnpm --filter docs-fumadocs dev`.",
+            "Fumadocs production build: `pnpm --filter docs-fumadocs build`.",
+        ]
+    if docs_site == "sphinx-shibuya":
+        return [
+            "Sphinx build: `uv run make docs`.",
+            "Link check: `uv run make linkcheck`.",
+        ]
+    if docs_site == "docusaurus":
+        return [
+            "Docusaurus preview: `pnpm --filter docs-docusaurus dev`.",
+            "Docusaurus build: `pnpm --filter docs-docusaurus build`.",
+        ]
+    return [
+        "Documentation scaffolding skipped (`docs_site=none`). Review docs/guidance/none.md for enabling docs later.",
+    ]
+
+
+def optional_module_guidance(answers: Dict[str, str]) -> list[str]:
+    guidance: list[str] = []
+    if answers.get("cli_module", "").lower() == "enabled":
+        guidance.append("Typer CLI ready: `uv run python -m {package}.cli --help`.")
+    api_tracks = answers.get("api_tracks", "").lower()
+    if api_tracks in {"python", "python+node"}:
+        guidance.append("FastAPI service: `uv run uvicorn {package}.api.main:app --reload`.")  # noqa: S608
+    if api_tracks in {"node", "python+node"}:
+        guidance.append("Fastify service: `pnpm --filter api-node run dev`.")
+    if answers.get("mcp_module", "").lower() == "enabled":
+        guidance.append("List MCP tools: `uv run python -c \"from shared.mcp import tooling; print(tooling.list_tools())\"`.")
+    return guidance
+
+
+def render_guidance(package: str, answers: Dict[str, str]) -> str:
+    layout = answers.get("project_layout", "single-package").lower()
+    lines = ["Next steps:"]
+    for item in DEFAULT_GUIDANCE:
+        lines.append(f"- {item.format(package=package)}")
+    for item in layout_guidance(layout):
+        lines.append(f"- {item.format(package=package)}")
+    for item in docs_guidance(answers):
+        lines.append(f"- {item.format(package=package)}")
+    for item in optional_module_guidance(answers):
+        lines.append(f"- {item.format(package=package)}")
+    return "\n".join(lines)
+
+
+def main() -> None:
+    destination = pathlib.Path.cwd()
+    package = destination.name.replace("-", "_")
+    answers = load_answers(destination)
+    quality_checks = ensure_python_quality_tools() if ToolCheck is not None else []
+    node_checks = []
+    if ToolCheck is not None:
+        node_required = answers.get("api_tracks", "none").lower() in {"node", "python+node"}
+        node_checks = ensure_node_quality_tools(node_required)
+
+    # Validate generated workflows if CI platform is GitHub Actions
+    ci_platform = answers.get("ci_platform", "github-actions").lower()
+    workflow_validation_status = "skipped"
+    if ci_platform == "github-actions":
+        workflows_dir = destination / ".github" / "workflows"
+        # Run validation but don't fail render on validation failures
+        exit_code = validate_workflows_directory(workflows_dir, strict=False)
+        workflow_validation_status = "pass" if exit_code == 0 else "fail"
+
+    record_metadata(
+        destination,
+        {
+            "rendered_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+            "destination": str(destination),
+            "project_layout": answers.get("project_layout", "single-package"),
+            "modules": {
+                "cli_module": answers.get("cli_module", "disabled"),
+                "api_tracks": answers.get("api_tracks", "none"),
+                "mcp_module": answers.get("mcp_module", "disabled"),
+                "docs_site": answers.get("docs_site", "fumadocs"),
+                "shared_logic": answers.get("shared_logic", "disabled"),
+            },
+            "quality": {
+                "profile": answers.get("quality_profile", "standard"),
+                "tool_install_attempts": [
+                    check.to_dict() if hasattr(check, "to_dict") else dict(check.__dict__)
+                    for check in quality_checks + node_checks
+                ],
+            },
+            "ci_platform": ci_platform,
+            "workflow_validation": workflow_validation_status,
+        },
+    )
+
+    guidance = render_guidance(package, answers)
+    sys.stdout.write(guidance + "\n")
+
 
 if __name__ == "__main__":
     main()

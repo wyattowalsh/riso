@@ -1,0 +1,156 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""Response models disabled for this render."""
+{%- else %}
+"""API response models.
+
+This module contains Pydantic models for API responses including
+health checks, examples, and error responses.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from pydantic import BaseModel, Field
+
+
+class ErrorResponse(BaseModel):
+    """Standard error response format.
+
+    Attributes:
+        detail: Error message or list of validation errors
+        status_code: HTTP status code (optional, for logging)
+        request_id: Request identifier for tracing (optional)
+    """
+
+    detail: str | list[dict[str, Any]] = Field(
+        ...,
+        description="Error message or validation errors",
+    )
+    status_code: int | None = Field(
+        default=None,
+        ge=400,
+        le=599,
+        description="HTTP status code",
+    )
+    request_id: str | None = Field(
+        default=None,
+        description="Request identifier for tracing",
+    )
+
+
+class HealthResponse(BaseModel):
+    """Health check response.
+
+    Attributes:
+        status: Overall health status (healthy, unhealthy, degraded)
+        version: Application version (semver)
+        timestamp: Response timestamp (ISO 8601)
+        checks: Individual health check results (optional)
+    """
+
+    status: str = Field(
+        ...,
+        description="Overall health status",
+        examples=["healthy", "unhealthy", "degraded"],
+    )
+    version: str = Field(
+        ...,
+        description="Application version",
+        examples=["0.1.0"],
+    )
+    timestamp: str = Field(
+        ...,
+        description="Response timestamp (ISO 8601)",
+        examples=["2025-11-01T12:00:00Z"],
+    )
+    checks: dict[str, str] | None = Field(
+        default=None,
+        description="Individual health check results",
+        examples=[{"database": "pass", "cache": "pass"}],
+    )
+
+
+class ReadinessResponse(BaseModel):
+    """Readiness check response for Kubernetes.
+
+    Attributes:
+        status: Readiness status (ready, not_ready)
+        reason: Reason if not ready (optional)
+    """
+
+    status: str = Field(
+        ...,
+        description="Readiness status",
+        examples=["ready", "not_ready"],
+    )
+    reason: str | None = Field(
+        default=None,
+        description="Reason if not ready",
+        examples=["Database connection unavailable"],
+    )
+
+
+class LivenessResponse(BaseModel):
+    """Liveness check response for Kubernetes.
+
+    Attributes:
+        status: Liveness status (always 'alive' if responding)
+    """
+
+    status: str = Field(
+        default="alive",
+        description="Liveness status",
+        examples=["alive"],
+    )
+
+
+class ExampleResponse(BaseModel):
+    """Example resource response.
+
+    Attributes:
+        id: Example identifier (UUID)
+        name: Example name
+        value: Example integer value
+        description: Optional description
+        tags: Optional tags
+        created_at: Creation timestamp (ISO 8601)
+        updated_at: Last update timestamp (ISO 8601)
+    """
+
+    id: str = Field(
+        ...,
+        description="Example identifier",
+        examples=["550e8400-e29b-41d4-a716-446655440000"],
+    )
+    name: str = Field(
+        ...,
+        description="Example name",
+        examples=["Test Example"],
+    )
+    value: int = Field(
+        ...,
+        description="Example value",
+        examples=[42],
+    )
+    description: str | None = Field(
+        default=None,
+        description="Optional description",
+        examples=["This is an example"],
+    )
+    tags: list[str] = Field(
+        default_factory=list,
+        description="Optional tags",
+        examples=[["demo", "test"]],
+    )
+    created_at: str = Field(
+        ...,
+        description="Creation timestamp (ISO 8601)",
+        examples=["2025-11-01T12:00:00Z"],
+    )
+    updated_at: str = Field(
+        ...,
+        description="Last update timestamp (ISO 8601)",
+        examples=["2025-11-01T12:00:00Z"],
+    )
+{%- endif %}

@@ -1,0 +1,328 @@
+# Container & Deployment Module
+
+Production-ready Docker containerization with multi-stage builds, security hardening, and orchestration support.
+
+## Overview
+
+The container module provides:
+
+- **Multi-stage Dockerfiles** for Python (3.11+) and Node.js (20 LTS)
+- **Non-root execution** with UID 1000:1000 for security
+- **Health checks** at `/health` endpoint (5s timeout, 3 retries)
+- **docker-compose orchestration** for multi-service applications
+- **CI/CD workflows** for building, scanning, and publishing
+- **Registry support** for ghcr.io, Docker Hub, and AWS ECR
+
+## Quick Start
+
+### Build Container Locally
+
+```bash
+# Build production image
+docker build -t my-app:latest .
+
+# Verify image size
+docker images my-app:latest
+
+# Expected: Python <500MB, Node <300MB, Docs <200MB
+```
+
+### Run Container
+
+```bash
+# Run with health check
+docker run -p 8000:8000 --name my-app my-app:latest
+
+# Test health endpoint
+curl http://localhost:8000/health
+# Response: {"status":"healthy","service":"api-python"}
+
+# Verify non-root execution
+docker exec my-app id
+# Output: uid=1000(appuser) gid=1000(appuser)
+```
+
+### Multi-Service Orchestration
+
+```bash
+# Start all services (API + databases)
+docker-compose up -d
+
+# Check service health
+docker-compose ps
+
+# View logs
+docker-compose logs -f api-python
+
+# Stop services
+docker-compose down -v
+```
+
+## Dockerfile Structure
+
+### Multi-Stage Build
+
+The generated `Dockerfile` uses multi-stage builds for optimal image size:
+
+{%- if api_tracks | lower in ["python", "python+node"] %}
+
+#### Python Stages
+
+**Builder Stage:**
+```dockerfile
+FROM python:3.11-slim-bookworm AS builder-python
+RUN pip install --no-cache-dir uv
+WORKDIR /build
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
+COPY src/ ./src/
+```
+
+**Runtime Stage:**
+```dockerfile
+FROM python:3.11-slim-bookworm AS runtime-python
+RUN groupadd -g 1000 appuser && \
+    useradd -r -u 1000 -g appuser -s /bin/bash -m appuser
+WORKDIR /app
+COPY --from=builder-python --chown=1000:1000 /build/.venv /app/.venv
+COPY --from=builder-python --chown=1000:1000 /build/src /app/src
+ENV PATH="/app/.venv/bin:$PATH"
+USER 1000:1000
+EXPOSE 8000
+HEALTHCHECK --interval=2s --timeout=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()" || exit 1
+CMD ["python", "-m", "uvicorn", "{{ package_name }}.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+{%- endif %}
+
+{%- if api_tracks | lower in ["node", "python+node"] %}
+
+#### Node.js Stages
+
+**Builder Stage:**
+```dockerfile
+FROM node:20-alpine AS builder-node
+RUN npm install -g pnpm
+WORKDIR /build
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+RUN --mount=type=cache,target=/root/.pnpm-store \
+    pnpm install --frozen-lockfile
+COPY apps/ ./apps/
+RUN pnpm --filter api-node build
+```
+
+**Runtime Stage:**
+```dockerfile
+FROM node:20-alpine AS runtime-node
+RUN addgroup -g 1000 appuser && \
+    adduser -u 1000 -G appuser -s /bin/sh -D appuser
+WORKDIR /app
+COPY --from=builder-node --chown=1000:1000 /build/apps/api-node/dist ./apps/api-node/dist
+USER 1000:1000
+EXPOSE 3000
+HEALTHCHECK --interval=2s --timeout=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+CMD ["node", "apps/api-node/dist/main.js"]
+```
+{%- endif %}
+
+### Security Hardening
+
+1. **Non-root user (UID 1000:1000)**
+   - Compatible with Kubernetes pod security policies
+   - Prevents privilege escalation
+   - Enables predictable file permissions
+
+2. **Minimal base images**
+   - Python: `python:3.11-slim-bookworm` (~150MB)
+   - Node: `node:20-alpine` (~180MB)
+   - No unnecessary packages or build tools in runtime
+
+3. **BuildKit cache mounts**
+   - Speeds up dependency installation
+   - Reduces layer sizes
+   - Shared across builds
+
+## docker-compose Configuration
+
+{%- if api_tracks | lower in ["python", "node", "python+node"] %}
+
+### Service Architecture
+
+Generated `docker-compose.yml` includes:
+
+{%- if api_tracks | lower in ["python", "python+node"] %}
+- **api-python**: FastAPI service on port 8000
+{%- endif %}
+{%- if api_tracks | lower in ["node", "python+node"] %}
+- **api-node**: Fastify service on port 3000
+{%- endif %}
+{%- if docs_site == "fumadocs" %}
+- **docs-fumadocs**: Next.js docs on port 3001
+{%- endif %}
+{%- if include_databases == "yes" %}
+- **postgres**: PostgreSQL 16 on port 5432
+- **redis**: Redis 7 on port 6379
+{%- endif %}
+
+### Environment Variables
+
+Copy `.env.example` to `.env` and customize:
+
+```bash
+# Database credentials (⚠️ CHANGE IN PRODUCTION)
+POSTGRES_USER=riso
+POSTGRES_PASSWORD=CHANGE_IN_PRODUCTION
+POSTGRES_DB=riso_db
+
+REDIS_PASSWORD=CHANGE_IN_PRODUCTION
+```
+
+### Development Mode
+
+Enable hot reload by uncommenting volume mounts in `docker-compose.yml`:
+
+```yaml
+volumes:
+  - ./src:/app/src:ro
+  - ./tests:/app/tests:ro
+```
+
+Then restart services:
+```bash
+docker-compose up -d
+```
+
+{%- endif %}
+
+## GitHub Actions Workflows
+
+### Container Build (`riso-container-build.yml`)
+
+Triggered on pull requests:
+
+1. **Lint** with hadolint
+2. **Build** images with BuildKit caching
+3. **Scan** with Trivy (fail on HIGH/CRITICAL)
+4. **Upload** artifacts (logs, SBOM, scan reports)
+
+### Container Publish (`riso-container-publish.yml`)
+
+Triggered on main branch pushes:
+
+1. **Build** and **scan** images
+2. **Tag** with semantic versions (v1.2.3, v1.2, v1, latest)
+3. **Publish** to ghcr.io with OIDC auth
+4. **Attach** SBOM and provenance
+
+## Registry Configuration
+
+### GitHub Container Registry (ghcr.io)
+
+**Default** - Uses OIDC authentication with `GITHUB_TOKEN`:
+
+```yaml
+- name: Log in to ghcr.io
+  uses: docker/login-action@v3
+  with:
+    registry: ghcr.io
+    username: {% raw %}${{ github.actor }}{% endraw %}
+    password: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
+```
+
+Images published to: `ghcr.io/<owner>/<image>:latest`
+
+### Docker Hub (Optional)
+
+Configure secrets:
+- `DOCKERHUB_USERNAME`
+- `DOCKERHUB_TOKEN`
+
+Uncomment `publish-dockerhub` job in `riso-container-publish.yml`.
+
+### AWS ECR (Optional)
+
+Use OIDC with IAM role or configure secrets:
+- `AWS_REGION`
+- `AWS_ROLE_ARN` (OIDC) or `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`
+
+See `.github/context/containers.md` for extension patterns.
+
+## Performance Targets
+
+| Metric | Target | Validation |
+|--------|--------|------------|
+| Python image size | <500MB | Enforced in CI |
+| Node image size | <300MB | Enforced in CI |
+| Docs image size | <200MB | Enforced in CI |
+| Python build time | <3min | Monitored in CI |
+| Node build time | <5min | Monitored in CI |
+| docker-compose startup | <30s | Health checks |
+
+## Troubleshooting
+
+### Build Failures
+
+**Issue**: `uv sync` fails with "package not found"
+
+**Solution**: Ensure `uv.lock` is committed:
+```bash
+uv lock --upgrade
+git add uv.lock
+git commit -m "chore: update uv.lock"
+```
+
+### Health Check Failures
+
+**Issue**: Container starts but health check reports unhealthy
+
+**Solution**: Check logs for application errors:
+```bash
+docker logs <container-name>
+docker-compose logs api-python
+```
+
+Verify health endpoint manually:
+```bash
+docker exec <container-name> curl http://localhost:8000/health
+```
+
+### Permission Errors
+
+**Issue**: Application cannot write files (e.g., logs, databases)
+
+**Solution**: Ensure volumes have correct ownership for UID 1000:
+```bash
+sudo chown -R 1000:1000 ./data
+```
+
+Or use named volumes in docker-compose (recommended).
+
+### Image Size Exceeds Target
+
+**Issue**: Python image >500MB
+
+**Solutions**:
+1. Remove unnecessary dependencies from `pyproject.toml`
+2. Use `--no-dev` flag (already default)
+3. Check for large files in Docker context (`.dockerignore`)
+4. Pin base image digest for reproducibility
+
+## Best Practices
+
+1. **Always use `.dockerignore`** - Exclude dev artifacts, tests, docs
+2. **Pin base images with SHA256 digests** - Ensures reproducible builds
+3. **Scan regularly** - Run Trivy locally before pushing
+4. **Use semantic versioning** - Tag releases with `v1.2.3` format
+5. **Test locally first** - Validate docker-compose before CI
+6. **Monitor image sizes** - Keep below NFR targets
+7. **Review scan reports** - Address vulnerabilities promptly
+
+## Extension Patterns
+
+For advanced configurations (multi-arch, private registries, custom builds), see:
+
+- `.github/context/containers.md` - Detailed extension guide
+- `docs/quickstart.md` - Deployment examples
+- `docs/upgrade-guide.md` - Migration from previous versions

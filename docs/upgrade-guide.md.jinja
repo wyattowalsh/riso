@@ -1,5 +1,36 @@
 # Upgrade Guide
 
+## Adopting GitHub Actions CI/CD Workflows
+
+1. **Pull new workflow files** – regenerate your project with the latest template version or manually copy:
+   - `.github/workflows/riso-quality.yml` (main quality checks)
+   - `.github/workflows/riso-matrix.yml` (matrix testing across Python versions)
+2. **Configure CI platform** – update your `copier-answers.yml` (or template prompts) with `ci_platform='github-actions'`.
+3. **Set Python versions** – configure `python_versions` in your copier answers (default: `['3.11', '3.12', '3.13']`).
+4. **Install actionlint** (optional) – for local workflow validation: `brew install actionlint` (macOS) or download from [actionlint releases](https://github.com/rhysd/actionlint/releases).
+5. **Configure branch protection** – add required status checks in GitHub repository settings:
+   - `python-quality` (main quality suite)
+   - `python-matrix / test-py311` (Python 3.11 compatibility)
+   - `python-matrix / test-py312` (Python 3.12 compatibility)
+   - `python-matrix / test-py313` (Python 3.13 compatibility)
+   - `matrix-summary` (overall matrix status)
+6. **Verify workflows** – push a commit to trigger CI and confirm:
+   - Quality checks run successfully
+   - Matrix tests execute across all Python versions
+   - Artifacts upload with 90-day retention
+   - Cache hit rates reach 70%+ after initial runs
+7. **Node.js projects** – if `api_tracks` includes `node`, the `node-quality` job will automatically run ESLint, TypeScript checks, and Vitest tests in parallel with Python checks.
+
+### Workflow Migration Checklist
+
+- [ ] Workflow files present in `.github/workflows/`
+- [ ] `ci_platform='github-actions'` in copier answers
+- [ ] `python_versions` configured
+- [ ] Branch protection rules configured
+- [ ] First CI run completes successfully
+- [ ] Artifacts available in Actions tab with 90-day retention
+- [ ] Cache status shows ✅ on subsequent runs
+
 ## Adopting the Quality Integration Suite
 
 1. **Pull new template files** – regenerate your project with the latest template version or copy the following files:
@@ -16,3 +47,215 @@
 - `make quality` fails because `uv` is missing → run `pip install uv` and re-run the command.
 - `uv run task quality` fails with `task` not found → rerun `uv sync --group quality --group test`.
 - Node checks skipped unexpectedly → confirm `api_tracks` includes `node` and `QUALITY_PROFILE` is not set to override your prompt.
+
+## Adopting Container & Deployment
+
+### Initial Adoption
+
+1. **Regenerate project** with `include_databases=yes` if you need PostgreSQL/Redis:
+   ```bash
+   copier update --data include_databases=yes
+   ```
+   
+2. **New files added**:
+   - `.docker/Dockerfile` - Multi-stage production builds
+   - `.docker/Dockerfile.dev` - Development variant with hot reload
+   - `docker-compose.yml` - Service orchestration
+   - `docker-compose.ci.yml` - CI optimization override
+   - `.env.example` - Environment variable template
+   - `.dockerignore` - Build context exclusions
+   - `.hadolint.yaml` - Dockerfile linting config
+   - `.github/workflows/riso-container-build.yml` - Build/scan workflow
+   - `.github/workflows/riso-container-publish.yml` - Registry publish workflow
+
+3. **Configure environment**:
+   ```bash
+   cp .env.example .env
+   # Edit .env: Update POSTGRES_PASSWORD, REDIS_PASSWORD
+   ```
+
+4. **Test locally**:
+   ```bash
+   # Single service
+   docker build -f .docker/Dockerfile --target runtime-python -t my-app:latest .
+   docker run -d -p 8000:8000 my-app:latest
+   curl http://localhost:8000/health
+   
+   # Multi-service
+   docker-compose up -d
+   docker-compose ps  # Verify all healthy
+   ```
+
+5. **Configure registry authentication** (GitHub Container Registry default):
+   - Repository Settings → Actions → General → Workflow permissions
+   - Enable "Read and write permissions"
+   - Enable "Allow GitHub Actions to create and approve pull requests"
+   
+6. **Verify CI/CD**:
+   - Push commit to trigger `riso-container-build.yml`
+   - Merge to main to trigger `riso-container-publish.yml`
+   - Check Packages tab for published images
+
+### Migration from Existing Containers
+
+If you already have Dockerfiles:
+
+1. **Backup existing files**:
+   ```bash
+   mv Dockerfile Dockerfile.legacy
+   mv docker-compose.yml docker-compose.legacy.yml
+   ```
+
+2. **Regenerate template**:
+   ```bash
+   copier update
+   ```
+
+3. **Merge custom logic**:
+   - Compare `.docker/Dockerfile` with `Dockerfile.legacy`
+   - Copy any custom RUN commands, environment variables, or configurations
+   - Preserve multi-stage structure (builder → runtime)
+
+4. **Update base images** (if needed):
+   ```dockerfile
+   # Old
+   FROM python:3.11
+   
+   # New (slim variant, smaller)
+   FROM python:3.11-slim-bookworm
+   ```
+
+5. **Validate changes**:
+   ```bash
+   python scripts/ci/validate_dockerfiles.py .
+   docker-compose config  # Verify syntax
+   ```
+
+### Adding Databases to Existing Projects
+
+1. **Update copier answers**:
+   ```yaml
+   # copier-answers.yml
+   include_databases: "yes"
+   ```
+
+2. **Regenerate**:
+   ```bash
+   copier update
+   ```
+
+3. **Configure credentials** in `.env`:
+   ```bash
+   POSTGRES_USER=myapp
+   POSTGRES_PASSWORD=strong_password_here
+   POSTGRES_DB=myapp_db
+   REDIS_PASSWORD=another_strong_password
+   ```
+
+4. **Create database migrations**:
+   - **Python**: `alembic init migrations` → create schema migrations
+   - **Node.js**: `pnpm --filter api-node prisma migrate dev` → Prisma migrations
+
+5. **Update connection strings**:
+   ```python
+   # Python
+   DATABASE_URL = "postgresql://myapp:strong_password_here@postgres:5432/myapp_db"
+   ```
+   
+   ```typescript
+   // Node.js
+   DATABASE_URL = "postgresql://myapp:strong_password_here@postgres:5432/myapp_db"
+   ```
+
+6. **Start services**:
+   ```bash
+   docker-compose up -d postgres redis
+   docker-compose exec api-python alembic upgrade head  # Run migrations
+   ```
+
+### Registry Migration
+
+**From Docker Hub to GitHub Container Registry:**
+
+1. **Remove Docker Hub secrets** from GitHub repository (if present):
+   - `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`
+
+2. **Update workflow** (already done in new template):
+   ```yaml
+   # .github/workflows/riso-container-publish.yml
+   # Uses ghcr.io with OIDC (no secrets needed)
+   ```
+
+3. **Re-tag existing images**:
+   ```bash
+   docker pull dockerhub.io/myorg/myapp:latest
+   docker tag dockerhub.io/myorg/myapp:latest ghcr.io/myorg/myapp:latest
+   docker push ghcr.io/myorg/myapp:latest
+   ```
+
+**To AWS ECR:**
+
+1. **Uncomment ECR job** in `.github/workflows/riso-container-publish.yml`
+
+2. **Configure AWS OIDC** (no long-lived credentials):
+   - Create IAM role with trust policy for GitHub
+   - Add `AWS_ROLE_ARN` and `AWS_REGION` to repository secrets
+
+3. **Update image URLs**:
+   ```yaml
+   tags: {% raw %}${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}{% endraw %}.amazonaws.com/myapp:latest
+   ```
+
+### Migration Checklist
+
+- [ ] Backup existing Dockerfiles and docker-compose.yml
+- [ ] Regenerate project with `copier update`
+- [ ] Merge custom build logic into new templates
+- [ ] Configure `.env` with credentials (not default values!)
+- [ ] Test single-service build: `docker build`
+- [ ] Test multi-service: `docker-compose up -d`
+- [ ] Verify health checks: `curl /health`
+- [ ] Validate Dockerfiles: `python scripts/ci/validate_dockerfiles.py .`
+- [ ] Configure registry authentication (ghcr.io default)
+- [ ] Push commit to trigger build workflow
+- [ ] Merge to main to trigger publish workflow
+- [ ] Verify published images in Packages tab
+
+### Troubleshooting Migration
+
+**Build context too large:**
+```bash
+# Check context size
+docker build --no-cache --progress=plain . 2>&1 | grep "Sending build context"
+
+# Audit .dockerignore
+cat .dockerignore
+# Ensure: node_modules/, .git/, __pycache__/, *.pyc, .venv/
+```
+
+**Permission errors after migration:**
+```bash
+# Fix ownership (containers run as UID 1000:1000)
+sudo chown -R 1000:1000 .
+```
+
+**Health checks fail:**
+```bash
+# Check logs
+docker logs <container-name>
+
+# Manual test
+docker exec <container-name> curl http://localhost:8000/health
+```
+
+**Database connection failures:**
+```bash
+# Verify service names match in environment variables
+docker-compose config | grep -A 5 postgres
+
+# Test connectivity
+docker-compose exec api-python ping postgres
+docker-compose exec api-python nc -zv postgres 5432
+```
+
+See `docs/modules/containers.md` for architecture details and `.github/context/containers.md` for extension patterns.

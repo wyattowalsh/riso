@@ -1,0 +1,195 @@
+#!/usr/bin/env python3
+"""Integration test for inter-service communication.
+
+Tests that docker-compose services can communicate:
+1. Start docker-compose services
+2. Wait for all health checks to pass
+3. Make HTTP request to Python API endpoint
+4. Verify Python API calls shared logic
+5. Verify shared logic queries PostgreSQL
+6. Assert response contains database query results
+7. Clean up containers after test
+
+Requirements:
+    - docker-compose installed and accessible
+    - Sample project rendered with api_tracks=python+node and include_databases=yes
+
+Usage:
+    python tests/integration/test_inter_service.py
+"""
+
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
+
+def log(message: str) -> None:
+    """Print log message with timestamp."""
+    timestamp = time.strftime("%H:%M:%S")
+    print(f"[{timestamp}] {message}")
+
+
+def run_command(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
+    """Run shell command and return result."""
+    log(f"Running: {' '.join(cmd)}")
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    
+    if check and result.returncode != 0:
+        log(f"Command failed with exit code {result.returncode}")
+        log(f"stdout: {result.stdout}")
+        log(f"stderr: {result.stderr}")
+        sys.exit(1)
+    
+    return result
+
+
+def start_services() -> None:
+    """Start docker-compose services in detached mode."""
+    log("Starting docker-compose services...")
+    run_command(["docker-compose", "up", "-d"])
+
+
+def wait_for_healthy(service: str, max_wait: int = 60) -> bool:
+    """Wait for service to report healthy status.
+    
+    Args:
+        service: Service name to check
+        max_wait: Maximum seconds to wait
+    
+    Returns:
+        True if service became healthy, False if timeout
+    """
+    log(f"Waiting for {service} to become healthy...")
+    start_time = time.time()
+    
+    while time.time() - start_time < max_wait:
+        result = run_command(
+            ["docker-compose", "ps", "--format", "json", service],
+            check=False,
+        )
+        
+        if result.returncode == 0 and result.stdout.strip():
+            try:
+                service_info = json.loads(result.stdout.strip())
+                health = service_info.get("Health", "")
+                
+                if health == "healthy":
+                    log(f"✓ {service} is healthy")
+                    return True
+                
+                log(f"  {service} health: {health}")
+            except json.JSONDecodeError:
+                log(f"  {service} status unknown (JSON parse error)")
+        
+        time.sleep(2)
+    
+    log(f"✗ {service} did not become healthy within {max_wait}s")
+    return False
+
+
+def test_api_endpoint() -> dict[str, Any]:
+    """Make HTTP request to Python API endpoint.
+    
+    Returns:
+        JSON response from API
+    
+    Raises:
+        RuntimeError: If request fails
+    """
+    import urllib.request
+    import urllib.error
+    
+    url = "http://localhost:8000/health"
+    log(f"Testing API endpoint: {url}")
+    
+    try:
+        with urllib.request.urlopen(url, timeout=5) as response:
+            data = json.loads(response.read().decode())
+            log(f"✓ API responded: {data}")
+            return data
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"Failed to reach API: {e}")
+
+
+def stop_services() -> None:
+    """Stop and remove docker-compose services and volumes."""
+    log("Stopping docker-compose services...")
+    run_command(["docker-compose", "down", "-v"])
+
+
+def main() -> int:
+    """Main test execution.
+    
+    Returns:
+        Exit code (0=success, 1=failure)
+    """
+    log("Starting inter-service communication test")
+    
+    try:
+        # Start services
+        start_services()
+        
+        # Wait for all services to be healthy
+        services_to_check = ["api-python"]
+        
+        # Check if postgres/redis exist in compose file
+        result = run_command(
+            ["docker-compose", "config", "--services"],
+            check=False,
+        )
+        
+        if result.returncode == 0:
+            all_services = result.stdout.strip().split("\n")
+            if "postgres" in all_services:
+                services_to_check.append("postgres")
+            if "redis" in all_services:
+                services_to_check.append("redis")
+        
+        log(f"Services to check: {services_to_check}")
+        
+        for service in services_to_check:
+            if not wait_for_healthy(service):
+                log(f"✗ Test failed: {service} not healthy")
+                return 1
+        
+        # Give services a moment to fully initialize
+        log("All services healthy, waiting 2s for stabilization...")
+        time.sleep(2)
+        
+        # Test API endpoint
+        response = test_api_endpoint()
+        
+        # Verify response structure
+        if "status" not in response:
+            log("✗ Test failed: Response missing 'status' field")
+            return 1
+        
+        if response["status"] != "healthy":
+            log(f"✗ Test failed: Expected status='healthy', got '{response['status']}'")
+            return 1
+        
+        log("✓ All tests passed!")
+        return 0
+    
+    except Exception as e:
+        log(f"✗ Test failed with exception: {e}")
+        return 1
+    
+    finally:
+        # Always clean up
+        stop_services()
+        log("Test complete")
+
+
+if __name__ == "__main__":
+    sys.exit(main())

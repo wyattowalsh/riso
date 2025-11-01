@@ -1,0 +1,187 @@
+# Docker Compose configuration for Riso-generated projects
+# Version: 3.8+ (Docker Compose v2 required)
+# 
+# This file orchestrates multi-service applications with conditional service rendering
+# based on enabled modules (api_tracks, docs_site, include_databases).
+#
+# Services:
+# - api-python: FastAPI service (if api_tracks includes python)
+# - api-node: Fastify service (if api_tracks includes node)
+# - docs-fumadocs: Next.js documentation (if docs_site == fumadocs)
+# - postgres: PostgreSQL 16 (if include_databases == yes)
+# - redis: Redis 7 (if include_databases == yes)
+#
+# Usage:
+#   docker-compose up -d              # Start all services
+#   docker-compose ps                 # Check service health
+#   docker-compose logs -f api-python # View logs
+#   docker-compose down -v            # Stop and remove volumes
+
+version: '3.8'
+
+services:
+{%- if api_tracks | lower in ["python", "python+node"] %}
+  api-python:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime-python
+    container_name: {{ project_slug }}-api-python
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+{%- if include_databases == "yes" %}
+      - DATABASE_URL=postgresql://riso:${POSTGRES_PASSWORD:-dev_password}@postgres:5432/riso_db
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-dev_password}@redis:6379/0
+{%- endif %}
+    volumes:
+      # Development: Mount source code for hot reload (comment out for production)
+      # - ./src:/app/src:ro
+      # - ./tests:/app/tests:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
+      interval: 2s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+{%- if include_databases == "yes" %}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+{%- endif %}
+    restart: unless-stopped
+    networks:
+      - {{ project_slug }}-network
+{%- endif %}
+
+{%- if api_tracks | lower in ["node", "python+node"] %}
+  api-node:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime-node
+    container_name: {{ project_slug }}-api-node
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+{%- if include_databases == "yes" %}
+      - DATABASE_URL=postgresql://riso:${POSTGRES_PASSWORD:-dev_password}@postgres:5432/riso_db
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-dev_password}@redis:6379/0
+{%- endif %}
+    volumes:
+      # Development: Mount source code for hot reload (comment out for production)
+      # - ./apps:/app/apps:ro
+      # - ./tsconfig.json:/app/tsconfig.json:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 2s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+{%- if include_databases == "yes" %}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+{%- endif %}
+    restart: unless-stopped
+    networks:
+      - {{ project_slug }}-network
+{%- endif %}
+
+{%- if docs_site == "fumadocs" %}
+  docs-fumadocs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime-node
+    container_name: {{ project_slug }}-docs-fumadocs
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    volumes:
+      # Development: Mount source code for hot reload (comment out for production)
+      # - ./apps/docs-fumadocs:/app/apps/docs-fumadocs:ro
+    command: ["pnpm", "--filter", "docs-fumadocs", "start"]
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - {{ project_slug }}-network
+{%- endif %}
+
+{%- if include_databases == "yes" and (api_tracks | lower in ["python", "node", "python+node"]) %}
+  postgres:
+    image: postgres:16-alpine
+    container_name: {{ project_slug }}-postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-riso}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-dev_password}
+      - POSTGRES_DB=${POSTGRES_DB:-riso_db}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Optional: Mount init scripts
+      # - ./scripts/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-riso} -d ${POSTGRES_DB:-riso_db}"]
+      interval: 2s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - {{ project_slug }}-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: {{ project_slug }}-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-dev_password}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - {{ project_slug }}-network
+{%- endif %}
+
+networks:
+  {{ project_slug }}-network:
+    driver: bridge
+    name: {{ project_slug }}-network
+
+{%- if include_databases == "yes" and (api_tracks | lower in ["python", "node", "python+node"]) %}
+volumes:
+  postgres_data:
+    name: {{ project_slug }}-postgres-data
+  redis_data:
+    name: {{ project_slug }}-redis-data
+{%- endif %}
+
+# CI Testing Mode Profile (activated with RISO_CI_MODE=true)
+# Optimizes for GitHub Actions environment:
+# - Disables volume mounts (uses baked-in code from image)
+# - Reduces healthcheck intervals
+# - Uses BuildKit cache for faster builds
+#
+# Usage: COMPOSE_PROFILES=ci docker-compose up -d

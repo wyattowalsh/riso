@@ -1,0 +1,358 @@
+# FastAPI Module
+
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+The FastAPI module is not enabled for this render. Set `api_tracks=python` or `api_tracks=python+node` to enable.
+{%- else %}
+
+The Python API track scaffolds a production-ready FastAPI application with:
+- **Typed Configuration**: Environment-based settings with Pydantic validation
+- **Health Checks**: Kubernetes-compatible liveness, readiness, and startup probes
+- **CRUD Examples**: Demonstration endpoints showing common patterns
+- **Auto Documentation**: Interactive Swagger UI and ReDoc interfaces
+- **Error Handling**: Structured error responses with request tracing
+- **CORS Support**: Configurable cross-origin resource sharing
+- **Testing**: Comprehensive test suite with pytest and TestClient
+
+## Quick Start
+
+### Start the Development Server
+
+```bash
+uv run uvicorn {{ package_name }}.api.main:app --reload
+```
+
+The server starts on `http://localhost:8000` by default. Visit:
+- `http://localhost:8000/docs` - Interactive API documentation (Swagger UI)
+- `http://localhost:8000/redoc` - Alternative documentation (ReDoc)
+- `http://localhost:8000/health/` - Health check endpoint
+
+### Configuration
+
+All settings can be configured via environment variables with the `RISO_API_` prefix:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RISO_API_HOST` | `0.0.0.0` | Server bind address |
+| `RISO_API_PORT` | `8000` | Server port (1024-65535) |
+| `RISO_API_RELOAD` | `true` | Enable auto-reload (dev only) |
+| `RISO_API_CORS_ORIGINS` | `["http://localhost:3000"]` | Allowed CORS origins (JSON array) |
+| `RISO_API_APP_NAME` | `{{ project_name }}` | Application name |
+| `RISO_API_VERSION` | `0.1.0` | Application version |
+| `RISO_API_LOG_LEVEL` | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
+| `RISO_API_ENVIRONMENT` | `development` | Deployment environment |
+
+**Example .env file:**
+
+```bash
+RISO_API_PORT=8001
+RISO_API_LOG_LEVEL=DEBUG
+RISO_API_CORS_ORIGINS=["http://localhost:3000","http://localhost:3001"]
+RISO_API_ENVIRONMENT=development
+```
+
+### Environment-Specific Configuration
+
+**Development:**
+```bash
+RISO_API_RELOAD=true
+RISO_API_LOG_LEVEL=DEBUG
+RISO_API_ENVIRONMENT=development
+```
+
+**Production:**
+```bash
+RISO_API_RELOAD=false
+RISO_API_LOG_LEVEL=WARNING
+RISO_API_ENVIRONMENT=production
+RISO_API_CORS_ORIGINS=["https://yourdomain.com"]
+```
+
+## Project Structure
+
+```
+{{ package_name }}/api/
+??? __init__.py           # Package initialization
+??? main.py               # FastAPI app factory
+??? config.py             # Pydantic settings
+??? routes/               # API endpoints
+?   ??? __init__.py
+?   ??? health.py        # Health check endpoints
+?   ??? examples.py      # Example CRUD endpoints
+??? models/               # Request/response models
+?   ??? __init__.py
+?   ??? requests.py      # Request models
+?   ??? responses.py     # Response models
+??? middleware/           # Middleware components
+    ??? __init__.py
+    ??? cors.py          # CORS configuration
+    ??? errors.py        # Error handlers
+
+tests/api/
+??? __init__.py
+??? conftest.py          # Pytest fixtures
+??? test_health.py       # Health endpoint tests
+??? test_examples.py     # Example endpoint tests
+```
+
+## Adding New Endpoints
+
+### 1. Create a Route Module
+
+Create a new file in `{{ package_name }}/api/routes/`:
+
+```python
+# {{ package_name }}/api/routes/users.py
+from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel
+
+router = APIRouter(prefix="/users", tags=["Users"])
+
+class User(BaseModel):
+    id: str
+    name: str
+    email: str
+
+@router.get("/", response_model=list[User])
+async def list_users() -> list[User]:
+    """List all users."""
+    return []
+
+@router.post("/", response_model=User, status_code=status.HTTP_201_CREATED)
+async def create_user(user: User) -> User:
+    """Create a new user."""
+    return user
+```
+
+### 2. Register the Router
+
+Update `{{ package_name }}/api/main.py`:
+
+```python
+from .routes import health, examples, users  # Add import
+
+# In create_app():
+app.include_router(health.router)
+app.include_router(examples.router)
+app.include_router(users.router)  # Add router
+```
+
+### 3. Add Tests
+
+Create `tests/api/test_users.py`:
+
+```python
+def test_list_users(client):
+    response = client.get("/users/")
+    assert response.status_code == 200
+```
+
+## Health Check Endpoints
+
+The API provides three health check endpoints for monitoring and orchestration:
+
+### `/health/` - Overall Health
+
+Returns application status, version, and optional dependency checks:
+
+```bash
+curl http://localhost:8000/health/
+```
+
+Response:
+```json
+{
+  "status": "healthy",
+  "version": "0.1.0",
+  "timestamp": "2025-11-01T12:00:00Z"
+}
+```
+
+### `/health/ready` - Readiness Probe
+
+Kubernetes readiness probe - checks if the application can serve traffic:
+
+```bash
+curl http://localhost:8000/health/ready
+```
+
+### `/health/live` - Liveness Probe
+
+Kubernetes liveness probe - checks if the application is alive:
+
+```bash
+curl http://localhost:8000/health/live
+```
+
+## Testing
+
+### Run All Tests
+
+```bash
+uv run pytest tests/api/
+```
+
+### Run with Coverage
+
+```bash
+uv run pytest tests/api/ --cov={{ package_name }}.api --cov-report=term-missing
+```
+
+### Test Specific Module
+
+```bash
+uv run pytest tests/api/test_health.py
+```
+
+### Using the Test Client
+
+The test suite uses FastAPI's `TestClient` for integration testing:
+
+```python
+def test_endpoint(client):
+    response = client.get("/health/")
+    assert response.status_code == 200
+    assert response.json()["status"] == "healthy"
+```
+
+## Deployment
+
+### Docker
+
+Build and run with Docker:
+
+```bash
+docker build -t {{ project_slug }}:latest .
+docker run -p 8000:8000 --env-file .env {{ project_slug }}:latest
+```
+
+### Docker Compose
+
+Start all services:
+
+```bash
+docker-compose up
+```
+
+### Kubernetes
+
+The health check endpoints are compatible with Kubernetes probes:
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /health/live
+    port: 8000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /health/ready
+    port: 8000
+  initialDelaySeconds: 5
+  periodSeconds: 5
+```
+
+## Troubleshooting
+
+### Port Already in Use
+
+```bash
+# Check what's using the port
+lsof -i :8000
+
+# Use a different port
+RISO_API_PORT=8001 uv run uvicorn {{ package_name }}.api.main:app
+```
+
+### CORS Errors
+
+Update CORS origins in `.env`:
+
+```bash
+RISO_API_CORS_ORIGINS=["http://localhost:3000","https://yourdomain.com"]
+```
+
+### Import Errors
+
+Ensure dependencies are installed:
+
+```bash
+uv sync --extra api_python
+```
+
+### Validation Errors
+
+Check the request body matches the Pydantic model:
+
+```bash
+# Get validation details from /docs
+curl -X POST http://localhost:8000/examples/ \
+  -H "Content-Type: application/json" \
+  -d '{"invalid": "data"}'
+```
+
+## Performance Considerations
+
+### Async vs Sync
+
+Use `async def` for I/O-bound operations:
+
+```python
+@router.get("/users/")
+async def list_users():  # async for database/API calls
+    users = await db.fetch_users()
+    return users
+```
+
+Use regular `def` for CPU-bound operations:
+
+```python
+@router.post("/compute/")
+def compute_result(data: ComputeRequest):  # sync for CPU work
+    result = expensive_computation(data)
+    return result
+```
+
+### Connection Pooling
+
+For database operations, use connection pooling:
+
+```python
+# Configure in config.py
+database_pool_size: int = Field(default=20)
+database_max_overflow: int = Field(default=10)
+```
+
+### Caching
+
+Use response caching for expensive operations:
+
+```python
+from fastapi import Response
+
+@router.get("/expensive/")
+async def expensive_operation(response: Response):
+    response.headers["Cache-Control"] = "public, max-age=300"
+    return {"result": "cached for 5 minutes"}
+```
+
+## Best Practices
+
+1. **Use Pydantic Models**: Always define request/response models for validation
+2. **Add Docstrings**: Document all endpoints for auto-generated documentation
+3. **Handle Errors**: Use HTTPException for expected errors
+4. **Test Everything**: Write tests for all endpoints and error cases
+5. **Validate Early**: Use Field() constraints to validate at the API boundary
+6. **Log Appropriately**: Use structured logging with context
+7. **Version APIs**: Use URL prefixes for API versions (`/v1/`, `/v2/`)
+8. **Secure Secrets**: Never commit secrets, use environment variables
+9. **Monitor Performance**: Track response times and error rates
+10. **Document Examples**: Provide clear examples in docstrings
+
+## Advanced Topics
+
+For advanced patterns including authentication, database integration, background tasks,
+and WebSockets, see `.github/context/fastapi-patterns.md`.
+
+{%- endif %}
