@@ -95,6 +95,28 @@
       "validation_commands": [
         "uv run python -c \"from shared.logic import summarize_payload; print(summarize_payload({'service': 'shared', 'status': 'ok'}))\""
       ]
+    },
+    {
+      "name": "workflow_generation",
+      "prompt_key": "ci_platform",
+      "default_state": "none",
+      "selected_state": "{{ ci_platform }}",
+      "description": "GitHub Actions CI/CD workflows with quality checks, matrix testing, caching, and artifacts.",
+      "dependencies": ["actionlint"],
+      "docs_path": "docs/modules/workflows.md",
+      "ci_jobs": ["python-quality", "python-matrix", "matrix-summary"],
+      "validation_commands": [
+        "actionlint .github/workflows/riso-quality.yml",
+        "actionlint .github/workflows/riso-matrix.yml"
+      ],
+      "features": [
+        "Automated quality validation (ruff, mypy, pylint, pytest)",
+        "Matrix testing across Python 3.11, 3.12, 3.13",
+        "Dependency caching with 70%+ hit rate target",
+        "90-day artifact retention",
+        "Conditional Node.js job support",
+        "Retry logic with exponential backoff"
+      ]
     }
   ]
 }
