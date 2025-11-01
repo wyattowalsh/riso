@@ -1,0 +1,146 @@
+{% if ci_platform == 'github-actions' %}
+name: Quality Checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  QUALITY_PROFILE: {{ quality_profile }}
+  PACKAGE_NAME: {{ package_name }}
+
+jobs:
+  python-quality:
+    name: Python Quality Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: {% if quality_profile == 'strict' %}20{% else %}10{% endif %}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            ~/.cache/pip
+          key: {% raw %}${{ runner.os }}-py3.11-${{ hashFiles('**/uv.lock') }}{% endraw %}
+          restore-keys: |
+            {% raw %}${{ runner.os }}-py3.11-{% endraw %}
+            {% raw %}${{ runner.os }}-{% endraw %}
+      
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      
+      - name: Install dependencies
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          uv sync
+      
+      - name: Run quality checks with retry
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: {% if quality_profile == 'strict' %}18{% else %}8{% endif %}
+          max_attempts: 3
+          retry_wait_seconds: 30
+          exponential_backoff: true
+          command: |
+            export PATH="$HOME/.local/bin:$PATH"
+            QUALITY_PROFILE={{ quality_profile }} uv run task quality
+      
+      {% if cli_module == 'enabled' %}
+      - name: Test CLI module
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          uv run pytest tests/test_cli.py -v
+      {% endif %}
+      
+      {% if mcp_module == 'enabled' %}
+      - name: Test MCP module
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          uv run pytest tests/test_mcp.py -v
+      {% endif %}
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-py3.11-{% raw %}${{ github.run_id }}{% endraw %}
+          path: |
+            test-results.xml
+            htmlcov/
+            .coverage
+          retention-days: 90
+      
+      - name: Upload quality logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-logs-py3.11-{% raw %}${{ github.run_id }}{% endraw %}
+          path: |
+            .riso/quality-durations.json
+            ruff-output.txt
+            mypy-output.txt
+            pylint-output.txt
+          retention-days: 90
+          if-no-files-found: warn
+
+  {% if 'node' in api_tracks %}
+  node-quality:
+    name: Node.js Quality Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: {% if quality_profile == 'strict' %}20{% else %}10{% endif %}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Enable corepack
+        run: corepack enable
+      
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            .pnpm-store
+          key: {% raw %}${{ runner.os }}-node-${{ hashFiles('**/pnpm-lock.yaml') }}{% endraw %}
+          restore-keys: |
+            {% raw %}${{ runner.os }}-node-{% endraw %}
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run ESLint
+        run: pnpm run lint
+      
+      - name: Run TypeScript check
+        run: pnpm run type-check
+      
+      - name: Run tests
+        run: pnpm test
+      
+      - name: Upload Node.js test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-test-results-{% raw %}${{ github.run_id }}{% endraw %}
+          path: coverage/
+          retention-days: 90
+          if-no-files-found: warn
+  {% endif %}
+{% endif %}

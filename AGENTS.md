@@ -57,7 +57,31 @@ uv sync
 make quality
 ```
 
-**CI workflows:** Not yet configured. Local quality checks (`make quality` or `uv run task quality`) serve as the authoritative test suite. CI automation is planned for future implementation.
+**CI workflows:** GitHub Actions workflows automatically run quality checks on PRs and commits to main. Rendered projects include:
+
+- **`riso-quality.yml`**: Main quality workflow running ruff, mypy, pylint, pytest with retry logic and artifact uploads (90-day retention)
+- **`riso-matrix.yml`**: Matrix testing across Python 3.11, 3.12, 3.13 with fail-fast disabled and per-version artifacts
+
+**Required branch protection checks:**
+- `python-quality` - Main quality suite (ruff, mypy, pylint, pytest)
+- `python-matrix / test-py311` - Python 3.11 compatibility
+- `python-matrix / test-py312` - Python 3.12 compatibility
+- `python-matrix / test-py313` - Python 3.13 compatibility
+- `matrix-summary` - Overall matrix status (blocks merge if any version fails)
+
+**CI features:**
+- Dependency caching with 70%+ hit rate target (uv.lock and pnpm-lock.yaml hashing)
+- Retry logic with exponential backoff (3 attempts)
+- Conditional Node.js job when `api_tracks` includes `node`
+- Profile-based timeouts (10min standard, 20min strict)
+- Cache hit/miss logging for debugging
+
+**Viewing CI status:**
+```bash
+# In rendered project with GitHub remote
+gh run list --limit 5
+gh run view <run-id> --log
+```
 
 ## Code Quality
 
@@ -75,6 +99,13 @@ Quality suite implementation:
 - `template/files/shared/quality/uv_tasks/quality.py.jinja` – uv task definitions
 - `scripts/ci/check_quality_parity.py` – ensures Makefile and uv tasks stay synchronized
 - `scripts/ci/run_quality_suite.py` – CI orchestration script
+
+**Critical Convention:** All Python commands MUST use `uv run` prefix (never bare `python` or `pytest`). This ensures consistent virtual environment usage across local development, CI/CD workflows, and rendered projects. Examples:
+- ✅ `uv run pytest tests/`
+- ✅ `uv run python -m mypackage.cli`
+- ✅ `uv run task quality`
+- ❌ `python -m pytest` (incorrect)
+- ❌ `pytest tests/` (incorrect)
 
 ## Security
 
@@ -170,9 +201,13 @@ QUALITY_PROFILE=standard uv run task quality
 
 ## Recent Changes
 
+- 004-github-actions-workflows: Added GitHub Actions CI/CD workflows with quality checks (ruff, mypy, pylint, pytest), matrix testing across Python 3.11/3.12/3.13, retry logic with exponential backoff, dependency caching, artifact uploads with 90-day retention, and conditional Node.js job support
 - 003-code-quality-integrations: Added unified quality suite (ruff, mypy, pylint, pytest, coverage) with standard/strict profiles, auto-healing tool provisioning, parallelized CI jobs, and 90-day artifact retention
 - 002-docs-template-expansion: Added Python 3.11 (uv-managed), Node.js 20 LTS, TypeScript 5.6, POSIX shell + Fumadocs (Next.js 15), Sphinx 7.4 + Shibuya theme, Docusaurus 3, pnpm ≥8, mise 2024.9+, uv ≥0.4
 
 ## Active Technologies
 
+- YAML (GitHub Actions workflow syntax), Python 3.11+ (for validation scripts), Jinja2 (for template rendering) + GitHub Actions marketplace actions (`actions/checkout@v4`, `actions/setup-python@v5`, `actions/cache@v4`, `actions/upload-artifact@v4`, `nick-fields/retry@v3`), actionlint (workflow validation), existing quality tools from feature 003 (004-github-actions-workflows)
+- Workflow artifacts (JUnit XML, coverage reports, logs) stored in GitHub Actions artifact storage with 90-day retention (004-github-actions-workflows)
+- Matrix testing across Python 3.11, 3.12, 3.13 with fail-fast disabled and per-version artifacts (004-github-actions-workflows)
 - Python 3.11 (uv-managed), optional Node.js 20 LTS + ruff, mypy, pylint, pytest, coverage, optional eslint + typescript (003-code-quality-integrations)

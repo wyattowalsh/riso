@@ -1,0 +1,487 @@
+{% if ci_platform == 'github-actions' %}
+# GitHub Actions Workflows
+
+This project includes automated GitHub Actions workflows for continuous integration and quality validation.
+
+## Workflows Overview
+
+### `riso-quality.yml` - Main Quality Checks
+
+Runs on every pull request and push to `main`:
+
+**Python Quality Job:**
+- Linting with ruff
+- Type checking with mypy
+- Static analysis with pylint
+- Unit tests with pytest
+- Coverage reporting
+
+**Features:**
+- ⏱️ Timeout: {{ '20 minutes (strict profile)' if quality_profile == 'strict' else '10 minutes (standard profile)' }}
+- 🔄 Retry logic: 3 attempts with exponential backoff
+- 📦 Dependency caching using `uv.lock` hash
+- 📊 Artifact uploads (test results, coverage, quality logs) with 90-day retention
+{% if cli_module == 'enabled' %}
+- ✅ CLI module smoke tests
+{% endif %}
+{% if mcp_module == 'enabled' %}
+- ✅ MCP module validation
+{% endif %}
+
+{% if 'node' in api_tracks %}
+**Node.js Quality Job** (runs in parallel with Python):
+- ESLint linting
+- TypeScript type checking
+- Vitest unit tests
+- Coverage reporting
+
+**Features:**
+- ⏱️ Timeout: {{ '20 minutes (strict profile)' if quality_profile == 'strict' else '10 minutes (standard profile)' }}
+- 📦 pnpm dependency caching using `pnpm-lock.yaml` hash
+- 📊 Test results and coverage artifacts with 90-day retention
+{% endif %}
+
+### `riso-matrix.yml` - Matrix Testing
+
+Runs quality checks across multiple Python versions ({{ python_versions|join(', ') }}) in parallel:
+
+**Matrix Strategy:**
+- Tests all versions simultaneously with `fail-fast: false`
+- Each version gets independent cache keys
+- All versions must pass for PR merge to proceed
+- Matrix summary job aggregates results
+
+**Per-Version Jobs:**
+- Linting with ruff
+- Type checking with mypy
+- Unit tests with pytest
+- Coverage reporting
+{% if quality_profile == 'strict' %}
+- Static analysis with pylint (strict profile only)
+{% endif %}
+
+**Features:**
+- ⏱️ Timeout: 15 minutes per version
+- 🔄 Retry logic on test failures (3 attempts)
+- 📦 Version-specific dependency caching
+- 📊 Per-version artifacts (test results, coverage)
+- ✅ Required checks: All Python versions must pass
+
+**Example GitHub UI:**
+```
+✅ Python 3.11 Quality - Passed (3m 12s)
+✅ Python 3.12 Quality - Passed (3m 18s)
+❌ Python 3.13 Quality - Failed (4m 32s)
+  → Error: Type error in f-string syntax
+❌ Matrix Summary - Failed
+  → Not all Python versions passed - merge blocked
+```
+
+## Workflow Configuration
+
+### Environment Variables
+
+Workflows respect the following environment variables:
+
+- `QUALITY_PROFILE`: Set to `{{ quality_profile }}` (from copier answers)
+- `PACKAGE_NAME`: Set to `{{ package_name }}`
+
+### Cache Strategy
+
+**Python dependencies:**
+```yaml
+key: {% raw %}${{ runner.os }}-py3.11-${{ hashFiles('**/uv.lock') }}{% endraw %}
+restore-keys: |
+  {% raw %}${{ runner.os }}-py3.11-{% endraw %}
+  {% raw %}${{ runner.os }}-{% endraw %}
+```
+
+{% if 'node' in api_tracks %}
+**Node.js dependencies:**
+```yaml
+key: {% raw %}${{ runner.os }}-node-${{ hashFiles('**/pnpm-lock.yaml') }}{% endraw %}
+restore-keys: |
+  {% raw %}${{ runner.os }}-node-{% endraw %}
+```
+{% endif %}
+
+**Expected Performance:**
+- First run (cache miss): ~5-6 minutes
+- Subsequent runs (cache hit): ~2-3 minutes
+- Cache hit rate target: ≥70%
+
+### Artifact Retention
+
+All artifacts are retained for **90 days** and include:
+
+**Python artifacts:**
+- `test-results-py3.11-{run_id}` - JUnit XML, coverage HTML, `.coverage` file
+- `quality-logs-py3.11-{run_id}` - Ruff, mypy, pylint output, quality durations JSON
+
+{% if 'node' in api_tracks %}
+**Node.js artifacts:**
+- `node-test-results-{run_id}` - Vitest coverage reports
+{% endif %}
+
+## Customizing Workflows
+
+### Adding Custom Steps
+
+Workflows use distinctive `riso-*` naming to avoid conflicts with custom workflows. To add custom checks:
+
+1. Create a new workflow file (avoid `riso-*` prefix):
+```yaml
+# .github/workflows/custom-validation.yml
+name: Custom Validation
+on: [pull_request]
+
+jobs:
+  custom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run custom checks
+        run: ./scripts/custom-validation.sh
+```
+
+2. Template workflows and custom workflows coexist safely.
+
+### Overriding Environment Variables
+
+Workflows support customization via environment variables at multiple scopes:
+
+**Workflow-level (affects all jobs):**
+
+```yaml
+# Edit .github/workflows/riso-quality.yml
+env:
+  QUALITY_PROFILE: standard  # Override strict profile
+  PACKAGE_NAME: my_package   # Override package name
+  CUSTOM_VAR: custom_value   # Add custom variables
+```
+
+**Job-level (affects single job):**
+
+```yaml
+python-quality:
+  env:
+    PYTEST_ARGS: "-vv --tb=short"  # Verbose pytest output
+    MYPY_CACHE_DIR: ".mypy_cache"  # Custom mypy cache location
+    UV_CACHE_DIR: "/tmp/uv-cache"  # Custom uv cache location
+```
+
+**Step-level (affects single step):**
+
+```yaml
+- name: Run tests
+  env:
+    DATABASE_URL: "sqlite:///test.db"  # Test database
+    DEBUG: "true"                       # Enable debug mode
+  run: uv run pytest
+```
+
+**Common customization scenarios:**
+
+- **Skip strict checks temporarily:** Set `QUALITY_PROFILE: standard`
+- **Increase test verbosity:** Add `PYTEST_ARGS: "-vv -s"`
+- **Enable debug logging:** Set `DEBUG: "true"`
+- **Override timeouts:** Set `PYTEST_TIMEOUT: "300"` (5 minutes)
+- **Custom package path:** Set `PYTHONPATH: "src:custom_modules"`
+
+**Note:** Changes to template workflows (`riso-*.yml`) may be overwritten during copier updates. For permanent changes, modify the template source or create custom workflows.
+
+## Troubleshooting
+
+### Workflow Not Triggering
+
+**Symptom:** Pushed commit but no Actions run appears
+
+**Solutions:**
+1. Verify Actions enabled: Settings → Actions → General → "Allow all actions"
+2. Check workflow files exist in `.github/workflows/`
+3. Ensure workflows have `.yml` extension (not `.yml.jinja`)
+4. Verify branch/event triggers match your push
+
+### All Jobs Failing Immediately
+
+**Symptom:** Every job fails within seconds
+
+**Solutions:**
+1. Check GitHub Actions service status: https://www.githubstatus.com/
+2. Verify `uv` installation step succeeds (check logs)
+3. Ensure `pyproject.toml` and `uv.lock` are present
+
+### Cache Never Hits
+
+**Symptom:** Every run shows "Cache miss"
+
+**Solutions:**
+1. Verify `uv.lock` is committed and tracked by git
+2. Check cache key hash stability - if lock file changes frequently, cache won't hit
+3. Ensure previous run completed successfully (incomplete runs don't save cache)
+4. Inspect cache key in logs to verify it's being generated correctly
+
+### Artifacts Not Uploading
+
+**Symptom:** Workflows pass but no artifacts appear
+
+**Solutions:**
+1. Verify artifact paths exist before upload (check step logs)
+2. Ensure `if: always()` is set so artifacts upload even on failure
+3. Check artifact size limits (500MB per artifact, 2GB total)
+
+### Quality Check Timeouts
+
+**Symptom:** Jobs consistently timeout
+
+**Solutions:**
+1. {{ 'Standard profile allows 10 minutes' if quality_profile == 'standard' else 'Strict profile allows 20 minutes' }}
+2. Check for hanging tests or infinite loops
+3. Verify cache is hitting - cache misses add 3-4 minutes
+4. Consider self-hosted runner for larger projects
+
+### Matrix Job Failures (Python Version Specific)
+
+**Symptom:** One Python version fails while others pass
+
+**Solutions:**
+1. Download version-specific artifact to debug locally: `gh run download <run-id> --name matrix-results-py3.13-<run-id>`
+2. Check for version-specific syntax (e.g., Python 3.13 f-string changes)
+3. Verify dependencies support all Python versions in `pyproject.toml`
+4. Run locally with specific version: `uv run --python 3.13 pytest`
+5. Review type hints for compatibility issues
+
+**Common Issues:**
+- Python 3.13: New f-string syntax may cause type errors
+- Python 3.11: Missing features from 3.12+ (e.g., PEP 695 type syntax)
+- Dependency incompatibility: Package doesn't support specific Python version
+
+### Matrix Summary Failing
+
+**Symptom:** All individual jobs pass but matrix-summary fails
+
+**Solutions:**
+1. Check GitHub Actions logs for matrix-summary job
+2. Verify job dependency syntax: `needs: matrix-test` is correct
+3. Confirm all matrix jobs completed (not cancelled/skipped)
+4. This indicates infrastructure issue, not code issue - retry workflow
+
+## Branch Protection
+
+To require workflows before merging:
+
+1. Go to Settings → Branches → Add rule
+2. Branch name pattern: `main`
+3. Check "Require status checks to pass before merging"
+4. Search and select:
+   - `Python Quality Checks`
+{% if 'node' in api_tracks %}
+   - `Node.js Quality Checks`
+{% endif %}
+   - `Python 3.11 Quality` (from matrix workflow)
+   - `Python 3.12 Quality` (from matrix workflow)
+   - `Python 3.13 Quality` (from matrix workflow)
+   - `Matrix Summary` (from matrix workflow)
+5. Check "Require branches to be up to date"
+6. Save changes
+
+**Note:** All {{ python_versions|length + 1 }} matrix checks must pass for PR merge. This ensures compatibility across Python {{ python_versions|join(', ') }}.
+
+## Free Tier Optimization
+
+GitHub Actions provides:
+- **Public repos:** Unlimited minutes
+- **Private repos:** 2,000 minutes/month free
+
+**Optimization strategies:**
+
+1. **Aggressive caching** - Cache hit reduces runtime by 50%
+2. **Timeout tuning** - {{ '10-minute timeout prevents runaway jobs' if quality_profile == 'standard' else '20-minute timeout for strict checks' }}
+3. **Conditional jobs** - Node.js job only runs when needed
+4. **Parallel execution** - Python and Node jobs run simultaneously
+5. **Matrix optimization** - 3 Python versions run in parallel (~3-4 minutes total, not 9-12)
+
+**Estimated monthly usage (private repo):**
+
+*Main quality workflow:*
+- ~3 minutes/run × 100 PRs/month = 300 minutes (15% of free tier)
+- With 70% cache hit rate: ~2 minutes/run × 100 = 200 minutes (10% of free tier)
+
+*Matrix testing workflow:*
+- ~4 minutes/run (3 versions parallel) × 100 PRs/month = 400 minutes (20% of free tier)
+- With cache optimization: ~3 minutes/run × 100 = 300 minutes (15% of free tier)
+
+**Combined total:** ~500-700 minutes/month (25-35% of free tier)
+
+**Cost control tips:**
+- Skip matrix on draft PRs (edit workflow to exclude `draft: true`)
+- Run matrix only on `ready_for_review` trigger
+- Use workflow dispatch for manual testing
+
+### Advanced Free Tier Optimization
+
+**1. Path-based workflow triggers** - Skip CI when only docs change:
+
+```yaml
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      # Exclude docs-only changes
+      - '!docs/**'
+      - '!*.md'
+```
+
+**2. Concurrency limits** - Cancel old runs on new push:
+
+```yaml
+concurrency:
+  group: {% raw %}${{ github.workflow }}-${{ github.ref }}{% endraw %}
+  cancel-in-progress: true
+```
+
+Saves ~50% of CI minutes by canceling superseded runs when pushing multiple commits quickly.
+
+**3. Conditional matrix** - Run full matrix only on specific events:
+
+```yaml
+strategy:
+  matrix:
+    python-version: {% raw %}${{ github.event_name == 'push' && fromJSON('["3.11", "3.12", "3.13"]') || fromJSON('["3.11"]') }}{% endraw %}
+```
+
+Runs all versions on merge to main, but only 3.11 on PRs (saves ~60% matrix time).
+
+**4. Aggressive cache configuration** - Maximize cache hits:
+
+```yaml
+- name: Cache everything
+  uses: actions/cache@v4
+  with:
+    path: |
+      ~/.cache/uv
+      ~/.cache/pip
+      ~/.cache/pypoetry
+      node_modules
+      .venv
+      .mypy_cache
+      .pytest_cache
+      .ruff_cache
+    key: mega-cache-{% raw %}${{ runner.os }}-${{ hashFiles('**/*.lock', '**/pyproject.toml') }}{% endraw %}
+    restore-keys: |
+      mega-cache-{% raw %}${{ runner.os }}-{% endraw %}
+```
+
+Can reduce cold start time from 6 minutes to <2 minutes (saves ~4 minutes per run).
+
+**5. Scheduled workflow cleanup** - Remove old workflow runs:
+
+Create `.github/workflows/cleanup-runs.yml`:
+
+```yaml
+name: Cleanup Old Workflow Runs
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const days = 30;
+            const before = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+            const runs = await github.rest.actions.listWorkflowRunsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              created: `<${before}`,
+              per_page: 100
+            });
+            for (const run of runs.data.workflow_runs) {
+              await github.rest.actions.deleteWorkflowRun({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: run.id
+              });
+            }
+```
+
+Keeps workflow history lean (doesn't affect minutes, but improves UI performance).
+
+**6. Fork limitations** - Be aware of free tier restrictions:
+
+- **Public repos:** Unlimited minutes ✅
+- **Private repos:** 2,000 minutes/month on free tier
+- **Forks of private repos:** No Actions by default (must enable in fork settings)
+
+**7. Self-hosted runners** - For heavy workloads:
+
+If consistently exceeding free tier, consider self-hosted runners:
+
+```yaml
+runs-on: self-hosted  # Instead of ubuntu-latest
+```
+
+Requires setting up your own infrastructure but eliminates minute limits.
+
+**Estimated savings summary:**
+
+| Optimization | Minutes Saved/Month | % Reduction |
+|--------------|---------------------|-------------|
+| Path-based triggers | 100-150 | 15-20% |
+| Concurrency limits | 200-300 | 30-40% |
+| Conditional matrix | 150-200 | 20-25% |
+| Aggressive caching | 100-150 | 15-20% |
+| **Combined total** | **400-600** | **50-70%** |
+
+With all optimizations, typical usage drops to ~200-300 minutes/month (10-15% of free tier).
+
+## Upgrading Workflows
+
+When the Riso template releases workflow updates:
+
+```bash
+# Update your project with new template version
+copier update
+
+# Review changes to .github/workflows/riso-*.yml
+git diff .github/workflows/
+
+# Test locally before committing
+uv run task quality
+
+# Commit and push
+git add .github/workflows/
+git commit -m "chore: update CI workflows from template"
+git push
+```
+
+See `docs/upgrade-guide.md` for detailed migration instructions.
+
+## Further Reading
+
+- GitHub Actions documentation: https://docs.github.com/en/actions
+- Workflow syntax: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
+- actionlint validator: https://github.com/rhysd/actionlint
+
+{% else %}
+# GitHub Actions Workflows
+
+CI platform is set to `{{ ci_platform }}`. GitHub Actions workflows are not configured for this project.
+
+To enable GitHub Actions:
+
+```bash
+# Re-run copier update and select github-actions for ci_platform
+copier update
+```
+
+{% endif %}

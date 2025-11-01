@@ -19,10 +19,12 @@ try:
         ensure_python_quality_tools,
         ToolCheck,
     )
+    from hooks.workflow_validator import validate_workflows_directory
 except ModuleNotFoundError:  # pragma: no cover - template lint
     ensure_python_quality_tools = lambda: []  # type: ignore
     ensure_node_quality_tools = lambda _: []  # type: ignore
     ToolCheck = None  # type: ignore
+    validate_workflows_directory = lambda *_: 0  # type: ignore
 
 DEFAULT_GUIDANCE = [
     "Create a virtual environment with `uv venv` (or activate an existing one).",
@@ -123,6 +125,15 @@ def main() -> None:
         node_required = answers.get("api_tracks", "none").lower() in {"node", "python+node"}
         node_checks = ensure_node_quality_tools(node_required)
 
+    # Validate generated workflows if CI platform is GitHub Actions
+    ci_platform = answers.get("ci_platform", "github-actions").lower()
+    workflow_validation_status = "skipped"
+    if ci_platform == "github-actions":
+        workflows_dir = destination / ".github" / "workflows"
+        # Run validation but don't fail render on validation failures
+        exit_code = validate_workflows_directory(workflows_dir, strict=False)
+        workflow_validation_status = "pass" if exit_code == 0 else "fail"
+
     record_metadata(
         destination,
         {
@@ -143,6 +154,8 @@ def main() -> None:
                     for check in quality_checks + node_checks
                 ],
             },
+            "ci_platform": ci_platform,
+            "workflow_validation": workflow_validation_status,
         },
     )
 
