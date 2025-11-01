@@ -45,16 +45,32 @@ def load_smoke_results(answers_file: Path) -> dict[str, object] | None:
     return json.loads(log_path.read_text(encoding="utf-8"))
 
 
+def load_post_gen_metadata(answers_file: Path) -> dict[str, object] | None:
+    """Load post-generation metadata including workflow validation status."""
+    render_dir = answers_file.parent / "render"
+    metadata_path = render_dir / ".riso" / "post_gen_metadata.json"
+    if not metadata_path.exists():
+        return None
+    return json.loads(metadata_path.read_text(encoding="utf-8"))
+
+
 def render_variant(variant: str, answers_file: Path) -> dict[str, object]:
     destination = answers_file.parent / "render"
     cmd = [str(RENDER_SCRIPT), "--variant", variant, "--answers", str(answers_file)]
     env = {**os.environ, "COPIER_CMD": os.environ.get("COPIER_CMD", "copier")}
     subprocess.run(cmd, check=True, cwd=REPO_ROOT, env=env)
+    
+    metadata = load_post_gen_metadata(answers_file)
+    workflow_status = "unknown"
+    if metadata:
+        workflow_status = metadata.get("workflow_validation", "unknown")
+    
     return {
         "variant": variant,
         "answers": str(answers_file),
         "destination": str(destination),
         "smoke_results": load_smoke_results(answers_file),
+        "workflow_validation": workflow_status,
     }
 
 
@@ -87,6 +103,11 @@ def main() -> None:
         for variant, answers_file in discover_variants():
             variant_summary = render_variant(variant, answers_file)
             summary["variants"].append(variant_summary)
+            
+            # Track workflow validation status
+            workflow_status = variant_summary.get("workflow_validation", "unknown")
+            recorder.update_workflow_validation(workflow_status)
+            
             smoke_results = variant_summary.get("smoke_results")
             if smoke_results:
                 recorder.update_from_results(

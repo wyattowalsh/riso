@@ -1,8 +1,31 @@
 # Riso Template • Agent Operations
 
-> Maintained per [AGENTS.md specification](https://agents.md) (observed: 2025-10-29) and [maintainer field guide](https://github.com/openai/agents.md) (observed: 2025-10-29).
+> Maintained per [AGENTS.md specification](https://agents.md) (observed: 2025-10-30) and [maintainer field guide](https://github.com/openai/agents.md) (observed: 2025-10-30).
+
+## Quickstart
+
+Get started with the default template variant:
+
+```bash
+# Render the default sample
+./scripts/render-samples.sh
+
+# Navigate to the rendered project
+cd samples/default/render
+
+# Set up the environment and run quickstart
+PACKAGE=$(awk -F': ' '$1=="package_name"{print $2}' ../copier-answers.yml)
+uv sync
+uv run python -m ${PACKAGE}.quickstart
+
+# Run quality checks
+make quality
+# or, when make is unavailable
+QUALITY_PROFILE=standard uv run task quality
+```
 
 ## Scope & Ownership
+
 - Riso is a Copier template plus automation helpers; render actual projects with `copier copy` or `scripts/render-samples.sh`.
 - Template maintainers keep sample renders, automation scripts, and documentation synchronized; rendered projects must author their own AGENTS.md.
 - Apply the "lean, link out" pattern—keep this file as the control plane and point to deeper docs like `docs/quickstart.md.jinja`.
@@ -14,12 +37,94 @@
 - Optional: set `COPIER_CMD` to point at a custom Copier binary when invoking automation.
 
 ## Repository Map
+
 - `template/` – Copier payload (Python + Node variants, shared logic, docs, module catalog).
 - `scripts/` – local/CI automation (rendering, metrics, context sync); run from repo root.
 - `samples/` – curated answer files, rendered artifacts, `smoke-results.json`, performance metrics.
 - `.github/context/` – canonical context snippets; must match `template/files/shared/.github/context/` (`uv run python scripts/ci/verify_context_sync.py`).
 - `docs/` – Jinja-templated quickstart and module docs rendered into downstream projects.
-- `.specify/specs/` – canonical GitHub Spec Kit workspace (access via `specs/` symlink if tooling expects the legacy location).
+- `specs/` – GitHub Spec Kit workspace (canonical specifications for features and plans).
+
+## Build & Test Parity
+
+**Local development:**
+
+```bash
+# From repo root - render and test template
+./scripts/render-samples.sh
+cd samples/default/render
+uv sync
+make quality
+```
+
+**CI workflows:** GitHub Actions workflows automatically run quality checks on PRs and commits to main. Rendered projects include:
+
+- **`riso-quality.yml`**: Main quality workflow running ruff, mypy, pylint, pytest with retry logic and artifact uploads (90-day retention)
+- **`riso-matrix.yml`**: Matrix testing across Python 3.11, 3.12, 3.13 with fail-fast disabled and per-version artifacts
+
+**Required branch protection checks:**
+- `python-quality` - Main quality suite (ruff, mypy, pylint, pytest)
+- `python-matrix / test-py311` - Python 3.11 compatibility
+- `python-matrix / test-py312` - Python 3.12 compatibility
+- `python-matrix / test-py313` - Python 3.13 compatibility
+- `matrix-summary` - Overall matrix status (blocks merge if any version fails)
+
+**CI features:**
+- Dependency caching with 70%+ hit rate target (uv.lock and pnpm-lock.yaml hashing)
+- Retry logic with exponential backoff (3 attempts)
+- Conditional Node.js job when `api_tracks` includes `node`
+- Profile-based timeouts (10min standard, 20min strict)
+- Cache hit/miss logging for debugging
+
+**Viewing CI status:**
+```bash
+# In rendered project with GitHub remote
+gh run list --limit 5
+gh run view <run-id> --log
+```
+
+## Code Quality
+
+Quality tools run via `make quality` or `uv run task quality` in rendered projects:
+
+- **Linting:** ruff (configuration in `pyproject.toml`)
+- **Type checking:** mypy (configuration in `pyproject.toml`)
+- **Static analysis:** pylint (configuration in `pyproject.toml`)
+- **Testing:** pytest with coverage (configuration in `pytest.ini` and `coverage.cfg`)
+- **Profiles:** `QUALITY_PROFILE=standard` (default) or `QUALITY_PROFILE=strict` for enhanced checks
+
+Quality suite implementation:
+
+- `template/files/shared/quality/makefile.quality.jinja` – Makefile targets
+- `template/files/shared/quality/uv_tasks/quality.py.jinja` – uv task definitions
+- `scripts/ci/check_quality_parity.py` – ensures Makefile and uv tasks stay synchronized
+- `scripts/ci/run_quality_suite.py` – CI orchestration script
+
+**Critical Convention:** All Python commands MUST use `uv run` prefix (never bare `python` or `pytest`). This ensures consistent virtual environment usage across local development, CI/CD workflows, and rendered projects. Examples:
+- ✅ `uv run pytest tests/`
+- ✅ `uv run python -m mypackage.cli`
+- ✅ `uv run task quality`
+- ❌ `python -m pytest` (incorrect)
+- ❌ `pytest tests/` (incorrect)
+
+## Security
+
+**Secrets management:**
+
+- Never commit secrets to the repository
+- Use environment variables for sensitive configuration
+- Rendered projects should implement `.env` files (gitignored by default)
+
+**Production safety:**
+
+- Pre-generation hook (`template/hooks/pre_gen_project.py`) validates required tooling and fails fast on missing dependencies
+- Post-generation hook writes metadata to `.riso/post_gen_metadata.json` for audit trails
+- Quality checks must pass before merging changes
+
+**Security-critical paths:**
+
+- `template/hooks/` – validation and initialization logic
+- `scripts/ci/verify_context_sync.py` – ensures shared context files remain synchronized
 
 ## Python Execution Convention
 **CRITICAL**: All Python scripts MUST be executed via `uv run python` to ensure proper virtual environment isolation and dependency management. Never invoke Python directly (`python`, `python3`, or `python3.11`). This applies to all automation scripts, CI workflows, and local development commands.
@@ -99,8 +204,13 @@ QUALITY_PROFILE=standard uv run task quality
 
 ## Recent Changes
 
+- 004-github-actions-workflows: Added GitHub Actions CI/CD workflows with quality checks (ruff, mypy, pylint, pytest), matrix testing across Python 3.11/3.12/3.13, retry logic with exponential backoff, dependency caching, artifact uploads with 90-day retention, and conditional Node.js job support
 - 003-code-quality-integrations: Added unified quality suite (ruff, mypy, pylint, pytest, coverage) with standard/strict profiles, auto-healing tool provisioning, parallelized CI jobs, and 90-day artifact retention
 - 002-docs-template-expansion: Added Python 3.11 (uv-managed), Node.js 20 LTS, TypeScript 5.6, POSIX shell + Fumadocs (Next.js 15), Sphinx 7.4 + Shibuya theme, Docusaurus 3, pnpm ≥8, mise 2024.9+, uv ≥0.4
-- 002-docs-template-expansion: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 
 ## Active Technologies
+
+- YAML (GitHub Actions workflow syntax), Python 3.11+ (for validation scripts), Jinja2 (for template rendering) + GitHub Actions marketplace actions (`actions/checkout@v4`, `actions/setup-python@v5`, `actions/cache@v4`, `actions/upload-artifact@v4`, `nick-fields/retry@v3`), actionlint (workflow validation), existing quality tools from feature 003 (004-github-actions-workflows)
+- Workflow artifacts (JUnit XML, coverage reports, logs) stored in GitHub Actions artifact storage with 90-day retention (004-github-actions-workflows)
+- Matrix testing across Python 3.11, 3.12, 3.13 with fail-fast disabled and per-version artifacts (004-github-actions-workflows)
+- Python 3.11 (uv-managed), optional Node.js 20 LTS + ruff, mypy, pylint, pytest, coverage, optional eslint + typescript (003-code-quality-integrations)

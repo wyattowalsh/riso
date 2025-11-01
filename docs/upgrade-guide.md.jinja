@@ -1,5 +1,36 @@
 # Upgrade Guide
 
+## Adopting GitHub Actions CI/CD Workflows
+
+1. **Pull new workflow files** – regenerate your project with the latest template version or manually copy:
+   - `.github/workflows/riso-quality.yml` (main quality checks)
+   - `.github/workflows/riso-matrix.yml` (matrix testing across Python versions)
+2. **Configure CI platform** – update your `copier-answers.yml` (or template prompts) with `ci_platform='github-actions'`.
+3. **Set Python versions** – configure `python_versions` in your copier answers (default: `['3.11', '3.12', '3.13']`).
+4. **Install actionlint** (optional) – for local workflow validation: `brew install actionlint` (macOS) or download from [actionlint releases](https://github.com/rhysd/actionlint/releases).
+5. **Configure branch protection** – add required status checks in GitHub repository settings:
+   - `python-quality` (main quality suite)
+   - `python-matrix / test-py311` (Python 3.11 compatibility)
+   - `python-matrix / test-py312` (Python 3.12 compatibility)
+   - `python-matrix / test-py313` (Python 3.13 compatibility)
+   - `matrix-summary` (overall matrix status)
+6. **Verify workflows** – push a commit to trigger CI and confirm:
+   - Quality checks run successfully
+   - Matrix tests execute across all Python versions
+   - Artifacts upload with 90-day retention
+   - Cache hit rates reach 70%+ after initial runs
+7. **Node.js projects** – if `api_tracks` includes `node`, the `node-quality` job will automatically run ESLint, TypeScript checks, and Vitest tests in parallel with Python checks.
+
+### Workflow Migration Checklist
+
+- [ ] Workflow files present in `.github/workflows/`
+- [ ] `ci_platform='github-actions'` in copier answers
+- [ ] `python_versions` configured
+- [ ] Branch protection rules configured
+- [ ] First CI run completes successfully
+- [ ] Artifacts available in Actions tab with 90-day retention
+- [ ] Cache status shows ✅ on subsequent runs
+
 ## Adopting the Quality Integration Suite
 
 1. **Pull new template files** – regenerate your project with the latest template version or copy the following files:

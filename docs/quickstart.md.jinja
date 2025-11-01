@@ -29,3 +29,170 @@ definition so environments without `make` stay aligned.
 - Enable `mcp_module=enabled` for FastMCP tooling.
 
 Refer to `docs/modules/prompt-reference.md` for compatibility details.
+
+{% if ci_platform == 'github-actions' %}
+## Continuous Integration
+
+Your project includes automated GitHub Actions workflows for quality validation.
+
+### Viewing CI Status
+
+After pushing your first commit or opening a pull request:
+
+1. Navigate to your GitHub repository
+2. Click the **Actions** tab
+3. View workflow runs and job status
+
+### Required Checks
+
+The following checks must pass before PR merge:
+
+- **Quality Checks** (`riso-quality.yml`) - Linting, type checking, testing
+{% if 'node' in api_tracks %}
+- **Node.js Quality** (`riso-quality.yml`) - ESLint, TypeScript, Vitest tests
+{% endif %}
+
+### Downloading Artifacts
+
+Test results, coverage reports, and quality logs are automatically uploaded as artifacts with 90-day retention:
+
+1. Navigate to the **Actions** tab in your repository
+2. Click on a completed workflow run
+3. Scroll to the **Artifacts** section at the bottom
+4. Download artifacts (e.g., `python-quality-results`, `matrix-results-py3.11-<run-id>`)
+5. Extract and review locally for debugging
+
+**Artifact Contents:**
+- `test-results.xml` - JUnit XML test results
+- `coverage.xml` - Coverage report in Cobertura format
+- `.coverage` - Raw coverage data (SQLite)
+- `quality-logs/` - Ruff, mypy, pylint outputs
+
+**Command Line Download:**
+```bash
+# Download all artifacts from latest run
+gh run download --repo owner/repo
+
+# Download specific artifact by name
+gh run download <run-id> --name python-quality-results
+```
+
+Artifacts expire after 90 days per GitHub Actions retention policy.
+
+### Branch Protection Setup
+
+To enforce quality checks before merging, configure branch protection rules:
+
+1. Navigate to **Settings** → **Branches** in your GitHub repository
+2. Click **Add branch protection rule**
+3. In **Branch name pattern**, enter `main` (or your default branch)
+4. Enable **Require status checks to pass before merging**
+5. Search for and select these required checks:
+   - `python-quality` (main quality suite)
+   {% if python_versions %}
+   {% for version in python_versions %}
+   - `python-matrix / test-py{{ version }}` (Python {{ version }} compatibility)
+   {% endfor %}
+   - `matrix-summary` (overall matrix status - blocks merge if any version fails)
+   {% endif %}
+   {% if 'node' in api_tracks %}
+   - `node-quality` (Node.js quality checks)
+   {% endif %}
+6. Optional: Enable **Require branches to be up to date before merging** for stricter validation
+7. Optional: Enable **Require linear history** to maintain clean commit history
+8. Click **Create** or **Save changes**
+
+**Verification:**
+
+After setup, try creating a test PR with failing code:
+
+```python
+# Add to any Python file
+def broken_function():  # Missing type hints, will fail mypy
+    return "test"
+```
+
+Push and observe that the PR cannot be merged until quality checks pass.
+
+**Quick Setup (GitHub CLI):**
+
+```bash
+# Requires GitHub CLI (gh) authenticated
+gh api repos/{owner}/{repo}/branches/main/protection \
+  --method PUT \
+  --field required_status_checks[strict]=true \
+  --field required_status_checks[contexts][]=python-quality \
+  {% if python_versions %}
+  {% for version in python_versions %}
+  --field required_status_checks[contexts][]=python-matrix/test-py{{ version }} \
+  {% endfor %}
+  --field required_status_checks[contexts][]=matrix-summary \
+  {% endif %}
+  {% if 'node' in api_tracks %}
+  --field required_status_checks[contexts][]=node-quality \
+  {% endif %}
+  --field enforce_admins=true
+```
+
+### Debugging Failures
+
+**Linting Failure:**
+```
+❌ Quality Checks > Run quality checks > ruff check
+Error: Ruff found 3 issue(s)
+```
+Fix the reported issues and push again.
+
+**Type Checking Failure:**
+```
+❌ Quality Checks > Run type checking
+Error: mypy found 1 error
+```
+Correct type mismatches and verify locally with `uv run mypy .`
+
+**Cache Issues:**
+
+If CI is consistently slow (>6 minutes), check cache hit status in workflow logs:
+
+**Cache Hit (good):**
+```
+Cache restored from key: ubuntu-latest-py3.11-abc123def456
+```
+
+**Cache Miss (investigating):**
+```
+Cache miss - no matching cache key found
+```
+
+**Troubleshooting Steps:**
+
+1. **Verify lock file is committed:**
+   ```bash
+   git ls-files | grep -E '(uv.lock|pnpm-lock.yaml)'
+   ```
+   Missing lock files prevent cache key generation.
+
+2. **Check for lock file changes:**
+   ```bash
+   git diff HEAD~1 HEAD -- uv.lock
+   ```
+   If lock file changes frequently, cache won't hit.
+
+3. **Inspect cache key in workflow logs:**
+   Look for "Post Cache dependencies" step to see the actual key used.
+
+4. **Clear GitHub Actions cache manually:**
+   Settings → Actions → Caches → Delete specific cache
+
+5. **Verify cache size:**
+   Caches >5GB may fail to restore. Run `du -sh ~/.cache/uv` locally to estimate.
+
+**Expected Performance:**
+- First run (cache miss): 5-6 minutes
+- Subsequent runs (cache hit): 2-3 minutes
+- Cache hit rate target: ≥70%
+
+See `docs/modules/workflows.md` for advanced cache debugging.
+
+For more details, see `docs/modules/workflows.md`.
+{% endif %}
