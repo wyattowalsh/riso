@@ -298,23 +298,33 @@ render_variant() {
 }
 
 render_default() {
+  local validate_containers="${1:-false}"
   render_variant "default" "${SAMPLES_DIR}/default/copier-answers.yml" "${SAMPLES_DIR}/default/render"
+  if [[ "${validate_containers}" == "true" ]]; then
+    log "Validating containers for default sample..."
+    python3 "${REPO_ROOT}/scripts/ci/validate_dockerfiles.py" "${SAMPLES_DIR}/default/render"
+  fi
   "${REPO_ROOT}/scripts/ci/run_baseline_quickstart.py"
 }
 
 usage() {
   cat <<EOF
-Usage: $0 [--variant NAME --answers FILE]
+Usage: $0 [--variant NAME --answers FILE] [--validate-containers]
 
 Without arguments the script renders the default sample. When --variant and
 --answers are provided it renders just that combination.
+
+Options:
+  --validate-containers   Run Dockerfile validation after rendering
 EOF
 }
 
 main() {
+  local validate_containers="false"
+  
   if [[ $# -eq 0 ]]; then
     log "Starting sample render orchestrator (defaults)"
-    render_default
+    render_default "${validate_containers}"
     log "Sample rendering complete"
     exit 0
   fi
@@ -331,6 +341,10 @@ main() {
       --answers)
         answers="$2"
         shift 2
+        ;;
+      --validate-containers)
+        validate_containers="true"
+        shift
         ;;
       --help|-h)
         usage
@@ -351,6 +365,11 @@ main() {
   fi
 
   render_variant "${variant}" "${answers}" "${SAMPLES_DIR}/${variant}/render"
+  
+  if [[ "${validate_containers}" == "true" ]]; then
+    log "Validating containers for variant '${variant}'..."
+    python3 "${REPO_ROOT}/scripts/ci/validate_dockerfiles.py" "${SAMPLES_DIR}/${variant}/render"
+  fi
 }
 
 main "$@"
