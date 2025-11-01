@@ -1,0 +1,198 @@
+"""Example async command demonstrating asynchronous patterns in CLI commands.
+
+This module demonstrates how to implement async commands with proper error handling,
+progress reporting, and concurrent operations.
+"""
+
+import asyncio
+from typing import Optional
+
+import typer
+from rich.progress import Progress, SpinnerColumn, TextColumn
+
+from {{ package_name }}.cli.core.formatter import get_console
+
+
+def example_async_command() -> typer.Typer:
+    """Create example async command group."""
+    app = typer.Typer(
+        name="async",
+        help="Example async commands demonstrating asynchronous patterns",
+        no_args_is_help=True,
+    )
+
+    @app.command("fetch")
+    def fetch(
+        url: str = typer.Argument(..., help="URL to fetch"),
+        timeout: int = typer.Option(30, help="Request timeout in seconds"),
+        verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
+    ) -> None:
+        """Fetch data from a URL asynchronously.
+        
+        Example:
+            cli async fetch https://api.example.com/data
+            cli async fetch https://api.example.com/data --timeout 60 --verbose
+        """
+        asyncio.run(_async_fetch(url, timeout, verbose))
+
+    @app.command("batch")
+    def batch(
+        urls: list[str] = typer.Argument(..., help="URLs to fetch concurrently"),
+        max_concurrent: int = typer.Option(5, help="Maximum concurrent requests"),
+        verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
+    ) -> None:
+        """Fetch multiple URLs concurrently with rate limiting.
+        
+        Example:
+            cli async batch https://api.example.com/1 https://api.example.com/2
+            cli async batch url1 url2 url3 --max-concurrent 3
+        """
+        asyncio.run(_async_batch(urls, max_concurrent, verbose))
+
+    @app.command("stream")
+    def stream(
+        count: int = typer.Argument(10, help="Number of items to stream"),
+        delay: float = typer.Option(0.5, help="Delay between items in seconds"),
+    ) -> None:
+        """Demonstrate async streaming with progress updates.
+        
+        Example:
+            cli async stream 20
+            cli async stream 50 --delay 0.2
+        """
+        asyncio.run(_async_stream(count, delay))
+
+    return app
+
+
+async def _async_fetch(url: str, timeout: int, verbose: bool) -> None:
+    """Async implementation of fetch command."""
+    console = get_console()
+    
+    try:
+        if verbose:
+            console.print(f"[blue]Fetching {url} with {timeout}s timeout...[/blue]")
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Fetching...", total=None)
+            
+            # Simulate async HTTP request
+            await asyncio.sleep(1)  # Replace with actual aiohttp/httpx call
+            
+            progress.update(task, completed=True)
+        
+        # Simulate response data
+        data = {"status": "success", "url": url, "size": 1024}
+        
+        console.print("[green]?[/green] Fetch successful")
+        if verbose:
+            console.print_json(data=data)
+        else:
+            console.print(f"Fetched {data['size']} bytes from {url}")
+    
+    except asyncio.TimeoutError:
+        console.print(f"[red]?[/red] Request timed out after {timeout} seconds")
+        raise typer.Exit(code=1)
+    except Exception as e:
+        console.print(f"[red]?[/red] Error fetching URL: {e}")
+        raise typer.Exit(code=1)
+
+
+async def _async_batch(urls: list[str], max_concurrent: int, verbose: bool) -> None:
+    """Async implementation of batch fetch with concurrency control."""
+    console = get_console()
+    
+    console.print(f"[blue]Fetching {len(urls)} URLs (max {max_concurrent} concurrent)...[/blue]")
+    
+    # Semaphore for rate limiting
+    semaphore = asyncio.Semaphore(max_concurrent)
+    
+    async def fetch_one(url: str, index: int) -> dict:
+        """Fetch single URL with semaphore control."""
+        async with semaphore:
+            if verbose:
+                console.print(f"[dim]Starting fetch {index + 1}: {url}[/dim]")
+            
+            # Simulate async HTTP request with variable timing
+            await asyncio.sleep(0.5 + (index % 3) * 0.3)
+            
+            if verbose:
+                console.print(f"[dim]Completed fetch {index + 1}: {url}[/dim]")
+            
+            return {
+                "url": url,
+                "status": "success",
+                "size": 512 + index * 100,
+            }
+    
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task(f"Fetching {len(urls)} URLs...", total=len(urls))
+            
+            # Create all tasks
+            tasks = [fetch_one(url, i) for i, url in enumerate(urls)]
+            
+            # Gather results with progress updates
+            results = []
+            for coro in asyncio.as_completed(tasks):
+                result = await coro
+                results.append(result)
+                progress.advance(task)
+        
+        # Summary
+        total_size = sum(r["size"] for r in results)
+        successful = sum(1 for r in results if r["status"] == "success")
+        
+        console.print(f"[green]?[/green] Batch fetch complete: {successful}/{len(urls)} successful")
+        console.print(f"Total size: {total_size} bytes")
+        
+        if verbose:
+            for result in results:
+                console.print(f"  ? {result['url']}: {result['size']} bytes")
+    
+    except Exception as e:
+        console.print(f"[red]?[/red] Batch fetch error: {e}")
+        raise typer.Exit(code=1)
+
+
+async def _async_stream(count: int, delay: float) -> None:
+    """Async implementation of streaming data with progress."""
+    console = get_console()
+    
+    console.print(f"[blue]Streaming {count} items with {delay}s delay...[/blue]")
+    
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Processing stream...", total=count)
+            
+            for i in range(count):
+                # Simulate async data processing
+                await asyncio.sleep(delay)
+                
+                # Update progress
+                progress.update(task, advance=1, description=f"Processed item {i + 1}/{count}")
+        
+        console.print(f"[green]?[/green] Stream processing complete: {count} items")
+    
+    except asyncio.CancelledError:
+        console.print("[yellow]?[/yellow] Stream cancelled")
+        raise typer.Exit(code=130)  # SIGINT exit code
+    except Exception as e:
+        console.print(f"[red]?[/red] Stream error: {e}")
+        raise typer.Exit(code=1)
+
+
+# Export for command registration
+app = example_async_command()
