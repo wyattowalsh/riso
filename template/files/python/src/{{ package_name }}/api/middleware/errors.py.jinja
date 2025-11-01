@@ -1,0 +1,104 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""Error handling middleware disabled for this render."""
+{%- else %}
+"""Global error handlers for the FastAPI application.
+
+This module provides exception handlers for common error scenarios
+including validation errors, HTTP exceptions, and unhandled exceptions.
+"""
+
+from __future__ import annotations
+
+import uuid
+from typing import Any
+
+from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+
+def configure_error_handlers(app: FastAPI) -> None:
+    """Configure global error handlers for the FastAPI application.
+
+    Args:
+        app: FastAPI application instance
+
+    Example:
+        >>> from fastapi import FastAPI
+        >>> app = FastAPI()
+        >>> configure_error_handlers(app)
+    """
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+        """Handle HTTP exceptions with structured error responses.
+
+        Args:
+            request: FastAPI request object
+            exc: HTTP exception instance
+
+        Returns:
+            JSONResponse with error details
+        """
+        request_id = str(uuid.uuid4())
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "detail": exc.detail,
+                "status_code": exc.status_code,
+                "request_id": request_id,
+            },
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+        """Handle request validation errors with detailed field errors.
+
+        Args:
+            request: FastAPI request object
+            exc: Request validation error instance
+
+        Returns:
+            JSONResponse with validation error details
+        """
+        request_id = str(uuid.uuid4())
+        errors = []
+        for error in exc.errors():
+            errors.append({
+                "loc": error["loc"],
+                "msg": error["msg"],
+                "type": error["type"],
+            })
+
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={
+                "detail": errors,
+                "status_code": status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "request_id": request_id,
+            },
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        """Handle unhandled exceptions with generic error response.
+
+        Args:
+            request: FastAPI request object
+            exc: Exception instance
+
+        Returns:
+            JSONResponse with generic error message (no stack trace in production)
+        """
+        request_id = str(uuid.uuid4())
+        # In production, don't expose internal error details
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "detail": "Internal server error",
+                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "request_id": request_id,
+            },
+        )
+{%- endif %}
