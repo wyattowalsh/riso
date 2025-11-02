@@ -158,7 +158,7 @@ A developer preparing for production selects enhanced deployment patterns includ
 - **FR-003**: System MUST expand storage options from 2 to 4 choices: Cloudflare R2, Supabase Storage, AWS S3, UploadThing
 - **FR-004**: System MUST expand email options from 2 to 4 choices: Resend, Postmark, SendGrid, AWS SES
 - **FR-005**: System MUST expand AI options from 2 to 4 choices: OpenAI, Anthropic, Google Gemini, local LLMs (Ollama)
-- **FR-006**: System MUST maintain all original technology options from 012-saas-starter while adding new alternatives
+- **FR-006**: System MUST maintain all original technology options from 012-saas-starter (28 integrations: 14 categories × 2 options each including Neon/Supabase databases, Clerk/Auth.js auth, Vercel/Cloudflare hosting, Prisma/Drizzle ORMs, Stripe/Paddle billing, Resend/Postmark email, OpenAI/Anthropic AI, etc.) while adding new alternatives
 - **FR-007**: Each technology option MUST include use_when guidance covering: cost optimization, scale requirements, geographic distribution, feature richness, and compliance needs
 
 #### Additional Infrastructure Categories (P1)
@@ -171,18 +171,38 @@ A developer preparing for production selects enhanced deployment patterns includ
 - **FR-013**: System MUST add secrets management category with 3 options: Infisical, Doppler, AWS Secrets Manager
 - **FR-014**: System MUST add error tracking enhancement beyond basic Sentry with options: Sentry (enhanced), Rollbar, BugSnag
 - **FR-015**: Each new infrastructure category MUST integrate with existing categories (database, auth, hosting) automatically
+- **FR-015a**: Search integrations MUST sync with selected database provider (Postgres full-text search, dedicated search indices)
+- **FR-015b**: Cache integrations MUST integrate with auth provider for session caching and selected database for query caching
+- **FR-015c**: Feature flag integrations MUST integrate with auth provider for user targeting and multi-tenant contexts
+- **FR-015d**: CMS integrations MUST integrate with storage provider for media assets and auth provider for content permissions
+- **FR-015e**: Usage metering MUST integrate with billing provider for automated invoicing and auth provider for user attribution
+- **FR-015f**: Secrets management MUST provide secure storage for all integration API keys and database connection strings
+- **FR-015g**: Enhanced error tracking MUST capture errors across all integrated services with correlation tracking
 
 #### Configuration Management (P2)
 
-- **FR-016**: System MUST provide visual configuration builder as web UI accessible via `pnpm config:builder`
+- **FR-016**: System MUST provide visual configuration builder as web UI accessible via `pnpm config:builder` (command only available when Node runtime is selected; Python-only stacks use CLI TUI version)
 - **FR-017**: Configuration builder MUST display real-time compatibility validation as users make selections
 - **FR-018**: Configuration builder MUST show cost estimates at 1K, 10K, 100K user scales with per-service breakdowns
 - **FR-019**: Configuration builder MUST generate architecture diagrams showing selected services and their connections
 - **FR-020**: Configuration builder MUST export selections as valid `copier-answers.yml` files
 - **FR-021**: Configuration builder MUST import existing `copier-answers.yml` files for modification
+- **FR-021a**: Configuration import MUST validate file format and show detailed error messages for invalid YAML or missing required fields
+- **FR-021b**: Configuration import MUST handle version mismatches between imported config and current template with migration guidance
+- **FR-021c**: Configuration export MUST validate completeness and warn about missing required selections before allowing export
+- **FR-021d**: Configuration export failures MUST provide actionable error messages with specific field validation details
 - **FR-022**: Configuration builder MUST support side-by-side comparison of multiple configuration scenarios
 - **FR-023**: System MUST provide CLI-based TUI (terminal UI) version of config builder for terminal-only environments
 - **FR-024**: Configuration builder MUST persist draft configurations and allow resuming incomplete selections
+
+#### Accessibility Requirements (Non-Functional)
+
+- **FR-111**: Configuration builder web UI MUST achieve WCAG 2.1 AA compliance with keyboard navigation, screen reader support, and high contrast mode
+- **FR-112**: All configuration builder interactive elements MUST have proper ARIA labels, focus indicators, and semantic HTML structure
+- **FR-113**: Configuration builder MUST provide alternative text for all architecture diagrams and visual elements
+- **FR-114**: CLI TUI version MUST support screen readers and provide audio feedback for selection changes and validation results
+- **FR-115**: Configuration builder MUST support browser zoom up to 200% without horizontal scrolling or content loss
+- **FR-116**: All form validation errors MUST be announced to screen readers with clear remediation instructions
 
 #### Migration Tools (P2)
 
@@ -194,7 +214,7 @@ A developer preparing for production selects enhanced deployment patterns includ
 - **FR-030**: Migration tool MUST update test suites to reflect new technology integrations
 - **FR-031**: Migration tool MUST support dry-run mode showing changes without applying them
 - **FR-032**: Migration tool MUST support rollback capability restoring pre-migration state
-- **FR-033**: Migration tool MUST handle custom code modifications using three-way merge strategies
+- **FR-033**: Migration tool MUST handle custom code modifications using three-way merge strategies (comparing original template, user modifications, and new template versions using Git merge algorithms with conflict markers for manual resolution)
 - **FR-034**: Migration tool MUST generate post-migration validation reports confirming successful transition
 
 #### Multi-Tenant Architecture (P2)
@@ -202,6 +222,10 @@ A developer preparing for production selects enhanced deployment patterns includ
 - **FR-035**: System MUST offer multi-tenant architecture pattern as optional configuration choice
 - **FR-036**: Multi-tenant mode MUST support 3 isolation levels: row-level security, schema-per-tenant, database-per-tenant
 - **FR-037**: Generated multi-tenant apps MUST include tenant provisioning API with automatic schema initialization
+- **FR-037a**: Tenant provisioning MUST be transactional with automatic rollback on any failure (schema creation, DNS setup, initial data seeding)
+- **FR-037b**: Failed tenant provisioning attempts MUST be logged with detailed error context and troubleshooting guidance
+- **FR-037c**: Partial tenant provisioning failures MUST be recoverable with resume-from-checkpoint capability
+- **FR-037d**: Tenant provisioning status MUST be trackable via admin dashboard with real-time progress indicators
 - **FR-038**: Multi-tenant apps MUST enforce tenant isolation at database, cache, search, and storage layers
 - **FR-039**: Multi-tenant apps MUST include subdomain routing mapping subdomains to tenant contexts
 - **FR-040**: Multi-tenant apps MUST include admin portal for tenant management (create, suspend, delete, quotas)
@@ -210,13 +234,23 @@ A developer preparing for production selects enhanced deployment patterns includ
 - **FR-043**: Multi-tenant apps MUST include tenant-specific branding (colors, logos, custom domains)
 - **FR-044**: Multi-tenant apps MUST prevent cross-tenant data access even with API manipulation attempts
 
+#### Security Requirements (Non-Functional)
+
+- **FR-104**: All tenant isolation implementations MUST enforce security at multiple layers: database (RLS/schema/DB-level), application (middleware), API (authentication), cache (tenant-prefixed keys)
+- **FR-105**: System MUST implement comprehensive audit logging for all tenant boundary operations (provisioning, data access, permission changes) with immutable log storage
+- **FR-106**: Generated applications MUST include security testing suite validating tenant isolation with automated cross-tenant access attempts
+- **FR-107**: All API endpoints MUST implement rate limiting per tenant with configurable thresholds (default: 1000 requests/hour/tenant)
+- **FR-108**: System MUST encrypt all tenant-specific data at rest using tenant-specific encryption keys for database-per-tenant and schema-per-tenant models
+- **FR-109**: Multi-tenant applications MUST implement secure tenant context propagation across all service boundaries (API, background jobs, webhooks)
+- **FR-110**: System MUST provide data residency controls for GDPR compliance with tenant-specific geographic data storage requirements
+
 #### Enhanced Local Development (P3)
 
 - **FR-045**: System MUST generate unified dev dashboard accessible via `pnpm dev:dashboard`
 - **FR-046**: Dev dashboard MUST show real-time health status for all configured services (database, cache, jobs, auth, etc.)
 - **FR-047**: System MUST provide one-command setup: `pnpm dev:setup` initializing all services, running migrations, seeding fixtures
 - **FR-048**: System MUST support offline development mode with service mocking: `pnpm dev --offline`
-- **FR-049**: Offline mode MUST mock all external API calls (auth, billing, AI, email) with realistic responses
+- **FR-049**: Offline mode MUST mock all external API calls (auth, billing, AI, email) with realistic responses (matching actual API response schemas, including success/error scenarios, with configurable latency simulation 100-500ms)
 - **FR-050**: System MUST provide unified log viewer aggregating logs from all services with correlation IDs
 - **FR-051**: System MUST provide fixture management commands: `pnpm dev:fixtures --reset` regenerating test data
 - **FR-052**: Fixture generation MUST complete in under 10 seconds for typical datasets (100s of records per entity)
@@ -227,7 +261,7 @@ A developer preparing for production selects enhanced deployment patterns includ
 
 - **FR-055**: System MUST support multi-region deployment pattern with application instances in 3+ regions
 - **FR-056**: Multi-region deployments MUST include automatic DNS failover and health-check-based routing
-- **FR-057**: System MUST support blue-green deployment strategy with gradual traffic shifting
+- **FR-057**: System MUST support blue-green deployment strategy with gradual traffic shifting (5% → 25% → 50% → 100% over 30-minute intervals with automatic rollback if error rate exceeds 1% or latency increases >200ms)
 - **FR-058**: Blue-green deployments MUST include automatic rollback on health check failures or error rate spikes
 - **FR-059**: System MUST support database read replicas with automatic load balancing for read queries
 - **FR-060**: System MUST integrate CDN for static asset delivery with automatic cache invalidation
@@ -318,9 +352,9 @@ A developer preparing for production selects enhanced deployment patterns includ
 - **SC-003**: Total supported technology integrations reaches minimum 80 (up from 28 in 012-saas-starter)
 - **SC-004**: System validates and supports minimum 100 valid technology combinations (up from 26)
 - **SC-005**: Template generation completes in under 7 minutes for most complex configuration (up from 5 min due to expanded scope)
-- **SC-006**: Configuration builder loads and renders in under 2 seconds
+- **SC-006**: Configuration builder loads and renders in under 2 seconds (measured from page request to interactive UI with all 80+ technology options displayed, tested on standard 4-core development machine with broadband connection)
 - **SC-007**: Real-time compatibility validation responds in under 500ms as user changes selections
-- **SC-008**: Cost estimates accuracy within 25% of actual costs at 10K user scale
+- **SC-008**: Cost estimates accuracy within 25% of actual costs at 10K user scale (e.g., estimate $500/mo should fall between $375-625/mo actual measured over 3-month period)
 - **SC-009**: Architecture diagram generation completes in under 3 seconds
 - **SC-010**: Configuration export/import cycle preserves 100% of selections accurately
 
@@ -339,13 +373,13 @@ A developer preparing for production selects enhanced deployment patterns includ
 
 #### Developer Experience (P2/P3)
 
-- **SC-021**: Developers complete initial setup without external support in 92% of cases (up from 90%)
+- **SC-021**: Developers complete initial setup without external support in 92% of cases (up from 90%, measured via automated setup telemetry and GitHub Discussions support request tracking over 100+ developer cohort)
 - **SC-022**: One-command setup (`pnpm dev:setup`) completes in under 5 minutes
 - **SC-023**: Fixture generation produces 1000+ records in under 15 seconds (up from 10 sec due to more complex schemas)
 - **SC-024**: Dev dashboard displays health status for all services with <1 second latency
 - **SC-025**: Unified log viewer displays logs from all services with <500ms delay
 - **SC-026**: Offline development mode successfully mocks 100% of external service dependencies
-- **SC-027**: Average time from idea to production deployment reduces by 60% compared to manual stack assembly (up from 50%)
+- **SC-027**: Average time from idea to production deployment reduces by 60% compared to manual stack assembly baseline of 2 weeks (target: 5.6 days end-to-end, measured from `copier copy` to first production user signup, up from 50% reduction = 7 days in 012-saas-starter)
 
 #### Migration & Maintenance (P2)
 
@@ -400,6 +434,70 @@ A developer preparing for production selects enhanced deployment patterns includ
 - **SC-061**: Visual regression tests catch UI changes with <2% false positive rate
 - **SC-062**: Accessibility tests achieve WCAG 2.1 Level AA compliance with zero violations
 - **SC-063**: Chaos engineering tests validate graceful degradation for all service failure scenarios
+
+## External Dependencies *(mandatory)*
+
+### Required External Services (by category)
+
+#### Core Development Infrastructure
+- **GitHub/GitLab**: Source code repository with CI/CD capabilities
+- **Node.js 20+ LTS**: Runtime for config builder and generated applications (when Node runtime selected)
+- **Python 3.11+**: Template generation and validation scripts
+- **Docker**: Local service orchestration and container deployments
+- **pnpm ≥8**: Package management for Node.js dependencies
+
+#### Database Dependencies (user selects 1)
+- **Neon**: PostgreSQL-compatible serverless database with instant provisioning
+- **Supabase**: PostgreSQL with real-time subscriptions and built-in auth
+- **PlanetScale**: MySQL-compatible with branching and schema changes
+- **CockroachDB**: Distributed PostgreSQL for global applications
+
+#### Authentication Dependencies (user selects 1)  
+- **Clerk**: Complete authentication with user management dashboard
+- **Auth.js v5**: Open-source authentication library with provider support
+- **WorkOS**: Enterprise SSO and user management for B2B applications
+- **Supabase Auth**: Integrated authentication with database provider
+
+#### Hosting Dependencies (user selects 1)
+- **Vercel**: Edge runtime with automatic deployments and preview environments
+- **Cloudflare Workers/Pages**: Global edge compute with instant deployments
+- **Netlify**: Static site hosting with serverless functions
+- **Railway**: Container hosting with integrated databases and services
+
+#### Optional Service Dependencies (user selects per category)
+- **Search**: Algolia (managed), Meilisearch (self-hosted), Typesense (open-source)
+- **Cache**: Redis via Upstash, Cloudflare KV, Vercel KV
+- **Feature Flags**: LaunchDarkly, PostHog, GrowthBook
+- **CMS**: Contentful, Sanity, Payload CMS, Strapi
+- **Usage Metering**: Stripe Metering, Moesif, Amberflo
+- **Secrets**: Infisical, Doppler, AWS Secrets Manager
+- **Error Tracking**: Sentry, Rollbar, BugSnag
+- **Email**: Resend, Postmark, SendGrid, AWS SES
+- **Storage**: Cloudflare R2, Supabase Storage, AWS S3, UploadThing
+- **AI/LLM**: OpenAI GPT, Anthropic Claude, Google Gemini, Ollama (local)
+- **Billing**: Stripe, Paddle (inherited from 012-saas-starter)
+- **Monitoring**: Sentry, Datadog (inherited from 012-saas-starter)
+
+### API Version Dependencies
+- **Copier**: ≥9.0 (template engine compatibility)
+- **Jinja2**: ≥3.1 (templating syntax features)
+- **Node.js**: 20+ LTS (ES2023 features, package manager compatibility)
+- **React**: 19.2 (config builder UI framework)
+- **Next.js**: 16+ (when Next.js runtime selected)
+- **Remix**: 2.x (when Remix runtime selected)
+
+### Browser Compatibility (Config Builder)
+- **Chrome/Chromium**: Latest 2 versions (100%+ support)
+- **Firefox**: Latest 2 versions (98%+ support)
+- **Safari**: Latest 2 versions (95%+ support)  
+- **Edge**: Latest 2 versions (100%+ support)
+- **Mobile**: iOS Safari 16+, Chrome Mobile 100+
+
+### Development Environment Dependencies
+- **Operating System**: macOS 11+, Ubuntu 20.04+, Windows 10+ with WSL2
+- **Memory**: 16GB+ recommended for local development with all services
+- **Storage**: 10GB+ available space for dependencies and generated files
+- **Network**: Reliable internet for service API calls and dependency downloads
 
 ## Assumptions *(optional - include if relevant)*
 
