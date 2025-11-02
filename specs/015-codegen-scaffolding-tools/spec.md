@@ -5,6 +5,16 @@
 **Status**: Draft  
 **Input**: User description: "create a new feature/spec branch/spec for `015-codegen-scaffolding-tools`"
 
+## Clarifications
+
+### Session 2025-11-02
+
+- Q: What is the template storage strategy? → A: Local cache with remote sync (fetch once, use cached, manual update)
+- Q: What is the conflict resolution strategy for template updates? → A: Three-way merge with conflict markers (like Git merge conflicts)
+- Q: When should template variables be validated? → A: Validate all required variables before starting any file generation
+- Q: What is the maximum template size limit? → A: 100MB per template (warn at 50MB)
+- Q: How should quality validation gates behave? → A: Warn but allow completion (show issues, generate anyway)
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Generate Project Boilerplate from Template (Priority: P1)
@@ -68,8 +78,9 @@ A developer has projects generated from older template versions and wants to upd
 **Acceptance Scenarios**:
 
 1. **Given** a project generated from template v1.0, **When** template v1.1 is released and user runs `scaffold update`, **Then** the tool identifies updatable files and shows a diff
-2. **Given** conflicts between template updates and local changes, **When** update is attempted, **Then** the tool highlights conflicts and provides merge resolution options
-3. **Given** a user wants to see what changed between template versions, **When** they run `scaffold diff-templates v1.0 v1.1`, **Then** the tool shows a summary of template changes
+2. **Given** conflicts between template updates and local changes, **When** update is attempted, **Then** the tool inserts three-way merge conflict markers (<<<<<<, =======, >>>>>>>) showing original, local changes, and template updates
+3. **Given** conflicts have been marked, **When** user resolves them and removes conflict markers, **Then** the update completes successfully
+4. **Given** a user wants to see what changed between template versions, **When** they run `scaffold diff-templates v1.0 v1.1`, **Then** the tool shows a summary of template changes
 
 ---
 
@@ -94,11 +105,12 @@ A developer has an OpenAPI/GraphQL schema and wants to generate client/server co
 - What happens when a user tries to generate a project in a non-empty directory? (Should detect existing files and warn/fail)
 - How does the tool handle file system permission errors? (Should provide clear error messages indicating which operations failed and why)
 - What happens when template variables have circular dependencies? (Should detect and report configuration errors)
-- How does the tool handle extremely large template repositories? (Should provide progress indicators and support incremental generation)
+- How does the tool handle extremely large template repositories? (Should warn users when template exceeds 50MB, reject templates over 100MB, and provide progress indicators during download)
 - What happens when a user's environment is missing required tools (e.g., Python, Node.js) for the template? (Should validate prerequisites and provide setup guidance)
-- How does the tool handle network failures when fetching remote templates? (Should cache templates locally and support offline operation)
+- How does the tool handle network failures when fetching remote templates? (Should fall back to cached version if available, otherwise provide clear offline error)
 - What happens when generating code for file paths that exceed OS limits? (Should detect and suggest shorter alternatives)
 - How does the tool handle template files with syntax errors or invalid Jinja/template syntax? (Should validate templates before generation and report errors with line numbers)
+- What happens when a user cancels during variable collection prompts? (Should abort cleanly without creating partial output)
 
 ## Requirements *(mandatory)*
 
@@ -107,7 +119,7 @@ A developer has an OpenAPI/GraphQL schema and wants to generate client/server co
 - **FR-001**: System MUST support template-based code generation that reads template files and produces output files with variable substitution
 - **FR-002**: System MUST validate user inputs (project names, module names) against naming conventions and reserved words before generating code
 - **FR-003**: System MUST detect existing files in target directories and provide options to skip, overwrite, or merge
-- **FR-004**: System MUST support interactive prompts for required template variables when not provided via command-line arguments
+- **FR-004**: System MUST collect and validate all required template variables via interactive prompts or command-line arguments before beginning file generation
 - **FR-005**: System MUST preserve file permissions and executable flags when copying template files
 - **FR-006**: System MUST generate configuration files (pyproject.toml, package.json, etc.) with correct dependency versions
 - **FR-007**: System MUST provide dry-run mode that shows what would be generated without creating files
@@ -119,11 +131,15 @@ A developer has an OpenAPI/GraphQL schema and wants to generate client/server co
 - **FR-013**: System MUST maintain a record of generation metadata (template version, variables used, timestamp) in generated projects
 - **FR-014**: Users MUST be able to list available templates and see their descriptions
 - **FR-015**: Users MUST be able to add custom template directories to the tool's search path
-- **FR-016**: System MUST support fetching templates from remote repositories (Git URLs, package registries)
-- **FR-017**: System MUST provide clear error messages with actionable suggestions when generation fails
-- **FR-018**: System MUST support generating multiple related files atomically (all-or-nothing)
-- **FR-019**: System MUST validate that generated projects meet quality standards (linting, type checking) before completion
-- **FR-020**: Users MUST be able to update generated projects when template versions change while preserving custom modifications
+- **FR-016**: System MUST support fetching templates from remote repositories (Git URLs, package registries) and caching them locally for offline use
+- **FR-017**: System MUST provide commands to manually update cached templates from remote sources
+- **FR-019**: System MUST enforce a maximum template size of 100MB and warn users when templates exceed 50MB
+- **FR-019**: System MUST provide clear error messages with actionable suggestions when generation fails
+- **FR-020**: System MUST support generating multiple related files atomically (all-or-nothing)
+- **FR-021**: System MUST run quality validation (linting, type checking) on generated projects and display warnings without blocking completion
+- **FR-022**: Users MUST be able to update generated projects when template versions change while preserving custom modifications
+- **FR-023**: System MUST use three-way merge algorithm when updating projects, inserting conflict markers (<<<<<<, =======, >>>>>>>) when automatic merge is not possible
+- **FR-024**: System MUST validate that all conflict markers are resolved before considering an update complete
 
 ### Key Entities
 
@@ -142,7 +158,7 @@ A developer has an OpenAPI/GraphQL schema and wants to generate client/server co
 ### Measurable Outcomes
 
 - **SC-001**: Developers can generate a new project scaffold in under 30 seconds from command execution to first successful test run
-- **SC-002**: Generated projects pass all default quality checks (linting, type checking, tests) without manual intervention
+- **SC-002**: Generated projects produce zero critical errors when quality checks run (warnings allowed)
 - **SC-003**: 95% of developers successfully generate their first project without consulting documentation beyond the initial command
 - **SC-004**: Adding a new module to an existing project takes under 60 seconds and produces immediately runnable code
 - **SC-005**: Template updates can be applied to existing projects with zero manual conflict resolution for 80% of cases
