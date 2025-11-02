@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/wyattowalsh/riso/main/specs/014-changelog-release-management/contracts/semantic-release-config.schema.json",
+  "title": "Semantic Release Configuration",
+  "description": "Configuration schema for semantic-release automated release management",
+  "type": "object",
+  "properties": {
+    "branches": {
+      "description": "Branches that trigger releases",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {"type": "string"},
+              {
+                "type": "object",
+                "properties": {
+                  "name": {"type": "string"},
+                  "prerelease": {
+                    "oneOf": [
+                      {"type": "string"},
+                      {"type": "boolean"}
+                    ]
+                  },
+                  "channel": {"type": "string"}
+                },
+                "required": ["name"]
+              }
+            ]
+          }
+        }
+      ],
+      "default": ["main"]
+    },
+    "repositoryUrl": {
+      "description": "GitHub repository URL",
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://github\\.com/[^/]+/[^/]+(\\.git)?$"
+    },
+    "tagFormat": {
+      "description": "Git tag format template",
+      "type": "string",
+      "default": "v${version}"
+    },
+    "plugins": {
+      "description": "Release plugins and their configuration",
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {"type": "string"},
+          {
+            "type": "array",
+            "items": [
+              {"type": "string"},
+              {"type": "object"}
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          }
+        ]
+      },
+      "default": [
+        "@semantic-release/commit-analyzer",
+        "@semantic-release/release-notes-generator",
+        "@semantic-release/changelog",
+        "@semantic-release/npm",
+        "@semantic-release/github"
+      ]
+    },
+    "preset": {
+      "description": "Commit convention preset",
+      "type": "string",
+      "enum": ["angular", "atom", "codemirror", "ember", "eslint", "express", "jquery", "jshint", "conventionalcommits"],
+      "default": "angular"
+    },
+    "dryRun": {
+      "description": "Simulate release without publishing",
+      "type": "boolean",
+      "default": false
+    },
+    "ci": {
+      "description": "Disable CI environment verification",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": ["branches"],
+  "additionalProperties": true,
+  "examples": [
+    {
+      "branches": ["main", {"name": "beta", "prerelease": true}],
+      "repositoryUrl": "https://github.com/owner/repo",
+      "tagFormat": "v${version}",
+      "plugins": [
+        "@semantic-release/commit-analyzer",
+        "@semantic-release/release-notes-generator",
+        [
+          "@semantic-release/changelog",
+          {
+            "changelogFile": "CHANGELOG.md"
+          }
+        ],
+        [
+          "@semantic-release/exec",
+          {
+            "prepareCmd": "python scripts/update-version.py ${nextRelease.version}",
+            "publishCmd": "python scripts/publish-pypi.py"
+          }
+        ],
+        [
+          "@semantic-release/git",
+          {
+            "assets": ["CHANGELOG.md", "pyproject.toml"],
+            "message": "chore(release): ${nextRelease.version} [skip ci]\\n\\n${nextRelease.notes}"
+          }
+        ],
+        [
+          "@semantic-release/github",
+          {
+            "assets": [
+              {"path": "dist/*.whl", "label": "Python Wheel"},
+              {"path": "dist/*.tar.gz", "label": "Source Distribution"}
+            ]
+          }
+        ]
+      ]
+    }
+  ]
+}

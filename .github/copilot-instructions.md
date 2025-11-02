@@ -14,6 +14,8 @@ Auto-generated from all feature plans. Last updated: 2025-10-30
 - Pluggable resolver pattern - supports any data source (PostgreSQL via async SQLAlchemy recommended, but also REST APIs, in-memory, etc.) (007-graphql-api-scaffold)
 - Python 3.11+ + FastAPI ≥0.104.0 (WebSocket support), websockets library, pydantic ≥2.0.0 (008-websockets-scaffold)
 - In-memory connection registry (default), optional Redis for multi-server (documented pattern) (008-websockets-scaffold)
+- Python 3.11+ (template baseline), Node.js 20 LTS (when api_tracks includes node) + semantic-release (changelog/version), commitlint (commit validation), commitizen (commit authoring), GitHub Actions marketplace actions (release creation, registry publishing) (014-changelog-release-management)
+- Git repository (commit history, tags), GitHub Secrets (registry credentials), generated files (CHANGELOG.md, package versions) (014-changelog-release-management)
 
 ## Project Structure
 
@@ -49,7 +51,7 @@ actionlint .github/workflows/riso-*.yml
 Python 3.11 (uv-managed), optional Node.js 20 LTS: Follow standard conventions
 
 ## Recent Changes
-- 008-websockets-scaffold: Added Python 3.11+ + FastAPI ≥0.104.0 (WebSocket support), websockets library, pydantic ≥2.0.0
+- 014-changelog-release-management: Added Python 3.11+ (template baseline), Node.js 20 LTS (when api_tracks includes node) + semantic-release (changelog/version), commitlint (commit validation), commitizen (commit authoring), GitHub Actions marketplace actions (release creation, registry publishing)
 - 008-websockets-scaffold: Added Python 3.11+ + FastAPI ≥0.104.0 (WebSocket support), websockets library, pydantic ≥2.0.0
 - 008-websockets-scaffold: Added Python 3.11+ + FastAPI ≥0.104.0 (WebSocket support), websockets library, pydantic ≥2.0.0
 
