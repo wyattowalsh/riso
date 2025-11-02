@@ -1,0 +1,49 @@
+{%- if cli_module | lower != "enabled" %}
+# CLI module disabled - this file is not generated
+{%- else %}
+"""Quickstart command - demonstrates basic CLI functionality."""
+
+from __future__ import annotations
+
+import typer
+
+from {{ package_name }}.cli.core import command
+from {{ package_name }}.cli.core.formatter import OutputFormatter
+
+# Initialize formatter
+formatter = OutputFormatter()
+
+
+@command(
+    name="quickstart",
+    help="Run a quick demonstration of the CLI application",
+)
+def quickstart_command(
+    name: str = typer.Option("World", "--name", "-n", help="Name to greet"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
+) -> None:
+    """Execute quickstart demonstration.
+    
+    Args:
+        name: Name to greet in the welcome message
+        verbose: Whether to show verbose output
+    """
+    formatter.print_success(f"Welcome to {{ project_name }}!")
+    
+    if verbose:
+        formatter.print_info(f"Greeting: Hello, {name}!")
+        formatter.print_info(f"CLI module: enabled")
+        formatter.print_info(f"Package: {{ package_name }}")
+    else:
+        formatter.print(f"Hello, {name}!")
+    
+    # Demonstrate table output
+    if verbose:
+        sample_data = [
+            {"feature": "Commands", "status": "✓ Ready"},
+            {"feature": "Config", "status": "✓ Ready"},
+            {"feature": "Plugins", "status": "✓ Ready"},
+        ]
+        formatter.print("\nFeature Status:")
+        formatter.format(sample_data, format="table")
+{%- endif %}

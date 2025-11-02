@@ -1,0 +1,109 @@
+{%- if cli_module | lower != "enabled" %}
+# CLI module disabled - this file is not generated
+{%- else %}
+"""Interactive prompt utilities for CLI commands."""
+
+from __future__ import annotations
+
+from typing import Any, Callable
+
+import typer
+from rich.prompt import Confirm, Prompt
+
+from {{ package_name }}.cli.core.exceptions import ValidationError
+
+
+def prompt_if_missing(
+    value: Any | None,
+    prompt_text: str,
+    default: Any | None = None,
+    password: bool = False,
+    validator: Callable[[Any], bool] | None = None,
+) -> Any:
+    """Prompt for a value if it's missing.
+    
+    Args:
+        value: Current value (if None, will prompt)
+        prompt_text: Text to show in the prompt
+        default: Default value if user doesn't enter anything
+        password: Whether to hide input (for passwords)
+        validator: Optional validation function
+        
+    Returns:
+        The value (either provided or prompted)
+        
+    Raises:
+        ValidationError: If validation fails
+    """
+    if value is not None:
+        return value
+    
+    # Use Rich Prompt for better UX
+    if password:
+        result = Prompt.ask(prompt_text, password=True, default=default)
+    else:
+        result = Prompt.ask(prompt_text, default=default)
+    
+    # Validate if validator provided
+    if validator and not validator(result):
+        raise ValidationError(f"Invalid value for {prompt_text}")
+    
+    return result
+
+
+def confirm(
+    prompt_text: str,
+    default: bool = False,
+) -> bool:
+    """Show a yes/no confirmation prompt.
+    
+    Args:
+        prompt_text: Question to ask
+        default: Default answer
+        
+    Returns:
+        True if user confirms, False otherwise
+    """
+    return Confirm.ask(prompt_text, default=default)
+
+
+def validate_not_empty(value: str) -> bool:
+    """Validate that a string is not empty.
+    
+    Args:
+        value: String to validate
+        
+    Returns:
+        True if not empty
+    """
+    return bool(value and value.strip())
+
+
+def validate_positive_int(value: str) -> bool:
+    """Validate that a value is a positive integer.
+    
+    Args:
+        value: String to validate
+        
+    Returns:
+        True if valid positive integer
+    """
+    try:
+        return int(value) > 0
+    except (ValueError, TypeError):
+        return False
+
+
+def validate_choice(choices: list[str]) -> Callable[[str], bool]:
+    """Create a validator for a list of choices.
+    
+    Args:
+        choices: List of valid choices
+        
+    Returns:
+        Validator function
+    """
+    def validator(value: str) -> bool:
+        return value in choices
+    return validator
+{%- endif %}

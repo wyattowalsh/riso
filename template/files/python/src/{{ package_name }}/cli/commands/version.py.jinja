@@ -1,0 +1,49 @@
+{%- if cli_module | lower != "enabled" %}
+# CLI module disabled - this file is not generated
+{%- else %}
+"""Version command - display application version information."""
+
+from __future__ import annotations
+
+import sys
+
+import typer
+
+from {{ package_name }}.cli.core import command
+from {{ package_name }}.cli.core.formatter import OutputFormatter
+
+# Initialize formatter
+formatter = OutputFormatter()
+
+
+@command(
+    name="version",
+    help="Show application version and environment information",
+    aliases=["ver", "v"],
+)
+def version_command(
+    short: bool = typer.Option(False, "--short", "-s", help="Show only version number"),
+) -> None:
+    """Display version information.
+    
+    Args:
+        short: If True, show only version number
+    """
+    try:
+        from {{ package_name }} import __version__
+    except ImportError:
+        __version__ = "unknown"
+    
+    if short:
+        formatter.print(__version__)
+    else:
+        version_info = {
+            "application": "{{ project_name }}",
+            "version": __version__,
+            "python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+            "platform": sys.platform,
+        }
+        
+        formatter.print(f"[bold cyan]{{ project_name }}[/bold cyan] v{__version__}")
+        formatter.print(f"Python {version_info['python']} on {version_info['platform']}")
+{%- endif %}

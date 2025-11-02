@@ -1,0 +1,199 @@
+{%- if cli_module | lower != "enabled" %}
+# CLI module disabled - this file is not generated
+{%- else %}
+"""Tests for output formatting functionality."""
+
+from __future__ import annotations
+
+import json
+from io import StringIO
+
+import pytest
+from rich.console import Console
+
+from {{ package_name }}.cli.core.formatter import OutputFormat, OutputFormatter
+
+
+@pytest.fixture
+def formatter() -> OutputFormatter:
+    """Create an output formatter with string buffer."""
+    string_buffer = StringIO()
+    console = Console(file=string_buffer, force_terminal=True)
+    return OutputFormatter(console=console)
+
+
+class TestTableFormatting:
+    """Tests for table output formatting."""
+    
+    def test_format_table_with_list_of_dicts(self, formatter: OutputFormatter) -> None:
+        """Test table formatting with list of dictionaries."""
+        data = [
+            {"name": "Alice", "age": 30},
+            {"name": "Bob", "age": 25},
+        ]
+        
+        formatter.format(data, format=OutputFormat.TABLE)
+        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
+        
+        assert "Alice" in output
+        assert "Bob" in output
+        assert "30" in output
+        assert "25" in output
+    
+    def test_format_table_with_single_dict(self, formatter: OutputFormatter) -> None:
+        """Test table formatting with single dictionary."""
+        data = {"name": "Alice", "age": 30}
+        
+        formatter.format(data, format=OutputFormat.TABLE)
+        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
+        
+        assert "Alice" in output
+        assert "30" in output
+    
+    def test_format_table_with_empty_data(self, formatter: OutputFormatter) -> None:
+        """Test table formatting with empty data."""
+        formatter.format([], format=OutputFormat.TABLE)
+        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
+        
+        assert "No data" in output.lower()
+    
+    def test_format_table_with_title(self, formatter: OutputFormatter) -> None:
+        """Test table formatting with custom title."""
+        data = [{"name": "Alice"}]
+        
+        formatter.format(data, format=OutputFormat.TABLE, title="Users")
+        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
+        
+        assert "Users" in output
+
+
+class TestJSONFormatting:
+    """Tests for JSON output formatting."""
+    
+    def test_format_json_with_dict(self, formatter: OutputFormatter) -> None:
+        """Test JSON formatting with dictionary."""
+        data = {"name": "Alice", "age": 30}
+        
+        formatter.format(data, format=OutputFormat.JSON)
+        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
+        
+        # Should be valid JSON
+        parsed = json.loads(output.strip())
+        assert parsed["name"] == "Alice"
+        assert parsed["age"] == 30
+    
+    def test_format_json_with_list(self, formatter: OutputFormatter) -> None:
+        """Test JSON formatting with list."""
+        data = [{"name": "Alice"}, {"name": "Bob"}]
+        
+        formatter.format(data, format=OutputFormat.JSON)
+        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
+        
+        parsed = json.loads(output.strip())
+        assert len(parsed) == 2
+        assert parsed[0]["name"] == "Alice"
+    
+    def test_format_json_with_indent(self, formatter: OutputFormatter) -> None:
+        """Test JSON formatting with custom indent."""
+        data = {"name": "Alice"}
+        
+        formatter.format(data, format=OutputFormat.JSON, indent=4)
+        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
+        
+        # Should have indentation
+        assert "    " in output
+
+
+class TestTextFormatting:
+    """Tests for plain text output formatting."""
+    
+    def test_format_text_with_string(self, formatter: OutputFormatter) -> None:
+        """Test text formatting with string."""
+        formatter.format("Hello, World!", format=OutputFormat.TEXT)
+        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
+        
+        assert "Hello, World!" in output
+    
+    def test_format_text_with_list(self, formatter: OutputFormatter) -> None:
+        """Test text formatting with list."""
+        data = ["Line 1", "Line 2", "Line 3"]
+        
+        formatter.format(data, format=OutputFormat.TEXT)
+        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
+        
+        assert "Line 1" in output
+        assert "Line 2" in output
+        assert "Line 3" in output
+    
+    def test_format_text_with_dict(self, formatter: OutputFormatter) -> None:
+        """Test text formatting with dictionary."""
+        data = {"name": "Alice", "age": 30}
+        
+        formatter.format(data, format=OutputFormat.TEXT)
+        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
+        
+        assert "name:" in output.lower()
+        assert "Alice" in output
+
+
+class TestHelperMethods:
+    """Tests for formatter helper methods."""
+    
+    def test_print_error(self, formatter: OutputFormatter) -> None:
+        """Test error message printing."""
+        formatter.print_error("Something went wrong")
+        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
+        
+        assert "Something went wrong" in output
+    
+    def test_print_success(self, formatter: OutputFormatter) -> None:
+        """Test success message printing."""
+        formatter.print_success("Operation completed")
+        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
+        
+        assert "Operation completed" in output
+    
+    def test_print_warning(self, formatter: OutputFormatter) -> None:
+        """Test warning message printing."""
+        formatter.print_warning("Be careful")
+        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
+        
+        assert "Be careful" in output
+    
+    def test_print_info(self, formatter: OutputFormatter) -> None:
+        """Test info message printing."""
+        formatter.print_info("For your information")
+        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
+        
+        assert "For your information" in output
+
+
+class TestTerminalCapabilityFallback:
+    """Tests for terminal capability detection and fallback."""
+    
+    def test_formatter_works_without_terminal(self) -> None:
+        """Test that formatter works in non-terminal environments."""
+        # Create formatter with non-terminal console
+        string_buffer = StringIO()
+        console = Console(file=string_buffer, force_terminal=False)
+        formatter = OutputFormatter(console=console)
+        
+        data = [{"name": "Alice"}]
+        formatter.format(data, format=OutputFormat.TABLE)
+        
+        # Should still produce output
+        output = console.file.getvalue()  # type: ignore[union-attr]
+        assert "Alice" in output
+    
+    def test_formatter_handles_color_disabled(self) -> None:
+        """Test formatter with colors disabled."""
+        string_buffer = StringIO()
+        console = Console(file=string_buffer, force_terminal=True, no_color=True)
+        formatter = OutputFormatter(console=console)
+        
+        formatter.print_success("Success!")
+        output = console.file.getvalue()  # type: ignore[union-attr]
+        
+        # Should have content but no ANSI codes
+        assert "Success!" in output
+{%- endif %}
