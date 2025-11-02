@@ -233,6 +233,78 @@ VersionSpecification (0..*)  DeprecationNotice (0..1)
 5. **VersionSpecification → VersionMetadata**: Each specification resolves to one version (many-to-one)
 6. **VersionUsageMetric → ConsumerIdentity**: Each metric references consumer identity extraction logic (many-to-one pattern)
 
+---
+
+### 9. SecurityContext
+
+**Purpose**: Captures security-related information for request validation and audit logging.
+
+**Attributes**:
+- `request_id` (str, required): Unique identifier for the request (UUID)
+- `consumer_authenticated` (bool, required): Whether consumer was successfully authenticated
+- `auth_method` (enum: API_KEY, OAUTH, NONE, required): Authentication method used
+- `consumer_identity` (ConsumerIdentity, optional): Extracted consumer identity if authenticated
+- `rate_limit_remaining` (int, optional): Remaining requests in current rate limit window
+- `suspicious_pattern_detected` (bool, required): Whether anomalous behavior was detected
+- `validation_errors` (list[str], optional): List of input validation failures
+
+**Validation Rules**:
+- `request_id` must be a valid UUID v4
+- If `consumer_authenticated` is True, `consumer_identity` must be set
+- `rate_limit_remaining` must be ≥ 0 if set
+
+**Usage**:
+- Created per request for security audit logging
+- Used for rate limiting enforcement
+- Triggers alerts when `suspicious_pattern_detected` is True
+
+---
+
+### 10. PerformanceMetric
+
+**Purpose**: Captures performance data for monitoring and optimization.
+
+**Attributes**:
+- `timestamp` (datetime, required): When measurement was taken
+- `version_id` (str, required): Version being measured
+- `operation` (enum: VERSION_LOOKUP, PRECEDENCE_RESOLUTION, HEADER_INJECTION, ROUTING, required): Operation type
+- `latency_ns` (int, required): Operation latency in nanoseconds
+- `memory_bytes` (int, optional): Memory used for operation
+- `cache_hit` (bool, optional): Whether cache was used
+
+**Validation Rules**:
+- `latency_ns` must be > 0
+- `memory_bytes` must be ≥ 0 if set
+
+**Usage**:
+- Aggregated for p50/p95/p99 calculations
+- Monitored against SLA thresholds (FR-031)
+- Used for performance regression detection
+
+---
+
+### 11. ConfigurationMetadata
+
+**Purpose**: Tracks version configuration file state for integrity validation.
+
+**Attributes**:
+- `file_path` (Path, required): Absolute path to configuration file
+- `checksum_sha256` (str, required): SHA-256 hash of file contents
+- `last_loaded` (datetime, required): When configuration was last loaded
+- `version_count` (int, required): Number of versions in configuration
+- `validation_status` (enum: VALID, INVALID, UNKNOWN, required): Configuration validity
+- `validation_errors` (list[str], optional): Errors found during validation
+
+**Validation Rules**:
+- `checksum_sha256` must be valid SHA-256 hash (64 hex characters)
+- `version_count` must be ≥ 0
+- If `validation_status` is INVALID, `validation_errors` must be non-empty
+
+**Usage**:
+- Compared against new file checksum to detect changes
+- Used for configuration rollback on corruption
+- Logged in security audit trail
+
 ## State Transitions
 
 ### Version Lifecycle

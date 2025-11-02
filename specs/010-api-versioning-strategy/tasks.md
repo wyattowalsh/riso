@@ -50,6 +50,9 @@ Single project structure (API middleware/library):
 - [ ] T013 [P] Implement version ID validation in src/api_versioning/utils/validation.py matching pattern ^v[0-9]+(-[a-z]+)?$
 - [ ] T014 Create base error classes in src/api_versioning/handlers/error.py: VersionNotFoundError, VersionSunsetError, VersionConflictError, PrereleaseOptInRequiredError
 - [ ] T014b [P] Implement FR-020 validation in src/api_versioning/utils/validation.py: check sunset_date <= deprecation_date + 12 months for all version configurations
+- [ ] T014c [P] Create SecurityContext dataclass in src/api_versioning/security/context.py with authentication, rate limiting, and validation fields (FR-022, FR-026)
+- [ ] T014d [P] Create PerformanceMetric dataclass in src/api_versioning/monitoring/metrics.py for latency tracking (FR-031, FR-037)
+- [ ] T014e [P] Create ConfigurationMetadata dataclass in src/api_versioning/core/config.py for integrity validation (FR-029)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -223,7 +226,76 @@ Single project structure (API middleware/library):
 
 ---
 
-## Phase 12: Polish & Cross-Cutting Concerns
+## Phase 13: Security & Validation (Critical - Before Production)
+
+**Purpose**: Implement security requirements from FR-022 through FR-030
+
+- [ ] T099 [P] Implement API key authentication in src/api_versioning/security/auth.py for version discovery endpoints (FR-022)
+- [ ] T100 [P] Implement OAuth token validation in src/api_versioning/security/auth.py (FR-022)
+- [ ] T101 Implement input validation middleware in src/api_versioning/security/validation.py checking all version inputs against injection patterns (FR-023)
+- [ ] T102 [P] Add version ID sanitization before logging in src/api_versioning/logging/sanitizer.py (FR-024)
+- [ ] T103 [P] Implement consumer ID masking/hashing in src/api_versioning/logging/sanitizer.py (FR-025)
+- [ ] T104 Implement rate limiting in src/api_versioning/middleware/rate_limit.py with per-consumer, per-version thresholds (FR-026)
+- [ ] T105 [P] Create security audit logger in src/api_versioning/security/audit.py for auth failures, authorization denials, suspicious patterns (FR-027)
+- [ ] T106 Add version ID format validation (^v[0-9]+(-[a-z]+)?$) to parser with 400 error on malformed input (FR-028)
+- [ ] T107 [P] Implement configuration file checksum validation in src/api_versioning/core/config.py (FR-029)
+- [ ] T108 [P] Add GDPR-compliant data retention logic in src/api_versioning/logging/retention.py (FR-030)
+
+---
+
+## Phase 14: Performance Optimization & Monitoring
+
+**Purpose**: Implement performance requirements from FR-031 through FR-039
+
+- [ ] T109 [P] Implement performance metrics collection in src/api_versioning/monitoring/performance.py tracking p50/p95/p99 latencies (FR-031)
+- [ ] T110 Add latency measurement instrumentation to all version routing operations (FR-031)
+- [ ] T111 [P] Implement throughput monitoring with sustained/burst capacity tracking (FR-032)
+- [ ] T112 Add memory profiling for version registry to validate ≤200KB footprint (FR-033)
+- [ ] T113 [P] Benchmark version metadata lookups to ensure 50-200ns O(1) performance (FR-034)
+- [ ] T114 Optimize configuration file loading with caching to meet ≤10ms target (FR-035)
+- [ ] T115 Implement version metadata caching with invalidation on config updates (FR-036)
+- [ ] T116 [P] Add performance overhead monitoring ensuring ≤1% impact from metrics collection (FR-037)
+- [ ] T117 Validate stateless middleware design for horizontal scaling (FR-038)
+- [ ] T118 [P] Implement graceful degradation under load with p99 ≤20ms at 150% capacity (FR-039)
+
+---
+
+## Phase 15: Observability & Alerting
+
+**Purpose**: Implement observability requirements from FR-040 through FR-043
+
+- [ ] T119 Implement structured JSON logging with all required fields in src/api_versioning/logging/structured.py (FR-040)
+- [ ] T120 [P] Create real-time metrics dashboard configuration for version adoption tracking (FR-041)
+- [ ] T121 [P] Implement alerting rules in src/api_versioning/monitoring/alerts.py for anomalous patterns (FR-042)
+- [ ] T122 [P] Add distributed tracing support with trace ID propagation (FR-043)
+
+---
+
+## Phase 16: Reliability & Error Handling
+
+**Purpose**: Implement reliability requirements from FR-044 through FR-049
+
+- [ ] T123 Implement configuration reload failure handling with fallback to last valid config (FR-044)
+- [ ] T124 [P] Add registry corruption detection with detailed error messages (FR-045)
+- [ ] T125 [P] Define and implement edge case behaviors: zero versions, single version, malformed IDs (FR-046)
+- [ ] T126 Implement atomic version state transitions for in-flight requests (FR-047)
+- [ ] T127 [P] Enforce case-sensitive version IDs and whitespace trimming (FR-048)
+- [ ] T128 [P] Implement IP address fallback for consumer ID when auth unavailable (FR-049)
+
+---
+
+## Phase 17: API Contract Completion
+
+**Purpose**: Implement API contract requirements from FR-050 through FR-053
+
+- [ ] T129 Complete OpenAPI 3.1 specification in contracts/api-versioning.openapi.yaml with all schemas and examples (FR-050)
+- [ ] T130 [P] Document all error codes (400, 403, 404, 406, 410, 500, 503) with complete schemas (FR-051)
+- [ ] T131 [P] Add request/response examples for all endpoints and error scenarios to OpenAPI spec (FR-052)
+- [ ] T132 [P] Define and document CORS policy for version discovery endpoints (FR-053)
+
+---
+
+## Phase 18: Final Polish & Cross-Cutting Concerns
 
 **Purpose**: Final improvements and validation
 
@@ -238,6 +310,10 @@ Single project structure (API middleware/library):
 - [ ] T097 [P] Add CONTRIBUTING.md with development setup and testing instructions
 - [ ] T098 Final review of OpenAPI contract ensuring all endpoints documented
 - [ ] T098b [P] Document SC-008 measurement approach: create docs/metrics/support_ticket_tracking.md explaining how to track 60% reduction in version-related support tickets (baseline vs 6-month post-implementation)
+- [ ] T098c [P] Run security validation: penetration testing checklist for injection attacks, auth bypass attempts, rate limit evasion
+- [ ] T098d [P] Run performance validation: load test at 1000 req/s sustained, 5000 req/s burst, verify p99 ≤10ms
+- [ ] T098e [P] Validate configuration checksum integrity and corruption detection
+- [ ] T098f [P] Run OpenAPI spec validation with spectral/swagger-cli tools
 
 ---
 
@@ -256,7 +332,12 @@ Single project structure (API middleware/library):
 - **Error Handling (Phase 9)**: Depends on User Story 1 (needs middleware and routing)
 - **Hot Reload (Phase 10)**: Depends on Foundational (Phase 2) - Independent of user stories
 - **Examples (Phase 11)**: Depends on all user stories being complete
-- **Polish (Phase 12)**: Depends on all desired user stories being complete
+- **Security (Phase 13)**: CRITICAL - Can start after Foundational (Phase 2), MUST complete before production
+- **Performance (Phase 14)**: Can start after User Story 1, SHOULD complete before load testing
+- **Observability (Phase 15)**: Depends on Metrics (Phase 8)
+- **Reliability (Phase 16)**: Can start after Foundational (Phase 2)
+- **API Contract (Phase 17)**: Can start after User Story 1, MUST complete before implementation
+- **Polish (Phase 18)**: Depends on all desired user stories being complete
 
 ### User Story Dependencies
 
@@ -266,12 +347,24 @@ Single project structure (API middleware/library):
 - **User Story 4 (P2)**: Requires US1 (discovery API foundation) - extends discovery endpoints
 - **User Story 5 (P3)**: Requires US2 (version routing) - pre-release handled by routing logic
 
-### Critical Path (Minimum for MVP)
+### Critical Path (Minimum for Production-Ready)
 
 1. Phase 1: Setup → Phase 2: Foundational → Phase 3: User Story 1
-2. **STOP HERE** for MVP - consumers can discover and use versions
-3. Add Phase 4 (US2) for multi-version support
-4. Add Phase 5 (US3) for deprecation handling
+2. **Phase 13: Security (BLOCKER)** - Must complete before production
+3. Phase 4 (US2) for multi-version support
+4. Phase 5 (US3) for deprecation handling
+5. **Phase 14: Performance** - Validate SLAs met
+6. **Phase 15: Observability** - Production monitoring
+7. **Phase 17: API Contract** - Complete OpenAPI spec
+
+### MVP Path (Development/Testing Only - NOT Production)
+
+1. Phase 1: Setup → Phase 2: Foundational → Phase 3: User Story 1
+2. **STOP HERE** for MVP - consumers can discover and use versions (8-11 hours)
+3. Add Phase 4 (US2) for multi-version support (3-4 hours)
+4. Add Phase 5 (US3) for deprecation handling (3-4 hours)
+
+**WARNING**: MVP path lacks security, performance validation, and production observability - suitable only for development/testing environments.
 
 ### Parallel Opportunities
 
