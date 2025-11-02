@@ -1,0 +1,15 @@
+{% if docs_deploy_target == 'vercel' %}
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": {% if docs_site == 'sphinx-shibuya' %}"pip install uv && uv sync --group docs && uv run make -f Makefile.docs docs"{% elif docs_site == 'fumadocs' %}"pnpm install && pnpm run build"{% elif docs_site == 'docusaurus' %}"pnpm install && pnpm run build"{% else %}null{% endif %},
+  "outputDirectory": {% if docs_site == 'sphinx-shibuya' %}"_build/html"{% elif docs_site == 'fumadocs' %}"apps/docs-fumadocs/out"{% elif docs_site == 'docusaurus' %}"apps/docs-docusaurus/build"{% else %}null{% endif %},
+  "installCommand": {% if docs_site == 'sphinx-shibuya' %}"pip install uv"{% else %}"pnpm install"{% endif %},
+  "framework": {% if docs_site == 'fumadocs' %}"nextjs"{% elif docs_site == 'docusaurus' %}"docusaurus"{% else %}null{% endif %},
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
+{% endif %}

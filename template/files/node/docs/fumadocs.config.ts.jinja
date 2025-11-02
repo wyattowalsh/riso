@@ -16,12 +16,54 @@ export default defineConfig({
     { text: "Modules", link: "/modules" },
     { text: "Automation", link: "/automation" },
   ],
+  {% if docs_theme_mode == 'dark' %}
+  theme: {
+    defaultMode: 'dark',
+  },
+  {% elif docs_theme_mode == 'light' %}
+  theme: {
+    defaultMode: 'light',
+  },
+  {% else %}
+  theme: {
+    defaultMode: 'system',
+  },
+  {% endif %}
+  {% if docs_search_provider == 'algolia' %}
+  search: {
+    provider: 'algolia',
+    algolia: {
+      appId: process.env.ALGOLIA_APP_ID || '',
+      apiKey: process.env.ALGOLIA_API_KEY || '',
+      indexName: process.env.ALGOLIA_INDEX_NAME || '{{ project_slug }}',
+    },
+  },
+  {% elif docs_search_provider == 'local' %}
+  search: {
+    enabled: true,
+  },
+  {% endif %}
+  {% if docs_interactive_features == 'enabled' %}
+  mermaid: {
+    enabled: true,
+    {% if docs_theme_mode == 'dark' %}
+    theme: 'dark',
+    {% elif docs_theme_mode == 'light' %}
+    theme: 'default',
+    {% else %}
+    theme: 'neutral',
+    {% endif %}
+  },
+  {% endif %}
   metadata: {
     project: "{{ project_name }}",
     cliModule: "{{ cli_module }}",
     apiTracks: "{{ api_tracks }}",
     docsSite: "{{ docs_site }}",
     sharedLogic: "{{ shared_logic }}",
+    themeMode: "{{ docs_theme_mode }}",
+    searchProvider: "{{ docs_search_provider }}",
+    deployTarget: "{{ docs_deploy_target }}",
   },
 });
 {%- endif -%}
