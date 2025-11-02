@@ -12,6 +12,8 @@ Auto-generated from all feature plans. Last updated: 2025-10-30
 - TOML configuration files (config.toml or .app-name.toml in project directory) (009-typer-cli-scaffold)
 - Python 3.11+ (consistent with Riso template baseline, managed via uv) + Strawberry GraphQL ≥0.200.0, FastAPI ≥0.104.0 (ASGI integration), uvicorn (ASGI server), pydantic ≥2.0.0 (data validation) (007-graphql-api-scaffold)
 - Pluggable resolver pattern - supports any data source (PostgreSQL via async SQLAlchemy recommended, but also REST APIs, in-memory, etc.) (007-graphql-api-scaffold)
+- Python 3.11+ + FastAPI ≥0.104.0 (WebSocket support), websockets library, pydantic ≥2.0.0 (008-websockets-scaffold)
+- In-memory connection registry (default), optional Redis for multi-server (documented pattern) (008-websockets-scaffold)
 
 ## Project Structure
 
@@ -47,9 +49,9 @@ actionlint .github/workflows/riso-*.yml
 Python 3.11 (uv-managed), optional Node.js 20 LTS: Follow standard conventions
 
 ## Recent Changes
-- 007-graphql-api-scaffold: Added Python 3.11+ (consistent with Riso template baseline, managed via uv) + Strawberry GraphQL ≥0.200.0, FastAPI ≥0.104.0 (ASGI integration), uvicorn (ASGI server), pydantic ≥2.0.0 (data validation)
-- 009-typer-cli-scaffold: Added Python 3.11+ (managed via uv, consistent with template baseline) + Typer ≥0.20.0, Loguru (logging), Rich (formatting), tomli/tomllib (TOML parsing)
-- 004-github-actions-workflows: Added YAML (GitHub Actions workflow syntax), Python 3.11+ (for validation scripts), Jinja2 (for template rendering) + GitHub Actions marketplace actions (`actions/checkout@v4`, `actions/setup-python@v5`, `actions/cache@v4`, `actions/upload-artifact@v4`), actionlint (workflow validation), existing quality tools from feature 003
+- 008-websockets-scaffold: Added Python 3.11+ + FastAPI ≥0.104.0 (WebSocket support), websockets library, pydantic ≥2.0.0
+- 008-websockets-scaffold: Added Python 3.11+ + FastAPI ≥0.104.0 (WebSocket support), websockets library, pydantic ≥2.0.0
+- 008-websockets-scaffold: Added Python 3.11+ + FastAPI ≥0.104.0 (WebSocket support), websockets library, pydantic ≥2.0.0
 
 
 <!-- MANUAL ADDITIONS START -->

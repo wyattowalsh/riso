@@ -35,7 +35,7 @@ A developer needs to detect when WebSocket connections become stale or unrespons
 **Acceptance Scenarios**:
 
 1. **Given** a WebSocket connection with heartbeat enabled, **When** the configured interval passes, **Then** the server sends a ping frame and expects a pong response
-2. **Given** a connection that stops responding to pings, **When** the heartbeat timeout is exceeded, **Then** the server closes the connection and removes it from the active connection pool
+2. **Given** a connection that stops responding to pings, **When** the heartbeat timeout is exceeded, **Then** the server closes the connection and removes it from the active connection registry
 3. **Given** a healthy connection, **When** the client responds to pings normally, **Then** the connection remains active indefinitely
 4. **Given** configurable heartbeat settings, **When** a developer sets custom interval and timeout values, **Then** the heartbeat mechanism uses those values
 
@@ -60,15 +60,15 @@ A developer wants to secure WebSocket endpoints so only authenticated users can 
 
 ### User Story 4 - Broadcasting to Multiple Clients (Priority: P2)
 
-A developer wants to implement features like chat rooms, live notifications, or collaborative editing where a message from one client needs to be sent to multiple other clients. They need efficient broadcasting mechanisms with support for rooms/channels/groups.
+A developer wants to implement features like chat rooms, live notifications, or collaborative editing where a message from one client needs to be sent to multiple other clients. They need efficient broadcasting mechanisms with support for rooms (logical groupings of connections).
 
 **Why this priority**: Broadcasting is a common real-time pattern that enables multi-user interactions. While not required for simple request-response patterns, it's essential for collaborative features.
 
-**Independent Test**: Can be tested by connecting multiple clients to the same room/channel, sending a message from one client, and verifying all other clients in that room receive the message. Success means efficient fan-out with minimal latency.
+**Independent Test**: Can be tested by connecting multiple clients to the same room, sending a message from one client, and verifying all other clients in that room receive the message. Success means efficient fan-out with minimal latency.
 
 **Acceptance Scenarios**:
 
-1. **Given** multiple clients connected to the same room/channel, **When** one client publishes a message to the room, **Then** all other clients in the room receive the message
+1. **Given** multiple clients connected to the same room, **When** one client publishes a message to the room, **Then** all other clients in the room receive the message
 2. **Given** clients in different rooms, **When** a message is published to room A, **Then** only clients in room A receive it, not clients in room B
 3. **Given** a client joining a room, **When** they connect, **Then** they receive subsequent broadcasts but not historical messages (unless specifically requested)
 4. **Given** thousands of clients in a single room, **When** a broadcast is sent, **Then** all clients receive the message within 100ms (95th percentile)
@@ -82,7 +82,7 @@ A developer wants visibility into active WebSocket connections for monitoring, d
 
 **Why this priority**: Operational visibility is essential for production systems but not required for basic functionality. This enables monitoring dashboards and troubleshooting.
 
-**Independent Test**: Can be tested by establishing connections, inspecting the connection registry/pool, and verifying metadata is accurate. Success means real-time visibility into connection state.
+**Independent Test**: Can be tested by establishing connections, inspecting the connection registry, and verifying metadata is accurate. Success means real-time visibility into connection state.
 
 **Acceptance Scenarios**:
 
@@ -131,15 +131,24 @@ A developer wants to write automated tests for their WebSocket endpoints using f
 
 ### Edge Cases
 
-- What happens when a client sends messages faster than the server can process them? (Backpressure handling)
-- How does the system handle extremely large messages (multi-megabyte payloads)?
-- What happens when binary vs text frames are mixed or used incorrectly?
-- How are WebSocket subprotocols negotiated if clients request them?
-- What happens during server restart with active connections? (Graceful shutdown)
-- How is connection state maintained across load balancers? (Sticky sessions or state synchronization)
-- What happens when a client connects but never sends any messages? (Idle timeout)
-- How are compression extensions (permessage-deflate) handled?
-- What happens when message handlers are slow or blocking? (Async execution)
+- What happens when a client sends messages faster than the server can process them? (Queue with configurable limits, reject with backpressure error when full)
+- What happens when binary vs text frames are mixed or used incorrectly? (Protocol error handling)
+- How are WebSocket subprotocols negotiated if clients request them? (Standard WebSocket handshake negotiation)
+- What happens during server restart with active connections? (Graceful shutdown with closure notifications)
+- How is connection state maintained across load balancers? (Documented pattern: sticky sessions or Redis pub/sub for multi-server)
+- What happens when a client connects but never sends any messages? (Closed after 5-minute idle timeout)
+- How are compression extensions (permessage-deflate) handled? (Standard WebSocket compression negotiation)
+- What happens when message handlers are slow or blocking? (Async execution prevents blocking other connections)
+
+## Clarifications
+
+### Session 2025-11-01
+
+- Q: Should the system enforce maximum message size limits, and if so, what should happen when limits are exceeded? → A: Enforce configurable max size (default 1MB) and reject larger messages with clear error
+- Q: Should idle connections (no messages sent/received for extended period) be automatically closed? → A: Yes, 5 minutes default
+- Q: How should the system handle message backpressure when server processing is slower than client sending rate? → A: Queue messages up to configurable limit, then reject new messages with backpressure error
+- Q: Should the system provide built-in message history/replay capabilities for rooms? → A: Out of scope - document pattern but require implementers to add persistence
+- Q: Should the scaffold include multi-server broadcasting support, or is single-server deployment the only supported architecture? → A: Document pattern - provide clear documentation and example implementation but don't include by default
 
 ## Requirements *(mandatory)*
 
@@ -148,28 +157,32 @@ A developer wants to write automated tests for their WebSocket endpoints using f
 - **FR-001**: System MUST provide WebSocket endpoint decorators/handlers that integrate seamlessly with FastAPI routing
 - **FR-002**: System MUST support both text (JSON) and binary message formats
 - **FR-003**: System MUST implement automatic heartbeat/ping-pong with configurable intervals and timeouts
-- **FR-004**: System MUST maintain a connection registry/pool for tracking active WebSocket connections
+- **FR-004**: System MUST maintain a connection registry for tracking active WebSocket connections
 - **FR-005**: System MUST authenticate WebSocket connections using existing FastAPI dependencies (JWT, OAuth2, sessions)
-- **FR-006**: System MUST support broadcasting messages to multiple clients via rooms/channels/groups
+- **FR-006**: System MUST support broadcasting messages to multiple clients via rooms (logical groupings)
 - **FR-007**: System MUST handle graceful connection closure initiated by either client or server
 - **FR-008**: System MUST provide connection metadata access (user ID, connection time, IP address, custom attributes)
 - **FR-009**: System MUST implement error handling that catches exceptions in message handlers and sends structured error responses
-- **FR-010**: System MUST support rate limiting on message frequency per connection
+- **FR-010**: System MUST support rate limiting on message frequency per connection (default: 100 messages per 60-second window, configurable)
 - **FR-011**: System MUST provide testing utilities including WebSocket test client fixtures for pytest
 - **FR-012**: System MUST emit connection lifecycle events (connect, disconnect, error) for monitoring and logging
 - **FR-013**: System MUST support CORS configuration for WebSocket endpoints
 - **FR-014**: System MUST enforce configurable connection limits (per user, per IP, global)
 - **FR-015**: System MUST provide clean shutdown mechanism that notifies and closes all active connections
-- **FR-016**: System MUST validate message schemas when schema definitions are provided
-- **FR-017**: System MUST support middleware pattern for cross-cutting concerns (logging, metrics, authentication)
+- **FR-016**: System MUST validate message schemas using JSON Schema Draft-07 when schema definitions are provided (per contracts/ directory)
+- **FR-017**: System MUST support middleware pattern for cross-cutting concerns (logging, metrics, authentication) with sequential execution in registration order and halt-on-error behavior
 - **FR-018**: System MUST handle WebSocket protocol errors (invalid frames, protocol violations) without crashing
+- **FR-019**: System MUST enforce configurable maximum message size limits (default 1MB) and reject oversized messages with structured error responses
+- **FR-020**: System MUST close idle connections that have no message activity for a configurable timeout period (default 5 minutes)
+- **FR-021**: System MUST implement message queue with configurable depth limits per connection and reject messages with backpressure errors when queue is full
+- **FR-022**: System MUST support CORS configuration for WebSocket endpoints with configurable allowed origins list
 
 ### Key Entities
 
 - **WebSocketConnection**: Represents an active WebSocket connection with attributes (connection_id, user, connected_at, metadata), methods (send, close), and state management
-- **ConnectionManager**: Singleton service that maintains the registry of active connections, implements broadcasting, handles room/channel subscriptions
+- **ConnectionManager**: Singleton service that maintains the registry of active connections, implements broadcasting, handles room subscriptions
 - **Message**: Data structure representing WebSocket messages with attributes (type, payload, sender, timestamp, correlation_id)
-- **Room/Channel**: Logical grouping of connections for targeted broadcasting, with subscribe/unsubscribe operations
+- **Room**: Logical grouping of connections for targeted broadcasting, with subscribe/unsubscribe operations
 - **ConnectionMiddleware**: Interceptor pattern for pre/post processing of connection lifecycle and messages
 
 ## Success Criteria *(mandatory)*
@@ -177,11 +190,11 @@ A developer wants to write automated tests for their WebSocket endpoints using f
 ### Measurable Outcomes
 
 - **SC-001**: Developers can add a basic WebSocket endpoint to a FastAPI project in under 5 minutes
-- **SC-002**: System handles 10,000 concurrent WebSocket connections without performance degradation
+- **SC-002**: System handles 10,000 concurrent WebSocket connections with CPU utilization <80% and memory usage <500MB per 1,000 connections
 - **SC-003**: Message latency is under 50ms for 99th percentile when broadcasting to 1,000 clients
 - **SC-004**: Dead connections are detected and cleaned up within 60 seconds via heartbeat mechanism
 - **SC-005**: Test coverage for generated WebSocket code is ≥80%
-- **SC-006**: Zero connection resource leaks detected during 24-hour stress test
+- **SC-006**: Zero connection resource leaks detected during 24-hour stress test (connection count returns to 0 within 60 seconds post-disconnect)
 - **SC-007**: All WebSocket endpoints pass authentication checks with 100% rejection of unauthorized connections
 - **SC-008**: Connection manager scales to 100,000+ connections with <10MB memory overhead per 1,000 connections
 - **SC-009**: Broadcasting to 10,000 clients in a single room completes within 100ms (95th percentile)
@@ -193,11 +206,11 @@ A developer wants to write automated tests for their WebSocket endpoints using f
 
 1. Target deployment uses FastAPI ≥0.104.0 with full WebSocket support
 2. WebSocket connections are behind a reverse proxy (nginx, Traefik) that properly forwards WebSocket upgrade requests
-3. For multi-server deployments, implementers will use sticky sessions or provide external state synchronization (Redis pub/sub)
-4. Message payloads are typically small (<1MB); large file transfers should use alternative mechanisms
+3. Primary deployment model is single-server; multi-server deployments require implementer-provided state synchronization (documented patterns available)
+4. Message payloads are typically small (<1MB default limit); large file transfers should use alternative mechanisms
 5. Python version is 3.11+ with native async/await support
 6. Rendered projects already include monitoring infrastructure (from spec 010) for connection metrics
-7. Database integration (spec 008) is available for persisting message history if needed
+7. Message history/replay functionality requires implementer-added database persistence (patterns documented)
 8. Container deployment (spec 005) is available for development and production environments
 
 ## Dependencies
@@ -210,8 +223,8 @@ A developer wants to write automated tests for their WebSocket endpoints using f
 
 ## Out of Scope
 
-- **Message Persistence**: Storing WebSocket messages to database (implementers can add this)
-- **Horizontal Scaling Coordination**: Multi-server state synchronization (requires external service like Redis)
+- **Message Persistence & History**: Storing WebSocket messages to database or providing message replay (implementers can add using spec 008 database integration - documentation will include example patterns)
+- **Horizontal Scaling Coordination**: Built-in multi-server state synchronization (single-server is primary deployment model - documentation will include Redis pub/sub pattern for multi-server scenarios)
 - **Advanced Protocols**: Custom WebSocket subprotocols beyond standard JSON messages
 - **UI Components**: Client-side JavaScript libraries or React components (server-side only)
 - **Message Queues**: Integration with RabbitMQ/Kafka for message routing (separate feature)
