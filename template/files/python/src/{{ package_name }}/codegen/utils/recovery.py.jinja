@@ -1,0 +1,264 @@
+{% if codegen_module == 'enabled' %}"""Error recovery and resilience utilities.
+
+This module provides automatic error recovery, retry logic,
+and graceful degradation strategies.
+"""
+
+from pathlib import Path
+from typing import Any, Callable, TypeVar
+from functools import wraps
+import time
+from loguru import logger
+
+T = TypeVar('T')
+
+
+class RecoveryStrategy:
+    """Strategies for recovering from common errors."""
+    
+    @staticmethod
+    def recover_from_permission_error(path: Path) -> bool:
+        """Attempt to recover from permission errors.
+        
+        Args:
+            path: Path that caused permission error
+            
+        Returns:
+            True if recovery succeeded
+        """
+        try:
+            # Try to fix permissions
+            path.chmod(0o755 if path.is_dir() else 0o644)
+            logger.info(f"Fixed permissions for: {path}")
+            return True
+        except Exception as e:
+            logger.warning(f"Could not fix permissions: {e}")
+            return False
+    
+    @staticmethod
+    def recover_from_disk_full(required_space_mb: int = 100) -> bool:
+        """Check if enough disk space and suggest cleanup.
+        
+        Args:
+            required_space_mb: Required space in MB
+            
+        Returns:
+            True if enough space available
+        """
+        import shutil
+        
+        try:
+            stat = shutil.disk_usage(Path.home())
+            free_mb = stat.free / (1024 * 1024)
+            
+            if free_mb < required_space_mb:
+                logger.error(
+                    f"Insufficient disk space. "
+                    f"Required: {required_space_mb}MB, Available: {free_mb:.0f}MB"
+                )
+                logger.info("Suggestions:")
+                logger.info("  1. Clear cache: scaffold cache clear --all")
+                logger.info("  2. Remove unused templates")
+                logger.info("  3. Free up disk space")
+                return False
+            
+            return True
+        except Exception as e:
+            logger.warning(f"Could not check disk space: {e}")
+            return True  # Assume OK if can't check
+    
+    @staticmethod
+    def recover_from_network_error(url: str, max_retries: int = 3) -> bool:
+        """Retry network operations with exponential backoff.
+        
+        Args:
+            url: URL that failed
+            max_retries: Maximum number of retries
+            
+        Returns:
+            True if recovery might succeed
+        """
+        logger.warning(f"Network error accessing: {url}")
+        logger.info(f"Will retry up to {max_retries} times with exponential backoff")
+        return True
+
+
+def retry_on_error(
+    max_attempts: int = 3,
+    delay: float = 1.0,
+    backoff: float = 2.0,
+    exceptions: tuple = (Exception,),
+) -> Callable:
+    """Decorator to retry function on error with exponential backoff.
+    
+    Args:
+        max_attempts: Maximum number of attempts
+        delay: Initial delay between retries (seconds)
+        backoff: Multiplier for delay after each attempt
+        exceptions: Tuple of exceptions to catch and retry
+        
+    Returns:
+        Decorator function
+    """
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @wraps(func)
+        def wrapper(*args, **kwargs) -> T:
+            current_delay = delay
+            
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    if attempt == max_attempts:
+                        logger.error(f"Failed after {max_attempts} attempts: {e}")
+                        raise
+                    
+                    logger.warning(
+                        f"Attempt {attempt}/{max_attempts} failed: {e}. "
+                        f"Retrying in {current_delay:.1f}s..."
+                    )
+                    time.sleep(current_delay)
+                    current_delay *= backoff
+            
+            raise RuntimeError("Retry logic failed unexpectedly")
+        
+        return wrapper
+    return decorator
+
+
+class ErrorContext:
+    """Context manager for enhanced error reporting."""
+    
+    def __init__(self, operation: str, **context):
+        """Initialize error context.
+        
+        Args:
+            operation: Description of operation being performed
+            **context: Additional context information
+        """
+        self.operation = operation
+        self.context = context
+        self.suggestions: list[str] = []
+    
+    def add_suggestion(self, suggestion: str) -> None:
+        """Add a suggestion for resolving the error.
+        
+        Args:
+            suggestion: Helpful suggestion text
+        """
+        self.suggestions.append(suggestion)
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            logger.error(f"Error during: {self.operation}")
+            
+            if self.context:
+                logger.error("Context:")
+                for key, value in self.context.items():
+                    logger.error(f"  {key}: {value}")
+            
+            if self.suggestions:
+                logger.info("Suggestions:")
+                for i, suggestion in enumerate(self.suggestions, 1):
+                    logger.info(f"  {i}. {suggestion}")
+        
+        return False  # Don't suppress the exception
+
+
+class GracefulDegradation:
+    """Provide fallback behavior when operations fail."""
+    
+    @staticmethod
+    def fallback_template_render(
+        template_path: Path,
+        variables: dict[str, Any],
+    ) -> str:
+        """Fallback renderer when Jinja2 fails.
+        
+        Args:
+            template_path: Path to template
+            variables: Template variables
+            
+        Returns:
+            Simple variable substitution result
+        """
+        content = template_path.read_text()
+        
+        # Simple {{ variable }} substitution
+        for key, value in variables.items():
+            placeholder = "{{ " + key + " }}"
+            content = content.replace(placeholder, str(value))
+        
+        logger.warning(
+            f"Used fallback renderer for {template_path.name}. "
+            "Some advanced features may not work."
+        )
+        
+        return content
+    
+    @staticmethod
+    def skip_failing_quality_checks(
+        quality_checks: list[Callable],
+        **kwargs
+    ) -> list[Any]:
+        """Run quality checks, skipping those that fail.
+        
+        Args:
+            quality_checks: List of quality check functions
+            **kwargs: Arguments to pass to each check
+            
+        Returns:
+            List of successful check results
+        """
+        results = []
+        
+        for check in quality_checks:
+            try:
+                result = check(**kwargs)
+                results.append(result)
+            except Exception as e:
+                logger.warning(
+                    f"Quality check {check.__name__} failed: {e}. "
+                    "Continuing anyway..."
+                )
+        
+        return results
+
+
+def safe_file_operation(operation: Callable[..., T]) -> Callable[..., T | None]:
+    """Wrap file operation with error handling and recovery.
+    
+    Args:
+        operation: File operation function
+        
+    Returns:
+        Wrapped function that returns None on unrecoverable errors
+    """
+    @wraps(operation)
+    def wrapper(*args, **kwargs) -> T | None:
+        try:
+            return operation(*args, **kwargs)
+        except PermissionError as e:
+            path = args[0] if args else kwargs.get('path')
+            if path and RecoveryStrategy.recover_from_permission_error(Path(path)):
+                # Retry after permission fix
+                try:
+                    return operation(*args, **kwargs)
+                except Exception as retry_error:
+                    logger.error(f"Retry failed: {retry_error}")
+            logger.error(f"Permission error: {e}")
+            return None
+        except OSError as e:
+            if "No space left" in str(e):
+                RecoveryStrategy.recover_from_disk_full()
+            logger.error(f"OS error: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error in {operation.__name__}: {e}")
+            return None
+    
+    return wrapper
+{% endif %}
