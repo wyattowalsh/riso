@@ -1,0 +1,60 @@
+{% if codegen_module == 'enabled' %}"""Base test fixtures for code generation tests."""
+
+from pathlib import Path
+from typing import Generator
+import pytest
+from jinja2 import Environment, FileSystemLoader
+
+
+@pytest.fixture
+def tmp_path(tmp_path_factory) -> Path:
+    """Provide a temporary directory for tests."""
+    return tmp_path_factory.mktemp("codegen_test")
+
+
+@pytest.fixture
+def sample_template(tmp_path: Path) -> Path:
+    """Create a minimal sample template for testing."""
+    template_dir = tmp_path / "sample_template"
+    template_dir.mkdir()
+    
+    # Create template.yml
+    (template_dir / "template.yml").write_text("""
+name: test-template
+version: 1.0.0
+description: A test template for unit tests
+template_type: project
+variables:
+  project_name:
+    type: string
+    required: true
+    description: Name of the project
+    pattern: ^[a-z][a-z0-9_]*$
+  author:
+    type: string
+    required: false
+    default: Test Author
+    description: Author name
+""")
+    
+    # Create a simple template file
+    templates_dir = template_dir / "templates"
+    templates_dir.mkdir()
+    (templates_dir / "README.md.j2").write_text("""
+# {{ project_name }}
+
+Author: {{ author }}
+""")
+    
+    return template_dir
+
+
+@pytest.fixture
+def mock_env(tmp_path: Path) -> Environment:
+    """Create a mock Jinja2 environment for testing."""
+    env = Environment(
+        loader=FileSystemLoader(str(tmp_path)),
+        autoescape=False,
+    )
+    return env
+{% endif %}

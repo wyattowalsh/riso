@@ -1,0 +1,873 @@
+{% if codegen_module == 'enabled' %}"""CLI commands for code generation and scaffolding.
+
+This module provides the command-line interface for the scaffolding tool using
+Typer for command handling and Rich for beautiful terminal output.
+"""
+
+from pathlib import Path
+from typing import Optional
+from datetime import datetime
+import typer
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn
+from loguru import logger
+
+from .models import OverwriteMode, MergeStrategy
+from .templates.loader import TemplateLoader
+from .templates.cache import CacheManager
+from .templates.validator import TemplateValidator
+
+
+# Initialize Typer app with version callback
+def version_callback(value: bool):
+    """Show version and exit."""
+    if value:
+        from . import __version__
+        console = Console()
+        console.print(f"[cyan]scaffold[/cyan] version [green]{__version__}[/green]")
+        raise typer.Exit()
+
+
+app = typer.Typer(
+    name="scaffold",
+    help="Code generation and scaffolding tool for Riso projects",
+    add_completion=True,
+    rich_markup_mode="rich",
+)
+
+# Initialize Rich console for colored output
+console = Console()
+
+
+@app.callback()
+def main_callback(
+    version: bool = typer.Option(
+        False,
+        "--version",
+        "-V",
+        callback=version_callback,
+        is_eager=True,
+        help="Show version and exit",
+    ),
+):
+    """Code generation and scaffolding tool."""
+    pass
+
+
+# ============================================================================
+# Main Commands
+# ============================================================================
+
+
+@app.command()
+def new(
+    project_name: str = typer.Argument(..., help="Name of the project to create"),
+    template: str = typer.Option("default", "--template", "-t", help="Template to use"),
+    output_dir: Path = typer.Option(Path.cwd(), "--output", "-o", help="Output directory"),
+    interactive: bool = typer.Option(True, "--interactive/--no-interactive", help="Interactive mode"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview without creating files"),
+    overwrite: bool = typer.Option(False, "--overwrite", help="Overwrite existing directory"),
+    skip_quality: bool = typer.Option(False, "--skip-quality", help="Skip quality validation"),
+    var: Optional[list[str]] = typer.Option(None, "--var", help="Variable KEY=VALUE"),
+) -> None:
+    """Create a new project from a template.
+    
+    Example:
+        $ scaffold new my-project
+        $ scaffold new my-api --template fastapi-api
+        $ scaffold new my-cli --no-interactive --var author="John Doe"
+    """
+    from .templates.loader import TemplateLoader
+    from .generation.generator import Generator
+    
+    console.print(Panel.fit(
+        f"[bold cyan]Creating project:[/bold cyan] {project_name}",
+        border_style="cyan"
+    ))
+    
+    if dry_run:
+        console.print("[yellow]DRY RUN MODE - No files will be created[/yellow]\n")
+    
+    try:
+        # Load template
+        with console.status("[cyan]Loading template...[/cyan]"):
+            loader = TemplateLoader()
+            registry = TemplateRegistry()
+            
+            # Check if template is a URL or path
+            if template.startswith(("http://", "https://", "git@")) or "/" in template or "\\" in template:
+                # Fetch from remote/local source
+                try:
+                    template_obj = registry.fetch_template(template)
+                    console.print(f"[green]✓[/green] Fetched template: {template_obj.name} v{template_obj.version}")
+                except Exception as e:
+                    console.print(f"[red]✗[/red] Failed to fetch template: {e}")
+                    raise typer.Exit(code=2)
+            else:
+                # Load from cache
+                template_path = loader.get_cached_template(template)
+                
+                if not template_path:
+                    console.print(f"[red]✗[/red] Template '{template}' not found in cache")
+                    console.print("\n[yellow]Available templates:[/yellow]")
+                    for t in loader.list_available_templates():
+                        console.print(f"  • {t.name}")
+                    console.print("\n[yellow]Or fetch from URL:[/yellow]")
+                    console.print("  scaffold new my-project --template https://github.com/user/template")
+                    raise typer.Exit(code=2)
+                
+                template_obj = loader.load_template(template_path)
+                console.print(f"[green]✓[/green] Loaded template: {template_obj.name} v{template_obj.version}")
+        
+        # Parse provided variables from --var options
+        provided_vars = {}
+        if var:
+            for var_str in var:
+                if "=" not in var_str:
+                    console.print(f"[red]✗[/red] Invalid variable format: {var_str}")
+                    console.print("Use: --var KEY=VALUE")
+                    raise typer.Exit(code=1)
+                key, value = var_str.split("=", 1)
+                provided_vars[key] = value
+        
+        # Initialize generator
+        overwrite_mode = OverwriteMode.OVERWRITE if overwrite else OverwriteMode.SKIP
+        generator = Generator(
+            template_obj,
+            output_dir,
+            dry_run=dry_run,
+            overwrite_mode=overwrite_mode,
+        )
+        
+        # Collect variables
+        console.print("\n[bold]Collecting variables:[/bold]")
+        
+        # Generate project
+        with console.status("[cyan]Generating files...[/cyan]"):
+            project = generator.generate_project(
+                project_name,
+                provided_vars,
+                interactive=interactive,
+                skip_quality=skip_quality,
+            )
+        
+        if not dry_run:
+            console.print(f"\n[green]✓[/green] Project created successfully!")
+            console.print(f"  Location: {project.root_path}")
+            console.print(f"  Files: {len(project.generated_files)}")
+            
+            console.print("\n[bold]Next steps:[/bold]")
+            console.print(f"  cd {project_name}")
+            console.print("  uv sync")
+            console.print("  uv run pytest")
+        
+    except Exception as e:
+        console.print(f"\n[red]✗ Error:[/red] {e}")
+        logger.exception("Project generation failed")
+        raise typer.Exit(code=1)
+
+
+
+@app.command()
+def add(
+    module_type: str = typer.Argument(..., help="Type of module (api, cli, docs, etc.)"),
+    module_name: str = typer.Argument(..., help="Name of the module"),
+    template: Optional[str] = typer.Option(None, "--template", "-t", help="Module template"),
+    project_dir: Path = typer.Option(Path.cwd(), "--project-dir", "-p", help="Project root"),
+    overwrite: bool = typer.Option(False, "--overwrite", help="Overwrite existing files"),
+    skip_tests: bool = typer.Option(False, "--skip-tests", help="Skip test generation"),
+    var: Optional[list[str]] = typer.Option(None, "--var", help="Variable KEY=VALUE"),
+) -> None:
+    """Add a feature module to an existing project.
+    
+    Example:
+        $ scaffold add api users
+        $ scaffold add cli admin --template rich-cli
+        $ scaffold add docs api --project-dir ~/projects/my-app
+    """
+    from .templates.loader import TemplateLoader
+    from .templates.registry import TemplateRegistry
+    from .generation.generator import Generator
+    from .models import ModuleType
+    
+    console.print(f"[cyan]Adding {module_type}:[/cyan] {module_name}")
+    
+    try:
+        # Parse module type
+        try:
+            mod_type = ModuleType(module_type.lower())
+        except ValueError:
+            console.print(f"[red]✗[/red] Invalid module type: {module_type}")
+            console.print("\n[yellow]Available types:[/yellow]")
+            for mt in ModuleType:
+                console.print(f"  • {mt.value}")
+            raise typer.Exit(code=1)
+        
+        # Verify project exists
+        metadata_file = project_dir / ".scaffold-metadata.json"
+        if not metadata_file.exists():
+            console.print(f"[red]✗[/red] Not a scaffolded project: {project_dir}")
+            console.print("Run 'scaffold new' to create a project first.")
+            raise typer.Exit(code=2)
+        
+        # Find module template
+        with console.status("[cyan]Finding module template...[/cyan]"):
+            registry = TemplateRegistry()
+            
+            if template:
+                # Use specified template
+                template_obj = registry.get_template_by_name(template)
+                if not template_obj:
+                    console.print(f"[red]✗[/red] Template not found: {template}")
+                    raise typer.Exit(code=2)
+            else:
+                # Auto-detect template for module type
+                template_obj = registry.get_default_module_template(mod_type)
+                if not template_obj:
+                    console.print(
+                        f"[red]✗[/red] No template found for module type '{module_type}'"
+                    )
+                    console.print("\nTry specifying a template with --template")
+                    raise typer.Exit(code=2)
+            
+            console.print(f"[green]✓[/green] Using template: {template_obj.name}")
+        
+        # Parse provided variables
+        provided_vars = {}
+        if var:
+            for var_str in var:
+                if "=" not in var_str:
+                    console.print(f"[red]✗[/red] Invalid variable format: {var_str}")
+                    console.print("Use: --var KEY=VALUE")
+                    raise typer.Exit(code=1)
+                key, value = var_str.split("=", 1)
+                provided_vars[key] = value
+        
+        # Initialize generator
+        generator = Generator(
+            template_obj,
+            project_dir,
+            dry_run=False,
+            overwrite_mode=OverwriteMode.OVERWRITE if overwrite else OverwriteMode.SKIP,
+        )
+        
+        # Add module
+        console.print("\n[bold]Adding module...[/bold]")
+        with console.status("[cyan]Generating files...[/cyan]"):
+            module = generator.add_module_to_project(
+                project_dir,
+                module_name,
+                mod_type,
+                provided_vars,
+                interactive=True,
+            )
+        
+        console.print(f"\n[green]✓[/green] Module added successfully!")
+        console.print(f"  Files created: {len(module.generated_files)}")
+        console.print(f"  Files modified: {len(module.modified_files)}")
+        if module.dependencies_added:
+            console.print(f"  Dependencies added: {', '.join(module.dependencies_added)}")
+        
+        console.print("\n[bold]Next steps:[/bold]")
+        console.print("  uv sync  # Update dependencies")
+        console.print(f"  uv run pytest tests/test_{module_name}.py")
+        
+    except Exception as e:
+        console.print(f"\n[red]✗ Error:[/red] {e}")
+        logger.exception("Module addition failed")
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def update(
+    project_dir: Path = typer.Option(Path.cwd(), "--project-dir", "-p", help="Project root"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview changes"),
+    auto_merge: bool = typer.Option(False, "--auto-merge", help="Auto-merge if no conflicts"),
+    strategy: MergeStrategy = typer.Option(
+        MergeStrategy.THREE_WAY, "--strategy", help="Merge strategy"
+    ),
+    skip_conflicts: bool = typer.Option(False, "--skip-conflicts", help="Skip conflicted files"),
+) -> None:
+    """Update project from template changes.
+    
+    Example:
+        $ scaffold update
+        $ scaffold update --dry-run
+        $ scaffold update --strategy ours
+    """
+    from .templates.loader import TemplateLoader
+    from .templates.cache import CacheManager
+    from .updates.differ import TemplateDiffer
+    from .updates.merger import ThreeWayMerger
+    from .updates.conflict import ConflictDetector
+    
+    console.print("[cyan]Checking for updates...[/cyan]")
+    
+    try:
+        # Load project metadata
+        metadata_file = project_dir / ".scaffold-metadata.json"
+        if not metadata_file.exists():
+            console.print(f"[red]✗[/red] Not a scaffolded project: {project_dir}")
+            raise typer.Exit(code=2)
+        
+        import json
+        metadata = json.loads(metadata_file.read_text())
+        
+        current_version = metadata["project"]["template"]["version"]
+        template_name = metadata["project"]["template"]["name"]
+        
+        console.print(f"Current version: {current_version}")
+        
+        # Check for latest template
+        loader = TemplateLoader()
+        cache_mgr = CacheManager()
+        
+        template_path = cache_mgr.get_cached_template(template_name)
+        if not template_path:
+            console.print(f"[red]✗[/red] Template '{template_name}' not in cache")
+            console.print("Run: scaffold cache update")
+            raise typer.Exit(code=2)
+        
+        template = loader.load_template(template_path)
+        latest_version = template.version
+        
+        console.print(f"Latest version: {latest_version}")
+        
+        # Check if update needed
+        differ = TemplateDiffer()
+        version_cmp = differ.compare_versions(current_version, latest_version)
+        
+        if not version_cmp["is_newer"]:
+            console.print("[green]✓[/green] Project is up to date!")
+            raise typer.Exit(code=0)
+        
+        # Get changed files
+        console.print(f"\n[cyan]Analyzing changes...[/cyan]")
+        modified, added, removed = differ.get_changed_files(
+            project_dir,
+            template_name,
+            current_version,
+            latest_version,
+        )
+        
+        console.print(f"  Modified: {len(modified)} files")
+        console.print(f"  Added: {len(added)} files")
+        console.print(f"  Removed: {len(removed)} files")
+        
+        if dry_run:
+            console.print("\n[yellow]DRY RUN - No changes will be applied[/yellow]")
+            for f in modified:
+                console.print(f"  • {f} (would be merged)")
+            for f in added:
+                console.print(f"  + {f} (would be added)")
+            for f in removed:
+                console.print(f"  - {f} (would be removed)")
+            raise typer.Exit(code=0)
+        
+        # Perform merge
+        console.print(f"\n[cyan]Applying updates...[/cyan]")
+        merger = ThreeWayMerger()
+        detector = ConflictDetector()
+        
+        # Get base version for three-way merge
+        base_path = cache_mgr.get_base_version(template_name, current_version)
+        if not base_path:
+            console.print("[yellow]⚠[/yellow] Base version not in cache, using two-way merge")
+            base_path = None
+        
+        # Merge modified files
+        conflicts_found = False
+        for rel_path in modified:
+            user_file = project_dir / rel_path
+            if not user_file.exists():
+                continue
+            
+            user_content = user_file.read_text()
+            template_file = template_path / rel_path
+            template_content = template_file.read_text()
+            
+            if base_path:
+                base_file = base_path / rel_path
+                base_content = base_file.read_text() if base_file.exists() else user_content
+            else:
+                base_content = user_content
+            
+            # Perform merge
+            result = merger.merge_file(
+                base_content,
+                user_content,
+                template_content,
+                rel_path,
+                strategy=strategy,
+            )
+            
+            if result.has_conflicts:
+                conflicts_found = True
+                console.print(f"  [yellow]⚠[/yellow] {rel_path} (CONFLICT)")
+                if not skip_conflicts:
+                    user_file.write_text(result.merged_content)
+            else:
+                console.print(f"  [green]✓[/green] {rel_path} (merged)")
+                user_file.write_text(result.merged_content)
+        
+        # Add new files
+        for rel_path in added:
+            dest = project_dir / rel_path
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            src = template_path / rel_path
+            dest.write_bytes(src.read_bytes())
+            console.print(f"  [green]+[/green] {rel_path} (added)")
+        
+        # Update metadata
+        metadata["project"]["template"]["version"] = latest_version
+        metadata["project"]["last_updated_at"] = datetime.now().isoformat()
+        metadata_file.write_text(json.dumps(metadata, indent=2))
+        
+        if conflicts_found:
+            console.print("\n[yellow]⚠ Conflicts detected[/yellow]")
+            console.print("Review and resolve conflict markers in the affected files:")
+            console.print("  1. Edit files with <<<<<<< and >>>>>>> markers")
+            console.print("  2. Remove markers after resolving")
+            console.print("  3. Test your changes")
+            raise typer.Exit(code=4)
+        else:
+            console.print(f"\n[green]✓[/green] Project updated successfully!")
+            console.print("  Run tests to verify: uv run pytest")
+        
+    except typer.Exit:
+        raise
+    except Exception as e:
+        console.print(f"\n[red]✗ Error:[/red] {e}")
+        logger.exception("Update failed")
+        raise typer.Exit(code=1)
+
+
+@app.command("list")
+def list_templates(
+    format: str = typer.Option("table", "--format", "-f", help="Output format (table/json/yaml)"),
+    registry: str = typer.Option("default", "--registry", "-r", help="Registry to query"),
+    template_type: Optional[str] = typer.Option(None, "--type", "-t", help="Filter by type"),
+    search: Optional[str] = typer.Option(None, "--search", "-s", help="Search query"),
+) -> None:
+    """List available templates.
+    
+    Example:
+        $ scaffold list
+        $ scaffold list --format json
+        $ scaffold list --search fastapi
+    """
+    loader = TemplateLoader()
+    templates = loader.list_available_templates()
+    
+    if format == "table":
+        table = Table(title="Available Templates")
+        table.add_column("Name", style="cyan")
+        table.add_column("Type", style="magenta")
+        table.add_column("Version", style="green")
+        table.add_column("Description")
+        
+        for template in templates:
+            table.add_row(
+                template.name,
+                template.template_type.value,
+                template.version,
+                template.description[:50] + "..." if len(template.description) > 50 else template.description,
+            )
+        
+        console.print(table)
+        console.print(f"\nTotal: {len(templates)} templates")
+    elif format == "json":
+        import json
+        data = [
+            {
+                "name": t.name,
+                "type": t.template_type.value,
+                "version": t.version,
+                "description": t.description,
+            }
+            for t in templates
+        ]
+        console.print_json(data={"templates": data, "count": len(templates)})
+
+
+@app.command()
+def info(
+    template_name: str = typer.Argument(..., help="Template to inspect"),
+    version: str = typer.Option("latest", "--version", "-v", help="Template version"),
+    format: str = typer.Option("text", "--format", "-f", help="Output format (text/json)"),
+) -> None:
+    """Show detailed information about a template.
+    
+    Example:
+        $ scaffold info python-cli
+        $ scaffold info fastapi-api --version 1.0.0
+    """
+    from .templates.registry import TemplateRegistry
+    
+    try:
+        registry = TemplateRegistry()
+        template = registry.get_template_by_name(template_name)
+        
+        if not template:
+            console.print(f"[red]✗[/red] Template not found: {template_name}")
+            console.print("\nAvailable templates:")
+            for t in registry.loader.list_available_templates():
+                console.print(f"  • {t.name}")
+            raise typer.Exit(code=1)
+        
+        if format == "json":
+            import json
+            data = {
+                "name": template.name,
+                "version": template.version,
+                "description": template.description,
+                "author": template.author,
+                "type": template.template_type.value,
+                "source_url": template.source_url,
+                "size_mb": template.size_bytes / 1_048_576,
+                "variables": {
+                    name: {
+                        "type": var.type.value,
+                        "required": var.required,
+                        "default": var.default,
+                        "description": var.description,
+                    }
+                    for name, var in template.variables.items()
+                },
+                "dependencies": [
+                    {"name": dep.name, "version": dep.version_constraint}
+                    for dep in template.dependencies
+                ],
+            }
+            console.print_json(data=data)
+        else:
+            # Text format with Rich
+            from rich.panel import Panel
+            
+            console.print(Panel.fit(
+                f"[bold cyan]{template.name}[/bold cyan] v{template.version}",
+                border_style="cyan"
+            ))
+            
+            console.print(f"\n[bold]Description:[/bold] {template.description}")
+            if template.author:
+                console.print(f"[bold]Author:[/bold] {template.author}")
+            console.print(f"[bold]Type:[/bold] {template.template_type.value}")
+            console.print(f"[bold]Size:[/bold] {template.size_bytes / 1_048_576:.1f} MB")
+            
+            if template.source_url:
+                console.print(f"[bold]Source:[/bold] {template.source_url}")
+            
+            # Variables
+            if template.variables:
+                console.print(f"\n[bold]Variables ({len(template.variables)}):[/bold]")
+                table = Table(show_header=True, box=None)
+                table.add_column("Name", style="cyan")
+                table.add_column("Type", style="green")
+                table.add_column("Required", style="yellow")
+                table.add_column("Default")
+                
+                for name, var in template.variables.items():
+                    table.add_row(
+                        name,
+                        var.type.value,
+                        "✓" if var.required else "✗",
+                        str(var.default) if var.default is not None else "-",
+                    )
+                
+                console.print(table)
+            
+            # Dependencies
+            if template.dependencies:
+                console.print(f"\n[bold]Dependencies ({len(template.dependencies)}):[/bold]")
+                for dep in template.dependencies:
+                    optional = " (optional)" if dep.optional else ""
+                    console.print(f"  • {dep.name} {dep.version_constraint}{optional}")
+            
+            # Hooks
+            if template.hooks:
+                console.print(f"\n[bold]Hooks:[/bold]")
+                if template.hooks.pre_gen:
+                    console.print(f"  Pre-generation: {len(template.hooks.pre_gen)} scripts")
+                if template.hooks.post_gen:
+                    console.print(f"  Post-generation: {len(template.hooks.post_gen)} scripts")
+            
+            # Metadata
+            console.print(f"\n[bold]Created:[/bold] {template.created_at.strftime('%Y-%m-%d')}")
+            console.print(f"[bold]Updated:[/bold] {template.updated_at.strftime('%Y-%m-%d')}")
+            
+    except Exception as e:
+        console.print(f"[red]✗ Error:[/red] {e}")
+        logger.exception("Failed to display template info")
+        raise typer.Exit(code=1)
+
+
+# ============================================================================
+# Cache Management
+# ============================================================================
+
+
+cache_app = typer.Typer(help="Manage template cache")
+app.add_typer(cache_app, name="cache")
+
+
+@cache_app.command("list")
+def cache_list(
+    format: str = typer.Option("table", "--format", "-f", help="Output format (table/json)"),
+) -> None:
+    """List cached templates."""
+    from .templates.cache import CacheManager
+    
+    cache_mgr = CacheManager()
+    cached = cache_mgr.list_cached_templates()
+    
+    if format == "json":
+        import json
+        console.print_json(data={"templates": cached, "count": len(cached)})
+    else:
+        table = Table(title="Cached Templates")
+        table.add_column("Name", style="cyan")
+        table.add_column("Version", style="green")
+        table.add_column("Cached At")
+        table.add_column("Size")
+        
+        for item in cached:
+            # Calculate size if available
+            from pathlib import Path
+            template_path = Path.home() / ".scaffold" / "templates" / item["template_name"]
+            size_mb = 0
+            if template_path.exists():
+                size_bytes = sum(
+                    f.stat().st_size
+                    for f in template_path.rglob("*")
+                    if f.is_file()
+                )
+                size_mb = size_bytes / 1_048_576
+            
+            table.add_row(
+                item["template_name"],
+                item.get("version", "unknown"),
+                item.get("cached_at", "unknown")[:10] if item.get("cached_at") else "unknown",
+                f"{size_mb:.1f} MB" if size_mb > 0 else "unknown",
+            )
+        
+        console.print(table)
+        console.print(f"\nTotal: {len(cached)} templates")
+
+
+@cache_app.command("update")
+def cache_update(
+    template_name: Optional[str] = typer.Argument(None, help="Template to update (all if not specified)"),
+) -> None:
+    """Update cached templates from their sources."""
+    from .templates.cache import CacheManager
+    from .templates.loader import TemplateLoader
+    from .templates.registry import TemplateRegistry
+    
+    cache_mgr = CacheManager()
+    registry = TemplateRegistry()
+    
+    if template_name:
+        # Update specific template
+        console.print(f"[cyan]Updating template:[/cyan] {template_name}")
+        
+        # Get template metadata to find source
+        template_path = cache_mgr.get_cached_template(template_name)
+        if not template_path:
+            console.print(f"[red]✗[/red] Template not found: {template_name}")
+            raise typer.Exit(code=1)
+        
+        loader = TemplateLoader()
+        template = loader.load_template(template_path)
+        
+        if template.source_url:
+            try:
+                updated = registry.fetch_template(template.source_url)
+                console.print(f"[green]✓[/green] Updated {template_name} to v{updated.version}")
+            except Exception as e:
+                console.print(f"[red]✗[/red] Update failed: {e}")
+                raise typer.Exit(code=1)
+        else:
+            console.print(f"[yellow]⚠[/yellow] No source URL for {template_name}")
+    else:
+        # Update all templates with source URLs
+        cached = cache_mgr.list_cached_templates()
+        console.print(f"[cyan]Updating {len(cached)} cached templates...[/cyan]\n")
+        
+        updated_count = 0
+        for item in cached:
+            name = item["template_name"]
+            template_path = cache_mgr.get_cached_template(name)
+            if template_path:
+                loader = TemplateLoader()
+                template = loader.load_template(template_path)
+                
+                if template.source_url:
+                    try:
+                        updated = registry.fetch_template(template.source_url)
+                        console.print(f"  [green]✓[/green] {name} → v{updated.version}")
+                        updated_count += 1
+                    except Exception as e:
+                        console.print(f"  [red]✗[/red] {name}: {e}")
+        
+        console.print(f"\n[green]✓[/green] Updated {updated_count} templates")
+
+
+@cache_app.command("clear")
+def cache_clear(
+    template_name: Optional[str] = typer.Argument(None, help="Template to clear"),
+    all: bool = typer.Option(False, "--all", help="Clear all cache"),
+) -> None:
+    """Clear template cache."""
+    from .templates.cache import CacheManager
+    
+    cache_mgr = CacheManager()
+    
+    if all or template_name is None:
+        if not all and not typer.confirm("Clear all cache?"):
+            raise typer.Exit(code=0)
+        
+        count = cache_mgr.clear_cache()
+        console.print(f"[green]✓[/green] Cleared {count} templates from cache")
+    else:
+        count = cache_mgr.clear_cache(template_name)
+        if count:
+            console.print(f"[green]✓[/green] Cleared '{template_name}' from cache")
+        else:
+            console.print(f"[yellow]![/yellow] Template '{template_name}' not in cache")
+
+
+# ============================================================================
+# Configuration
+# ============================================================================
+
+
+config_app = typer.Typer(help="Manage configuration")
+app.add_typer(config_app, name="config")
+
+
+@config_app.command("get")
+def config_get(key: str = typer.Argument(..., help="Configuration key")) -> None:
+    """Get configuration value."""
+    import yaml
+    
+    config_file = Path.home() / ".scaffold" / "config.yml"
+    
+    if not config_file.exists():
+        console.print(f"[yellow]⚠[/yellow] No configuration file found")
+        console.print(f"Default location: {config_file}")
+        raise typer.Exit(code=1)
+    
+    with open(config_file) as f:
+        config = yaml.safe_load(f) or {}
+    
+    # Navigate nested keys (e.g., "registries.default.path")
+    keys = key.split(".")
+    value = config
+    for k in keys:
+        if isinstance(value, dict) and k in value:
+            value = value[k]
+        else:
+            console.print(f"[red]✗[/red] Key not found: {key}")
+            raise typer.Exit(code=1)
+    
+    console.print(f"{key}: {value}")
+
+
+@config_app.command("set")
+def config_set(
+    key: str = typer.Argument(..., help="Configuration key"),
+    value: str = typer.Argument(..., help="Configuration value"),
+) -> None:
+    """Set configuration value."""
+    import yaml
+    
+    config_file = Path.home() / ".scaffold" / "config.yml"
+    config_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Load existing config or create new
+    if config_file.exists():
+        with open(config_file) as f:
+            config = yaml.safe_load(f) or {}
+    else:
+        config = {}
+    
+    # Navigate and set nested keys
+    keys = key.split(".")
+    current = config
+    for k in keys[:-1]:
+        if k not in current:
+            current[k] = {}
+        current = current[k]
+    
+    # Set the value
+    current[keys[-1]] = value
+    
+    # Write back
+    with open(config_file, "w") as f:
+        yaml.dump(config, f, default_flow_style=False)
+    
+    console.print(f"[green]✓[/green] Set {key} = {value}")
+
+
+@config_app.command("list")
+def config_list() -> None:
+    """List all configuration."""
+    import yaml
+    
+    config_file = Path.home() / ".scaffold" / "config.yml"
+    
+    if not config_file.exists():
+        console.print(f"[yellow]⚠[/yellow] No configuration file found")
+        console.print(f"\nCreate one at: {config_file}")
+        console.print("\nExample configuration:")
+        console.print("""
+default_template: python-cli
+default_output_dir: .
+interactive: true
+
+registries:
+  default:
+    type: local
+    path: ~/.scaffold/templates
+
+quality:
+  enabled: true
+  strict_mode: false
+""")
+        raise typer.Exit(code=0)
+    
+    with open(config_file) as f:
+        config = yaml.safe_load(f) or {}
+    
+    console.print(f"[bold]Configuration:[/bold] {config_file}\n")
+    
+    import yaml
+    console.print(yaml.dump(config, default_flow_style=False))
+
+
+# ============================================================================
+# Entry Point
+# ============================================================================
+
+
+def main() -> None:
+    """Main entry point for CLI."""
+    # Configure logging
+    logger.remove()  # Remove default handler
+    logger.add(
+        Path.home() / ".scaffold" / "scaffold.log",
+        rotation="10 MB",
+        retention="7 days",
+        level="DEBUG",
+    )
+    
+    # Run app
+    app()
+
+
+if __name__ == "__main__":
+    main()
+{% endif %}

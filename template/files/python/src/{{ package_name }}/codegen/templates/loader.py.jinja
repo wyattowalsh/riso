@@ -1,0 +1,185 @@
+{% if codegen_module == 'enabled' %}"""Template loading and discovery.
+
+This module handles loading templates from the filesystem, validating
+metadata, and parsing template definitions.
+"""
+
+from pathlib import Path
+from datetime import datetime
+from typing import Optional
+import yaml
+from loguru import logger
+
+from ..models import (
+    Template,
+    TemplateType,
+    VariableDefinition,
+    VariableType,
+    FilePattern,
+    Dependency,
+    HookConfiguration,
+)
+
+
+class TemplateLoader:
+    """Load and validate templates from filesystem."""
+    
+    def __init__(self, cache_dir: Optional[Path] = None):
+        """Initialize template loader.
+        
+        Args:
+            cache_dir: Directory for template cache (default: ~/.scaffold/templates)
+        """
+        if cache_dir is None:
+            cache_dir = Path.home() / ".scaffold" / "templates"
+        self.cache_dir = cache_dir
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        logger.debug(f"Template loader initialized with cache: {cache_dir}")
+    
+    def load_template(self, template_path: Path) -> Template:
+        """Load template from directory.
+        
+        Args:
+            template_path: Path to template directory
+            
+        Returns:
+            Loaded and validated Template instance
+            
+        Raises:
+            FileNotFoundError: If template.yml doesn't exist
+            ValueError: If template metadata is invalid
+        """
+        metadata_file = template_path / "template.yml"
+        if not metadata_file.exists():
+            raise FileNotFoundError(
+                f"template.yml not found in {template_path}. "
+                "Every template must have a template.yml file."
+            )
+        
+        # Load and parse metadata
+        with open(metadata_file) as f:
+            data = yaml.safe_load(f)
+        
+        logger.debug(f"Loading template: {data.get('name', 'unknown')}")
+        
+        # Parse variables
+        variables = {}
+        for name, var_data in data.get("variables", {}).items():
+            var_type = VariableType(var_data["type"])
+            variables[name] = VariableDefinition(
+                name=name,
+                type=var_type,
+                required=var_data.get("required", True),
+                default=var_data.get("default"),
+                description=var_data["description"],
+                pattern=var_data.get("pattern"),
+                choices=var_data.get("choices"),
+                prompt_message=var_data.get("prompt_message"),
+            )
+        
+        # Parse file patterns
+        file_patterns = []
+        for pattern_data in data.get("file_patterns", []):
+            if isinstance(pattern_data, str):
+                file_patterns.append(FilePattern(pattern=pattern_data))
+            else:
+                file_patterns.append(FilePattern(**pattern_data))
+        
+        # Parse dependencies
+        dependencies = []
+        for dep_data in data.get("dependencies", []):
+            dependencies.append(Dependency(**dep_data))
+        
+        # Parse hooks
+        hooks = None
+        if "hooks" in data:
+            hooks = HookConfiguration(**data["hooks"])
+        
+        # Calculate template size
+        size_bytes = self._calculate_size(template_path)
+        
+        # Create Template instance
+        template = Template(
+            name=data["name"],
+            version=data["version"],
+            description=data["description"],
+            author=data.get("author"),
+            template_type=TemplateType(data.get("template_type", "project")),
+            source_url=data.get("source_url"),
+            local_path=template_path,
+            size_bytes=size_bytes,
+            variables=variables,
+            file_patterns=file_patterns,
+            hooks=hooks,
+            dependencies=dependencies,
+            metadata=data.get("metadata", {}),
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+        )
+        
+        logger.info(
+            f"Loaded template '{template.name}' v{template.version} "
+            f"({size_bytes / 1024:.1f} KB, {len(variables)} variables)"
+        )
+        
+        return template
+    
+    def load_project_metadata(self, project_path: Path) -> dict:
+        """Load project metadata from .scaffold-metadata.json.
+        
+        Args:
+            project_path: Path to project root
+            
+        Returns:
+            Project metadata dictionary
+            
+        Raises:
+            FileNotFoundError: If metadata file doesn't exist
+        """
+        metadata_file = project_path / ".scaffold-metadata.json"
+        if not metadata_file.exists():
+            raise FileNotFoundError(
+                f"Not a scaffolded project: {project_path}. "
+                "Missing .scaffold-metadata.json file."
+            )
+        
+        import json
+        with open(metadata_file) as f:
+            metadata = json.load(f)
+        
+        logger.debug(f"Loaded project metadata from {project_path}")
+        return metadata
+    
+    def _calculate_size(self, directory: Path) -> int:
+        """Calculate total size of template directory.
+        
+        Args:
+            directory: Template directory path
+            
+        Returns:
+            Total size in bytes
+        """
+        total_size = 0
+        for file_path in directory.rglob("*"):
+            if file_path.is_file():
+                total_size += file_path.stat().st_size
+        return total_size
+    
+    def list_available_templates(self) -> list[Template]:
+        """List all templates in cache directory.
+        
+        Returns:
+            List of available Template instances
+        """
+        templates = []
+        for template_dir in self.cache_dir.iterdir():
+            if template_dir.is_dir() and (template_dir / "template.yml").exists():
+                try:
+                    template = self.load_template(template_dir)
+                    templates.append(template)
+                except Exception as e:
+                    logger.warning(f"Failed to load template {template_dir.name}: {e}")
+        
+        logger.info(f"Found {len(templates)} available templates")
+        return templates
+{% endif %}

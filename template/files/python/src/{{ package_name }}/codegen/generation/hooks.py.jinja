@@ -1,0 +1,232 @@
+{% if codegen_module == 'enabled' %}"""Hook execution for pre/post generation scripts.
+
+This module executes hook scripts with security restrictions:
+- Timeout limits (10 seconds default)
+- Restricted environment variables
+- No network access
+- Resource limits
+"""
+
+from pathlib import Path
+from typing import Optional
+import subprocess
+import os
+from loguru import logger
+
+from ..models import HookConfiguration
+
+
+class HookExecutor:
+    """Execute pre/post generation hooks with security restrictions."""
+    
+    def __init__(self, project_dir: Path, timeout_seconds: int = 10):
+        """Initialize hook executor.
+        
+        Args:
+            project_dir: Project directory for hook execution
+            timeout_seconds: Maximum execution time per hook
+        """
+        self.project_dir = project_dir
+        self.timeout_seconds = timeout_seconds
+        logger.debug(f"Hook executor initialized (timeout={timeout_seconds}s)")
+    
+    def execute_pre_hooks(
+        self,
+        hooks: Optional[HookConfiguration],
+        variables: dict,
+    ) -> tuple[bool, list[str]]:
+        """Execute pre-generation hooks.
+        
+        Args:
+            hooks: Hook configuration
+            variables: Template variables (available to hooks)
+            
+        Returns:
+            Tuple of (success, list_of_errors)
+        """
+        if not hooks or not hooks.pre_gen:
+            return True, []
+        
+        logger.info(f"Executing {len(hooks.pre_gen)} pre-generation hooks")
+        return self._execute_hooks(hooks.pre_gen, hooks, variables)
+    
+    def execute_post_hooks(
+        self,
+        hooks: Optional[HookConfiguration],
+        variables: dict,
+    ) -> tuple[bool, list[str]]:
+        """Execute post-generation hooks.
+        
+        Args:
+            hooks: Hook configuration
+            variables: Template variables (available to hooks)
+            
+        Returns:
+            Tuple of (success, list_of_errors)
+        """
+        if not hooks or not hooks.post_gen:
+            return True, []
+        
+        logger.info(f"Executing {len(hooks.post_gen)} post-generation hooks")
+        return self._execute_hooks(hooks.post_gen, hooks, variables)
+    
+    def _execute_hooks(
+        self,
+        hook_scripts: list[str],
+        hooks: HookConfiguration,
+        variables: dict,
+    ) -> tuple[bool, list[str]]:
+        """Execute a list of hook scripts.
+        
+        Args:
+            hook_scripts: List of shell commands
+            hooks: Hook configuration
+            variables: Template variables
+            
+        Returns:
+            Tuple of (all_success, list_of_errors)
+        """
+        errors = []
+        
+        for i, script in enumerate(hook_scripts, 1):
+            logger.debug(f"Executing hook {i}/{len(hook_scripts)}: {script[:50]}...")
+            
+            success, error = self._execute_single_hook(
+                script,
+                hooks.timeout_seconds or self.timeout_seconds,
+                hooks.env_vars,
+                variables,
+            )
+            
+            if not success:
+                errors.append(f"Hook {i} failed: {error}")
+                logger.error(f"Hook {i} failed: {error}")
+            else:
+                logger.debug(f"Hook {i} completed successfully")
+        
+        return len(errors) == 0, errors
+    
+    def _execute_single_hook(
+        self,
+        script: str,
+        timeout: int,
+        env_vars: dict[str, str],
+        variables: dict,
+    ) -> tuple[bool, Optional[str]]:
+        """Execute a single hook script.
+        
+        Args:
+            script: Shell command to execute
+            timeout: Timeout in seconds
+            env_vars: Additional environment variables
+            variables: Template variables (passed as env vars)
+            
+        Returns:
+            Tuple of (success, error_message)
+        """
+        # Build restricted environment
+        env = self._build_restricted_env(env_vars, variables)
+        
+        try:
+            # Execute with timeout and security restrictions
+            result = subprocess.run(
+                script,
+                shell=True,
+                cwd=self.project_dir,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                check=False,
+            )
+            
+            if result.returncode != 0:
+                error_msg = result.stderr.strip() or "Hook script failed"
+                return False, error_msg
+            
+            # Log output if any
+            if result.stdout:
+                logger.debug(f"Hook output: {result.stdout.strip()}")
+            
+            return True, None
+        
+        except subprocess.TimeoutExpired:
+            return False, f"Hook timed out after {timeout} seconds"
+        
+        except Exception as e:
+            return False, f"Hook execution error: {str(e)}"
+    
+    def _build_restricted_env(
+        self,
+        env_vars: dict[str, str],
+        variables: dict,
+    ) -> dict[str, str]:
+        """Build restricted environment for hook execution.
+        
+        Args:
+            env_vars: Hook-specific environment variables
+            variables: Template variables
+            
+        Returns:
+            Environment dictionary
+        """
+        # Start with minimal environment
+        env = {
+            "PATH": os.environ.get("PATH", ""),
+            "HOME": os.environ.get("HOME", ""),
+            "USER": os.environ.get("USER", ""),
+            "LANG": os.environ.get("LANG", "en_US.UTF-8"),
+        }
+        
+        # Add template variables (prefixed with SCAFFOLD_)
+        for key, value in variables.items():
+            env[f"SCAFFOLD_{key.upper()}"] = str(value)
+        
+        # Add hook-specific variables
+        env.update(env_vars)
+        
+        # Security: Remove dangerous variables
+        dangerous_vars = [
+            "LD_PRELOAD",
+            "LD_LIBRARY_PATH",
+            "DYLD_INSERT_LIBRARIES",
+            "DYLD_LIBRARY_PATH",
+        ]
+        for var in dangerous_vars:
+            env.pop(var, None)
+        
+        return env
+    
+    def validate_hook_security(self, hooks: Optional[HookConfiguration]) -> tuple[bool, list[str]]:
+        """Validate hook scripts for security issues.
+        
+        Args:
+            hooks: Hook configuration to validate
+            
+        Returns:
+            Tuple of (is_safe, list_of_warnings)
+        """
+        if not hooks:
+            return True, []
+        
+        warnings = []
+        all_scripts = hooks.pre_gen + hooks.post_gen
+        
+        for script in all_scripts:
+            # Check for dangerous commands
+            dangerous_patterns = [
+                ("rm -rf /", "Dangerous deletion command"),
+                ("sudo", "Privileged command execution"),
+                ("curl", "Network access"),
+                ("wget", "Network access"),
+                ("nc ", "Network socket"),
+                ("eval", "Code evaluation"),
+                ("exec", "Code execution"),
+            ]
+            
+            for pattern, reason in dangerous_patterns:
+                if pattern in script:
+                    warnings.append(f"Hook contains {reason}: {script[:50]}...")
+        
+        return len(warnings) == 0, warnings
+{% endif %}

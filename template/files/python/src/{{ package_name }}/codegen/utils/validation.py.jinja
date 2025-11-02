@@ -1,0 +1,249 @@
+{% if codegen_module == 'enabled' %}"""Validation utilities for robust input checking.
+
+This module provides comprehensive validation functions for user inputs,
+template data, and system state.
+"""
+
+from pathlib import Path
+import re
+from typing import Any
+from loguru import logger
+
+
+class ValidationError(Exception):
+    """Raised when validation fails."""
+    pass
+
+
+class ProjectNameValidator:
+    """Validate project names according to best practices."""
+    
+    # Reserved names that shouldn't be used
+    RESERVED_NAMES = {
+        "test", "tests", "src", "lib", "bin", "dist", "build",
+        "node_modules", "venv", ".git", ".github", "__pycache__",
+        "aux", "con", "prn", "nul",  # Windows reserved
+    }
+    
+    # Pattern for valid project names
+    VALID_PATTERN = re.compile(r"^[a-z][a-z0-9_-]{0,62}$")
+    
+    @classmethod
+    def validate(cls, name: str) -> tuple[bool, str]:
+        """Validate project name.
+        
+        Args:
+            name: Project name to validate
+            
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        if not name:
+            return False, "Project name cannot be empty"
+        
+        if len(name) > 63:
+            return False, "Project name must be 63 characters or less"
+        
+        if name.lower() in cls.RESERVED_NAMES:
+            return False, f"'{name}' is a reserved name. Please choose a different name"
+        
+        if not cls.VALID_PATTERN.match(name):
+            return False, (
+                "Project name must start with a letter, contain only lowercase "
+                "letters, numbers, hyphens, and underscores"
+            )
+        
+        if name.startswith("-") or name.endswith("-"):
+            return False, "Project name cannot start or end with a hyphen"
+        
+        if "__" in name:
+            return False, "Project name cannot contain consecutive underscores"
+        
+        return True, ""
+    
+    @classmethod
+    def suggest_fixes(cls, name: str) -> list[str]:
+        """Suggest valid alternatives for invalid project names.
+        
+        Args:
+            name: Invalid project name
+            
+        Returns:
+            List of suggested valid alternatives
+        """
+        suggestions = []
+        
+        # Convert to lowercase and replace invalid chars
+        fixed = name.lower()
+        fixed = re.sub(r'[^a-z0-9_-]', '-', fixed)
+        fixed = re.sub(r'-+', '-', fixed)  # Collapse multiple hyphens
+        fixed = re.sub(r'_+', '_', fixed)  # Collapse multiple underscores
+        fixed = fixed.strip('-_')
+        
+        # Ensure starts with letter
+        if fixed and not fixed[0].isalpha():
+            fixed = 'project-' + fixed
+        
+        if fixed and cls.validate(fixed)[0]:
+            suggestions.append(fixed)
+        
+        # Try underscore version
+        underscore_version = fixed.replace('-', '_')
+        if underscore_version != fixed and cls.validate(underscore_version)[0]:
+            suggestions.append(underscore_version)
+        
+        # Try hyphen version
+        hyphen_version = fixed.replace('_', '-')
+        if hyphen_version != fixed and cls.validate(hyphen_version)[0]:
+            suggestions.append(hyphen_version)
+        
+        return suggestions[:3]  # Return top 3 suggestions
+
+
+class TemplateValidator:
+    """Validate template structure and content."""
+    
+    REQUIRED_FILES = ["template.yml"]
+    MAX_TEMPLATE_SIZE_MB = 100
+    WARN_TEMPLATE_SIZE_MB = 50
+    
+    @classmethod
+    def validate_structure(cls, template_dir: Path) -> tuple[bool, list[str]]:
+        """Validate template directory structure.
+        
+        Args:
+            template_dir: Path to template directory
+            
+        Returns:
+            Tuple of (is_valid, list_of_errors)
+        """
+        errors = []
+        
+        if not template_dir.exists():
+            errors.append(f"Template directory does not exist: {template_dir}")
+            return False, errors
+        
+        if not template_dir.is_dir():
+            errors.append(f"Template path is not a directory: {template_dir}")
+            return False, errors
+        
+        # Check required files
+        for required_file in cls.REQUIRED_FILES:
+            file_path = template_dir / required_file
+            if not file_path.exists():
+                errors.append(f"Missing required file: {required_file}")
+        
+        # Check template size
+        total_size = sum(
+            f.stat().st_size
+            for f in template_dir.rglob("*")
+            if f.is_file()
+        )
+        size_mb = total_size / (1024 * 1024)
+        
+        if size_mb > cls.MAX_TEMPLATE_SIZE_MB:
+            errors.append(
+                f"Template size ({size_mb:.1f} MB) exceeds maximum "
+                f"({cls.MAX_TEMPLATE_SIZE_MB} MB)"
+            )
+        elif size_mb > cls.WARN_TEMPLATE_SIZE_MB:
+            logger.warning(
+                f"Template size ({size_mb:.1f} MB) is large. "
+                f"Consider optimizing."
+            )
+        
+        return len(errors) == 0, errors
+    
+    @classmethod
+    def validate_variables(cls, variables: dict[str, Any]) -> tuple[bool, list[str]]:
+        """Validate template variables.
+        
+        Args:
+            variables: Variable definitions from template
+            
+        Returns:
+            Tuple of (is_valid, list_of_errors)
+        """
+        errors = []
+        
+        for var_name, var_def in variables.items():
+            # Check variable name format
+            if not re.match(r'^[a-z][a-z0-9_]*$', var_name):
+                errors.append(
+                    f"Variable '{var_name}' has invalid name format. "
+                    "Use lowercase letters, numbers, and underscores only."
+                )
+            
+            # Check required fields
+            if 'type' not in var_def:
+                errors.append(f"Variable '{var_name}' missing 'type' field")
+            
+            # Validate choices for choice type
+            if var_def.get('type') == 'choice':
+                if 'choices' not in var_def or not var_def['choices']:
+                    errors.append(
+                        f"Variable '{var_name}' of type 'choice' "
+                        "must have non-empty 'choices' list"
+                    )
+        
+        return len(errors) == 0, errors
+
+
+class PathValidator:
+    """Validate file paths for security and correctness."""
+    
+    DANGEROUS_PATTERNS = [
+        "..",  # Path traversal
+        "~",   # Home directory expansion
+        "/etc",  # System directories
+        "/var",
+        "/sys",
+        "/proc",
+    ]
+    
+    @classmethod
+    def is_safe_path(cls, base_dir: Path, target_path: Path) -> bool:
+        """Check if target path is safe relative to base directory.
+        
+        Args:
+            base_dir: Base directory (e.g., project root)
+            target_path: Target path to validate
+            
+        Returns:
+            True if path is safe, False otherwise
+        """
+        try:
+            # Resolve both paths
+            base = base_dir.resolve()
+            target = target_path.resolve()
+            
+            # Check if target is within base
+            return target.is_relative_to(base)
+        except (ValueError, RuntimeError):
+            return False
+    
+    @classmethod
+    def validate_output_path(cls, path: Path) -> tuple[bool, str]:
+        """Validate output path for generation.
+        
+        Args:
+            path: Output path to validate
+            
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        path_str = str(path)
+        
+        # Check for dangerous patterns
+        for pattern in cls.DANGEROUS_PATTERNS:
+            if pattern in path_str:
+                return False, f"Path contains dangerous pattern: {pattern}"
+        
+        # Check absolute paths to system directories
+        if path.is_absolute():
+            path_parts = path.parts
+            if len(path_parts) > 1 and path_parts[1] in ["etc", "var", "sys", "proc"]:
+                return False, "Cannot write to system directories"
+        
+        return True, ""
+{% endif %}

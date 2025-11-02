@@ -1,0 +1,156 @@
+{% if codegen_module == 'enabled' %}"""Quality validation reporter for displaying results.
+
+This module formats and displays quality check results in user-friendly format.
+"""
+
+from pathlib import Path
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from loguru import logger
+
+from ..models import QualityStatus
+
+
+console = Console()
+
+
+class QualityReporter:
+    """Report quality validation results."""
+    
+    def __init__(self):
+        """Initialize quality reporter."""
+        logger.debug("Quality reporter initialized")
+    
+    def report_results(
+        self,
+        status: QualityStatus,
+        results: dict[str, list[str]],
+        *,
+        verbose: bool = False,
+    ) -> None:
+        """Display quality check results.
+        
+        Args:
+            status: Overall quality status
+            results: Dictionary of check name to list of issues
+            verbose: Show detailed issues
+        """
+        # Overall status
+        if status == QualityStatus.PASS:
+            console.print("\n[bold green]✓ Quality checks: PASS[/bold green]")
+            console.print("  No issues found")
+        
+        elif status == QualityStatus.WARN:
+            console.print("\n[bold yellow]⚠ Quality checks: WARNINGS[/bold yellow]")
+            console.print("  Some warnings found (non-blocking)")
+            
+            if verbose:
+                self._show_detailed_results(results)
+            else:
+                self._show_summary(results)
+        
+        elif status == QualityStatus.FAIL:
+            console.print("\n[bold red]✗ Quality checks: FAILED[/bold red]")
+            console.print("  Critical errors found")
+            
+            if verbose:
+                self._show_detailed_results(results)
+            else:
+                self._show_summary(results)
+    
+    def _show_summary(self, results: dict[str, list[str]]) -> None:
+        """Show summary of issues.
+        
+        Args:
+            results: Dictionary of check results
+        """
+        table = Table(title="Quality Issues Summary")
+        table.add_column("Check", style="cyan")
+        table.add_column("Issues", justify="right", style="yellow")
+        
+        for check_name, issues in results.items():
+            table.add_row(check_name, str(len(issues)))
+        
+        console.print(table)
+        console.print("\nRun with --verbose to see details")
+    
+    def _show_detailed_results(self, results: dict[str, list[str]]) -> None:
+        """Show detailed issues.
+        
+        Args:
+            results: Dictionary of check results
+        """
+        for check_name, issues in results.items():
+            console.print(f"\n[bold cyan]{check_name}:[/bold cyan]")
+            
+            # Limit to first 10 issues per check
+            displayed_issues = issues[:10]
+            for issue in displayed_issues:
+                console.print(f"  • {issue}")
+            
+            if len(issues) > 10:
+                console.print(f"  ... and {len(issues) - 10} more")
+    
+    def create_quality_report_file(
+        self,
+        project_dir: Path,
+        status: QualityStatus,
+        results: dict[str, list[str]],
+    ) -> Path:
+        """Create a quality report file.
+        
+        Args:
+            project_dir: Project directory
+            status: Overall quality status
+            results: Check results
+            
+        Returns:
+            Path to report file
+        """
+        report_file = project_dir / ".quality-report.txt"
+        
+        with open(report_file, "w") as f:
+            f.write("Quality Validation Report\n")
+            f.write("=" * 50 + "\n\n")
+            f.write(f"Status: {status.value}\n\n")
+            
+            for check_name, issues in results.items():
+                f.write(f"\n{check_name}:\n")
+                f.write("-" * 30 + "\n")
+                
+                if not issues:
+                    f.write("  No issues\n")
+                else:
+                    for issue in issues:
+                        f.write(f"  • {issue}\n")
+        
+        logger.info(f"Quality report written to {report_file}")
+        return report_file
+    
+    def get_quality_summary(
+        self,
+        status: QualityStatus,
+        results: dict[str, list[str]],
+    ) -> dict:
+        """Get quality summary as dictionary.
+        
+        Args:
+            status: Overall quality status
+            results: Check results
+            
+        Returns:
+            Summary dictionary
+        """
+        total_issues = sum(len(issues) for issues in results.values())
+        
+        return {
+            "status": status.value,
+            "total_issues": total_issues,
+            "checks_run": len(results),
+            "details": {
+                check: len(issues)
+                for check, issues in results.items()
+            },
+        }
+{% endif %}
