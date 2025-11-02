@@ -1,0 +1,155 @@
+"""DataLoaders - Batching and caching for efficient data fetching."""
+
+from typing import List, Optional
+from dataclasses import dataclass
+
+from aiodataloader import DataLoader
+{% if api_tracks in ['python', 'python+node'] %}
+from sqlalchemy.ext.asyncio import AsyncSession
+{% endif %}
+
+from {{ package_name }}.graphql_api.types.user import User
+from {{ package_name }}.graphql_api.types.post import Post
+
+
+class UserDataLoader(DataLoader):
+    """
+    DataLoader for batching and caching user fetches.
+    
+    Prevents N+1 query problem by batching multiple user requests
+    into a single database query.
+    
+    Example without DataLoader (N+1 problem):
+        10 posts -> 10 separate queries to fetch each author (11 total queries)
+    
+    Example with DataLoader:
+        10 posts -> 1 batched query to fetch all authors (2 total queries)
+    """
+    
+    def __init__(
+        self,
+        {% if api_tracks in ['python', 'python+node'] %}
+        db: Optional[AsyncSession] = None,
+        {% endif %}
+    ):
+        super().__init__(batch_load_fn=self.batch_load_users)
+        {% if api_tracks in ['python', 'python+node'] %}
+        self.db = db
+        {% endif %}
+    
+    async def batch_load_users(self, user_ids: List[str]) -> List[Optional[User]]:
+        """
+        Batch load multiple users by IDs.
+        
+        This method is called automatically by DataLoader when multiple
+        user.load() calls are made within the same event loop tick.
+        
+        Args:
+            user_ids: List of user IDs to fetch
+        
+        Returns:
+            List of Users in the same order as user_ids (None for not found)
+        """
+        {% if api_tracks in ['python', 'python+node'] %}
+        # Real implementation would query database:
+        # result = await self.db.execute(
+        #     select(UserModel).where(UserModel.id.in_(user_ids))
+        # )
+        # users_dict = {user.id: User.from_orm(user) for user in result.scalars()}
+        # return [users_dict.get(uid) for uid in user_ids]
+        {% endif %}
+        
+        # Mock implementation for demonstration
+        mock_users = {
+            "1": User(id="1", name="Alice Johnson", email="alice@example.com", avatar="https://example.com/alice.jpg"),
+            "2": User(id="2", name="Bob Smith", email="bob@example.com", avatar=None),
+            "3": User(id="3", name="Carol Williams", email="carol@example.com", avatar="https://example.com/carol.jpg"),
+        }
+        
+        return [mock_users.get(uid) for uid in user_ids]
+
+
+class PostsByAuthorDataLoader(DataLoader):
+    """
+    DataLoader for batching posts-by-author fetches.
+    
+    Efficiently loads all posts for multiple authors in a single query,
+    preventing N+1 problems when querying user.posts for multiple users.
+    """
+    
+    def __init__(
+        self,
+        {% if api_tracks in ['python', 'python+node'] %}
+        db: Optional[AsyncSession] = None,
+        {% endif %}
+    ):
+        super().__init__(batch_load_fn=self.batch_load_posts_by_author)
+        {% if api_tracks in ['python', 'python+node'] %}
+        self.db = db
+        {% endif %}
+    
+    async def batch_load_posts_by_author(
+        self,
+        author_ids: List[str]
+    ) -> List[List[Post]]:
+        """
+        Batch load posts for multiple authors.
+        
+        Args:
+            author_ids: List of author (user) IDs
+        
+        Returns:
+            List of post lists, one list per author_id (empty list if no posts)
+        """
+        {% if api_tracks in ['python', 'python+node'] %}
+        # Real implementation would query database:
+        # result = await self.db.execute(
+        #     select(PostModel).where(PostModel.author_id.in_(author_ids))
+        # )
+        # posts_by_author = {}
+        # for post in result.scalars():
+        #     posts_by_author.setdefault(post.author_id, []).append(Post.from_orm(post))
+        # return [posts_by_author.get(aid, []) for aid in author_ids]
+        {% endif %}
+        
+        # Mock implementation
+        from datetime import datetime
+        
+        mock_posts_by_author = {
+            "1": [
+                Post(id="p1", author_id="1", title="Alice's First Post", body="Hello world", created_at=datetime.now()),
+                Post(id="p2", author_id="1", title="Alice's Second Post", body="GraphQL is great", created_at=datetime.now()),
+            ],
+            "2": [
+                Post(id="p3", author_id="2", title="Bob's Post", body="Learning Strawberry", created_at=datetime.now()),
+            ],
+        }
+        
+        return [mock_posts_by_author.get(aid, []) for aid in author_ids]
+
+
+@dataclass
+class DataLoaderContainer:
+    """
+    Container for all DataLoader instances.
+    
+    Created once per GraphQL request to ensure proper per-request
+    batching and caching. DataLoaders should never be shared across requests.
+    """
+    
+    {% if api_tracks in ['python', 'python+node'] %}
+    db: Optional[AsyncSession] = None
+    {% endif %}
+    
+    def __post_init__(self):
+        """Initialize DataLoader instances."""
+        self.user_loader = UserDataLoader(
+            {% if api_tracks in ['python', 'python+node'] %}
+            db=self.db
+            {% endif %}
+        )
+        self.posts_by_author_loader = PostsByAuthorDataLoader(
+            {% if api_tracks in ['python', 'python+node'] %}
+            db=self.db
+            {% endif %}
+        )

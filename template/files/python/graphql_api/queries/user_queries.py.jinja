@@ -1,0 +1,149 @@
+"""User Query Resolvers - Fetch user data."""
+
+from typing import Optional
+import strawberry
+
+from {{ package_name }}.graphql_api.types.user import User, UserConnection
+from {{ package_name }}.graphql_api.pagination import create_connection, Edge, PageInfo
+
+
+@strawberry.type
+class UserQueries:
+    """User-related query operations."""
+    
+    @strawberry.field
+    async def user(
+        self,
+        info: strawberry.Info,
+        id: strawberry.ID,
+    ) -> Optional[User]:
+        """
+        Fetch a single user by ID.
+        
+        Demonstrates:
+        - Simple field resolution
+        - Flexible field selection (client chooses fields)
+        - DataLoader optimization (when implemented)
+        
+        Args:
+            info: GraphQL context with request data
+            id: User ID
+        
+        Returns:
+            User if found, None otherwise
+        """
+        # This is a placeholder implementation
+        # In a real app, this would use DataLoader:
+        # user_loader = info.context.dataloaders.user_loader
+        # return await user_loader.load(id)
+        
+        # Mock data for demonstration
+        mock_users = {
+            "1": User(
+                id="1",
+                name="Alice Johnson",
+                email="alice@example.com",
+                avatar="https://example.com/alice.jpg",
+            ),
+            "2": User(
+                id="2",
+                name="Bob Smith",
+                email="bob@example.com",
+                avatar=None,
+            ),
+        }
+        
+        return mock_users.get(id)
+    
+    @strawberry.field
+    async def users(
+        self,
+        info: strawberry.Info,
+        first: Optional[int] = 20,
+        after: Optional[str] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+    ) -> UserConnection:
+        """
+        Fetch a paginated list of users.
+        
+        Supports both cursor-based and offset-based pagination:
+        - Cursor-based (recommended): Use first/after parameters
+        - Offset-based (simple): Use offset/limit parameters
+        
+        Args:
+            info: GraphQL context
+            first: Number of users to fetch (cursor pagination)
+            after: Cursor to start from (cursor pagination)
+            offset: Number of users to skip (offset pagination)
+            limit: Number of users to fetch (offset pagination)
+        
+        Returns:
+            UserConnection with edges, pageInfo, and totalCount
+        """
+        # This is a placeholder implementation
+        # In a real app, this would query the database
+        
+        # Mock data
+        mock_users = [
+            User(id="1", name="Alice Johnson", email="alice@example.com", avatar="https://example.com/alice.jpg"),
+            User(id="2", name="Bob Smith", email="bob@example.com", avatar=None),
+            User(id="3", name="Carol Williams", email="carol@example.com", avatar="https://example.com/carol.jpg"),
+            User(id="4", name="David Brown", email="david@example.com", avatar=None),
+            User(id="5", name="Eve Davis", email="eve@example.com", avatar="https://example.com/eve.jpg"),
+        ]
+        
+        # Choose pagination strategy
+        if offset is not None or limit is not None:
+            # Offset-based pagination
+            from {{ package_name }}.graphql_api.pagination import OffsetPagination
+            
+            offset = offset or 0
+            limit = limit or 20
+            paginated_users, total_count = OffsetPagination.paginate(
+                mock_users,
+                offset=offset,
+                limit=limit,
+                max_limit=100,
+            )
+            
+            # Convert to connection format
+            edges = [
+                Edge(
+                    cursor=f"cursor-{user.id}",
+                    node=user,
+                )
+                for user in paginated_users
+            ]
+            
+            page_info = PageInfo(
+                has_next_page=offset + limit < total_count,
+                has_previous_page=offset > 0,
+                start_cursor=edges[0].cursor if edges else None,
+                end_cursor=edges[-1].cursor if edges else None,
+            )
+            
+            return UserConnection(
+                edges=edges,
+                page_info=page_info,
+                total_count=total_count,
+            )
+        else:
+            # Cursor-based pagination (default)
+            connection = create_connection(
+                items=mock_users,
+                first=first,
+                after=after,
+            )
+            
+            # Convert generic connection to UserConnection
+            user_edges = [
+                Edge(cursor=edge.cursor, node=edge.node)
+                for edge in connection.edges
+            ]
+            
+            return UserConnection(
+                edges=user_edges,
+                page_info=connection.page_info,
+                total_count=connection.total_count or len(mock_users),
+            )

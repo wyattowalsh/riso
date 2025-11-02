@@ -1,0 +1,173 @@
+"""GraphQL Error Handling - Custom error classes and formatters."""
+
+from typing import Any, Dict, Optional
+import strawberry
+
+
+class GraphQLError(Exception):
+    """Base class for all GraphQL errors."""
+    
+    code: str = "GRAPHQL_ERROR"
+    
+    def __init__(self, message: str, extensions: Optional[Dict[str, Any]] = None):
+        super().__init__(message)
+        self.message = message
+        self.extensions = extensions or {}
+        self.extensions["code"] = self.code
+
+
+@strawberry.type
+class ValidationError(GraphQLError):
+    """
+    Validation error for field-level validation failures.
+    
+    Examples:
+        - Invalid email format
+        - Required field missing
+        - Field value out of range
+        - Type mismatch
+    """
+    
+    code: str = "VALIDATION_ERROR"
+    
+    def __init__(
+        self,
+        message: str,
+        field: Optional[str] = None,
+        extensions: Optional[Dict[str, Any]] = None
+    ):
+        extensions = extensions or {}
+        if field:
+            extensions["field"] = field
+        super().__init__(message, extensions)
+
+
+@strawberry.type
+class AuthError(GraphQLError):
+    """
+    Authentication/authorization error.
+    
+    Examples:
+        - No authentication token provided
+        - Invalid or expired token
+        - Insufficient permissions for operation
+        - User not found
+    """
+    
+    code: str = "AUTH_ERROR"
+
+
+@strawberry.type  
+class SystemError(GraphQLError):
+    """
+    System-level error (database, network, external services).
+    
+    Examples:
+        - Database connection failure
+        - Network timeout
+        - External API error
+        - Resource not available
+    
+    Note: In production, system errors should be sanitized
+    to avoid leaking internal details.
+    """
+    
+    code: str = "SYSTEM_ERROR"
+
+
+@strawberry.type
+class QueryError(GraphQLError):
+    """
+    Query validation error.
+    
+    Examples:
+        - Query syntax error
+        - Invalid field requested
+        - Query depth exceeded
+        - Query complexity exceeded
+    """
+    
+    code: str = "QUERY_ERROR"
+
+
+def format_graphql_error(error: Exception, debug: bool = False) -> Dict[str, Any]:
+    """
+    Format GraphQL errors for response.
+    
+    In production (debug=False):
+        - Sanitize system errors (no stack traces)
+        - Include error codes and messages
+        - Remove sensitive information
+    
+    In development (debug=True):
+        - Include full error details
+        - Include stack traces
+        - Include error extensions
+    
+    Args:
+        error: Exception that occurred
+        debug: Whether to include debug information
+    
+    Returns:
+        Formatted error dictionary
+    """
+    if isinstance(error, GraphQLError):
+        formatted = {
+            "message": error.message,
+            "extensions": error.extensions,
+        }
+        
+        if debug:
+            formatted["extensions"]["debug"] = {
+                "exception_type": type(error).__name__,
+            }
+        
+        return formatted
+    
+    # Unknown error - sanitize in production
+    if debug:
+        return {
+            "message": str(error),
+            "extensions": {
+                "code": "UNKNOWN_ERROR",
+                "exception_type": type(error).__name__,
+            },
+        }
+    else:
+        return {
+            "message": "An internal error occurred",
+            "extensions": {
+                "code": "SYSTEM_ERROR",
+            },
+        }
+
+
+def sanitize_error_for_production(error: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Sanitize error for production by removing sensitive information.
+    
+    Removes:
+        - Stack traces
+        - Internal paths
+        - Database queries
+        - Environment variables
+        - Other sensitive debug information
+    
+    Args:
+        error: Error dictionary
+    
+    Returns:
+        Sanitized error dictionary
+    """
+    sanitized = {
+        "message": error.get("message", "An error occurred"),
+        "extensions": {
+            "code": error.get("extensions", {}).get("code", "UNKNOWN_ERROR"),
+        },
+    }
+    
+    # Preserve field information for validation errors (helpful for clients)
+    if error.get("extensions", {}).get("field"):
+        sanitized["extensions"]["field"] = error["extensions"]["field"]
+    
+    return sanitized
