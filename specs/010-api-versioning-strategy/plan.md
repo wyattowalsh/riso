@@ -11,7 +11,7 @@ Implement a comprehensive API versioning system that supports multiple concurren
 
 ## Technical Context
 
-**Language/Version**: Python 3.11 (uv-managed) with optional Node.js 20 LTS support  
+**Language/Version**: Python ≥3.11 (uv-managed) with optional Node.js 20 LTS support  
 **Primary Dependencies**: NEEDS CLARIFICATION (FastAPI vs Flask vs Starlette for Python API framework)  
 **Storage**: NEEDS CLARIFICATION (version metadata storage: in-memory, Redis, PostgreSQL, or file-based configuration)  
 **Testing**: pytest (Python), optional Vitest (Node.js if applicable)  

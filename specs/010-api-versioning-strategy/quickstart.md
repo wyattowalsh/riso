@@ -348,6 +348,43 @@ Link: </docs/migrations/v1-to-v2>; rel="migration-guide"
 
 ## Error Responses
 
+### Version Conflict (400 Bad Request)
+
+**Scenario**: Contradictory version indicators within the SAME specification source (e.g., two different version headers).
+
+```python
+import requests
+
+# This will fail: two version headers with different values
+response = requests.get(
+    "https://api.example.com/users",
+    headers={
+        "X-API-Version": "v1",
+        "API-Version": "v2"  # Conflict within header source!
+    }
+)
+# Response: 400 Bad Request
+# {
+#   "error": {
+#     "code": "VERSION_CONFLICT",
+#     "message": "Contradictory version headers: X-API-Version=v1, API-Version=v2",
+#     "detected_specifications": [
+#       {"source": "HEADER", "value": "v1", "from": "X-API-Version"},
+#       {"source": "HEADER", "value": "v2", "from": "API-Version"}
+#     ]
+#   }
+# }
+
+# This is OK: cross-source conflicts resolved by precedence (Header > URL)
+response = requests.get(
+    "https://api.example.com/v2/users",  # URL says v2
+    headers={"X-API-Version": "v1"}      # Header says v1 → v1 wins (precedence)
+)
+# Response: 200 OK with X-API-Version: v1 header
+```
+
+**Key Point**: Precedence rules (Header > URL > Query) resolve cross-source conflicts automatically. Only same-source contradictions return 400 errors.
+
 ### Version Not Found (404)
 
 ```json
@@ -369,22 +406,6 @@ Link: </docs/migrations/v1-to-v2>; rel="migration-guide"
     "message": "API version 'v1' was sunset on 2025-12-01",
     "recommended_version": "v2",
     "migration_guide_url": "/docs/migrations/v1-to-v2"
-  }
-}
-```
-
-### Version Conflict (400)
-
-```json
-{
-  "error": {
-    "code": "VERSION_CONFLICT",
-    "message": "Contradictory version specifications: header=v2, url=v1",
-    "details": {
-      "header_version": "v2",
-      "url_version": "v1",
-      "query_version": null
-    }
   }
 }
 ```
