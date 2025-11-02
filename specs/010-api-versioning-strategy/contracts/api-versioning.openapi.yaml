@@ -206,6 +206,29 @@ paths:
                 $ref: '#/components/schemas/VersionMetadata'
 
 components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API key for authenticated access. Provides 1000 requests/minute rate limit.
+        Keys are issued per consumer and should be kept confidential.
+    
+    OAuth2:
+      type: oauth2
+      description: |
+        OAuth 2.0 authentication for enterprise integrations with fine-grained permissions.
+        Supports authorization code flow with PKCE.
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.example.com/oauth/authorize
+          tokenUrl: https://auth.example.com/oauth/token
+          refreshUrl: https://auth.example.com/oauth/refresh
+          scopes:
+            read:versions: Read version metadata and discovery information
+            admin:versions: Manage version configuration (admin only, not available via discovery API)
+
   schemas:
     VersionStatus:
       type: string
@@ -373,18 +396,31 @@ components:
                 - VERSION_SUNSET
                 - VERSION_CONFLICT
                 - PRERELEASE_OPT_IN_REQUIRED
+                - VERSION_NOT_DEPRECATED
+                - INVALID_VERSION_FORMAT
+                - UNAUTHORIZED
+                - RATE_LIMIT_EXCEEDED
+                - INTERNAL_SERVER_ERROR
+                - SERVICE_UNAVAILABLE
               description: Machine-readable error code
             message:
               type: string
+              minLength: 1
               description: Human-readable error message
             available_versions:
               type: array
               items:
                 type: string
-              description: List of currently supported versions
+                pattern: '^v[0-9]+(-[a-z]+)?$'
+              description: List of currently supported versions (included for VERSION_NOT_FOUND)
             details:
               type: object
               description: Additional context-specific error details
+            correlation_id:
+              type: string
+              format: uuid
+              description: Unique identifier for tracing this error across systems
+              example: "550e8400-e29b-41d4-a716-446655440000"
 
   parameters:
     VersionHeader:
@@ -397,7 +433,21 @@ components:
       schema:
         type: string
         pattern: '^v[0-9]+(-[a-z]+)?$'
+        minLength: 2
+        maxLength: 20
         example: v2
+
+    PrereleaseOptIn:
+      name: X-API-Prerelease-Opt-In
+      in: header
+      description: |
+        Explicitly opt-in to access pre-release (beta/alpha) versions.
+        Required when requesting versions with status 'prerelease'.
+      required: false
+      schema:
+        type: boolean
+        default: false
+        example: true
 
     VersionQuery:
       name: version
@@ -408,6 +458,8 @@ components:
       schema:
         type: string
         pattern: '^v[0-9]+(-[a-z]+)?$'
+        minLength: 2
+        maxLength: 20
         example: v2
 
   headers:
@@ -442,6 +494,39 @@ components:
         type: string
         example: '</docs/migrations/v1-to-v2>; rel="migration-guide", </versions/v2>; rel="successor-version"'
       required: false
+
+    X-RateLimit-Limit:
+      description: Total number of requests allowed per time window (1 minute)
+      schema:
+        type: integer
+        minimum: 1
+        example: 1000
+      required: true
+
+    X-RateLimit-Remaining:
+      description: Number of requests remaining in current time window
+      schema:
+        type: integer
+        minimum: 0
+        example: 950
+      required: true
+
+    X-RateLimit-Reset:
+      description: Unix timestamp (seconds since epoch) when rate limit window resets
+      schema:
+        type: integer
+        format: int64
+        minimum: 0
+        example: 1699200000
+      required: true
+
+    X-Correlation-ID:
+      description: Unique identifier for tracing request across systems (UUIDv4)
+      schema:
+        type: string
+        format: uuid
+        example: "550e8400-e29b-41d4-a716-446655440000"
+      required: true
 
   responses:
     VersionNotFound:
@@ -478,7 +563,161 @@ components:
             error:
               code: VERSION_CONFLICT
               message: 'Contradictory version specifications: header=v2, url=v1'
+              correlation_id: "550e8400-e29b-41d4-a716-446655440005"
               details:
                 header_version: v2
                 url_version: v1
                 query_version: null
+
+    BadRequest:
+      description: Invalid request parameters or malformed version specification
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalidFormat:
+              summary: Invalid version format
+              value:
+                error:
+                  code: INVALID_VERSION_FORMAT
+                  message: "Version identifier must match pattern ^v[0-9]+(-[a-z]+)?$"
+                  correlation_id: "550e8400-e29b-41d4-a716-446655440006"
+                  details:
+                    provided_value: "invalid_version"
+                    required_pattern: "^v[0-9]+(-[a-z]+)?$"
+            tooLong:
+              summary: Version identifier too long
+              value:
+                error:
+                  code: INVALID_VERSION_FORMAT
+                  message: "Version identifier must be 2-20 characters"
+                  correlation_id: "550e8400-e29b-41d4-a716-446655440007"
+                  details:
+                    provided_length: 25
+                    max_length: 20
+
+    Unauthorized:
+      description: Authentication required or authentication failed
+      headers:
+        WWW-Authenticate:
+          description: Authentication challenge
+          schema:
+            type: string
+            example: 'Bearer realm="API Versioning", error="invalid_token", error_description="The access token expired"'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalidKey:
+              summary: Invalid API key
+              value:
+                error:
+                  code: UNAUTHORIZED
+                  message: "Invalid API key provided"
+                  correlation_id: "550e8400-e29b-41d4-a716-446655440008"
+            expiredToken:
+              summary: Expired OAuth token
+              value:
+                error:
+                  code: UNAUTHORIZED
+                  message: "OAuth token has expired"
+                  correlation_id: "550e8400-e29b-41d4-a716-446655440009"
+                  details:
+                    expired_at: "2025-11-01T12:00:00Z"
+
+    TooManyRequests:
+      description: Rate limit exceeded for consumer
+      headers:
+        X-RateLimit-Limit:
+          $ref: '#/components/headers/X-RateLimit-Limit'
+        X-RateLimit-Remaining:
+          description: Always 0 when rate limited
+          schema:
+            type: integer
+            example: 0
+        X-RateLimit-Reset:
+          $ref: '#/components/headers/X-RateLimit-Reset'
+        Retry-After:
+          description: Seconds to wait before retrying
+          schema:
+            type: integer
+            minimum: 1
+            example: 60
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            authenticated:
+              summary: Authenticated rate limit exceeded
+              value:
+                error:
+                  code: RATE_LIMIT_EXCEEDED
+                  message: "Rate limit exceeded. Limit: 1000 requests/minute"
+                  correlation_id: "550e8400-e29b-41d4-a716-446655440010"
+                  details:
+                    limit: 1000
+                    window: "1 minute"
+                    retry_after: 45
+            anonymous:
+              summary: Anonymous rate limit exceeded
+              value:
+                error:
+                  code: RATE_LIMIT_EXCEEDED
+                  message: "Rate limit exceeded. Limit: 100 requests/minute (anonymous)"
+                  correlation_id: "550e8400-e29b-41d4-a716-446655440011"
+                  details:
+                    limit: 100
+                    window: "1 minute"
+                    retry_after: 30
+                    suggestion: "Authenticate with API key for higher limits"
+
+    InternalServerError:
+      description: Internal server error - unexpected failure
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: INTERNAL_SERVER_ERROR
+              message: "An unexpected error occurred while processing your request"
+              correlation_id: "550e8400-e29b-41d4-a716-446655440012"
+              details:
+                support_url: "https://docs.example.com/support"
+
+    ServiceUnavailable:
+      description: Service temporarily unavailable (maintenance or dependency failure)
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying
+          schema:
+            type: integer
+            example: 300
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            maintenance:
+              summary: Scheduled maintenance
+              value:
+                error:
+                  code: SERVICE_UNAVAILABLE
+                  message: "Service temporarily unavailable for scheduled maintenance"
+                  correlation_id: "550e8400-e29b-41d4-a716-446655440013"
+                  details:
+                    estimated_recovery: "2025-11-02T10:00:00Z"
+                    retry_after: 300
+            dependencyFailure:
+              summary: Dependency failure
+              value:
+                error:
+                  code: SERVICE_UNAVAILABLE
+                  message: "Version registry temporarily unavailable"
+                  correlation_id: "550e8400-e29b-41d4-a716-446655440014"
+                  details:
+                    reason: "database connection failure"
+                    retry_after: 60
