@@ -1,0 +1,361 @@
+{% if websocket_module == "enabled" -%}
+"""WebSocket connection wrapper with lifecycle management."""
+
+import asyncio
+import uuid
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional, Set
+
+from fastapi import WebSocket
+from loguru import logger
+
+from {{ package_name }}.websocket.config import get_config
+from {{ package_name }}.websocket.exceptions import (
+    BackpressureError,
+    ConnectionClosedError,
+    MessageTooLargeError,
+)
+from {{ package_name }}.websocket.models import ConnectionState, WebSocketConnectionModel
+
+
+class WebSocketConnection:
+    """
+    Wrapper for FastAPI WebSocket with lifecycle management.
+
+    Provides:
+    - State management (CONNECTING ? CONNECTED ? CLOSING ? CLOSED)
+    - Outbound message queuing with backpressure handling
+    - Message size validation
+    - Activity tracking for idle timeout
+    - Room membership tracking
+    - Statistics (messages sent/received)
+
+    Example:
+        ```python
+        connection = WebSocketConnection(websocket, user_id="user_123")
+        await connection.accept()
+        
+        await connection.send_json({"type": "message.text", "payload": {"text": "Hello"}})
+        
+        await connection.close(code=1000, reason="Normal closure")
+        ```
+    """
+
+    def __init__(
+        self,
+        websocket: WebSocket,
+        connection_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ):
+        """
+        Initialize WebSocket connection.
+
+        Args:
+            websocket: FastAPI WebSocket instance
+            connection_id: Unique identifier (generated if None)
+            user_id: Authenticated user ID (None for anonymous)
+            metadata: Custom connection attributes
+        """
+        self.websocket    = websocket
+        self.config       = get_config()
+        self._connection_id = connection_id or str(uuid.uuid4())
+        
+        # Connection model (serializable state)
+        self._model = WebSocketConnectionModel(
+            connection_id=self._connection_id,
+            user_id=user_id,
+            metadata=metadata or {},
+        )
+        
+        # Message queue (bounded for backpressure)
+        self._message_queue: asyncio.Queue = asyncio.Queue(
+            maxsize=self.config.message_queue_depth
+        )
+        
+        # Background tasks
+        self._send_task: Optional[asyncio.Task] = None
+        self._heartbeat_task: Optional[asyncio.Task] = None
+        
+        # Statistics
+        self._messages_sent     = 0
+        self._messages_received = 0
+
+    @property
+    def connection_id(self) -> str:
+        """Get connection ID."""
+        return self._connection_id
+
+    @property
+    def user_id(self) -> Optional[str]:
+        """Get authenticated user ID."""
+        return self._model.user_id
+
+    @property
+    def state(self) -> ConnectionState:
+        """Get current connection state."""
+        return self._model.state
+
+    @property
+    def rooms(self) -> Set[str]:
+        """Get current room memberships."""
+        return self._model.rooms
+
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        """Get connection metadata."""
+        return self._model.metadata
+
+    @property
+    def messages_sent(self) -> int:
+        """Get total messages sent."""
+        return self._messages_sent
+
+    @property
+    def messages_received(self) -> int:
+        """Get total messages received."""
+        return self._messages_received
+
+    def is_active(self) -> bool:
+        """Check if connection is active (CONNECTED state)."""
+        return self._model.state == ConnectionState.CONNECTED
+
+    def time_since_activity(self) -> float:
+        """Get seconds since last activity."""
+        delta = datetime.now(timezone.utc) - self._model.last_activity_at
+        return delta.total_seconds()
+
+    async def accept(self) -> None:
+        """
+        Accept WebSocket connection and transition to CONNECTED state.
+
+        Starts background tasks for:
+        - Message sending loop
+        - Heartbeat (if enabled)
+
+        Raises:
+            ConnectionClosedError: If connection already closed
+        """
+        if self._model.state != ConnectionState.CONNECTING:
+            raise ConnectionClosedError(
+                self._connection_id,
+                f"Cannot accept connection in state {self._model.state}",
+            )
+
+        await self.websocket.accept()
+        self._model.state = ConnectionState.CONNECTED
+        self._update_activity()
+
+        # Start background tasks
+        self._send_task = asyncio.create_task(self._send_loop())
+
+        logger.info(
+            f"WebSocket connected: {self._connection_id}",
+            extra={
+                "connection_id": self._connection_id,
+                "user_id":       self.user_id,
+                "client_host":   self.websocket.client.host if self.websocket.client else None,
+            },
+        )
+
+    async def send_json(self, message: Dict[str, Any]) -> None:
+        """
+        Queue JSON message for sending.
+
+        Args:
+            message: JSON-serializable dict
+
+        Raises:
+            BackpressureError: If message queue is full
+            ConnectionClosedError: If connection is closed
+        """
+        if not self.is_active():
+            raise ConnectionClosedError(
+                self._connection_id,
+                "Cannot send message on closed connection",
+            )
+
+        try:
+            self._message_queue.put_nowait(("json", message))
+            self._update_activity()
+        except asyncio.QueueFull as e:
+            raise BackpressureError(
+                queue_depth=self.config.message_queue_depth
+            ) from e
+
+    async def send_text(self, text: str) -> None:
+        """
+        Queue text message for sending.
+
+        Args:
+            text: Text content
+
+        Raises:
+            MessageTooLargeError: If text exceeds max_message_size
+            BackpressureError: If message queue is full
+            ConnectionClosedError: If connection is closed
+        """
+        if not self.is_active():
+            raise ConnectionClosedError(
+                self._connection_id,
+                "Cannot send message on closed connection",
+            )
+
+        # Check message size
+        size = len(text.encode("utf-8"))
+        if size > self.config.max_message_size:
+            raise MessageTooLargeError(
+                message=f"Message size {size} exceeds limit {self.config.max_message_size}",
+                max_size=self.config.max_message_size,
+                actual_size=size,
+            )
+
+        try:
+            self._message_queue.put_nowait(("text", text))
+            self._update_activity()
+        except asyncio.QueueFull as e:
+            raise BackpressureError(
+                queue_depth=self.config.message_queue_depth
+            ) from e
+
+    async def send_bytes(self, data: bytes) -> None:
+        """
+        Queue binary message for sending.
+
+        Args:
+            data: Binary content
+
+        Raises:
+            MessageTooLargeError: If data exceeds max_message_size
+            BackpressureError: If message queue is full
+            ConnectionClosedError: If connection is closed
+        """
+        if not self.is_active():
+            raise ConnectionClosedError(
+                self._connection_id,
+                "Cannot send message on closed connection",
+            )
+
+        # Check message size
+        if len(data) > self.config.max_message_size:
+            raise MessageTooLargeError(
+                message=f"Message size {len(data)} exceeds limit {self.config.max_message_size}",
+                max_size=self.config.max_message_size,
+                actual_size=len(data),
+            )
+
+        try:
+            self._message_queue.put_nowait(("bytes", data))
+            self._update_activity()
+        except asyncio.QueueFull as e:
+            raise BackpressureError(
+                queue_depth=self.config.message_queue_depth
+            ) from e
+
+    async def close(self, code: int = 1000, reason: str = "Normal closure") -> None:
+        """
+        Gracefully close WebSocket connection.
+
+        Args:
+            code: WebSocket close code (default: 1000 = normal closure)
+            reason: Human-readable close reason
+
+        Raises:
+            ConnectionClosedError: If connection already closed
+        """
+        if self._model.state == ConnectionState.CLOSED:
+            return  # Already closed
+
+        if self._model.state != ConnectionState.CLOSING:
+            self._model.state = ConnectionState.CLOSING
+
+        try:
+            # Cancel background tasks
+            if self._send_task and not self._send_task.done():
+                self._send_task.cancel()
+                try:
+                    await self._send_task
+                except asyncio.CancelledError:
+                    pass
+
+            if self._heartbeat_task and not self._heartbeat_task.done():
+                self._heartbeat_task.cancel()
+                try:
+                    await self._heartbeat_task
+                except asyncio.CancelledError:
+                    pass
+
+            # Close WebSocket
+            await self.websocket.close(code=code, reason=reason)
+
+        except Exception as e:
+            logger.warning(
+                f"Error closing connection {self._connection_id}: {e}",
+                exc_info=True,
+            )
+        finally:
+            self._model.state = ConnectionState.CLOSED
+            logger.info(
+                f"WebSocket disconnected: {self._connection_id}",
+                extra={
+                    "connection_id":    self._connection_id,
+                    "user_id":          self.user_id,
+                    "close_code":       code,
+                    "close_reason":     reason,
+                    "messages_sent":    self._messages_sent,
+                    "messages_received": self._messages_received,
+                    "duration_seconds": self.time_since_activity(),
+                },
+            )
+
+    def add_room(self, room_id: str) -> None:
+        """Add connection to room."""
+        self._model.rooms.add(room_id)
+
+    def remove_room(self, room_id: str) -> None:
+        """Remove connection from room."""
+        self._model.rooms.discard(room_id)
+
+    def to_model(self) -> WebSocketConnectionModel:
+        """Get serializable connection model."""
+        self._model.messages_sent     = self._messages_sent
+        self._model.messages_received = self._messages_received
+        return self._model
+
+    def _update_activity(self) -> None:
+        """Update last activity timestamp."""
+        self._model.last_activity_at = datetime.now(timezone.utc)
+
+    async def _send_loop(self) -> None:
+        """Background task that drains message queue and sends to WebSocket."""
+        try:
+            while self.is_active():
+                # Get message from queue (blocks until available)
+                message_type, message_data = await self._message_queue.get()
+
+                # Send to WebSocket
+                try:
+                    if message_type == "json":
+                        await self.websocket.send_json(message_data)
+                    elif message_type == "text":
+                        await self.websocket.send_text(message_data)
+                    elif message_type == "bytes":
+                        await self.websocket.send_bytes(message_data)
+
+                    self._messages_sent += 1
+
+                except Exception as e:
+                    logger.error(
+                        f"Error sending message on connection {self._connection_id}: {e}",
+                        exc_info=True,
+                    )
+                    # Don't raise - continue processing queue
+
+        except asyncio.CancelledError:
+            logger.debug(f"Send loop cancelled for connection {self._connection_id}")
+        except Exception as e:
+            logger.error(
+                f"Send loop error for connection {self._connection_id}: {e}",
+                exc_info=True,
+            )
+{% endif -%}

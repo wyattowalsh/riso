@@ -1,0 +1,71 @@
+{% if websocket_module == "enabled" -%}
+"""Pytest fixtures for WebSocket testing."""
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from {{ package_name }}.websocket import ConnectionManager
+from {{ package_name }}.websocket.config import reset_config
+
+
+@pytest.fixture
+def app():
+    """Create FastAPI app for testing."""
+    test_app = FastAPI()
+    return test_app
+
+
+@pytest.fixture
+def client(app):
+    """Create test client."""
+    with TestClient(app) as test_client:
+        yield test_client
+
+
+@pytest.fixture
+def manager():
+    """Create fresh ConnectionManager instance for each test."""
+    # Reset configuration
+    reset_config()
+
+    # Create new manager
+    manager_instance = ConnectionManager()
+
+    yield manager_instance
+
+    # Cleanup (manager is singleton, so we can't fully reset it)
+    # In production tests, you may want to mock the manager
+
+
+@pytest.fixture
+async def websocket_client(client, app):
+    """
+    Create WebSocket test client context.
+
+    Example:
+        ```python
+        @pytest.mark.asyncio
+        async def test_connection(websocket_client):
+            async with websocket_client("/ws") as ws:
+                data = await ws.receive_json()
+                assert data["type"] == "connection.connect"
+        ```
+    """
+
+    class WebSocketTestContext:
+        def __init__(self, test_client, endpoint):
+            self.test_client = test_client
+            self.endpoint    = endpoint
+
+        def __enter__(self):
+            return self.test_client.websocket_connect(self.endpoint)
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            pass
+
+    def create_context(endpoint: str):
+        return WebSocketTestContext(client, endpoint)
+
+    return create_context
+{% endif -%}
