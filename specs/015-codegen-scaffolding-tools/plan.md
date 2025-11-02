@@ -12,7 +12,7 @@ Implement a CLI-based code generation and scaffolding tool that enables develope
 ## Technical Context
 
 **Language/Version**: Python 3.11+  
-**Primary Dependencies**: Jinja2 (template engine), Typer (CLI framework), Loguru (logging), Rich (terminal UI), GitPython (template fetching), diff-match-patch (three-way merge)  
+**Primary Dependencies**: Jinja2 (template engine), Typer (CLI framework), Loguru (logging), Rich (terminal UI), GitPython (template fetching), merge3 (three-way merge)  
 **Storage**: Local filesystem cache (~/.scaffold/templates/), file-based metadata (.scaffold-metadata.json)  
 **Testing**: pytest with fixtures for filesystem operations, integration tests with real templates  
 **Target Platform**: Linux, macOS, Windows (cross-platform CLI)  
