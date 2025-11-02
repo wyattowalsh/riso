@@ -1,0 +1,467 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+# FastAPI API Module (Disabled)
+
+The FastAPI API module is not enabled for this project. To enable it, regenerate the project with `api_tracks` set to `python` or `python+node`.
+{%- else %}
+# FastAPI API Module
+
+**Status**: Enabled  
+**Framework**: FastAPI {{ "0.120+" }}  
+**Server**: Uvicorn (ASGI)  
+**Python**: {{ python_versions[0] }}+
+
+## Overview
+
+The FastAPI module provides a production-ready REST API server with:
+
+- **Auto-generated Documentation**: Interactive Swagger UI and ReDoc
+- **Type Safety**: Pydantic models for validation and serialization
+- **Performance**: Async/await support for high concurrency
+- **Developer Experience**: Auto-reload, comprehensive error messages
+- **Production Ready**: Health checks, CORS, error handling, logging
+
+## Quick Start
+
+### Starting the Development Server
+
+```bash
+# Start with auto-reload
+uv run uvicorn {{ package_name }}.api.main:app --reload
+
+# Start on custom port
+uv run uvicorn {{ package_name }}.api.main:app --reload --port 8001
+
+# Start with specific host
+uv run uvicorn {{ package_name }}.api.main:app --reload --host 0.0.0.0
+```
+
+**Default**: Server starts at `http://localhost:8000`
+
+### Accessing Documentation
+
+- **Swagger UI** (interactive): http://localhost:8000/docs
+- **ReDoc** (three-panel): http://localhost:8000/redoc
+- **OpenAPI Schema** (JSON): http://localhost:8000/openapi.json
+
+### Running Tests
+
+```bash
+# Run all API tests
+uv run pytest tests/api/ -v
+
+# Run with coverage
+uv run pytest tests/api/ --cov={{ package_name }}.api --cov-report=term-missing
+
+# Run specific test file
+uv run pytest tests/api/test_health.py -v
+```
+
+## Project Structure
+
+```
+{{ package_name }}/
+??? api/
+?   ??? __init__.py
+?   ??? config.py              # Pydantic Settings (environment-based)
+?   ??? main.py                # FastAPI application factory
+?   ??? routes/                # Route handlers by domain
+?   ?   ??? __init__.py
+?   ?   ??? health.py         # Health check endpoints
+?   ?   ??? examples.py       # Example CRUD endpoints
+?   ??? models/                # Pydantic models
+?   ?   ??? __init__.py
+?   ?   ??? requests.py       # Request validation models
+?   ?   ??? responses.py      # Response serialization models
+?   ??? middleware/            # Middleware components
+?       ??? __init__.py
+?       ??? cors.py           # CORS configuration
+?       ??? errors.py         # Global error handlers
+??? tests/
+    ??? api/                   # API test suite
+        ??? __init__.py
+        ??? conftest.py       # Test fixtures
+        ??? test_health.py    # Health endpoint tests
+        ??? test_examples.py  # Example endpoint tests
+```
+
+## Configuration
+
+### Environment Variables
+
+All configuration is managed through environment variables. Create a `.env` file in your project root:
+
+```bash
+# Application Settings
+APP_NAME={{ project_name }}
+VERSION=0.1.0
+ENVIRONMENT=development
+
+# Server Configuration
+HOST=0.0.0.0
+PORT=8000
+RELOAD=true
+
+# CORS Configuration
+CORS_ORIGINS=["http://localhost:3000","http://localhost:8080"]
+
+# Logging
+LOG_LEVEL=INFO
+```
+
+### Configuration Reference
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `HOST` | str | `0.0.0.0` | Server bind address (0.0.0.0 = all interfaces) |
+| `PORT` | int | `8000` | Server port (1024-65535) |
+| `RELOAD` | bool | `true` | Auto-reload on code changes (dev only) |
+| `CORS_ORIGINS` | list[str] | `["http://localhost:3000"]` | Allowed CORS origins (JSON array) |
+| `APP_NAME` | str | `{{ project_name }}` | Application name in docs |
+| `VERSION` | str | `0.1.0` | Application version (semver) |
+| `LOG_LEVEL` | str | `INFO` | Log level (DEBUG, INFO, WARNING, ERROR) |
+| `ENVIRONMENT` | str | `development` | Environment (development, staging, production) |
+
+### Environment-Specific Configuration
+
+**Development**:
+```bash
+ENVIRONMENT=development
+RELOAD=true
+LOG_LEVEL=DEBUG
+CORS_ORIGINS=["http://localhost:3000"]
+```
+
+**Staging**:
+```bash
+ENVIRONMENT=staging
+RELOAD=false
+LOG_LEVEL=INFO
+CORS_ORIGINS=["https://staging.example.com"]
+```
+
+**Production**:
+```bash
+ENVIRONMENT=production
+RELOAD=false
+LOG_LEVEL=WARNING
+CORS_ORIGINS=["https://example.com","https://www.example.com"]
+```
+
+### Production Validation
+
+The configuration automatically validates production settings:
+
+- **Auto-reload disabled**: `RELOAD=false` enforced
+- **No wildcard CORS**: `*` not allowed in `CORS_ORIGINS`
+- **Appropriate log level**: Warning if `DEBUG` in production
+
+Invalid production configuration will raise `ValueError` at startup.
+
+## Adding New Endpoints
+
+### 1. Create a Route Module
+
+Create a new file in `{{ package_name }}/api/routes/`:
+
+```python
+# {{ package_name }}/api/routes/users.py
+from fastapi import APIRouter, HTTPException, status
+from {{ package_name }}.api.models.requests import UserCreateRequest
+from {{ package_name }}.api.models.responses import UserResponse
+
+router = APIRouter(prefix="/users", tags=["Users"])
+
+@router.get("/", response_model=list[UserResponse])
+async def list_users():
+    """List all users."""
+    return []
+
+@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def create_user(request: UserCreateRequest):
+    """Create a new user."""
+    return UserResponse(...)
+```
+
+### 2. Create Models
+
+Define request and response models:
+
+```python
+# {{ package_name }}/api/models/requests.py
+from pydantic import BaseModel, Field
+
+class UserCreateRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    email: str = Field(..., pattern=r'^[\w\.-]+@[\w\.-]+\.\w+$')
+```
+
+```python
+# {{ package_name }}/api/models/responses.py
+from pydantic import BaseModel, Field
+
+class UserResponse(BaseModel):
+    id: str
+    username: str
+    email: str
+    created_at: str
+```
+
+### 3. Register the Router
+
+Update `{{ package_name }}/api/main.py`:
+
+```python
+from {{ package_name }}.api.routes import health, examples, users
+
+# In create_app():
+app.include_router(health.router)
+app.include_router(examples.router)
+app.include_router(users.router)  # Add your router
+```
+
+### 4. Write Tests
+
+Create `tests/api/test_users.py`:
+
+```python
+def test_list_users(client):
+    response = client.get("/users/")
+    assert response.status_code == 200
+
+def test_create_user(client):
+    payload = {"username": "john", "email": "john@example.com"}
+    response = client.post("/users/", json=payload)
+    assert response.status_code == 201
+```
+
+### 5. Verify Documentation
+
+Restart the server and check http://localhost:8000/docs - your new endpoints will appear automatically!
+
+## Testing
+
+### Test Structure
+
+Tests mirror the source structure:
+
+```
+tests/api/
+??? conftest.py          # Shared fixtures
+??? test_health.py       # Health endpoint tests
+??? test_examples.py     # Example endpoint tests
+??? test_users.py        # Your endpoint tests
+```
+
+### Test Fixtures
+
+Use the provided fixtures:
+
+```python
+def test_endpoint(client, sample_example_data, auth_headers):
+    """
+    client: FastAPI TestClient
+    sample_example_data: Sample test data
+    auth_headers: Authentication headers (when auth is added)
+    """
+    response = client.get("/examples/", headers=auth_headers)
+    assert response.status_code == 200
+```
+
+### Coverage Requirements
+
+Aim for ?80% code coverage:
+
+```bash
+uv run pytest tests/api/ \
+  --cov={{ package_name }}.api \
+  --cov-report=term-missing \
+  --cov-fail-under=80
+```
+
+## Deployment
+
+### Docker Deployment
+
+```bash
+# Build image
+docker build -t {{ project_slug }}:latest .
+
+# Run container
+docker run -p 8000:8000 \
+  -e ENVIRONMENT=production \
+  -e RELOAD=false \
+  {{ project_slug }}:latest
+```
+
+### Health Checks
+
+The API provides three health check endpoints for orchestration:
+
+- **`GET /health/`**: Overall health (version, status, timestamp)
+- **`GET /health/ready`**: Readiness probe (dependencies available)
+- **`GET /health/live`**: Liveness probe (application alive)
+
+**Kubernetes Example**:
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /health/live
+    port: 8000
+  initialDelaySeconds: 10
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /health/ready
+    port: 8000
+  initialDelaySeconds: 5
+  periodSeconds: 5
+```
+
+## Troubleshooting
+
+### Port Already in Use
+
+```bash
+# Check what's using port 8000
+lsof -i :8000
+
+# Use a different port
+uv run uvicorn {{ package_name }}.api.main:app --port 8001
+```
+
+### CORS Errors
+
+Update `.env` with your frontend origin:
+
+```bash
+CORS_ORIGINS=["http://localhost:3000","http://localhost:5173"]
+```
+
+### Import Errors
+
+Ensure dependencies are installed:
+
+```bash
+uv sync
+```
+
+### Configuration Errors
+
+Check environment variables:
+
+```python
+from {{ package_name }}.api.config import get_settings
+settings = get_settings()
+print(settings.model_dump())
+```
+
+## Performance Considerations
+
+### Async/Await
+
+Use `async def` for I/O-bound operations:
+
+```python
+@router.get("/data")
+async def get_data():
+    # Good: Async database query
+    result = await database.fetch_one(query)
+    return result
+```
+
+### Connection Pooling
+
+For database connections, use connection pooling:
+
+```python
+# In config.py
+database_pool_size: int = Field(default=20)
+database_max_overflow: int = Field(default=0)
+```
+
+### Response Caching
+
+For cacheable endpoints, add caching headers:
+
+```python
+from fastapi.responses import Response
+
+@router.get("/static-data")
+async def get_static_data():
+    headers = {"Cache-Control": "public, max-age=3600"}
+    return Response(content=data, headers=headers)
+```
+
+## Security Best Practices
+
+### 1. Production Configuration
+
+Always disable auto-reload in production:
+
+```bash
+ENVIRONMENT=production
+RELOAD=false
+```
+
+### 2. CORS Configuration
+
+Never use wildcard in production:
+
+```bash
+# ? Bad
+CORS_ORIGINS=["*"]
+
+# ? Good
+CORS_ORIGINS=["https://example.com"]
+```
+
+### 3. Input Validation
+
+Always use Pydantic models for validation:
+
+```python
+# ? Good: Automatic validation
+@router.post("/")
+async def create(request: UserCreateRequest):
+    return request  # Already validated
+
+# ? Bad: No validation
+@router.post("/")
+async def create(data: dict):
+    return data  # Potentially unsafe
+```
+
+### 4. Error Messages
+
+Sanitize errors in production (already handled by error middleware):
+
+- Development: Detailed stack traces
+- Production: Generic error messages, request IDs for debugging
+
+## Next Steps
+
+- **Add Authentication**: Implement OAuth2/JWT authentication
+- **Add Database**: Integrate SQLAlchemy or async ORM
+- **Add Background Tasks**: Use FastAPI background tasks or Celery
+- **Add WebSockets**: Enable real-time communication
+- **Add Rate Limiting**: Implement slowapi or custom middleware
+- **Add Monitoring**: Integrate Sentry, Prometheus, or OpenTelemetry
+
+## Resources
+
+- **FastAPI Documentation**: https://fastapi.tiangolo.com
+- **Pydantic Documentation**: https://docs.pydantic.dev
+- **Uvicorn Documentation**: https://www.uvicorn.org
+- **Testing Guide**: Use `TestClient` from `fastapi.testclient`
+
+## Support
+
+For issues or questions:
+
+1. Check the troubleshooting section above
+2. Review FastAPI documentation
+3. Check generated `{{ package_name }}/api/` code examples
+4. Run tests to verify your changes: `uv run pytest tests/api/ -v`
+{%- endif %}

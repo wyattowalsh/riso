@@ -86,6 +86,38 @@ class Settings(BaseSettings):
     def is_development(self) -> bool:
         """Check if running in development environment."""
         return self.environment.lower() == "development"
+    
+    def model_post_init(self, __context) -> None:
+        """Validate settings after initialization.
+        
+        Performs environment-specific validation to catch
+        configuration errors early.
+        """
+        # Production-specific validation
+        if self.is_production():
+            # Auto-reload must be disabled in production
+            if self.reload:
+                raise ValueError(
+                    "Auto-reload (reload=True) must be disabled in production. "
+                    "Set RELOAD=false in your production environment."
+                )
+            
+            # CORS origins should not use wildcards in production
+            if "*" in self.cors_origins:
+                raise ValueError(
+                    "Wildcard CORS origins ('*') are not allowed in production. "
+                    "Specify explicit allowed origins in CORS_ORIGINS."
+                )
+            
+            # Log level should not be DEBUG in production
+            if self.log_level.upper() == "DEBUG":
+                import warnings
+                warnings.warn(
+                    "DEBUG log level detected in production. "
+                    "Consider using INFO or WARNING for better performance.",
+                    UserWarning,
+                    stacklevel=2
+                )
 
 
 @lru_cache
@@ -94,6 +126,14 @@ def get_settings() -> Settings:
     
     Settings are cached for performance. To reload settings,
     clear the cache with get_settings.cache_clear().
+    
+    Example:
+        >>> settings = get_settings()
+        >>> print(settings.app_name)
+        
+        # Reload settings after environment change
+        >>> get_settings.cache_clear()
+        >>> settings = get_settings()
     """
     return Settings()
 {%- endif %}
