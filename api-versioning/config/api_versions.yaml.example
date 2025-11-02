@@ -1,0 +1,57 @@
+# API Versions Configuration Example
+# Copy this file to api_versions.yaml and customize for your API
+
+versions:
+  # Version 1 - Deprecated (sunset scheduled)
+  v1:
+    status: deprecated
+    release_date: "2024-01-15"
+    deprecation_date: "2025-06-01"
+    sunset_date: "2025-12-01"  # Must be ?12 months after deprecation_date
+    description: "Original API version with basic functionality"
+    supported_features:
+      - basic_crud
+      - pagination
+    breaking_changes_from: null
+    migration_guide_url: "/docs/migrations/v1-to-v2"
+    opt_in_required: false
+    
+  # Version 2 - Current (default for new requests)
+  v2:
+    status: current
+    release_date: "2025-06-01"
+    deprecation_date: null
+    sunset_date: null
+    description: "Enhanced API with improved validation and advanced features"
+    supported_features:
+      - basic_crud
+      - pagination
+      - advanced_filtering
+      - batch_operations
+      - async_webhooks
+    breaking_changes_from: v1
+    migration_guide_url: null
+    opt_in_required: false
+    
+  # Version 3 Beta - Pre-release (requires opt-in)
+  v3-beta:
+    status: prerelease
+    release_date: "2025-11-01"
+    deprecation_date: null
+    sunset_date: null
+    description: "Beta version with GraphQL support and real-time features"
+    supported_features:
+      - basic_crud
+      - pagination
+      - advanced_filtering
+      - batch_operations
+      - async_webhooks
+      - graphql_api
+      - realtime_subscriptions
+    breaking_changes_from: v2
+    migration_guide_url: "/docs/migrations/v2-to-v3"
+    opt_in_required: true
+
+# Note: Exactly one version must have status "current"
+# Note: sunset_date must be ?12 months after deprecation_date
+# Note: version_id must match pattern: ^v[0-9]+(-[a-z]+)?$
