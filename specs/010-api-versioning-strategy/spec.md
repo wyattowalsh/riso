@@ -5,6 +5,16 @@
 **Status**: Draft  
 **Input**: User description: "comprehensive api versioning"
 
+## Clarifications
+
+### Session 2025-11-02
+
+- Q: When a consumer sends conflicting version indicators (e.g., `/v2/users` in URL but version=1 in header), which takes precedence? → A: Header takes precedence (industry standard: Header > URL > Query parameter)
+- Q: What data points should be captured in version usage logs for effective monitoring and deprecation planning? → A: Version, endpoint, status code, latency, consumer ID (comprehensive tracking)
+- Q: Should the primary consumer-facing interface use full semantic versioning (v2.1.3) or major version only (v1, v2)? → A: Major version only for consumers (v1, v2), full semver internal tracking
+- Q: When a consumer sends contradictory version indicators that can't be resolved by precedence, what should the system do? → A: Return 400 Bad Request with error explaining the conflict
+- Q: How should pre-release versions (beta, alpha) be accessed and what stability guarantees should they have? → A: Pre-release requires opt-in header flag, marked as unstable in responses
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - API Consumer Discovers Version Support (Priority: P1)
@@ -89,14 +99,14 @@ API maintainers need to add new optional features to existing versions without b
 
 ### Edge Cases
 
-- What happens when a consumer specifies a version number that doesn't exist (e.g., v99)?
-- How does the system handle version specification conflicts (e.g., version in URL path vs. header vs. query parameter)?
-- What happens when a consumer specifies a version that has been sunset/removed?
-- How are beta or pre-release versions handled differently from stable versions?
-- What happens when version negotiation fails (e.g., consumer requires v2+ but only v1 is available)?
-- How does versioning interact with rate limiting, authentication, and authorization?
-- What happens during zero-downtime deployments when versions are being added or removed?
-- How are version-specific errors and error codes handled consistently?
+- What happens when a consumer specifies a version number that doesn't exist (e.g., v99)? → System returns 404 or 400 error with message indicating invalid version
+- How does the system handle version specification conflicts? → Header takes precedence over URL path, URL path over query parameter; contradictory indicators return 400 Bad Request
+- What happens when a consumer specifies a version that has been sunset/removed? → System returns 410 Gone error with sunset date and migration instructions
+- How are beta or pre-release versions handled? → Require explicit opt-in header flag and are marked as unstable in response headers
+- What happens when version negotiation fails (e.g., consumer requires v2+ but only v1 is available)? → System returns 406 Not Acceptable with list of supported versions
+- How does versioning interact with rate limiting, authentication, and authorization? → Version-specific limits can be applied; auth requirements may vary by version
+- What happens during zero-downtime deployments when versions are being added or removed? → New versions deploy alongside existing; removals only after sunset date with grace period
+- How are version-specific errors and error codes handled consistently? → Each version maintains its own error response schema; version identifier included in error responses
 
 ## Requirements *(mandatory)*
 
@@ -109,7 +119,7 @@ API maintainers need to add new optional features to existing versions without b
 - **FR-005**: System MUST route requests to the appropriate version handler based on version specification
 - **FR-006**: System MUST maintain strict request/response contract isolation between versions (changes in v2 cannot affect v1 behavior)
 - **FR-007**: System MUST return appropriate error responses when consumers request non-existent or unsupported versions
-- **FR-008**: System MUST support semantic versioning format (major.minor.patch) or major version identifiers (v1, v2)
+- **FR-008**: System MUST expose major version identifiers only to consumers (v1, v2, v3) while maintaining full semantic versioning (major.minor.patch) for internal tracking and changelog purposes
 - **FR-009**: System MUST provide version discovery endpoint listing all available versions with their status
 - **FR-010**: System MUST include deprecation warnings in response headers when consumers use deprecated versions
 - **FR-011**: System MUST enforce sunset dates for deprecated versions, returning errors after the sunset date
@@ -117,11 +127,13 @@ API maintainers need to add new optional features to existing versions without b
 - **FR-013**: System MUST support backward-compatible additions (new optional fields/parameters) within major versions
 - **FR-014**: System MUST validate that breaking changes only occur in major version increments
 - **FR-015**: System MUST allow version-specific API documentation to be generated and served
-- **FR-016**: System MUST handle version specification precedence when multiple methods are used (documented priority order)
-- **FR-017**: System MUST log version usage metrics for monitoring adoption and deprecation impact
+- **FR-016**: System MUST handle version specification precedence using the order: Header > URL path > Query parameter (header takes highest priority)
+- **FR-016b**: System MUST return 400 Bad Request error when consumers send contradictory version indicators that cannot be resolved by precedence rules
+- **FR-017**: System MUST log version usage metrics including: version identifier, endpoint path, HTTP status code, response latency, and consumer identifier for monitoring adoption and deprecation impact
 - **FR-018**: System MUST support content negotiation alongside versioning (e.g., version + accept headers)
 - **FR-019**: System MUST provide migration guides between consecutive major versions
 - **FR-020**: System MUST maintain minimum support window of 12 months for each major version after deprecation announcement
+- **FR-021**: System MUST support pre-release versions (beta, alpha) that require explicit opt-in via header flag and are marked as unstable in response headers
 
 ### Key Entities
 
