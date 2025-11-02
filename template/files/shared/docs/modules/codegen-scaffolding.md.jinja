@@ -1,0 +1,439 @@
+{% if codegen_module == 'enabled' %}# Code Generation and Scaffolding Tools
+
+The code generation and scaffolding module provides CLI commands for creating and managing projects using templates.
+
+## Overview
+
+This module implements a template-based code generation system that enables:
+- Creating new projects from templates
+- Adding feature modules to existing projects
+- Updating projects when templates evolve
+- Using custom templates
+- Generating code from API specifications
+
+## Installation
+
+The codegen module is included when the `codegen_module` flag is enabled during project generation:
+
+```bash
+copier copy gh:your-org/riso-template my-project
+# Select "enabled" for codegen_module
+```
+
+## Quick Start
+
+### Generate a New Project
+
+```bash
+# Interactive mode (default)
+scaffold new my-project
+
+# Non-interactive with variables
+scaffold new my-api --no-interactive \
+  --var author="Jane Doe" \
+  --var python_version=3.11
+
+# Use a specific template
+scaffold new my-cli --template python-cli
+```
+
+### Add a Feature Module
+
+```bash
+# Add an API module
+scaffold add api users
+
+# Add CLI with custom template
+scaffold add cli admin --template rich-cli
+```
+
+### List Available Templates
+
+```bash
+# Table format (default)
+scaffold list
+
+# JSON format
+scaffold list --format json
+
+# Search templates
+scaffold list --search fastapi
+```
+
+### Update Project from Template
+
+```bash
+# Check and apply updates
+scaffold update
+
+# Preview changes without applying
+scaffold update --dry-run
+
+# Use specific merge strategy
+scaffold update --strategy ours
+```
+
+## Commands Reference
+
+### scaffold new
+
+Create a new project from a template.
+
+**Usage:**
+```bash
+scaffold new PROJECT_NAME [OPTIONS]
+```
+
+**Options:**
+- `--template, -t TEXT`: Template to use (default: "default")
+- `--output, -o PATH`: Output directory (default: current directory)
+- `--interactive/--no-interactive`: Enable/disable interactive prompts (default: interactive)
+- `--dry-run`: Preview without creating files
+- `--overwrite`: Overwrite existing directory
+- `--skip-quality`: Skip quality validation
+- `--var KEY=VALUE`: Set template variable (can be used multiple times)
+
+**Examples:**
+```bash
+# Basic usage
+scaffold new my-project
+
+# With template
+scaffold new my-api --template fastapi-api
+
+# Non-interactive with variables
+scaffold new my-cli --no-interactive \
+  --var author="John Doe" \
+  --var python_version=3.12
+
+# Dry run preview
+scaffold new my-project --dry-run
+
+# Custom output directory
+scaffold new my-project --output ~/projects/
+```
+
+### scaffold add
+
+Add a feature module to an existing project.
+
+**Usage:**
+```bash
+scaffold add MODULE_TYPE MODULE_NAME [OPTIONS]
+```
+
+**Options:**
+- `--template, -t TEXT`: Module template (auto-detected from type)
+- `--project-dir, -p PATH`: Project root directory (default: current directory)
+- `--overwrite`: Overwrite existing files
+- `--skip-tests`: Skip test file generation
+- `--var KEY=VALUE`: Set module variable
+
+**Examples:**
+```bash
+# Add API module
+scaffold add api users
+
+# Add with custom template
+scaffold add cli admin --template rich-cli
+
+# From different directory
+scaffold add docs api --project-dir ~/projects/my-app
+```
+
+### scaffold list
+
+List available templates.
+
+**Usage:**
+```bash
+scaffold list [OPTIONS]
+```
+
+**Options:**
+- `--format, -f TEXT`: Output format (table, json, yaml) (default: "table")
+- `--registry, -r TEXT`: Registry to query (default: "default")
+- `--type, -t TEXT`: Filter by type (project, module, api_spec)
+- `--search, -s TEXT`: Search template names/descriptions
+
+**Examples:**
+```bash
+# List all templates
+scaffold list
+
+# JSON output
+scaffold list --format json
+
+# Filter by type
+scaffold list --type module
+
+# Search
+scaffold list --search fastapi
+```
+
+### scaffold info
+
+Show detailed information about a template.
+
+**Usage:**
+```bash
+scaffold info TEMPLATE_NAME [OPTIONS]
+```
+
+**Options:**
+- `--version, -v TEXT`: Template version (default: "latest")
+- `--format, -f TEXT`: Output format (text, json) (default: "text")
+
+**Examples:**
+```bash
+# Show template info
+scaffold info python-cli
+
+# Specific version
+scaffold info python-cli --version 1.0.0
+
+# JSON output
+scaffold info fastapi-api --format json
+```
+
+### scaffold cache
+
+Manage template cache.
+
+**Subcommands:**
+- `list`: List cached templates
+- `clear [TEMPLATE_NAME]`: Clear template cache
+- `update [TEMPLATE_NAME]`: Update cached templates
+
+**Examples:**
+```bash
+# List cached templates
+scaffold cache list
+
+# Clear specific template
+scaffold cache clear python-cli
+
+# Clear all cache
+scaffold cache clear --all
+
+# Update specific template
+scaffold cache update python-cli
+
+# Update all templates
+scaffold cache update
+```
+
+### scaffold config
+
+Manage configuration.
+
+**Subcommands:**
+- `get KEY`: Get configuration value
+- `set KEY VALUE`: Set configuration value
+- `list`: List all configuration
+
+**Examples:**
+```bash
+# Get value
+scaffold config get default_template
+
+# Set value
+scaffold config set default_template python-cli
+
+# List all config
+scaffold config list
+```
+
+## Creating Custom Templates
+
+### Template Structure
+
+A template is a directory with the following structure:
+
+```
+my-template/
+├── template.yml          # Template metadata
+├── README.md.j2         # Template file (will be rendered)
+├── main.py.j2           # Template file
+└── sub_dir/
+    └── file.txt.j2      # Nested template file
+```
+
+### template.yml
+
+The `template.yml` file defines template metadata and variables:
+
+```yaml
+name: my-template
+version: 1.0.0
+description: My custom project template
+template_type: project
+author: Your Name
+variables:
+  project_name:
+    type: string
+    required: true
+    description: Name of the project
+    pattern: ^[a-z][a-z0-9_]*$
+  
+  author:
+    type: string
+    required: false
+    default: "Your Name"
+    description: Project author
+  
+  python_version:
+    type: choice
+    required: true
+    description: Python version
+    choices:
+      - "3.11"
+      - "3.12"
+      - "3.13"
+    default: "3.11"
+
+file_patterns:
+  - "**/*.j2"
+
+hooks:
+  post_gen:
+    - "uv sync"
+  timeout_seconds: 30
+```
+
+### Variable Types
+
+- **string**: Text input with optional pattern validation
+- **int**: Integer input
+- **bool**: Boolean (yes/no) input
+- **choice**: Select from predefined options
+
+### Template Syntax
+
+Templates use Jinja2 syntax:
+
+```jinja2
+# {{ project_name }}
+
+Author: {{ author }}
+Python Version: {{ python_version }}
+
+## Installation
+
+```bash
+cd {{ project_name }}
+uv sync
+```
+```
+
+### Filters
+
+Built-in filters for code generation:
+
+- `snake_case`: Convert to snake_case
+- `kebab_case`: Convert to kebab-case
+- `pascal_case`: Convert to PascalCase
+- `camel_case`: Convert to camelCase
+
+Example:
+```jinja2
+class {{ project_name | pascal_case }}:
+    """{{ project_name | snake_case }} implementation."""
+    pass
+```
+
+## Configuration
+
+Configuration file: `~/.scaffold/config.yml`
+
+```yaml
+# Default settings
+default_template: python-cli
+default_output_dir: .
+interactive: true
+
+# Registries
+registries:
+  default:
+    type: local
+    path: ~/.scaffold/templates
+  
+  remote:
+    type: git
+    url: https://github.com/org/templates
+
+# Quality checks
+quality:
+  enabled: true
+  strict_mode: false
+  tools: [ruff, mypy, pylint]
+
+# Update behavior
+updates:
+  merge_strategy: three_way
+  auto_merge: false
+  skip_conflicts: false
+```
+
+## Troubleshooting
+
+### Template Not Found
+
+```
+Error: Template 'my-template' not found in cache
+```
+
+**Solution:** List available templates with `scaffold list` or add the template to cache.
+
+### Missing Required Variables
+
+```
+Error: Required variable 'project_name' not provided
+```
+
+**Solution:** Provide the variable via `--var project_name=value` or use `--interactive` mode.
+
+### Quality Validation Warnings
+
+Quality checks run by default. Warnings are non-blocking and won't prevent generation.
+
+To skip quality checks:
+```bash
+scaffold new my-project --skip-quality
+```
+
+## API Reference
+
+For programmatic usage, see the Python API:
+
+```python
+from {{ package_name }}.codegen.templates.loader import TemplateLoader
+from {{ package_name }}.codegen.generation.generator import Generator
+
+# Load template
+loader = TemplateLoader()
+template = loader.load_template(Path("path/to/template"))
+
+# Generate project
+generator = Generator(template, output_dir=Path("."))
+project = generator.generate_project(
+    "my_project",
+    variables={"author": "Jane Doe"},
+    interactive=False,
+)
+```
+
+## Security
+
+The scaffolding tool implements security best practices:
+
+- **Sandboxed template rendering**: Uses Jinja2 SandboxedEnvironment
+- **Size limits**: 100MB maximum template size
+- **Hook restrictions**: Timeout limits, restricted environment
+- **Path validation**: Prevents path traversal attacks
+- **Input validation**: All user inputs validated and sanitized
+
+## License
+
+This module is part of the Riso template and follows the same license.
+{% endif %}
