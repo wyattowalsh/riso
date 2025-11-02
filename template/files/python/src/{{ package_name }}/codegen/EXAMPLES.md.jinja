@@ -1,0 +1,580 @@
+{% if codegen_module == 'enabled' %}# Examples and Best Practices
+
+This guide provides comprehensive examples and best practices for using the Riso scaffolding tool.
+
+## Table of Contents
+
+1. [Quick Examples](#quick-examples)
+2. [Template Creation](#template-creation)
+3. [Advanced Usage](#advanced-usage)
+4. [Best Practices](#best-practices)
+5. [Performance Tips](#performance-tips)
+6. [Troubleshooting](#troubleshooting)
+
+---
+
+## Quick Examples
+
+### Generate a Simple Project
+
+```bash
+# Interactive mode (recommended for first-time users)
+scaffold new my-project
+
+# Non-interactive with all variables
+scaffold new my-api \
+  --no-interactive \
+  --var project_name=my_api \
+  --var author="Jane Doe" \
+  --var python_version=3.12
+
+# From a specific template
+scaffold new my-service \
+  --template python-microservice \
+  --var api_version=v2 \
+  --var database_type=postgresql
+```
+
+### Add Modules
+
+```bash
+# Add an API endpoint
+scaffold add api user_profile
+
+# Add authentication module
+scaffold add auth oauth2 \
+  --var auth_provider=google \
+  --var enable_mfa=true
+
+# Add with custom template
+scaffold add cli admin_panel \
+  --template rich-cli
+```
+
+### Update Projects
+
+```bash
+# Check for updates
+scaffold update --dry-run
+
+# Apply updates with three-way merge
+scaffold update
+
+# Use specific merge strategy
+scaffold update --strategy ours  # Keep your changes
+scaffold update --strategy theirs  # Accept all template changes
+```
+
+### Manage Templates
+
+```bash
+# List all cached templates
+scaffold list
+
+# List with details in JSON format
+scaffold list --format json
+
+# Get detailed template info
+scaffold info python-microservice
+
+# Search templates
+scaffold list --search fastapi
+```
+
+### Cache Management
+
+```bash
+# List cached templates with sizes
+scaffold cache list
+
+# Update all cached templates from sources
+scaffold cache update
+
+# Update specific template
+scaffold cache update python-microservice
+
+# Clear all cache
+scaffold cache clear --all
+
+# Clear specific template
+scaffold cache clear old-template
+```
+
+### Configuration
+
+```bash
+# View all configuration
+scaffold config list
+
+# Get specific value
+scaffold config get default_template
+
+# Set configuration
+scaffold config set default_template python-microservice
+scaffold config set interactive true
+scaffold config set quality.strict_mode false
+```
+
+---
+
+## Template Creation
+
+### Basic Template Structure
+
+```
+my-template/
+├── template.yml          # Template metadata
+├── README.md.j2         # Template files (*.j2 for Jinja2)
+├── main.py.j2
+├── src/
+│   └── {{ project_name }}/
+│       ├── __init__.py.j2
+│       └── core.py.j2
+└── tests/
+    └── test_main.py.j2
+```
+
+### Template Metadata (template.yml)
+
+```yaml
+name: my-awesome-template
+version: 1.0.0
+description: A template for awesome projects
+author: Your Name
+template_type: project  # or 'module' or 'api_spec'
+source_url: https://github.com/user/my-template
+
+# Define variables users will provide
+variables:
+  project_name:
+    type: string
+    required: true
+    description: Name of the project
+    pattern: ^[a-z][a-z0-9_-]*$
+    
+  python_version:
+    type: choice
+    required: true
+    description: Python version to use
+    choices:
+      - "3.11"
+      - "3.12"
+      - "3.13"
+    default: "3.12"
+    
+  enable_testing:
+    type: bool
+    required: false
+    description: Include test framework
+    default: true
+    
+  api_type:
+    type: choice
+    required: false
+    description: API framework
+    choices:
+      - fastapi
+      - flask
+      - django
+    default: fastapi
+
+# Dependencies to install
+dependencies:
+  - name: fastapi
+    version_constraint: ">=0.110.0"
+    optional: false
+    
+  - name: pytest
+    version_constraint: ">=7.0.0"
+    optional: true
+    condition: "{{ enable_testing }}"
+
+# Hooks to run
+hooks:
+  pre_gen:
+    - echo "Starting generation..."
+    
+  post_gen:
+    - echo "✓ Project generated!"
+    - echo "Run 'uv sync' to install dependencies"
+
+# Quality settings
+quality:
+  enabled: true
+  tools:
+    - ruff
+    - mypy
+  strict_mode: false
+```
+
+### Using Template Variables
+
+In your `.j2` files, use Jinja2 syntax:
+
+```python
+# main.py.j2
+"""{{ project_name | pascal_case }} - Main application.
+
+Author: {{ author }}
+Python: {{ python_version }}
+"""
+
+from {{ project_name | snake_case }} import app
+
+{% if enable_testing %}
+# Testing enabled
+import pytest
+{% endif %}
+
+def main():
+    """Entry point for {{ project_name | replace('_', ' ') | title }}."""
+    print("Starting {{ project_name }}...")
+    app.run()
+
+if __name__ == "__main__":
+    main()
+```
+
+### Available Filters
+
+- `snake_case` - Convert to snake_case
+- `kebab_case` - Convert to kebab-case  
+- `pascal_case` - Convert to PascalCase
+- `camel_case` - Convert to camelCase
+- `slugify` - Convert to URL-safe slug
+- `timestamp` - Current ISO timestamp
+- `year` - Current year
+- `date(format)` - Formatted date
+
+---
+
+## Advanced Usage
+
+### Fetch Templates from Git
+
+```bash
+# Clone from GitHub
+scaffold new my-project \
+  --template https://github.com/user/template.git
+
+# Specific branch
+scaffold new my-project \
+  --template https://github.com/user/template.git#dev-branch
+```
+
+### Fetch from HTTP
+
+```bash
+# Download ZIP archive
+scaffold new my-project \
+  --template https://example.com/templates/python-api.zip
+```
+
+### Dry Run Mode
+
+Preview what will be generated without creating files:
+
+```bash
+# Preview project generation
+scaffold new my-project --dry-run
+
+# Preview update
+scaffold update --dry-run
+```
+
+### Resume Interrupted Operations
+
+The tool automatically saves progress. If generation is interrupted:
+
+```bash
+# Simply re-run the same command
+scaffold new my-project  # Resumes from where it stopped
+```
+
+---
+
+## Best Practices
+
+### 1. Use Meaningful Variable Names
+
+❌ Bad:
+```yaml
+variables:
+  n:
+    type: string
+  v:
+    type: string
+```
+
+✅ Good:
+```yaml
+variables:
+  project_name:
+    type: string
+    description: Name of the project
+  api_version:
+    type: string
+    description: API version (e.g., v1, v2)
+```
+
+### 2. Provide Sensible Defaults
+
+```yaml
+variables:
+  python_version:
+    type: choice
+    choices: ["3.11", "3.12", "3.13"]
+    default: "3.12"  # Most stable version
+    
+  enable_logging:
+    type: bool
+    default: true  # Logging should be on by default
+```
+
+### 3. Use Validation Patterns
+
+```yaml
+variables:
+  email:
+    type: string
+    pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+    
+  version:
+    type: string
+    pattern: ^\d+\.\d+\.\d+$  # Semantic versioning
+```
+
+### 4. Keep Templates Modular
+
+Create separate templates for different purposes:
+- `python-api` - API projects
+- `python-cli` - CLI tools
+- `python-lib` - Libraries
+
+Then create module templates:
+- `auth-module` - Authentication
+- `db-module` - Database integration
+
+### 5. Document Your Templates
+
+Include a comprehensive README.md.j2:
+
+```markdown
+# {{ project_name | pascal_case }}
+
+## What This Template Provides
+
+- FastAPI {{ api_version }} setup
+- {{ database_type | title }} database integration
+- Authentication with {{ auth_provider }}
+- Full test coverage
+- Docker support
+
+## Getting Started
+
+\```bash
+cd {{ project_name }}
+uv sync
+uv run python main.py
+\```
+
+## Configuration
+
+...
+```
+
+---
+
+## Performance Tips
+
+### 1. Use Template Caching
+
+Templates are automatically cached after first use. Update cache periodically:
+
+```bash
+# Update all templates
+scaffold cache update
+
+# Or specific ones
+scaffold cache update python-microservice
+```
+
+### 2. Enable Parallel Generation
+
+For large projects with many files, the tool automatically uses parallel processing.
+
+### 3. Use Dry Run for Validation
+
+Validate your changes before generating:
+
+```bash
+scaffold new test-project --dry-run
+```
+
+### 4. Optimize Template Size
+
+- Keep templates under 50MB (warn) / 100MB (max)
+- Exclude unnecessary files (.git, node_modules, etc.)
+- Use `.gitignore` patterns
+
+---
+
+## Troubleshooting
+
+### Permission Errors
+
+```bash
+# Tool will automatically try to fix permissions
+# If it fails, manually fix:
+chmod -R u+w ~/. scaffold/templates/
+```
+
+### Disk Space Issues
+
+```bash
+# Clear old cache
+scaffold cache clear --all
+
+# Check disk usage
+df -h
+```
+
+### Template Not Found
+
+```bash
+# List available templates
+scaffold list
+
+# Or fetch from URL
+scaffold new my-project --template https://github.com/user/template
+```
+
+### Merge Conflicts
+
+When updating projects:
+
+1. Look for conflict markers:
+```python
+<<<<<<< USER (your changes)
+your_code()
+=======
+template_code()
+>>>>>>> TEMPLATE (template updates)
+```
+
+2. Edit the file to resolve conflicts
+3. Remove the markers
+4. Test your changes
+
+### Network Errors
+
+The tool automatically retries failed network operations (3 attempts with exponential backoff).
+
+---
+
+## Plugin Development
+
+Create custom plugins for extended functionality:
+
+```python
+# my_plugin.py
+from pathlib import Path
+from codegen.utils.plugins import GenerationHookPlugin
+
+class CustomHookPlugin(GenerationHookPlugin):
+    def before_generation(self, context):
+        print("Custom pre-processing...")
+        return context
+    
+    def after_generation(self, context, result):
+        print("Custom post-processing...")
+    
+    def on_error(self, context, error):
+        print(f"Custom error handling: {error}")
+        return False  # Don't suppress error
+```
+
+Load plugins:
+
+```bash
+# Place plugins in ~/.scaffold/plugins/
+# They're automatically discovered and loaded
+```
+
+---
+
+## Tips & Tricks
+
+### 1. Chain Commands
+
+```bash
+# Generate and immediately add module
+scaffold new my-api && cd my-api && scaffold add auth oauth2
+```
+
+### 2. Use Configuration Files
+
+Create `~/.scaffold/config.yml`:
+
+```yaml
+default_template: python-microservice
+interactive: true
+quality:
+  enabled: true
+  strict_mode: false
+```
+
+### 3. Template Inheritance
+
+Extend existing templates by fetching and modifying:
+
+```bash
+# Fetch base template
+scaffold cache update base-template
+
+# Modify cached version
+cd ~/.scaffold/templates/base-template
+# Make your changes
+
+# Generate from modified template
+scaffold new my-project --template base-template
+```
+
+### 4. Batch Operations
+
+```bash
+# Generate multiple projects
+for service in user-api order-api payment-api; do
+  scaffold new $service --template microservice
+done
+```
+
+---
+
+## Getting Help
+
+```bash
+# General help
+scaffold --help
+
+# Command-specific help
+scaffold new --help
+scaffold add --help
+scaffold update --help
+
+# Show version
+scaffold --version
+
+# Get template info
+scaffold info template-name
+```
+
+---
+
+## Additional Resources
+
+- [Main README](../README.md)
+- [Architecture Documentation](../../docs/modules/codegen-scaffolding.md)
+- [Implementation Summary](/IMPLEMENTATION_SUMMARY.md)
+
+{% endif %}

@@ -1,0 +1,109 @@
+{% if codegen_module == 'enabled' %}"""Integration tests for project generation."""
+
+import pytest
+from pathlib import Path
+import json
+
+from {{ package_name }}.codegen.templates.loader import TemplateLoader
+from {{ package_name }}.codegen.generation.generator import Generator
+from {{ package_name }}.codegen.models import OverwriteMode
+
+
+class TestProjectGeneration:
+    """Integration tests for full project generation."""
+    
+    def test_generate_project_from_fixture(self, tmp_path):
+        """Test generating a complete project from fixture template."""
+        # Load fixture template
+        fixture_path = Path(__file__).parent.parent / "fixtures" / "sample_templates" / "simple-python"
+        
+        if not fixture_path.exists():
+            pytest.skip("Fixture template not found")
+        
+        loader = TemplateLoader(cache_dir=tmp_path / "cache")
+        template = loader.load_template(fixture_path)
+        
+        # Initialize generator
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        
+        generator = Generator(
+            template,
+            output_dir,
+            dry_run=False,
+            overwrite_mode=OverwriteMode.SKIP,
+        )
+        
+        # Generate project
+        project = generator.generate_project(
+            "my_test_project",
+            variables={
+                "author": "Test Author",
+                "version": "1.0.0",
+            },
+            interactive=False,
+            skip_quality=True,
+        )
+        
+        # Verify project was created
+        assert project.name == "my_test_project"
+        assert project.root_path == output_dir / "my_test_project"
+        assert project.root_path.exists()
+        
+        # Verify metadata file was created
+        metadata_file = project.root_path / ".scaffold-metadata.json"
+        assert metadata_file.exists()
+        
+        metadata = json.loads(metadata_file.read_text())
+        assert metadata["project"]["name"] == "my_test_project"
+        assert metadata["project"]["template"]["name"] == "simple-python"
+        assert metadata["project"]["variables"]["project_name"] == "my_test_project"
+        assert metadata["project"]["variables"]["author"] == "Test Author"
+        
+        # Verify generated files exist
+        assert (project.root_path / "README.md").exists()
+        assert (project.root_path / "main.py").exists()
+        
+        # Verify template rendering worked
+        readme_content = (project.root_path / "README.md").read_text()
+        assert "my_test_project" in readme_content
+        assert "Test Author" in readme_content
+        
+        main_content = (project.root_path / "main.py").read_text()
+        assert "my_test_project" in main_content
+        assert "1.0.0" in main_content
+    
+    def test_dry_run_mode(self, tmp_path):
+        """Test dry-run mode doesn't create files."""
+        fixture_path = Path(__file__).parent.parent / "fixtures" / "sample_templates" / "simple-python"
+        
+        if not fixture_path.exists():
+            pytest.skip("Fixture template not found")
+        
+        loader = TemplateLoader(cache_dir=tmp_path / "cache")
+        template = loader.load_template(fixture_path)
+        
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        
+        generator = Generator(
+            template,
+            output_dir,
+            dry_run=True,  # Dry run
+            overwrite_mode=OverwriteMode.SKIP,
+        )
+        
+        # Generate project in dry-run mode
+        project = generator.generate_project(
+            "dry_run_project",
+            variables={},
+            interactive=False,
+            skip_quality=True,
+        )
+        
+        # Verify project directory was NOT created
+        assert not (output_dir / "dry_run_project").exists()
+        
+        # But project object was returned
+        assert project.name == "dry_run_project"
+{% endif %}

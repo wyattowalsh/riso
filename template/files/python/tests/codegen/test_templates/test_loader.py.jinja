@@ -1,0 +1,106 @@
+{% if codegen_module == 'enabled' %}"""Tests for template loader."""
+
+import pytest
+from pathlib import Path
+
+from {{ package_name }}.codegen.templates.loader import TemplateLoader
+from {{ package_name }}.codegen.models import TemplateType, VariableType
+
+
+class TestTemplateLoader:
+    """Tests for TemplateLoader class."""
+    
+    def test_load_template_from_fixture(self, tmp_path):
+        """Test loading a template from fixture."""
+        # Use the simple-python fixture
+        fixture_path = Path(__file__).parent / "fixtures" / "sample_templates" / "simple-python"
+        
+        if not fixture_path.exists():
+            pytest.skip("Fixture template not found")
+        
+        loader = TemplateLoader(cache_dir=tmp_path)
+        template = loader.load_template(fixture_path)
+        
+        assert template.name == "simple-python"
+        assert template.version == "1.0.0"
+        assert template.template_type == TemplateType.PROJECT
+        assert "project_name" in template.variables
+        assert template.variables["project_name"].type == VariableType.STRING
+        assert template.variables["project_name"].required is True
+    
+    def test_load_template_missing_metadata(self, tmp_path):
+        """Test loading template without template.yml fails."""
+        empty_dir = tmp_path / "empty_template"
+        empty_dir.mkdir()
+        
+        loader = TemplateLoader(cache_dir=tmp_path)
+        
+        with pytest.raises(FileNotFoundError) as exc_info:
+            loader.load_template(empty_dir)
+        
+        assert "template.yml not found" in str(exc_info.value)
+    
+    def test_load_project_metadata(self, tmp_path):
+        """Test loading project metadata from .scaffold-metadata.json."""
+        # Create a mock project with metadata
+        project_dir = tmp_path / "test_project"
+        project_dir.mkdir()
+        
+        metadata = {
+            "version": "1.0.0",
+            "project": {
+                "name": "test_project",
+                "template": {
+                    "name": "test-template",
+                    "version": "1.0.0",
+                },
+                "variables": {
+                    "project_name": "test_project",
+                },
+                "generated_at": "2025-11-02T10:00:00",
+            },
+            "modules": [],
+        }
+        
+        import json
+        metadata_file = project_dir / ".scaffold-metadata.json"
+        metadata_file.write_text(json.dumps(metadata, indent=2))
+        
+        loader = TemplateLoader(cache_dir=tmp_path)
+        loaded_metadata = loader.load_project_metadata(project_dir)
+        
+        assert loaded_metadata["project"]["name"] == "test_project"
+        assert loaded_metadata["project"]["template"]["name"] == "test-template"
+    
+    def test_load_project_metadata_missing(self, tmp_path):
+        """Test loading metadata from non-scaffolded project fails."""
+        empty_dir = tmp_path / "not_a_project"
+        empty_dir.mkdir()
+        
+        loader = TemplateLoader(cache_dir=tmp_path)
+        
+        with pytest.raises(FileNotFoundError) as exc_info:
+            loader.load_project_metadata(empty_dir)
+        
+        assert "Not a scaffolded project" in str(exc_info.value)
+    
+    def test_list_available_templates(self, tmp_path):
+        """Test listing templates in cache."""
+        # Copy fixture to cache
+        fixture_path = Path(__file__).parent / "fixtures" / "sample_templates" / "simple-python"
+        
+        if fixture_path.exists():
+            import shutil
+            cache_dir = tmp_path / "templates"
+            cache_dir.mkdir()
+            dest = cache_dir / "simple-python"
+            shutil.copytree(fixture_path, dest)
+            
+            loader = TemplateLoader(cache_dir=cache_dir)
+            templates = loader.list_available_templates()
+            
+            assert len(templates) >= 1
+            assert any(t.name == "simple-python" for t in templates)
+        else:
+            pytest.skip("Fixture template not found")
+{% endif %}

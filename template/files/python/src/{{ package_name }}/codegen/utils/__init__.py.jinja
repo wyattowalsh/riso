@@ -1,0 +1,170 @@
+{% if codegen_module == 'enabled' %}"""Performance utilities for caching and optimization.
+
+This module provides caching decorators and utilities to optimize
+performance-critical operations in the scaffolding tool.
+"""
+
+from functools import lru_cache, wraps
+from pathlib import Path
+from typing import Any, Callable
+import hashlib
+import pickle
+from datetime import datetime
+from loguru import logger
+
+
+def disk_cache(cache_dir: Path | None = None):
+    """Decorator for disk-based caching of expensive operations.
+    
+    Args:
+        cache_dir: Directory for cache files. Defaults to ~/.scaffold/cache
+        
+    Returns:
+        Decorator function
+        
+    Example:
+        @disk_cache()
+        def expensive_operation(arg1, arg2):
+            return complex_computation(arg1, arg2)
+    """
+    if cache_dir is None:
+        cache_dir = Path.home() / ".scaffold" / "cache"
+    
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # Create cache key from function name and arguments
+            key_data = f"{func.__module__}.{func.__name__}:{args}:{sorted(kwargs.items())}"
+            cache_key = hashlib.sha256(key_data.encode()).hexdigest()
+            cache_file = cache_dir / f"{cache_key}.cache"
+            
+            # Check cache
+            if cache_file.exists():
+                try:
+                    with open(cache_file, "rb") as f:
+                        cached_result = pickle.load(f)
+                    logger.debug(f"Cache hit for {func.__name__}")
+                    return cached_result
+                except Exception as e:
+                    logger.warning(f"Cache read failed for {func.__name__}: {e}")
+            
+            # Compute and cache result
+            result = func(*args, **kwargs)
+            
+            try:
+                with open(cache_file, "wb") as f:
+                    pickle.dump(result, f)
+                logger.debug(f"Cached result for {func.__name__}")
+            except Exception as e:
+                logger.warning(f"Cache write failed for {func.__name__}: {e}")
+            
+            return result
+        
+        return wrapper
+    return decorator
+
+
+@lru_cache(maxsize=128)
+def cached_file_hash(file_path: str) -> str:
+    """Compute and cache file hash for change detection.
+    
+    Args:
+        file_path: Path to file
+        
+    Returns:
+        SHA256 hash of file contents
+    """
+    path = Path(file_path)
+    if not path.exists():
+        return ""
+    
+    hasher = hashlib.sha256()
+    with open(path, "rb") as f:
+        while chunk := f.read(8192):
+            hasher.update(chunk)
+    
+    return hasher.hexdigest()
+
+
+def memoize_template_render(func: Callable) -> Callable:
+    """Memoize template rendering for identical inputs.
+    
+    This is especially useful when rendering the same template
+    multiple times with the same variables (e.g., shared partials).
+    """
+    cache = {}
+    
+    @wraps(func)
+    def wrapper(template_path: Path, variables: dict[str, Any]) -> str:
+        # Create cache key
+        var_key = tuple(sorted(variables.items()))
+        cache_key = (str(template_path), var_key)
+        
+        if cache_key in cache:
+            logger.debug(f"Memoized render for {template_path.name}")
+            return cache[cache_key]
+        
+        result = func(template_path, variables)
+        cache[cache_key] = result
+        return result
+    
+    return wrapper
+
+
+class ProgressCache:
+    """Cache for tracking generation progress across restarts.
+    
+    Allows resuming interrupted generation operations.
+    """
+    
+    def __init__(self, project_dir: Path):
+        """Initialize progress cache.
+        
+        Args:
+            project_dir: Target project directory
+        """
+        self.project_dir = project_dir
+        self.cache_file = project_dir / ".scaffold-progress.json"
+    
+    def save_progress(self, completed_files: list[str], total_files: int) -> None:
+        """Save generation progress.
+        
+        Args:
+            completed_files: List of completed file paths
+            total_files: Total number of files to generate
+        """
+        import json
+        
+        data = {
+            "completed": completed_files,
+            "total": total_files,
+            "timestamp": datetime.now().isoformat(),
+        }
+        
+        self.cache_file.write_text(json.dumps(data, indent=2))
+        logger.debug(f"Saved progress: {len(completed_files)}/{total_files} files")
+    
+    def load_progress(self) -> tuple[list[str], int] | None:
+        """Load saved progress if available.
+        
+        Returns:
+            Tuple of (completed_files, total_files) or None if no progress
+        """
+        if not self.cache_file.exists():
+            return None
+        
+        try:
+            import json
+            data = json.loads(self.cache_file.read_text())
+            return data["completed"], data["total"]
+        except Exception as e:
+            logger.warning(f"Failed to load progress: {e}")
+            return None
+    
+    def clear_progress(self) -> None:
+        """Clear progress cache."""
+        if self.cache_file.exists():
+            self.cache_file.unlink()
+{% endif %}
