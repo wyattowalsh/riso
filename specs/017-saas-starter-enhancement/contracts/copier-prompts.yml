@@ -1,0 +1,404 @@
+# Copier Prompts Configuration
+
+**Feature**: 017-saas-starter-enhancement  
+**Date**: 2025-11-02  
+**Purpose**: Define all Copier.yml prompt additions for enhanced SaaS starter
+
+## Enhanced copier.yml Additions
+
+```yaml
+# =============================================================================
+# SaaS Starter Enhanced Configuration (feature 017)
+# =============================================================================
+
+# Enable SaaS Starter Module
+saas_starter_module:
+  type: str
+  help: "Enable comprehensive SaaS starter with 80+ integrations?"
+  choices:
+    - disabled
+    - enabled
+  default: disabled
+
+# ----------------------------------------------------------------------------
+# ORIGINAL CATEGORIES (Enhanced from 2 to 4 options)
+# ----------------------------------------------------------------------------
+
+saas_runtime:
+  type: str
+  help: "Choose application runtime framework"
+  when: "{{ saas_starter_module == 'enabled' }}"
+  choices:
+    Next.js 16 (React 19.2, Turbopack, App Router):
+      value: nextjs-16
+      help: "Best DX, largest ecosystem, Vercel-optimized, React Server Components"
+    Remix 2.x (React Router v7, Vite):
+      value: remix-2x
+      help: "Web fundamentals, progressive enhancement, great DX, framework-agnostic hosting"
+  default: nextjs-16
+
+saas_database:
+  type: str
+  help: "Choose serverless database provider"
+  when: "{{ saas_starter_module == 'enabled' }}"
+  choices:
+    Neon (Serverless Postgres):
+      value: neon
+      help: "Use when: Best DX, database branching, instant provisioning, cost-effective"
+    Supabase (Open-source Firebase alternative):
+      value: supabase
+      help: "Use when: All-in-one platform, want auth+storage+database, open-source preferred"
+    PlanetScale (MySQL-compatible, Vitess):
+      value: planetscale
+      help: "Use when: MySQL compatibility, horizontal sharding, non-blocking schema changes"
+    CockroachDB (Distributed SQL):
+      value: cockroachdb
+      help: "Use when: Multi-region deployment, strong consistency, data residency requirements"
+  default: neon
+
+saas_auth:
+  type: str
+  help: "Choose authentication provider"
+  when: "{{ saas_starter_module == 'enabled' }}"
+  choices:
+    Clerk (User management + orgs):
+      value: clerk
+      help: "Use when: Consumer SaaS, fastest DX, want embeddable UI, organizations built-in"
+    Auth.js v5 (Open-source NextAuth):
+      value: authjs
+      help: "Use when: Open-source preferred, cost-sensitive, need full control, simple OAuth"
+    WorkOS (Enterprise SSO/SCIM):
+      value: workos
+      help: "Use when: B2B SaaS, need enterprise SSO (Okta/Azure AD), SCIM provisioning required"
+    Supabase Auth:
+      value: supabase-auth
+      help: "Use when: Using Supabase database, want all-in-one platform, need tight RLS integration"
+  default: clerk
+
+saas_storage:
+  type: str
+  help: "Choose object storage provider"
+  when: "{{ saas_starter_module == 'enabled' }}"
+  choices:
+    Cloudflare R2 (S3-compatible):
+      value: r2
+      help: "Use when: Zero egress fees, Cloudflare ecosystem, global edge network"
+    Supabase Storage:
+      value: supabase-storage
+      help: "Use when: Using Supabase database, need RLS integration, want image transformations"
+    AWS S3:
+      value: s3
+      help: "Use when: Industry standard, AWS ecosystem, need glacier archival, high durability critical"
+    UploadThing:
+      value: uploadthing
+      help: "Use when: Need simple upload UX, want type-safe API, image/video processing required"
+  default: r2
+
+saas_email:
+  type: str
+  help: "Choose email delivery provider"
+  when: "{{ saas_starter_module == 'enabled' }}"
+  choices:
+    Resend (Modern email API):
+      value: resend
+      help: "Use when: Modern DX, React Email integration, startup/SMB scale"
+    Postmark (Transactional specialist):
+      value: postmark
+      help: "Use when: Best deliverability, transactional focus, detailed analytics"
+    SendGrid (Enterprise platform):
+      value: sendgrid
+      help: "Use when: Need marketing+transactional, enterprise scale (millions/day), A/B testing"
+    AWS SES:
+      value: ses
+      help: "Use when: High volume (100K+/day), AWS ecosystem, cost optimization critical"
+  default: resend
+
+saas_ai:
+  type: str
+  help: "Choose AI/LLM provider"
+  when: "{{ saas_starter_module == 'enabled' }}"
+  choices:
+    OpenAI (GPT-4, function calling):
+      value: openai
+      help: "Use when: Industry standard, best function calling, need vision/DALL-E"
+    Anthropic Claude:
+      value: anthropic
+      help: "Use when: Largest context (200K), Claude quality, computer use"
+    Google Gemini:
+      value: gemini
+      help: "Use when: Multimodal needs, long context (1M+), Google Cloud, cost-effective"
+    Ollama (Local LLMs):
+      value: ollama
+      help: "Use when: Data privacy critical, zero API costs, offline operation, dev/test environments"
+  default: openai
+
+# ----------------------------------------------------------------------------
+# NEW CATEGORIES (7 additional infrastructure categories)
+# ----------------------------------------------------------------------------
+
+saas_search:
+  type: str
+  help: "Choose search engine (optional)"
+  when: "{{ saas_starter_module == 'enabled' }}"
+  choices:
+    Algolia (Premium hosted search):
+      value: algolia
+      help: "Use when: Best-in-class UX, can afford premium, need analytics/A/B testing"
+    Meilisearch (Open-source):
+      value: meilisearch
+      help: "Use when: Open-source preferred, cost-sensitive, comfortable self-hosting"
+    Typesense (Geo + vector search):
+      value: typesense
+      help: "Use when: Need geo-search, vector search, balanced pricing"
+    None (No search integration):
+      value: none
+      help: "Skip search integration"
+  default: none
+
+saas_cache:
+  type: str
+  help: "Choose caching layer (optional)"
+  when: "{{ saas_starter_module == 'enabled' }}"
+  choices:
+    Redis (Upstash serverless):
+      value: redis
+      help: "Use when: Need full Redis (sorted sets, pub/sub), multi-region replication"
+    Cloudflare KV:
+      value: cloudflare-kv
+      help: "Use when: Edge caching, Cloudflare Workers deployment, eventual consistency OK"
+    Vercel KV:
+      value: vercel-kv
+      help: "Use when: Deploying to Vercel, want tight integration, Redis compatibility"
+    None (No caching layer):
+      value: none
+      help: "Skip caching layer"
+  default: none
+
+saas_feature_flags:
+  type: str
+  help: "Choose feature flag provider (optional)"
+  when: "{{ saas_starter_module == 'enabled' }}"
+  choices:
+    LaunchDarkly:
+      value: launchdarkly
+      help: "Use when: Enterprise features (approvals, audit logs), complex targeting, compliance"
+    PostHog Feature Flags:
+      value: posthog-flags
+      help: "Use when: Using PostHog analytics, want unified platform, cost-sensitive"
+    GrowthBook:
+      value: growthbook
+      help: "Use when: Have data warehouse, want statistical rigor, prefer self-hosting"
+    None (No feature flags):
+      value: none
+      help: "Skip feature flags"
+  default: none
+
+saas_cms:
+  type: str
+  help: "Choose headless CMS (optional)"
+  when: "{{ saas_starter_module == 'enabled' }}"
+  choices:
+    Contentful:
+      value: contentful
+      help: "Use when: Enterprise CMS, complex models, multi-language, large content teams"
+    Sanity:
+      value: sanity
+      help: "Use when: Real-time collaboration, custom editing, image optimization"
+    Payload CMS:
+      value: payload
+      help: "Use when: Type-safety, Next.js-native, code-first config, self-hosted"
+    Strapi:
+      value: strapi
+      help: "Use when: Open-source, admin UI out-of-box, plugin extensibility"
+    None (No CMS):
+      value: none
+      help: "Skip CMS integration"
+  default: none
+
+saas_usage_metering:
+  type: str
+  help: "Choose usage metering provider (optional)"
+  when: "{{ saas_starter_module == 'enabled' }}"
+  choices:
+    Stripe Metering:
+      value: stripe-metering
+      help: "Use when: Using Stripe Billing, simple metering, tight billing integration"
+    Moesif:
+      value: moesif
+      help: "Use when: Need API analytics+metering, want to monetize APIs, complex tracking"
+    Amberflo:
+      value: amberflo
+      help: "Use when: Sophisticated pricing, prepaid models, real-time usage visibility"
+    None (No usage metering):
+      value: none
+      help: "Skip usage metering"
+  default: none
+
+saas_secrets:
+  type: str
+  help: "Choose secrets management (optional)"
+  when: "{{ saas_starter_module == 'enabled' }}"
+  choices:
+    Infisical:
+      value: infisical
+      help: "Use when: Open-source preferred, fine-grained access control, cost-sensitive"
+    Doppler:
+      value: doppler
+      help: "Use when: Multi-platform sync, simple UX, dynamic secrets"
+    AWS Secrets Manager:
+      value: aws-secrets
+      help: "Use when: Deep AWS integration, automatic rotation, enterprise compliance"
+    None (Environment variables only):
+      value: none
+      help: "Use standard environment variables"
+  default: none
+
+saas_error_tracking:
+  type: str
+  help: "Choose error tracking provider"
+  when: "{{ saas_starter_module == 'enabled' }}"
+  choices:
+    Sentry (Enhanced):
+      value: sentry
+      help: "Use when: Comprehensive error+performance, session replay, release tracking"
+    Rollbar:
+      value: rollbar
+      help: "Use when: Advanced grouping, real-time alerts, RQL queries, Sentry alternative"
+    BugSnag:
+      value: bugsnag
+      help: "Use when: Mobile-first, stability scoring, React Native support"
+  default: sentry
+
+# ----------------------------------------------------------------------------
+# ARCHITECTURE PATTERNS
+# ----------------------------------------------------------------------------
+
+saas_architecture:
+  type: str
+  help: "Choose architecture pattern"
+  when: "{{ saas_starter_module == 'enabled' }}"
+  choices:
+    Single-tenant (Standard SaaS):
+      value: single-tenant
+      help: "Use when: B2C SaaS, simple architecture, <10K users"
+    Multi-tenant (B2B SaaS):
+      value: multi-tenant
+      help: "Use when: B2B SaaS, need tenant isolation, organizations/accounts"
+  default: single-tenant
+
+saas_multi_tenant_isolation:
+  type: str
+  help: "Choose tenant isolation level"
+  when: "{{ saas_starter_module == 'enabled' and saas_architecture == 'multi-tenant' }}"
+  choices:
+    Row-level security (RLS):
+      value: rls
+      help: "Use when: <10K tenants, uniform features, cost-effective, PostgreSQL"
+    Schema-per-tenant:
+      value: schema-per-tenant
+      help: "Use when: 100-10K tenants, need per-tenant customization, moderate complexity"
+    Database-per-tenant:
+      value: db-per-tenant
+      help: "Use when: <1K enterprise tenants, regulatory requirements, maximum isolation"
+  default: rls
+
+# ----------------------------------------------------------------------------
+# PRODUCTION PATTERNS
+# ----------------------------------------------------------------------------
+
+saas_deployment:
+  type: str
+  help: "Choose deployment pattern"
+  when: "{{ saas_starter_module == 'enabled' }}"
+  choices:
+    Single-region:
+      value: single-region
+      help: "Use when: MVP/startup stage, one geographic market, cost optimization"
+    Multi-region:
+      value: multi-region
+      help: "Use when: Global users, need low latency worldwide, data residency requirements"
+    Blue-green:
+      value: blue-green
+      help: "Use when: Zero-downtime deployments critical, gradual rollouts, easy rollback"
+  default: single-region
+
+saas_compliance:
+  type: multiselect
+  help: "Select compliance frameworks (optional)"
+  when: "{{ saas_starter_module == 'enabled' }}"
+  choices:
+    - soc2
+    - hipaa
+    - gdpr
+    - none
+  default: [none]
+
+# ----------------------------------------------------------------------------
+# DEVELOPER EXPERIENCE
+# ----------------------------------------------------------------------------
+
+saas_dev_dashboard:
+  type: bool
+  help: "Enable unified development dashboard?"
+  when: "{{ saas_starter_module == 'enabled' }}"
+  default: true
+
+saas_offline_mode:
+  type: bool
+  help: "Enable offline development with service mocking?"
+  when: "{{ saas_starter_module == 'enabled' }}"
+  default: true
+
+saas_unified_logs:
+  type: bool
+  help: "Enable unified log aggregation?"
+  when: "{{ saas_starter_module == 'enabled' }}"
+  default: true
+```
+
+## Conditional Logic
+
+### Platform-Specific Validations
+
+```yaml
+# Cloudflare Workers requires compatible database
+validate_cloudflare_database:
+  when: "{{ saas_hosting == 'cloudflare' and saas_database in ['neon', 'planetscale'] }}"
+  error: "Cloudflare Workers cannot use traditional database connections. Use Supabase (REST API) or switch to Vercel hosting."
+
+# Supabase Auth requires Supabase Database
+validate_supabase_auth:
+  when: "{{ saas_auth == 'supabase-auth' and saas_database != 'supabase' }}"
+  error: "Supabase Auth requires Supabase database. Choose different auth provider or use Supabase database."
+
+# Multi-tenant requires PostgreSQL
+validate_multi_tenant_database:
+  when: "{{ saas_architecture == 'multi-tenant' and saas_database == 'planetscale' }}"
+  error: "Multi-tenant architecture requires PostgreSQL-compatible database. PlanetScale (MySQL) does not support RLS or schema-per-tenant patterns."
+```
+
+### Technology Pairing Recommendations
+
+```yaml
+# Recommend Vercel KV when using Vercel hosting
+recommend_vercel_kv:
+  when: "{{ saas_hosting == 'vercel' and saas_cache == 'none' }}"
+  message: "Consider enabling Vercel KV for caching - it's optimized for Vercel deployments."
+  
+# Recommend PostHog flags when using PostHog analytics
+recommend_posthog_flags:
+  when: "{{ saas_analytics == 'posthog' and saas_feature_flags == 'none' }}"
+  message: "Consider enabling PostHog Feature Flags - unified platform with your analytics choice."
+
+# Recommend Stripe Metering when using Stripe Billing
+recommend_stripe_metering:
+  when: "{{ saas_billing == 'stripe' and saas_usage_metering == 'none' }}"
+  message: "Consider enabling Stripe Metering for usage-based billing - native integration with Stripe Billing."
+```
+
+## Total Configuration Matrix
+
+- **21 Infrastructure Categories**: 14 original (enhanced) + 7 new
+- **80+ Technology Options**: Expanded from 28 in 012-saas-starter
+- **100+ Valid Combinations**: Validated via compatibility rules
+- **Backward Compatibility**: All 012-saas-starter configurations still valid
