@@ -1,0 +1,218 @@
+{% if saas_cache == 'redis' %}
+/**
+ * Redis Cache Client (Upstash)
+ * 
+ * Serverless Redis with REST API, pub/sub, and geo-replication.
+ * Features: Full Redis compatibility, pay-per-request pricing, global edge caching.
+ * 
+ * Use when: Need traditional Redis features (sets, sorted sets, pub/sub),
+ * serverless architecture, or complex data structures.
+ * 
+ * Environment variables:
+ * - UPSTASH_REDIS_REST_URL: Upstash Redis REST URL
+ * - UPSTASH_REDIS_REST_TOKEN: Upstash Redis REST token
+ */
+
+import { Redis } from '@upstash/redis';
+
+// Validate environment variables
+const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+if (!REDIS_URL || !REDIS_TOKEN) {
+  throw new Error(
+    'UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are required. ' +
+    'Get your credentials from https://console.upstash.com'
+  );
+}
+
+/**
+ * Redis client for caching operations
+ */
+export const redis = new Redis({
+  url: REDIS_URL,
+  token: REDIS_TOKEN,
+});
+
+/**
+ * Cache a value with optional TTL (time-to-live)
+ * 
+ * @example
+ * await set('user:123', { name: 'John' }, 3600); // Cache for 1 hour
+ */
+export async function set<T>(
+  key: string,
+  value: T,
+  ttlSeconds?: number
+): Promise<void> {
+  if (ttlSeconds) {
+    await redis.setex(key, ttlSeconds, JSON.stringify(value));
+  } else {
+    await redis.set(key, JSON.stringify(value));
+  }
+}
+
+/**
+ * Get a cached value
+ * 
+ * @example
+ * const user = await get<User>('user:123');
+ */
+export async function get<T>(key: string): Promise<T | null> {
+  const value = await redis.get(key);
+  if (!value) return null;
+  
+  try {
+    return JSON.parse(value as string) as T;
+  } catch {
+    return value as T;
+  }
+}
+
+/**
+ * Delete a cached value
+ * 
+ * @example
+ * await del('user:123');
+ */
+export async function del(key: string): Promise<void> {
+  await redis.del(key);
+}
+
+/**
+ * Check if a key exists
+ * 
+ * @example
+ * const exists = await has('user:123');
+ */
+export async function has(key: string): Promise<boolean> {
+  const result = await redis.exists(key);
+  return result === 1;
+}
+
+/**
+ * Increment a counter
+ * 
+ * @example
+ * const views = await increment('page:views:123');
+ */
+export async function increment(key: string, by: number = 1): Promise<number> {
+  if (by === 1) {
+    return await redis.incr(key);
+  }
+  return await redis.incrby(key, by);
+}
+
+/**
+ * Get multiple values at once
+ * 
+ * @example
+ * const users = await mget<User>(['user:1', 'user:2', 'user:3']);
+ */
+export async function mget<T>(keys: string[]): Promise<(T | null)[]> {
+  if (keys.length === 0) return [];
+  
+  const values = await redis.mget(...keys);
+  return values.map((value) => {
+    if (!value) return null;
+    try {
+      return JSON.parse(value as string) as T;
+    } catch {
+      return value as T;
+    }
+  });
+}
+
+/**
+ * Set multiple values at once
+ * 
+ * @example
+ * await mset({ 'user:1': user1, 'user:2': user2 });
+ */
+export async function mset(entries: Record<string, any>): Promise<void> {
+  const serialized: Record<string, string> = {};
+  for (const [key, value] of Object.entries(entries)) {
+    serialized[key] = JSON.stringify(value);
+  }
+  await redis.mset(serialized);
+}
+
+/**
+ * Cache with automatic expiration
+ * Get from cache or compute if missing
+ * 
+ * @example
+ * const user = await cached('user:123', 3600, async () => {
+ *   return await db.query.users.findFirst({ where: eq(users.id, '123') });
+ * });
+ */
+export async function cached<T>(
+  key: string,
+  ttlSeconds: number,
+  compute: () => Promise<T>
+): Promise<T> {
+  // Try to get from cache
+  const cached = await get<T>(key);
+  if (cached !== null) {
+    return cached;
+  }
+  
+  // Compute the value
+  const value = await compute();
+  
+  // Store in cache
+  await set(key, value, ttlSeconds);
+  
+  return value;
+}
+
+/**
+ * Invalidate cache by pattern
+ * 
+ * @example
+ * await invalidatePattern('user:*'); // Invalidate all user cache
+ */
+export async function invalidatePattern(pattern: string): Promise<void> {
+  const keys = await redis.keys(pattern);
+  if (keys.length > 0) {
+    await redis.del(...keys);
+  }
+}
+
+/**
+ * Get cache statistics
+ * 
+ * @example
+ * const stats = await getStats();
+ * console.log(`Cache size: ${stats.dbsize} keys`);
+ */
+export async function getStats(): Promise<{
+  dbsize: number;
+  memoryUsed: string;
+}> {
+  const dbsize = await redis.dbsize();
+  const info = await redis.info('memory');
+  
+  return {
+    dbsize,
+    memoryUsed: info || 'unknown',
+  };
+}
+
+/**
+ * Health check for Redis connection
+ */
+export async function healthCheck(): Promise<boolean> {
+  try {
+    await redis.ping();
+    return true;
+  } catch (error) {
+    console.error('Redis health check failed:', error);
+    return false;
+  }
+}
+
+// Export the client for advanced usage
+export { redis as cache };
+
+{% endif %}
