@@ -1,0 +1,230 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://scaffold.dev/schema/v1/template.json",
+  "title": "Template Metadata Schema",
+  "description": "Schema for template.yml metadata file in scaffolding templates",
+  "type": "object",
+  "required": ["name", "version", "description", "variables"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Unique template identifier",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "minLength": 3,
+      "maxLength": 50,
+      "examples": ["python-cli", "fastapi-api", "react-app"]
+    },
+    "version": {
+      "type": "string",
+      "description": "Semantic version",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "examples": ["1.0.0", "2.3.1"]
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable template description",
+      "minLength": 10,
+      "maxLength": 200,
+      "examples": ["Python CLI application with Typer and Rich"]
+    },
+    "author": {
+      "type": "string",
+      "description": "Template author/maintainer",
+      "examples": ["Jane Doe <jane@example.com>", "Template Team"]
+    },
+    "template_type": {
+      "type": "string",
+      "enum": ["project", "module", "api_spec"],
+      "description": "Type of template",
+      "default": "project"
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Source repository URL",
+      "examples": ["https://github.com/org/templates"]
+    },
+    "variables": {
+      "type": "object",
+      "description": "Template variables that users must provide",
+      "minProperties": 1,
+      "patternProperties": {
+        "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+          "$ref": "#/definitions/variable"
+        }
+      }
+    },
+    "file_patterns": {
+      "type": "array",
+      "description": "Patterns for files to generate",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/filePattern"
+      }
+    },
+    "hooks": {
+      "$ref": "#/definitions/hooks",
+      "description": "Pre/post generation hooks"
+    },
+    "dependencies": {
+      "type": "array",
+      "description": "Required tools and packages",
+      "items": {
+        "$ref": "#/definitions/dependency"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional template metadata",
+      "properties": {
+        "tags": {
+          "type": "array",
+          "items": {"type": "string"},
+          "examples": [["python", "cli", "typer"]]
+        },
+        "categories": {
+          "type": "array",
+          "items": {"type": "string"},
+          "examples": [["application", "backend"]]
+        },
+        "license": {
+          "type": "string",
+          "examples": ["MIT", "Apache-2.0"]
+        },
+        "homepage": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "variable": {
+      "type": "object",
+      "required": ["type", "description"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["string", "int", "bool", "choice"],
+          "description": "Variable data type"
+        },
+        "required": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether variable must be provided"
+        },
+        "default": {
+          "description": "Default value (must match type)",
+          "oneOf": [
+            {"type": "string"},
+            {"type": "integer"},
+            {"type": "boolean"}
+          ]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 200,
+          "description": "Help text for users"
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Regex validation pattern (for string type)",
+          "examples": ["^[a-z][a-z0-9_]*$"]
+        },
+        "choices": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 20,
+          "items": {"type": "string"},
+          "description": "Valid choices (required for choice type)",
+          "examples": [["3.11", "3.12", "3.13"]]
+        },
+        "prompt_message": {
+          "type": "string",
+          "description": "Custom prompt text for interactive mode"
+        }
+      },
+      "if": {
+        "properties": {"type": {"const": "choice"}}
+      },
+      "then": {
+        "required": ["choices"]
+      }
+    },
+    "filePattern": {
+      "type": "object",
+      "required": ["pattern"],
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "description": "Glob pattern for files",
+          "examples": ["src/**/*.py.jinja", "{{cookiecutter}}/**/*"]
+        },
+        "exclude": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Patterns to exclude",
+          "examples": [["**/__pycache__/**", "**/*.pyc"]]
+        },
+        "preserve_permissions": {
+          "type": "boolean",
+          "default": false,
+          "description": "Copy file permission bits"
+        }
+      }
+    },
+    "hooks": {
+      "type": "object",
+      "properties": {
+        "pre_gen": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Scripts to run before generation",
+          "examples": [["python hooks/validate.py"]]
+        },
+        "post_gen": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Scripts to run after generation",
+          "examples": [["python hooks/setup.py", "uv sync"]]
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300,
+          "default": 60,
+          "description": "Max execution time for hooks"
+        },
+        "env_vars": {
+          "type": "object",
+          "patternProperties": {
+            "^[A-Z_][A-Z0-9_]*$": {"type": "string"}
+          },
+          "description": "Environment variables for hooks"
+        }
+      }
+    },
+    "dependency": {
+      "type": "object",
+      "required": ["name", "version_constraint"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Tool or package name",
+          "examples": ["python", "node", "uv"]
+        },
+        "version_constraint": {
+          "type": "string",
+          "description": "Version specification",
+          "examples": [">=3.11,<4.0", "20.x", "^0.4.0"]
+        },
+        "optional": {
+          "type": "boolean",
+          "default": false,
+          "description": "Can be skipped if not available"
+        }
+      }
+    }
+  }
+}

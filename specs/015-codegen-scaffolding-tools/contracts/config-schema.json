@@ -1,0 +1,256 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://scaffold.dev/schema/v1/metadata.json",
+  "title": "Project Metadata Schema",
+  "description": "Schema for .scaffold-metadata.json file in generated projects",
+  "type": "object",
+  "required": ["version", "project"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri",
+      "description": "JSON Schema reference",
+      "const": "https://scaffold.dev/schema/v1/metadata.json"
+    },
+    "version": {
+      "type": "string",
+      "description": "Metadata schema version",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "const": "1.0.0"
+    },
+    "project": {
+      "type": "object",
+      "required": ["name", "template", "variables", "generated_at"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Project name",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "template": {
+          "type": "object",
+          "required": ["name", "version"],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Template identifier"
+            },
+            "version": {
+              "type": "string",
+              "description": "Template version",
+              "pattern": "^\\d+\\.\\d+\\.\\d+$"
+            },
+            "source_url": {
+              "type": "string",
+              "format": "uri",
+              "description": "Template source URL"
+            }
+          }
+        },
+        "variables": {
+          "type": "object",
+          "description": "Variable values used for generation",
+          "minProperties": 1,
+          "patternProperties": {
+            "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+              "oneOf": [
+                {"type": "string"},
+                {"type": "number"},
+                {"type": "boolean"}
+              ]
+            }
+          }
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Project generation timestamp (ISO 8601)"
+        },
+        "last_updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last template update timestamp (ISO 8601)"
+        }
+      }
+    },
+    "modules": {
+      "type": "array",
+      "description": "Feature modules added to project",
+      "items": {
+        "$ref": "#/definitions/module"
+      }
+    },
+    "quality_status": {
+      "type": "object",
+      "description": "Latest quality check results",
+      "properties": {
+        "last_check": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last quality check timestamp"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pass", "warn", "fail"],
+          "description": "Overall quality status"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Non-blocking warnings"
+        },
+        "errors": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Critical errors"
+        }
+      },
+      "required": ["last_check", "status"]
+    },
+    "custom_modifications": {
+      "type": "array",
+      "description": "Tracked user modifications (for update conflict detection)",
+      "items": {
+        "$ref": "#/definitions/modification"
+      }
+    }
+  },
+  "definitions": {
+    "module": {
+      "type": "object",
+      "required": ["name", "type", "template", "added_at"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Module identifier",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "type": {
+          "type": "string",
+          "description": "Module type",
+          "examples": ["api", "cli", "docs", "auth"]
+        },
+        "template": {
+          "type": "object",
+          "required": ["name", "version"],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Module template identifier"
+            },
+            "version": {
+              "type": "string",
+              "description": "Template version",
+              "pattern": "^\\d+\\.\\d+\\.\\d+$"
+            }
+          }
+        },
+        "variables": {
+          "type": "object",
+          "description": "Module-specific variables",
+          "patternProperties": {
+            "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+              "oneOf": [
+                {"type": "string"},
+                {"type": "number"},
+                {"type": "boolean"}
+              ]
+            }
+          }
+        },
+        "added_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Module addition timestamp"
+        },
+        "files": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Files generated for this module"
+        }
+      }
+    },
+    "modification": {
+      "type": "object",
+      "required": ["file_path", "original_hash", "modified_hash", "modified_at"],
+      "properties": {
+        "file_path": {
+          "type": "string",
+          "description": "Relative path to modified file"
+        },
+        "original_hash": {
+          "type": "string",
+          "description": "SHA256 hash of original file",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "modified_hash": {
+          "type": "string",
+          "description": "SHA256 hash after modification",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "modified_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Modification timestamp"
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "$schema": "https://scaffold.dev/schema/v1/metadata.json",
+      "version": "1.0.0",
+      "project": {
+        "name": "my-project",
+        "template": {
+          "name": "python-cli",
+          "version": "1.2.3",
+          "source_url": "https://github.com/org/templates"
+        },
+        "variables": {
+          "project_name": "my_project",
+          "author": "Jane Developer <jane@example.com>",
+          "python_version": "3.11"
+        },
+        "generated_at": "2025-11-02T10:30:00Z",
+        "last_updated_at": "2025-11-02T14:15:00Z"
+      },
+      "modules": [
+        {
+          "name": "api",
+          "type": "fastapi",
+          "template": {
+            "name": "fastapi-module",
+            "version": "2.0.1"
+          },
+          "variables": {
+            "auth_required": true
+          },
+          "added_at": "2025-11-02T14:15:00Z",
+          "files": [
+            "src/my_project/api/__init__.py",
+            "src/my_project/api/main.py",
+            "tests/test_api.py"
+          ]
+        }
+      ],
+      "quality_status": {
+        "last_check": "2025-11-02T10:30:00Z",
+        "status": "warn",
+        "warnings": [
+          "Unused import in src/my_project/main.py:5"
+        ],
+        "errors": []
+      },
+      "custom_modifications": [
+        {
+          "file_path": "src/my_project/config.py",
+          "original_hash": "abc123...",
+          "modified_hash": "def456...",
+          "modified_at": "2025-11-02T12:00:00Z"
+        }
+      ]
+    }
+  ]
+}
