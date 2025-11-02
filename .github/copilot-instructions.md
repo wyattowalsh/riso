@@ -16,6 +16,8 @@ Auto-generated from all feature plans. Last updated: 2025-10-30
 - In-memory connection registry (default), optional Redis for multi-server (documented pattern) (008-websockets-scaffold)
 - Python 3.11+ (template baseline), Node.js 20 LTS (when api_tracks includes node) + semantic-release (changelog/version), commitlint (commit validation), commitizen (commit authoring), GitHub Actions marketplace actions (release creation, registry publishing) (014-changelog-release-management)
 - Git repository (commit history, tags), GitHub Secrets (registry credentials), generated files (CHANGELOG.md, package versions) (014-changelog-release-management)
+- Python 3.11+ (uv-managed), optional Node.js 20 LTS (when api_tracks includes node) (016-conventional-commit-tooling)
+- Version-controlled configuration files (.commitlintrc.yml, pyproject.toml), local log files (optional) (016-conventional-commit-tooling)
 
 ## Project Structure
 
@@ -51,9 +53,9 @@ actionlint .github/workflows/riso-*.yml
 Python 3.11 (uv-managed), optional Node.js 20 LTS: Follow standard conventions
 
 ## Recent Changes
+- 016-conventional-commit-tooling: Added Python 3.11+ (uv-managed), optional Node.js 20 LTS (when api_tracks includes node)
+- 016-conventional-commit-tooling: Added Python 3.11+ (uv-managed), optional Node.js 20 LTS (when api_tracks includes node)
 - 014-changelog-release-management: Added Python 3.11+ (template baseline), Node.js 20 LTS (when api_tracks includes node) + semantic-release (changelog/version), commitlint (commit validation), commitizen (commit authoring), GitHub Actions marketplace actions (release creation, registry publishing)
-- 008-websockets-scaffold: Added Python 3.11+ + FastAPI ≥0.104.0 (WebSocket support), websockets library, pydantic ≥2.0.0
-- 008-websockets-scaffold: Added Python 3.11+ + FastAPI ≥0.104.0 (WebSocket support), websockets library, pydantic ≥2.0.0
 
 
 <!-- MANUAL ADDITIONS START -->

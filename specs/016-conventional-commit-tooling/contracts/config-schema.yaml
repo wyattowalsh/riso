@@ -1,0 +1,480 @@
+# Configuration Schema: .commitlintrc.yml
+
+# This YAML file defines the JSON Schema for the conventional commit tooling configuration.
+# It is used to validate user-provided .commitlintrc.yml files during hook execution and CI.
+
+$schema: "http://json-schema.org/draft-07/schema#"
+$id: "https://github.com/your-org/riso/schemas/commitlint-config.json"
+title: "Conventional Commit Tooling Configuration"
+description: "Configuration schema for commitlint and commitizen integration"
+type: object
+
+# Top-level properties
+properties:
+  
+  # Required: Base configuration to extend
+  extends:
+    type: array
+    description: "List of preset configurations to extend (e.g., @commitlint/config-conventional)"
+    items:
+      type: string
+      pattern: "^(@[a-z0-9-]+/)?[a-z0-9-]+$"
+    minItems: 1
+    maxItems: 5
+    examples:
+      - ["@commitlint/config-conventional"]
+      - ["@commitlint/config-conventional", "@commitlint/config-lerna-scopes"]
+  
+  # Optional: Rule overrides
+  rules:
+    type: object
+    description: "Validation rule overrides (level, applicable, value)"
+    additionalProperties:
+      type: array
+      description: "Rule configuration: [level, applicable, value]"
+      minItems: 2
+      maxItems: 3
+      items:
+        oneOf:
+          # Level: 0=disable, 1=warning, 2=error
+          - type: integer
+            minimum: 0
+            maximum: 2
+          # Applicable: always | never
+          - type: string
+            enum: ["always", "never"]
+          # Value: rule-specific (array or string)
+          - type: [array, string, integer]
+    
+    # Predefined rules (optional documentation)
+    properties:
+      type-enum:
+        description: "Enforce valid commit types"
+        example: [2, "always", ["feat", "fix", "docs"]]
+      
+      type-case:
+        description: "Enforce type case (lower-case, upper-case, etc.)"
+        example: [2, "always", "lower-case"]
+      
+      type-empty:
+        description: "Disallow empty type"
+        example: [2, "never"]
+      
+      scope-enum:
+        description: "Enforce valid scopes from allowlist"
+        example: [1, "always", ["api", "cli", "docs"]]
+      
+      scope-case:
+        description: "Enforce scope case"
+        example: [2, "always", "lower-case"]
+      
+      scope-empty:
+        description: "Allow or disallow empty scope"
+        example: [0, "never"]
+      
+      subject-case:
+        description: "Enforce subject case (sentence-case, start-case, etc.)"
+        example: [2, "always", ["sentence-case", "start-case"]]
+      
+      subject-empty:
+        description: "Disallow empty subject"
+        example: [2, "never"]
+      
+      subject-max-length:
+        description: "Maximum subject length (characters)"
+        example: [2, "always", 72]
+      
+      subject-min-length:
+        description: "Minimum subject length (characters)"
+        example: [2, "always", 5]
+      
+      body-leading-blank:
+        description: "Require blank line before body"
+        example: [2, "always"]
+      
+      body-max-line-length:
+        description: "Maximum body line length"
+        example: [2, "always", 100]
+      
+      footer-leading-blank:
+        description: "Require blank line before footer"
+        example: [2, "always"]
+      
+      footer-max-line-length:
+        description: "Maximum footer line length"
+        example: [2, "always", 100]
+  
+  # Optional: Commitizen prompt configuration
+  prompt:
+    type: object
+    description: "Configuration for guided commit message authoring (commitizen)"
+    properties:
+      
+      # Prompt settings
+      settings:
+        type: object
+        description: "Commitizen prompt behavior settings"
+        properties:
+          
+          # Scope overrides per type
+          scopeOverrides:
+            type: object
+            description: "Define allowed scopes for specific commit types"
+            additionalProperties:
+              type: array
+              items:
+                type: string
+                pattern: "^[a-z0-9-]+$"
+              maxItems: 50
+            examples:
+              - feat: ["api", "cli"]
+                fix: ["api", "core"]
+          
+          # Enable scope fuzzy search
+          enableAutocomplete:
+            type: boolean
+            description: "Enable fuzzy search for scopes when >10 scopes defined"
+            default: true
+          
+          # Skip scope prompt if only one scope available
+          skipScopeIfOneOption:
+            type: boolean
+            description: "Skip scope prompt when only one option available"
+            default: false
+      
+      # Custom prompt messages
+      messages:
+        type: object
+        description: "Custom prompt messages for commitizen"
+        properties:
+          type:
+            type: string
+            description: "Prompt message for commit type"
+            default: "Select the type of change that you're committing:"
+          
+          scope:
+            type: string
+            description: "Prompt message for commit scope"
+            default: "Denote the SCOPE of this change (optional):"
+          
+          subject:
+            type: string
+            description: "Prompt message for commit subject"
+            default: "Write a SHORT, IMPERATIVE tense description of the change:"
+          
+          body:
+            type: string
+            description: "Prompt message for commit body"
+            default: "Provide a LONGER description of the change (optional):"
+          
+          breaking:
+            type: string
+            description: "Prompt message for breaking changes"
+            default: "List any BREAKING CHANGES (optional):"
+          
+          footer:
+            type: string
+            description: "Prompt message for issue references"
+            default: "List any ISSUES CLOSED by this change (optional):"
+      
+      # Custom commit types
+      types:
+        type: array
+        description: "Custom commit types for prompts (overrides extends)"
+        items:
+          type: object
+          required: ["value", "name"]
+          properties:
+            value:
+              type: string
+              pattern: "^[a-z]+$"
+              description: "Type identifier (lowercase)"
+            
+            name:
+              type: string
+              description: "Human-readable type name"
+            
+            description:
+              type: string
+              description: "Help text for this type"
+            
+            emoji:
+              type: string
+              description: "Optional emoji prefix"
+              pattern: "^\\p{Emoji}$"
+        maxItems: 20
+        examples:
+          - value: feat
+            name: "feat: A new feature"
+            description: "Use for new functionality"
+            emoji: "✨"
+          - value: fix
+            name: "fix: A bug fix"
+            description: "Use for bug fixes"
+            emoji: "🐛"
+  
+  # Optional: Performance settings
+  performance:
+    type: object
+    description: "Performance-related configuration"
+    properties:
+      
+      hookTimeoutMs:
+        type: integer
+        description: "Maximum hook execution time (milliseconds)"
+        minimum: 100
+        maximum: 5000
+        default: 1000
+      
+      configCacheTtlSeconds:
+        type: integer
+        description: "Configuration cache TTL (seconds)"
+        minimum: 0
+        maximum: 600
+        default: 60
+      
+      enableCache:
+        type: boolean
+        description: "Enable in-memory configuration caching"
+        default: true
+  
+  # Optional: Logging configuration
+  logging:
+    type: object
+    description: "Logging behavior configuration"
+    properties:
+      
+      verbosity:
+        type: string
+        description: "Default logging verbosity level"
+        enum: ["normal", "verbose", "debug"]
+        default: "normal"
+      
+      logFile:
+        type: string
+        description: "Path to log file (relative to repo root)"
+        pattern: "^[a-zA-Z0-9/_.-]+\\.log$"
+        examples:
+          - ".riso/commit-validation.log"
+          - "logs/commit-tooling.log"
+      
+      enableColors:
+        type: boolean
+        description: "Enable colored output in terminal"
+        default: true
+
+# Required properties
+required:
+  - extends
+
+# Additional properties not allowed (strict schema)
+additionalProperties: false
+
+# Examples of valid configurations
+examples:
+  - # Minimal configuration
+    extends:
+      - "@commitlint/config-conventional"
+  
+  - # Standard configuration with scope restrictions
+    extends:
+      - "@commitlint/config-conventional"
+    rules:
+      scope-enum:
+        - 1  # warning
+        - always
+        - [api, cli, docs, core, web, mobile]
+  
+  - # Strict configuration with custom types
+    extends:
+      - "@commitlint/config-conventional"
+    rules:
+      type-enum:
+        - 2
+        - always
+        - [feat, fix, docs, style, refactor, perf, test, chore, security]
+      subject-case:
+        - 2
+        - always
+        - lower-case
+      subject-max-length:
+        - 2
+        - always
+        - 50
+    prompt:
+      types:
+        - value: feat
+          name: "feat: ✨ A new feature"
+        - value: fix
+          name: "fix: 🐛 A bug fix"
+        - value: security
+          name: "security: 🔒 A security patch"
+    performance:
+      hookTimeoutMs: 500
+    logging:
+      verbosity: verbose
+      logFile: .riso/commit-validation.log
+
+---
+
+# Validation Rules Reference
+
+## Rule Format
+
+All rules follow the format: `[level, applicable, value]`
+
+- **level**: `0` (disable), `1` (warning), `2` (error)
+- **applicable**: `"always"` (rule applies), `"never"` (rule inverted)
+- **value**: Rule-specific parameter (array, string, or integer)
+
+## Common Rules
+
+### type-enum
+
+**Description**: Enforce valid commit types from allowlist
+
+**Value**: Array of allowed types
+
+**Example**:
+
+```yaml
+rules:
+  type-enum:
+    - 2  # error level
+    - always
+    - [feat, fix, docs, style, refactor, test, chore]
+```
+
+**Default Types** (from @commitlint/config-conventional):
+
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting)
+- `refactor`: Code refactoring
+- `perf`: Performance improvements
+- `test`: Test additions/changes
+- `chore`: Build process or tooling changes
+
+### scope-enum
+
+**Description**: Enforce valid scopes from allowlist
+
+**Value**: Array of allowed scopes (max 50)
+
+**Example**:
+
+```yaml
+rules:
+  scope-enum:
+    - 1  # warning level (allows custom scopes with warning)
+    - always
+    - [api, cli, docs, core, web, mobile]
+```
+
+### subject-case
+
+**Description**: Enforce subject text case
+
+**Value**: String or array of allowed cases
+
+**Cases**:
+
+- `lower-case`: "add endpoint"
+- `upper-case`: "ADD ENDPOINT"
+- `sentence-case`: "Add endpoint"
+- `start-case`: "Add Endpoint"
+- `pascal-case`: "AddEndpoint"
+- `kebab-case`: "add-endpoint"
+
+**Example**:
+
+```yaml
+rules:
+  subject-case:
+    - 2
+    - always
+    - [sentence-case, start-case, lower-case]
+```
+
+### subject-max-length
+
+**Description**: Maximum subject length (including type and scope)
+
+**Value**: Integer (max characters)
+
+**Example**:
+
+```yaml
+rules:
+  subject-max-length:
+    - 2
+    - always
+    - 72  # Git best practice
+```
+
+### body-leading-blank
+
+**Description**: Require blank line between header and body
+
+**Value**: None (boolean rule)
+
+**Example**:
+
+```yaml
+rules:
+  body-leading-blank:
+    - 2
+    - always
+```
+
+### footer-leading-blank
+
+**Description**: Require blank line between body and footer
+
+**Value**: None (boolean rule)
+
+**Example**:
+
+```yaml
+rules:
+  footer-leading-blank:
+    - 2
+    - always
+```
+
+## Performance Constraints
+
+### Rule Limits
+
+- **Maximum rules**: 50 per configuration
+- **Maximum custom types**: 20
+- **Maximum custom scopes**: 50
+- **Regex timeout**: 100ms per pattern match
+- **Config file size**: 10KB max
+
+### Caching Behavior
+
+- **Config cache TTL**: 60 seconds (configurable)
+- **Invalidation trigger**: File modification time change
+- **Cache storage**: In-memory only (no disk cache)
+
+## Security Considerations
+
+### Input Validation
+
+- **Schema validation**: Config must pass JSON Schema validation before loading
+- **Regex safety**: Regex patterns timeout after 100ms (prevent ReDoS)
+- **File size limit**: Config files >10KB rejected
+
+### Allowed Properties
+
+- Only properties defined in this schema are allowed
+- `additionalProperties: false` enforced
+- Unknown properties cause validation failure
+
+## Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0.0 | 2025-11-02 | Initial schema definition |
