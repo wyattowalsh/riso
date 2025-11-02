@@ -1,0 +1,29 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Rate limiting module disabled for this render.
+
+Enable via `rate_limiting_enabled=true` with `api_tracks=python`.
+"""
+{%- else %}
+"""Rate limiting module for FastAPI applications.
+
+Provides comprehensive rate limiting with:
+- Token bucket and sliding window algorithms
+- IP-based and JWT-based client identification
+- Redis backend for distributed rate limiting
+- Prometheus metrics and structured logging
+- Configurable exemptions and progressive penalties
+"""
+
+from __future__ import annotations
+
+from .config import RateLimitConfig, load_config
+from .middleware import RateLimitMiddleware
+from .exceptions import RateLimitExceeded
+
+__all__ = [
+    "RateLimitConfig",
+    "load_config",
+    "RateLimitMiddleware",
+    "RateLimitExceeded",
+]
+{%- endif %}

@@ -1,0 +1,212 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Rate limit config tests disabled."""
+{%- else %}
+"""Unit tests for rate limiting configuration."""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+import pytest
+from pydantic import ValidationError
+
+from {{ package_name }}.api.rate_limit.config import (
+    ClientIdentificationConfig,
+    EndpointConfig,
+    ProgressivePenaltyConfig,
+    RateLimitConfig,
+    RedisConfig,
+    TierConfig,
+    load_config,
+)
+
+
+class TestRateLimitConfig:
+    """Test RateLimitConfig model."""
+
+    def test_default_config(self):
+        """Test default configuration values."""
+        config = RateLimitConfig()
+
+        assert config.enabled is True
+        assert config.default_limit == 100
+        assert config.default_window == 60
+        assert config.algorithm == "token_bucket"
+        assert config.failure_mode == "fail_open"
+
+    def test_custom_config(self):
+        """Test configuration with custom values."""
+        config = RateLimitConfig(
+            enabled=False,
+            default_limit=200,
+            default_window=120,
+            algorithm="sliding_window",
+            failure_mode="fail_closed",
+        )
+
+        assert config.enabled is False
+        assert config.default_limit == 200
+        assert config.default_window == 120
+        assert config.algorithm == "sliding_window"
+        assert config.failure_mode == "fail_closed"
+
+    def test_negative_limit_rejected(self):
+        """Test that negative limits are rejected."""
+        with pytest.raises(ValidationError):
+            RateLimitConfig(default_limit=-1)
+
+    def test_zero_limit_allowed(self):
+        """Test that zero limit is allowed (maintenance mode)."""
+        config = RateLimitConfig(default_limit=0)
+        assert config.default_limit == 0
+
+    def test_invalid_window_rejected(self):
+        """Test that invalid windows are rejected."""
+        with pytest.raises(ValidationError):
+            RateLimitConfig(default_window=0)
+
+    def test_invalid_algorithm_rejected(self):
+        """Test that invalid algorithms are rejected."""
+        with pytest.raises(ValidationError):
+            RateLimitConfig(algorithm="invalid")
+
+
+class TestRedisConfig:
+    """Test RedisConfig model."""
+
+    def test_default_redis_config(self):
+        """Test default Redis configuration."""
+        config = RedisConfig()
+
+        assert config.url == "redis://localhost:6379/0"
+        assert config.topology == "single"
+        assert config.pool_size == 20
+        assert config.socket_timeout == 5.0
+
+    def test_sentinel_config_required(self):
+        """Test that Sentinel config is required when topology is sentinel."""
+        with pytest.raises(ValidationError):
+            RedisConfig(topology="sentinel", sentinel=None)
+
+
+class TestProgressivePenaltyConfig:
+    """Test ProgressivePenaltyConfig model."""
+
+    def test_default_disabled(self):
+        """Test that progressive penalties are disabled by default."""
+        config = ProgressivePenaltyConfig()
+        assert config.enabled is False
+
+    def test_multipliers_must_be_positive(self):
+        """Test that penalty multipliers must be positive."""
+        with pytest.raises(ValidationError):
+            ProgressivePenaltyConfig(penalty_multipliers=[1, -2, 4])
+
+    def test_multipliers_must_be_ascending(self):
+        """Test that penalty multipliers must be in ascending order."""
+        with pytest.raises(ValidationError):
+            ProgressivePenaltyConfig(penalty_multipliers=[1, 4, 2])
+
+
+class TestLoadConfig:
+    """Test load_config function."""
+
+    def test_load_default_config(self):
+        """Test loading default configuration when no file exists."""
+        config = load_config()
+        assert config.enabled is True
+        assert config.default_limit == 100
+
+    def test_load_from_toml_file(self):
+        """Test loading configuration from TOML file."""
+        with TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.toml"
+            config_path.write_text(
+                """
+[rate_limiting]
+enabled = false
+default_limit = 200
+default_window = 120
+algorithm = "sliding_window"
+"""
+            )
+
+            config = load_config(config_path)
+            assert config.enabled is False
+            assert config.default_limit == 200
+            assert config.default_window == 120
+            assert config.algorithm == "sliding_window"
+
+    def test_env_var_overrides_toml(self):
+        """Test that environment variables override TOML config."""
+        with TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config.toml"
+            config_path.write_text(
+                """
+[rate_limiting]
+default_limit = 100
+"""
+            )
+
+            os.environ["RATE_LIMIT_DEFAULT_LIMIT"] = "500"
+            try:
+                config = load_config(config_path)
+                assert config.default_limit == 500
+            finally:
+                del os.environ["RATE_LIMIT_DEFAULT_LIMIT"]
+
+    def test_redis_url_env_override(self):
+        """Test REDIS_URL environment variable override."""
+        os.environ["REDIS_URL"] = "redis://custom:6379/1"
+        try:
+            config = load_config()
+            assert config.redis.url == "redis://custom:6379/1"
+        finally:
+            del os.environ["REDIS_URL"]
+
+
+class TestEndpointConfig:
+    """Test EndpointConfig model."""
+
+    def test_valid_endpoint_config(self):
+        """Test valid endpoint configuration."""
+        config = EndpointConfig(
+            pattern="/api/v1/search",
+            limit=20,
+            window=60,
+        )
+        assert config.pattern == "/api/v1/search"
+        assert config.limit == 20
+        assert config.window == 60
+
+
+class TestTierConfig:
+    """Test TierConfig model."""
+
+    def test_valid_tier_config(self):
+        """Test valid tier configuration."""
+        config = TierConfig(
+            name="premium",
+            limit=5000,
+            window=60,
+        )
+        assert config.name == "premium"
+        assert config.limit == 5000
+        assert config.window == 60
+
+
+class TestClientIdentificationConfig:
+    """Test ClientIdentificationConfig model."""
+
+    def test_default_trusted_proxy_depth(self):
+        """Test default trusted proxy depth is 1."""
+        config = ClientIdentificationConfig()
+        assert config.trusted_proxy_depth == 1
+
+    def test_negative_proxy_depth_rejected(self):
+        """Test that negative proxy depth is rejected."""
+        with pytest.raises(ValidationError):
+            ClientIdentificationConfig(trusted_proxy_depth=-1)
+{%- endif %}

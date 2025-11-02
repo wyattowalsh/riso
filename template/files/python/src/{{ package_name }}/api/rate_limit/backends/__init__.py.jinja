@@ -1,0 +1,22 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Rate limiting backends disabled."""
+{%- else %}
+"""Rate limiting backend implementations.
+
+Provides storage backends for rate limit counters:
+- RedisBackend: Production-ready distributed backend with Sentinel support
+- MemoryBackend: Testing/development backend (not distributed)
+"""
+
+from __future__ import annotations
+
+from .base import RateLimitBackend
+from .redis import RedisBackend
+from .memory import MemoryBackend
+
+__all__ = [
+    "RateLimitBackend",
+    "RedisBackend",
+    "MemoryBackend",
+]
+{%- endif %}

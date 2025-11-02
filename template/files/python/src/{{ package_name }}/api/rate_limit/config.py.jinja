@@ -1,0 +1,409 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Rate limiting configuration disabled."""
+{%- else %}
+"""Configuration models for rate limiting.
+
+Supports:
+- TOML configuration files
+- Environment variable overrides
+- Per-endpoint and tier-based limits
+- Redis connection configuration
+- Progressive penalties
+- Exemption lists
+"""
+
+from __future__ import annotations
+
+import os
+import tomllib
+from pathlib import Path
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+
+class ClientIdentificationConfig(BaseModel):
+    """Configuration for client IP identification from proxy headers."""
+
+    trusted_proxy_depth: Annotated[
+        int,
+        Field(
+            default=1,
+            ge=0,
+            description="Number of proxy hops to trust in X-Forwarded-For header. "
+            "0 = use direct connection IP, 1 = trust single load balancer, "
+            "2+ = CDN + load balancer chain.",
+        ),
+    ]
+
+
+class ProgressivePenaltyConfig(BaseModel):
+    """Configuration for progressive rate limit penalties."""
+
+    enabled: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Enable progressive penalties for repeat violators. "
+            "MUST be explicitly enabled; disabled by default.",
+        ),
+    ]
+
+    detection_window: Annotated[
+        int,
+        Field(
+            default=3600,
+            ge=60,
+            description="Time window (seconds) for tracking violations.",
+        ),
+    ]
+
+    violation_threshold: Annotated[
+        int,
+        Field(
+            default=3,
+            ge=2,
+            description="Number of violations before penalties apply.",
+        ),
+    ]
+
+    penalty_multipliers: Annotated[
+        list[int],
+        Field(
+            default=[1, 2, 4, 8],
+            min_length=1,
+            description="Cooldown period multipliers for successive violations.",
+        ),
+    ]
+
+    @field_validator("penalty_multipliers")
+    @classmethod
+    def validate_multipliers(cls, v: list[int]) -> list[int]:
+        """Ensure multipliers are positive and increasing."""
+        if not all(m > 0 for m in v):
+            raise ValueError("All penalty multipliers must be positive integers")
+        if v != sorted(v):
+            raise ValueError("Penalty multipliers must be in ascending order")
+        return v
+
+
+class RedisSentinelNodeConfig(BaseModel):
+    """Configuration for a single Redis Sentinel node."""
+
+    host: Annotated[str, Field(description="Sentinel node hostname or IP address")]
+    port: Annotated[int, Field(default=26379, ge=1, le=65535, description="Sentinel port")]
+
+
+class RedisSentinelConfig(BaseModel):
+    """Configuration for Redis Sentinel topology."""
+
+    service_name: Annotated[
+        str,
+        Field(
+            default="mymaster",
+            description="Sentinel service name for master discovery",
+        ),
+    ]
+
+    sentinels: Annotated[
+        list[RedisSentinelNodeConfig],
+        Field(
+            min_length=1,
+            description="List of Sentinel nodes (recommended: 3 for quorum)",
+        ),
+    ]
+
+
+class RedisConfig(BaseModel):
+    """Configuration for Redis backend."""
+
+    url: Annotated[
+        str,
+        Field(
+            default="redis://localhost:6379/0",
+            description="Redis connection URL (redis://host:port/db)",
+        ),
+    ]
+
+    topology: Annotated[
+        Literal["single", "sentinel", "cluster"],
+        Field(
+            default="single",
+            description="Redis topology: single (dev/test), sentinel (production HA), "
+            "cluster (high throughput sharding)",
+        ),
+    ]
+
+    pool_size: Annotated[
+        int,
+        Field(
+            default=20,
+            ge=1,
+            le=1000,
+            description="Connection pool size (recommended: 2x worker threads)",
+        ),
+    ]
+
+    socket_timeout: Annotated[
+        float,
+        Field(
+            default=5.0,
+            ge=0.1,
+            le=30.0,
+            description="Socket timeout in seconds",
+        ),
+    ]
+
+    circuit_breaker_threshold: Annotated[
+        int,
+        Field(
+            default=3,
+            ge=1,
+            description="Consecutive failures before opening circuit breaker",
+        ),
+    ]
+
+    circuit_breaker_timeout: Annotated[
+        int,
+        Field(
+            default=30,
+            ge=5,
+            description="Seconds before attempting half-open state",
+        ),
+    ]
+
+    sentinel: RedisSentinelConfig | None = Field(
+        default=None,
+        description="Sentinel configuration (required when topology=sentinel)",
+    )
+
+    @model_validator(mode="after")
+    def validate_sentinel_config(self) -> RedisSentinelConfig:
+        """Ensure Sentinel config provided when topology is sentinel."""
+        if self.topology == "sentinel" and self.sentinel is None:
+            raise ValueError("sentinel configuration required when topology=sentinel")
+        return self
+
+
+class EndpointConfig(BaseModel):
+    """Configuration for per-endpoint rate limits."""
+
+    pattern: Annotated[
+        str,
+        Field(
+            description="Endpoint pattern (supports wildcards: /api/v1/admin/*)",
+        ),
+    ]
+
+    limit: Annotated[
+        int,
+        Field(
+            ge=0,
+            description="Maximum requests per window (0 = maintenance mode, reject all)",
+        ),
+    ]
+
+    window: Annotated[
+        int,
+        Field(
+            ge=1,
+            description="Time window in seconds",
+        ),
+    ]
+
+
+class TierConfig(BaseModel):
+    """Configuration for user tier-based rate limits."""
+
+    name: Annotated[
+        str,
+        Field(
+            description="Tier name (matches JWT 'tier' claim: anonymous, standard, premium)",
+        ),
+    ]
+
+    limit: Annotated[
+        int,
+        Field(
+            ge=0,
+            description="Maximum requests per window for this tier",
+        ),
+    ]
+
+    window: Annotated[
+        int,
+        Field(
+            ge=1,
+            description="Time window in seconds",
+        ),
+    ]
+
+
+class ExemptionConfig(BaseModel):
+    """Configuration for rate limit exemptions."""
+
+    type: Annotated[
+        Literal["ip", "user_id", "endpoint"],
+        Field(
+            description="Type of exemption: ip (IPv4/IPv6/CIDR), user_id (JWT claim), "
+            "endpoint (path pattern)",
+        ),
+    ]
+
+    value: Annotated[
+        str,
+        Field(
+            description="Exemption value: IP address/CIDR, user ID, or endpoint pattern",
+        ),
+    ]
+
+
+class RateLimitConfig(BaseModel):
+    """Main rate limiting configuration."""
+
+    enabled: Annotated[
+        bool,
+        Field(
+            default=True,
+            description="Master switch for rate limiting. Disable to bypass all checks.",
+        ),
+    ]
+
+    default_limit: Annotated[
+        int,
+        Field(
+            default=100,
+            ge=0,
+            description="Default requests per window for endpoints without explicit config",
+        ),
+    ]
+
+    default_window: Annotated[
+        int,
+        Field(
+            default=60,
+            ge=1,
+            description="Default time window in seconds",
+        ),
+    ]
+
+    algorithm: Annotated[
+        Literal["token_bucket", "sliding_window"],
+        Field(
+            default="token_bucket",
+            description="Rate limiting algorithm: token_bucket (allows bursts, simpler) or "
+            "sliding_window (stricter accuracy, higher Redis overhead)",
+        ),
+    ]
+
+    failure_mode: Annotated[
+        Literal["fail_open", "fail_closed"],
+        Field(
+            default="fail_open",
+            description="Behavior when Redis is unavailable: fail_open (allow requests) or "
+            "fail_closed (reject with 503)",
+        ),
+    ]
+
+    client_identification: ClientIdentificationConfig = Field(
+        default_factory=ClientIdentificationConfig
+    )
+
+    progressive_penalties: ProgressivePenaltyConfig = Field(
+        default_factory=ProgressivePenaltyConfig
+    )
+
+    redis: RedisConfig = Field(default_factory=RedisConfig)
+
+    endpoints: list[EndpointConfig] = Field(
+        default_factory=list,
+        description="Per-endpoint rate limit configurations",
+    )
+
+    tiers: list[TierConfig] = Field(
+        default_factory=list,
+        description="Tier-based rate limit configurations",
+    )
+
+    exemptions: list[ExemptionConfig] = Field(
+        default_factory=list,
+        description="Clients/endpoints exempt from rate limiting",
+    )
+
+
+def load_config(config_path: str | Path | None = None) -> RateLimitConfig:
+    """Load rate limit configuration from TOML file with environment variable overrides.
+
+    Args:
+        config_path: Path to config.toml file. If None, looks for:
+                    1. RATE_LIMIT_CONFIG_PATH env var
+                    2. ./config.toml
+                    3. Uses defaults if no file found
+
+    Returns:
+        Validated RateLimitConfig instance
+
+    Raises:
+        ValueError: If configuration is invalid
+        FileNotFoundError: If specified config_path doesn't exist
+
+    Environment Variable Overrides (highest priority):
+        RATE_LIMIT_ENABLED: Override enabled flag (true/false)
+        RATE_LIMIT_DEFAULT_LIMIT: Override default limit (integer)
+        RATE_LIMIT_DEFAULT_WINDOW: Override default window (integer)
+        RATE_LIMIT_ALGORITHM: Override algorithm (token_bucket/sliding_window)
+        RATE_LIMIT_FAILURE_MODE: Override failure mode (fail_open/fail_closed)
+        REDIS_URL: Override Redis connection URL
+        RATE_LIMIT_TRUSTED_PROXY_DEPTH: Override trusted proxy depth (integer)
+    """
+    # Determine config file path
+    if config_path is None:
+        env_path = os.environ.get("RATE_LIMIT_CONFIG_PATH")
+        if env_path:
+            config_path = Path(env_path)
+        else:
+            config_path = Path("config.toml")
+
+    config_path = Path(config_path)
+
+    # Load from TOML if file exists
+    config_dict: dict = {}
+    if config_path.exists():
+        with open(config_path, "rb") as f:
+            toml_data = tomllib.load(f)
+            config_dict = toml_data.get("rate_limiting", {})
+
+    # Apply environment variable overrides
+    env_overrides = {}
+
+    if enabled := os.environ.get("RATE_LIMIT_ENABLED"):
+        env_overrides["enabled"] = enabled.lower() in ("true", "1", "yes")
+
+    if limit := os.environ.get("RATE_LIMIT_DEFAULT_LIMIT"):
+        env_overrides["default_limit"] = int(limit)
+
+    if window := os.environ.get("RATE_LIMIT_DEFAULT_WINDOW"):
+        env_overrides["default_window"] = int(window)
+
+    if algorithm := os.environ.get("RATE_LIMIT_ALGORITHM"):
+        env_overrides["algorithm"] = algorithm
+
+    if failure_mode := os.environ.get("RATE_LIMIT_FAILURE_MODE"):
+        env_overrides["failure_mode"] = failure_mode
+
+    if redis_url := os.environ.get("REDIS_URL"):
+        if "redis" not in config_dict:
+            config_dict["redis"] = {}
+        config_dict["redis"]["url"] = redis_url
+
+    if proxy_depth := os.environ.get("RATE_LIMIT_TRUSTED_PROXY_DEPTH"):
+        if "client_identification" not in config_dict:
+            config_dict["client_identification"] = {}
+        config_dict["client_identification"]["trusted_proxy_depth"] = int(proxy_depth)
+
+    # Merge environment overrides (highest priority)
+    config_dict.update(env_overrides)
+
+    # Validate and return
+    return RateLimitConfig(**config_dict)
+{%- endif %}

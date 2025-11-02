@@ -1,0 +1,233 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Client identification disabled."""
+{%- else %}
+"""Client identification for rate limiting.
+
+Extracts client identity from:
+- IP addresses (IPv4/IPv6) with X-Forwarded-For support
+- JWT tokens (user_id and tier claims)
+"""
+
+from __future__ import annotations
+
+import ipaddress
+from dataclasses import dataclass
+from typing import Literal
+
+import jwt
+from fastapi import Request  # type: ignore[import-not-found]
+from loguru import logger  # type: ignore[import-untyped]
+
+
+@dataclass
+class ClientIdentity:
+    """Client identity for rate limiting."""
+
+    client_id: str
+    """Unique identifier for the client (IP address or user_id)."""
+
+    client_type: Literal["ip", "user"]
+    """Type of client identification used."""
+
+    tier: str | None = None
+    """User tier from JWT (e.g., 'anonymous', 'standard', 'premium')."""
+
+    metadata: dict[str, str] | None = None
+    """Additional metadata about the client."""
+
+
+def normalize_ip(ip_str: str) -> str:
+    """Normalize IP address to canonical form.
+
+    Handles:
+    - IPv4: No change needed (already canonical)
+    - IPv6: Compress to shortest form (2001:db8::1)
+
+    Args:
+        ip_str: IP address string
+
+    Returns:
+        Normalized IP address string
+
+    Raises:
+        ValueError: If IP address is invalid
+    """
+    try:
+        ip_obj = ipaddress.ip_address(ip_str)
+        return ip_obj.compressed
+    except ValueError as e:
+        raise ValueError(f"Invalid IP address: {ip_str}") from e
+
+
+def get_client_ip(request: Request, trusted_proxy_depth: int = 1) -> str:
+    """Extract client IP address using rightmost untrusted IP strategy.
+
+    Handles X-Forwarded-For header with configurable trust depth:
+    - trusted_proxy_depth=0: Use direct connection IP (no proxies trusted)
+    - trusted_proxy_depth=1: Trust single load balancer (most common)
+    - trusted_proxy_depth=2+: Trust CDN + load balancer chain
+
+    Strategy: Trust only the IP added by the last known proxy (rightmost untrusted).
+    This prevents IP spoofing where client sets X-Forwarded-For header.
+
+    Args:
+        request: FastAPI request object
+        trusted_proxy_depth: Number of proxy hops to trust
+
+    Returns:
+        Normalized client IP address
+
+    Examples:
+        X-Forwarded-For: "203.0.113.1, 198.51.100.1, 192.0.2.1"
+        trusted_proxy_depth=1 ? returns "198.51.100.1" (last untrusted)
+        trusted_proxy_depth=2 ? returns "203.0.113.1" (original client)
+    """
+    # If no proxies trusted, use direct connection
+    if trusted_proxy_depth == 0:
+        client_host = request.client.host if request.client else "127.0.0.1"
+        return normalize_ip(client_host)
+
+    # Parse X-Forwarded-For header
+    forwarded_for = request.headers.get("X-Forwarded-For")
+
+    if not forwarded_for:
+        # No proxy header, use direct connection
+        client_host = request.client.host if request.client else "127.0.0.1"
+        return normalize_ip(client_host)
+
+    # Parse IP chain (rightmost is most recent proxy)
+    ip_chain = [ip.strip() for ip in forwarded_for.split(",")]
+
+    # Validate and clean IP addresses
+    valid_ips = []
+    for ip_str in ip_chain:
+        try:
+            normalize_ip(ip_str)  # Validate
+            valid_ips.append(ip_str)
+        except ValueError:
+            logger.warning(f"Invalid IP in X-Forwarded-For: {ip_str}")
+
+    if not valid_ips:
+        # Fallback to direct connection if all IPs invalid
+        client_host = request.client.host if request.client else "127.0.0.1"
+        return normalize_ip(client_host)
+
+    # Select rightmost untrusted IP
+    # Index from right: -1 is most recent proxy, -2 is one before, etc.
+    untrusted_index = -(trusted_proxy_depth + 1)
+
+    if abs(untrusted_index) > len(valid_ips):
+        # Not enough IPs in chain, use leftmost (original client)
+        return normalize_ip(valid_ips[0])
+
+    return normalize_ip(valid_ips[untrusted_index])
+
+
+def extract_user_from_jwt(
+    request: Request,
+    *,
+    verify: bool = False,
+    secret_key: str | None = None,
+) -> tuple[str | None, str | None]:
+    """Extract user_id and tier from JWT token.
+
+    Looks for JWT in:
+    1. Authorization: Bearer <token> header
+    2. X-API-Key header (for API key-based auth)
+
+    Args:
+        request: FastAPI request object
+        verify: Whether to verify JWT signature (requires secret_key)
+        secret_key: JWT secret key for verification
+
+    Returns:
+        Tuple of (user_id, tier) or (None, None) if not authenticated
+
+    Note:
+        If JWT is present but missing claims, logs warning and returns None.
+        This allows fallback to IP-based rate limiting.
+    """
+    # Extract token from Authorization header
+    auth_header = request.headers.get("Authorization")
+    token = None
+
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header[7:]  # Remove "Bearer " prefix
+    elif api_key := request.headers.get("X-API-Key"):
+        token = api_key
+
+    if not token:
+        return None, None
+
+    try:
+        # Decode JWT (with or without verification)
+        if verify and secret_key:
+            payload = jwt.decode(token, secret_key, algorithms=["HS256", "RS256"])
+        else:
+            # Decode without verification (for rate limiting only)
+            payload = jwt.decode(token, options={"verify_signature": False})
+
+        user_id = payload.get("user_id") or payload.get("sub")
+        tier = payload.get("tier")
+
+        if not user_id:
+            logger.warning("JWT token present but missing user_id/sub claim")
+            return None, None
+
+        return str(user_id), tier
+
+    except jwt.InvalidTokenError as e:
+        logger.warning(f"Invalid JWT token: {e}")
+        return None, None
+
+
+def get_client_identity(
+    request: Request,
+    trusted_proxy_depth: int = 1,
+    jwt_secret_key: str | None = None,
+) -> ClientIdentity:
+    """Get comprehensive client identity for rate limiting.
+
+    Priority:
+    1. JWT user_id (if present and valid) ? user-based rate limiting
+    2. IP address (fallback) ? IP-based rate limiting
+
+    Args:
+        request: FastAPI request object
+        trusted_proxy_depth: Number of proxy hops to trust for IP extraction
+        jwt_secret_key: Optional JWT secret for signature verification
+
+    Returns:
+        ClientIdentity with client_id, type, tier, and metadata
+    """
+    # Try to extract user from JWT
+    user_id, tier = extract_user_from_jwt(
+        request,
+        verify=False,  # For rate limiting, don't verify signature
+        secret_key=jwt_secret_key,
+    )
+
+    if user_id:
+        # User-based rate limiting (higher priority)
+        return ClientIdentity(
+            client_id=user_id,
+            client_type="user",
+            tier=tier or "anonymous",
+            metadata={
+                "user_id": user_id,
+                "tier": tier or "anonymous",
+            },
+        )
+
+    # Fallback to IP-based rate limiting
+    client_ip = get_client_ip(request, trusted_proxy_depth)
+
+    return ClientIdentity(
+        client_id=client_ip,
+        client_type="ip",
+        tier="anonymous",
+        metadata={
+            "ip": client_ip,
+        },
+    )
+{%- endif %}

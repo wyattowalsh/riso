@@ -20,6 +20,11 @@ dependencies = [
 [dependency-groups]
 test = [
   "pytest>=8.4.2",
+{%- if rate_limiting_enabled | default(false) %}
+  "pytest-asyncio>=0.21.0",
+  "fakeredis>=2.20.0",
+  "httpx>=0.25.0",
+{%- endif %}
 ]
 quality = [
   "ruff>=0.14.2",
@@ -44,6 +49,11 @@ cli = [
 api_python = [
   "fastapi>=0.120.2",
   "uvicorn[standard]>=0.38.0",
+{%- if rate_limiting_enabled | default(false) %}
+  "redis>=5.0.0",
+  "PyJWT>=2.8.0",
+  "prometheus-client>=0.16.0",
+{%- endif %}
 ]
 mcp = [
   "fastmcp>=2.13.0.2",

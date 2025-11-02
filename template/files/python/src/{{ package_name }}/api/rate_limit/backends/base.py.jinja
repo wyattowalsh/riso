@@ -1,0 +1,97 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Rate limiting backend base disabled."""
+{%- else %}
+"""Abstract base class for rate limiting backends."""
+
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from typing import Any
+
+
+class RateLimitBackend(ABC):
+    """Abstract interface for rate limit counter storage."""
+
+    @abstractmethod
+    async def increment(
+        self,
+        key: str,
+        window: int,
+        amount: int = 1,
+    ) -> tuple[int, int]:
+        """Atomically increment counter and return current count and TTL.
+
+        Args:
+            key: Rate limit key (e.g., "ratelimit:ip:192.0.2.1:/api/v1/search")
+            window: Time window in seconds
+            amount: Amount to increment (default: 1)
+
+        Returns:
+            Tuple of (current_count, ttl_seconds)
+            - current_count: Total requests in current window
+            - ttl_seconds: Seconds until window resets
+
+        Raises:
+            BackendError: If backend operation fails
+        """
+        ...
+
+    @abstractmethod
+    async def get_count(self, key: str) -> tuple[int, int]:
+        """Get current count and TTL for a rate limit key.
+
+        Args:
+            key: Rate limit key
+
+        Returns:
+            Tuple of (current_count, ttl_seconds)
+            Returns (0, 0) if key doesn't exist
+
+        Raises:
+            BackendError: If backend operation fails
+        """
+        ...
+
+    @abstractmethod
+    async def reset(self, key: str) -> None:
+        """Reset rate limit counter for a key.
+
+        Args:
+            key: Rate limit key to reset
+
+        Raises:
+            BackendError: If backend operation fails
+        """
+        ...
+
+    @abstractmethod
+    async def health_check(self) -> dict[str, Any]:
+        """Check backend health and return status information.
+
+        Returns:
+            Dictionary with health status:
+            - "status": "healthy" | "degraded" | "unhealthy"
+            - "latency_ms": Round-trip latency in milliseconds
+            - "details": Additional backend-specific information
+        """
+        ...
+
+    @abstractmethod
+    async def close(self) -> None:
+        """Close backend connections and cleanup resources."""
+        ...
+
+
+class BackendError(Exception):
+    """Raised when backend operation fails."""
+
+    def __init__(self, message: str, *, original_error: Exception | None = None) -> None:
+        """Initialize backend error.
+
+        Args:
+            message: Error description
+            original_error: Original exception that caused the error
+        """
+        super().__init__(message)
+        self.original_error = original_error
+{%- endif %}
