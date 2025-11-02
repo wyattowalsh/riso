@@ -26,9 +26,48 @@ definition so environments without `make` stay aligned.
 
 - Enable `cli_module=enabled` to scaffold a Typer CLI with Vitest smoke tests.
 - Enable `api_tracks=python` or `api_tracks=node` for FastAPI or Fastify services.
+{%- if rate_limiting_enabled | default(false) %}
+- Enable `rate_limiting_enabled=true` for comprehensive API rate limiting with Redis backend.
+{%- endif %}
 - Enable `mcp_module=enabled` for FastMCP tooling.
 
 Refer to `docs/modules/prompt-reference.md` for compatibility details.
+
+{%- if rate_limiting_enabled | default(false) %}
+
+## Rate Limiting Quickstart
+
+Your project includes production-ready rate limiting with Redis backend:
+
+```bash
+# Start Redis
+docker-compose up -d redis
+
+# Configure rate limits (optional - defaults to 100 req/min)
+cp config.toml.example config.toml
+# Edit config.toml to customize rate limits
+
+# Test rate limiting
+uv run uvicorn {{ package_name }}.api.main:app --reload
+
+# Make requests to see rate limiting in action
+for i in {1..105}; do curl -i http://localhost:8000/test; done
+# You should see HTTP 429 after 100 requests
+
+# View Prometheus metrics
+curl http://localhost:8000/metrics | grep rate_limit
+```
+
+**Rate limiting features:**
+- Token bucket & sliding window algorithms
+- IP-based and JWT-based identification  
+- Per-endpoint and tier-based limits
+- Redis Sentinel support for high availability
+- Prometheus metrics and structured logging
+- Standard X-RateLimit-* headers
+
+See `docs/modules/rate-limiting.md` for complete documentation.
+{%- endif %}
 
 {% if api_tracks | lower in ['python', 'node', 'python+node'] or docs_site | lower == 'fumadocs' %}
 ## Container Quickstart
