@@ -100,6 +100,111 @@ def _load_ci_platform(default: str = "github-actions") -> str:
     return default
 
 
+def _load_copier_context() -> dict:
+    """Load full copier context for validation."""
+    candidates = (
+        "COPIER_ANSWERS",
+        "COPIER_JINJA2_CONTEXT",
+        "COPIER_RENDER_CONTEXT",
+    )
+    for key in candidates:
+        raw = os.environ.get(key)
+        if not raw:
+            continue
+        try:
+            data = json.loads(raw)
+            if isinstance(data, dict):
+                return data
+        except json.JSONDecodeError:
+            continue
+    return {}
+
+
+def _validate_saas_starter(context: dict) -> list[dict]:
+    """Validate SaaS Starter module configuration."""
+    if context.get("saas_starter_module") != "enabled":
+        return []
+    
+    issues = []
+    
+    # Error-level incompatibilities (blocking)
+    error_incompatibilities = [
+        {
+            "combination": ["neon", "supabase-storage"],
+            "message": (
+                "Cannot use Neon database with Supabase Storage. "
+                "Choose either:\n"
+                "  1. Full Supabase (database + storage)\n"
+                "  2. Neon database + Cloudflare R2 storage"
+            ),
+        },
+    ]
+    
+    # Warning-level incompatibilities (non-blocking)
+    warning_incompatibilities = [
+        {
+            "combination": ["cloudflare", "prisma"],
+            "message": (
+                "⚠️  Prisma requires TCP connections, which Cloudflare Workers don't support.\n"
+                "You'll need to use Prisma Data Proxy (adds latency and cost).\n"
+                "Recommendation: Use Drizzle ORM for better edge compatibility."
+            ),
+        },
+        {
+            "combination": ["vercel", "r2"],
+            "message": (
+                "⚠️  Cloudflare R2 works with Vercel but egress bandwidth charges apply."
+            ),
+        },
+    ]
+    
+    # Info-level notices
+    info_notices = [
+        {
+            "combination": ["supabase", "clerk"],
+            "message": (
+                "ℹ️  You've selected both Supabase and Clerk.\n"
+                "Supabase Auth will be disabled in favor of Clerk."
+            ),
+        },
+    ]
+    
+    # Extract selected values
+    selected_values = [
+        context.get(f"saas_{key}") for key in
+        ["runtime", "hosting", "database", "orm", "auth", "storage", "cicd"]
+    ]
+    
+    # Check error-level incompatibilities
+    for rule in error_incompatibilities:
+        combo = rule["combination"]
+        if all(item in selected_values for item in combo):
+            issues.append({
+                "severity": "error",
+                "message": rule["message"],
+            })
+    
+    # Check warning-level incompatibilities
+    for rule in warning_incompatibilities:
+        combo = rule["combination"]
+        if all(item in selected_values for item in combo):
+            issues.append({
+                "severity": "warning",
+                "message": rule["message"],
+            })
+    
+    # Check info-level notices
+    for rule in info_notices:
+        combo = rule["combination"]
+        if all(item in selected_values for item in combo):
+            issues.append({
+                "severity": "info",
+                "message": rule["message"],
+            })
+    
+    return issues
+
+
 def _log_attempt(entry: ProvisionResult) -> None:
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with LOG_PATH.open("a", encoding="utf-8") as fh:
@@ -153,12 +258,42 @@ def _attempt_install(tool: str, version: str, mise_spec: str | None) -> Provisio
 def main() -> None:
     docs_site = _load_docs_site()
     ci_platform = _load_ci_platform()
+    context = _load_copier_context()
+
+    # Validate SaaS Starter configuration if enabled
+    if context.get("saas_starter_module") == "enabled":
+        sys.stderr.write("\n🔍 Validating SaaS Starter configuration...\n")
+        issues = _validate_saas_starter(context)
+        
+        # Report errors (blocking)
+        errors = [i for i in issues if i["severity"] == "error"]
+        if errors:
+            sys.stderr.write("\n❌ Configuration errors found:\n\n")
+            for error in errors:
+                sys.stderr.write(f"  {error['message']}\n\n")
+            sys.exit(1)
+        
+        # Report warnings (non-blocking)
+        warnings = [i for i in issues if i["severity"] == "warning"]
+        if warnings:
+            sys.stderr.write("\n⚠️  Configuration warnings:\n\n")
+            for warning in warnings:
+                sys.stderr.write(f"  {warning['message']}\n\n")
+        
+        # Report info notices
+        infos = [i for i in issues if i["severity"] == "info"]
+        if infos:
+            sys.stderr.write("\nℹ️  Configuration notes:\n\n")
+            for info in infos:
+                sys.stderr.write(f"  {info['message']}\n\n")
+        
+        sys.stderr.write("✅ SaaS Starter configuration validated successfully!\n\n")
 
     tool_matrix: list[tuple[str, str, str | None]] = [
         ("uv", "0.4", "uv@0.4"),
     ]
 
-    if docs_site != "none":
+    if docs_site != "none" or context.get("saas_starter_module") == "enabled":
         tool_matrix.extend(
             [
                 ("node", "20", "node@20"),

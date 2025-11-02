@@ -1,0 +1,159 @@
+{% if saas_starter_module == "enabled" %}
+/**
+ * Unified Billing Service
+ * 
+ * Provides a consistent interface for billing operations
+ * regardless of whether Stripe or Paddle is used.
+ * 
+ * This abstraction makes it easier to:
+ * - Switch billing providers
+ * - Mock billing in tests
+ * - Add business logic around billing
+ */
+
+{% if saas_billing == "stripe" %}
+import * as stripe from './stripe/client';
+{% elif saas_billing == "paddle" %}
+import * as paddle from './paddle/client';
+{% endif %}
+
+// ============================================================================
+// Customer Operations
+// ============================================================================
+
+export async function createCustomer(params: {
+  email: string;
+  name?: string;
+  metadata?: Record<string, string>;
+}) {
+  {% if saas_billing == "stripe" %}
+  return await stripe.upsertCustomer(params);
+  {% elif saas_billing == "paddle" %}
+  return await paddle.createCustomer({
+    email: params.email,
+    name: params.name,
+    customData: params.metadata,
+  });
+  {% endif %}
+}
+
+// ============================================================================
+// Subscription Operations
+// ============================================================================
+
+export async function startSubscription(params: {
+  customerId?: string;
+  customerEmail?: string;
+  priceId: string;
+  successUrl: string;
+  cancelUrl: string;
+  trialDays?: number;
+}) {
+  {% if saas_billing == "stripe" %}
+  return await stripe.createCheckoutSession(params);
+  {% elif saas_billing == "paddle" %}
+  return await paddle.createCheckout({
+    priceId: params.priceId,
+    customerId: params.customerId,
+    customerEmail: params.customerEmail,
+    successUrl: params.successUrl,
+  });
+  {% endif %}
+}
+
+export async function cancelSubscription(
+  subscriptionId: string,
+  immediately = false
+) {
+  {% if saas_billing == "stripe" %}
+  return await stripe.cancelSubscription(subscriptionId, immediately);
+  {% elif saas_billing == "paddle" %}
+  return await paddle.cancelSubscription(subscriptionId, immediately);
+  {% endif %}
+}
+
+export async function updateSubscription(params: {
+  subscriptionId: string;
+  priceId?: string;
+  quantity?: number;
+}) {
+  {% if saas_billing == "stripe" %}
+  return await stripe.updateSubscription(params);
+  {% elif saas_billing == "paddle" %}
+  return await paddle.updateSubscription(params);
+  {% endif %}
+}
+
+// ============================================================================
+// Usage-Based Billing (Metering)
+// ============================================================================
+
+{% if saas_billing == "stripe" %}
+/**
+ * Report usage for metered billing
+ * Only available with Stripe
+ */
+export async function reportUsage(params: {
+  subscriptionItemId: string;
+  quantity: number;
+  timestamp?: number;
+}) {
+  return await stripe.reportUsage(params);
+}
+
+export async function getUsageRecords(subscriptionItemId: string) {
+  return await stripe.getUsageRecords(subscriptionItemId);
+}
+{% endif %}
+
+// ============================================================================
+// Customer Portal
+// ============================================================================
+
+export async function createPortalSession(params: {
+  customerId: string;
+  returnUrl: string;
+}) {
+  {% if saas_billing == "stripe" %}
+  return await stripe.createPortalSession(params);
+  {% elif saas_billing == "paddle" %}
+  // Paddle doesn't have a separate portal - use update payment method URL
+  const subscription = await paddle.getSubscription(params.customerId);
+  return { url: subscription.managementUrls?.updatePaymentMethod };
+  {% endif %}
+}
+
+// ============================================================================
+// Webhook Processing
+// ============================================================================
+
+export async function processWebhook(payload: string, signature: string) {
+  {% if saas_billing == "stripe" %}
+  return await stripe.processWebhook(payload, signature);
+  {% elif saas_billing == "paddle" %}
+  const isValid = await paddle.verifyWebhookSignature(payload, signature);
+  if (!isValid) {
+    throw new Error('Invalid webhook signature');
+  }
+  
+  const event = JSON.parse(payload);
+  // TODO: Implement Paddle webhook routing
+  return event;
+  {% endif %}
+}
+
+// ============================================================================
+// Type Exports
+// ============================================================================
+
+{% if saas_billing == "stripe" %}
+export type {
+  StripeCustomer,
+  StripeSubscription,
+  StripeInvoice,
+  StripePrice,
+} from './stripe/client';
+{% elif saas_billing == "paddle" %}
+export type { Paddle } from './paddle/client';
+{% endif %}
+{% endif %}

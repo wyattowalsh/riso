@@ -1,0 +1,102 @@
+{% if saas_starter_module == "enabled" %}
+# {{ project_name }} - Docker Compose Configuration
+# For local development and testing
+
+version: '3.9'
+
+services:
+  # ============================================================================
+  # Application
+  # ============================================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/{{ project_slug }}
+      {% if saas_auth == "clerk" %}
+      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      {% elif saas_auth == "authjs" %}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=http://localhost:3000
+      {% endif %}
+      {% if saas_billing == "stripe" %}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+      {% endif %}
+      {% if saas_observability_sentry %}
+      - NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN}
+      {% endif %}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      {% if saas_storage == "r2" or saas_storage == "supabase-storage" %}
+      # External storage - no dependency
+      {% endif %}
+    networks:
+      - {{ project_slug }}-network
+    restart: unless-stopped
+  
+  # ============================================================================
+  # PostgreSQL Database
+  # ============================================================================
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB={{ project_slug }}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - {{ project_slug }}-network
+    restart: unless-stopped
+  
+  {% if saas_observability_sentry or saas_observability_otel %}
+  # ============================================================================
+  # Observability Stack (Optional)
+  # ============================================================================
+  {% endif %}
+  
+  {% if saas_observability_otel %}
+  # OpenTelemetry Collector
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "8888:8888"   # Prometheus metrics
+    networks:
+      - {{ project_slug }}-network
+    restart: unless-stopped
+  {% endif %}
+
+# ============================================================================
+# Volumes
+# ============================================================================
+volumes:
+  postgres-data:
+    driver: local
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  {{ project_slug }}-network:
+    driver: bridge
+{% endif %}

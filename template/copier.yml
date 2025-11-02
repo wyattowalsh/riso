@@ -37,9 +37,31 @@ defaults:
   mcp_module: "disabled"
   websocket_module: "disabled"
   codegen_module: "disabled"
+  changelog_module: "disabled"
   docs_site: "fumadocs"
   shared_logic: "disabled"
   ci_platform: "github-actions"
+  saas_starter_module: "disabled"
+  saas_runtime: "nextjs-16"
+  saas_hosting: "vercel"
+  saas_database: "neon"
+  saas_orm: "prisma"
+  saas_auth: "clerk"
+  saas_enterprise_bridge: "none"
+  saas_billing: "stripe"
+  saas_jobs: "triggerdev"
+  saas_email: "resend"
+  saas_analytics: "posthog"
+  saas_ai: "openai"
+  saas_storage: "r2"
+  saas_cicd: "github-actions"
+  saas_observability_sentry: true
+  saas_observability_datadog: true
+  saas_observability_otel: true
+  saas_observability_structured_logging: true
+  saas_include_fixtures: true
+  saas_include_factories: true
+  saas_test_suite_level: "standard"
 
 prompts:
   project_name:
@@ -94,6 +116,9 @@ prompts:
   codegen_module:
     type: str
     help: "Enable code generation and scaffolding tools?"
+  changelog_module:
+    type: str
+    help: "Enable changelog generation and release management?"
     choices:
       - disabled
       - enabled
@@ -124,6 +149,227 @@ prompts:
     choices:
       - github-actions
       - none
+  
+  # ========================================
+  # SaaS Starter Module Prompts
+  # ========================================
+  saas_starter_module:
+    type: str
+    help: |
+      Enable SaaS Starter module? Generates production-ready SaaS application with
+      authentication, billing, database, background jobs, email, analytics, AI, storage,
+      observability, and deployment configuration. Choose your technology stack across
+      14 categories with binary choices (2 options per category).
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+  
+  saas_runtime:
+    type: str
+    help: |
+      Select runtime framework for your SaaS application:
+      - Next.js 16: React 19.2, App Router, Turbopack, largest ecosystem, Vercel-first
+      - Remix 2.x: Server-first routes, explicit data loading, good for complex forms
+    default: nextjs-16
+    choices:
+      - nextjs-16
+      - remix-2
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_hosting:
+    type: str
+    help: |
+      Select hosting platform:
+      - Vercel: Native Next.js support, edge functions, image optimization, preview deployments
+      - Cloudflare: Global edge network, Pages + Workers, lower egress costs, R2 storage
+    default: vercel
+    choices:
+      - vercel
+      - cloudflare
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_database:
+    type: str
+    help: |
+      Select database provider:
+      - Neon: Serverless Postgres, database branching, autoscale-to-zero, CI/PR databases
+      - Supabase: Postgres + Auth + Storage + Edge Functions, all-in-one BaaS platform
+    default: neon
+    choices:
+      - neon
+      - supabase
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_orm:
+    type: str
+    help: |
+      Select ORM for database access:
+      - Prisma: Best TypeScript ergonomics, schema DSL, Prisma Studio, migration workflow
+      - Drizzle: Lightweight, SQL-like syntax, edge-optimized, schema-as-code in TypeScript
+    default: prisma
+    choices:
+      - prisma
+      - drizzle
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_auth:
+    type: str
+    help: |
+      Select authentication provider:
+      - Clerk: Hosted auth, built-in UI components, organizations, passkeys, fastest setup
+      - Auth.js: Self-hosted, open-source, full control, OAuth providers, lower cost
+    default: clerk
+    choices:
+      - clerk
+      - authjs
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_enterprise_bridge:
+    type: str
+    help: |
+      Add enterprise authentication bridge (SSO, SCIM, Directory Sync)?
+      - WorkOS: Enterprise-ready SSO (Okta, Azure AD, Google Workspace), SCIM provisioning
+      - None: Skip enterprise features for now (pure PLG)
+    default: none
+    choices:
+      - workos
+      - none
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_billing:
+    type: str
+    help: |
+      Select billing provider:
+      - Stripe: Full control, usage metering, widest ecosystem, manual tax handling
+      - Paddle: Merchant of Record (MoR), automatic tax/VAT, simpler compliance, higher fees
+    default: stripe
+    choices:
+      - stripe
+      - paddle
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_jobs:
+    type: str
+    help: |
+      Select background job system:
+      - Trigger.dev: Task-centric, AI-optimized, kicked off from your app, built-in retries
+      - Inngest: Event-driven workflows, durable execution, complex orchestration, scheduling
+    default: triggerdev
+    choices:
+      - triggerdev
+      - inngest
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_email:
+    type: str
+    help: |
+      Select email provider:
+      - Resend: React Email templates, Vercel integration, modern DX, component-based
+      - Postmark: Industry-leading deliverability, mature service, template management UI
+    default: resend
+    choices:
+      - resend
+      - postmark
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_analytics:
+    type: str
+    help: |
+      Select analytics platform:
+      - PostHog: Product OS (analytics + feature flags + session replay), open-source option
+      - Amplitude: Enterprise product analytics, sophisticated cohorts, data warehouse integrations
+    default: posthog
+    choices:
+      - posthog
+      - amplitude
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_ai:
+    type: str
+    help: |
+      Select AI provider:
+      - OpenAI: GPT-4o/GPT-5, largest ecosystem, best for chat interfaces, function calling
+      - Anthropic: Claude 4.x, longer context windows (200k+), better for document analysis
+    default: openai
+    choices:
+      - openai
+      - anthropic
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_storage:
+    type: str
+    help: |
+      Select file storage provider:
+      - Cloudflare R2: S3-compatible, zero egress fees, global edge network
+      - Supabase Storage: Integrated with Supabase platform, RLS policies, image transformations
+    default: r2
+    choices:
+      - r2
+      - supabase-storage
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_cicd:
+    type: str
+    help: |
+      Select CI/CD platform:
+      - GitHub Actions: Native GitHub integration, marketplace actions, deploy to Vercel
+      - Cloudflare CI: Integrated with Cloudflare Pages/Workers, fast edge deployments
+    default: github-actions
+    choices:
+      - github-actions
+      - cloudflare-ci
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_observability_sentry:
+    type: bool
+    help: Enable Sentry for error tracking?
+    default: true
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_observability_datadog:
+    type: bool
+    help: Enable Datadog for APM (Application Performance Monitoring)?
+    default: true
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_observability_otel:
+    type: bool
+    help: Enable OpenTelemetry instrumentation for traces and metrics?
+    default: true
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_observability_structured_logging:
+    type: bool
+    help: Enable structured JSON logging with correlation IDs?
+    default: true
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_include_fixtures:
+    type: bool
+    help: |
+      Include seeded database fixtures with example users, organizations, and subscriptions?
+    default: true
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_include_factories:
+    type: bool
+    help: |
+      Include test data factories (Faker.js integration) for generating realistic test data?
+    default: true
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_test_suite_level:
+    type: str
+    help: |
+      Select test suite coverage level:
+      - Standard: Unit tests + integration tests for all services
+      - Comprehensive: Standard + E2E tests for critical user flows (signup, billing, dashboard)
+    default: standard
+    choices:
+      - standard
+      - comprehensive
+    when: "{{ saas_starter_module == 'enabled' }}"
 
 exclude:
   - ".git"

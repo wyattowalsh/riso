@@ -1,0 +1,290 @@
+{% if saas_starter_module == "enabled" %}
+# {{ project_name }}
+
+> Production-ready SaaS application built with the Riso SaaS Starter
+
+**Stack**: {% if saas_runtime == "nextjs-16" %}Next.js 16{% else %}Remix 2.x{% endif %} ? {% if saas_database == "neon" %}Neon{% else %}Supabase{% endif %} ? {% if saas_orm == "prisma" %}Prisma{% else %}Drizzle{% endif %} ? {% if saas_auth == "clerk" %}Clerk{% else %}Auth.js{% endif %} ? {% if saas_billing == "stripe" %}Stripe{% else %}Paddle{% endif %}
+
+[![CI](https://github.com/your-org/{{ project_slug }}/workflows/CI/badge.svg)](https://github.com/your-org/{{ project_slug }}/actions)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+---
+
+## ? Features
+
+- ? **Authentication**: {% if saas_auth == "clerk" %}Clerk{% else %}Auth.js{% endif %} with {% if saas_auth == "clerk" %}organizations{% else %}OAuth providers{% endif %}
+- ? **Multi-Tenancy**: Organization-based access control
+- ? **Subscriptions**: {% if saas_billing == "stripe" %}Stripe Billing{% else %}Paddle{% endif %} with webhooks
+- ? **Background Jobs**: {% if saas_jobs == "trigger" %}Trigger.dev{% else %}Inngest{% endif %} for async tasks
+- ? **Emails**: {% if saas_email == "resend" %}Resend{% else %}Postmark{% endif %} transactional emails
+- ? **Analytics**: {% if saas_analytics == "posthog" %}PostHog{% else %}Amplitude{% endif %} event tracking
+{% if saas_ai == "openai" or saas_ai == "anthropic" %}
+- ? **AI Integration**: {% if saas_ai == "openai" %}OpenAI{% else %}Anthropic Claude{% endif %} for intelligent features
+{% endif %}
+- ? **File Storage**: {% if saas_storage == "r2" %}Cloudflare R2{% else %}Supabase Storage{% endif %}
+- ? **Observability**: {% if saas_observability_structured_logging %}Structured logging{% endif %}{% if saas_observability_sentry %} ? Sentry{% endif %}{% if saas_observability_otel %} ? OpenTelemetry{% endif %}
+- ? **CI/CD**: GitHub Actions automated testing and deployment
+- ? **Type Safety**: 100% TypeScript with Zod validation
+
+---
+
+## ?? Quick Start
+
+### Prerequisites
+
+- Node.js 20+ and pnpm 8+
+- {% if saas_database == "neon" %}Neon{% else %}Supabase{% endif %} account
+- {% if saas_auth == "clerk" %}Clerk{% else %}OAuth provider{% endif %} credentials
+- {% if saas_billing == "stripe" %}Stripe{% else %}Paddle{% endif %} account
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/your-org/{{ project_slug }}.git
+cd {{ project_slug }}
+
+# Install dependencies
+pnpm install
+
+# Copy environment template
+cp .env.example .env.local
+
+# Edit .env.local with your API keys
+# (See Environment Variables section below)
+
+# Run database migrations
+{% if saas_orm == "prisma" %}
+pnpm exec prisma migrate dev
+{% elif saas_orm == "drizzle" %}
+pnpm run db:migrate
+{% endif %}
+
+# Seed database (optional)
+pnpm run db:seed
+
+# Start development server
+pnpm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) ??
+
+---
+
+## ?? Environment Variables
+
+Create `.env.local` with these variables:
+
+```bash
+# Database
+DATABASE_URL="your-database-url"
+{% if saas_database == "neon" %}
+DIRECT_URL="your-direct-url"  # For migrations
+{% endif %}
+
+# Authentication
+{% if saas_auth == "clerk" %}
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_..."
+CLERK_SECRET_KEY="sk_test_..."
+{% else %}
+NEXTAUTH_SECRET="your-secret-min-32-chars"
+NEXTAUTH_URL="http://localhost:3000"
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+{% endif %}
+
+# Billing
+{% if saas_billing == "stripe" %}
+STRIPE_SECRET_KEY="sk_test_..."
+STRIPE_WEBHOOK_SECRET="whsec_..."
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_..."
+{% else %}
+PADDLE_API_KEY="your-paddle-api-key"
+PADDLE_WEBHOOK_SECRET="your-webhook-secret"
+{% endif %}
+
+# Other services
+# See .env.example for complete list
+```
+
+See [`.env.example`](.env.example) for all variables.
+
+---
+
+## ?? Project Structure
+
+```
+{{ project_slug }}/
+??? app/                    # Application routes
+?   ??? api/               # API endpoints
+?   ??? (auth)/            # Auth pages
+?   ??? dashboard/         # Protected pages
+??? lib/                   # Shared utilities
+?   ??? auth/             # Authentication helpers
+?   ??? database/         # Database client
+?   ??? fixtures/         # Test data
+?   ??? observability/    # Logging & monitoring
+??? integrations/          # Third-party integrations
+?   ??? billing/          # Payment processing
+?   ??? email/            # Email sending
+?   ??? jobs/             # Background jobs
+?   ??? ...
+{% if saas_orm == "prisma" %}
+??? prisma/               # Database schema
+{% elif saas_orm == "drizzle" %}
+??? db/                   # Database schema
+{% endif %}
+??? public/               # Static assets
+??? docs/                 # Documentation
+```
+
+---
+
+## ??? Development
+
+### Available Commands
+
+```bash
+# Development
+pnpm run dev              # Start dev server
+pnpm run build            # Build for production
+pnpm run start            # Start production server
+
+# Database
+{% if saas_orm == "prisma" %}
+pnpm exec prisma studio   # Database GUI
+pnpm exec prisma migrate dev  # Create migration
+{% elif saas_orm == "drizzle" %}
+pnpm run db:studio        # Database GUI
+pnpm run db:generate      # Generate migration
+pnpm run db:migrate       # Run migrations
+{% endif %}
+pnpm run db:seed          # Seed database
+
+# Code Quality
+pnpm run lint             # Run linter
+pnpm run type-check       # Type checking
+pnpm run test             # Run tests
+pnpm run test:e2e         # E2E tests
+
+# Other
+pnpm run clean            # Clean build artifacts
+```
+
+### Code Style
+
+- **TypeScript**: Strict mode enabled
+- **Linting**: ESLint + Prettier
+- **Testing**: Vitest for unit tests, Playwright for E2E
+- **Commits**: Conventional Commits format
+
+---
+
+## ?? Testing
+
+```bash
+# Run all tests
+pnpm run test
+
+# Run with coverage
+pnpm run test:coverage
+
+# Run E2E tests
+pnpm run test:e2e
+
+# Run E2E in UI mode
+pnpm run test:e2e:ui
+```
+
+### Writing Tests
+
+Use factories for test data:
+
+```typescript
+import { UserFactory, OrganizationFactory } from '@/lib/fixtures/factories';
+
+test('creates organization', async () => {
+  const { organization, owner } = await OrganizationFactory.createWithOwner();
+  expect(organization.name).toBeDefined();
+});
+```
+
+---
+
+## ?? Deployment
+
+### {% if saas_hosting == "vercel" %}Vercel (Recommended){% else %}Cloudflare{% endif %}
+
+1. **Connect Repository**
+   {% if saas_hosting == "vercel" %}
+   - Push to GitHub
+   - Import in Vercel Dashboard
+   - Configure environment variables
+   {% else %}
+   - Push to GitHub
+   - Connect in Cloudflare Dashboard
+   - Add secrets via `wrangler secret put`
+   {% endif %}
+
+2. **Configure Environment**
+   - Add all variables from `.env.example`
+   - Use production API keys
+
+3. **Deploy**
+   {% if saas_hosting == "vercel" %}
+   ```bash
+   vercel --prod
+   ```
+   {% else %}
+   ```bash
+   wrangler deploy
+   ```
+   {% endif %}
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed instructions.
+
+---
+
+## ?? Documentation
+
+- [Architecture Overview](docs/ARCHITECTURE.md)
+- [API Examples](docs/API_EXAMPLES.md)
+- [Deployment Guide](docs/DEPLOYMENT.md)
+- [Contributing Guide](CONTRIBUTING.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+
+---
+
+## ?? Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+### Development Setup
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Write tests
+5. Submit a pull request
+
+---
+
+## ?? License
+
+This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+## ?? Acknowledgments
+
+Built with:
+- [{% if saas_runtime == "nextjs-16" %}Next.js{% else %}Remix{% endif %}](https://{% if saas_runtime == "nextjs-16" %}nextjs.org{% else %}remix.run{% endif %}) - Web framework
+- [{% if saas_database == "neon" %}Neon{% else %}Supabase{% endif %}](https://{% if saas_database == "neon" %}neon.tech{% else %}supabase.com{% endif %}) - Database
+- [{% if saas_auth == "clerk" %}Clerk{% else %}Auth.js{% endif %}](https://{% if saas_auth == "clerk" %}clerk.com{% else %}authjs.dev{% endif %}) - Authentication
+- [{% if saas_billing == "stripe" %}Stripe{% else %}Paddle{% endif %}](https://{% if saas_billing == "stripe" %}stripe.com{% else %}paddle.com{% endif %}) - Payments
+- And many more amazing tools!
+
+---
+
+**Built with ?? using the Riso SaaS Starter**
+{% endif %}

@@ -1,0 +1,471 @@
+# Copier Prompts Contract
+
+**Feature**: 012-saas-starter  
+**Date**: 2025-11-02  
+**File**: `template/copier.yml`
+
+## SaaS Starter Module Prompts
+
+This document defines the Copier prompts added to `template/copier.yml` for the SaaS Starter module.
+
+---
+
+## Module Activation
+
+```yaml
+# SaaS Starter Module Activation
+saas_starter_module:
+  type: str
+  help: |
+    Enable SaaS Starter module? Generates production-ready SaaS application with
+    authentication, billing, database, background jobs, email, analytics, AI, storage,
+    observability, and deployment configuration. Choose your technology stack across
+    14 categories with binary choices (2 options per category).
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: true  # Always show
+```
+
+---
+
+## Category 1: Runtime Framework
+
+```yaml
+saas_runtime:
+  type: str
+  help: |
+    Select runtime framework for your SaaS application:
+    - Next.js 16: React 19.2, App Router, Turbopack, largest ecosystem, Vercel-first
+    - Remix 2.x: Server-first routes, explicit data loading, good for complex forms
+  default: nextjs-16
+  choices:
+    - nextjs-16
+    - remix-2
+  when: "{{ saas_starter_module == 'enabled' }}"
+```
+
+---
+
+## Category 2: Hosting Platform
+
+```yaml
+saas_hosting:
+  type: str
+  help: |
+    Select hosting platform:
+    - Vercel: Native Next.js support, edge functions, image optimization, preview deployments
+    - Cloudflare: Global edge network, Pages + Workers, lower egress costs, R2 storage
+  default: vercel
+  choices:
+    - vercel
+    - cloudflare
+  when: "{{ saas_starter_module == 'enabled' }}"
+```
+
+---
+
+## Category 3: Database Provider
+
+```yaml
+saas_database:
+  type: str
+  help: |
+    Select database provider:
+    - Neon: Serverless Postgres, database branching, autoscale-to-zero, CI/PR databases
+    - Supabase: Postgres + Auth + Storage + Edge Functions, all-in-one BaaS platform
+  default: neon
+  choices:
+    - neon
+    - supabase
+  when: "{{ saas_starter_module == 'enabled' }}"
+```
+
+---
+
+## Category 4: ORM Layer
+
+```yaml
+saas_orm:
+  type: str
+  help: |
+    Select ORM for database access:
+    - Prisma: Best TypeScript ergonomics, schema DSL, Prisma Studio, migration workflow
+    - Drizzle: Lightweight, SQL-like syntax, edge-optimized, schema-as-code in TypeScript
+  default: prisma
+  choices:
+    - prisma
+    - drizzle
+  when: "{{ saas_starter_module == 'enabled' }}"
+```
+
+---
+
+## Category 5: Authentication Provider
+
+```yaml
+saas_auth:
+  type: str
+  help: |
+    Select authentication provider:
+    - Clerk: Hosted auth, built-in UI components, organizations, passkeys, fastest setup
+    - Auth.js: Self-hosted, open-source, full control, OAuth providers, lower cost
+  default: clerk
+  choices:
+    - clerk
+    - authjs
+  when: "{{ saas_starter_module == 'enabled' }}"
+```
+
+---
+
+## Category 6: Enterprise Auth Bridge
+
+```yaml
+saas_enterprise_bridge:
+  type: str
+  help: |
+    Add enterprise authentication bridge (SSO, SCIM, Directory Sync)?
+    - WorkOS: Enterprise-ready SSO (Okta, Azure AD, Google Workspace), SCIM provisioning
+    - None: Skip enterprise features for now (pure PLG)
+  default: none
+  choices:
+    - workos
+    - none
+  when: "{{ saas_starter_module == 'enabled' }}"
+```
+
+---
+
+## Category 7: Billing Provider
+
+```yaml
+saas_billing:
+  type: str
+  help: |
+    Select billing provider:
+    - Stripe: Full control, usage metering, widest ecosystem, manual tax handling
+    - Paddle: Merchant of Record (MoR), automatic tax/VAT, simpler compliance, higher fees
+  default: stripe
+  choices:
+    - stripe
+    - paddle
+  when: "{{ saas_starter_module == 'enabled' }}"
+```
+
+---
+
+## Category 8: Background Jobs
+
+```yaml
+saas_jobs:
+  type: str
+  help: |
+    Select background job system:
+    - Trigger.dev: Task-centric, AI-optimized, kicked off from your app, built-in retries
+    - Inngest: Event-driven workflows, durable execution, complex orchestration, scheduling
+  default: triggerdev
+  choices:
+    - triggerdev
+    - inngest
+  when: "{{ saas_starter_module == 'enabled' }}"
+```
+
+---
+
+## Category 9: Email Provider
+
+```yaml
+saas_email:
+  type: str
+  help: |
+    Select email provider:
+    - Resend: React Email templates, Vercel integration, modern DX, component-based
+    - Postmark: Industry-leading deliverability, mature service, template management UI
+  default: resend
+  choices:
+    - resend
+    - postmark
+  when: "{{ saas_starter_module == 'enabled' }}"
+```
+
+---
+
+## Category 10: Analytics Platform
+
+```yaml
+saas_analytics:
+  type: str
+  help: |
+    Select analytics platform:
+    - PostHog: Product OS (analytics + feature flags + session replay), open-source option
+    - Amplitude: Enterprise product analytics, sophisticated cohorts, data warehouse integrations
+  default: posthog
+  choices:
+    - posthog
+    - amplitude
+  when: "{{ saas_starter_module == 'enabled' }}"
+```
+
+---
+
+## Category 11: AI Provider
+
+```yaml
+saas_ai:
+  type: str
+  help: |
+    Select AI provider:
+    - OpenAI: GPT-4o/GPT-5, largest ecosystem, best for chat interfaces, function calling
+    - Anthropic: Claude 4.x, longer context windows (200k+), better for document analysis
+  default: openai
+  choices:
+    - openai
+    - anthropic
+  when: "{{ saas_starter_module == 'enabled' }}"
+```
+
+---
+
+## Category 12: Storage Provider
+
+```yaml
+saas_storage:
+  type: str
+  help: |
+    Select file storage provider:
+    - Cloudflare R2: S3-compatible, zero egress fees, global edge network
+    - Supabase Storage: Integrated with Supabase platform, RLS policies, image transformations
+  default: r2
+  choices:
+    - r2
+    - supabase-storage
+  when: "{{ saas_starter_module == 'enabled' }}"
+```
+
+---
+
+## Category 13: CI/CD Platform
+
+```yaml
+saas_cicd:
+  type: str
+  help: |
+    Select CI/CD platform:
+    - GitHub Actions: Native GitHub integration, marketplace actions, deploy to Vercel
+    - Cloudflare CI: Integrated with Cloudflare Pages/Workers, fast edge deployments
+  default: github-actions
+  choices:
+    - github-actions
+    - cloudflare-ci
+  when: "{{ saas_starter_module == 'enabled' }}"
+```
+
+---
+
+## Category 14: Observability Stack
+
+```yaml
+saas_observability_sentry:
+  type: bool
+  help: Enable Sentry for error tracking?
+  default: true
+  when: "{{ saas_starter_module == 'enabled' }}"
+
+saas_observability_datadog:
+  type: bool
+  help: Enable Datadog for APM (Application Performance Monitoring)?
+  default: true
+  when: "{{ saas_starter_module == 'enabled' }}"
+
+saas_observability_otel:
+  type: bool
+  help: Enable OpenTelemetry instrumentation for traces and metrics?
+  default: true
+  when: "{{ saas_starter_module == 'enabled' }}"
+
+saas_observability_structured_logging:
+  type: bool
+  help: Enable structured JSON logging with correlation IDs?
+  default: true
+  when: "{{ saas_starter_module == 'enabled' }}"
+```
+
+---
+
+## Additional Configuration
+
+```yaml
+saas_project_name:
+  type: str
+  help: |
+    Project name for your SaaS application (used in generated files and documentation)
+  default: "{{ project_name }}"
+  when: "{{ saas_starter_module == 'enabled' }}"
+
+saas_include_fixtures:
+  type: bool
+  help: |
+    Include seeded database fixtures with example users, organizations, and subscriptions?
+  default: true
+  when: "{{ saas_starter_module == 'enabled' }}"
+
+saas_include_factories:
+  type: bool
+  help: |
+    Include test data factories (Faker.js integration) for generating realistic test data?
+  default: true
+  when: "{{ saas_starter_module == 'enabled' }}"
+
+saas_test_suite_level:
+  type: str
+  help: |
+    Select test suite coverage level:
+    - Standard: Unit tests + integration tests for all services
+    - Comprehensive: Standard + E2E tests for critical user flows (signup, billing, dashboard)
+  default: standard
+  choices:
+    - standard
+    - comprehensive
+  when: "{{ saas_starter_module == 'enabled' }}"
+```
+
+---
+
+## Prompt Flow
+
+When `saas_starter_module` is set to `enabled`, Copier will present prompts in this order:
+
+1. **Module Activation** (`saas_starter_module`)
+2. **Core Infrastructure** (runtime, hosting, database, ORM)
+3. **Authentication** (auth provider, enterprise bridge)
+4. **Business Logic** (billing, jobs, email)
+5. **Data & Insights** (analytics, AI, storage)
+6. **Operations** (CI/CD, observability)
+7. **Additional Config** (project name, fixtures, factories, test level)
+
+This ordering groups related decisions and provides logical progression from foundation (runtime) to operations (observability).
+
+---
+
+## Validation Rules
+
+Implemented in `template/hooks/pre_gen_project.py`:
+
+```python
+# Compatibility validation
+INCOMPATIBLE_COMBINATIONS = [
+    {
+        "combination": ["cloudflare", "prisma"],
+        "severity": "warning",
+        "message": "Prisma requires Data Proxy for Cloudflare Workers. Consider Drizzle for better edge compatibility.",
+    },
+    {
+        "combination": ["vercel", "r2"],
+        "severity": "warning",
+        "message": "Cloudflare R2 works with Vercel but egress charges apply. Consider Vercel Blob Storage.",
+    },
+    {
+        "combination": ["neon", "supabase-storage"],
+        "severity": "error",
+        "message": "Cannot use Neon database with Supabase Storage. Choose full Supabase or Neon + R2.",
+    },
+    {
+        "combination": ["supabase", "clerk"],
+        "severity": "info",
+        "message": "Using both Supabase and Clerk. Supabase Auth will be disabled in favor of Clerk.",
+    },
+]
+
+# Recommended combinations
+OPTIMIZED_COMBINATIONS = [
+    {
+        "stack": ["nextjs-16", "vercel", "neon", "prisma", "clerk"],
+        "label": "Vercel Starter",
+        "description": "Best DX, fastest setup, Vercel ecosystem",
+    },
+    {
+        "stack": ["remix-2", "cloudflare", "neon", "drizzle", "authjs"],
+        "label": "Edge Optimized",
+        "description": "Global edge, low latency, cost-effective",
+    },
+    {
+        "stack": ["nextjs-16", "vercel", "supabase", "prisma", "clerk"],
+        "label": "All-in-One Platform",
+        "description": "Single vendor, simplified ops, moderate cost",
+    },
+]
+```
+
+---
+
+## Prompt Validation
+
+Each prompt must satisfy:
+
+- **Clear help text**: Explains what choice affects
+- **Use-when guidance**: Helps users decide between options
+- **Sensible default**: Most common/recommended choice first
+- **Binary choices**: Exactly 2 options (except observability booleans)
+- **Conditional display**: Only shown when module enabled
+
+---
+
+## Generated Configuration File
+
+After template rendering, selections are written to `saas-starter.config.ts`:
+
+```typescript
+// saas-starter.config.ts
+export const SaaSStarterConfig = {
+  meta: {
+    version: "2025.11.02",
+    generatedAt: "2025-11-02T12:34:56Z",
+    copierVersion: "9.3.1",
+  },
+  
+  runtime: {
+    id: "nextjs-16",
+    label: "Next.js 16 (React 19.2, Turbopack)",
+    useWhen: "Most SaaS, biggest ecosystem, Vercel-first",
+  },
+  
+  hosting: {
+    id: "vercel",
+    label: "Vercel",
+    useWhen: "Next-native, AI tooling, previews, edge, image, OG, Cron",
+  },
+  
+  // ... all other selections ...
+  
+  observability: {
+    sentry: true,
+    datadog: true,
+    opentelemetry: true,
+    structuredLogging: true,
+  },
+  
+  testSuite: "comprehensive",
+  includesFixtures: true,
+  includesFactories: true,
+} as const;
+```
+
+This file serves as:
+- Documentation of technology decisions
+- Type-safe config reference for generated code
+- Migration guide when switching technologies
+
+---
+
+## Conclusion
+
+This prompt contract defines 14 infrastructure categories with binary choices, observability configuration, and additional options. The prompts are:
+
+- **User-friendly**: Clear help text and use-when guidance
+- **Validated**: Compatibility rules prevent invalid combinations
+- **Deterministic**: Same answers = identical output
+- **Documented**: Selections recorded in generated config file
+
+Next: Define integration API contracts for each service category.
