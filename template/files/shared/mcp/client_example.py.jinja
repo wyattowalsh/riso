@@ -1,0 +1,410 @@
+{%- if mcp_module | lower != "enabled" %}
+"""MCP client example disabled.
+
+Enable via `mcp_module=enabled` to scaffold a FastMCP client example.
+"""
+{%- else %}
+"""FastMCP client example for {{ project_name }}.
+
+This module demonstrates how to connect to an MCP server and use its tools.
+It can connect to the local server or any other MCP-compatible server.
+
+Usage:
+    # Connect to local server (in-memory)
+    uv run python -m shared.mcp.client_example --local
+
+    # Connect to HTTP server
+    uv run python -m shared.mcp.client_example --url http://localhost:8000
+
+    # Connect via STDIO to a command
+    uv run python -m shared.mcp.client_example --stdio "uv run python -m shared.mcp.server"
+
+    # List all available tools
+    uv run python -m shared.mcp.client_example --list-tools
+
+    # Call a specific tool
+    uv run python -m shared.mcp.client_example --tool quickstart-status
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import json
+import sys
+from typing import Any
+
+try:
+    from fastmcp import Client
+except ImportError:
+    print(
+        "FastMCP is not installed. Install with: uv sync --group mcp",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+
+async def connect_local() -> Client:
+    """Connect to the local MCP server in-memory.
+    
+    Returns:
+        Client: Connected MCP client.
+    """
+    from shared.mcp.server import create_server  # noqa: PLC0415
+    
+    server = create_server()
+    client = Client(server)
+    
+    return client
+
+
+async def connect_http(url: str) -> Client:
+    """Connect to an MCP server over HTTP.
+    
+    Args:
+        url: The HTTP URL of the MCP server.
+    
+    Returns:
+        Client: Connected MCP client.
+    """
+    client = Client(url)
+    return client
+
+
+async def connect_stdio(command: str) -> Client:
+    """Connect to an MCP server via STDIO.
+    
+    Args:
+        command: The command to run the MCP server.
+    
+    Returns:
+        Client: Connected MCP client.
+    """
+    client = Client(command)
+    return client
+
+
+async def list_tools(client: Client) -> list[dict[str, Any]]:
+    """List all available tools from the server.
+    
+    Args:
+        client: Connected MCP client.
+    
+    Returns:
+        list[dict[str, Any]]: List of tool information.
+    """
+    async with client:
+        # List tools using the MCP protocol
+        tools_result = await client.list_tools()
+        
+        tools_info = []
+        for tool in tools_result.tools:
+            tools_info.append({
+                "name": tool.name,
+                "description": tool.description if hasattr(tool, "description") else "No description",
+                "input_schema": tool.inputSchema if hasattr(tool, "inputSchema") else {},
+            })
+        
+        return tools_info
+
+
+async def call_tool(client: Client, tool_name: str, arguments: dict[str, Any] | None = None) -> Any:  # noqa: ANN401
+    """Call a specific tool on the server.
+    
+    Args:
+        client: Connected MCP client.
+        tool_name: Name of the tool to call.
+        arguments: Optional arguments to pass to the tool.
+    
+    Returns:
+        Any: The tool's result.
+    """
+    if arguments is None:
+        arguments = {}
+    
+    async with client:
+        result = await client.call_tool(tool_name, arguments=arguments)
+        return result
+
+
+async def list_resources(client: Client) -> list[dict[str, str]]:
+    """List all available resources from the server.
+    
+    Args:
+        client: Connected MCP client.
+    
+    Returns:
+        list[dict[str, str]]: List of resource information.
+    """
+    async with client:
+        resources_result = await client.list_resources()
+        
+        resources_info = []
+        for resource in resources_result.resources:
+            resources_info.append({
+                "uri": resource.uri,
+                "name": resource.name if hasattr(resource, "name") else "Unnamed",
+                "description": resource.description if hasattr(resource, "description") else "",
+                "mime_type": resource.mimeType if hasattr(resource, "mimeType") else "",
+            })
+        
+        return resources_info
+
+
+async def read_resource(client: Client, uri: str) -> str:
+    """Read a specific resource from the server.
+    
+    Args:
+        client: Connected MCP client.
+        uri: URI of the resource to read.
+    
+    Returns:
+        str: The resource content.
+    """
+    async with client:
+        result = await client.read_resource(uri)
+        
+        # Extract text content from the result
+        if result.contents:
+            return result.contents[0].text
+        return ""
+
+
+async def interactive_session(client: Client) -> None:
+    """Run an interactive session with the MCP server.
+    
+    Args:
+        client: Connected MCP client.
+    """
+    async with client:
+        print("\n=== MCP Interactive Session ===")
+        print("Type 'help' for available commands, 'quit' to exit\n")
+        
+        while True:
+            try:
+                command = input("mcp> ").strip()
+                
+                if not command:
+                    continue
+                
+                if command.lower() in ("quit", "exit", "q"):
+                    print("Goodbye!")
+                    break
+                
+                if command.lower() == "help":
+                    print("""
+Available commands:
+  tools              - List all available tools
+  resources          - List all available resources
+  call <tool> [args] - Call a tool (args as JSON)
+  read <uri>         - Read a resource by URI
+  help               - Show this help message
+  quit               - Exit the session
+                    """)
+                    continue
+                
+                if command.lower() == "tools":
+                    tools_result = await client.list_tools()
+                    print("\nAvailable tools:")
+                    for tool in tools_result.tools:
+                        desc = tool.description if hasattr(tool, "description") else "No description"
+                        print(f"  ? {tool.name}: {desc}")
+                    print()
+                    continue
+                
+                if command.lower() == "resources":
+                    resources_result = await client.list_resources()
+                    print("\nAvailable resources:")
+                    for resource in resources_result.resources:
+                        name = resource.name if hasattr(resource, "name") else "Unnamed"
+                        print(f"  ? {resource.uri}: {name}")
+                    print()
+                    continue
+                
+                if command.lower().startswith("call "):
+                    parts = command.split(maxsplit=2)
+                    if len(parts) < 2:
+                        print("Usage: call <tool> [args_as_json]")
+                        continue
+                    
+                    tool_name = parts[1]
+                    args = {}
+                    if len(parts) == 3:
+                        try:
+                            args = json.loads(parts[2])
+                        except json.JSONDecodeError as e:
+                            print(f"Invalid JSON arguments: {e}")
+                            continue
+                    
+                    try:
+                        result = await client.call_tool(tool_name, arguments=args)
+                        print(f"\nResult:\n{json.dumps(result, indent=2)}\n")
+                    except Exception as e:  # noqa: BLE001
+                        print(f"Error calling tool: {e}")
+                    continue
+                
+                if command.lower().startswith("read "):
+                    parts = command.split(maxsplit=1)
+                    if len(parts) < 2:
+                        print("Usage: read <uri>")
+                        continue
+                    
+                    uri = parts[1]
+                    try:
+                        content = await read_resource(client, uri)
+                        print(f"\nResource content:\n{content}\n")
+                    except Exception as e:  # noqa: BLE001
+                        print(f"Error reading resource: {e}")
+                    continue
+                
+                print(f"Unknown command: {command}")
+                print("Type 'help' for available commands")
+            
+            except KeyboardInterrupt:
+                print("\nUse 'quit' to exit")
+            except EOFError:
+                print("\nGoodbye!")
+                break
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments.
+    
+    Returns:
+        argparse.Namespace: Parsed arguments.
+    """
+    parser = argparse.ArgumentParser(
+        description="MCP client example for {{ project_name }}",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    
+    # Connection options
+    conn_group = parser.add_mutually_exclusive_group()
+    conn_group.add_argument(
+        "--local",
+        action="store_true",
+        help="Connect to local server (in-memory)",
+    )
+    conn_group.add_argument(
+        "--url",
+        help="Connect to HTTP server at URL",
+    )
+    conn_group.add_argument(
+        "--stdio",
+        help="Connect via STDIO to command",
+    )
+    
+    # Action options
+    action_group = parser.add_mutually_exclusive_group()
+    action_group.add_argument(
+        "--list-tools",
+        action="store_true",
+        help="List all available tools",
+    )
+    action_group.add_argument(
+        "--list-resources",
+        action="store_true",
+        help="List all available resources",
+    )
+    action_group.add_argument(
+        "--tool",
+        help="Call a specific tool",
+    )
+    action_group.add_argument(
+        "--read-resource",
+        help="Read a specific resource by URI",
+    )
+    action_group.add_argument(
+        "--interactive",
+        action="store_true",
+        help="Start an interactive session",
+    )
+    
+    # Tool arguments
+    parser.add_argument(
+        "--args",
+        help="JSON arguments for tool call",
+        default="{}",
+    )
+    
+    return parser.parse_args()
+
+
+async def main() -> None:
+    """Main entry point for the MCP client example."""
+    args = parse_args()
+    
+    # Determine connection method
+    if args.local:
+        print("Connecting to local server (in-memory)...")
+        client = await connect_local()
+    elif args.url:
+        print(f"Connecting to HTTP server at {args.url}...")
+        client = await connect_http(args.url)
+    elif args.stdio:
+        print(f"Connecting via STDIO: {args.stdio}...")
+        client = await connect_stdio(args.stdio)
+    else:
+        # Default to local
+        print("No connection method specified, using local (in-memory)...")
+        client = await connect_local()
+    
+    # Execute action
+    try:
+        if args.list_tools:
+            tools = await list_tools(client)
+            print("\nAvailable tools:")
+            for tool in tools:
+                print(f"\n? {tool['name']}")
+                print(f"  Description: {tool['description']}")
+                if tool['input_schema']:
+                    print(f"  Input schema: {json.dumps(tool['input_schema'], indent=4)}")
+        
+        elif args.list_resources:
+            resources = await list_resources(client)
+            print("\nAvailable resources:")
+            for resource in resources:
+                print(f"\n? {resource['uri']}")
+                print(f"  Name: {resource['name']}")
+                if resource['description']:
+                    print(f"  Description: {resource['description']}")
+        
+        elif args.tool:
+            tool_args = json.loads(args.args)
+            print(f"\nCalling tool: {args.tool}")
+            print(f"Arguments: {json.dumps(tool_args, indent=2)}")
+            
+            result = await call_tool(client, args.tool, tool_args)
+            print(f"\nResult:\n{json.dumps(result, indent=2)}")
+        
+        elif args.read_resource:
+            print(f"\nReading resource: {args.read_resource}")
+            content = await read_resource(client, args.read_resource)
+            print(f"\nContent:\n{content}")
+        
+        elif args.interactive:
+            await interactive_session(client)
+        
+        else:
+            # Default: show server info
+            print("\nConnected to MCP server!")
+            print("\nListing available tools:")
+            tools = await list_tools(client)
+            for tool in tools:
+                print(f"  ? {tool['name']}: {tool['description']}")
+            
+            print("\nListing available resources:")
+            resources = await list_resources(client)
+            for resource in resources:
+                print(f"  ? {resource['uri']}: {resource['name']}")
+            
+            print("\nUse --help to see all options")
+    
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+{%- endif %}

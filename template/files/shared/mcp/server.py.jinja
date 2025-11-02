@@ -1,0 +1,195 @@
+{%- if mcp_module | lower != "enabled" %}
+"""MCP server disabled.
+
+Enable via `mcp_module=enabled` to scaffold a FastMCP server.
+"""
+{%- else %}
+"""FastMCP server implementation for {{ project_name }}.
+
+This module provides a complete MCP server that exposes tools from the
+tooling registry. Run this server to make your tools available to MCP clients
+like Claude Desktop, Cursor, or other AI assistants.
+
+Usage:
+    # Run with STDIO transport (default, for Claude Desktop)
+    uv run python -m shared.mcp.server
+
+    # Run with HTTP transport
+    uv run python -m shared.mcp.server --transport http --port 8080
+
+    # Run with custom host
+    uv run python -m shared.mcp.server --transport http --host 0.0.0.0 --port 8080
+
+Environment Variables:
+    MCP_SERVER_NAME: Override the server name (default: "{{ project_name }}-mcp-server")
+    MCP_SERVER_TRANSPORT: Set transport type (stdio, http)
+    MCP_SERVER_PORT: Set HTTP port (default: 8000)
+    MCP_SERVER_HOST: Set HTTP host (default: localhost)
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import sys
+from typing import Any
+
+try:
+    from fastmcp import FastMCP
+except ImportError:
+    print(
+        "FastMCP is not installed. Install with: uv sync --group mcp",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+from shared.mcp import tooling
+
+
+# Server configuration
+SERVER_NAME = os.getenv("MCP_SERVER_NAME", "{{ project_name }}-mcp-server")
+SERVER_DESCRIPTION = """
+{{ project_name }} MCP Server
+
+Provides access to project tools and utilities through the Model Context Protocol.
+This server exposes tools registered in the shared.mcp.tooling registry.
+"""
+
+
+def create_server() -> FastMCP:
+    """Create and configure the FastMCP server.
+    
+    Returns:
+        FastMCP: Configured server instance with registered tools.
+    """
+    # Create server instance
+    server = FastMCP(
+        name=SERVER_NAME,
+        instructions=SERVER_DESCRIPTION.strip(),
+    )
+
+    # Register all tools from the tooling registry
+    for tool in tooling.registry.list():
+        # Register tool with FastMCP
+        @server.tool(name=tool.name, description=tool.description)
+        def create_handler(handler=tool.handler):  # noqa: ANN001, ANN202
+            """Wrapper to register tool handler with FastMCP."""
+            def wrapper(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
+                return handler(*args, **kwargs)
+            return wrapper
+        
+        # Call the decorator to register
+        create_handler()
+
+    # Add server info resource
+    @server.resource("resource://server/info")
+    def server_info() -> str:
+        """Get information about this MCP server."""
+        tool_count = len(list(tooling.registry.list()))
+        tools_list = ", ".join(tooling.list_tools())
+        
+        return f"""# {{ project_name }} MCP Server
+
+**Server Name:** {SERVER_NAME}
+**Tool Count:** {tool_count}
+**Available Tools:** {tools_list}
+
+## Description
+{SERVER_DESCRIPTION}
+
+## Usage
+Connect to this server using any MCP-compatible client.
+Tools are available for invocation through the standard MCP protocol.
+"""
+
+    # Add project status resource
+    @server.resource("resource://project/status")
+    def project_status() -> str:
+        """Get the current project status."""
+        modules = tooling.list_optional_modules()
+        
+        status_lines = ["# {{ project_name }} Status\n"]
+        status_lines.append("## Enabled Modules")
+        for module, state in modules.items():
+            status_lines.append(f"- **{module}**: {state}")
+        
+        return "\n".join(status_lines)
+
+    return server
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments.
+    
+    Returns:
+        argparse.Namespace: Parsed arguments.
+    """
+    parser = argparse.ArgumentParser(
+        description="Run the {{ project_name }} MCP server",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Run with STDIO (default)
+  uv run python -m shared.mcp.server
+
+  # Run with HTTP on port 8080
+  uv run python -m shared.mcp.server --transport http --port 8080
+
+  # Run with HTTP on custom host and port
+  uv run python -m shared.mcp.server --transport http --host 0.0.0.0 --port 9000
+        """,
+    )
+    
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "http"],
+        default=os.getenv("MCP_SERVER_TRANSPORT", "stdio"),
+        help="Transport type (default: stdio, from MCP_SERVER_TRANSPORT env var)",
+    )
+    
+    parser.add_argument(
+        "--host",
+        default=os.getenv("MCP_SERVER_HOST", "localhost"),
+        help="HTTP server host (default: localhost, from MCP_SERVER_HOST env var)",
+    )
+    
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.getenv("MCP_SERVER_PORT", "8000")),
+        help="HTTP server port (default: 8000, from MCP_SERVER_PORT env var)",
+    )
+    
+    return parser.parse_args()
+
+
+def main() -> None:
+    """Main entry point for the MCP server."""
+    args = parse_args()
+    
+    # Create the server
+    server = create_server()
+    
+    # Run with appropriate transport
+    if args.transport == "stdio":
+        print(f"Starting {SERVER_NAME} with STDIO transport...", file=sys.stderr)
+        print(f"Registered {len(list(tooling.registry.list()))} tools", file=sys.stderr)
+        server.run()  # STDIO is the default transport
+    
+    elif args.transport == "http":
+        print(f"Starting {SERVER_NAME} with HTTP transport...", file=sys.stderr)
+        print(f"Server running at http://{args.host}:{args.port}", file=sys.stderr)
+        print(f"Registered {len(list(tooling.registry.list()))} tools", file=sys.stderr)
+        
+        # For HTTP, we need to use a different run method
+        # FastMCP handles HTTP server setup internally
+        server.run(transport="http", host=args.host, port=args.port)
+    
+    else:
+        print(f"Unknown transport: {args.transport}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
+{%- endif %}
