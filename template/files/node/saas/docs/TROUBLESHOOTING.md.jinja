@@ -1,0 +1,450 @@
+{% if saas_starter_module == "enabled" %}
+# Troubleshooting Guide
+
+Common issues and their solutions.
+
+## ?? Common Issues
+
+### Build Errors
+
+#### Issue: `Module not found` errors
+
+**Cause**: Missing dependencies or incorrect TypeScript paths
+
+**Solution**:
+```bash
+# Reinstall dependencies
+rm -rf node_modules pnpm-lock.yaml
+pnpm install
+
+# Rebuild
+pnpm run build
+```
+
+#### Issue: TypeScript errors after update
+
+**Solution**:
+```bash
+# Clear TypeScript cache
+rm -rf node_modules/.cache
+
+# Regenerate types
+{% if saas_orm == "prisma" %}
+pnpm exec prisma generate
+{% elif saas_orm == "drizzle" %}
+pnpm run db:generate
+{% endif %}
+
+# Type check
+pnpm run type-check
+```
+
+---
+
+### Database Issues
+
+#### Issue: Database connection fails
+
+**Symptoms**: `ECONNREFUSED` or timeout errors
+
+**Solutions**:
+
+1. **Check environment variables**:
+   ```bash
+   echo $DATABASE_URL
+   ```
+
+2. **Verify database is running**:
+   {% if saas_database == "neon" %}
+   - Check Neon dashboard for project status
+   - Verify connection string is correct
+   - Ensure using pooled connection for app, direct for migrations
+   {% elif saas_database == "supabase" %}
+   - Check Supabase dashboard for project status
+   - Verify connection string is correct
+   - Check connection pooler settings
+   {% endif %}
+
+3. **Test connection**:
+   ```bash
+   {% if saas_orm == "prisma" %}
+   pnpm exec prisma db pull
+   {% elif saas_orm == "drizzle" %}
+   pnpm run db:studio
+   {% endif %}
+   ```
+
+#### Issue: Migration fails
+
+**Solution**:
+```bash
+{% if saas_orm == "prisma" %}
+# Check migration status
+pnpm exec prisma migrate status
+
+# Reset database (development only!)
+pnpm exec prisma migrate reset
+
+# Apply migrations
+pnpm exec prisma migrate deploy
+{% elif saas_orm == "drizzle" %}
+# Check current schema
+pnpm run db:studio
+
+# Regenerate migration
+pnpm run db:generate
+
+# Apply migration
+pnpm run db:migrate
+{% endif %}
+```
+
+---
+
+### Authentication Issues
+
+{% if saas_auth == "clerk" %}
+#### Issue: Clerk authentication not working
+
+**Solutions**:
+
+1. **Check API keys**:
+   ```bash
+   echo $NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+   echo $CLERK_SECRET_KEY
+   ```
+
+2. **Verify domain settings** in Clerk Dashboard:
+   - Add your development URL (`http://localhost:3000`)
+   - Add your production URL
+
+3. **Check middleware configuration**:
+   - Ensure middleware is exporting correctly
+   - Verify protected routes are configured
+
+4. **Clear cookies**:
+   - Development: Clear browser cookies for localhost
+   - Production: Clear site cookies
+{% elif saas_auth == "authjs" %}
+#### Issue: Auth.js session not persisting
+
+**Solutions**:
+
+1. **Check secret**:
+   ```bash
+   echo $NEXTAUTH_SECRET
+   # Should be at least 32 characters
+   ```
+
+2. **Verify OAuth configuration**:
+   - Check client ID and secret
+   - Verify redirect URLs in OAuth provider
+
+3. **Database sessions**:
+   ```bash
+   # Check session table exists
+   {% if saas_orm == "prisma" %}
+   pnpm exec prisma studio
+   {% elif saas_orm == "drizzle" %}
+   pnpm run db:studio
+   {% endif %}
+   ```
+{% endif %}
+
+---
+
+### API Issues
+
+#### Issue: API route returns 500 error
+
+**Debug steps**:
+
+1. **Check server logs**:
+   ```bash
+   {% if saas_hosting == "vercel" %}
+   vercel logs
+   {% elif saas_hosting == "cloudflare" %}
+   wrangler tail
+   {% endif %}
+   ```
+
+2. **Add error logging**:
+   ```typescript
+   try {
+     // Your code
+   } catch (error) {
+     console.error('API Error:', error);
+     {% if saas_observability_sentry %}
+     Sentry.captureException(error);
+     {% endif %}
+     throw error;
+   }
+   ```
+
+3. **Test locally**:
+   ```bash
+   curl http://localhost:3000/api/your-endpoint
+   ```
+
+#### Issue: CORS errors
+
+**Solution**:
+```typescript
+// app/api/your-endpoint/route.ts
+export async function OPTIONS(request: Request) {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
+```
+
+---
+
+### Webhook Issues
+
+{% if saas_billing == "stripe" %}
+#### Issue: Stripe webhooks not working
+
+**Solutions**:
+
+1. **Test webhook signature**:
+   ```bash
+   # Use Stripe CLI for local testing
+   stripe listen --forward-to localhost:3000/api/webhooks/stripe
+   ```
+
+2. **Verify webhook secret**:
+   ```bash
+   echo $STRIPE_WEBHOOK_SECRET
+   ```
+
+3. **Check webhook endpoint**:
+   - Verify endpoint is publicly accessible
+   - Check return status is 200
+   - Verify signature validation logic
+
+4. **Debug webhook**:
+   ```typescript
+   // Log webhook payload
+   console.log('Webhook received:', event.type);
+   console.log('Webhook data:', event.data);
+   ```
+{% endif %}
+
+---
+
+### Environment Variable Issues
+
+#### Issue: Environment variables not loading
+
+**Solutions**:
+
+1. **Check file name**:
+   - Development: `.env.local`
+   - Production: Set in platform dashboard
+
+2. **Verify syntax**:
+   ```bash
+   # ? Correct
+   DATABASE_URL="postgresql://..."
+   
+   # ? Incorrect (no quotes around URL)
+   DATABASE_URL=postgresql://...
+   ```
+
+3. **Restart dev server**:
+   ```bash
+   # Kill and restart
+   pnpm run dev
+   ```
+
+4. **Check validation**:
+   ```typescript
+   // lib/env.ts will throw error if invalid
+   import { env } from '@/lib/env';
+   console.log(env.DATABASE_URL);
+   ```
+
+---
+
+### Deployment Issues
+
+{% if saas_hosting == "vercel" %}
+#### Issue: Vercel deployment fails
+
+**Solutions**:
+
+1. **Check build logs**:
+   ```bash
+   vercel logs <deployment-url>
+   ```
+
+2. **Verify environment variables**:
+   - Go to Vercel Dashboard ? Settings ? Environment Variables
+   - Ensure all required variables are set
+   - Check variable names (no typos)
+
+3. **Test build locally**:
+   ```bash
+   pnpm run build
+   ```
+
+4. **Check Node version**:
+   - Vercel uses Node 20 by default
+   - Specify version in `package.json`:
+     ```json
+     {
+       "engines": {
+         "node": "20.x"
+       }
+     }
+     ```
+{% elif saas_hosting == "cloudflare" %}
+#### Issue: Cloudflare Workers deployment fails
+
+**Solutions**:
+
+1. **Check wrangler logs**:
+   ```bash
+   wrangler tail
+   ```
+
+2. **Verify secrets**:
+   ```bash
+   wrangler secret list
+   ```
+
+3. **Test locally**:
+   ```bash
+   wrangler dev
+   ```
+
+4. **Check compatibility date**:
+   - Update `wrangler.toml`:
+     ```toml
+     compatibility_date = "2024-11-01"
+     ```
+{% endif %}
+
+---
+
+### Performance Issues
+
+#### Issue: Slow API responses
+
+**Debug steps**:
+
+1. **Add timing logs**:
+   ```typescript
+   const start = Date.now();
+   // Your code
+   console.log(`Execution time: ${Date.now() - start}ms`);
+   ```
+
+2. **Check database queries**:
+   {% if saas_orm == "prisma" %}
+   ```typescript
+   // Enable query logging
+   const prisma = new PrismaClient({
+     log: ['query', 'info', 'warn', 'error'],
+   });
+   ```
+   {% endif %}
+
+3. **Profile with OpenTelemetry**:
+   {% if saas_observability_otel %}
+   - Check traces in your observability platform
+   - Look for slow database queries
+   - Identify N+1 query problems
+   {% endif %}
+
+4. **Add indexes**:
+   {% if saas_orm == "prisma" %}
+   ```prisma
+   model User {
+     @@index([email])
+     @@index([createdAt])
+   }
+   ```
+   {% endif %}
+
+---
+
+## ?? Development Tools
+
+### Reset Everything
+
+```bash
+# ?? WARNING: This deletes all data!
+
+# Stop dev server (Ctrl+C)
+
+# Remove node_modules and lock file
+rm -rf node_modules pnpm-lock.yaml
+
+# Remove database
+{% if saas_orm == "prisma" %}
+pnpm exec prisma migrate reset --force
+{% elif saas_orm == "drizzle" %}
+pnpm run db:drop
+{% endif %}
+
+# Reinstall
+pnpm install
+
+# Rebuild
+{% if saas_orm == "prisma" %}
+pnpm exec prisma generate
+pnpm exec prisma migrate dev
+{% elif saas_orm == "drizzle" %}
+pnpm run db:generate
+pnpm run db:migrate
+{% endif %}
+
+# Seed database
+pnpm run db:seed
+
+# Start fresh
+pnpm run dev
+```
+
+### Clear Caches
+
+```bash
+# TypeScript cache
+rm -rf node_modules/.cache
+
+# {% if saas_runtime == "nextjs-16" %}Next.js{% else %}Remix{% endif %} cache
+rm -rf .{% if saas_runtime == "nextjs-16" %}next{% else %}cache{% endif %}
+
+# Build output
+rm -rf {% if saas_runtime == "nextjs-16" %}.next{% else %}build{% endif %}
+```
+
+---
+
+## ?? Getting More Help
+
+Still stuck? Here's how to get help:
+
+1. **Search Issues**: Check [GitHub Issues](your-repo/issues)
+2. **Ask Community**: Use [GitHub Discussions](your-repo/discussions)
+3. **Read Docs**: Check `/docs` folder
+4. **Check Logs**: {% if saas_observability_sentry %}Sentry dashboard{% else %}Application logs{% endif %}
+
+When asking for help, include:
+- Error messages (full stack trace)
+- Steps to reproduce
+- Environment (OS, Node version)
+- Relevant code snippets
+- What you've already tried
+
+---
+
+**Last Updated**: 2025-11-02
+{% endif %}
