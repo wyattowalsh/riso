@@ -1,0 +1,732 @@
+# GraphQL API Module (Strawberry)
+
+{% if graphql_api_module == 'enabled' %}
+The GraphQL API module scaffolds a production-ready GraphQL service using Strawberry framework with FastAPI integration, DataLoader optimization, real-time subscriptions, comprehensive error handling, and security controls.
+
+## Enabling the Module
+
+Render the template with `graphql_api_module=enabled` (requires `api_tracks=python` or `python+node`). The generator creates:
+
+- `src/{{ package_name }}/graphql_api/schema.py` - Root GraphQL schema
+- `src/{{ package_name }}/graphql_api/types/` - GraphQL object types (User, Post, etc.)
+- `src/{{ package_name }}/graphql_api/queries/` - Query resolvers
+- `src/{{ package_name }}/graphql_api/mutations/` - Mutation resolvers
+- `src/{{ package_name }}/graphql_api/subscriptions/` - Real-time subscription resolvers
+- `src/{{ package_name }}/graphql_api/dataloaders.py` - DataLoader implementations for N+1 prevention
+- `src/{{ package_name }}/graphql_api/context.py` - GraphQL context (auth, DB, DataLoaders)
+- `src/{{ package_name }}/graphql_api/auth.py` - Per-field authentication
+- `src/{{ package_name }}/graphql_api/pagination.py` - Cursor and offset pagination
+- `src/{{ package_name }}/graphql_api/complexity.py` - Query depth and complexity analysis
+- `src/{{ package_name }}/graphql_api/errors.py` - Custom error handling
+- `src/{{ package_name }}/graphql_api/main.py` - FastAPI integration with GraphQL playground
+- `tests/graphql/` - Comprehensive GraphQL test suite
+
+## Configuration
+
+GraphQL settings are configured via `shared/graphql/config.toml`:
+
+```toml
+[graphql]
+# Server settings
+endpoint = "/graphql"
+playground_enabled = true
+
+# Security limits
+max_query_depth = 15
+max_query_complexity = 5000
+
+# Pagination defaults
+default_page_size = 20
+max_page_size = 100
+
+# DataLoader settings
+dataloader_cache_enabled = true
+dataloader_batch_size = 1000
+
+# Subscription settings
+subscription_endpoint = "/graphql/ws"
+subscription_keepalive_interval = 10
+
+# Error handling
+sanitize_errors_in_production = true
+include_error_extensions = false
+```
+
+Override defaults via environment variables with `GRAPHQL_` prefix:
+
+- `GRAPHQL_ENDPOINT` *(default: `/graphql`)*
+- `GRAPHQL_PLAYGROUND_ENABLED` *(default: `true`)*
+- `GRAPHQL_MAX_QUERY_DEPTH` *(default: `15`)*
+- `GRAPHQL_MAX_QUERY_COMPLEXITY` *(default: `5000`)*
+
+## Quick Start
+
+### 1. Start the GraphQL Server
+
+```bash
+uv run uvicorn {{ package_name }}.graphql_api.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### 2. Open the GraphQL Playground
+
+Navigate to `http://localhost:8000/graphql` to access the interactive playground with:
+
+- Schema explorer with inline documentation
+- Query autocomplete and validation
+- Query history and favorites
+- Variable editor
+
+### 3. Run Your First Query
+
+```graphql
+query GetUser($id: ID!) {
+  user(id: $id) {
+    id
+    name
+    email
+    avatar
+    posts(first: 5) {
+      edges {
+        node {
+          id
+          title
+          createdAt
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+}
+```
+
+Variables:
+```json
+{
+  "id": "1"
+}
+```
+
+## Core Features
+
+### Flexible Field Selection
+
+GraphQL's key advantage - request only the fields you need:
+
+```graphql
+# Minimal query - only id and name
+query {
+  user(id: "1") {
+    id
+    name
+  }
+}
+
+# Full query - all available fields
+query {
+  user(id: "1") {
+    id
+    name
+    email
+    avatar
+    posts { edges { node { id title body createdAt } } }
+  }
+}
+```
+
+### DataLoader Optimization (N+1 Prevention)
+
+DataLoaders automatically batch and cache data fetching operations:
+
+```graphql
+# This query fetches 10 users and their posts efficiently
+# WITHOUT DataLoaders: 1 query for users + 10 queries for posts = 11 queries (N+1 problem)
+# WITH DataLoaders: 1 query for users + 1 batched query for posts = 2 queries (82% reduction)
+query {
+  users(first: 10) {
+    edges {
+      node {
+        id
+        name
+        posts(first: 5) {
+          edges { node { id title } }
+        }
+      }
+    }
+  }
+}
+```
+
+### Pagination (Cursor and Offset)
+
+**Cursor-based pagination** (Relay Connection pattern):
+
+```graphql
+query {
+  users(first: 20, after: "cursor_value") {
+    edges {
+      cursor
+      node { id name email }
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+    totalCount
+  }
+}
+```
+
+**Offset-based pagination** (simple):
+
+```graphql
+query {
+  users(offset: 0, limit: 20) {
+    edges {
+      node { id name email }
+    }
+    totalCount
+  }
+}
+```
+
+### Mutations (Create, Update, Delete)
+
+**Create a new user:**
+
+```graphql
+mutation CreateUser($input: CreateUserInput!) {
+  createUser(input: $input) {
+    id
+    name
+    email
+    avatar
+  }
+}
+```
+
+Variables:
+```json
+{
+  "input": {
+    "name": "Jane Doe",
+    "email": "jane@example.com",
+    "avatar": "https://example.com/avatar.jpg"
+  }
+}
+```
+
+**Update an existing user:**
+
+```graphql
+mutation UpdateUser($id: ID!, $input: UpdateUserInput!) {
+  updateUser(id: $id, input: $input) {
+    id
+    name
+    email
+  }
+}
+```
+
+**Delete a user:**
+
+```graphql
+mutation DeleteUser($id: ID!) {
+  deleteUser(id: $id)
+}
+```
+
+### Real-time Subscriptions
+
+Subscribe to events via WebSocket:
+
+```graphql
+subscription {
+  userCreated {
+    id
+    name
+    email
+  }
+}
+```
+
+Connect to WebSocket endpoint: `ws://localhost:8000/graphql/ws`
+
+### Authentication
+
+Per-field authentication using `@auth` decorator:
+
+```python
+# In your resolver
+@strawberry.mutation
+@auth_required
+def create_user(self, info: Info, input: CreateUserInput) -> User:
+    # Only authenticated users can create users
+    current_user = info.context.current_user
+    # ...
+```
+
+**Public queries** (no auth required):
+```graphql
+query {
+  user(id: "1") { id name }
+}
+```
+
+**Protected mutations** (auth required):
+```graphql
+mutation {
+  createUser(input: { name: "Test" }) { id }
+}
+# Returns authentication error if not authenticated
+```
+
+### Error Handling
+
+GraphQL returns structured errors with helpful messages:
+
+**Validation Error:**
+```json
+{
+  "errors": [
+    {
+      "message": "Email format is invalid",
+      "extensions": {
+        "code": "VALIDATION_ERROR",
+        "field": "email"
+      }
+    }
+  ]
+}
+```
+
+**Authentication Error:**
+```json
+{
+  "errors": [
+    {
+      "message": "Authentication required",
+      "extensions": {
+        "code": "AUTH_ERROR"
+      }
+    }
+  ]
+}
+```
+
+**System Error** (production mode sanitizes details):
+```json
+{
+  "errors": [
+    {
+      "message": "An internal error occurred",
+      "extensions": {
+        "code": "SYSTEM_ERROR"
+      }
+    }
+  ]
+}
+```
+
+### Query Complexity & Depth Limits
+
+**Depth Limit** (max 15 levels):
+```graphql
+# This query is TOO DEEP (>15 levels) and will be rejected
+query {
+  user {
+    posts {
+      author {
+        posts {
+          author {
+            # ... 15+ levels deep
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+**Complexity Limit** (max 5000 points):
+```graphql
+# Each field adds complexity points
+# Lists multiply by requested count
+# High-complexity queries are rejected before execution
+query {
+  users(first: 100) {  # 100x multiplier
+    edges {
+      node {
+        posts(first: 100) {  # 100x100 = 10,000 points - REJECTED
+          edges { node { id title body } }
+        }
+      }
+    }
+  }
+}
+```
+
+## Testing
+
+### Run All GraphQL Tests
+
+```bash
+uv run pytest tests/graphql/
+```
+
+### Test Individual Modules
+
+```bash
+# Query tests
+uv run pytest tests/graphql/test_queries.py
+
+# Mutation tests
+uv run pytest tests/graphql/test_mutations.py
+
+# DataLoader tests (N+1 prevention)
+uv run pytest tests/graphql/test_dataloaders.py
+
+# Authentication tests
+uv run pytest tests/graphql/test_auth.py
+
+# Subscription tests
+uv run pytest tests/graphql/test_subscriptions.py
+
+# Error handling tests
+uv run pytest tests/graphql/test_errors.py
+
+# Complexity tests
+uv run pytest tests/graphql/test_complexity.py
+
+# Playground integration tests
+uv run pytest tests/graphql/test_playground.py
+```
+
+## Architecture
+
+### Schema Design
+
+GraphQL schema is modularly composed:
+
+```
+graphql_api/
+??? schema.py              # Root Query, Mutation, Subscription
+??? types/                 # GraphQL object types
+?   ??? user.py           # User type and input types
+?   ??? post.py           # Post type
+??? queries/              # Query resolvers
+?   ??? user_queries.py   # User query implementations
+??? mutations/            # Mutation resolvers
+?   ??? user_mutations.py # User mutation implementations
+??? subscriptions/        # Subscription resolvers
+    ??? user_subscriptions.py
+```
+
+### Resolver Pattern
+
+Resolvers connect GraphQL fields to data sources:
+
+```python
+@strawberry.type
+class Query:
+    @strawberry.field
+    async def user(self, info: Info, id: strawberry.ID) -> Optional[User]:
+        # Resolver fetches data from database, REST API, etc.
+        user_loader = info.context.dataloaders.user_loader
+        return await user_loader.load(id)
+```
+
+### Context Pattern
+
+Request-scoped context provides:
+
+- **Current user** (from authentication)
+- **Database connection** (async SQLAlchemy session)
+- **DataLoaders** (per-request batching/caching)
+- **Configuration** (depth/complexity limits, pagination)
+
+```python
+@strawberry.type
+class Context:
+    request: Request
+    current_user: Optional[User]
+    db: AsyncSession
+    dataloaders: DataLoaderContainer
+    config: GraphQLConfig
+```
+
+### DataLoader Pattern
+
+Prevent N+1 queries with batching:
+
+```python
+async def batch_load_users(user_ids: list[str]) -> list[User]:
+    # Single batched database query instead of N individual queries
+    users = await db.query(User).filter(User.id.in_(user_ids)).all()
+    user_map = {user.id: user for user in users}
+    return [user_map.get(uid) for uid in user_ids]
+
+# Create per-request DataLoader
+user_loader = DataLoader(load_fn=batch_load_users)
+```
+
+## Integration with Existing Data Sources
+
+### Database Integration (SQLAlchemy)
+
+```python
+# In your resolver
+async def resolve_user(info: Info, user_id: str) -> User:
+    db = info.context.db
+    result = await db.execute(
+        select(UserModel).where(UserModel.id == user_id)
+    )
+    user_model = result.scalar_one_or_none()
+    if not user_model:
+        return None
+    return User.from_orm(user_model)
+```
+
+### REST API Integration
+
+```python
+import httpx
+
+async def resolve_external_user(info: Info, user_id: str) -> User:
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"https://api.example.com/users/{user_id}")
+        response.raise_for_status()
+        data = response.json()
+        return User(id=data["id"], name=data["name"], email=data["email"])
+```
+
+### Multi-Source Resolvers
+
+```python
+async def resolve_combined_user(info: Info, user_id: str) -> User:
+    # Fetch user from database
+    db_user = await info.context.db.get_user(user_id)
+    
+    # Fetch posts from external API
+    async with httpx.AsyncClient() as client:
+        posts_response = await client.get(f"https://blog-api.com/posts?author={user_id}")
+        posts_data = posts_response.json()
+    
+    # Combine into single response
+    return User(
+        id=db_user.id,
+        name=db_user.name,
+        email=db_user.email,
+        posts=[Post(**post) for post in posts_data]
+    )
+```
+
+## Performance
+
+### Benchmarks
+
+| Operation | Target | Notes |
+|-----------|--------|-------|
+| Simple query (single object) | <100ms | User by ID, no joins |
+| Complex query (nested data) | <200ms | User with posts, DataLoader optimized |
+| Mutation | <150ms | Create/update user |
+| Subscription delivery | <100ms | Event to WebSocket client |
+| N+1 query reduction | 80%+ | 11 queries ? 2 queries with DataLoaders |
+| Concurrent queries | 100+ req/s | With proper infrastructure |
+
+### Performance Tips
+
+1. **Use DataLoaders** for all related data fetching
+2. **Limit query depth** (default max: 15 levels)
+3. **Limit query complexity** (default max: 5000 points)
+4. **Enable pagination** (default: 20 items, max: 100)
+5. **Use database indexes** on frequently queried fields
+6. **Cache frequently accessed data** via DataLoaders
+7. **Monitor query performance** with logging/tracing
+
+## Security
+
+### Best Practices
+
+1. **Authentication**: Protect mutations and sensitive queries with `@auth_required`
+2. **Query Limits**: Enforce depth (15) and complexity (5000) limits
+3. **Pagination**: Limit result set sizes (max: 100 items)
+4. **Error Sanitization**: Hide stack traces in production
+5. **Input Validation**: Use Pydantic for all mutation inputs
+6. **Rate Limiting**: Implement at API gateway or middleware level
+7. **CORS**: Configure allowed origins in FastAPI
+
+### Security Configuration
+
+```toml
+[graphql.security]
+max_query_depth = 15
+max_query_complexity = 5000
+sanitize_errors_in_production = true
+include_error_extensions = false
+```
+
+## Docker Integration
+
+GraphQL service is included in `docker-compose.yml`:
+
+```yaml
+services:
+  graphql-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - GRAPHQL_ENDPOINT=/graphql
+      - GRAPHQL_PLAYGROUND_ENABLED=true
+    depends_on:
+      - postgres
+      - redis
+```
+
+## Common Patterns
+
+### Custom Scalars
+
+```python
+import strawberry
+from datetime import datetime
+
+@strawberry.scalar
+class DateTime:
+    @staticmethod
+    def serialize(value: datetime) -> str:
+        return value.isoformat()
+    
+    @staticmethod
+    def parse_value(value: str) -> datetime:
+        return datetime.fromisoformat(value)
+```
+
+### Interfaces
+
+```python
+@strawberry.interface
+class Node:
+    id: strawberry.ID
+
+@strawberry.type
+class User(Node):
+    name: str
+    email: str
+
+@strawberry.type
+class Post(Node):
+    title: str
+    body: str
+```
+
+### Unions
+
+```python
+@strawberry.type
+class UserResult:
+    user: Optional[User]
+
+@strawberry.type
+class ErrorResult:
+    message: str
+
+SearchResult = strawberry.union("SearchResult", [UserResult, ErrorResult])
+```
+
+### Custom Directives
+
+```python
+@strawberry.directive(locations=[DirectiveLocation.FIELD_DEFINITION])
+def auth_required(resolver):
+    async def wrapper(info: Info, *args, **kwargs):
+        if not info.context.current_user:
+            raise AuthenticationError("Authentication required")
+        return await resolver(info, *args, **kwargs)
+    return wrapper
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue**: "Module not found: strawberry"
+**Solution**: Ensure GraphQL dependencies are installed: `uv sync`
+
+**Issue**: "Query depth exceeded"
+**Solution**: Reduce query nesting or increase `max_query_depth` in config
+
+**Issue**: "Query complexity exceeded"
+**Solution**: Request fewer fields/items or increase `max_query_complexity`
+
+**Issue**: "N+1 query problem persists"
+**Solution**: Ensure DataLoaders are properly configured in context and used in resolvers
+
+**Issue**: "WebSocket connection fails"
+**Solution**: Check `subscription_endpoint` config and ensure ASGI server supports WebSocket
+
+**Issue**: "Playground not accessible"
+**Solution**: Verify `playground_enabled=true` in config and navigate to correct endpoint
+
+## Migration Guide
+
+### From REST API to GraphQL
+
+1. **Identify REST endpoints** that will be replaced
+2. **Map REST resources** to GraphQL types
+3. **Convert URL parameters** to GraphQL arguments
+4. **Implement resolvers** for each type/field
+5. **Add DataLoaders** for related data
+6. **Test query equivalence** between REST and GraphQL
+7. **Update clients** to use GraphQL queries
+8. **Deprecate REST endpoints** gradually
+
+### Example Migration
+
+**REST Endpoint:**
+```
+GET /api/users/1?include=posts
+```
+
+**GraphQL Query:**
+```graphql
+query {
+  user(id: "1") {
+    id
+    name
+    email
+    posts { edges { node { id title } } }
+  }
+}
+```
+
+## References
+
+- [Strawberry GraphQL Documentation](https://strawberry.rocks/)
+- [GraphQL Specification](https://spec.graphql.org/)
+- [Relay Cursor Connections Specification](https://relay.dev/graphql/connections.htm)
+- [DataLoader Pattern](https://github.com/graphql/dataloader)
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+
+## Support
+
+For issues and questions:
+
+1. Check GraphQL playground schema documentation
+2. Review query validation errors in playground
+3. Consult Strawberry GraphQL documentation
+4. Check application logs for resolver errors
+5. Enable debug mode for detailed error messages (development only)
+
+{% else %}
+The GraphQL API module is not enabled. To enable, render with `graphql_api_module=enabled` (requires `api_tracks=python` or `python+node`).
+
+See the [quickstart guide](../quickstart.md) for instructions on enabling optional modules.
+{% endif %}

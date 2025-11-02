@@ -1,0 +1,142 @@
+{% if websocket_module == "enabled" -%}
+"""Tests for WebSocket connection lifecycle management."""
+
+import pytest
+from fastapi import FastAPI, WebSocket
+
+from {{ package_name }}.websocket import ConnectionManager, WebSocketConnection
+from {{ package_name }}.websocket.models import ConnectionState
+
+
+@pytest.mark.asyncio
+async def test_connection_creation(manager):
+    """Test creating a WebSocket connection."""
+    # Connection should start in CONNECTING state
+    # This is a unit test for the connection model
+    from {{ package_name }}.websocket.models import WebSocketConnectionModel
+
+    conn_model = WebSocketConnectionModel()
+    assert conn_model.state == ConnectionState.CONNECTING
+    assert conn_model.messages_sent == 0
+    assert conn_model.messages_received == 0
+
+
+@pytest.mark.asyncio
+async def test_connection_state_transitions(manager):
+    """Test connection state transitions."""
+    from {{ package_name }}.websocket.models import WebSocketConnectionModel
+
+    # Test valid state progression
+    conn_model = WebSocketConnectionModel()
+
+    # CONNECTING -> CONNECTED
+    conn_model.state = ConnectionState.CONNECTED
+    assert conn_model.state == ConnectionState.CONNECTED
+
+    # CONNECTED -> CLOSING
+    conn_model.state = ConnectionState.CLOSING
+    assert conn_model.state == ConnectionState.CLOSING
+
+    # CLOSING -> CLOSED
+    conn_model.state = ConnectionState.CLOSED
+    assert conn_model.state == ConnectionState.CLOSED
+
+
+@pytest.mark.asyncio
+async def test_manager_singleton():
+    """Test ConnectionManager singleton pattern."""
+    manager1 = ConnectionManager()
+    manager2 = ConnectionManager()
+
+    # Should be the same instance
+    assert manager1 is manager2
+
+
+@pytest.mark.asyncio
+async def test_connection_count(manager):
+    """Test connection count tracking."""
+    # Initially no connections
+    assert manager.get_connection_count() == 0
+
+    # Mock connections for testing (without actual WebSocket)
+    # In real tests, you'd use the TestClient WebSocket
+    initial_count = manager.get_connection_count()
+    assert initial_count >= 0  # May have connections from other tests if singleton
+
+
+def test_connection_metadata_validation():
+    """Test connection metadata validation."""
+    from {{ package_name }}.websocket.models import ConnectionMetadata
+
+    # Valid IP
+    metadata = ConnectionMetadata(ip_address="192.168.1.1")
+    assert metadata.ip_address == "192.168.1.1"
+
+    # Invalid IP should raise validation error
+    with pytest.raises(ValueError, match="must be valid IPv4 or IPv6"):
+        ConnectionMetadata(ip_address="not-an-ip")
+
+
+def test_message_validation():
+    """Test message model validation."""
+    from {{ package_name }}.websocket.models import Message
+
+    # Valid message
+    msg = Message(
+        type="message.text",
+        sender_id="conn_123",
+        payload={"text": "Hello"},
+    )
+    assert msg.type == "message.text"
+    assert msg.sender_id == "conn_123"
+
+    # Invalid message type format
+    with pytest.raises(ValueError, match="lowercase alphanumeric"):
+        Message(
+            type="INVALID-TYPE!",
+            sender_id="conn_123",
+            payload={},
+        )
+
+
+def test_room_model():
+    """Test Room model."""
+    from {{ package_name }}.websocket.models import Room
+
+    # Create room
+    room = Room(room_id="test_room")
+    assert room.room_id == "test_room"
+    assert room.get_connection_count() == 0
+    assert not room.is_full()
+
+    # Add connections
+    room.connection_ids.add("conn_1")
+    room.connection_ids.add("conn_2")
+    assert room.get_connection_count() == 2
+
+    # Test capacity
+    room.max_connections = 2
+    assert room.is_full()
+
+    # Invalid room ID
+    with pytest.raises(ValueError, match="URL-safe"):
+        Room(room_id="invalid room id!")
+
+
+def test_error_formatting():
+    """Test error message formatting."""
+    from {{ package_name }}.websocket.utils import format_error_message
+
+    error_msg = format_error_message(
+        code="TEST_ERROR",
+        message="Test error message",
+        details={"foo": "bar"},
+        retry_after=30,
+    )
+
+    assert error_msg["type"] == "error"
+    assert error_msg["payload"]["code"] == "TEST_ERROR"
+    assert error_msg["payload"]["message"] == "Test error message"
+    assert error_msg["payload"]["details"]["foo"] == "bar"
+    assert error_msg["payload"]["retry_after"] == 30
+{% endif -%}

@@ -1,0 +1,151 @@
+{% if websocket_module == "enabled" -%}
+"""WebSocket configuration with environment variable support."""
+
+from typing import List
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class WebSocketConfig(BaseSettings):
+    """
+    WebSocket configuration settings with environment variable support.
+
+    All settings can be overridden via environment variables with WS_ prefix.
+    Example: WS_MAX_CONNECTIONS_GLOBAL=5000
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="WS_",
+        case_sensitive=False,
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    # Connection limits
+    max_connections_global: int = Field(
+        default=10000,
+        description="Maximum total concurrent WebSocket connections",
+        ge=1,
+    )
+    max_connections_per_user: int = Field(
+        default=5,
+        description="Maximum connections per authenticated user",
+        ge=1,
+    )
+    max_connections_per_ip: int = Field(
+        default=100,
+        description="Maximum connections per IP address",
+        ge=1,
+    )
+
+    # Timeouts (seconds)
+    heartbeat_interval: int = Field(
+        default=30,
+        description="Interval between heartbeat ping messages (seconds)",
+        ge=1,
+        le=300,
+    )
+    heartbeat_timeout: int = Field(
+        default=60,
+        description="Time to wait for heartbeat pong before closing connection (seconds)",
+        ge=1,
+        le=600,
+    )
+    idle_timeout: int = Field(
+        default=300,
+        description="Time of inactivity before closing connection (seconds)",
+        ge=60,
+        le=3600,
+    )
+
+    # Message handling
+    max_message_size: int = Field(
+        default=1024 * 1024,  # 1MB
+        description="Maximum message size in bytes",
+        ge=1024,
+        le=10 * 1024 * 1024,  # 10MB max
+    )
+    message_queue_depth: int = Field(
+        default=100,
+        description="Maximum queued outbound messages per connection",
+        ge=10,
+        le=1000,
+    )
+
+    # Broadcasting
+    broadcast_timeout: float = Field(
+        default=5.0,
+        description="Maximum time to wait for broadcast completion (seconds)",
+        ge=0.1,
+        le=30.0,
+    )
+    broadcast_chunk_size: int = Field(
+        default=1000,
+        description="Maximum connections to broadcast to in parallel",
+        ge=100,
+        le=10000,
+    )
+
+    # Rate limiting
+    rate_limit_messages: int = Field(
+        default=100,
+        description="Maximum messages per rate limit window",
+        ge=1,
+        le=10000,
+    )
+    rate_limit_window: int = Field(
+        default=60,
+        description="Rate limit window duration (seconds)",
+        ge=1,
+        le=3600,
+    )
+
+    # CORS configuration
+    websocket_origins: List[str] = Field(
+        default=["*"],
+        description="Allowed WebSocket origins for CORS",
+    )
+
+    # Feature flags
+    enable_heartbeat: bool = Field(
+        default=True,
+        description="Enable automatic heartbeat mechanism",
+    )
+    enable_idle_timeout: bool = Field(
+        default=True,
+        description="Enable idle connection timeout",
+    )
+    enable_rate_limiting: bool = Field(
+        default=True,
+        description="Enable message rate limiting",
+    )
+    enable_compression: bool = Field(
+        default=False,
+        description="Enable per-message deflate compression",
+    )
+
+
+# Singleton instance
+_config: WebSocketConfig | None = None
+
+
+def get_config() -> WebSocketConfig:
+    """
+    Get the global WebSocket configuration instance.
+
+    Returns:
+        WebSocketConfig: The singleton configuration instance.
+    """
+    global _config
+    if _config is None:
+        _config = WebSocketConfig()
+    return _config
+
+
+def reset_config() -> None:
+    """Reset the configuration singleton (primarily for testing)."""
+    global _config
+    _config = None
+{% endif -%}

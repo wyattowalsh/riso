@@ -1,0 +1,297 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://riso.dev/schemas/websocket/connection-lifecycle.json",
+  "title": "WebSocket Connection Lifecycle Protocol",
+  "description": "Defines events for WebSocket connection establishment, maintenance, and teardown",
+  "version": "1.0.0",
+  "definitions": {
+    "connectionMetadata": {
+      "type": "object",
+      "properties": {
+        "ip_address": {
+          "type": "string",
+          "format": "ipv4",
+          "description": "Client IP address"
+        },
+        "user_agent": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Client user agent string"
+        },
+        "platform": {
+          "type": "string",
+          "enum": ["mobile", "desktop", "bot"],
+          "description": "Client platform type"
+        },
+        "session_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Browser session identifier"
+        },
+        "referrer": {
+          "type": "string",
+          "format": "uri",
+          "description": "Connection origin URL"
+        },
+        "custom": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Application-specific metadata"
+        }
+      },
+      "required": ["ip_address"]
+    },
+    "closeReason": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 4999,
+          "description": "WebSocket close code"
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 123,
+          "description": "Human-readable close reason"
+        },
+        "initiated_by": {
+          "type": "string",
+          "enum": ["client", "server"],
+          "description": "Which side initiated the close"
+        }
+      },
+      "required": ["code", "reason", "initiated_by"]
+    },
+    "connectEvent": {
+      "type": "object",
+      "description": "Sent by server when connection is successfully established",
+      "properties": {
+        "type": {
+          "const": "connection.connect"
+        },
+        "message_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique message identifier"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Connection establishment time (ISO 8601 UTC)"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "connection_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Unique connection identifier"
+            },
+            "user_id": {
+              "type": "string",
+              "description": "Authenticated user ID (null for anonymous)"
+            },
+            "rooms": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Initial room memberships"
+            },
+            "metadata": {
+              "$ref": "#/definitions/connectionMetadata"
+            },
+            "server_time": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Server timestamp for clock synchronization"
+            },
+            "heartbeat_interval": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Expected heartbeat interval in seconds"
+            }
+          },
+          "required": ["connection_id", "server_time", "heartbeat_interval"]
+        }
+      },
+      "required": ["type", "message_id", "timestamp", "payload"]
+    },
+    "disconnectEvent": {
+      "type": "object",
+      "description": "Sent by client or server when connection is closing",
+      "properties": {
+        "type": {
+          "const": "connection.disconnect"
+        },
+        "message_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "connection_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "close_reason": {
+              "$ref": "#/definitions/closeReason"
+            },
+            "duration_seconds": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Connection lifetime in seconds"
+            },
+            "messages_sent": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total messages sent during connection"
+            },
+            "messages_received": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total messages received during connection"
+            }
+          },
+          "required": ["connection_id", "close_reason"]
+        }
+      },
+      "required": ["type", "message_id", "timestamp", "payload"]
+    },
+    "heartbeatPing": {
+      "type": "object",
+      "description": "Sent by server to check connection health",
+      "properties": {
+        "type": {
+          "const": "heartbeat.ping"
+        },
+        "message_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "server_time": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Server timestamp for RTT measurement"
+            }
+          },
+          "required": ["server_time"]
+        }
+      },
+      "required": ["type", "message_id", "timestamp", "payload"]
+    },
+    "heartbeatPong": {
+      "type": "object",
+      "description": "Sent by client in response to heartbeat.ping",
+      "properties": {
+        "type": {
+          "const": "heartbeat.pong"
+        },
+        "message_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "ping_message_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Message ID from original ping"
+            },
+            "client_time": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Client timestamp for clock skew detection"
+            }
+          },
+          "required": ["ping_message_id", "client_time"]
+        }
+      },
+      "required": ["type", "message_id", "timestamp", "payload"]
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/definitions/connectEvent"
+    },
+    {
+      "$ref": "#/definitions/disconnectEvent"
+    },
+    {
+      "$ref": "#/definitions/heartbeatPing"
+    },
+    {
+      "$ref": "#/definitions/heartbeatPong"
+    }
+  ],
+  "examples": [
+    {
+      "type": "connection.connect",
+      "message_id": "550e8400-e29b-41d4-a716-446655440000",
+      "timestamp": "2025-11-01T12:00:00Z",
+      "payload": {
+        "connection_id": "650e8400-e29b-41d4-a716-446655440001",
+        "user_id": "user_123",
+        "rooms": ["lobby", "chat_general"],
+        "metadata": {
+          "ip_address": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "platform": "desktop"
+        },
+        "server_time": "2025-11-01T12:00:00.000Z",
+        "heartbeat_interval": 30
+      }
+    },
+    {
+      "type": "connection.disconnect",
+      "message_id": "660e8400-e29b-41d4-a716-446655440002",
+      "timestamp": "2025-11-01T12:10:00Z",
+      "payload": {
+        "connection_id": "650e8400-e29b-41d4-a716-446655440001",
+        "close_reason": {
+          "code": 1000,
+          "reason": "Normal closure",
+          "initiated_by": "client"
+        },
+        "duration_seconds": 600,
+        "messages_sent": 42,
+        "messages_received": 38
+      }
+    },
+    {
+      "type": "heartbeat.ping",
+      "message_id": "770e8400-e29b-41d4-a716-446655440003",
+      "timestamp": "2025-11-01T12:05:00Z",
+      "payload": {
+        "server_time": "2025-11-01T12:05:00.000Z"
+      }
+    },
+    {
+      "type": "heartbeat.pong",
+      "message_id": "880e8400-e29b-41d4-a716-446655440004",
+      "timestamp": "2025-11-01T12:05:00.050Z",
+      "payload": {
+        "ping_message_id": "770e8400-e29b-41d4-a716-446655440003",
+        "client_time": "2025-11-01T12:05:00.050Z"
+      }
+    }
+  ]
+}
