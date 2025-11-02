@@ -4,22 +4,9 @@ info:
   description: |
     API for discovering available API versions, retrieving version metadata, and understanding
     deprecation schedules. This metadata API itself is version-agnostic and always available.
-    
-    ## Authentication
-    - API Key (header): For authenticated consumers with higher rate limits
-    - OAuth 2.0: For enterprise integrations
-    - Anonymous: Read-only access with lower rate limits
-    
-    ## Rate Limits
-    - Authenticated: 1000 requests/minute
-    - Anonymous: 100 requests/minute
   version: 1.0.0
   contact:
     name: API Versioning Support
-    email: api-support@example.com
-  license:
-    name: MIT
-    url: https://opensource.org/licenses/MIT
 
 servers:
   - url: https://api.example.com
@@ -61,20 +48,9 @@ paths:
           schema:
             type: boolean
             default: false
-      security:
-        - ApiKeyAuth: []
-        - OAuth2: [read:versions]
-        - {}  # Allow anonymous access
       responses:
         '200':
           description: List of API versions retrieved successfully
-          headers:
-            X-RateLimit-Limit:
-              $ref: '#/components/headers/X-RateLimit-Limit'
-            X-RateLimit-Remaining:
-              $ref: '#/components/headers/X-RateLimit-Remaining'
-            X-RateLimit-Reset:
-              $ref: '#/components/headers/X-RateLimit-Reset'
           content:
             application/json:
               schema:
@@ -83,34 +59,20 @@ paths:
                 activeVersions:
                   summary: Active versions only
                   value:
-                    default_version: v2
-                    total_count: 2
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /versions/{version_id}:elease_date: '2024-01-15'
+                    versions:
+                      - version_id: v1
+                        status: deprecated
+                        release_date: '2024-01-15'
                         deprecation_date: '2025-06-01'
                         sunset_date: '2025-12-01'
                         description: Original API version
                       - version_id: v2
                         status: current
-          schema:
-            type: string
-            pattern: '^v[0-9]+(-[a-z]+)?$'
-            minLength: 2
-            maxLength: 20
-            example: v2
-      security:
-        - ApiKeyAuth: []
-        - OAuth2: [read:versions]
-        - {}  # Allow anonymous access
-      responses:
+                        release_date: '2025-06-01'
+                        description: Enhanced API with improved validation
+                    default_version: v2
+                    total_count: 2
+
   /versions/{version_id}:
     get:
       tags:
@@ -154,19 +116,11 @@ paths:
                     breaking_changes_from: v1
                     migration_guide_url: /docs/migrations/v1-to-v2
                     opt_in_required: false
-                  available_versions:
-                    - v1
-                    - v2
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /versions/{version_id}/deprecation:d
+                deprecatedVersion:
+                  summary: Deprecated version
+                  value:
+                    version_id: v1
+                    status: deprecated
                     release_date: '2024-01-15'
                     deprecation_date: '2025-06-01'
                     sunset_date: '2025-12-01'
@@ -183,16 +137,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          schema:
-            type: string
-            pattern: '^v[0-9]+(-[a-z]+)?$'
-            minLength: 2
-            maxLength: 20
-      security:
-        - ApiKeyAuth: []
-        - OAuth2: [read:versions]
-        - {}  # Allow anonymous access
-      responses:  message: "API version 'v99' not found"
+              example:
+                error:
+                  code: VERSION_NOT_FOUND
+                  message: "API version 'v99' not found"
                   available_versions:
                     - v1
                     - v2
@@ -208,59 +156,20 @@ paths:
       operationId: getDeprecationNotice
       parameters:
         - name: version_id
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-      operationId: getCurrentVersion
-      security:
-        - ApiKeyAuth: []
-        - OAuth2: [read:versions]
-        - {}  # Allow anonymous access
+          in: path
+          description: Version identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^v[0-9]+(-[a-z]+)?$'
       responses:
         '200':
-          description: Current version metadata
+          description: Deprecation notice retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VersionMetadata'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-components:
-  securitySchemes:
-    ApiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-Key
-      description: API key for authenticated access (1000 req/min)
-    
-    OAuth2:
-      type: oauth2
-      description: OAuth 2.0 authentication for enterprise integrations
-      flows:
-        authorizationCode:
-          authorizationUrl: https://auth.example.com/oauth/authorize
-          tokenUrl: https://auth.example.com/oauth/token
-        version_id:
-          type: string
-          pattern: '^v[0-9]+(-[a-z]+)?$'
-          minLength: 2
-          maxLength: 20
-          description: Unique version identifier
-          example: v2
+                $ref: '#/components/schemas/DeprecationNotice'
+              example:
                 version_id: v1
                 announced_date: '2025-06-01'
                 sunset_date: '2025-12-01'
@@ -291,27 +200,23 @@ components:
       responses:
         '200':
           description: Current version metadata
-        breaking_changes_from:
-          type: string
-          nullable: true
-          pattern: '^v[0-9]+(-[a-z]+)?$'
-          minLength: 2
-          maxLength: 20
-          description: Version from which breaking changes occurred
-          example: v1
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionMetadata'
+
+components:
   schemas:
     VersionStatus:
       type: string
       enum:
         - current
         - deprecated
-        migration_guide_url:
-          type: string
-          format: uri
-          nullable: true
-          pattern: '^https?://'
-          description: Absolute URL to migration documentation
-          example: https://docs.example.com/migrations/v1-to-v2usually the default)
+        - sunset
+        - prerelease
+      description: |
+        Lifecycle status of the API version:
+        - `current`: Active stable version (usually the default)
         - `deprecated`: Still supported but scheduled for removal
         - `sunset`: No longer supported, returns 410 Gone
         - `prerelease`: Beta/alpha version requiring opt-in
@@ -346,13 +251,11 @@ components:
         sunset_date:
           type: string
           format: date
-        version_id:
+          nullable: true
+          description: Date when version will be/was removed
+          example: '2026-06-01'
+        description:
           type: string
-          pattern: '^v[0-9]+(-[a-z]+)?$'
-          minLength: 2
-          maxLength: 20
-          description: Version being deprecated
-          example: v1g
           description: Human-readable description of the version
           example: Enhanced API with improved validation
         supported_features:
@@ -365,17 +268,13 @@ components:
             - pagination
             - advanced_filtering
         breaking_changes_from:
-        recommended_version:
           type: string
+          nullable: true
           pattern: '^v[0-9]+(-[a-z]+)?$'
-          minLength: 2
-          maxLength: 20
+          description: Version from which breaking changes occurred
+          example: v1
         migration_guide_url:
           type: string
-          format: uri
-          pattern: '^https?://'
-          description: Absolute URL to migration documentation
-          example: https://docs.example.com/migrations/v1-to-v2
           nullable: true
           description: URL to migration documentation
           example: /docs/migrations/v1-to-v2
@@ -404,54 +303,31 @@ components:
           type: integer
           description: Total number of versions returned
           example: 2
-            code:
-              type: string
-              enum:
-                - VERSION_NOT_FOUND
-                - VERSION_SUNSET
-                - VERSION_CONFLICT
-                - PRERELEASE_OPT_IN_REQUIRED
-                - INVALID_VERSION_FORMAT
-                - UNAUTHORIZED
-                - RATE_LIMIT_EXCEEDED
-                - INTERNAL_SERVER_ERROR
-              description: Machine-readable error code
+
+    DeprecationNotice:
+      type: object
+      required:
+        - version_id
+        - announced_date
+        - sunset_date
+        - reason
         - recommended_version
         - migration_guide_url
       properties:
         version_id:
-            details:
-              type: object
-              description: Additional context-specific error details
-            correlation_id:
-              type: string
-              format: uuid
-              description: Unique identifier for tracing this error across systems
-              example: 550e8400-e29b-41d4-a716-446655440000
-
-  parameters:nced_date:
+          type: string
+          pattern: '^v[0-9]+(-[a-z]+)?$'
+          description: Version being deprecated
+          example: v1
+        announced_date:
           type: string
           format: date
-      schema:
-        type: string
-        pattern: '^v[0-9]+(-[a-z]+)?$'
-        minLength: 2
-        maxLength: 20
-        example: v2
-
-    PrereleaseOptIn:
-      name: X-API-Prerelease-Opt-In
-      in: header
-      description: |
-      schema:
-        type: string
-        pattern: '^v[0-9]+(-[a-z]+)?$'
-        minLength: 2
-        maxLength: 20
-        example: v2
-
-  headers:
-    VersionQuery:tion: When version will be removed
+          description: When deprecation was announced
+          example: '2025-06-01'
+        sunset_date:
+          type: string
+          format: date
+          description: When version will be removed
           example: '2025-12-01'
         reason:
           type: string
@@ -481,118 +357,23 @@ components:
 
     ErrorResponse:
       type: object
-    Link:
-      description: |
-        RFC 8288 Link header providing URLs to migration guides and recommended versions.
-      schema:
-        type: string
-        example: '</docs/migrations/v1-to-v2>; rel="migration-guide", </versions/v2>; rel="successor-version"'
-      required: false
-
-    X-RateLimit-Limit:
-      description: Total number of requests allowed per time window
-      schema:
-        type: integer
-        example: 1000
-      required: true
-
-    X-RateLimit-Remaining:
-      description: Number of requests remaining in current time window
-      schema:
-        type: integer
-        example: 950
-      required: true
-
-    X-RateLimit-Reset:
-      description: Unix timestamp when rate limit window resets
-      schema:
-        type: integer
-        format: int64
-        example: 1699200000
-      required: true
-
-    X-Correlation-ID:
-      description: Unique identifier for tracing request across systems
-      schema:
-        type: string
-        format: uuid
-        example: 550e8400-e29b-41d4-a716-446655440000
-      required: true
-
-  responses:operties:
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
             code:
               type: string
               enum:
                 - VERSION_NOT_FOUND
                 - VERSION_SUNSET
                 - VERSION_CONFLICT
-                url_version: v1
-                query_version: null
-
-    BadRequest:
-      description: Invalid request parameters or malformed version specification
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-          example:
-            error:
-              code: INVALID_VERSION_FORMAT
-              message: 'Version identifier must match pattern ^v[0-9]+(-[a-z]+)?$'
-              correlation_id: 550e8400-e29b-41d4-a716-446655440000
-
-    Unauthorized:
-      description: Authentication required or authentication failed
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-          example:
-            error:
-              code: UNAUTHORIZED
-              message: 'Valid API key or OAuth token required'
-              correlation_id: 550e8400-e29b-41d4-a716-446655440000
-
-    TooManyRequests:
-      description: Rate limit exceeded
-      headers:
-        X-RateLimit-Limit:
-          $ref: '#/components/headers/X-RateLimit-Limit'
-        X-RateLimit-Remaining:
-          schema:
-            type: integer
-            example: 0
-        X-RateLimit-Reset:
-          $ref: '#/components/headers/X-RateLimit-Reset'
-        Retry-After:
-          description: Seconds until rate limit resets
-          schema:
-            type: integer
-            example: 60
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-          example:
-            error:
-              code: RATE_LIMIT_EXCEEDED
-              message: 'Rate limit exceeded. Limit: 1000 requests/minute'
-              correlation_id: 550e8400-e29b-41d4-a716-446655440000
-              details:
-                retry_after: 60
-
-    InternalServerError:
-      description: Internal server error
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-          example:
-            error:
-              code: INTERNAL_SERVER_ERROR
-              message: 'An unexpected error occurred while processing your request'
-              correlation_id: 550e8400-e29b-41d4-a716-446655440000
-
+                - PRERELEASE_OPT_IN_REQUIRED
+              description: Machine-readable error code
             message:
               type: string
               description: Human-readable error message
