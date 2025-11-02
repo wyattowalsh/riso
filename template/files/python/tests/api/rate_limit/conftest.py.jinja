@@ -1,0 +1,54 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Pytest configuration for rate limiting tests disabled."""
+{%- else %}
+"""Pytest configuration for rate limiting tests.
+
+Provides common fixtures and markers for rate limiting test suite.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+
+def pytest_configure(config):
+    """Register custom markers."""
+    config.addinivalue_line(
+        "markers",
+        "integration: mark test as integration test (requires Redis)",
+    )
+    config.addinivalue_line(
+        "markers",
+        "slow: mark test as slow running",
+    )
+
+
+@pytest.fixture(autouse=True)
+async def cleanup_redis_keys():
+    """Clean up Redis test keys after each test.
+    
+    This prevents test interference by ensuring each test starts
+    with a clean Redis state.
+    """
+    # Test runs here
+    yield
+    
+    # Cleanup after test
+    try:
+        from {{ package_name }}.api.rate_limit.backends.redis import RedisBackend
+        from {{ package_name }}.api.rate_limit.config import RedisConfig
+        
+        config = RedisConfig(url="redis://localhost:6379/0")
+        backend = RedisBackend(config)
+        
+        # Delete all test keys
+        client = await backend._get_client()
+        keys = await client.keys("test:*")
+        if keys:
+            await client.delete(*keys)
+        
+        await backend.close()
+    except Exception:
+        # Redis might not be available in unit tests
+        pass
+{%- endif %}
