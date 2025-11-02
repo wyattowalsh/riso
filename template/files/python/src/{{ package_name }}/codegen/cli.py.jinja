@@ -138,6 +138,7 @@ def add(
     project_dir: Path = typer.Option(Path.cwd(), "--project-dir", "-p", help="Project root"),
     overwrite: bool = typer.Option(False, "--overwrite", help="Overwrite existing files"),
     skip_tests: bool = typer.Option(False, "--skip-tests", help="Skip test generation"),
+    var: Optional[list[str]] = typer.Option(None, "--var", help="Variable KEY=VALUE"),
 ) -> None:
     """Add a feature module to an existing project.
     
@@ -146,18 +147,97 @@ def add(
         $ scaffold add cli admin --template rich-cli
         $ scaffold add docs api --project-dir ~/projects/my-app
     """
+    from .templates.loader import TemplateLoader
+    from .templates.registry import TemplateRegistry
+    from .generation.generator import Generator
+    from .models import ModuleType
+    
     console.print(f"[cyan]Adding {module_type}:[/cyan] {module_name}")
     
-    # TODO: Implement module addition
-    # 1. Detect project (find .scaffold-metadata.json)
-    # 2. Load module template
-    # 3. Collect module variables
-    # 4. Generate module files
-    # 5. Update config files
-    # 6. Update imports
-    # 7. Update metadata
-    
-    console.print("[green]✓[/green] Module added successfully!")
+    try:
+        # Parse module type
+        try:
+            mod_type = ModuleType(module_type.lower())
+        except ValueError:
+            console.print(f"[red]✗[/red] Invalid module type: {module_type}")
+            console.print("\n[yellow]Available types:[/yellow]")
+            for mt in ModuleType:
+                console.print(f"  • {mt.value}")
+            raise typer.Exit(code=1)
+        
+        # Verify project exists
+        metadata_file = project_dir / ".scaffold-metadata.json"
+        if not metadata_file.exists():
+            console.print(f"[red]✗[/red] Not a scaffolded project: {project_dir}")
+            console.print("Run 'scaffold new' to create a project first.")
+            raise typer.Exit(code=2)
+        
+        # Find module template
+        with console.status("[cyan]Finding module template...[/cyan]"):
+            registry = TemplateRegistry()
+            
+            if template:
+                # Use specified template
+                template_obj = registry.get_template_by_name(template)
+                if not template_obj:
+                    console.print(f"[red]✗[/red] Template not found: {template}")
+                    raise typer.Exit(code=2)
+            else:
+                # Auto-detect template for module type
+                template_obj = registry.get_default_module_template(mod_type)
+                if not template_obj:
+                    console.print(
+                        f"[red]✗[/red] No template found for module type '{module_type}'"
+                    )
+                    console.print("\nTry specifying a template with --template")
+                    raise typer.Exit(code=2)
+            
+            console.print(f"[green]✓[/green] Using template: {template_obj.name}")
+        
+        # Parse provided variables
+        provided_vars = {}
+        if var:
+            for var_str in var:
+                if "=" not in var_str:
+                    console.print(f"[red]✗[/red] Invalid variable format: {var_str}")
+                    console.print("Use: --var KEY=VALUE")
+                    raise typer.Exit(code=1)
+                key, value = var_str.split("=", 1)
+                provided_vars[key] = value
+        
+        # Initialize generator
+        generator = Generator(
+            template_obj,
+            project_dir,
+            dry_run=False,
+            overwrite_mode=OverwriteMode.OVERWRITE if overwrite else OverwriteMode.SKIP,
+        )
+        
+        # Add module
+        console.print("\n[bold]Adding module...[/bold]")
+        with console.status("[cyan]Generating files...[/cyan]"):
+            module = generator.add_module_to_project(
+                project_dir,
+                module_name,
+                mod_type,
+                provided_vars,
+                interactive=True,
+            )
+        
+        console.print(f"\n[green]✓[/green] Module added successfully!")
+        console.print(f"  Files created: {len(module.generated_files)}")
+        console.print(f"  Files modified: {len(module.modified_files)}")
+        if module.dependencies_added:
+            console.print(f"  Dependencies added: {', '.join(module.dependencies_added)}")
+        
+        console.print("\n[bold]Next steps:[/bold]")
+        console.print("  uv sync  # Update dependencies")
+        console.print(f"  uv run pytest tests/test_{module_name}.py")
+        
+    except Exception as e:
+        console.print(f"\n[red]✗ Error:[/red] {e}")
+        logger.exception("Module addition failed")
+        raise typer.Exit(code=1)
 
 
 @app.command()

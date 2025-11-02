@@ -1,0 +1,103 @@
+{% if codegen_module == 'enabled' %}"""Template registry for discovering and managing module templates.
+
+This module handles discovery of module templates from various sources.
+"""
+
+from pathlib import Path
+from typing import Optional
+from loguru import logger
+
+from ..models import Template, ModuleType, TemplateType
+from .loader import TemplateLoader
+
+
+class TemplateRegistry:
+    """Registry for discovering and managing templates."""
+    
+    def __init__(self, cache_dir: Optional[Path] = None):
+        """Initialize template registry.
+        
+        Args:
+            cache_dir: Cache directory for templates
+        """
+        if cache_dir is None:
+            cache_dir = Path.home() / ".scaffold" / "templates"
+        self.cache_dir = cache_dir
+        self.loader = TemplateLoader(cache_dir)
+        logger.debug(f"Template registry initialized: {cache_dir}")
+    
+    def discover_module_templates(self, module_type: ModuleType) -> list[Template]:
+        """Discover templates for a specific module type.
+        
+        Args:
+            module_type: Type of module to find templates for
+            
+        Returns:
+            List of matching templates
+        """
+        all_templates = self.loader.list_available_templates()
+        
+        # Filter for module templates matching the type
+        matching = []
+        for template in all_templates:
+            if template.template_type == TemplateType.MODULE:
+                # Check if template metadata indicates it's for this module type
+                if template.metadata.get("module_type") == module_type.value:
+                    matching.append(template)
+        
+        logger.info(f"Found {len(matching)} templates for module type '{module_type.value}'")
+        return matching
+    
+    def get_default_module_template(self, module_type: ModuleType) -> Optional[Template]:
+        """Get the default template for a module type.
+        
+        Args:
+            module_type: Type of module
+            
+        Returns:
+            Default template or None if not found
+        """
+        templates = self.discover_module_templates(module_type)
+        
+        if not templates:
+            logger.warning(f"No templates found for module type '{module_type.value}'")
+            return None
+        
+        # Return first template as default
+        return templates[0]
+    
+    def search_templates(self, query: str) -> list[Template]:
+        """Search templates by name or description.
+        
+        Args:
+            query: Search query
+            
+        Returns:
+            List of matching templates
+        """
+        all_templates = self.loader.list_available_templates()
+        query_lower = query.lower()
+        
+        matching = []
+        for template in all_templates:
+            if (query_lower in template.name.lower() or
+                query_lower in template.description.lower()):
+                matching.append(template)
+        
+        logger.info(f"Search '{query}' found {len(matching)} templates")
+        return matching
+    
+    def get_template_by_name(self, name: str) -> Optional[Template]:
+        """Get a template by exact name.
+        
+        Args:
+            name: Template name
+            
+        Returns:
+            Template or None if not found
+        """
+        template_path = self.cache_dir / name
+        if template_path.exists():
+            return self.loader.load_template(template_path)
+        return None
+{% endif %}
