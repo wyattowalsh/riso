@@ -54,6 +54,14 @@ defaults:
   saas_ai: "openai"
   saas_storage: "r2"
   saas_cicd: "github-actions"
+  # NEW: Expanded options and categories (Spec 017)
+  saas_search: "none"
+  saas_cache: "none"
+  saas_feature_flags: "none"
+  saas_cms: "none"
+  saas_usage_metering: "none"
+  saas_secrets: "none"
+  saas_error_tracking: "sentry"
   saas_observability_sentry: true
   saas_observability_datadog: true
   saas_observability_otel: true
@@ -165,60 +173,80 @@ prompts:
     type: str
     help: |
       Select runtime framework for your SaaS application:
-      - Next.js 16: React 19.2, App Router, Turbopack, largest ecosystem, Vercel-first
+      - Next.js 16: React 19.2, App Router, Turbopack, largest ecosystem, Vercel-first (recommended)
       - Remix 2.x: Server-first routes, explicit data loading, good for complex forms
+      - SvelteKit 2.x: Lightweight, reactive, excellent performance, growing ecosystem
+      - Astro 4.x: Content-focused sites, partial hydration, bring-your-own-framework
     default: nextjs-16
     choices:
       - nextjs-16
       - remix-2
+      - sveltekit-2
+      - astro-4
     when: "{{ saas_starter_module == 'enabled' }}"
   
   saas_hosting:
     type: str
     help: |
       Select hosting platform:
-      - Vercel: Native Next.js support, edge functions, image optimization, preview deployments
+      - Vercel: Native Next.js support, edge functions, image optimization, preview deployments (recommended)
       - Cloudflare: Global edge network, Pages + Workers, lower egress costs, R2 storage
+      - Netlify: Instant rollbacks, split testing, distributed persistent rendering (DPR)
+      - Railway: Container hosting, integrated databases, simple Dockerfile deployment
     default: vercel
     choices:
       - vercel
       - cloudflare
+      - netlify
+      - railway
     when: "{{ saas_starter_module == 'enabled' }}"
   
   saas_database:
     type: str
     help: |
       Select database provider:
-      - Neon: Serverless Postgres, database branching, autoscale-to-zero, CI/PR databases
+      - Neon: Serverless Postgres, database branching, autoscale-to-zero, CI/PR databases (recommended)
       - Supabase: Postgres + Auth + Storage + Edge Functions, all-in-one BaaS platform
+      - PlanetScale: MySQL-compatible, non-blocking schema changes, horizontal sharding
+      - CockroachDB: Distributed Postgres, multi-region, strong consistency, regulatory compliance
     default: neon
     choices:
       - neon
       - supabase
+      - planetscale
+      - cockroachdb
     when: "{{ saas_starter_module == 'enabled' }}"
   
   saas_orm:
     type: str
     help: |
       Select ORM for database access:
-      - Prisma: Best TypeScript ergonomics, schema DSL, Prisma Studio, migration workflow
+      - Prisma: Best TypeScript ergonomics, schema DSL, Prisma Studio, migration workflow (recommended)
       - Drizzle: Lightweight, SQL-like syntax, edge-optimized, schema-as-code in TypeScript
+      - Kysely: Type-safe SQL query builder, zero magic, excellent PostgreSQL support
+      - TypeORM: Feature-rich, Active Record pattern, wide database support
     default: prisma
     choices:
       - prisma
       - drizzle
+      - kysely
+      - typeorm
     when: "{{ saas_starter_module == 'enabled' }}"
   
   saas_auth:
     type: str
     help: |
       Select authentication provider:
-      - Clerk: Hosted auth, built-in UI components, organizations, passkeys, fastest setup
+      - Clerk: Hosted auth, built-in UI components, organizations, passkeys, fastest setup (recommended)
       - Auth.js: Self-hosted, open-source, full control, OAuth providers, lower cost
+      - WorkOS: Enterprise SSO (Okta, Azure AD), SCIM provisioning, Directory Sync, B2B focus
+      - Supabase Auth: Integrated with Supabase, row-level security (RLS), email/phone/OAuth
     default: clerk
     choices:
       - clerk
       - authjs
+      - workos
+      - supabase-auth
     when: "{{ saas_starter_module == 'enabled' }}"
   
   saas_enterprise_bridge:
@@ -261,12 +289,16 @@ prompts:
     type: str
     help: |
       Select email provider:
-      - Resend: React Email templates, Vercel integration, modern DX, component-based
+      - Resend: React Email templates, Vercel integration, modern DX, component-based (recommended)
       - Postmark: Industry-leading deliverability, mature service, template management UI
+      - SendGrid: Enterprise scale, marketing + transactional, A/B testing, detailed analytics
+      - AWS SES: High volume, pay-as-you-go pricing, tight AWS integration, SMTP interface
     default: resend
     choices:
       - resend
       - postmark
+      - sendgrid
+      - ses
     when: "{{ saas_starter_module == 'enabled' }}"
   
   saas_analytics:
@@ -285,24 +317,32 @@ prompts:
     type: str
     help: |
       Select AI provider:
-      - OpenAI: GPT-4o/GPT-5, largest ecosystem, best for chat interfaces, function calling
+      - OpenAI: GPT-4o/GPT-5, largest ecosystem, best for chat interfaces, function calling (recommended)
       - Anthropic: Claude 4.x, longer context windows (200k+), better for document analysis
+      - Google Gemini: Multimodal capabilities, long context (1M+ tokens), cost-effective
+      - Ollama: Local LLMs (Llama 3, Mistral), zero API costs, data privacy, offline operation
     default: openai
     choices:
       - openai
       - anthropic
+      - gemini
+      - ollama
     when: "{{ saas_starter_module == 'enabled' }}"
   
   saas_storage:
     type: str
     help: |
       Select file storage provider:
-      - Cloudflare R2: S3-compatible, zero egress fees, global edge network
+      - Cloudflare R2: S3-compatible, zero egress fees, global edge network (recommended)
       - Supabase Storage: Integrated with Supabase platform, RLS policies, image transformations
+      - AWS S3: Industry standard, lifecycle policies, glacier archival, CloudFront integration
+      - UploadThing: Type-safe uploads, built-in UI components, image/video processing
     default: r2
     choices:
       - r2
       - supabase-storage
+      - s3
+      - uploadthing
     when: "{{ saas_starter_module == 'enabled' }}"
   
   saas_cicd:
@@ -315,6 +355,120 @@ prompts:
     choices:
       - github-actions
       - cloudflare-ci
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  # NEW CATEGORIES (Spec 017 Enhancement)
+  
+  saas_search:
+    type: str
+    help: |
+      Select search provider (optional):
+      - Algolia: Premium search, sub-50ms latency, typo tolerance, analytics, merchandising
+      - Meilisearch: Open-source, self-hosted or cloud, cost-effective, good performance
+      - Typesense: Geo-search, vector search for semantic queries, open-source with support
+      - None: Skip search integration (can add later)
+    default: none
+    choices:
+      - algolia
+      - meilisearch
+      - typesense
+      - none
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_cache:
+    type: str
+    help: |
+      Select cache provider (optional):
+      - Redis (Upstash): Full Redis features, serverless, REST API, pub/sub, geo-replication
+      - Cloudflare KV: Edge caching, eventually consistent, unlimited reads, global distribution
+      - Vercel KV: Redis-powered, Vercel-optimized, connection pooling, tight integration
+      - None: Skip cache integration (can add later)
+    default: none
+    choices:
+      - redis
+      - cloudflare-kv
+      - vercel-kv
+      - none
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_feature_flags:
+    type: str
+    help: |
+      Select feature flag provider (optional):
+      - LaunchDarkly: Enterprise features, workflow approvals, audit logs, complex targeting
+      - PostHog: Integrated with analytics, A/B testing, session replay, cost-effective
+      - GrowthBook: Open-source, warehouse-native, Bayesian statistics, self-hosted option
+      - None: Skip feature flags (can add later)
+    default: none
+    choices:
+      - launchdarkly
+      - posthog-flags
+      - growthbook
+      - none
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_cms:
+    type: str
+    help: |
+      Select CMS provider (optional):
+      - Contentful: Enterprise CMS, powerful modeling, localization, workflow, GraphQL + REST
+      - Sanity: Real-time collaboration, portable text, image pipeline, GROQ queries
+      - Payload CMS: TypeScript-based, Next.js integration, self-hosted, code-first config
+      - Strapi: Open-source, customizable admin, plugin system, self-hosted or cloud
+      - None: Skip CMS integration (can add later)
+    default: none
+    choices:
+      - contentful
+      - sanity
+      - payload
+      - strapi
+      - none
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_usage_metering:
+    type: str
+    help: |
+      Select usage metering provider (optional):
+      - Stripe Metering: Native Stripe integration, real-time metering, automatic billing
+      - Moesif: API analytics + metering, user tracking, billing integrations, governance
+      - Amberflo: Real-time metering, prepaid/postpaid, tiered pricing, usage alerts
+      - None: Skip usage metering (subscription-only billing)
+    default: none
+    choices:
+      - stripe-metering
+      - moesif
+      - amberflo
+      - none
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_secrets:
+    type: str
+    help: |
+      Select secrets management provider (optional):
+      - Infisical: Open-source, self-hosted or cloud, versioning, access control, audit logs
+      - Doppler: Multi-platform sync, dynamic secrets, integrations (AWS, GCP, Vercel, GitHub)
+      - AWS Secrets Manager: AWS-native, automatic rotation, KMS encryption, IAM policies
+      - None: Use environment variables only
+    default: none
+    choices:
+      - infisical
+      - doppler
+      - aws-secrets
+      - none
+    when: "{{ saas_starter_module == 'enabled' }}"
+  
+  saas_error_tracking:
+    type: str
+    help: |
+      Select error tracking provider:
+      - Sentry: Comprehensive monitoring, session replay, performance tracking, release health
+      - Rollbar: Real-time alerts, intelligent grouping, RQL queries, deploy tracking
+      - BugSnag: Mobile-focused, stability monitoring, React Native support, user impact
+    default: sentry
+    choices:
+      - sentry
+      - rollbar
+      - bugsnag
     when: "{{ saas_starter_module == 'enabled' }}"
   
   saas_observability_sentry:
