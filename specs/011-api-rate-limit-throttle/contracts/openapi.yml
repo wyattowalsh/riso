@@ -1,0 +1,317 @@
+openapi: 3.1.0
+info:
+  title: API Rate Limiting & Throttling
+  version: 1.0.0
+  description: |
+    Rate limit middleware responses for API endpoints. This specification documents
+    the HTTP headers and error responses produced by the rate limiting system.
+    
+    ## Rate Limit Headers
+    
+    All API responses include standard rate limit headers:
+    - `X-RateLimit-Limit`: Maximum requests allowed per time window
+    - `X-RateLimit-Remaining`: Requests remaining in current window
+    - `X-RateLimit-Reset`: Unix timestamp when the limit resets
+    
+    ## HTTP 429 Responses
+    
+    When rate limit is exceeded, requests receive:
+    - HTTP status code: 429 Too Many Requests
+    - `Retry-After` header: Seconds until retry is allowed
+    - JSON error body with details
+    
+  contact:
+    name: Riso Template
+    url: https://github.com/wyattowalsh/riso
+
+servers:
+  - url: http://localhost:8000
+    description: Local development
+  - url: https://api.example.com
+    description: Production
+
+paths:
+  /api/v1/{resource}:
+    get:
+      summary: Example API endpoint (rate limited)
+      description: |
+        Any API endpoint subject to rate limiting will return standard rate limit
+        headers and 429 responses when limits are exceeded.
+      parameters:
+        - name: resource
+          in: path
+          required: true
+          schema:
+            type: string
+          description: API resource identifier
+          example: users
+        
+        - name: X-Forwarded-For
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Client IP addresses (used for rate limit identification)
+          example: "203.0.113.1, 198.51.100.42"
+        
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+          description: JWT bearer token (used for user-based rate limiting)
+          example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      
+      responses:
+        '200':
+          description: Successful request (within rate limit)
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests allowed per time window
+              schema:
+                type: integer
+                example: 100
+            X-RateLimit-Remaining:
+              description: Requests remaining in current window
+              schema:
+                type: integer
+                example: 42
+            X-RateLimit-Reset:
+              description: Unix timestamp when rate limit resets
+              schema:
+                type: integer
+                example: 1698765492
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    description: Resource-specific response data
+        
+        '429':
+          description: Rate limit exceeded
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests allowed per time window
+              schema:
+                type: integer
+                example: 100
+            X-RateLimit-Remaining:
+              description: Requests remaining (always 0 for 429 responses)
+              schema:
+                type: integer
+                example: 0
+            X-RateLimit-Reset:
+              description: Unix timestamp when rate limit resets
+              schema:
+                type: integer
+                example: 1698765492
+            Retry-After:
+              description: Seconds until retry is allowed
+              schema:
+                type: integer
+                example: 30
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitError'
+              examples:
+                single_limit_exceeded:
+                  summary: Single rate limit exceeded
+                  value:
+                    error: rate_limit_exceeded
+                    message: "Rate limit of 100 requests per 60 seconds exceeded for endpoint /api/v1/users"
+                    retry_after_seconds: 30
+                    limit: 100
+                    window_seconds: 60
+                    documentation_url: "https://docs.example.com/rate-limiting"
+                
+                multiple_limits_exceeded:
+                  summary: Multiple rate limits exceeded (minute + hour)
+                  value:
+                    error: rate_limit_exceeded
+                    message: "Multiple rate limits exceeded"
+                    limits_exceeded:
+                      - window: "60 seconds"
+                        limit: 100
+                        current: 101
+                        retry_after_seconds: 30
+                      - window: "3600 seconds"
+                        limit: 1000
+                        current: 1001
+                        retry_after_seconds: 1800
+                    retry_after_seconds: 1800
+                    documentation_url: "https://docs.example.com/rate-limiting"
+        
+        '500':
+          description: Internal server error (rate limit headers still included)
+          headers:
+            X-RateLimit-Limit:
+              description: Maximum requests allowed per time window
+              schema:
+                type: integer
+                example: 100
+            X-RateLimit-Remaining:
+              description: Requests remaining in current window
+              schema:
+                type: integer
+                example: 42
+            X-RateLimit-Reset:
+              description: Unix timestamp when rate limit resets
+              schema:
+                type: integer
+                example: 1698765492
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: internal_server_error
+                  message:
+                    type: string
+                    example: "An unexpected error occurred"
+
+components:
+  schemas:
+    RateLimitError:
+      type: object
+      required:
+        - error
+        - message
+        - retry_after_seconds
+      properties:
+        error:
+          type: string
+          enum:
+            - rate_limit_exceeded
+          description: Error code indicating rate limit exceeded
+          example: rate_limit_exceeded
+        
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Rate limit of 100 requests per 60 seconds exceeded for endpoint /api/v1/users"
+        
+        retry_after_seconds:
+          type: integer
+          minimum: 0
+          description: Seconds until retry is allowed (matches Retry-After header)
+          example: 30
+        
+        limit:
+          type: integer
+          minimum: 1
+          description: Rate limit threshold (requests per window)
+          example: 100
+        
+        window_seconds:
+          type: integer
+          minimum: 1
+          description: Time window in seconds
+          example: 60
+        
+        current_count:
+          type: integer
+          minimum: 0
+          description: Current request count (optional, for debugging)
+          example: 101
+        
+        limits_exceeded:
+          type: array
+          description: Details for multiple rate limits (when multiple windows configured)
+          items:
+            $ref: '#/components/schemas/LimitExceededDetail'
+        
+        documentation_url:
+          type: string
+          format: uri
+          description: Link to rate limiting documentation
+          example: "https://docs.example.com/rate-limiting"
+    
+    LimitExceededDetail:
+      type: object
+      required:
+        - window
+        - limit
+        - current
+        - retry_after_seconds
+      properties:
+        window:
+          type: string
+          description: Time window description
+          example: "60 seconds"
+        
+        limit:
+          type: integer
+          minimum: 1
+          description: Rate limit threshold for this window
+          example: 100
+        
+        current:
+          type: integer
+          minimum: 0
+          description: Current request count in this window
+          example: 101
+        
+        retry_after_seconds:
+          type: integer
+          minimum: 0
+          description: Seconds until this limit resets
+          example: 30
+    
+    RateLimitHeaders:
+      type: object
+      description: Standard rate limit headers (informational schema, not used in responses)
+      required:
+        - X-RateLimit-Limit
+        - X-RateLimit-Remaining
+        - X-RateLimit-Reset
+      properties:
+        X-RateLimit-Limit:
+          type: integer
+          minimum: 1
+          description: Maximum requests allowed per time window
+          example: 100
+        
+        X-RateLimit-Remaining:
+          type: integer
+          minimum: 0
+          description: Requests remaining in current window
+          example: 42
+        
+        X-RateLimit-Reset:
+          type: integer
+          minimum: 0
+          description: Unix timestamp when rate limit resets
+          example: 1698765492
+        
+        Retry-After:
+          type: integer
+          minimum: 0
+          description: Seconds until retry allowed (429 responses only)
+          example: 30
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token for user-based rate limiting. Rate limits are extracted from
+        JWT claims: `user_id` (identifier) and `tier` (limit tier).
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Rate Limiting
+    description: |
+      Rate limiting middleware applies to all API endpoints. Responses include
+      standard headers and 429 status when limits exceeded.

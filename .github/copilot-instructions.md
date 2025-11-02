@@ -10,6 +10,8 @@ Auto-generated from all feature plans. Last updated: 2025-10-30
 - Python 3.11 (uv-managed), optional Node.js 20 LTS + ruff, mypy, pylint, pytest, coverage, optional eslint + typescript (003-code-quality-integrations)
 - Python 3.11+ (managed via uv, consistent with template baseline) + Typer ≥0.20.0, Loguru (logging), Rich (formatting), tomli/tomllib (TOML parsing) (009-typer-cli-scaffold)
 - TOML configuration files (config.toml or .app-name.toml in project directory) (009-typer-cli-scaffold)
+- Python 3.11+ (consistent with riso template baseline, managed via uv) (011-api-rate-limit-throttle)
+- Redis (in-memory key-value store for rate limit counters, TTL-based expiration) (011-api-rate-limit-throttle)
 
 ## Project Structure
 
@@ -45,10 +47,10 @@ actionlint .github/workflows/riso-*.yml
 Python 3.11 (uv-managed), optional Node.js 20 LTS: Follow standard conventions
 
 ## Recent Changes
+- 011-api-rate-limit-throttle: Added Python 3.11+ (consistent with riso template baseline, managed via uv)
 - 009-typer-cli-scaffold: Added Python 3.11+ (managed via uv, consistent with template baseline) + Typer ≥0.20.0, Loguru (logging), Rich (formatting), tomli/tomllib (TOML parsing)
 - 004-github-actions-workflows: Added YAML (GitHub Actions workflow syntax), Python 3.11+ (for validation scripts), Jinja2 (for template rendering) + GitHub Actions marketplace actions (`actions/checkout@v4`, `actions/setup-python@v5`, `actions/cache@v4`, `actions/upload-artifact@v4`), actionlint (workflow validation), existing quality tools from feature 003
 
-- 003-code-quality-integrations: Added Python 3.11 (uv-managed), optional Node.js 20 LTS + ruff, mypy, pylint, pytest, coverage, optional eslint + typescrip
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
