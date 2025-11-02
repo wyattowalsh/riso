@@ -1,0 +1,262 @@
+"""GraphQL Mutation Tests - Create, update, delete operations."""
+
+{% if graphql_api_module == 'enabled' %}
+import pytest
+from strawberry.test import BaseGraphQLTestClient
+
+from {{ package_name }}.graphql_api.schema import schema
+
+
+@pytest.fixture
+def graphql_client():
+    """Create GraphQL test client."""
+    return BaseGraphQLTestClient(schema)
+
+
+class TestUserMutations:
+    """Test User mutation operations (create, update, delete)."""
+    
+    def test_create_user(self, graphql_client):
+        """Test creating a new user."""
+        mutation = """
+            mutation CreateUser($input: CreateUserInput!) {
+                createUser(input: $input) {
+                    id
+                    name
+                    email
+                    avatar
+                }
+            }
+        """
+        
+        variables = {
+            "input": {
+                "name": "Test User",
+                "email": "test@example.com",
+                "avatar": "https://example.com/avatar.jpg"
+            }
+        }
+        
+        result = graphql_client.query(mutation, variables=variables)
+        
+        assert result.errors is None
+        assert result.data["createUser"]["name"] == "Test User"
+        assert result.data["createUser"]["email"] == "test@example.com"
+        assert result.data["createUser"]["avatar"] == "https://example.com/avatar.jpg"
+        assert result.data["createUser"]["id"] is not None
+    
+    def test_create_user_minimal_fields(self, graphql_client):
+        """Test creating user with only required fields."""
+        mutation = """
+            mutation CreateUser($input: CreateUserInput!) {
+                createUser(input: $input) {
+                    id
+                    name
+                    email
+                }
+            }
+        """
+        
+        variables = {
+            "input": {
+                "name": "Minimal User",
+                "email": "minimal@example.com"
+            }
+        }
+        
+        result = graphql_client.query(mutation, variables=variables)
+        
+        assert result.errors is None
+        assert result.data["createUser"]["name"] == "Minimal User"
+        assert result.data["createUser"]["email"] == "minimal@example.com"
+    
+    def test_update_user(self, graphql_client):
+        """Test updating an existing user."""
+        mutation = """
+            mutation UpdateUser($id: ID!, $input: UpdateUserInput!) {
+                updateUser(id: $id, input: $input) {
+                    id
+                    name
+                    email
+                    avatar
+                }
+            }
+        """
+        
+        variables = {
+            "id": "1",
+            "input": {
+                "name": "Updated Name",
+                "email": "updated@example.com"
+            }
+        }
+        
+        result = graphql_client.query(mutation, variables=variables)
+        
+        assert result.errors is None
+        assert result.data["updateUser"]["id"] == "1"
+        assert result.data["updateUser"]["name"] == "Updated Name"
+        assert result.data["updateUser"]["email"] == "updated@example.com"
+    
+    def test_update_user_partial(self, graphql_client):
+        """Test updating only specific fields."""
+        mutation = """
+            mutation UpdateUser($id: ID!, $input: UpdateUserInput!) {
+                updateUser(id: $id, input: $input) {
+                    id
+                    name
+                    email
+                }
+            }
+        """
+        
+        variables = {
+            "id": "1",
+            "input": {
+                "name": "Only Name Updated"
+            }
+        }
+        
+        result = graphql_client.query(mutation, variables=variables)
+        
+        assert result.errors is None
+        assert result.data["updateUser"]["name"] == "Only Name Updated"
+        # Email should remain unchanged
+        assert result.data["updateUser"]["email"] is not None
+    
+    def test_delete_user(self, graphql_client):
+        """Test deleting a user."""
+        mutation = """
+            mutation DeleteUser($id: ID!) {
+                deleteUser(id: $id)
+            }
+        """
+        
+        variables = {"id": "1"}
+        
+        result = graphql_client.query(mutation, variables=variables)
+        
+        assert result.errors is None
+        assert result.data["deleteUser"] is True
+    
+    def test_delete_nonexistent_user(self, graphql_client):
+        """Test deleting non-existent user returns False."""
+        mutation = """
+            mutation DeleteUser($id: ID!) {
+                deleteUser(id: $id)
+            }
+        """
+        
+        variables = {"id": "99999"}
+        
+        result = graphql_client.query(mutation, variables=variables)
+        
+        assert result.errors is None
+        assert result.data["deleteUser"] is False
+
+
+class TestMutationValidation:
+    """Test input validation for mutations."""
+    
+    def test_create_user_invalid_email(self, graphql_client):
+        """Test creating user with invalid email format."""
+        mutation = """
+            mutation CreateUser($input: CreateUserInput!) {
+                createUser(input: $input) {
+                    id
+                    name
+                    email
+                }
+            }
+        """
+        
+        variables = {
+            "input": {
+                "name": "Test User",
+                "email": "invalid-email"  # Invalid format
+            }
+        }
+        
+        result = graphql_client.query(mutation, variables=variables)
+        
+        # Should return validation error
+        assert result.errors is not None
+        assert any("email" in str(error).lower() for error in result.errors)
+    
+    def test_create_user_missing_required_field(self, graphql_client):
+        """Test creating user without required field."""
+        mutation = """
+            mutation CreateUser($input: CreateUserInput!) {
+                createUser(input: $input) {
+                    id
+                }
+            }
+        """
+        
+        variables = {
+            "input": {
+                "name": "Test User"
+                # Missing required email field
+            }
+        }
+        
+        result = graphql_client.query(mutation, variables=variables)
+        
+        # Should return validation error
+        assert result.errors is not None
+    
+    def test_update_user_invalid_id(self, graphql_client):
+        """Test updating user with invalid ID."""
+        mutation = """
+            mutation UpdateUser($id: ID!, $input: UpdateUserInput!) {
+                updateUser(id: $id, input: $input) {
+                    id
+                }
+            }
+        """
+        
+        variables = {
+            "id": "",  # Invalid empty ID
+            "input": {
+                "name": "Updated"
+            }
+        }
+        
+        result = graphql_client.query(mutation, variables=variables)
+        
+        # Should return error
+        assert result.errors is not None
+
+
+class TestMutationResponseFields:
+    """Test flexible field selection on mutation responses."""
+    
+    def test_create_user_selective_response_fields(self, graphql_client):
+        """Test requesting only specific fields in mutation response."""
+        mutation = """
+            mutation CreateUser($input: CreateUserInput!) {
+                createUser(input: $input) {
+                    id
+                    name
+                    # Deliberately NOT requesting email or avatar
+                }
+            }
+        """
+        
+        variables = {
+            "input": {
+                "name": "Test User",
+                "email": "test@example.com",
+                "avatar": "https://example.com/avatar.jpg"
+            }
+        }
+        
+        result = graphql_client.query(mutation, variables=variables)
+        
+        assert result.errors is None
+        assert "id" in result.data["createUser"]
+        assert "name" in result.data["createUser"]
+        # email and avatar should not be in response
+        assert "email" not in result.data["createUser"]
+        assert "avatar" not in result.data["createUser"]
+{% endif %}

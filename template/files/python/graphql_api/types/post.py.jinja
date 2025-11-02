@@ -1,0 +1,44 @@
+"""Post GraphQL Type - Domain entity for blog posts."""
+
+from typing import Optional, List
+from datetime import datetime
+import strawberry
+
+
+@strawberry.type
+class Post:
+    """
+    Post type represents a blog post or content item.
+    
+    Demonstrates:
+    - Simple scalar fields (id, title, body)
+    - DateTime custom scalar
+    - Foreign key relationship (author_id)
+    """
+    
+    id: strawberry.ID
+    author_id: strawberry.ID
+    title: str
+    body: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+
+@strawberry.type
+class PostEdge:
+    """Edge type for Post in connection pattern."""
+    
+    cursor: str
+    node: Post
+
+
+@strawberry.type
+class PostConnection:
+    """
+    Connection type for paginated Post queries.
+    
+    Used for user.posts field and any other paginated post lists.
+    """
+    
+    edges: List[PostEdge]
+    page_info: strawberry.LazyType["PageInfo", "{{ package_name }}.graphql_api.pagination"]
+    total_count: int

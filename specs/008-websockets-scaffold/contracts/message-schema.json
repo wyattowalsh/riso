@@ -1,0 +1,233 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://riso.dev/schemas/websocket/message-schema.json",
+  "title": "WebSocket Message Protocol",
+  "description": "Defines message formats for client-server and broadcast communication",
+  "version": "1.0.0",
+  "definitions": {
+    "baseMessage": {
+      "type": "object",
+      "properties": {
+        "message_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique message identifier"
+        },
+        "type": {
+          "type": "string",
+          "pattern": "^[a-z0-9._-]+$",
+          "maxLength": 50,
+          "description": "Message type discriminator"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Message creation time (ISO 8601 UTC)"
+        },
+        "sender_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Connection ID of sender"
+        },
+        "correlation_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "For request-response correlation"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Custom message metadata"
+        }
+      },
+      "required": ["message_id", "type", "timestamp", "sender_id"]
+    },
+    "textMessage": {
+      "allOf": [
+        {"$ref": "#/definitions/baseMessage"},
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "message.text"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "maxLength": 10000,
+                  "description": "Message text content"
+                }
+              },
+              "required": ["text"]
+            }
+          }
+        }
+      ]
+    },
+    "jsonMessage": {
+      "allOf": [
+        {"$ref": "#/definitions/baseMessage"},
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "message.json"
+            },
+            "payload": {
+              "type": "object",
+              "description": "Arbitrary JSON data",
+              "additionalProperties": true
+            }
+          }
+        }
+      ]
+    },
+    "binaryMessage": {
+      "allOf": [
+        {"$ref": "#/definitions/baseMessage"},
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "message.binary"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "string",
+                  "contentEncoding": "base64",
+                  "description": "Base64-encoded binary data"
+                },
+                "mime_type": {
+                  "type": "string",
+                  "pattern": "^[a-z]+/[a-z0-9.+-]+$",
+                  "description": "Content MIME type"
+                },
+                "size_bytes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1048576,
+                  "description": "Binary data size (max 1MB)"
+                }
+              },
+              "required": ["data", "size_bytes"]
+            }
+          }
+        }
+      ]
+    },
+    "errorMessage": {
+      "allOf": [
+        {"$ref": "#/definitions/baseMessage"},
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "error"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "enum": [
+                    "AUTH_REQUIRED",
+                    "AUTH_FAILED",
+                    "AUTHZ_FAILED",
+                    "MESSAGE_TOO_LARGE",
+                    "BACKPRESSURE",
+                    "RATE_LIMIT",
+                    "INVALID_FORMAT",
+                    "ROOM_NOT_FOUND",
+                    "ROOM_FULL",
+                    "INTERNAL_ERROR"
+                  ],
+                  "description": "Error code identifier"
+                },
+                "message": {
+                  "type": "string",
+                  "maxLength": 500,
+                  "description": "Human-readable error message"
+                },
+                "details": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "description": "Additional error context"
+                },
+                "retry_after": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Seconds to wait before retry (for rate limits)"
+                }
+              },
+              "required": ["code", "message"]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "oneOf": [
+    {"$ref": "#/definitions/textMessage"},
+    {"$ref": "#/definitions/jsonMessage"},
+    {"$ref": "#/definitions/binaryMessage"},
+    {"$ref": "#/definitions/errorMessage"}
+  ],
+  "examples": [
+    {
+      "message_id": "550e8400-e29b-41d4-a716-446655440000",
+      "type": "message.text",
+      "timestamp": "2025-11-01T12:00:00Z",
+      "sender_id": "650e8400-e29b-41d4-a716-446655440001",
+      "payload": {
+        "text": "Hello, WebSocket world!"
+      }
+    },
+    {
+      "message_id": "660e8400-e29b-41d4-a716-446655440002",
+      "type": "message.json",
+      "timestamp": "2025-11-01T12:00:01Z",
+      "sender_id": "650e8400-e29b-41d4-a716-446655440001",
+      "correlation_id": "550e8400-e29b-41d4-a716-446655440000",
+      "payload": {
+        "action": "update_status",
+        "status": "online",
+        "custom_field": "value"
+      },
+      "metadata": {
+        "priority": "high"
+      }
+    },
+    {
+      "message_id": "770e8400-e29b-41d4-a716-446655440003",
+      "type": "message.binary",
+      "timestamp": "2025-11-01T12:00:02Z",
+      "sender_id": "650e8400-e29b-41d4-a716-446655440001",
+      "payload": {
+        "data": "iVBORw0KGgoAAAANSUhEUgAAAAUA...",
+        "mime_type": "image/png",
+        "size_bytes": 2048
+      }
+    },
+    {
+      "message_id": "880e8400-e29b-41d4-a716-446655440004",
+      "type": "error",
+      "timestamp": "2025-11-01T12:00:03Z",
+      "sender_id": "server",
+      "correlation_id": "660e8400-e29b-41d4-a716-446655440002",
+      "payload": {
+        "code": "RATE_LIMIT",
+        "message": "Rate limit exceeded: 100 messages per 60 seconds",
+        "details": {
+          "current_rate": 120,
+          "limit": 100,
+          "window_seconds": 60
+        },
+        "retry_after": 30
+      }
+    }
+  ]
+}

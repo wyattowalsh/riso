@@ -1,0 +1,473 @@
+{% if websocket_module == "enabled" -%}
+"""WebSocket connection manager singleton."""
+
+import asyncio
+from typing import Any, Dict, List, Optional, Set
+
+from fastapi import WebSocket
+from loguru import logger
+
+from {{ package_name }}.websocket.config import get_config
+from {{ package_name }}.websocket.connection import WebSocketConnection
+from {{ package_name }}.websocket.exceptions import (
+    ConnectionClosedError,
+    RoomFullError,
+    RoomNotFoundError,
+)
+from {{ package_name }}.websocket.middleware import ConnectionMiddleware
+from {{ package_name }}.websocket.models import Room, WebSocketConnectionModel
+
+
+class ConnectionManager:
+    """
+    Singleton manager for WebSocket connections and rooms.
+
+    Provides:
+    - Connection registry with thread-safe access
+    - Room-based broadcasting
+    - Connection limits enforcement
+    - Graceful shutdown
+    - Middleware execution
+
+    Example:
+        ```python
+        manager = ConnectionManager()
+
+        @app.websocket("/ws")
+        async def endpoint(websocket: WebSocket):
+            connection_id = await manager.connect(websocket)
+            try:
+                while True:
+                    data = await websocket.receive_json()
+                    await manager.broadcast_to_room("chat", data)
+            except WebSocketDisconnect:
+                await manager.disconnect(connection_id)
+        ```
+    """
+
+    _instance: Optional["ConnectionManager"] = None
+
+    def __new__(cls):
+        """Ensure singleton pattern."""
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
+    def __init__(self):
+        """Initialize connection manager (only once)."""
+        if self._initialized:
+            return
+
+        self.config = get_config()
+
+        # Connection registry
+        self._connections: Dict[str, WebSocketConnection] = {}
+        self._lock = asyncio.Lock()
+
+        # Room registry
+        self._rooms: Dict[str, Room] = {}
+
+        # Reverse lookup: connection_id -> set of room_ids
+        self._connection_rooms: Dict[str, Set[str]] = {}
+
+        # User tracking: user_id -> set of connection_ids
+        self._user_connections: Dict[str, Set[str]] = {}
+
+        # IP tracking: ip_address -> set of connection_ids
+        self._ip_connections: Dict[str, Set[str]] = {}
+
+        # Middleware chain
+        self._middlewares: List[ConnectionMiddleware] = []
+
+        # Background tasks
+        self._idle_timeout_task: Optional[asyncio.Task] = None
+
+        self._initialized = True
+
+        logger.info("WebSocket ConnectionManager initialized")
+
+    def add_middleware(self, middleware: ConnectionMiddleware) -> None:
+        """
+        Add middleware to processing chain.
+
+        Middleware is executed in registration order.
+
+        Args:
+            middleware: ConnectionMiddleware instance
+        """
+        self._middlewares.append(middleware)
+        logger.info(
+            f"Added WebSocket middleware: {middleware.__class__.__name__}"
+        )
+
+    async def connect(
+        self,
+        websocket: WebSocket,
+        connection_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """
+        Register new WebSocket connection.
+
+        Args:
+            websocket: FastAPI WebSocket instance
+            connection_id: Unique identifier (generated if None)
+            user_id: Authenticated user ID (None for anonymous)
+            metadata: Custom connection attributes
+
+        Returns:
+            str: Connection ID
+
+        Raises:
+            ConnectionError: If connection limits exceeded
+        """
+        async with self._lock:
+            # Check global connection limit
+            if len(self._connections) >= self.config.max_connections_global:
+                await websocket.close(
+                    code=1008,
+                    reason=f"Server at capacity ({self.config.max_connections_global} connections)",
+                )
+                raise ConnectionError("Global connection limit exceeded")
+
+            # Check per-user limit
+            if user_id:
+                user_conn_count = len(self._user_connections.get(user_id, set()))
+                if user_conn_count >= self.config.max_connections_per_user:
+                    await websocket.close(
+                        code=1008,
+                        reason=f"User connection limit exceeded ({self.config.max_connections_per_user})",
+                    )
+                    raise ConnectionError("Per-user connection limit exceeded")
+
+            # Check per-IP limit
+            ip_address = websocket.client.host if websocket.client else "unknown"
+            ip_conn_count = len(self._ip_connections.get(ip_address, set()))
+            if ip_conn_count >= self.config.max_connections_per_ip:
+                await websocket.close(
+                    code=1008,
+                    reason=f"IP connection limit exceeded ({self.config.max_connections_per_ip})",
+                )
+                raise ConnectionError("Per-IP connection limit exceeded")
+
+            # Create connection
+            connection = WebSocketConnection(
+                websocket=websocket,
+                connection_id=connection_id,
+                user_id=user_id,
+                metadata=metadata,
+            )
+
+            # Accept WebSocket
+            await connection.accept()
+
+            # Register connection
+            conn_id = connection.connection_id
+            self._connections[conn_id] = connection
+
+            # Track by user
+            if user_id:
+                self._user_connections.setdefault(user_id, set()).add(conn_id)
+
+            # Track by IP
+            self._ip_connections.setdefault(ip_address, set()).add(conn_id)
+
+            # Initialize room tracking
+            self._connection_rooms[conn_id] = set()
+
+            logger.info(
+                f"Connection registered: {conn_id}",
+                extra={
+                    "connection_id":   conn_id,
+                    "user_id":         user_id,
+                    "total_connections": len(self._connections),
+                },
+            )
+
+            return conn_id
+
+    async def disconnect(
+        self,
+        connection_id: str,
+        code: int = 1000,
+        reason: str = "Normal closure",
+    ) -> None:
+        """
+        Unregister and close WebSocket connection.
+
+        Args:
+            connection_id: Connection identifier
+            code: WebSocket close code
+            reason: Human-readable close reason
+        """
+        async with self._lock:
+            connection = self._connections.get(connection_id)
+            if connection is None:
+                logger.warning(f"Attempted to disconnect unknown connection: {connection_id}")
+                return
+
+            # Remove from all rooms
+            room_ids = self._connection_rooms.get(connection_id, set()).copy()
+            for room_id in room_ids:
+                await self._leave_room_internal(connection_id, room_id)
+
+            # Close connection
+            await connection.close(code=code, reason=reason)
+
+            # Unregister connection
+            del self._connections[connection_id]
+
+            # Remove from user tracking
+            if connection.user_id:
+                user_conns = self._user_connections.get(connection.user_id, set())
+                user_conns.discard(connection_id)
+                if not user_conns:
+                    del self._user_connections[connection.user_id]
+
+            # Remove from IP tracking
+            ip_address = connection.metadata.get("ip_address", "unknown")
+            ip_conns = self._ip_connections.get(ip_address, set())
+            ip_conns.discard(connection_id)
+            if not ip_conns:
+                del self._ip_connections[ip_address]
+
+            # Remove room tracking
+            if connection_id in self._connection_rooms:
+                del self._connection_rooms[connection_id]
+
+            logger.info(
+                f"Connection unregistered: {connection_id}",
+                extra={
+                    "connection_id":     connection_id,
+                    "total_connections": len(self._connections),
+                },
+            )
+
+    async def join_room(self, connection_id: str, room_id: str) -> None:
+        """
+        Add connection to room.
+
+        Args:
+            connection_id: Connection identifier
+            room_id: Room identifier
+
+        Raises:
+            ConnectionClosedError: If connection not found
+            RoomFullError: If room is at capacity
+        """
+        async with self._lock:
+            connection = self._connections.get(connection_id)
+            if connection is None:
+                raise ConnectionClosedError(
+                    connection_id,
+                    "Cannot join room - connection not found",
+                )
+
+            # Create room if it doesn't exist
+            if room_id not in self._rooms:
+                self._rooms[room_id] = Room(room_id=room_id)
+
+            room = self._rooms[room_id]
+
+            # Check room capacity
+            if room.is_full():
+                raise RoomFullError(
+                    room_id=room_id,
+                    max_connections=room.max_connections or 0,
+                    current_count=room.get_connection_count(),
+                )
+
+            # Add to room
+            room.connection_ids.add(connection_id)
+            self._connection_rooms[connection_id].add(room_id)
+            connection.add_room(room_id)
+
+            logger.info(
+                f"Connection {connection_id} joined room {room_id}",
+                extra={
+                    "connection_id": connection_id,
+                    "room_id":       room_id,
+                    "member_count":  room.get_connection_count(),
+                },
+            )
+
+    async def leave_room(self, connection_id: str, room_id: str) -> None:
+        """
+        Remove connection from room.
+
+        Args:
+            connection_id: Connection identifier
+            room_id: Room identifier
+
+        Raises:
+            ConnectionClosedError: If connection not found
+            RoomNotFoundError: If room not found
+        """
+        async with self._lock:
+            await self._leave_room_internal(connection_id, room_id)
+
+    async def _leave_room_internal(self, connection_id: str, room_id: str) -> None:
+        """Internal leave room implementation (no lock)."""
+        connection = self._connections.get(connection_id)
+        if connection is None:
+            raise ConnectionClosedError(
+                connection_id,
+                "Cannot leave room - connection not found",
+            )
+
+        room = self._rooms.get(room_id)
+        if room is None:
+            raise RoomNotFoundError(room_id)
+
+        # Remove from room
+        room.connection_ids.discard(connection_id)
+        self._connection_rooms[connection_id].discard(room_id)
+        connection.remove_room(room_id)
+
+        # Clean up empty room
+        if room.get_connection_count() == 0:
+            del self._rooms[room_id]
+
+        logger.info(
+            f"Connection {connection_id} left room {room_id}",
+            extra={
+                "connection_id": connection_id,
+                "room_id":       room_id,
+                "member_count":  room.get_connection_count() if room_id in self._rooms else 0,
+            },
+        )
+
+    async def broadcast_to_room(
+        self,
+        room_id: str,
+        message: Dict[str, Any],
+        exclude_sender: Optional[str] = None,
+    ) -> int:
+        """
+        Broadcast message to all connections in room.
+
+        Args:
+            room_id: Room identifier
+            message: Message to broadcast
+            exclude_sender: Connection ID to exclude (typically the sender)
+
+        Returns:
+            int: Number of connections message was sent to
+
+        Raises:
+            RoomNotFoundError: If room not found
+        """
+        room = self._rooms.get(room_id)
+        if room is None:
+            raise RoomNotFoundError(room_id)
+
+        # Get connection IDs
+        connection_ids = room.connection_ids.copy()
+        if exclude_sender:
+            connection_ids.discard(exclude_sender)
+
+        # Broadcast in parallel
+        tasks = []
+        for conn_id in connection_ids:
+            connection = self._connections.get(conn_id)
+            if connection and connection.is_active():
+                tasks.append(self._send_safe(connection, message))
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Count successes
+        success_count = sum(1 for r in results if r is True)
+
+        logger.debug(
+            f"Broadcast to room {room_id}: {success_count}/{len(tasks)} successful",
+            extra={
+                "room_id":       room_id,
+                "success_count": success_count,
+                "total_targets": len(tasks),
+            },
+        )
+
+        return success_count
+
+    async def _send_safe(
+        self,
+        connection: WebSocketConnection,
+        message: Dict[str, Any],
+    ) -> bool:
+        """
+        Send message with error handling.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            await connection.send_json(message)
+            return True
+        except Exception as e:
+            logger.warning(
+                f"Failed to send message to connection {connection.connection_id}: {e}",
+            )
+            return False
+
+    def get_connection(self, connection_id: str) -> Optional[WebSocketConnection]:
+        """Get connection by ID."""
+        return self._connections.get(connection_id)
+
+    def get_all_connection_ids(self) -> List[str]:
+        """Get all active connection IDs."""
+        return list(self._connections.keys())
+
+    def get_connection_count(self) -> int:
+        """Get total active connection count."""
+        return len(self._connections)
+
+    def get_connections_by_user(self, user_id: str) -> List[str]:
+        """Get all connection IDs for a user."""
+        return list(self._user_connections.get(user_id, set()))
+
+    def get_connections_by_room(self, room_id: str) -> List[str]:
+        """Get all connection IDs in a room."""
+        room = self._rooms.get(room_id)
+        if room is None:
+            return []
+        return list(room.connection_ids)
+
+    def get_all_connections(self) -> List[WebSocketConnectionModel]:
+        """Get all connection metadata (serializable)."""
+        return [conn.to_model() for conn in self._connections.values()]
+
+    async def graceful_shutdown(self, reason: str = "Server shutting down") -> None:
+        """
+        Close all connections gracefully.
+
+        Args:
+            reason: Shutdown reason message
+        """
+        logger.info(f"Initiating graceful WebSocket shutdown: {reason}")
+
+        connection_ids = list(self._connections.keys())
+
+        for conn_id in connection_ids:
+            await self.disconnect(conn_id, code=1001, reason=reason)
+
+        logger.info("WebSocket graceful shutdown complete")
+
+
+# Singleton instance
+_manager: Optional[ConnectionManager] = None
+
+
+def get_manager() -> ConnectionManager:
+    """
+    Get the global ConnectionManager instance.
+
+    Returns:
+        ConnectionManager: The singleton manager instance
+    """
+    global _manager
+    if _manager is None:
+        _manager = ConnectionManager()
+    return _manager
+{% endif -%}

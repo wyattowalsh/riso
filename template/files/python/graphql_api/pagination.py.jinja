@@ -1,0 +1,179 @@
+"""Pagination Types and Utilities - Cursor and offset-based pagination."""
+
+from typing import Generic, TypeVar, List, Optional
+import strawberry
+import base64
+import json
+
+
+@strawberry.type
+class PageInfo:
+    """
+    PageInfo provides pagination metadata.
+    
+    Follows Relay Cursor Connections specification for consistent
+    pagination across all connection types.
+    """
+    
+    has_next_page: bool
+    has_previous_page: bool
+    start_cursor: Optional[str] = None
+    end_cursor: Optional[str] = None
+
+
+T = TypeVar("T")
+
+
+@strawberry.type
+class Edge(Generic[T]):
+    """
+    Generic Edge type for connection pattern.
+    
+    Wraps a node with a cursor for pagination.
+    """
+    
+    cursor: str
+    node: T
+
+
+@strawberry.type
+class Connection(Generic[T]):
+    """
+    Generic Connection type for paginated queries.
+    
+    Provides:
+    - edges: List of Edge wrappers with cursors
+    - page_info: Pagination metadata
+    - total_count: Total number of items (optional)
+    """
+    
+    edges: List[Edge[T]]
+    page_info: PageInfo
+    total_count: Optional[int] = None
+
+
+def encode_cursor(value: str) -> str:
+    """
+    Encode a value as a base64 cursor.
+    
+    Args:
+        value: Value to encode (typically an ID or composite key)
+    
+    Returns:
+        Base64-encoded cursor string
+    """
+    cursor_dict = {"value": value}
+    cursor_json = json.dumps(cursor_dict)
+    return base64.b64encode(cursor_json.encode()).decode()
+
+
+def decode_cursor(cursor: str) -> str:
+    """
+    Decode a base64 cursor to its original value.
+    
+    Args:
+        cursor: Base64-encoded cursor string
+    
+    Returns:
+        Decoded value
+    
+    Raises:
+        ValueError: If cursor is invalid
+    """
+    try:
+        cursor_json = base64.b64decode(cursor.encode()).decode()
+        cursor_dict = json.loads(cursor_json)
+        return cursor_dict["value"]
+    except Exception as e:
+        raise ValueError(f"Invalid cursor: {cursor}") from e
+
+
+def create_connection(
+    items: List[T],
+    first: Optional[int] = None,
+    after: Optional[str] = None,
+    get_cursor: callable = None,
+) -> Connection[T]:
+    """
+    Create a Connection from a list of items.
+    
+    Args:
+        items: List of items to paginate
+        first: Number of items to return
+        after: Cursor to start from
+        get_cursor: Function to generate cursor from item (defaults to using id)
+    
+    Returns:
+        Connection with edges and pageInfo
+    """
+    if get_cursor is None:
+        get_cursor = lambda item: encode_cursor(str(getattr(item, "id", "")))
+    
+    # Apply cursor-based filtering
+    if after:
+        after_value = decode_cursor(after)
+        start_index = 0
+        for i, item in enumerate(items):
+            if get_cursor(item) == after_value:
+                start_index = i + 1
+                break
+        items = items[start_index:]
+    
+    # Apply limit
+    has_next_page = False
+    if first is not None and len(items) > first:
+        items = items[:first]
+        has_next_page = True
+    
+    # Create edges
+    edges = [
+        Edge(cursor=get_cursor(item), node=item)
+        for item in items
+    ]
+    
+    # Create page info
+    page_info = PageInfo(
+        has_next_page=has_next_page,
+        has_previous_page=bool(after),
+        start_cursor=edges[0].cursor if edges else None,
+        end_cursor=edges[-1].cursor if edges else None,
+    )
+    
+    return Connection(
+        edges=edges,
+        page_info=page_info,
+        total_count=len(items),
+    )
+
+
+class OffsetPagination:
+    """
+    Offset-based pagination helper.
+    
+    Simpler than cursor-based pagination but less robust for
+    real-time data changes.
+    """
+    
+    @staticmethod
+    def paginate(
+        items: List[T],
+        offset: int = 0,
+        limit: int = 20,
+        max_limit: int = 100,
+    ) -> tuple[List[T], int]:
+        """
+        Apply offset-based pagination to a list.
+        
+        Args:
+            items: List of items to paginate
+            offset: Number of items to skip
+            limit: Number of items to return
+            max_limit: Maximum allowed limit
+        
+        Returns:
+            Tuple of (paginated_items, total_count)
+        """
+        limit = min(limit, max_limit)
+        total_count = len(items)
+        paginated_items = items[offset : offset + limit]
+        return paginated_items, total_count

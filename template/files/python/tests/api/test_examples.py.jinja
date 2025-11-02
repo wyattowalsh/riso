@@ -1,0 +1,134 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""Example endpoint tests disabled for this render."""
+{%- else %}
+"""Tests for example CRUD endpoints."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import pytest
+
+if TYPE_CHECKING:
+    from fastapi.testclient import TestClient
+
+
+def test_list_examples_empty(client: TestClient) -> None:
+    """Test listing examples when none exist.
+
+    Args:
+        client: FastAPI test client fixture
+    """
+    response = client.get("/examples/")
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_create_example(client: TestClient) -> None:
+    """Test creating a new example.
+
+    Args:
+        client: FastAPI test client fixture
+    """
+    payload = {
+        "name": "Test Example",
+        "value": 42,
+        "description": "A test example",
+        "tags": ["test", "demo"],
+    }
+    response = client.post("/examples/", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert data["name"] == "Test Example"
+    assert data["value"] == 42
+    assert data["description"] == "A test example"
+    assert data["tags"] == ["test", "demo"]
+    assert "id" in data
+    assert "created_at" in data
+    assert "updated_at" in data
+
+
+def test_create_example_validation_error(client: TestClient) -> None:
+    """Test creating an example with invalid data.
+
+    Args:
+        client: FastAPI test client fixture
+    """
+    # Missing required field 'name'
+    payload = {"value": 42}
+    response = client.post("/examples/", json=payload)
+    assert response.status_code == 422
+    data = response.json()
+    assert "detail" in data
+    assert isinstance(data["detail"], list)
+
+
+def test_get_example(client: TestClient) -> None:
+    """Test retrieving a specific example.
+
+    Args:
+        client: FastAPI test client fixture
+    """
+    # First create an example
+    create_payload = {"name": "Test Example", "value": 42}
+    create_response = client.post("/examples/", json=create_payload)
+    example_id = create_response.json()["id"]
+    
+    # Then retrieve it
+    response = client.get(f"/examples/{example_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == example_id
+    assert data["name"] == "Test Example"
+
+
+def test_get_example_not_found(client: TestClient) -> None:
+    """Test retrieving a non-existent example.
+
+    Args:
+        client: FastAPI test client fixture
+    """
+    fake_id = "00000000-0000-0000-0000-000000000000"
+    response = client.get(f"/examples/{fake_id}")
+    assert response.status_code == 404
+
+
+def test_update_example(client: TestClient) -> None:
+    """Test updating an existing example.
+
+    Args:
+        client: FastAPI test client fixture
+    """
+    # First create an example
+    create_payload = {"name": "Original Name", "value": 42}
+    create_response = client.post("/examples/", json=create_payload)
+    example_id = create_response.json()["id"]
+    
+    # Then update it
+    update_payload = {"name": "Updated Name", "value": 100}
+    response = client.put(f"/examples/{example_id}", json=update_payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["name"] == "Updated Name"
+    assert data["value"] == 100
+
+
+def test_delete_example(client: TestClient) -> None:
+    """Test deleting an existing example.
+
+    Args:
+        client: FastAPI test client fixture
+    """
+    # First create an example
+    create_payload = {"name": "To Delete", "value": 42}
+    create_response = client.post("/examples/", json=create_payload)
+    example_id = create_response.json()["id"]
+    
+    # Then delete it
+    response = client.delete(f"/examples/{example_id}")
+    assert response.status_code == 204
+    
+    # Verify it's gone
+    get_response = client.get(f"/examples/{example_id}")
+    assert get_response.status_code == 404
+{%- endif %}
