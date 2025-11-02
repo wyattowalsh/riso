@@ -1,0 +1,399 @@
+{% if saas_starter_module == "enabled" and saas_billing == "stripe" %}
+/**
+ * Stripe Billing Client
+ * 
+ * Modern Stripe Billing 2025 patterns:
+ * - Checkout Sessions for one-time and subscription payments
+ * - Customer Portal for self-service management
+ * - Usage-based metering for AI/API features
+ * - Webhook signature verification
+ * - Idempotency keys for safe retries
+ * - Stripe Elements v2 for payment UI
+ * 
+ * @see https://stripe.com/docs/billing
+ */
+
+import Stripe from 'stripe';
+import { env } from '@/lib/env';
+
+// Initialize Stripe client with latest API version
+export const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
+  apiVersion: '2024-11-20.acacia', // Latest API version
+  typescript: true,
+  appInfo: {
+    name: '{{ project_name }}',
+    version: '0.1.0',
+  },
+});
+
+// ============================================================================
+// Checkout & Payment
+// ============================================================================
+
+/**
+ * Create checkout session for subscription
+ * 
+ * @example
+ * ```ts
+ * const session = await createCheckoutSession({
+ *   customerId: 'cus_xxx',
+ *   priceId: 'price_xxx',
+ *   successUrl: '/dashboard?success=true',
+ *   cancelUrl: '/pricing',
+ * });
+ * ```
+ */
+export async function createCheckoutSession(params: {
+  customerId?: string;
+  customerEmail?: string;
+  priceId: string;
+  successUrl: string;
+  cancelUrl: string;
+  trialDays?: number;
+  metadata?: Record<string, string>;
+}) {
+  return await stripe.checkout.sessions.create({
+    customer: params.customerId,
+    customer_email: params.customerEmail,
+    mode: 'subscription',
+    line_items: [
+      {
+        price: params.priceId,
+        quantity: 1,
+      },
+    ],
+    success_url: params.successUrl,
+    cancel_url: params.cancelUrl,
+    subscription_data: {
+      trial_period_days: params.trialDays,
+      metadata: params.metadata,
+    },
+    allow_promotion_codes: true,
+    billing_address_collection: 'auto',
+    customer_update: {
+      address: 'auto',
+    },
+  });
+}
+
+/**
+ * Create Customer Portal session
+ * Allows customers to manage their subscription
+ * 
+ * @example
+ * ```ts
+ * const portalSession = await createPortalSession({
+ *   customerId: 'cus_xxx',
+ *   returnUrl: '/dashboard/billing',
+ * });
+ * ```
+ */
+export async function createPortalSession(params: {
+  customerId: string;
+  returnUrl: string;
+}) {
+  return await stripe.billingPortal.sessions.create({
+    customer: params.customerId,
+    return_url: params.returnUrl,
+  });
+}
+
+// ============================================================================
+// Customer Management
+// ============================================================================
+
+/**
+ * Create or retrieve customer
+ * Idempotent - safe to call multiple times
+ * 
+ * @example
+ * ```ts
+ * const customer = await upsertCustomer({
+ *   email: user.email,
+ *   name: user.name,
+ *   metadata: { userId: user.id },
+ * });
+ * ```
+ */
+export async function upsertCustomer(params: {
+  email: string;
+  name?: string;
+  metadata?: Record<string, string>;
+}) {
+  // Check if customer already exists
+  const existing = await stripe.customers.list({
+    email: params.email,
+    limit: 1,
+  });
+  
+  if (existing.data.length > 0) {
+    return existing.data[0];
+  }
+  
+  // Create new customer
+  return await stripe.customers.create({
+    email: params.email,
+    name: params.name,
+    metadata: params.metadata,
+  });
+}
+
+/**
+ * Update customer
+ */
+export async function updateCustomer(
+  customerId: string,
+  params: {
+    email?: string;
+    name?: string;
+    metadata?: Record<string, string>;
+  }
+) {
+  return await stripe.customers.update(customerId, params);
+}
+
+/**
+ * Delete customer
+ */
+export async function deleteCustomer(customerId: string) {
+  return await stripe.customers.del(customerId);
+}
+
+// ============================================================================
+// Subscription Management
+// ============================================================================
+
+/**
+ * Get subscription details
+ */
+export async function getSubscription(subscriptionId: string) {
+  return await stripe.subscriptions.retrieve(subscriptionId);
+}
+
+/**
+ * Cancel subscription
+ * 
+ * @param immediately - If true, cancels immediately. If false, cancels at period end.
+ */
+export async function cancelSubscription(
+  subscriptionId: string,
+  immediately = false
+) {
+  if (immediately) {
+    return await stripe.subscriptions.cancel(subscriptionId);
+  }
+  
+  return await stripe.subscriptions.update(subscriptionId, {
+    cancel_at_period_end: true,
+  });
+}
+
+/**
+ * Reactivate canceled subscription
+ */
+export async function reactivateSubscription(subscriptionId: string) {
+  return await stripe.subscriptions.update(subscriptionId, {
+    cancel_at_period_end: false,
+  });
+}
+
+/**
+ * Update subscription
+ * Changes plan or quantity
+ */
+export async function updateSubscription(params: {
+  subscriptionId: string;
+  priceId?: string;
+  quantity?: number;
+  prorationBehavior?: 'create_prorations' | 'none' | 'always_invoice';
+}) {
+  const subscription = await stripe.subscriptions.retrieve(params.subscriptionId);
+  
+  return await stripe.subscriptions.update(params.subscriptionId, {
+    items: [
+      {
+        id: subscription.items.data[0].id,
+        price: params.priceId,
+        quantity: params.quantity,
+      },
+    ],
+    proration_behavior: params.prorationBehavior || 'create_prorations',
+  });
+}
+
+// ============================================================================
+// Usage-Based Billing (Metered Billing)
+// ============================================================================
+
+/**
+ * Report usage for metered billing
+ * Used for AI tokens, API calls, storage, etc.
+ * 
+ * @example
+ * ```ts
+ * await reportUsage({
+ *   subscriptionItemId: 'si_xxx',
+ *   quantity: 1000, // 1000 AI tokens
+ *   timestamp: Date.now(),
+ *   action: 'increment',
+ * });
+ * ```
+ */
+export async function reportUsage(params: {
+  subscriptionItemId: string;
+  quantity: number;
+  timestamp?: number;
+  action?: 'increment' | 'set';
+  idempotencyKey?: string;
+}) {
+  return await stripe.subscriptionItems.createUsageRecord(
+    params.subscriptionItemId,
+    {
+      quantity: params.quantity,
+      timestamp: params.timestamp || Math.floor(Date.now() / 1000),
+      action: params.action || 'increment',
+    },
+    {
+      idempotencyKey: params.idempotencyKey,
+    }
+  );
+}
+
+/**
+ * Get usage records for subscription
+ */
+export async function getUsageRecords(subscriptionItemId: string) {
+  return await stripe.subscriptionItems.listUsageRecordSummaries(
+    subscriptionItemId
+  );
+}
+
+// ============================================================================
+// Webhook Verification
+// ============================================================================
+
+/**
+ * Verify Stripe webhook signature
+ * CRITICAL: Always verify webhooks to prevent unauthorized access
+ * 
+ * @example
+ * ```ts
+ * export async function POST(req: Request) {
+ *   const payload = await req.text();
+ *   const signature = req.headers.get('stripe-signature')!;
+ *   
+ *   const event = await verifyWebhook(payload, signature);
+ *   // Handle event
+ * }
+ * ```
+ */
+export async function verifyWebhook(
+  payload: string,
+  signature: string
+): Promise<Stripe.Event> {
+  try {
+    return stripe.webhooks.constructEvent(
+      payload,
+      signature,
+      env.STRIPE_WEBHOOK_SECRET
+    );
+  } catch (error) {
+    throw new Error(`Webhook signature verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Handle webhook event with type-safe handlers
+ * 
+ * @example
+ * ```ts
+ * await handleWebhookEvent(event, {
+ *   'invoice.paid': async (invoice) => {
+ *     await updateSubscriptionStatus(invoice.subscription, 'active');
+ *   },
+ *   'customer.subscription.deleted': async (subscription) => {
+ *     await cancelUserSubscription(subscription.id);
+ *   },
+ * });
+ * ```
+ */
+export async function handleWebhookEvent(
+  event: Stripe.Event,
+  handlers: Partial<Record<string, (data: any) => Promise<void>>>
+) {
+  const handler = handlers[event.type];
+  
+  if (handler) {
+    await handler(event.data.object);
+  }
+}
+
+// ============================================================================
+// Price & Product Management
+// ============================================================================
+
+/**
+ * Get all active prices
+ * Used for displaying pricing page
+ */
+export async function getActivePrices() {
+  return await stripe.prices.list({
+    active: true,
+    expand: ['data.product'],
+  });
+}
+
+/**
+ * Get product with prices
+ */
+export async function getProduct(productId: string) {
+  return await stripe.products.retrieve(productId, {
+    expand: ['default_price'],
+  });
+}
+
+// ============================================================================
+// Error Handling
+// ============================================================================
+
+export class StripeError extends Error {
+  constructor(
+    message: string,
+    public code?: string,
+    public statusCode?: number
+  ) {
+    super(message);
+    this.name = 'StripeError';
+  }
+}
+
+/**
+ * Handle Stripe API errors
+ */
+export function handleStripeError(error: unknown): never {
+  if (error instanceof Stripe.errors.StripeError) {
+    throw new StripeError(
+      error.message,
+      error.code,
+      error.statusCode
+    );
+  }
+  
+  throw error;
+}
+
+// ============================================================================
+// Type Exports
+// ============================================================================
+
+export type {
+  Stripe,
+};
+
+export type StripeCustomer = Stripe.Customer;
+export type StripeSubscription = Stripe.Subscription;
+export type StripeInvoice = Stripe.Invoice;
+export type StripePrice = Stripe.Price;
+export type StripeProduct = Stripe.Product;
+export type StripeWebhookEvent = Stripe.Event;
+{% endif %}

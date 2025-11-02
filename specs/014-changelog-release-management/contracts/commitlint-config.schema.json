@@ -1,0 +1,178 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/wyattowalsh/riso/main/specs/014-changelog-release-management/contracts/commitlint-config.schema.json",
+  "title": "Commitlint Configuration",
+  "description": "Configuration schema for commitlint - validates conventional commit messages",
+  "type": "object",
+  "properties": {
+    "extends": {
+      "description": "Preset configurations to extend",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["@commitlint/config-conventional"]
+    },
+    "rules": {
+      "description": "Commit message validation rules",
+      "type": "object",
+      "properties": {
+        "type-enum": {
+          "description": "Allowed commit types",
+          "type": "array",
+          "items": [
+            {
+              "type": "number",
+              "enum": [0, 1, 2],
+              "description": "0=disable, 1=warning, 2=error"
+            },
+            {
+              "type": "string",
+              "enum": ["always", "never"]
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of allowed types"
+            }
+          ],
+          "default": [2, "always", ["feat", "fix", "docs", "chore", "refactor", "test", "perf", "ci", "build", "revert"]]
+        },
+        "scope-enum": {
+          "description": "Allowed commit scopes",
+          "type": "array",
+          "items": [
+            {"type": "number"},
+            {"type": "string"},
+            {
+              "type": "array",
+              "items": {"type": "string"}
+            }
+          ]
+        },
+        "subject-max-length": {
+          "description": "Maximum subject line length",
+          "type": "array",
+          "items": [
+            {"type": "number"},
+            {"type": "string"},
+            {"type": "number"}
+          ],
+          "default": [2, "always", 72]
+        },
+        "subject-case": {
+          "description": "Subject line casing rules",
+          "type": "array",
+          "items": [
+            {"type": "number"},
+            {"type": "string"},
+            {
+              "type": "array",
+              "items": {"type": "string"}
+            }
+          ],
+          "default": [2, "never", ["start-case", "pascal-case", "upper-case"]]
+        },
+        "subject-empty": {
+          "description": "Disallow empty subject",
+          "type": "array",
+          "items": [
+            {"type": "number"},
+            {"type": "string"}
+          ],
+          "default": [2, "never"]
+        },
+        "type-empty": {
+          "description": "Disallow empty type",
+          "type": "array",
+          "items": [
+            {"type": "number"},
+            {"type": "string"}
+          ],
+          "default": [2, "never"]
+        },
+        "body-leading-blank": {
+          "description": "Require blank line before body",
+          "type": "array",
+          "items": [
+            {"type": "number"},
+            {"type": "string"}
+          ],
+          "default": [1, "always"]
+        },
+        "footer-leading-blank": {
+          "description": "Require blank line before footer",
+          "type": "array",
+          "items": [
+            {"type": "number"},
+            {"type": "string"}
+          ],
+          "default": [1, "always"]
+        }
+      }
+    },
+    "helpUrl": {
+      "description": "URL to commit convention documentation",
+      "type": "string",
+      "format": "uri"
+    },
+    "prompt": {
+      "description": "Interactive prompt configuration",
+      "type": "object",
+      "properties": {
+        "questions": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "description": "Type question configuration",
+              "type": "object",
+              "properties": {
+                "description": {"type": "string"},
+                "enum": {
+                  "type": "object",
+                  "patternProperties": {
+                    ".*": {
+                      "type": "object",
+                      "properties": {
+                        "description": {"type": "string"},
+                        "title": {"type": "string"},
+                        "emoji": {"type": "string"}
+                      },
+                      "required": ["description"]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "required": ["extends"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "extends": ["@commitlint/config-conventional"],
+      "rules": {
+        "type-enum": [
+          2,
+          "always",
+          ["feat", "fix", "docs", "chore", "refactor", "test", "perf"]
+        ],
+        "scope-enum": [
+          2,
+          "always",
+          ["api", "cli", "core", "docs"]
+        ],
+        "subject-max-length": [2, "always", 72],
+        "subject-case": [2, "never", ["start-case", "pascal-case"]],
+        "body-leading-blank": [1, "always"],
+        "footer-leading-blank": [1, "always"]
+      },
+      "helpUrl": "https://github.com/owner/repo/blob/main/docs/CONTRIBUTING.md"
+    }
+  ]
+}

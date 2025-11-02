@@ -1,0 +1,723 @@
+openapi: 3.1.0
+info:
+  title: API Versioning Management
+  description: |
+    API for discovering available API versions, retrieving version metadata, and understanding
+    deprecation schedules. This metadata API itself is version-agnostic and always available.
+  version: 1.0.0
+  contact:
+    name: API Versioning Support
+
+servers:
+  - url: https://api.example.com
+    description: Production server
+  - url: https://api-staging.example.com
+    description: Staging server
+
+tags:
+  - name: Version Discovery
+    description: Endpoints for discovering available API versions
+  - name: Version Metadata
+    description: Detailed information about specific versions
+  - name: Deprecation
+    description: Deprecation schedules and migration guidance
+
+paths:
+  /versions:
+    get:
+      tags:
+        - Version Discovery
+      summary: List all available API versions
+      description: |
+        Returns a list of all API versions with their current status. By default, only returns
+        active versions (current, deprecated, prerelease). Use `include_sunset=true` to include
+        sunset versions.
+      operationId: listVersions
+      parameters:
+        - name: include_sunset
+          in: query
+          description: Include sunset (removed) versions in response
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: include_prerelease
+          in: query
+          description: Include pre-release (beta/alpha) versions in response
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: List of API versions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionListResponse'
+              examples:
+                activeVersions:
+                  summary: Active versions only
+                  value:
+                    versions:
+                      - version_id: v1
+                        status: deprecated
+                        release_date: '2024-01-15'
+                        deprecation_date: '2025-06-01'
+                        sunset_date: '2025-12-01'
+                        description: Original API version
+                      - version_id: v2
+                        status: current
+                        release_date: '2025-06-01'
+                        description: Enhanced API with improved validation
+                    default_version: v2
+                    total_count: 2
+
+  /versions/{version_id}:
+    get:
+      tags:
+        - Version Metadata
+      summary: Get detailed metadata for a specific version
+      description: |
+        Returns comprehensive metadata about a specific API version including supported features,
+        breaking changes, deprecation information, and migration guides.
+      operationId: getVersionMetadata
+      parameters:
+        - name: version_id
+          in: path
+          description: Version identifier (e.g., v1, v2, v3-beta)
+          required: true
+          schema:
+            type: string
+            pattern: '^v[0-9]+(-[a-z]+)?$'
+            example: v2
+      responses:
+        '200':
+          description: Version metadata retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionMetadata'
+              examples:
+                currentVersion:
+                  summary: Current stable version
+                  value:
+                    version_id: v2
+                    status: current
+                    release_date: '2025-06-01'
+                    deprecation_date: null
+                    sunset_date: null
+                    description: Enhanced API with improved validation
+                    supported_features:
+                      - basic_crud
+                      - pagination
+                      - advanced_filtering
+                      - batch_operations
+                    breaking_changes_from: v1
+                    migration_guide_url: /docs/migrations/v1-to-v2
+                    opt_in_required: false
+                deprecatedVersion:
+                  summary: Deprecated version
+                  value:
+                    version_id: v1
+                    status: deprecated
+                    release_date: '2024-01-15'
+                    deprecation_date: '2025-06-01'
+                    sunset_date: '2025-12-01'
+                    description: Original API version
+                    supported_features:
+                      - basic_crud
+                      - pagination
+                    breaking_changes_from: null
+                    migration_guide_url: /docs/migrations/v1-to-v2
+                    opt_in_required: false
+        '404':
+          description: Version not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: VERSION_NOT_FOUND
+                  message: "API version 'v99' not found"
+                  available_versions:
+                    - v1
+                    - v2
+
+  /versions/{version_id}/deprecation:
+    get:
+      tags:
+        - Deprecation
+      summary: Get deprecation notice for a version
+      description: |
+        Returns deprecation information including sunset date, migration guidance, and breaking
+        changes summary. Returns 404 if version is not deprecated.
+      operationId: getDeprecationNotice
+      parameters:
+        - name: version_id
+          in: path
+          description: Version identifier
+          required: true
+          schema:
+            type: string
+            pattern: '^v[0-9]+(-[a-z]+)?$'
+      responses:
+        '200':
+          description: Deprecation notice retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeprecationNotice'
+              example:
+                version_id: v1
+                announced_date: '2025-06-01'
+                sunset_date: '2025-12-01'
+                reason: Performance improvements and breaking schema changes in v2
+                recommended_version: v2
+                migration_guide_url: /docs/migrations/v1-to-v2
+                breaking_changes_summary:
+                  - User.email field now required
+                  - Date formats changed to ISO 8601
+                  - Pagination parameters renamed
+                days_until_sunset: 45
+        '404':
+          description: Version not found or not deprecated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /versions/current:
+    get:
+      tags:
+        - Version Discovery
+      summary: Get the current default version
+      description: |
+        Returns metadata for the current default version that is used when no version is specified
+        in requests.
+      operationId: getCurrentVersion
+      responses:
+        '200':
+          description: Current version metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionMetadata'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API key for authenticated access. Provides 1000 requests/minute rate limit.
+        Keys are issued per consumer and should be kept confidential.
+    
+    OAuth2:
+      type: oauth2
+      description: |
+        OAuth 2.0 authentication for enterprise integrations with fine-grained permissions.
+        Supports authorization code flow with PKCE.
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.example.com/oauth/authorize
+          tokenUrl: https://auth.example.com/oauth/token
+          refreshUrl: https://auth.example.com/oauth/refresh
+          scopes:
+            read:versions: Read version metadata and discovery information
+            admin:versions: Manage version configuration (admin only, not available via discovery API)
+
+  schemas:
+    VersionStatus:
+      type: string
+      enum:
+        - current
+        - deprecated
+        - sunset
+        - prerelease
+      description: |
+        Lifecycle status of the API version:
+        - `current`: Active stable version (usually the default)
+        - `deprecated`: Still supported but scheduled for removal
+        - `sunset`: No longer supported, returns 410 Gone
+        - `prerelease`: Beta/alpha version requiring opt-in
+
+    VersionMetadata:
+      type: object
+      required:
+        - version_id
+        - status
+        - release_date
+        - supported_features
+        - opt_in_required
+      properties:
+        version_id:
+          type: string
+          pattern: '^v[0-9]+(-[a-z]+)?$'
+          description: Unique version identifier
+          example: v2
+        status:
+          $ref: '#/components/schemas/VersionStatus'
+        release_date:
+          type: string
+          format: date
+          description: Date when version was released to production
+          example: '2025-06-01'
+        deprecation_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date when version was marked deprecated
+          example: '2025-12-01'
+        sunset_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date when version will be/was removed
+          example: '2026-06-01'
+        description:
+          type: string
+          description: Human-readable description of the version
+          example: Enhanced API with improved validation
+        supported_features:
+          type: array
+          items:
+            type: string
+          description: List of feature flags enabled in this version
+          example:
+            - basic_crud
+            - pagination
+            - advanced_filtering
+        breaking_changes_from:
+          type: string
+          nullable: true
+          pattern: '^v[0-9]+(-[a-z]+)?$'
+          description: Version from which breaking changes occurred
+          example: v1
+        migration_guide_url:
+          type: string
+          nullable: true
+          description: URL to migration documentation
+          example: /docs/migrations/v1-to-v2
+        opt_in_required:
+          type: boolean
+          description: Whether version requires explicit opt-in header
+          example: false
+
+    VersionListResponse:
+      type: object
+      required:
+        - versions
+        - default_version
+        - total_count
+      properties:
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/VersionMetadata'
+          description: List of API versions
+        default_version:
+          type: string
+          description: Version used when none is specified
+          example: v2
+        total_count:
+          type: integer
+          description: Total number of versions returned
+          example: 2
+
+    DeprecationNotice:
+      type: object
+      required:
+        - version_id
+        - announced_date
+        - sunset_date
+        - reason
+        - recommended_version
+        - migration_guide_url
+      properties:
+        version_id:
+          type: string
+          pattern: '^v[0-9]+(-[a-z]+)?$'
+          description: Version being deprecated
+          example: v1
+        announced_date:
+          type: string
+          format: date
+          description: When deprecation was announced
+          example: '2025-06-01'
+        sunset_date:
+          type: string
+          format: date
+          description: When version will be removed
+          example: '2025-12-01'
+        reason:
+          type: string
+          description: Why the version is being deprecated
+          example: Performance improvements and breaking schema changes in v2
+        recommended_version:
+          type: string
+          pattern: '^v[0-9]+(-[a-z]+)?$'
+          description: Which version consumers should migrate to
+          example: v2
+        migration_guide_url:
+          type: string
+          description: URL to migration documentation
+          example: /docs/migrations/v1-to-v2
+        breaking_changes_summary:
+          type: array
+          items:
+            type: string
+          description: Key breaking changes to be aware of
+          example:
+            - User.email field now required
+            - Date formats changed to ISO 8601
+        days_until_sunset:
+          type: integer
+          description: Number of days remaining until sunset
+          example: 45
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              enum:
+                - VERSION_NOT_FOUND
+                - VERSION_SUNSET
+                - VERSION_CONFLICT
+                - PRERELEASE_OPT_IN_REQUIRED
+                - VERSION_NOT_DEPRECATED
+                - INVALID_VERSION_FORMAT
+                - UNAUTHORIZED
+                - RATE_LIMIT_EXCEEDED
+                - INTERNAL_SERVER_ERROR
+                - SERVICE_UNAVAILABLE
+              description: Machine-readable error code
+            message:
+              type: string
+              minLength: 1
+              description: Human-readable error message
+            available_versions:
+              type: array
+              items:
+                type: string
+                pattern: '^v[0-9]+(-[a-z]+)?$'
+              description: List of currently supported versions (included for VERSION_NOT_FOUND)
+            details:
+              type: object
+              description: Additional context-specific error details
+            correlation_id:
+              type: string
+              format: uuid
+              description: Unique identifier for tracing this error across systems
+              example: "550e8400-e29b-41d4-a716-446655440000"
+
+  parameters:
+    VersionHeader:
+      name: X-API-Version
+      in: header
+      description: |
+        Specify the API version for this request. Takes precedence over URL path and query
+        parameter version specifications.
+      required: false
+      schema:
+        type: string
+        pattern: '^v[0-9]+(-[a-z]+)?$'
+        minLength: 2
+        maxLength: 20
+        example: v2
+
+    PrereleaseOptIn:
+      name: X-API-Prerelease-Opt-In
+      in: header
+      description: |
+        Explicitly opt-in to access pre-release (beta/alpha) versions.
+        Required when requesting versions with status 'prerelease'.
+      required: false
+      schema:
+        type: boolean
+        default: false
+        example: true
+
+    VersionQuery:
+      name: version
+      in: query
+      description: |
+        Specify the API version for this request. Lower precedence than header and URL path.
+      required: false
+      schema:
+        type: string
+        pattern: '^v[0-9]+(-[a-z]+)?$'
+        minLength: 2
+        maxLength: 20
+        example: v2
+
+  headers:
+    X-API-Version:
+      description: The version of the API used to process this request
+      schema:
+        type: string
+        example: v2
+      required: true
+
+    Deprecation:
+      description: |
+        RFC 8594 Deprecation header indicating this version is deprecated. Includes sunset date.
+      schema:
+        type: string
+        example: 'date="2025-12-01"'
+      required: false
+
+    Sunset:
+      description: |
+        RFC 8594 Sunset header indicating when this version will be removed.
+      schema:
+        type: string
+        format: http-date
+        example: 'Sun, 01 Dec 2025 00:00:00 GMT'
+      required: false
+
+    Link:
+      description: |
+        RFC 8288 Link header providing URLs to migration guides and recommended versions.
+      schema:
+        type: string
+        example: '</docs/migrations/v1-to-v2>; rel="migration-guide", </versions/v2>; rel="successor-version"'
+      required: false
+
+    X-RateLimit-Limit:
+      description: Total number of requests allowed per time window (1 minute)
+      schema:
+        type: integer
+        minimum: 1
+        example: 1000
+      required: true
+
+    X-RateLimit-Remaining:
+      description: Number of requests remaining in current time window
+      schema:
+        type: integer
+        minimum: 0
+        example: 950
+      required: true
+
+    X-RateLimit-Reset:
+      description: Unix timestamp (seconds since epoch) when rate limit window resets
+      schema:
+        type: integer
+        format: int64
+        minimum: 0
+        example: 1699200000
+      required: true
+
+    X-Correlation-ID:
+      description: Unique identifier for tracing request across systems (UUIDv4)
+      schema:
+        type: string
+        format: uuid
+        example: "550e8400-e29b-41d4-a716-446655440000"
+      required: true
+
+  responses:
+    VersionNotFound:
+      description: Requested version does not exist
+      headers:
+        X-API-Version:
+          $ref: '#/components/headers/X-API-Version'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    VersionSunset:
+      description: Requested version has been sunset and is no longer available
+      headers:
+        X-API-Version:
+          $ref: '#/components/headers/X-API-Version'
+        Sunset:
+          $ref: '#/components/headers/Sunset'
+        Link:
+          $ref: '#/components/headers/Link'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    VersionConflict:
+      description: Contradictory version specifications provided in request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: VERSION_CONFLICT
+              message: 'Contradictory version specifications: header=v2, url=v1'
+              correlation_id: "550e8400-e29b-41d4-a716-446655440005"
+              details:
+                header_version: v2
+                url_version: v1
+                query_version: null
+
+    BadRequest:
+      description: Invalid request parameters or malformed version specification
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalidFormat:
+              summary: Invalid version format
+              value:
+                error:
+                  code: INVALID_VERSION_FORMAT
+                  message: "Version identifier must match pattern ^v[0-9]+(-[a-z]+)?$"
+                  correlation_id: "550e8400-e29b-41d4-a716-446655440006"
+                  details:
+                    provided_value: "invalid_version"
+                    required_pattern: "^v[0-9]+(-[a-z]+)?$"
+            tooLong:
+              summary: Version identifier too long
+              value:
+                error:
+                  code: INVALID_VERSION_FORMAT
+                  message: "Version identifier must be 2-20 characters"
+                  correlation_id: "550e8400-e29b-41d4-a716-446655440007"
+                  details:
+                    provided_length: 25
+                    max_length: 20
+
+    Unauthorized:
+      description: Authentication required or authentication failed
+      headers:
+        WWW-Authenticate:
+          description: Authentication challenge
+          schema:
+            type: string
+            example: 'Bearer realm="API Versioning", error="invalid_token", error_description="The access token expired"'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalidKey:
+              summary: Invalid API key
+              value:
+                error:
+                  code: UNAUTHORIZED
+                  message: "Invalid API key provided"
+                  correlation_id: "550e8400-e29b-41d4-a716-446655440008"
+            expiredToken:
+              summary: Expired OAuth token
+              value:
+                error:
+                  code: UNAUTHORIZED
+                  message: "OAuth token has expired"
+                  correlation_id: "550e8400-e29b-41d4-a716-446655440009"
+                  details:
+                    expired_at: "2025-11-01T12:00:00Z"
+
+    TooManyRequests:
+      description: Rate limit exceeded for consumer
+      headers:
+        X-RateLimit-Limit:
+          $ref: '#/components/headers/X-RateLimit-Limit'
+        X-RateLimit-Remaining:
+          description: Always 0 when rate limited
+          schema:
+            type: integer
+            example: 0
+        X-RateLimit-Reset:
+          $ref: '#/components/headers/X-RateLimit-Reset'
+        Retry-After:
+          description: Seconds to wait before retrying
+          schema:
+            type: integer
+            minimum: 1
+            example: 60
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            authenticated:
+              summary: Authenticated rate limit exceeded
+              value:
+                error:
+                  code: RATE_LIMIT_EXCEEDED
+                  message: "Rate limit exceeded. Limit: 1000 requests/minute"
+                  correlation_id: "550e8400-e29b-41d4-a716-446655440010"
+                  details:
+                    limit: 1000
+                    window: "1 minute"
+                    retry_after: 45
+            anonymous:
+              summary: Anonymous rate limit exceeded
+              value:
+                error:
+                  code: RATE_LIMIT_EXCEEDED
+                  message: "Rate limit exceeded. Limit: 100 requests/minute (anonymous)"
+                  correlation_id: "550e8400-e29b-41d4-a716-446655440011"
+                  details:
+                    limit: 100
+                    window: "1 minute"
+                    retry_after: 30
+                    suggestion: "Authenticate with API key for higher limits"
+
+    InternalServerError:
+      description: Internal server error - unexpected failure
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: INTERNAL_SERVER_ERROR
+              message: "An unexpected error occurred while processing your request"
+              correlation_id: "550e8400-e29b-41d4-a716-446655440012"
+              details:
+                support_url: "https://docs.example.com/support"
+
+    ServiceUnavailable:
+      description: Service temporarily unavailable (maintenance or dependency failure)
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying
+          schema:
+            type: integer
+            example: 300
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            maintenance:
+              summary: Scheduled maintenance
+              value:
+                error:
+                  code: SERVICE_UNAVAILABLE
+                  message: "Service temporarily unavailable for scheduled maintenance"
+                  correlation_id: "550e8400-e29b-41d4-a716-446655440013"
+                  details:
+                    estimated_recovery: "2025-11-02T10:00:00Z"
+                    retry_after: 300
+            dependencyFailure:
+              summary: Dependency failure
+              value:
+                error:
+                  code: SERVICE_UNAVAILABLE
+                  message: "Version registry temporarily unavailable"
+                  correlation_id: "550e8400-e29b-41d4-a716-446655440014"
+                  details:
+                    reason: "database connection failure"
+                    retry_after: 60
