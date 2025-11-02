@@ -3,6 +3,7 @@
 Auto-generated from all feature plans. Last updated: 2025-10-30
 
 ## Active Technologies
+- Python 3.11 (uv-managed) with optional Node.js 20 LTS support (010-api-versioning-strategy)
 
 - Python 3.11 (uv-managed), optional Node.js 20 LTS + ruff, mypy, pylint, pytest, coverage, optional eslint + typescrip (003-code-quality-integrations)
 
@@ -22,6 +23,7 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.11 (uv-managed), optional Node.js 20 LTS: Follow standard conventions
 
 ## Recent Changes
+- 010-api-versioning-strategy: Added Python 3.11 (uv-managed) with optional Node.js 20 LTS support
 
 - 003-code-quality-integrations: Added Python 3.11 (uv-managed), optional Node.js 20 LTS + ruff, mypy, pylint, pytest, coverage, optional eslint + typescrip
 
