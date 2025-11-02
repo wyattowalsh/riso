@@ -1,0 +1,210 @@
+{% if saas_starter_module == "enabled" and saas_auth == "authjs" %}
+/**
+ * Auth.js Configuration
+ * 
+ * Modern Auth.js v5 patterns:
+ * - Database session strategy for better security
+ * - Multiple OAuth providers
+ * - Custom pages for brand control
+ * - JWT encryption
+ * - Type-safe callbacks
+ * 
+ * @see https://authjs.dev/getting-started/installation
+ */
+
+import NextAuth from 'next-auth';
+import type { NextAuthConfig } from 'next-auth';
+import Google from 'next-auth/providers/google';
+import GitHub from 'next-auth/providers/github';
+{% if saas_orm == 'prisma' %}
+import { PrismaAdapter } from '@auth/prisma-adapter';
+import { prisma } from '@/lib/database/client';
+{% elif saas_orm == 'drizzle' %}
+import { DrizzleAdapter } from '@auth/drizzle-adapter';
+import { db } from '@/lib/database/client';
+{% endif %}
+
+/**
+ * Auth.js Configuration
+ * 
+ * Configure providers, callbacks, and session strategy here.
+ */
+export const authConfig: NextAuthConfig = {
+  // Database adapter for session persistence
+  {% if saas_orm == 'prisma' %}
+  adapter: PrismaAdapter(prisma),
+  {% elif saas_orm == 'drizzle' %}
+  adapter: DrizzleAdapter(db),
+  {% endif %}
+  
+  // OAuth Providers
+  providers: [
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      authorization: {
+        params: {
+          prompt: 'consent',
+          access_type: 'offline',
+          response_type: 'code',
+        },
+      },
+    }),
+    GitHub({
+      clientId: process.env.GITHUB_CLIENT_ID,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    }),
+    // Add more providers as needed
+  ],
+  
+  // Session strategy
+  session: {
+    strategy: 'database', // More secure than JWT for SaaS
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // 24 hours
+  },
+  
+  // Custom pages for branding
+  pages: {
+    signIn: '/sign-in',
+    signOut: '/sign-out',
+    error: '/auth/error',
+    verifyRequest: '/auth/verify-request',
+    newUser: '/dashboard', // Redirect after first sign in
+  },
+  
+  // Callbacks
+  callbacks: {
+    /**
+     * Control if user is allowed to sign in
+     */
+    async signIn({ user, account, profile }) {
+      // Add custom validation here
+      // Example: check if email domain is allowed
+      // if (!user.email?.endsWith('@allowed-domain.com')) {
+      //   return false;
+      // }
+      
+      return true;
+    },
+    
+    /**
+     * Modify session object
+     */
+    async session({ session, user }) {
+      // Add user ID to session
+      if (session.user) {
+        session.user.id = user.id;
+      }
+      
+      return session;
+    },
+    
+    /**
+     * Modify JWT token
+     */
+    async jwt({ token, user, account }) {
+      // Add user ID to token on first sign in
+      if (user) {
+        token.userId = user.id;
+      }
+      
+      return token;
+    },
+  },
+  
+  // Events (for logging and analytics)
+  events: {
+    async signIn({ user, account, profile, isNewUser }) {
+      {% if saas_observability_structured_logging %}
+      console.log('User signed in:', {
+        userId: user.id,
+        email: user.email,
+        provider: account?.provider,
+        isNewUser,
+      });
+      {% endif %}
+      
+      {% if saas_analytics == 'posthog' or saas_analytics == 'amplitude' %}
+      // Track sign-in event in analytics
+      // Import and use your analytics client here
+      {% endif %}
+    },
+    
+    async signOut({ token }) {
+      {% if saas_observability_structured_logging %}
+      console.log('User signed out:', {
+        userId: token.userId,
+      });
+      {% endif %}
+    },
+  },
+  
+  // Debug mode
+  debug: process.env.NODE_ENV === 'development',
+};
+
+/**
+ * Export auth handlers
+ */
+export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);
+
+/**
+ * Get current session
+ * Use this in Server Components and API routes
+ * 
+ * @example
+ * ```ts
+ * import { getCurrentSession } from '@/lib/auth/authjs/auth.config';
+ * 
+ * const session = await getCurrentSession();
+ * if (!session) {
+ *   redirect('/sign-in');
+ * }
+ * ```
+ */
+export async function getCurrentSession() {
+  return await auth();
+}
+
+/**
+ * Require authentication
+ * Throws error if not authenticated
+ * 
+ * @example
+ * ```ts
+ * const session = await requireAuth();
+ * // User is authenticated, proceed with session.user
+ * ```
+ */
+export async function requireAuth() {
+  const session = await auth();
+  
+  if (!session?.user) {
+    throw new Error('Unauthorized');
+  }
+  
+  return session;
+}
+
+// ============================================================================
+// Type Augmentation
+// ============================================================================
+
+declare module 'next-auth' {
+  interface Session {
+    user: {
+      id: string;
+      email: string;
+      name?: string | null;
+      image?: string | null;
+    };
+  }
+}
+
+declare module 'next-auth/jwt' {
+  interface JWT {
+    userId: string;
+  }
+}
+{% endif %}
