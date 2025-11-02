@@ -1,0 +1,136 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Rate limit metrics disabled."""
+{%- else %}
+"""Prometheus metrics for rate limiting."""
+
+from __future__ import annotations
+
+try:
+    from prometheus_client import Counter, Gauge, Histogram  # type: ignore[import-untyped]
+
+    METRICS_AVAILABLE = True
+except ImportError:
+    METRICS_AVAILABLE = False
+
+
+# Define metrics (only if prometheus_client available)
+if METRICS_AVAILABLE:
+    # Total requests processed by rate limiter
+    rate_limit_requests_total = Counter(
+        "rate_limit_requests_total",
+        "Total requests processed by rate limiter",
+        ["endpoint", "tier", "status"],  # status: allowed, rejected
+    )
+
+    # Total rate limit violations
+    rate_limit_exceeded_total = Counter(
+        "rate_limit_exceeded_total",
+        "Total rate limit rejections",
+        ["endpoint", "tier", "client_type"],  # client_type: ip, user
+    )
+
+    # Current rate limit usage (gauge)
+    rate_limit_current_usage = Gauge(
+        "rate_limit_current_usage",
+        "Current rate limit usage",
+        ["endpoint", "tier"],  # Omit client_id to avoid high cardinality
+    )
+
+    # Redis operation latency
+    rate_limit_redis_latency_seconds = Histogram(
+        "rate_limit_redis_latency_seconds",
+        "Redis operation latency in seconds",
+        ["operation"],  # operation: increment, get_count, reset
+        buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0),
+    )
+
+    # Redis errors
+    rate_limit_redis_errors_total = Counter(
+        "rate_limit_redis_errors_total",
+        "Total Redis operation errors",
+        ["operation", "error_type"],
+    )
+
+
+def record_request(endpoint: str, tier: str, allowed: bool) -> None:
+    """Record a rate limit check in metrics.
+
+    Args:
+        endpoint: Request endpoint
+        tier: User tier (or 'anonymous')
+        allowed: Whether request was allowed
+    """
+    if not METRICS_AVAILABLE:
+        return
+
+    status = "allowed" if allowed else "rejected"
+    rate_limit_requests_total.labels(
+        endpoint=endpoint,
+        tier=tier,
+        status=status,
+    ).inc()
+
+
+def record_exceeded(endpoint: str, tier: str, client_type: str) -> None:
+    """Record a rate limit violation in metrics.
+
+    Args:
+        endpoint: Request endpoint
+        tier: User tier (or 'anonymous')
+        client_type: 'ip' or 'user'
+    """
+    if not METRICS_AVAILABLE:
+        return
+
+    rate_limit_exceeded_total.labels(
+        endpoint=endpoint,
+        tier=tier,
+        client_type=client_type,
+    ).inc()
+
+
+def update_current_usage(endpoint: str, tier: str, usage_ratio: float) -> None:
+    """Update current rate limit usage gauge.
+
+    Args:
+        endpoint: Request endpoint
+        tier: User tier (or 'anonymous')
+        usage_ratio: Current usage as fraction of limit (0.0-1.0)
+    """
+    if not METRICS_AVAILABLE:
+        return
+
+    rate_limit_current_usage.labels(
+        endpoint=endpoint,
+        tier=tier,
+    ).set(usage_ratio)
+
+
+def record_redis_latency(operation: str, latency_seconds: float) -> None:
+    """Record Redis operation latency in histogram.
+
+    Args:
+        operation: Redis operation name
+        latency_seconds: Operation latency in seconds
+    """
+    if not METRICS_AVAILABLE:
+        return
+
+    rate_limit_redis_latency_seconds.labels(operation=operation).observe(latency_seconds)
+
+
+def record_redis_error(operation: str, error_type: str) -> None:
+    """Record Redis operation error.
+
+    Args:
+        operation: Redis operation name
+        error_type: Error type (e.g., 'connection', 'timeout')
+    """
+    if not METRICS_AVAILABLE:
+        return
+
+    rate_limit_redis_errors_total.labels(
+        operation=operation,
+        error_type=error_type,
+    ).inc()
+{%- endif %}

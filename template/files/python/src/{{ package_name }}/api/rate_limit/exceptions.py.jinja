@@ -1,0 +1,107 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Rate limit exceptions disabled."""
+{%- else %}
+"""Exceptions for rate limiting."""
+
+from __future__ import annotations
+
+
+class RateLimitExceeded(Exception):
+    """Raised when client exceeds rate limit."""
+
+    def __init__(
+        self,
+        *,
+        limit: int,
+        window: int,
+        current_count: int,
+        retry_after: int,
+        endpoint: str,
+        message: str | None = None,
+    ) -> None:
+        """Initialize rate limit exceeded exception.
+
+        Args:
+            limit: Maximum requests per window
+            window: Time window in seconds
+            current_count: Current request count
+            retry_after: Seconds until limit resets
+            endpoint: Endpoint that was rate limited
+            message: Optional custom message
+        """
+        self.limit = limit
+        self.window = window
+        self.current_count = current_count
+        self.retry_after = retry_after
+        self.endpoint = endpoint
+
+        if message is None:
+            message = (
+                f"Rate limit of {limit} requests per {window} seconds exceeded "
+                f"for endpoint {endpoint}"
+            )
+
+        super().__init__(message)
+
+    def to_dict(self) -> dict:
+        """Convert exception to dictionary for JSON response.
+
+        Returns:
+            Dictionary with error details
+        """
+        return {
+            "error": "rate_limit_exceeded",
+            "message": str(self),
+            "limit": self.limit,
+            "window_seconds": self.window,
+            "current_count": self.current_count,
+            "retry_after_seconds": self.retry_after,
+            "endpoint": self.endpoint,
+        }
+
+
+class MultipleWindowsExceeded(RateLimitExceeded):
+    """Raised when client exceeds multiple rate limit windows."""
+
+    def __init__(
+        self,
+        *,
+        exceeded_limits: list[dict],
+        retry_after: int,
+        endpoint: str,
+    ) -> None:
+        """Initialize multiple windows exceeded exception.
+
+        Args:
+            exceeded_limits: List of exceeded limit configurations
+            retry_after: Seconds until shortest limit resets
+            endpoint: Endpoint that was rate limited
+        """
+        self.exceeded_limits = exceeded_limits
+
+        # Use shortest window for base exception
+        shortest = min(exceeded_limits, key=lambda x: x["retry_after_seconds"])
+
+        super().__init__(
+            limit=shortest["limit"],
+            window=shortest["window_seconds"],
+            current_count=shortest["current_count"],
+            retry_after=retry_after,
+            endpoint=endpoint,
+            message="Multiple rate limits exceeded",
+        )
+
+    def to_dict(self) -> dict:
+        """Convert exception to dictionary for JSON response.
+
+        Returns:
+            Dictionary with all exceeded limits
+        """
+        return {
+            "error": "rate_limit_exceeded",
+            "message": "Multiple rate limits exceeded",
+            "limits_exceeded": self.exceeded_limits,
+            "retry_after_seconds": self.retry_after,
+            "endpoint": self.endpoint,
+        }
+{%- endif %}

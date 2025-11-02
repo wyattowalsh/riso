@@ -1,0 +1,650 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+# Rate Limiting Module (Disabled)
+
+Rate limiting is not enabled for this project. To enable it, regenerate with `rate_limiting_enabled=true`.
+{%- else %}
+# API Rate Limiting & Throttling
+
+Comprehensive rate limiting for FastAPI applications with distributed enforcement via Redis.
+
+## Overview
+
+The rate limiting module provides:
+
+- **Token bucket and sliding window algorithms**
+- **IP-based and JWT-based client identification**
+- **Per-endpoint and tier-based rate limits**
+- **Redis backend for distributed rate limiting**
+- **Prometheus metrics and structured logging**
+- **Configurable exemptions and progressive penalties**
+
+## Quick Start
+
+### Basic Configuration
+
+Create a `config.toml` file in your project root:
+
+```toml
+[rate_limiting]
+enabled = true
+default_limit = 100  # requests per window
+default_window = 60  # seconds
+algorithm = "token_bucket"  # or "sliding_window"
+failure_mode = "fail_open"  # or "fail_closed"
+
+[rate_limiting.redis]
+url = "redis://localhost:6379/0"
+topology = "single"  # or "sentinel", "cluster"
+pool_size = 20
+```
+
+### Environment Variables
+
+Override configuration with environment variables:
+
+```bash
+export RATE_LIMIT_ENABLED=true
+export RATE_LIMIT_DEFAULT_LIMIT=200
+export REDIS_URL=redis://localhost:6379/0
+```
+
+### Start Application
+
+The rate limiting middleware is automatically registered when enabled:
+
+```bash
+uv run uvicorn {{ package_name }}.api.main:app --host 0.0.0.0 --port 8000
+```
+
+### Test Rate Limiting
+
+Make requests and observe headers:
+
+```bash
+# First request
+curl -i http://localhost:8000/api/v1/endpoint
+# X-RateLimit-Limit: 100
+# X-RateLimit-Remaining: 99
+# X-RateLimit-Reset: 1698765492
+
+# After 100 requests
+curl -i http://localhost:8000/api/v1/endpoint
+# HTTP/1.1 429 Too Many Requests
+# X-RateLimit-Limit: 100
+# X-RateLimit-Remaining: 0
+# Retry-After: 45
+```
+
+## Configuration
+
+### Per-Endpoint Rate Limits
+
+Configure different limits for specific endpoints:
+
+```toml
+[[rate_limiting.endpoints]]
+pattern = "/api/v1/search"
+limit = 20
+window = 60
+
+[[rate_limiting.endpoints]]
+pattern = "/api/v1/admin/*"
+limit = 5
+window = 60
+```
+
+Patterns support wildcards (`*`) for flexible matching.
+
+### Tier-Based Rate Limits
+
+Different limits for different user tiers:
+
+```toml
+[[rate_limiting.tiers]]
+name = "anonymous"
+limit = 100
+window = 60
+
+[[rate_limiting.tiers]]
+name = "standard"
+limit = 1000
+window = 60
+
+[[rate_limiting.tiers]]
+name = "premium"
+limit = 5000
+window = 60
+```
+
+Tiers are extracted from JWT `tier` claim. If not present, defaults to "anonymous".
+
+### Exemptions
+
+Bypass rate limiting for specific clients or endpoints:
+
+```toml
+[[rate_limiting.exemptions]]
+type = "ip"
+value = "192.0.2.0/24"  # CIDR notation supported
+
+[[rate_limiting.exemptions]]
+type = "user_id"
+value = "admin"
+
+[[rate_limiting.exemptions]]
+type = "endpoint"
+value = "/internal/*"
+```
+
+**Note:** `/health`, `/metrics`, and `/docs` endpoints are automatically exempted.
+
+### Progressive Penalties
+
+Increase cooldown periods for repeat violators:
+
+```toml
+[rate_limiting.progressive_penalties]
+enabled = true  # MUST be explicitly enabled (disabled by default)
+detection_window = 3600  # Track violations for 1 hour
+violation_threshold = 3  # Apply penalties after 3 violations
+penalty_multipliers = [1, 2, 4, 8]  # 1x, 2x, 4x, 8x cooldown
+```
+
+**Example:** If a client hits the limit 3 times within the detection window, their 4th violation requires waiting 4x the normal reset period.
+
+### Redis Configuration
+
+#### Single Instance (Development/Testing)
+
+```toml
+[rate_limiting.redis]
+url = "redis://localhost:6379/0"
+topology = "single"
+```
+
+#### Redis Sentinel (Production - Recommended)
+
+```toml
+[rate_limiting.redis]
+topology = "sentinel"
+pool_size = 20
+socket_timeout = 5.0
+
+[rate_limiting.redis.sentinel]
+service_name = "mymaster"
+
+[[rate_limiting.redis.sentinel.sentinels]]
+host = "sentinel1.example.com"
+port = 26379
+
+[[rate_limiting.redis.sentinel.sentinels]]
+host = "sentinel2.example.com"
+port = 26379
+
+[[rate_limiting.redis.sentinel.sentinels]]
+host = "sentinel3.example.com"
+port = 26379
+```
+
+#### Redis Cluster (High Throughput)
+
+```toml
+[rate_limiting.redis]
+url = "redis://redis-cluster:6379/0"
+topology = "cluster"
+pool_size = 50
+```
+
+### Client Identification
+
+Configure how client IP addresses are extracted:
+
+```toml
+[rate_limiting.client_identification]
+trusted_proxy_depth = 1  # Number of proxy hops to trust
+```
+
+**Examples:**
+- `0`: Use direct connection IP (no proxies trusted)
+- `1`: Trust single load balancer (most common)
+- `2`: Trust CDN + load balancer chain
+
+**IP Extraction Strategy:** Uses rightmost untrusted IP from `X-Forwarded-For` header to prevent IP spoofing.
+
+## Algorithms
+
+### Token Bucket (Default)
+
+**Characteristics:**
+- Allows burst traffic up to the limit
+- Simpler implementation
+- Lower Redis overhead
+- Recommended for most use cases
+
+**Behavior:** Client can consume all tokens immediately, then must wait for window to reset.
+
+**Example:** With `limit=100` and `window=60`:
+- Client can make 100 requests in 1 second (burst)
+- Must wait 60 seconds before making more requests
+
+### Sliding Window
+
+**Characteristics:**
+- More accurate enforcement
+- Prevents boundary exploitation
+- Higher Redis overhead (uses sorted sets)
+- Stricter rate limiting
+
+**Behavior:** Tracks precise request timestamps within a sliding time window.
+
+**Example:** With `limit=100` and `window=60`:
+- Counts requests in the last 60 seconds
+- Rejects if more than 100 requests in any 60-second period
+
+**Configuration:**
+
+```toml
+[rate_limiting]
+algorithm = "sliding_window"
+```
+
+## Response Headers
+
+All API responses include standard rate limit headers:
+
+```
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 42
+X-RateLimit-Reset: 1698765492
+```
+
+When rate limited (HTTP 429):
+
+```
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1698765492
+Retry-After: 30
+```
+
+### JSON Error Response
+
+```json
+{
+  "error": "rate_limit_exceeded",
+  "message": "Rate limit of 100 requests per 60 seconds exceeded for endpoint /api/v1/search",
+  "limit": 100,
+  "window_seconds": 60,
+  "current_count": 101,
+  "retry_after_seconds": 30,
+  "endpoint": "/api/v1/search"
+}
+```
+
+## Client Integration
+
+### Python Client with Retry Logic
+
+```python
+import time
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
+
+def make_request_with_retry(url: str) -> dict:
+    """Make request with exponential backoff + jitter."""
+    session = requests.Session()
+    
+    retry_strategy = Retry(
+        total=5,
+        backoff_factor=1,  # 1s, 2s, 4s, 8s, 16s
+        status_forcelist=[429, 500, 502, 503, 504],
+        respect_retry_after_header=True,  # Honor Retry-After
+    )
+    
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    
+    response = session.get(url)
+    return response.json()
+
+# Check rate limit headers
+response = requests.get("http://api.example.com/endpoint")
+remaining = int(response.headers.get("X-RateLimit-Remaining", 0))
+reset_at = int(response.headers.get("X-RateLimit-Reset", 0))
+
+if remaining == 0:
+    sleep_time = reset_at - int(time.time())
+    print(f"Rate limited - sleeping for {sleep_time}s")
+    time.sleep(sleep_time)
+```
+
+### JavaScript/TypeScript Client
+
+```typescript
+async function fetchWithRetry(
+  url: string,
+  options = {},
+  maxRetries = 3
+): Promise<Response> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+
+      // Check rate limit headers
+      const remaining = parseInt(
+        response.headers.get("X-RateLimit-Remaining") || "0"
+      );
+      const resetAt = parseInt(
+        response.headers.get("X-RateLimit-Reset") || "0"
+      );
+
+      if (response.status === 429) {
+        // Rate limited - wait and retry
+        const retryAfter =
+          parseInt(response.headers.get("Retry-After") || "0") * 1000;
+        const backoffTime = retryAfter || Math.pow(2, attempt) * 1000;
+
+        console.log(
+          `Rate limited (${remaining} remaining). Retrying in ${backoffTime}ms...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, backoffTime));
+        continue;
+      }
+
+      return response;
+    } catch (error) {
+      lastError = error as Error;
+
+      if (attempt < maxRetries) {
+        const backoffTime = Math.pow(2, attempt) * 1000;
+        await new Promise((resolve) => setTimeout(resolve, backoffTime));
+      }
+    }
+  }
+
+  throw lastError || new Error("Max retries exceeded");
+}
+
+// Usage
+const response = await fetchWithRetry("http://api.example.com/endpoint");
+const data = await response.json();
+```
+
+## Monitoring & Observability
+
+### Prometheus Metrics
+
+Rate limiting exports metrics to `/metrics` endpoint:
+
+```
+# Total requests processed
+rate_limit_requests_total{endpoint="/api/v1/search",tier="standard",status="allowed"} 1234
+
+# Rate limit violations
+rate_limit_exceeded_total{endpoint="/api/v1/search",tier="standard",client_type="user"} 45
+
+# Current usage (gauge)
+rate_limit_current_usage{endpoint="/api/v1/search",tier="standard"} 0.85
+
+# Redis latency (histogram)
+rate_limit_redis_latency_seconds_bucket{operation="increment",le="0.005"} 987
+
+# Redis errors
+rate_limit_redis_errors_total{operation="increment",error_type="timeout"} 2
+```
+
+### Structured Logs
+
+Rate limit events are logged in JSON format:
+
+```json
+{
+  "timestamp": "2025-11-02T10:30:45Z",
+  "event": "rate_limit_exceeded",
+  "client_id": "203.0.113.1",
+  "client_type": "ip",
+  "endpoint": "/api/v1/search",
+  "tier": "anonymous",
+  "limit_config": "20/60s",
+  "limit": 20,
+  "window_seconds": 60,
+  "current_count": 21,
+  "status": "rejected"
+}
+```
+
+## Troubleshooting
+
+### Rate Limiting Not Working
+
+1. **Check configuration:**
+   ```bash
+   # Verify config is loaded
+   curl http://localhost:8000/health
+   # Check logs for rate limiting initialization
+   ```
+
+2. **Verify Redis connection:**
+   ```bash
+   redis-cli -h localhost -p 6379 ping
+   # Should return PONG
+   ```
+
+3. **Check exemptions:**
+   - Health endpoints are automatically exempted
+   - Verify client IP/user_id not in exemption list
+
+### High Redis Latency
+
+1. **Increase connection pool size:**
+   ```toml
+   [rate_limiting.redis]
+   pool_size = 50  # Increase from default 20
+   ```
+
+2. **Optimize Redis:**
+   - Use Redis in same data center/region
+   - Enable Redis persistence (AOF or RDB)
+   - Monitor Redis memory usage
+
+3. **Switch algorithm:**
+   - Token bucket has lower Redis overhead than sliding window
+   ```toml
+   algorithm = "token_bucket"
+   ```
+
+### Clock Skew Issues
+
+Rate limiting uses Redis server time to avoid clock skew between API instances:
+
+```bash
+# Check Redis server time
+redis-cli TIME
+```
+
+### Circuit Breaker Tripping
+
+If Redis fails repeatedly, circuit breaker opens to prevent cascading failures:
+
+```
+ERROR: Redis circuit breaker is open (too many failures)
+```
+
+**Solutions:**
+1. Fix Redis connectivity
+2. Increase circuit breaker threshold:
+   ```toml
+   [rate_limiting.redis]
+   circuit_breaker_threshold = 5  # Default: 3
+   circuit_breaker_timeout = 60  # Default: 30
+   ```
+3. Use fail-open mode (allow requests when Redis unavailable):
+   ```toml
+   failure_mode = "fail_open"
+   ```
+
+### High Cardinality Metrics
+
+If Prometheus metrics explode in cardinality:
+
+1. **Remove client_id from gauge:**
+   - Metrics use aggregated labels (endpoint, tier)
+   - Avoid per-client metrics in production
+
+2. **Limit endpoints:**
+   - Use wildcard patterns to group similar endpoints
+   ```toml
+   [[rate_limiting.endpoints]]
+   pattern = "/api/v1/users/*"  # Groups all user endpoints
+   ```
+
+## Best Practices
+
+### Production Deployment
+
+1. **Use Redis Sentinel** (3-node: 1 master + 2 replicas)
+2. **Enable fail-open mode** for graceful degradation
+3. **Configure progressive penalties** for repeat violators
+4. **Monitor metrics** (rejection rates, Redis latency)
+5. **Set up alerts** for high rejection rates or Redis failures
+
+### Security
+
+1. **Configure trusted proxy depth** correctly to prevent IP spoofing
+2. **Validate JWT signatures** in authentication middleware (separate from rate limiting)
+3. **Use Redis ACLs** to restrict permissions (GET, SET, INCR, EXPIRE only)
+4. **Exempt admin IPs** from rate limiting carefully
+
+### Performance
+
+1. **Use token bucket** for most use cases (lower overhead)
+2. **Set appropriate connection pool size** (2x worker threads)
+3. **Enable Redis persistence** for counter durability
+4. **Use wildcard patterns** to reduce configuration complexity
+
+### Client Experience
+
+1. **Document rate limits** in API documentation
+2. **Provide retry guidance** with exponential backoff examples
+3. **Use tier-based limits** to incentivize paid plans
+4. **Monitor 429 rates** to adjust limits if too strict
+
+## Configuration Hot Reload
+
+Rate limiting supports configuration hot reload without restarting:
+
+### SIGHUP Signal
+
+```bash
+# Update config.toml, then:
+kill -HUP <pid>
+```
+
+### Admin Endpoint (Optional)
+
+```bash
+POST /admin/rate-limit/reload
+```
+
+**Note:** Existing counters are preserved during reload.
+
+## API Reference
+
+### Middleware
+
+```python
+from {{ package_name }}.api.rate_limit import RateLimitMiddleware, load_config
+
+# Load configuration
+config = load_config("config.toml")
+
+# Add middleware to FastAPI app
+app.add_middleware(RateLimitMiddleware, config=config)
+```
+
+### Backends
+
+```python
+from {{ package_name }}.api.rate_limit.backends import RedisBackend, MemoryBackend
+
+# Redis backend (production)
+backend = RedisBackend(config.redis)
+
+# Memory backend (testing only)
+backend = MemoryBackend()
+```
+
+### Algorithms
+
+```python
+from {{ package_name }}.api.rate_limit.algorithms import TokenBucketLimiter, SlidingWindowLimiter
+
+# Token bucket (default)
+limiter = TokenBucketLimiter(backend)
+
+# Sliding window (stricter)
+limiter = SlidingWindowLimiter(backend)
+
+# Check limit
+result = await limiter.check_limit(
+    key="ratelimit:user:alice:/api/v1/search",
+    limit=20,
+    window=60,
+)
+```
+
+## Testing
+
+### Unit Tests
+
+Run rate limiting unit tests:
+
+```bash
+uv run pytest tests/api/rate_limit/test_config.py -v
+uv run pytest tests/api/rate_limit/test_token_bucket.py -v
+uv run pytest tests/api/rate_limit/test_identification.py -v
+```
+
+### Integration Tests
+
+Test with real Redis:
+
+```bash
+# Start Redis
+docker-compose up -d redis
+
+# Run integration tests
+uv run pytest tests/api/rate_limit/test_redis_backend.py -v
+uv run pytest tests/api/rate_limit/test_middleware_integration.py -v
+```
+
+### Load Tests
+
+Test accuracy under load:
+
+```bash
+# 1000 requests/sec, 100 concurrent clients
+uv run pytest tests/api/rate_limit/test_load.py -v
+```
+
+## Examples
+
+See [`examples/rate-limiting/`](../../examples/rate-limiting/) for complete examples:
+
+- Basic IP-based rate limiting
+- JWT-based tier limits
+- Progressive penalties
+- Redis Sentinel setup
+- Distributed testing across multiple instances
+
+## Further Reading
+
+- [RFC 6585 - HTTP 429 Too Many Requests](https://www.rfc-editor.org/rfc/rfc6585.html)
+- [Draft RateLimit Headers](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-ratelimit-headers)
+- [Token Bucket Algorithm](https://en.wikipedia.org/wiki/Token_bucket)
+- [Stripe Rate Limiting Design](https://stripe.com/blog/rate-limiters)
+{%- endif %}

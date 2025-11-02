@@ -1,0 +1,281 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Rate limiting middleware disabled."""
+{%- else %}
+"""FastAPI middleware for rate limiting.
+
+Integrates rate limiting into the request/response cycle:
+1. Extract client identity (IP or JWT)
+2. Match endpoint to rate limit configuration
+3. Check rate limit via selected algorithm
+4. Add headers to response
+5. Reject with 429 if limit exceeded
+"""
+
+from __future__ import annotations
+
+import fnmatch
+import ipaddress
+import time
+from typing import Awaitable, Callable
+
+from fastapi import Request, Response  # type: ignore[import-not-found]
+from fastapi.responses import JSONResponse  # type: ignore[import-not-found]
+from loguru import logger  # type: ignore[import-untyped]
+from starlette.middleware.base import BaseHTTPMiddleware  # type: ignore[import-not-found]
+
+from .algorithms.base import RateLimiter
+from .algorithms.sliding_window import SlidingWindowLimiter
+from .algorithms.token_bucket import TokenBucketLimiter
+from .backends.base import BackendError, RateLimitBackend
+from .backends.memory import MemoryBackend
+from .backends.redis import RedisBackend
+from .config import ExemptionConfig, RateLimitConfig
+from .exceptions import RateLimitExceeded
+from .headers import add_rate_limit_headers
+from .identification import get_client_identity
+from .matcher import EndpointMatcher
+
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    """FastAPI middleware for comprehensive rate limiting."""
+
+    # Default exempted endpoints (health checks, docs, metrics)
+    DEFAULT_EXEMPTED_ENDPOINTS = [
+        "/health",
+        "/health/*",
+        "/docs",
+        "/docs/*",
+        "/redoc",
+        "/redoc/*",
+        "/openapi.json",
+        "/metrics",
+        "/metrics/*",
+    ]
+
+    def __init__(
+        self,
+        app,
+        config: RateLimitConfig,
+    ) -> None:
+        """Initialize rate limiting middleware.
+
+        Args:
+            app: FastAPI application instance
+            config: Rate limiting configuration
+        """
+        super().__init__(app)
+        self.config = config
+
+        # Initialize backend
+        if config.redis.url:
+            self.backend: RateLimitBackend = RedisBackend(config.redis)
+        else:
+            logger.warning(
+                "No Redis URL configured, using in-memory backend "
+                "(not suitable for production with multiple instances)"
+            )
+            self.backend = MemoryBackend()
+
+        # Initialize algorithm
+        if config.algorithm == "sliding_window":
+            self.limiter: RateLimiter = SlidingWindowLimiter(self.backend)
+        else:
+            self.limiter = TokenBucketLimiter(self.backend)
+
+        # Initialize endpoint matcher
+        self.matcher = EndpointMatcher(
+            endpoints=config.endpoints,
+            tiers=config.tiers,
+            default_limit=config.default_limit,
+            default_window=config.default_window,
+        )
+
+        logger.info(
+            f"Rate limiting initialized: algorithm={config.algorithm}, "
+            f"backend={'redis' if isinstance(self.backend, RedisBackend) else 'memory'}, "
+            f"default_limit={config.default_limit}/{config.default_window}s"
+        )
+
+    def _is_exempted(self, path: str, client_id: str) -> bool:
+        """Check if endpoint or client is exempted from rate limiting.
+
+        Args:
+            path: Request path
+            client_id: Client identifier (IP or user_id)
+
+        Returns:
+            True if exempted, False otherwise
+        """
+        # Check default exempted endpoints
+        for pattern in self.DEFAULT_EXEMPTED_ENDPOINTS:
+            if fnmatch.fnmatch(path, pattern):
+                return True
+
+        # Check configured exemptions
+        for exemption in self.config.exemptions:
+            if exemption.type == "endpoint":
+                if fnmatch.fnmatch(path, exemption.value):
+                    return True
+
+            elif exemption.type == "ip":
+                # Support CIDR notation for IP exemptions
+                try:
+                    if "/" in exemption.value:
+                        # CIDR network
+                        network = ipaddress.ip_network(exemption.value, strict=False)
+                        client_ip = ipaddress.ip_address(client_id)
+                        if client_ip in network:
+                            return True
+                    else:
+                        # Single IP
+                        if client_id == exemption.value:
+                            return True
+                except (ValueError, AttributeError):
+                    pass
+
+            elif exemption.type == "user_id":
+                if client_id == exemption.value:
+                    return True
+
+        return False
+
+    def _build_rate_limit_key(
+        self,
+        client_id: str,
+        client_type: str,
+        endpoint: str,
+    ) -> str:
+        """Build Redis key for rate limit counter.
+
+        Format: ratelimit:{scope}:{identifier}:{endpoint}
+
+        Args:
+            client_id: Client identifier
+            client_type: 'ip' or 'user'
+            endpoint: Request path
+
+        Returns:
+            Rate limit key for Redis
+        """
+        # Sanitize endpoint for Redis key (replace colons and spaces)
+        safe_endpoint = endpoint.replace(":", "_").replace(" ", "_")
+        return f"ratelimit:{client_type}:{client_id}:{safe_endpoint}"
+
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        """Process request with rate limiting.
+
+        Args:
+            request: Incoming request
+            call_next: Next middleware/handler in chain
+
+        Returns:
+            Response with rate limit headers
+        """
+        # Skip if rate limiting disabled
+        if not self.config.enabled:
+            return await call_next(request)
+
+        path = request.url.path
+
+        # Extract client identity
+        client_identity = get_client_identity(
+            request,
+            trusted_proxy_depth=self.config.client_identification.trusted_proxy_depth,
+        )
+
+        # Check if exempted
+        if self._is_exempted(path, client_identity.client_id):
+            return await call_next(request)
+
+        # Get applicable rate limit configuration
+        limit_config = self.matcher.get_limit_config(path, client_identity.tier)
+
+        # Build rate limit key
+        rate_limit_key = self._build_rate_limit_key(
+            client_identity.client_id,
+            client_identity.client_type,
+            path,
+        )
+
+        try:
+            # Check rate limit
+            result = await self.limiter.check_limit(
+                key=rate_limit_key,
+                limit=limit_config.limit,
+                window=limit_config.window,
+            )
+
+            # Log rate limit check (debug level)
+            logger.debug(
+                f"Rate limit check: client={client_identity.client_id}, "
+                f"endpoint={path}, allowed={result.allowed}, "
+                f"remaining={result.remaining}/{result.limit}"
+            )
+
+            if result.allowed:
+                # Request allowed - proceed
+                response = await call_next(request)
+                add_rate_limit_headers(response, result)
+                return response
+
+            # Request rate limited - reject with 429
+            logger.info(
+                f"Rate limit exceeded: client={client_identity.client_id}, "
+                f"type={client_identity.client_type}, endpoint={path}, "
+                f"limit={result.limit}/{limit_config.window}s, "
+                f"count={result.current_count}"
+            )
+
+            # Create error response
+            error_detail = {
+                "error": "rate_limit_exceeded",
+                "message": f"Rate limit of {result.limit} requests per "
+                f"{limit_config.window} seconds exceeded for endpoint {path}",
+                "limit": result.limit,
+                "window_seconds": limit_config.window,
+                "current_count": result.current_count,
+                "retry_after_seconds": result.retry_after,
+                "endpoint": path,
+            }
+
+            response = JSONResponse(
+                status_code=429,
+                content=error_detail,
+            )
+
+            add_rate_limit_headers(response, result)
+            return response
+
+        except BackendError as e:
+            # Backend failure - apply configured failure mode
+            logger.error(
+                f"Rate limiting backend error: {e}",
+                exc_info=True,
+            )
+
+            if self.config.failure_mode == "fail_open":
+                # Allow request to proceed (graceful degradation)
+                logger.warning(
+                    f"Rate limiting failed open - allowing request: client={client_identity.client_id}"
+                )
+                return await call_next(request)
+
+            # fail_closed - reject request with 503
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "error": "service_unavailable",
+                    "message": "Rate limiting service temporarily unavailable",
+                    "retry_after_seconds": 30,
+                },
+                headers={"Retry-After": "30"},
+            )
+
+    async def shutdown(self) -> None:
+        """Cleanup resources on shutdown."""
+        await self.backend.close()
+{%- endif %}

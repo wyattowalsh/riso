@@ -1,0 +1,127 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Token bucket tests disabled."""
+{%- else %}
+"""Unit tests for token bucket algorithm."""
+
+from __future__ import annotations
+
+import pytest
+
+from {{ package_name }}.api.rate_limit.algorithms.token_bucket import TokenBucketLimiter
+from {{ package_name }}.api.rate_limit.backends.memory import MemoryBackend
+
+
+@pytest.fixture
+def backend():
+    """Create memory backend for testing."""
+    return MemoryBackend()
+
+
+@pytest.fixture
+def limiter(backend):
+    """Create token bucket limiter with memory backend."""
+    return TokenBucketLimiter(backend)
+
+
+@pytest.mark.asyncio
+class TestTokenBucketLimiter:
+    """Test TokenBucketLimiter algorithm."""
+
+    async def test_first_request_allowed(self, limiter):
+        """Test that first request is always allowed."""
+        result = await limiter.check_limit(key="test:user:123", limit=10, window=60)
+
+        assert result.allowed is True
+        assert result.current_count == 1
+        assert result.limit == 10
+        assert result.remaining == 9
+        assert result.retry_after == 0
+
+    async def test_within_limit_allowed(self, limiter):
+        """Test that requests within limit are allowed."""
+        key = "test:user:123"
+
+        # Make 5 requests (limit is 10)
+        for i in range(1, 6):
+            result = await limiter.check_limit(key=key, limit=10, window=60)
+            assert result.allowed is True
+            assert result.current_count == i
+            assert result.remaining == 10 - i
+
+    async def test_exceed_limit_rejected(self, limiter):
+        """Test that exceeding limit results in rejection."""
+        key = "test:user:123"
+        limit = 5
+
+        # Make requests up to limit
+        for _ in range(limit):
+            result = await limiter.check_limit(key=key, limit=limit, window=60)
+            assert result.allowed is True
+
+        # Next request should be rejected
+        result = await limiter.check_limit(key=key, limit=limit, window=60)
+        assert result.allowed is False
+        assert result.remaining == 0
+        assert result.retry_after > 0
+
+    async def test_zero_limit_rejects_all(self, limiter):
+        """Test that zero limit (maintenance mode) rejects all requests."""
+        result = await limiter.check_limit(key="test:user:123", limit=0, window=60)
+
+        assert result.allowed is False
+        assert result.limit == 0
+        assert result.remaining == 0
+
+    async def test_burst_allowed(self, limiter):
+        """Test that burst traffic is allowed (token bucket characteristic)."""
+        key = "test:user:123"
+        limit = 100
+
+        # Make 100 requests immediately (burst)
+        for i in range(1, limit + 1):
+            result = await limiter.check_limit(key=key, limit=limit, window=60)
+            assert result.allowed is True
+
+        # 101st request should be rejected
+        result = await limiter.check_limit(key=key, limit=limit, window=60)
+        assert result.allowed is False
+
+    async def test_different_keys_independent(self, limiter):
+        """Test that different keys have independent counters."""
+        key1 = "test:user:alice"
+        key2 = "test:user:bob"
+
+        # Fill alice's limit
+        for _ in range(10):
+            await limiter.check_limit(key=key1, limit=10, window=60)
+
+        # Alice should be rate limited
+        result = await limiter.check_limit(key=key1, limit=10, window=60)
+        assert result.allowed is False
+
+        # Bob should still be allowed
+        result = await limiter.check_limit(key=key2, limit=10, window=60)
+        assert result.allowed is True
+
+    async def test_get_remaining(self, limiter, backend):
+        """Test get_remaining method."""
+        key = "test:user:123"
+        limit = 10
+
+        # Make 3 requests
+        for _ in range(3):
+            await limiter.check_limit(key=key, limit=limit, window=60)
+
+        remaining = await limiter.get_remaining(key=key, limit=limit)
+        assert remaining == 7
+
+    async def test_get_reset_time(self, limiter):
+        """Test get_reset_time method."""
+        key = "test:user:123"
+
+        # Make a request to start the window
+        await limiter.check_limit(key=key, limit=10, window=60)
+
+        reset_time = await limiter.get_reset_time(key=key, window=60)
+        assert reset_time > 0
+{%- endif %}

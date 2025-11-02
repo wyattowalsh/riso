@@ -1,0 +1,154 @@
+# {{ project_name }} Configuration
+
+{%- if rate_limiting_enabled | default(false) %}
+
+## Rate Limiting Configuration
+## Enable comprehensive API rate limiting with Redis backend
+
+[rate_limiting]
+# Master switch for rate limiting (set to false to disable completely)
+enabled = true
+
+# Default rate limit for endpoints without explicit configuration
+default_limit = 100  # requests per window
+default_window = 60  # seconds
+
+# Algorithm: "token_bucket" (recommended, allows bursts) or "sliding_window" (stricter)
+algorithm = "token_bucket"
+
+# Behavior when Redis is unavailable:
+# - "fail_open": Allow requests (graceful degradation, recommended for production)
+# - "fail_closed": Reject requests with 503 (stricter, better for critical APIs)
+failure_mode = "fail_open"
+
+## Client Identification
+## Configure how client IP addresses are extracted from proxy headers
+
+[rate_limiting.client_identification]
+# Number of proxy hops to trust in X-Forwarded-For chain
+# 0 = use direct connection IP (no proxies)
+# 1 = trust single load balancer (most common)
+# 2 = trust CDN + load balancer chain
+trusted_proxy_depth = 1
+
+## Progressive Penalties (Optional)
+## Increase cooldown periods for repeat rate limit violators
+
+[rate_limiting.progressive_penalties]
+# MUST be explicitly enabled (disabled by default for safety)
+enabled = false
+
+# Time window for tracking violations (seconds)
+detection_window = 3600  # 1 hour
+
+# Number of violations before penalties apply
+violation_threshold = 3
+
+# Cooldown period multipliers for successive violations
+# Example: [1, 2, 4, 8] = 1x, 2x, 4x, 8x normal reset time
+penalty_multipliers = [1, 2, 4, 8]
+
+## Redis Backend
+## Distributed rate limit counter storage
+
+[rate_limiting.redis]
+# Redis connection URL
+url = "redis://localhost:6379/0"
+
+# Topology: "single" (dev/test), "sentinel" (production HA), "cluster" (high throughput)
+topology = "single"
+
+# Connection pool size (recommended: 2x worker threads)
+pool_size = 20
+
+# Socket timeout in seconds
+socket_timeout = 5.0
+
+# Circuit breaker configuration
+circuit_breaker_threshold = 3  # Consecutive failures before opening circuit
+circuit_breaker_timeout = 30  # Seconds before attempting half-open
+
+## Redis Sentinel Configuration (when topology = "sentinel")
+## Recommended for production: 3-node setup (1 master + 2 replicas)
+
+# [rate_limiting.redis.sentinel]
+# service_name = "mymaster"
+#
+# [[rate_limiting.redis.sentinel.sentinels]]
+# host = "sentinel1.example.com"
+# port = 26379
+#
+# [[rate_limiting.redis.sentinel.sentinels]]
+# host = "sentinel2.example.com"
+# port = 26379
+#
+# [[rate_limiting.redis.sentinel.sentinels]]
+# host = "sentinel3.example.com"
+# port = 26379
+
+## Per-Endpoint Rate Limits
+## Configure different limits for specific endpoints (supports wildcards)
+
+[[rate_limiting.endpoints]]
+pattern = "/api/v1/search"
+limit = 20  # More restrictive for expensive operations
+window = 60
+
+[[rate_limiting.endpoints]]
+pattern = "/api/v1/admin/*"
+limit = 5  # Very restrictive for admin endpoints
+window = 60
+
+# [[rate_limiting.endpoints]]
+# pattern = "/api/v1/health"
+# limit = 1000  # Very permissive for health checks
+# window = 60
+
+## Tier-Based Rate Limits
+## Different limits for different user tiers (matches JWT 'tier' claim)
+
+[[rate_limiting.tiers]]
+name = "anonymous"
+limit = 100  # IP-based anonymous users
+window = 60
+
+[[rate_limiting.tiers]]
+name = "standard"
+limit = 1000  # Authenticated standard users
+window = 60
+
+[[rate_limiting.tiers]]
+name = "premium"
+limit = 5000  # Premium paying users
+window = 60
+
+## Exemptions
+## Clients or endpoints that bypass rate limiting
+
+# Exempt specific IP address or CIDR range
+[[rate_limiting.exemptions]]
+type = "ip"
+value = "192.0.2.0/24"  # Example: internal network
+
+# Exempt specific user ID (from JWT user_id claim)
+# [[rate_limiting.exemptions]]
+# type = "user_id"
+# value = "admin"
+
+# Exempt specific endpoint pattern
+# [[rate_limiting.exemptions]]
+# type = "endpoint"
+# value = "/internal/*"
+
+# Note: /health, /metrics, /docs, /redoc are automatically exempted
+
+{%- endif %}
+
+## Additional Configuration Sections
+## Add other application-specific configuration here
+
+# [database]
+# url = "postgresql://localhost:5432/mydb"
+
+# [feature_flags]
+# new_feature_enabled = false

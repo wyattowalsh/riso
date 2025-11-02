@@ -1,0 +1,292 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Redis backend disabled."""
+{%- else %}
+"""Redis backend for distributed rate limiting with Sentinel support."""
+
+from __future__ import annotations
+
+import time
+from typing import Any
+
+import redis.asyncio as redis
+from redis.asyncio.sentinel import Sentinel
+from redis.exceptions import ConnectionError as RedisConnectionError
+from redis.exceptions import RedisError, TimeoutError as RedisTimeoutError
+
+from ..config import RedisConfig
+from .base import BackendError, RateLimitBackend
+
+
+class CircuitBreaker:
+    """Circuit breaker pattern for Redis failures."""
+
+    def __init__(self, threshold: int, timeout: int) -> None:
+        """Initialize circuit breaker.
+
+        Args:
+            threshold: Consecutive failures before opening circuit
+            timeout: Seconds before attempting half-open state
+        """
+        self.threshold = threshold
+        self.timeout = timeout
+        self.failures = 0
+        self.last_failure_time: float | None = None
+        self.state: str = "closed"  # closed, open, half_open
+
+    def record_success(self) -> None:
+        """Record successful operation."""
+        self.failures = 0
+        self.state = "closed"
+
+    def record_failure(self) -> None:
+        """Record failed operation and potentially open circuit."""
+        self.failures += 1
+        self.last_failure_time = time.time()
+
+        if self.failures >= self.threshold:
+            self.state = "open"
+
+    def is_open(self) -> bool:
+        """Check if circuit is open (failing fast)."""
+        if self.state != "open":
+            return False
+
+        # Check if timeout elapsed (transition to half-open)
+        if (
+            self.last_failure_time is not None
+            and time.time() - self.last_failure_time >= self.timeout
+        ):
+            self.state = "half_open"
+            return False
+
+        return True
+
+
+class RedisBackend(RateLimitBackend):
+    """Redis backend with connection pooling, Sentinel support, and circuit breaker."""
+
+    # Lua script for atomic increment + expire (prevents race conditions)
+    INCR_EXPIRE_SCRIPT = """
+    local key = KEYS[1]
+    local window = tonumber(ARGV[1])
+    local amount = tonumber(ARGV[2])
+    
+    local current = redis.call('INCRBY', key, amount)
+    
+    -- Set expiration only if this is a new key
+    if current == amount then
+        redis.call('EXPIRE', key, window)
+    end
+    
+    local ttl = redis.call('TTL', key)
+    if ttl < 0 then
+        ttl = window
+    end
+    
+    return {current, ttl}
+    """
+
+    def __init__(self, config: RedisConfig) -> None:
+        """Initialize Redis backend.
+
+        Args:
+            config: Redis configuration
+        """
+        self.config = config
+        self.circuit_breaker = CircuitBreaker(
+            threshold=config.circuit_breaker_threshold,
+            timeout=config.circuit_breaker_timeout,
+        )
+        self._client: redis.Redis | None = None
+        self._incr_script = None
+
+    async def _get_client(self) -> redis.Redis:
+        """Get or create Redis client based on topology."""
+        if self._client is not None:
+            return self._client
+
+        if self.config.topology == "sentinel":
+            if self.config.sentinel is None:
+                raise ValueError("Sentinel configuration required for sentinel topology")
+
+            sentinel_nodes = [
+                (node.host, node.port) for node in self.config.sentinel.sentinels
+            ]
+
+            sentinel = Sentinel(
+                sentinel_nodes,
+                socket_timeout=self.config.socket_timeout,
+                socket_connect_timeout=self.config.socket_timeout,
+            )
+
+            self._client = sentinel.master_for(
+                self.config.sentinel.service_name,
+                socket_timeout=self.config.socket_timeout,
+            )
+
+        elif self.config.topology == "cluster":
+            # Redis Cluster support
+            from redis.asyncio.cluster import RedisCluster
+
+            self._client = RedisCluster.from_url(
+                self.config.url,
+                max_connections=self.config.pool_size,
+                socket_timeout=self.config.socket_timeout,
+                socket_connect_timeout=self.config.socket_timeout,
+                decode_responses=False,
+            )
+
+        else:
+            # Single instance
+            self._client = redis.from_url(
+                self.config.url,
+                max_connections=self.config.pool_size,
+                socket_timeout=self.config.socket_timeout,
+                socket_connect_timeout=self.config.socket_timeout,
+                decode_responses=False,
+            )
+
+        # Register Lua script
+        self._incr_script = self._client.register_script(self.INCR_EXPIRE_SCRIPT)
+
+        return self._client
+
+    async def increment(
+        self,
+        key: str,
+        window: int,
+        amount: int = 1,
+    ) -> tuple[int, int]:
+        """Atomically increment counter using Lua script.
+
+        Args:
+            key: Rate limit key
+            window: Time window in seconds
+            amount: Amount to increment
+
+        Returns:
+            Tuple of (current_count, ttl_seconds)
+
+        Raises:
+            BackendError: If Redis operation fails and circuit is open
+        """
+        if self.circuit_breaker.is_open():
+            raise BackendError("Redis circuit breaker is open (too many failures)")
+
+        try:
+            client = await self._get_client()
+
+            # Execute Lua script for atomic increment + expire
+            result = await self._incr_script(keys=[key], args=[window, amount])
+            current_count, ttl = int(result[0]), int(result[1])
+
+            self.circuit_breaker.record_success()
+            return current_count, ttl
+
+        except (RedisConnectionError, RedisTimeoutError, RedisError) as e:
+            self.circuit_breaker.record_failure()
+            raise BackendError(
+                f"Redis increment operation failed: {e}",
+                original_error=e,
+            ) from e
+
+    async def get_count(self, key: str) -> tuple[int, int]:
+        """Get current count and TTL.
+
+        Args:
+            key: Rate limit key
+
+        Returns:
+            Tuple of (current_count, ttl_seconds)
+
+        Raises:
+            BackendError: If Redis operation fails
+        """
+        if self.circuit_breaker.is_open():
+            raise BackendError("Redis circuit breaker is open")
+
+        try:
+            client = await self._get_client()
+
+            # Pipeline for atomic read
+            async with client.pipeline() as pipe:
+                await pipe.get(key)
+                await pipe.ttl(key)
+                results = await pipe.execute()
+
+            count = int(results[0]) if results[0] is not None else 0
+            ttl = int(results[1]) if results[1] > 0 else 0
+
+            self.circuit_breaker.record_success()
+            return count, ttl
+
+        except (RedisConnectionError, RedisTimeoutError, RedisError) as e:
+            self.circuit_breaker.record_failure()
+            raise BackendError(
+                f"Redis get operation failed: {e}",
+                original_error=e,
+            ) from e
+
+    async def reset(self, key: str) -> None:
+        """Delete rate limit key.
+
+        Args:
+            key: Rate limit key to reset
+
+        Raises:
+            BackendError: If Redis operation fails
+        """
+        if self.circuit_breaker.is_open():
+            raise BackendError("Redis circuit breaker is open")
+
+        try:
+            client = await self._get_client()
+            await client.delete(key)
+            self.circuit_breaker.record_success()
+
+        except (RedisConnectionError, RedisTimeoutError, RedisError) as e:
+            self.circuit_breaker.record_failure()
+            raise BackendError(
+                f"Redis reset operation failed: {e}",
+                original_error=e,
+            ) from e
+
+    async def health_check(self) -> dict[str, Any]:
+        """Check Redis health with PING command.
+
+        Returns:
+            Health status dictionary
+        """
+        try:
+            client = await self._get_client()
+
+            start_time = time.time()
+            await client.ping()
+            latency_ms = (time.time() - start_time) * 1000
+
+            return {
+                "status": "healthy" if not self.circuit_breaker.is_open() else "degraded",
+                "latency_ms": round(latency_ms, 2),
+                "details": {
+                    "topology": self.config.topology,
+                    "circuit_breaker_state": self.circuit_breaker.state,
+                    "failures": self.circuit_breaker.failures,
+                },
+            }
+
+        except Exception as e:
+            return {
+                "status": "unhealthy",
+                "latency_ms": None,
+                "details": {
+                    "error": str(e),
+                    "circuit_breaker_state": self.circuit_breaker.state,
+                },
+            }
+
+    async def close(self) -> None:
+        """Close Redis connection pool."""
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
+{%- endif %}

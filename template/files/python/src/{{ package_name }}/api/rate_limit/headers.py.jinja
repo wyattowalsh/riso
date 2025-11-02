@@ -1,0 +1,54 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Rate limit headers disabled."""
+{%- else %}
+"""Rate limit response headers.
+
+Implements standard RateLimit headers (draft RFC 6585 and draft RFC 9110):
+- X-RateLimit-Limit: Maximum requests per window
+- X-RateLimit-Remaining: Requests remaining in current window
+- X-RateLimit-Reset: Unix timestamp when limit resets
+- Retry-After: Seconds until limit resets (for 429 responses)
+"""
+
+from __future__ import annotations
+
+from fastapi import Response  # type: ignore[import-not-found]
+
+from .algorithms.base import RateLimitResult
+
+
+def add_rate_limit_headers(
+    response: Response,
+    result: RateLimitResult,
+) -> None:
+    """Add standard rate limit headers to response.
+
+    Headers are added to ALL responses (200, 429, 5xx) to provide
+    clients with rate limit information regardless of request outcome.
+
+    Args:
+        response: FastAPI response object to modify
+        result: Rate limit check result
+    """
+    response.headers["X-RateLimit-Limit"] = str(result.limit)
+    response.headers["X-RateLimit-Remaining"] = str(result.remaining)
+    response.headers["X-RateLimit-Reset"] = str(result.reset_at)
+
+    # Add Retry-After only for rate-limited requests
+    if not result.allowed and result.retry_after > 0:
+        response.headers["Retry-After"] = str(result.retry_after)
+
+
+def calculate_retry_after(reset_at: int, current_time: int) -> int:
+    """Calculate seconds until rate limit resets.
+
+    Args:
+        reset_at: Unix timestamp of limit reset
+        current_time: Current Unix timestamp
+
+    Returns:
+        Seconds until reset (minimum 0)
+    """
+    retry_after = reset_at - current_time
+    return max(0, retry_after)
+{%- endif %}

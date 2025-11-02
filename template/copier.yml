@@ -33,6 +33,7 @@ defaults:
   python_versions: ["3.11", "3.12", "3.13"]
   cli_module: "disabled"
   api_tracks: "none"
+  rate_limiting_enabled: false
   mcp_module: "disabled"
   docs_site: "fumadocs"
   shared_logic: "disabled"
@@ -68,6 +69,11 @@ prompts:
       - python
       - node
       - python+node
+  rate_limiting_enabled:
+    type: bool
+    help: "Enable API rate limiting with Redis backend?"
+    default: false
+    when: "{{ api_tracks in ['python', 'python+node'] }}"
   mcp_module:
     type: str
     help: "Enable fastmcp tooling module?"

@@ -1,0 +1,136 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Memory backend disabled."""
+{%- else %}
+"""In-memory backend for testing and development.
+
+WARNING: Not suitable for production use with multiple instances.
+Counters are local to each process and not shared across instances.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import time
+from collections import defaultdict
+from typing import Any
+
+from .base import RateLimitBackend
+
+
+class MemoryBackend(RateLimitBackend):
+    """In-memory rate limit backend for testing and single-instance development."""
+
+    def __init__(self) -> None:
+        """Initialize memory backend with local storage."""
+        self._counters: dict[str, int] = defaultdict(int)
+        self._expirations: dict[str, float] = {}
+        self._lock = asyncio.Lock()
+
+    async def _cleanup_expired(self) -> None:
+        """Remove expired keys from storage."""
+        current_time = time.time()
+        expired_keys = [
+            key for key, expiry in self._expirations.items() if expiry <= current_time
+        ]
+
+        for key in expired_keys:
+            self._counters.pop(key, None)
+            self._expirations.pop(key, None)
+
+    async def increment(
+        self,
+        key: str,
+        window: int,
+        amount: int = 1,
+    ) -> tuple[int, int]:
+        """Increment counter in memory.
+
+        Args:
+            key: Rate limit key
+            window: Time window in seconds
+            amount: Amount to increment
+
+        Returns:
+            Tuple of (current_count, ttl_seconds)
+        """
+        async with self._lock:
+            await self._cleanup_expired()
+
+            current_time = time.time()
+
+            # Check if key exists and is valid
+            if key in self._expirations and self._expirations[key] <= current_time:
+                # Expired, reset
+                self._counters[key] = 0
+                del self._expirations[key]
+
+            # Set expiration if this is first increment
+            if key not in self._expirations:
+                self._expirations[key] = current_time + window
+
+            # Increment counter
+            self._counters[key] += amount
+            current_count = self._counters[key]
+
+            # Calculate TTL
+            ttl = int(self._expirations[key] - current_time)
+            if ttl < 0:
+                ttl = 0
+
+            return current_count, ttl
+
+    async def get_count(self, key: str) -> tuple[int, int]:
+        """Get current count and TTL.
+
+        Args:
+            key: Rate limit key
+
+        Returns:
+            Tuple of (current_count, ttl_seconds)
+        """
+        async with self._lock:
+            await self._cleanup_expired()
+
+            current_time = time.time()
+
+            if key not in self._counters or key not in self._expirations:
+                return 0, 0
+
+            if self._expirations[key] <= current_time:
+                return 0, 0
+
+            count = self._counters[key]
+            ttl = int(self._expirations[key] - current_time)
+
+            return count, max(0, ttl)
+
+    async def reset(self, key: str) -> None:
+        """Reset counter for a key.
+
+        Args:
+            key: Rate limit key to reset
+        """
+        async with self._lock:
+            self._counters.pop(key, None)
+            self._expirations.pop(key, None)
+
+    async def health_check(self) -> dict[str, Any]:
+        """Return health status (always healthy for memory backend).
+
+        Returns:
+            Health status dictionary
+        """
+        return {
+            "status": "healthy",
+            "latency_ms": 0.0,
+            "details": {
+                "backend": "memory",
+                "keys_count": len(self._counters),
+            },
+        }
+
+    async def close(self) -> None:
+        """Cleanup resources (no-op for memory backend)."""
+        self._counters.clear()
+        self._expirations.clear()
+{%- endif %}

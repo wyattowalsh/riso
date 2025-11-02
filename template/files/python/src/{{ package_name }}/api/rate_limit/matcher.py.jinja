@@ -1,0 +1,128 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Endpoint matcher disabled."""
+{%- else %}
+"""Endpoint pattern matching for rate limiting.
+
+Supports:
+- Exact path matching: /api/v1/users
+- Wildcard patterns: /api/v1/admin/*
+- Priority-based matching (most specific first)
+"""
+
+from __future__ import annotations
+
+import fnmatch
+from dataclasses import dataclass
+from functools import lru_cache
+
+from .config import EndpointConfig, TierConfig
+
+
+@dataclass
+class LimitConfig:
+    """Resolved rate limit configuration for a request."""
+
+    limit: int
+    """Maximum requests per window."""
+
+    window: int
+    """Time window in seconds."""
+
+    source: str
+    """Source of configuration: 'endpoint', 'tier', or 'default'."""
+
+
+class EndpointMatcher:
+    """Matches request endpoints to rate limit configurations."""
+
+    def __init__(
+        self,
+        endpoints: list[EndpointConfig],
+        tiers: list[TierConfig],
+        default_limit: int,
+        default_window: int,
+    ) -> None:
+        """Initialize endpoint matcher.
+
+        Args:
+            endpoints: Per-endpoint rate limit configurations
+            tiers: Tier-based rate limit configurations
+            default_limit: Default requests per window
+            default_window: Default time window in seconds
+        """
+        self.endpoints = sorted(
+            endpoints,
+            key=lambda e: (
+                -len(e.pattern),  # Longer patterns first (more specific)
+                "*" not in e.pattern,  # Exact matches before wildcards
+            ),
+        )
+        self.tiers = {tier.name: tier for tier in tiers}
+        self.default_limit = default_limit
+        self.default_window = default_window
+
+    @lru_cache(maxsize=1024)
+    def match_endpoint(self, path: str) -> EndpointConfig | None:
+        """Match request path to endpoint configuration.
+
+        Uses priority-based matching:
+        1. Exact matches (highest priority)
+        2. Longer wildcard patterns
+        3. Shorter wildcard patterns
+
+        Args:
+            path: Request path (e.g., "/api/v1/users/123")
+
+        Returns:
+            Matching EndpointConfig or None if no match
+        """
+        for endpoint_config in self.endpoints:
+            if fnmatch.fnmatch(path, endpoint_config.pattern):
+                return endpoint_config
+
+        return None
+
+    def get_limit_config(
+        self,
+        path: str,
+        tier: str | None = None,
+    ) -> LimitConfig:
+        """Get applicable rate limit configuration for a request.
+
+        Priority:
+        1. Per-endpoint configuration (most specific)
+        2. Tier-based configuration (if authenticated)
+        3. Default configuration
+
+        Args:
+            path: Request path
+            tier: User tier from JWT (if authenticated)
+
+        Returns:
+            LimitConfig with limit, window, and source
+        """
+        # Check for endpoint-specific configuration (highest priority)
+        endpoint_config = self.match_endpoint(path)
+        if endpoint_config:
+            return LimitConfig(
+                limit=endpoint_config.limit,
+                window=endpoint_config.window,
+                source="endpoint",
+            )
+
+        # Check for tier-based configuration (if authenticated)
+        if tier and tier in self.tiers:
+            tier_config = self.tiers[tier]
+            return LimitConfig(
+                limit=tier_config.limit,
+                window=tier_config.window,
+                source="tier",
+            )
+
+        # Fallback to default configuration
+        return LimitConfig(
+            limit=self.default_limit,
+            window=self.default_window,
+            source="default",
+        )
+{%- endif %}

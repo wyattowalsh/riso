@@ -1,0 +1,123 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Rate limit logging disabled."""
+{%- else %}
+"""Structured logging for rate limiting events."""
+
+from __future__ import annotations
+
+import json
+from datetime import datetime
+from typing import Any
+
+from loguru import logger  # type: ignore[import-untyped]
+
+
+def log_rate_limit_event(
+    *,
+    event: str,
+    client_id: str,
+    client_type: str,
+    endpoint: str,
+    tier: str,
+    limit: int,
+    window: int,
+    current_count: int,
+    status: str,
+    **extra_fields: Any,
+) -> None:
+    """Log rate limit event in structured JSON format.
+
+    Args:
+        event: Event type ('check', 'exceeded', 'allowed')
+        client_id: Client identifier (IP or user_id)
+        client_type: 'ip' or 'user'
+        endpoint: Request endpoint
+        tier: User tier
+        limit: Maximum requests per window
+        window: Time window in seconds
+        current_count: Current request count
+        status: Request status ('allowed', 'rejected')
+        **extra_fields: Additional fields to include in log
+    """
+    log_data = {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "event": f"rate_limit_{event}",
+        "client_id": client_id,
+        "client_type": client_type,
+        "endpoint": endpoint,
+        "tier": tier,
+        "limit_config": f"{limit}/{window}s",
+        "limit": limit,
+        "window_seconds": window,
+        "current_count": current_count,
+        "status": status,
+        **extra_fields,
+    }
+
+    # Log at INFO level for rate limit violations (not ERROR - this is expected behavior)
+    if status == "rejected":
+        logger.info(json.dumps(log_data))
+    else:
+        # Log successful checks at DEBUG level (to avoid log spam)
+        logger.debug(json.dumps(log_data))
+
+
+def log_backend_error(
+    *,
+    backend_type: str,
+    operation: str,
+    error: str,
+    client_id: str | None = None,
+    **extra_fields: Any,
+) -> None:
+    """Log backend operation error.
+
+    Args:
+        backend_type: Backend type ('redis', 'memory')
+        operation: Operation that failed
+        error: Error message
+        client_id: Optional client identifier
+        **extra_fields: Additional fields to include in log
+    """
+    log_data = {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "event": "rate_limit_backend_error",
+        "backend_type": backend_type,
+        "operation": operation,
+        "error": error,
+        **({"client_id": client_id} if client_id else {}),
+        **extra_fields,
+    }
+
+    logger.error(json.dumps(log_data))
+
+
+def log_config_reload(
+    *,
+    success: bool,
+    config_path: str,
+    changes: dict[str, Any] | None = None,
+    error: str | None = None,
+) -> None:
+    """Log configuration reload event.
+
+    Args:
+        success: Whether reload succeeded
+        config_path: Path to config file
+        changes: Dictionary of configuration changes
+        error: Error message if reload failed
+    """
+    log_data = {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "event": "rate_limit_config_reload",
+        "success": success,
+        "config_path": config_path,
+        **({"changes": changes} if changes else {}),
+        **({"error": error} if error else {}),
+    }
+
+    if success:
+        logger.info(json.dumps(log_data))
+    else:
+        logger.error(json.dumps(log_data))
+{%- endif %}

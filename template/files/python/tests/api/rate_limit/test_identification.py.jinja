@@ -1,0 +1,175 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Client identification tests disabled."""
+{%- else %}
+"""Unit tests for client identification."""
+
+from __future__ import annotations
+
+from unittest.mock import Mock
+
+import jwt
+import pytest
+
+from {{ package_name }}.api.rate_limit.identification import (
+    extract_user_from_jwt,
+    get_client_identity,
+    get_client_ip,
+    normalize_ip,
+)
+
+
+class TestNormalizeIP:
+    """Test IP address normalization."""
+
+    def test_normalize_ipv4(self):
+        """Test IPv4 normalization (no change)."""
+        assert normalize_ip("192.0.2.1") == "192.0.2.1"
+
+    def test_normalize_ipv6_compressed(self):
+        """Test IPv6 compression."""
+        assert normalize_ip("2001:0db8:0000:0000:0000:0000:0000:0001") == "2001:db8::1"
+
+    def test_invalid_ip_raises_error(self):
+        """Test that invalid IP raises ValueError."""
+        with pytest.raises(ValueError):
+            normalize_ip("not-an-ip")
+
+
+class TestGetClientIP:
+    """Test client IP extraction from request."""
+
+    def test_direct_connection_no_proxy(self):
+        """Test getting IP from direct connection (no proxy header)."""
+        request = Mock()
+        request.client.host = "203.0.113.1"
+        request.headers.get.return_value = None
+
+        ip = get_client_ip(request, trusted_proxy_depth=0)
+        assert ip == "203.0.113.1"
+
+    def test_single_proxy_trust_depth_1(self):
+        """Test X-Forwarded-For with single trusted proxy."""
+        request = Mock()
+        request.client.host = "192.0.2.1"  # Load balancer IP
+        request.headers.get.return_value = "203.0.113.1, 198.51.100.1"
+
+        # trust_depth=1: trust last proxy, return rightmost untrusted IP
+        ip = get_client_ip(request, trusted_proxy_depth=1)
+        assert ip == "203.0.113.1"  # Original client
+
+    def test_cdn_plus_lb_trust_depth_2(self):
+        """Test X-Forwarded-For with CDN + load balancer."""
+        request = Mock()
+        request.client.host = "192.0.2.1"
+        request.headers.get.return_value = "203.0.113.1, 198.51.100.1, 192.0.2.5"
+
+        # trust_depth=2: trust CDN + LB, return original client
+        ip = get_client_ip(request, trusted_proxy_depth=2)
+        assert ip == "203.0.113.1"
+
+    def test_invalid_ip_in_chain_skipped(self):
+        """Test that invalid IPs in chain are skipped."""
+        request = Mock()
+        request.client.host = "192.0.2.1"
+        request.headers.get.return_value = "not-an-ip, 203.0.113.1, 198.51.100.1"
+
+        ip = get_client_ip(request, trusted_proxy_depth=1)
+        assert ip == "203.0.113.1"
+
+    def test_no_forwarded_header_uses_direct(self):
+        """Test fallback to direct connection when no X-Forwarded-For."""
+        request = Mock()
+        request.client.host = "203.0.113.1"
+        request.headers.get.return_value = None
+
+        ip = get_client_ip(request, trusted_proxy_depth=1)
+        assert ip == "203.0.113.1"
+
+
+class TestExtractUserFromJWT:
+    """Test JWT parsing for user extraction."""
+
+    def test_extract_from_authorization_header(self):
+        """Test extracting user from Authorization: Bearer header."""
+        payload = {"user_id": "alice", "tier": "premium"}
+        token = jwt.encode(payload, "secret", algorithm="HS256")
+
+        request = Mock()
+        request.headers.get.side_effect = lambda key: (
+            f"Bearer {token}" if key == "Authorization" else None
+        )
+
+        user_id, tier = extract_user_from_jwt(request, verify=False)
+        assert user_id == "alice"
+        assert tier == "premium"
+
+    def test_extract_from_sub_claim(self):
+        """Test extracting user from 'sub' claim (standard JWT)."""
+        payload = {"sub": "bob", "tier": "standard"}
+        token = jwt.encode(payload, "secret", algorithm="HS256")
+
+        request = Mock()
+        request.headers.get.side_effect = lambda key: (
+            f"Bearer {token}" if key == "Authorization" else None
+        )
+
+        user_id, tier = extract_user_from_jwt(request, verify=False)
+        assert user_id == "bob"
+        assert tier == "standard"
+
+    def test_missing_user_id_returns_none(self):
+        """Test that missing user_id claim returns None."""
+        payload = {"tier": "premium"}  # No user_id or sub
+        token = jwt.encode(payload, "secret", algorithm="HS256")
+
+        request = Mock()
+        request.headers.get.side_effect = lambda key: (
+            f"Bearer {token}" if key == "Authorization" else None
+        )
+
+        user_id, tier = extract_user_from_jwt(request, verify=False)
+        assert user_id is None
+        assert tier is None
+
+    def test_no_token_returns_none(self):
+        """Test that missing token returns None."""
+        request = Mock()
+        request.headers.get.return_value = None
+
+        user_id, tier = extract_user_from_jwt(request, verify=False)
+        assert user_id is None
+        assert tier is None
+
+
+class TestGetClientIdentity:
+    """Test comprehensive client identity extraction."""
+
+    def test_authenticated_user_priority(self):
+        """Test that JWT user_id takes priority over IP."""
+        payload = {"user_id": "alice", "tier": "premium"}
+        token = jwt.encode(payload, "secret", algorithm="HS256")
+
+        request = Mock()
+        request.client.host = "203.0.113.1"
+        request.headers.get.side_effect = lambda key: (
+            f"Bearer {token}" if key == "Authorization" else None
+        )
+
+        identity = get_client_identity(request)
+
+        assert identity.client_id == "alice"
+        assert identity.client_type == "user"
+        assert identity.tier == "premium"
+
+    def test_fallback_to_ip_based(self):
+        """Test fallback to IP when no JWT present."""
+        request = Mock()
+        request.client.host = "203.0.113.1"
+        request.headers.get.return_value = None
+
+        identity = get_client_identity(request)
+
+        assert identity.client_id == "203.0.113.1"
+        assert identity.client_type == "ip"
+        assert identity.tier == "anonymous"
+{%- endif %}
