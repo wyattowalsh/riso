@@ -1,0 +1,157 @@
+[project]
+name = "api-versioning"
+version = "1.0.0"
+description = "Framework-agnostic ASGI middleware for comprehensive API versioning"
+authors = [
+    {name = "Riso Template Team"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+keywords = ["api", "versioning", "asgi", "middleware", "fastapi", "starlette"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: WWW/HTTP :: WSGI :: Middleware",
+    "Framework :: AsyncIO",
+]
+
+dependencies = [
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+asgi = [
+    "asgiref>=3.7.0",
+]
+validation = [
+    "pydantic>=2.0.0",
+]
+
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-benchmark>=4.0.0",
+    "ruff>=0.6.0",
+    "mypy>=1.11.0",
+    "types-pyyaml",
+]
+hotreload = [
+    "watchdog>=4.0.0",
+]
+all = [
+    "api-versioning[asgi,validation,dev,hotreload]",
+]
+
+[project.urls]
+Homepage = "https://github.com/riso-template/api-versioning"
+Documentation = "https://riso-template.github.io/api-versioning"
+Repository = "https://github.com/riso-template/api-versioning"
+Issues = "https://github.com/riso-template/api-versioning/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/api_versioning"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--cov=api_versioning",
+    "--cov-report=term-missing:skip-covered",
+    "--cov-report=html",
+    "--cov-report=xml",
+]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+pythonpath = ["src"]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+parallel = true
+
+[tool.coverage.report]
+precision = 2
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "ARG", # flake8-unused-arguments
+    "SIM", # flake8-simplify",
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # function calls in argument defaults
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = ["ARG", "S101"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["api_versioning"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+follow_imports = "normal"
+namespace_packages = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = ["yaml.*", "watchdog.*"]
+ignore_missing_imports = true
+
+[tool.taskipy.tasks]
+test = "pytest"
+test-cov = "pytest --cov --cov-report=html --cov-report=term"
+lint = "ruff check src tests"
+format = "ruff format src tests"
+typecheck = "mypy src"
+quality = "ruff check src tests && mypy src && pytest --cov"
+benchmark = "pytest tests/performance --benchmark-only"
