@@ -1,0 +1,358 @@
+{% if saas_starter_module == "enabled" and saas_jobs == "inngest" %}
+/**
+ * Inngest Client
+ * 
+ * Modern event-driven background job patterns:
+ * - Event-driven architecture
+ * - Type-safe functions and events
+ * - Automatic retries
+ * - Durable execution (steps)
+ * - Workflow orchestration
+ * 
+ * @see https://www.inngest.com/docs
+ */
+
+import { Inngest, EventSchemas } from 'inngest';
+import { env } from '@/lib/env';
+
+// ============================================================================
+// Event Schema Definitions
+// ============================================================================
+
+/**
+ * Define your event types
+ * Type-safe events for your application
+ */
+type Events = {
+  'user/created': {
+    data: {
+      userId: string;
+      email: string;
+      name?: string;
+    };
+  };
+  'subscription/created': {
+    data: {
+      subscriptionId: string;
+      userId: string;
+      plan: string;
+    };
+  };
+  'subscription/canceled': {
+    data: {
+      subscriptionId: string;
+      userId: string;
+    };
+  };
+  'invoice/paid': {
+    data: {
+      invoiceId: string;
+      subscriptionId: string;
+      amount: number;
+    };
+  };
+  {% if saas_ai == "openai" or saas_ai == "anthropic" %}
+  'ai/generation.requested': {
+    data: {
+      userId: string;
+      prompt: string;
+      model?: string;
+    };
+  };
+  {% endif %}
+  'report/generate': {
+    data: {
+      type: 'monthly' | 'weekly' | 'custom';
+      userId?: string;
+      organizationId?: string;
+    };
+  };
+};
+
+// Create Inngest client
+export const inngest = new Inngest({
+  id: '{{ project_slug }}',
+  name: '{{ project_name }}',
+  schemas: new EventSchemas().fromRecord<Events>(),
+  {% if saas_observability_structured_logging %}
+  logger: {
+    level: process.env.NODE_ENV === 'development' ? 'debug' : 'info',
+  },
+  {% endif %}
+});
+
+// ============================================================================
+// Inngest Functions (Jobs)
+// ============================================================================
+
+/**
+ * Welcome email function
+ * Triggered when new user is created
+ * 
+ * @example
+ * ```ts
+ * await inngest.send({
+ *   name: 'user/created',
+ *   data: { userId: 'user_xxx', email: 'user@example.com' },
+ * });
+ * ```
+ */
+export const sendWelcomeEmail = inngest.createFunction(
+  {
+    id: 'send-welcome-email',
+    name: 'Send Welcome Email',
+    retries: 3,
+  },
+  { event: 'user/created' },
+  async ({ event, step }) => {
+    // Step 1: Fetch user details
+    const user = await step.run('fetch-user', async () => {
+      {% if saas_orm == 'prisma' %}
+      // return await prisma.user.findUnique({ where: { id: event.data.userId } });
+      {% endif %}
+      return event.data;
+    });
+    
+    // Step 2: Send welcome email
+    await step.run('send-email', async () => {
+      {% if saas_email == "resend" %}
+      // await resend.emails.send({
+      //   from: 'welcome@{{ project_slug }}.com',
+      //   to: user.email,
+      //   subject: 'Welcome to {{ project_name }}!',
+      //   react: WelcomeEmail({ userId: user.userId }),
+      // });
+      {% endif %}
+    });
+    
+    // Step 3: Track analytics event
+    await step.run('track-event', async () => {
+      {% if saas_analytics == 'posthog' or saas_analytics == 'amplitude' %}
+      // Track user signup event
+      {% endif %}
+    });
+    
+    return { sent: true, userId: event.data.userId };
+  }
+);
+
+/**
+ * Subscription created handler
+ * Multi-step workflow for new subscriptions
+ */
+export const handleSubscriptionCreated = inngest.createFunction(
+  {
+    id: 'handle-subscription-created',
+    name: 'Handle Subscription Created',
+    retries: 3,
+  },
+  { event: 'subscription/created' },
+  async ({ event, step }) => {
+    // Step 1: Update user limits
+    await step.run('update-limits', async () => {
+      {% if saas_orm == 'prisma' %}
+      // await prisma.organization.update({
+      //   where: { id: event.data.userId },
+      //   data: { plan: event.data.plan },
+      // });
+      {% endif %}
+    });
+    
+    // Step 2: Send confirmation email
+    await step.run('send-confirmation', async () => {
+      // Send subscription confirmation email
+    });
+    
+    // Step 3: Provision resources (if needed)
+    await step.run('provision-resources', async () => {
+      // Create necessary resources for the plan
+    });
+    
+    return { processed: true };
+  }
+);
+
+/**
+ * Invoice paid handler
+ * Handles successful payment events
+ */
+export const handleInvoicePaid = inngest.createFunction(
+  {
+    id: 'handle-invoice-paid',
+    name: 'Handle Invoice Paid',
+  },
+  { event: 'invoice/paid' },
+  async ({ event, step }) => {
+    // Update subscription status
+    await step.run('update-subscription', async () => {
+      {% if saas_orm == 'prisma' %}
+      // await prisma.subscription.updateMany({
+      //   where: { id: event.data.subscriptionId },
+      //   data: { status: 'active' },
+      // });
+      {% endif %}
+    });
+    
+    // Send receipt
+    await step.run('send-receipt', async () => {
+      // Send payment receipt email
+    });
+    
+    return { processed: true };
+  }
+);
+
+{% if saas_ai == "openai" or saas_ai == "anthropic" %}
+/**
+ * AI generation handler
+ * Long-running AI task with step-based durability
+ */
+export const processAIGeneration = inngest.createFunction(
+  {
+    id: 'process-ai-generation',
+    name: 'Process AI Generation',
+    retries: 5,
+  },
+  { event: 'ai/generation.requested' },
+  async ({ event, step }) => {
+    // Step 1: Validate user has credits
+    const hasCredits = await step.run('check-credits', async () => {
+      // Check if user has AI credits
+      return true;
+    });
+    
+    if (!hasCredits) {
+      return { error: 'Insufficient credits' };
+    }
+    
+    // Step 2: Generate AI content
+    const result = await step.run('generate-content', async () => {
+      {% if saas_ai == "openai" %}
+      // const completion = await openai.chat.completions.create({
+      //   model: event.data.model || 'gpt-4',
+      //   messages: [{ role: 'user', content: event.data.prompt }],
+      // });
+      // return completion.choices[0].message.content;
+      {% endif %}
+      return 'Generated content';
+    });
+    
+    // Step 3: Deduct credits
+    await step.run('deduct-credits', async () => {
+      // Deduct AI credits from user account
+    });
+    
+    // Step 4: Save result
+    await step.run('save-result', async () => {
+      // Save AI generation result to database
+    });
+    
+    return { completed: true, userId: event.data.userId };
+  }
+);
+{% endif %}
+
+/**
+ * Monthly report generator
+ * Scheduled function using cron
+ */
+export const generateMonthlyReport = inngest.createFunction(
+  {
+    id: 'generate-monthly-report',
+    name: 'Generate Monthly Report',
+  },
+  { cron: '0 9 1 * *' }, // 1st of every month at 9 AM UTC
+  async ({ step }) => {
+    // Fetch all organizations
+    const organizations = await step.run('fetch-organizations', async () => {
+      {% if saas_orm == 'prisma' %}
+      // return await prisma.organization.findMany({ where: { plan: { not: 'free' } } });
+      {% endif %}
+      return [];
+    });
+    
+    // Generate report for each organization
+    for (const org of organizations) {
+      await step.run(`generate-report-${org.id}`, async () => {
+        // Generate and send monthly usage report
+      });
+    }
+    
+    return { generated: organizations.length };
+  }
+);
+
+/**
+ * Cleanup expired data
+ * Scheduled function for data retention
+ */
+export const cleanupExpiredData = inngest.createFunction(
+  {
+    id: 'cleanup-expired-data',
+    name: 'Cleanup Expired Data',
+  },
+  { cron: '0 0 * * *' }, // Daily at midnight UTC
+  async ({ step }) => {
+    // Delete expired sessions
+    await step.run('cleanup-sessions', async () => {
+      {% if saas_orm == 'prisma' %}
+      // return await prisma.session.deleteMany({
+      //   where: { expires: { lt: new Date() } },
+      // });
+      {% endif %}
+    });
+    
+    // Delete expired tokens
+    await step.run('cleanup-tokens', async () => {
+      // Delete expired verification tokens
+    });
+    
+    return { cleanedUp: true };
+  }
+);
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Send event to Inngest
+ * Type-safe event sender
+ * 
+ * @example
+ * ```ts
+ * await sendEvent('user/created', {
+ *   userId: 'user_xxx',
+ *   email: 'user@example.com',
+ * });
+ * ```
+ */
+export async function sendEvent<K extends keyof Events>(
+  name: K,
+  data: Events[K]['data']
+) {
+  return await inngest.send({
+    name,
+    data,
+  });
+}
+
+/**
+ * Send batch of events
+ */
+export async function sendEvents(events: Array<{ name: keyof Events; data: any }>) {
+  return await inngest.send(
+    events.map((e) => ({
+      name: e.name,
+      data: e.data,
+    }))
+  );
+}
+
+// ============================================================================
+// Type Exports
+// ============================================================================
+
+export type { Events };
+export type { Inngest };
+{% endif %}

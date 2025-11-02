@@ -1,0 +1,322 @@
+{% if saas_starter_module == "enabled" and saas_analytics == "posthog" %}
+/**
+ * PostHog Analytics Client
+ * 
+ * Modern product analytics patterns:
+ * - Event tracking
+ * - User identification
+ * - Feature flags
+ * - Session replay
+ * - A/B testing
+ * - Group analytics (organizations)
+ * 
+ * @see https://posthog.com/docs
+ */
+
+import { PostHog } from 'posthog-node';
+import { env } from '@/lib/env';
+
+// Initialize PostHog client (server-side)
+export const posthog = new PostHog(env.NEXT_PUBLIC_POSTHOG_KEY, {
+  host: env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
+  flushAt: 20,
+  flushInterval: 10000,
+});
+
+// ============================================================================
+// Event Tracking
+// ============================================================================
+
+/**
+ * Track custom event
+ * 
+ * @example
+ * ```ts
+ * await trackEvent({
+ *   distinctId: userId,
+ *   event: 'subscription_created',
+ *   properties: { plan: 'pro', amount: 49 },
+ * });
+ * ```
+ */
+export async function trackEvent(params: {
+  distinctId: string;
+  event: string;
+  properties?: Record<string, any>;
+}) {
+  posthog.capture({
+    distinctId: params.distinctId,
+    event: params.event,
+    properties: params.properties,
+  });
+  
+  // Flush immediately for important events
+  await posthog.flush();
+}
+
+/**
+ * Track page view
+ */
+export async function trackPageView(params: {
+  distinctId: string;
+  path: string;
+  properties?: Record<string, any>;
+}) {
+  return await trackEvent({
+    distinctId: params.distinctId,
+    event: '$pageview',
+    properties: {
+      $current_url: path,
+      ...params.properties,
+    },
+  });
+}
+
+// ============================================================================
+// User Identification
+// ============================================================================
+
+/**
+ * Identify user
+ * Associates events with user properties
+ * 
+ * @example
+ * ```ts
+ * await identifyUser({
+ *   distinctId: userId,
+ *   properties: {
+ *     email: user.email,
+ *     name: user.name,
+ *     plan: 'pro',
+ *     createdAt: user.createdAt,
+ *   },
+ * });
+ * ```
+ */
+export async function identifyUser(params: {
+  distinctId: string;
+  properties: Record<string, any>;
+}) {
+  posthog.identify({
+    distinctId: params.distinctId,
+    properties: params.properties,
+  });
+  
+  await posthog.flush();
+}
+
+/**
+ * Update user properties
+ */
+export async function updateUserProperties(params: {
+  distinctId: string;
+  properties: Record<string, any>;
+}) {
+  posthog.capture({
+    distinctId: params.distinctId,
+    event: '$set',
+    properties: {
+      $set: params.properties,
+    },
+  });
+  
+  await posthog.flush();
+}
+
+// ============================================================================
+// Group Analytics (Organizations)
+// ============================================================================
+
+/**
+ * Associate user with group (organization)
+ * 
+ * @example
+ * ```ts
+ * await setGroup({
+ *   distinctId: userId,
+ *   groupType: 'organization',
+ *   groupId: orgId,
+ *   groupProperties: {
+ *     name: org.name,
+ *     plan: org.plan,
+ *     seats: org.seats,
+ *   },
+ * });
+ * ```
+ */
+export async function setGroup(params: {
+  distinctId: string;
+  groupType: string;
+  groupId: string;
+  groupProperties?: Record<string, any>;
+}) {
+  posthog.groupIdentify({
+    groupType: params.groupType,
+    groupKey: params.groupId,
+    properties: params.groupProperties,
+  });
+  
+  posthog.capture({
+    distinctId: params.distinctId,
+    event: '$group_identify',
+    properties: {
+      $group_type: params.groupType,
+      $group_key: params.groupId,
+      $group_set: params.groupProperties,
+    },
+  });
+  
+  await posthog.flush();
+}
+
+// ============================================================================
+// Feature Flags
+// ============================================================================
+
+/**
+ * Check if feature flag is enabled
+ * 
+ * @example
+ * ```ts
+ * const isEnabled = await isFeatureEnabled({
+ *   flag: 'new-dashboard',
+ *   distinctId: userId,
+ * });
+ * ```
+ */
+export async function isFeatureEnabled(params: {
+  flag: string;
+  distinctId: string;
+  groups?: Record<string, string>;
+}): Promise<boolean> {
+  return await posthog.isFeatureEnabled(params.flag, params.distinctId, {
+    groups: params.groups,
+  });
+}
+
+/**
+ * Get feature flag value
+ * For multivariate flags
+ */
+export async function getFeatureFlagValue(params: {
+  flag: string;
+  distinctId: string;
+  groups?: Record<string, string>;
+}): Promise<string | boolean | undefined> {
+  return await posthog.getFeatureFlag(params.flag, params.distinctId, {
+    groups: params.groups,
+  });
+}
+
+/**
+ * Get all feature flags for user
+ */
+export async function getAllFeatureFlags(params: {
+  distinctId: string;
+  groups?: Record<string, string>;
+}): Promise<Record<string, string | boolean>> {
+  return await posthog.getAllFlags(params.distinctId, {
+    groups: params.groups,
+  });
+}
+
+// ============================================================================
+// Common SaaS Events
+// ============================================================================
+
+/**
+ * Track user signup
+ */
+export async function trackSignup(params: {
+  userId: string;
+  email: string;
+  method: string; // google, github, email
+}) {
+  return await trackEvent({
+    distinctId: params.userId,
+    event: 'user_signed_up',
+    properties: {
+      email: params.email,
+      signup_method: params.method,
+    },
+  });
+}
+
+/**
+ * Track subscription created
+ */
+export async function trackSubscriptionCreated(params: {
+  userId: string;
+  plan: string;
+  amount: number;
+  billingCycle: string;
+}) {
+  return await trackEvent({
+    distinctId: params.userId,
+    event: 'subscription_created',
+    properties: {
+      plan: params.plan,
+      amount: params.amount,
+      billing_cycle: params.billingCycle,
+    },
+  });
+}
+
+/**
+ * Track subscription canceled
+ */
+export async function trackSubscriptionCanceled(params: {
+  userId: string;
+  plan: string;
+  reason?: string;
+}) {
+  return await trackEvent({
+    distinctId: params.userId,
+    event: 'subscription_canceled',
+    properties: {
+      plan: params.plan,
+      cancellation_reason: params.reason,
+    },
+  });
+}
+
+/**
+ * Track API usage
+ */
+export async function trackApiUsage(params: {
+  userId: string;
+  endpoint: string;
+  method: string;
+  statusCode: number;
+  responseTime: number;
+}) {
+  return await trackEvent({
+    distinctId: params.userId,
+    event: 'api_call',
+    properties: {
+      endpoint: params.endpoint,
+      method: params.method,
+      status_code: params.statusCode,
+      response_time_ms: params.responseTime,
+    },
+  });
+}
+
+// ============================================================================
+// Graceful Shutdown
+// ============================================================================
+
+/**
+ * Flush pending events and shutdown
+ * Call this on process exit
+ */
+export async function shutdown() {
+  await posthog.shutdown();
+}
+
+// ============================================================================
+// Type Exports
+// ============================================================================
+
+export type { PostHog };
+{% endif %}

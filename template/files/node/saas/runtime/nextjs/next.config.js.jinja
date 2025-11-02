@@ -1,0 +1,134 @@
+{% if saas_starter_module == "enabled" and saas_runtime == "nextjs-16" %}
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+  
+  {% if saas_observability_sentry %}
+  // Sentry configuration
+  sentry: {
+    hideSourceMaps: process.env.NODE_ENV === 'production',
+    widenClientFileUpload: true,
+  },
+  {% endif %}
+  
+  // Experimental features
+  experimental: {
+    {% if saas_observability_otel %}
+    instrumentationHook: true,
+    {% endif %}
+    typedRoutes: true,
+  },
+  
+  // Image optimization
+  images: {
+    remotePatterns: [
+      {% if saas_auth == 'clerk' %}
+      {
+        protocol: 'https',
+        hostname: 'img.clerk.com',
+      },
+      {% endif %}
+      {% if saas_storage == 'supabase-storage' %}
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+      },
+      {% elif saas_storage == 'r2' %}
+      {
+        protocol: 'https',
+        hostname: '*.r2.cloudflarestorage.com',
+      },
+      {% endif %}
+    ],
+  },
+  
+  // Security headers
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()',
+          },
+        ],
+      },
+    ];
+  },
+  
+  {% if saas_hosting == 'vercel' %}
+  // Vercel-specific configuration
+  poweredByHeader: false,
+  compress: true,
+  {% elif saas_hosting == 'cloudflare' %}
+  // Cloudflare Pages configuration
+  output: 'export', // Static export for Cloudflare Pages
+  {% endif %}
+  
+  // TypeScript configuration
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  
+  // ESLint configuration
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
+  
+  // Logging
+  logging: {
+    fetches: {
+      fullUrl: process.env.NODE_ENV === 'development',
+    },
+  },
+};
+
+{% if saas_observability_sentry %}
+// Sentry webpack plugin configuration
+const { withSentryConfig } = require('@sentry/nextjs');
+
+module.exports = withSentryConfig(
+  nextConfig,
+  {
+    // Sentry build-time configuration
+    silent: true,
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+  },
+  {
+    // Sentry runtime configuration
+    widenClientFileUpload: true,
+    transpileClientSDK: true,
+    hideSourceMaps: true,
+    disableLogger: true,
+  }
+);
+{% else %}
+module.exports = nextConfig;
+{% endif %}
+{% endif %}

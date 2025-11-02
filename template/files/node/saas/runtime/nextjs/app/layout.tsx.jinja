@@ -1,0 +1,84 @@
+{% if saas_starter_module == "enabled" and saas_runtime == "nextjs-16" %}
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+{% if saas_auth == 'clerk' %}
+import { ClerkProvider } from '@clerk/nextjs';
+{% elif saas_auth == 'authjs' %}
+import { SessionProvider } from 'next-auth/react';
+{% endif %}
+{% if saas_analytics == 'posthog' %}
+import { PostHogProvider } from '@/lib/analytics/posthog-provider';
+{% elif saas_analytics == 'amplitude' %}
+import { AmplitudeProvider } from '@/lib/analytics/amplitude-provider';
+{% endif %}
+
+const inter = Inter({ subsets: ['latin'] });
+
+export const metadata: Metadata = {
+  title: '{{ project_name }}',
+  description: 'Production-ready SaaS application',
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    {% if saas_auth == 'clerk' %}
+    <ClerkProvider>
+      <html lang="en">
+        <body className={inter.className}>
+          {% if saas_analytics == 'posthog' %}
+          <PostHogProvider>
+            {children}
+          </PostHogProvider>
+          {% elif saas_analytics == 'amplitude' %}
+          <AmplitudeProvider>
+            {children}
+          </AmplitudeProvider>
+          {% else %}
+          {children}
+          {% endif %}
+        </body>
+      </html>
+    </ClerkProvider>
+    {% elif saas_auth == 'authjs' %}
+    <html lang="en">
+      <body className={inter.className}>
+        <SessionProvider>
+          {% if saas_analytics == 'posthog' %}
+          <PostHogProvider>
+            {children}
+          </PostHogProvider>
+          {% elif saas_analytics == 'amplitude' %}
+          <AmplitudeProvider>
+            {children}
+          </AmplitudeProvider>
+          {% else %}
+          {children}
+          {% endif %}
+        </SessionProvider>
+      </body>
+    </html>
+    {% else %}
+    <html lang="en">
+      <body className={inter.className}>
+        {% if saas_analytics == 'posthog' %}
+        <PostHogProvider>
+          {children}
+        </PostHogProvider>
+        {% elif saas_analytics == 'amplitude' %}
+        <AmplitudeProvider>
+          {children}
+        </AmplitudeProvider>
+        {% else %}
+        {children}
+        {% endif %}
+      </body>
+    </html>
+    {% endif %}
+  );
+}
+{% endif %}

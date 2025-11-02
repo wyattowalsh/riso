@@ -1,0 +1,283 @@
+{% if saas_starter_module == "enabled" and saas_runtime == "nextjs-16" %}
+/**
+ * Subscription Management API
+ * 
+ * CRUD operations for subscriptions with:
+ * - Billing provider integration
+ * - Usage tracking
+ * - Plan upgrades/downgrades
+ * - Cancellation handling
+ */
+
+import { NextResponse, NextRequest } from 'next/server';
+import { z } from 'zod';
+import { requireUserId } from '@/lib/auth/helpers';
+{% if saas_orm == "prisma" %}
+import { prisma } from '@/lib/database/client';
+{% elif saas_orm == "drizzle" %}
+import { db } from '@/lib/database/client';
+import { subscriptions } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+{% endif %}
+import { validateBody } from '@/lib/utils/validation';
+import { success, error, notFound } from '@/lib/utils/response';
+import { withErrorHandler } from '@/lib/middleware/error-handler';
+{% if saas_billing == "stripe" %}
+import { stripe, cancelSubscription } from '@/lib/integrations/billing/stripe/client';
+{% endif %}
+import { monitorQuery } from '@/lib/performance/monitor';
+
+// ============================================================================
+// GET /api/examples/subscriptions/[id]
+// Get subscription details
+// ============================================================================
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  return withErrorHandler(async () => {
+    const userId = await requireUserId();
+    const subscriptionId = params.id;
+    
+    // Get subscription from database
+    {% if saas_orm == "prisma" %}
+    const subscription = await monitorQuery('subscriptions.findUnique', async () => {
+      return await prisma.subscription.findUnique({
+        where: { id: subscriptionId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+            },
+          },
+        },
+      });
+    });
+    {% elif saas_orm == "drizzle" %}
+    const [subscription] = await monitorQuery('subscriptions.findUnique', async () => {
+      return await db
+        .select()
+        .from(subscriptions)
+        .where(eq(subscriptions.id, subscriptionId))
+        .limit(1);
+    });
+    {% endif %}
+    
+    if (!subscription) {
+      return notFound('Subscription');
+    }
+    
+    // Check ownership
+    if (subscription.userId !== userId) {
+      return error('Forbidden', 403);
+    }
+    
+    // Get additional data from billing provider
+    {% if saas_billing == "stripe" %}
+    let providerData = null;
+    if (subscription.stripeSubscriptionId) {
+      try {
+        providerData = await stripe.subscriptions.retrieve(
+          subscription.stripeSubscriptionId,
+          {
+            expand: ['default_payment_method', 'latest_invoice'],
+          }
+        );
+      } catch (err) {
+        // Log but don't fail if provider unavailable
+        console.error('Failed to fetch Stripe subscription:', err);
+      }
+    }
+    {% endif %}
+    
+    return success({
+      ...subscription,
+      {% if saas_billing == "stripe" %}
+      providerData,
+      {% endif %}
+    });
+  }, request);
+}
+
+// ============================================================================
+// PATCH /api/examples/subscriptions/[id]
+// Update subscription (change plan, add-ons, etc.)
+// ============================================================================
+
+const updateSubscriptionSchema = z.object({
+  plan: z.enum(['starter', 'pro', 'enterprise']).optional(),
+  cancelAtPeriodEnd: z.boolean().optional(),
+  metadata: z.record(z.any()).optional(),
+});
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  return withErrorHandler(async () => {
+    const userId = await requireUserId();
+    const subscriptionId = params.id;
+    
+    // Validate request
+    const { data: body, error: validationError } = await validateBody(
+      request,
+      updateSubscriptionSchema
+    );
+    
+    if (validationError) {
+      return validationError;
+    }
+    
+    // Get subscription
+    {% if saas_orm == "prisma" %}
+    const subscription = await prisma.subscription.findUnique({
+      where: { id: subscriptionId },
+    });
+    {% elif saas_orm == "drizzle" %}
+    const [subscription] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.id, subscriptionId))
+      .limit(1);
+    {% endif %}
+    
+    if (!subscription) {
+      return notFound('Subscription');
+    }
+    
+    if (subscription.userId !== userId) {
+      return error('Forbidden', 403);
+    }
+    
+    // Update in billing provider
+    {% if saas_billing == "stripe" %}
+    if (subscription.stripeSubscriptionId) {
+      const updates: any = {};
+      
+      if (body.cancelAtPeriodEnd !== undefined) {
+        updates.cancel_at_period_end = body.cancelAtPeriodEnd;
+      }
+      
+      if (body.plan) {
+        // Get new price ID for plan
+        const priceId = getPriceIdForPlan(body.plan);
+        updates.items = [{
+          id: subscription.stripeSubscriptionId,
+          price: priceId,
+        }];
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        await stripe.subscriptions.update(
+          subscription.stripeSubscriptionId,
+          updates
+        );
+      }
+    }
+    {% endif %}
+    
+    // Update in database
+    {% if saas_orm == "prisma" %}
+    const updated = await prisma.subscription.update({
+      where: { id: subscriptionId },
+      data: {
+        plan: body.plan || subscription.plan,
+        metadata: body.metadata || subscription.metadata,
+      },
+    });
+    {% elif saas_orm == "drizzle" %}
+    const [updated] = await db
+      .update(subscriptions)
+      .set({
+        plan: body.plan || subscription.plan,
+        metadata: body.metadata || subscription.metadata,
+      })
+      .where(eq(subscriptions.id, subscriptionId))
+      .returning();
+    {% endif %}
+    
+    return success(updated);
+  }, request);
+}
+
+// ============================================================================
+// DELETE /api/examples/subscriptions/[id]
+// Cancel subscription
+// ============================================================================
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  return withErrorHandler(async () => {
+    const userId = await requireUserId();
+    const subscriptionId = params.id;
+    
+    // Get subscription
+    {% if saas_orm == "prisma" %}
+    const subscription = await prisma.subscription.findUnique({
+      where: { id: subscriptionId },
+    });
+    {% elif saas_orm == "drizzle" %}
+    const [subscription] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.id, subscriptionId))
+      .limit(1);
+    {% endif %}
+    
+    if (!subscription) {
+      return notFound('Subscription');
+    }
+    
+    if (subscription.userId !== userId) {
+      return error('Forbidden', 403);
+    }
+    
+    // Cancel in billing provider
+    {% if saas_billing == "stripe" %}
+    if (subscription.stripeSubscriptionId) {
+      await cancelSubscription(subscription.stripeSubscriptionId);
+    }
+    {% endif %}
+    
+    // Update status in database
+    {% if saas_orm == "prisma" %}
+    await prisma.subscription.update({
+      where: { id: subscriptionId },
+      data: {
+        status: 'canceled',
+        canceledAt: new Date(),
+      },
+    });
+    {% elif saas_orm == "drizzle" %}
+    await db
+      .update(subscriptions)
+      .set({
+        status: 'canceled',
+        canceledAt: new Date(),
+      })
+      .where(eq(subscriptions.id, subscriptionId));
+    {% endif %}
+    
+    return success({ message: 'Subscription canceled successfully' });
+  }, request);
+}
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+function getPriceIdForPlan(plan: string): string {
+  const prices: Record<string, string> = {
+    starter: process.env.STRIPE_PRICE_STARTER || '',
+    pro: process.env.STRIPE_PRICE_PRO || '',
+    enterprise: process.env.STRIPE_PRICE_ENTERPRISE || '',
+  };
+  
+  return prices[plan] || prices.starter;
+}
+{% endif %}

@@ -1,0 +1,67 @@
+{% if saas_starter_module == "enabled" and saas_hosting == "cloudflare" %}
+#:schema node_modules/wrangler/config-schema.json
+name = "{{ project_slug }}"
+main = "build/index.js"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Workers AI (if using AI features)
+{% if saas_ai == "openai" or saas_ai == "anthropic" %}
+[ai]
+binding = "AI"
+{% endif %}
+
+# D1 Database (alternative to Neon/Supabase for edge)
+{% if saas_database == "neon" or saas_database == "supabase" %}
+# Using external database via HTTP
+# No D1 binding needed
+{% endif %}
+
+# R2 Storage
+{% if saas_storage == "r2" %}
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "{{ project_slug }}-storage"
+preview_bucket_name = "{{ project_slug }}-storage-preview"
+{% endif %}
+
+# KV for session storage (optional)
+[[kv_namespaces]]
+binding = "KV"
+id = "{{ '${KV_NAMESPACE_ID}' }}"
+preview_id = "{{ '${KV_NAMESPACE_PREVIEW_ID}' }}"
+
+# Environment Variables
+[vars]
+NODE_ENV = "production"
+LOG_LEVEL = "info"
+
+# Secrets (set via CLI: wrangler secret put SECRET_NAME)
+# - DATABASE_URL
+# - OPENAI_API_KEY (if using AI)
+# - CLERK_SECRET_KEY (if using Clerk)
+# - STRIPE_SECRET_KEY (if using Stripe)
+# etc.
+
+# Routes
+[[routes]]
+pattern = "{{ project_slug }}.com/*"
+zone_name = "{{ project_slug }}.com"
+
+[[routes]]
+pattern = "www.{{ project_slug }}.com/*"
+zone_name = "{{ project_slug }}.com"
+
+# Build configuration
+[build]
+command = "pnpm run build"
+watch_dirs = ["app", "lib"]
+
+# Limits
+[limits]
+cpu_ms = 50
+
+# Observability
+[observability]
+enabled = true
+{% endif %}
