@@ -1,0 +1,155 @@
+{% if codegen_module == 'enabled' %}"""Conflict detection and validation for merge operations.
+
+This module handles detecting unresolved conflicts and validating
+that all conflict markers have been addressed.
+"""
+
+from pathlib import Path
+import re
+from loguru import logger
+
+from ..models import ConflictRegion
+
+
+class ConflictDetector:
+    """Detect and validate merge conflicts."""
+    
+    # Conflict markers
+    MARKER_START = "<<<<<<< "
+    MARKER_MIDDLE = "======="
+    MARKER_END = ">>>>>>> "
+    
+    def __init__(self):
+        """Initialize conflict detector."""
+        logger.debug("Conflict detector initialized")
+    
+    def has_unresolved_conflicts(self, content: str) -> bool:
+        """Check if content has unresolved conflict markers.
+        
+        Args:
+            content: File content to check
+            
+        Returns:
+            True if unresolved conflicts exist
+        """
+        return (
+            self.MARKER_START in content or
+            self.MARKER_MIDDLE in content or
+            self.MARKER_END in content
+        )
+    
+    def find_conflict_regions(self, content: str) -> list[ConflictRegion]:
+        """Find all conflict regions in content.
+        
+        Args:
+            content: File content to scan
+            
+        Returns:
+            List of ConflictRegion objects
+        """
+        regions = []
+        lines = content.split("\n")
+        
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            
+            # Look for conflict start
+            if line.startswith(self.MARKER_START):
+                start_line = i + 1
+                
+                # Find middle marker
+                user_lines = []
+                i += 1
+                while i < len(lines) and not lines[i].startswith(self.MARKER_MIDDLE):
+                    user_lines.append(lines[i])
+                    i += 1
+                
+                if i >= len(lines):
+                    logger.warning("Malformed conflict: missing middle marker")
+                    break
+                
+                # Find end marker
+                template_lines = []
+                i += 1
+                while i < len(lines) and not lines[i].startswith(self.MARKER_END):
+                    template_lines.append(lines[i])
+                    i += 1
+                
+                if i >= len(lines):
+                    logger.warning("Malformed conflict: missing end marker")
+                    break
+                
+                end_line = i + 1
+                
+                region = ConflictRegion(
+                    start_line=start_line,
+                    end_line=end_line,
+                    user_content="\n".join(user_lines),
+                    template_content="\n".join(template_lines),
+                )
+                regions.append(region)
+                
+                logger.debug(f"Found conflict region: lines {start_line}-{end_line}")
+            
+            i += 1
+        
+        logger.info(f"Found {len(regions)} conflict regions")
+        return regions
+    
+    def validate_file(self, file_path: Path) -> tuple[bool, list[str]]:
+        """Validate that file has no unresolved conflicts.
+        
+        Args:
+            file_path: Path to file to validate
+            
+        Returns:
+            Tuple of (is_valid, list_of_errors)
+        """
+        if not file_path.exists():
+            return False, [f"File not found: {file_path}"]
+        
+        content = file_path.read_text()
+        
+        if not self.has_unresolved_conflicts(content):
+            return True, []
+        
+        # Find conflict regions
+        regions = self.find_conflict_regions(content)
+        
+        errors = [
+            f"Unresolved conflict at lines {r.start_line}-{r.end_line}"
+            for r in regions
+        ]
+        
+        return False, errors
+    
+    def validate_all_files(self, file_paths: list[Path]) -> tuple[bool, dict[Path, list[str]]]:
+        """Validate multiple files for unresolved conflicts.
+        
+        Args:
+            file_paths: List of files to validate
+            
+        Returns:
+            Tuple of (all_valid, dict of file to errors)
+        """
+        results = {}
+        all_valid = True
+        
+        for file_path in file_paths:
+            is_valid, errors = self.validate_file(file_path)
+            if not is_valid:
+                results[file_path] = errors
+                all_valid = False
+        
+        if not all_valid:
+            total_conflicts = sum(len(errs) for errs in results.values())
+            logger.error(
+                f"Validation failed: {total_conflicts} unresolved conflicts "
+                f"in {len(results)} files"
+            )
+        else:
+            logger.info(f"All {len(file_paths)} files validated successfully")
+        
+        return all_valid, results
+{% endif %}
