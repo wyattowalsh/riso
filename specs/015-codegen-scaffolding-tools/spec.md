@@ -3,6 +3,7 @@
 **Feature Branch**: `015-codegen-scaffolding-tools`  
 **Created**: 2025-11-02  
 **Status**: Draft  
+**Terminology**: This document uses "scaffolding tool" consistently to refer to the code generation CLI
 **Input**: User description: "create a new feature/spec branch/spec for `015-codegen-scaffolding-tools`"
 
 ## Clarifications
@@ -130,11 +131,11 @@ A developer has an OpenAPI/GraphQL schema and wants to generate client/server co
 - **FR-012**: System MUST support conditional file generation based on user selections (e.g., include/exclude test files)
 - **FR-013**: System MUST maintain a record of generation metadata (template version, variables used, timestamp) in generated projects
 - **FR-014**: Users MUST be able to list available templates and see their descriptions
-- **FR-015**: Users MUST be able to add custom template directories to the tool's search path
+- **FR-015**: Users MUST be able to add custom template directories and remote template sources (local paths, Git URLs, HTTP registries) to the tool's search path
 - **FR-016**: System MUST support fetching templates from remote repositories (Git URLs, package registries) and caching them locally for offline use
 - **FR-017**: System MUST provide commands to manually update cached templates from remote sources
+- **FR-018**: System MUST provide clear error messages with actionable suggestions when generation fails
 - **FR-019**: System MUST enforce a maximum template size of 100MB and warn users when templates exceed 50MB
-- **FR-019**: System MUST provide clear error messages with actionable suggestions when generation fails
 - **FR-020**: System MUST support generating multiple related files atomically (all-or-nothing)
 - **FR-021**: System MUST run quality validation (linting, type checking) on generated projects and display warnings without blocking completion
 - **FR-022**: Users MUST be able to update generated projects when template versions change while preserving custom modifications
@@ -159,11 +160,11 @@ A developer has an OpenAPI/GraphQL schema and wants to generate client/server co
 
 - **SC-001**: Developers can generate a new project scaffold in under 30 seconds from command execution to first successful test run
 - **SC-002**: Generated projects produce zero critical errors when quality checks run (warnings allowed)
-- **SC-003**: 95% of developers successfully generate their first project without consulting documentation beyond the initial command
+- **SC-003**: 95% of developers successfully generate their first project without consulting documentation beyond the initial command (success = generates project + passes all tests + completes in <5 minutes)
 - **SC-004**: Adding a new module to an existing project takes under 60 seconds and produces immediately runnable code
 - **SC-005**: Template updates can be applied to existing projects with zero manual conflict resolution for 80% of cases
 - **SC-006**: Generated code follows project conventions with 100% consistency (naming, structure, imports)
 - **SC-007**: Tool successfully validates and reports errors for invalid inputs (names, paths) before any file creation occurs
-- **SC-008**: Developers can customize templates for their team in under 15 minutes
+- **SC-008**: Developers can customize templates for their team in under 15 minutes (customize = create template.yml + add 3 template files + test generation successfully)
 - **SC-009**: Generated API code from OpenAPI specs achieves 100% type coverage with no manual type annotations needed
 - **SC-010**: Tool reduces time to first commit for new projects by 75% compared to manual setup

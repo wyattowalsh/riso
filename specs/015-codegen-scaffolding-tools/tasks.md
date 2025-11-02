@@ -252,7 +252,7 @@ Based on plan.md, all paths use the Riso template structure:
 - [ ] T134 [P] Create user documentation in template/files/shared/docs/modules/codegen-scaffolding.md.jinja
 - [ ] T135 [P] Add examples to documentation (project generation, module addition, updates)
 - [ ] T136 [P] Create template metadata schema documentation in template/files/shared/docs/modules/codegen-scaffolding.md.jinja
-- [ ] T137 Add codegen_module flag to template/copier.yml with enabled/disabled choices
+- [ ] T137 Add codegen_module flag to template/copier.yml (type: str, choices: [enabled, disabled], default: disabled, help: "Enable code generation scaffolding tools?")
 - [ ] T138 Wrap all codegen files with {% if codegen_module == 'enabled' %} conditionals
 - [ ] T139 Create sample answer file for testing in samples/codegen-enabled/copier-answers.yml
 - [ ] T140 Test rendering with codegen_module=enabled via ./scripts/render-samples.sh
