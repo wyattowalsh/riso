@@ -16,7 +16,8 @@ This document outlines a comprehensive, prioritized roadmap of the best next fea
 - ✅ **003-code-quality-integrations**: Comprehensive quality suite (Ruff, Mypy, Pylint, pytest)
 - ✅ **004-github-actions-workflows**: CI/CD workflows with matrix testing, retry logic, artifact management
 - ✅ **005-container-deployment**: Docker/Compose support with multi-stage builds, registry integration
-- 🚧 **006-fastapi-api-scaffold**: Production-ready FastAPI scaffold (in progress)
+- ✅ **006-fastapi-api-scaffold**: Production-ready FastAPI scaffold
+- 🚧 **015-codegen-scaffolding-tools**: Security-hardened code generation CLI with Jinja2 sandboxing, three-way merge, and comprehensive security controls (in progress)
 
 ## Prioritization Framework
 
@@ -41,6 +42,157 @@ Features are evaluated using a multi-factor scoring system:
 ---
 
 ## Priority 1: Critical Infrastructure (Score ≥ 4.0)
+
+### 015 - Code Generation & Scaffolding Tools (Security-Hardened)
+
+**Score**: 4.9 | Impact: 5 | Effort: 3 | Dependencies: 1 | Alignment: 5  
+**Category**: Core Infrastructure | **Status**: In Progress (Specification Complete)
+
+**Description**: Security-first code generation CLI with sandboxed template rendering, three-way merge for updates, and comprehensive attack prevention.
+
+**Why Critical**:
+
+- Foundation for internal Riso template development and maintenance
+- Enables teams to create secure, custom templates without security expertise
+- Security-hardened design prevents template injection, path traversal, and code execution attacks
+- Supports template lifecycle management (create, update, merge) with automated conflict resolution
+- Industry research shows 2025 code generation tools must be "secure-by-design" from day one
+
+**Key Security Capabilities**:
+
+- **Template Injection Prevention**:
+  - Jinja2 SandboxedEnvironment with restricted access to Python built-ins
+  - Disabled dangerous filters (eval, exec, import, compile, __subclasses__)
+  - AST parsing and validation before template execution
+  - Custom is_safe_attribute() override to block unsafe object access
+  - Computational limits (30s timeout, 1000 loop iterations max)
+  
+- **Input Validation & Sanitization**:
+  - Multi-layer validation (shell, SQL, template, code injection)
+  - Path canonicalization with traversal prevention (../../etc/passwd blocked)
+  - Null byte detection and rejection
+  - Type checking for all template variables
+  - Maximum length enforcement (project name ≤100, paths ≤4096, vars ≤1024)
+  - Reserved word detection (Python keywords, system paths)
+  
+- **File System Security**:
+  - Atomic operations with rollback on failure
+  - Symlink detection and rejection outside project boundaries
+  - System directory write prevention (/etc, /usr, /bin blocked)
+  - Secure default permissions (644 files, 755 executables, 700 cache)
+  - File locking to prevent race conditions
+  - Checksum validation after generation
+  
+- **Remote Template Security**:
+  - SSRF protection (HTTPS/SSH only, private IPs rejected)
+  - SSL/TLS certificate validation
+  - Signature verification for template authenticity
+  - Cache integrity validation with checksum verification
+  - Cache poisoning prevention (isolated per-user, 700 permissions)
+  - Credential handling (never logged, cleared from memory, secure storage)
+  
+- **Hook Execution Sandboxing**:
+  - Pre/post-generation hooks run with restricted environment
+  - No network access, no sudo/privileged commands
+  - 10-second timeout, 100MB memory limit
+  - World-writable script rejection
+  - Audit logging for all hook executions
+  
+- **Generated Code Security**:
+  - Hardcoded secret scanning (API keys, credentials, tokens)
+  - Security linting integration (Semgrep, Bandit)
+  - Insecure default detection (debug mode, weak crypto, permissive CORS)
+  - Dependency vulnerability scanning
+  - License compliance validation
+
+**Three-Way Merge Innovation**:
+
+- Automated template updates while preserving user modifications
+- Git-style conflict markers (<<<<<<, =======, >>>>>>>) for manual review
+- Merge input validation to prevent malicious content injection
+- Security-sensitive file warnings (.env, credentials, config)
+- Merge output validation before writing
+- Provenance tracking for audit trails
+
+**Core Generation Features**:
+
+- Template-based code generation with variable substitution
+- Interactive prompts with validation and type coercion
+- Dry-run mode for preview without file creation
+- Template inheritance and composition
+- Conditional file generation based on user selections
+- Metadata tracking (.scaffold-metadata.json) with template version, variables, timestamp
+- Multi-file atomic generation (all-or-nothing)
+- Quality validation (linting, type checking) with warnings (non-blocking)
+
+**Integration Points**:
+
+- Quality suite (003): Generated code passes ruff, mypy, pylint
+- Containers (005): Template generation for Docker/Compose configurations
+- CI/CD (004): Integration with GitHub Actions workflows
+- FastAPI (006): API endpoint scaffolding templates
+- Documentation (002): Auto-generated README and setup guides
+
+**Research-Informed Design**:
+
+Based on 2025 industry best practices research:
+
+1. **Secure-by-Design Pipeline** (GoCodeo model):
+   - Pre-generation: Prompt engineering with security constraints
+   - Mid-generation: AST parsing and policy enforcement
+   - Post-generation: SAST integration and mandatory review
+   
+2. **Template Security** (Industry standard):
+   - Version-controlled registry with signed commits
+   - Manual security audits for templates
+   - Automated diff checks between versions
+   - Template immutability enforcement
+   
+3. **Observability** (Forensic requirements):
+   - Metadata in generated code (tool version, timestamp, agent)
+   - Centralized logging for all generation events
+   - Anomalous activity alerting
+   - Generation-to-merge timeline tracking
+   
+4. **Access Control** (Enterprise readiness):
+   - RBAC for generation operations
+   - Separate read/write privileges
+   - Immutable infrastructure (isolated environments)
+   - Audit logs and session recording
+
+**Tool Ecosystem Positioning**:
+
+Compared to existing tools (Cookiecutter, Yeoman, Copier, Plop):
+
+- **Security Focus**: Only scaffolder with comprehensive security-first design
+- **Lifecycle Management**: Supports updates via three-way merge (like Copier)
+- **Simplicity**: Python-based like Cookiecutter, no JS required
+- **Template Updates**: Git-based smart updates with conflict resolution
+- **Flexibility**: Jinja2 templates (any output language), not framework-specific
+- **Enterprise Ready**: Built-in security controls, audit trails, provenance tracking
+
+**Success Criteria**:
+
+- **SC-001**: Generate new project in <30 seconds from command to first test run
+- **SC-002**: Generated projects have zero critical errors (warnings allowed)
+- **SC-003**: 95% of users succeed without docs (generate + test + complete in <5 min)
+- **SC-011**: 100% detection of path traversal, template injection, code execution test cases
+- **SC-012**: Generated code passes security linting with zero critical vulnerabilities
+- **SC-013**: Zero credential leakage in logs, errors, or temp files during security audits
+
+**Implementation Notes**:
+
+- Python 3.11+ with Jinja2 ≥3.1.5 (security fixes, bytecode caching)
+- Typer ≥0.20.0 for CLI with Rich integration
+- merge3 ≥0.0.13 for three-way merge algorithm
+- GitPython for remote template fetching
+- Pydantic for validation, Loguru for logging
+- AST parsing via Python's ast module
+- SAST integration via subprocess (Semgrep, Bandit)
+
+**Dependencies**: Quality suite (003) for validation, Git for template management
+
+---
 
 ### 007 - Typer CLI Scaffold
 
@@ -616,76 +768,136 @@ Features are evaluated using a multi-factor scoring system:
 
 Based on prioritization framework, dependencies, and user value:
 
-### Phase 1: Core API Extensions (Specs 007-010)
-**Timeline**: 6-9 months | **Focus**: Essential infrastructure
+### Phase 1: Core Infrastructure & Security (Current - Q1 2026)
+**Timeline**: 3-6 months | **Focus**: Foundation for secure template development
 
-1. **007 - Typer CLI Scaffold** (Score 4.8)
+1. **015 - Code Generation & Scaffolding Tools** (Score 4.9) 🚧 **IN PROGRESS**
+   - Security specification complete with 40+ security requirements
+   - Security checklist complete (120 items validated)
+   - Foundation for all future Riso template development
+   - Enables secure, automated template updates
+   - Critical for maintaining template quality and security
+   - **Status**: Specification complete, ready for implementation
+   - **Next**: Implement core CLI, sandboxed rendering, security validations
+
+2. **007 - Typer CLI Scaffold** (Score 4.8)
    - No dependencies, immediate value
+   - Complements FastAPI (shared Pydantic foundation)
+   - Can use 015 for self-hosting (dogfooding)
    - Foundation for CLI-based tooling
-   - Quick win to demonstrate template capabilities
 
-2. **008 - Database Integration** (Score 4.2)
-   - Foundation for most subsequent features
+### Phase 2: Data & Persistence (Q2 2026)
+**Timeline**: 4-6 months | **Focus**: Production API capabilities
+
+3. **008 - Database Integration** (Score 4.2)
+   - Foundation for Auth, Background Tasks, Multi-tenancy
    - Critical for production applications
-   - Enables Auth, Background Tasks, Multi-tenancy
+   - Enables most subsequent features
 
-3. **010 - Monitoring & Observability** (Score 4.0)
+4. **010 - Monitoring & Observability** (Score 4.0)
    - Production essential, operational excellence
    - Low complexity, high impact
    - Enables debugging and performance optimization
+   - Critical for production deployments
 
-4. **009 - Authentication & Authorization** (Score 4.1)
+### Phase 3: Security & Access Control (Q3 2026)
+**Timeline**: 3-4 months | **Focus**: Production security & compliance
+
+5. **009 - Authentication & Authorization** (Score 4.1)
    - Requires Database (008)
    - Security-critical for production APIs
    - Enables tenant isolation, admin panels
+   - Foundation for enterprise features
 
-### Phase 2: Production Readiness (Specs 011-016)
-**Timeline**: 6-9 months | **Focus**: Security & advanced patterns
-
-5. **016 - API Rate Limiting** (Score 3.2)
+6. **016 - API Rate Limiting** (Score 3.2)
    - Security enhancement, DoS protection
    - Builds on FastAPI (006)
-   
-6. **011 - Background Tasks** (Score 3.8)
+   - Production security requirement
+
+### Phase 4: Advanced API Patterns (Q4 2026)
+**Timeline**: 6-9 months | **Focus**: Modern API capabilities
+
+7. **011 - Background Tasks** (Score 3.8)
    - Async processing for long-running operations
    - Requires Database (008)
-   
-7. **014 - API Versioning** (Score 3.4)
-   - API maturity and backward compatibility
-   - Builds on FastAPI (006)
+   - Enables email, reports, data processing
 
-8. **017 - Caching Layer** (Score 3.1)
-   - Performance optimization
-   - Reduces database load
-
-### Phase 3: Advanced Features (Specs 012-015, 018)
-**Timeline**: 3-6 months | **Focus**: Alternative paradigms & specialized features
-
-9. **013 - WebSocket Support** (Score 3.5)
+8. **013 - WebSocket Support** (Score 3.5)
    - Real-time communication
    - Requires Auth (009)
-   
-10. **012 - GraphQL API** (Score 3.6)
-    - Alternative to REST
-    - Requires Database (008)
-    
-11. **015 - File Upload & Storage** (Score 3.3)
+   - Enables chat, notifications, live updates
+
+9. **012 - GraphQL API** (Score 3.6)
+   - Alternative to REST
+   - Requires Database (008)
+   - Modern API pattern
+
+10. **014 - API Versioning** (Score 3.4)
+    - API maturity and backward compatibility
+    - Builds on FastAPI (006)
+    - Professional API design
+
+### Phase 5: Storage & Performance (Q1 2027)
+**Timeline**: 4-6 months | **Focus**: Scalability & optimization
+
+11. **017 - Caching Layer** (Score 3.1)
+    - Performance optimization
+    - Reduces database load
+    - Production scalability
+
+12. **015 - File Upload & Storage** (Score 3.3)
     - Content management
     - Requires Containers (005)
-    
-12. **018 - Email Integration** (Score 2.9)
+    - User-generated content support
+
+13. **018 - Email Integration** (Score 2.9)
     - Communication infrastructure
     - Requires Background Tasks (011)
+    - Transactional email support
 
-### Phase 4: Specialized & Advanced (Lower Priority)
-**Timeline**: 6-12 months | **Focus**: Enterprise & specialized use cases
+### Phase 6: Specialized Features (Q2-Q3 2027)
+**Timeline**: 6-12 months | **Focus**: Enterprise & advanced use cases
 
-- Multi-tenancy Support (019)
-- Feature Flags (020)
+- Multi-tenancy Support (020)
 - Search Integration (021)
 - Admin Panel (022)
 - Payment Integration (019)
-- Machine Learning Integration (024)
+- Compliance & Audit Logging
+- Data Privacy & GDPR Toolkit
+
+---
+
+## Recent Updates (November 2025)
+
+### Specification 015: Security-Hardened Code Generation
+
+**Major Accomplishment**: Comprehensive security specification completed with industry-leading security controls.
+
+**Key Additions**:
+- 40 new security requirements (FR-025 to FR-064) covering all attack vectors
+- 120-item security checklist validating requirements completeness
+- 14 security-focused edge cases (path traversal, template injection, SSRF, etc.)
+- 3 security success criteria (100% attack detection, zero critical vulnerabilities, zero credential leakage)
+
+**Security Requirements Summary**:
+- Input validation & sanitization (6 requirements)
+- Template processing security (8 requirements)
+- File system security (7 requirements)
+- Remote template security (6 requirements)
+- Merge & update security (3 requirements)
+- Error handling & logging (4 requirements)
+- Generated code security (3 requirements)
+- Supply chain security (3 requirements)
+
+**Research Integration**:
+- Incorporated 2025 secure-by-design best practices from GoCodeo model
+- Jinja2 sandboxing patterns from industry security research
+- Three-way merge security considerations from academic literature
+- Comparison analysis with Cookiecutter, Yeoman, Copier, Plop ecosystem
+
+**Status**: Specification complete, security checklist validated, ready for implementation phase.
+
+**Impact**: Positions Riso as the only security-first scaffolding tool in the Python ecosystem, enabling enterprise adoption and secure template development workflows.
 
 ---
 
@@ -857,9 +1069,10 @@ To propose a new feature:
 
 | Spec | Feature | Score | Priority | Category | Effort | Dependencies | Status |
 |------|---------|-------|----------|----------|--------|--------------|--------|
+| 015 | Codegen & Scaffolding | 4.9 | P1 Critical | Core Infra | Medium | 003 | 🚧 In Progress (Spec Complete) |
 | 007 | Typer CLI | 4.8 | P1 High | Core | Low | None | Recommended Next |
 | 008 | Database | 4.2 | P1 High | Core | Medium | 005, 006 | Recommended |
-| 009 | Auth/AuthZ | 4.1 | P1 High | Security | Medium | 007, 008 | Recommended |
+| 009 | Auth/AuthZ | 4.1 | P1 High | Security | Medium | 008 | Recommended |
 | 010 | Monitoring | 4.0 | P1 High | Operations | Low | 005, 006 | Recommended |
 | 011 | Task Queue | 3.8 | P2 Medium | Core | Medium | 008, 010 | Planned |
 | 012 | GraphQL | 3.6 | P2 Medium | Core | High | 006, 008 | Planned |
@@ -876,6 +1089,14 @@ To propose a new feature:
 | 023 | Mobile/Push | 2.2 | P3 Low | Feature | Medium | 008, 011 | Deferred |
 | 024 | ML Serving | 1.9 | Future | Feature | Very High | 008, 010 | Exploratory |
 | 025 | Blockchain | 1.5 | Future | Feature | Very High | Many | Exploratory |
+
+**Legend**:
+- ✅ Complete
+- 🚧 In Progress
+- 📋 Specification Complete
+- 🎯 Recommended Next
+- ⏳ Planned
+- 🔮 Future/Exploratory
 
 ---
 
@@ -916,12 +1137,13 @@ Deprecated features:
 
 ---
 
-**Document Version**: 2.0  
+**Document Version**: 2.1  
 **Status**: Active Roadmap  
-**Next Review**: December 1, 2025  
+**Next Review**: December 15, 2025  
 **Maintainer**: @wyattowalsh  
-**Last Updated**: November 1, 2025
+**Last Updated**: November 2, 2025
 
 **Changelog**:
+- **v2.1** (2025-11-02): Added spec 015 (Code Generation & Scaffolding Tools) as highest priority (4.9), comprehensive security-first design with 40+ security requirements, 120-item security checklist, research-informed implementation, positioned as foundation for all future template development
 - **v2.0** (2025-11-01): Merged ideas.md and NEXT_FEATURES.md, comprehensive expansion with 25 features
 - **v1.0** (2025-11-01): Initial NEXT_FEATURES.md creation with 30 features across 5 priority levels
