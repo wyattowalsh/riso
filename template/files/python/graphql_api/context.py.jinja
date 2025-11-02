@@ -1,0 +1,90 @@
+"""GraphQL Context - Request-scoped data passed to all resolvers."""
+
+from typing import Optional
+from dataclasses import dataclass
+
+from fastapi import Request
+{% if api_tracks in ['python', 'python+node'] %}
+from sqlalchemy.ext.asyncio import AsyncSession
+{% endif %}
+
+from {{ package_name }}.graphql_api.dataloaders import DataLoaderContainer
+
+
+@dataclass
+class GraphQLContext:
+    """
+    GraphQL context provides request-scoped data to all resolvers.
+    
+    Attributes:
+        request: FastAPI request object
+        current_user: Authenticated user (None if not authenticated)
+        db: Async database session (if database integration enabled)
+        dataloaders: Container with DataLoader instances for efficient batching
+        config: GraphQL runtime configuration
+    """
+    
+    request: Request
+    current_user: Optional[dict] = None
+    {% if api_tracks in ['python', 'python+node'] %}
+    db: Optional[AsyncSession] = None
+    {% endif %}
+    dataloaders: Optional[DataLoaderContainer] = None
+    config: Optional[dict] = None
+
+
+async def get_graphql_context(
+    request: Request,
+    {% if api_tracks in ['python', 'python+node'] %}
+    db: Optional[AsyncSession] = None,
+    {% endif %}
+) -> GraphQLContext:
+    """
+    Create GraphQL context for each request.
+    
+    This function is called for every GraphQL request and creates:
+    - Fresh DataLoader instances (per-request batching/caching)
+    - Current user from authentication headers
+    - Database session
+    - Configuration values
+    
+    Args:
+        request: FastAPI request object
+        db: Async database session (optional)
+    
+    Returns:
+        GraphQLContext instance with all request-scoped data
+    """
+    # Extract user from authentication (placeholder - implement your auth logic)
+    current_user = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        # TODO: Implement JWT validation or your authentication logic
+        # token = auth_header.replace("Bearer ", "")
+        # current_user = await validate_token(token)
+        pass
+    
+    # Create per-request DataLoaders
+    dataloaders = DataLoaderContainer(
+        {% if api_tracks in ['python', 'python+node'] %}
+        db=db
+        {% endif %}
+    )
+    
+    # Load configuration (could be from settings, environment, etc.)
+    config = {
+        "max_query_depth": 15,
+        "max_query_complexity": 5000,
+        "default_page_size": 20,
+        "max_page_size": 100,
+    }
+    
+    return GraphQLContext(
+        request=request,
+        current_user=current_user,
+        {% if api_tracks in ['python', 'python+node'] %}
+        db=db,
+        {% endif %}
+        dataloaders=dataloaders,
+        config=config,
+    )

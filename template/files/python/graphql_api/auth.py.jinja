@@ -1,0 +1,131 @@
+"""Authentication & Authorization for GraphQL."""
+
+from typing import Callable, Any
+from functools import wraps
+
+import strawberry
+from strawberry.types import Info
+
+from {{ package_name }}.graphql_api.errors import AuthError
+
+
+def auth_required(func: Callable) -> Callable:
+    """
+    Decorator for requiring authentication on GraphQL fields.
+    
+    Usage:
+        @strawberry.mutation
+        @auth_required
+        async def create_user(self, info: Info, ...) -> User:
+            # Only authenticated users can execute this
+            ...
+    
+    Args:
+        func: Resolver function to wrap
+    
+    Returns:
+        Wrapped resolver that checks authentication
+    
+    Raises:
+        AuthError: If user is not authenticated
+    """
+    @wraps(func)
+    async def wrapper(*args, **kwargs) -> Any:
+        # Extract info from args or kwargs
+        info: Info = kwargs.get("info") or args[1]
+        
+        # Check if user is authenticated
+        if not info.context.current_user:
+            raise AuthError("Authentication required to perform this operation")
+        
+        # Call original resolver
+        return await func(*args, **kwargs)
+    
+    return wrapper
+
+
+def permission_required(permission: str) -> Callable:
+    """
+    Decorator for requiring specific permissions on GraphQL fields.
+    
+    Usage:
+        @strawberry.mutation
+        @permission_required("user:write")
+        async def create_user(self, info: Info, ...) -> User:
+            # Only users with "user:write" permission can execute this
+            ...
+    
+    Args:
+        permission: Required permission string
+    
+    Returns:
+        Decorator function
+    
+    Raises:
+        AuthError: If user doesn't have required permission
+    """
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        async def wrapper(*args, **kwargs) -> Any:
+            # Extract info from args or kwargs
+            info: Info = kwargs.get("info") or args[1]
+            
+            # Check if user is authenticated
+            if not info.context.current_user:
+                raise AuthError("Authentication required")
+            
+            # Check permissions (example - customize based on your auth system)
+            user_permissions = info.context.current_user.get("permissions", [])
+            if permission not in user_permissions:
+                raise AuthError(
+                    f"Insufficient permissions. Required: {permission}"
+                )
+            
+            # Call original resolver
+            return await func(*args, **kwargs)
+        
+        return wrapper
+    
+    return decorator
+
+
+async def get_current_user_from_token(token: str) -> dict:
+    """
+    Extract and validate user from authentication token.
+    
+    This is a placeholder implementation. Replace with your actual
+    authentication logic (JWT validation, session lookup, etc.).
+    
+    Args:
+        token: Authentication token (e.g., JWT)
+    
+    Returns:
+        User dictionary with id, email, permissions, etc.
+    
+    Raises:
+        AuthError: If token is invalid or expired
+    """
+    # TODO: Implement actual token validation
+    # Example JWT validation:
+    # try:
+    #     payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+    #     user_id = payload.get("user_id")
+    #     # Fetch user from database
+    #     user = await db.get_user(user_id)
+    #     return {
+    #         "id": user.id,
+    #         "email": user.email,
+    #         "permissions": user.permissions,
+    #     }
+    # except jwt.InvalidTokenError:
+    #     raise AuthError("Invalid authentication token")
+    
+    # Placeholder implementation
+    if token == "valid-token":
+        return {
+            "id": "user-123",
+            "email": "user@example.com",
+            "permissions": ["user:read", "user:write"],
+        }
+    else:
+        raise AuthError("Invalid authentication token")
