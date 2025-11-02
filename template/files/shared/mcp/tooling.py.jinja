@@ -10,9 +10,33 @@ def list_tools() -> list[str]:
 
     return []
 {%- else %}
+"""MCP tooling module for {{ project_name }}.
+
+This module provides a lightweight tool registry that integrates with FastMCP.
+It includes sample tools demonstrating various MCP capabilities and patterns.
+
+Usage:
+    from shared.mcp import tooling
+
+    # Register a new tool
+    @tooling.registry.register(name="my-tool", description="Does something useful")
+    def my_tool(param: str) -> dict[str, str]:
+        return {"result": param}
+
+    # List all tools
+    tools = tooling.list_tools()
+
+    # Dispatch a tool
+    result = tooling.registry.dispatch("my-tool", "test")
+"""
+
 from __future__ import annotations
 
+import datetime
+import platform
+import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable, Dict, Iterable
 
 try:
@@ -37,6 +61,15 @@ class ToolRegistry:
         self._tools: Dict[str, Tool] = {}
 
     def register(self, name: str, description: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+        """Register a tool with the registry.
+        
+        Args:
+            name: Tool name (use kebab-case, e.g., 'my-tool')
+            description: Human-readable description for AI assistants
+            
+        Returns:
+            Decorator function that registers the tool
+        """
         def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
             self._tools[name] = Tool(name=name, description=description, handler=func)
             if fastmcp_registry is not None and hasattr(fastmcp_registry, "register_tool"):
@@ -46,25 +79,64 @@ class ToolRegistry:
         return decorator
 
     def list(self) -> Iterable[Tool]:
+        """List all registered tools."""
         return self._tools.values()
 
     def dispatch(self, name: str, *args: Any, **kwargs: Any) -> Any:
+        """Dispatch a tool by name.
+        
+        Args:
+            name: Tool name to execute
+            *args: Positional arguments for the tool
+            **kwargs: Keyword arguments for the tool
+            
+        Returns:
+            Tool execution result
+            
+        Raises:
+            KeyError: If tool is not registered
+        """
         tool = self._tools.get(name)
         if not tool:
             raise KeyError(f"Tool '{name}' is not registered.")
         return tool.handler(*args, **kwargs)
 
 
+# Global registry instance
 registry = ToolRegistry()
 
 
-@registry.register(name="quickstart-status", description="Summarise the baseline quickstart result.")
+# =============================================================================
+# Project Status Tools
+# =============================================================================
+
+@registry.register(
+    name="quickstart-status",
+    description="Get the baseline quickstart status and summary"
+)
 def quickstart_status() -> dict[str, Any]:
-    return {"status": "ok", "summary": "Baseline quickstart completed"}
+    """Return the quickstart execution status.
+    
+    Returns:
+        Dict with status and summary information
+    """
+    return {
+        "status": "ok",
+        "summary": "Baseline quickstart completed",
+        "timestamp": datetime.datetime.now(tz=datetime.UTC).isoformat(),
+    }
 
 
-@registry.register(name="list-optional-modules", description="List optional modules selected during render.")
+@registry.register(
+    name="list-optional-modules",
+    description="List all optional modules and their enabled/disabled state"
+)
 def list_optional_modules() -> dict[str, Any]:
+    """Return configuration of optional modules.
+    
+    Returns:
+        Dict mapping module names to their states
+    """
     return {
         "cli_module": "{{ cli_module }}",
         "api_tracks": "{{ api_tracks }}",
@@ -74,8 +146,310 @@ def list_optional_modules() -> dict[str, Any]:
     }
 
 
-def list_tools() -> list[str]:
-    """List the registered tool names."""
+@registry.register(
+    name="project-info",
+    description="Get comprehensive project information including name, layout, and configuration"
+)
+def project_info() -> dict[str, Any]:
+    """Return detailed project information.
+    
+    Returns:
+        Dict with project metadata
+    """
+    return {
+        "name": "{{ project_name }}",
+        "layout": "{{ project_layout }}",
+        "quality_profile": "{{ quality_profile }}",
+        "python_versions": {{ python_versions | tojson }},
+        "ci_platform": "{{ ci_platform }}",
+        "include_databases": "{{ include_databases }}",
+    }
 
+
+# =============================================================================
+# System Information Tools
+# =============================================================================
+
+@registry.register(
+    name="system-info",
+    description="Get system information including OS, Python version, and platform details"
+)
+def system_info() -> dict[str, str]:
+    """Return system information.
+    
+    Returns:
+        Dict with system details
+    """
+    return {
+        "os": platform.system(),
+        "os_version": platform.version(),
+        "os_release": platform.release(),
+        "platform": platform.platform(),
+        "architecture": platform.machine(),
+        "python_version": platform.python_version(),
+        "python_implementation": platform.python_implementation(),
+    }
+
+
+@registry.register(
+    name="python-environment",
+    description="Get information about the Python environment and installed packages"
+)
+def python_environment() -> dict[str, Any]:
+    """Return Python environment information.
+    
+    Returns:
+        Dict with Python environment details
+    """
+    return {
+        "executable": sys.executable,
+        "version": sys.version,
+        "version_info": {
+            "major": sys.version_info.major,
+            "minor": sys.version_info.minor,
+            "micro": sys.version_info.micro,
+            "releaselevel": sys.version_info.releaselevel,
+        },
+        "prefix": sys.prefix,
+        "base_prefix": sys.base_prefix,
+        "path": sys.path[:3],  # First 3 paths for brevity
+    }
+
+
+# =============================================================================
+# File System Tools
+# =============================================================================
+
+@registry.register(
+    name="project-structure",
+    description="Get the project directory structure and key files"
+)
+def project_structure() -> dict[str, Any]:
+    """Return project structure information.
+    
+    Returns:
+        Dict with project directory structure
+    """
+    project_root = Path.cwd()
+    
+    # Get key directories
+    directories = []
+    for item in project_root.iterdir():
+        if item.is_dir() and not item.name.startswith((".","__")):
+            directories.append(item.name)
+    
+    # Get key files
+    key_files = []
+    important_files = [
+        "README.md", "pyproject.toml", "package.json",
+        "Dockerfile", "docker-compose.yml", ".env.example",
+        "Makefile", "justfile",
+    ]
+    for filename in important_files:
+        if (project_root / filename).exists():
+            key_files.append(filename)
+    
+    return {
+        "root": str(project_root),
+        "directories": sorted(directories),
+        "key_files": sorted(key_files),
+    }
+
+
+@registry.register(
+    name="read-file-content",
+    description="Read and return the contents of a file (use with caution, for small text files only)"
+)
+def read_file_content(filepath: str, max_lines: int = 100) -> dict[str, Any]:
+    """Read file content safely.
+    
+    Args:
+        filepath: Path to file relative to project root
+        max_lines: Maximum number of lines to return (default: 100)
+        
+    Returns:
+        Dict with file content and metadata
+        
+    Raises:
+        FileNotFoundError: If file doesn't exist
+        ValueError: If file is too large or not a text file
+    """
+    file_path = Path.cwd() / filepath
+    
+    if not file_path.exists():
+        raise FileNotFoundError(f"File not found: {filepath}")
+    
+    if not file_path.is_file():
+        raise ValueError(f"Not a file: {filepath}")
+    
+    # Safety checks
+    max_size = 1_000_000  # 1MB
+    if file_path.stat().st_size > max_size:
+        raise ValueError(f"File too large (>{max_size} bytes): {filepath}")
+    
+    try:
+        with file_path.open("r", encoding="utf-8") as f:
+            lines = f.readlines()[:max_lines]
+        
+        return {
+            "filepath": filepath,
+            "line_count": len(lines),
+            "truncated": len(lines) == max_lines,
+            "content": "".join(lines),
+        }
+    
+    except UnicodeDecodeError as e:
+        raise ValueError(f"File is not a text file: {filepath}") from e
+
+
+# =============================================================================
+# Calculation and Data Processing Tools
+# =============================================================================
+
+@registry.register(
+    name="calculate-sum",
+    description="Calculate the sum of a list of numbers"
+)
+def calculate_sum(numbers: list[float | int]) -> dict[str, Any]:
+    """Calculate sum of numbers.
+    
+    Args:
+        numbers: List of numbers to sum
+        
+    Returns:
+        Dict with sum and count
+    """
+    if not numbers:
+        return {"sum": 0, "count": 0, "average": 0}
+    
+    total = sum(numbers)
+    count = len(numbers)
+    average = total / count
+    
+    return {
+        "sum": total,
+        "count": count,
+        "average": average,
+        "min": min(numbers),
+        "max": max(numbers),
+    }
+
+
+@registry.register(
+    name="text-statistics",
+    description="Calculate statistics for a text string (words, characters, lines)"
+)
+def text_statistics(text: str) -> dict[str, Any]:
+    """Calculate text statistics.
+    
+    Args:
+        text: Input text to analyze
+        
+    Returns:
+        Dict with text statistics
+    """
+    lines = text.split("\n")
+    words = text.split()
+    
+    return {
+        "characters": len(text),
+        "characters_no_spaces": len(text.replace(" ", "")),
+        "words": len(words),
+        "lines": len(lines),
+        "average_word_length": sum(len(word) for word in words) / len(words) if words else 0,
+        "average_line_length": len(text) / len(lines) if lines else 0,
+    }
+
+
+# =============================================================================
+# Timestamp and Date Tools
+# =============================================================================
+
+@registry.register(
+    name="current-timestamp",
+    description="Get the current timestamp in various formats"
+)
+def current_timestamp() -> dict[str, str]:
+    """Return current timestamp in multiple formats.
+    
+    Returns:
+        Dict with timestamps in different formats
+    """
+    now = datetime.datetime.now(tz=datetime.UTC)
+    
+    return {
+        "iso": now.isoformat(),
+        "unix": str(int(now.timestamp())),
+        "date": now.strftime("%Y-%m-%d"),
+        "time": now.strftime("%H:%M:%S"),
+        "datetime": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "timezone": "UTC",
+    }
+
+
+@registry.register(
+    name="format-timestamp",
+    description="Format a Unix timestamp into a human-readable date string"
+)
+def format_timestamp(unix_timestamp: int, format_string: str = "%Y-%m-%d %H:%M:%S") -> dict[str, str]:
+    """Format a Unix timestamp.
+    
+    Args:
+        unix_timestamp: Unix timestamp to format
+        format_string: strftime format string
+        
+    Returns:
+        Dict with formatted timestamp
+    """
+    dt = datetime.datetime.fromtimestamp(unix_timestamp, tz=datetime.UTC)
+    
+    return {
+        "unix": str(unix_timestamp),
+        "formatted": dt.strftime(format_string),
+        "iso": dt.isoformat(),
+        "timezone": "UTC",
+    }
+
+
+# =============================================================================
+# Helper Functions
+# =============================================================================
+
+def list_tools() -> list[str]:
+    """List all registered tool names.
+    
+    Returns:
+        List of tool names
+    """
     return [tool.name for tool in registry.list()]
+
+
+def get_tool_info(tool_name: str) -> dict[str, str] | None:
+    """Get information about a specific tool.
+    
+    Args:
+        tool_name: Name of the tool
+        
+    Returns:
+        Dict with tool information or None if not found
+    """
+    for tool in registry.list():
+        if tool.name == tool_name:
+            return {
+                "name": tool.name,
+                "description": tool.description,
+            }
+    return None
+
+
+def get_all_tools_info() -> list[dict[str, str]]:
+    """Get information about all registered tools.
+    
+    Returns:
+        List of dicts with tool information
+    """
+    return [
+        {"name": tool.name, "description": tool.description}
+        for tool in registry.list()
+    ]
 {%- endif %}

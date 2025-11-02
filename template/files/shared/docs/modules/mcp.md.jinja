@@ -1,17 +1,474 @@
-# MCP Module
+# MCP Module (Model Context Protocol)
 
-The MCP module seeds a lightweight automation registry that mirrors the
-`FastMCP` tooling expectations.
+The MCP module provides a complete FastMCP server implementation that exposes tools and resources through the Model Context Protocol. This enables AI assistants like Claude Desktop, Cursor, and other MCP-compatible clients to interact with your project's functionality.
+
+## Overview
+
+The MCP module includes:
+- **Tool Registry**: Lightweight in-memory registry for managing MCP tools
+- **FastMCP Server**: Complete server implementation with STDIO and HTTP transports
+- **Client Examples**: Demonstration of how to connect to and use MCP servers
+- **Resource Providers**: Expose project information and status as MCP resources
+- **Comprehensive Tests**: Full test suite ensuring reliability
 
 ## Enabling the Module
 
-Render with `mcp_module=enabled` to scaffold `shared/mcp/tooling.py`. The helper registers sample tools
-and falls back gracefully if `fastmcp` is unavailable.
-
-## Smoke Check
+Render with `mcp_module=enabled` to scaffold the complete MCP infrastructure:
 
 ```bash
-uv run python -c "from shared.mcp import tooling; print(tooling.list_tools())"
+copier copy . output --data mcp_module=enabled
 ```
 
-Extend the registry by adding new `@registry.register(...)` functions inside `tooling.py`.
+Or update your `copier-answers.yml`:
+
+```yaml
+mcp_module: enabled
+```
+
+## Installation
+
+After rendering, install MCP dependencies:
+
+```bash
+# Using uv (recommended)
+uv sync --group mcp
+
+# Or with pip
+pip install "fastmcp>=2.13.0.2"
+```
+
+## Quick Start
+
+### 1. Verify Installation
+
+```bash
+# Check that the MCP module is working
+uv run python -c "from shared.mcp import tooling; print(tooling.list_tools())"
+
+# Should output: ['quickstart-status', 'list-optional-modules']
+```
+
+### 2. Run the MCP Server
+
+```bash
+# Run with STDIO transport (default, for Claude Desktop)
+uv run python -m shared.mcp.server
+
+# Run with HTTP transport
+uv run python -m shared.mcp.server --transport http --port 8080
+```
+
+### 3. Test with the Client
+
+```bash
+# Connect to local server (in-memory)
+uv run python -m shared.mcp.client_example --local --list-tools
+
+# Interactive session
+uv run python -m shared.mcp.client_example --local --interactive
+```
+
+## Architecture
+
+### Tool Registry (`shared/mcp/tooling.py`)
+
+The tool registry provides a simple, type-safe interface for registering and managing MCP tools:
+
+```python
+from shared.mcp import tooling
+
+# Register a new tool
+@tooling.registry.register(
+    name="example-tool",
+    description="An example tool that does something useful"
+)
+def example_tool(param: str) -> dict[str, str]:
+    """Tool implementation."""
+    return {"result": f"Processed: {param}"}
+
+# List all tools
+tools = tooling.list_tools()
+print(tools)  # ['quickstart-status', 'list-optional-modules', 'example-tool']
+
+# Dispatch a tool
+result = tooling.registry.dispatch("example-tool", "test-value")
+print(result)  # {'result': 'Processed: test-value'}
+```
+
+**Key Features:**
+- **Type-safe**: Uses dataclasses with slots for efficiency
+- **FastMCP integration**: Automatically registers with FastMCP when available
+- **Fallback support**: Works without FastMCP for testing
+- **Decorator API**: Clean, intuitive tool registration
+
+### FastMCP Server (`shared/mcp/server.py`)
+
+The server implementation exposes registered tools and resources via MCP:
+
+```python
+from shared.mcp.server import create_server
+
+# Create and run the server
+server = create_server()
+server.run()  # Uses STDIO by default
+```
+
+**Features:**
+- **Multiple transports**: STDIO (for desktop apps) and HTTP (for web services)
+- **Auto-registration**: All tools from the registry are automatically exposed
+- **Resource providers**: Built-in resources for server info and project status
+- **Environment configuration**: Configurable via environment variables
+- **Command-line interface**: Full CLI for server management
+
+**Environment Variables:**
+- `MCP_SERVER_NAME`: Override server name (default: "{{ project_name }}-mcp-server")
+- `MCP_SERVER_TRANSPORT`: Set transport type (stdio, http)
+- `MCP_SERVER_PORT`: Set HTTP port (default: 8000)
+- `MCP_SERVER_HOST`: Set HTTP host (default: localhost)
+
+### Client Example (`shared/mcp/client_example.py`)
+
+Demonstrates connecting to and using MCP servers:
+
+```bash
+# List all tools
+uv run python -m shared.mcp.client_example --local --list-tools
+
+# Call a specific tool
+uv run python -m shared.mcp.client_example --local --tool quickstart-status
+
+# Call a tool with arguments
+uv run python -m shared.mcp.client_example --local --tool example-tool --args '{"param": "value"}'
+
+# Read a resource
+uv run python -m shared.mcp.client_example --local --read-resource "resource://server/info"
+
+# Interactive session
+uv run python -m shared.mcp.client_example --local --interactive
+```
+
+## Usage Patterns
+
+### Adding New Tools
+
+Create new tools by decorating functions with `@tooling.registry.register`:
+
+```python
+# In shared/mcp/tooling.py or your own module
+from shared.mcp import tooling
+
+@tooling.registry.register(
+    name="calculate-sum",
+    description="Calculate the sum of two numbers"
+)
+def calculate_sum(a: int, b: int) -> dict[str, int]:
+    """Add two numbers together."""
+    return {
+        "a": a,
+        "b": b,
+        "sum": a + b
+    }
+```
+
+**Best Practices:**
+- Use descriptive names with hyphens (e.g., `calculate-sum`)
+- Provide clear descriptions for AI assistants
+- Return structured data (dicts, lists) for easy parsing
+- Add type hints for better IDE support
+- Include docstrings for human readers
+
+### Integration with Other Modules
+
+#### CLI Integration
+
+Expose CLI commands as MCP tools:
+
+```python
+from shared.mcp import tooling
+{% if cli_module == 'enabled' %}
+from {{ package_name }}.cli.commands import some_command
+{% endif %}
+
+@tooling.registry.register(
+    name="cli-command",
+    description="Run a CLI command via MCP"
+)
+def cli_command_tool(arg: str) -> dict[str, str]:
+    """Expose CLI command as MCP tool."""
+    # Call the CLI command programmatically
+    result = some_command(arg)
+    return {"output": result}
+```
+
+#### API Integration
+
+Expose API functionality as MCP tools:
+
+```python
+from shared.mcp import tooling
+{% if 'python' in api_tracks %}
+from {{ package_name }}.api.examples import fetch_data
+{% endif %}
+
+@tooling.registry.register(
+    name="fetch-api-data",
+    description="Fetch data from the API"
+)
+async def fetch_api_data_tool(query: str) -> dict[str, any]:
+    """Fetch data using the API logic."""
+    data = await fetch_data(query)
+    return {"data": data}
+```
+
+### Resource Providers
+
+Add custom resources to expose project information:
+
+```python
+from shared.mcp.server import create_server
+
+server = create_server()
+
+@server.resource("resource://project/config")
+def project_config() -> str:
+    """Expose project configuration as a resource."""
+    return """# Project Configuration
+    
+**Name**: {{ project_name }}
+**Layout**: {{ project_layout }}
+**Python Versions**: {{ python_versions | join(', ') }}
+
+## Enabled Modules
+- CLI: {{ cli_module }}
+- API: {{ api_tracks }}
+- MCP: {{ mcp_module }}
+- Docs: {{ docs_site }}
+"""
+```
+
+## Integration with Claude Desktop
+
+### Configuration
+
+Add to your Claude Desktop configuration (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "{{ project_name }}": {
+      "command": "uv",
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "shared.mcp.server"
+      ],
+      "cwd": "/path/to/your/project"
+    }
+  }
+}
+```
+
+**Configuration File Locations:**
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+### Usage in Claude
+
+Once configured, you can use your tools in Claude:
+
+```
+User: Can you check the quickstart status using the {{ project_name }} tools?
+
+Claude: I'll use the quickstart-status tool.
+[Tool call: quickstart-status]
+Result: {"status": "ok", "summary": "Baseline quickstart completed"}
+
+The quickstart has completed successfully!
+```
+
+## Integration with Cursor
+
+### Configuration
+
+Add to your Cursor MCP configuration:
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "{{ project_name }}": {
+        "command": "uv run python -m shared.mcp.server",
+        "cwd": "${workspaceFolder}"
+      }
+    }
+  }
+}
+```
+
+## Testing
+
+Run the MCP test suite:
+
+```bash
+# Run all MCP tests
+uv run pytest tests/test_mcp.py -v
+
+# Run specific test
+uv run pytest tests/test_mcp.py::test_list_tools_returns_list -v
+
+# Run with coverage
+uv run pytest tests/test_mcp.py --cov=shared.mcp --cov-report=term-missing
+```
+
+## Advanced Usage
+
+### Custom Transport Configuration
+
+Create a custom server configuration:
+
+```python
+from shared.mcp.server import create_server
+import os
+
+# Create server with custom settings
+os.environ["MCP_SERVER_NAME"] = "my-custom-server"
+server = create_server()
+
+# Add custom tools before running
+@server.tool(name="custom-tool", description="My custom tool")
+def custom_tool() -> str:
+    return "Custom result"
+
+# Run with HTTP transport
+server.run(transport="http", host="0.0.0.0", port=9000)
+```
+
+### Authentication (Optional)
+
+For production deployments with HTTP transport, consider adding authentication:
+
+```python
+from fastmcp import FastMCP
+
+server = FastMCP(
+    name="{{ project_name }}-mcp-server",
+    # Add authentication configuration here
+    # See FastMCP documentation for auth options
+)
+```
+
+### Monitoring and Logging
+
+Enable detailed logging for debugging:
+
+```python
+import logging
+
+# Configure logging before importing MCP modules
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+# Now import and use MCP
+from shared.mcp.server import create_server
+server = create_server()
+server.run()
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue**: `ImportError: No module named 'fastmcp'`
+**Solution**: Install MCP dependencies: `uv sync --group mcp`
+
+**Issue**: Server starts but tools aren't available
+**Solution**: Check that tools are registered before server starts. The registry must be populated before `create_server()` is called.
+
+**Issue**: Claude Desktop can't connect
+**Solution**: 
+1. Check the config file path is correct
+2. Verify the `cwd` points to your project directory
+3. Ensure `uv` is in your PATH
+4. Check Claude Desktop logs for connection errors
+
+**Issue**: HTTP server connection refused
+**Solution**: Ensure the server is running and the port isn't blocked by a firewall
+
+### Debugging
+
+Enable debug mode:
+
+```bash
+# Set debug environment variable
+export MCP_DEBUG=1
+
+# Run server with verbose output
+uv run python -m shared.mcp.server --transport stdio 2>&1 | tee mcp-debug.log
+```
+
+## Performance Considerations
+
+- **Tool execution time**: Keep tools fast (<1s when possible)
+- **Memory usage**: Tools run in the same process, manage memory carefully
+- **Concurrency**: Server handles concurrent requests, ensure thread-safety
+- **Resource limits**: Be mindful of system resources when exposing file/data operations
+
+## Security Considerations
+
+- **Input validation**: Always validate tool inputs
+- **Access control**: Consider authentication for HTTP transport
+- **Sensitive data**: Don't expose secrets or sensitive information through tools
+- **Command injection**: Sanitize any inputs used in system commands
+- **Rate limiting**: Implement rate limiting for production deployments
+
+## Best Practices
+
+1. **Tool naming**: Use clear, descriptive names with hyphens
+2. **Descriptions**: Write helpful descriptions for AI assistants
+3. **Return types**: Return structured data (JSON-serializable)
+4. **Error handling**: Handle errors gracefully with informative messages
+5. **Testing**: Write tests for all tools
+6. **Documentation**: Document tool parameters and behavior
+7. **Versioning**: Consider versioning tools for backward compatibility
+
+## Examples
+
+See the following files for complete examples:
+- `shared/mcp/tooling.py` - Tool registry and default tools
+- `shared/mcp/server.py` - Server implementation
+- `shared/mcp/client_example.py` - Client usage examples
+- `tests/test_mcp.py` - Comprehensive test suite
+
+## References
+
+- [FastMCP Documentation](https://github.com/jlowin/fastmcp)
+- [Model Context Protocol Specification](https://modelcontextprotocol.io/)
+- [Claude Desktop MCP Guide](https://docs.anthropic.com/claude/docs/model-context-protocol)
+- [Cursor MCP Integration](https://docs.cursor.sh/context/model-context-protocol)
+
+## Next Steps
+
+1. **Add custom tools** for your specific use case
+2. **Integrate with other modules** (CLI, API, etc.)
+3. **Configure Claude Desktop** or Cursor to use your server
+4. **Write tests** for your custom tools
+5. **Deploy to production** with appropriate security measures
+
+---
+
+**Module Status**: {% if mcp_module == 'enabled' %}? Enabled{% else %}? Disabled{% endif %}
+
+**Dependencies**: fastmcp>=2.13.0.2
+
+**Tests**: `tests/test_mcp.py`
+
+**Files**:
+- `shared/mcp/tooling.py` - Tool registry
+- `shared/mcp/server.py` - MCP server
+- `shared/mcp/client_example.py` - Client examples
+- `shared/mcp/__init__.py` - Package initialization
+- `shared/mcp/__main__.py` - Entry point for `python -m shared.mcp`

@@ -1,0 +1,602 @@
+{%- if mcp_module | lower != "enabled" %}
+# MCP Configuration Examples (Disabled)
+
+Enable via `mcp_module=enabled` to access configuration examples.
+{%- else %}
+# MCP Configuration Examples
+
+This document provides comprehensive configuration examples for running {{ project_name }}'s MCP server with various AI assistants and deployment scenarios.
+
+## Table of Contents
+
+1. [Environment Variables](#environment-variables)
+2. [Claude Desktop Configuration](#claude-desktop-configuration)
+3. [Cursor Configuration](#cursor-configuration)
+4. [HTTP Server Configuration](#http-server-configuration)
+5. [Production Deployment](#production-deployment)
+6. [Docker Configuration](#docker-configuration)
+7. [Development Setup](#development-setup)
+
+## Environment Variables
+
+### Basic Configuration
+
+Create a `.env` file in your project root:
+
+```bash
+# MCP Server Configuration
+MCP_SERVER_NAME="{{ project_name }}-mcp-server"
+MCP_SERVER_TRANSPORT=stdio
+MCP_SERVER_HOST=localhost
+MCP_SERVER_PORT=8000
+
+# Optional: Logging configuration
+MCP_DEBUG=false
+MCP_LOG_LEVEL=INFO
+
+# Optional: FastMCP-specific settings
+FASTMCP_SERVER_AUTH=false
+```
+
+### Production Configuration
+
+For production deployments with authentication:
+
+```bash
+# Production MCP Configuration
+MCP_SERVER_NAME="{{ project_name }}-production"
+MCP_SERVER_TRANSPORT=http
+MCP_SERVER_HOST=0.0.0.0
+MCP_SERVER_PORT=8443
+
+# Security
+FASTMCP_SERVER_AUTH=true
+FASTMCP_SERVER_AUTH_SECRET=your-secret-key-here
+
+# Monitoring
+MCP_LOG_LEVEL=WARNING
+MCP_ENABLE_METRICS=true
+```
+
+## Claude Desktop Configuration
+
+### macOS Configuration
+
+Location: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "{{ project_name }}": {
+      "command": "uv",
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "shared.mcp.server"
+      ],
+      "cwd": "{{ '$HOME' }}/path/to/{{ project_name }}",
+      "env": {
+        "MCP_SERVER_NAME": "{{ project_name }}-claude",
+        "MCP_LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}
+```
+
+### Windows Configuration
+
+Location: `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "{{ project_name }}": {
+      "command": "uv.exe",
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "shared.mcp.server"
+      ],
+      "cwd": "C:\\Users\\YourName\\Projects\\{{ project_name }}",
+      "env": {
+        "MCP_SERVER_NAME": "{{ project_name }}-claude"
+      }
+    }
+  }
+}
+```
+
+### Linux Configuration
+
+Location: `~/.config/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "{{ project_name }}": {
+      "command": "uv",
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "shared.mcp.server"
+      ],
+      "cwd": "/home/username/{{ project_name }}",
+      "env": {
+        "MCP_SERVER_NAME": "{{ project_name }}-claude",
+        "PATH": "/home/username/.local/bin:{{ '$PATH' }}"
+      }
+    }
+  }
+}
+```
+
+### Multiple Server Configuration
+
+Run multiple MCP servers simultaneously:
+
+```json
+{
+  "mcpServers": {
+    "{{ project_name }}-dev": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "shared.mcp.server"],
+      "cwd": "/path/to/{{ project_name }}-dev",
+      "env": {
+        "MCP_SERVER_NAME": "{{ project_name }}-dev"
+      }
+    },
+    "{{ project_name }}-prod": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "shared.mcp.server"],
+      "cwd": "/path/to/{{ project_name }}-prod",
+      "env": {
+        "MCP_SERVER_NAME": "{{ project_name }}-prod"
+      }
+    }
+  }
+}
+```
+
+## Cursor Configuration
+
+### Workspace Configuration
+
+Add to `.vscode/settings.json`:
+
+```json
+{
+  "mcp.servers": {
+    "{{ project_name }}": {
+      "command": "uv run python -m shared.mcp.server",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "MCP_SERVER_NAME": "{{ project_name }}-cursor"
+      }
+    }
+  }
+}
+```
+
+### Global Configuration
+
+Add to Cursor's global settings:
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "{{ project_name }}": {
+        "command": "uv",
+        "args": ["run", "python", "-m", "shared.mcp.server"],
+        "cwd": "/absolute/path/to/{{ project_name }}",
+        "autoStart": true
+      }
+    }
+  }
+}
+```
+
+## HTTP Server Configuration
+
+### Basic HTTP Server
+
+Start the HTTP server:
+
+```bash
+# Using default port 8000
+uv run python -m shared.mcp.server --transport http
+
+# Using custom port
+uv run python -m shared.mcp.server --transport http --port 9000
+
+# Bind to all interfaces
+uv run python -m shared.mcp.server --transport http --host 0.0.0.0 --port 8000
+```
+
+### Systemd Service (Linux)
+
+Create `/etc/systemd/system/{{ project_name }}-mcp.service`:
+
+```ini
+[Unit]
+Description={{ project_name }} MCP Server
+After=network.target
+
+[Service]
+Type=simple
+User=your-user
+WorkingDirectory=/path/to/{{ project_name }}
+Environment="MCP_SERVER_TRANSPORT=http"
+Environment="MCP_SERVER_PORT=8000"
+Environment="PATH=/home/your-user/.local/bin:{{ '$PATH' }}"
+ExecStart=/home/your-user/.local/bin/uv run python -m shared.mcp.server
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+
+```bash
+sudo systemctl enable {{ project_name }}-mcp
+sudo systemctl start {{ project_name }}-mcp
+sudo systemctl status {{ project_name }}-mcp
+```
+
+### Nginx Reverse Proxy
+
+Configure Nginx to proxy MCP server:
+
+```nginx
+server {
+    listen 80;
+    server_name mcp.{{ project_name }}.com;
+
+    location / {
+        proxy_pass http://localhost:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        
+        # MCP-specific headers
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+## Production Deployment
+
+### Environment-Specific Configuration
+
+#### Development (`config/dev.env`)
+
+```bash
+MCP_SERVER_NAME="{{ project_name }}-dev"
+MCP_SERVER_TRANSPORT=stdio
+MCP_DEBUG=true
+MCP_LOG_LEVEL=DEBUG
+```
+
+#### Staging (`config/staging.env`)
+
+```bash
+MCP_SERVER_NAME="{{ project_name }}-staging"
+MCP_SERVER_TRANSPORT=http
+MCP_SERVER_HOST=0.0.0.0
+MCP_SERVER_PORT=8000
+MCP_DEBUG=false
+MCP_LOG_LEVEL=INFO
+FASTMCP_SERVER_AUTH=true
+```
+
+#### Production (`config/prod.env`)
+
+```bash
+MCP_SERVER_NAME="{{ project_name }}-prod"
+MCP_SERVER_TRANSPORT=http
+MCP_SERVER_HOST=0.0.0.0
+MCP_SERVER_PORT=8443
+MCP_DEBUG=false
+MCP_LOG_LEVEL=WARNING
+FASTMCP_SERVER_AUTH=true
+MCP_ENABLE_METRICS=true
+MCP_RATE_LIMIT=100
+```
+
+### Load Environment
+
+```bash
+# Load specific environment
+source config/prod.env
+uv run python -m shared.mcp.server
+```
+
+## Docker Configuration
+
+### Dockerfile
+
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install uv
+RUN pip install uv
+
+# Copy project files
+COPY . /app/
+
+# Install dependencies
+RUN uv sync --group mcp
+
+# Expose MCP HTTP port
+EXPOSE 8000
+
+# Set environment variables
+ENV MCP_SERVER_TRANSPORT=http
+ENV MCP_SERVER_HOST=0.0.0.0
+ENV MCP_SERVER_PORT=8000
+
+# Run MCP server
+CMD ["uv", "run", "python", "-m", "shared.mcp.server"]
+```
+
+### Docker Compose
+
+```yaml
+version: '3.8'
+
+services:
+  mcp-server:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      MCP_SERVER_NAME: "{{ project_name }}-docker"
+      MCP_SERVER_TRANSPORT: http
+      MCP_SERVER_HOST: 0.0.0.0
+      MCP_SERVER_PORT: 8000
+      MCP_LOG_LEVEL: INFO
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+```
+
+### Kubernetes Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ project_name | lower }}-mcp
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: {{ project_name | lower }}-mcp
+  template:
+    metadata:
+      labels:
+        app: {{ project_name | lower }}-mcp
+    spec:
+      containers:
+      - name: mcp-server
+        image: {{ project_name | lower }}-mcp:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: MCP_SERVER_TRANSPORT
+          value: "http"
+        - name: MCP_SERVER_HOST
+          value: "0.0.0.0"
+        - name: MCP_SERVER_PORT
+          value: "8000"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ project_name | lower }}-mcp-service
+spec:
+  selector:
+    app: {{ project_name | lower }}-mcp
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8000
+  type: LoadBalancer
+```
+
+## Development Setup
+
+### Local Development
+
+Create `scripts/dev-mcp.sh`:
+
+```bash
+#!/bin/bash
+# Development MCP server launcher
+
+# Load development environment
+export MCP_SERVER_NAME="{{ project_name }}-dev"
+export MCP_DEBUG=true
+export MCP_LOG_LEVEL=DEBUG
+
+# Ensure dependencies are installed
+uv sync --group mcp
+
+# Run server with auto-reload (if using uvicorn)
+uv run python -m shared.mcp.server --transport stdio
+
+# Or for HTTP with hot reload:
+# uv run uvicorn shared.mcp.server:app --reload --host localhost --port 8000
+```
+
+Make executable:
+
+```bash
+chmod +x scripts/dev-mcp.sh
+```
+
+### Testing Configuration
+
+Create `.env.test`:
+
+```bash
+MCP_SERVER_NAME="{{ project_name }}-test"
+MCP_DEBUG=true
+MCP_LOG_LEVEL=DEBUG
+MCP_SERVER_TRANSPORT=stdio
+```
+
+Run tests with configuration:
+
+```bash
+# Load test environment
+export $(cat .env.test | xargs)
+
+# Run tests
+uv run pytest tests/test_mcp.py -v
+```
+
+## Monitoring and Logging
+
+### Structured Logging Configuration
+
+```python
+# shared/mcp/logging_config.py
+import logging.config
+
+LOGGING_CONFIG = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'default': {
+            'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        },
+        'json': {
+            'class': 'pythonjsonlogger.jsonlogger.JsonFormatter',
+            'format': '%(asctime)s %(name)s %(levelname)s %(message)s',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'default',
+            'stream': 'ext://sys.stderr',
+        },
+        'file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'formatter': 'json',
+            'filename': 'logs/mcp-server.log',
+            'maxBytes': 10485760,  # 10MB
+            'backupCount': 5,
+        },
+    },
+    'root': {
+        'level': 'INFO',
+        'handlers': ['console', 'file'],
+    },
+}
+
+logging.config.dictConfig(LOGGING_CONFIG)
+```
+
+## Troubleshooting
+
+### Connection Issues
+
+Check configuration:
+
+```bash
+# Verify environment variables
+env | grep MCP_
+
+# Test server startup
+uv run python -m shared.mcp.server --transport stdio 2>&1 | tee server.log
+
+# Test HTTP connectivity
+curl http://localhost:8000/health
+```
+
+### Permission Issues
+
+Fix file permissions:
+
+```bash
+# Make server executable
+chmod +x shared/mcp/server.py
+
+# Fix log directory permissions
+mkdir -p logs
+chmod 755 logs
+```
+
+### Path Issues
+
+Ensure `uv` is in PATH:
+
+```bash
+# Add to ~/.bashrc or ~/.zshrc
+export PATH="$HOME/.local/bin:$PATH"
+
+# Or use absolute path in configuration
+which uv  # Get full path to uv
+```
+
+## Best Practices
+
+1. **Use environment-specific configs**: Separate dev, staging, prod
+2. **Enable authentication** for production HTTP servers
+3. **Monitor logs** regularly for errors
+4. **Use health checks** in production deployments
+5. **Set appropriate log levels** (DEBUG for dev, WARNING for prod)
+6. **Rotate logs** to prevent disk space issues
+7. **Use reverse proxies** (Nginx, Caddy) for production HTTP servers
+8. **Implement rate limiting** for public-facing servers
+9. **Keep secrets secure**: Never commit `.env` files
+10. **Document custom configurations** for your team
+
+## Security Checklist
+
+- [ ] Authentication enabled for HTTP transport
+- [ ] Secrets stored securely (not in config files)
+- [ ] HTTPS enabled for production
+- [ ] Rate limiting configured
+- [ ] Input validation implemented
+- [ ] Logs don't contain sensitive data
+- [ ] Firewall rules configured
+- [ ] Regular security updates
+- [ ] Access logs enabled
+- [ ] Monitoring and alerting configured
+
+## Additional Resources
+
+- [FastMCP Configuration Guide](https://github.com/jlowin/fastmcp#configuration)
+- [Claude Desktop MCP Setup](https://docs.anthropic.com/claude/docs/model-context-protocol)
+- [MCP Specification](https://modelcontextprotocol.io/)
+- [Cursor MCP Integration](https://docs.cursor.sh/context/model-context-protocol)
+
+---
+
+For more information, see the main [MCP Module Documentation](mcp.md).
+{%- endif %}

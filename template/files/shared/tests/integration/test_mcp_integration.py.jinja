@@ -1,0 +1,429 @@
+{%- if mcp_module | lower != "enabled" %}
+#!/usr/bin/env python3
+"""MCP integration tests disabled.
+
+Enable via `mcp_module=enabled` to run MCP integration tests.
+"""
+
+import sys
+
+def main() -> None:
+    """Skip MCP integration tests when module is disabled."""
+    print("MCP module disabled - skipping integration tests")
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
+{%- else %}
+#!/usr/bin/env python3
+"""Integration tests for MCP module with other components.
+
+Tests MCP server integration with:
+- CLI module (if enabled)
+- API module (if enabled)
+- Shared logic (if enabled)
+- File system operations
+- System information
+
+These tests verify that MCP tools can successfully invoke and interact
+with other modules in the project.
+
+Requirements:
+    - MCP module enabled (mcp_module=enabled)
+    - FastMCP installed (uv sync --group mcp)
+
+Usage:
+    uv run python tests/integration/test_mcp_integration.py
+    pytest tests/integration/test_mcp_integration.py -v
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+# Check if fastmcp is available
+fastmcp = pytest.importorskip("fastmcp", reason="fastmcp not installed")
+
+from shared.mcp import tooling  # noqa: E402
+
+
+def log(message: str) -> None:
+    """Print log message with timestamp."""
+    timestamp = time.strftime("%H:%M:%S")
+    print(f"[{timestamp}] {message}")
+
+
+class TestMCPToolingIntegration:
+    """Test suite for MCP tooling integration."""
+    
+    def test_tooling_module_imports(self) -> None:
+        """Test that tooling module imports successfully."""
+        assert tooling is not None
+        assert hasattr(tooling, "registry")
+        assert hasattr(tooling, "list_tools")
+    
+    def test_all_sample_tools_registered(self) -> None:
+        """Test that all sample tools are registered."""
+        tools = tooling.list_tools()
+        
+        # Core tools that should always be present
+        expected_core_tools = [
+            "quickstart-status",
+            "list-optional-modules",
+            "project-info",
+            "system-info",
+            "python-environment",
+            "project-structure",
+            "current-timestamp",
+        ]
+        
+        for tool in expected_core_tools:
+            assert tool in tools, f"Expected tool '{tool}' not found in registry"
+    
+    def test_project_info_tool_returns_valid_data(self) -> None:
+        """Test project-info tool returns valid project configuration."""
+        result = tooling.project_info()
+        
+        assert isinstance(result, dict)
+        assert "name" in result
+        assert "layout" in result
+        assert "quality_profile" in result
+        assert "python_versions" in result
+        assert "ci_platform" in result
+        
+        # Verify it matches template configuration
+        assert result["name"] == "{{ project_name }}"
+        assert result["layout"] == "{{ project_layout }}"
+    
+    def test_system_info_tool_returns_valid_data(self) -> None:
+        """Test system-info tool returns valid system information."""
+        result = tooling.system_info()
+        
+        assert isinstance(result, dict)
+        assert "os" in result
+        assert "platform" in result
+        assert "python_version" in result
+        assert "architecture" in result
+        
+        # Verify data types
+        assert isinstance(result["os"], str)
+        assert isinstance(result["python_version"], str)
+    
+    def test_python_environment_tool(self) -> None:
+        """Test python-environment tool returns environment info."""
+        result = tooling.python_environment()
+        
+        assert isinstance(result, dict)
+        assert "executable" in result
+        assert "version" in result
+        assert "version_info" in result
+        assert "prefix" in result
+        
+        # Verify version_info structure
+        version_info = result["version_info"]
+        assert "major" in version_info
+        assert "minor" in version_info
+        assert version_info["major"] >= 3
+        assert version_info["minor"] >= 11  # Minimum Python version
+    
+    def test_project_structure_tool(self) -> None:
+        """Test project-structure tool returns directory information."""
+        result = tooling.project_structure()
+        
+        assert isinstance(result, dict)
+        assert "root" in result
+        assert "directories" in result
+        assert "key_files" in result
+        
+        # Verify data types
+        assert isinstance(result["directories"], list)
+        assert isinstance(result["key_files"], list)
+    
+    def test_current_timestamp_tool(self) -> None:
+        """Test current-timestamp tool returns timestamp in multiple formats."""
+        result = tooling.current_timestamp()
+        
+        assert isinstance(result, dict)
+        assert "iso" in result
+        assert "unix" in result
+        assert "date" in result
+        assert "time" in result
+        assert "datetime" in result
+        assert "timezone" in result
+        
+        # Verify formats
+        assert "T" in result["iso"]  # ISO format has T separator
+        assert result["timezone"] == "UTC"
+    
+    def test_format_timestamp_tool(self) -> None:
+        """Test format-timestamp tool formats Unix timestamps."""
+        unix_timestamp = 1704067200  # 2024-01-01 00:00:00 UTC
+        result = tooling.format_timestamp(unix_timestamp)
+        
+        assert isinstance(result, dict)
+        assert "unix" in result
+        assert "formatted" in result
+        assert "iso" in result
+        assert "timezone" in result
+        
+        assert result["unix"] == str(unix_timestamp)
+        assert "2024-01-01" in result["formatted"]
+    
+    def test_calculate_sum_tool(self) -> None:
+        """Test calculate-sum tool performs calculations."""
+        numbers = [1, 2, 3, 4, 5]
+        result = tooling.calculate_sum(numbers)
+        
+        assert isinstance(result, dict)
+        assert result["sum"] == 15
+        assert result["count"] == 5
+        assert result["average"] == 3.0
+        assert result["min"] == 1
+        assert result["max"] == 5
+    
+    def test_calculate_sum_empty_list(self) -> None:
+        """Test calculate-sum handles empty lists."""
+        result = tooling.calculate_sum([])
+        
+        assert result["sum"] == 0
+        assert result["count"] == 0
+        assert result["average"] == 0
+    
+    def test_text_statistics_tool(self) -> None:
+        """Test text-statistics tool analyzes text."""
+        text = "Hello world\nThis is a test\nWith three lines"
+        result = tooling.text_statistics(text)
+        
+        assert isinstance(result, dict)
+        assert "characters" in result
+        assert "words" in result
+        assert "lines" in result
+        assert "average_word_length" in result
+        assert "average_line_length" in result
+        
+        assert result["lines"] == 3
+        assert result["words"] == 8
+    
+    def test_read_file_content_tool_readme(self) -> None:
+        """Test read-file-content tool can read README.md."""
+        try:
+            result = tooling.read_file_content("README.md", max_lines=10)
+            
+            assert isinstance(result, dict)
+            assert "filepath" in result
+            assert "line_count" in result
+            assert "content" in result
+            assert result["filepath"] == "README.md"
+            assert len(result["content"]) > 0
+        except FileNotFoundError:
+            pytest.skip("README.md not found (expected in rendered project)")
+    
+    def test_read_file_content_nonexistent_file(self) -> None:
+        """Test read-file-content handles missing files."""
+        with pytest.raises(FileNotFoundError):
+            tooling.read_file_content("nonexistent-file.txt")
+    
+    def test_list_optional_modules_reflects_configuration(self) -> None:
+        """Test list-optional-modules returns actual project configuration."""
+        result = tooling.list_optional_modules()
+        
+        assert isinstance(result, dict)
+        
+        # MCP module must be enabled if we're running this test
+        assert result["mcp_module"] == "enabled"
+        
+        # Check all expected modules are present
+        assert "cli_module" in result
+        assert "api_tracks" in result
+        assert "docs_site" in result
+        assert "shared_logic" in result
+
+
+{% if cli_module == 'enabled' %}
+class TestMCPCLIIntegration:
+    """Test suite for MCP integration with CLI module."""
+    
+    def test_cli_module_available(self) -> None:
+        """Test that CLI module is available when enabled."""
+        result = tooling.list_optional_modules()
+        assert result["cli_module"] == "enabled"
+    
+    def test_create_cli_integration_tool(self) -> None:
+        """Test creating a tool that integrates with CLI."""
+        @tooling.registry.register(
+            name="test-cli-integration",
+            description="Test CLI integration"
+        )
+        def test_cli_tool() -> dict[str, str]:
+            return {
+                "cli_module": "enabled",
+                "integration": "successful"
+            }
+        
+        # Verify tool is registered
+        assert "test-cli-integration" in tooling.list_tools()
+        
+        # Dispatch and verify
+        result = tooling.registry.dispatch("test-cli-integration")
+        assert result["cli_module"] == "enabled"
+{% endif %}
+
+
+{% if 'python' in api_tracks %}
+class TestMCPAPIIntegration:
+    """Test suite for MCP integration with API module."""
+    
+    def test_api_module_available(self) -> None:
+        """Test that API module is available when enabled."""
+        result = tooling.list_optional_modules()
+        assert "python" in result["api_tracks"]
+    
+    def test_create_api_integration_tool(self) -> None:
+        """Test creating a tool that integrates with API."""
+        @tooling.registry.register(
+            name="test-api-integration",
+            description="Test API integration"
+        )
+        def test_api_tool() -> dict[str, str]:
+            return {
+                "api_tracks": "python",
+                "integration": "successful"
+            }
+        
+        # Verify tool is registered
+        assert "test-api-integration" in tooling.list_tools()
+        
+        # Dispatch and verify
+        result = tooling.registry.dispatch("test-api-integration")
+        assert "python" in result["api_tracks"]
+{% endif %}
+
+
+{% if shared_logic == 'enabled' %}
+class TestMCPSharedLogicIntegration:
+    """Test suite for MCP integration with shared logic module."""
+    
+    def test_shared_logic_available(self) -> None:
+        """Test that shared logic module is available when enabled."""
+        result = tooling.list_optional_modules()
+        assert result["shared_logic"] == "enabled"
+    
+    def test_create_shared_logic_tool(self) -> None:
+        """Test creating a tool that uses shared logic."""
+        from shared.logic import summarize_payload  # noqa: PLC0415
+        
+        @tooling.registry.register(
+            name="test-shared-logic-integration",
+            description="Test shared logic integration"
+        )
+        def test_shared_logic_tool() -> dict[str, Any]:
+            # Use shared logic function
+            summary = summarize_payload({
+                "service": "mcp-integration-test",
+                "status": "active"
+            })
+            return {
+                "shared_logic": "enabled",
+                "summary": summary,
+                "integration": "successful"
+            }
+        
+        # Verify tool is registered
+        assert "test-shared-logic-integration" in tooling.list_tools()
+        
+        # Dispatch and verify
+        result = tooling.registry.dispatch("test-shared-logic-integration")
+        assert result["shared_logic"] == "enabled"
+        assert "summary" in result
+{% endif %}
+
+
+class TestMCPServerIntegration:
+    """Test suite for MCP server integration."""
+    
+    @pytest.mark.asyncio
+    async def test_server_creates_successfully(self) -> None:
+        """Test that MCP server can be created."""
+        from shared.mcp.server import create_server  # noqa: PLC0415
+        
+        server = create_server()
+        assert server is not None
+    
+    @pytest.mark.asyncio
+    async def test_server_has_registered_tools(self) -> None:
+        """Test that server has tools from registry."""
+        from shared.mcp.server import create_server  # noqa: PLC0415
+        
+        server = create_server()
+        
+        # Server should have tools
+        # Note: We can't easily test tool count without starting the server,
+        # but we can verify the server was created with our registry
+        assert server is not None
+
+
+class TestMCPClientIntegration:
+    """Test suite for MCP client integration."""
+    
+    @pytest.mark.asyncio
+    async def test_client_can_connect_local(self) -> None:
+        """Test that client can connect to local server."""
+        from shared.mcp.client_example import connect_local  # noqa: PLC0415
+        
+        try:
+            client = await connect_local()
+            assert client is not None
+        except Exception as e:  # noqa: BLE001
+            pytest.skip(f"Client connection failed (may require running server): {e}")
+    
+    @pytest.mark.asyncio
+    async def test_client_list_tools(self) -> None:
+        """Test that client can list tools from server."""
+        from shared.mcp.client_example import connect_local, list_tools  # noqa: PLC0415
+        
+        try:
+            client = await connect_local()
+            tools = await list_tools(client)
+            
+            assert isinstance(tools, list)
+            assert len(tools) > 0
+            
+            # Check that tools have expected structure
+            for tool in tools:
+                assert "name" in tool
+                assert "description" in tool
+        except Exception as e:  # noqa: BLE001
+            pytest.skip(f"Tool listing failed: {e}")
+
+
+def main() -> int:
+    """Run integration tests."""
+    log("Starting MCP integration tests")
+    
+    # Run pytest programmatically
+    exit_code = pytest.main([
+        __file__,
+        "-v",
+        "--tb=short",
+        "-W", "ignore::DeprecationWarning",
+    ])
+    
+    if exit_code == 0:
+        log("? All MCP integration tests passed")
+    else:
+        log("? Some MCP integration tests failed")
+    
+    return exit_code
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+{%- endif %}

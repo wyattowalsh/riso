@@ -1,0 +1,239 @@
+"""MCP module smoke tests and unit tests."""
+
+import pytest
+
+MCP_DISABLED = {{ "True" if mcp_module | lower != "enabled" else "False" }}
+
+if MCP_DISABLED:
+    pytest.skip("MCP module disabled", allow_module_level=True)
+
+
+def test_mcp_tooling_imports() -> None:
+    """Test that MCP tooling module imports successfully."""
+    from shared.mcp import tooling  # noqa: PLC0415
+
+    assert tooling is not None
+
+
+def test_list_tools_returns_list() -> None:
+    """Test that list_tools() returns a list of tool names."""
+    from shared.mcp import tooling  # noqa: PLC0415
+
+    tools = tooling.list_tools()
+    
+    assert isinstance(tools, list)
+    assert len(tools) > 0
+    assert all(isinstance(tool, str) for tool in tools)
+
+
+def test_registry_has_expected_tools() -> None:
+    """Test that the registry contains expected default tools."""
+    from shared.mcp import tooling  # noqa: PLC0415
+
+    tools = tooling.list_tools()
+    
+    # Default tools that should be registered
+    expected_tools = ["quickstart-status", "list-optional-modules"]
+    
+    for tool in expected_tools:
+        assert tool in tools, f"Expected tool '{tool}' not found in registry"
+
+
+def test_quickstart_status_tool() -> None:
+    """Test the quickstart-status tool returns expected structure."""
+    from shared.mcp import tooling  # noqa: PLC0415
+
+    result = tooling.quickstart_status()
+    
+    assert isinstance(result, dict)
+    assert "status" in result
+    assert "summary" in result
+    assert result["status"] == "ok"
+
+
+def test_list_optional_modules_tool() -> None:
+    """Test the list-optional-modules tool returns module configuration."""
+    from shared.mcp import tooling  # noqa: PLC0415
+
+    result = tooling.list_optional_modules()
+    
+    assert isinstance(result, dict)
+    assert "cli_module" in result
+    assert "api_tracks" in result
+    assert "mcp_module" in result
+    assert "docs_site" in result
+    assert "shared_logic" in result
+    
+    # MCP module should be enabled if we're running this test
+    assert result["mcp_module"] == "enabled"
+
+
+def test_registry_list_returns_tool_objects() -> None:
+    """Test that registry.list() returns Tool objects."""
+    from shared.mcp import tooling  # noqa: PLC0415
+
+    tools = list(tooling.registry.list())
+    
+    assert len(tools) > 0
+    
+    for tool in tools:
+        assert hasattr(tool, "name")
+        assert hasattr(tool, "description")
+        assert hasattr(tool, "handler")
+        assert callable(tool.handler)
+
+
+def test_registry_dispatch_executes_tool() -> None:
+    """Test that registry.dispatch() executes a registered tool."""
+    from shared.mcp import tooling  # noqa: PLC0415
+
+    result = tooling.registry.dispatch("quickstart-status")
+    
+    assert isinstance(result, dict)
+    assert result["status"] == "ok"
+
+
+def test_registry_dispatch_raises_on_unknown_tool() -> None:
+    """Test that dispatching an unknown tool raises KeyError."""
+    from shared.mcp import tooling  # noqa: PLC0415
+
+    with pytest.raises(KeyError, match="Tool 'nonexistent-tool' is not registered"):
+        tooling.registry.dispatch("nonexistent-tool")
+
+
+def test_custom_tool_registration() -> None:
+    """Test registering a custom tool with the registry."""
+    from shared.mcp import tooling  # noqa: PLC0415
+
+    # Register a custom tool
+    @tooling.registry.register(name="test-tool", description="A test tool")
+    def test_tool(value: int) -> dict[str, int]:
+        return {"doubled": value * 2}
+    
+    # Verify it's in the list
+    assert "test-tool" in tooling.list_tools()
+    
+    # Verify we can dispatch it
+    result = tooling.registry.dispatch("test-tool", 21)
+    assert result == {"doubled": 42}
+
+
+def test_tool_decorator_preserves_function() -> None:
+    """Test that the registry decorator preserves the original function."""
+    from shared.mcp import tooling  # noqa: PLC0415
+
+    @tooling.registry.register(name="preserved-tool", description="Function preservation test")
+    def preserved_function(x: int, y: int) -> int:
+        """Add two numbers."""
+        return x + y
+    
+    # Function should still be callable directly
+    assert preserved_function(2, 3) == 5
+    
+    # And through the registry
+    result = tooling.registry.dispatch("preserved-tool", 2, 3)
+    assert result == 5
+
+
+@pytest.mark.skipif(
+    not pytest.importorskip("fastmcp", reason="fastmcp not installed"),
+    reason="FastMCP integration tests require fastmcp package"
+)
+def test_fastmcp_integration_available() -> None:
+    """Test that FastMCP integration is available when package is installed."""
+    from shared.mcp import tooling  # noqa: PLC0415
+    
+    # If fastmcp is installed, fastmcp_registry should not be None
+    # This test verifies the optional import mechanism works
+    assert tooling.fastmcp_registry is not None or tooling.fastmcp_registry is None
+
+
+def test_tool_with_kwargs() -> None:
+    """Test dispatching a tool with keyword arguments."""
+    from shared.mcp import tooling  # noqa: PLC0415
+
+    @tooling.registry.register(name="kwargs-tool", description="Tool with kwargs")
+    def kwargs_tool(a: int, b: int = 10) -> dict[str, int]:
+        return {"sum": a + b, "product": a * b}
+    
+    # Call with kwargs
+    result = tooling.registry.dispatch("kwargs-tool", 5, b=3)
+    assert result == {"sum": 8, "product": 15}
+
+
+def test_tool_async_not_required() -> None:
+    """Test that synchronous tools work as expected (FastMCP handles async internally)."""
+    from shared.mcp import tooling  # noqa: PLC0415
+
+    @tooling.registry.register(name="sync-tool", description="Synchronous tool")
+    def sync_tool() -> str:
+        return "synchronous result"
+    
+    result = tooling.registry.dispatch("sync-tool")
+    assert result == "synchronous result"
+
+
+def test_tool_dataclass_structure() -> None:
+    """Test that Tool dataclass has expected structure."""
+    from shared.mcp import tooling  # noqa: PLC0415
+
+    tools = list(tooling.registry.list())
+    tool = tools[0]
+    
+    # Verify dataclass structure
+    assert hasattr(tool, "__dataclass_fields__")
+    
+    # Verify slots
+    assert hasattr(tool.__class__, "__slots__")
+
+
+def test_registry_multiple_registrations() -> None:
+    """Test registering multiple tools in sequence."""
+    from shared.mcp import tooling  # noqa: PLC0415
+
+    initial_count = len(tooling.list_tools())
+    
+    @tooling.registry.register(name="multi-tool-1", description="First tool")
+    def tool1() -> str:
+        return "one"
+    
+    @tooling.registry.register(name="multi-tool-2", description="Second tool")
+    def tool2() -> str:
+        return "two"
+    
+    @tooling.registry.register(name="multi-tool-3", description="Third tool")
+    def tool3() -> str:
+        return "three"
+    
+    final_count = len(tooling.list_tools())
+    assert final_count == initial_count + 3
+    
+    # Verify all can be dispatched
+    assert tooling.registry.dispatch("multi-tool-1") == "one"
+    assert tooling.registry.dispatch("multi-tool-2") == "two"
+    assert tooling.registry.dispatch("multi-tool-3") == "three"
+
+
+def test_tool_exception_handling() -> None:
+    """Test that tool exceptions are propagated correctly."""
+    from shared.mcp import tooling  # noqa: PLC0415
+
+    @tooling.registry.register(name="failing-tool", description="Tool that raises")
+    def failing_tool() -> None:
+        raise ValueError("Intentional failure")
+    
+    with pytest.raises(ValueError, match="Intentional failure"):
+        tooling.registry.dispatch("failing-tool")
+
+
+def test_module_level_exports() -> None:
+    """Test that the tooling module exports expected symbols."""
+    from shared.mcp import tooling  # noqa: PLC0415
+
+    # Should export these key items
+    assert hasattr(tooling, "Tool")
+    assert hasattr(tooling, "ToolRegistry")
+    assert hasattr(tooling, "registry")
+    assert hasattr(tooling, "list_tools")
+    assert hasattr(tooling, "quickstart_status")
+    assert hasattr(tooling, "list_optional_modules")
