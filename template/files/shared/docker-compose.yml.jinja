@@ -121,7 +121,8 @@ services:
       - {{ project_slug }}-network
 {%- endif %}
 
-{%- if include_databases == "yes" and (api_tracks | lower in ["python", "node", "python+node"]) %}
+{%- if (include_databases == "yes" or rate_limiting_enabled | default(false)) and (api_tracks | lower in ["python", "node", "python+node"]) %}
+{%- if include_databases == "yes" %}
   postgres:
     image: postgres:16-alpine
     container_name: {{ project_slug }}-postgres
@@ -145,11 +146,19 @@ services:
     restart: unless-stopped
     networks:
       - {{ project_slug }}-network
+{%- endif %}
 
+{%- if rate_limiting_enabled | default(false) %}
+  # Redis for rate limiting (always included when rate_limiting_enabled=true)
+{%- endif %}
   redis:
     image: redis:7-alpine
     container_name: {{ project_slug }}-redis
+{%- if include_databases == "yes" %}
     command: redis-server --requirepass ${REDIS_PASSWORD:-dev_password}
+{%- else %}
+    command: redis-server
+{%- endif %}
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
@@ -165,15 +174,54 @@ services:
       - {{ project_slug }}-network
 {%- endif %}
 
+{%- if rate_limiting_enabled | default(false) %}
+  # Optional: Redis Sentinel for high availability (production)
+  # Uncomment and configure for production deployments
+  # redis-sentinel-1:
+  #   image: redis:7-alpine
+  #   container_name: {{ project_slug }}-sentinel-1
+  #   command: redis-sentinel /etc/redis/sentinel.conf
+  #   ports:
+  #     - "26379:26379"
+  #   volumes:
+  #     - ./config/redis/sentinel.conf:/etc/redis/sentinel.conf:ro
+  #   networks:
+  #     - {{ project_slug }}-network
+  # 
+  # redis-sentinel-2:
+  #   image: redis:7-alpine
+  #   container_name: {{ project_slug }}-sentinel-2
+  #   command: redis-sentinel /etc/redis/sentinel.conf
+  #   ports:
+  #     - "26380:26379"
+  #   volumes:
+  #     - ./config/redis/sentinel.conf:/etc/redis/sentinel.conf:ro
+  #   networks:
+  #     - {{ project_slug }}-network
+  # 
+  # redis-sentinel-3:
+  #   image: redis:7-alpine
+  #   container_name: {{ project_slug }}-sentinel-3
+  #   command: redis-sentinel /etc/redis/sentinel.conf
+  #   ports:
+  #     - "26381:26379"
+  #   volumes:
+  #     - ./config/redis/sentinel.conf:/etc/redis/sentinel.conf:ro
+  #   networks:
+  #     - {{ project_slug }}-network
+{%- endif %}
+
 networks:
   {{ project_slug }}-network:
     driver: bridge
     name: {{ project_slug }}-network
 
-{%- if include_databases == "yes" and (api_tracks | lower in ["python", "node", "python+node"]) %}
+{%- if (include_databases == "yes" or rate_limiting_enabled | default(false)) and (api_tracks | lower in ["python", "node", "python+node"]) %}
 volumes:
+{%- if include_databases == "yes" %}
   postgres_data:
     name: {{ project_slug }}-postgres-data
+{%- endif %}
   redis_data:
     name: {{ project_slug }}-redis-data
 {%- endif %}

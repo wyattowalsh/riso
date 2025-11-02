@@ -1,0 +1,150 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Edge case tests disabled."""
+{%- else %}
+"""Edge case tests for rate limiting."""
+
+from __future__ import annotations
+
+import pytest
+
+from {{ package_name }}.api.rate_limit.algorithms.token_bucket import TokenBucketLimiter
+from {{ package_name }}.api.rate_limit.backends.memory import MemoryBackend
+
+
+@pytest.fixture
+def backend():
+    """Create memory backend for testing."""
+    return MemoryBackend()
+
+
+@pytest.fixture
+def limiter(backend):
+    """Create token bucket limiter."""
+    return TokenBucketLimiter(backend)
+
+
+@pytest.mark.asyncio
+class TestEdgeCases:
+    """Test edge cases in rate limiting."""
+
+    async def test_zero_limit_maintenance_mode(self, limiter):
+        """Test that limit=0 rejects all requests (maintenance mode)."""
+        result = await limiter.check_limit(
+            key="test:user:123",
+            limit=0,  # Maintenance mode
+            window=60,
+        )
+
+        assert result.allowed is False
+        assert result.limit == 0
+        assert result.remaining == 0
+
+    async def test_burst_traffic(self, limiter):
+        """Test handling of burst traffic (100 requests immediately)."""
+        key = "test:burst:user:456"
+        limit = 100
+
+        # Make 100 requests as fast as possible (burst)
+        for i in range(1, limit + 1):
+            result = await limiter.check_limit(key=key, limit=limit, window=60)
+            assert result.allowed is True, f"Request {i} should be allowed"
+
+        # 101st request should be rejected
+        result = await limiter.check_limit(key=key, limit=limit, window=60)
+        assert result.allowed is False
+        assert result.remaining == 0
+
+    async def test_very_large_limit(self, limiter):
+        """Test with very large limit (100,000 requests)."""
+        key = "test:large:user:789"
+        limit = 100_000
+
+        result = await limiter.check_limit(key=key, limit=limit, window=3600)
+        assert result.allowed is True
+        assert result.remaining == limit - 1
+
+    async def test_very_short_window(self, limiter):
+        """Test with very short window (1 second)."""
+        key = "test:short:user:111"
+
+        result = await limiter.check_limit(key=key, limit=10, window=1)
+        assert result.allowed is True
+        assert result.reset_at > 0
+
+    async def test_very_long_window(self, limiter):
+        """Test with very long window (1 hour)."""
+        key = "test:long:user:222"
+
+        result = await limiter.check_limit(key=key, limit=1000, window=3600)
+        assert result.allowed is True
+        assert result.retry_after == 0
+
+    async def test_concurrent_requests_same_key(self, limiter, backend):
+        """Test concurrent requests to same key (race condition simulation)."""
+        import asyncio
+
+        key = "test:concurrent:user:333"
+        limit = 50
+
+        # Make 100 concurrent requests (should be limited to 50)
+        results = await asyncio.gather(*[
+            limiter.check_limit(key=key, limit=limit, window=60)
+            for _ in range(100)
+        ])
+
+        allowed_count = sum(1 for r in results if r.allowed)
+        rejected_count = sum(1 for r in results if not r.allowed)
+
+        # Should allow exactly 50, reject exactly 50
+        assert allowed_count == limit
+        assert rejected_count == limit
+
+    async def test_key_expiration_edge(self, limiter, backend):
+        """Test behavior when key is about to expire."""
+        import asyncio
+
+        key = "test:expiry:user:444"
+
+        # Create key with 1 second window
+        result = await limiter.check_limit(key=key, limit=10, window=1)
+        assert result.allowed is True
+
+        # Wait for expiration
+        await asyncio.sleep(1.1)
+
+        # Should create new window
+        result = await limiter.check_limit(key=key, limit=10, window=1)
+        assert result.allowed is True
+        assert result.current_count == 1  # New window
+
+    async def test_multiple_keys_independence(self, limiter):
+        """Test that different keys don't interfere."""
+        keys = [f"test:multi:user:{i}" for i in range(10)]
+
+        # Fill each key to limit
+        for key in keys:
+            for _ in range(10):
+                await limiter.check_limit(key=key, limit=10, window=60)
+
+        # All keys should be at limit
+        for key in keys:
+            result = await limiter.check_limit(key=key, limit=10, window=60)
+            assert result.allowed is False
+            assert result.remaining == 0
+
+    async def test_limit_exactly_at_boundary(self, limiter):
+        """Test behavior exactly at limit boundary."""
+        key = "test:boundary:user:555"
+        limit = 5
+
+        # Make exactly limit requests
+        for i in range(1, limit + 1):
+            result = await limiter.check_limit(key=key, limit=limit, window=60)
+            assert result.allowed is True
+            assert result.remaining == limit - i
+
+        # Next request should be rejected
+        result = await limiter.check_limit(key=key, limit=limit, window=60)
+        assert result.allowed is False
+        assert result.remaining == 0
+{%- endif %}
