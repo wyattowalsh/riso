@@ -1,0 +1,123 @@
+"""User GraphQL Type - Domain entity for users."""
+
+from typing import Optional, List
+from datetime import datetime
+import strawberry
+
+from {{ package_name }}.graphql_api.types.post import Post, PostConnection
+
+
+@strawberry.type
+class User:
+    """
+    User type represents a user in the system.
+    
+    This demonstrates GraphQL's flexible field selection - clients can
+    request exactly the fields they need, avoiding over-fetching.
+    """
+    
+    id: strawberry.ID
+    name: str
+    email: str
+    avatar: Optional[str] = None
+    
+    @strawberry.field
+    async def posts(
+        self,
+        info: strawberry.Info,
+        first: Optional[int] = 20,
+        after: Optional[str] = None,
+    ) -> PostConnection:
+        """
+        Fetch user's posts with cursor-based pagination.
+        
+        This field demonstrates:
+        - Nested queries (user -> posts)
+        - Lazy loading (posts only fetched if requested)
+        - Pagination support
+        - DataLoader optimization (when implemented)
+        
+        Args:
+            info: GraphQL context
+            first: Number of posts to fetch
+            after: Cursor for pagination
+        
+        Returns:
+            PostConnection with edges and pageInfo
+        """
+        # This is a placeholder implementation
+        # In a real app, this would query the database via DataLoader
+        from {{ package_name }}.graphql_api.pagination import Connection, Edge, PageInfo
+        
+        # Mock data for demonstration
+        mock_posts = [
+            Post(
+                id=f"post-{i}",
+                author_id=self.id,
+                title=f"Post {i} by {self.name}",
+                body=f"Content of post {i}",
+                created_at=datetime.now(),
+            )
+            for i in range(1, min(first or 20, 6))
+        ]
+        
+        edges = [
+            Edge(
+                cursor=f"cursor-{post.id}",
+                node=post,
+            )
+            for post in mock_posts
+        ]
+        
+        page_info = PageInfo(
+            has_next_page=len(mock_posts) == first,
+            has_previous_page=bool(after),
+            start_cursor=edges[0].cursor if edges else None,
+            end_cursor=edges[-1].cursor if edges else None,
+        )
+        
+        return PostConnection(
+            edges=edges,
+            page_info=page_info,
+            total_count=len(mock_posts),
+        )
+
+
+@strawberry.input
+class CreateUserInput:
+    """Input type for creating a new user."""
+    
+    name: str
+    email: str
+    avatar: Optional[str] = None
+
+
+@strawberry.input
+class UpdateUserInput:
+    """Input type for updating an existing user."""
+    
+    name: Optional[str] = None
+    email: Optional[str] = None
+    avatar: Optional[str] = None
+
+
+@strawberry.type
+class UserEdge:
+    """Edge type for User in connection pattern."""
+    
+    cursor: str
+    node: User
+
+
+@strawberry.type
+class UserConnection:
+    """
+    Connection type for paginated User queries.
+    
+    Follows Relay Cursor Connections specification for consistent
+    pagination across all list queries.
+    """
+    
+    edges: List[UserEdge]
+    page_info: strawberry.LazyType["PageInfo", "{{ package_name }}.graphql_api.pagination"]
+    total_count: int

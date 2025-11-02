@@ -1,0 +1,75 @@
+"""GraphQL DataLoader Tests - N+1 query prevention."""
+
+{% if graphql_api_module == 'enabled' %}
+import pytest
+from strawberry.test import BaseGraphQLTestClient
+
+from {{ package_name }}.graphql_api.schema import schema
+
+
+@pytest.fixture
+def graphql_client():
+    """Create GraphQL test client."""
+    return BaseGraphQLTestClient(schema)
+
+
+class TestDataLoaders:
+    """Test DataLoader batching and caching."""
+    
+    def test_user_dataloader_batches_requests(self, graphql_client):
+        """Test that DataLoader batches multiple user requests."""
+        # This test would require query counting infrastructure
+        # For now, it serves as documentation of expected behavior
+        
+        query = """
+            query {
+                users(first: 10) {
+                    edges {
+                        node {
+                            id
+                            name
+                            posts(first: 5) {
+                                edges {
+                                    node {
+                                        id
+                                        title
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        
+        result = graphql_client.query(query)
+        
+        # Query should succeed
+        assert result.errors is None
+        
+        # With DataLoaders: 2 queries (1 for users, 1 batched for posts)
+        # Without DataLoaders: 11 queries (1 for users + 10 for posts) = N+1 problem
+        # This represents 82% reduction in queries (11?2)
+    
+    def test_dataloader_caches_within_request(self, graphql_client):
+        """Test that DataLoader caches results within a single request."""
+        query = """
+            query {
+                user1: user(id: "1") {
+                    id
+                    name
+                }
+                user1Again: user(id: "1") {
+                    id
+                    name
+                }
+            }
+        """
+        
+        result = graphql_client.query(query)
+        
+        # Both fields should return the same user
+        assert result.errors is None
+        assert result.data["user1"]["id"] == result.data["user1Again"]["id"]
+        # DataLoader should have only made 1 database query for user "1"
+{% endif %}

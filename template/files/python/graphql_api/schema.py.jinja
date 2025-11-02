@@ -1,0 +1,124 @@
+"""GraphQL Schema - Root Query, Mutation, and Subscription types."""
+
+from typing import Optional
+import strawberry
+
+from {{ package_name }}.graphql_api.types.user import (
+    User,
+    UserConnection,
+    CreateUserInput,
+    UpdateUserInput,
+)
+from {{ package_name }}.graphql_api.queries.user_queries import UserQueries
+from {{ package_name }}.graphql_api.mutations.user_mutations import UserMutations
+from {{ package_name }}.graphql_api.subscriptions.user_subscriptions import UserSubscriptions
+{% if graphql_api_module == 'enabled' %}
+
+
+@strawberry.type
+class Query:
+    """
+    Root Query type - entry point for all read operations.
+    
+    All query resolvers are defined here or imported from query modules.
+    Queries should be idempotent and have no side effects.
+    """
+    
+    @strawberry.field
+    async def hello(self) -> str:
+        """Simple health check query."""
+        return "Hello from GraphQL!"
+    
+    # User queries
+    @strawberry.field
+    async def user(
+        self,
+        info: strawberry.Info,
+        id: strawberry.ID,
+    ) -> Optional[User]:
+        """Fetch a single user by ID."""
+        user_queries = UserQueries()
+        return await user_queries.user(info, id)
+    
+    @strawberry.field
+    async def users(
+        self,
+        info: strawberry.Info,
+        first: Optional[int] = 20,
+        after: Optional[str] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+    ) -> UserConnection:
+        """Fetch a paginated list of users."""
+        user_queries = UserQueries()
+        return await user_queries.users(info, first, after, offset, limit)
+
+
+@strawberry.type
+class Mutation:
+    """
+    Root Mutation type - entry point for all write operations.
+    
+    All mutation resolvers are defined here or imported from mutation modules.
+    Mutations modify data and may have side effects.
+    Most mutations require authentication.
+    """
+    
+    # User mutations
+    @strawberry.mutation
+    async def create_user(
+        self,
+        info: strawberry.Info,
+        input: CreateUserInput,
+    ) -> User:
+        """Create a new user."""
+        user_mutations = UserMutations()
+        return await user_mutations.create_user(info, input)
+    
+    @strawberry.mutation
+    async def update_user(
+        self,
+        info: strawberry.Info,
+        id: strawberry.ID,
+        input: UpdateUserInput,
+    ) -> Optional[User]:
+        """Update an existing user."""
+        user_mutations = UserMutations()
+        return await user_mutations.update_user(info, id, input)
+    
+    @strawberry.mutation
+    async def delete_user(
+        self,
+        info: strawberry.Info,
+        id: strawberry.ID,
+    ) -> bool:
+        """Delete a user."""
+        user_mutations = UserMutations()
+        return await user_mutations.delete_user(info, id)
+
+
+@strawberry.type
+class Subscription:
+    """
+    Root Subscription type - entry point for real-time operations.
+    
+    All subscription resolvers are defined here or imported from subscription modules.
+    Subscriptions deliver real-time updates over WebSocket connections.
+    """
+    
+    # User subscriptions
+    @strawberry.subscription
+    async def user_created(self, info: strawberry.Info):
+        """Subscribe to user creation events."""
+        user_subscriptions = UserSubscriptions()
+        async for user in user_subscriptions.user_created(info):
+            yield user
+
+
+# Create the GraphQL schema
+schema = strawberry.Schema(
+    query=Query,
+    mutation=Mutation,
+    subscription=Subscription,
+)
+{% endif %}

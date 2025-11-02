@@ -1,0 +1,129 @@
+"""GraphQL Complexity Tests - Query depth and complexity limits."""
+
+{% if graphql_api_module == 'enabled' %}
+import pytest
+
+from {{ package_name }}.graphql_api.complexity import (
+    calculate_query_complexity,
+    calculate_query_depth,
+)
+
+
+class TestQueryComplexity:
+    """Test query complexity calculation and limits."""
+    
+    def test_simple_query_low_complexity(self):
+        """Test that simple queries have low complexity."""
+        query = """
+            query {
+                user(id: "1") {
+                    id
+                    name
+                    email
+                }
+            }
+        """
+        
+        complexity = calculate_query_complexity(query, max_complexity=5000)
+        
+        # Simple query should have low complexity
+        assert complexity < 100
+    
+    def test_list_query_multiplies_complexity(self):
+        """Test that list queries multiply complexity."""
+        query = """
+            query {
+                users(first: 100) {
+                    edges {
+                        node {
+                            id
+                            name
+                        }
+                    }
+                }
+            }
+        """
+        
+        complexity = calculate_query_complexity(query, max_complexity=5000)
+        
+        # List query with large first should have higher complexity
+        assert complexity > 100
+    
+    def test_excessive_complexity_rejected(self):
+        """Test that queries exceeding max complexity are rejected."""
+        query = """
+            query {
+                users(first: 1000) {
+                    edges {
+                        node {
+                            posts(first: 1000) {
+                                edges {
+                                    node {
+                                        id
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        
+        # Should raise error for excessive complexity
+        with pytest.raises(Exception) as exc_info:
+            calculate_query_complexity(query, max_complexity=5000)
+        
+        assert "complexity" in str(exc_info.value).lower()
+
+
+class TestQueryDepth:
+    """Test query depth limits."""
+    
+    def test_simple_query_low_depth(self):
+        """Test that simple queries have low depth."""
+        query = """
+            query {
+                user(id: "1") {
+                    id
+                    name
+                }
+            }
+        """
+        
+        depth = calculate_query_depth(query, max_depth=15)
+        
+        # Simple query should have depth of 2-3
+        assert depth < 5
+    
+    def test_nested_query_calculates_depth(self):
+        """Test that nested queries calculate depth correctly."""
+        query = """
+            query {
+                user(id: "1") {
+                    posts {
+                        edges {
+                            node {
+                                id
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        
+        depth = calculate_query_depth(query, max_depth=15)
+        
+        # Nested query should have depth > 3
+        assert depth >= 3
+    
+    def test_excessive_depth_rejected(self):
+        """Test that queries exceeding max depth are rejected."""
+        # Create deeply nested query (>15 levels)
+        query = "query { " + "user { posts { " * 10 + "id" + " } }" * 10 + " }"
+        
+        # Should raise error for excessive depth
+        with pytest.raises(Exception) as exc_info:
+            calculate_query_depth(query, max_depth=15)
+        
+        assert "depth" in str(exc_info.value).lower()
+{% endif %}
