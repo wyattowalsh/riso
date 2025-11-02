@@ -1,0 +1,134 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""API configuration disabled for this render."""
+
+
+class ApiConfig:  # pragma: no cover
+    """Placeholder configuration when API is disabled."""
+
+    host: str              = "0.0.0.0"
+    port: int              = 8000
+    reload: bool           = False
+    cors_origins: list[str] = []
+    app_name: str          = "FastAPI Application"
+    version: str           = "0.1.0"
+    log_level: str         = "INFO"
+    environment: str       = "development"
+
+
+def get_config() -> ApiConfig:
+    """Return placeholder config."""
+    return ApiConfig()
+{%- else %}
+"""API configuration management using Pydantic Settings.
+
+This module provides environment-based configuration for the FastAPI application.
+All settings can be overridden via environment variables with the RISO_API_ prefix.
+
+Example:
+    export RISO_API_PORT=8001
+    export RISO_API_LOG_LEVEL=DEBUG
+    export RISO_API_CORS_ORIGINS='["http://localhost:3000","http://localhost:3001"]'
+"""
+
+from __future__ import annotations
+
+from functools import lru_cache
+from typing import Literal
+
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class ApiConfig(BaseSettings):
+    """FastAPI application configuration.
+
+    All settings can be configured via environment variables with the RISO_API_ prefix.
+    For example, RISO_API_PORT=8001 will override the default port.
+
+    Attributes:
+        host: Server bind address (default: "0.0.0.0" for all interfaces)
+        port: Server port (default: 8000, range: 1024-65535)
+        reload: Enable auto-reload for development (default: True)
+        cors_origins: List of allowed CORS origins (default: ["http://localhost:3000"])
+        app_name: Application name shown in docs (default: "{{ project_name }}")
+        version: Application version (default: "0.1.0")
+        log_level: Logging level (default: "INFO", choices: DEBUG, INFO, WARNING, ERROR)
+        environment: Deployment environment (default: "development", choices: development, staging, production)
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="RISO_API_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+    )
+
+    host: str              = Field(
+        default="0.0.0.0",
+        description="Server bind address",
+    )
+    port: int              = Field(
+        default=8000,
+        ge=1024,
+        le=65535,
+        description="Server port (1024-65535)",
+    )
+    reload: bool           = Field(
+        default=True,
+        description="Enable auto-reload (development only)",
+    )
+    cors_origins: list[str] = Field(
+        default=["http://localhost:3000"],
+        description="Allowed CORS origins",
+    )
+    app_name: str          = Field(
+        default="{{ project_name }}",
+        min_length=1,
+        max_length=100,
+        description="Application name",
+    )
+    version: str           = Field(
+        default="0.1.0",
+        description="Application version",
+    )
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = Field(
+        default="INFO",
+        description="Logging level",
+    )
+    environment: Literal["development", "staging", "production"] = Field(
+        default="development",
+        description="Deployment environment",
+    )
+
+    @field_validator("reload")
+    @classmethod
+    def validate_reload_in_production(cls, v: bool, info) -> bool:
+        """Ensure reload is disabled in production."""
+        environment = info.data.get("environment", "development")
+        if environment == "production" and v:
+            raise ValueError("reload must be False in production environment")
+        return v
+
+    @field_validator("cors_origins")
+    @classmethod
+    def validate_cors_origins(cls, v: list[str]) -> list[str]:
+        """Validate CORS origins are valid URLs."""
+        for origin in v:
+            if not origin.startswith(("http://", "https://")):
+                raise ValueError(f"Invalid CORS origin: {origin} (must start with http:// or https://)")
+        return v
+
+
+@lru_cache
+def get_config() -> ApiConfig:
+    """Get cached configuration instance.
+
+    Returns:
+        ApiConfig: Singleton configuration instance
+
+    Example:
+        >>> config = get_config()
+        >>> print(f"Server running on {config.host}:{config.port}")
+    """
+    return ApiConfig()
+{%- endif %}

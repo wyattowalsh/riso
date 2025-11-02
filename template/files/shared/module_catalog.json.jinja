@@ -33,13 +33,25 @@
       "prompt_key": "api_tracks",
       "default_state": "none",
       "selected_state": "{{ api_tracks }}",
-      "description": "FastAPI service with typed configuration and health checks.",
-      "dependencies": ["fastapi", "uvicorn", "tenacity", "shared_logic"],
-      "docs_path": "docs/modules/api-python.md",
-      "ci_jobs": ["api-python-smoke"],
+      "description": "Production-ready FastAPI application with comprehensive scaffolding, health checks, CRUD examples, and auto-documentation.",
+      "dependencies": ["fastapi", "uvicorn", "pydantic", "pydantic-settings", "python-dotenv", "httpx", "pytest-asyncio"],
+      "docs_path": "docs/modules/api-fastapi.md",
+      "ci_jobs": ["api-python-smoke", "api-python-integration"],
       "validation_commands": [
-        "uv run pytest tests/test_api_fastapi.py",
+        "uv run pytest tests/api/",
         "uv run uvicorn {{ package_name }}.api.main:app --host 0.0.0.0 --port 8000"
+      ],
+      "features": [
+        "Modular routing with APIRouter",
+        "Pydantic models for request/response validation",
+        "Environment-based configuration with validation",
+        "Health check endpoints (/health/, /health/ready, /health/live)",
+        "Example CRUD endpoints with pagination",
+        "CORS middleware configuration",
+        "Global error handlers with request tracing",
+        "Auto-generated OpenAPI documentation (Swagger UI, ReDoc)",
+        "Comprehensive test suite with TestClient",
+        "Docker support with multi-stage builds and health checks"
       ]
     },
     {
@@ -54,6 +66,32 @@
       "validation_commands": [
         "pnpm --filter api-node install",
         "pnpm --filter api-node test"
+      ]
+    },
+    {
+      "name": "graphql_api",
+      "prompt_key": "graphql_api_module",
+      "default_state": "disabled",
+      "selected_state": "{{ 'enabled' if graphql_api_module | lower == 'enabled' else 'disabled' }}",
+      "description": "Strawberry GraphQL API with DataLoaders, mutations, subscriptions, pagination, and security controls.",
+      "dependencies": ["strawberry-graphql", "fastapi", "httpx", "aiodataloader"],
+      "docs_path": "docs/modules/graphql.md",
+      "ci_jobs": ["graphql-api-smoke"],
+      "validation_commands": [
+        "uv run pytest tests/graphql/",
+        "uv run uvicorn {{ package_name }}.graphql_api.main:app --host 0.0.0.0 --port 8000"
+      ],
+      "features": [
+        "Flexible field selection (query only what you need)",
+        "Interactive GraphQL playground with schema explorer",
+        "DataLoader optimization (N+1 query prevention)",
+        "Mutations for create/update/delete operations",
+        "Real-time subscriptions via WebSocket",
+        "Cursor and offset-based pagination",
+        "Query depth limiting (max 15 levels)",
+        "Query complexity analysis (max 5000 points)",
+        "Per-field authentication and authorization",
+        "Comprehensive error handling with validation"
       ]
     },
     {

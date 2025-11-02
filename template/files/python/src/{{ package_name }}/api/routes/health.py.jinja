@@ -1,0 +1,104 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""Health check routes disabled for this render."""
+{%- else %}
+"""Health check endpoints for monitoring and orchestration.
+
+This module provides health check endpoints for Docker, Kubernetes, and
+load balancer health checks. It includes:
+- /health/ - Overall health status with dependency checks
+- /health/ready - Readiness probe for Kubernetes
+- /health/live - Liveness probe for Kubernetes
+"""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, status
+
+from ..config import get_config
+from ..models.responses import HealthResponse, LivenessResponse, ReadinessResponse
+
+router = APIRouter(prefix="/health", tags=["Health"])
+
+
+@router.get(
+    "/",
+    response_model=HealthResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Health Check",
+    description="Returns overall application health status",
+)
+async def health_check() -> HealthResponse:
+    """Overall health check endpoint.
+
+    This endpoint returns the application's health status including
+    version information and optional dependency checks.
+
+    Returns:
+        HealthResponse: Overall health status
+
+    Example:
+        GET /health/
+        Response: {
+            "status": "healthy",
+            "version": "0.1.0",
+            "timestamp": "2025-11-01T12:00:00Z"
+        }
+    """
+    config = get_config()
+    return HealthResponse(
+        status="healthy",
+        version=config.version,
+        timestamp=datetime.now(UTC).isoformat(),
+        checks=None,  # Add dependency checks here in the future
+    )
+
+
+@router.get(
+    "/ready",
+    response_model=ReadinessResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Readiness Check",
+    description="Kubernetes readiness probe - checks if application can serve traffic",
+)
+async def readiness_check() -> ReadinessResponse:
+    """Readiness probe for Kubernetes.
+
+    This endpoint returns whether the application is ready to serve traffic.
+    It should check critical dependencies like databases and external services.
+
+    Returns:
+        ReadinessResponse: Readiness status
+
+    Example:
+        GET /health/ready
+        Response: {"status": "ready"}
+    """
+    # In a real application, check database connections, cache availability, etc.
+    # For now, we always return ready if the server is running
+    return ReadinessResponse(status="ready")
+
+
+@router.get(
+    "/live",
+    response_model=LivenessResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Liveness Check",
+    description="Kubernetes liveness probe - checks if application is alive",
+)
+async def liveness_check() -> LivenessResponse:
+    """Liveness probe for Kubernetes.
+
+    This endpoint returns whether the application is alive and running.
+    If this endpoint stops responding, Kubernetes will restart the container.
+
+    Returns:
+        LivenessResponse: Liveness status (always 'alive' if responding)
+
+    Example:
+        GET /health/live
+        Response: {"status": "alive"}
+    """
+    return LivenessResponse(status="alive")
+{%- endif %}
