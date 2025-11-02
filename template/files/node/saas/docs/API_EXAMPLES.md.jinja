@@ -1,0 +1,641 @@
+{% if saas_starter_module == "enabled" %}
+# {{ project_name }} - API Examples
+
+This document provides practical examples for common API operations.
+
+## Table of Contents
+
+- [Authentication](#authentication)
+- [User Management](#user-management)
+- [Organization Management](#organization-management)
+- [Subscription Management](#subscription-management)
+- [API Keys](#api-keys)
+{% if saas_ai == "openai" or saas_ai == "anthropic" %}
+- [AI Integration](#ai-integration)
+{% endif %}
+- [File Upload](#file-upload)
+- [Webhooks](#webhooks)
+
+---
+
+## Authentication
+
+### Get Current User
+
+{% if saas_runtime == "nextjs-16" %}
+```typescript
+// app/api/user/route.ts
+import { NextResponse } from 'next/server';
+import { requireUser } from '@/lib/auth/helpers';
+
+export async function GET() {
+  const user = await requireUser();
+  
+  return NextResponse.json({
+    id: user.id,
+    email: user.emailAddresses?.[0]?.emailAddress || user.email,
+    name: user.firstName ? `${user.firstName} ${user.lastName}` : user.name,
+  });
+}
+```
+{% elif saas_runtime == "remix-2" %}
+```typescript
+// app/routes/api.user.ts
+import { json, type LoaderFunctionArgs } from '@remix-run/node';
+import { requireUser } from '~/lib/auth/helpers';
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  const user = await requireUser();
+  
+  return json({
+    id: user.id,
+    email: user.emailAddresses?.[0]?.emailAddress || user.email,
+    name: user.firstName ? `${user.firstName} ${user.lastName}` : user.name,
+  });
+}
+```
+{% endif %}
+
+### Protected API Route
+
+{% if saas_runtime == "nextjs-16" %}
+```typescript
+// app/api/protected/route.ts
+import { NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth/helpers';
+
+export async function GET() {
+  try {
+    const { userId } = await requireAuth();
+    
+    // Your protected logic here
+    return NextResponse.json({ message: 'Protected data', userId });
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    );
+  }
+}
+```
+{% endif %}
+
+---
+
+## User Management
+
+### Update User Profile
+
+{% if saas_runtime == "nextjs-16" %}
+```typescript
+// app/api/user/profile/route.ts
+import { NextResponse } from 'next/server';
+import { requireUserId } from '@/lib/auth/helpers';
+{% if saas_orm == "prisma" %}
+import { prisma } from '@/lib/database/client';
+{% elif saas_orm == "drizzle" %}
+import { db } from '@/lib/database/client';
+import { users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+{% endif %}
+
+export async function PATCH(request: Request) {
+  const userId = await requireUserId();
+  const { name, bio } = await request.json();
+  
+  {% if saas_orm == "prisma" %}
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: { name, metadata: { bio } },
+  });
+  {% elif saas_orm == "drizzle" %}
+  const [updatedUser] = await db
+    .update(users)
+    .set({ name, metadata: { bio } })
+    .where(eq(users.id, userId))
+    .returning();
+  {% endif %}
+  
+  return NextResponse.json(updatedUser);
+}
+```
+{% endif %}
+
+---
+
+## Organization Management
+
+### Create Organization
+
+{% if saas_runtime == "nextjs-16" %}
+```typescript
+// app/api/organizations/route.ts
+import { NextResponse } from 'next/server';
+import { requireUserId } from '@/lib/auth/helpers';
+{% if saas_orm == "prisma" %}
+import { prisma } from '@/lib/database/client';
+{% elif saas_orm == "drizzle" %}
+import { db } from '@/lib/database/client';
+import { organizations, organizationMemberships } from '@/db/schema';
+{% endif %}
+
+export async function POST(request: Request) {
+  const userId = await requireUserId();
+  const { name, slug } = await request.json();
+  
+  {% if saas_orm == "prisma" %}
+  const organization = await prisma.organization.create({
+    data: {
+      name,
+      slug,
+      plan: 'free',
+      memberships: {
+        create: {
+          userId,
+          role: 'owner',
+        },
+      },
+    },
+    include: {
+      memberships: true,
+    },
+  });
+  {% elif saas_orm == "drizzle" %}
+  const [organization] = await db.transaction(async (tx) => {
+    const [org] = await tx
+      .insert(organizations)
+      .values({ name, slug, plan: 'free' })
+      .returning();
+    
+    await tx.insert(organizationMemberships).values({
+      userId,
+      organizationId: org.id,
+      role: 'owner',
+    });
+    
+    return [org];
+  });
+  {% endif %}
+  
+  return NextResponse.json(organization);
+}
+```
+{% endif %}
+
+### Invite Team Member
+
+{% if saas_runtime == "nextjs-16" %}
+```typescript
+// app/api/organizations/[orgId]/invitations/route.ts
+import { NextResponse } from 'next/server';
+import { requireOrganizationId } from '@/lib/auth/helpers';
+import { sendTeamInvitation } from '@/integrations/email/{% if saas_email == "resend" %}resend{% else %}postmark{% endif %}/client';
+
+export async function POST(
+  request: Request,
+  { params }: { params: { orgId: string } }
+) {
+  const orgId = await requireOrganizationId();
+  const { email, role } = await request.json();
+  
+  // Send invitation email
+  await sendTeamInvitation({
+    to: email,
+    inviterName: 'Current User', // Get from session
+    organizationName: 'Organization Name', // Get from DB
+    inviteUrl: `${process.env.NEXT_PUBLIC_APP_URL}/invitations/accept?token=...`,
+  });
+  
+  return NextResponse.json({ message: 'Invitation sent' });
+}
+```
+{% endif %}
+
+---
+
+## Subscription Management
+
+### Create Checkout Session
+
+{% if saas_runtime == "nextjs-16" %}
+```typescript
+// app/api/billing/checkout/route.ts
+import { NextResponse } from 'next/server';
+import { requireUserId } from '@/lib/auth/helpers';
+import { startSubscription } from '@/integrations/billing/service';
+
+export async function POST(request: Request) {
+  const userId = await requireUserId();
+  const { priceId } = await request.json();
+  
+  const session = await startSubscription({
+    customerEmail: 'user@example.com', // Get from user record
+    priceId,
+    successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
+    cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL}/pricing`,
+  });
+  
+  return NextResponse.json({ url: session.url });
+}
+```
+{% endif %}
+
+### Get Subscription Status
+
+{% if saas_runtime == "nextjs-16" %}
+```typescript
+// app/api/billing/subscription/route.ts
+import { NextResponse } from 'next/server';
+import { requireUserId } from '@/lib/auth/helpers';
+{% if saas_orm == "prisma" %}
+import { prisma } from '@/lib/database/client';
+{% elif saas_orm == "drizzle" %}
+import { db } from '@/lib/database/client';
+import { subscriptions } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+{% endif %}
+
+export async function GET() {
+  const userId = await requireUserId();
+  
+  {% if saas_orm == "prisma" %}
+  const subscription = await prisma.subscription.findFirst({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+  });
+  {% elif saas_orm == "drizzle" %}
+  const [subscription] = await db
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.userId, userId))
+    .orderBy(subscriptions.createdAt)
+    .limit(1);
+  {% endif %}
+  
+  return NextResponse.json(subscription);
+}
+```
+{% endif %}
+
+---
+
+## API Keys
+
+### Create API Key
+
+{% if saas_runtime == "nextjs-16" %}
+```typescript
+// app/api/keys/route.ts
+import { NextResponse } from 'next/server';
+import { requireUserId } from '@/lib/auth/helpers';
+{% if saas_orm == "prisma" %}
+import { prisma } from '@/lib/database/client';
+{% elif saas_orm == "drizzle" %}
+import { db } from '@/lib/database/client';
+import { apiKeys } from '@/db/schema';
+{% endif %}
+import { hash } from 'bcryptjs';
+import { nanoid } from 'nanoid';
+
+export async function POST(request: Request) {
+  const userId = await requireUserId();
+  const { name, scopes } = await request.json();
+  
+  // Generate API key
+  const key = `sk_${nanoid(32)}`;
+  const keyHash = await hash(key, 10);
+  const keyPrefix = key.substring(0, 8);
+  
+  {% if saas_orm == "prisma" %}
+  const apiKey = await prisma.apiKey.create({
+    data: {
+      userId,
+      name,
+      keyHash,
+      keyPrefix,
+      scopes,
+    },
+  });
+  {% elif saas_orm == "drizzle" %}
+  const [apiKey] = await db
+    .insert(apiKeys)
+    .values({
+      userId,
+      name,
+      keyHash,
+      keyPrefix,
+      scopes,
+    })
+    .returning();
+  {% endif %}
+  
+  // Return the plain key only once
+  return NextResponse.json({
+    id: apiKey.id,
+    key, // Only returned on creation
+    prefix: keyPrefix,
+  });
+}
+```
+{% endif %}
+
+---
+
+{% if saas_ai == "openai" or saas_ai == "anthropic" %}
+## AI Integration
+
+### Generate Content
+
+{% if saas_runtime == "nextjs-16" %}
+```typescript
+// app/api/ai/generate/route.ts
+import { NextResponse } from 'next/server';
+import { requireUserId } from '@/lib/auth/helpers';
+{% if saas_ai == "openai" %}
+import { generateChatCompletion } from '@/integrations/ai/openai/client';
+{% else %}
+import { generateMessage } from '@/integrations/ai/anthropic/client';
+{% endif %}
+
+export async function POST(request: Request) {
+  const userId = await requireUserId();
+  const { prompt } = await request.json();
+  
+  {% if saas_ai == "openai" %}
+  const response = await generateChatCompletion({
+    messages: [
+      { role: 'system', content: 'You are a helpful assistant.' },
+      { role: 'user', content: prompt },
+    ],
+    model: 'gpt-4-turbo',
+  });
+  
+  return NextResponse.json({
+    content: response.content,
+    tokens: response.usage?.total_tokens,
+  });
+  {% else %}
+  const response = await generateMessage({
+    messages: [
+      { role: 'user', content: prompt },
+    ],
+    system: 'You are a helpful assistant.',
+    model: 'claude-3-5-sonnet-20241022',
+  });
+  
+  return NextResponse.json({
+    content: response.content,
+    tokens: response.usage.input_tokens + response.usage.output_tokens,
+  });
+  {% endif %}
+}
+```
+{% endif %}
+
+### Streaming Response
+
+{% if saas_runtime == "nextjs-16" %}
+```typescript
+// app/api/ai/stream/route.ts
+import { requireUserId } from '@/lib/auth/helpers';
+{% if saas_ai == "openai" %}
+import { streamChatCompletion } from '@/integrations/ai/openai/client';
+{% else %}
+import { streamMessage } from '@/integrations/ai/anthropic/client';
+{% endif %}
+
+export async function POST(request: Request) {
+  const userId = await requireUserId();
+  const { prompt } = await request.json();
+  
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      {% if saas_ai == "openai" %}
+      for await (const chunk of streamChatCompletion({
+        messages: [{ role: 'user', content: prompt }],
+      })) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+      }
+      {% else %}
+      for await (const chunk of streamMessage({
+        messages: [{ role: 'user', content: prompt }],
+      })) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+      }
+      {% endif %}
+      controller.close();
+    },
+  });
+  
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
+}
+```
+{% endif %}
+{% endif %}
+
+---
+
+## File Upload
+
+### Generate Upload URL
+
+{% if saas_runtime == "nextjs-16" %}
+```typescript
+// app/api/upload/url/route.ts
+import { NextResponse } from 'next/server';
+import { requireUserId } from '@/lib/auth/helpers';
+{% if saas_storage == "r2" %}
+import { generateUploadUrl, generateFileKey } from '@/integrations/storage/r2/client';
+{% else %}
+import { generateFilePath } from '@/integrations/storage/supabase/client';
+{% endif %}
+
+export async function POST(request: Request) {
+  const userId = await requireUserId();
+  const { filename, contentType } = await request.json();
+  
+  {% if saas_storage == "r2" %}
+  const key = generateFileKey({
+    prefix: 'uploads',
+    filename,
+    userId,
+  });
+  
+  const uploadUrl = await generateUploadUrl({
+    key,
+    contentType,
+    expiresIn: 3600, // 1 hour
+  });
+  
+  return NextResponse.json({
+    uploadUrl,
+    key,
+  });
+  {% else %}
+  const path = generateFilePath({
+    folder: 'uploads',
+    filename,
+    userId,
+  });
+  
+  // With Supabase, client uploads directly to storage
+  return NextResponse.json({
+    path,
+    bucket: process.env.SUPABASE_STORAGE_BUCKET,
+  });
+  {% endif %}
+}
+```
+{% endif %}
+
+---
+
+## Webhooks
+
+### Stripe Webhook Handler
+
+{% if saas_billing == "stripe" %}
+{% if saas_runtime == "nextjs-16" %}
+```typescript
+// app/api/webhooks/stripe/route.ts
+import { NextResponse } from 'next/server';
+import { processWebhook } from '@/integrations/billing/stripe/webhooks';
+
+export async function POST(request: Request) {
+  try {
+    const payload = await request.text();
+    const signature = request.headers.get('stripe-signature');
+    
+    if (!signature) {
+      return NextResponse.json(
+        { error: 'Missing signature' },
+        { status: 400 }
+      );
+    }
+    
+    await processWebhook(payload, signature);
+    
+    return NextResponse.json({ received: true });
+  } catch (error) {
+    console.error('Webhook error:', error);
+    return NextResponse.json(
+      { error: 'Webhook processing failed' },
+      { status: 400 }
+    );
+  }
+}
+```
+{% endif %}
+{% endif %}
+
+---
+
+## Error Handling
+
+### Standard Error Response
+
+```typescript
+import { NextResponse } from 'next/server';
+
+export function errorResponse(
+  message: string,
+  statusCode: number = 500,
+  details?: any
+) {
+  return NextResponse.json(
+    {
+      error: {
+        message,
+        statusCode,
+        details,
+      },
+    },
+    { status: statusCode }
+  );
+}
+
+// Usage
+try {
+  // Your logic
+} catch (error) {
+  return errorResponse(
+    'Failed to process request',
+    500,
+    error instanceof Error ? error.message : 'Unknown error'
+  );
+}
+```
+
+---
+
+## Rate Limiting
+
+### Simple Rate Limiter
+
+```typescript
+// lib/rate-limit.ts
+import { LRUCache } from 'lru-cache';
+
+type RateLimitOptions = {
+  interval: number; // milliseconds
+  uniqueTokenPerInterval: number;
+};
+
+export function rateLimit(options: RateLimitOptions) {
+  const tokenCache = new LRUCache({
+    max: options.uniqueTokenPerInterval || 500,
+    ttl: options.interval || 60000,
+  });
+  
+  return {
+    check: (token: string, limit: number) => {
+      const tokenCount = (tokenCache.get(token) as number[]) || [0];
+      if (tokenCount[0] === 0) {
+        tokenCache.set(token, [1]);
+      }
+      tokenCount[0] += 1;
+      
+      const currentUsage = tokenCount[0];
+      const isRateLimited = currentUsage >= limit;
+      
+      return {
+        limited: isRateLimited,
+        remaining: limit - currentUsage,
+      };
+    },
+  };
+}
+
+// Usage in API route
+const limiter = rateLimit({
+  interval: 60 * 1000, // 1 minute
+  uniqueTokenPerInterval: 500,
+});
+
+export async function GET(request: Request) {
+  const userId = await requireUserId();
+  const { limited, remaining } = limiter.check(userId, 10); // 10 requests per minute
+  
+  if (limited) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded' },
+      { status: 429 }
+    );
+  }
+  
+  // Your logic...
+  return NextResponse.json({ data: '...', remaining });
+}
+```
+
+---
+
+For more examples, see the [API Reference](./API.md).
+{% endif %}
