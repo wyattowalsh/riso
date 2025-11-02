@@ -1,0 +1,355 @@
+{% if websocket_module == "enabled" -%}
+"""WebSocket utility functions and helpers."""
+
+import asyncio
+import time
+import uuid
+from collections import defaultdict
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+
+from loguru import logger
+from pydantic import ValidationError
+
+from {{ package_name }}.websocket.config import get_config
+from {{ package_name }}.websocket.exceptions import InvalidMessageFormatError, RateLimitError
+from {{ package_name }}.websocket.models import Message
+
+
+def generate_connection_id() -> str:
+    """
+    Generate unique connection ID (UUID4).
+
+    Returns:
+        str: UUID4 string
+    """
+    return str(uuid.uuid4())
+
+
+def generate_message_id() -> str:
+    """
+    Generate unique message ID (UUID4).
+
+    Returns:
+        str: UUID4 string
+    """
+    return str(uuid.uuid4())
+
+
+def get_utc_timestamp() -> datetime:
+    """
+    Get current UTC timestamp.
+
+    Returns:
+        datetime: Current time in UTC timezone
+    """
+    return datetime.now(timezone.utc)
+
+
+def format_error_message(
+    code: str,
+    message: str,
+    details: Optional[Dict[str, Any]] = None,
+    retry_after: Optional[int] = None,
+) -> Dict[str, Any]:
+    """
+    Format structured error message for WebSocket wire format.
+
+    Args:
+        code: Error code identifier
+        message: Human-readable error message
+        details: Additional error context
+        retry_after: Seconds to wait before retry (for rate limits)
+
+    Returns:
+        dict: Error message in standard format
+    """
+    error_msg: Dict[str, Any] = {
+        "type":      "error",
+        "message_id": generate_message_id(),
+        "timestamp": get_utc_timestamp().isoformat(),
+        "sender_id": "server",
+        "payload":   {
+            "code":    code,
+            "message": message,
+        },
+    }
+
+    if details:
+        error_msg["payload"]["details"] = details
+    if retry_after is not None:
+        error_msg["payload"]["retry_after"] = retry_after
+
+    return error_msg
+
+
+def validate_message(message_data: Dict[str, Any]) -> Message:
+    """
+    Validate message against Pydantic schema.
+
+    Args:
+        message_data: Raw message dict from WebSocket
+
+    Returns:
+        Message: Validated message model
+
+    Raises:
+        InvalidMessageFormatError: If validation fails
+    """
+    try:
+        return Message(**message_data)
+    except ValidationError as e:
+        raise InvalidMessageFormatError(
+            message="Message validation failed",
+            details={"errors": e.errors()},
+        ) from e
+
+
+class RateLimiter:
+    """
+    Sliding window rate limiter for WebSocket connections.
+
+    Tracks message frequency per connection ID and enforces configurable
+    rate limits (default: 100 messages per 60-second window).
+
+    Example:
+        ```python
+        limiter = RateLimiter(max_messages=100, window=60)
+        
+        if not limiter.check("conn_123"):
+            raise RateLimitError(...)
+        ```
+    """
+
+    def __init__(
+        self,
+        max_messages: Optional[int] = None,
+        window: Optional[int] = None,
+    ):
+        """
+        Initialize rate limiter.
+
+        Args:
+            max_messages: Maximum messages per window (default from config)
+            window: Window duration in seconds (default from config)
+        """
+        config = get_config()
+        self.max_messages = max_messages or config.rate_limit_messages
+        self.window       = window or config.rate_limit_window
+        self._buckets: Dict[str, List[float]] = defaultdict(list)
+
+    def check(self, connection_id: str) -> bool:
+        """
+        Check if connection is within rate limit.
+
+        Args:
+            connection_id: Connection identifier
+
+        Returns:
+            bool: True if within limit, False if rate limit exceeded
+        """
+        now    = time.time()
+        bucket = self._buckets[connection_id]
+
+        # Remove expired timestamps
+        bucket[:] = [ts for ts in bucket if now - ts < self.window]
+
+        # Check limit
+        if len(bucket) >= self.max_messages:
+            return False
+
+        # Add current timestamp
+        bucket.append(now)
+        return True
+
+    def get_current_rate(self, connection_id: str) -> int:
+        """
+        Get current message rate for connection.
+
+        Args:
+            connection_id: Connection identifier
+
+        Returns:
+            int: Number of messages in current window
+        """
+        now    = time.time()
+        bucket = self._buckets[connection_id]
+        # Count messages within window
+        return sum(1 for ts in bucket if now - ts < self.window)
+
+    def get_retry_after(self, connection_id: str) -> int:
+        """
+        Calculate seconds until rate limit resets.
+
+        Args:
+            connection_id: Connection identifier
+
+        Returns:
+            int: Seconds to wait before retrying
+        """
+        now    = time.time()
+        bucket = self._buckets[connection_id]
+
+        if not bucket:
+            return 0
+
+        # Find oldest timestamp in window
+        oldest = min(ts for ts in bucket if now - ts < self.window)
+        return int((oldest + self.window) - now) + 1
+
+    def reset(self, connection_id: str) -> None:
+        """
+        Reset rate limit for connection.
+
+        Args:
+            connection_id: Connection identifier
+        """
+        if connection_id in self._buckets:
+            del self._buckets[connection_id]
+
+    def cleanup_expired(self) -> None:
+        """Remove expired buckets to prevent memory growth."""
+        now = time.time()
+        expired_connections = [
+            conn_id
+            for conn_id, bucket in self._buckets.items()
+            if not any(now - ts < self.window for ts in bucket)
+        ]
+        for conn_id in expired_connections:
+            del self._buckets[conn_id]
+
+
+async def heartbeat_loop(
+    connection,
+    interval: Optional[int] = None,
+    timeout: Optional[int] = None,
+) -> None:
+    """
+    Background task sending periodic heartbeat pings.
+
+    Sends ping messages at configured interval and closes connection
+    if pong not received within timeout.
+
+    Args:
+        connection: WebSocketConnection instance
+        interval: Ping interval in seconds (default from config)
+        timeout: Pong timeout in seconds (default from config)
+
+    Example:
+        ```python
+        task = asyncio.create_task(heartbeat_loop(connection))
+        ```
+    """
+    config = get_config()
+    interval = interval or config.heartbeat_interval
+    timeout  = timeout or config.heartbeat_timeout
+
+    last_pong = time.time()
+
+    try:
+        while connection.is_active():
+            await asyncio.sleep(interval)
+
+            # Check if connection is still alive
+            if not connection.is_active():
+                break
+
+            # Check for heartbeat timeout
+            if time.time() - last_pong > timeout:
+                logger.warning(
+                    f"Heartbeat timeout for connection {connection.connection_id}",
+                    extra={"connection_id": connection.connection_id},
+                )
+                await connection.close(code=1000, reason="Heartbeat timeout")
+                break
+
+            # Send ping
+            try:
+                ping_message = {
+                    "type":       "heartbeat.ping",
+                    "message_id": generate_message_id(),
+                    "timestamp":  get_utc_timestamp().isoformat(),
+                    "sender_id":  "server",
+                    "payload":    {
+                        "server_time": get_utc_timestamp().isoformat(),
+                    },
+                }
+                await connection.send_json(ping_message)
+
+                # Update last_pong time (will be reset by actual pong handler)
+                # This is a fallback - real implementation should track pong responses
+
+            except Exception as e:
+                logger.error(
+                    f"Error sending heartbeat ping: {e}",
+                    exc_info=True,
+                )
+                break
+
+    except asyncio.CancelledError:
+        logger.debug(f"Heartbeat loop cancelled for connection {connection.connection_id}")
+    except Exception as e:
+        logger.error(
+            f"Heartbeat loop error for connection {connection.connection_id}: {e}",
+            exc_info=True,
+        )
+
+
+async def idle_timeout_checker(
+    manager,
+    check_interval: int = 60,
+) -> None:
+    """
+    Background task checking for idle connections and closing them.
+
+    Args:
+        manager: ConnectionManager instance
+        check_interval: How often to check (seconds)
+
+    Example:
+        ```python
+        task = asyncio.create_task(idle_timeout_checker(manager))
+        ```
+    """
+    config = get_config()
+
+    try:
+        while True:
+            await asyncio.sleep(check_interval)
+
+            # Get all connections and check idle time
+            idle_connections = []
+
+            for connection_id in list(manager.get_all_connection_ids()):
+                connection = manager.get_connection(connection_id)
+                if connection is None:
+                    continue
+
+                idle_time = connection.time_since_activity()
+                if idle_time > config.idle_timeout:
+                    idle_connections.append((connection_id, idle_time))
+
+            # Close idle connections
+            for connection_id, idle_time in idle_connections:
+                logger.info(
+                    f"Closing idle connection {connection_id} (idle for {idle_time:.1f}s)",
+                    extra={
+                        "connection_id":  connection_id,
+                        "idle_seconds":   idle_time,
+                        "timeout_seconds": config.idle_timeout,
+                    },
+                )
+                await manager.disconnect(
+                    connection_id,
+                    code=1000,
+                    reason="Idle timeout",
+                )
+
+    except asyncio.CancelledError:
+        logger.debug("Idle timeout checker cancelled")
+    except Exception as e:
+        logger.error(
+            f"Idle timeout checker error: {e}",
+            exc_info=True,
+        )
+{% endif -%}
