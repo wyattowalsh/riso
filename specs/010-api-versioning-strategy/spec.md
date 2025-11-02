@@ -135,6 +135,53 @@ API maintainers need to add new optional features to existing versions without b
 - **FR-020**: System MUST maintain minimum support window of 12 months for each major version after deprecation announcement
 - **FR-021**: System MUST support pre-release versions (beta, alpha) that require explicit opt-in via header flag and are marked as unstable in response headers
 
+### Security Requirements
+
+- **FR-022**: System MUST authenticate requests to version discovery endpoints using API keys or OAuth tokens
+- **FR-023**: System MUST validate all version specification inputs (headers, URL paths, query parameters) to prevent injection attacks including header injection, path traversal, and YAML injection
+- **FR-024**: System MUST sanitize version identifiers before logging to prevent log injection attacks
+- **FR-025**: System MUST mask sensitive consumer identity data (API keys, OAuth tokens) in logs and metrics, storing only hashed or anonymized consumer IDs
+- **FR-026**: System MUST enforce rate limiting per authenticated consumer with configurable thresholds per version
+- **FR-027**: System MUST maintain security audit logs for all version-related operations including authentication failures, authorization denials, and suspicious patterns
+- **FR-028**: System MUST validate version identifier format using regex pattern `^v[0-9]+(-[a-z]+)?$` and reject malformed inputs with 400 Bad Request
+- **FR-029**: System MUST protect configuration files from unauthorized access and validate integrity using checksums
+- **FR-030**: System MUST comply with GDPR requirements for consumer tracking data including data retention policies and right to erasure
+
+### Performance Requirements
+
+- **FR-031**: System MUST achieve version routing latency targets: p50 < 1ms, p95 < 5ms, p99 < 10ms under normal load (≤1000 req/s)
+- **FR-032**: System MUST maintain throughput of 1000+ requests per second sustained load with burst capacity to 5000 req/s
+- **FR-033**: System MUST limit version registry memory footprint to ≤ 200KB for up to 500 version-endpoint combinations
+- **FR-034**: System MUST achieve version metadata lookup latency of 50-200ns using O(1) hash-based lookups
+- **FR-035**: System MUST load and validate version configuration files in ≤10ms for up to 100 versions
+- **FR-036**: System MUST implement caching for version metadata with cache invalidation on configuration updates
+- **FR-037**: System MUST collect performance metrics (latency, throughput, error rates) with ≤1% overhead on request latency
+- **FR-038**: System MUST support horizontal scaling with stateless middleware design
+- **FR-039**: System MUST perform gracefully under load degradation, maintaining p99 latency ≤20ms up to 150% of normal capacity
+
+### Observability Requirements
+
+- **FR-040**: System MUST emit structured JSON logs with standardized fields: timestamp, version_id, endpoint_path, http_status, latency_ms, consumer_id, consumer_source, version_source, is_deprecated_access
+- **FR-041**: System MUST provide real-time metrics for version adoption tracking including requests per version, unique consumers per version, and deprecation access counts
+- **FR-042**: System MUST alert on anomalous patterns: sudden version usage spikes, deprecated version access increases, error rate thresholds (>1% per version)
+- **FR-043**: System MUST support distributed tracing with trace IDs propagated through version routing pipeline
+
+### Reliability & Error Handling
+
+- **FR-044**: System MUST handle configuration file reload failures gracefully, continuing with last known valid configuration
+- **FR-045**: System MUST detect version registry corruption and reject invalid configurations at load time with detailed error messages
+- **FR-046**: System MUST define behavior for edge cases: zero versions configured (reject all requests), single version (use as default), malformed version IDs (400 error)
+- **FR-047**: System MUST handle version state transitions during active requests atomically, ensuring in-flight requests complete with original version
+- **FR-048**: System MUST treat version IDs as case-sensitive (v1 ≠ V1) and trim leading/trailing whitespace from version headers
+- **FR-049**: System MUST provide fallback consumer ID using IP address when API key, OAuth client ID, and custom headers are unavailable
+
+### API Contract Requirements
+
+- **FR-050**: System MUST define OpenAPI 3.1 specification for all version discovery endpoints with complete schemas, examples, and error responses
+- **FR-051**: System MUST document all error codes (400, 403, 404, 406, 410, 500, 503) with error schema including code, message, details, and available_versions fields
+- **FR-052**: System MUST provide request/response examples for all endpoints covering success cases and all error scenarios
+- **FR-053**: System MUST specify CORS policy for version discovery endpoints including allowed origins, methods, and headers
+
 ### Key Entities
 
 - **API Version**: Represents a specific version of the API with a unique identifier (e.g., v1, v2, 2.1.0), status (current/deprecated/sunset), release date, deprecation date (if applicable), sunset date (if applicable), and supported features
@@ -157,3 +204,8 @@ API maintainers need to add new optional features to existing versions without b
 - **SC-008**: Version-related support tickets decrease by 60% compared to pre-versioning baseline after 6 months
 - **SC-009**: New API versions can be deployed with zero downtime for existing consumers
 - **SC-010**: API consumers can complete version migration following documentation in under 4 hours of development time per integration
+- **SC-011**: Security audit logs capture 100% of authentication failures, authorization denials, and malformed input attempts
+- **SC-012**: Version routing maintains p99 latency ≤10ms under sustained load of 1000 req/s as measured by APM tools
+- **SC-013**: Configuration validation detects 100% of invalid version configurations before deployment
+- **SC-014**: Performance monitoring dashboards provide real-time visibility into per-version latency, throughput, and error rates with ≤60s data freshness
+
