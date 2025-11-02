@@ -69,17 +69,32 @@ def new(
         # Load template
         with console.status("[cyan]Loading template...[/cyan]"):
             loader = TemplateLoader()
-            template_path = loader.get_cached_template(template)
+            registry = TemplateRegistry()
             
-            if not template_path:
-                console.print(f"[red]✗[/red] Template '{template}' not found in cache")
-                console.print("\n[yellow]Available templates:[/yellow]")
-                for t in loader.list_available_templates():
-                    console.print(f"  • {t.name}")
-                raise typer.Exit(code=2)
-            
-            template_obj = loader.load_template(template_path)
-            console.print(f"[green]✓[/green] Loaded template: {template_obj.name} v{template_obj.version}")
+            # Check if template is a URL or path
+            if template.startswith(("http://", "https://", "git@")) or "/" in template or "\\" in template:
+                # Fetch from remote/local source
+                try:
+                    template_obj = registry.fetch_template(template)
+                    console.print(f"[green]✓[/green] Fetched template: {template_obj.name} v{template_obj.version}")
+                except Exception as e:
+                    console.print(f"[red]✗[/red] Failed to fetch template: {e}")
+                    raise typer.Exit(code=2)
+            else:
+                # Load from cache
+                template_path = loader.get_cached_template(template)
+                
+                if not template_path:
+                    console.print(f"[red]✗[/red] Template '{template}' not found in cache")
+                    console.print("\n[yellow]Available templates:[/yellow]")
+                    for t in loader.list_available_templates():
+                        console.print(f"  • {t.name}")
+                    console.print("\n[yellow]Or fetch from URL:[/yellow]")
+                    console.print("  scaffold new my-project --template https://github.com/user/template")
+                    raise typer.Exit(code=2)
+                
+                template_obj = loader.load_template(template_path)
+                console.print(f"[green]✓[/green] Loaded template: {template_obj.name} v{template_obj.version}")
         
         # Parse provided variables from --var options
         provided_vars = {}
