@@ -1,0 +1,59 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""Test configuration - disabled for this render."""
+{%- else %}
+"""Pytest fixtures for API testing.
+
+Provides reusable test fixtures including:
+- Test client for making HTTP requests
+- Mock data factories
+- Database test fixtures (when database is integrated)
+"""
+from __future__ import annotations
+
+from typing import Generator
+
+import pytest
+from fastapi.testclient import TestClient
+
+from {{ package_name }}.api.main import app
+
+
+@pytest.fixture
+def client() -> Generator[TestClient, None, None]:
+    """FastAPI test client fixture.
+    
+    Yields a TestClient instance for making test HTTP requests.
+    The client automatically handles app lifecycle and cleanup.
+    
+    Example:
+        def test_endpoint(client):
+            response = client.get("/health/")
+            assert response.status_code == 200
+    """
+    with TestClient(app) as test_client:
+        yield test_client
+
+
+@pytest.fixture
+def auth_headers() -> dict[str, str]:
+    """Authentication headers fixture.
+    
+    Provides headers for authenticated requests.
+    Update this when authentication is implemented.
+    """
+    return {}
+
+
+@pytest.fixture
+def sample_example_data() -> dict:
+    """Sample example data for testing.
+    
+    Provides consistent test data across test cases.
+    """
+    return {
+        "name": "Test Example",
+        "value": 42,
+        "description": "Test description",
+        "tags": ["test", "demo"]
+    }
+{%- endif %}
