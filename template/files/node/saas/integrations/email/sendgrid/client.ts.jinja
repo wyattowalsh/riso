@@ -1,0 +1,214 @@
+{% if saas_email == 'sendgrid' %}
+/**
+ * SendGrid Email Client
+ * 
+ * Enterprise-scale email with marketing + transactional capabilities.
+ * Features: A/B testing, detailed analytics, email validation, IP warming.
+ * 
+ * Use when: Need both marketing and transactional email, require detailed analytics,
+ * want A/B testing capabilities, or sending high volume (>100K emails/month).
+ * 
+ * Environment variables:
+ * - SENDGRID_API_KEY: SendGrid API key
+ * - SENDGRID_FROM_EMAIL: Default sender email
+ * - SENDGRID_FROM_NAME: Default sender name
+ */
+
+import sgMail from '@sendgrid/mail';
+
+// Validate environment variables
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+const SENDGRID_FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL;
+const SENDGRID_FROM_NAME = process.env.SENDGRID_FROM_NAME || 'No Reply';
+
+if (!SENDGRID_API_KEY || !SENDGRID_FROM_EMAIL) {
+  throw new Error(
+    'SENDGRID_API_KEY and SENDGRID_FROM_EMAIL are required. ' +
+    'Get your API key from https://sendgrid.com/settings/api_keys'
+  );
+}
+
+// Initialize SendGrid
+sgMail.setApiKey(SENDGRID_API_KEY);
+
+/**
+ * Send a simple email
+ * 
+ * @example
+ * await sendEmail({
+ *   to: 'user@example.com',
+ *   subject: 'Welcome!',
+ *   text: 'Welcome to our platform!',
+ *   html: '<p>Welcome to our platform!</p>'
+ * });
+ */
+export async function sendEmail(options: {
+  to: string | string[];
+  subject: string;
+  text?: string;
+  html?: string;
+  from?: { email: string; name?: string };
+}): Promise<void> {
+  const msg = {
+    to: options.to,
+    from: options.from || {
+      email: SENDGRID_FROM_EMAIL,
+      name: SENDGRID_FROM_NAME,
+    },
+    subject: options.subject,
+    text: options.text,
+    html: options.html,
+  };
+
+  await sgMail.send(msg);
+}
+
+/**
+ * Send email using a template
+ * 
+ * @example
+ * await sendTemplateEmail({
+ *   to: 'user@example.com',
+ *   templateId: 'd-abc123',
+ *   dynamicTemplateData: {
+ *     name: 'John',
+ *     confirmUrl: 'https://app.com/confirm/123'
+ *   }
+ * });
+ */
+export async function sendTemplateEmail(options: {
+  to: string | string[];
+  templateId: string;
+  dynamicTemplateData: Record<string, any>;
+  from?: { email: string; name?: string };
+}): Promise<void> {
+  const msg = {
+    to: options.to,
+    from: options.from || {
+      email: SENDGRID_FROM_EMAIL,
+      name: SENDGRID_FROM_NAME,
+    },
+    templateId: options.templateId,
+    dynamicTemplateData: options.dynamicTemplateData,
+  };
+
+  await sgMail.send(msg);
+}
+
+/**
+ * Send bulk email to multiple recipients
+ * 
+ * @example
+ * await sendBulkEmail({
+ *   templateId: 'd-abc123',
+ *   recipients: [
+ *     { email: 'user1@example.com', data: { name: 'John' } },
+ *     { email: 'user2@example.com', data: { name: 'Jane' } }
+ *   ]
+ * });
+ */
+export async function sendBulkEmail(options: {
+  templateId: string;
+  recipients: Array<{
+    email: string;
+    data: Record<string, any>;
+  }>;
+  from?: { email: string; name?: string };
+}): Promise<void> {
+  const msg = {
+    from: options.from || {
+      email: SENDGRID_FROM_EMAIL,
+      name: SENDGRID_FROM_NAME,
+    },
+    templateId: options.templateId,
+    personalizations: options.recipients.map((recipient) => ({
+      to: [{ email: recipient.email }],
+      dynamicTemplateData: recipient.data,
+    })),
+  };
+
+  await sgMail.send(msg as any);
+}
+
+/**
+ * Send email with attachment
+ * 
+ * @example
+ * await sendEmailWithAttachment({
+ *   to: 'user@example.com',
+ *   subject: 'Your Invoice',
+ *   html: '<p>Please find your invoice attached.</p>',
+ *   attachments: [{
+ *     content: base64Content,
+ *     filename: 'invoice.pdf',
+ *     type: 'application/pdf',
+ *     disposition: 'attachment'
+ *   }]
+ * });
+ */
+export async function sendEmailWithAttachment(options: {
+  to: string | string[];
+  subject: string;
+  text?: string;
+  html?: string;
+  attachments: Array<{
+    content: string;
+    filename: string;
+    type: string;
+    disposition: 'attachment' | 'inline';
+  }>;
+  from?: { email: string; name?: string };
+}): Promise<void> {
+  const msg = {
+    to: options.to,
+    from: options.from || {
+      email: SENDGRID_FROM_EMAIL,
+      name: SENDGRID_FROM_NAME,
+    },
+    subject: options.subject,
+    text: options.text,
+    html: options.html,
+    attachments: options.attachments,
+  };
+
+  await sgMail.send(msg);
+}
+
+/**
+ * Validate an email address
+ * 
+ * @example
+ * const isValid = await validateEmail('user@example.com');
+ */
+export async function validateEmail(email: string): Promise<{
+  valid: boolean;
+  reason?: string;
+}> {
+  // SendGrid Email Validation API requires separate endpoint
+  // This is a simplified version - implement full validation via REST API if needed
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const valid = emailRegex.test(email);
+  
+  return {
+    valid,
+    reason: valid ? undefined : 'Invalid email format',
+  };
+}
+
+/**
+ * Health check for SendGrid connection
+ */
+export async function healthCheck(): Promise<boolean> {
+  try {
+    // SendGrid doesn't have a ping endpoint, so we just verify API key is set
+    return !!SENDGRID_API_KEY;
+  } catch (error) {
+    console.error('SendGrid health check failed:', error);
+    return false;
+  }
+}
+
+// Export for advanced usage
+export { sgMail };
+
+{% endif %}

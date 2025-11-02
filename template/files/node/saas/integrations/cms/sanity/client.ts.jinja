@@ -1,0 +1,240 @@
+{% if saas_cms == 'sanity' %}
+/**
+ * Sanity CMS Client
+ * 
+ * Real-time collaborative CMS with portable text and image pipeline.
+ * Features: Structured content, GROQ queries, real-time collaboration, preview mode.
+ * 
+ * Use when: Need real-time collaboration, require flexible content modeling,
+ * want developer-friendly queries (GROQ), or building content-heavy applications.
+ * 
+ * Environment variables:
+ * - SANITY_PROJECT_ID: Sanity project ID
+ * - SANITY_DATASET: Dataset name (e.g., production)
+ * - SANITY_API_TOKEN: API token for write operations
+ * - NEXT_PUBLIC_SANITY_PROJECT_ID: Public project ID (client-side)
+ * - NEXT_PUBLIC_SANITY_DATASET: Public dataset (client-side)
+ */
+
+import { createClient } from '@sanity/client';
+import imageUrlBuilder from '@sanity/image-url';
+import type { SanityImageSource } from '@sanity/image-url/lib/types/types';
+
+// Validate environment variables
+const SANITY_PROJECT_ID = process.env.SANITY_PROJECT_ID || process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
+const SANITY_DATASET = process.env.SANITY_DATASET || process.env.NEXT_PUBLIC_SANITY_DATASET || 'production';
+const SANITY_API_TOKEN = process.env.SANITY_API_TOKEN;
+
+if (!SANITY_PROJECT_ID) {
+  throw new Error(
+    'SANITY_PROJECT_ID is required. ' +
+    'Get your project ID from https://sanity.io/manage'
+  );
+}
+
+/**
+ * Sanity client for content operations
+ */
+export const sanity = createClient({
+  projectId: SANITY_PROJECT_ID,
+  dataset: SANITY_DATASET,
+  apiVersion: '2024-01-01',
+  useCdn: process.env.NODE_ENV === 'production',
+  token: SANITY_API_TOKEN,
+});
+
+/**
+ * Image URL builder
+ */
+const builder = imageUrlBuilder(sanity);
+
+/**
+ * Get optimized image URL
+ * 
+ * @example
+ * const url = getImageUrl(post.image).width(800).height(600).url();
+ */
+export function getImageUrl(source: SanityImageSource) {
+  return builder.image(source);
+}
+
+/**
+ * Fetch content with GROQ query
+ * 
+ * @example
+ * const posts = await query<Post[]>('*[_type == "post"]{ title, slug, body }');
+ */
+export async function query<T = any>(
+  groqQuery: string,
+  params: Record<string, any> = {}
+): Promise<T> {
+  return await sanity.fetch(groqQuery, params);
+}
+
+/**
+ * Get a single document by ID
+ * 
+ * @example
+ * const post = await getById<Post>('post-123');
+ */
+export async function getById<T = any>(id: string): Promise<T | null> {
+  return await sanity.getDocument(id);
+}
+
+/**
+ * Get documents by type
+ * 
+ * @example
+ * const posts = await getByType<Post[]>('post');
+ */
+export async function getByType<T = any>(
+  type: string,
+  options: {
+    limit?: number;
+    offset?: number;
+    order?: string;
+  } = {}
+): Promise<T> {
+  const { limit, offset, order } = options;
+  let q = `*[_type == "${type}"]`;
+  
+  if (order) {
+    q += ` | order(${order})`;
+  }
+  
+  if (limit) {
+    q += `[${offset || 0}...${(offset || 0) + limit}]`;
+  }
+  
+  return await query<T>(q);
+}
+
+/**
+ * Create a new document
+ * 
+ * @example
+ * const newPost = await create('post', {
+ *   title: 'My First Post',
+ *   slug: { current: 'my-first-post' },
+ *   body: [...]
+ * });
+ */
+export async function create<T = any>(
+  type: string,
+  document: Omit<T, '_id' | '_type' | '_createdAt' | '_updatedAt'>
+): Promise<T> {
+  return await sanity.create({
+    _type: type,
+    ...document,
+  } as any);
+}
+
+/**
+ * Update an existing document
+ * 
+ * @example
+ * await update('post-123', { title: 'Updated Title' });
+ */
+export async function update<T = any>(
+  id: string,
+  updates: Partial<T>
+): Promise<T> {
+  return await sanity.patch(id).set(updates as any).commit();
+}
+
+/**
+ * Delete a document
+ * 
+ * @example
+ * await deleteDocument('post-123');
+ */
+export async function deleteDocument(id: string): Promise<void> {
+  await sanity.delete(id);
+}
+
+/**
+ * Upload an asset (image or file)
+ * 
+ * @example
+ * const asset = await uploadAsset(buffer, 'image.jpg', 'image');
+ */
+export async function uploadAsset(
+  buffer: Buffer,
+  filename: string,
+  assetType: 'image' | 'file' = 'image'
+): Promise<{ _id: string; url: string }> {
+  const asset = await sanity.assets.upload(assetType, buffer, {
+    filename,
+  });
+
+  return {
+    _id: asset._id,
+    url: asset.url,
+  };
+}
+
+/**
+ * Listen to real-time changes
+ * 
+ * @example
+ * const subscription = listenToChanges('*[_type == "post"]', (update) => {
+ *   console.log('Document changed:', update);
+ * });
+ * // Later: subscription.unsubscribe()
+ */
+export function listenToChanges<T = any>(
+  groqQuery: string,
+  callback: (update: T) => void
+) {
+  const subscription = sanity.listen(groqQuery).subscribe((update) => {
+    callback(update.result as T);
+  });
+
+  return {
+    unsubscribe: () => subscription.unsubscribe(),
+  };
+}
+
+/**
+ * Get content in draft mode (for previews)
+ * 
+ * @example
+ * const draftPost = await getDraft<Post>('post-123');
+ */
+export async function getDraft<T = any>(id: string): Promise<T | null> {
+  return await sanity.getDocument(`drafts.${id}`);
+}
+
+/**
+ * Search content with text query
+ * 
+ * @example
+ * const results = await search('programming', ['post', 'article']);
+ */
+export async function search<T = any>(
+  searchTerm: string,
+  types: string[]
+): Promise<T[]> {
+  const typeFilter = types.map(t => `_type == "${t}"`).join(' || ');
+  const q = `*[${typeFilter} && (title match "${searchTerm}*" || body match "${searchTerm}*")]`;
+  
+  return await query<T[]>(q);
+}
+
+/**
+ * Health check for Sanity connection
+ */
+export async function healthCheck(): Promise<boolean> {
+  try {
+    await sanity.fetch('*[_type == "sanity.imageAsset"][0]{ _id }');
+    return true;
+  } catch (error) {
+    console.error('Sanity health check failed:', error);
+    return false;
+  }
+}
+
+// Export client for advanced usage
+export { sanity as cms };
+
+{% endif %}
