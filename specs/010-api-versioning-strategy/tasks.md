@@ -49,6 +49,7 @@ Single project structure (API middleware/library):
 - [ ] T012 [P] Implement semantic versioning utilities in src/api_versioning/utils/semver.py for version parsing and validation
 - [ ] T013 [P] Implement version ID validation in src/api_versioning/utils/validation.py matching pattern ^v[0-9]+(-[a-z]+)?$
 - [ ] T014 Create base error classes in src/api_versioning/handlers/error.py: VersionNotFoundError, VersionSunsetError, VersionConflictError, PrereleaseOptInRequiredError
+- [ ] T014b [P] Implement FR-020 validation in src/api_versioning/utils/validation.py: check sunset_date <= deprecation_date + 12 months for all version configurations
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -173,8 +174,8 @@ Single project structure (API middleware/library):
 **Goal**: Enable tracking of version adoption and deprecation impact through structured logging
 
 - [ ] T064 [P] Create VersionUsageMetric dataclass in src/api_versioning/logging/metrics.py with fields from data-model.md
-- [ ] T065 Implement metrics collection in middleware capturing: timestamp, version_id, endpoint_path, http_status, latency_ms, consumer_id, source
-- [ ] T066 [P] Add consumer_id extraction from request (API key, OAuth client ID, or IP address fallback)
+- [ ] T065 Implement metrics collection in middleware capturing: timestamp, version_id, endpoint_path, http_status, latency_ms, consumer_id, consumer_source, version_source
+- [ ] T066 [P] Add ConsumerIdentity extraction from request following priority: X-API-Key header > OAuth client ID > X-Consumer-ID header > IP address fallback (see data-model.md)
 - [ ] T067 Implement structured JSON logging in src/api_versioning/logging/metrics.py using standard library logging
 - [ ] T068 [P] Add is_deprecated_access flag to metrics when deprecated version is used
 - [ ] T069 [P] Document metrics format and log aggregation patterns in docs/metrics.md
@@ -185,13 +186,14 @@ Single project structure (API middleware/library):
 
 **Goal**: Handle all edge cases identified in spec.md with appropriate error responses
 
-- [ ] T070 [P] Implement version conflict detection in src/api_versioning/middleware/precedence.py when contradictory specifications provided
-- [ ] T071 Return 400 Bad Request with VersionConflictError when conflict detected, including all detected version specifications in error details
+- [ ] T070 [P] Implement version conflict detection in src/api_versioning/middleware/precedence.py for SAME-SOURCE contradictions (e.g., two different version headers)
+- [ ] T071 Return 400 Bad Request with VersionConflictError when same-source conflict detected, including all conflicting specifications in error details (cross-source resolved via precedence)
 - [ ] T072 [P] Implement version negotiation failure handling when consumer requires unsupported version
 - [ ] T073 Return 406 Not Acceptable with list of supported versions when negotiation fails
 - [ ] T074 [P] Add version-specific error response handling preserving error schema per version
 - [ ] T075 Include X-API-Version header in all error responses for debugging
 - [ ] T076 [P] Document error response formats in contracts/api-versioning.openapi.yaml
+- [ ] T076b [P] Add content negotiation handling (FR-018): implement Accept header processing alongside version routing in middleware
 
 ---
 
@@ -235,6 +237,7 @@ Single project structure (API middleware/library):
 - [ ] T096 [P] Create CHANGELOG.md documenting versioning system capabilities
 - [ ] T097 [P] Add CONTRIBUTING.md with development setup and testing instructions
 - [ ] T098 Final review of OpenAPI contract ensuring all endpoints documented
+- [ ] T098b [P] Document SC-008 measurement approach: create docs/metrics/support_ticket_tracking.md explaining how to track 60% reduction in version-related support tickets (baseline vs 6-month post-implementation)
 
 ---
 
@@ -357,23 +360,23 @@ Estimated parallel completion: 12-16 hours with 3 developers
 
 ## Task Summary
 
-**Total Tasks**: 98
+**Total Tasks**: 102
 - Phase 1 (Setup): 5 tasks
-- Phase 2 (Foundational): 9 tasks
+- Phase 2 (Foundational): 10 tasks
 - Phase 3 (US1 - P1): 13 tasks ← **MVP**
 - Phase 4 (US2 - P1): 9 tasks
 - Phase 5 (US3 - P2): 11 tasks
 - Phase 6 (US4 - P2): 9 tasks
 - Phase 7 (US5 - P3): 7 tasks
 - Phase 8 (Metrics): 6 tasks
-- Phase 9 (Errors): 7 tasks
+- Phase 9 (Errors): 8 tasks
 - Phase 10 (Reload): 5 tasks
 - Phase 11 (Examples): 7 tasks
-- Phase 12 (Polish): 10 tasks
+- Phase 12 (Polish): 11 tasks
 
 **Parallel Tasks**: 39 tasks marked [P] can run in parallel within their phase
 
-**MVP Scope**: 27 tasks (Phase 1 + Phase 2 + Phase 3) = 8-11 hours
+**MVP Scope**: 28 tasks (Phase 1 + Phase 2 + Phase 3) = 8-11 hours
 
 ---
 

@@ -10,7 +10,31 @@ This document defines the data model for the API versioning system, including en
 
 ## Core Entities
 
-### 1. VersionMetadata
+### 1. ConsumerIdentity
+
+**Purpose**: Represents the identity of an API consumer for usage tracking and analytics.
+
+**Attributes**:
+- `consumer_id` (str, required): Unique identifier for the consumer
+- `source` (enum: API_KEY, OAUTH_CLIENT, CUSTOM_HEADER, IP_ADDRESS): How the identity was extracted
+- `raw_value` (str, required): The original value extracted from the request
+
+**Validation Rules**:
+- `consumer_id` must be non-empty string
+- `source` must be one of the defined enum values
+
+**Extraction Priority** (highest to lowest):
+1. `X-API-Key` header → source=API_KEY
+2. OAuth client ID from Authorization header → source=OAUTH_CLIENT  
+3. `X-Consumer-ID` custom header → source=CUSTOM_HEADER
+4. IP address fallback → source=IP_ADDRESS
+
+**Relationships**:
+- Referenced by `VersionUsageMetric.consumer_id` and `consumer_source`
+
+---
+
+### 2. VersionMetadata
 
 **Purpose**: Represents a specific version of the API with all its lifecycle metadata.
 
@@ -33,10 +57,11 @@ This document defines the data model for the API versioning system, including en
 - If `status` is `DEPRECATED`, `deprecation_date` must be set
 - If `status` is `SUNSET`, `sunset_date` must be in the past
 - If `sunset_date` is set, `deprecation_date` must also be set
-- `sunset_date` must be at least 12 months after `deprecation_date` (FR-020)
+- `sunset_date` must be at least 12 months after `deprecation_date` (FR-020: 12-month minimum support window)
 - `release_date` must be before `deprecation_date` (if set)
 - `deprecation_date` must be before `sunset_date` (if set)
 - If `breaking_changes_from` is set, it must reference an existing version
+- `migration_guide_url` must match pattern `^https?://` if provided (absolute URL validation)
 
 **State Transitions**:
 ```
@@ -152,7 +177,7 @@ PRERELEASE → CURRENT → DEPRECATED → SUNSET
 - Thread-safe for read operations (no write operations after initialization)
 - Immutable after load (except for `reload()` calls)
 
-### 7. VersionUsageMetric
+### 8. VersionUsageMetric
 
 **Purpose**: Log entry for version usage tracking and analytics (FR-017).
 
@@ -162,8 +187,9 @@ PRERELEASE → CURRENT → DEPRECATED → SUNSET
 - `endpoint_path` (str, required): API endpoint accessed
 - `http_status` (int, required): Response status code
 - `latency_ms` (float, required): Request processing time in milliseconds
-- `consumer_id` (str, optional): Identifier for the API consumer (from API key, OAuth client ID, etc.)
-- `source` (SpecificationSource, required): How version was specified
+- `consumer_id` (str, required): Identifier for the API consumer (extracted via ConsumerIdentity priority with IP fallback)
+- `consumer_source` (enum: API_KEY, OAUTH_CLIENT, CUSTOM_HEADER, IP_ADDRESS, required): How consumer identity was determined
+- `version_source` (SpecificationSource, required): How version was specified (HEADER, URL_PATH, QUERY_PARAM, DEFAULT)
 - `is_deprecated_access` (bool, required): Whether accessed version is deprecated
 
 **Usage**:
@@ -190,19 +216,22 @@ VersionSpecification (0..*)  DeprecationNotice (0..1)
                                      │ (1)
                                      │
                                      ▼
-                              VersionRoute (0..*)
+                              VersionRoute (0..*)  
                                      │
                                      │
                                      ▼
                               VersionUsageMetric (0..*)
-```
-
-**Relationships**:
+                                     │
+                                     │ (references)
+                                     ▼
+                              ConsumerIdentity
+```**Relationships**:
 1. **VersionRegistry → VersionMetadata**: Registry contains multiple versions (one-to-many)
 2. **VersionMetadata → DeprecationNotice**: Each version has at most one deprecation notice (one-to-one optional)
 3. **VersionMetadata → VersionRoute**: Each version can have multiple route handlers (one-to-many)
 4. **VersionMetadata → VersionUsageMetric**: Each version generates multiple usage logs (one-to-many)
 5. **VersionSpecification → VersionMetadata**: Each specification resolves to one version (many-to-one)
+6. **VersionUsageMetric → ConsumerIdentity**: Each metric references consumer identity extraction logic (many-to-one pattern)
 
 ## State Transitions
 
@@ -337,7 +366,8 @@ metric = VersionUsageMetric(
     http_status=200,
     latency_ms=45.3,
     consumer_id="client_abc123",
-    source=SpecificationSource.HEADER,
+    consumer_source=ConsumerSource.API_KEY,
+    version_source=SpecificationSource.HEADER,
     is_deprecated_access=False
 )
 ```

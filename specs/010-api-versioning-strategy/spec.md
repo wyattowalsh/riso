@@ -127,8 +127,8 @@ API maintainers need to add new optional features to existing versions without b
 - **FR-013**: System MUST support backward-compatible additions (new optional fields/parameters) within major versions
 - **FR-014**: System MUST validate that breaking changes only occur in major version increments
 - **FR-015**: System MUST allow version-specific API documentation to be generated and served
-- **FR-016**: System MUST handle version specification precedence using the order: Header > URL path > Query parameter (header takes highest priority)
-- **FR-016b**: System MUST return 400 Bad Request error when consumers send contradictory version indicators that cannot be resolved by precedence rules
+- **FR-016**: System MUST handle version specification precedence using the order: Header > URL path > Query parameter (header takes highest priority). When multiple methods specify versions, the highest-precedence method wins.
+- **FR-016b**: System MUST return 400 Bad Request error when consumers send contradictory version indicators within the SAME specification source (e.g., two different version headers: `X-API-Version: v1` and `API-Version: v2`). Cross-source conflicts are resolved via precedence rules (FR-016).
 - **FR-017**: System MUST log version usage metrics including: version identifier, endpoint path, HTTP status code, response latency, and consumer identifier for monitoring adoption and deprecation impact
 - **FR-018**: System MUST support content negotiation alongside versioning (e.g., version + accept headers)
 - **FR-019**: System MUST provide migration guides between consecutive major versions
