@@ -3,7 +3,18 @@
 **Status:** Draft  
 **Owner:** Platform Team  
 **Created:** 2025-10-30  
-**Updated:** 2025-10-30
+**Updated:** 2025-11-01
+
+---
+
+## Clarifications
+
+### Session 2025-11-01
+- Q: How should X-Forwarded-For headers be validated to prevent IP spoofing? → A: Trust only the rightmost untrusted IP in X-Forwarded-For chain (secure default for most deployments)
+- Q: What Redis topology should be recommended as the default for new deployments? → A: Redis Sentinel (3-node: 1 master + 2 replicas with automatic failover)
+- Q: Should progressive rate limit penalties be included in the initial implementation? → A: Include in initial implementation with default disabled
+- Q: Should the number of trusted proxy hops be configurable or hardcoded? → A: Configurable with default=1 (validates positive integer)
+- Q: Should API documentation include explicit client retry algorithm guidance? → A: Document recommended retry strategy with exponential backoff + jitter example
 
 ---
 
@@ -416,6 +427,13 @@ The system SHOULD support multiple concurrent time windows (e.g., 100/minute AND
 
 ---
 
+### FR-021: Progressive Rate Limit Penalties
+The system SHOULD support configurable progressive penalties for repeat rate limit violators, exponentially increasing cooldown periods (1x, 2x, 4x, etc.) for clients exceeding limits multiple times within a detection window. This feature MUST be disabled by default and require explicit configuration to enable.
+
+**Validation:** Test showing 3rd violation within penalty window requires waiting 4x normal reset period when feature enabled; test showing feature has no effect when disabled.
+
+---
+
 ## Success Criteria
 
 ### SC-001: Configuration Simplicity
@@ -502,6 +520,12 @@ The system SHOULD support multiple concurrent time windows (e.g., 100/minute AND
 
 ---
 
+### SC-015: Client Retry Guidance
+**Metric:** API documentation includes recommended retry algorithm with code examples.  
+**Target:** Documentation provides exponential backoff + jitter examples in Python and JavaScript, with clear guidance on respecting Retry-After headers to prevent thundering herd on limit reset.
+
+---
+
 ## Edge Cases & Error Handling
 
 ### Zero-Request Limits
@@ -578,6 +602,9 @@ The system SHOULD support multiple concurrent time windows (e.g., 100/minute AND
   - Persistent storage for distributed rate limit counters
   - Atomic operations (INCR, EXPIRE) for counter management
   - Pub/sub for configuration updates (optional)
+  - **Recommended topology**: Redis Sentinel (3-node: 1 master + 2 replicas) with automatic failover for production deployments
+  - Single instance acceptable for development/staging environments
+  - Redis Cluster supported for high-throughput scenarios requiring sharding
 
 - **redis-py** ≥5.0 OR **aioredis** ≥2.0
   - Python client for Redis operations
@@ -720,12 +747,33 @@ default_window = 60  # seconds
 algorithm = "token_bucket"  # or "sliding_window"
 failure_mode = "fail_open"  # or "fail_closed"
 
+[rate_limiting.client_identification]
+# X-Forwarded-For header trust configuration
+trusted_proxy_depth = 1  # Number of proxy hops to trust (1 = single load balancer)
+# Use rightmost untrusted IP strategy: trust only IP added by last known proxy
+
+[rate_limiting.progressive_penalties]
+enabled = false  # Disabled by default
+detection_window = 3600  # seconds (1 hour)
+violation_threshold = 3  # Number of violations before penalties apply
+penalty_multipliers = [1, 2, 4, 8]  # Cooldown period multipliers
+
 [rate_limiting.redis]
 url = "redis://localhost:6379/0"
+topology = "sentinel"  # "single", "sentinel", or "cluster"
 pool_size = 20
 socket_timeout = 5.0
 circuit_breaker_threshold = 3
 circuit_breaker_timeout = 30
+
+# Sentinel-specific configuration (when topology = "sentinel")
+[rate_limiting.redis.sentinel]
+service_name = "mymaster"
+sentinels = [
+  { host = "sentinel1.example.com", port = 26379 },
+  { host = "sentinel2.example.com", port = 26379 },
+  { host = "sentinel3.example.com", port = 26379 }
+]
 
 [[rate_limiting.endpoints]]
 pattern = "/api/v1/search"
@@ -768,7 +816,7 @@ value = "admin"
 - **Pre-Check Before Redis**: If local in-memory counter shows limit far from exceeded, skip Redis call (risk of slight over-limiting).
 
 ### Security Considerations
-- **IP Spoofing**: Validate X-Forwarded-For header, trust only from configured load balancer IPs.
+- **IP Spoofing**: Extract client IP from X-Forwarded-For header using rightmost untrusted IP strategy (trust only the IP added by the last known proxy). Configure trusted proxy hop depth (default=1 for single load balancer, increase for CDN+LB chains). Validate header format and reject malformed values.
 - **JWT Validation**: Verify signature and expiration before extracting user_id/tier claims.
 - **Redis ACLs**: Configure Redis user with minimal permissions (GET, SET, INCR, EXPIRE only).
 - **DoS via Configuration**: Validate rate limits are non-negative and windows are ≥1 second to prevent accidental DoS.
