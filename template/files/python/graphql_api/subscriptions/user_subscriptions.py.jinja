@@ -1,0 +1,50 @@
+"""User Subscription Resolvers - Real-time updates via WebSocket."""
+
+from typing import AsyncGenerator
+import asyncio
+import strawberry
+
+from {{ package_name }}.graphql_api.types.user import User
+
+
+@strawberry.type
+class UserSubscriptions:
+    """User-related subscription operations for real-time updates."""
+    
+    @strawberry.subscription
+    async def user_created(
+        self,
+        info: strawberry.Info,
+    ) -> AsyncGenerator[User, None]:
+        """
+        Subscribe to user creation events.
+        
+        Demonstrates:
+        - Real-time updates via WebSocket
+        - Async generator pattern for subscriptions
+        - Event broadcasting to multiple subscribers
+        
+        This is a placeholder implementation showing the subscription pattern.
+        In production, replace with actual event bus (Redis pub/sub, etc.).
+        
+        Args:
+            info: GraphQL context
+        
+        Yields:
+            User instances as they are created
+        """
+        # This is a placeholder implementation
+        # In a real app, this would subscribe to an event bus:
+        # 
+        # async for event in info.context.event_bus.subscribe("user.created"):
+        #     user_data = event.payload
+        #     yield User(**user_data)
+        
+        # Mock implementation - yield a sample user after delay
+        await asyncio.sleep(1)
+        yield User(
+            id="new-user-id",
+            name="New User",
+            email="newuser@example.com",
+            avatar=None,
+        )

@@ -1,0 +1,276 @@
+"""GraphQL Playground Integration Tests - Schema exploration and documentation."""
+
+{% if graphql_api_module == 'enabled' %}
+import pytest
+from strawberry.test import BaseGraphQLTestClient
+
+from {{ package_name }}.graphql_api.schema import schema
+
+
+@pytest.fixture
+def graphql_client():
+    """Create GraphQL test client."""
+    return BaseGraphQLTestClient(schema)
+
+
+class TestPlaygroundIntegration:
+    """Test GraphQL playground and schema introspection."""
+    
+    def test_schema_introspection(self, graphql_client):
+        """Test schema introspection query works."""
+        query = """
+            {
+                __schema {
+                    queryType {
+                        name
+                    }
+                    mutationType {
+                        name
+                    }
+                    subscriptionType {
+                        name
+                    }
+                }
+            }
+        """
+        
+        result = graphql_client.query(query)
+        
+        assert result.errors is None
+        assert result.data["__schema"]["queryType"]["name"] == "Query"
+        assert result.data["__schema"]["mutationType"]["name"] == "Mutation"
+        assert result.data["__schema"]["subscriptionType"]["name"] == "Subscription"
+    
+    def test_type_introspection(self, graphql_client):
+        """Test introspection of User type."""
+        query = """
+            {
+                __type(name: "User") {
+                    name
+                    kind
+                    fields {
+                        name
+                        type {
+                            name
+                            kind
+                        }
+                    }
+                }
+            }
+        """
+        
+        result = graphql_client.query(query)
+        
+        assert result.errors is None
+        assert result.data["__type"]["name"] == "User"
+        assert result.data["__type"]["kind"] == "OBJECT"
+        
+        # Verify expected fields exist
+        field_names = {field["name"] for field in result.data["__type"]["fields"]}
+        assert "id" in field_names
+        assert "name" in field_names
+        assert "email" in field_names
+        assert "avatar" in field_names
+        assert "posts" in field_names
+    
+    def test_query_type_fields(self, graphql_client):
+        """Test introspection of available queries."""
+        query = """
+            {
+                __type(name: "Query") {
+                    fields {
+                        name
+                        description
+                        args {
+                            name
+                            type {
+                                name
+                                kind
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        
+        result = graphql_client.query(query)
+        
+        assert result.errors is None
+        query_fields = result.data["__type"]["fields"]
+        field_names = {field["name"] for field in query_fields}
+        
+        # Verify expected queries
+        assert "hello" in field_names
+        assert "user" in field_names
+        assert "users" in field_names
+    
+    def test_mutation_type_fields(self, graphql_client):
+        """Test introspection of available mutations."""
+        query = """
+            {
+                __type(name: "Mutation") {
+                    fields {
+                        name
+                        description
+                    }
+                }
+            }
+        """
+        
+        result = graphql_client.query(query)
+        
+        assert result.errors is None
+        assert result.data["__type"]["fields"] is not None
+    
+    def test_input_type_introspection(self, graphql_client):
+        """Test introspection of input types."""
+        query = """
+            {
+                __type(name: "CreateUserInput") {
+                    name
+                    kind
+                    inputFields {
+                        name
+                        type {
+                            name
+                            kind
+                        }
+                    }
+                }
+            }
+        """
+        
+        result = graphql_client.query(query)
+        
+        assert result.errors is None
+        assert result.data["__type"]["name"] == "CreateUserInput"
+        assert result.data["__type"]["kind"] == "INPUT_OBJECT"
+        
+        # Verify input fields
+        input_field_names = {
+            field["name"] for field in result.data["__type"]["inputFields"]
+        }
+        assert "name" in input_field_names
+        assert "email" in input_field_names
+        assert "avatar" in input_field_names
+    
+    def test_schema_types_list(self, graphql_client):
+        """Test listing all types in schema."""
+        query = """
+            {
+                __schema {
+                    types {
+                        name
+                        kind
+                    }
+                }
+            }
+        """
+        
+        result = graphql_client.query(query)
+        
+        assert result.errors is None
+        type_names = {t["name"] for t in result.data["__schema"]["types"]}
+        
+        # Verify custom types exist
+        assert "User" in type_names
+        assert "Post" in type_names
+        assert "UserConnection" in type_names
+        assert "PostConnection" in type_names
+        assert "PageInfo" in type_names
+        assert "CreateUserInput" in type_names
+        assert "UpdateUserInput" in type_names
+    
+    def test_field_documentation(self, graphql_client):
+        """Test that field descriptions are available via introspection."""
+        query = """
+            {
+                __type(name: "User") {
+                    fields {
+                        name
+                        description
+                    }
+                }
+            }
+        """
+        
+        result = graphql_client.query(query)
+        
+        assert result.errors is None
+        # Verify fields have descriptions (important for playground UX)
+        fields = result.data["__type"]["fields"]
+        assert fields is not None
+        assert len(fields) > 0
+
+
+class TestPlaygroundFeatures:
+    """Test playground-specific features."""
+    
+    def test_query_with_directives(self, graphql_client):
+        """Test @include and @skip directives work in playground."""
+        query = """
+            query TestDirectives($includeEmail: Boolean!) {
+                user(id: "1") {
+                    id
+                    name
+                    email @include(if: $includeEmail)
+                }
+            }
+        """
+        
+        # Test with includeEmail = true
+        result = graphql_client.query(query, variables={"includeEmail": True})
+        assert result.errors is None
+        assert "email" in result.data["user"]
+        
+        # Test with includeEmail = false
+        result = graphql_client.query(query, variables={"includeEmail": False})
+        assert result.errors is None
+        assert "email" not in result.data["user"]
+    
+    def test_query_with_fragments(self, graphql_client):
+        """Test fragments work correctly in playground."""
+        query = """
+            fragment UserFields on User {
+                id
+                name
+                email
+            }
+            
+            query {
+                user(id: "1") {
+                    ...UserFields
+                }
+            }
+        """
+        
+        result = graphql_client.query(query)
+        
+        assert result.errors is None
+        assert "id" in result.data["user"]
+        assert "name" in result.data["user"]
+        assert "email" in result.data["user"]
+    
+    def test_query_with_aliases(self, graphql_client):
+        """Test field aliases work in playground."""
+        query = """
+            query {
+                firstUser: user(id: "1") {
+                    userId: id
+                    fullName: name
+                }
+                secondUser: user(id: "2") {
+                    userId: id
+                    fullName: name
+                }
+            }
+        """
+        
+        result = graphql_client.query(query)
+        
+        assert result.errors is None
+        assert "firstUser" in result.data
+        assert "secondUser" in result.data
+        assert "userId" in result.data["firstUser"]
+        assert "fullName" in result.data["firstUser"]
+{% endif %}

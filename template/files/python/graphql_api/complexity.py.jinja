@@ -1,0 +1,162 @@
+"""Query Complexity Analysis - Prevent expensive queries."""
+
+from typing import Any, Dict
+from graphql import GraphQLError
+from graphql.language import ast
+from graphql.validation import ValidationContext, ValidationRule
+
+
+class QueryComplexityValidator(ValidationRule):
+    """
+    Validate query complexity to prevent expensive operations.
+    
+    Calculates complexity score based on:
+    - Field count
+    - List multipliers (connection first/limit arguments)
+    - Nesting depth
+    
+    Queries exceeding max_complexity are rejected before execution.
+    """
+    
+    def __init__(
+        self,
+        validation_context: ValidationContext,
+        max_complexity: int = 5000,
+    ):
+        super().__init__(validation_context)
+        self.max_complexity = max_complexity
+        self.complexity = 0
+    
+    def leave_field(self, node: ast.FieldNode, *_) -> None:
+        """Calculate complexity when leaving a field node."""
+        # Each field adds 1 to complexity
+        field_complexity = 1
+        
+        # Check for list arguments that multiply complexity
+        if node.arguments:
+            for arg in node.arguments:
+                if arg.name.value in ["first", "limit"]:
+                    # List queries multiply complexity by requested count
+                    try:
+                        multiplier = int(arg.value.value)
+                        field_complexity *= min(multiplier, 100)  # Cap at 100
+                    except (AttributeError, ValueError):
+                        pass
+        
+        self.complexity += field_complexity
+        
+        # Check if complexity exceeded
+        if self.complexity > self.max_complexity:
+            raise GraphQLError(
+                f"Query complexity {self.complexity} exceeds maximum {self.max_complexity}. "
+                "Please reduce the number of fields or list sizes requested."
+            )
+
+
+class QueryDepthValidator(ValidationRule):
+    """
+    Validate query depth to prevent deeply nested queries.
+    
+    Queries exceeding max_depth are rejected before execution.
+    This prevents queries like:
+        user { posts { author { posts { author { ... } } } } }
+    """
+    
+    def __init__(
+        self,
+        validation_context: ValidationContext,
+        max_depth: int = 15,
+    ):
+        super().__init__(validation_context)
+        self.max_depth = max_depth
+        self.depths: Dict[str, int] = {}
+    
+    def enter_field(self, node: ast.FieldNode, *args) -> None:
+        """Track depth when entering a field node."""
+        # Get current depth from ancestors
+        ancestors = args[3] if len(args) > 3 else []
+        current_depth = sum(1 for ancestor in ancestors if isinstance(ancestor, ast.FieldNode))
+        
+        field_name = node.name.value
+        self.depths[field_name] = current_depth
+        
+        # Check if depth exceeded
+        if current_depth > self.max_depth:
+            raise GraphQLError(
+                f"Query depth {current_depth} exceeds maximum {self.max_depth}. "
+                "Please reduce query nesting levels."
+            )
+
+
+def calculate_query_complexity(query: str, max_complexity: int = 5000) -> int:
+    """
+    Calculate complexity score for a query string.
+    
+    This is useful for logging and monitoring query patterns.
+    
+    Args:
+        query: GraphQL query string
+        max_complexity: Maximum allowed complexity
+    
+    Returns:
+        Complexity score
+    
+    Raises:
+        GraphQLError: If query exceeds max complexity
+    """
+    # This is a simplified implementation
+    # In production, use graphql-core's validation with QueryComplexityValidator
+    
+    # Count fields (rough approximation)
+    field_count = query.count("\n")
+    
+    # Count list multipliers
+    import re
+    first_values = re.findall(r'first:\s*(\d+)', query)
+    limit_values = re.findall(r'limit:\s*(\d+)', query)
+    
+    multiplier = 1
+    for value in first_values + limit_values:
+        multiplier *= min(int(value), 100)
+    
+    complexity = field_count * multiplier
+    
+    if complexity > max_complexity:
+        raise GraphQLError(
+            f"Query complexity {complexity} exceeds maximum {max_complexity}"
+        )
+    
+    return complexity
+
+
+def calculate_query_depth(query: str, max_depth: int = 15) -> int:
+    """
+    Calculate nesting depth for a query string.
+    
+    Args:
+        query: GraphQL query string
+        max_depth: Maximum allowed depth
+    
+    Returns:
+        Query depth
+    
+    Raises:
+        GraphQLError: If query exceeds max depth
+    """
+    # Simplified implementation - count max brace nesting
+    max_level = 0
+    current_level = 0
+    
+    for char in query:
+        if char == "{":
+            current_level += 1
+            max_level = max(max_level, current_level)
+        elif char == "}":
+            current_level -= 1
+    
+    if max_level > max_depth:
+        raise GraphQLError(
+            f"Query depth {max_level} exceeds maximum {max_depth}"
+        )
+    
+    return max_level

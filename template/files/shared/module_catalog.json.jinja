@@ -57,6 +57,32 @@
       ]
     },
     {
+      "name": "graphql_api",
+      "prompt_key": "graphql_api_module",
+      "default_state": "disabled",
+      "selected_state": "{{ 'enabled' if graphql_api_module | lower == 'enabled' else 'disabled' }}",
+      "description": "Strawberry GraphQL API with DataLoaders, mutations, subscriptions, pagination, and security controls.",
+      "dependencies": ["strawberry-graphql", "fastapi", "httpx", "aiodataloader"],
+      "docs_path": "docs/modules/graphql.md",
+      "ci_jobs": ["graphql-api-smoke"],
+      "validation_commands": [
+        "uv run pytest tests/graphql/",
+        "uv run uvicorn {{ package_name }}.graphql_api.main:app --host 0.0.0.0 --port 8000"
+      ],
+      "features": [
+        "Flexible field selection (query only what you need)",
+        "Interactive GraphQL playground with schema explorer",
+        "DataLoader optimization (N+1 query prevention)",
+        "Mutations for create/update/delete operations",
+        "Real-time subscriptions via WebSocket",
+        "Cursor and offset-based pagination",
+        "Query depth limiting (max 15 levels)",
+        "Query complexity analysis (max 5000 points)",
+        "Per-field authentication and authorization",
+        "Comprehensive error handling with validation"
+      ]
+    },
+    {
       "name": "mcp_module",
       "prompt_key": "mcp_module",
       "default_state": "disabled",

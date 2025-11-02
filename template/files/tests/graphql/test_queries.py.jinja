@@ -1,0 +1,251 @@
+"""GraphQL Query Tests - Field selection and flexible querying."""
+
+{% if graphql_api_module == 'enabled' %}
+import pytest
+from strawberry.test import BaseGraphQLTestClient
+
+from {{ package_name }}.graphql_api.schema import schema
+
+
+@pytest.fixture
+def graphql_client():
+    """Create GraphQL test client."""
+    return BaseGraphQLTestClient(schema)
+
+
+class TestUserQueries:
+    """Test User query operations with flexible field selection."""
+    
+    def test_query_user_minimal_fields(self, graphql_client):
+        """Test querying user with only id and name fields."""
+        query = """
+            query {
+                user(id: "1") {
+                    id
+                    name
+                }
+            }
+        """
+        
+        result = graphql_client.query(query)
+        
+        assert result.errors is None
+        assert result.data["user"]["id"] == "1"
+        assert result.data["user"]["name"]
+        # Verify only requested fields are present
+        assert set(result.data["user"].keys()) == {"id", "name"}
+    
+    def test_query_user_all_fields(self, graphql_client):
+        """Test querying user with all available fields."""
+        query = """
+            query {
+                user(id: "1") {
+                    id
+                    name
+                    email
+                    avatar
+                }
+            }
+        """
+        
+        result = graphql_client.query(query)
+        
+        assert result.errors is None
+        assert result.data["user"]["id"] == "1"
+        assert result.data["user"]["name"]
+        assert result.data["user"]["email"]
+        # avatar may be null but field should be present
+        assert "avatar" in result.data["user"]
+    
+    def test_query_user_with_nested_posts(self, graphql_client):
+        """Test querying user with nested posts (relational data)."""
+        query = """
+            query {
+                user(id: "1") {
+                    id
+                    name
+                    posts(first: 5) {
+                        edges {
+                            node {
+                                id
+                                title
+                            }
+                        }
+                        pageInfo {
+                            hasNextPage
+                        }
+                    }
+                }
+            }
+        """
+        
+        result = graphql_client.query(query)
+        
+        assert result.errors is None
+        assert result.data["user"]["id"] == "1"
+        assert isinstance(result.data["user"]["posts"]["edges"], list)
+        assert "hasNextPage" in result.data["user"]["posts"]["pageInfo"]
+    
+    def test_query_user_not_found(self, graphql_client):
+        """Test querying non-existent user returns None."""
+        query = """
+            query {
+                user(id: "99999") {
+                    id
+                    name
+                }
+            }
+        """
+        
+        result = graphql_client.query(query)
+        
+        assert result.errors is None
+        assert result.data["user"] is None
+    
+    def test_query_users_list(self, graphql_client):
+        """Test querying list of users with pagination."""
+        query = """
+            query {
+                users(first: 10) {
+                    edges {
+                        node {
+                            id
+                            name
+                            email
+                        }
+                        cursor
+                    }
+                    pageInfo {
+                        hasNextPage
+                        hasPreviousPage
+                        startCursor
+                        endCursor
+                    }
+                    totalCount
+                }
+            }
+        """
+        
+        result = graphql_client.query(query)
+        
+        assert result.errors is None
+        assert isinstance(result.data["users"]["edges"], list)
+        assert "pageInfo" in result.data["users"]
+        assert isinstance(result.data["users"]["totalCount"], int)
+    
+    def test_query_users_with_variables(self, graphql_client):
+        """Test parameterized queries with variables."""
+        query = """
+            query GetUser($userId: ID!) {
+                user(id: $userId) {
+                    id
+                    name
+                    email
+                }
+            }
+        """
+        
+        result = graphql_client.query(query, variables={"userId": "1"})
+        
+        assert result.errors is None
+        assert result.data["user"]["id"] == "1"
+    
+    def test_query_selective_post_fields(self, graphql_client):
+        """Test selective field fetching on nested posts."""
+        query = """
+            query {
+                user(id: "1") {
+                    id
+                    posts(first: 3) {
+                        edges {
+                            node {
+                                id
+                                title
+                                # Deliberately NOT fetching body and createdAt
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        
+        result = graphql_client.query(query)
+        
+        assert result.errors is None
+        user_posts = result.data["user"]["posts"]["edges"]
+        if user_posts:
+            post_node = user_posts[0]["node"]
+            assert "id" in post_node
+            assert "title" in post_node
+            # body and createdAt should not be present
+            assert "body" not in post_node
+            assert "createdAt" not in post_node
+
+
+class TestFieldSelection:
+    """Test flexible field selection capabilities."""
+    
+    def test_different_field_combinations(self, graphql_client):
+        """Test various field selection combinations return correct data."""
+        # Test 1: Only id
+        result1 = graphql_client.query('query { user(id: "1") { id } }')
+        assert result1.errors is None
+        assert set(result1.data["user"].keys()) == {"id"}
+        
+        # Test 2: id and email
+        result2 = graphql_client.query('query { user(id: "1") { id email } }')
+        assert result2.errors is None
+        assert set(result2.data["user"].keys()) == {"id", "email"}
+        
+        # Test 3: All fields
+        result3 = graphql_client.query(
+            'query { user(id: "1") { id name email avatar } }'
+        )
+        assert result3.errors is None
+        assert set(result3.data["user"].keys()) == {"id", "name", "email", "avatar"}
+    
+    def test_query_aliases(self, graphql_client):
+        """Test field aliasing for custom response structure."""
+        query = """
+            query {
+                primaryUser: user(id: "1") {
+                    id
+                    fullName: name
+                }
+                secondaryUser: user(id: "2") {
+                    id
+                    fullName: name
+                }
+            }
+        """
+        
+        result = graphql_client.query(query)
+        
+        assert result.errors is None
+        assert "primaryUser" in result.data
+        assert "secondaryUser" in result.data
+        assert "fullName" in result.data["primaryUser"]
+    
+    def test_query_fragments(self, graphql_client):
+        """Test GraphQL fragments for reusable field selections."""
+        query = """
+            fragment UserBasic on User {
+                id
+                name
+                email
+            }
+            
+            query {
+                user(id: "1") {
+                    ...UserBasic
+                }
+            }
+        """
+        
+        result = graphql_client.query(query)
+        
+        assert result.errors is None
+        assert "id" in result.data["user"]
+        assert "name" in result.data["user"]
+        assert "email" in result.data["user"]
+{% endif %}
