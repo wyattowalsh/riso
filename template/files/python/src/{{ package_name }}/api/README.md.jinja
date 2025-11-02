@@ -1,0 +1,287 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+# FastAPI Module (Disabled)
+
+The FastAPI module is not enabled for this project.
+{%- else %}
+# {{ project_name }} - FastAPI API
+
+Production-ready REST API built with FastAPI, featuring auto-generated documentation, type safety, and comprehensive testing.
+
+## Quick Start
+
+### Start Development Server
+
+```bash
+# From project root
+uv run uvicorn {{ package_name }}.api.main:app --reload
+```
+
+Server starts at **http://localhost:8000**
+
+### Access Documentation
+
+- **Swagger UI**: http://localhost:8000/docs (interactive testing)
+- **ReDoc**: http://localhost:8000/redoc (documentation)
+- **OpenAPI**: http://localhost:8000/openapi.json (schema)
+
+### Test the API
+
+```bash
+# Run all API tests
+uv run pytest tests/api/ -v
+
+# With coverage
+uv run pytest tests/api/ --cov={{ package_name }}.api
+```
+
+## Project Structure
+
+```
+{{ package_name }}/api/
+??? main.py           # Application entry point
+??? config.py         # Settings (environment-based)
+??? routes/           # API endpoints by domain
+?   ??? health.py    # Health checks
+?   ??? examples.py  # Example CRUD
+??? models/           # Pydantic models
+?   ??? requests.py  # Request validation
+?   ??? responses.py # Response serialization
+??? middleware/       # Cross-cutting concerns
+    ??? cors.py      # CORS configuration
+    ??? errors.py    # Error handling
+```
+
+## Configuration
+
+Create a `.env` file in project root:
+
+```bash
+# Copy template
+cp .env.example .env
+
+# Edit values
+nano .env
+```
+
+**Key Settings**:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `HOST` | `0.0.0.0` | Bind address |
+| `PORT` | `8000` | Server port |
+| `RELOAD` | `true` | Auto-reload (dev only) |
+| `CORS_ORIGINS` | `["http://localhost:3000"]` | Allowed origins |
+| `LOG_LEVEL` | `INFO` | Log level |
+| `ENVIRONMENT` | `development` | Environment |
+
+**Production Settings**:
+```bash
+ENVIRONMENT=production
+RELOAD=false
+LOG_LEVEL=WARNING
+CORS_ORIGINS=["https://example.com"]
+```
+
+## Adding Endpoints
+
+### 1. Create Route Module
+
+```python
+# {{ package_name }}/api/routes/users.py
+from fastapi import APIRouter
+from {{ package_name }}.api.models.requests import UserRequest
+from {{ package_name }}.api.models.responses import UserResponse
+
+router = APIRouter(prefix="/users", tags=["Users"])
+
+@router.get("/", response_model=list[UserResponse])
+async def list_users():
+    return []
+```
+
+### 2. Register Router
+
+```python
+# {{ package_name }}/api/main.py
+from {{ package_name }}.api.routes import users
+
+app.include_router(users.router)
+```
+
+### 3. Add Tests
+
+```python
+# tests/api/test_users.py
+def test_list_users(client):
+    response = client.get("/users/")
+    assert response.status_code == 200
+```
+
+## Health Checks
+
+The API provides three health endpoints:
+
+```bash
+# Overall health
+curl http://localhost:8000/health/
+
+# Kubernetes readiness
+curl http://localhost:8000/health/ready
+
+# Kubernetes liveness  
+curl http://localhost:8000/health/live
+```
+
+## Testing
+
+```bash
+# Run all tests
+uv run pytest tests/api/ -v
+
+# With coverage
+uv run pytest tests/api/ --cov={{ package_name }}.api --cov-report=term-missing
+
+# Specific test file
+uv run pytest tests/api/test_health.py -v
+
+# With detailed output
+uv run pytest tests/api/ -vv --tb=short
+```
+
+## Deployment
+
+### Docker
+
+```bash
+# Build image
+docker build -t {{ project_slug }}-api:latest .
+
+# Run container
+docker run -p 8000:8000 \
+  -e ENVIRONMENT=production \
+  -e RELOAD=false \
+  {{ project_slug }}-api:latest
+```
+
+### Production Server
+
+```bash
+# With Gunicorn + Uvicorn workers
+gunicorn {{ package_name }}.api.main:app \
+  --workers 4 \
+  --worker-class uvicorn.workers.UvicornWorker \
+  --bind 0.0.0.0:8000
+```
+
+## Troubleshooting
+
+### Port Already in Use
+
+```bash
+# Find process using port 8000
+lsof -i :8000
+
+# Use different port
+uv run uvicorn {{ package_name }}.api.main:app --port 8001
+```
+
+### CORS Errors
+
+Update `.env`:
+
+```bash
+CORS_ORIGINS=["http://localhost:3000","http://localhost:5173"]
+```
+
+### Import Errors
+
+```bash
+# Reinstall dependencies
+uv sync
+
+# Verify installation
+uv run python -c "import {{ package_name }}.api.main; print('OK')"
+```
+
+## Documentation
+
+- **Full Guide**: `docs/modules/api-fastapi.md`
+- **Patterns**: `.github/context/fastapi-patterns.md`
+- **FastAPI Docs**: https://fastapi.tiangolo.com
+
+## Examples
+
+### Make API Request
+
+```bash
+# Create example
+curl -X POST http://localhost:8000/examples/ \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test","value":42,"tags":["demo"]}'
+
+# List examples
+curl http://localhost:8000/examples/
+
+# Get specific example
+curl http://localhost:8000/examples/{id}
+
+# Update example
+curl -X PUT http://localhost:8000/examples/{id} \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Updated"}'
+
+# Delete example
+curl -X DELETE http://localhost:8000/examples/{id}
+```
+
+### Use in Python
+
+```python
+import httpx
+
+async with httpx.AsyncClient() as client:
+    response = await client.get("http://localhost:8000/examples/")
+    print(response.json())
+```
+
+## Development
+
+### Auto-reload
+
+Changes to Python files automatically reload the server:
+
+```bash
+uv run uvicorn {{ package_name }}.api.main:app --reload
+```
+
+### Debug Mode
+
+```bash
+LOG_LEVEL=DEBUG uv run uvicorn {{ package_name }}.api.main:app --reload
+```
+
+### Interactive Shell
+
+```python
+# Start Python shell
+uv run python
+
+# Import and test
+from {{ package_name }}.api.config import get_settings
+settings = get_settings()
+print(settings.model_dump())
+```
+
+## Support
+
+For issues or questions:
+
+1. Check `docs/modules/api-fastapi.md` for detailed documentation
+2. Review `.github/context/fastapi-patterns.md` for patterns
+3. Run tests to verify setup: `uv run pytest tests/api/ -v`
+4. Check FastAPI docs: https://fastapi.tiangolo.com
+
+---
+
+**Generated by Riso Template** | FastAPI {{ "0.120+" }}
+{%- endif %}

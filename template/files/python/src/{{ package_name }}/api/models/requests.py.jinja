@@ -1,0 +1,100 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""API request models - disabled for this render."""
+{%- else %}
+"""Request models for API endpoints.
+
+All request models use Pydantic for automatic validation.
+Validation errors return 422 status with detailed field errors.
+"""
+from __future__ import annotations
+
+from pydantic import BaseModel, Field, field_validator
+
+
+class ExampleCreateRequest(BaseModel):
+    """Request model for creating an example.
+    
+    Demonstrates validation patterns including:
+    - Required fields with constraints
+    - Optional fields
+    - Custom field validators
+    - List validation
+    """
+    
+    name: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="Example name (1-100 characters, cannot be whitespace only)",
+        examples=["Test Example"]
+    )
+    value: int = Field(
+        ...,
+        ge=0,
+        description="Non-negative integer value",
+        examples=[42]
+    )
+    description: str | None = Field(
+        default=None,
+        max_length=500,
+        description="Optional description (max 500 characters)",
+        examples=["This is an example"]
+    )
+    tags: list[str] | None = Field(
+        default=None,
+        max_length=10,
+        description="Optional tags (max 10 tags, each 1-50 characters)",
+        examples=[["demo", "test"]]
+    )
+    
+    @field_validator("name")
+    @classmethod
+    def name_must_not_be_whitespace(cls, v: str) -> str:
+        """Validate name is not empty or whitespace only."""
+        if not v.strip():
+            raise ValueError("Name cannot be whitespace only")
+        return v.strip()
+    
+    @field_validator("tags")
+    @classmethod
+    def validate_tag_lengths(cls, v: list[str] | None) -> list[str] | None:
+        """Validate each tag is between 1-50 characters."""
+        if v is not None:
+            for tag in v:
+                if not 1 <= len(tag) <= 50:
+                    raise ValueError("Each tag must be 1-50 characters")
+        return v
+
+
+class ExampleUpdateRequest(BaseModel):
+    """Request model for updating an example.
+    
+    All fields are optional - only provided fields will be updated.
+    """
+    
+    name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=100,
+        description="Example name",
+        examples=["Updated Example"]
+    )
+    value: int | None = Field(
+        default=None,
+        ge=0,
+        description="Non-negative integer value",
+        examples=[100]
+    )
+    description: str | None = Field(
+        default=None,
+        max_length=500,
+        description="Optional description",
+        examples=["Updated description"]
+    )
+    tags: list[str] | None = Field(
+        default=None,
+        max_length=10,
+        description="Optional tags",
+        examples=[["updated"]]
+    )
+{%- endif %}

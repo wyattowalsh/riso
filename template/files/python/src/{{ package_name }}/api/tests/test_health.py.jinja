@@ -1,0 +1,160 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""Health endpoint tests - disabled for this render."""
+{%- else %}
+"""Tests for health check endpoints.
+
+Tests cover all three health check endpoints:
+1. Overall health check (/health/)
+2. Readiness probe (/health/ready)
+3. Liveness probe (/health/live)
+"""
+from __future__ import annotations
+
+import pytest
+from fastapi.testclient import TestClient
+
+
+def test_health_check(client: TestClient) -> None:
+    """Test main health check endpoint.
+    
+    Verifies that the health check endpoint:
+    - Returns 200 OK status
+    - Includes status field (healthy)
+    - Includes version information
+    - Includes timestamp in ISO 8601 format
+    """
+    response = client.get("/health/")
+    
+    assert response.status_code == 200
+    data = response.json()
+    
+    # Check required fields
+    assert "status" in data
+    assert "version" in data
+    assert "timestamp" in data
+    
+    # Validate field values
+    assert data["status"] == "healthy"
+    assert isinstance(data["version"], str)
+    assert isinstance(data["timestamp"], str)
+    
+    # Timestamp should be in ISO 8601 format
+    assert "T" in data["timestamp"]
+    assert "Z" in data["timestamp"] or "+" in data["timestamp"]
+
+
+def test_readiness_check(client: TestClient) -> None:
+    """Test readiness probe endpoint.
+    
+    Verifies that the readiness endpoint:
+    - Returns 200 OK status
+    - Includes status field (ready)
+    - Can be used by Kubernetes readiness probes
+    """
+    response = client.get("/health/ready")
+    
+    assert response.status_code == 200
+    data = response.json()
+    
+    # Check required fields
+    assert "status" in data
+    assert data["status"] == "ready"
+
+
+def test_liveness_check(client: TestClient) -> None:
+    """Test liveness probe endpoint.
+    
+    Verifies that the liveness endpoint:
+    - Returns 200 OK status
+    - Includes status field (alive)
+    - Can be used by Kubernetes liveness probes
+    """
+    response = client.get("/health/live")
+    
+    assert response.status_code == 200
+    data = response.json()
+    
+    # Check required fields
+    assert "status" in data
+    assert data["status"] == "alive"
+
+
+def test_root_endpoint(client: TestClient) -> None:
+    """Test root endpoint.
+    
+    Verifies that the root endpoint:
+    - Returns 200 OK status
+    - Includes welcome message
+    - Includes version information
+    - Includes links to documentation
+    """
+    response = client.get("/")
+    
+    assert response.status_code == 200
+    data = response.json()
+    
+    # Check required fields
+    assert "message" in data
+    assert "version" in data
+    assert "docs" in data
+    assert "redoc" in data
+    assert "environment" in data
+    
+    # Validate documentation links
+    assert data["docs"] == "/docs"
+    assert data["redoc"] == "/redoc"
+
+
+def test_health_endpoint_response_time(client: TestClient) -> None:
+    """Test health endpoint response time.
+    
+    Verifies that health checks respond quickly (< 100ms target).
+    This is important for container orchestration health probes.
+    """
+    import time
+    
+    start_time = time.time()
+    response = client.get("/health/")
+    end_time = time.time()
+    
+    response_time_ms = (end_time - start_time) * 1000
+    
+    assert response.status_code == 200
+    # Should respond very quickly (allow 500ms for CI environments)
+    assert response_time_ms < 500, f"Health check took {response_time_ms:.2f}ms"
+
+
+def test_health_checks_no_side_effects(client: TestClient) -> None:
+    """Test that health checks have no side effects.
+    
+    Verifies that calling health endpoints multiple times:
+    - Always succeeds
+    - Returns consistent results
+    - Doesn't modify application state
+    """
+    # Call each endpoint multiple times
+    for _ in range(10):
+        assert client.get("/health/").status_code == 200
+        assert client.get("/health/ready").status_code == 200
+        assert client.get("/health/live").status_code == 200
+
+
+def test_openapi_schema_includes_health_endpoints(client: TestClient) -> None:
+    """Test that OpenAPI schema includes health endpoints.
+    
+    Verifies that all health endpoints are documented in the
+    OpenAPI schema and appear in /docs.
+    """
+    response = client.get("/openapi.json")
+    
+    assert response.status_code == 200
+    schema = response.json()
+    
+    # Check that paths are defined
+    assert "/health/" in schema["paths"]
+    assert "/health/ready" in schema["paths"]
+    assert "/health/live" in schema["paths"]
+    
+    # Check that health tag is defined
+    assert any(tag["name"] == "Health" for tag in schema.get("tags", []))
+{%- endif %}

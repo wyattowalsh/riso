@@ -1,0 +1,17 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""API routes module - disabled for this render."""
+{%- else %}
+"""API route modules.
+
+This package contains all API route handlers organized by domain.
+Each route module exports a router that is registered in main.py.
+"""
+from __future__ import annotations
+
+__all__ = ["health", "examples"]
+
+try:
+    from . import health, examples
+except ImportError:  # pragma: no cover
+    pass
+{%- endif %}
