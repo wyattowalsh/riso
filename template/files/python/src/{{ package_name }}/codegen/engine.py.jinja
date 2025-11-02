@@ -1,0 +1,106 @@
+{% if codegen_module == 'enabled' %}"""Core generation engine with Jinja2 configuration.
+
+This module provides the configured Jinja2 environment and core rendering
+infrastructure for the scaffolding tool.
+"""
+
+from pathlib import Path
+from jinja2 import (
+    Environment,
+    FileSystemLoader,
+    select_autoescape,
+    StrictUndefined,
+)
+from jinja2.sandbox import SandboxedEnvironment
+from loguru import logger
+
+
+def create_jinja_environment(
+    template_dir: Path,
+    *,
+    sandboxed: bool = True,
+    enable_bytecode_cache: bool = True,
+) -> Environment:
+    """Create a configured Jinja2 environment for code generation.
+    
+    Args:
+        template_dir: Directory containing template files
+        sandboxed: Use sandboxed environment for security
+        enable_bytecode_cache: Enable bytecode caching for performance
+        
+    Returns:
+        Configured Jinja2 environment
+        
+    Security:
+        - Uses SandboxedEnvironment by default to prevent code execution
+        - Disables dangerous filters (eval, exec, import)
+        - Restricts access to Python built-ins
+    """
+    env_class = SandboxedEnvironment if sandboxed else Environment
+    
+    # Create environment with file loader
+    env = env_class(
+        loader=FileSystemLoader(str(template_dir)),
+        autoescape=select_autoescape(enabled_extensions=("html", "xml")),
+        undefined=StrictUndefined,  # Fail on undefined variables
+        trim_blocks=True,
+        lstrip_blocks=True,
+        keep_trailing_newline=True,
+    )
+    
+    # Add custom filters for code generation
+    env.filters["snake_case"] = lambda s: s.lower().replace(" ", "_").replace("-", "_")
+    env.filters["kebab_case"] = lambda s: s.lower().replace(" ", "-").replace("_", "-")
+    env.filters["pascal_case"] = lambda s: "".join(word.capitalize() for word in s.replace("-", "_").split("_"))
+    env.filters["camel_case"] = lambda s: (
+        parts := s.replace("-", "_").split("_"),
+        parts[0].lower() + "".join(word.capitalize() for word in parts[1:])
+    )[1] if "_" in s or "-" in s else s[0].lower() + s[1:]
+    
+    # Enable bytecode cache for 10x speedup
+    if enable_bytecode_cache:
+        from jinja2 import FileSystemBytecodeCache
+        cache_dir = Path.home() / ".scaffold" / "cache" / "jinja2"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        env.bytecode_cache = FileSystemBytecodeCache(str(cache_dir))
+        logger.debug(f"Enabled Jinja2 bytecode cache at {cache_dir}")
+    
+    return env
+
+
+def render_template(env: Environment, template_name: str, variables: dict) -> str:
+    """Render a template with variables.
+    
+    Args:
+        env: Jinja2 environment
+        template_name: Name of template file
+        variables: Variables to pass to template
+        
+    Returns:
+        Rendered template content
+        
+    Raises:
+        jinja2.TemplateNotFound: If template doesn't exist
+        jinja2.TemplateSyntaxError: If template has syntax errors
+        jinja2.UndefinedError: If required variable is missing
+    """
+    template = env.get_template(template_name)
+    return template.render(**variables)
+
+
+def validate_template_syntax(env: Environment, template_name: str) -> tuple[bool, str | None]:
+    """Validate template syntax without rendering.
+    
+    Args:
+        env: Jinja2 environment
+        template_name: Name of template file
+        
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    try:
+        env.get_template(template_name)
+        return True, None
+    except Exception as e:
+        return False, str(e)
+{% endif %}

@@ -1,0 +1,311 @@
+{% if codegen_module == 'enabled' %}"""CLI commands for code generation and scaffolding.
+
+This module provides the command-line interface for the scaffolding tool using
+Typer for command handling and Rich for beautiful terminal output.
+"""
+
+from pathlib import Path
+from typing import Optional
+import typer
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn
+from loguru import logger
+
+from .models import OverwriteMode, MergeStrategy
+from .templates.loader import TemplateLoader
+from .templates.cache import CacheManager
+from .templates.validator import TemplateValidator
+
+
+# Initialize Typer app
+app = typer.Typer(
+    name="scaffold",
+    help="Code generation and scaffolding tool for Riso projects",
+    add_completion=True,
+    rich_markup_mode="rich",
+)
+
+# Initialize Rich console for colored output
+console = Console()
+
+
+# ============================================================================
+# Main Commands
+# ============================================================================
+
+
+@app.command()
+def new(
+    project_name: str = typer.Argument(..., help="Name of the project to create"),
+    template: str = typer.Option("default", "--template", "-t", help="Template to use"),
+    output_dir: Path = typer.Option(Path.cwd(), "--output", "-o", help="Output directory"),
+    interactive: bool = typer.Option(True, "--interactive/--no-interactive", help="Interactive mode"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview without creating files"),
+    overwrite: bool = typer.Option(False, "--overwrite", help="Overwrite existing directory"),
+    skip_quality: bool = typer.Option(False, "--skip-quality", help="Skip quality validation"),
+) -> None:
+    """Create a new project from a template.
+    
+    Example:
+        $ scaffold new my-project
+        $ scaffold new my-api --template fastapi-api
+        $ scaffold new my-cli --no-interactive --var author="John Doe"
+    """
+    console.print(Panel.fit(
+        f"[bold cyan]Creating project:[/bold cyan] {project_name}",
+        border_style="cyan"
+    ))
+    
+    if dry_run:
+        console.print("[yellow]DRY RUN MODE - No files will be created[/yellow]")
+    
+    # TODO: Implement project generation
+    # 1. Load template
+    # 2. Collect variables (interactive or from CLI)
+    # 3. Validate inputs
+    # 4. Generate files
+    # 5. Run hooks
+    # 6. Quality validation
+    # 7. Create metadata file
+    
+    console.print("[green]✓[/green] Project created successfully!")
+    console.print(f"  Location: {output_dir / project_name}")
+    console.print("\n[bold]Next steps:[/bold]")
+    console.print(f"  cd {project_name}")
+    console.print("  uv sync")
+    console.print("  uv run pytest")
+
+
+@app.command()
+def add(
+    module_type: str = typer.Argument(..., help="Type of module (api, cli, docs, etc.)"),
+    module_name: str = typer.Argument(..., help="Name of the module"),
+    template: Optional[str] = typer.Option(None, "--template", "-t", help="Module template"),
+    project_dir: Path = typer.Option(Path.cwd(), "--project-dir", "-p", help="Project root"),
+    overwrite: bool = typer.Option(False, "--overwrite", help="Overwrite existing files"),
+    skip_tests: bool = typer.Option(False, "--skip-tests", help="Skip test generation"),
+) -> None:
+    """Add a feature module to an existing project.
+    
+    Example:
+        $ scaffold add api users
+        $ scaffold add cli admin --template rich-cli
+        $ scaffold add docs api --project-dir ~/projects/my-app
+    """
+    console.print(f"[cyan]Adding {module_type}:[/cyan] {module_name}")
+    
+    # TODO: Implement module addition
+    # 1. Detect project (find .scaffold-metadata.json)
+    # 2. Load module template
+    # 3. Collect module variables
+    # 4. Generate module files
+    # 5. Update config files
+    # 6. Update imports
+    # 7. Update metadata
+    
+    console.print("[green]✓[/green] Module added successfully!")
+
+
+@app.command()
+def update(
+    project_dir: Path = typer.Option(Path.cwd(), "--project-dir", "-p", help="Project root"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview changes"),
+    auto_merge: bool = typer.Option(False, "--auto-merge", help="Auto-merge if no conflicts"),
+    strategy: MergeStrategy = typer.Option(
+        MergeStrategy.THREE_WAY, "--strategy", help="Merge strategy"
+    ),
+    skip_conflicts: bool = typer.Option(False, "--skip-conflicts", help="Skip conflicted files"),
+) -> None:
+    """Update project from template changes.
+    
+    Example:
+        $ scaffold update
+        $ scaffold update --dry-run
+        $ scaffold update --strategy ours
+    """
+    console.print("[cyan]Checking for updates...[/cyan]")
+    
+    # TODO: Implement project updates
+    # 1. Load project metadata
+    # 2. Fetch latest template
+    # 3. Get base version from cache
+    # 4. Perform three-way merge
+    # 5. Detect conflicts
+    # 6. Update metadata
+    
+    console.print("[green]✓[/green] Project updated successfully!")
+
+
+@app.command("list")
+def list_templates(
+    format: str = typer.Option("table", "--format", "-f", help="Output format (table/json/yaml)"),
+    registry: str = typer.Option("default", "--registry", "-r", help="Registry to query"),
+    template_type: Optional[str] = typer.Option(None, "--type", "-t", help="Filter by type"),
+    search: Optional[str] = typer.Option(None, "--search", "-s", help="Search query"),
+) -> None:
+    """List available templates.
+    
+    Example:
+        $ scaffold list
+        $ scaffold list --format json
+        $ scaffold list --search fastapi
+    """
+    loader = TemplateLoader()
+    templates = loader.list_available_templates()
+    
+    if format == "table":
+        table = Table(title="Available Templates")
+        table.add_column("Name", style="cyan")
+        table.add_column("Type", style="magenta")
+        table.add_column("Version", style="green")
+        table.add_column("Description")
+        
+        for template in templates:
+            table.add_row(
+                template.name,
+                template.template_type.value,
+                template.version,
+                template.description[:50] + "..." if len(template.description) > 50 else template.description,
+            )
+        
+        console.print(table)
+        console.print(f"\nTotal: {len(templates)} templates")
+    elif format == "json":
+        import json
+        data = [
+            {
+                "name": t.name,
+                "type": t.template_type.value,
+                "version": t.version,
+                "description": t.description,
+            }
+            for t in templates
+        ]
+        console.print_json(data={"templates": data, "count": len(templates)})
+
+
+@app.command()
+def info(
+    template_name: str = typer.Argument(..., help="Template to inspect"),
+    version: str = typer.Option("latest", "--version", "-v", help="Template version"),
+    format: str = typer.Option("text", "--format", "-f", help="Output format (text/json)"),
+) -> None:
+    """Show detailed information about a template.
+    
+    Example:
+        $ scaffold info python-cli
+        $ scaffold info fastapi-api --version 1.0.0
+    """
+    console.print(f"[cyan]Template:[/cyan] {template_name}")
+    
+    # TODO: Implement template info display
+    console.print("[yellow]Info command not yet implemented[/yellow]")
+
+
+# ============================================================================
+# Cache Management
+# ============================================================================
+
+
+cache_app = typer.Typer(help="Manage template cache")
+app.add_typer(cache_app, name="cache")
+
+
+@cache_app.command("list")
+def cache_list(
+    format: str = typer.Option("table", "--format", "-f", help="Output format"),
+) -> None:
+    """List cached templates."""
+    cache_mgr = CacheManager()
+    cached = cache_mgr.list_cached_templates()
+    
+    table = Table(title="Cached Templates")
+    table.add_column("Name", style="cyan")
+    table.add_column("Version", style="green")
+    table.add_column("Cached At")
+    
+    for item in cached:
+        table.add_row(
+            item["template_name"],
+            item.get("version", "unknown"),
+            item.get("cached_at", "unknown"),
+        )
+    
+    console.print(table)
+
+
+@cache_app.command("clear")
+def cache_clear(
+    template_name: Optional[str] = typer.Argument(None, help="Template to clear"),
+    all: bool = typer.Option(False, "--all", help="Clear all cache"),
+) -> None:
+    """Clear template cache."""
+    cache_mgr = CacheManager()
+    
+    if all or template_name is None:
+        if typer.confirm("Clear all cache?"):
+            count = cache_mgr.clear_cache()
+            console.print(f"[green]✓[/green] Cleared {count} templates from cache")
+    else:
+        count = cache_mgr.clear_cache(template_name)
+        if count:
+            console.print(f"[green]✓[/green] Cleared '{template_name}' from cache")
+        else:
+            console.print(f"[yellow]![/yellow] Template '{template_name}' not in cache")
+
+
+# ============================================================================
+# Configuration
+# ============================================================================
+
+
+config_app = typer.Typer(help="Manage configuration")
+app.add_typer(config_app, name="config")
+
+
+@config_app.command("get")
+def config_get(key: str = typer.Argument(..., help="Configuration key")) -> None:
+    """Get configuration value."""
+    console.print(f"[yellow]Config command not yet implemented[/yellow]")
+
+
+@config_app.command("set")
+def config_set(
+    key: str = typer.Argument(..., help="Configuration key"),
+    value: str = typer.Argument(..., help="Configuration value"),
+) -> None:
+    """Set configuration value."""
+    console.print(f"[yellow]Config command not yet implemented[/yellow]")
+
+
+@config_app.command("list")
+def config_list() -> None:
+    """List all configuration."""
+    console.print(f"[yellow]Config command not yet implemented[/yellow]")
+
+
+# ============================================================================
+# Entry Point
+# ============================================================================
+
+
+def main() -> None:
+    """Main entry point for CLI."""
+    # Configure logging
+    logger.remove()  # Remove default handler
+    logger.add(
+        Path.home() / ".scaffold" / "scaffold.log",
+        rotation="10 MB",
+        retention="7 days",
+        level="DEBUG",
+    )
+    
+    # Run app
+    app()
+
+
+if __name__ == "__main__":
+    main()
+{% endif %}

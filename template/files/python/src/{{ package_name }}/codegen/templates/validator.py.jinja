@@ -1,0 +1,160 @@
+{% if codegen_module == 'enabled' %}"""Template validation - size limits, syntax checks, security scanning.
+
+This module validates templates before usage to ensure safety and correctness.
+"""
+
+from pathlib import Path
+from typing import Optional
+from loguru import logger
+
+from ..models import Template
+
+
+class TemplateValidator:
+    """Validate template safety and correctness."""
+    
+    # Size limits
+    MAX_SIZE_BYTES = 104_857_600  # 100MB
+    WARN_SIZE_BYTES = 52_428_800  # 50MB
+    
+    def __init__(self):
+        """Initialize validator."""
+        logger.debug("Template validator initialized")
+    
+    def validate_size(self, template_path: Path) -> tuple[bool, Optional[str]]:
+        """Validate template size is within limits.
+        
+        Args:
+            template_path: Path to template directory
+            
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        total_size = sum(
+            f.stat().st_size
+            for f in template_path.rglob("*")
+            if f.is_file()
+        )
+        
+        if total_size > self.MAX_SIZE_BYTES:
+            return False, (
+                f"Template size {total_size / 1_048_576:.1f}MB exceeds "
+                f"maximum of {self.MAX_SIZE_BYTES / 1_048_576:.0f}MB"
+            )
+        
+        if total_size > self.WARN_SIZE_BYTES:
+            logger.warning(
+                f"Template size {total_size / 1_048_576:.1f}MB exceeds "
+                f"recommended limit of {self.WARN_SIZE_BYTES / 1_048_576:.0f}MB"
+            )
+        
+        return True, None
+    
+    def validate_metadata(self, template: Template) -> tuple[bool, Optional[str]]:
+        """Validate template metadata completeness.
+        
+        Args:
+            template: Template to validate
+            
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        # Check required fields
+        if not template.name:
+            return False, "Template name is required"
+        
+        if not template.version:
+            return False, "Template version is required"
+        
+        if not template.description or len(template.description) < 10:
+            return False, "Template description must be at least 10 characters"
+        
+        if not template.variables:
+            return False, "Template must define at least one variable"
+        
+        # Validate variable definitions
+        for var_name, var_def in template.variables.items():
+            if var_def.type.value == "choice" and not var_def.choices:
+                return False, f"Variable '{var_name}' of type 'choice' must define choices"
+        
+        return True, None
+    
+    def validate_security(self, template_path: Path) -> tuple[bool, list[str]]:
+        """Scan template for security issues.
+        
+        Args:
+            template_path: Path to template directory
+            
+        Returns:
+            Tuple of (is_safe, list_of_warnings)
+        """
+        warnings = []
+        is_safe = True
+        
+        # Check for path traversal patterns
+        for file_path in template_path.rglob("*"):
+            if file_path.is_file():
+                try:
+                    content = file_path.read_text(errors="ignore")
+                    
+                    # Check for suspicious patterns
+                    if "../" in content or "..\\" in content:
+                        warnings.append(f"Potential path traversal in {file_path.name}")
+                    
+                    if "eval(" in content or "exec(" in content:
+                        warnings.append(f"Dangerous function call in {file_path.name}")
+                        is_safe = False
+                    
+                    if "__import__" in content:
+                        warnings.append(f"Dynamic import in {file_path.name}")
+                    
+                except Exception as e:
+                    logger.debug(f"Could not scan {file_path.name}: {e}")
+        
+        # Check for suspicious file permissions
+        for file_path in template_path.rglob("*"):
+            if file_path.is_file():
+                mode = file_path.stat().st_mode
+                # Check if world-writable
+                if mode & 0o002:
+                    warnings.append(f"World-writable file: {file_path.name}")
+        
+        if warnings:
+            logger.warning(f"Security scan found {len(warnings)} issues")
+        
+        return is_safe, warnings
+    
+    def validate_template(self, template: Template) -> tuple[bool, list[str]]:
+        """Run all validation checks.
+        
+        Args:
+            template: Template to validate
+            
+        Returns:
+            Tuple of (is_valid, list_of_errors)
+        """
+        errors = []
+        
+        # Size validation
+        is_valid, error = self.validate_size(template.local_path)
+        if not is_valid:
+            errors.append(error)
+        
+        # Metadata validation
+        is_valid, error = self.validate_metadata(template)
+        if not is_valid:
+            errors.append(error)
+        
+        # Security validation
+        is_safe, warnings = self.validate_security(template.local_path)
+        if not is_safe:
+            errors.append("Template failed security validation")
+        errors.extend(warnings)
+        
+        if errors:
+            logger.error(f"Template validation failed: {len(errors)} errors")
+        else:
+            logger.info(f"Template '{template.name}' passed validation")
+        
+        return len(errors) == 0, errors
+{% endif %}
