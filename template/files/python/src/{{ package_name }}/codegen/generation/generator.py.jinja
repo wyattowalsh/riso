@@ -20,6 +20,8 @@ from ..models import Template, Project, QualityStatus, OverwriteMode
 from ..engine import create_jinja_environment, render_template
 from ..templates.loader import TemplateLoader
 from ..templates.validator import TemplateValidator
+from ..quality.checker import QualityChecker
+from ..quality.reporter import QualityReporter
 from .variables import VariableCollector
 from .atomic import AtomicFileWriter
 from .hooks import HookExecutor
@@ -362,10 +364,21 @@ class Generator:
         Returns:
             Quality status
         """
-        # TODO: Implement actual quality checks
-        # For now, just return PASS
-        logger.info("Quality validation: PASS (not yet implemented)")
-        return QualityStatus.PASS
+        checker = QualityChecker(project_dir)
+        reporter = QualityReporter()
+        
+        logger.info("Running quality validation")
+        status, results = checker.run_all_checks()
+        
+        # Display results
+        reporter.report_results(status, results, verbose=False)
+        
+        # Warn but don't fail on quality issues (as per spec)
+        if status == QualityStatus.FAIL:
+            logger.warning("Quality checks failed but allowing completion (warn-but-allow mode)")
+            status = QualityStatus.WARN
+        
+        return status
     
     def _dry_run_preview(
         self,
