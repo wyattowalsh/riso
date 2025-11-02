@@ -1,0 +1,328 @@
+{% if websocket_module == "enabled" -%}
+"""WebSocket data models with Pydantic validation."""
+
+import uuid
+from datetime import datetime, timezone
+from enum import Enum
+from typing import Any, Dict, Optional, Set
+
+from pydantic import BaseModel, Field, field_validator
+
+
+class ConnectionState(str, Enum):
+    """WebSocket connection lifecycle states."""
+
+    CONNECTING = "connecting"
+    CONNECTED  = "connected"
+    CLOSING    = "closing"
+    CLOSED     = "closed"
+
+
+class MessageType(str, Enum):
+    """Standard WebSocket message types."""
+
+    # Connection lifecycle
+    CONNECTION_CONNECT    = "connection.connect"
+    CONNECTION_DISCONNECT = "connection.disconnect"
+
+    # Messages
+    MESSAGE_TEXT   = "message.text"
+    MESSAGE_JSON   = "message.json"
+    MESSAGE_BINARY = "message.binary"
+
+    # Room operations
+    ROOM_JOIN      = "room.join"
+    ROOM_JOINED    = "room.joined"
+    ROOM_LEAVE     = "room.leave"
+    ROOM_LEFT      = "room.left"
+    ROOM_BROADCAST = "room.broadcast"
+    ROOM_MEMBER_JOINED = "room.member_joined"
+    ROOM_MEMBER_LEFT   = "room.member_left"
+
+    # Heartbeat
+    HEARTBEAT_PING = "heartbeat.ping"
+    HEARTBEAT_PONG = "heartbeat.pong"
+
+    # Error
+    ERROR = "error"
+
+
+class Message(BaseModel):
+    """
+    WebSocket message with routing and metadata.
+
+    Attributes:
+        message_id: Unique message identifier (UUID4)
+        type: Message type discriminator
+        timestamp: Message creation time (UTC)
+        sender_id: Connection ID of sender
+        payload: Message content (JSON-serializable dict)
+        room_id: Target room for broadcasts (optional)
+        correlation_id: For request-response correlation (optional)
+        metadata: Custom message attributes (optional)
+    """
+
+    message_id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()),
+        description="Unique message identifier",
+    )
+    type: str = Field(
+        ...,
+        min_length=1,
+        max_length=50,
+        description="Message type discriminator",
+    )
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="Message creation time (UTC)",
+    )
+    sender_id: str = Field(
+        ...,
+        description="Connection ID of sender",
+    )
+    payload: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Message content",
+    )
+    room_id: Optional[str] = Field(
+        default=None,
+        description="Target room for broadcasts",
+    )
+    correlation_id: Optional[str] = Field(
+        default=None,
+        description="For request-response correlation",
+    )
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Custom message attributes",
+    )
+
+    @field_validator("type")
+    @classmethod
+    def validate_type_format(cls, v: str) -> str:
+        """Validate message type matches expected pattern."""
+        import re
+        if not re.match(r"^[a-z0-9._-]+$", v):
+            raise ValueError(
+                "type must contain only lowercase alphanumeric, dots, dashes, underscores"
+            )
+        return v
+
+    @field_validator("timestamp")
+    @classmethod
+    def timestamp_not_future(cls, v: datetime) -> datetime:
+        """Ensure timestamp is not in the future."""
+        if v > datetime.now(timezone.utc):
+            raise ValueError("timestamp cannot be in future")
+        return v
+
+    model_config = {
+        "json_encoders": {
+            datetime: lambda v: v.isoformat(),
+        }
+    }
+
+
+class WebSocketConnectionModel(BaseModel):
+    """
+    Serializable connection metadata (excludes WebSocket instance).
+
+    This model is used for JSON serialization and storage.
+    The actual WebSocketConnection class (in connection.py) wraps this
+    with the FastAPI WebSocket instance.
+    """
+
+    connection_id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()),
+        description="Unique connection identifier",
+    )
+    user_id: Optional[str] = Field(
+        default=None,
+        description="Authenticated user ID (None for anonymous)",
+    )
+    connected_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="Connection establishment time",
+    )
+    last_activity_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="Last message send/receive time",
+    )
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Custom connection attributes",
+    )
+    rooms: Set[str] = Field(
+        default_factory=set,
+        description="Room memberships",
+    )
+    state: ConnectionState = Field(
+        default=ConnectionState.CONNECTING,
+        description="Current connection state",
+    )
+
+    # Statistics
+    messages_sent: int = Field(
+        default=0,
+        description="Total messages sent during connection",
+        ge=0,
+    )
+    messages_received: int = Field(
+        default=0,
+        description="Total messages received during connection",
+        ge=0,
+    )
+
+    @field_validator("last_activity_at")
+    @classmethod
+    def activity_after_connection(cls, v: datetime, info) -> datetime:
+        """Ensure last_activity_at is not before connected_at."""
+        if "connected_at" in info.data and v < info.data["connected_at"]:
+            raise ValueError("last_activity_at cannot be before connected_at")
+        return v
+
+    model_config = {
+        "use_enum_values": True,
+        "json_encoders": {
+            datetime: lambda v: v.isoformat(),
+        },
+    }
+
+
+class ConnectionMetadata(BaseModel):
+    """Extended metadata for connection tracking and monitoring."""
+
+    ip_address: str = Field(
+        ...,
+        description="Client IP address",
+    )
+    user_agent: Optional[str] = Field(
+        default=None,
+        max_length=500,
+        description="Client user agent string",
+    )
+    platform: Optional[str] = Field(
+        default=None,
+        pattern=r"^(mobile|desktop|bot)$",
+        description="Client platform type",
+    )
+    session_id: Optional[str] = Field(
+        default=None,
+        description="Browser session identifier",
+    )
+    referrer: Optional[str] = Field(
+        default=None,
+        description="Connection origin URL",
+    )
+    custom: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Application-specific metadata",
+    )
+
+    @field_validator("ip_address")
+    @classmethod
+    def validate_ip_address(cls, v: str) -> str:
+        """Validate IP address format (IPv4 or IPv6)."""
+        import ipaddress
+        try:
+            ipaddress.ip_address(v)
+        except ValueError as e:
+            raise ValueError("ip_address must be valid IPv4 or IPv6") from e
+        return v
+
+
+class Room(BaseModel):
+    """
+    Logical grouping of connections for targeted broadcasting.
+
+    Attributes:
+        room_id: Unique room identifier (URL-safe)
+        name: Human-readable room name (optional)
+        created_at: Room creation timestamp
+        connection_ids: Set of connection IDs in room
+        metadata: Custom room attributes
+        max_connections: Connection limit (None = unlimited)
+        is_private: Requires authorization to join
+    """
+
+    room_id: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="Unique room identifier",
+    )
+    name: Optional[str] = Field(
+        default=None,
+        max_length=200,
+        description="Human-readable room name",
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="Room creation time",
+    )
+    connection_ids: Set[str] = Field(
+        default_factory=set,
+        description="Set of connection IDs in room",
+    )
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Custom room attributes",
+    )
+    max_connections: Optional[int] = Field(
+        default=None,
+        gt=0,
+        description="Connection limit (None = unlimited)",
+    )
+    is_private: bool = Field(
+        default=False,
+        description="Requires authorization",
+    )
+
+    @field_validator("room_id")
+    @classmethod
+    def validate_room_id_format(cls, v: str) -> str:
+        """Validate room_id is URL-safe."""
+        import re
+        if not re.match(r"^[a-zA-Z0-9_-]+$", v):
+            raise ValueError(
+                "room_id must be URL-safe (alphanumeric, dashes, underscores)"
+            )
+        return v
+
+    def is_full(self) -> bool:
+        """Check if room is at capacity."""
+        if self.max_connections is None:
+            return False
+        return len(self.connection_ids) >= self.max_connections
+
+    def get_connection_count(self) -> int:
+        """Get current member count."""
+        return len(self.connection_ids)
+
+    model_config = {
+        "json_encoders": {
+            datetime: lambda v: v.isoformat(),
+        }
+    }
+
+
+class CloseReason(BaseModel):
+    """WebSocket close reason details."""
+
+    code: int = Field(
+        ...,
+        ge=1000,
+        le=4999,
+        description="WebSocket close code",
+    )
+    reason: str = Field(
+        ...,
+        max_length=123,
+        description="Human-readable close reason",
+    )
+    initiated_by: str = Field(
+        ...,
+        pattern=r"^(client|server)$",
+        description="Which side initiated the close",
+    )
+{% endif -%}

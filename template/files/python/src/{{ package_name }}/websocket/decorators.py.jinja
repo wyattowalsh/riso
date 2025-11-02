@@ -1,0 +1,231 @@
+{% if websocket_module == "enabled" -%}
+"""WebSocket decorators for FastAPI integration."""
+
+import functools
+from typing import Any, Callable, Optional
+
+from fastapi import WebSocket, WebSocketDisconnect, status
+from loguru import logger
+
+from {{ package_name }}.websocket.exceptions import (
+    AuthenticationError,
+    WebSocketError,
+)
+from {{ package_name }}.websocket.manager import get_manager
+from {{ package_name }}.websocket.utils import format_error_message
+
+
+def websocket_endpoint(
+    route: str = "/ws",
+    auto_disconnect: bool = True,
+):
+    """
+    Decorator for WebSocket endpoints with automatic connection management.
+
+    Provides:
+    - Automatic connection registration/cleanup
+    - Error handling with structured error responses
+    - Optional authentication integration
+    - Logging and monitoring hooks
+
+    Args:
+        route: WebSocket route path (for documentation)
+        auto_disconnect: Automatically disconnect on exception (default: True)
+
+    Example:
+        ```python
+        @app.websocket("/ws")
+        @websocket_endpoint()
+        async def ws_handler(websocket: WebSocket, connection_id: str):
+            # connection_id is injected by decorator
+            while True:
+                data = await websocket.receive_json()
+                # Handle message...
+        ```
+    """
+
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        async def wrapper(websocket: WebSocket, *args, **kwargs):
+            manager = get_manager()
+            connection_id: Optional[str] = None
+
+            try:
+                # Connect and register
+                connection_id = await manager.connect(websocket)
+
+                # Inject connection_id into handler
+                kwargs["connection_id"] = connection_id
+
+                # Call handler
+                await func(websocket, *args, **kwargs)
+
+            except WebSocketDisconnect:
+                # Normal disconnection
+                logger.debug(f"WebSocket disconnected: {connection_id}")
+
+            except AuthenticationError as e:
+                # Authentication failure
+                logger.warning(f"WebSocket authentication failed: {e}")
+                error_msg = format_error_message(
+                    code=e.code,
+                    message=e.message,
+                    details=e.details,
+                )
+                try:
+                    await websocket.send_json(error_msg)
+                except Exception:
+                    pass
+                await websocket.close(
+                    code=status.WS_1008_POLICY_VIOLATION,
+                    reason="Authentication failed",
+                )
+
+            except WebSocketError as e:
+                # Known WebSocket error
+                logger.error(f"WebSocket error: {e}")
+                error_msg = format_error_message(
+                    code=e.code,
+                    message=e.message,
+                    details=e.details,
+                )
+                try:
+                    await websocket.send_json(error_msg)
+                except Exception:
+                    pass
+
+            except Exception as e:
+                # Unexpected error
+                logger.error(
+                    f"Unexpected WebSocket error: {e}",
+                    exc_info=True,
+                )
+                error_msg = format_error_message(
+                    code="INTERNAL_ERROR",
+                    message="Internal server error",
+                )
+                try:
+                    await websocket.send_json(error_msg)
+                except Exception:
+                    pass
+
+            finally:
+                # Cleanup
+                if connection_id and auto_disconnect:
+                    await manager.disconnect(
+                        connection_id,
+                        code=1000,
+                        reason="Normal closure",
+                    )
+
+        return wrapper
+
+    return decorator
+
+
+async def get_current_user_websocket(
+    websocket: WebSocket,
+    token: Optional[str] = None,
+) -> Optional[str]:
+    """
+    Extract and validate user from WebSocket connection.
+
+    Supports authentication via:
+    - Query parameter: ?token=<jwt>
+    - Header: Authorization: Bearer <jwt>
+    - Cookie: access_token=<jwt>
+
+    Args:
+        websocket: FastAPI WebSocket instance
+        token: Optional token from query parameter
+
+    Returns:
+        Optional[str]: User ID if authenticated, None for anonymous
+
+    Raises:
+        AuthenticationError: If token is invalid or expired
+
+    Example:
+        ```python
+        from fastapi import Depends
+
+        @app.websocket("/ws")
+        async def ws_handler(
+            websocket: WebSocket,
+            user_id: Optional[str] = Depends(get_current_user_websocket)
+        ):
+            # user_id is None for anonymous, str for authenticated
+            ...
+        ```
+    """
+    # Try to extract token from various sources
+    if token is None:
+        # Check Authorization header
+        auth_header = websocket.headers.get("authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+
+        # Check cookie
+        if token is None:
+            cookie_token = websocket.cookies.get("access_token")
+            if cookie_token:
+                token = cookie_token
+
+    # If no token, return None for anonymous connection
+    if token is None:
+        return None
+
+    # Validate token (integrate with your auth system here)
+    try:
+        # This is a placeholder - replace with actual JWT validation
+        from jose import JWTError, jwt
+
+        # Example JWT decode (replace SECRET_KEY and ALGORITHM with your config)
+        # payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        # user_id = payload.get("sub")
+
+        # For now, return None to indicate auth integration is needed
+        logger.warning(
+            "WebSocket authentication not fully implemented - "
+            "integrate with your JWT/OAuth2 system"
+        )
+        return None
+
+    except Exception as e:
+        raise AuthenticationError(
+            message="Invalid or expired authentication token",
+            code="AUTH_FAILED",
+            details={"error": str(e)},
+        ) from e
+
+
+def require_authentication(func: Callable) -> Callable:
+    """
+    Decorator requiring authenticated WebSocket connections.
+
+    Rejects anonymous connections with authentication error.
+
+    Example:
+        ```python
+        @app.websocket("/ws")
+        @require_authentication
+        async def protected_ws(
+            websocket: WebSocket,
+            user_id: str = Depends(get_current_user_websocket)
+        ):
+            # user_id is guaranteed to be non-None
+            ...
+        ```
+    """
+
+    @functools.wraps(func)
+    async def wrapper(*args, user_id: Optional[str] = None, **kwargs):
+        if user_id is None:
+            raise AuthenticationError(
+                message="Authentication required for this WebSocket endpoint",
+                code="AUTH_REQUIRED",
+            )
+        return await func(*args, user_id=user_id, **kwargs)
+
+    return wrapper
+{% endif -%}
