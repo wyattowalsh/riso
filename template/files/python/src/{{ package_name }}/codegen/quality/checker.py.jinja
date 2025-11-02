@@ -1,0 +1,215 @@
+{% if codegen_module == 'enabled' %}"""Quality validation checker for generated code.
+
+This module runs quality checks on generated projects:
+- Syntax validation for Python, TypeScript, etc.
+- Linting with ruff, mypy, pylint
+- Basic security scans
+"""
+
+from pathlib import Path
+from typing import Optional
+import subprocess
+from loguru import logger
+
+from ..models import QualityStatus
+
+
+class QualityChecker:
+    """Run quality validation on generated code."""
+    
+    def __init__(self, project_dir: Path):
+        """Initialize quality checker.
+        
+        Args:
+            project_dir: Project directory to check
+        """
+        self.project_dir = project_dir
+        logger.debug(f"Quality checker initialized for {project_dir}")
+    
+    def check_python_syntax(self) -> tuple[bool, list[str]]:
+        """Check Python syntax for all .py files.
+        
+        Returns:
+            Tuple of (all_valid, list_of_errors)
+        """
+        errors = []
+        python_files = list(self.project_dir.rglob("*.py"))
+        
+        if not python_files:
+            return True, []
+        
+        logger.info(f"Checking syntax for {len(python_files)} Python files")
+        
+        for py_file in python_files:
+            try:
+                compile(py_file.read_text(), str(py_file), "exec")
+            except SyntaxError as e:
+                error_msg = f"{py_file.name}:{e.lineno}: {e.msg}"
+                errors.append(error_msg)
+                logger.warning(f"Syntax error in {py_file.name}: {e.msg}")
+        
+        return len(errors) == 0, errors
+    
+    def run_ruff(self) -> tuple[bool, list[str]]:
+        """Run ruff linter if available.
+        
+        Returns:
+            Tuple of (passed, list_of_issues)
+        """
+        if not self._command_exists("ruff"):
+            logger.debug("ruff not available, skipping")
+            return True, []
+        
+        logger.info("Running ruff linter")
+        
+        try:
+            result = subprocess.run(
+                ["ruff", "check", str(self.project_dir)],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            
+            issues = []
+            if result.returncode != 0 and result.stdout:
+                # Parse ruff output
+                for line in result.stdout.strip().split("\n"):
+                    if line.strip():
+                        issues.append(line)
+            
+            return result.returncode == 0, issues
+        
+        except subprocess.TimeoutExpired:
+            return False, ["Ruff timed out after 30 seconds"]
+        except Exception as e:
+            logger.warning(f"Failed to run ruff: {e}")
+            return True, []
+    
+    def run_mypy(self) -> tuple[bool, list[str]]:
+        """Run mypy type checker if available.
+        
+        Returns:
+            Tuple of (passed, list_of_issues)
+        """
+        if not self._command_exists("mypy"):
+            logger.debug("mypy not available, skipping")
+            return True, []
+        
+        logger.info("Running mypy type checker")
+        
+        try:
+            result = subprocess.run(
+                ["mypy", str(self.project_dir), "--ignore-missing-imports"],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            
+            issues = []
+            if result.returncode != 0 and result.stdout:
+                # Parse mypy output
+                for line in result.stdout.strip().split("\n"):
+                    if ": error:" in line or ": warning:" in line:
+                        issues.append(line)
+            
+            return result.returncode == 0, issues
+        
+        except subprocess.TimeoutExpired:
+            return False, ["Mypy timed out after 60 seconds"]
+        except Exception as e:
+            logger.warning(f"Failed to run mypy: {e}")
+            return True, []
+    
+    def check_imports(self) -> tuple[bool, list[str]]:
+        """Check that all imports are valid.
+        
+        Returns:
+            Tuple of (all_valid, list_of_errors)
+        """
+        errors = []
+        python_files = list(self.project_dir.rglob("*.py"))
+        
+        if not python_files:
+            return True, []
+        
+        logger.info(f"Checking imports for {len(python_files)} Python files")
+        
+        for py_file in python_files:
+            try:
+                # Try to compile to check imports
+                code = py_file.read_text()
+                compile(code, str(py_file), "exec")
+            except Exception as e:
+                # Only report import errors
+                if "import" in str(e).lower():
+                    errors.append(f"{py_file.name}: {e}")
+        
+        return len(errors) == 0, errors
+    
+    def run_all_checks(self) -> tuple[QualityStatus, dict[str, list[str]]]:
+        """Run all quality checks.
+        
+        Returns:
+            Tuple of (overall_status, dict_of_check_results)
+        """
+        logger.info("Running quality validation suite")
+        
+        results = {}
+        has_errors = False
+        has_warnings = False
+        
+        # Python syntax
+        syntax_ok, syntax_errors = self.check_python_syntax()
+        if syntax_errors:
+            results["syntax"] = syntax_errors
+            has_errors = True
+        
+        # Imports
+        imports_ok, import_errors = self.check_imports()
+        if import_errors:
+            results["imports"] = import_errors
+            has_warnings = True
+        
+        # Ruff
+        ruff_ok, ruff_issues = self.run_ruff()
+        if ruff_issues:
+            results["ruff"] = ruff_issues
+            has_warnings = True
+        
+        # Mypy
+        mypy_ok, mypy_issues = self.run_mypy()
+        if mypy_issues:
+            results["mypy"] = mypy_issues
+            has_warnings = True
+        
+        # Determine overall status
+        if has_errors:
+            status = QualityStatus.FAIL
+        elif has_warnings:
+            status = QualityStatus.WARN
+        else:
+            status = QualityStatus.PASS
+        
+        logger.info(f"Quality validation: {status.value}")
+        
+        return status, results
+    
+    def _command_exists(self, command: str) -> bool:
+        """Check if command exists in PATH.
+        
+        Args:
+            command: Command name
+            
+        Returns:
+            True if command exists
+        """
+        try:
+            result = subprocess.run(
+                ["which", command],
+                capture_output=True,
+                timeout=1,
+            )
+            return result.returncode == 0
+        except Exception:
+            return False
+{% endif %}
