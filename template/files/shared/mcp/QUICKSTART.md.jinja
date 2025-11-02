@@ -1,0 +1,384 @@
+{%- if mcp_module | lower != "enabled" %}
+# MCP Quickstart (Disabled)
+
+Enable via `mcp_module=enabled` to access the MCP quickstart guide.
+{%- else %}
+# MCP Module - Quick Start Guide
+
+Get up and running with the Model Context Protocol (MCP) in {{ project_name }} in under 5 minutes.
+
+## Prerequisites
+
+- Python ?3.11 with uv installed
+- {{ project_name }} rendered with `mcp_module=enabled`
+
+## Installation
+
+```bash
+# Install MCP dependencies
+uv sync --group mcp
+```
+
+## Verify Installation
+
+```bash
+# Check that MCP module is working
+uv run python -c "from shared.mcp import tooling; print(tooling.list_tools())"
+```
+
+**Expected output:**
+```python
+['quickstart-status', 'list-optional-modules', 'project-info', 'system-info', 'python-environment', 'project-structure', 'read-file-content', 'calculate-sum', 'text-statistics', 'current-timestamp', 'format-timestamp']
+```
+
+## Quick Test
+
+### 1. Run the Server (STDIO)
+
+```bash
+# Start MCP server with STDIO transport (default)
+uv run python -m shared.mcp.server
+```
+
+The server is now running and waiting for MCP protocol messages on STDIN.
+
+### 2. Test with Client (Separate Terminal)
+
+Open a new terminal and run:
+
+```bash
+# List all available tools
+uv run python -m shared.mcp.client_example --local --list-tools
+```
+
+**Expected output:**
+```
+Connecting to local server (in-memory)...
+
+Available tools:
+
+? quickstart-status
+  Description: Get the baseline quickstart status and summary
+  Input schema: {}
+
+? list-optional-modules
+  Description: List all optional modules and their enabled/disabled state
+  Input schema: {}
+
+? project-info
+  Description: Get comprehensive project information including name, layout, and configuration
+  Input schema: {}
+...
+```
+
+### 3. Call a Tool
+
+```bash
+# Get project information
+uv run python -m shared.mcp.client_example --local --tool project-info
+```
+
+**Expected output:**
+```json
+{
+  "name": "{{ project_name }}",
+  "layout": "{{ project_layout }}",
+  "quality_profile": "{{ quality_profile }}",
+  "python_versions": {{ python_versions | tojson }},
+  "ci_platform": "{{ ci_platform }}",
+  "include_databases": "{{ include_databases }}"
+}
+```
+
+### 4. Interactive Mode
+
+```bash
+# Start interactive session
+uv run python -m shared.mcp.client_example --local --interactive
+```
+
+**Try these commands:**
+```
+mcp> tools                           # List all tools
+mcp> call project-info               # Call a tool
+mcp> call calculate-sum [1,2,3,4,5]  # Call with arguments
+mcp> resources                       # List resources
+mcp> read resource://server/info     # Read a resource
+mcp> quit                            # Exit
+```
+
+## Configure for Claude Desktop
+
+### macOS
+
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "{{ project_name }}": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "shared.mcp.server"],
+      "cwd": "/path/to/{{ project_name }}"
+    }
+  }
+}
+```
+
+### Windows
+
+Edit `%APPDATA%\Claude\claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "{{ project_name }}": {
+      "command": "uv.exe",
+      "args": ["run", "python", "-m", "shared.mcp.server"],
+      "cwd": "C:\\path\\to\\{{ project_name }}"
+    }
+  }
+}
+```
+
+### Linux
+
+Edit `~/.config/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "{{ project_name }}": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "shared.mcp.server"],
+      "cwd": "/home/username/{{ project_name }}"
+    }
+  }
+}
+```
+
+### Restart Claude Desktop
+
+After saving the configuration, restart Claude Desktop. Your tools will now be available!
+
+**Test in Claude:**
+```
+User: Can you use the {{ project_name }} tools to show me the project info?
+
+Claude: I'll use the project-info tool.
+[Tool call: project-info]
+Result: {"name": "{{ project_name }}", "layout": "{{ project_layout }}", ...}
+
+Here's your project information...
+```
+
+## HTTP Server Mode
+
+### Start HTTP Server
+
+```bash
+# Run on default port 8000
+uv run python -m shared.mcp.server --transport http
+
+# Run on custom port
+uv run python -m shared.mcp.server --transport http --port 9000
+
+# Bind to all interfaces
+uv run python -m shared.mcp.server --transport http --host 0.0.0.0 --port 8000
+```
+
+### Test HTTP Server
+
+```bash
+# Connect to HTTP server
+uv run python -m shared.mcp.client_example --url http://localhost:8000 --list-tools
+
+# Call a tool via HTTP
+uv run python -m shared.mcp.client_example --url http://localhost:8000 --tool system-info
+```
+
+## Add Custom Tools
+
+### Create a New Tool
+
+Edit `shared/mcp/tooling.py`:
+
+```python
+from shared.mcp import tooling
+
+@tooling.registry.register(
+    name="my-custom-tool",
+    description="My custom tool that does something useful"
+)
+def my_custom_tool(param: str) -> dict[str, str]:
+    """Custom tool implementation."""
+    result = param.upper()  # Example: convert to uppercase
+    return {
+        "input": param,
+        "output": result,
+        "message": f"Processed '{param}' successfully"
+    }
+```
+
+### Verify Your Tool
+
+```bash
+# Check it's registered
+uv run python -c "from shared.mcp import tooling; print(tooling.list_tools())"
+
+# Test it
+uv run python -c "from shared.mcp import tooling; print(tooling.registry.dispatch('my-custom-tool', 'hello'))"
+```
+
+**Expected output:**
+```python
+{'input': 'hello', 'output': 'HELLO', 'message': "Processed 'hello' successfully"}
+```
+
+### Use in Claude
+
+After restarting the MCP server, your tool is available:
+
+```
+User: Can you use my-custom-tool with the input "hello world"?
+
+Claude: I'll use the my-custom-tool.
+[Tool call: my-custom-tool with param="hello world"]
+Result: {"input": "hello world", "output": "HELLO WORLD", "message": "Processed 'hello world' successfully"}
+
+I processed your input and converted it to uppercase: "HELLO WORLD"
+```
+
+## Run Tests
+
+```bash
+# Run all MCP tests
+uv run pytest tests/test_mcp.py -v
+
+# Run specific test
+uv run pytest tests/test_mcp.py::test_quickstart_status_tool -v
+
+# Run integration tests
+uv run pytest tests/integration/test_mcp_integration.py -v
+
+# Run with coverage
+uv run pytest tests/test_mcp.py --cov=shared.mcp --cov-report=term-missing
+```
+
+## Troubleshooting
+
+### Issue: "No module named 'fastmcp'"
+
+**Solution:**
+```bash
+uv sync --group mcp
+```
+
+### Issue: "Tool not found"
+
+**Solution:**
+```bash
+# Verify tool is registered
+uv run python -c "from shared.mcp import tooling; print(tooling.list_tools())"
+
+# Check for import errors
+uv run python -c "from shared.mcp import tooling"
+```
+
+### Issue: Claude Desktop can't connect
+
+**Solution:**
+1. Verify config file location
+2. Check `cwd` points to your project
+3. Ensure `uv` is in PATH: `which uv` (Unix) or `where uv` (Windows)
+4. Restart Claude Desktop
+5. Check Claude Desktop logs
+
+### Issue: HTTP server won't start
+
+**Solution:**
+```bash
+# Check if port is in use
+lsof -i :8000  # Unix
+netstat -ano | findstr :8000  # Windows
+
+# Use different port
+uv run python -m shared.mcp.server --transport http --port 9000
+```
+
+## Next Steps
+
+1. **Read the full documentation**: See `docs/modules/mcp.md` for comprehensive guide
+2. **Add custom tools**: Integrate with your project's specific functionality
+3. **Configure authentication**: Add security for production deployments
+4. **Deploy to production**: See configuration examples for deployment options
+5. **Integrate with other modules**: Connect MCP with CLI, API, and shared logic
+
+## Resources
+
+- **Full Documentation**: `shared/mcp/docs/modules/mcp.md`
+- **Configuration Examples**: `shared/mcp/config_examples.md`
+- **Example Server**: `shared/mcp/server.py`
+- **Example Client**: `shared/mcp/client_example.py`
+- **Test Suite**: `tests/test_mcp.py`
+
+## Common Use Cases
+
+### 1. Project Information Tool
+
+```python
+@tooling.registry.register(
+    name="get-dependencies",
+    description="List project dependencies"
+)
+def get_dependencies() -> dict[str, list[str]]:
+    # Read pyproject.toml and return dependencies
+    return {"dependencies": [...]}
+```
+
+### 2. Code Analysis Tool
+
+```python
+@tooling.registry.register(
+    name="analyze-code",
+    description="Analyze code quality metrics"
+)
+def analyze_code(filepath: str) -> dict[str, Any]:
+    # Run analysis on file
+    return {"lines": 100, "complexity": 5, "issues": []}
+```
+
+### 3. Database Query Tool
+
+```python
+@tooling.registry.register(
+    name="query-database",
+    description="Execute safe read-only database queries"
+)
+def query_database(query: str) -> dict[str, Any]:
+    # Execute query (with safety checks!)
+    return {"results": [...], "count": 10}
+```
+
+## Performance Tips
+
+1. **Keep tools fast**: Aim for <1s execution time
+2. **Use caching**: Cache expensive operations
+3. **Limit data size**: Don't return huge payloads
+4. **Add timeouts**: Prevent tools from hanging
+5. **Handle errors**: Return helpful error messages
+
+## Security Best Practices
+
+1. **Validate inputs**: Always validate tool parameters
+2. **Limit file access**: Restrict to project directory
+3. **No secrets**: Don't expose sensitive data
+4. **Rate limiting**: Implement for production
+5. **Authentication**: Use auth for HTTP servers
+
+---
+
+**Congratulations!** ?? You now have a working MCP server integrated with {{ project_name }}.
+
+For questions or issues, see the full documentation or troubleshooting guide.
+{%- endif %}
