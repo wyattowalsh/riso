@@ -6,6 +6,7 @@ Typer for command handling and Rich for beautiful terminal output.
 
 from pathlib import Path
 from typing import Optional
+from datetime import datetime
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -19,7 +20,16 @@ from .templates.cache import CacheManager
 from .templates.validator import TemplateValidator
 
 
-# Initialize Typer app
+# Initialize Typer app with version callback
+def version_callback(value: bool):
+    """Show version and exit."""
+    if value:
+        from . import __version__
+        console = Console()
+        console.print(f"[cyan]scaffold[/cyan] version [green]{__version__}[/green]")
+        raise typer.Exit()
+
+
 app = typer.Typer(
     name="scaffold",
     help="Code generation and scaffolding tool for Riso projects",
@@ -29,6 +39,21 @@ app = typer.Typer(
 
 # Initialize Rich console for colored output
 console = Console()
+
+
+@app.callback()
+def main_callback(
+    version: bool = typer.Option(
+        False,
+        "--version",
+        "-V",
+        callback=version_callback,
+        is_eager=True,
+        help="Show version and exit",
+    ),
+):
+    """Code generation and scaffolding tool."""
+    pass
 
 
 # ============================================================================
@@ -479,10 +504,104 @@ def info(
         $ scaffold info python-cli
         $ scaffold info fastapi-api --version 1.0.0
     """
-    console.print(f"[cyan]Template:[/cyan] {template_name}")
+    from .templates.registry import TemplateRegistry
     
-    # TODO: Implement template info display
-    console.print("[yellow]Info command not yet implemented[/yellow]")
+    try:
+        registry = TemplateRegistry()
+        template = registry.get_template_by_name(template_name)
+        
+        if not template:
+            console.print(f"[red]✗[/red] Template not found: {template_name}")
+            console.print("\nAvailable templates:")
+            for t in registry.loader.list_available_templates():
+                console.print(f"  • {t.name}")
+            raise typer.Exit(code=1)
+        
+        if format == "json":
+            import json
+            data = {
+                "name": template.name,
+                "version": template.version,
+                "description": template.description,
+                "author": template.author,
+                "type": template.template_type.value,
+                "source_url": template.source_url,
+                "size_mb": template.size_bytes / 1_048_576,
+                "variables": {
+                    name: {
+                        "type": var.type.value,
+                        "required": var.required,
+                        "default": var.default,
+                        "description": var.description,
+                    }
+                    for name, var in template.variables.items()
+                },
+                "dependencies": [
+                    {"name": dep.name, "version": dep.version_constraint}
+                    for dep in template.dependencies
+                ],
+            }
+            console.print_json(data=data)
+        else:
+            # Text format with Rich
+            from rich.panel import Panel
+            
+            console.print(Panel.fit(
+                f"[bold cyan]{template.name}[/bold cyan] v{template.version}",
+                border_style="cyan"
+            ))
+            
+            console.print(f"\n[bold]Description:[/bold] {template.description}")
+            if template.author:
+                console.print(f"[bold]Author:[/bold] {template.author}")
+            console.print(f"[bold]Type:[/bold] {template.template_type.value}")
+            console.print(f"[bold]Size:[/bold] {template.size_bytes / 1_048_576:.1f} MB")
+            
+            if template.source_url:
+                console.print(f"[bold]Source:[/bold] {template.source_url}")
+            
+            # Variables
+            if template.variables:
+                console.print(f"\n[bold]Variables ({len(template.variables)}):[/bold]")
+                table = Table(show_header=True, box=None)
+                table.add_column("Name", style="cyan")
+                table.add_column("Type", style="green")
+                table.add_column("Required", style="yellow")
+                table.add_column("Default")
+                
+                for name, var in template.variables.items():
+                    table.add_row(
+                        name,
+                        var.type.value,
+                        "✓" if var.required else "✗",
+                        str(var.default) if var.default is not None else "-",
+                    )
+                
+                console.print(table)
+            
+            # Dependencies
+            if template.dependencies:
+                console.print(f"\n[bold]Dependencies ({len(template.dependencies)}):[/bold]")
+                for dep in template.dependencies:
+                    optional = " (optional)" if dep.optional else ""
+                    console.print(f"  • {dep.name} {dep.version_constraint}{optional}")
+            
+            # Hooks
+            if template.hooks:
+                console.print(f"\n[bold]Hooks:[/bold]")
+                if template.hooks.pre_gen:
+                    console.print(f"  Pre-generation: {len(template.hooks.pre_gen)} scripts")
+                if template.hooks.post_gen:
+                    console.print(f"  Post-generation: {len(template.hooks.post_gen)} scripts")
+            
+            # Metadata
+            console.print(f"\n[bold]Created:[/bold] {template.created_at.strftime('%Y-%m-%d')}")
+            console.print(f"[bold]Updated:[/bold] {template.updated_at.strftime('%Y-%m-%d')}")
+            
+    except Exception as e:
+        console.print(f"[red]✗ Error:[/red] {e}")
+        logger.exception("Failed to display template info")
+        raise typer.Exit(code=1)
 
 
 # ============================================================================
