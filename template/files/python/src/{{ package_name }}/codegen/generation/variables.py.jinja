@@ -1,0 +1,206 @@
+{% if codegen_module == 'enabled' %}"""Variable collection and validation for templates.
+
+This module handles collecting variable values from users (interactive prompts
+or command-line arguments) and validating them against template definitions.
+"""
+
+from typing import Any, Optional
+import re
+from pathlib import Path
+import typer
+from rich.console import Console
+from rich.prompt import Prompt, Confirm, IntPrompt
+from loguru import logger
+
+from ..models import VariableDefinition, VariableType
+
+
+console = Console()
+
+
+class VariableCollector:
+    """Collect and validate template variables."""
+    
+    def __init__(self, interactive: bool = True):
+        """Initialize variable collector.
+        
+        Args:
+            interactive: Enable interactive prompts
+        """
+        self.interactive = interactive
+        logger.debug(f"Variable collector initialized (interactive={interactive})")
+    
+    def collect_variables(
+        self,
+        variables: dict[str, VariableDefinition],
+        provided_values: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        """Collect all required variables.
+        
+        Args:
+            variables: Variable definitions from template
+            provided_values: Pre-provided values (from CLI args)
+            
+        Returns:
+            Dictionary of variable names to values
+            
+        Raises:
+            ValueError: If required variables are missing in non-interactive mode
+        """
+        collected = {}
+        provided = provided_values or {}
+        
+        logger.info(f"Collecting {len(variables)} variables")
+        
+        for name, definition in variables.items():
+            # Use provided value if available
+            if name in provided:
+                value = provided[name]
+                logger.debug(f"Using provided value for '{name}': {value}")
+            # Use default if not required and not interactive
+            elif not definition.required and definition.default is not None:
+                value = definition.default
+                logger.debug(f"Using default value for '{name}': {value}")
+            # Interactive prompt
+            elif self.interactive:
+                value = self._prompt_for_variable(definition)
+            # Error in non-interactive mode
+            else:
+                if definition.required:
+                    raise ValueError(
+                        f"Required variable '{name}' not provided. "
+                        "Use --interactive or provide via --var option."
+                    )
+                value = definition.default
+            
+            # Validate value
+            is_valid, error = self.validate_variable(definition, value)
+            if not is_valid:
+                if self.interactive:
+                    console.print(f"[red]✗[/red] {error}")
+                    # Re-prompt
+                    value = self._prompt_for_variable(definition)
+                    is_valid, error = self.validate_variable(definition, value)
+                    if not is_valid:
+                        raise ValueError(f"Invalid value for '{name}': {error}")
+                else:
+                    raise ValueError(f"Invalid value for '{name}': {error}")
+            
+            collected[name] = value
+            console.print(f"  [green]✓[/green] {name}: {value}")
+        
+        logger.info(f"Collected {len(collected)} variables successfully")
+        return collected
+    
+    def _prompt_for_variable(self, definition: VariableDefinition) -> Any:
+        """Prompt user for a single variable.
+        
+        Args:
+            definition: Variable definition
+            
+        Returns:
+            User-provided value
+        """
+        prompt_text = definition.prompt_message or definition.description
+        
+        if definition.type == VariableType.BOOL:
+            default = definition.default if definition.default is not None else False
+            return Confirm.ask(prompt_text, default=default)
+        
+        elif definition.type == VariableType.INT:
+            default = definition.default if definition.default is not None else None
+            return IntPrompt.ask(prompt_text, default=default)
+        
+        elif definition.type == VariableType.CHOICE:
+            from rich.prompt import Prompt
+            choices_str = "/".join(definition.choices)
+            default = definition.default if definition.default is not None else definition.choices[0]
+            
+            while True:
+                value = Prompt.ask(
+                    f"{prompt_text} [{choices_str}]",
+                    default=str(default),
+                )
+                if value in definition.choices:
+                    return value
+                console.print(f"[red]Invalid choice. Choose from: {choices_str}[/red]")
+        
+        else:  # STRING
+            default = definition.default if definition.default is not None else ""
+            return Prompt.ask(prompt_text, default=str(default))
+    
+    def validate_variable(
+        self,
+        definition: VariableDefinition,
+        value: Any,
+    ) -> tuple[bool, Optional[str]]:
+        """Validate variable value against definition.
+        
+        Args:
+            definition: Variable definition
+            value: Value to validate
+            
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        # Type validation
+        if definition.type == VariableType.INT:
+            try:
+                int(value)
+            except (ValueError, TypeError):
+                return False, f"Value must be an integer, got: {type(value).__name__}"
+        
+        elif definition.type == VariableType.BOOL:
+            if not isinstance(value, bool):
+                return False, f"Value must be boolean, got: {type(value).__name__}"
+        
+        elif definition.type == VariableType.CHOICE:
+            if value not in definition.choices:
+                return False, f"Value must be one of {definition.choices}, got: {value}"
+        
+        # Pattern validation for strings
+        if definition.pattern and definition.type == VariableType.STRING:
+            if not re.match(definition.pattern, str(value)):
+                return False, (
+                    f"Value doesn't match required pattern: {definition.pattern}"
+                )
+        
+        return True, None
+    
+    def validate_all_variables(
+        self,
+        variables: dict[str, VariableDefinition],
+        values: dict[str, Any],
+    ) -> tuple[bool, list[str]]:
+        """Validate all collected variables.
+        
+        Args:
+            variables: Variable definitions
+            values: Collected values
+            
+        Returns:
+            Tuple of (all_valid, list_of_errors)
+        """
+        errors = []
+        
+        # Check all required variables are present
+        for name, definition in variables.items():
+            if definition.required and name not in values:
+                errors.append(f"Required variable '{name}' is missing")
+        
+        # Validate each value
+        for name, value in values.items():
+            if name not in variables:
+                errors.append(f"Unknown variable '{name}'")
+                continue
+            
+            definition = variables[name]
+            is_valid, error = self.validate_variable(definition, value)
+            if not is_valid:
+                errors.append(f"{name}: {error}")
+        
+        if errors:
+            logger.error(f"Variable validation failed: {len(errors)} errors")
+        
+        return len(errors) == 0, errors
+{% endif %}

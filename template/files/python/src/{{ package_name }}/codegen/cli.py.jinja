@@ -45,6 +45,7 @@ def new(
     dry_run: bool = typer.Option(False, "--dry-run", help="Preview without creating files"),
     overwrite: bool = typer.Option(False, "--overwrite", help="Overwrite existing directory"),
     skip_quality: bool = typer.Option(False, "--skip-quality", help="Skip quality validation"),
+    var: Optional[list[str]] = typer.Option(None, "--var", help="Variable KEY=VALUE"),
 ) -> None:
     """Create a new project from a template.
     
@@ -53,29 +54,80 @@ def new(
         $ scaffold new my-api --template fastapi-api
         $ scaffold new my-cli --no-interactive --var author="John Doe"
     """
+    from .templates.loader import TemplateLoader
+    from .generation.generator import Generator
+    
     console.print(Panel.fit(
         f"[bold cyan]Creating project:[/bold cyan] {project_name}",
         border_style="cyan"
     ))
     
     if dry_run:
-        console.print("[yellow]DRY RUN MODE - No files will be created[/yellow]")
+        console.print("[yellow]DRY RUN MODE - No files will be created[/yellow]\n")
     
-    # TODO: Implement project generation
-    # 1. Load template
-    # 2. Collect variables (interactive or from CLI)
-    # 3. Validate inputs
-    # 4. Generate files
-    # 5. Run hooks
-    # 6. Quality validation
-    # 7. Create metadata file
-    
-    console.print("[green]✓[/green] Project created successfully!")
-    console.print(f"  Location: {output_dir / project_name}")
-    console.print("\n[bold]Next steps:[/bold]")
-    console.print(f"  cd {project_name}")
-    console.print("  uv sync")
-    console.print("  uv run pytest")
+    try:
+        # Load template
+        with console.status("[cyan]Loading template...[/cyan]"):
+            loader = TemplateLoader()
+            template_path = loader.get_cached_template(template)
+            
+            if not template_path:
+                console.print(f"[red]✗[/red] Template '{template}' not found in cache")
+                console.print("\n[yellow]Available templates:[/yellow]")
+                for t in loader.list_available_templates():
+                    console.print(f"  • {t.name}")
+                raise typer.Exit(code=2)
+            
+            template_obj = loader.load_template(template_path)
+            console.print(f"[green]✓[/green] Loaded template: {template_obj.name} v{template_obj.version}")
+        
+        # Parse provided variables from --var options
+        provided_vars = {}
+        if var:
+            for var_str in var:
+                if "=" not in var_str:
+                    console.print(f"[red]✗[/red] Invalid variable format: {var_str}")
+                    console.print("Use: --var KEY=VALUE")
+                    raise typer.Exit(code=1)
+                key, value = var_str.split("=", 1)
+                provided_vars[key] = value
+        
+        # Initialize generator
+        overwrite_mode = OverwriteMode.OVERWRITE if overwrite else OverwriteMode.SKIP
+        generator = Generator(
+            template_obj,
+            output_dir,
+            dry_run=dry_run,
+            overwrite_mode=overwrite_mode,
+        )
+        
+        # Collect variables
+        console.print("\n[bold]Collecting variables:[/bold]")
+        
+        # Generate project
+        with console.status("[cyan]Generating files...[/cyan]"):
+            project = generator.generate_project(
+                project_name,
+                provided_vars,
+                interactive=interactive,
+                skip_quality=skip_quality,
+            )
+        
+        if not dry_run:
+            console.print(f"\n[green]✓[/green] Project created successfully!")
+            console.print(f"  Location: {project.root_path}")
+            console.print(f"  Files: {len(project.generated_files)}")
+            
+            console.print("\n[bold]Next steps:[/bold]")
+            console.print(f"  cd {project_name}")
+            console.print("  uv sync")
+            console.print("  uv run pytest")
+        
+    except Exception as e:
+        console.print(f"\n[red]✗ Error:[/red] {e}")
+        logger.exception("Project generation failed")
+        raise typer.Exit(code=1)
+
 
 
 @app.command()

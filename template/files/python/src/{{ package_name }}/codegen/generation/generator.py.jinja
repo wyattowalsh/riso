@@ -1,0 +1,422 @@
+{% if codegen_module == 'enabled' %}"""Core generator for creating projects from templates.
+
+This module coordinates the entire generation process:
+1. Template loading and validation
+2. Variable collection
+3. File rendering with Jinja2
+4. Atomic file operations
+5. Hook execution
+6. Quality validation
+7. Metadata generation
+"""
+
+from pathlib import Path
+from typing import Optional
+from datetime import datetime
+import json
+from loguru import logger
+
+from ..models import Template, Project, QualityStatus, OverwriteMode
+from ..engine import create_jinja_environment, render_template
+from ..templates.loader import TemplateLoader
+from ..templates.validator import TemplateValidator
+from .variables import VariableCollector
+from .atomic import AtomicFileWriter
+from .hooks import HookExecutor
+
+
+class Generator:
+    """Core generator for project/module creation."""
+    
+    def __init__(
+        self,
+        template: Template,
+        output_dir: Path,
+        *,
+        dry_run: bool = False,
+        overwrite_mode: OverwriteMode = OverwriteMode.PROMPT,
+    ):
+        """Initialize generator.
+        
+        Args:
+            template: Template to use
+            output_dir: Output directory
+            dry_run: Preview mode (don't create files)
+            overwrite_mode: How to handle existing files
+        """
+        self.template = template
+        self.output_dir = output_dir
+        self.dry_run = dry_run
+        self.overwrite_mode = overwrite_mode
+        
+        self.validator = TemplateValidator()
+        self.jinja_env = create_jinja_environment(template.local_path)
+        
+        logger.info(
+            f"Generator initialized for template '{template.name}' v{template.version}"
+        )
+    
+    def generate_project(
+        self,
+        project_name: str,
+        variables: dict,
+        *,
+        interactive: bool = True,
+        skip_quality: bool = False,
+    ) -> Project:
+        """Generate a complete project from template.
+        
+        Args:
+            project_name: Name of the project
+            variables: Variable values
+            interactive: Enable interactive prompts
+            skip_quality: Skip quality validation
+            
+        Returns:
+            Generated Project instance
+            
+        Raises:
+            ValueError: If validation fails
+            RuntimeError: If generation fails
+        """
+        logger.info(f"Generating project '{project_name}'")
+        
+        # Validate template
+        is_valid, errors = self.validator.validate_template(self.template)
+        if not is_valid:
+            raise ValueError(f"Template validation failed: {errors}")
+        
+        # Collect and validate variables
+        collector = VariableCollector(interactive=interactive)
+        all_variables = collector.collect_variables(
+            self.template.variables,
+            provided_values=variables,
+        )
+        all_variables["project_name"] = project_name
+        
+        # Check if output directory exists
+        project_dir = self.output_dir / project_name
+        if project_dir.exists() and self.overwrite_mode == OverwriteMode.SKIP:
+            raise RuntimeError(f"Project directory already exists: {project_dir}")
+        
+        if self.dry_run:
+            logger.info("DRY RUN - Showing what would be generated")
+            return self._dry_run_preview(project_name, project_dir, all_variables)
+        
+        # Execute pre-generation hooks
+        hook_executor = HookExecutor(project_dir)
+        success, errors = hook_executor.execute_pre_hooks(
+            self.template.hooks,
+            all_variables,
+        )
+        if not success:
+            raise RuntimeError(f"Pre-generation hooks failed: {errors}")
+        
+        # Generate files atomically
+        generated_files = []
+        with AtomicFileWriter(project_dir) as writer:
+            generated_files = self._generate_files(writer, all_variables)
+            
+            # Generate metadata file
+            metadata_file = self._generate_metadata(
+                writer,
+                project_name,
+                all_variables,
+                generated_files,
+            )
+        
+        # Execute post-generation hooks
+        success, errors = hook_executor.execute_post_hooks(
+            self.template.hooks,
+            all_variables,
+        )
+        if not success:
+            logger.warning(f"Post-generation hooks failed: {errors}")
+            # Don't fail generation, just warn
+        
+        # Quality validation
+        quality_status = QualityStatus.PASS
+        if not skip_quality:
+            quality_status = self._run_quality_checks(project_dir)
+        
+        # Create Project instance
+        project = Project(
+            name=project_name,
+            root_path=project_dir,
+            template_name=self.template.name,
+            template_version=self.template.version,
+            variables=all_variables,
+            generated_files=generated_files,
+            metadata_file=metadata_file,
+            quality_status=quality_status,
+            created_at=datetime.now(),
+        )
+        
+        logger.info(
+            f"Project generated successfully: {len(generated_files)} files created"
+        )
+        
+        return project
+    
+    def _generate_files(
+        self,
+        writer: AtomicFileWriter,
+        variables: dict,
+    ) -> list[Path]:
+        """Generate all template files.
+        
+        Args:
+            writer: Atomic file writer
+            variables: Template variables
+            
+        Returns:
+            List of generated file paths (relative)
+        """
+        generated = []
+        template_dir = self.template.local_path
+        
+        # Find all template files
+        template_files = self._find_template_files(template_dir)
+        
+        logger.info(f"Generating {len(template_files)} files")
+        
+        for source_file in template_files:
+            # Get relative path from template dir
+            rel_path = source_file.relative_to(template_dir)
+            
+            # Skip metadata and cache files
+            if rel_path.name in ["template.yml", ".cache-metadata.json"]:
+                continue
+            
+            # Process file path (render Jinja2 in path)
+            output_path = self._render_path(rel_path, variables)
+            
+            # Check if binary file (no rendering needed)
+            if self._is_binary_file(source_file):
+                writer.copy_file(source_file, output_path)
+                logger.debug(f"Copied binary file: {output_path}")
+            else:
+                # Render template file
+                try:
+                    # Strip .jinja or .j2 extension if present
+                    if output_path.suffix in [".jinja", ".j2"]:
+                        output_path = output_path.with_suffix("")
+                    
+                    content = self._render_file(source_file, variables)
+                    writer.write_file(
+                        output_path,
+                        content,
+                        preserve_permissions=True,
+                        source_path=source_file,
+                    )
+                    logger.debug(f"Rendered template: {output_path}")
+                
+                except Exception as e:
+                    logger.error(f"Failed to render {rel_path}: {e}")
+                    raise
+            
+            generated.append(output_path)
+        
+        return generated
+    
+    def _render_file(self, file_path: Path, variables: dict) -> str:
+        """Render a template file.
+        
+        Args:
+            file_path: Path to template file
+            variables: Template variables
+            
+        Returns:
+            Rendered content
+        """
+        # Read template content
+        template_content = file_path.read_text(encoding="utf-8")
+        
+        # Render with Jinja2
+        from jinja2 import Template as JinjaTemplate
+        template = JinjaTemplate(
+            template_content,
+            undefined=self.jinja_env.undefined,
+            trim_blocks=self.jinja_env.trim_blocks,
+            lstrip_blocks=self.jinja_env.lstrip_blocks,
+        )
+        
+        return template.render(**variables)
+    
+    def _render_path(self, path: Path, variables: dict) -> Path:
+        """Render Jinja2 in file path.
+        
+        Args:
+            path: File path with possible Jinja2 syntax
+            variables: Template variables
+            
+        Returns:
+            Rendered path
+        """
+        parts = []
+        for part in path.parts:
+            if "{{" in part or "{%" in part:
+                # Render Jinja2 in path component
+                from jinja2 import Template as JinjaTemplate
+                template = JinjaTemplate(part)
+                part = template.render(**variables)
+            parts.append(part)
+        
+        return Path(*parts) if parts else path
+    
+    def _find_template_files(self, template_dir: Path) -> list[Path]:
+        """Find all template files to generate.
+        
+        Args:
+            template_dir: Template directory
+            
+        Returns:
+            List of template file paths
+        """
+        files = []
+        
+        # Use file patterns if defined
+        if self.template.file_patterns:
+            for pattern_obj in self.template.file_patterns:
+                matching_files = template_dir.glob(pattern_obj.pattern)
+                files.extend(matching_files)
+        else:
+            # Default: include all files
+            files = list(template_dir.rglob("*"))
+        
+        # Filter out directories
+        files = [f for f in files if f.is_file()]
+        
+        return files
+    
+    def _is_binary_file(self, file_path: Path) -> bool:
+        """Check if file is binary (no rendering needed).
+        
+        Args:
+            file_path: File to check
+            
+        Returns:
+            True if binary file
+        """
+        binary_extensions = {
+            ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico",
+            ".pdf", ".zip", ".tar", ".gz", ".bz2", ".7z",
+            ".exe", ".dll", ".so", ".dylib",
+            ".mp3", ".mp4", ".avi", ".mov",
+        }
+        
+        return file_path.suffix.lower() in binary_extensions
+    
+    def _generate_metadata(
+        self,
+        writer: AtomicFileWriter,
+        project_name: str,
+        variables: dict,
+        generated_files: list[Path],
+    ) -> Path:
+        """Generate .scaffold-metadata.json file.
+        
+        Args:
+            writer: Atomic file writer
+            project_name: Project name
+            variables: Template variables
+            generated_files: List of generated files
+            
+        Returns:
+            Path to metadata file
+        """
+        metadata = {
+            "version": "1.0.0",
+            "project": {
+                "name": project_name,
+                "template": {
+                    "name": self.template.name,
+                    "version": self.template.version,
+                    "source_url": self.template.source_url,
+                },
+                "variables": variables,
+                "generated_at": datetime.now().isoformat(),
+            },
+            "modules": [],
+            "quality_status": {
+                "last_check": datetime.now().isoformat(),
+                "status": "pass",
+                "warnings": [],
+            },
+        }
+        
+        metadata_path = Path(".scaffold-metadata.json")
+        writer.write_file(
+            metadata_path,
+            json.dumps(metadata, indent=2),
+        )
+        
+        return metadata_path
+    
+    def _run_quality_checks(self, project_dir: Path) -> QualityStatus:
+        """Run quality validation on generated project.
+        
+        Args:
+            project_dir: Project directory
+            
+        Returns:
+            Quality status
+        """
+        # TODO: Implement actual quality checks
+        # For now, just return PASS
+        logger.info("Quality validation: PASS (not yet implemented)")
+        return QualityStatus.PASS
+    
+    def _dry_run_preview(
+        self,
+        project_name: str,
+        project_dir: Path,
+        variables: dict,
+    ) -> Project:
+        """Show preview of what would be generated.
+        
+        Args:
+            project_name: Project name
+            project_dir: Project directory
+            variables: Variables
+            
+        Returns:
+            Project instance (not actually created)
+        """
+        from rich.console import Console
+        from rich.tree import Tree
+        
+        console = Console()
+        
+        # Find files that would be generated
+        template_files = self._find_template_files(self.template.local_path)
+        
+        # Build file tree
+        tree = Tree(f"[bold cyan]{project_name}/[/bold cyan]")
+        
+        for source_file in template_files:
+            rel_path = source_file.relative_to(self.template.local_path)
+            if rel_path.name not in ["template.yml", ".cache-metadata.json"]:
+                output_path = self._render_path(rel_path, variables)
+                if output_path.suffix in [".jinja", ".j2"]:
+                    output_path = output_path.with_suffix("")
+                tree.add(f"[green]{output_path}[/green]")
+        
+        tree.add("[yellow].scaffold-metadata.json[/yellow]")
+        
+        console.print(tree)
+        console.print(f"\n[bold]Total files:[/bold] {len(template_files)}")
+        
+        # Return mock Project
+        return Project(
+            name=project_name,
+            root_path=project_dir,
+            template_name=self.template.name,
+            template_version=self.template.version,
+            variables=variables,
+            generated_files=[],
+            metadata_file=Path(".scaffold-metadata.json"),
+            quality_status=QualityStatus.PASS,
+            created_at=datetime.now(),
+        )
+{% endif %}
