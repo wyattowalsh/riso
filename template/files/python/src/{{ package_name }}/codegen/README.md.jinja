@@ -1,0 +1,230 @@
+{% if codegen_module == 'enabled' %}# Code Generation and Scaffolding Module
+
+This module provides a complete CLI tool for template-based project generation with security-first design.
+
+## Features
+
+✅ **Project Generation** - Create new projects from templates  
+✅ **Module Addition** - Add feature modules to existing projects  
+✅ **Template Updates** - Update projects with three-way merge  
+✅ **Custom Templates** - Fetch from Git, HTTP, or local paths  
+✅ **Quality Validation** - Syntax, linting, type checking  
+✅ **Security** - Sandboxed rendering, size limits, hook restrictions  
+
+## Quick Start
+
+### Generate a Project
+
+```bash
+# Interactive mode
+scaffold new my-project
+
+# Non-interactive with variables
+scaffold new my-api --no-interactive \
+  --var author="Jane Doe" \
+  --var python_version=3.11
+
+# From Git repository
+scaffold new my-project --template https://github.com/user/template
+```
+
+### Add a Module
+
+```bash
+# Add API module
+scaffold add api users
+
+# Add with custom template
+scaffold add cli admin --template rich-cli
+```
+
+### Update Project
+
+```bash
+# Check and apply updates
+scaffold update
+
+# Preview changes
+scaffold update --dry-run
+
+# Use specific merge strategy
+scaffold update --strategy ours
+```
+
+### Manage Templates
+
+```bash
+# List cached templates
+scaffold cache list
+
+# Update all templates
+scaffold cache update
+
+# Clear cache
+scaffold cache clear --all
+```
+
+## Commands
+
+- `scaffold new PROJECT_NAME` - Create new project
+- `scaffold add MODULE_TYPE MODULE_NAME` - Add module
+- `scaffold update` - Update from template
+- `scaffold list` - List templates
+- `scaffold info TEMPLATE` - Template details
+- `scaffold cache {list|update|clear}` - Cache management
+- `scaffold config {get|set|list}` - Configuration
+
+## Architecture
+
+### Components
+
+- **models.py** - Pydantic data models with validation
+- **engine.py** - Jinja2 configuration and rendering
+- **cli.py** - Typer CLI with Rich output
+- **templates/** - Template loading and registry
+- **generation/** - File generation and variables
+- **updates/** - Three-way merge and conflict resolution
+- **quality/** - Validation and reporting
+
+### Security Features
+
+- Jinja2 SandboxedEnvironment
+- Size limits (100MB max)
+- Hook execution timeouts
+- Restricted environment variables
+- Path validation
+- Input sanitization
+
+## Configuration
+
+Configuration file: `~/.scaffold/config.yml`
+
+```yaml
+default_template: python-cli
+interactive: true
+
+registries:
+  default:
+    type: local
+    path: ~/.scaffold/templates
+
+quality:
+  enabled: true
+  tools: [ruff, mypy, pylint]
+
+updates:
+  merge_strategy: three_way
+  auto_merge: false
+```
+
+## Creating Custom Templates
+
+### Template Structure
+
+```
+my-template/
+├── template.yml          # Template metadata
+├── README.md.j2         # Template files
+├── main.py.j2
+└── src/
+    └── {{project_name}}/
+        └── __init__.py.j2
+```
+
+### template.yml
+
+```yaml
+name: my-template
+version: 1.0.0
+description: My custom project template
+template_type: project
+variables:
+  project_name:
+    type: string
+    required: true
+    description: Project name
+    pattern: ^[a-z][a-z0-9_]*$
+  
+  python_version:
+    type: choice
+    required: true
+    description: Python version
+    choices: ["3.11", "3.12", "3.13"]
+    default: "3.11"
+```
+
+### Jinja2 Syntax
+
+Templates use Jinja2 with custom filters:
+
+```jinja2
+# {{ project_name }}
+
+class {{ project_name | pascal_case }}:
+    """{{ project_name | snake_case }} implementation."""
+    pass
+```
+
+Available filters:
+- `snake_case` - Convert to snake_case
+- `kebab_case` - Convert to kebab-case
+- `pascal_case` - Convert to PascalCase
+- `camel_case` - Convert to camelCase
+
+## Development
+
+### Running Tests
+
+```bash
+uv run pytest tests/codegen/ -v
+```
+
+### Code Quality
+
+```bash
+uv run ruff check src/
+uv run mypy src/
+uv run pylint src/
+```
+
+## Troubleshooting
+
+### Template Not Found
+
+```
+Error: Template 'my-template' not found in cache
+```
+
+**Solution:** Fetch the template first:
+```bash
+scaffold new my-project --template https://github.com/user/my-template
+```
+
+### Merge Conflicts
+
+When updating projects, conflicts may occur. Look for markers:
+
+```python
+<<<<<<< USER (your changes)
+your_code()
+=======
+template_code()
+>>>>>>> TEMPLATE (template updates)
+```
+
+**Resolution:**
+1. Edit the file and choose which version to keep
+2. Remove the conflict markers
+3. Test your changes
+
+### Permission Errors
+
+Ensure you have write permissions:
+```bash
+chmod +w ~/.scaffold/templates/
+```
+
+## License
+
+This module is part of the Riso template.
+{% endif %}

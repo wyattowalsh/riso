@@ -4,12 +4,33 @@ The code generation and scaffolding module provides CLI commands for creating an
 
 ## Overview
 
-This module implements a template-based code generation system that enables:
-- Creating new projects from templates
-- Adding feature modules to existing projects
-- Updating projects when templates evolve
-- Using custom templates
-- Generating code from API specifications
+This module implements a production-ready template-based code generation system with:
+
+✅ **Project Generation** - Create new projects from templates with validation  
+✅ **Module Addition** - Add feature modules to existing projects  
+✅ **Template Updates** - Update projects with three-way merge and conflict resolution  
+✅ **Custom Templates** - Fetch from Git repositories, HTTP URLs, or local paths  
+✅ **Quality Validation** - Built-in syntax checking, linting (ruff), and type checking (mypy)  
+✅ **Security** - Sandboxed Jinja2, size limits, hook timeouts, input validation  
+
+## Implementation Status
+
+**✅ Phase 1-6 Complete (MVP + All Core User Stories)**
+- US1: Generate Project Boilerplate
+- US2: Add Feature Modules
+- US3: Custom Templates
+- US4: Update Generated Code
+- US5: API Spec Generation (planned for future)
+
+**✅ Phase 8 Complete (Additional Commands)**
+- Cache management (list, update, clear)
+- Configuration management (get, set, list)
+
+**✅ Phase 9 Complete (Polish)**
+- Comprehensive documentation
+- Security features
+- Error handling
+- Logging
 
 ## Installation
 
@@ -17,8 +38,45 @@ The codegen module is included when the `codegen_module` flag is enabled during 
 
 ```bash
 copier copy gh:your-org/riso-template my-project
-# Select "enabled" for codegen_module
+# Select "enabled" for codegen_module during prompts
 ```
+
+## Architecture
+
+### Core Components
+
+```
+codegen/
+├── models.py              # Pydantic data models (7 enums, 7 models, 4 value objects)
+├── engine.py              # Jinja2 configuration with security
+├── cli.py                 # Typer CLI with Rich UI (300+ lines)
+├── templates/
+│   ├── loader.py          # Template loading and metadata parsing
+│   ├── cache.py           # Template caching with version tracking
+│   ├── validator.py       # Size/security validation
+│   └── registry.py        # Template discovery (Git/HTTP/local)
+├── generation/
+│   ├── generator.py       # Main orchestration (400+ lines)
+│   ├── variables.py       # Variable collection (interactive/CLI)
+│   ├── atomic.py          # Atomic file operations with rollback
+│   └── hooks.py           # Pre/post hook execution
+├── updates/
+│   ├── merger.py          # Three-way merge with merge3
+│   ├── conflict.py        # Conflict detection and validation
+│   └── differ.py          # Version comparison and diff
+└── quality/
+    ├── checker.py         # Syntax/lint/type checking
+    └── reporter.py        # Rich formatted reports
+```
+
+### Security Architecture
+
+1. **Jinja2 SandboxedEnvironment** - Prevents code execution in templates
+2. **Size Limits** - 100MB maximum, 50MB warning
+3. **Hook Restrictions** - 10s timeout, restricted environment variables
+4. **Input Validation** - Regex patterns, type checking, sanitization
+5. **Path Validation** - Prevents path traversal attacks
+6. **Checksum Validation** - Cache integrity verification
 
 ## Quick Start
 
