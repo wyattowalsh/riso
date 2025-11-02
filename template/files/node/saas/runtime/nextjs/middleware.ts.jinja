@@ -1,0 +1,149 @@
+{% if saas_starter_module == "enabled" and saas_runtime == "nextjs-16" %}
+/**
+ * Next.js Middleware
+ * 
+ * Runs on every request before the route handler.
+ * Used for authentication, tracing, logging, and request processing.
+ * 
+ * Learn more: https://nextjs.org/docs/app/building-your-application/routing/middleware
+ */
+
+{% if saas_auth == 'clerk' %}
+import { authMiddleware } from '@clerk/nextjs';
+{% elif saas_auth == 'authjs' %}
+import { auth } from '@/lib/auth';
+{% endif %}
+{% if saas_observability_otel or saas_observability_structured_logging %}
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+{% endif %}
+{% if saas_observability_structured_logging %}
+import { logger } from '@/lib/observability/logger';
+import { nanoid } from 'nanoid';
+{% endif %}
+
+{% if saas_auth == 'clerk' %}
+export default authMiddleware({
+  // Public routes that don't require authentication
+  publicRoutes: [
+    '/',
+    '/sign-in(.*)',
+    '/sign-up(.*)',
+    '/api/webhooks(.*)',
+    '/api/health',
+  ],
+  
+  // Routes that should be ignored by the middleware
+  ignoredRoutes: [
+    '/api/health',
+  ],
+  
+  {% if saas_observability_structured_logging or saas_observability_otel %}
+  // Custom middleware function
+  async beforeAuth(req) {
+    {% if saas_observability_structured_logging %}
+    // Add correlation ID to request
+    const correlationId = req.headers.get('x-correlation-id') || nanoid();
+    logger.info({
+      msg: 'Incoming request',
+      method: req.method,
+      url: req.url,
+      correlationId,
+      userAgent: req.headers.get('user-agent'),
+    });
+    {% endif %}
+    
+    {% if saas_observability_otel %}
+    // OpenTelemetry tracing happens automatically via instrumentation
+    {% endif %}
+  },
+  
+  async afterAuth(auth, req) {
+    {% if saas_observability_structured_logging %}
+    if (auth.userId) {
+      logger.info({
+        msg: 'Authenticated request',
+        userId: auth.userId,
+        url: req.url,
+      });
+    }
+    {% endif %}
+  },
+  {% endif %}
+});
+
+{% elif saas_auth == 'authjs' %}
+export default auth((req) => {
+  const isAuthenticated = !!req.auth;
+  const isAuthPage = req.nextUrl.pathname.startsWith('/sign-in') || 
+                      req.nextUrl.pathname.startsWith('/sign-up');
+  const isPublicPage = req.nextUrl.pathname === '/' ||
+                        req.nextUrl.pathname.startsWith('/api/webhooks') ||
+                        req.nextUrl.pathname === '/api/health';
+  
+  {% if saas_observability_structured_logging %}
+  // Add correlation ID and logging
+  const correlationId = req.headers.get('x-correlation-id') || nanoid();
+  logger.info({
+    msg: 'Incoming request',
+    method: req.method,
+    url: req.nextUrl.pathname,
+    correlationId,
+    isAuthenticated,
+    userId: req.auth?.user?.id,
+  });
+  {% endif %}
+  
+  // Redirect unauthenticated users to sign-in
+  if (!isAuthenticated && !isAuthPage && !isPublicPage) {
+    const signInUrl = new URL('/sign-in', req.nextUrl.origin);
+    signInUrl.searchParams.set('callbackUrl', req.nextUrl.pathname);
+    return Response.redirect(signInUrl);
+  }
+  
+  // Redirect authenticated users away from auth pages
+  if (isAuthenticated && isAuthPage) {
+    return Response.redirect(new URL('/dashboard', req.nextUrl.origin));
+  }
+  
+  return NextResponse.next();
+});
+
+{% else %}
+export function middleware(req: NextRequest) {
+  {% if saas_observability_structured_logging %}
+  // Add correlation ID and logging
+  const correlationId = req.headers.get('x-correlation-id') || nanoid();
+  
+  logger.info({
+    msg: 'Incoming request',
+    method: req.method,
+    url: req.nextUrl.pathname,
+    correlationId,
+    userAgent: req.headers.get('user-agent'),
+  });
+  
+  // Add correlation ID to response headers
+  const response = NextResponse.next();
+  response.headers.set('x-correlation-id', correlationId);
+  
+  return response;
+  {% else %}
+  return NextResponse.next();
+  {% endif %}
+}
+{% endif %}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+};
+{% endif %}
