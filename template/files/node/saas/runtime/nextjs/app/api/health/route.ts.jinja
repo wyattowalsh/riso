@@ -1,0 +1,90 @@
+{% if saas_starter_module == "enabled" and saas_runtime == "nextjs-16" %}
+import { NextResponse } from 'next/server';
+{% if saas_orm == 'prisma' %}
+import { prisma } from '@/lib/database/client';
+{% elif saas_orm == 'drizzle' %}
+import { db } from '@/lib/database/client';
+{% endif %}
+
+export const dynamic = 'force-dynamic';
+
+/**
+ * Health Check Endpoint
+ * 
+ * Returns the health status of the application and its dependencies.
+ * Used for monitoring, load balancers, and deployment verification.
+ */
+export async function GET() {
+  const startTime = Date.now();
+  
+  const health = {
+    status: 'healthy' as 'healthy' | 'degraded' | 'unhealthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    services: {} as Record<string, { status: string; latency?: number; error?: string }>,
+  };
+  
+  // Check database connection
+  try {
+    const dbStart = Date.now();
+    {% if saas_orm == 'prisma' %}
+    await prisma.$queryRaw`SELECT 1`;
+    {% elif saas_orm == 'drizzle' %}
+    await db.execute('SELECT 1');
+    {% endif %}
+    health.services.database = {
+      status: 'healthy',
+      latency: Date.now() - dbStart,
+    };
+  } catch (error) {
+    health.status = 'degraded';
+    health.services.database = {
+      status: 'unhealthy',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+  
+  {% if saas_auth == 'clerk' %}
+  // Clerk auth service is external and assumed healthy
+  health.services.auth = {
+    status: 'external',
+  };
+  {% elif saas_auth == 'authjs' %}
+  // Auth.js is self-hosted and healthy if database is healthy
+  health.services.auth = {
+    status: health.services.database.status,
+  };
+  {% endif %}
+  
+  {% if saas_billing == 'stripe' %}
+  // Stripe billing service is external
+  health.services.billing = {
+    status: 'external',
+  };
+  {% elif saas_billing == 'paddle' %}
+  // Paddle billing service is external
+  health.services.billing = {
+    status: 'external',
+  };
+  {% endif %}
+  
+  // Total health check latency
+  const totalLatency = Date.now() - startTime;
+  
+  // Determine overall status
+  if (health.services.database?.status === 'unhealthy') {
+    health.status = 'unhealthy';
+  }
+  
+  // Return appropriate status code
+  const statusCode = health.status === 'healthy' ? 200 : health.status === 'degraded' ? 503 : 503;
+  
+  return NextResponse.json(
+    {
+      ...health,
+      latency: totalLatency,
+    },
+    { status: statusCode }
+  );
+}
+{% endif %}
