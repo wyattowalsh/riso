@@ -1,0 +1,185 @@
+{% if saas_starter_module == "enabled" %}
+# {{ project_name }}
+
+> Production-ready SaaS application built with the Riso SaaS Starter
+
+**Stack**: {{ saas_runtime | upper }} + {{ saas_hosting | upper }} + {{ saas_database | upper }} + {{ saas_orm | upper }}
+
+## Quick Start
+
+```bash
+# Install dependencies
+pnpm install
+
+# Set up environment variables
+cp .env.example .env.local
+# Edit .env.local with your API keys
+
+# Initialize database
+pnpm db:push
+{% if saas_include_fixtures %}pnpm db:seed{% endif %}
+
+# Start development server
+pnpm dev
+```
+
+Visit [http://localhost:3000](http://localhost:3000)
+
+## Technology Stack
+
+- **Runtime**: {% if saas_runtime == "nextjs-16" %}Next.js 16 (React 19.2, Turbopack){% else %}Remix 2.x (Vite){% endif %}
+- **Hosting**: {% if saas_hosting == "vercel" %}Vercel{% else %}Cloudflare Pages + Workers{% endif %}
+- **Database**: {% if saas_database == "neon" %}Neon (Serverless Postgres){% else %}Supabase (Postgres + BaaS){% endif %}
+- **ORM**: {% if saas_orm == "prisma" %}Prisma{% else %}Drizzle{% endif %}
+- **Auth**: {% if saas_auth == "clerk" %}Clerk{% else %}Auth.js/NextAuth.js v5{% endif %}{% if saas_enterprise_bridge == "workos" %} + WorkOS (SSO/SCIM){% endif %}
+- **Billing**: {% if saas_billing == "stripe" %}Stripe{% else %}Paddle{% endif %}
+- **Jobs**: {% if saas_jobs == "triggerdev" %}Trigger.dev v4{% else %}Inngest{% endif %}
+- **Email**: {% if saas_email == "resend" %}Resend + React Email{% else %}Postmark{% endif %}
+- **Analytics**: {% if saas_analytics == "posthog" %}PostHog{% else %}Amplitude{% endif %}
+- **AI**: {% if saas_ai == "openai" %}OpenAI{% else %}Anthropic Claude{% endif %}
+- **Storage**: {% if saas_storage == "r2" %}Cloudflare R2{% else %}Supabase Storage{% endif %}
+- **Observability**: {% if saas_observability_sentry %}Sentry{% endif %}{% if saas_observability_datadog %}, Datadog{% endif %}{% if saas_observability_otel %}, OpenTelemetry{% endif %}
+
+## Documentation
+
+- **Module Docs**: See `docs/modules/saas-starter.md` for comprehensive guide
+- **Setup Guide**: `docs/setup.md`
+- **API Reference**: `docs/api-reference.md`
+- **Deployment**: `docs/deployment.md`
+- **Security**: `docs/security.md`
+- **Integration Guides**: `docs/integrations/` directory
+
+## Project Structure
+
+```
+{{ project_slug }}/
+??? app/                   # {% if saas_runtime == "nextjs-16" %}Next.js App Router{% else %}Remix routes{% endif %}
+??? lib/                   # Business logic & integrations
+?   ??? auth/              # Authentication
+?   ??? billing/           # Billing integration
+?   ??? database/          # Database client
+?   ??? jobs/              # Background jobs
+?   ??? email/             # Email sending
+?   ??? analytics/         # Analytics tracking
+?   ??? ai/                # AI integration
+?   ??? storage/           # File storage
+?   ??? observability/     # Logging & tracing
+{% if saas_orm == "prisma" %}
+??? prisma/                # Database schema
+{% else %}
+??? db/                    # Database schema
+{% endif %}
+??? tests/                 # Test suites
+??? docs/                  # Documentation
+??? saas-starter.config.ts # Technology selections
+```
+
+## Available Commands
+
+```bash
+# Development
+pnpm dev                   # Start dev server
+pnpm build                 # Build for production
+pnpm start                 # Start production server
+
+# Database
+pnpm db:push               # Push schema changes
+{% if saas_include_fixtures %}pnpm db:seed               # Seed database{% endif %}
+pnpm db:studio             # Open database GUI
+{% if saas_orm == "prisma" %}pnpm db:migrate:dev        # Create migration{% endif %}
+
+# Testing
+pnpm test                  # Run all tests
+pnpm test:unit             # Unit tests only
+pnpm test:integration      # Integration tests
+{% if saas_test_suite_level == "comprehensive" %}pnpm test:e2e              # End-to-end tests{% endif %}
+pnpm test:watch            # Watch mode
+pnpm test:coverage         # Coverage report
+
+# Code Quality
+pnpm lint                  # Run linter
+pnpm lint:fix              # Fix linter issues
+pnpm typecheck             # Type checking
+pnpm format                # Format code
+```
+
+## Environment Variables
+
+Required environment variables are documented in `.env.example`. Copy it to `.env.local` and add your API keys:
+
+{% if saas_auth == "clerk" %}
+### Clerk Authentication
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- `CLERK_SECRET_KEY`
+{% elif saas_auth == "authjs" %}
+### Auth.js
+- `NEXTAUTH_SECRET`
+- `NEXTAUTH_URL`
+{% endif %}
+
+### Database
+- `DATABASE_URL`
+
+{% if saas_billing == "stripe" %}
+### Stripe Billing
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+{% elif saas_billing == "paddle" %}
+### Paddle Billing
+- `PADDLE_API_KEY`
+- `PADDLE_WEBHOOK_SECRET`
+{% endif %}
+
+See `.env.example` for complete list of required variables.
+
+## Deployment
+
+### {% if saas_hosting == "vercel" %}Deploy to Vercel{% else %}Deploy to Cloudflare{% endif %}
+
+{% if saas_hosting == "vercel" %}
+```bash
+# Install Vercel CLI
+pnpm install -g vercel
+
+# Deploy
+vercel
+
+# Production deployment
+vercel --prod
+```
+
+Add environment variables in Vercel dashboard under Project Settings ? Environment Variables.
+{% else %}
+```bash
+# Install Wrangler CLI
+pnpm install -g wrangler
+
+# Login
+wrangler login
+
+# Add secrets
+wrangler secret put DATABASE_URL
+# ... (add all secrets)
+
+# Deploy
+wrangler deploy
+```
+{% endif %}
+
+See `docs/deployment.md` for detailed deployment instructions.
+
+## Getting Help
+
+- **Documentation**: Review `docs/` directory for guides
+- **Issues**: Report issues at [GitHub Issues](https://github.com/{{ project_slug }}/issues)
+- **Integration Docs**: Check `docs/integrations/` for service-specific help
+
+## License
+
+[MIT](LICENSE)
+
+---
+
+**Generated with**: Riso SaaS Starter  
+**Configuration**: See `saas-starter.config.ts` for your technology selections
+{% endif %}
