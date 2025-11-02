@@ -1,0 +1,167 @@
+{% if saas_starter_module == 'enabled' %}
+/**
+ * Base Integration Template
+ * 
+ * This is a reusable base pattern for all SaaS integrations.
+ * Each specific integration (e.g., Algolia, Stripe) extends this pattern.
+ * 
+ * Common patterns:
+ * - Environment variable validation
+ * - Client initialization with error handling
+ * - Configuration loading
+ * - TypeScript type exports
+ */
+
+// Environment Variable Validation
+export interface IntegrationEnvVars {
+  [key: string]: string | undefined;
+}
+
+export class IntegrationError extends Error {
+  constructor(
+    message: string,
+    public readonly integration: string,
+    public readonly code: string
+  ) {
+    super(message);
+    this.name = 'IntegrationError';
+  }
+}
+
+/**
+ * Validates required environment variables for an integration
+ */
+export function validateEnv(
+  integration: string,
+  requiredVars: string[],
+  optionalVars: string[] = []
+): IntegrationEnvVars {
+  const env: IntegrationEnvVars = {};
+  const missing: string[] = [];
+  
+  // Check required variables
+  for (const varName of requiredVars) {
+    const value = process.env[varName];
+    if (!value) {
+      missing.push(varName);
+    } else {
+      env[varName] = value;
+    }
+  }
+  
+  if (missing.length > 0) {
+    throw new IntegrationError(
+      `Missing required environment variables for ${integration}: ${missing.join(', ')}`,
+      integration,
+      'MISSING_ENV_VARS'
+    );
+  }
+  
+  // Collect optional variables
+  for (const varName of optionalVars) {
+    const value = process.env[varName];
+    if (value) {
+      env[varName] = value;
+    }
+  }
+  
+  return env;
+}
+
+/**
+ * Base configuration interface for all integrations
+ */
+export interface BaseIntegrationConfig {
+  enabled: boolean;
+  environment: 'development' | 'staging' | 'production';
+  debug?: boolean;
+}
+
+/**
+ * Creates a standard configuration loader
+ */
+export function createConfigLoader<T extends BaseIntegrationConfig>(
+  integration: string,
+  defaults: Partial<T>
+): () => T {
+  return () => {
+    const environment = (process.env.NODE_ENV || 'development') as T['environment'];
+    
+    return {
+      enabled: true,
+      environment,
+      debug: environment === 'development',
+      ...defaults
+    } as T;
+  };
+}
+
+/**
+ * Standard error handler for integration operations
+ */
+export async function withErrorHandling<T>(
+  integration: string,
+  operation: string,
+  fn: () => Promise<T>
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (error instanceof IntegrationError) {
+      throw error;
+    }
+    
+    const message = error instanceof Error ? error.message : String(error);
+    throw new IntegrationError(
+      `${integration} ${operation} failed: ${message}`,
+      integration,
+      'OPERATION_FAILED'
+    );
+  }
+}
+
+/**
+ * Retry logic for transient failures
+ */
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  options: {
+    maxAttempts?: number;
+    delayMs?: number;
+    backoff?: boolean;
+  } = {}
+): Promise<T> {
+  const { maxAttempts = 3, delayMs = 1000, backoff = true } = options;
+  
+  let lastError: Error | undefined;
+  
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      if (attempt < maxAttempts) {
+        const delay = backoff ? delayMs * attempt : delayMs;
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  throw lastError;
+}
+
+/**
+ * Type-safe configuration merger
+ */
+export function mergeConfig<T>(
+  base: T,
+  overrides: Partial<T>
+): T {
+  return {
+    ...base,
+    ...overrides
+  };
+}
+
+{% endif %}
