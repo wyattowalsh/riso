@@ -1,0 +1,179 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Sliding window algorithm disabled."""
+{%- else %}
+"""Sliding window rate limiting algorithm.
+
+Characteristics:
+- More accurate enforcement (no boundary exploitation)
+- Higher Redis overhead (uses sorted sets)
+- Stricter rate limiting
+- Optional for use cases requiring precise limits
+"""
+
+from __future__ import annotations
+
+import time
+
+from ..backends.base import BackendError, RateLimitBackend
+from .base import RateLimiter, RateLimitResult
+
+
+class SlidingWindowLimiter(RateLimiter):
+    """Sliding window rate limiting algorithm using Redis sorted sets.
+
+    Maintains precise request timestamps to prevent boundary exploitation.
+    More accurate than token bucket but requires more Redis operations.
+    """
+
+    # Lua script for atomic sliding window check
+    SLIDING_WINDOW_SCRIPT = """
+    local key = KEYS[1]
+    local window = tonumber(ARGV[1])
+    local limit = tonumber(ARGV[2])
+    local now = tonumber(ARGV[3])
+    
+    -- Remove entries older than window
+    local window_start = now - window
+    redis.call('ZREMRANGEBYSCORE', key, '-inf', window_start)
+    
+    -- Count requests in current window
+    local count = redis.call('ZCARD', key)
+    
+    if count < limit then
+        -- Add current request timestamp
+        redis.call('ZADD', key, now, now)
+        redis.call('EXPIRE', key, window)
+        return {1, count + 1, limit - count - 1}
+    else
+        -- Limit exceeded
+        return {0, count, 0}
+    end
+    """
+
+    def __init__(self, backend: RateLimitBackend) -> None:
+        """Initialize sliding window limiter.
+
+        Args:
+            backend: Storage backend (must support Redis for Lua scripts)
+        """
+        self.backend = backend
+        self._script = None
+        self._redis_client = None
+
+    async def _get_redis_client(self):
+        """Get Redis client from backend (only works with RedisBackend)."""
+        if hasattr(self.backend, "_get_client"):
+            if self._redis_client is None:
+                self._redis_client = await self.backend._get_client()
+                self._script = self._redis_client.register_script(
+                    self.SLIDING_WINDOW_SCRIPT
+                )
+            return self._redis_client, self._script
+
+        raise BackendError(
+            "SlidingWindow algorithm requires RedisBackend (MemoryBackend not supported)"
+        )
+
+    async def check_limit(
+        self,
+        key: str,
+        limit: int,
+        window: int,
+    ) -> RateLimitResult:
+        """Check if request is within rate limit using sliding window.
+
+        Uses Redis sorted set to track request timestamps:
+        1. Remove entries older than window
+        2. Count remaining entries
+        3. Add current request if under limit
+
+        Args:
+            key: Rate limit key
+            limit: Maximum requests per window
+            window: Time window in seconds
+
+        Returns:
+            RateLimitResult with allowed status and metadata
+        """
+        # Special case: limit=0 means reject all requests
+        if limit == 0:
+            return RateLimitResult(
+                allowed=False,
+                current_count=1,
+                limit=0,
+                remaining=0,
+                reset_at=int(time.time()) + window,
+                retry_after=window,
+            )
+
+        try:
+            client, script = await self._get_redis_client()
+            now = time.time()
+
+            # Execute Lua script atomically
+            result = await script(keys=[key], args=[window, limit, now])
+
+            allowed = bool(result[0])
+            current_count = int(result[1])
+            remaining = int(result[2])
+
+            reset_at = int(now) + window
+            retry_after = window if not allowed else 0
+
+            return RateLimitResult(
+                allowed=allowed,
+                current_count=current_count,
+                limit=limit,
+                remaining=remaining,
+                reset_at=reset_at,
+                retry_after=retry_after,
+            )
+
+        except Exception as e:
+            raise BackendError(f"Sliding window check failed: {e}") from e
+
+    async def get_remaining(self, key: str, limit: int) -> int:
+        """Get remaining requests in current window.
+
+        Args:
+            key: Rate limit key
+            limit: Maximum requests per window
+
+        Returns:
+            Number of requests remaining
+        """
+        try:
+            client, _ = await self._get_redis_client()
+
+            # Count entries in sorted set
+            count = await client.zcard(key)
+            return max(0, limit - count)
+
+        except Exception:
+            return 0
+
+    async def get_reset_time(self, key: str, window: int) -> int:
+        """Get Unix timestamp when oldest entry expires.
+
+        Args:
+            key: Rate limit key
+            window: Time window in seconds
+
+        Returns:
+            Unix timestamp of next reset
+        """
+        try:
+            client, _ = await self._get_redis_client()
+
+            # Get oldest timestamp in sorted set
+            oldest = await client.zrange(key, 0, 0, withscores=True)
+
+            if oldest:
+                oldest_timestamp = oldest[0][1]
+                return int(oldest_timestamp) + window
+
+        except Exception:
+            pass
+
+        return int(time.time()) + window
+{%- endif %}

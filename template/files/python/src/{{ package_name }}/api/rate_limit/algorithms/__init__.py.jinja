@@ -1,0 +1,23 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Rate limiting algorithms disabled."""
+{%- else %}
+"""Rate limiting algorithm implementations.
+
+Provides different algorithms for rate limiting:
+- TokenBucket: Allows bursts, simpler implementation, recommended default
+- SlidingWindow: Stricter accuracy, higher Redis overhead
+"""
+
+from __future__ import annotations
+
+from .base import RateLimiter, RateLimitResult
+from .token_bucket import TokenBucketLimiter
+from .sliding_window import SlidingWindowLimiter
+
+__all__ = [
+    "RateLimiter",
+    "RateLimitResult",
+    "TokenBucketLimiter",
+    "SlidingWindowLimiter",
+]
+{%- endif %}

@@ -1,0 +1,158 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Redis backend tests disabled."""
+{%- else %}
+"""Integration tests for Redis backend.
+
+These tests require a running Redis instance.
+Run with: docker-compose up -d redis
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from {{ package_name }}.api.rate_limit.backends.redis import RedisBackend, CircuitBreaker
+from {{ package_name }}.api.rate_limit.config import RedisConfig
+
+
+@pytest.fixture
+async def redis_backend():
+    """Create Redis backend for testing (requires running Redis)."""
+    config = RedisConfig(
+        url="redis://localhost:6379/0",
+        topology="single",
+        pool_size=10,
+    )
+    backend = RedisBackend(config)
+    yield backend
+    await backend.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+class TestRedisBackend:
+    """Test Redis backend with real Redis instance."""
+
+    async def test_increment_creates_key(self, redis_backend):
+        """Test that increment creates key with expiration."""
+        key = "test:rate_limit:user:123"
+        
+        count, ttl = await redis_backend.increment(key, window=60)
+        
+        assert count == 1
+        assert 55 <= ttl <= 60  # Allow some time variance
+
+    async def test_multiple_increments(self, redis_backend):
+        """Test multiple increments increase counter."""
+        key = "test:rate_limit:user:456"
+        
+        for i in range(1, 6):
+            count, ttl = await redis_backend.increment(key, window=60)
+            assert count == i
+
+    async def test_atomic_increment(self, redis_backend):
+        """Test that increments are atomic (no race conditions)."""
+        key = "test:rate_limit:atomic:789"
+        
+        # Make multiple concurrent increments
+        import asyncio
+        results = await asyncio.gather(*[
+            redis_backend.increment(key, window=60)
+            for _ in range(10)
+        ])
+        
+        # All increments should succeed with increasing counts
+        counts = [count for count, _ in results]
+        assert len(set(counts)) == 10  # All unique counts
+        assert max(counts) == 10
+
+    async def test_get_count(self, redis_backend):
+        """Test getting current count."""
+        key = "test:rate_limit:get:999"
+        
+        # Initially should be 0
+        count, ttl = await redis_backend.get_count(key)
+        assert count == 0
+        assert ttl == 0
+        
+        # After increment should match
+        await redis_backend.increment(key, window=60)
+        count, ttl = await redis_backend.get_count(key)
+        assert count == 1
+        assert ttl > 0
+
+    async def test_reset(self, redis_backend):
+        """Test resetting counter."""
+        key = "test:rate_limit:reset:111"
+        
+        # Create counter
+        await redis_backend.increment(key, window=60)
+        count, _ = await redis_backend.get_count(key)
+        assert count == 1
+        
+        # Reset
+        await redis_backend.reset(key)
+        count, _ = await redis_backend.get_count(key)
+        assert count == 0
+
+    async def test_health_check(self, redis_backend):
+        """Test health check returns status."""
+        health = await redis_backend.health_check()
+        
+        assert health["status"] == "healthy"
+        assert "latency_ms" in health
+        assert health["latency_ms"] is not None
+
+
+class TestCircuitBreaker:
+    """Test circuit breaker pattern."""
+
+    def test_circuit_initially_closed(self):
+        """Test circuit breaker starts in closed state."""
+        cb = CircuitBreaker(threshold=3, timeout=30)
+        assert cb.state == "closed"
+        assert not cb.is_open()
+
+    def test_circuit_opens_after_threshold(self):
+        """Test circuit opens after threshold failures."""
+        cb = CircuitBreaker(threshold=3, timeout=30)
+        
+        cb.record_failure()
+        assert not cb.is_open()
+        
+        cb.record_failure()
+        assert not cb.is_open()
+        
+        cb.record_failure()
+        assert cb.is_open()
+        assert cb.state == "open"
+
+    def test_circuit_resets_on_success(self):
+        """Test circuit resets failure count on success."""
+        cb = CircuitBreaker(threshold=3, timeout=30)
+        
+        cb.record_failure()
+        cb.record_failure()
+        assert cb.failures == 2
+        
+        cb.record_success()
+        assert cb.failures == 0
+        assert cb.state == "closed"
+
+    def test_circuit_half_open_after_timeout(self):
+        """Test circuit transitions to half-open after timeout."""
+        import time
+        
+        cb = CircuitBreaker(threshold=2, timeout=1)  # 1 second timeout
+        
+        cb.record_failure()
+        cb.record_failure()
+        assert cb.is_open()
+        
+        # Wait for timeout
+        time.sleep(1.1)
+        
+        # Should transition to half-open
+        assert not cb.is_open()
+        assert cb.state == "half_open"
+{%- endif %}

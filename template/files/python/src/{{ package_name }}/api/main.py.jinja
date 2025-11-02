@@ -22,6 +22,9 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 
 from .settings import ApiSettings, get_settings
 from .health import router as health_router
+{%- if rate_limiting_enabled | default(false) %}
+from .rate_limit import RateLimitMiddleware, load_config
+{%- endif %}
 
 build_health_payload: Any
 HealthCheckResult: Any
@@ -89,6 +92,20 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
     """Create and configure the FastAPI application."""
     resolved_settings = settings or get_settings()
     app = _configure_app(resolved_settings)
+
+{%- if rate_limiting_enabled | default(false) %}
+    # Register rate limiting middleware (before route handlers)
+    try:
+        rate_limit_config = load_config()
+        if rate_limit_config.enabled:
+            app.add_middleware(RateLimitMiddleware, config=rate_limit_config)
+    except Exception as e:
+        import sys
+        from loguru import logger
+        logger.warning(f"Failed to initialize rate limiting: {e}", exc_info=True)
+        if sys.stderr.isatty():
+            logger.info("Rate limiting disabled - continuing without it")
+{%- endif %}
 
     # Register containerhealth router (simple /health endpoint for Docker/K8s)
     app.include_router(health_router)

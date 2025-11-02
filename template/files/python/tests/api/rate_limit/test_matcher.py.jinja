@@ -1,0 +1,172 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Matcher tests disabled."""
+{%- else %}
+"""Unit tests for endpoint pattern matching."""
+
+from __future__ import annotations
+
+import pytest
+
+from {{ package_name }}.api.rate_limit.config import EndpointConfig, TierConfig
+from {{ package_name }}.api.rate_limit.matcher import EndpointMatcher
+
+
+class TestEndpointMatcher:
+    """Test endpoint pattern matching."""
+
+    def test_exact_match(self):
+        """Test exact path matching."""
+        endpoints = [
+            EndpointConfig(pattern="/api/v1/users", limit=50, window=60),
+        ]
+        matcher = EndpointMatcher(
+            endpoints=endpoints,
+            tiers=[],
+            default_limit=100,
+            default_window=60,
+        )
+
+        config = matcher.match_endpoint("/api/v1/users")
+        assert config is not None
+        assert config.limit == 50
+
+    def test_wildcard_match(self):
+        """Test wildcard pattern matching."""
+        endpoints = [
+            EndpointConfig(pattern="/api/v1/admin/*", limit=5, window=60),
+        ]
+        matcher = EndpointMatcher(
+            endpoints=endpoints,
+            tiers=[],
+            default_limit=100,
+            default_window=60,
+        )
+
+        config = matcher.match_endpoint("/api/v1/admin/users")
+        assert config is not None
+        assert config.limit == 5
+
+        config = matcher.match_endpoint("/api/v1/admin/settings/reset")
+        assert config is not None
+        assert config.limit == 5
+
+    def test_no_match_returns_none(self):
+        """Test that non-matching paths return None."""
+        endpoints = [
+            EndpointConfig(pattern="/api/v1/admin/*", limit=5, window=60),
+        ]
+        matcher = EndpointMatcher(
+            endpoints=endpoints,
+            tiers=[],
+            default_limit=100,
+            default_window=60,
+        )
+
+        config = matcher.match_endpoint("/api/v1/users")
+        assert config is None
+
+    def test_priority_exact_over_wildcard(self):
+        """Test that exact matches have priority over wildcards."""
+        endpoints = [
+            EndpointConfig(pattern="/api/v1/*", limit=100, window=60),
+            EndpointConfig(pattern="/api/v1/search", limit=20, window=60),
+        ]
+        matcher = EndpointMatcher(
+            endpoints=endpoints,
+            tiers=[],
+            default_limit=100,
+            default_window=60,
+        )
+
+        config = matcher.match_endpoint("/api/v1/search")
+        assert config is not None
+        assert config.limit == 20  # Exact match takes priority
+
+    def test_priority_longer_pattern(self):
+        """Test that longer patterns have priority."""
+        endpoints = [
+            EndpointConfig(pattern="/api/*", limit=100, window=60),
+            EndpointConfig(pattern="/api/v1/admin/*", limit=5, window=60),
+        ]
+        matcher = EndpointMatcher(
+            endpoints=endpoints,
+            tiers=[],
+            default_limit=100,
+            default_window=60,
+        )
+
+        config = matcher.match_endpoint("/api/v1/admin/users")
+        assert config is not None
+        assert config.limit == 5  # More specific pattern wins
+
+    def test_get_limit_config_endpoint_priority(self):
+        """Test that endpoint config has highest priority."""
+        endpoints = [
+            EndpointConfig(pattern="/api/v1/search", limit=20, window=60),
+        ]
+        tiers = [
+            TierConfig(name="premium", limit=5000, window=60),
+        ]
+        matcher = EndpointMatcher(
+            endpoints=endpoints,
+            tiers=tiers,
+            default_limit=100,
+            default_window=60,
+        )
+
+        # Endpoint config overrides tier config
+        config = matcher.get_limit_config("/api/v1/search", tier="premium")
+        assert config.limit == 20
+        assert config.source == "endpoint"
+
+    def test_get_limit_config_tier_over_default(self):
+        """Test that tier config overrides default."""
+        matcher = EndpointMatcher(
+            endpoints=[],
+            tiers=[
+                TierConfig(name="premium", limit=5000, window=60),
+            ],
+            default_limit=100,
+            default_window=60,
+        )
+
+        # Tier config overrides default
+        config = matcher.get_limit_config("/api/v1/users", tier="premium")
+        assert config.limit == 5000
+        assert config.source == "tier"
+
+    def test_get_limit_config_default_fallback(self):
+        """Test fallback to default configuration."""
+        matcher = EndpointMatcher(
+            endpoints=[],
+            tiers=[],
+            default_limit=100,
+            default_window=60,
+        )
+
+        config = matcher.get_limit_config("/api/v1/users", tier=None)
+        assert config.limit == 100
+        assert config.source == "default"
+
+    def test_caching_performance(self):
+        """Test that endpoint matching is cached."""
+        endpoints = [
+            EndpointConfig(pattern="/api/v1/search", limit=20, window=60),
+        ]
+        matcher = EndpointMatcher(
+            endpoints=endpoints,
+            tiers=[],
+            default_limit=100,
+            default_window=60,
+        )
+
+        # First call
+        config1 = matcher.match_endpoint("/api/v1/search")
+
+        # Second call should use cache
+        config2 = matcher.match_endpoint("/api/v1/search")
+
+        assert config1 is not None
+        assert config2 is not None
+        assert config1.pattern == config2.pattern
+{%- endif %}

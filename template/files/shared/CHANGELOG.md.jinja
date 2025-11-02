@@ -1,0 +1,96 @@
+# Changelog
+
+All notable changes to {{ project_name }} will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+{%- if rate_limiting_enabled | default(false) %}
+
+### Added
+
+- **Comprehensive API Rate Limiting** - Production-ready rate limiting with Redis backend
+  - Token bucket and sliding window algorithms
+  - IP-based (IPv4/IPv6) and JWT-based client identification
+  - Per-endpoint and tier-based rate limits (anonymous, standard, premium)
+  - Redis Sentinel support for high availability (3-node: 1 master + 2 replicas)
+  - Circuit breaker pattern for graceful Redis failure handling
+  - Fail-open and fail-closed modes (configurable)
+  - Standard RateLimit headers (X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset)
+  - Retry-After header in 429 responses
+  - JSON error responses with actionable information
+  - Prometheus metrics (5 metrics: requests_total, exceeded_total, current_usage, redis_latency, redis_errors)
+  - Structured JSON logging for rate limit events
+  - Configurable exemption lists (IPs with CIDR notation, user_ids, endpoints)
+  - Automatic health endpoint exemption (/health, /metrics, /docs)
+  - Progressive penalty configuration (disabled by default)
+  - X-Forwarded-For parsing with IP spoofing prevention (rightmost untrusted IP strategy)
+  - TOML configuration with environment variable overrides
+  - Docker Compose Redis service integration
+  - Comprehensive documentation with client examples (Python + JavaScript)
+
+{%- endif %}
+
+## [0.1.0] - {{ "%Y-%m-%d" | strftime }}
+
+### Added
+
+- Initial project scaffold generated from Riso template
+{%- if quality_profile %}
+- Quality suite: {{ quality_profile }} profile (ruff, mypy, pylint, pytest, coverage)
+{%- endif %}
+{%- if cli_module | lower == "enabled" %}
+- Typer CLI module with plugin architecture
+{%- endif %}
+{%- if api_tracks | lower in ["python", "python+node"] %}
+- FastAPI service with health checks and configuration management
+{%- endif %}
+{%- if api_tracks | lower in ["node", "python+node"] %}
+- Fastify service (Node.js) with TypeScript support
+{%- endif %}
+{%- if mcp_module | lower == "enabled" %}
+- FastMCP tooling module with sample tools
+{%- endif %}
+{%- if docs_site == "fumadocs" %}
+- Fumadocs documentation site (Next.js 15)
+{%- elif docs_site == "sphinx-shibuya" %}
+- Sphinx documentation with Shibuya theme
+{%- elif docs_site == "docusaurus" %}
+- Docusaurus documentation site
+{%- endif %}
+{%- if shared_logic | lower == "enabled" %}
+- Shared logic package for cross-module reuse
+{%- endif %}
+{%- if include_databases == "yes" %}
+- Docker Compose with PostgreSQL 16 and Redis 7
+{%- endif %}
+{%- if ci_platform == "github-actions" %}
+- GitHub Actions workflows (quality checks, matrix testing, artifact retention)
+{%- endif %}
+
+### Configuration
+
+- Python {{ python_versions | join(", ") }}
+- Project layout: {{ project_layout }}
+- Quality profile: {{ quality_profile }}
+
+---
+
+## Guidelines
+
+### Types of Changes
+
+- `Added` for new features.
+- `Changed` for changes in existing functionality.
+- `Deprecated` for soon-to-be removed features.
+- `Removed` for now removed features.
+- `Fixed` for any bug fixes.
+- `Security` in case of vulnerabilities.
+
+### Version Numbering
+
+- MAJOR version when you make incompatible API changes
+- MINOR version when you add functionality in a backwards compatible manner
+- PATCH version when you make backwards compatible bug fixes

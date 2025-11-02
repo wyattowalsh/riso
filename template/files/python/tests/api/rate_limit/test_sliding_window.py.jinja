@@ -1,0 +1,44 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Sliding window tests disabled."""
+{%- else %}
+"""Unit tests for sliding window algorithm."""
+
+from __future__ import annotations
+
+import pytest
+
+from {{ package_name }}.api.rate_limit.algorithms.sliding_window import SlidingWindowLimiter
+from {{ package_name }}.api.rate_limit.backends.memory import MemoryBackend
+
+
+@pytest.fixture
+def backend():
+    """Create memory backend for testing."""
+    return MemoryBackend()
+
+
+@pytest.fixture
+def limiter(backend):
+    """Create sliding window limiter.
+    
+    Note: SlidingWindow requires Redis backend for Lua scripts.
+    These tests use a mock Redis client.
+    """
+    return SlidingWindowLimiter(backend)
+
+
+@pytest.mark.asyncio
+class TestSlidingWindowLimiter:
+    """Test SlidingWindowLimiter algorithm."""
+
+    async def test_requires_redis_backend(self, limiter):
+        """Test that sliding window requires Redis backend."""
+        from {{ package_name }}.api.rate_limit.backends.base import BackendError
+        
+        # Should raise error with memory backend
+        with pytest.raises(BackendError, match="requires RedisBackend"):
+            await limiter.check_limit(key="test:user:123", limit=10, window=60)
+
+    # Note: Full sliding window tests require Redis integration
+    # See test_redis_backend.py for integration tests
+{%- endif %}

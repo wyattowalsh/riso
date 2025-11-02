@@ -1,0 +1,116 @@
+{%- if api_tracks | lower not in ["python", "python+node"] or not rate_limiting_enabled | default(false) %}
+"""Token bucket algorithm disabled."""
+{%- else %}
+"""Token bucket rate limiting algorithm.
+
+Characteristics:
+- Allows natural burst traffic
+- Simpler implementation
+- Lower Redis overhead
+- Recommended default algorithm
+"""
+
+from __future__ import annotations
+
+import time
+
+from ..backends.base import RateLimitBackend
+from .base import RateLimiter, RateLimitResult
+
+
+class TokenBucketLimiter(RateLimiter):
+    """Token bucket rate limiting algorithm.
+
+    Allows bursts up to the limit, then enforces average rate.
+    Ideal for most API use cases where occasional bursts are acceptable.
+    """
+
+    def __init__(self, backend: RateLimitBackend) -> None:
+        """Initialize token bucket limiter.
+
+        Args:
+            backend: Storage backend for counters
+        """
+        self.backend = backend
+
+    async def check_limit(
+        self,
+        key: str,
+        limit: int,
+        window: int,
+    ) -> RateLimitResult:
+        """Check if request is within rate limit using token bucket.
+
+        The token bucket works by:
+        1. Incrementing a counter for each request
+        2. Setting expiration to window duration on first request
+        3. Rejecting when counter > limit
+
+        This allows bursts: client can use all tokens immediately,
+        then must wait for the window to reset.
+
+        Args:
+            key: Rate limit key
+            limit: Maximum requests per window
+            window: Time window in seconds
+
+        Returns:
+            RateLimitResult with allowed status and metadata
+        """
+        # Special case: limit=0 means reject all requests (maintenance mode)
+        if limit == 0:
+            return RateLimitResult(
+                allowed=False,
+                current_count=1,
+                limit=0,
+                remaining=0,
+                reset_at=int(time.time()) + window,
+                retry_after=window,
+            )
+
+        # Increment counter atomically
+        current_count, ttl = await self.backend.increment(key, window)
+
+        # Calculate reset time
+        reset_at = int(time.time()) + ttl
+
+        # Check if limit exceeded
+        allowed = current_count <= limit
+        remaining = max(0, limit - current_count)
+        retry_after = ttl if not allowed else 0
+
+        return RateLimitResult(
+            allowed=allowed,
+            current_count=current_count,
+            limit=limit,
+            remaining=remaining,
+            reset_at=reset_at,
+            retry_after=retry_after,
+        )
+
+    async def get_remaining(self, key: str, limit: int) -> int:
+        """Get remaining requests in current window.
+
+        Args:
+            key: Rate limit key
+            limit: Maximum requests per window
+
+        Returns:
+            Number of requests remaining
+        """
+        current_count, _ = await self.backend.get_count(key)
+        return max(0, limit - current_count)
+
+    async def get_reset_time(self, key: str, window: int) -> int:
+        """Get Unix timestamp when rate limit resets.
+
+        Args:
+            key: Rate limit key
+            window: Time window in seconds
+
+        Returns:
+            Unix timestamp of next reset
+        """
+        _, ttl = await self.backend.get_count(key)
+        return int(time.time()) + ttl
+{%- endif %}

@@ -117,6 +117,42 @@
         "Conditional Node.js job support",
         "Retry logic with exponential backoff"
       ]
+    },
+{%- if rate_limiting_enabled | default(false) %}
+    {
+      "name": "rate_limiting",
+      "prompt_key": "rate_limiting_enabled",
+      "default_state": "disabled",
+      "selected_state": "{{ 'enabled' if rate_limiting_enabled else 'disabled' }}",
+      "description": "Comprehensive API rate limiting with Redis backend, multiple algorithms, and distributed enforcement.",
+      "dependencies": ["redis", "PyJWT", "prometheus-client", "api_python"],
+      "docs_path": "docs/modules/rate-limiting.md",
+      "ci_jobs": ["rate-limit-integration"],
+      "validation_commands": [
+        "docker-compose up -d redis",
+        "uv run pytest tests/api/rate_limit/ -v",
+        "curl -i http://localhost:8000/metrics | grep rate_limit"
+      ],
+      "features": [
+        "Token bucket and sliding window algorithms",
+        "IP-based and JWT-based client identification",
+        "Per-endpoint and tier-based rate limits",
+        "Redis Sentinel support for high availability",
+        "Circuit breaker pattern for graceful Redis failures",
+        "Prometheus metrics and structured JSON logging",
+        "Standard RateLimit headers (X-RateLimit-*)",
+        "Configurable exemptions and progressive penalties",
+        "CIDR notation support for IP exemptions",
+        "Automatic health endpoint exemption"
+      ],
+      "configuration": {
+        "redis_required": true,
+        "recommended_topology": "sentinel",
+        "default_algorithm": "token_bucket",
+        "default_limit": 100,
+        "default_window": 60
+      }
     }
+{%- endif %}
   ]
 }
