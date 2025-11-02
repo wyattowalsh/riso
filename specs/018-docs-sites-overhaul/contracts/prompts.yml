@@ -1,0 +1,114 @@
+# Extended Documentation Site Prompts for copier.yml
+# Feature: 018-docs-sites-overhaul
+# Date: 2025-11-02
+
+# PRIMARY PROMPT: Documentation framework selection
+docs_site:
+  type: str
+  help: "Select documentation framework (none = no docs, fumadocs = Next.js+React, sphinx-shibuya = Python+Sphinx, docusaurus = React)"
+  choices:
+    - none
+    - fumadocs
+    - sphinx-shibuya
+    - docusaurus
+  default: fumadocs
+  when: true
+
+# SUB-PROMPT 1: Theme appearance mode
+docs_theme_mode:
+  type: str
+  help: "Default theme appearance (light/dark/auto for system preference)"
+  choices:
+    - light
+    - dark
+    - auto
+  default: auto
+  when: "{{ docs_site != 'none' }}"
+
+# SUB-PROMPT 2: Search integration provider
+docs_search_provider:
+  type: str
+  help: |
+    Search integration provider:
+    - none: No search functionality
+    - local: Framework-native local search (FREE, works offline)
+    - algolia: Algolia DocSearch (FREE tier → PAID, requires application at https://docsearch.algolia.com/apply/)
+    - typesense: Typesense Cloud or self-hosted (PAID ~$22/month or self-hosted infrastructure)
+  choices:
+    - none
+    - local
+    - algolia
+    - typesense
+  default: local
+  when: "{{ docs_site != 'none' }}"
+
+# SUB-PROMPT 3: Interactive API documentation
+docs_api_playground:
+  type: str
+  help: |
+    Interactive API documentation style (requires api_tracks in ['python', 'node', 'python+node']):
+    - disabled: No API playground
+    - swagger: Swagger UI (interactive OpenAPI playground)
+    - redoc: ReDoc (clean, three-panel OpenAPI docs)
+    - both: Include both Swagger UI and ReDoc
+  choices:
+    - disabled
+    - swagger
+    - redoc
+    - both
+  default: disabled
+  when: "{{ api_tracks in ['python', 'node', 'python+node'] }}"
+
+# SUB-PROMPT 4: Documentation deployment target
+docs_deploy_target:
+  type: str
+  help: |
+    Documentation deployment platform:
+    - github-pages: Deploy to GitHub Pages (FREE for public repos, requires GitHub Actions workflow)
+    - netlify: Deploy to Netlify (FREE tier: 100GB bandwidth, automatic HTTPS)
+    - vercel: Deploy to Vercel (FREE tier: unlimited bandwidth, edge network)
+    - cloudflare: Deploy to Cloudflare Pages (FREE tier: unlimited bandwidth, 500 builds/month)
+  choices:
+    - github-pages
+    - netlify
+    - vercel
+    - cloudflare
+  default: github-pages
+  when: "{{ docs_site != 'none' }}"
+
+# SUB-PROMPT 5: Multi-version documentation support
+docs_versioning:
+  type: str
+  help: |
+    Enable multi-version documentation support (ADVANCED: adds build complexity, ~2x build time for Docusaurus):
+    - disabled: Single-version documentation (recommended for most projects)
+    - enabled: Multi-version support (Sphinx: via mike CLI, Docusaurus: native versioning, Fumadocs: custom routing)
+  choices:
+    - disabled
+    - enabled
+  default: disabled
+  when: "{{ docs_site != 'none' }}"
+
+# SUB-PROMPT 6: Interactive documentation features
+docs_interactive_features:
+  type: str
+  help: |
+    Enable interactive documentation features (code playgrounds, runnable examples, live diagrams):
+    - disabled: Static documentation only
+    - enabled: Interactive features (Mermaid diagrams, code tabs, live API examples, embedded playgrounds)
+  choices:
+    - disabled
+    - enabled
+  default: disabled
+  when: "{{ docs_site != 'none' }}"
+
+# INTERNAL PROMPT 7: Documentation build quality gates (not user-facing)
+docs_quality_gates:
+  type: str
+  help: "Enable documentation quality validation (link checking, accessibility audits) in CI"
+  choices:
+    - disabled
+    - enabled
+  default: enabled
+  when: "{{ docs_site != 'none' }}"
+  internal: true  # Not shown to users during copier prompting
