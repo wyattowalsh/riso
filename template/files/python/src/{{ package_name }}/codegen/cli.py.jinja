@@ -496,25 +496,104 @@ app.add_typer(cache_app, name="cache")
 
 @cache_app.command("list")
 def cache_list(
-    format: str = typer.Option("table", "--format", "-f", help="Output format"),
+    format: str = typer.Option("table", "--format", "-f", help="Output format (table/json)"),
 ) -> None:
     """List cached templates."""
+    from .templates.cache import CacheManager
+    
     cache_mgr = CacheManager()
     cached = cache_mgr.list_cached_templates()
     
-    table = Table(title="Cached Templates")
-    table.add_column("Name", style="cyan")
-    table.add_column("Version", style="green")
-    table.add_column("Cached At")
+    if format == "json":
+        import json
+        console.print_json(data={"templates": cached, "count": len(cached)})
+    else:
+        table = Table(title="Cached Templates")
+        table.add_column("Name", style="cyan")
+        table.add_column("Version", style="green")
+        table.add_column("Cached At")
+        table.add_column("Size")
+        
+        for item in cached:
+            # Calculate size if available
+            from pathlib import Path
+            template_path = Path.home() / ".scaffold" / "templates" / item["template_name"]
+            size_mb = 0
+            if template_path.exists():
+                size_bytes = sum(
+                    f.stat().st_size
+                    for f in template_path.rglob("*")
+                    if f.is_file()
+                )
+                size_mb = size_bytes / 1_048_576
+            
+            table.add_row(
+                item["template_name"],
+                item.get("version", "unknown"),
+                item.get("cached_at", "unknown")[:10] if item.get("cached_at") else "unknown",
+                f"{size_mb:.1f} MB" if size_mb > 0 else "unknown",
+            )
+        
+        console.print(table)
+        console.print(f"\nTotal: {len(cached)} templates")
+
+
+@cache_app.command("update")
+def cache_update(
+    template_name: Optional[str] = typer.Argument(None, help="Template to update (all if not specified)"),
+) -> None:
+    """Update cached templates from their sources."""
+    from .templates.cache import CacheManager
+    from .templates.loader import TemplateLoader
+    from .templates.registry import TemplateRegistry
     
-    for item in cached:
-        table.add_row(
-            item["template_name"],
-            item.get("version", "unknown"),
-            item.get("cached_at", "unknown"),
-        )
+    cache_mgr = CacheManager()
+    registry = TemplateRegistry()
     
-    console.print(table)
+    if template_name:
+        # Update specific template
+        console.print(f"[cyan]Updating template:[/cyan] {template_name}")
+        
+        # Get template metadata to find source
+        template_path = cache_mgr.get_cached_template(template_name)
+        if not template_path:
+            console.print(f"[red]✗[/red] Template not found: {template_name}")
+            raise typer.Exit(code=1)
+        
+        loader = TemplateLoader()
+        template = loader.load_template(template_path)
+        
+        if template.source_url:
+            try:
+                updated = registry.fetch_template(template.source_url)
+                console.print(f"[green]✓[/green] Updated {template_name} to v{updated.version}")
+            except Exception as e:
+                console.print(f"[red]✗[/red] Update failed: {e}")
+                raise typer.Exit(code=1)
+        else:
+            console.print(f"[yellow]⚠[/yellow] No source URL for {template_name}")
+    else:
+        # Update all templates with source URLs
+        cached = cache_mgr.list_cached_templates()
+        console.print(f"[cyan]Updating {len(cached)} cached templates...[/cyan]\n")
+        
+        updated_count = 0
+        for item in cached:
+            name = item["template_name"]
+            template_path = cache_mgr.get_cached_template(name)
+            if template_path:
+                loader = TemplateLoader()
+                template = loader.load_template(template_path)
+                
+                if template.source_url:
+                    try:
+                        updated = registry.fetch_template(template.source_url)
+                        console.print(f"  [green]✓[/green] {name} → v{updated.version}")
+                        updated_count += 1
+                    except Exception as e:
+                        console.print(f"  [red]✗[/red] {name}: {e}")
+        
+        console.print(f"\n[green]✓[/green] Updated {updated_count} templates")
 
 
 @cache_app.command("clear")
@@ -523,12 +602,16 @@ def cache_clear(
     all: bool = typer.Option(False, "--all", help="Clear all cache"),
 ) -> None:
     """Clear template cache."""
+    from .templates.cache import CacheManager
+    
     cache_mgr = CacheManager()
     
     if all or template_name is None:
-        if typer.confirm("Clear all cache?"):
-            count = cache_mgr.clear_cache()
-            console.print(f"[green]✓[/green] Cleared {count} templates from cache")
+        if not all and not typer.confirm("Clear all cache?"):
+            raise typer.Exit(code=0)
+        
+        count = cache_mgr.clear_cache()
+        console.print(f"[green]✓[/green] Cleared {count} templates from cache")
     else:
         count = cache_mgr.clear_cache(template_name)
         if count:
@@ -549,7 +632,29 @@ app.add_typer(config_app, name="config")
 @config_app.command("get")
 def config_get(key: str = typer.Argument(..., help="Configuration key")) -> None:
     """Get configuration value."""
-    console.print(f"[yellow]Config command not yet implemented[/yellow]")
+    import yaml
+    
+    config_file = Path.home() / ".scaffold" / "config.yml"
+    
+    if not config_file.exists():
+        console.print(f"[yellow]⚠[/yellow] No configuration file found")
+        console.print(f"Default location: {config_file}")
+        raise typer.Exit(code=1)
+    
+    with open(config_file) as f:
+        config = yaml.safe_load(f) or {}
+    
+    # Navigate nested keys (e.g., "registries.default.path")
+    keys = key.split(".")
+    value = config
+    for k in keys:
+        if isinstance(value, dict) and k in value:
+            value = value[k]
+        else:
+            console.print(f"[red]✗[/red] Key not found: {key}")
+            raise typer.Exit(code=1)
+    
+    console.print(f"{key}: {value}")
 
 
 @config_app.command("set")
@@ -558,13 +663,70 @@ def config_set(
     value: str = typer.Argument(..., help="Configuration value"),
 ) -> None:
     """Set configuration value."""
-    console.print(f"[yellow]Config command not yet implemented[/yellow]")
+    import yaml
+    
+    config_file = Path.home() / ".scaffold" / "config.yml"
+    config_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Load existing config or create new
+    if config_file.exists():
+        with open(config_file) as f:
+            config = yaml.safe_load(f) or {}
+    else:
+        config = {}
+    
+    # Navigate and set nested keys
+    keys = key.split(".")
+    current = config
+    for k in keys[:-1]:
+        if k not in current:
+            current[k] = {}
+        current = current[k]
+    
+    # Set the value
+    current[keys[-1]] = value
+    
+    # Write back
+    with open(config_file, "w") as f:
+        yaml.dump(config, f, default_flow_style=False)
+    
+    console.print(f"[green]✓[/green] Set {key} = {value}")
 
 
 @config_app.command("list")
 def config_list() -> None:
     """List all configuration."""
-    console.print(f"[yellow]Config command not yet implemented[/yellow]")
+    import yaml
+    
+    config_file = Path.home() / ".scaffold" / "config.yml"
+    
+    if not config_file.exists():
+        console.print(f"[yellow]⚠[/yellow] No configuration file found")
+        console.print(f"\nCreate one at: {config_file}")
+        console.print("\nExample configuration:")
+        console.print("""
+default_template: python-cli
+default_output_dir: .
+interactive: true
+
+registries:
+  default:
+    type: local
+    path: ~/.scaffold/templates
+
+quality:
+  enabled: true
+  strict_mode: false
+""")
+        raise typer.Exit(code=0)
+    
+    with open(config_file) as f:
+        config = yaml.safe_load(f) or {}
+    
+    console.print(f"[bold]Configuration:[/bold] {config_file}\n")
+    
+    import yaml
+    console.print(yaml.dump(config, default_flow_style=False))
 
 
 # ============================================================================
