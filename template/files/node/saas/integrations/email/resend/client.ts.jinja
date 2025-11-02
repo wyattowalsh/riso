@@ -1,0 +1,288 @@
+{% if saas_starter_module == "enabled" and saas_email == "resend" %}
+/**
+ * Resend Email Client
+ * 
+ * Modern email patterns with React Email:
+ * - Type-safe email templates
+ * - React components for email
+ * - Tailwind CSS in emails
+ * - Batch sending
+ * - Email tracking
+ * 
+ * @see https://resend.com/docs
+ * @see https://react.email/docs
+ */
+
+import { Resend } from 'resend';
+import { env } from '@/lib/env';
+
+// Initialize Resend client
+export const resend = new Resend(env.RESEND_API_KEY);
+
+// Email configuration
+const emailConfig = {
+  from: {
+    name: '{{ project_name }}',
+    email: `noreply@${env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, '') || '{{ project_slug }}.com'}`,
+  },
+  replyTo: `support@${env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, '') || '{{ project_slug }}.com'}`,
+};
+
+// ============================================================================
+// Email Sending Functions
+// ============================================================================
+
+/**
+ * Send welcome email
+ * 
+ * @example
+ * ```ts
+ * await sendWelcomeEmail({
+ *   to: 'user@example.com',
+ *   name: 'John Doe',
+ * });
+ * ```
+ */
+export async function sendWelcomeEmail(params: {
+  to: string;
+  name?: string;
+}) {
+  return await resend.emails.send({
+    from: `${emailConfig.from.name} <${emailConfig.from.email}>`,
+    to: params.to,
+    subject: `Welcome to ${emailConfig.from.name}!`,
+    react: WelcomeEmail({ name: params.name }),
+  });
+}
+
+/**
+ * Send email verification
+ */
+export async function sendVerificationEmail(params: {
+  to: string;
+  verificationUrl: string;
+}) {
+  return await resend.emails.send({
+    from: `${emailConfig.from.name} <${emailConfig.from.email}>`,
+    to: params.to,
+    subject: 'Verify your email address',
+    react: VerificationEmail({ verificationUrl: params.verificationUrl }),
+  });
+}
+
+/**
+ * Send password reset email
+ */
+export async function sendPasswordResetEmail(params: {
+  to: string;
+  resetUrl: string;
+}) {
+  return await resend.emails.send({
+    from: `${emailConfig.from.name} <${emailConfig.from.email}>`,
+    to: params.to,
+    subject: 'Reset your password',
+    react: PasswordResetEmail({ resetUrl: params.resetUrl }),
+  });
+}
+
+/**
+ * Send subscription confirmation
+ */
+export async function sendSubscriptionConfirmation(params: {
+  to: string;
+  plan: string;
+  amount: number;
+  billingCycle: string;
+}) {
+  return await resend.emails.send({
+    from: `${emailConfig.from.name} <${emailConfig.from.email}>`,
+    to: params.to,
+    subject: 'Subscription Confirmed',
+    react: SubscriptionConfirmationEmail({
+      plan: params.plan,
+      amount: params.amount,
+      billingCycle: params.billingCycle,
+    }),
+  });
+}
+
+/**
+ * Send payment receipt
+ */
+export async function sendPaymentReceipt(params: {
+  to: string;
+  invoiceId: string;
+  amount: number;
+  invoiceUrl?: string;
+}) {
+  return await resend.emails.send({
+    from: `${emailConfig.from.name} <${emailConfig.from.email}>`,
+    to: params.to,
+    subject: 'Payment Receipt',
+    react: PaymentReceiptEmail({
+      invoiceId: params.invoiceId,
+      amount: params.amount,
+      invoiceUrl: params.invoiceUrl,
+    }),
+  });
+}
+
+/**
+ * Send team invitation
+ */
+export async function sendTeamInvitation(params: {
+  to: string;
+  inviterName: string;
+  organizationName: string;
+  inviteUrl: string;
+}) {
+  return await resend.emails.send({
+    from: `${emailConfig.from.name} <${emailConfig.from.email}>`,
+    to: params.to,
+    subject: `You've been invited to join ${params.organizationName}`,
+    react: TeamInvitationEmail({
+      inviterName: params.inviterName,
+      organizationName: params.organizationName,
+      inviteUrl: params.inviteUrl,
+    }),
+  });
+}
+
+// ============================================================================
+// Batch Email Operations
+// ============================================================================
+
+/**
+ * Send batch emails
+ * Up to 100 emails in a single request
+ * 
+ * @example
+ * ```ts
+ * await sendBatchEmails([
+ *   { to: 'user1@example.com', subject: 'Hello', react: <Email1 /> },
+ *   { to: 'user2@example.com', subject: 'Hello', react: <Email2 /> },
+ * ]);
+ * ```
+ */
+export async function sendBatchEmails(
+  emails: Array<{
+    to: string;
+    subject: string;
+    react: React.ReactElement;
+  }>
+) {
+  const batch = emails.map((email) => ({
+    from: `${emailConfig.from.name} <${emailConfig.from.email}>`,
+    to: email.to,
+    subject: email.subject,
+    react: email.react,
+  }));
+  
+  return await resend.batch.send(batch);
+}
+
+// ============================================================================
+// Email Utilities
+// ============================================================================
+
+/**
+ * Format email address with name
+ */
+export function formatEmailAddress(email: string, name?: string): string {
+  return name ? `${name} <${email}>` : email;
+}
+
+/**
+ * Validate email address
+ */
+export function isValidEmail(email: string): boolean {
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return regex.test(email);
+}
+
+// ============================================================================
+// React Email Components (Stubs)
+// ============================================================================
+
+/**
+ * Welcome Email Component
+ * TODO: Create actual React Email component in /emails folder
+ */
+function WelcomeEmail({ name }: { name?: string }) {
+  return `
+    <div>
+      <h1>Welcome${name ? ` ${name}` : ''}!</h1>
+      <p>Thank you for signing up for ${emailConfig.from.name}.</p>
+    </div>
+  ` as any;
+}
+
+function VerificationEmail({ verificationUrl }: { verificationUrl: string }) {
+  return `
+    <div>
+      <h1>Verify your email</h1>
+      <p>Click the link below to verify your email address:</p>
+      <a href="${verificationUrl}">Verify Email</a>
+    </div>
+  ` as any;
+}
+
+function PasswordResetEmail({ resetUrl }: { resetUrl: string }) {
+  return `
+    <div>
+      <h1>Reset your password</h1>
+      <p>Click the link below to reset your password:</p>
+      <a href="${resetUrl}">Reset Password</a>
+    </div>
+  ` as any;
+}
+
+function SubscriptionConfirmationEmail(params: {
+  plan: string;
+  amount: number;
+  billingCycle: string;
+}) {
+  return `
+    <div>
+      <h1>Subscription Confirmed</h1>
+      <p>Plan: ${params.plan}</p>
+      <p>Amount: $${(params.amount / 100).toFixed(2)} / ${params.billingCycle}</p>
+    </div>
+  ` as any;
+}
+
+function PaymentReceiptEmail(params: {
+  invoiceId: string;
+  amount: number;
+  invoiceUrl?: string;
+}) {
+  return `
+    <div>
+      <h1>Payment Receipt</h1>
+      <p>Invoice: ${params.invoiceId}</p>
+      <p>Amount: $${(params.amount / 100).toFixed(2)}</p>
+      ${params.invoiceUrl ? `<a href="${params.invoiceUrl}">View Invoice</a>` : ''}
+    </div>
+  ` as any;
+}
+
+function TeamInvitationEmail(params: {
+  inviterName: string;
+  organizationName: string;
+  inviteUrl: string;
+}) {
+  return `
+    <div>
+      <h1>You've been invited!</h1>
+      <p>${params.inviterName} has invited you to join ${params.organizationName}.</p>
+      <a href="${params.inviteUrl}">Accept Invitation</a>
+    </div>
+  ` as any;
+}
+
+// ============================================================================
+// Type Exports
+// ============================================================================
+
+export type { Resend };
+{% endif %}

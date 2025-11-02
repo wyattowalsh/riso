@@ -1,0 +1,153 @@
+{% if saas_starter_module == "enabled" %}
+/**
+ * SaaS Starter Configuration
+ * 
+ * This file documents all technology selections made during template generation.
+ * Use this as a reference for understanding your stack and planning migrations.
+ * 
+ * Generated: {{ "now" | strftime("%Y-%m-%d %H:%M:%S UTC") }}
+ * Template Version: {{ _template | default("latest") }}
+ */
+
+export const SaaSStarterConfig = {
+  meta: {
+    version: "2025.11.02",
+    generatedAt: "{{ "now" | strftime("%Y-%m-%dT%H:%M:%SZ") }}",
+    templateVersion: "{{ _template | default("latest") }}",
+    projectName: "{{ project_name }}",
+    projectSlug: "{{ project_slug }}",
+  },
+
+  // Runtime Framework
+  runtime: {
+    id: "{{ saas_runtime }}",
+    label: "{% if saas_runtime == 'nextjs-16' %}Next.js 16 (React 19.2, Turbopack){% else %}Remix 2.x (Vite, server-first routes){% endif %}",
+    useWhen: "{% if saas_runtime == 'nextjs-16' %}Most SaaS, biggest ecosystem, Vercel-first{% else %}Complex forms, explicit data loading, edge-optimized{% endif %}",
+  },
+
+  // Hosting Platform
+  hosting: {
+    id: "{{ saas_hosting }}",
+    label: "{% if saas_hosting == 'vercel' %}Vercel{% else %}Cloudflare Pages + Workers{% endif %}",
+    useWhen: "{% if saas_hosting == 'vercel' %}Next-native, AI tooling, previews, edge, image, OG, Cron{% else %}Global edge, Workers, R2, lower egress, WebSockets{% endif %}",
+  },
+
+  // Database Provider
+  database: {
+    id: "{{ saas_database }}",
+    label: "{% if saas_database == 'neon' %}Neon (Serverless Postgres){% else %}Supabase (Postgres + BaaS){% endif %}",
+    useWhen: "{% if saas_database == 'neon' %}Database branching, autoscale-to-zero, fast cold starts{% else %}All-in-one platform, realtime, RLS, auth + storage{% endif %}",
+  },
+
+  // ORM
+  orm: {
+    id: "{{ saas_orm }}",
+    label: "{% if saas_orm == 'prisma' %}Prisma{% else %}Drizzle{% endif %}",
+    useWhen: "{% if saas_orm == 'prisma' %}Best TypeScript ergonomics, Prisma Studio, migration workflow{% else %}Lightweight, edge-optimized, SQL-like syntax{% endif %}",
+  },
+
+  // Authentication
+  auth: {
+    id: "{{ saas_auth }}",
+    label: "{% if saas_auth == 'clerk' %}Clerk{% else %}Auth.js/NextAuth.js v5{% endif %}",
+    useWhen: "{% if saas_auth == 'clerk' %}Hosted auth, built-in UI, organizations, passkeys, fastest setup{% else %}Self-hosted, OSS, full control, lower cost{% endif %}",
+  },
+
+  // Enterprise Auth Bridge
+  enterpriseBridge: {
+    id: "{{ saas_enterprise_bridge }}",
+    label: "{% if saas_enterprise_bridge == 'workos' %}WorkOS (SSO + SCIM){% else %}None{% endif %}",
+    useWhen: "{% if saas_enterprise_bridge == 'workos' %}Enterprise customers, SSO (Okta/Azure AD), SCIM provisioning{% else %}PLG motion, skip enterprise features{% endif %}",
+  },
+
+  // Billing Provider
+  billing: {
+    id: "{{ saas_billing }}",
+    label: "{% if saas_billing == 'stripe' %}Stripe Billing 2025{% else %}Paddle{% endif %}",
+    useWhen: "{% if saas_billing == 'stripe' %}Full control, usage metering, lower fees, manual tax{% else %}MoR, automatic tax/VAT, simpler compliance{% endif %}",
+  },
+
+  // Background Jobs
+  jobs: {
+    id: "{{ saas_jobs }}",
+    label: "{% if saas_jobs == 'triggerdev' %}Trigger.dev v4{% else %}Inngest{% endif %}",
+    useWhen: "{% if saas_jobs == 'triggerdev' %}Task-centric, AI-optimized, long-running LLM calls{% else %}Event-driven, workflows, scheduling, orchestration{% endif %}",
+  },
+
+  // Email Provider
+  email: {
+    id: "{{ saas_email }}",
+    label: "{% if saas_email == 'resend' %}Resend + React Email{% else %}Postmark{% endif %}",
+    useWhen: "{% if saas_email == 'resend' %}React templates, Vercel integration, modern DX{% else %}Maximum deliverability, mature service, analytics{% endif %}",
+  },
+
+  // Analytics Platform
+  analytics: {
+    id: "{{ saas_analytics }}",
+    label: "{% if saas_analytics == 'posthog' %}PostHog{% else %}Amplitude{% endif %}",
+    useWhen: "{% if saas_analytics == 'posthog' %}Product OS (analytics + flags + replay), open-source{% else %}Enterprise analytics, cohorts, data warehouse{% endif %}",
+  },
+
+  // AI Provider
+  ai: {
+    id: "{{ saas_ai }}",
+    label: "{% if saas_ai == 'openai' %}OpenAI (GPT-4o/GPT-5){% else %}Anthropic (Claude 4.x){% endif %}",
+    useWhen: "{% if saas_ai == 'openai' %}Largest ecosystem, chat interfaces, function calling{% else %}Longer context (200k+), document analysis, safer outputs{% endif %}",
+  },
+
+  // Storage Provider
+  storage: {
+    id: "{{ saas_storage }}",
+    label: "{% if saas_storage == 'r2' %}Cloudflare R2{% else %}Supabase Storage{% endif %}",
+    useWhen: "{% if saas_storage == 'r2' %}S3-compatible, zero egress fees, global edge{% else %}Supabase integrated, RLS policies, transformations{% endif %}",
+  },
+
+  // CI/CD Platform
+  cicd: {
+    id: "{{ saas_cicd }}",
+    label: "{% if saas_cicd == 'github-actions' %}GitHub Actions{% else %}Cloudflare CI{% endif %}",
+    useWhen: "{% if saas_cicd == 'github-actions' %}Native GitHub, marketplace actions, Vercel deploy{% else %}Cloudflare Pages/Workers, fast edge deployments{% endif %}",
+  },
+
+  // Observability Stack
+  observability: {
+    sentry: {{ saas_observability_sentry | lower }},
+    datadog: {{ saas_observability_datadog | lower }},
+    opentelemetry: {{ saas_observability_otel | lower }},
+    structuredLogging: {{ saas_observability_structured_logging | lower }},
+  },
+
+  // Test & Development
+  testing: {
+    testSuiteLevel: "{{ saas_test_suite_level }}",
+    includesFixtures: {{ saas_include_fixtures | lower }},
+    includesFactories: {{ saas_include_factories | lower }},
+  },
+
+  // Recommended Stack Match
+  recommendedStack: "{% if saas_runtime == 'nextjs-16' and saas_hosting == 'vercel' and saas_database == 'neon' and saas_orm == 'prisma' and saas_auth == 'clerk' %}Vercel Starter{% elif saas_runtime == 'remix-2' and saas_hosting == 'cloudflare' and saas_orm == 'drizzle' %}Edge Optimized{% elif saas_database == 'supabase' and saas_storage == 'supabase-storage' %}All-in-One Platform{% elif saas_enterprise_bridge == 'workos' %}Enterprise Ready{% else %}Custom{% endif %}",
+} as const;
+
+export type SaaSStarterConfig = typeof SaaSStarterConfig;
+
+// Export individual selections for convenience
+export const {
+  meta,
+  runtime,
+  hosting,
+  database,
+  orm,
+  auth,
+  enterpriseBridge,
+  billing,
+  jobs,
+  email,
+  analytics,
+  ai,
+  storage,
+  cicd,
+  observability,
+  testing,
+  recommendedStack,
+} = SaaSStarterConfig;
+{% endif %}

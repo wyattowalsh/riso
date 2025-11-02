@@ -1,0 +1,349 @@
+{% if saas_starter_module == "enabled" and saas_analytics == "amplitude" %}
+/**
+ * Amplitude Analytics Client
+ * 
+ * Enterprise product analytics patterns:
+ * - Event tracking with rich properties
+ * - User identification and segmentation
+ * - Revenue tracking
+ * - Cohort analysis
+ * - Behavioral analytics
+ * 
+ * @see https://www.docs.developers.amplitude.com/
+ */
+
+import * as amplitude from '@amplitude/analytics-node';
+import { env } from '@/lib/env';
+
+// Initialize Amplitude client
+amplitude.init(env.NEXT_PUBLIC_AMPLITUDE_API_KEY, {
+  flushIntervalMillis: 10000,
+  flushQueueSize: 20,
+  serverZone: 'US', // or 'EU' for GDPR compliance
+});
+
+// ============================================================================
+// Event Tracking
+// ============================================================================
+
+/**
+ * Track custom event
+ * 
+ * @example
+ * ```ts
+ * await trackEvent({
+ *   userId: 'user_xxx',
+ *   event: 'subscription_created',
+ *   properties: { plan: 'pro', amount: 49 },
+ * });
+ * ```
+ */
+export async function trackEvent(params: {
+  userId: string;
+  event: string;
+  properties?: Record<string, any>;
+}) {
+  amplitude.track({
+    user_id: params.userId,
+    event_type: params.event,
+    event_properties: params.properties,
+  });
+  
+  // Flush immediately for critical events
+  await amplitude.flush();
+}
+
+/**
+ * Track page view
+ */
+export async function trackPageView(params: {
+  userId: string;
+  path: string;
+  title?: string;
+  properties?: Record<string, any>;
+}) {
+  return await trackEvent({
+    userId: params.userId,
+    event: 'page_viewed',
+    properties: {
+      page_path: params.path,
+      page_title: params.title,
+      ...params.properties,
+    },
+  });
+}
+
+// ============================================================================
+// User Identification
+// ============================================================================
+
+/**
+ * Identify user
+ * Sets user properties for segmentation
+ * 
+ * @example
+ * ```ts
+ * await identifyUser({
+ *   userId: 'user_xxx',
+ *   properties: {
+ *     email: 'user@example.com',
+ *     name: 'John Doe',
+ *     plan: 'pro',
+ *   },
+ * });
+ * ```
+ */
+export async function identifyUser(params: {
+  userId: string;
+  properties: Record<string, any>;
+}) {
+  const identify = new amplitude.Identify();
+  
+  // Set user properties
+  Object.entries(params.properties).forEach(([key, value]) => {
+    identify.set(key, value);
+  });
+  
+  amplitude.identify(identify, { user_id: params.userId });
+  await amplitude.flush();
+}
+
+/**
+ * Set user properties (additive)
+ */
+export async function setUserProperties(params: {
+  userId: string;
+  properties: Record<string, any>;
+}) {
+  const identify = new amplitude.Identify();
+  
+  Object.entries(params.properties).forEach(([key, value]) => {
+    identify.set(key, value);
+  });
+  
+  amplitude.identify(identify, { user_id: params.userId });
+  await amplitude.flush();
+}
+
+/**
+ * Increment user property
+ * Useful for counters (e.g., api_calls_count)
+ */
+export async function incrementUserProperty(params: {
+  userId: string;
+  property: string;
+  value?: number;
+}) {
+  const identify = new amplitude.Identify();
+  identify.add(params.property, params.value || 1);
+  
+  amplitude.identify(identify, { user_id: params.userId });
+  await amplitude.flush();
+}
+
+// ============================================================================
+// Revenue Tracking
+// ============================================================================
+
+/**
+ * Track revenue event
+ * Essential for subscription analytics
+ * 
+ * @example
+ * ```ts
+ * await trackRevenue({
+ *   userId: 'user_xxx',
+ *   amount: 49.99,
+ *   productId: 'pro_plan',
+ *   quantity: 1,
+ * });
+ * ```
+ */
+export async function trackRevenue(params: {
+  userId: string;
+  amount: number;
+  productId?: string;
+  quantity?: number;
+  properties?: Record<string, any>;
+}) {
+  const revenue = new amplitude.Revenue()
+    .setPrice(params.amount)
+    .setQuantity(params.quantity || 1);
+  
+  if (params.productId) {
+    revenue.setProductId(params.productId);
+  }
+  
+  if (params.properties) {
+    revenue.setEventProperties(params.properties);
+  }
+  
+  amplitude.revenue(revenue, { user_id: params.userId });
+  await amplitude.flush();
+}
+
+// ============================================================================
+// Group Analytics (Organizations)
+// ============================================================================
+
+/**
+ * Associate user with group
+ * 
+ * @example
+ * ```ts
+ * await setGroup({
+ *   userId: 'user_xxx',
+ *   groupType: 'organization',
+ *   groupId: 'org_xxx',
+ *   groupProperties: { name: 'Acme Inc', plan: 'enterprise' },
+ * });
+ * ```
+ */
+export async function setGroup(params: {
+  userId: string;
+  groupType: string;
+  groupId: string;
+  groupProperties?: Record<string, any>;
+}) {
+  // Set user's group
+  const identify = new amplitude.Identify();
+  identify.set(params.groupType, params.groupId);
+  
+  amplitude.identify(identify, { user_id: params.userId });
+  
+  // Set group properties
+  if (params.groupProperties) {
+    const groupIdentify = new amplitude.Identify();
+    Object.entries(params.groupProperties).forEach(([key, value]) => {
+      groupIdentify.set(key, value);
+    });
+    
+    amplitude.groupIdentify(
+      params.groupType,
+      params.groupId,
+      groupIdentify
+    );
+  }
+  
+  await amplitude.flush();
+}
+
+// ============================================================================
+// Common SaaS Events
+// ============================================================================
+
+/**
+ * Track user signup
+ */
+export async function trackSignup(params: {
+  userId: string;
+  email: string;
+  method: string;
+}) {
+  return await trackEvent({
+    userId: params.userId,
+    event: 'user_signed_up',
+    properties: {
+      email: params.email,
+      signup_method: params.method,
+    },
+  });
+}
+
+/**
+ * Track subscription created
+ */
+export async function trackSubscriptionCreated(params: {
+  userId: string;
+  plan: string;
+  amount: number;
+  billingCycle: string;
+}) {
+  // Track event
+  await trackEvent({
+    userId: params.userId,
+    event: 'subscription_created',
+    properties: {
+      plan: params.plan,
+      amount: params.amount,
+      billing_cycle: params.billingCycle,
+    },
+  });
+  
+  // Track revenue
+  await trackRevenue({
+    userId: params.userId,
+    amount: params.amount,
+    productId: params.plan,
+    properties: {
+      billing_cycle: params.billingCycle,
+    },
+  });
+}
+
+/**
+ * Track subscription canceled
+ */
+export async function trackSubscriptionCanceled(params: {
+  userId: string;
+  plan: string;
+  reason?: string;
+}) {
+  return await trackEvent({
+    userId: params.userId,
+    event: 'subscription_canceled',
+    properties: {
+      plan: params.plan,
+      cancellation_reason: params.reason,
+    },
+  });
+}
+
+/**
+ * Track API usage
+ */
+export async function trackApiUsage(params: {
+  userId: string;
+  endpoint: string;
+  method: string;
+  statusCode: number;
+  responseTime: number;
+}) {
+  // Track event
+  await trackEvent({
+    userId: params.userId,
+    event: 'api_call',
+    properties: {
+      endpoint: params.endpoint,
+      method: params.method,
+      status_code: params.statusCode,
+      response_time_ms: params.responseTime,
+    },
+  });
+  
+  // Increment API call counter
+  await incrementUserProperty({
+    userId: params.userId,
+    property: 'api_calls_total',
+    value: 1,
+  });
+}
+
+// ============================================================================
+// Graceful Shutdown
+// ============================================================================
+
+/**
+ * Flush pending events and shutdown
+ */
+export async function shutdown() {
+  await amplitude.flush();
+  amplitude.shutdown();
+}
+
+// ============================================================================
+// Type Exports
+// ============================================================================
+
+export { amplitude };
+{% endif %}

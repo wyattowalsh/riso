@@ -1,0 +1,320 @@
+{% if saas_starter_module == "enabled" and saas_cicd == "github" %}
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '8'
+
+jobs:
+  # ============================================================================
+  # Lint & Type Check
+  # ============================================================================
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: {{ '${{ env.PNPM_VERSION }}' }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: {{ '${{ env.NODE_VERSION }}' }}
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run linter
+        run: pnpm run lint
+      
+      - name: Type check
+        run: pnpm run type-check
+  
+  # ============================================================================
+  # Unit Tests
+  # ============================================================================
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: {{ '${{ env.PNPM_VERSION }}' }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: {{ '${{ env.NODE_VERSION }}' }}
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run tests
+        run: pnpm run test
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          token: {{ '${{ secrets.CODECOV_TOKEN }}' }}
+          files: ./coverage/coverage-final.json
+          flags: unittests
+  
+  # ============================================================================
+  # Build
+  # ============================================================================
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: {{ '${{ env.PNPM_VERSION }}' }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: {{ '${{ env.NODE_VERSION }}' }}
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      {% if saas_orm == "prisma" %}
+      - name: Generate Prisma Client
+        run: pnpm run db:generate
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+      {% elif saas_orm == "drizzle" %}
+      - name: Generate Drizzle migrations
+        run: pnpm run db:generate
+      {% endif %}
+      
+      - name: Build application
+        run: pnpm run build
+        env:
+          SKIP_ENV_VALIDATION: true
+      
+      - name: Check build output
+        run: |
+          {% if saas_runtime == "nextjs-16" %}
+          ls -lah .next
+          {% elif saas_runtime == "remix-2" %}
+          ls -lah build
+          {% endif %}
+  
+  # ============================================================================
+  # E2E Tests (Playwright)
+  # ============================================================================
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: {{ '${{ env.PNPM_VERSION }}' }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: {{ '${{ env.NODE_VERSION }}' }}
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+      
+      {% if saas_orm == "prisma" %}
+      - name: Run database migrations
+        run: pnpm run db:push
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+      {% endif %}
+      
+      - name: Run E2E tests
+        run: pnpm run test:e2e
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+          BASE_URL: http://localhost:3000
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+  
+  # ============================================================================
+  # Security Scan
+  # ============================================================================
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+      
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+      
+      - name: Run npm audit
+        run: |
+          npx audit-ci --config .audit-ci.json || true
+  
+  # ============================================================================
+  # Deployment Preview (on PR)
+  # ============================================================================
+  deploy-preview:
+    name: Deploy Preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'pull_request'
+    needs: [lint, test, build]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      {% if saas_hosting == "vercel" %}
+      - name: Deploy to Vercel Preview
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: {{ '${{ secrets.VERCEL_TOKEN }}' }}
+          vercel-org-id: {{ '${{ secrets.VERCEL_ORG_ID }}' }}
+          vercel-project-id: {{ '${{ secrets.VERCEL_PROJECT_ID }}' }}
+          scope: {{ '${{ secrets.VERCEL_ORG_ID }}' }}
+      {% elif saas_hosting == "cloudflare" %}
+      - name: Deploy to Cloudflare Pages Preview
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: {{ '${{ secrets.CLOUDFLARE_API_TOKEN }}' }}
+          accountId: {{ '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}' }}
+          command: pages deploy --project-name={{ project_slug }}
+      {% endif %}
+      
+      - name: Comment PR with preview URL
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '? Preview deployed! Check it out at the preview URL above.'
+            })
+  
+  # ============================================================================
+  # Production Deployment (on main)
+  # ============================================================================
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.ref == 'refs/heads/main'
+    needs: [lint, test, build, e2e]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      {% if saas_hosting == "vercel" %}
+      - name: Deploy to Vercel Production
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: {{ '${{ secrets.VERCEL_TOKEN }}' }}
+          vercel-org-id: {{ '${{ secrets.VERCEL_ORG_ID }}' }}
+          vercel-project-id: {{ '${{ secrets.VERCEL_PROJECT_ID }}' }}
+          vercel-args: '--prod'
+          scope: {{ '${{ secrets.VERCEL_ORG_ID }}' }}
+      {% elif saas_hosting == "cloudflare" %}
+      - name: Deploy to Cloudflare Pages Production
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: {{ '${{ secrets.CLOUDFLARE_API_TOKEN }}' }}
+          accountId: {{ '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}' }}
+          command: pages deploy --project-name={{ project_slug }} --branch=main
+      {% endif %}
+      
+      {% if saas_observability_sentry %}
+      - name: Create Sentry release
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: {{ '${{ secrets.SENTRY_AUTH_TOKEN }}' }}
+          SENTRY_ORG: {{ '${{ secrets.SENTRY_ORG }}' }}
+          SENTRY_PROJECT: {{ project_slug }}
+        with:
+          environment: production
+          version: {{ '${{ github.sha }}' }}
+      {% endif %}
+      
+      - name: Notify deployment
+        run: |
+          echo "?? Deployed to production!"
+          echo "Commit: ${{ '{{ github.sha }}' }}"
+          echo "Author: ${{ '{{ github.actor }}' }}"
+{% endif %}

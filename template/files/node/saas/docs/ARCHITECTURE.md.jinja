@@ -1,0 +1,357 @@
+{% if saas_starter_module == "enabled" %}
+# {{ project_name }} - Architecture Overview
+
+## Technology Stack
+
+### Runtime & Framework
+- **Framework**: {% if saas_runtime == "nextjs-16" %}Next.js 16 (App Router, React 19.2, Turbopack){% else %}Remix 2.x (Vite, server-first routes){% endif %}
+- **Language**: TypeScript 5.6+
+- **Package Manager**: pnpm 8+
+- **Node Version**: 20 LTS
+
+### Database & ORM
+- **Database**: {% if saas_database == "neon" %}Neon (Serverless Postgres){% else %}Supabase (Postgres + BaaS){% endif %}
+- **ORM**: {% if saas_orm == "prisma" %}Prisma (Type-safe, migrations){% else %}Drizzle (Lightweight, edge-optimized){% endif %}
+- **Connection**: {% if saas_database == "neon" and saas_orm == "prisma" %}HTTP (Neon adapter for edge compatibility){% elif saas_database == "neon" %}HTTP (neon-http for Drizzle){% else %}Connection pooling{% endif %}
+
+### Authentication
+- **Provider**: {% if saas_auth == "clerk" %}Clerk (Hosted, UI components, organization-first){% else %}Auth.js/NextAuth v5 (Self-hosted, database sessions){% endif %}
+- **Session Strategy**: {% if saas_auth == "clerk" %}JWT with Clerk{% else %}Database sessions{% endif %}
+- **Multi-tenancy**: {% if saas_auth == "clerk" %}Clerk Organizations{% else %}Custom organization model{% endif %}
+
+{% if saas_enterprise_bridge == "workos" %}
+### Enterprise Integration
+- **SSO/SCIM**: WorkOS (SAML, Google Workspace, Microsoft 365)
+- **Directory Sync**: Automatic user provisioning/deprovisioning
+{% endif %}
+
+### Billing
+- **Provider**: {% if saas_billing == "stripe" %}Stripe Billing 2025{% else %}Paddle (Merchant of Record){% endif %}
+- **Features**: Subscriptions, usage-based metering, invoicing
+- **Payment Methods**: Cards, ACH, bank transfers
+{% if saas_billing == "stripe" %}
+- **Self-Service**: Stripe Customer Portal
+{% endif %}
+
+### Background Jobs
+- **Provider**: {% if saas_jobs == "trigger" %}Trigger.dev v4{% else %}Inngest{% endif %}
+- **Use Cases**: Email sending, invoice processing, AI generation, data cleanup
+- **Scheduling**: Cron-based scheduled jobs
+- **Reliability**: Automatic retries with exponential backoff
+
+### Email
+- **Provider**: {% if saas_email == "resend" %}Resend + React Email{% else %}Postmark{% endif %}
+- **Templates**: {% if saas_email == "resend" %}React components with Tailwind CSS{% else %}HTML templates{% endif %}
+- **Transactional**: Welcome emails, password resets, receipts, team invitations
+
+### Analytics
+- **Provider**: {% if saas_analytics == "posthog" %}PostHog{% else %}Amplitude{% endif %}
+- **Features**: Event tracking, user segmentation, {% if saas_analytics == "posthog" %}feature flags, session replay{% else %}revenue tracking, cohort analysis{% endif %}
+- **Privacy**: GDPR/CCPA compliant
+
+{% if saas_ai == "openai" or saas_ai == "anthropic" %}
+### AI Integration
+- **Provider**: {% if saas_ai == "openai" %}OpenAI (GPT-4 Turbo, embeddings, vision){% else %}Anthropic Claude (3.5 Sonnet, 200K context){% endif %}
+- **Use Cases**: Content generation, summarization, classification
+- **Cost Control**: Usage tracking, rate limiting, prompt caching
+{% endif %}
+
+### Storage
+- **Provider**: {% if saas_storage == "r2" %}Cloudflare R2 (S3-compatible){% else %}Supabase Storage{% endif %}
+- **Features**: Presigned URLs, {% if saas_storage == "supabase-storage" %}image transformations, {% endif %}public/private buckets
+- **CDN**: {% if saas_storage == "r2" %}Cloudflare CDN integration{% else %}Supabase CDN{% endif %}
+
+### Hosting & Deployment
+- **Platform**: {% if saas_hosting == "vercel" %}Vercel (Edge Network, ISR, automatic scaling){% else %}Cloudflare (Pages/Workers, edge compute){% endif %}
+- **CI/CD**: {% if saas_cicd == "github" %}GitHub Actions (automated testing, preview deployments){% else %}Cloudflare CI{% endif %}
+- **Edge Functions**: {% if saas_hosting == "vercel" %}Vercel Edge Functions{% else %}Cloudflare Workers{% endif %}
+
+### Observability
+{% if saas_observability_structured_logging %}
+- **Logging**: Structured JSON logs with Pino, correlation IDs
+{% endif %}
+{% if saas_observability_sentry %}
+- **Error Tracking**: Sentry (automatic capture, user context, session replay)
+{% endif %}
+{% if saas_observability_otel %}
+- **Tracing**: OpenTelemetry (distributed tracing, performance monitoring)
+{% endif %}
+
+---
+
+## Architecture Patterns
+
+### Project Structure
+
+```
+{{ project_slug }}/
+??? app/                    # {% if saas_runtime == "nextjs-16" %}Next.js App Router{% else %}Remix routes{% endif %}
+?   ??? api/               # API routes
+?   ??? (auth)/            # Auth pages
+?   ??? dashboard/         # Protected dashboard
+??? lib/                   # Shared utilities
+?   ??? auth/             # Authentication helpers
+?   ??? database/         # Database client
+?   ??? observability/    # Logging, tracing
+??? integrations/          # Third-party integrations
+?   ??? billing/          # Stripe/Paddle
+?   ??? email/            # Resend/Postmark
+?   ??? jobs/             # Trigger.dev/Inngest
+?   ??? ...
+{% if saas_orm == "prisma" %}
+??? prisma/               # Prisma schema & migrations
+{% elif saas_orm == "drizzle" %}
+??? db/                   # Drizzle schema & migrations
+{% endif %}
+??? public/               # Static assets
+```
+
+### Data Flow
+
+```
+User Request
+    ?
+{% if saas_runtime == "nextjs-16" %}Next.js Middleware{% else %}Remix Loader{% endif %}
+    ?
+Authentication Check ({% if saas_auth == "clerk" %}Clerk{% else %}Auth.js{% endif %})
+    ?
+API Route / Server Component
+    ?
+Database Query ({% if saas_orm == "prisma" %}Prisma{% else %}Drizzle{% endif %})
+    ?
+Response with Data
+```
+
+### Multi-Tenancy Model
+
+```
+User (auth ID: user_xxx)
+    ?
+Organization Membership (role: owner/admin/member)
+    ?
+Organization (org_xxx)
+    ?
+Subscription, API Keys, Resources
+```
+
+**Access Control**:
+{% if saas_auth == "clerk" %}
+- Clerk handles organization membership and roles
+- Check `auth().orgId` for organization context
+- Use `has()` helper for permission checks
+{% else %}
+- Custom organization membership table
+- Role-based access control (RBAC)
+- Check organization membership in middleware
+{% endif %}
+
+### Event-Driven Architecture
+
+```
+User Action (e.g., subscription created)
+    ?
+Webhook Handler (Stripe/Paddle)
+    ?
+{% if saas_jobs == "trigger" %}Trigger.dev Job{% else %}Inngest Event{% endif %}
+    ?
+Multiple Steps:
+  1. Update database
+  2. Send email
+  3. Track analytics
+  4. Update usage limits
+```
+
+---
+
+## Security Architecture
+
+### Authentication Flow
+{% if saas_auth == "clerk" %}
+1. User signs in via Clerk UI components
+2. Clerk issues JWT token
+3. Middleware validates token on each request
+4. Server extracts `userId` and `orgId` from token
+{% else %}
+1. User signs in via OAuth (Google, GitHub)
+2. Auth.js creates database session
+3. Session cookie stored (httpOnly, secure, sameSite)
+4. Middleware validates session on each request
+{% endif %}
+
+### API Key Security
+- API keys hashed with bcrypt (never stored plain)
+- Key prefix stored for identification (first 8 chars)
+- Rate limiting per API key
+- Revocation support with audit trail
+
+### Data Protection
+- Environment variables validated at build time (Zod)
+- Webhook signature verification (Stripe, Paddle, Clerk)
+- SQL injection prevention (ORM parameterization)
+- XSS protection (React auto-escaping)
+- CSRF protection ({% if saas_runtime == "nextjs-16" %}Next.js built-in{% else %}Remix built-in{% endif %})
+
+---
+
+## Performance Optimization
+
+### Database
+{% if saas_orm == "prisma" %}
+- Connection pooling via Prisma
+{% if saas_database == "neon" %}
+- HTTP connections for edge (Neon adapter)
+{% endif %}
+- Proper indexes on frequently queried fields
+{% elif saas_orm == "drizzle" %}
+{% if saas_database == "neon" %}
+- HTTP connections for edge (neon-http)
+{% else %}
+- Connection pooling with postgres.js
+{% endif %}
+- Prepared statements for repeated queries
+{% endif %}
+
+### Caching Strategy
+{% if saas_runtime == "nextjs-16" %}
+- Next.js automatic caching (fetch, React Cache)
+- ISR (Incremental Static Regeneration) for marketing pages
+- Edge caching with `revalidate` headers
+{% else %}
+- Remix loader caching
+- Edge caching with Cache-Control headers
+{% endif %}
+
+### Edge Compute
+{% if saas_hosting == "vercel" %}
+- Edge Functions for API routes
+- Edge Middleware for authentication
+- Deployed globally across 30+ regions
+{% else %}
+- Cloudflare Workers for API routes
+- Workers KV for session storage
+- Deployed globally across 200+ cities
+{% endif %}
+
+{% if saas_ai == "openai" or saas_ai == "anthropic" %}
+### AI Cost Optimization
+{% if saas_ai == "anthropic" %}
+- Prompt caching for repeated system prompts
+{% endif %}
+- Usage tracking per user/organization
+- Rate limiting to prevent abuse
+- Streaming responses for better UX
+{% endif %}
+
+---
+
+## Deployment Strategy
+
+### Environments
+- **Development**: Local with Docker Compose
+- **Preview**: Automatic PR deployments
+- **Production**: Main branch auto-deploys
+
+### Database Migrations
+{% if saas_orm == "prisma" %}
+```bash
+# Generate migration
+pnpm exec prisma migrate dev --name add_feature_flags
+
+# Deploy to production
+pnpm exec prisma migrate deploy
+```
+{% elif saas_orm == "drizzle" %}
+```bash
+# Generate migration
+pnpm run db:generate
+
+# Deploy to production
+pnpm run db:migrate
+```
+{% endif %}
+
+### Zero-Downtime Deployments
+{% if saas_hosting == "vercel" %}
+1. Build completes successfully
+2. New deployment created
+3. Health checks pass
+4. Traffic gradually shifted to new deployment
+5. Old deployment kept for rollback
+{% else %}
+1. Workers build and upload
+2. Deploy to 0% of traffic (canary)
+3. Health checks monitored
+4. Gradually increase traffic percentage
+5. Full rollout or automatic rollback
+{% endif %}
+
+---
+
+## Monitoring & Alerts
+
+### Key Metrics
+{% if saas_observability_structured_logging %}
+- **Logs**: Error rates, warning counts, correlation traces
+{% endif %}
+{% if saas_observability_sentry %}
+- **Errors**: Exception counts, error types, affected users
+{% endif %}
+{% if saas_observability_otel %}
+- **Performance**: Response times, database query duration, external API latency
+{% endif %}
+- **Business**: Signups, subscriptions, revenue, churn
+
+### Alert Channels
+{% if saas_observability_sentry %}
+- Sentry alerts for errors and performance issues
+{% endif %}
+- Email notifications for critical issues
+- Slack/Discord webhooks (configure in platform)
+
+---
+
+## Scaling Considerations
+
+### Database Scaling
+{% if saas_database == "neon" %}
+- Neon automatic scaling (compute and storage separate)
+- Autoscaling based on load
+- Read replicas for analytics queries
+{% else %}
+- Supabase connection pooler (PgBouncer)
+- Automatic backups and point-in-time recovery
+- Read replicas for reporting
+{% endif %}
+
+### Application Scaling
+{% if saas_hosting == "vercel" %}
+- Automatic horizontal scaling
+- Edge network for global performance
+- No configuration needed
+{% else %}
+- Cloudflare Workers scale to zero
+- Unlimited concurrent requests
+- No cold starts
+{% endif %}
+
+### Cost Management
+- Usage-based billing tracking
+- Per-organization limits
+- Automatic overage alerts
+- Cost estimation in UI
+
+---
+
+## Next Steps
+
+1. **Development**: Run `pnpm run dev` and explore the codebase
+2. **Documentation**: Read service-specific docs in `/docs`
+3. **Customization**: Modify integrations in `/integrations`
+4. **Deployment**: Follow deployment guide in `/docs/DEPLOYMENT.md`
+5. **Monitoring**: Set up observability dashboards
+
+For more details, see:
+- [Deployment Guide](./DEPLOYMENT.md)
+- [API Documentation](./API.md)
+- [Contributing Guide](./CONTRIBUTING.md)
+{% endif %}

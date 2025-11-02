@@ -1,0 +1,96 @@
+{% if saas_starter_module == "enabled" %}
+{
+  "compilerOptions": {
+    /* Language and Environment */
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "preserve",
+    
+    /* Modules */
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    {% if saas_runtime == 'nextjs-16' %}
+    "paths": {
+      "@/*": ["./*"],
+      "~/*": ["./*"]
+    },
+    {% else %}
+    "paths": {
+      "~/*": ["./app/*"]
+    },
+    {% endif %}
+    
+    /* JavaScript Support */
+    "allowJs": true,
+    "checkJs": false,
+    
+    /* Emit */
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "noEmit": true,
+    "incremental": true,
+    
+    /* Interop Constraints */
+    "isolatedModules": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    
+    /* Type Checking */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": false,
+    
+    /* Completeness */
+    "skipLibCheck": true,
+    
+    {% if saas_runtime == 'nextjs-16' %}
+    /* Next.js specific */
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+    {% else %}
+    /* Remix specific */
+    "types": ["@remix-run/node", "vite/client"]
+    {% endif %}
+  },
+  {% if saas_runtime == 'nextjs-16' %}
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "out",
+    "dist",
+    "build"
+  ]
+  {% else %}
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".remix/**/*.ts",
+    ".remix/**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "build",
+    "public/build",
+    ".cache"
+  ]
+  {% endif %}
+}
+{% endif %}
