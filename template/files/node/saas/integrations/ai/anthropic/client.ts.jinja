@@ -1,0 +1,401 @@
+{% if saas_starter_module == "enabled" and saas_ai == "anthropic" %}
+/**
+ * Anthropic Claude Client
+ * 
+ * Modern AI integration patterns:
+ * - Streaming responses
+ * - Tool use (function calling)
+ * - Vision capabilities
+ * - Large context windows (200K tokens)
+ * - Token usage tracking
+ * - Safety and moderation
+ * 
+ * @see https://docs.anthropic.com/
+ */
+
+import Anthropic from '@anthropic-ai/sdk';
+import { env } from '@/lib/env';
+
+// Initialize Anthropic client
+export const anthropic = new Anthropic({
+  apiKey: env.ANTHROPIC_API_KEY,
+  maxRetries: 3,
+  timeout: 60000, // 60 seconds
+});
+
+// ============================================================================
+// Message Completions
+// ============================================================================
+
+/**
+ * Generate message completion
+ * 
+ * @example
+ * ```ts
+ * const response = await generateMessage({
+ *   messages: [
+ *     { role: 'user', content: 'Hello, Claude!' },
+ *   ],
+ *   model: 'claude-3-5-sonnet-20241022',
+ * });
+ * ```
+ */
+export async function generateMessage(params: {
+  messages: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+  }>;
+  system?: string;
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
+  tools?: Array<any>;
+}) {
+  const response = await anthropic.messages.create({
+    model: params.model || 'claude-3-5-sonnet-20241022',
+    max_tokens: params.maxTokens || 4096,
+    system: params.system,
+    temperature: params.temperature ?? 1.0,
+    messages: params.messages,
+    tools: params.tools,
+  });
+  
+  // Extract text content
+  const textContent = response.content
+    .filter((block) => block.type === 'text')
+    .map((block: any) => block.text)
+    .join('');
+  
+  // Extract tool uses
+  const toolUses = response.content
+    .filter((block) => block.type === 'tool_use')
+    .map((block: any) => ({
+      id: block.id,
+      name: block.name,
+      input: block.input,
+    }));
+  
+  return {
+    content: textContent,
+    toolUses,
+    stopReason: response.stop_reason,
+    usage: response.usage,
+  };
+}
+
+/**
+ * Generate streaming message completion
+ * For real-time responses
+ * 
+ * @example
+ * ```ts
+ * for await (const chunk of streamMessage({ messages })) {
+ *   console.log(chunk.content);
+ * }
+ * ```
+ */
+export async function* streamMessage(params: {
+  messages: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+  }>;
+  system?: string;
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
+}) {
+  const stream = await anthropic.messages.create({
+    model: params.model || 'claude-3-5-sonnet-20241022',
+    max_tokens: params.maxTokens || 4096,
+    system: params.system,
+    temperature: params.temperature ?? 1.0,
+    messages: params.messages,
+    stream: true,
+  });
+  
+  for await (const event of stream) {
+    if (
+      event.type === 'content_block_delta' &&
+      event.delta.type === 'text_delta'
+    ) {
+      yield {
+        content: event.delta.text,
+        type: 'text',
+      };
+    }
+    
+    if (event.type === 'message_stop') {
+      yield {
+        content: '',
+        type: 'stop',
+        stopReason: (event as any).message?.stop_reason,
+      };
+    }
+  }
+}
+
+// ============================================================================
+// Vision
+// ============================================================================
+
+/**
+ * Analyze image with Claude Vision
+ * 
+ * @example
+ * ```ts
+ * const analysis = await analyzeImage({
+ *   imageUrl: 'https://example.com/image.jpg',
+ *   prompt: 'Describe this image',
+ * });
+ * ```
+ */
+export async function analyzeImage(params: {
+  imageUrl?: string;
+  imageBase64?: string;
+  imageMediaType?: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+  prompt: string;
+  model?: string;
+}) {
+  const imageSource = params.imageUrl
+    ? { type: 'url' as const, url: params.imageUrl }
+    : {
+        type: 'base64' as const,
+        media_type: params.imageMediaType || 'image/jpeg',
+        data: params.imageBase64!,
+      };
+  
+  const response = await anthropic.messages.create({
+    model: params.model || 'claude-3-5-sonnet-20241022',
+    max_tokens: 4096,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: imageSource,
+          } as any,
+          {
+            type: 'text',
+            text: params.prompt,
+          },
+        ],
+      },
+    ],
+  });
+  
+  const textContent = response.content
+    .filter((block) => block.type === 'text')
+    .map((block: any) => block.text)
+    .join('');
+  
+  return {
+    analysis: textContent,
+    usage: response.usage,
+  };
+}
+
+// ============================================================================
+// Tool Use (Function Calling)
+// ============================================================================
+
+/**
+ * Define a tool for Claude
+ */
+export function defineTool(params: {
+  name: string;
+  description: string;
+  inputSchema: Record<string, any>;
+}) {
+  return {
+    name: params.name,
+    description: params.description,
+    input_schema: params.inputSchema,
+  };
+}
+
+/**
+ * Execute conversation with tool use
+ * 
+ * @example
+ * ```ts
+ * const tools = [
+ *   defineTool({
+ *     name: 'get_weather',
+ *     description: 'Get current weather',
+ *     inputSchema: {
+ *       type: 'object',
+ *       properties: {
+ *         location: { type: 'string', description: 'City name' },
+ *       },
+ *       required: ['location'],
+ *     },
+ *   }),
+ * ];
+ * 
+ * const response = await generateMessage({
+ *   messages: [{ role: 'user', content: 'What's the weather in SF?' }],
+ *   tools,
+ * });
+ * 
+ * if (response.toolUses.length > 0) {
+ *   // Execute tool and continue conversation
+ * }
+ * ```
+ */
+
+// ============================================================================
+// Long Context
+// ============================================================================
+
+/**
+ * Generate message with extended context
+ * Claude supports up to 200K tokens context
+ */
+export async function generateWithLongContext(params: {
+  documents: string[];
+  query: string;
+  model?: string;
+}) {
+  const contextPrompt = params.documents
+    .map((doc, i) => `<document index="${i + 1}">\n${doc}\n</document>`)
+    .join('\n\n');
+  
+  return await generateMessage({
+    system: `You are a helpful assistant. Use the following documents to answer questions:\n\n${contextPrompt}`,
+    messages: [
+      {
+        role: 'user',
+        content: params.query,
+      },
+    ],
+    model: params.model || 'claude-3-5-sonnet-20241022',
+    maxTokens: 4096,
+  });
+}
+
+// ============================================================================
+// Prompt Caching (Cost Optimization)
+// ============================================================================
+
+/**
+ * Generate message with prompt caching
+ * Reduces cost for repeated system prompts
+ * 
+ * @see https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching
+ */
+export async function generateWithCaching(params: {
+  systemPrompt: string;
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+  model?: string;
+}) {
+  const response = await anthropic.messages.create({
+    model: params.model || 'claude-3-5-sonnet-20241022',
+    max_tokens: 4096,
+    system: [
+      {
+        type: 'text',
+        text: params.systemPrompt,
+        cache_control: { type: 'ephemeral' },
+      } as any,
+    ],
+    messages: params.messages,
+  });
+  
+  const textContent = response.content
+    .filter((block) => block.type === 'text')
+    .map((block: any) => block.text)
+    .join('');
+  
+  return {
+    content: textContent,
+    usage: response.usage,
+  };
+}
+
+// ============================================================================
+// Token Usage Tracking
+// ============================================================================
+
+/**
+ * Calculate cost for token usage
+ * Based on Anthropic pricing (as of 2025)
+ */
+export function calculateCost(params: {
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+}): number {
+  const pricing: Record<string, { input: number; output: number }> = {
+    'claude-3-5-sonnet-20241022': { input: 0.003, output: 0.015 }, // per 1K tokens
+    'claude-3-opus-20240229': { input: 0.015, output: 0.075 },
+    'claude-3-haiku-20240307': { input: 0.00025, output: 0.00125 },
+  };
+  
+  const modelPricing = pricing[params.model] || pricing['claude-3-5-sonnet-20241022'];
+  
+  const inputCost = (params.inputTokens / 1000) * modelPricing.input;
+  const outputCost = (params.outputTokens / 1000) * modelPricing.output;
+  
+  return inputCost + outputCost;
+}
+
+// ============================================================================
+// Safety and Moderation
+// ============================================================================
+
+/**
+ * Check if response was stopped due to safety
+ */
+export function isSafetyStop(stopReason: string): boolean {
+  return stopReason === 'content_filter';
+}
+
+/**
+ * Extract thinking process (for Claude 3.5 Sonnet with extended thinking)
+ */
+export function extractThinkingProcess(content: any[]): string {
+  const thinkingBlocks = content
+    .filter((block) => block.type === 'thinking')
+    .map((block: any) => block.thinking || '')
+    .join('\n\n');
+  
+  return thinkingBlocks;
+}
+
+// ============================================================================
+// Error Handling
+// ============================================================================
+
+export class AnthropicError extends Error {
+  constructor(
+    message: string,
+    public code?: string,
+    public statusCode?: number
+  ) {
+    super(message);
+    this.name = 'AnthropicError';
+  }
+}
+
+/**
+ * Handle Anthropic API errors
+ */
+export function handleAnthropicError(error: unknown): never {
+  if (error instanceof Anthropic.APIError) {
+    throw new AnthropicError(
+      error.message,
+      (error as any).code,
+      error.status
+    );
+  }
+  
+  throw error;
+}
+
+// ============================================================================
+// Type Exports
+// ============================================================================
+
+export type { Anthropic };
+{% endif %}

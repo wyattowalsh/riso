@@ -1,0 +1,276 @@
+{% if saas_starter_module == "enabled" and saas_runtime == "nextjs-16" %}
+/**
+ * Users API Routes
+ * 
+ * Demonstrates best practices:
+ * - Input validation with Zod
+ * - Proper error handling
+ * - Rate limiting
+ * - Pagination
+ * - Type-safe responses
+ * - Correlation IDs
+ * - Observability
+ */
+
+import { NextResponse, NextRequest } from 'next/server';
+import { z } from 'zod';
+import { requireUserId } from '@/lib/auth/helpers';
+{% if saas_orm == "prisma" %}
+import { prisma } from '@/lib/database/client';
+{% elif saas_orm == "drizzle" %}
+import { db } from '@/lib/database/client';
+import { users } from '@/db/schema';
+import { eq, ilike, and } from 'drizzle-orm';
+{% endif %}
+import { validateBody, validateQuery, paginationSchema, searchSchema } from '@/lib/utils/validation';
+import { success, error, paginated, created } from '@/lib/utils/response';
+import { publicApiLimiter, getIdentifier } from '@/lib/middleware/rate-limit';
+{% if saas_observability_structured_logging %}
+import { logger, createCorrelatedLogger } from '@/lib/observability/logger';
+{% endif %}
+
+// ============================================================================
+// Validation Schemas
+// ============================================================================
+
+const listUsersSchema = paginationSchema.merge(searchSchema).extend({
+  role: z.enum(['owner', 'admin', 'member']).optional(),
+});
+
+const createUserSchema = z.object({
+  email: z.string().email().toLowerCase(),
+  name: z.string().min(2).max(100),
+  role: z.enum(['owner', 'admin', 'member']).default('member'),
+});
+
+const updateUserSchema = z.object({
+  name: z.string().min(2).max(100).optional(),
+  metadata: z.record(z.any()).optional(),
+});
+
+// ============================================================================
+// GET /api/examples/users
+// List users with pagination and filtering
+// ============================================================================
+
+export async function GET(request: NextRequest) {
+  {% if saas_observability_structured_logging %}
+  const correlationId = request.headers.get('x-correlation-id') || crypto.randomUUID();
+  const log = createCorrelatedLogger(correlationId);
+  {% endif %}
+  
+  try {
+    // Rate limiting
+    const identifier = getIdentifier(request, 'ip');
+    const rateLimit = await publicApiLimiter.check(identifier);
+    
+    if (rateLimit.limited) {
+      return new Response('Too Many Requests', {
+        status: 429,
+        headers: {
+          'Retry-After': rateLimit.resetInSeconds.toString(),
+        },
+      });
+    }
+    
+    // Require authentication
+    const userId = await requireUserId();
+    
+    // Validate query parameters
+    const { data: query, error: validationError } = validateQuery(
+      request,
+      listUsersSchema
+    );
+    
+    if (validationError) {
+      return validationError;
+    }
+    
+    {% if saas_observability_structured_logging %}
+    log.info({ query, userId }, 'Listing users');
+    {% endif %}
+    
+    // Build query
+    {% if saas_orm == "prisma" %}
+    const where: any = {};
+    
+    if (query.q) {
+      where.OR = [
+        { email: { contains: query.q, mode: 'insensitive' } },
+        { name: { contains: query.q, mode: 'insensitive' } },
+      ];
+    }
+    
+    const [items, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        skip: (query.page - 1) * query.limit,
+        take: query.limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          image: true,
+          createdAt: true,
+        },
+      }),
+      prisma.user.count({ where }),
+    ]);
+    {% elif saas_orm == "drizzle" %}
+    const conditions = [];
+    
+    if (query.q) {
+      conditions.push(
+        or(
+          ilike(users.email, `%${query.q}%`),
+          ilike(users.name, `%${query.q}%`)
+        )
+      );
+    }
+    
+    const [items, [{ count }]] = await Promise.all([
+      db
+        .select({
+          id: users.id,
+          email: users.email,
+          name: users.name,
+          image: users.image,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .limit(query.limit)
+        .offset((query.page - 1) * query.limit)
+        .orderBy(users.createdAt),
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(users)
+        .where(conditions.length > 0 ? and(...conditions) : undefined),
+    ]);
+    
+    const total = Number(count);
+    {% endif %}
+    
+    {% if saas_observability_structured_logging %}
+    log.info({ count: items.length, total }, 'Users listed successfully');
+    {% endif %}
+    
+    return paginated(items, {
+      page: query.page,
+      limit: query.limit,
+      total,
+    });
+    
+  } catch (err) {
+    {% if saas_observability_structured_logging %}
+    logger.error({ error: err }, 'Error listing users');
+    {% endif %}
+    {% if saas_observability_sentry %}
+    captureException(err, { tags: { endpoint: '/api/examples/users' } });
+    {% endif %}
+    
+    return error('Failed to list users', 500);
+  }
+}
+
+// ============================================================================
+// POST /api/examples/users
+// Create a new user
+// ============================================================================
+
+export async function POST(request: NextRequest) {
+  try {
+    // Require authentication
+    const userId = await requireUserId();
+    
+    // Validate request body
+    const { data: body, error: validationError } = await validateBody(
+      request,
+      createUserSchema
+    );
+    
+    if (validationError) {
+      return validationError;
+    }
+    
+    {% if saas_observability_structured_logging %}
+    logger.info({ email: body.email, createdBy: userId }, 'Creating user');
+    {% endif %}
+    
+    // Check if user already exists
+    {% if saas_orm == "prisma" %}
+    const existing = await prisma.user.findUnique({
+      where: { email: body.email },
+    });
+    
+    if (existing) {
+      return error('User already exists', 409, {
+        code: 'USER_EXISTS',
+        details: { email: body.email },
+      });
+    }
+    
+    // Create user
+    const user = await prisma.user.create({
+      data: {
+        email: body.email,
+        name: body.name,
+        metadata: { role: body.role },
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true,
+      },
+    });
+    {% elif saas_orm == "drizzle" %}
+    const [existing] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, body.email))
+      .limit(1);
+    
+    if (existing) {
+      return error('User already exists', 409, {
+        code: 'USER_EXISTS',
+        details: { email: body.email },
+      });
+    }
+    
+    const [user] = await db
+      .insert(users)
+      .values({
+        email: body.email,
+        name: body.name,
+        metadata: { role: body.role },
+      })
+      .returning({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        createdAt: users.createdAt,
+      });
+    {% endif %}
+    
+    {% if saas_observability_structured_logging %}
+    logger.info({ userId: user.id }, 'User created successfully');
+    {% endif %}
+    
+    {% if saas_analytics == "posthog" or saas_analytics == "amplitude" %}
+    // Track user creation in analytics
+    // await trackEvent({ ... });
+    {% endif %}
+    
+    return created(user);
+    
+  } catch (err) {
+    {% if saas_observability_structured_logging %}
+    logger.error({ error: err }, 'Error creating user');
+    {% endif %}
+    
+    return error('Failed to create user', 500);
+  }
+}
+{% endif %}

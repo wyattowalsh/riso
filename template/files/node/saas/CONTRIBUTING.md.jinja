@@ -1,0 +1,350 @@
+{% if saas_starter_module == "enabled" %}
+# Contributing to {{ project_name }}
+
+Thank you for your interest in contributing! This guide will help you get started.
+
+## ?? Quick Start
+
+```bash
+# Clone the repository
+git clone <your-repo-url>
+cd {{ project_slug }}
+
+# Install dependencies
+pnpm install
+
+# Set up environment
+cp .env.example .env.local
+# Edit .env.local with your API keys
+
+# Run database migrations
+{% if saas_orm == "prisma" %}
+pnpm exec prisma migrate dev
+{% elif saas_orm == "drizzle" %}
+pnpm run db:migrate
+{% endif %}
+
+# Start development server
+pnpm run dev
+```
+
+## ?? Development Workflow
+
+### 1. Create a Branch
+
+```bash
+git checkout -b feature/your-feature-name
+# or
+git checkout -b fix/your-bug-fix
+```
+
+Branch naming conventions:
+- `feature/` - New features
+- `fix/` - Bug fixes
+- `docs/` - Documentation updates
+- `refactor/` - Code refactoring
+- `test/` - Test additions or changes
+
+### 2. Make Your Changes
+
+- Write clean, readable code
+- Follow existing code style
+- Add tests for new features
+- Update documentation as needed
+
+### 3. Test Your Changes
+
+```bash
+# Run linter
+pnpm run lint
+
+# Run type check
+pnpm run type-check
+
+# Run tests
+pnpm run test
+
+# Run E2E tests (if applicable)
+pnpm run test:e2e
+```
+
+### 4. Commit Your Changes
+
+We follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```bash
+# Format: <type>(<scope>): <subject>
+
+git commit -m "feat(auth): add OAuth provider support"
+git commit -m "fix(billing): resolve webhook signature validation"
+git commit -m "docs(api): update API examples"
+```
+
+Commit types:
+- `feat` - New feature
+- `fix` - Bug fix
+- `docs` - Documentation changes
+- `style` - Code style changes (formatting, etc.)
+- `refactor` - Code refactoring
+- `test` - Test changes
+- `chore` - Build process or auxiliary tool changes
+
+### 5. Push and Create Pull Request
+
+```bash
+git push origin feature/your-feature-name
+```
+
+Then create a Pull Request on GitHub with:
+- Clear title and description
+- Reference any related issues
+- Screenshots for UI changes
+- Test results
+
+## ?? Testing Guidelines
+
+### Unit Tests
+
+```bash
+# Run all unit tests
+pnpm run test
+
+# Run specific test file
+pnpm run test path/to/test.ts
+
+# Run with coverage
+pnpm run test:coverage
+```
+
+Test file naming: `*.test.ts` or `*.spec.ts`
+
+### Integration Tests
+
+```bash
+# Run integration tests
+pnpm run test:integration
+```
+
+### E2E Tests
+
+```bash
+# Run E2E tests
+pnpm run test:e2e
+
+# Run in UI mode
+pnpm run test:e2e:ui
+```
+
+### Writing Tests
+
+Use the factory pattern for test data:
+
+```typescript
+import { UserFactory, OrganizationFactory } from '@/lib/fixtures/factories';
+
+describe('User Management', () => {
+  it('should create user', async () => {
+    const user = await UserFactory.create({
+      email: 'test@example.com',
+    });
+    
+    expect(user.email).toBe('test@example.com');
+  });
+});
+```
+
+## ?? Code Style
+
+### TypeScript
+
+- Use TypeScript for all code
+- Enable strict mode
+- Define proper types (avoid `any`)
+- Use type inference where possible
+
+```typescript
+// ? Good
+const user: User = await getUser(userId);
+const count = users.length; // Type inferred
+
+// ? Bad
+const user: any = await getUser(userId);
+const count: number = users.length; // Unnecessary annotation
+```
+
+### Formatting
+
+We use ESLint and Prettier:
+
+```bash
+# Format code
+pnpm run lint --fix
+
+# Check formatting
+pnpm run lint
+```
+
+### Naming Conventions
+
+- **Files**: kebab-case (`user-service.ts`)
+- **Classes**: PascalCase (`class UserService`)
+- **Functions**: camelCase (`function getUser()`)
+- **Constants**: UPPER_CASE (`const MAX_RETRIES = 3`)
+- **Types/Interfaces**: PascalCase (`interface User`, `type Config`)
+
+## ??? Database Changes
+
+### {% if saas_orm == "prisma" %}Prisma{% elif saas_orm == "drizzle" %}Drizzle{% endif %} Migrations
+
+```bash
+{% if saas_orm == "prisma" %}
+# Create migration
+pnpm exec prisma migrate dev --name add_feature
+
+# Apply migrations
+pnpm exec prisma migrate deploy
+
+# Reset database (development only)
+pnpm exec prisma migrate reset
+{% elif saas_orm == "drizzle" %}
+# Generate migration
+pnpm run db:generate
+
+# Apply migration
+pnpm run db:migrate
+
+# Drop database (development only)
+pnpm run db:drop
+{% endif %}
+```
+
+### Migration Guidelines
+
+- Create descriptive migration names
+- Test migrations before committing
+- Never modify existing migrations in production
+- Provide rollback instructions for breaking changes
+
+## ?? Security
+
+### Sensitive Data
+
+- **Never commit** secrets, API keys, or credentials
+- Use environment variables for configuration
+- Add sensitive files to `.gitignore`
+- Rotate any accidentally committed secrets immediately
+
+### API Security
+
+- Validate all inputs
+- Use authentication middleware
+- Implement rate limiting
+- Sanitize database queries (use ORM)
+
+## ?? Documentation
+
+### Code Documentation
+
+Use JSDoc comments for functions:
+
+```typescript
+/**
+ * Fetches user by ID
+ * 
+ * @param userId - The user's unique identifier
+ * @returns User object or null if not found
+ * @throws {DatabaseError} If database query fails
+ * 
+ * @example
+ * ```ts
+ * const user = await getUser('user_123');
+ * ```
+ */
+async function getUser(userId: string): Promise<User | null> {
+  // Implementation
+}
+```
+
+### API Documentation
+
+Update API docs when adding endpoints:
+
+```typescript
+// app/api/users/route.ts
+/**
+ * GET /api/users
+ * 
+ * Fetches paginated list of users
+ * 
+ * Query Parameters:
+ * - page: Page number (default: 1)
+ * - limit: Items per page (default: 20)
+ * 
+ * Response: { users: User[], total: number, page: number }
+ */
+export async function GET(request: Request) {
+  // Implementation
+}
+```
+
+## ?? Bug Reports
+
+When reporting bugs, include:
+
+1. **Description**: Clear description of the issue
+2. **Steps to Reproduce**: Minimal steps to reproduce
+3. **Expected Behavior**: What should happen
+4. **Actual Behavior**: What actually happens
+5. **Environment**: OS, Node version, browser (if relevant)
+6. **Screenshots**: If applicable
+7. **Logs**: Relevant error messages or logs
+
+## ?? Feature Requests
+
+When requesting features, include:
+
+1. **Use Case**: Why is this feature needed?
+2. **Proposed Solution**: How should it work?
+3. **Alternatives**: Other approaches considered?
+4. **Examples**: Examples from other projects?
+
+## ?? Code Review
+
+### For Authors
+
+- Keep PRs focused and reasonably sized
+- Respond to feedback promptly
+- Update PR based on reviews
+- Resolve merge conflicts
+
+### For Reviewers
+
+- Be constructive and respectful
+- Focus on code quality and maintainability
+- Check for security issues
+- Verify tests pass
+
+## ?? Release Process
+
+Releases are automated via CI/CD:
+
+1. Merge to `main` triggers production deployment
+2. Semantic versioning based on commit messages
+3. Changelog generated automatically
+4. GitHub release created with notes
+
+## ?? Getting Help
+
+- **Documentation**: Check `/docs` folder
+- **Issues**: Search existing issues
+- **Discussions**: Use GitHub Discussions for questions
+- **Discord**: Join our community (if applicable)
+
+## ?? License
+
+By contributing, you agree that your contributions will be licensed under the same license as the project.
+
+---
+
+Thank you for contributing! ??
+{% endif %}

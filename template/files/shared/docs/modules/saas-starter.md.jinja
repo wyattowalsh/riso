@@ -1,0 +1,488 @@
+# SaaS Starter Module
+
+{% if saas_starter_module == "enabled" %}
+
+**Status**: ? Enabled  
+**Generated**: {{ saas_runtime | upper }} + {{ saas_hosting | upper }} + {{ saas_database | upper }} + {{ saas_orm | upper }}
+
+## Overview
+
+The SaaS Starter module generates a production-ready SaaS application with:
+
+- **Authentication**: {{ saas_auth | title }} {% if saas_enterprise_bridge == "workos" %}+ WorkOS (SSO/SCIM){% endif %}
+- **Billing**: {{ saas_billing | title }}
+- **Database**: {{ saas_database | title }} with {{ saas_orm | title }} ORM
+- **Background Jobs**: {{ saas_jobs | title }}
+- **Email**: {{ saas_email | title }}
+- **Analytics**: {{ saas_analytics | title }}
+- **AI**: {{ saas_ai | title }}
+- **Storage**: {{ saas_storage | title }}
+- **CI/CD**: {{ saas_cicd | replace('-', ' ') | title }}
+- **Observability**: {% if saas_observability_sentry %}Sentry{% endif %}{% if saas_observability_datadog %}, Datadog{% endif %}{% if saas_observability_otel %}, OpenTelemetry{% endif %}
+
+## Quick Start
+
+### 1. Install Dependencies
+
+```bash
+pnpm install
+```
+
+### 2. Set Up Environment Variables
+
+Copy the environment template and add your API keys:
+
+```bash
+cp .env.example .env.local
+```
+
+Required environment variables:
+- `DATABASE_URL` - {{ saas_database | title }} connection string
+{% if saas_auth == "clerk" %}
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Clerk publishable key
+- `CLERK_SECRET_KEY` - Clerk secret key
+{% elif saas_auth == "authjs" %}
+- `NEXTAUTH_SECRET` - Auth.js secret (generate with `openssl rand -base64 32`)
+- `NEXTAUTH_URL` - Your application URL
+{% endif %}
+{% if saas_billing == "stripe" %}
+- `STRIPE_SECRET_KEY` - Stripe secret key
+- `STRIPE_WEBHOOK_SECRET` - Stripe webhook secret
+{% elif saas_billing == "paddle" %}
+- `PADDLE_API_KEY` - Paddle API key
+- `PADDLE_WEBHOOK_SECRET` - Paddle webhook secret
+{% endif %}
+{% if saas_email == "resend" %}
+- `RESEND_API_KEY` - Resend API key
+{% elif saas_email == "postmark" %}
+- `POSTMARK_API_KEY` - Postmark server token
+{% endif %}
+{% if saas_jobs == "triggerdev" %}
+- `TRIGGER_API_KEY` - Trigger.dev API key
+{% elif saas_jobs == "inngest" %}
+- `INNGEST_SIGNING_KEY` - Inngest signing key
+- `INNGEST_EVENT_KEY` - Inngest event key
+{% endif %}
+{% if saas_analytics == "posthog" %}
+- `NEXT_PUBLIC_POSTHOG_KEY` - PostHog API key
+- `NEXT_PUBLIC_POSTHOG_HOST` - PostHog host (usually https://app.posthog.com)
+{% elif saas_analytics == "amplitude" %}
+- `NEXT_PUBLIC_AMPLITUDE_API_KEY` - Amplitude API key
+{% endif %}
+{% if saas_ai == "openai" %}
+- `OPENAI_API_KEY` - OpenAI API key
+{% elif saas_ai == "anthropic" %}
+- `ANTHROPIC_API_KEY` - Anthropic API key
+{% endif %}
+{% if saas_observability_sentry %}
+- `SENTRY_DSN` - Sentry DSN
+- `NEXT_PUBLIC_SENTRY_DSN` - Sentry public DSN
+{% endif %}
+{% if saas_observability_datadog %}
+- `DD_API_KEY` - Datadog API key
+{% endif %}
+
+### 3. Initialize Database
+
+{% if saas_orm == "prisma" %}
+```bash
+# Generate Prisma client
+pnpm generate
+
+# Push schema to database
+pnpm db:push
+
+{% if saas_include_fixtures %}
+# Seed database with example data
+pnpm db:seed
+{% endif %}
+```
+{% elif saas_orm == "drizzle" %}
+```bash
+# Generate Drizzle types
+pnpm generate
+
+# Push schema to database
+pnpm db:push
+
+{% if saas_include_fixtures %}
+# Seed database with example data
+pnpm db:seed
+{% endif %}
+```
+{% endif %}
+
+### 4. Start Development Server
+
+```bash
+pnpm dev
+```
+
+Visit [http://localhost:3000](http://localhost:3000)
+
+## Project Structure
+
+```
+{{ project_slug }}/
+??? app/                      # {% if saas_runtime == "nextjs-16" %}Next.js App Router{% else %}Remix routes{% endif %}
+?   ??? (auth)/               # Authentication pages
+?   ??? (dashboard)/          # Protected dashboard
+?   ??? api/                  # API routes
+?   ??? middleware.ts         # Auth + tracing middleware
+??? lib/                      # Core business logic
+?   ??? auth/                 # {{ saas_auth | title }} integration
+?   ??? billing/              # {{ saas_billing | title }} integration
+?   ??? database/             # {{ saas_database | title }} client
+?   ??? jobs/                 # {{ saas_jobs | title }} jobs
+?   ??? email/                # {{ saas_email | title }} integration
+?   ??? analytics/            # {{ saas_analytics | title }} integration
+?   ??? ai/                   # {{ saas_ai | title }} integration
+?   ??? storage/              # {{ saas_storage | title }} integration
+?   ??? observability/        # Logging & tracing
+{% if saas_orm == "prisma" %}
+??? prisma/                   # Prisma schema + migrations
+?   ??? schema.prisma
+?   ??? migrations/
+?   ??? seed.ts
+{% elif saas_orm == "drizzle" %}
+??? db/                       # Drizzle schema + migrations
+?   ??? schema.ts
+?   ??? migrations/
+?   ??? seed.ts
+{% endif %}
+??? tests/                    # Test suites
+?   ??? unit/                 # Unit tests
+?   ??? integration/          # Integration tests
+{% if saas_test_suite_level == "comprehensive" %}
+?   ??? e2e/                  # End-to-end tests
+{% endif %}
+??? saas-starter.config.ts    # Your technology selections
+??? .env.example              # Environment variable template
+??? package.json
+```
+
+## Technology Stack
+
+### Runtime & Hosting
+
+**Runtime**: {% if saas_runtime == "nextjs-16" %}Next.js 16 (React 19.2, App Router, Turbopack){% else %}Remix 2.x (Vite, server-first routes){% endif %}  
+**Hosting**: {% if saas_hosting == "vercel" %}Vercel (Edge Functions, Image Optimization){% else %}Cloudflare (Pages + Workers, Global Edge){% endif %}
+
+**Use-when**:
+{% if saas_runtime == "nextjs-16" %}
+- Most SaaS applications
+- Large ecosystem and community
+- Vercel-first optimizations
+- Rapid prototyping
+{% else %}
+- Complex form interactions
+- Explicit data loading preferred
+- Good for Cloudflare Workers
+- Server-first architecture
+{% endif %}
+
+### Database & ORM
+
+**Database**: {% if saas_database == "neon" %}Neon (Serverless Postgres, database branching){% else %}Supabase (Postgres + Auth + Storage BaaS){% endif %}  
+**ORM**: {% if saas_orm == "prisma" %}Prisma (Best TypeScript ergonomics, Prisma Studio){% else %}Drizzle (Lightweight, edge-optimized){% endif %}
+
+**Use-when**:
+{% if saas_database == "neon" %}
+- Need database branching for PR previews
+- Autoscale-to-zero for cost savings
+- Fast cold starts
+{% else %}
+- Want all-in-one platform (DB + Auth + Storage)
+- Need real-time subscriptions
+- Row Level Security (RLS) requirements
+{% endif %}
+
+### Authentication & Authorization
+
+**Primary Auth**: {% if saas_auth == "clerk" %}Clerk (Hosted, organizations, passkeys){% else %}Auth.js/NextAuth.js v5 (Self-hosted, OSS){% endif %}  
+{% if saas_enterprise_bridge == "workos" %}**Enterprise Bridge**: WorkOS (SSO, SCIM, Directory Sync){% endif %}
+
+**Use-when**:
+{% if saas_auth == "clerk" %}
+- Fastest setup (< 10 minutes)
+- Need built-in UI components
+- Multi-tenant organizations
+- Passkey authentication
+{% else %}
+- Cost-sensitive projects
+- Full control over auth flow
+- Custom branding requirements
+- Open-source preference
+{% endif %}
+
+### Billing & Payments
+
+**Billing**: {% if saas_billing == "stripe" %}Stripe Billing 2025 (Usage metering, subscriptions){% else %}Paddle (Merchant of Record, automatic tax){% endif %}
+
+**Use-when**:
+{% if saas_billing == "stripe" %}
+- Need usage-based metering
+- Full control over pricing logic
+- Lower transaction fees (2.9% + $0.30)
+- Handle tax compliance manually
+{% else %}
+- Global sales with automatic tax/VAT
+- Prefer Merchant of Record model
+- Simpler compliance requirements
+- Higher fees acceptable (5% + $0.50)
+{% endif %}
+
+### Background Jobs
+
+**Jobs**: {% if saas_jobs == "triggerdev" %}Trigger.dev v4 (Task-centric, AI-optimized){% else %}Inngest (Event-driven workflows, durable execution){% endif %}
+
+**Use-when**:
+{% if saas_jobs == "triggerdev" %}
+- Long-running AI/LLM tasks
+- Simple task queue needs
+- Built-in dev server integration
+- AI agent orchestration
+{% else %}
+- Complex multi-step workflows
+- Event-driven architecture
+- Scheduled/cron jobs
+- Branching workflow logic
+{% endif %}
+
+### Email
+
+**Email**: {% if saas_email == "resend" %}Resend + React Email (Component-based templates){% else %}Postmark (Industry-leading deliverability){% endif %}
+
+**Use-when**:
+{% if saas_email == "resend" %}
+- React-based email templates
+- Modern developer experience
+- Vercel ecosystem integration
+- Component reusability
+{% else %}
+- Maximum deliverability critical
+- Mature service with track record
+- Detailed analytics needed
+- Enterprise email requirements
+{% endif %}
+
+### Analytics & AI
+
+**Analytics**: {% if saas_analytics == "posthog" %}PostHog (Product OS: analytics + flags + replay){% else %}Amplitude (Enterprise product analytics){% endif %}  
+**AI**: {% if saas_ai == "openai" %}OpenAI (GPT-4o/GPT-5, largest ecosystem){% else %}Anthropic Claude (Long context, safer outputs){% endif %}
+
+### Storage & Observability
+
+**Storage**: {% if saas_storage == "r2" %}Cloudflare R2 (S3-compatible, zero egress){% else %}Supabase Storage (RLS policies, transformations){% endif %}  
+**Observability**: {% if saas_observability_sentry %}Sentry (errors){% endif %}{% if saas_observability_datadog %}, Datadog (APM){% endif %}{% if saas_observability_otel %}, OpenTelemetry (traces){% endif %}
+
+## Development Workflows
+
+### Running Tests
+
+```bash
+# Run all tests
+pnpm test
+
+# Unit tests only
+pnpm test:unit
+
+# Integration tests (requires services)
+pnpm test:integration
+
+{% if saas_test_suite_level == "comprehensive" %}
+# End-to-end tests
+pnpm test:e2e
+{% endif %}
+
+# Watch mode
+pnpm test:watch
+
+# Coverage report
+pnpm test:coverage
+```
+
+### Database Management
+
+{% if saas_orm == "prisma" %}
+```bash
+# Create migration
+pnpm db:migrate:dev --name <migration_name>
+
+# Deploy migrations to production
+pnpm db:migrate:deploy
+
+# Reset database
+pnpm db:reset
+
+# Open Prisma Studio
+pnpm db:studio
+```
+{% elif saas_orm == "drizzle" %}
+```bash
+# Generate migration
+pnpm db:generate
+
+# Apply migrations
+pnpm db:push
+
+# Drop database
+pnpm db:drop
+
+# Open Drizzle Studio
+pnpm db:studio
+```
+{% endif %}
+
+### Code Quality
+
+```bash
+# Run linter
+pnpm lint
+
+# Fix linter issues
+pnpm lint:fix
+
+# Type checking
+pnpm typecheck
+
+# Format code
+pnpm format
+```
+
+## Deployment
+
+### {% if saas_hosting == "vercel" %}Deploy to Vercel{% else %}Deploy to Cloudflare{% endif %}
+
+{% if saas_hosting == "vercel" %}
+```bash
+# Install Vercel CLI
+pnpm install -g vercel
+
+# Login
+vercel login
+
+# Deploy to preview
+vercel
+
+# Deploy to production
+vercel --prod
+```
+
+**Environment Variables**: Add all required environment variables in Vercel dashboard:
+1. Go to Project Settings ? Environment Variables
+2. Add all variables from `.env.local`
+3. Redeploy to apply changes
+{% else %}
+```bash
+# Install Wrangler CLI
+pnpm install -g wrangler
+
+# Login
+wrangler login
+
+# Deploy to preview
+wrangler deploy
+
+# Add secrets
+wrangler secret put DATABASE_URL
+wrangler secret put CLERK_SECRET_KEY
+# ... (add all secrets)
+
+# Deploy to production
+wrangler deploy --env production
+```
+
+**Environment Variables**: Set secrets via `wrangler secret put` command for each variable.
+{% endif %}
+
+### Post-Deployment Checklist
+
+- [ ] Set all production environment variables
+- [ ] Run database migrations (`pnpm db:migrate:deploy`)
+- [ ] Configure webhook URLs ({% if saas_billing == "stripe" %}Stripe{% else %}Paddle{% endif %}, {% if saas_auth == "clerk" %}Clerk{% endif %})
+- [ ] Set up custom domain
+- [ ] Enable monitoring alerts ({% if saas_observability_sentry %}Sentry{% endif %}{% if saas_observability_datadog %}, Datadog{% endif %})
+- [ ] Test production deployment end-to-end
+- [ ] Set up database backups
+- [ ] Configure rate limiting
+
+## Documentation
+
+- **Setup Guide**: `docs/setup.md` - Detailed setup instructions
+- **API Reference**: `docs/api-reference.md` - API endpoint documentation
+- **Deployment**: `docs/deployment.md` - Deployment guide for {% if saas_hosting == "vercel" %}Vercel{% else %}Cloudflare{% endif %}
+- **Security**: `docs/security.md` - Security best practices
+- **Troubleshooting**: `docs/troubleshooting.md` - Common issues and solutions
+
+### Integration Guides
+
+{% if saas_auth == "clerk" %}
+- `docs/integrations/clerk.md` - Clerk authentication setup
+{% elif saas_auth == "authjs" %}
+- `docs/integrations/authjs.md` - Auth.js configuration
+{% endif %}
+{% if saas_billing == "stripe" %}
+- `docs/integrations/stripe.md` - Stripe billing integration
+{% elif saas_billing == "paddle" %}
+- `docs/integrations/paddle.md` - Paddle billing setup
+{% endif %}
+{% if saas_jobs == "triggerdev" %}
+- `docs/integrations/triggerdev.md` - Trigger.dev job configuration
+{% elif saas_jobs == "inngest" %}
+- `docs/integrations/inngest.md` - Inngest workflow setup
+{% endif %}
+- See `docs/integrations/` for all service-specific guides
+
+## Getting Help
+
+- **Issues**: [GitHub Issues](https://github.com/{{ project_slug }}/issues)
+- **Documentation**: Review generated docs in `docs/` directory
+- **Service Docs**: Check integration-specific guides in `docs/integrations/`
+
+## Performance Metrics
+
+**Estimated Performance** (based on your stack):
+{% if saas_hosting == "cloudflare" and saas_orm == "drizzle" %}
+- Cold start: ~50-80ms (edge-optimized)
+- Request latency (p95): ~30-50ms
+- Monthly cost (10k users): ~$100-300
+{% elif saas_hosting == "vercel" and saas_orm == "prisma" %}
+- Cold start: ~300ms (serverless)
+- Request latency (p95): ~100-150ms
+- Monthly cost (10k users): ~$200-500
+{% else %}
+- Cold start: ~200-250ms
+- Request latency (p95): ~80-120ms
+- Monthly cost (10k users): ~$150-400
+{% endif %}
+
+**Monitor actual performance** in {% if saas_observability_datadog %}Datadog APM{% elif saas_observability_sentry %}Sentry Performance{% else %}your observability dashboard{% endif %}.
+
+{% else %}
+
+**Status**: ? Disabled
+
+The SaaS Starter module is not enabled for this project. To use it, regenerate your project with `saas_starter_module: enabled` in your copier answers.
+
+## What You're Missing
+
+The SaaS Starter module provides:
+- Production-ready authentication (Clerk or Auth.js)
+- Billing integration (Stripe or Paddle)
+- Database with ORM (Neon/Supabase + Prisma/Drizzle)
+- Background jobs (Trigger.dev or Inngest)
+- Email sending (Resend or Postmark)
+- Analytics (PostHog or Amplitude)
+- AI integration (OpenAI or Anthropic)
+- File storage (R2 or Supabase Storage)
+- Comprehensive observability (Sentry, Datadog, OpenTelemetry)
+- Complete test suites
+- One-command deployment
+
+To enable, run:
+```bash
+copier copy --data saas_starter_module=enabled . your-project
+```
+
+{% endif %}
