@@ -103,15 +103,37 @@ A developer has an OpenAPI/GraphQL schema and wants to generate client/server co
 
 ### Edge Cases
 
+#### File System & Environment
+
 - What happens when a user tries to generate a project in a non-empty directory? (Should detect existing files and warn/fail)
 - How does the tool handle file system permission errors? (Should provide clear error messages indicating which operations failed and why)
-- What happens when template variables have circular dependencies? (Should detect and report configuration errors)
+- What happens when generating code for file paths that exceed OS limits? (Should detect and suggest shorter alternatives)
+- What happens when a user cancels during variable collection prompts? (Should abort cleanly without creating partial output)
 - How does the tool handle extremely large template repositories? (Should warn users when template exceeds 50MB, reject templates over 100MB, and provide progress indicators during download)
 - What happens when a user's environment is missing required tools (e.g., Python, Node.js) for the template? (Should validate prerequisites and provide setup guidance)
-- How does the tool handle network failures when fetching remote templates? (Should fall back to cached version if available, otherwise provide clear offline error)
-- What happens when generating code for file paths that exceed OS limits? (Should detect and suggest shorter alternatives)
+
+#### Template Processing & Validation
+
+- What happens when template variables have circular dependencies? (Should detect and report configuration errors)
 - How does the tool handle template files with syntax errors or invalid Jinja/template syntax? (Should validate templates before generation and report errors with line numbers)
-- What happens when a user cancels during variable collection prompts? (Should abort cleanly without creating partial output)
+- How does the tool handle network failures when fetching remote templates? (Should fall back to cached version if available, otherwise provide clear offline error)
+
+#### Security Scenarios
+
+- What happens when a template contains path traversal attempts (../../etc/passwd)? (Should detect, reject, and log security violation)
+- How does the tool handle template injection attacks via malicious variable values? (Should escape all variables in sandboxed environment and prevent code execution)
+- What happens when a hook script attempts to execute privileged commands (sudo, network access)? (Should deny execution and log security violation)
+- How does the tool handle templates with suspicious patterns (eval, exec, __import__)? (Should detect during validation and reject template with security warning)
+- What happens when a remote template URL points to a private IP or localhost? (Should reject SSRF attempts and only allow public HTTPS/SSH URLs)
+- How does the tool handle symbolic links pointing outside project boundaries? (Should detect and reject symlinks that escape project directory)
+- What happens when a template tries to write to system directories? (Should prevent writes to /etc, /usr, /bin and restrict to user directories)
+- How does the tool handle concurrent modifications to the same file? (Should use file locking to prevent race conditions)
+- What happens when generated code contains hardcoded credentials? (Should scan and reject generation with security warning)
+- How does the tool handle corrupted or tampered cache files? (Should detect checksum mismatches and re-fetch from source)
+- What happens when a hook script is world-writable? (Should reject execution of insecure scripts)
+- How does the tool handle extremely deep path nesting (>50 levels)? (Should enforce maximum depth limit and reject excessive nesting)
+- What happens when a template variable name conflicts with Jinja2 builtins? (Should detect and reject reserved variable names)
+- How does the tool handle binary files in templates that could contain exploits? (Should validate file types and reject suspicious binaries)
 
 ## Requirements *(mandatory)*
 
@@ -142,6 +164,72 @@ A developer has an OpenAPI/GraphQL schema and wants to generate client/server co
 - **FR-023**: System MUST use three-way merge algorithm when updating projects, inserting conflict markers (<<<<<<, =======, >>>>>>>) when automatic merge is not possible
 - **FR-024**: System MUST validate that all conflict markers are resolved before considering an update complete
 
+### Security Requirements
+
+#### Input Validation & Sanitization
+
+- **FR-025**: System MUST validate all user inputs (project names, module names, paths, variable values) against injection attacks (shell, SQL, template, code injection)
+- **FR-026**: System MUST sanitize special characters in user-provided paths and reject null bytes
+- **FR-027**: System MUST enforce maximum length limits on all user input fields (project name ≤100 chars, paths ≤4096 chars, variables ≤1024 chars)
+- **FR-028**: System MUST validate remote template URLs against SSRF (Server-Side Request Forgery) attacks by restricting to HTTPS/SSH protocols and rejecting private IP ranges
+- **FR-029**: System MUST validate file extensions against an allowed list before processing template files
+- **FR-030**: System MUST type-check all template variable values before substitution and reject values that don't match expected types
+
+#### Template Processing Security
+
+- **FR-031**: System MUST use Jinja2 SandboxedEnvironment for all template rendering to prevent code execution from untrusted templates
+- **FR-032**: System MUST disable dangerous Jinja2 filters (exec, eval, import, compile) and restrict access to Python built-ins
+- **FR-033**: System MUST validate template syntax before execution and reject templates with malformed or suspicious patterns
+- **FR-034**: System MUST enforce timeout limits on template rendering (30 seconds per file) and computational complexity limits (max 1000 loop iterations)
+- **FR-035**: System MUST detect and reject recursive variable expansion attempts that could cause infinite loops
+- **FR-036**: System MUST sandbox pre/post-generation hook execution with restricted environment variables, no network access, and resource limits (10-second timeout, 100MB memory)
+- **FR-037**: System MUST validate hook script permissions, reject world-writable scripts, and log all hook executions for audit trails
+- **FR-038**: System MUST prevent hook scripts from accessing sensitive environment variables or credentials
+
+#### File System Security
+
+- **FR-039**: System MUST prevent path traversal attacks by validating all file paths, canonicalizing paths, and ensuring all operations stay within project boundaries
+- **FR-040**: System MUST detect and reject symbolic links that could enable directory traversal or access to system directories
+- **FR-041**: System MUST prevent writing to system directories (/etc, /usr, /bin) and restrict operations to user-controlled directories
+- **FR-042**: System MUST set secure default permissions on generated files (644 for data files, 755 for executables, 700 for cache directories)
+- **FR-043**: System MUST implement atomic file operations with rollback capability on failure
+- **FR-044**: System MUST validate file checksums after generation to detect partial writes or corruption
+- **FR-045**: System MUST use file locking mechanisms to prevent race conditions in concurrent operations
+
+#### Remote Template Security
+
+- **FR-046**: System MUST validate remote template source authenticity using signature verification or checksum validation
+- **FR-047**: System MUST validate SSL/TLS certificates for HTTPS connections and reject invalid certificates
+- **FR-048**: System MUST enforce timeout and retry limits on network operations (30-second timeout, max 3 retries)
+- **FR-049**: System MUST prevent credential leakage by never logging credentials, clearing them from memory after use, and using secure storage (system keychain)
+- **FR-050**: System MUST validate cache integrity after fetching templates and detect tampered cached templates using checksums
+- **FR-051**: System MUST prevent cache poisoning by validating cache keys and isolating cache directories per user with 700 permissions
+
+#### Merge & Update Security
+
+- **FR-052**: System MUST validate all merge inputs before processing and detect suspicious conflict patterns (binary data, excessive size)
+- **FR-053**: System MUST preserve user code integrity during merges by validating merged output before writing
+- **FR-054**: System MUST warn users about conflicts in security-sensitive files (.env, config, credentials) and require manual review
+
+#### Error Handling & Logging
+
+- **FR-055**: System MUST prevent sensitive information disclosure in error messages (no paths, credentials, stack traces in user-facing errors)
+- **FR-056**: System MUST sanitize user input before including in error messages to prevent log injection
+- **FR-057**: System MUST log all security-relevant events (authentication, authorization, file access, hook execution) with timestamps
+- **FR-058**: System MUST secure log file permissions (640) and implement log rotation policies (max 100MB, 7-day retention)
+
+#### Generated Code Security
+
+- **FR-059**: System MUST scan generated code for hardcoded secrets, credentials, or API keys and reject generation if found
+- **FR-060**: System MUST validate generated code against security linters before marking generation complete
+- **FR-061**: System MUST warn users about insecure defaults in generated code (debug mode enabled, weak encryption, permissive CORS)
+
+#### Supply Chain Security
+
+- **FR-062**: System MUST validate template dependency versions and warn about known vulnerabilities (using vulnerability databases)
+- **FR-063**: System MUST track template provenance (source URL, author, signature) in metadata for audit trails
+- **FR-064**: System MUST validate that generated projects include appropriate license files and track third-party license obligations
+
 ### Key Entities
 
 - **Template**: A collection of files, directories, and configuration that defines the structure and content to be generated. Includes template files (with variable placeholders), metadata (name, description, version), variables (required and optional inputs), and hooks (pre/post generation scripts).
@@ -168,3 +256,6 @@ A developer has an OpenAPI/GraphQL schema and wants to generate client/server co
 - **SC-008**: Developers can customize templates for their team in under 15 minutes (customize = create template.yml + add 3 template files + test generation successfully)
 - **SC-009**: Generated API code from OpenAPI specs achieves 100% type coverage with no manual type annotations needed
 - **SC-010**: Tool reduces time to first commit for new projects by 75% compared to manual setup
+- **SC-011**: Security validation detects and rejects 100% of test cases for path traversal, template injection, and code execution attempts
+- **SC-012**: Generated code passes security linting with zero critical vulnerabilities
+- **SC-013**: Credential handling achieves zero credential leakage in logs, error messages, or temporary files during security audits
