@@ -1,6 +1,19 @@
 """Monitoring and performance metrics collection."""
 
-# Monitoring modules will be fully implemented in Phase 14
-# Placeholder for now
+from api_versioning.monitoring.performance import (
+    OperationType,
+    PerformanceMetric,
+    PerformanceMonitor,
+    PerformanceStats,
+    get_global_monitor,
+    measure_operation,
+)
 
-__all__ = []
+__all__ = [
+    "PerformanceMonitor",
+    "PerformanceMetric",
+    "PerformanceStats",
+    "OperationType",
+    "get_global_monitor",
+    "measure_operation",
+]
