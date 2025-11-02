@@ -1,0 +1,86 @@
+"""GraphQL Error Handling Tests - Validation and error messages."""
+
+{% if graphql_api_module == 'enabled' %}
+import pytest
+from strawberry.test import BaseGraphQLTestClient
+
+from {{ package_name }}.graphql_api.schema import schema
+from {{ package_name }}.graphql_api.errors import (
+    ValidationError,
+    AuthError,
+    SystemError,
+    QueryError,
+)
+
+
+@pytest.fixture
+def graphql_client():
+    """Create GraphQL test client."""
+    return BaseGraphQLTestClient(schema)
+
+
+class TestErrorHandling:
+    """Test error handling and error messages."""
+    
+    def test_query_syntax_error(self, graphql_client):
+        """Test that syntax errors return clear messages."""
+        # Invalid GraphQL syntax
+        query = """
+            query {
+                user(id: "1") {
+                    id
+                    name
+                }  # Missing closing brace
+        """
+        
+        result = graphql_client.query(query)
+        
+        # Should return syntax error
+        assert result.errors is not None
+    
+    def test_invalid_field_error(self, graphql_client):
+        """Test that invalid field requests return clear errors."""
+        query = """
+            query {
+                user(id: "1") {
+                    id
+                    invalidField
+                }
+            }
+        """
+        
+        result = graphql_client.query(query)
+        
+        # Should return field validation error
+        assert result.errors is not None
+        assert any("invalidField" in str(error) for error in result.errors)
+    
+    def test_validation_error_format(self):
+        """Test ValidationError formatting."""
+        error = ValidationError(
+            message="Email format is invalid",
+            field="email",
+        )
+        
+        assert error.message == "Email format is invalid"
+        assert error.extensions["field"] == "email"
+        assert error.code == "VALIDATION_ERROR"
+    
+    def test_auth_error_format(self):
+        """Test AuthError formatting."""
+        error = AuthError(
+            message="Authentication required",
+        )
+        
+        assert error.message == "Authentication required"
+        assert error.code == "AUTH_ERROR"
+    
+    def test_system_error_format(self):
+        """Test SystemError formatting."""
+        error = SystemError(
+            message="Database connection failed",
+        )
+        
+        assert error.message == "Database connection failed"
+        assert error.code == "SYSTEM_ERROR"
+{% endif %}

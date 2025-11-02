@@ -1,0 +1,168 @@
+{%- if cli_module | lower != "enabled" %}
+# CLI module disabled - this file is not generated
+{%- else %}
+"""Configuration management commands."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import typer
+
+from {{ package_name }}.cli.core import ConfigManager, command
+from {{ package_name }}.cli.core.formatter import OutputFormatter
+
+# Initialize components
+formatter = OutputFormatter()
+config_manager = ConfigManager()
+
+# Create config sub-app
+config_app = typer.Typer(name="config", help="Manage application configuration")
+
+
+@config_app.command(name="set")
+def config_set(
+    key: str = typer.Argument(..., help="Configuration key (e.g., 'app.name')"),
+    value: str = typer.Argument(..., help="Value to set"),
+    config_file: str = typer.Option("config.toml", "--config", "-c", help="Configuration file path"),
+) -> None:
+    """Set a configuration value and persist to file.
+    
+    Args:
+        key: Configuration key (supports dot-notation)
+        value: Value to set
+        config_file: Path to configuration file
+    """
+    try:
+        config_manager.config_file = Path(config_file)
+        config_manager.load()
+        config_manager.set(key, value)
+        config_manager.save()
+        
+        formatter.print_success(f"Set {key} = {value}")
+        formatter.print_info(f"Saved to {config_file}")
+    
+    except Exception as e:
+        formatter.print_error(f"Failed to set configuration: {e}")
+        raise typer.Exit(code=1)
+
+
+@config_app.command(name="get")
+def config_get(
+    key: str = typer.Argument(..., help="Configuration key to retrieve"),
+    config_file: str = typer.Option("config.toml", "--config", "-c", help="Configuration file path"),
+    show_source: bool = typer.Option(False, "--source", "-s", help="Show value source (env/file/default)"),
+) -> None:
+    """Get a configuration value with precedence information.
+    
+    Args:
+        key: Configuration key
+        config_file: Path to configuration file
+        show_source: Whether to show value source
+    """
+    try:
+        config_manager.config_file = Path(config_file)
+        config_manager.load()
+        
+        value = config_manager.get(key)
+        
+        if value is None:
+            formatter.print_warning(f"Configuration key '{key}' not found")
+            raise typer.Exit(code=1)
+        
+        if show_source:
+            # Determine source
+            import os
+            env_key = f"{config_manager.env_prefix}{key.upper().replace('.', '_')}"
+            if os.environ.get(env_key) is not None:
+                source = f"environment ({env_key})"
+            elif config_manager._get_nested_key(key, config_manager._config_data) is not None:
+                source = f"file ({config_file})"
+            elif config_manager._get_nested_key(key, config_manager.defaults) is not None:
+                source = "default"
+            else:
+                source = "unknown"
+            
+            formatter.print(f"{key} = {value} [dim](from {source})[/dim]")
+        else:
+            formatter.print(f"{value}")
+    
+    except Exception as e:
+        formatter.print_error(f"Failed to get configuration: {e}")
+        raise typer.Exit(code=1)
+
+
+@config_app.command(name="list")
+def config_list(
+    config_file: str = typer.Option("config.toml", "--config", "-c", help="Configuration file path"),
+    format: str = typer.Option("table", "--format", "-f", help="Output format (table, json, yaml)"),
+) -> None:
+    """List all configuration keys with their values and sources.
+    
+    Args:
+        config_file: Path to configuration file
+        format: Output format
+    """
+    try:
+        config_manager.config_file = Path(config_file)
+        config_manager.load()
+        
+        all_config = config_manager.list_all()
+        
+        if not all_config:
+            formatter.print_warning("No configuration found")
+            return
+        
+        # Format for display
+        config_data = [
+            {"key": key, "value": str(value), "source": source}
+            for key, (value, source) in all_config.items()
+        ]
+        
+        formatter.format(config_data, format=format, title="Configuration")
+    
+    except Exception as e:
+        formatter.print_error(f"Failed to list configuration: {e}")
+        raise typer.Exit(code=1)
+
+
+@config_app.command(name="validate")
+def config_validate(
+    config_file: str = typer.Option("config.toml", "--config", "-c", help="Configuration file path"),
+) -> None:
+    """Validate configuration file syntax and structure.
+    
+    Args:
+        config_file: Path to configuration file
+    """
+    config_path = Path(config_file)
+    
+    if not config_path.exists():
+        formatter.print_error(f"Configuration file not found: {config_file}")
+        raise typer.Exit(code=1)
+    
+    try:
+        # Try loading the config
+        config_manager.config_file = config_path
+        config_manager.load()
+        
+        formatter.print_success(f"Configuration file is valid: {config_file}")
+        
+        # Show summary
+        all_config = config_manager.list_all()
+        formatter.print_info(f"Found {len(all_config)} configuration keys")
+    
+    except Exception as e:
+        formatter.print_error(f"Configuration validation failed: {e}")
+        raise typer.Exit(code=1)
+
+
+# Register the config command group as a command
+@command(
+    name="config",
+    help="Manage application configuration (set, get, list, validate)",
+)
+def config_command() -> None:
+    """Configuration management command group."""
+    config_app()
+{%- endif %}

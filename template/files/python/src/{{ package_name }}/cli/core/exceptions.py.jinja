@@ -1,0 +1,67 @@
+{%- if cli_module | lower != "enabled" %}
+# CLI module disabled - this file is not generated
+{%- else %}
+"""Custom exception hierarchy for CLI framework."""
+
+from __future__ import annotations
+
+
+class CLIError(Exception):
+    """Base exception for CLI-related errors."""
+    
+    def __init__(self, message: str, exit_code: int = 1):
+        """Initialize CLI error.
+        
+        Args:
+            message: Error message to display
+            exit_code: Exit code for the process (default 1)
+        """
+        super().__init__(message)
+        self.exit_code = exit_code
+
+
+class ConfigError(CLIError):
+    """Exception raised for configuration-related errors."""
+    
+    def __init__(self, message: str):
+        """Initialize configuration error.
+        
+        Args:
+            message: Error message describing the configuration issue
+        """
+        super().__init__(f"Configuration error: {message}", exit_code=2)
+
+
+class PluginError(CLIError):
+    """Exception raised for plugin-related errors."""
+    
+    def __init__(self, message: str, plugin_name: str | None = None):
+        """Initialize plugin error.
+        
+        Args:
+            message: Error message describing the plugin issue
+            plugin_name: Name of the plugin that failed (if known)
+        """
+        error_msg = f"Plugin error"
+        if plugin_name:
+            error_msg += f" ({plugin_name})"
+        error_msg += f": {message}"
+        super().__init__(error_msg, exit_code=3)
+
+
+class ValidationError(CLIError):
+    """Exception raised for parameter validation errors."""
+    
+    def __init__(self, message: str, parameter: str | None = None):
+        """Initialize validation error.
+        
+        Args:
+            message: Error message describing the validation failure
+            parameter: Name of the parameter that failed validation (if known)
+        """
+        error_msg = "Validation error"
+        if parameter:
+            error_msg += f" for parameter '{parameter}'"
+        error_msg += f": {message}"
+        super().__init__(error_msg, exit_code=4)
+{%- endif %}

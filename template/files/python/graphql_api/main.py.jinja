@@ -1,0 +1,85 @@
+"""FastAPI Integration for GraphQL API."""
+
+from fastapi import FastAPI, Request
+from strawberry.fastapi import GraphQLRouter
+{% if api_tracks in ['python', 'python+node'] %}
+from sqlalchemy.ext.asyncio import AsyncSession
+{% endif %}
+
+from {{ package_name }}.graphql_api.schema import schema
+from {{ package_name }}.graphql_api.context import get_graphql_context, GraphQLContext
+
+
+# Create FastAPI app for GraphQL
+app = FastAPI(
+    title="{{ project_name }} GraphQL API",
+    description="GraphQL API built with Strawberry and FastAPI",
+    version="1.0.0",
+)
+
+
+async def get_context(
+    request: Request,
+    {% if api_tracks in ['python', 'python+node'] %}
+    # db: AsyncSession = Depends(get_db_session),  # TODO: Implement get_db_session dependency
+    {% endif %}
+) -> GraphQLContext:
+    """
+    Context factory for GraphQL requests.
+    
+    Creates a new context for each request with:
+    - Request object
+    - Current user (from authentication)
+    - Database session
+    - DataLoaders (per-request batching/caching)
+    - Configuration
+    """
+    return await get_graphql_context(
+        request=request,
+        {% if api_tracks in ['python', 'python+node'] %}
+        # db=db,  # TODO: Pass database session
+        {% endif %}
+    )
+
+
+# Create GraphQL router with Strawberry
+graphql_app = GraphQLRouter(
+    schema=schema,
+    context_getter=get_context,
+    graphiql=True,  # Enable GraphQL playground
+)
+
+
+# Mount GraphQL router
+app.include_router(graphql_app, prefix="/graphql")
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "healthy", "service": "graphql-api"}
+
+
+@app.get("/")
+async def root():
+    """Root endpoint with API information."""
+    return {
+        "service": "{{ project_name }} GraphQL API",
+        "version": "1.0.0",
+        "endpoints": {
+            "graphql": "/graphql",
+            "playground": "/graphql (in browser)",
+            "health": "/health",
+        },
+    }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    
+    uvicorn.run(
+        "{{ package_name }}.graphql_api.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+    )

@@ -13,80 +13,118 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 {%- else %}
-"""Typer-powered command-line interface for the Riso quickstart workflow."""
+"""Multi-command CLI with automatic command discovery."""
 
 from __future__ import annotations
 
-from importlib import import_module
-from typing import Annotated, Any, cast
+import importlib
+import sys
+from pathlib import Path
+from typing import Any
 
-import typer  # type: ignore[import-not-found]
+import typer
 from loguru import logger
 
-from {{ package_name }}.quickstart import run_quickstart
+from {{ package_name }}.cli.core import CLIError, get_command_metadata
 
-build_health_payload: Any
-summarize_payload: Any
-
-try:
-    _shared_logic = import_module("shared.logic")
-except ModuleNotFoundError:  # pragma: no cover - shared logic is optional
-
-    def _fallback_build_health_payload(
-        service: str,
-        *,
-        dry_run: bool = False,
-        checks: list[dict[str, Any]] | None = None,
-    ) -> dict[str, Any]:
-        """Construct a minimal health payload when shared logic is unavailable."""
-        payload: dict[str, Any] = {"service": service, "status": "ok", "dry_run": dry_run}
-        if checks:
-            payload["checks"] = list(checks)
-        return payload
-
-    def _fallback_summarize_payload(payload: dict[str, Any]) -> str:
-        """Summarise the payload for terminal output."""
-        status = str(payload.get("status", "unknown"))
-        service = str(payload.get("service", "service"))
-        suffix = " (dry run)" if payload.get("dry_run") else ""
-        return f"{service} status: {status}{suffix}"
-    build_health_payload = _fallback_build_health_payload
-    summarize_payload = _fallback_summarize_payload
-else:
-    build_health_payload = _shared_logic.build_health_payload
-    summarize_payload = _shared_logic.summarize_payload
-
-DRY_RUN_DEFAULT = False
-
-DryRunOption = Annotated[
-    bool,
-    typer.Option(
-        default=DRY_RUN_DEFAULT,
-        help="Run validations without executing external commands.",
-    ),
-]
-
-app = typer.Typer(no_args_is_help=True, rich_markup_mode="rich")
+# Initialize Typer app
+app = typer.Typer(
+    name="{{ project_name }}",
+    help="{{ project_name }} - Command-line interface",
+    no_args_is_help=True,
+    rich_markup_mode="rich",
+    add_completion=True,
+)
 
 
-def quickstart(dry_run: DryRunOption) -> None:
-    """Execute the baseline quickstart workflow."""
-    logger.info("Starting quickstart workflow (dry_run=%s)", dry_run)
-    result = run_quickstart(dry_run=dry_run)
-    payload = build_health_payload("cli-quickstart", dry_run=dry_run)
-    typer.echo(summarize_payload(payload))
-    if result.get("status") != "ok":
-        logger.error("Quickstart failed: {}", result)
-        raise typer.Exit(code=1)
-    logger.success("Quickstart completed successfully")
+def discover_commands() -> list[tuple[Any, dict[str, Any]]]:
+    """Discover all command modules in the commands directory.
+    
+    Returns:
+        List of (command_function, metadata) tuples
+    """
+    commands = []
+    commands_dir = Path(__file__).parent / "commands"
+    
+    if not commands_dir.exists():
+        logger.warning(f"Commands directory not found: {commands_dir}")
+        return commands
+    
+    # Find all Python files in commands directory
+    for file_path in commands_dir.glob("*.py"):
+        if file_path.name.startswith("_"):
+            continue
+        
+        module_name = f"{{ package_name }}.cli.commands.{file_path.stem}"
+        try:
+            module = importlib.import_module(module_name)
+            
+            # Look for decorated command functions
+            for attr_name in dir(module):
+                if attr_name.startswith("_"):
+                    continue
+                
+                attr = getattr(module, attr_name)
+                if not callable(attr):
+                    continue
+                
+                # Check if it's a command (has our decorator metadata)
+                if hasattr(attr, "_cli_command") and attr._cli_command:
+                    metadata = get_command_metadata(attr)
+                    commands.append((attr, metadata))
+                    logger.debug(f"Discovered command: {metadata['name']} from {module_name}")
+        
+        except Exception as e:
+            logger.warning(f"Failed to load command module {module_name}: {e}")
+            continue
+    
+    return commands
 
 
-app.command()(quickstart)
+def register_commands() -> None:
+    """Register all discovered commands with the Typer app."""
+    commands = discover_commands()
+    
+    if not commands:
+        logger.warning("No commands discovered")
+        return
+    
+    for cmd_func, metadata in commands:
+        # Register primary command name
+        cmd_name = metadata.get("name", cmd_func.__name__)
+        cmd_help = metadata.get("help", cmd_func.__doc__ or "")
+        hidden = metadata.get("hidden", False)
+        
+        app.command(name=cmd_name, help=cmd_help, hidden=hidden)(cmd_func)
+        logger.debug(f"Registered command: {cmd_name}")
+        
+        # Register aliases if present
+        aliases = metadata.get("aliases", [])
+        for alias in aliases:
+            app.command(name=alias, help=f"Alias for '{cmd_name}'", hidden=True)(cmd_func)
+            logger.debug(f"Registered alias: {alias} -> {cmd_name}")
 
 
 def main() -> None:
-    """Invoke the Typer application."""
-    app()
+    """CLI entry point with error handling."""
+    try:
+        # Discover and register commands
+        register_commands()
+        
+        # Run the app
+        app()
+    
+    except CLIError as e:
+        logger.error(f"CLI error: {e}")
+        sys.exit(e.exit_code)
+    
+    except KeyboardInterrupt:
+        logger.info("Interrupted by user")
+        sys.exit(130)
+    
+    except Exception as e:
+        logger.exception(f"Unexpected error: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,77 @@
+# Schema contract for GraphQL API Scaffold
+
+# NOTE: This file is a contract and should be kept in sync with runtime schema generation
+
+type Query {
+  user(id: ID!): User
+  users(first: Int, after: String, offset: Int, limit: Int): UserConnection!
+}
+
+type Mutation {
+  createUser(input: CreateUserInput!): User! @auth
+  updateUser(id: ID!, input: UpdateUserInput!): User! @auth
+  deleteUser(id: ID!): Boolean! @auth
+}
+
+type Subscription {
+  userCreated: User!
+}
+
+type User {
+  id: ID!
+  name: String!
+  email: String!
+  avatar: String
+  posts(first: Int, after: String): PostConnection!
+}
+
+type Post {
+  id: ID!
+  authorId: ID!
+  title: String!
+  body: String
+  createdAt: DateTime
+}
+
+scalar DateTime
+
+type UserConnection {
+  edges: [UserEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type UserEdge {
+  cursor: String!
+  node: User!
+}
+
+type PostConnection {
+  edges: [PostEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PostEdge {
+  cursor: String!
+  node: Post!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+input CreateUserInput {
+  name: String!
+  email: String!
+  avatar: String
+}
+
+input UpdateUserInput {
+  name: String
+  email: String
+  avatar: String
+}

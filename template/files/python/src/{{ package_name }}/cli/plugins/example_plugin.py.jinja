@@ -1,0 +1,65 @@
+{%- if cli_module | lower != "enabled" %}
+# CLI module disabled - this file is not generated
+{%- else %}
+"""Example plugin demonstrating CLI extensibility.
+
+This plugin adds a 'demo' command to showcase plugin capabilities.
+To activate this plugin, register it as an entry point in pyproject.toml:
+
+[project.entry-points."{{ package_name }}.cli.plugins"]
+demo = "{{ package_name }}.cli.plugins.example_plugin:demo_command"
+"""
+
+from __future__ import annotations
+
+import typer
+
+from {{ package_name }}.cli.core import command
+from {{ package_name }}.cli.core.formatter import OutputFormatter
+
+# Initialize formatter
+formatter = OutputFormatter()
+
+
+@command(
+    name="demo",
+    help="Demonstration plugin command",
+    aliases=["example"],
+)
+def demo_command(
+    count: int = typer.Option(3, "--count", "-c", help="Number of items to display"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
+) -> None:
+    """Demonstrate plugin command functionality.
+    
+    This is an example plugin that shows how to:
+    - Create a command with options
+    - Use the output formatter
+    - Access CLI core functionality
+    
+    Args:
+        count: Number of items to display
+        verbose: Whether to show verbose output
+    """
+    formatter.print_success("Demo plugin loaded successfully!")
+    
+    if verbose:
+        formatter.print_info(f"Plugin: example_plugin")
+        formatter.print_info(f"Command: demo")
+        formatter.print_info(f"Count parameter: {count}")
+    
+    # Generate sample data
+    demo_data = [
+        {"id": i, "name": f"Item {i}", "status": "Active" if i % 2 == 0 else "Inactive"}
+        for i in range(1, count + 1)
+    ]
+    
+    formatter.print("\nDemo Data:")
+    formatter.format(demo_data, format="table", title=f"Sample Items (n={count})")
+    
+    if verbose:
+        formatter.print("\n[dim]This plugin demonstrates:[/dim]")
+        formatter.print("[dim]- Command registration via @command() decorator[/dim]")
+        formatter.print("[dim]- Using OutputFormatter for rich output[/dim]")
+        formatter.print("[dim]- Defining command options with Typer[/dim]")
+{%- endif %}

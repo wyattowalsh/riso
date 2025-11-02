@@ -1,0 +1,161 @@
+{%- if cli_module | lower != "enabled" %}
+# CLI module disabled - this file is not generated
+{%- else %}
+"""Base command infrastructure for CLI framework.
+
+Provides base classes and decorators for command creation, validation, and registration.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import functools
+from typing import Any, Callable, ParamSpec, TypeVar, cast
+
+import typer
+from loguru import logger
+
+from {{ package_name }}.cli.core.exceptions import CLIError
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+class BaseCommand:
+    """Base class for CLI commands with common functionality.
+    
+    Provides execute() and validate_params() methods that can be overridden.
+    """
+    
+    def __init__(self, name: str, help_text: str = ""):
+        """Initialize base command.
+        
+        Args:
+            name: Command name as invoked in CLI
+            help_text: Description shown in --help
+        """
+        self.name = name
+        self.help_text = help_text
+    
+    def validate_params(self, **kwargs: Any) -> None:
+        """Validate command parameters before execution.
+        
+        Args:
+            **kwargs: Command parameters to validate
+            
+        Raises:
+            CLIError: If validation fails
+        """
+        # Override in subclasses for custom validation
+        pass
+    
+    def execute(self, **kwargs: Any) -> Any:
+        """Execute the command with validated parameters.
+        
+        Args:
+            **kwargs: Command parameters
+            
+        Returns:
+            Command execution result
+            
+        Raises:
+            CLIError: If execution fails
+        """
+        raise NotImplementedError("Subclasses must implement execute()")
+
+
+def command(
+    *,
+    name: str | None = None,
+    help: str | None = None,  # noqa: A002
+    aliases: list[str] | None = None,
+    hidden: bool = False,
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    """Decorator for automatic command registration.
+    
+    Wraps a function to make it a CLI command with metadata.
+    
+    Args:
+        name: Override command name (defaults to function name with underscores→hyphens)
+        help: Help text for the command
+        aliases: Alternative names for this command
+        hidden: Hide command from help output
+        
+    Returns:
+        Decorated function with CLI metadata attached
+        
+    Example:
+        ```python
+        @command(name="my-cmd", aliases=["mc"])
+        def my_command(name: str):
+            typer.echo(f"Hello {name}")
+        ```
+    """
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
+        # Attach metadata to function for later registration
+        cmd_name = name or func.__name__.replace("_", "-")
+        cmd_help = help or func.__doc__ or ""
+        
+        # Store metadata as function attributes
+        setattr(func, "_cli_command", True)
+        setattr(func, "_cli_name", cmd_name)
+        setattr(func, "_cli_help", cmd_help.strip())
+        setattr(func, "_cli_aliases", aliases or [])
+        setattr(func, "_cli_hidden", hidden)
+        
+        # Wrap async functions to run in event loop
+        if asyncio.iscoroutinefunction(func):
+            @functools.wraps(func)
+            def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+                """Run async command in event loop."""
+                try:
+                    return cast(R, asyncio.run(func(*args, **kwargs)))
+                except Exception as e:
+                    logger.error(f"Async command {cmd_name} failed: {e}")
+                    raise typer.Exit(code=1) from e
+            
+            # Preserve metadata on wrapper
+            setattr(async_wrapper, "_cli_command", True)
+            setattr(async_wrapper, "_cli_name", cmd_name)
+            setattr(async_wrapper, "_cli_help", cmd_help.strip())
+            setattr(async_wrapper, "_cli_aliases", aliases or [])
+            setattr(async_wrapper, "_cli_hidden", hidden)
+            
+            return cast(Callable[P, R], async_wrapper)
+        
+        return func
+    
+    return decorator
+
+
+def validate_command(func: Callable[..., Any]) -> bool:
+    """Check if a function is a valid CLI command.
+    
+    Args:
+        func: Function to validate
+        
+    Returns:
+        True if function has CLI command metadata
+    """
+    return hasattr(func, "_cli_command") and getattr(func, "_cli_command") is True
+
+
+def get_command_metadata(func: Callable[..., Any]) -> dict[str, Any]:
+    """Extract CLI metadata from a decorated function.
+    
+    Args:
+        func: Decorated command function
+        
+    Returns:
+        Dictionary with name, help, aliases, hidden attributes
+    """
+    if not validate_command(func):
+        return {}
+    
+    return {
+        "name": getattr(func, "_cli_name", func.__name__),
+        "help": getattr(func, "_cli_help", ""),
+        "aliases": getattr(func, "_cli_aliases", []),
+        "hidden": getattr(func, "_cli_hidden", False),
+    }
+{%- endif %}
