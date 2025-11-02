@@ -1,0 +1,159 @@
+{% if codegen_module == 'enabled' %}"""Three-way merge implementation for template updates.
+
+This module uses the merge3 library to perform Git-style three-way merges
+with conflict markers when updating projects.
+"""
+
+from pathlib import Path
+from typing import Optional
+import merge3
+from loguru import logger
+
+from ..models import MergeResult, ConflictRegion, MergeStrategy
+
+
+class ThreeWayMerger:
+    """Perform three-way merges with conflict detection."""
+    
+    def __init__(self):
+        """Initialize merger."""
+        logger.debug("Three-way merger initialized")
+    
+    def merge_file(
+        self,
+        base_content: str,
+        user_content: str,
+        template_content: str,
+        file_path: Path,
+        *,
+        strategy: MergeStrategy = MergeStrategy.THREE_WAY,
+    ) -> MergeResult:
+        """Perform three-way merge on file content.
+        
+        Args:
+            base_content: Original template content
+            user_content: Current user-modified content
+            template_content: New template content
+            file_path: Path to file being merged
+            strategy: Merge strategy to use
+            
+        Returns:
+            MergeResult with merged content and conflict info
+        """
+        logger.debug(f"Merging file: {file_path} (strategy={strategy.value})")
+        
+        # Handle simple strategies
+        if strategy == MergeStrategy.OURS:
+            return MergeResult(
+                file_path=file_path,
+                merged_content=user_content,
+                has_conflicts=False,
+                conflict_count=0,
+                merge_strategy=strategy,
+            )
+        
+        if strategy == MergeStrategy.THEIRS:
+            return MergeResult(
+                file_path=file_path,
+                merged_content=template_content,
+                has_conflicts=False,
+                conflict_count=0,
+                merge_strategy=strategy,
+            )
+        
+        # Three-way merge
+        base_lines = base_content.splitlines(keepends=True)
+        user_lines = user_content.splitlines(keepends=True)
+        template_lines = template_content.splitlines(keepends=True)
+        
+        # Perform merge
+        merger = merge3.Merge3(base_lines, user_lines, template_lines)
+        
+        # Get merged result
+        merged_lines = []
+        conflicts = []
+        has_conflicts = False
+        
+        for group in merger.merge_groups():
+            if group[0] == "same":
+                # No conflict, same in all versions
+                merged_lines.extend(group[1])
+            elif group[0] == "a":
+                # User version (no conflict)
+                merged_lines.extend(group[1])
+            elif group[0] == "b":
+                # Template version (no conflict)
+                merged_lines.extend(group[1])
+            elif group[0] == "conflict":
+                # Conflict detected
+                has_conflicts = True
+                base, user, template = group[1:]
+                
+                start_line = len(merged_lines) + 1
+                
+                # Add conflict markers
+                merged_lines.append("<<<<<<< USER (your changes)\n")
+                merged_lines.extend(user)
+                merged_lines.append("=======\n")
+                merged_lines.extend(template)
+                merged_lines.append(">>>>>>> TEMPLATE (template updates)\n")
+                
+                end_line = len(merged_lines)
+                
+                # Record conflict region
+                conflict_region = ConflictRegion(
+                    start_line=start_line,
+                    end_line=end_line,
+                    user_content="".join(user),
+                    template_content="".join(template),
+                    base_content="".join(base) if base else None,
+                )
+                conflicts.append(conflict_region)
+        
+        merged_content = "".join(merged_lines)
+        
+        result = MergeResult(
+            file_path=file_path,
+            merged_content=merged_content,
+            has_conflicts=has_conflicts,
+            conflict_count=len(conflicts),
+            conflict_regions=conflicts,
+            merge_strategy=strategy,
+        )
+        
+        if has_conflicts:
+            logger.warning(f"Merge conflicts in {file_path}: {len(conflicts)} regions")
+        else:
+            logger.info(f"Clean merge for {file_path}")
+        
+        return result
+    
+    def merge_files(
+        self,
+        file_pairs: list[tuple[Path, str, str, str]],
+        *,
+        strategy: MergeStrategy = MergeStrategy.THREE_WAY,
+    ) -> list[MergeResult]:
+        """Merge multiple files.
+        
+        Args:
+            file_pairs: List of (file_path, base, user, template) tuples
+            strategy: Merge strategy
+            
+        Returns:
+            List of MergeResult objects
+        """
+        results = []
+        
+        for file_path, base, user, template in file_pairs:
+            result = self.merge_file(base, user, template, file_path, strategy=strategy)
+            results.append(result)
+        
+        total_conflicts = sum(r.conflict_count for r in results)
+        logger.info(
+            f"Merged {len(file_pairs)} files: "
+            f"{total_conflicts} total conflicts in {sum(1 for r in results if r.has_conflicts)} files"
+        )
+        
+        return results
+{% endif %}

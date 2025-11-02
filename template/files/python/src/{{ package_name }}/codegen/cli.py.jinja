@@ -272,17 +272,151 @@ def update(
         $ scaffold update --dry-run
         $ scaffold update --strategy ours
     """
+    from .templates.loader import TemplateLoader
+    from .templates.cache import CacheManager
+    from .updates.differ import TemplateDiffer
+    from .updates.merger import ThreeWayMerger
+    from .updates.conflict import ConflictDetector
+    
     console.print("[cyan]Checking for updates...[/cyan]")
     
-    # TODO: Implement project updates
-    # 1. Load project metadata
-    # 2. Fetch latest template
-    # 3. Get base version from cache
-    # 4. Perform three-way merge
-    # 5. Detect conflicts
-    # 6. Update metadata
-    
-    console.print("[green]✓[/green] Project updated successfully!")
+    try:
+        # Load project metadata
+        metadata_file = project_dir / ".scaffold-metadata.json"
+        if not metadata_file.exists():
+            console.print(f"[red]✗[/red] Not a scaffolded project: {project_dir}")
+            raise typer.Exit(code=2)
+        
+        import json
+        metadata = json.loads(metadata_file.read_text())
+        
+        current_version = metadata["project"]["template"]["version"]
+        template_name = metadata["project"]["template"]["name"]
+        
+        console.print(f"Current version: {current_version}")
+        
+        # Check for latest template
+        loader = TemplateLoader()
+        cache_mgr = CacheManager()
+        
+        template_path = cache_mgr.get_cached_template(template_name)
+        if not template_path:
+            console.print(f"[red]✗[/red] Template '{template_name}' not in cache")
+            console.print("Run: scaffold cache update")
+            raise typer.Exit(code=2)
+        
+        template = loader.load_template(template_path)
+        latest_version = template.version
+        
+        console.print(f"Latest version: {latest_version}")
+        
+        # Check if update needed
+        differ = TemplateDiffer()
+        version_cmp = differ.compare_versions(current_version, latest_version)
+        
+        if not version_cmp["is_newer"]:
+            console.print("[green]✓[/green] Project is up to date!")
+            raise typer.Exit(code=0)
+        
+        # Get changed files
+        console.print(f"\n[cyan]Analyzing changes...[/cyan]")
+        modified, added, removed = differ.get_changed_files(
+            project_dir,
+            template_name,
+            current_version,
+            latest_version,
+        )
+        
+        console.print(f"  Modified: {len(modified)} files")
+        console.print(f"  Added: {len(added)} files")
+        console.print(f"  Removed: {len(removed)} files")
+        
+        if dry_run:
+            console.print("\n[yellow]DRY RUN - No changes will be applied[/yellow]")
+            for f in modified:
+                console.print(f"  • {f} (would be merged)")
+            for f in added:
+                console.print(f"  + {f} (would be added)")
+            for f in removed:
+                console.print(f"  - {f} (would be removed)")
+            raise typer.Exit(code=0)
+        
+        # Perform merge
+        console.print(f"\n[cyan]Applying updates...[/cyan]")
+        merger = ThreeWayMerger()
+        detector = ConflictDetector()
+        
+        # Get base version for three-way merge
+        base_path = cache_mgr.get_base_version(template_name, current_version)
+        if not base_path:
+            console.print("[yellow]⚠[/yellow] Base version not in cache, using two-way merge")
+            base_path = None
+        
+        # Merge modified files
+        conflicts_found = False
+        for rel_path in modified:
+            user_file = project_dir / rel_path
+            if not user_file.exists():
+                continue
+            
+            user_content = user_file.read_text()
+            template_file = template_path / rel_path
+            template_content = template_file.read_text()
+            
+            if base_path:
+                base_file = base_path / rel_path
+                base_content = base_file.read_text() if base_file.exists() else user_content
+            else:
+                base_content = user_content
+            
+            # Perform merge
+            result = merger.merge_file(
+                base_content,
+                user_content,
+                template_content,
+                rel_path,
+                strategy=strategy,
+            )
+            
+            if result.has_conflicts:
+                conflicts_found = True
+                console.print(f"  [yellow]⚠[/yellow] {rel_path} (CONFLICT)")
+                if not skip_conflicts:
+                    user_file.write_text(result.merged_content)
+            else:
+                console.print(f"  [green]✓[/green] {rel_path} (merged)")
+                user_file.write_text(result.merged_content)
+        
+        # Add new files
+        for rel_path in added:
+            dest = project_dir / rel_path
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            src = template_path / rel_path
+            dest.write_bytes(src.read_bytes())
+            console.print(f"  [green]+[/green] {rel_path} (added)")
+        
+        # Update metadata
+        metadata["project"]["template"]["version"] = latest_version
+        metadata["project"]["last_updated_at"] = datetime.now().isoformat()
+        metadata_file.write_text(json.dumps(metadata, indent=2))
+        
+        if conflicts_found:
+            console.print("\n[yellow]⚠ Conflicts detected[/yellow]")
+            console.print("Review and resolve conflict markers in the affected files:")
+            console.print("  1. Edit files with <<<<<<< and >>>>>>> markers")
+            console.print("  2. Remove markers after resolving")
+            console.print("  3. Test your changes")
+            raise typer.Exit(code=4)
+        else:
+            console.print(f"\n[green]✓[/green] Project updated successfully!")
+            console.print("  Run tests to verify: uv run pytest")
+        
+    except typer.Exit:
+        raise
+    except Exception as e:
+        console.print(f"\n[red]✗ Error:[/red] {e}")
+        logger.exception("Update failed")
+        raise typer.Exit(code=1)
 
 
 @app.command("list")

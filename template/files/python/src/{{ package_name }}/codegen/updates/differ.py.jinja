@@ -1,0 +1,145 @@
+{% if codegen_module == 'enabled' %}"""Template version comparison and diff generation.
+
+This module handles comparing template versions and identifying
+what has changed between versions.
+"""
+
+from pathlib import Path
+from typing import Optional
+from datetime import datetime
+from loguru import logger
+
+from ..models import Template
+from ..templates.loader import TemplateLoader
+from ..templates.cache import CacheManager
+
+
+class TemplateDiffer:
+    """Compare template versions and generate diffs."""
+    
+    def __init__(self):
+        """Initialize template differ."""
+        self.loader = TemplateLoader()
+        self.cache_mgr = CacheManager()
+        logger.debug("Template differ initialized")
+    
+    def compare_versions(
+        self,
+        old_version: str,
+        new_version: str,
+    ) -> dict:
+        """Compare two template versions.
+        
+        Args:
+            old_version: Old version string
+            new_version: New version string
+            
+        Returns:
+            Dictionary with comparison info
+        """
+        # Simple version comparison
+        old_parts = [int(x) for x in old_version.split(".")]
+        new_parts = [int(x) for x in new_version.split(".")]
+        
+        is_newer = new_parts > old_parts
+        is_major_bump = new_parts[0] > old_parts[0]
+        is_minor_bump = new_parts[0] == old_parts[0] and new_parts[1] > old_parts[1]
+        is_patch_bump = new_parts[0:2] == old_parts[0:2] and new_parts[2] > old_parts[2]
+        
+        return {
+            "is_newer": is_newer,
+            "is_major_bump": is_major_bump,
+            "is_minor_bump": is_minor_bump,
+            "is_patch_bump": is_patch_bump,
+            "old_version": old_version,
+            "new_version": new_version,
+        }
+    
+    def get_changed_files(
+        self,
+        project_dir: Path,
+        template_name: str,
+        old_version: str,
+        new_version: str,
+    ) -> tuple[list[Path], list[Path], list[Path]]:
+        """Get lists of changed files between template versions.
+        
+        Args:
+            project_dir: Project directory
+            template_name: Template name
+            old_version: Old template version
+            new_version: New template version
+            
+        Returns:
+            Tuple of (modified_files, added_files, removed_files)
+        """
+        # Get old and new template versions
+        old_path = self.cache_mgr.get_base_version(template_name, old_version)
+        new_path = self.cache_mgr.get_cached_template(template_name)
+        
+        if not old_path or not new_path:
+            logger.warning("Cannot compare: template versions not in cache")
+            return [], [], []
+        
+        # Get file lists
+        old_files = set(
+            f.relative_to(old_path)
+            for f in old_path.rglob("*")
+            if f.is_file() and not f.name.startswith(".")
+        )
+        new_files = set(
+            f.relative_to(new_path)
+            for f in new_path.rglob("*")
+            if f.is_file() and not f.name.startswith(".")
+        )
+        
+        # Categorize changes
+        modified = []
+        added = list(new_files - old_files)
+        removed = list(old_files - new_files)
+        
+        # Check for modifications in common files
+        common_files = old_files & new_files
+        for rel_path in common_files:
+            old_content = (old_path / rel_path).read_bytes()
+            new_content = (new_path / rel_path).read_bytes()
+            
+            if old_content != new_content:
+                modified.append(rel_path)
+        
+        logger.info(
+            f"Template diff: {len(modified)} modified, "
+            f"{len(added)} added, {len(removed)} removed"
+        )
+        
+        return modified, added, removed
+    
+    def get_file_diff(
+        self,
+        old_content: str,
+        new_content: str,
+    ) -> list[str]:
+        """Generate a simple diff between two file contents.
+        
+        Args:
+            old_content: Old file content
+            new_content: New file content
+            
+        Returns:
+            List of diff lines
+        """
+        import difflib
+        
+        old_lines = old_content.splitlines(keepends=True)
+        new_lines = new_content.splitlines(keepends=True)
+        
+        diff = difflib.unified_diff(
+            old_lines,
+            new_lines,
+            fromfile="old",
+            tofile="new",
+            lineterm="",
+        )
+        
+        return list(diff)
+{% endif %}
