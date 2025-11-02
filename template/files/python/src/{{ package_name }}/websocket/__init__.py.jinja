@@ -1,0 +1,79 @@
+{% if websocket_module == "enabled" -%}
+"""
+WebSocket Module - Real-time bidirectional communication support.
+
+This module provides production-ready WebSocket functionality for FastAPI applications:
+- Connection lifecycle management with automatic cleanup
+- Heartbeat/ping-pong mechanism for connection health monitoring
+- Room-based broadcasting for multi-client scenarios
+- Authentication and authorization integration with FastAPI
+- Rate limiting and backpressure handling
+- Comprehensive error handling and resilience
+- Testing utilities and fixtures for pytest
+
+Example:
+    Basic WebSocket endpoint:
+
+    ```python
+    from fastapi import FastAPI, WebSocket
+    from {{ package_name }}.websocket import ConnectionManager
+
+    app = FastAPI()
+    manager = ConnectionManager()
+
+    @app.websocket("/ws")
+    async def websocket_endpoint(websocket: WebSocket):
+        connection_id = await manager.connect(websocket)
+        try:
+            while True:
+                data = await websocket.receive_json()
+                await manager.broadcast_to_room(
+                    room_id=data["room"],
+                    message=data["message"]
+                )
+        except Exception:
+            await manager.disconnect(connection_id)
+    ```
+
+See docs/modules/websockets.md for complete documentation.
+"""
+
+from {{ package_name }}.websocket.config import WebSocketConfig
+from {{ package_name }}.websocket.connection import WebSocketConnection
+from {{ package_name }}.websocket.exceptions import (
+    WebSocketError,
+    AuthenticationError,
+    AuthorizationError,
+    BackpressureError,
+    MessageTooLargeError,
+    RateLimitError,
+)
+from {{ package_name }}.websocket.manager import ConnectionManager
+from {{ package_name }}.websocket.models import (
+    ConnectionState,
+    Message,
+    MessageType,
+    Room,
+    WebSocketConnectionModel,
+)
+
+__all__ = [
+    # Core classes
+    "ConnectionManager",
+    "WebSocketConnection",
+    "WebSocketConfig",
+    # Models
+    "Message",
+    "MessageType",
+    "Room",
+    "WebSocketConnectionModel",
+    "ConnectionState",
+    # Exceptions
+    "WebSocketError",
+    "AuthenticationError",
+    "AuthorizationError",
+    "BackpressureError",
+    "MessageTooLargeError",
+    "RateLimitError",
+]
+{% endif -%}

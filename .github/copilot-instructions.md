@@ -14,6 +14,8 @@ Auto-generated from all feature plans. Last updated: 2025-10-30
 - Pluggable resolver pattern - supports any data source (PostgreSQL via async SQLAlchemy recommended, but also REST APIs, in-memory, etc.) (007-graphql-api-scaffold)
 - Python 3.11+ (template layer, validation scripts), TypeScript/JavaScript (Node 20 LTS for Next.js/Remix runtimes) + Copier ≥9.0 (template engine), Jinja2 (templating), uv (Python packaging), pnpm ≥8 (Node packaging), runtime-specific frameworks (Next.js 16/Remix 2.x), all integration SDKs (Clerk/Auth.js, Stripe/Paddle, Sentry/Datadog, etc.) (012-saas-starter)
 - PostgreSQL via Neon or Supabase (user choice), persisted via Prisma or Drizzle ORM (user choice) (012-saas-starter)
+- Python 3.11+ + FastAPI ≥0.104.0 (WebSocket support), websockets library, pydantic ≥2.0.0 (008-websockets-scaffold)
+- In-memory connection registry (default), optional Redis for multi-server (documented pattern) (008-websockets-scaffold)
 
 ## Project Structure
 
@@ -52,6 +54,9 @@ Python 3.11 (uv-managed), optional Node.js 20 LTS: Follow standard conventions
 - 012-saas-starter: Added Python 3.11+ (template layer, validation scripts), TypeScript/JavaScript (Node 20 LTS for Next.js/Remix runtimes) + Copier ≥9.0 (template engine), Jinja2 (templating), uv (Python packaging), pnpm ≥8 (Node packaging), runtime-specific frameworks (Next.js 16/Remix 2.x), all integration SDKs (Clerk/Auth.js, Stripe/Paddle, Sentry/Datadog, etc.)
 - 007-graphql-api-scaffold: Added Python 3.11+ (consistent with Riso template baseline, managed via uv) + Strawberry GraphQL ≥0.200.0, FastAPI ≥0.104.0 (ASGI integration), uvicorn (ASGI server), pydantic ≥2.0.0 (data validation)
 - 009-typer-cli-scaffold: Added Python 3.11+ (managed via uv, consistent with template baseline) + Typer ≥0.20.0, Loguru (logging), Rich (formatting), tomli/tomllib (TOML parsing)
+- 008-websockets-scaffold: Added Python 3.11+ + FastAPI ≥0.104.0 (WebSocket support), websockets library, pydantic ≥2.0.0
+- 008-websockets-scaffold: Added Python 3.11+ + FastAPI ≥0.104.0 (WebSocket support), websockets library, pydantic ≥2.0.0
+- 008-websockets-scaffold: Added Python 3.11+ + FastAPI ≥0.104.0 (WebSocket support), websockets library, pydantic ≥2.0.0
 
 
 <!-- MANUAL ADDITIONS START -->

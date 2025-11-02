@@ -108,6 +108,31 @@
       ]
     },
     {
+      "name": "websocket_module",
+      "prompt_key": "websocket_module",
+      "default_state": "disabled",
+      "selected_state": "{{ 'enabled' if websocket_module | lower == 'enabled' else 'disabled' }}",
+      "description": "WebSocket real-time communication with connection management, heartbeats, broadcasting, and authentication.",
+      "dependencies": ["fastapi", "websockets", "python-jose"],
+      "docs_path": "docs/modules/websockets.md",
+      "ci_jobs": ["websocket-smoke"],
+      "validation_commands": [
+        "uv run python -c \"from {{ package_name }}.websocket import ConnectionManager; print('WebSocket module loaded')\"",
+        "uv run pytest tests/websocket/ -v"
+      ],
+      "features": [
+        "Connection lifecycle management with automatic cleanup",
+        "Heartbeat/ping-pong mechanism for connection health (30s interval, 60s timeout)",
+        "Room-based broadcasting for multi-client scenarios",
+        "Authentication integration with FastAPI dependencies",
+        "Rate limiting (100 messages per 60s window, configurable)",
+        "Backpressure handling with bounded message queues",
+        "Comprehensive error handling and structured error responses",
+        "Testing utilities and pytest fixtures",
+        "Support for 10,000+ concurrent connections with <50ms latency"
+      ]
+    },
+    {
       "name": "docs_site",
       "prompt_key": "docs_site",
       "default_state": "starter-guide",
