@@ -1,0 +1,597 @@
+{% if saas_starter_module == "enabled" %}
+# {{ project_name }} - Deployment Guide
+
+This guide covers deploying your SaaS application to production.
+
+## Quick Deploy
+
+{% if saas_hosting == "vercel" %}
+### Vercel (Recommended)
+
+1. **Connect Repository**
+   ```bash
+   # Install Vercel CLI
+   npm i -g vercel
+   
+   # Login and link project
+   vercel login
+   vercel link
+   ```
+
+2. **Configure Environment Variables**
+   - Go to Vercel Dashboard ? Settings ? Environment Variables
+   - Add all variables from `.env.example`
+   - Mark sensitive variables as "Sensitive"
+
+3. **Deploy**
+   ```bash
+   # Deploy to preview
+   vercel
+   
+   # Deploy to production
+   vercel --prod
+   ```
+
+4. **Automatic Deployments**
+   - Push to `main` ? Production
+   - Push to PR ? Preview deployment
+   - GitHub integration handles this automatically
+
+{% elif saas_hosting == "cloudflare" %}
+### Cloudflare Pages/Workers
+
+1. **Install Wrangler CLI**
+   ```bash
+   npm install -g wrangler
+   
+   # Login
+   wrangler login
+   ```
+
+2. **Configure Secrets**
+   ```bash
+   # Set each secret
+   wrangler secret put DATABASE_URL
+   wrangler secret put{% if saas_auth == "clerk" %} CLERK_SECRET_KEY{% else %} NEXTAUTH_SECRET{% endif %}
+   wrangler secret put{% if saas_billing == "stripe" %} STRIPE_SECRET_KEY{% else %} PADDLE_API_KEY{% endif %}
+   # ... add all secrets
+   ```
+
+3. **Deploy**
+   ```bash
+   # Deploy to production
+   wrangler deploy
+   
+   # Deploy with specific environment
+   wrangler deploy --env production
+   ```
+
+4. **Automatic Deployments**
+   - Connect GitHub repository in Cloudflare Dashboard
+   - Configure branch deployments (main ? production)
+{% endif %}
+
+---
+
+## Pre-Deployment Checklist
+
+### 1. Environment Variables
+
+Ensure all required variables are set:
+
+{% if saas_hosting == "vercel" %}
+```bash
+# Check Vercel env vars
+vercel env ls
+
+# Pull env vars locally
+vercel env pull .env.local
+```
+{% elif saas_hosting == "cloudflare" %}
+```bash
+# List secrets
+wrangler secret list
+
+# Verify wrangler.toml configuration
+cat wrangler.toml
+```
+{% endif %}
+
+**Required Variables**:
+- `DATABASE_URL` - {% if saas_database == "neon" %}Neon{% else %}Supabase{% endif %} connection string
+{% if saas_auth == "clerk" %}
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Clerk public key
+- `CLERK_SECRET_KEY` - Clerk secret key
+{% elif saas_auth == "authjs" %}
+- `NEXTAUTH_SECRET` - Auth.js secret (min 32 chars)
+- `NEXTAUTH_URL` - Your app URL
+{% endif %}
+{% if saas_billing == "stripe" %}
+- `STRIPE_SECRET_KEY` - Stripe secret key
+- `STRIPE_WEBHOOK_SECRET` - Stripe webhook signing secret
+{% elif saas_billing == "paddle" %}
+- `PADDLE_API_KEY` - Paddle API key
+- `PADDLE_WEBHOOK_SECRET` - Paddle webhook secret
+{% endif %}
+- And all other service API keys from `.env.example`
+
+### 2. Database Migrations
+
+{% if saas_orm == "prisma" %}
+```bash
+# Generate Prisma Client
+pnpm exec prisma generate
+
+# Run migrations
+pnpm exec prisma migrate deploy
+
+# Verify schema
+pnpm exec prisma migrate status
+```
+{% elif saas_orm == "drizzle" %}
+```bash
+# Generate migrations
+pnpm run db:generate
+
+# Run migrations
+pnpm run db:migrate
+
+# Verify database
+pnpm run db:studio
+```
+{% endif %}
+
+### 3. Build Verification
+
+```bash
+# Install dependencies
+pnpm install --frozen-lockfile
+
+# Type check
+pnpm run type-check
+
+# Lint
+pnpm run lint
+
+# Build
+pnpm run build
+
+# Test build locally
+pnpm run start
+```
+
+### 4. Security Headers
+
+{% if saas_runtime == "nextjs-16" %}
+Verify `next.config.js` has security headers:
+{% endif %}
+
+```javascript
+{
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "X-XSS-Protection": "1; mode=block",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=()"
+}
+```
+
+---
+
+## Database Setup
+
+### {% if saas_database == "neon" %}Neon{% else %}Supabase{% endif %} Configuration
+
+1. **Create Database**
+   {% if saas_database == "neon" %}
+   - Go to [Neon Console](https://console.neon.tech)
+   - Create new project
+   - Copy connection string
+   {% else %}
+   - Go to [Supabase Dashboard](https://app.supabase.com)
+   - Create new project
+   - Navigate to Settings ? Database
+   - Copy connection string
+   {% endif %}
+
+2. **Connection Pooling**
+   {% if saas_database == "neon" %}
+   - Use pooled connection for application
+   - Use direct connection for migrations
+   - Connection strings in project dashboard
+   {% else %}
+   - Enable PgBouncer in Supabase Dashboard
+   - Use pooled connection string for app
+   - Use direct for migrations
+   {% endif %}
+
+3. **Run Initial Migration**
+   ```bash
+   # Set DATABASE_URL
+   export DATABASE_URL="your-connection-string"
+   
+   {% if saas_orm == "prisma" %}
+   # Deploy schema
+   pnpm exec prisma migrate deploy
+   {% elif saas_orm == "drizzle" %}
+   # Run migrations
+   pnpm run db:migrate
+   {% endif %}
+   ```
+
+---
+
+## Webhook Configuration
+
+### {% if saas_billing == "stripe" %}Stripe{% elif saas_billing == "paddle" %}Paddle{% endif %} Webhooks
+
+1. **Get Webhook URL**
+   ```
+   {% if saas_hosting == "vercel" %}
+   https://your-app.vercel.app/api/webhooks/{% if saas_billing == "stripe" %}stripe{% else %}paddle{% endif %}
+   {% elif saas_hosting == "cloudflare" %}
+   https://your-app.pages.dev/api/webhooks/{% if saas_billing == "stripe" %}stripe{% else %}paddle{% endif %}
+   {% endif %}
+   ```
+
+2. **Configure in Dashboard**
+   {% if saas_billing == "stripe" %}
+   - Go to [Stripe Dashboard](https://dashboard.stripe.com/webhooks)
+   - Add endpoint with URL above
+   - Select events:
+     - `checkout.session.completed`
+     - `invoice.paid`
+     - `invoice.payment_failed`
+     - `customer.subscription.updated`
+     - `customer.subscription.deleted`
+   {% elif saas_billing == "paddle" %}
+   - Go to [Paddle Dashboard](https://vendors.paddle.com/webhooks)
+   - Add webhook URL
+   - Configure notification settings
+   {% endif %}
+
+3. **Copy Webhook Secret**
+   - Copy the signing secret
+   - Add to environment variables:
+     - `{% if saas_billing == "stripe" %}STRIPE_WEBHOOK_SECRET{% else %}PADDLE_WEBHOOK_SECRET{% endif %}`
+
+{% if saas_auth == "clerk" %}
+### Clerk Webhooks
+
+1. **Webhook URL**
+   ```
+   https://your-app.{% if saas_hosting == "vercel" %}vercel.app{% else %}pages.dev{% endif %}/api/webhooks/clerk
+   ```
+
+2. **Configure Events**
+   - Go to [Clerk Dashboard](https://dashboard.clerk.com)
+   - Navigate to Webhooks
+   - Add endpoint
+   - Select events:
+     - `user.created`
+     - `user.updated`
+     - `user.deleted`
+     - `organization.created`
+     - `organization.updated`
+
+3. **Add Webhook Secret**
+   ```bash
+   {% if saas_hosting == "vercel" %}
+   vercel env add CLERK_WEBHOOK_SECRET
+   {% elif saas_hosting == "cloudflare" %}
+   wrangler secret put CLERK_WEBHOOK_SECRET
+   {% endif %}
+   ```
+{% endif %}
+
+---
+
+## Custom Domain
+
+### DNS Configuration
+
+{% if saas_hosting == "vercel" %}
+1. **Add Domain in Vercel**
+   - Go to Project Settings ? Domains
+   - Add your domain: `yourdomain.com`
+   - Vercel provides DNS records
+
+2. **Configure DNS**
+   Add these records at your DNS provider:
+   ```
+   Type: A
+   Name: @
+   Value: 76.76.21.21
+
+   Type: CNAME
+   Name: www
+   Value: cname.vercel-dns.com
+   ```
+
+3. **Verify Domain**
+   - Wait for DNS propagation (up to 24 hours)
+   - Vercel automatically issues SSL certificate
+{% elif saas_hosting == "cloudflare" %}
+1. **Add Custom Domain**
+   - Go to Pages project ? Custom domains
+   - Add your domain
+   - Cloudflare configures DNS automatically
+
+2. **Configure DNS (if external)**
+   ```
+   Type: CNAME
+   Name: @
+   Value: your-project.pages.dev
+   ```
+
+3. **SSL/TLS**
+   - SSL certificate issued automatically
+   - Configure SSL/TLS settings in Cloudflare Dashboard
+{% endif %}
+
+---
+
+## Environment-Specific Configuration
+
+### Production Environment
+
+```bash
+# .env.production
+NODE_ENV=production
+{% if saas_database == "neon" %}
+DATABASE_URL=postgresql://user:pass@host.neon.tech/prod
+DIRECT_URL=postgresql://user:pass@host.neon.tech/prod # For migrations
+{% else %}
+DATABASE_URL=postgresql://user:pass@host.pooler.supabase.com:6543/postgres
+{% endif %}
+NEXT_PUBLIC_APP_URL=https://yourdomain.com
+
+# ... all service API keys with production values
+```
+
+### Staging Environment
+
+```bash
+# .env.staging
+NODE_ENV=production
+DATABASE_URL=postgresql://user:pass@staging-db/staging
+NEXT_PUBLIC_APP_URL=https://staging.yourdomain.com
+
+# ... use test/sandbox API keys
+```
+
+---
+
+## Monitoring Setup
+
+{% if saas_observability_sentry %}
+### Sentry
+
+1. **Create Project**
+   - Go to [Sentry](https://sentry.io)
+   - Create new project for {{ saas_runtime == "nextjs-16" and "Next.js" or "Remix" }}
+   - Copy DSN
+
+2. **Configure**
+   ```bash
+   {% if saas_hosting == "vercel" %}
+   vercel env add NEXT_PUBLIC_SENTRY_DSN
+   vercel env add SENTRY_AUTH_TOKEN
+   {% elif saas_hosting == "cloudflare" %}
+   wrangler secret put NEXT_PUBLIC_SENTRY_DSN
+   {% endif %}
+   ```
+
+3. **Deploy Integration**
+   - Sentry automatically captures errors
+   - Enable Source Maps upload in CI/CD
+{% endif %}
+
+{% if saas_observability_otel %}
+### OpenTelemetry
+
+1. **Configure Collector**
+   - Set `OTEL_EXPORTER_OTLP_ENDPOINT`
+   - Options: Jaeger, Zipkin, Honeycomb, Datadog
+
+2. **Verify Traces**
+   ```bash
+   curl $OTEL_EXPORTER_OTLP_ENDPOINT/health
+   ```
+{% endif %}
+
+{% if saas_analytics == "posthog" or saas_analytics == "amplitude" %}
+### Analytics
+
+1. **Verify Keys**
+   - Ensure analytics API keys are set
+   - Test events in development
+
+2. **Configure Dashboards**
+   - Create key metric dashboards
+   - Set up conversion funnels
+   - Configure alerts
+{% endif %}
+
+---
+
+## Performance Optimization
+
+### 1. Database Indexes
+
+{% if saas_orm == "prisma" %}
+```prisma
+// Verify indexes in schema.prisma
+model User {
+  id    String @id @default(cuid())
+  email String @unique
+  
+  @@index([email])
+  @@index([createdAt])
+}
+```
+{% elif saas_orm == "drizzle" %}
+```typescript
+// Verify indexes in schema
+export const users = pgTable('users', {
+  // ...
+}, (table) => ({
+  emailIdx: uniqueIndex('users_email_idx').on(table.email),
+  createdAtIdx: index('users_created_at_idx').on(table.createdAt),
+}));
+```
+{% endif %}
+
+### 2. Caching Strategy
+
+{% if saas_runtime == "nextjs-16" %}
+```typescript
+// Enable ISR for static content
+export const revalidate = 3600; // 1 hour
+
+// Cache fetch requests
+fetch(url, {
+  next: { revalidate: 60 }, // 1 minute
+});
+```
+{% endif %}
+
+### 3. Bundle Size
+
+```bash
+# Analyze bundle
+{% if saas_runtime == "nextjs-16" %}
+pnpm run build -- --analyze
+{% elif saas_runtime == "remix-2" %}
+pnpm run build -- --sourcemap
+{% endif %}
+
+# Check bundle size
+du -sh {% if saas_runtime == "nextjs-16" %}.next{% else %}build{% endif %}
+```
+
+---
+
+## Rollback Strategy
+
+### 1. Database Rollback
+
+{% if saas_orm == "prisma" %}
+```bash
+# Rollback last migration
+pnpm exec prisma migrate resolve --rolled-back <migration-name>
+```
+{% elif saas_orm == "drizzle" %}
+```bash
+# Manual rollback - restore from backup
+# Drizzle doesn't have built-in rollback
+```
+{% endif %}
+
+### 2. Application Rollback
+
+{% if saas_hosting == "vercel" %}
+```bash
+# List deployments
+vercel ls
+
+# Rollback to previous
+vercel rollback [deployment-url]
+```
+{% elif saas_hosting == "cloudflare" %}
+```bash
+# Rollback in dashboard
+# Workers ? Your Worker ? Rollback
+```
+{% endif %}
+
+---
+
+## Troubleshooting
+
+### Build Failures
+
+1. **Check logs**
+   {% if saas_hosting == "vercel" %}
+   ```bash
+   vercel logs
+   ```
+   {% elif saas_hosting == "cloudflare" %}
+   ```bash
+   wrangler tail
+   ```
+   {% endif %}
+
+2. **Common issues**
+   - Missing environment variables
+   - Type errors (run `pnpm run type-check`)
+   - Linting errors (run `pnpm run lint`)
+
+### Runtime Errors
+
+1. **Check application logs**
+   {% if saas_observability_sentry %}
+   - View in Sentry dashboard
+   {% endif %}
+   - Check {% if saas_hosting == "vercel" %}Vercel{% else %}Cloudflare{% endif %} function logs
+
+2. **Database connection**
+   ```bash
+   # Test database connection
+   {% if saas_orm == "prisma" %}
+   pnpm exec prisma db pull
+   {% elif saas_orm == "drizzle" %}
+   pnpm run db:studio
+   {% endif %}
+   ```
+
+### Webhook Issues
+
+1. **Test webhook locally**
+   ```bash
+   # Use ngrok or similar
+   ngrok http 3000
+   
+   # Update webhook URL to ngrok URL
+   ```
+
+2. **Verify signature**
+   - Check webhook secret is correct
+   - Verify signature validation logic
+
+---
+
+## Post-Deployment
+
+### 1. Smoke Tests
+
+- [ ] Homepage loads
+- [ ] Sign up flow works
+- [ ] Sign in flow works
+- [ ] Database queries work
+- [ ] Webhooks process correctly
+- [ ] Email sending works
+- [ ] Analytics tracking works
+
+### 2. Monitoring Setup
+
+- [ ] {% if saas_observability_sentry %}Sentry error tracking{% endif %}
+- [ ] {% if saas_observability_otel %}OpenTelemetry tracing{% endif %}
+- [ ] Uptime monitoring
+- [ ] Database performance
+- [ ] API response times
+
+### 3. Documentation
+
+- [ ] Update README with production URL
+- [ ] Document deployment process
+- [ ] Create runbook for common issues
+- [ ] Share access with team
+
+---
+
+For more information:
+- [Architecture Overview](./ARCHITECTURE.md)
+- [API Examples](./API_EXAMPLES.md)
+- [Contributing Guide](./CONTRIBUTING.md)
+{% endif %}

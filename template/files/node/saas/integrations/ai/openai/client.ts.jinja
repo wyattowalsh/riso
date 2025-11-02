@@ -1,0 +1,367 @@
+{% if saas_starter_module == "enabled" and saas_ai == "openai" %}
+/**
+ * OpenAI Client
+ * 
+ * Modern AI integration patterns:
+ * - Streaming responses
+ * - Function calling (tools)
+ * - Vision capabilities
+ * - Audio transcription
+ * - Token usage tracking
+ * - Error handling and retries
+ * 
+ * @see https://platform.openai.com/docs
+ */
+
+import OpenAI from 'openai';
+import { env } from '@/lib/env';
+
+// Initialize OpenAI client
+export const openai = new OpenAI({
+  apiKey: env.OPENAI_API_KEY,
+  maxRetries: 3,
+  timeout: 60000, // 60 seconds
+});
+
+// ============================================================================
+// Chat Completions
+// ============================================================================
+
+/**
+ * Generate chat completion
+ * 
+ * @example
+ * ```ts
+ * const response = await generateChatCompletion({
+ *   messages: [
+ *     { role: 'system', content: 'You are a helpful assistant.' },
+ *     { role: 'user', content: 'Hello!' },
+ *   ],
+ *   model: 'gpt-4-turbo',
+ * });
+ * ```
+ */
+export async function generateChatCompletion(params: {
+  messages: Array<{
+    role: 'system' | 'user' | 'assistant';
+    content: string;
+  }>;
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
+  tools?: Array<any>;
+}) {
+  const completion = await openai.chat.completions.create({
+    model: params.model || 'gpt-4-turbo',
+    messages: params.messages,
+    temperature: params.temperature ?? 0.7,
+    max_tokens: params.maxTokens,
+    tools: params.tools,
+  });
+  
+  return {
+    content: completion.choices[0]?.message?.content || '',
+    toolCalls: completion.choices[0]?.message?.tool_calls,
+    usage: completion.usage,
+  };
+}
+
+/**
+ * Generate streaming chat completion
+ * For real-time responses
+ * 
+ * @example
+ * ```ts
+ * for await (const chunk of streamChatCompletion({ messages, model: 'gpt-4-turbo' })) {
+ *   console.log(chunk.content);
+ * }
+ * ```
+ */
+export async function* streamChatCompletion(params: {
+  messages: Array<{
+    role: 'system' | 'user' | 'assistant';
+    content: string;
+  }>;
+  model?: string;
+  temperature?: number;
+}) {
+  const stream = await openai.chat.completions.create({
+    model: params.model || 'gpt-4-turbo',
+    messages: params.messages,
+    temperature: params.temperature ?? 0.7,
+    stream: true,
+  });
+  
+  for await (const chunk of stream) {
+    const content = chunk.choices[0]?.delta?.content || '';
+    if (content) {
+      yield { content, finishReason: chunk.choices[0]?.finish_reason };
+    }
+  }
+}
+
+// ============================================================================
+// Embeddings
+// ============================================================================
+
+/**
+ * Generate embeddings
+ * For semantic search and similarity
+ * 
+ * @example
+ * ```ts
+ * const embedding = await generateEmbedding({
+ *   text: 'Your text here',
+ * });
+ * ```
+ */
+export async function generateEmbedding(params: {
+  text: string;
+  model?: string;
+}) {
+  const response = await openai.embeddings.create({
+    model: params.model || 'text-embedding-3-small',
+    input: params.text,
+  });
+  
+  return {
+    embedding: response.data[0].embedding,
+    usage: response.usage,
+  };
+}
+
+/**
+ * Generate batch embeddings
+ */
+export async function generateBatchEmbeddings(params: {
+  texts: string[];
+  model?: string;
+}) {
+  const response = await openai.embeddings.create({
+    model: params.model || 'text-embedding-3-small',
+    input: params.texts,
+  });
+  
+  return {
+    embeddings: response.data.map((item) => item.embedding),
+    usage: response.usage,
+  };
+}
+
+// ============================================================================
+// Vision
+// ============================================================================
+
+/**
+ * Analyze image with GPT-4 Vision
+ * 
+ * @example
+ * ```ts
+ * const analysis = await analyzeImage({
+ *   imageUrl: 'https://example.com/image.jpg',
+ *   prompt: 'Describe this image',
+ * });
+ * ```
+ */
+export async function analyzeImage(params: {
+  imageUrl: string;
+  prompt: string;
+  model?: string;
+}) {
+  const completion = await openai.chat.completions.create({
+    model: params.model || 'gpt-4-vision-preview',
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: params.prompt },
+          { type: 'image_url', image_url: { url: params.imageUrl } },
+        ],
+      } as any,
+    ],
+  });
+  
+  return {
+    analysis: completion.choices[0]?.message?.content || '',
+    usage: completion.usage,
+  };
+}
+
+// ============================================================================
+// Audio
+// ============================================================================
+
+/**
+ * Transcribe audio
+ * 
+ * @example
+ * ```ts
+ * const transcription = await transcribeAudio({
+ *   audioFile: audioBuffer,
+ *   language: 'en',
+ * });
+ * ```
+ */
+export async function transcribeAudio(params: {
+  audioFile: File | Blob;
+  language?: string;
+  model?: string;
+}) {
+  const transcription = await openai.audio.transcriptions.create({
+    file: params.audioFile as any,
+    model: params.model || 'whisper-1',
+    language: params.language,
+  });
+  
+  return {
+    text: transcription.text,
+  };
+}
+
+/**
+ * Generate speech from text
+ */
+export async function generateSpeech(params: {
+  text: string;
+  voice?: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';
+  model?: string;
+}) {
+  const response = await openai.audio.speech.create({
+    model: params.model || 'tts-1',
+    voice: params.voice || 'alloy',
+    input: params.text,
+  });
+  
+  return response;
+}
+
+// ============================================================================
+// Function Calling (Tools)
+// ============================================================================
+
+/**
+ * Define a tool for function calling
+ */
+export function defineTool(params: {
+  name: string;
+  description: string;
+  parameters: Record<string, any>;
+}) {
+  return {
+    type: 'function' as const,
+    function: {
+      name: params.name,
+      description: params.description,
+      parameters: params.parameters,
+    },
+  };
+}
+
+/**
+ * Execute tool calls
+ * 
+ * @example
+ * ```ts
+ * const tools = [
+ *   defineTool({
+ *     name: 'get_weather',
+ *     description: 'Get current weather',
+ *     parameters: {
+ *       type: 'object',
+ *       properties: {
+ *         location: { type: 'string' },
+ *       },
+ *     },
+ *   }),
+ * ];
+ * 
+ * const response = await generateChatCompletion({
+ *   messages: [{ role: 'user', content: 'What's the weather in SF?' }],
+ *   tools,
+ * });
+ * ```
+ */
+
+// ============================================================================
+// Token Usage Tracking
+// ============================================================================
+
+/**
+ * Calculate cost for token usage
+ * Based on OpenAI pricing (as of 2025)
+ */
+export function calculateCost(params: {
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+}): number {
+  const pricing: Record<string, { input: number; output: number }> = {
+    'gpt-4-turbo': { input: 0.01, output: 0.03 }, // per 1K tokens
+    'gpt-4': { input: 0.03, output: 0.06 },
+    'gpt-3.5-turbo': { input: 0.0005, output: 0.0015 },
+    'text-embedding-3-small': { input: 0.00002, output: 0 },
+  };
+  
+  const modelPricing = pricing[params.model] || pricing['gpt-3.5-turbo'];
+  
+  const inputCost = (params.promptTokens / 1000) * modelPricing.input;
+  const outputCost = (params.completionTokens / 1000) * modelPricing.output;
+  
+  return inputCost + outputCost;
+}
+
+// ============================================================================
+// Moderation
+// ============================================================================
+
+/**
+ * Check content for policy violations
+ */
+export async function moderateContent(text: string) {
+  const moderation = await openai.moderations.create({
+    input: text,
+  });
+  
+  return {
+    flagged: moderation.results[0].flagged,
+    categories: moderation.results[0].categories,
+    categoryScores: moderation.results[0].category_scores,
+  };
+}
+
+// ============================================================================
+// Error Handling
+// ============================================================================
+
+export class OpenAIError extends Error {
+  constructor(
+    message: string,
+    public code?: string,
+    public statusCode?: number
+  ) {
+    super(message);
+    this.name = 'OpenAIError';
+  }
+}
+
+/**
+ * Handle OpenAI API errors
+ */
+export function handleOpenAIError(error: unknown): never {
+  if (error instanceof OpenAI.APIError) {
+    throw new OpenAIError(
+      error.message,
+      error.code,
+      error.status
+    );
+  }
+  
+  throw error;
+}
+
+// ============================================================================
+// Type Exports
+// ============================================================================
+
+export type { OpenAI };
+{% endif %}

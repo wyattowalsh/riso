@@ -1,0 +1,254 @@
+{% if saas_starter_module == "enabled" and saas_jobs == "trigger" %}
+/**
+ * Trigger.dev v4 Client
+ * 
+ * Modern background job patterns:
+ * - Type-safe job definitions
+ * - Automatic retries with exponential backoff
+ * - Job monitoring and observability
+ * - Scheduled jobs (cron)
+ * - Job queues and concurrency control
+ * 
+ * @see https://trigger.dev/docs
+ */
+
+import { TriggerClient } from '@trigger.dev/sdk';
+import { env } from '@/lib/env';
+
+// Initialize Trigger.dev client
+export const trigger = new TriggerClient({
+  id: '{{ project_slug }}',
+  apiKey: env.TRIGGER_API_KEY,
+  apiUrl: env.TRIGGER_API_URL,
+  {% if saas_observability_structured_logging %}
+  logLevel: process.env.NODE_ENV === 'development' ? 'debug' : 'info',
+  {% endif %}
+});
+
+// ============================================================================
+// Job Types
+// ============================================================================
+
+/**
+ * Base job configuration
+ * Common settings shared across all jobs
+ */
+const baseJobConfig = {
+  {% if saas_runtime == 'nextjs-16' %}
+  // Next.js specific settings
+  maxDuration: 300, // 5 minutes for long-running jobs
+  {% endif %}
+  retry: {
+    maxAttempts: 3,
+    minTimeoutInMs: 1000,
+    maxTimeoutInMs: 10000,
+    factor: 2,
+    randomize: true,
+  },
+};
+
+// ============================================================================
+// Example Jobs
+// ============================================================================
+
+/**
+ * Welcome email job
+ * Sends welcome email to new users
+ * 
+ * @example
+ * ```ts
+ * await sendWelcomeEmailJob.invoke({
+ *   userId: 'user_xxx',
+ *   email: 'user@example.com',
+ * });
+ * ```
+ */
+export const sendWelcomeEmailJob = trigger.defineJob({
+  id: 'send-welcome-email',
+  name: 'Send Welcome Email',
+  version: '1.0.0',
+  ...baseJobConfig,
+  run: async (payload: { userId: string; email: string }, io, ctx) => {
+    // Send welcome email using your email service
+    await io.logger.info('Sending welcome email', { userId: payload.userId });
+    
+    {% if saas_email == "resend" %}
+    // TODO: Import and use Resend client
+    // await resend.emails.send({
+    //   from: 'welcome@{{ project_slug }}.com',
+    //   to: payload.email,
+    //   subject: 'Welcome to {{ project_name }}!',
+    //   react: WelcomeEmail({ userId: payload.userId }),
+    // });
+    {% endif %}
+    
+    return { sent: true, userId: payload.userId };
+  },
+});
+
+/**
+ * Process subscription invoice
+ * Handles subscription billing events
+ */
+export const processSubscriptionInvoiceJob = trigger.defineJob({
+  id: 'process-subscription-invoice',
+  name: 'Process Subscription Invoice',
+  version: '1.0.0',
+  ...baseJobConfig,
+  run: async (payload: {
+    invoiceId: string;
+    subscriptionId: string;
+    status: string;
+  }, io, ctx) => {
+    await io.logger.info('Processing invoice', { invoiceId: payload.invoiceId });
+    
+    // Update invoice status in database
+    {% if saas_orm == 'prisma' %}
+    // await prisma.invoice.update({
+    //   where: { id: payload.invoiceId },
+    //   data: { status: payload.status },
+    // });
+    {% endif %}
+    
+    return { processed: true, invoiceId: payload.invoiceId };
+  },
+});
+
+/**
+ * Generate monthly report
+ * Scheduled job that runs monthly
+ */
+export const generateMonthlyReportJob = trigger.defineJob({
+  id: 'generate-monthly-report',
+  name: 'Generate Monthly Report',
+  version: '1.0.0',
+  ...baseJobConfig,
+  // Run on the 1st of every month at 9 AM UTC
+  trigger: trigger.cronTrigger({
+    cron: '0 9 1 * *',
+  }),
+  run: async (payload, io, ctx) => {
+    await io.logger.info('Generating monthly report');
+    
+    // Generate and send monthly usage report
+    
+    return { generated: true };
+  },
+});
+
+/**
+ * Cleanup expired data
+ * Scheduled job for data retention
+ */
+export const cleanupExpiredDataJob = trigger.defineJob({
+  id: 'cleanup-expired-data',
+  name: 'Cleanup Expired Data',
+  version: '1.0.0',
+  ...baseJobConfig,
+  // Run daily at midnight UTC
+  trigger: trigger.cronTrigger({
+    cron: '0 0 * * *',
+  }),
+  run: async (payload, io, ctx) => {
+    await io.logger.info('Cleaning up expired data');
+    
+    // Delete expired sessions, tokens, etc.
+    {% if saas_orm == 'prisma' %}
+    // const deleted = await prisma.session.deleteMany({
+    //   where: {
+    //     expires: { lt: new Date() },
+    //   },
+    // });
+    {% endif %}
+    
+    return { cleanedUp: true };
+  },
+});
+
+{% if saas_ai == "openai" or saas_ai == "anthropic" %}
+/**
+ * Process AI generation
+ * Long-running AI tasks
+ */
+export const processAIGenerationJob = trigger.defineJob({
+  id: 'process-ai-generation',
+  name: 'Process AI Generation',
+  version: '1.0.0',
+  ...baseJobConfig,
+  retry: {
+    maxAttempts: 5, // More retries for AI tasks
+    minTimeoutInMs: 2000,
+    maxTimeoutInMs: 30000,
+    factor: 2,
+    randomize: true,
+  },
+  run: async (payload: {
+    userId: string;
+    prompt: string;
+    model?: string;
+  }, io, ctx) => {
+    await io.logger.info('Processing AI generation', { userId: payload.userId });
+    
+    // Call AI API
+    {% if saas_ai == "openai" %}
+    // const completion = await openai.chat.completions.create({
+    //   model: payload.model || 'gpt-4',
+    //   messages: [{ role: 'user', content: payload.prompt }],
+    // });
+    {% endif %}
+    
+    // Store result in database
+    
+    return { completed: true, userId: payload.userId };
+  },
+});
+{% endif %}
+
+// ============================================================================
+// Job Utilities
+// ============================================================================
+
+/**
+ * Invoke job with logging
+ */
+export async function invokeJob<T>(
+  job: any,
+  payload: T,
+  options?: {
+    idempotencyKey?: string;
+    delay?: number;
+  }
+) {
+  {% if saas_observability_structured_logging %}
+  console.log('Invoking job', { jobId: job.id, payload });
+  {% endif %}
+  
+  return await job.invoke(payload, {
+    idempotencyKey: options?.idempotencyKey,
+    delay: options?.delay,
+  });
+}
+
+/**
+ * Schedule job for future execution
+ */
+export async function scheduleJob<T>(
+  job: any,
+  payload: T,
+  scheduledFor: Date
+) {
+  const delay = scheduledFor.getTime() - Date.now();
+  
+  if (delay < 0) {
+    throw new Error('Cannot schedule job in the past');
+  }
+  
+  return await invokeJob(job, payload, { delay });
+}
+
+// ============================================================================
+// Type Exports
+// ============================================================================
+
+export type { TriggerClient };
+{% endif %}

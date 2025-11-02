@@ -1,0 +1,296 @@
+{% if saas_starter_module == "enabled" and saas_auth == "clerk" %}
+/**
+ * Clerk Authentication Client
+ * 
+ * Modern best practices:
+ * - Server-side auth with getAuth() for secure API routes
+ * - Client-side hooks with useAuth(), useUser(), useOrganization()
+ * - Middleware integration for protected routes
+ * - Organization-first multi-tenancy
+ * - Webhook signature verification
+ * 
+ * @see https://clerk.com/docs/quickstarts/nextjs
+ */
+
+import { auth, currentUser } from '@clerk/nextjs';
+import { clerkClient } from '@clerk/nextjs';
+import type { WebhookEvent } from '@clerk/nextjs/server';
+import { Webhook } from 'svix';
+
+// ============================================================================
+// Server-Side Authentication
+// ============================================================================
+
+/**
+ * Get current user's auth session
+ * Use this in Server Components and API routes
+ * 
+ * @example
+ * ```ts
+ * import { requireAuth } from '@/lib/auth/clerk/client';
+ * 
+ * export async function GET(req: Request) {
+ *   const { userId } = await requireAuth();
+ *   // User is authenticated, proceed
+ * }
+ * ```
+ */
+export async function requireAuth() {
+  const session = auth();
+  
+  if (!session.userId) {
+    throw new Error('Unauthorized');
+  }
+  
+  return session;
+}
+
+/**
+ * Get current user with full details
+ * Use this when you need user profile information
+ * 
+ * @example
+ * ```ts
+ * const user = await getCurrentUser();
+ * console.log(user.emailAddresses[0].emailAddress);
+ * ```
+ */
+export async function getCurrentUser() {
+  const user = await currentUser();
+  
+  if (!user) {
+    throw new Error('Unauthorized');
+  }
+  
+  return user;
+}
+
+/**
+ * Get current user's organization
+ * Essential for multi-tenant applications
+ * 
+ * @example
+ * ```ts
+ * const org = await getCurrentOrganization();
+ * if (!org) {
+ *   // User not in an organization
+ * }
+ * ```
+ */
+export async function getCurrentOrganization() {
+  const { orgId } = auth();
+  
+  if (!orgId) {
+    return null;
+  }
+  
+  return await clerkClient.organizations.getOrganization({ organizationId: orgId });
+}
+
+/**
+ * Check if user has specific role in organization
+ * 
+ * @example
+ * ```ts
+ * const isAdmin = await hasOrganizationRole(['admin', 'owner']);
+ * ```
+ */
+export async function hasOrganizationRole(allowedRoles: string[]) {
+  const { orgRole } = auth();
+  
+  if (!orgRole) {
+    return false;
+  }
+  
+  return allowedRoles.includes(orgRole);
+}
+
+// ============================================================================
+// Organization Management
+// ============================================================================
+
+/**
+ * Create organization for user
+ * 
+ * @example
+ * ```ts
+ * const org = await createOrganization({
+ *   name: 'Acme Inc',
+ *   slug: 'acme-inc',
+ * });
+ * ```
+ */
+export async function createOrganization(params: {
+  name: string;
+  slug?: string;
+  publicMetadata?: Record<string, unknown>;
+}) {
+  return await clerkClient.organizations.createOrganization({
+    name: params.name,
+    slug: params.slug,
+    publicMetadata: params.publicMetadata,
+  });
+}
+
+/**
+ * Invite user to organization
+ * 
+ * @example
+ * ```ts
+ * await inviteToOrganization({
+ *   organizationId: 'org_xxx',
+ *   emailAddress: 'user@example.com',
+ *   role: 'member',
+ * });
+ * ```
+ */
+export async function inviteToOrganization(params: {
+  organizationId: string;
+  emailAddress: string;
+  role: 'admin' | 'basic_member';
+}) {
+  return await clerkClient.organizations.createOrganizationInvitation({
+    organizationId: params.organizationId,
+    emailAddress: params.emailAddress,
+    role: params.role,
+  });
+}
+
+/**
+ * Remove user from organization
+ */
+export async function removeFromOrganization(params: {
+  organizationId: string;
+  userId: string;
+}) {
+  return await clerkClient.organizations.deleteOrganizationMembership({
+    organizationId: params.organizationId,
+    userId: params.userId,
+  });
+}
+
+// ============================================================================
+// User Management
+// ============================================================================
+
+/**
+ * Get user by ID
+ */
+export async function getUserById(userId: string) {
+  return await clerkClient.users.getUser(userId);
+}
+
+/**
+ * Update user metadata
+ * 
+ * @example
+ * ```ts
+ * await updateUserMetadata(userId, {
+ *   publicMetadata: { onboarded: true },
+ *   privateMetadata: { internalId: '123' },
+ * });
+ * ```
+ */
+export async function updateUserMetadata(
+  userId: string,
+  metadata: {
+    publicMetadata?: Record<string, unknown>;
+    privateMetadata?: Record<string, unknown>;
+    unsafeMetadata?: Record<string, unknown>;
+  }
+) {
+  return await clerkClient.users.updateUser(userId, metadata);
+}
+
+/**
+ * Delete user
+ * WARNING: This is permanent and cannot be undone
+ */
+export async function deleteUser(userId: string) {
+  return await clerkClient.users.deleteUser(userId);
+}
+
+// ============================================================================
+// Webhook Handling
+// ============================================================================
+
+/**
+ * Verify Clerk webhook signature
+ * Essential for security - prevents unauthorized webhook calls
+ * 
+ * @example
+ * ```ts
+ * export async function POST(req: Request) {
+ *   const payload = await req.text();
+ *   const headers = {
+ *     'svix-id': req.headers.get('svix-id')!,
+ *     'svix-timestamp': req.headers.get('svix-timestamp')!,
+ *     'svix-signature': req.headers.get('svix-signature')!,
+ *   };
+ *   
+ *   const event = await verifyWebhook(payload, headers);
+ *   // Handle event
+ * }
+ * ```
+ */
+export async function verifyWebhook(
+  payload: string,
+  headers: {
+    'svix-id': string;
+    'svix-timestamp': string;
+    'svix-signature': string;
+  }
+): Promise<WebhookEvent> {
+  const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
+  
+  if (!webhookSecret) {
+    throw new Error('CLERK_WEBHOOK_SECRET is not set');
+  }
+  
+  const wh = new Webhook(webhookSecret);
+  
+  try {
+    return wh.verify(payload, headers) as WebhookEvent;
+  } catch (error) {
+    throw new Error('Invalid webhook signature');
+  }
+}
+
+/**
+ * Handle Clerk webhook events
+ * Type-safe event handling for common webhook types
+ * 
+ * @example
+ * ```ts
+ * await handleWebhookEvent(event, {
+ *   'user.created': async (data) => {
+ *     await createUserInDatabase(data);
+ *   },
+ *   'organization.created': async (data) => {
+ *     await createOrgInDatabase(data);
+ *   },
+ * });
+ * ```
+ */
+export async function handleWebhookEvent<T extends WebhookEvent['type']>(
+  event: WebhookEvent,
+  handlers: Partial<Record<T, (data: Extract<WebhookEvent, { type: T }>['data']) => Promise<void>>>
+) {
+  const handler = handlers[event.type as T];
+  
+  if (handler) {
+    await handler(event.data as any);
+  }
+}
+
+// ============================================================================
+// Type Exports
+// ============================================================================
+
+export type {
+  User,
+  Organization,
+  OrganizationMembership,
+  Session,
+} from '@clerk/nextjs/server';
+{% endif %}
