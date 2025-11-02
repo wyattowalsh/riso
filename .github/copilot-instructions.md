@@ -3,6 +3,9 @@
 Auto-generated from all feature plans. Last updated: 2025-10-30
 
 ## Active Technologies
+- Python 3.11 (uv-managed) with optional Node.js 20 LTS support (010-api-versioning-strategy)
+
+- Python 3.11 (uv-managed), optional Node.js 20 LTS + ruff, mypy, pylint, pytest, coverage, optional eslint + typescrip (003-code-quality-integrations)
 - YAML (GitHub Actions workflow syntax), Python 3.11+ (for validation scripts), Jinja2 (for template rendering) + GitHub Actions marketplace actions (`actions/checkout@v4`, `actions/setup-python@v5`, `actions/cache@v4`, `actions/upload-artifact@v4`, `nick-fields/retry@v3`, `docker/setup-buildx-action@v3`, `docker/build-push-action@v5`, `aquasecurity/trivy-action@0.20.0`), actionlint (workflow validation), hadolint (Dockerfile linting), Trivy (container security scanning), existing quality tools from feature 003 (004-github-actions-workflows, 005-container-deployment)
 - Workflow artifacts (JUnit XML, coverage reports, logs, container images, SBOMs, scan results) stored in GitHub Actions artifact storage with 90-day retention (004-github-actions-workflows, 005-container-deployment)
 - Matrix testing across Python 3.11, 3.12, 3.13 with fail-fast disabled and per-version artifacts (004-github-actions-workflows)
@@ -53,6 +56,7 @@ actionlint .github/workflows/riso-*.yml
 Python 3.11 (uv-managed), optional Node.js 20 LTS: Follow standard conventions
 
 ## Recent Changes
+- 010-api-versioning-strategy: Added Python 3.11 (uv-managed) with optional Node.js 20 LTS support
 - 014-changelog-release-management: Added Python 3.11+ (template baseline), Node.js 20 LTS (when api_tracks includes node) + semantic-release (changelog/version), commitlint (commit validation), commitizen (commit authoring), GitHub Actions marketplace actions (release creation, registry publishing)
 - 012-saas-starter: Added Python 3.11+ (template layer, validation scripts), TypeScript/JavaScript (Node 20 LTS for Next.js/Remix runtimes) + Copier ≥9.0 (template engine), Jinja2 (templating), uv (Python packaging), pnpm ≥8 (Node packaging), runtime-specific frameworks (Next.js 16/Remix 2.x), all integration SDKs (Clerk/Auth.js, Stripe/Paddle, Sentry/Datadog, etc.)
 - 007-graphql-api-scaffold: Added Python 3.11+ (consistent with Riso template baseline, managed via uv) + Strawberry GraphQL ≥0.200.0, FastAPI ≥0.104.0 (ASGI integration), uvicorn (ASGI server), pydantic ≥2.0.0 (data validation)
