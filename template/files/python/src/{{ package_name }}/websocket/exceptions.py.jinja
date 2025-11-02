@@ -1,0 +1,268 @@
+{% if websocket_module == "enabled" -%}
+"""WebSocket exception hierarchy with structured error codes."""
+
+from typing import Any, Dict, Optional
+
+
+class WebSocketError(Exception):
+    """
+    Base exception for all WebSocket-related errors.
+
+    Attributes:
+        code: Machine-readable error code identifier
+        message: Human-readable error message
+        details: Additional error context
+        retry_after: Seconds to wait before retry (for rate limits)
+    """
+
+    def __init__(
+        self,
+        message: str,
+        code: str = "INTERNAL_ERROR",
+        details: Optional[Dict[str, Any]] = None,
+        retry_after: Optional[int] = None,
+    ):
+        super().__init__(message)
+        self.message     = message
+        self.code        = code
+        self.details     = details or {}
+        self.retry_after = retry_after
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert exception to JSON-serializable dict for wire format."""
+        error_dict: Dict[str, Any] = {
+            "code":    self.code,
+            "message": self.message,
+        }
+        if self.details:
+            error_dict["details"] = self.details
+        if self.retry_after is not None:
+            error_dict["retry_after"] = self.retry_after
+        return error_dict
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(code='{self.code}', message='{self.message}')"
+
+
+class AuthenticationError(WebSocketError):
+    """
+    Raised when WebSocket authentication fails.
+
+    Example:
+        Missing or invalid JWT token during connection attempt.
+    """
+
+    def __init__(
+        self,
+        message: str = "Authentication required",
+        code: str = "AUTH_REQUIRED",
+        details: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(message=message, code=code, details=details)
+
+
+class AuthorizationError(WebSocketError):
+    """
+    Raised when user lacks permission for requested WebSocket operation.
+
+    Example:
+        Attempting to join a private room without proper credentials.
+    """
+
+    def __init__(
+        self,
+        message: str = "Authorization failed",
+        code: str = "AUTHZ_FAILED",
+        details: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(message=message, code=code, details=details)
+
+
+class MessageTooLargeError(WebSocketError):
+    """
+    Raised when incoming message exceeds max_message_size limit.
+
+    Example:
+        Client sends 2MB message when limit is 1MB.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        max_size: int,
+        actual_size: int,
+    ):
+        super().__init__(
+            message=message,
+            code="MESSAGE_TOO_LARGE",
+            details={
+                "max_size_bytes":    max_size,
+                "actual_size_bytes": actual_size,
+            },
+        )
+
+
+class BackpressureError(WebSocketError):
+    """
+    Raised when message queue is full (server processing slower than client sending).
+
+    Example:
+        Client sends 150 messages/sec but server can only process 100/sec.
+    """
+
+    def __init__(
+        self,
+        message: str = "Message queue full - server under backpressure",
+        queue_depth: int = 0,
+    ):
+        super().__init__(
+            message=message,
+            code="BACKPRESSURE",
+            details={"queue_depth": queue_depth},
+        )
+
+
+class RateLimitError(WebSocketError):
+    """
+    Raised when client exceeds rate limit threshold.
+
+    Example:
+        Client sends 120 messages in 60-second window when limit is 100.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        current_rate: int,
+        limit: int,
+        window_seconds: int,
+        retry_after: int,
+    ):
+        super().__init__(
+            message=message,
+            code="RATE_LIMIT",
+            details={
+                "current_rate":   current_rate,
+                "limit":          limit,
+                "window_seconds": window_seconds,
+            },
+            retry_after=retry_after,
+        )
+
+
+class InvalidMessageFormatError(WebSocketError):
+    """
+    Raised when message fails schema validation or JSON parsing.
+
+    Example:
+        Client sends malformed JSON or message missing required fields.
+    """
+
+    def __init__(
+        self,
+        message: str = "Invalid message format",
+        details: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(
+            message=message,
+            code="INVALID_FORMAT",
+            details=details,
+        )
+
+
+class RoomNotFoundError(WebSocketError):
+    """
+    Raised when attempting operation on non-existent room.
+
+    Example:
+        Client tries to join room "chat_deleted" that no longer exists.
+    """
+
+    def __init__(
+        self,
+        room_id: str,
+        message: Optional[str] = None,
+    ):
+        super().__init__(
+            message=message or f"Room '{room_id}' not found",
+            code="ROOM_NOT_FOUND",
+            details={"room_id": room_id},
+        )
+
+
+class RoomFullError(WebSocketError):
+    """
+    Raised when attempting to join room at maximum capacity.
+
+    Example:
+        Room configured for 100 members, 101st user attempts to join.
+    """
+
+    def __init__(
+        self,
+        room_id: str,
+        max_connections: int,
+        current_count: int,
+    ):
+        super().__init__(
+            message=f"Room '{room_id}' is full",
+            code="ROOM_FULL",
+            details={
+                "room_id":         room_id,
+                "max_connections": max_connections,
+                "current_count":   current_count,
+            },
+        )
+
+
+class ConnectionClosedError(WebSocketError):
+    """
+    Raised when attempting operations on closed WebSocket connection.
+
+    Example:
+        Trying to send message to connection that was already disconnected.
+    """
+
+    def __init__(
+        self,
+        connection_id: str,
+        message: str = "Connection already closed",
+    ):
+        super().__init__(
+            message=message,
+            code="CONNECTION_CLOSED",
+            details={"connection_id": connection_id},
+        )
+
+
+# Error code constants for programmatic access
+class ErrorCode:
+    """WebSocket error code constants."""
+
+    AUTH_REQUIRED    = "AUTH_REQUIRED"
+    AUTH_FAILED      = "AUTH_FAILED"
+    AUTHZ_FAILED     = "AUTHZ_FAILED"
+    MESSAGE_TOO_LARGE = "MESSAGE_TOO_LARGE"
+    BACKPRESSURE     = "BACKPRESSURE"
+    RATE_LIMIT       = "RATE_LIMIT"
+    INVALID_FORMAT   = "INVALID_FORMAT"
+    ROOM_NOT_FOUND   = "ROOM_NOT_FOUND"
+    ROOM_FULL        = "ROOM_FULL"
+    INTERNAL_ERROR   = "INTERNAL_ERROR"
+    CONNECTION_CLOSED = "CONNECTION_CLOSED"
+
+
+# WebSocket close codes (RFC 6455)
+class CloseCode:
+    """Standard WebSocket close status codes."""
+
+    NORMAL_CLOSURE       = 1000  # Normal closure
+    GOING_AWAY          = 1001  # Server going down or browser navigating away
+    PROTOCOL_ERROR      = 1002  # Protocol error detected
+    UNSUPPORTED_DATA    = 1003  # Unsupported data type received
+    POLICY_VIOLATION    = 1008  # Policy violation (e.g., auth failure)
+    MESSAGE_TOO_BIG     = 1009  # Message too large to process
+    INTERNAL_ERROR      = 1011  # Unexpected server error
+    SERVICE_RESTART     = 1012  # Server restarting
+    TRY_AGAIN_LATER     = 1013  # Temporary server unavailability
+{% endif -%}

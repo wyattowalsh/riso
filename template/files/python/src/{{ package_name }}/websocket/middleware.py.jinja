@@ -1,0 +1,278 @@
+{% if websocket_module == "enabled" -%}
+"""WebSocket middleware for cross-cutting concerns."""
+
+from abc import ABC, abstractmethod
+from typing import Optional
+
+from fastapi import Request
+from loguru import logger
+
+from {{ package_name }}.websocket.models import Message
+
+
+class ConnectionMiddleware(ABC):
+    """
+    Abstract base class for WebSocket middleware.
+
+    Middleware can intercept connection lifecycle events and messages
+    for cross-cutting concerns like authentication, logging, metrics, etc.
+
+    Middleware is executed sequentially in registration order.
+    If any middleware raises an exception, the request is rejected.
+
+    Example:
+        ```python
+        class LoggingMiddleware(ConnectionMiddleware):
+            async def on_connect(self, connection, request):
+                logger.info(f"Connection from {request.client.host}")
+                return {"ip": request.client.host}
+            
+            async def on_message(self, connection, message):
+                logger.debug(f"Message: {message.type}")
+                return message
+        ```
+    """
+
+    @abstractmethod
+    async def on_connect(
+        self,
+        connection: "WebSocketConnection",  # type: ignore  # Forward reference
+        request: Request,
+    ) -> Optional[dict]:
+        """
+        Called when connection is established (before accept()).
+
+        Args:
+            connection: WebSocketConnection instance
+            request: FastAPI Request instance
+
+        Returns:
+            Optional[dict]: Metadata to merge into connection.metadata
+                            or None to skip
+
+        Raises:
+            Exception: Any exception rejects the connection
+        """
+
+    @abstractmethod
+    async def on_disconnect(
+        self,
+        connection: "WebSocketConnection",  # type: ignore  # Forward reference
+        code: int,
+        reason: str,
+    ) -> None:
+        """
+        Called when connection closes.
+
+        Args:
+            connection: WebSocketConnection instance
+            code: WebSocket close code
+            reason: Human-readable close reason
+        """
+
+    @abstractmethod
+    async def on_message(
+        self,
+        connection: "WebSocketConnection",  # type: ignore  # Forward reference
+        message: Message,
+    ) -> Message:
+        """
+        Called on incoming message (before processing).
+
+        Middleware can modify or reject messages.
+
+        Args:
+            connection: WebSocketConnection instance
+            message: Incoming message
+
+        Returns:
+            Message: Modified or original message
+
+        Raises:
+            Exception: Any exception rejects the message
+        """
+
+    @abstractmethod
+    async def on_error(
+        self,
+        connection: "WebSocketConnection",  # type: ignore  # Forward reference
+        error: Exception,
+    ) -> None:
+        """
+        Called when error occurs during message processing.
+
+        Args:
+            connection: WebSocketConnection instance
+            error: Exception that was raised
+        """
+
+
+class LoggingMiddleware(ConnectionMiddleware):
+    """
+    Built-in middleware for structured logging.
+
+    Logs connection lifecycle events and message statistics.
+    """
+
+    async def on_connect(
+        self,
+        connection,
+        request: Request,
+    ) -> Optional[dict]:
+        """Log connection establishment."""
+        logger.info(
+            f"WebSocket connection established: {connection.connection_id}",
+            extra={
+                "connection_id": connection.connection_id,
+                "user_id":       connection.user_id,
+                "client_host":   request.client.host if request.client else None,
+                "user_agent":    request.headers.get("user-agent"),
+            },
+        )
+        return {
+            "ip_address": request.client.host if request.client else "unknown",
+            "user_agent": request.headers.get("user-agent"),
+        }
+
+    async def on_disconnect(
+        self,
+        connection,
+        code: int,
+        reason: str,
+    ) -> None:
+        """Log connection closure."""
+        logger.info(
+            f"WebSocket connection closed: {connection.connection_id}",
+            extra={
+                "connection_id":    connection.connection_id,
+                "user_id":          connection.user_id,
+                "close_code":       code,
+                "close_reason":     reason,
+                "messages_sent":    connection.messages_sent,
+                "messages_received": connection.messages_received,
+            },
+        )
+
+    async def on_message(
+        self,
+        connection,
+        message: Message,
+    ) -> Message:
+        """Log message reception (debug level)."""
+        logger.debug(
+            f"WebSocket message received: {message.type}",
+            extra={
+                "connection_id": connection.connection_id,
+                "message_id":    message.message_id,
+                "message_type":  message.type,
+                "room_id":       message.room_id,
+            },
+        )
+        return message
+
+    async def on_error(
+        self,
+        connection,
+        error: Exception,
+    ) -> None:
+        """Log errors."""
+        logger.error(
+            f"WebSocket error on connection {connection.connection_id}: {error}",
+            exc_info=True,
+            extra={
+                "connection_id": connection.connection_id,
+                "user_id":       connection.user_id,
+                "error_type":    type(error).__name__,
+            },
+        )
+
+
+class MetricsMiddleware(ConnectionMiddleware):
+    """
+    Built-in middleware for Prometheus metrics.
+
+    Tracks connection count, message rates, error rates, etc.
+    Requires prometheus_client library.
+    """
+
+    def __init__(self):
+        """Initialize metrics collectors."""
+        try:
+            from prometheus_client import Counter, Gauge, Histogram
+
+            self.connections_total = Gauge(
+                "websocket_connections_total",
+                "Active WebSocket connections",
+            )
+            self.messages_received = Counter(
+                "websocket_messages_received_total",
+                "Total messages received",
+                ["message_type"],
+            )
+            self.messages_sent = Counter(
+                "websocket_messages_sent_total",
+                "Total messages sent",
+            )
+            self.errors_total = Counter(
+                "websocket_errors_total",
+                "Total errors",
+                ["error_type"],
+            )
+            self.connection_duration = Histogram(
+                "websocket_connection_duration_seconds",
+                "Connection lifetime duration",
+            )
+
+        except ImportError:
+            logger.warning(
+                "prometheus_client not installed - metrics disabled"
+            )
+            self.connections_total   = None
+            self.messages_received   = None
+            self.messages_sent       = None
+            self.errors_total        = None
+            self.connection_duration = None
+
+    async def on_connect(
+        self,
+        connection,
+        request: Request,
+    ) -> Optional[dict]:
+        """Increment connection counter."""
+        if self.connections_total is not None:
+            self.connections_total.inc()
+        return None
+
+    async def on_disconnect(
+        self,
+        connection,
+        code: int,
+        reason: str,
+    ) -> None:
+        """Decrement connection counter and record duration."""
+        if self.connections_total is not None:
+            self.connections_total.dec()
+
+        if self.connection_duration is not None:
+            duration = connection.time_since_activity()
+            self.connection_duration.observe(duration)
+
+    async def on_message(
+        self,
+        connection,
+        message: Message,
+    ) -> Message:
+        """Count message by type."""
+        if self.messages_received is not None:
+            self.messages_received.labels(message_type=message.type).inc()
+        return message
+
+    async def on_error(
+        self,
+        connection,
+        error: Exception,
+    ) -> None:
+        """Count errors by type."""
+        if self.errors_total is not None:
+            self.errors_total.labels(error_type=type(error).__name__).inc()
+{% endif -%}

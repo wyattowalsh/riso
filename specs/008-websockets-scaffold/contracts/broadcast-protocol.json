@@ -1,0 +1,343 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://riso.dev/schemas/websocket/broadcast-protocol.json",
+  "title": "WebSocket Room Broadcasting Protocol",
+  "description": "Defines operations for room management and targeted broadcasting",
+  "version": "1.0.0",
+  "definitions": {
+    "roomJoinRequest": {
+      "type": "object",
+      "description": "Client request to join a room",
+      "properties": {
+        "type": {
+          "const": "room.join"
+        },
+        "message_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sender_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "room_id": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "maxLength": 100,
+              "description": "Room identifier to join"
+            },
+            "credentials": {
+              "type": "object",
+              "description": "Optional authorization credentials for private rooms",
+              "additionalProperties": true
+            }
+          },
+          "required": ["room_id"]
+        }
+      },
+      "required": ["type", "message_id", "timestamp", "sender_id", "payload"]
+    },
+    "roomJoinResponse": {
+      "type": "object",
+      "description": "Server response to join request",
+      "properties": {
+        "type": {
+          "const": "room.joined"
+        },
+        "message_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sender_id": {
+          "const": "server"
+        },
+        "correlation_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Message ID from join request"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "room_id": {
+              "type": "string"
+            },
+            "room_name": {
+              "type": "string",
+              "description": "Human-readable room name"
+            },
+            "member_count": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Current room member count"
+            },
+            "metadata": {
+              "type": "object",
+              "description": "Room metadata (topic, permissions, etc.)",
+              "additionalProperties": true
+            }
+          },
+          "required": ["room_id", "member_count"]
+        }
+      },
+      "required": ["type", "message_id", "timestamp", "sender_id", "correlation_id", "payload"]
+    },
+    "roomLeaveRequest": {
+      "type": "object",
+      "description": "Client request to leave a room",
+      "properties": {
+        "type": {
+          "const": "room.leave"
+        },
+        "message_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sender_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "room_id": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "maxLength": 100
+            }
+          },
+          "required": ["room_id"]
+        }
+      },
+      "required": ["type", "message_id", "timestamp", "sender_id", "payload"]
+    },
+    "roomLeaveResponse": {
+      "type": "object",
+      "description": "Server confirmation of leave",
+      "properties": {
+        "type": {
+          "const": "room.left"
+        },
+        "message_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sender_id": {
+          "const": "server"
+        },
+        "correlation_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "room_id": {
+              "type": "string"
+            },
+            "member_count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Remaining room member count"
+            }
+          },
+          "required": ["room_id", "member_count"]
+        }
+      },
+      "required": ["type", "message_id", "timestamp", "sender_id", "correlation_id", "payload"]
+    },
+    "broadcastMessage": {
+      "type": "object",
+      "description": "Message broadcasted to all room members",
+      "properties": {
+        "type": {
+          "const": "room.broadcast"
+        },
+        "message_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sender_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Connection ID of broadcaster"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "room_id": {
+              "type": "string"
+            },
+            "message": {
+              "type": "object",
+              "description": "Broadcast content (can be text, JSON, or binary)",
+              "additionalProperties": true
+            },
+            "exclude_sender": {
+              "type": "boolean",
+              "default": false,
+              "description": "Whether to exclude sender from broadcast"
+            },
+            "target_connections": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "Optional list of specific connections to target"
+            }
+          },
+          "required": ["room_id", "message"]
+        }
+      },
+      "required": ["type", "message_id", "timestamp", "sender_id", "payload"]
+    },
+    "roomMembershipEvent": {
+      "type": "object",
+      "description": "Notification when member joins/leaves room",
+      "properties": {
+        "type": {
+          "enum": ["room.member_joined", "room.member_left"]
+        },
+        "message_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sender_id": {
+          "const": "server"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "room_id": {
+              "type": "string"
+            },
+            "connection_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Connection that joined/left"
+            },
+            "user_id": {
+              "type": "string",
+              "description": "User associated with connection (if authenticated)"
+            },
+            "member_count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": ["room_id", "connection_id", "member_count"]
+        }
+      },
+      "required": ["type", "message_id", "timestamp", "sender_id", "payload"]
+    }
+  },
+  "oneOf": [
+    {"$ref": "#/definitions/roomJoinRequest"},
+    {"$ref": "#/definitions/roomJoinResponse"},
+    {"$ref": "#/definitions/roomLeaveRequest"},
+    {"$ref": "#/definitions/roomLeaveResponse"},
+    {"$ref": "#/definitions/broadcastMessage"},
+    {"$ref": "#/definitions/roomMembershipEvent"}
+  ],
+  "examples": [
+    {
+      "type": "room.join",
+      "message_id": "550e8400-e29b-41d4-a716-446655440000",
+      "timestamp": "2025-11-01T12:00:00Z",
+      "sender_id": "650e8400-e29b-41d4-a716-446655440001",
+      "payload": {
+        "room_id": "chat_general"
+      }
+    },
+    {
+      "type": "room.joined",
+      "message_id": "660e8400-e29b-41d4-a716-446655440002",
+      "timestamp": "2025-11-01T12:00:00.010Z",
+      "sender_id": "server",
+      "correlation_id": "550e8400-e29b-41d4-a716-446655440000",
+      "payload": {
+        "room_id": "chat_general",
+        "room_name": "General Chat",
+        "member_count": 42,
+        "metadata": {
+          "topic": "Welcome to the general chat!",
+          "created_at": "2025-01-01T00:00:00Z"
+        }
+      }
+    },
+    {
+      "type": "room.broadcast",
+      "message_id": "770e8400-e29b-41d4-a716-446655440003",
+      "timestamp": "2025-11-01T12:01:00Z",
+      "sender_id": "650e8400-e29b-41d4-a716-446655440001",
+      "payload": {
+        "room_id": "chat_general",
+        "message": {
+          "type": "message.text",
+          "text": "Hello everyone in the room!"
+        },
+        "exclude_sender": true
+      }
+    },
+    {
+      "type": "room.member_joined",
+      "message_id": "880e8400-e29b-41d4-a716-446655440004",
+      "timestamp": "2025-11-01T12:02:00Z",
+      "sender_id": "server",
+      "payload": {
+        "room_id": "chat_general",
+        "connection_id": "750e8400-e29b-41d4-a716-446655440005",
+        "user_id": "user_456",
+        "member_count": 43
+      }
+    },
+    {
+      "type": "room.leave",
+      "message_id": "990e8400-e29b-41d4-a716-446655440006",
+      "timestamp": "2025-11-01T12:05:00Z",
+      "sender_id": "650e8400-e29b-41d4-a716-446655440001",
+      "payload": {
+        "room_id": "chat_general"
+      }
+    },
+    {
+      "type": "room.left",
+      "message_id": "aa0e8400-e29b-41d4-a716-446655440007",
+      "timestamp": "2025-11-01T12:05:00.005Z",
+      "sender_id": "server",
+      "correlation_id": "990e8400-e29b-41d4-a716-446655440006",
+      "payload": {
+        "room_id": "chat_general",
+        "member_count": 42
+      }
+    }
+  ]
+}
