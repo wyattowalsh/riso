@@ -1,0 +1,219 @@
+{% if saas_starter_module == "enabled" and saas_email == "postmark" %}
+/**
+ * Postmark Email Client
+ * 
+ * Best practices:
+ * - Template-based emails
+ * - Transactional email tracking
+ * - Bounce and spam handling
+ * - Email analytics
+ * 
+ * @see https://postmarkapp.com/developer
+ */
+
+import * as postmark from 'postmark';
+import { env } from '@/lib/env';
+
+// Initialize Postmark client
+export const client = new postmark.ServerClient(env.POSTMARK_SERVER_TOKEN);
+
+// Email configuration
+const emailConfig = {
+  from: `{{ project_name }} <noreply@${env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, '') || '{{ project_slug }}.com'}>`,
+  replyTo: `support@${env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, '') || '{{ project_slug }}.com'}`,
+};
+
+// ============================================================================
+// Email Sending Functions
+// ============================================================================
+
+/**
+ * Send welcome email
+ */
+export async function sendWelcomeEmail(params: {
+  to: string;
+  name?: string;
+}) {
+  return await client.sendEmail({
+    From: emailConfig.from,
+    To: params.to,
+    Subject: `Welcome to {{ project_name }}!`,
+    HtmlBody: `
+      <h1>Welcome${params.name ? ` ${params.name}` : ''}!</h1>
+      <p>Thank you for signing up for {{ project_name }}.</p>
+    `,
+    TextBody: `Welcome${params.name ? ` ${params.name}` : ''}! Thank you for signing up for {{ project_name }}.`,
+    MessageStream: 'outbound',
+  });
+}
+
+/**
+ * Send email verification
+ */
+export async function sendVerificationEmail(params: {
+  to: string;
+  verificationUrl: string;
+}) {
+  return await client.sendEmail({
+    From: emailConfig.from,
+    To: params.to,
+    Subject: 'Verify your email address',
+    HtmlBody: `
+      <h1>Verify your email</h1>
+      <p>Click the link below to verify your email address:</p>
+      <a href="${params.verificationUrl}">Verify Email</a>
+    `,
+    TextBody: `Verify your email: ${params.verificationUrl}`,
+    MessageStream: 'outbound',
+  });
+}
+
+/**
+ * Send password reset email
+ */
+export async function sendPasswordResetEmail(params: {
+  to: string;
+  resetUrl: string;
+}) {
+  return await client.sendEmail({
+    From: emailConfig.from,
+    To: params.to,
+    Subject: 'Reset your password',
+    HtmlBody: `
+      <h1>Reset your password</h1>
+      <p>Click the link below to reset your password:</p>
+      <a href="${params.resetUrl}">Reset Password</a>
+    `,
+    TextBody: `Reset your password: ${params.resetUrl}`,
+    MessageStream: 'outbound',
+  });
+}
+
+/**
+ * Send subscription confirmation
+ */
+export async function sendSubscriptionConfirmation(params: {
+  to: string;
+  plan: string;
+  amount: number;
+  billingCycle: string;
+}) {
+  return await client.sendEmail({
+    From: emailConfig.from,
+    To: params.to,
+    Subject: 'Subscription Confirmed',
+    HtmlBody: `
+      <h1>Subscription Confirmed</h1>
+      <p>Plan: ${params.plan}</p>
+      <p>Amount: $${(params.amount / 100).toFixed(2)} / ${params.billingCycle}</p>
+    `,
+    TextBody: `Subscription Confirmed - Plan: ${params.plan}, Amount: $${(params.amount / 100).toFixed(2)} / ${params.billingCycle}`,
+    MessageStream: 'outbound',
+  });
+}
+
+/**
+ * Send payment receipt
+ */
+export async function sendPaymentReceipt(params: {
+  to: string;
+  invoiceId: string;
+  amount: number;
+  invoiceUrl?: string;
+}) {
+  return await client.sendEmail({
+    From: emailConfig.from,
+    To: params.to,
+    Subject: 'Payment Receipt',
+    HtmlBody: `
+      <h1>Payment Receipt</h1>
+      <p>Invoice: ${params.invoiceId}</p>
+      <p>Amount: $${(params.amount / 100).toFixed(2)}</p>
+      ${params.invoiceUrl ? `<a href="${params.invoiceUrl}">View Invoice</a>` : ''}
+    `,
+    TextBody: `Payment Receipt - Invoice: ${params.invoiceId}, Amount: $${(params.amount / 100).toFixed(2)}${params.invoiceUrl ? ` - View: ${params.invoiceUrl}` : ''}`,
+    MessageStream: 'outbound',
+  });
+}
+
+/**
+ * Send team invitation
+ */
+export async function sendTeamInvitation(params: {
+  to: string;
+  inviterName: string;
+  organizationName: string;
+  inviteUrl: string;
+}) {
+  return await client.sendEmail({
+    From: emailConfig.from,
+    To: params.to,
+    Subject: `You've been invited to join ${params.organizationName}`,
+    HtmlBody: `
+      <h1>You've been invited!</h1>
+      <p>${params.inviterName} has invited you to join ${params.organizationName}.</p>
+      <a href="${params.inviteUrl}">Accept Invitation</a>
+    `,
+    TextBody: `${params.inviterName} has invited you to join ${params.organizationName}. Accept: ${params.inviteUrl}`,
+    MessageStream: 'outbound',
+  });
+}
+
+// ============================================================================
+// Batch Email Operations
+// ============================================================================
+
+/**
+ * Send batch emails
+ */
+export async function sendBatchEmails(
+  emails: Array<{
+    to: string;
+    subject: string;
+    htmlBody: string;
+    textBody?: string;
+  }>
+) {
+  return await client.sendEmailBatch(
+    emails.map((email) => ({
+      From: emailConfig.from,
+      To: email.to,
+      Subject: email.subject,
+      HtmlBody: email.htmlBody,
+      TextBody: email.textBody,
+      MessageStream: 'outbound',
+    }))
+  );
+}
+
+// ============================================================================
+// Email Analytics & Tracking
+// ============================================================================
+
+/**
+ * Get delivery statistics
+ */
+export async function getDeliveryStats() {
+  return await client.getDeliveryStats();
+}
+
+/**
+ * Get bounces
+ */
+export async function getBounces() {
+  return await client.getBounces();
+}
+
+/**
+ * Get spam complaints
+ */
+export async function getSpamComplaints() {
+  return await client.getOutboundMessages({ count: 100 });
+}
+
+// ============================================================================
+// Type Exports
+// ============================================================================
+
+export type { ServerClient } from 'postmark';
+{% endif %}

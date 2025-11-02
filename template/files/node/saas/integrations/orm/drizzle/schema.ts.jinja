@@ -1,0 +1,440 @@
+{% if saas_starter_module == "enabled" and saas_orm == "drizzle" %}
+/**
+ * Drizzle Schema for {{ project_name }}
+ * 
+ * Modern best practices implemented:
+ * - CUID2 for IDs (createId from @paralleldrive/cuid2)
+ * - Proper indexes for query performance
+ * - Type-safe schema with drizzle-zod
+ * - Optimized for edge runtimes
+ * - Composite indexes for common queries
+ * - JSON columns for flexible metadata
+ * 
+ * Learn more: https://orm.drizzle.team/docs/overview
+ */
+
+import { pgTable, text, timestamp, integer, boolean, json, uniqueIndex, index, varchar, pgEnum } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
+import { createId } from '@paralleldrive/cuid2';
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+const timestamps = {
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull().$onUpdate(() => new Date()),
+};
+
+const id = () => text('id').$defaultFn(() => createId()).primaryKey();
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+export const roleEnum = pgEnum('role', ['owner', 'admin', 'member']);
+export const planEnum = pgEnum('plan', ['free', 'starter', 'pro', 'enterprise']);
+export const subscriptionStatusEnum = pgEnum('subscription_status', [
+  'incomplete',
+  'trialing',
+  'active',
+  'past_due',
+  'canceled',
+  'unpaid',
+]);
+export const billingCycleEnum = pgEnum('billing_cycle', ['monthly', 'annual']);
+export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'open', 'paid', 'void', 'uncollectible']);
+
+// ============================================================================
+// User Management
+// ============================================================================
+
+export const users = pgTable('users', {
+  id: id(),
+  email: text('email').unique().notNull(),
+  emailVerified: timestamp('email_verified', { mode: 'date' }),
+  name: text('name'),
+  image: text('image'),
+  
+  // Metadata
+  metadata: json('metadata').$type<Record<string, unknown>>().default({}),
+  
+  ...timestamps,
+}, (table) => ({
+  emailIdx: uniqueIndex('users_email_idx').on(table.email),
+  createdAtIdx: index('users_created_at_idx').on(table.createdAt),
+}));
+
+{% if saas_auth == "authjs" %}
+// ============================================================================
+// Auth.js Required Tables
+// ============================================================================
+
+export const accounts = pgTable('accounts', {
+  id: id(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(),
+  provider: text('provider').notNull(),
+  providerAccountId: text('provider_account_id').notNull(),
+  refresh_token: text('refresh_token'),
+  access_token: text('access_token'),
+  expires_at: integer('expires_at'),
+  token_type: text('token_type'),
+  scope: text('scope'),
+  id_token: text('id_token'),
+  session_state: text('session_state'),
+}, (table) => ({
+  providerProviderAccountIdIdx: uniqueIndex('accounts_provider_account_idx').on(table.provider, table.providerAccountId),
+  userIdIdx: index('accounts_user_id_idx').on(table.userId),
+}));
+
+export const sessions = pgTable('sessions', {
+  id: id(),
+  sessionToken: text('session_token').unique().notNull(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  expires: timestamp('expires', { mode: 'date' }).notNull(),
+}, (table) => ({
+  sessionTokenIdx: uniqueIndex('sessions_token_idx').on(table.sessionToken),
+  userIdIdx: index('sessions_user_id_idx').on(table.userId),
+}));
+
+export const verificationTokens = pgTable('verification_tokens', {
+  identifier: text('identifier').notNull(),
+  token: text('token').unique().notNull(),
+  expires: timestamp('expires', { mode: 'date' }).notNull(),
+}, (table) => ({
+  identifierTokenIdx: uniqueIndex('verification_tokens_idx').on(table.identifier, table.token),
+}));
+{% endif %}
+
+// ============================================================================
+// Multi-Tenant Organizations
+// ============================================================================
+
+export const organizations = pgTable('organizations', {
+  id: id(),
+  name: text('name').notNull(),
+  slug: text('slug').unique().notNull(),
+  logoUrl: text('logo_url'),
+  description: text('description'),
+  
+  // Subscription & Limits
+  plan: planEnum('plan').default('free').notNull(),
+  maxSeats: integer('max_seats').default(5).notNull(),
+  currentUsage: json('current_usage').$type<Record<string, number>>().default({}),
+  
+  {% if saas_enterprise_bridge == "workos" %}
+  // WorkOS Integration
+  workosOrganizationId: text('workos_organization_id').unique(),
+  {% endif %}
+  
+  // Metadata
+  settings: json('settings').$type<Record<string, unknown>>().default({}),
+  metadata: json('metadata').$type<Record<string, unknown>>().default({}),
+  
+  ...timestamps,
+}, (table) => ({
+  slugIdx: uniqueIndex('organizations_slug_idx').on(table.slug),
+  planIdx: index('organizations_plan_idx').on(table.plan),
+  createdAtIdx: index('organizations_created_at_idx').on(table.createdAt),
+}));
+
+export const organizationMemberships = pgTable('organization_memberships', {
+  id: id(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  role: roleEnum('role').default('member').notNull(),
+  
+  // Invitation tracking
+  invitedBy: text('invited_by'),
+  invitedAt: timestamp('invited_at', { mode: 'date' }),
+  acceptedAt: timestamp('accepted_at', { mode: 'date' }),
+  
+  ...timestamps,
+}, (table) => ({
+  userOrgIdx: uniqueIndex('memberships_user_org_idx').on(table.userId, table.organizationId),
+  orgIdx: index('memberships_org_idx').on(table.organizationId),
+  userIdx: index('memberships_user_idx').on(table.userId),
+  roleIdx: index('memberships_role_idx').on(table.role),
+}));
+
+// ============================================================================
+// Billing & Subscriptions
+// ============================================================================
+
+export const subscriptions = pgTable('subscriptions', {
+  id: id(),
+  
+  // Ownership (either user or organization)
+  userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
+  organizationId: text('organization_id').unique().references(() => organizations.id, { onDelete: 'cascade' }),
+  
+  // Billing provider IDs
+  {% if saas_billing == "stripe" %}
+  stripeCustomerId: text('stripe_customer_id').unique(),
+  stripeSubscriptionId: text('stripe_subscription_id').unique(),
+  stripePriceId: text('stripe_price_id'),
+  {% elif saas_billing == "paddle" %}
+  paddleCustomerId: text('paddle_customer_id').unique(),
+  paddleSubscriptionId: text('paddle_subscription_id').unique(),
+  paddlePriceId: text('paddle_price_id'),
+  {% endif %}
+  
+  // Subscription details
+  status: subscriptionStatusEnum('status').default('incomplete').notNull(),
+  plan: text('plan').notNull(),
+  billingCycle: billingCycleEnum('billing_cycle').default('monthly').notNull(),
+  
+  // Pricing
+  amount: integer('amount'), // In cents
+  currency: text('currency').default('usd').notNull(),
+  
+  // Period tracking
+  currentPeriodStart: timestamp('current_period_start', { mode: 'date' }),
+  currentPeriodEnd: timestamp('current_period_end', { mode: 'date' }),
+  trialStart: timestamp('trial_start', { mode: 'date' }),
+  trialEnd: timestamp('trial_end', { mode: 'date' }),
+  cancelAtPeriodEnd: boolean('cancel_at_period_end').default(false).notNull(),
+  canceledAt: timestamp('canceled_at', { mode: 'date' }),
+  
+  // Metadata
+  metadata: json('metadata').$type<Record<string, unknown>>().default({}),
+  
+  ...timestamps,
+}, (table) => ({
+  statusIdx: index('subscriptions_status_idx').on(table.status),
+  planIdx: index('subscriptions_plan_idx').on(table.plan),
+  periodEndIdx: index('subscriptions_period_end_idx').on(table.currentPeriodEnd),
+  userIdx: index('subscriptions_user_idx').on(table.userId),
+  orgIdx: index('subscriptions_org_idx').on(table.organizationId),
+}));
+
+export const usageRecords = pgTable('usage_records', {
+  id: id(),
+  subscriptionId: text('subscription_id').notNull().references(() => subscriptions.id, { onDelete: 'cascade' }),
+  
+  // Usage details
+  metricName: text('metric_name').notNull(),
+  quantity: integer('quantity').notNull(),
+  unit: text('unit').default('unit').notNull(),
+  
+  // Period
+  periodStart: timestamp('period_start', { mode: 'date' }).notNull(),
+  periodEnd: timestamp('period_end', { mode: 'date' }).notNull(),
+  
+  // Billing sync
+  reportedToProvider: boolean('reported_to_provider').default(false).notNull(),
+  reportedAt: timestamp('reported_at', { mode: 'date' }),
+  
+  // Metadata
+  metadata: json('metadata').$type<Record<string, unknown>>().default({}),
+  
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+}, (table) => ({
+  subscriptionPeriodIdx: index('usage_subscription_period_idx').on(table.subscriptionId, table.periodStart),
+  metricIdx: index('usage_metric_idx').on(table.metricName),
+  reportedIdx: index('usage_reported_idx').on(table.reportedToProvider),
+}));
+
+export const invoices = pgTable('invoices', {
+  id: id(),
+  subscriptionId: text('subscription_id').notNull().references(() => subscriptions.id, { onDelete: 'cascade' }),
+  
+  // Billing provider IDs
+  {% if saas_billing == "stripe" %}
+  stripeInvoiceId: text('stripe_invoice_id').unique(),
+  {% elif saas_billing == "paddle" %}
+  paddleInvoiceId: text('paddle_invoice_id').unique(),
+  {% endif %}
+  
+  // Invoice details
+  status: invoiceStatusEnum('status').notNull(),
+  amountDue: integer('amount_due').notNull(),
+  amountPaid: integer('amount_paid').default(0).notNull(),
+  currency: text('currency').default('usd').notNull(),
+  
+  // URLs
+  hostedInvoiceUrl: text('hosted_invoice_url'),
+  invoicePdfUrl: text('invoice_pdf_url'),
+  
+  // Dates
+  dueDate: timestamp('due_date', { mode: 'date' }),
+  paidAt: timestamp('paid_at', { mode: 'date' }),
+  voidedAt: timestamp('voided_at', { mode: 'date' }),
+  
+  // Metadata
+  metadata: json('metadata').$type<Record<string, unknown>>().default({}),
+  
+  ...timestamps,
+}, (table) => ({
+  subscriptionIdx: index('invoices_subscription_idx').on(table.subscriptionId),
+  statusIdx: index('invoices_status_idx').on(table.status),
+  dueIdx: index('invoices_due_idx').on(table.dueDate),
+}));
+
+// ============================================================================
+// API Access & Security
+// ============================================================================
+
+export const apiKeys = pgTable('api_keys', {
+  id: id(),
+  
+  // Ownership
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  organizationId: text('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
+  
+  // Key details
+  name: text('name').notNull(),
+  keyHash: text('key_hash').unique().notNull(),
+  keyPrefix: text('key_prefix').notNull(),
+  
+  // Permissions (stored as JSON array for flexibility)
+  scopes: json('scopes').$type<string[]>().default([]),
+  
+  // Usage tracking
+  lastUsedAt: timestamp('last_used_at', { mode: 'date' }),
+  usageCount: integer('usage_count').default(0).notNull(),
+  
+  // Expiration & Revocation
+  expiresAt: timestamp('expires_at', { mode: 'date' }),
+  revokedAt: timestamp('revoked_at', { mode: 'date' }),
+  revokedReason: text('revoked_reason'),
+  
+  // Metadata
+  metadata: json('metadata').$type<Record<string, unknown>>().default({}),
+  
+  ...timestamps,
+}, (table) => ({
+  prefixIdx: index('api_keys_prefix_idx').on(table.keyPrefix),
+  userIdx: index('api_keys_user_idx').on(table.userId),
+  orgIdx: index('api_keys_org_idx').on(table.organizationId),
+  revokedIdx: index('api_keys_revoked_idx').on(table.revokedAt),
+}));
+
+// ============================================================================
+// Audit Logging & Compliance
+// ============================================================================
+
+export const auditLogs = pgTable('audit_logs', {
+  id: id(),
+  
+  // Actor
+  userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
+  organizationId: text('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
+  
+  // Action details
+  action: text('action').notNull(),
+  resourceType: text('resource_type').notNull(),
+  resourceId: text('resource_id'),
+  
+  // Request context
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  
+  // Tracing
+  correlationId: text('correlation_id'),
+  
+  // Additional context
+  metadata: json('metadata').$type<Record<string, unknown>>().default({}),
+  
+  // Timestamp (immutable)
+  timestamp: timestamp('timestamp', { mode: 'date' }).defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('audit_logs_user_idx').on(table.userId),
+  orgIdx: index('audit_logs_org_idx').on(table.organizationId),
+  actionIdx: index('audit_logs_action_idx').on(table.action),
+  correlationIdx: index('audit_logs_correlation_idx').on(table.correlationId),
+  timestampIdx: index('audit_logs_timestamp_idx').on(table.timestamp),
+}));
+
+// ============================================================================
+// Feature Flags
+// ============================================================================
+
+export const featureFlags = pgTable('feature_flags', {
+  id: id(),
+  key: text('key').unique().notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  enabled: boolean('enabled').default(false).notNull(),
+  
+  // Targeting
+  rolloutPercentage: integer('rollout_percentage').default(0).notNull(),
+  allowedPlans: json('allowed_plans').$type<string[]>().default([]),
+  allowedOrgs: json('allowed_orgs').$type<string[]>().default([]),
+  
+  // Metadata
+  metadata: json('metadata').$type<Record<string, unknown>>().default({}),
+  
+  ...timestamps,
+}, (table) => ({
+  keyIdx: uniqueIndex('feature_flags_key_idx').on(table.key),
+  enabledIdx: index('feature_flags_enabled_idx').on(table.enabled),
+}));
+
+// ============================================================================
+// Relations (for Drizzle query builder)
+// ============================================================================
+
+export const usersRelations = relations(users, ({ many }) => ({
+  {% if saas_auth == "authjs" %}
+  accounts: many(accounts),
+  sessions: many(sessions),
+  {% endif %}
+  memberships: many(organizationMemberships),
+  subscriptions: many(subscriptions),
+  apiKeys: many(apiKeys),
+  auditLogs: many(auditLogs),
+}));
+
+export const organizationsRelations = relations(organizations, ({ many, one }) => ({
+  memberships: many(organizationMemberships),
+  subscription: one(subscriptions, {
+    fields: [organizations.id],
+    references: [subscriptions.organizationId],
+  }),
+  apiKeys: many(apiKeys),
+  auditLogs: many(auditLogs),
+}));
+
+export const subscriptionsRelations = relations(subscriptions, ({ one, many }) => ({
+  user: one(users, {
+    fields: [subscriptions.userId],
+    references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [subscriptions.organizationId],
+    references: [organizations.id],
+  }),
+  usageRecords: many(usageRecords),
+  invoices: many(invoices),
+}));
+
+export const organizationMembershipsRelations = relations(organizationMemberships, ({ one }) => ({
+  user: one(users, {
+    fields: [organizationMemberships.userId],
+    references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [organizationMemberships.organizationId],
+    references: [organizations.id],
+  }),
+}));
+
+// ============================================================================
+// Type Exports
+// ============================================================================
+
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+export type Organization = typeof organizations.$inferSelect;
+export type NewOrganization = typeof organizations.$inferInsert;
+export type OrganizationMembership = typeof organizationMemberships.$inferSelect;
+export type Subscription = typeof subscriptions.$inferSelect;
+export type NewSubscription = typeof subscriptions.$inferInsert;
+export type UsageRecord = typeof usageRecords.$inferSelect;
+export type Invoice = typeof invoices.$inferSelect;
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type FeatureFlag = typeof featureFlags.$inferSelect;
+{% endif %}

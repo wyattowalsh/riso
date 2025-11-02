@@ -1,0 +1,257 @@
+{% if saas_starter_module == "enabled" and saas_billing == "paddle" %}
+/**
+ * Paddle Billing Client
+ * 
+ * Modern Paddle SDK patterns:
+ * - Paddle.js overlay checkout (no redirect)
+ * - Automatic tax/VAT handling (Merchant of Record)
+ * - Subscription management
+ * - Webhook signature verification
+ * - Transaction and subscription APIs
+ * 
+ * @see https://developer.paddle.com/
+ */
+
+import { Paddle } from '@paddle/paddle-node-sdk';
+import { env } from '@/lib/env';
+
+// Initialize Paddle client
+export const paddle = new Paddle(env.PADDLE_API_KEY, {
+  environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox',
+});
+
+// ============================================================================
+// Checkout & Payment
+// ============================================================================
+
+/**
+ * Create checkout transaction
+ * 
+ * @example
+ * ```ts
+ * const transaction = await createCheckout({
+ *   priceId: 'pri_xxx',
+ *   customerEmail: user.email,
+ *   customData: { userId: user.id },
+ * });
+ * ```
+ */
+export async function createCheckout(params: {
+  priceId: string;
+  customerEmail?: string;
+  customerId?: string;
+  customData?: Record<string, string>;
+  successUrl?: string;
+}) {
+  return await paddle.transactions.create({
+    items: [
+      {
+        priceId: params.priceId,
+        quantity: 1,
+      },
+    ],
+    customerId: params.customerId,
+    customerEmail: params.customerEmail,
+    customData: params.customData,
+    checkoutSettings: {
+      successUrl: params.successUrl,
+    },
+  });
+}
+
+/**
+ * Generate update payment method URL
+ * Allows customers to update their payment method
+ */
+export async function createUpdatePaymentMethodUrl(subscriptionId: string) {
+  const subscription = await paddle.subscriptions.get(subscriptionId);
+  
+  return await paddle.transactions.create({
+    items: subscription.items,
+    customerId: subscription.customerId,
+  });
+}
+
+// ============================================================================
+// Customer Management
+// ============================================================================
+
+/**
+ * Create customer
+ * 
+ * @example
+ * ```ts
+ * const customer = await createCustomer({
+ *   email: user.email,
+ *   name: user.name,
+ * });
+ * ```
+ */
+export async function createCustomer(params: {
+  email: string;
+  name?: string;
+  customData?: Record<string, string>;
+}) {
+  return await paddle.customers.create({
+    email: params.email,
+    name: params.name,
+    customData: params.customData,
+  });
+}
+
+/**
+ * Get customer by ID
+ */
+export async function getCustomer(customerId: string) {
+  return await paddle.customers.get(customerId);
+}
+
+/**
+ * Update customer
+ */
+export async function updateCustomer(
+  customerId: string,
+  params: {
+    email?: string;
+    name?: string;
+    customData?: Record<string, string>;
+  }
+) {
+  return await paddle.customers.update(customerId, params);
+}
+
+// ============================================================================
+// Subscription Management
+// ============================================================================
+
+/**
+ * Get subscription details
+ */
+export async function getSubscription(subscriptionId: string) {
+  return await paddle.subscriptions.get(subscriptionId);
+}
+
+/**
+ * Cancel subscription
+ * 
+ * @param immediately - If true, cancels immediately. If false, cancels at period end.
+ */
+export async function cancelSubscription(
+  subscriptionId: string,
+  immediately = false
+) {
+  return await paddle.subscriptions.cancel(subscriptionId, {
+    effectiveFrom: immediately ? 'immediately' : 'next_billing_period',
+  });
+}
+
+/**
+ * Pause subscription
+ * Useful for temporary suspensions
+ */
+export async function pauseSubscription(subscriptionId: string) {
+  return await paddle.subscriptions.pause(subscriptionId);
+}
+
+/**
+ * Resume paused subscription
+ */
+export async function resumeSubscription(subscriptionId: string) {
+  return await paddle.subscriptions.resume(subscriptionId);
+}
+
+/**
+ * Update subscription
+ * Changes plan or quantity
+ */
+export async function updateSubscription(params: {
+  subscriptionId: string;
+  priceId?: string;
+  quantity?: number;
+  prorationBillingMode?: 'prorated_immediately' | 'prorated_next_billing_period' | 'full_immediately' | 'full_next_billing_period';
+}) {
+  return await paddle.subscriptions.update(params.subscriptionId, {
+    items: params.priceId ? [{ priceId: params.priceId, quantity: params.quantity || 1 }] : undefined,
+    prorationBillingMode: params.prorationBillingMode,
+  });
+}
+
+// ============================================================================
+// Price & Product Management
+// ============================================================================
+
+/**
+ * Get all active prices
+ */
+export async function getActivePrices() {
+  return await paddle.prices.list({
+    status: 'active',
+  });
+}
+
+/**
+ * Get product details
+ */
+export async function getProduct(productId: string) {
+  return await paddle.products.get(productId);
+}
+
+// ============================================================================
+// Webhook Verification
+// ============================================================================
+
+/**
+ * Verify Paddle webhook signature
+ * 
+ * @example
+ * ```ts
+ * const isValid = await verifyWebhookSignature(
+ *   payload,
+ *   req.headers.get('paddle-signature')!
+ * );
+ * ```
+ */
+export async function verifyWebhookSignature(
+  payload: string,
+  signature: string
+): Promise<boolean> {
+  // Paddle uses HMAC SHA256 signature verification
+  const crypto = await import('crypto');
+  const hmac = crypto.createHmac('sha256', env.PADDLE_WEBHOOK_SECRET);
+  hmac.update(payload);
+  const expectedSignature = hmac.digest('hex');
+  
+  return signature === expectedSignature;
+}
+
+// ============================================================================
+// Error Handling
+// ============================================================================
+
+export class PaddleError extends Error {
+  constructor(
+    message: string,
+    public code?: string
+  ) {
+    super(message);
+    this.name = 'PaddleError';
+  }
+}
+
+/**
+ * Handle Paddle API errors
+ */
+export function handlePaddleError(error: unknown): never {
+  if (error instanceof Error) {
+    throw new PaddleError(error.message);
+  }
+  
+  throw new PaddleError('Unknown Paddle error');
+}
+
+// ============================================================================
+// Type Exports
+// ============================================================================
+
+export type { Paddle };
+{% endif %}
