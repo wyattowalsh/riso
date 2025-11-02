@@ -1,14 +1,19 @@
 {% if codegen_module == 'enabled' %}"""Template registry for discovering and managing module templates.
 
-This module handles discovery of module templates from various sources.
+This module handles discovery of module templates from various sources including
+local directories, Git repositories, and HTTP(S) URLs.
 """
 
 from pathlib import Path
 from typing import Optional
+import subprocess
+import tempfile
+import shutil
 from loguru import logger
 
-from ..models import Template, ModuleType, TemplateType
+from ..models import Template, ModuleType, TemplateType, RegistryType
 from .loader import TemplateLoader
+from .cache import CacheManager
 
 
 class TemplateRegistry:
@@ -24,6 +29,7 @@ class TemplateRegistry:
             cache_dir = Path.home() / ".scaffold" / "templates"
         self.cache_dir = cache_dir
         self.loader = TemplateLoader(cache_dir)
+        self.cache_mgr = CacheManager(cache_dir)
         logger.debug(f"Template registry initialized: {cache_dir}")
     
     def discover_module_templates(self, module_type: ModuleType) -> list[Template]:
@@ -100,4 +106,163 @@ class TemplateRegistry:
         if template_path.exists():
             return self.loader.load_template(template_path)
         return None
+    
+    def fetch_from_git(self, git_url: str, branch: str = "main") -> Template:
+        """Fetch template from Git repository.
+        
+        Args:
+            git_url: Git repository URL
+            branch: Branch to fetch (default: "main")
+            
+        Returns:
+            Loaded template
+            
+        Raises:
+            RuntimeError: If git clone fails
+        """
+        logger.info(f"Fetching template from Git: {git_url}")
+        
+        # Create temp directory for cloning
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            
+            try:
+                # Clone repository
+                result = subprocess.run(
+                    ["git", "clone", "--depth=1", "-b", branch, git_url, str(temp_path / "repo")],
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                )
+                
+                if result.returncode != 0:
+                    raise RuntimeError(f"Git clone failed: {result.stderr}")
+                
+                repo_path = temp_path / "repo"
+                
+                # Load template
+                template = self.loader.load_template(repo_path)
+                
+                # Cache template
+                self.cache_mgr.cache_template(
+                    repo_path,
+                    template.name,
+                    template.version,
+                )
+                
+                logger.info(f"Fetched and cached template '{template.name}' from Git")
+                return template
+                
+            except subprocess.TimeoutExpired:
+                raise RuntimeError("Git clone timed out after 120 seconds")
+            except Exception as e:
+                raise RuntimeError(f"Failed to fetch from Git: {e}")
+    
+    def fetch_from_http(self, http_url: str) -> Template:
+        """Fetch template from HTTP(S) URL.
+        
+        Args:
+            http_url: HTTP(S) URL to download template from
+            
+        Returns:
+            Loaded template
+            
+        Raises:
+            RuntimeError: If download fails
+        """
+        logger.info(f"Fetching template from HTTP: {http_url}")
+        
+        import urllib.request
+        import zipfile
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            
+            try:
+                # Download file
+                zip_path = temp_path / "template.zip"
+                urllib.request.urlretrieve(http_url, zip_path)
+                
+                # Extract
+                extract_path = temp_path / "extracted"
+                extract_path.mkdir()
+                
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    zip_ref.extractall(extract_path)
+                
+                # Find template.yml in extracted files
+                template_dirs = list(extract_path.rglob("template.yml"))
+                if not template_dirs:
+                    raise RuntimeError("No template.yml found in downloaded archive")
+                
+                template_dir = template_dirs[0].parent
+                
+                # Load template
+                template = self.loader.load_template(template_dir)
+                
+                # Cache template
+                self.cache_mgr.cache_template(
+                    template_dir,
+                    template.name,
+                    template.version,
+                )
+                
+                logger.info(f"Fetched and cached template '{template.name}' from HTTP")
+                return template
+                
+            except Exception as e:
+                raise RuntimeError(f"Failed to fetch from HTTP: {e}")
+    
+    def fetch_from_path(self, local_path: Path) -> Template:
+        """Fetch template from local file path.
+        
+        Args:
+            local_path: Local directory path
+            
+        Returns:
+            Loaded template
+            
+        Raises:
+            FileNotFoundError: If path doesn't exist
+        """
+        logger.info(f"Loading template from local path: {local_path}")
+        
+        if not local_path.exists():
+            raise FileNotFoundError(f"Template path not found: {local_path}")
+        
+        # Load template
+        template = self.loader.load_template(local_path)
+        
+        # Cache template if not already cached
+        cached_path = self.cache_dir / template.name
+        if not cached_path.exists():
+            self.cache_mgr.cache_template(
+                local_path,
+                template.name,
+                template.version,
+            )
+            logger.info(f"Cached template '{template.name}' from local path")
+        
+        return template
+    
+    def fetch_template(self, source: str) -> Template:
+        """Fetch template from any source (auto-detect type).
+        
+        Args:
+            source: Template source (local path, Git URL, or HTTP URL)
+            
+        Returns:
+            Loaded template
+        """
+        # Detect source type
+        if source.startswith("http://") or source.startswith("https://"):
+            if source.endswith(".git"):
+                return self.fetch_from_git(source)
+            else:
+                return self.fetch_from_http(source)
+        elif source.startswith("git@") or source.endswith(".git"):
+            return self.fetch_from_git(source)
+        else:
+            # Assume local path
+            return self.fetch_from_path(Path(source))
 {% endif %}
