@@ -1,0 +1,247 @@
+{% if codegen_module == 'enabled' %}"""Plugin system for extending scaffolding functionality.
+
+This module provides a plugin architecture that allows users to:
+- Add custom filters for Jinja2 templates
+- Add custom variable types and validators
+- Add custom hooks and processors
+- Extend CLI commands
+"""
+
+from pathlib import Path
+from typing import Any, Callable, Protocol
+from abc import ABC, abstractmethod
+from loguru import logger
+
+
+class TemplateFilterPlugin(Protocol):
+    """Protocol for template filter plugins."""
+    
+    def get_filters(self) -> dict[str, Callable]:
+        """Return dictionary of filter name to filter function."""
+        ...
+
+
+class VariableValidatorPlugin(Protocol):
+    """Protocol for variable validator plugins."""
+    
+    def validate(self, value: Any, definition: dict) -> tuple[bool, str]:
+        """Validate a variable value.
+        
+        Args:
+            value: Value to validate
+            definition: Variable definition from template
+            
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        ...
+
+
+class GenerationHookPlugin(ABC):
+    """Base class for generation hook plugins."""
+    
+    @abstractmethod
+    def before_generation(self, context: dict[str, Any]) -> dict[str, Any]:
+        """Called before project generation starts.
+        
+        Args:
+            context: Generation context (template, variables, output_dir, etc.)
+            
+        Returns:
+            Modified context
+        """
+        pass
+    
+    @abstractmethod
+    def after_generation(self, context: dict[str, Any], result: Any) -> None:
+        """Called after project generation completes.
+        
+        Args:
+            context: Generation context
+            result: Generation result
+        """
+        pass
+    
+    @abstractmethod
+    def on_error(self, context: dict[str, Any], error: Exception) -> bool:
+        """Called when generation fails.
+        
+        Args:
+            context: Generation context
+            error: Exception that occurred
+            
+        Returns:
+            True if error was handled, False to re-raise
+        """
+        pass
+
+
+class PluginManager:
+    """Manage and execute plugins."""
+    
+    def __init__(self):
+        """Initialize plugin manager."""
+        self.filter_plugins: list[TemplateFilterPlugin] = []
+        self.validator_plugins: list[VariableValidatorPlugin] = []
+        self.hook_plugins: list[GenerationHookPlugin] = []
+        logger.debug("Plugin manager initialized")
+    
+    def register_filter_plugin(self, plugin: TemplateFilterPlugin) -> None:
+        """Register a template filter plugin.
+        
+        Args:
+            plugin: Filter plugin instance
+        """
+        self.filter_plugins.append(plugin)
+        logger.info(f"Registered filter plugin: {plugin.__class__.__name__}")
+    
+    def register_validator_plugin(self, plugin: VariableValidatorPlugin) -> None:
+        """Register a variable validator plugin.
+        
+        Args:
+            plugin: Validator plugin instance
+        """
+        self.validator_plugins.append(plugin)
+        logger.info(f"Registered validator plugin: {plugin.__class__.__name__}")
+    
+    def register_hook_plugin(self, plugin: GenerationHookPlugin) -> None:
+        """Register a generation hook plugin.
+        
+        Args:
+            plugin: Hook plugin instance
+        """
+        self.hook_plugins.append(plugin)
+        logger.info(f"Registered hook plugin: {plugin.__class__.__name__}")
+    
+    def get_all_filters(self) -> dict[str, Callable]:
+        """Get all filters from registered plugins.
+        
+        Returns:
+            Dictionary of filter name to filter function
+        """
+        all_filters = {}
+        for plugin in self.filter_plugins:
+            filters = plugin.get_filters()
+            all_filters.update(filters)
+            logger.debug(f"Loaded {len(filters)} filters from {plugin.__class__.__name__}")
+        return all_filters
+    
+    def execute_before_hooks(self, context: dict[str, Any]) -> dict[str, Any]:
+        """Execute all before-generation hooks.
+        
+        Args:
+            context: Generation context
+            
+        Returns:
+            Modified context
+        """
+        for plugin in self.hook_plugins:
+            try:
+                context = plugin.before_generation(context)
+                logger.debug(f"Executed before hook: {plugin.__class__.__name__}")
+            except Exception as e:
+                logger.error(f"Before hook failed ({plugin.__class__.__name__}): {e}")
+        return context
+    
+    def execute_after_hooks(self, context: dict[str, Any], result: Any) -> None:
+        """Execute all after-generation hooks.
+        
+        Args:
+            context: Generation context
+            result: Generation result
+        """
+        for plugin in self.hook_plugins:
+            try:
+                plugin.after_generation(context, result)
+                logger.debug(f"Executed after hook: {plugin.__class__.__name__}")
+            except Exception as e:
+                logger.error(f"After hook failed ({plugin.__class__.__name__}): {e}")
+    
+    def handle_error(self, context: dict[str, Any], error: Exception) -> bool:
+        """Execute error handlers.
+        
+        Args:
+            context: Generation context
+            error: Exception that occurred
+            
+        Returns:
+            True if error was handled, False otherwise
+        """
+        for plugin in self.hook_plugins:
+            try:
+                if plugin.on_error(context, error):
+                    logger.info(f"Error handled by: {plugin.__class__.__name__}")
+                    return True
+            except Exception as e:
+                logger.error(f"Error handler failed ({plugin.__class__.__name__}): {e}")
+        return False
+    
+    def load_plugins_from_directory(self, plugin_dir: Path) -> None:
+        """Load plugins from a directory.
+        
+        Args:
+            plugin_dir: Directory containing plugin modules
+        """
+        if not plugin_dir.exists():
+            logger.warning(f"Plugin directory not found: {plugin_dir}")
+            return
+        
+        import importlib.util
+        import sys
+        
+        for plugin_file in plugin_dir.glob("*.py"):
+            if plugin_file.name.startswith("_"):
+                continue
+            
+            try:
+                # Load module
+                spec = importlib.util.spec_from_file_location(
+                    f"scaffold_plugin_{plugin_file.stem}",
+                    plugin_file
+                )
+                if spec and spec.loader:
+                    module = importlib.util.module_from_spec(spec)
+                    sys.modules[spec.name] = module
+                    spec.loader.exec_module(module)
+                    
+                    # Look for plugin classes
+                    for attr_name in dir(module):
+                        attr = getattr(module, attr_name)
+                        if isinstance(attr, type):
+                            if issubclass(attr, GenerationHookPlugin) and attr != GenerationHookPlugin:
+                                self.register_hook_plugin(attr())
+                                logger.info(f"Loaded plugin: {attr_name} from {plugin_file.name}")
+            except Exception as e:
+                logger.error(f"Failed to load plugin {plugin_file.name}: {e}")
+
+
+# Built-in example plugins
+
+class TimestampFilterPlugin:
+    """Add timestamp-related filters."""
+    
+    def get_filters(self) -> dict[str, Callable]:
+        from datetime import datetime
+        
+        return {
+            "timestamp": lambda: datetime.now().isoformat(),
+            "year": lambda: datetime.now().year,
+            "date": lambda fmt="%Y-%m-%d": datetime.now().strftime(fmt),
+        }
+
+
+class SlugifyFilterPlugin:
+    """Add slugification filters."""
+    
+    def get_filters(self) -> dict[str, Callable]:
+        import re
+        
+        def slugify(text: str) -> str:
+            """Convert text to URL-safe slug."""
+            text = text.lower()
+            text = re.sub(r'[^\w\s-]', '', text)
+            text = re.sub(r'[-\s]+', '-', text)
+            return text.strip('-')
+        
+        return {"slugify": slugify}
+{% endif %}
