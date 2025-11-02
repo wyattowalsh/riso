@@ -210,7 +210,8 @@ if [ -z "$BRANCH_NUMBER" ]; then
     fi
 fi
 
-FEATURE_NUM=$(printf "%03d" "$BRANCH_NUMBER")
+# Force decimal interpretation to avoid octal conversion (010 -> 8)
+FEATURE_NUM=$(printf "%03d" "$((10#$BRANCH_NUMBER))")
 BRANCH_NAME="${FEATURE_NUM}-${BRANCH_SUFFIX}"
 
 # GitHub enforces a 244-byte limit on branch names
