@@ -1,0 +1,140 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""API response models - disabled for this render."""
+{%- else %}
+"""Response models for API endpoints.
+
+All response models use Pydantic for validation and automatic
+OpenAPI schema generation.
+"""
+from __future__ import annotations
+
+from pydantic import BaseModel, Field
+
+
+class ErrorResponse(BaseModel):
+    """Standard error response format.
+    
+    Used for all error responses (4xx and 5xx status codes).
+    Provides consistent error structure across the API.
+    """
+    
+    detail: str | list[dict] = Field(
+        ...,
+        description="Error message or list of validation errors",
+        examples=["Resource not found", [{"loc": ["body", "name"], "msg": "field required"}]]
+    )
+    status_code: int | None = Field(
+        default=None,
+        ge=400,
+        le=599,
+        description="HTTP status code (optional, for logging)"
+    )
+    request_id: str | None = Field(
+        default=None,
+        description="Request identifier for tracing (UUID format)"
+    )
+
+
+class HealthResponse(BaseModel):
+    """Health check response model.
+    
+    Returns application health status, version information,
+    and optional dependency health checks.
+    """
+    
+    status: str = Field(
+        ...,
+        description="Overall health status: healthy, unhealthy, degraded",
+        examples=["healthy"]
+    )
+    version: str = Field(
+        ...,
+        description="Application version (semantic versioning)",
+        examples=["0.1.0"]
+    )
+    timestamp: str = Field(
+        ...,
+        description="Response timestamp (ISO 8601 format)",
+        examples=["2025-11-02T12:00:00Z"]
+    )
+    checks: dict[str, str] | None = Field(
+        default=None,
+        description="Individual health check results (name -> status)",
+        examples=[{"database": "pass", "cache": "pass"}]
+    )
+
+
+class ReadinessResponse(BaseModel):
+    """Readiness probe response for Kubernetes.
+    
+    Indicates whether the application is ready to serve traffic.
+    """
+    
+    status: str = Field(
+        ...,
+        description="Readiness status: ready, not_ready",
+        examples=["ready"]
+    )
+    reason: str | None = Field(
+        default=None,
+        description="Reason if not ready",
+        examples=["Waiting for database migration"]
+    )
+
+
+class LivenessResponse(BaseModel):
+    """Liveness probe response for Kubernetes.
+    
+    Indicates whether the application is alive (should always respond with 200).
+    """
+    
+    status: str = Field(
+        default="alive",
+        description="Liveness status (always 'alive' if responding)",
+        examples=["alive"]
+    )
+
+
+class ExampleResponse(BaseModel):
+    """Response model for example entities.
+    
+    Represents a complete example with all fields including
+    auto-generated ID and timestamps.
+    """
+    
+    id: str = Field(
+        ...,
+        description="Unique identifier (UUID format)",
+        examples=["550e8400-e29b-41d4-a716-446655440000"]
+    )
+    name: str = Field(
+        ...,
+        description="Example name",
+        examples=["Test Example"]
+    )
+    value: int = Field(
+        ...,
+        description="Example integer value",
+        examples=[42]
+    )
+    description: str | None = Field(
+        default=None,
+        description="Optional description",
+        examples=["This is an example"]
+    )
+    tags: list[str] = Field(
+        default_factory=list,
+        description="List of tags",
+        examples=[["demo", "test"]]
+    )
+    created_at: str = Field(
+        ...,
+        description="Creation timestamp (ISO 8601)",
+        examples=["2025-11-02T12:00:00Z"]
+    )
+    updated_at: str = Field(
+        ...,
+        description="Last update timestamp (ISO 8601)",
+        examples=["2025-11-02T12:00:00Z"]
+    )
+{%- endif %}

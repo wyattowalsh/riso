@@ -1,0 +1,17 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""API middleware module - disabled for this render."""
+{%- else %}
+"""API middleware components.
+
+This package contains middleware for cross-cutting concerns like CORS,
+error handling, logging, and request tracking.
+"""
+from __future__ import annotations
+
+__all__ = ["cors", "errors"]
+
+try:
+    from . import cors, errors
+except ImportError:  # pragma: no cover
+    pass
+{%- endif %}

@@ -1,0 +1,360 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""Example endpoint tests - disabled for this render."""
+{%- else %}
+"""Tests for example CRUD endpoints.
+
+Tests cover all CRUD operations:
+- List examples with pagination
+- Create example with validation
+- Get specific example by ID
+- Update example (partial updates)
+- Delete example
+"""
+from __future__ import annotations
+
+import pytest
+from fastapi.testclient import TestClient
+
+
+@pytest.fixture(autouse=True)
+def clear_examples(client: TestClient) -> None:
+    """Clear all examples before each test.
+    
+    Ensures tests start with clean state.
+    Uses the DELETE /examples/ endpoint if available.
+    """
+    try:
+        client.delete("/examples/")
+    except Exception:  # pragma: no cover
+        pass
+
+
+def test_list_examples_empty(client: TestClient) -> None:
+    """Test listing examples when none exist.
+    
+    Verifies that:
+    - Returns 200 OK
+    - Returns empty list
+    - Handles pagination parameters
+    """
+    response = client.get("/examples/")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) == 0
+
+
+def test_create_example(client: TestClient, sample_example_data: dict) -> None:
+    """Test creating a new example.
+    
+    Verifies that:
+    - Returns 201 Created
+    - Includes generated ID
+    - Includes timestamps
+    - Returns correct data
+    """
+    response = client.post("/examples/", json=sample_example_data)
+    
+    assert response.status_code == 201
+    data = response.json()
+    
+    # Check required fields
+    assert "id" in data
+    assert "name" in data
+    assert "value" in data
+    assert "created_at" in data
+    assert "updated_at" in data
+    
+    # Validate data matches request
+    assert data["name"] == sample_example_data["name"]
+    assert data["value"] == sample_example_data["value"]
+    assert data["description"] == sample_example_data["description"]
+    assert data["tags"] == sample_example_data["tags"]
+    
+    # Check timestamps are ISO 8601 format
+    assert "T" in data["created_at"]
+    assert "T" in data["updated_at"]
+
+
+def test_create_example_minimal(client: TestClient) -> None:
+    """Test creating example with only required fields.
+    
+    Verifies that optional fields can be omitted.
+    """
+    minimal_data = {
+        "name": "Minimal Example",
+        "value": 1
+    }
+    
+    response = client.post("/examples/", json=minimal_data)
+    
+    assert response.status_code == 201
+    data = response.json()
+    
+    assert data["name"] == "Minimal Example"
+    assert data["value"] == 1
+    assert data["description"] is None
+    assert data["tags"] == []
+
+
+def test_create_example_validation_error(client: TestClient) -> None:
+    """Test validation errors on invalid input.
+    
+    Verifies that:
+    - Returns 422 Unprocessable Entity
+    - Includes detailed validation errors
+    - Rejects empty names
+    - Rejects negative values
+    """
+    # Test empty name
+    invalid_data = {"name": "", "value": 42}
+    response = client.post("/examples/", json=invalid_data)
+    assert response.status_code == 422
+    
+    # Test negative value
+    invalid_data = {"name": "Test", "value": -1}
+    response = client.post("/examples/", json=invalid_data)
+    assert response.status_code == 422
+    
+    # Test missing required field
+    invalid_data = {"name": "Test"}  # missing value
+    response = client.post("/examples/", json=invalid_data)
+    assert response.status_code == 422
+
+
+def test_get_example(client: TestClient, sample_example_data: dict) -> None:
+    """Test retrieving a specific example by ID.
+    
+    Verifies that:
+    - Returns 200 OK
+    - Returns correct example data
+    - Includes all fields
+    """
+    # Create example first
+    create_response = client.post("/examples/", json=sample_example_data)
+    example_id = create_response.json()["id"]
+    
+    # Get example
+    response = client.get(f"/examples/{example_id}")
+    
+    assert response.status_code == 200
+    data = response.json()
+    
+    assert data["id"] == example_id
+    assert data["name"] == sample_example_data["name"]
+    assert data["value"] == sample_example_data["value"]
+
+
+def test_get_example_not_found(client: TestClient) -> None:
+    """Test 404 error for nonexistent example.
+    
+    Verifies that:
+    - Returns 404 Not Found
+    - Includes error message
+    """
+    response = client.get("/examples/nonexistent-id")
+    
+    assert response.status_code == 404
+    data = response.json()
+    
+    assert "detail" in data
+    assert "not found" in data["detail"].lower()
+
+
+def test_update_example(client: TestClient, sample_example_data: dict) -> None:
+    """Test updating an existing example.
+    
+    Verifies that:
+    - Returns 200 OK
+    - Updates specified fields
+    - Updates updated_at timestamp
+    - Preserves other fields
+    """
+    # Create example
+    create_response = client.post("/examples/", json=sample_example_data)
+    example_id = create_response.json()["id"]
+    original_created_at = create_response.json()["created_at"]
+    
+    # Update example
+    update_data = {"name": "Updated Name", "value": 100}
+    response = client.put(f"/examples/{example_id}", json=update_data)
+    
+    assert response.status_code == 200
+    data = response.json()
+    
+    # Check updated fields
+    assert data["name"] == "Updated Name"
+    assert data["value"] == 100
+    
+    # Check preserved fields
+    assert data["description"] == sample_example_data["description"]
+    assert data["tags"] == sample_example_data["tags"]
+    
+    # Check timestamps
+    assert data["created_at"] == original_created_at  # Should not change
+    assert data["updated_at"] != original_created_at  # Should be updated
+
+
+def test_update_example_partial(client: TestClient, sample_example_data: dict) -> None:
+    """Test partial update of example.
+    
+    Verifies that only provided fields are updated.
+    """
+    # Create example
+    create_response = client.post("/examples/", json=sample_example_data)
+    example_id = create_response.json()["id"]
+    original_value = create_response.json()["value"]
+    
+    # Update only name
+    update_data = {"name": "Only Name Changed"}
+    response = client.put(f"/examples/{example_id}", json=update_data)
+    
+    assert response.status_code == 200
+    data = response.json()
+    
+    assert data["name"] == "Only Name Changed"
+    assert data["value"] == original_value  # Unchanged
+
+
+def test_update_example_not_found(client: TestClient) -> None:
+    """Test 404 error when updating nonexistent example."""
+    update_data = {"name": "Updated"}
+    response = client.put("/examples/nonexistent-id", json=update_data)
+    
+    assert response.status_code == 404
+
+
+def test_delete_example(client: TestClient, sample_example_data: dict) -> None:
+    """Test deleting an example.
+    
+    Verifies that:
+    - Returns 204 No Content
+    - Example is actually deleted
+    - Subsequent GET returns 404
+    """
+    # Create example
+    create_response = client.post("/examples/", json=sample_example_data)
+    example_id = create_response.json()["id"]
+    
+    # Delete example
+    response = client.delete(f"/examples/{example_id}")
+    
+    assert response.status_code == 204
+    assert response.content == b""
+    
+    # Verify deleted
+    get_response = client.get(f"/examples/{example_id}")
+    assert get_response.status_code == 404
+
+
+def test_delete_example_not_found(client: TestClient) -> None:
+    """Test 404 error when deleting nonexistent example."""
+    response = client.delete("/examples/nonexistent-id")
+    
+    assert response.status_code == 404
+
+
+def test_list_examples_with_pagination(client: TestClient) -> None:
+    """Test pagination of example list.
+    
+    Verifies that:
+    - limit parameter works
+    - offset parameter works
+    - Returns correct subset of results
+    """
+    # Create multiple examples
+    for i in range(15):
+        client.post("/examples/", json={"name": f"Example {i}", "value": i})
+    
+    # Test limit
+    response = client.get("/examples/?limit=5")
+    assert response.status_code == 200
+    assert len(response.json()) == 5
+    
+    # Test offset
+    response = client.get("/examples/?offset=10")
+    assert response.status_code == 200
+    assert len(response.json()) == 5  # 15 total - 10 offset = 5 remaining
+    
+    # Test limit and offset together
+    response = client.get("/examples/?limit=3&offset=5")
+    assert response.status_code == 200
+    assert len(response.json()) == 3
+
+
+def test_list_examples_pagination_bounds(client: TestClient) -> None:
+    """Test pagination parameter validation.
+    
+    Verifies that invalid pagination parameters are rejected.
+    """
+    # Test limit too high (max is 100)
+    response = client.get("/examples/?limit=1000")
+    assert response.status_code == 422
+    
+    # Test negative limit
+    response = client.get("/examples/?limit=-1")
+    assert response.status_code == 422
+    
+    # Test negative offset
+    response = client.get("/examples/?offset=-1")
+    assert response.status_code == 422
+
+
+def test_example_name_validation(client: TestClient) -> None:
+    """Test name field validation.
+    
+    Verifies that:
+    - Whitespace-only names are rejected
+    - Names are trimmed
+    - Length constraints are enforced
+    """
+    # Test whitespace-only name
+    response = client.post("/examples/", json={"name": "   ", "value": 42})
+    assert response.status_code == 422
+    
+    # Test name too long (max is 100 characters)
+    long_name = "x" * 101
+    response = client.post("/examples/", json={"name": long_name, "value": 42})
+    assert response.status_code == 422
+
+
+def test_example_tags_validation(client: TestClient) -> None:
+    """Test tags field validation.
+    
+    Verifies that:
+    - Maximum 10 tags allowed
+    - Each tag has length constraints (1-50 characters)
+    """
+    # Test too many tags (max is 10)
+    too_many_tags = [f"tag{i}" for i in range(11)]
+    response = client.post("/examples/", json={"name": "Test", "value": 42, "tags": too_many_tags})
+    assert response.status_code == 422
+    
+    # Test tag too long (max is 50 characters per tag)
+    long_tag = "x" * 51
+    response = client.post("/examples/", json={"name": "Test", "value": 42, "tags": [long_tag]})
+    assert response.status_code == 422
+
+
+def test_openapi_schema_includes_examples_endpoints(client: TestClient) -> None:
+    """Test that OpenAPI schema includes example endpoints.
+    
+    Verifies that all example endpoints are documented.
+    """
+    response = client.get("/openapi.json")
+    
+    assert response.status_code == 200
+    schema = response.json()
+    
+    # Check that paths are defined
+    assert "/examples/" in schema["paths"]
+    assert "/examples/{example_id}" in schema["paths"]
+    
+    # Check HTTP methods
+    assert "get" in schema["paths"]["/examples/"]
+    assert "post" in schema["paths"]["/examples/"]
+    assert "get" in schema["paths"]["/examples/{example_id}"]
+    assert "put" in schema["paths"]["/examples/{example_id}"]
+    assert "delete" in schema["paths"]["/examples/{example_id}"]
+{%- endif %}

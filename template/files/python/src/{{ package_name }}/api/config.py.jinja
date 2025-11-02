@@ -1,0 +1,99 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""API configuration module - disabled for this render."""
+
+class Settings:
+    """Placeholder settings when API track is disabled."""
+    pass
+{%- else %}
+"""Application configuration using Pydantic Settings.
+
+Environment variables are automatically loaded from .env file.
+All settings can be overridden via environment variables.
+"""
+from __future__ import annotations
+
+from functools import lru_cache
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    """Application settings loaded from environment variables.
+    
+    Environment variables use the format: {APP_NAME}_{SETTING_NAME}
+    Example: MYAPP_PORT, MYAPP_LOG_LEVEL
+    
+    Configuration is loaded in order of precedence:
+    1. Environment variables
+    2. .env file
+    3. Default values
+    """
+    
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+    
+    # Server configuration
+    host: str = Field(
+        default="0.0.0.0",
+        description="Server bind address (0.0.0.0 for all interfaces, 127.0.0.1 for localhost only)"
+    )
+    port: int = Field(
+        default=8000,
+        ge=1024,
+        le=65535,
+        description="Server port (1024-65535)"
+    )
+    reload: bool = Field(
+        default=True,
+        description="Enable auto-reload on code changes (development only, disable in production)"
+    )
+    
+    # CORS configuration
+    cors_origins: list[str] = Field(
+        default=["http://localhost:3000"],
+        description="Allowed CORS origins (use specific domains in production, never use wildcard '*')"
+    )
+    
+    # Application metadata
+    app_name: str = Field(
+        default="{{ project_name }}",
+        description="Application name displayed in API documentation"
+    )
+    version: str = Field(
+        default="0.1.0",
+        description="Application version (semantic versioning)"
+    )
+    
+    # Logging configuration
+    log_level: str = Field(
+        default="INFO",
+        description="Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL"
+    )
+    environment: str = Field(
+        default="development",
+        description="Deployment environment: development, staging, production"
+    )
+    
+    def is_production(self) -> bool:
+        """Check if running in production environment."""
+        return self.environment.lower() == "production"
+    
+    def is_development(self) -> bool:
+        """Check if running in development environment."""
+        return self.environment.lower() == "development"
+
+
+@lru_cache
+def get_settings() -> Settings:
+    """Get cached settings instance.
+    
+    Settings are cached for performance. To reload settings,
+    clear the cache with get_settings.cache_clear().
+    """
+    return Settings()
+{%- endif %}

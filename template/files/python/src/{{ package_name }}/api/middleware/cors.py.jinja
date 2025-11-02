@@ -1,0 +1,37 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""CORS middleware - disabled for this render."""
+{%- else %}
+"""CORS (Cross-Origin Resource Sharing) middleware configuration.
+
+Configures allowed origins, methods, and headers for cross-origin requests.
+Uses settings from config.py for flexible deployment configuration.
+"""
+from __future__ import annotations
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from {{ package_name }}.api.config import Settings
+
+
+def configure_cors(app: FastAPI, settings: Settings) -> None:
+    """Configure CORS middleware on the FastAPI application.
+    
+    Args:
+        app: FastAPI application instance
+        settings: Application settings containing CORS configuration
+    
+    Security Notes:
+        - Never use ["*"] (wildcard) in production
+        - Be explicit about allowed origins
+        - Credentials should only be enabled for trusted origins
+    """
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],  # Allow all HTTP methods (GET, POST, PUT, DELETE, etc.)
+        allow_headers=["*"],  # Allow all headers
+        expose_headers=["X-Request-ID"],  # Expose request tracking header
+    )
+{%- endif %}

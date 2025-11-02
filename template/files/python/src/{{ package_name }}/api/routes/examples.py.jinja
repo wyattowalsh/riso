@@ -1,0 +1,247 @@
+{%- if api_tracks | lower not in ["python", "python+node"] %}
+"""Example CRUD routes - disabled for this render."""
+{%- else %}
+"""Example CRUD endpoints demonstrating FastAPI patterns.
+
+This module provides complete CRUD operations for example entities:
+- List with pagination
+- Create with validation
+- Read by ID
+- Update with partial data
+- Delete
+
+Uses in-memory storage for demo purposes. Replace with database in production.
+"""
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Dict
+from uuid import uuid4
+
+from fastapi import APIRouter, HTTPException, Query, status
+
+from {{ package_name }}.api.models.requests import (
+    ExampleCreateRequest,
+    ExampleUpdateRequest,
+)
+from {{ package_name }}.api.models.responses import ExampleResponse
+
+router = APIRouter(prefix="/examples", tags=["Examples"])
+
+# In-memory storage for demo (replace with database in real applications)
+_examples: Dict[str, Dict] = {}
+
+
+@router.get(
+    "/",
+    response_model=list[ExampleResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List examples",
+    description="Retrieve all examples with pagination support",
+)
+async def list_examples(
+    limit: int = Query(default=10, ge=1, le=100, description="Maximum number of results"),
+    offset: int = Query(default=0, ge=0, description="Number of results to skip"),
+) -> list[ExampleResponse]:
+    """List all examples with pagination.
+    
+    Supports pagination through limit and offset parameters.
+    Results are returned in creation order.
+    
+    Args:
+        limit: Maximum number of results to return (1-100)
+        offset: Number of results to skip (0+)
+    
+    Returns:
+        List of example responses
+    
+    Example:
+        GET /examples/?limit=10&offset=0
+        Response: [{"id": "...", "name": "Example 1", ...}, ...]
+    """
+    examples = list(_examples.values())
+    return examples[offset : offset + limit]
+
+
+@router.post(
+    "/",
+    response_model=ExampleResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create example",
+    description="Create a new example with validation",
+)
+async def create_example(request: ExampleCreateRequest) -> ExampleResponse:
+    """Create a new example.
+    
+    Validates the request data and creates a new example with:
+    - Auto-generated UUID
+    - Creation and update timestamps
+    - Validated fields from request
+    
+    Args:
+        request: Example creation data with validation
+    
+    Returns:
+        Created example with generated ID and timestamps
+    
+    Example:
+        POST /examples/
+        Body: {"name": "Test", "value": 42}
+        Response: {"id": "...", "name": "Test", "value": 42, "created_at": "...", ...}
+    """
+    example_id = str(uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    
+    example = {
+        "id": example_id,
+        "name": request.name,
+        "value": request.value,
+        "description": request.description,
+        "tags": request.tags or [],
+        "created_at": now,
+        "updated_at": now,
+    }
+    
+    _examples[example_id] = example
+    return ExampleResponse(**example)
+
+
+@router.get(
+    "/{example_id}",
+    response_model=ExampleResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get example",
+    description="Retrieve a specific example by ID",
+)
+async def get_example(example_id: str) -> ExampleResponse:
+    """Get a specific example by ID.
+    
+    Args:
+        example_id: UUID of the example to retrieve
+    
+    Returns:
+        Example details
+    
+    Raises:
+        HTTPException: 404 if example not found
+    
+    Example:
+        GET /examples/{id}
+        Response: {"id": "...", "name": "Test", "value": 42, ...}
+    """
+    if example_id not in _examples:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Example with ID {example_id} not found"
+        )
+    
+    return ExampleResponse(**_examples[example_id])
+
+
+@router.put(
+    "/{example_id}",
+    response_model=ExampleResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Update example",
+    description="Update an existing example (partial updates supported)",
+)
+async def update_example(
+    example_id: str,
+    request: ExampleUpdateRequest
+) -> ExampleResponse:
+    """Update an existing example.
+    
+    Supports partial updates - only provided fields are updated.
+    Updates the updated_at timestamp automatically.
+    
+    Args:
+        example_id: UUID of the example to update
+        request: Fields to update (all optional)
+    
+    Returns:
+        Updated example
+    
+    Raises:
+        HTTPException: 404 if example not found
+    
+    Example:
+        PUT /examples/{id}
+        Body: {"name": "Updated"}
+        Response: {"id": "...", "name": "Updated", "value": 42, ...}
+    """
+    if example_id not in _examples:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Example with ID {example_id} not found"
+        )
+    
+    example = _examples[example_id]
+    
+    # Update only provided fields
+    if request.name is not None:
+        example["name"] = request.name
+    if request.value is not None:
+        example["value"] = request.value
+    if request.description is not None:
+        example["description"] = request.description
+    if request.tags is not None:
+        example["tags"] = request.tags
+    
+    # Update timestamp
+    example["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    return ExampleResponse(**example)
+
+
+@router.delete(
+    "/{example_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete example",
+    description="Delete an existing example",
+)
+async def delete_example(example_id: str) -> None:
+    """Delete an example.
+    
+    Args:
+        example_id: UUID of the example to delete
+    
+    Returns:
+        None (204 No Content)
+    
+    Raises:
+        HTTPException: 404 if example not found
+    
+    Example:
+        DELETE /examples/{id}
+        Response: 204 No Content
+    """
+    if example_id not in _examples:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Example with ID {example_id} not found"
+        )
+    
+    del _examples[example_id]
+
+
+@router.delete(
+    "/",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Clear all examples",
+    description="Delete all examples (for testing purposes)",
+)
+async def clear_examples() -> None:
+    """Clear all examples.
+    
+    Useful for testing and development. Should be removed in production
+    or protected with authentication.
+    
+    Returns:
+        None (204 No Content)
+    
+    Example:
+        DELETE /examples/
+        Response: 204 No Content
+    """
+    _examples.clear()
+{%- endif %}
