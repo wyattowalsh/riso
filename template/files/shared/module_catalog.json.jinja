@@ -180,6 +180,32 @@
         "Conditional Node.js job support",
         "Retry logic with exponential backoff"
       ]
+    },
+    {
+      "name": "changelog_release",
+      "prompt_key": "changelog_module",
+      "default_state": "disabled",
+      "selected_state": "{{ 'enabled' if changelog_module | lower == 'enabled' else 'disabled' }}",
+      "description": "Automated changelog generation and release management with semantic versioning, conventional commits, and registry publishing.",
+      "dependencies": ["commitlint", "semantic-release", "commitizen"],
+      "docs_path": "docs/modules/changelog-release.md",
+      "ci_jobs": ["release"],
+      "validation_commands": [
+        "uv run python scripts/release/validate-commit.py",
+        "npx semantic-release --dry-run"
+      ],
+      "features": [
+        "Conventional commit message enforcement via Git hooks",
+        "Automatic semantic versioning based on commit types",
+        "Human-readable changelog generation with categorized changes",
+        "GitHub Release creation with version tags",
+        "Breaking change detection with migration guide templates",
+        "Multi-registry publishing (PyPI, npm, Docker Hub)",
+        "Monorepo support with independent package versioning",
+        "Pre-release version support (alpha, beta, rc)",
+        "Release process completion in <10 minutes",
+        "Comprehensive logging with correlation IDs"
+      ]
     }
   ]
 }

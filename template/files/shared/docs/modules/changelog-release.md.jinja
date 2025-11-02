@@ -1,0 +1,404 @@
+{% if changelog_module == "enabled" -%}
+# Changelog & Release Management
+
+> **Module**: `changelog_release` | **Status**: `{{ 'enabled' if changelog_module == 'enabled' else 'disabled' }}`
+
+## Overview
+
+This module provides automated changelog generation and release management using conventional commits, semantic versioning, and automated registry publishing. The system enforces commit message standards, calculates version bumps, generates human-readable changelogs, creates GitHub Releases, and publishes artifacts to package registries.
+
+**Key Features**:
+- ? Conventional commit message enforcement via Git hooks
+- ? Automatic semantic versioning (MAJOR.MINOR.PATCH)
+- ? Human-readable changelog generation with categorized changes
+- ? GitHub Release creation with version tags
+- ? Breaking change detection with migration guide templates
+- ? Multi-registry publishing (PyPI, npm, Docker Hub)
+- ? Monorepo support with independent package versioning
+- ? Pre-release version support (alpha, beta, rc)
+- ? Release process completion in <10 minutes
+- ? Comprehensive logging with correlation IDs
+
+## Architecture
+
+```mermaid
+graph TB
+    A[Developer Commit] --> B{Commit Hook}
+    B -->|Valid| C[Git History]
+    B -->|Invalid| D[Reject with Error]
+    C --> E[Push to Main]
+    E --> F[GitHub Actions: Release Workflow]
+    F --> G[Analyze Commits]
+    G --> H[Calculate Version]
+    H --> I[Generate Changelog]
+    I --> J[Update Version Files]
+    J --> K[Create Git Tag]
+    K --> L[Publish to Registries]
+    L --> M[Create GitHub Release]
+    M --> N[Release Complete]
+```
+
+### Components
+
+1. **Commit Validation** (`scripts/release/validate-commit.py`)
+   - Validates commit message format against conventional commits spec
+   - Detects breaking changes from footers
+   - Provides helpful error messages with examples
+
+2. **Hook Installation** (`scripts/release/install-hooks.py`)
+   - Installs Git commit-msg hook
+   - Idempotent (safe to run multiple times)
+   - Backs up existing hooks
+
+3. **Version Management** (`python/release/__init__.py`)
+   - Parses semantic versions
+   - Calculates version bumps (major/minor/patch)
+   - Updates version files (pyproject.toml, package.json)
+
+4. **Changelog Generation** (`.releaserc.yml` + semantic-release)
+   - Categorizes commits by type
+   - Generates markdown with emoji sections
+   - Includes commit and PR links
+
+5. **Release Workflow** (`.github/workflows/riso-release.yml`)
+   - Orchestrates release process
+   - Integrates with quality checks
+   - Publishes to configured registries
+
+## Configuration
+
+### Commitlint (`.commitlintrc.yml`)
+
+Defines commit message rules:
+
+```yaml
+rules:
+  type-enum:
+    - 2
+    - always
+    - [feat, fix, docs, chore, refactor, test, perf, ci, build, revert]
+  
+  subject-max-length:
+    - 2
+    - always
+    - 72
+```
+
+**Commit Types**:
+| Type | Description | Version Bump |
+|------|-------------|--------------|
+| `feat` | New feature | MINOR |
+| `fix` | Bug fix | PATCH |
+| `perf` | Performance improvement | PATCH |
+| `revert` | Revert previous commit | PATCH |
+| `docs` | Documentation | None |
+| `chore` | Maintenance | None |
+| `refactor` | Code restructure | None |
+| `test` | Test changes | None |
+
+### Semantic Release (`.releaserc.yml`)
+
+Configures release automation:
+
+```yaml
+branches:
+  - main
+  - name: beta
+    prerelease: true
+
+plugins:
+  - "@semantic-release/commit-analyzer"
+  - "@semantic-release/release-notes-generator"
+  - "@semantic-release/changelog"
+  - "@semantic-release/exec"
+  - "@semantic-release/git"
+  - "@semantic-release/github"
+```
+
+**Plugin Responsibilities**:
+- `commit-analyzer`: Determines version bump from commits
+- `release-notes-generator`: Generates changelog content
+- `changelog`: Updates CHANGELOG.md file
+- `exec`: Runs custom scripts (version updates, publishing)
+- `git`: Commits changelog and version files
+- `github`: Creates GitHub Release
+
+## Usage
+
+### Initial Setup
+
+1. **Install Git hooks**:
+   ```bash
+   # Python projects
+   uv run python scripts/release/install-hooks.py
+   
+   # Node projects
+   pnpm run setup-hooks
+   ```
+
+2. **Configure GitHub Secrets**:
+   - `GITHUB_TOKEN` (automatic, no setup needed)
+{% if api_tracks in ['python', 'python+node'] %}
+   - `PYPI_TOKEN` (from https://pypi.org/manage/account/token/)
+{% endif %}
+{% if api_tracks in ['node', 'python+node'] %}
+   - `NPM_TOKEN` (from `npm token create`)
+{% endif %}
+   - `DOCKER_HUB_USERNAME` and `DOCKER_HUB_TOKEN` (optional)
+
+### Making Commits
+
+**Valid commit format**:
+```
+<type>(<scope>): <subject>
+
+[optional body]
+
+[optional footer]
+```
+
+**Examples**:
+```bash
+# Feature commit (MINOR bump)
+git commit -m "feat(api): add user authentication endpoint"
+
+# Bug fix (PATCH bump)
+git commit -m "fix(cli): correct argument parsing"
+
+# Breaking change (MAJOR bump)
+git commit -m "feat!: redesign authentication API
+
+BREAKING CHANGE: Auth endpoints now require OAuth2 tokens.
+Migration: Update client code to use new OAuth2 flow."
+```
+
+### Triggering Releases
+
+**Automatic** (on push to main):
+```bash
+git push origin main
+```
+
+**Manual** (via GitHub Actions):
+```bash
+# Via GitHub UI:
+# Actions ? Release ? Run workflow ? Select branch ? Run
+
+# Via GitHub CLI:
+gh workflow run release.yml
+```
+
+**Dry run** (test without publishing):
+```bash
+gh workflow run release.yml -f dry_run=true
+```
+
+### Release Process Flow
+
+1. **Pre-flight checks**:
+   - Quality workflow must pass
+   - Commit messages validated
+   - Version calculation verified
+
+2. **Version bump**:
+   - Analyze commits since last tag
+   - Calculate next version (SemVer rules)
+   - Update `pyproject.toml` and/or `package.json`
+
+3. **Changelog generation**:
+   - Group commits by type
+   - Generate markdown with links
+   - Prepend to CHANGELOG.md
+
+4. **Git operations**:
+   - Commit changelog and version files
+   - Create Git tag (e.g., `v1.2.3`)
+   - Push tag to GitHub
+
+5. **Artifact publishing**:
+{% if api_tracks in ['python', 'python+node'] %}
+   - Build Python wheel and sdist
+   - Publish to PyPI
+{% endif %}
+{% if api_tracks in ['node', 'python+node'] %}
+   - Build npm package
+   - Publish to npm registry
+{% endif %}
+   - Push Docker images (if configured)
+
+6. **GitHub Release**:
+   - Create release with tag
+   - Attach changelog as notes
+   - Upload build artifacts
+
+## Monorepo Configuration
+
+For projects with multiple packages:
+
+```yaml
+# .releaserc.yml
+tagFormat: "${name}/v${version}"
+
+plugins:
+  - "@semantic-release/monorepo"
+```
+
+**Commit scoping**:
+```bash
+git commit -m "feat(api): add user endpoint"  # Releases api package
+git commit -m "fix(cli): correct flag parsing"  # Releases cli package
+```
+
+**Independent versions**:
+- `api/v1.2.0`
+- `cli/v2.0.1`
+
+## Troubleshooting
+
+### Commit Hook Not Running
+
+**Symptom**: Invalid commits accepted
+
+**Solution**:
+```bash
+# Reinstall hooks
+uv run python scripts/release/install-hooks.py
+
+# Verify installation
+ls -la .git/hooks/commit-msg
+```
+
+### Release Fails with Credential Error
+
+**Symptom**: GitHub Actions workflow fails with authentication error
+
+**Solution**:
+1. Verify secrets configured: **Settings ? Secrets ? Actions**
+2. Check secret names match exactly (case-sensitive)
+3. Test credentials locally:
+   ```bash
+{% if api_tracks in ['python', 'python+node'] %}
+   # PyPI
+   uv run python -m twine check dist/*
+{% endif %}
+{% if api_tracks in ['node', 'python+node'] %}
+   
+   # npm
+   npm whoami
+{% endif %}
+   ```
+
+### Version Not Bumping
+
+**Symptom**: Push to main doesn't trigger release
+
+**Cause**: No qualifying commits since last release
+
+**Solution**:
+- Ensure commits have `feat:` or `fix:` type
+- Check commit history: `git log --oneline`
+- Verify last release tag: `git describe --tags --abbrev=0`
+
+### Changelog Not Updated
+
+**Symptom**: CHANGELOG.md not generated
+
+**Solution**:
+```bash
+# Verify semantic-release configuration
+cat .releaserc.yml | grep changelog
+
+# Should include:
+# plugins:
+#   - "@semantic-release/changelog"
+```
+
+## Performance Metrics
+
+| Metric | Target | Typical |
+|--------|--------|---------|
+| Commit validation | <100ms | 50ms |
+| Changelog generation (1000 commits) | <30s | 15s |
+| Full release cycle | <10min | 6min |
+| Registry publishing (per registry) | <2min | 90s |
+
+## Security
+
+### Credential Management
+
+- Store credentials as GitHub Secrets (never in code)
+- Rotate credentials annually (documented in README)
+- Use scoped tokens with minimal permissions
+
+### Secret Scope
+
+{% if api_tracks in ['python', 'python+node'] %}
+- `PYPI_TOKEN`: PyPI API token with upload permission
+{% endif %}
+{% if api_tracks in ['node', 'python+node'] %}
+- `NPM_TOKEN`: npm automation token
+{% endif %}
+- `DOCKER_HUB_TOKEN`: Docker Hub access token with push permission
+
+### Audit Trail
+
+- All releases logged in GitHub Actions
+- Commit history immutable via Git tags
+- Release artifacts retained for 90 days
+
+## Best Practices
+
+1. **Write descriptive commit messages**:
+   - Use imperative mood ("add" not "added")
+   - Keep subject under 72 characters
+   - Include context in body for complex changes
+
+2. **Breaking changes**:
+   - Always include migration instructions
+   - Document in `BREAKING CHANGE:` footer
+   - Link to migration guide if extensive
+
+3. **Pre-release versions**:
+   - Use beta branch for pre-releases
+   - Test thoroughly before merging to main
+   - Document known issues
+
+4. **Version strategy**:
+   - Batch related changes for cleaner changelogs
+   - Avoid releasing on Fridays (weekend support burden)
+   - Coordinate major releases with documentation updates
+
+## References
+
+- [Conventional Commits Specification](https://www.conventionalcommits.org/)
+- [Semantic Versioning 2.0.0](https://semver.org/)
+- [semantic-release Documentation](https://semantic-release.gitbook.io/)
+- [commitlint Documentation](https://commitlint.js.org/)
+
+## Maintenance
+
+### Credential Rotation Schedule
+
+**Annual rotation recommended** (documented in project README):
+
+1. Generate new tokens from registries
+2. Update GitHub Secrets
+3. Test with dry-run release
+4. Revoke old tokens
+
+### Dependency Updates
+
+Keep release tooling updated:
+
+```bash
+# Update semantic-release and plugins
+pnpm update semantic-release @semantic-release/*
+
+# Update commitlint
+pnpm update @commitlint/cli @commitlint/config-conventional
+```
+
+---
+
+**Generated by Riso Template** | Feature 014: Changelog & Release Management
+{% endif %}

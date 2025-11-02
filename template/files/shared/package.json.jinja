@@ -1,0 +1,74 @@
+{% if api_tracks in ['node', 'python+node'] or changelog_module == "enabled" -%}
+{
+  "name": "{{ project_slug }}",
+  "version": "0.1.0",
+  "description": "{{ project_name }}",
+  "private": true,
+{% if project_layout == "monorepo" %}
+  "workspaces": [
+{% if api_tracks in ['node', 'python+node'] %}
+    "apps/api-node",
+{% endif %}
+{% if docs_site == "fumadocs" %}
+    "apps/docs-fumadocs",
+{% endif %}
+    "packages/*"
+  ],
+{% endif %}
+  "scripts": {
+{% if changelog_module == "enabled" %}
+    "setup-hooks": "uv run python scripts/release/install-hooks.py",
+    "commit": "git-cz",
+    "release": "semantic-release",
+    "release:dry-run": "semantic-release --dry-run",
+{% endif %}
+{% if api_tracks in ['node', 'python+node'] %}
+    "dev": "pnpm --filter api-node run dev",
+    "build": "pnpm --filter api-node run build",
+    "test": "pnpm --filter api-node run test",
+{% endif %}
+{% if docs_site == "fumadocs" %}
+    "docs:dev": "pnpm --filter docs-fumadocs run dev",
+    "docs:build": "pnpm --filter docs-fumadocs run build",
+{% endif %}
+    "format": "prettier --write \"**/*.{js,ts,json,md}\"",
+    "lint": "eslint --fix \"**/*.{js,ts}\""
+  },
+  "devDependencies": {
+{% if changelog_module == "enabled" %}
+    "@commitlint/cli": "^18.0.0",
+    "@commitlint/config-conventional": "^18.0.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^11.1.0",
+    "@semantic-release/exec": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^9.2.6",
+    "@semantic-release/npm": "^11.0.2",
+    "@semantic-release/release-notes-generator": "^12.1.0",
+    "commitizen": "^4.3.0",
+    "cz-conventional-changelog": "^3.3.0",
+    "semantic-release": "^23.0.0",
+{% endif %}
+{% if api_tracks in ['node', 'python+node'] %}
+    "@types/node": "^20.11.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.2.4",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0",
+{% endif %}
+    "husky": "^9.0.0"
+  },
+{% if changelog_module == "enabled" %}
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
+  },
+{% endif %}
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0"
+}
+{% endif %}
