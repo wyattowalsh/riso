@@ -1,0 +1,301 @@
+{% if feature_flags == "posthog" -%}
+/**
+ * PostHog Feature Flags Integration
+ * 
+ * Product analytics platform with feature flags, A/B testing, and session replay.
+ * Combines feature management with powerful analytics.
+ * 
+ * @see https://posthog.com
+ */
+
+import { PostHog } from 'posthog-node';
+
+// Environment validation
+const requiredEnv = {
+  POSTHOG_API_KEY: process.env.POSTHOG_API_KEY,
+  POSTHOG_HOST: process.env.POSTHOG_HOST || 'https://app.posthog.com',
+};
+
+Object.entries(requiredEnv).forEach(([key, value]) => {
+  if (!value && key !== 'POSTHOG_HOST') {
+    throw new Error(`PostHog: Missing required environment variable: ${key}`);
+  }
+});
+
+/**
+ * Initialize PostHog client
+ */
+export const posthog = new PostHog(
+  requiredEnv.POSTHOG_API_KEY!,
+  {
+    host: requiredEnv.POSTHOG_HOST,
+  }
+);
+
+/**
+ * User properties for targeting
+ */
+export interface UserProperties {
+  email?: string;
+  name?: string;
+  company?: string;
+  plan?: string;
+  [key: string]: any;
+}
+
+/**
+ * Check if feature flag is enabled for user
+ */
+export async function isFeatureEnabled(
+  flagKey: string,
+  userId: string,
+  properties?: UserProperties
+): Promise<boolean> {
+  try {
+    const isEnabled = await posthog.isFeatureEnabled(
+      flagKey,
+      userId,
+      properties
+    );
+    return isEnabled ?? false;
+  } catch (error) {
+    console.error('PostHog: Feature check failed', error);
+    return false; // Fail open
+  }
+}
+
+/**
+ * Get feature flag variant (for multivariate tests)
+ */
+export async function getFeatureVariant(
+  flagKey: string,
+  userId: string,
+  properties?: UserProperties
+): Promise<string | boolean> {
+  try {
+    const variant = await posthog.getFeatureFlag(
+      flagKey,
+      userId,
+      properties
+    );
+    return variant ?? false;
+  } catch (error) {
+    console.error('PostHog: Get variant failed', error);
+    return false;
+  }
+}
+
+/**
+ * Get all feature flags for user
+ */
+export async function getAllFlags(
+  userId: string,
+  properties?: UserProperties
+): Promise<Record<string, boolean | string>> {
+  try {
+    const flags = await posthog.getAllFlags(userId, properties);
+    return flags ?? {};
+  } catch (error) {
+    console.error('PostHog: Get all flags failed', error);
+    return {};
+  }
+}
+
+/**
+ * Track event (for analytics)
+ */
+export function captureEvent(
+  userId: string,
+  eventName: string,
+  properties?: Record<string, any>
+): void {
+  try {
+    posthog.capture({
+      distinctId: userId,
+      event: eventName,
+      properties,
+    });
+  } catch (error) {
+    console.error('PostHog: Capture event failed', error);
+  }
+}
+
+/**
+ * Identify user (set user properties)
+ */
+export function identifyUser(
+  userId: string,
+  properties: UserProperties
+): void {
+  try {
+    posthog.identify({
+      distinctId: userId,
+      properties,
+    });
+  } catch (error) {
+    console.error('PostHog: Identify user failed', error);
+  }
+}
+
+/**
+ * Create user alias
+ */
+export function aliasUser(userId: string, alias: string): void {
+  try {
+    posthog.alias({
+      distinctId: userId,
+      alias,
+    });
+  } catch (error) {
+    console.error('PostHog: Alias user failed', error);
+  }
+}
+
+/**
+ * Group user (for B2B features)
+ */
+export function groupUser(
+  userId: string,
+  groupType: string,
+  groupKey: string,
+  groupProperties?: Record<string, any>
+): void {
+  try {
+    posthog.groupIdentify({
+      groupType,
+      groupKey,
+      properties: groupProperties,
+    });
+
+    posthog.capture({
+      distinctId: userId,
+      event: '$group_identify',
+      properties: {
+        $group_type: groupType,
+        $group_key: groupKey,
+      },
+    });
+  } catch (error) {
+    console.error('PostHog: Group user failed', error);
+  }
+}
+
+/**
+ * Helper: Feature flag with event tracking
+ */
+export async function checkAndTrack(
+  flagKey: string,
+  userId: string,
+  properties?: UserProperties
+): Promise<boolean> {
+  const isEnabled = await isFeatureEnabled(flagKey, userId, properties);
+
+  // Track feature flag evaluation
+  captureEvent(userId, `$feature_flag_called`, {
+    $feature_flag: flagKey,
+    $feature_flag_response: isEnabled,
+  });
+
+  return isEnabled;
+}
+
+/**
+ * Helper: A/B test variant with tracking
+ */
+export async function getVariantAndTrack(
+  testKey: string,
+  userId: string,
+  properties?: UserProperties
+): Promise<string | boolean> {
+  const variant = await getFeatureVariant(testKey, userId, properties);
+
+  // Track variant assignment
+  captureEvent(userId, `$ab_test_viewed`, {
+    $test_name: testKey,
+    $variant: variant,
+  });
+
+  return variant;
+}
+
+/**
+ * Flush events (ensure delivery before shutdown)
+ */
+export async function flush(): Promise<void> {
+  try {
+    await posthog.flush();
+  } catch (error) {
+    console.error('PostHog: Flush failed', error);
+  }
+}
+
+/**
+ * Shutdown client
+ */
+export async function shutdown(): Promise<void> {
+  try {
+    await posthog.shutdown();
+  } catch (error) {
+    console.error('PostHog: Shutdown failed', error);
+  }
+}
+
+/**
+ * Health check
+ */
+export async function healthCheck(): Promise<boolean> {
+  try {
+    // PostHog Node SDK doesn't have a health check endpoint
+    // We'll just verify the client is initialized
+    return !!posthog;
+  } catch (error) {
+    console.error('PostHog: Health check failed', error);
+    return false;
+  }
+}
+
+/**
+ * Common event tracking helpers
+ */
+export const trackPageView = (userId: string, page: string, properties?: Record<string, any>) => {
+  captureEvent(userId, '$pageview', { $current_url: page, ...properties });
+};
+
+export const trackSignup = (userId: string, properties?: UserProperties) => {
+  captureEvent(userId, 'signup', properties);
+  identifyUser(userId, properties || {});
+};
+
+export const trackPurchase = (userId: string, amount: number, currency: string, properties?: Record<string, any>) => {
+  captureEvent(userId, 'purchase', { amount, currency, ...properties });
+};
+
+export const trackError = (userId: string, error: Error, context?: Record<string, any>) => {
+  captureEvent(userId, 'error', {
+    error_name: error.name,
+    error_message: error.message,
+    error_stack: error.stack,
+    ...context,
+  });
+};
+
+export default {
+  posthog,
+  isFeatureEnabled,
+  getFeatureVariant,
+  getAllFlags,
+  captureEvent,
+  identifyUser,
+  aliasUser,
+  groupUser,
+  checkAndTrack,
+  getVariantAndTrack,
+  flush,
+  shutdown,
+  healthCheck,
+  trackPageView,
+  trackSignup,
+  trackPurchase,
+  trackError,
+};
+{%- endif %}
