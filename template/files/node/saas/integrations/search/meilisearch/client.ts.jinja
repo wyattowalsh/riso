@@ -1,0 +1,258 @@
+{% if search_provider == "meilisearch" -%}
+/**
+ * Meilisearch Integration
+ * 
+ * Open-source search engine with instant search, typo tolerance, and filters.
+ * Lightweight alternative to Algolia with self-hosting option.
+ * 
+ * Features:
+ * - Instant search with typo tolerance
+ * - Faceted search and filtering
+ * - Geo search capabilities
+ * - Multilingual search support
+ * - Custom ranking rules
+ * - Document-based indexing
+ * 
+ * Environment Variables:
+ * - MEILISEARCH_HOST: Meilisearch instance URL (e.g., http://localhost:7700)
+ * - MEILISEARCH_API_KEY: Master or search API key
+ * 
+ * @example
+ * ```typescript
+ * import { meilisearch, searchDocuments, addDocuments } from './integrations/meilisearch';
+ * 
+ * // Add documents to index
+ * await addDocuments('products', [
+ *   { id: '1', name: 'iPhone 15', price: 999, category: 'electronics' },
+ *   { id: '2', name: 'MacBook Pro', price: 2499, category: 'electronics' }
+ * ]);
+ * 
+ * // Search with filters
+ * const results = await searchDocuments('products', 'iphone', {
+ *   filter: ['category = electronics', 'price < 1500'],
+ *   attributesToHighlight: ['name']
+ * });
+ * ```
+ */
+
+import { MeiliSearch, Index, SearchResponse } from 'meilisearch';
+
+// Validate required environment variables
+if (!process.env.MEILISEARCH_HOST) {
+  throw new Error('MEILISEARCH_HOST environment variable is required');
+}
+
+if (!process.env.MEILISEARCH_API_KEY) {
+  throw new Error('MEILISEARCH_API_KEY environment variable is required');
+}
+
+/**
+ * Meilisearch client instance
+ */
+export const meilisearch = new MeiliSearch({
+  host: process.env.MEILISEARCH_HOST,
+  apiKey: process.env.MEILISEARCH_API_KEY,
+});
+
+/**
+ * Get or create an index
+ */
+export async function getIndex<T = any>(indexName: string): Promise<Index<T>> {
+  try {
+    return meilisearch.index<T>(indexName);
+  } catch (error) {
+    console.error(`Error getting index ${indexName}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Search documents in an index
+ */
+export async function searchDocuments<T = any>(
+  indexName: string,
+  query: string,
+  options: {
+    filter?: string | string[];
+    facets?: string[];
+    attributesToRetrieve?: string[];
+    attributesToHighlight?: string[];
+    attributesToCrop?: string[];
+    cropLength?: number;
+    limit?: number;
+    offset?: number;
+    sort?: string[];
+  } = {}
+): Promise<SearchResponse<T>> {
+  try {
+    const index = await getIndex<T>(indexName);
+    return await index.search(query, options);
+  } catch (error) {
+    console.error(`Error searching in ${indexName}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Add or replace documents in an index
+ */
+export async function addDocuments<T = any>(
+  indexName: string,
+  documents: T[],
+  options?: { primaryKey?: string }
+): Promise<{ taskUid: number }> {
+  try {
+    const index = await getIndex<T>(indexName);
+    return await index.addDocuments(documents, options);
+  } catch (error) {
+    console.error(`Error adding documents to ${indexName}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Update documents in an index
+ */
+export async function updateDocuments<T = any>(
+  indexName: string,
+  documents: Partial<T>[],
+  options?: { primaryKey?: string }
+): Promise<{ taskUid: number }> {
+  try {
+    const index = await getIndex<T>(indexName);
+    return await index.updateDocuments(documents, options);
+  } catch (error) {
+    console.error(`Error updating documents in ${indexName}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Delete documents by ID
+ */
+export async function deleteDocuments(
+  indexName: string,
+  documentIds: string[] | number[]
+): Promise<{ taskUid: number }> {
+  try {
+    const index = await getIndex(indexName);
+    return await index.deleteDocuments(documentIds);
+  } catch (error) {
+    console.error(`Error deleting documents from ${indexName}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Delete all documents from an index
+ */
+export async function clearIndex(indexName: string): Promise<{ taskUid: number }> {
+  try {
+    const index = await getIndex(indexName);
+    return await index.deleteAllDocuments();
+  } catch (error) {
+    console.error(`Error clearing index ${indexName}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Configure index settings
+ */
+export async function configureIndex(
+  indexName: string,
+  settings: {
+    searchableAttributes?: string[];
+    filterableAttributes?: string[];
+    sortableAttributes?: string[];
+    rankingRules?: string[];
+    stopWords?: string[];
+    synonyms?: Record<string, string[]>;
+    distinctAttribute?: string;
+    displayedAttributes?: string[];
+  }
+): Promise<{ taskUid: number }> {
+  try {
+    const index = await getIndex(indexName);
+    return await index.updateSettings(settings);
+  } catch (error) {
+    console.error(`Error configuring index ${indexName}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Get index statistics
+ */
+export async function getIndexStats(indexName: string) {
+  try {
+    const index = await getIndex(indexName);
+    const stats = await index.getStats();
+    return stats;
+  } catch (error) {
+    console.error(`Error getting stats for ${indexName}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Wait for a task to complete
+ */
+export async function waitForTask(taskUid: number): Promise<void> {
+  try {
+    await meilisearch.waitForTask(taskUid);
+  } catch (error) {
+    console.error(`Error waiting for task ${taskUid}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Faceted search helper
+ */
+export async function facetedSearch<T = any>(
+  indexName: string,
+  query: string,
+  facets: string[],
+  filters?: string | string[]
+): Promise<{
+  hits: T[];
+  facetDistribution: Record<string, Record<string, number>>;
+  totalHits: number;
+}> {
+  try {
+    const response = await searchDocuments<T>(indexName, query, {
+      facets,
+      filter: filters,
+    });
+
+    return {
+      hits: response.hits,
+      facetDistribution: response.facetDistribution || {},
+      totalHits: response.estimatedTotalHits || 0,
+    };
+  } catch (error) {
+    console.error(`Error performing faceted search:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Health check for Meilisearch
+ */
+export async function healthCheck(): Promise<{ status: 'healthy' | 'unhealthy'; version?: string }> {
+  try {
+    const health = await meilisearch.health();
+    const version = await meilisearch.getVersion();
+    
+    return {
+      status: health.status === 'available' ? 'healthy' : 'unhealthy',
+      version: version.pkgVersion,
+    };
+  } catch (error) {
+    console.error('Meilisearch health check failed:', error);
+    return { status: 'unhealthy' };
+  }
+}
+
+{% endif -%}

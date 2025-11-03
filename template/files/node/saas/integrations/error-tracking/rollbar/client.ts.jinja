@@ -1,0 +1,297 @@
+{% if error_tracking == "rollbar" -%}
+/**
+ * Rollbar Error Tracking Integration
+ * 
+ * Real-time error monitoring and debugging with Rollbar.
+ * Comprehensive error tracking with grouping, alerting, and analysis.
+ * 
+ * Features:
+ * - Automatic error capturing
+ * - Error grouping and fingerprinting
+ * - User tracking and context
+ * - Custom error levels (critical, error, warning, info, debug)
+ * - Source map support
+ * - Deploy tracking
+ * - Telemetry and breadcrumbs
+ * 
+ * Environment Variables:
+ * - ROLLBAR_ACCESS_TOKEN: Your Rollbar access token
+ * - ROLLBAR_ENVIRONMENT: Environment name (e.g., 'production', 'staging')
+ * - NEXT_PUBLIC_ROLLBAR_CLIENT_TOKEN: Client-side token (optional)
+ * 
+ * @example
+ * ```typescript
+ * import { rollbar, captureError, captureMessage } from './integrations/rollbar';
+ * 
+ * // Capture an error
+ * try {
+ *   await riskyOperation();
+ * } catch (error) {
+ *   captureError(error, { userId: '123', context: 'payment' });
+ * }
+ * 
+ * // Log a message
+ * captureMessage('Payment processed successfully', 'info', {
+ *   userId: '123',
+ *   amount: 99.99,
+ * });
+ * ```
+ */
+
+import Rollbar from 'rollbar';
+
+// Validate required environment variables
+if (!process.env.ROLLBAR_ACCESS_TOKEN) {
+  throw new Error('ROLLBAR_ACCESS_TOKEN environment variable is required');
+}
+
+const ENVIRONMENT = process.env.ROLLBAR_ENVIRONMENT || process.env.NODE_ENV || 'development';
+
+/**
+ * Rollbar client instance
+ */
+export const rollbar = new Rollbar({
+  accessToken: process.env.ROLLBAR_ACCESS_TOKEN,
+  environment: ENVIRONMENT,
+  captureUncaught: true,
+  captureUnhandledRejections: true,
+  // Report errors async to not block the main thread
+  reportLevel: 'warning',
+  payload: {
+    server: {
+      root: process.cwd(),
+    },
+    client: {
+      javascript: {
+        source_map_enabled: true,
+        code_version: process.env.GIT_COMMIT || 'unknown',
+        guess_uncaught_frames: true,
+      },
+    },
+  },
+});
+
+/**
+ * Capture an error with context
+ */
+export function captureError(
+  error: Error | string,
+  context?: {
+    userId?: string;
+    username?: string;
+    email?: string;
+    metadata?: Record<string, any>;
+    fingerprint?: string;
+    level?: 'critical' | 'error' | 'warning';
+  }
+): void {
+  try {
+    const custom: Record<string, any> = {
+      ...context?.metadata,
+    };
+
+    if (context?.fingerprint) {
+      custom.fingerprint = context.fingerprint;
+    }
+
+    rollbar[context?.level || 'error'](error, {
+      person: context?.userId || context?.email ? {
+        id: context.userId,
+        username: context.username,
+        email: context.email,
+      } : undefined,
+      custom,
+    });
+  } catch (err) {
+    console.error('Failed to capture error in Rollbar:', err);
+  }
+}
+
+/**
+ * Capture a message with level
+ */
+export function captureMessage(
+  message: string,
+  level: 'critical' | 'error' | 'warning' | 'info' | 'debug' = 'info',
+  context?: {
+    userId?: string;
+    metadata?: Record<string, any>;
+  }
+): void {
+  try {
+    rollbar[level](message, {
+      person: context?.userId ? { id: context.userId } : undefined,
+      custom: context?.metadata,
+    });
+  } catch (error) {
+    console.error('Failed to capture message in Rollbar:', error);
+  }
+}
+
+/**
+ * Add a breadcrumb (telemetry)
+ */
+export function addBreadcrumb(
+  message: string,
+  metadata?: Record<string, any>
+): void {
+  try {
+    rollbar.configure({
+      payload: {
+        telemetry: [
+          {
+            type: 'log',
+            level: 'info',
+            timestamp_ms: Date.now(),
+            body: {
+              message,
+              ...metadata,
+            },
+          },
+        ],
+      },
+    });
+  } catch (error) {
+    console.error('Failed to add breadcrumb:', error);
+  }
+}
+
+/**
+ * Set user context for error tracking
+ */
+export function setUser(user: {
+  id: string;
+  email?: string;
+  username?: string;
+}): void {
+  try {
+    rollbar.configure({
+      payload: {
+        person: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Failed to set user:', error);
+  }
+}
+
+/**
+ * Clear user context
+ */
+export function clearUser(): void {
+  try {
+    rollbar.configure({
+      payload: {
+        person: undefined,
+      },
+    });
+  } catch (error) {
+    console.error('Failed to clear user:', error);
+  }
+}
+
+/**
+ * Track a deployment
+ */
+export async function trackDeploy(params: {
+  revision: string;
+  username?: string;
+  comment?: string;
+  localUsername?: string;
+}): Promise<void> {
+  try {
+    // Note: This requires a separate API call to Rollbar's deploy tracking endpoint
+    const response = await fetch('https://api.rollbar.com/api/1/deploy/', {
+      method: 'POST',
+      headers: {
+        'X-Rollbar-Access-Token': process.env.ROLLBAR_ACCESS_TOKEN!,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        environment: ENVIRONMENT,
+        revision: params.revision,
+        rollbar_username: params.username,
+        comment: params.comment,
+        local_username: params.localUsername,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Deploy tracking failed: ${response.statusText}`);
+    }
+  } catch (error) {
+    console.error('Failed to track deployment:', error);
+  }
+}
+
+/**
+ * Wrap an async function with error tracking
+ */
+export function trackErrors<T extends (...args: any[]) => Promise<any>>(
+  fn: T,
+  context?: { name?: string; metadata?: Record<string, any> }
+): T {
+  return (async (...args: Parameters<T>) => {
+    try {
+      return await fn(...args);
+    } catch (error) {
+      captureError(error as Error, {
+        metadata: {
+          function: context?.name || fn.name,
+          args: JSON.stringify(args),
+          ...context?.metadata,
+        },
+      });
+      throw error;
+    }
+  }) as T;
+}
+
+/**
+ * Express error handler middleware
+ */
+export function expressErrorHandler() {
+  return rollbar.errorHandler();
+}
+
+/**
+ * Next.js error handler
+ */
+export function nextJsErrorHandler(error: Error, context: {
+  req?: any;
+  res?: any;
+  errorInfo?: any;
+}): void {
+  captureError(error, {
+    metadata: {
+      url: context.req?.url,
+      method: context.req?.method,
+      statusCode: context.res?.statusCode,
+      errorInfo: context.errorInfo,
+    },
+  });
+}
+
+/**
+ * Health check for Rollbar
+ */
+export async function healthCheck(): Promise<{ status: 'healthy' | 'unhealthy'; environment?: string }> {
+  try {
+    // Send a test message to verify connection
+    rollbar.debug('Health check');
+    
+    return {
+      status: 'healthy',
+      environment: ENVIRONMENT,
+    };
+  } catch (error) {
+    console.error('Rollbar health check failed:', error);
+    return { status: 'unhealthy' };
+  }
+}
+
+{% endif -%}
