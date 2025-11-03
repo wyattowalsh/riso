@@ -1,0 +1,223 @@
+{% if cache == 'vercel-kv' -%}
+/**
+ * Vercel KV Integration
+ * 
+ * Redis-compatible edge key-value store with global replication.
+ * Built specifically for serverless and edge functions.
+ * 
+ * Features:
+ * - Redis-compatible API
+ * - Global replication at Vercel's edge network
+ * - Built for serverless/edge functions
+ * - Automatic scaling
+ * - Sub-10ms latency worldwide
+ * - Pipeline support for batch operations
+ * - Scan operations for debugging
+ * 
+ * @example
+ * ```typescript
+ * import { kv, get, set, cached } from './integrations/cache/vercel-kv';
+ * 
+ * // Set value
+ * await set('user:123', { name: 'John', email: 'john@example.com' });
+ * 
+ * // Get value
+ * const user = await get<User>('user:123');
+ * 
+ * // Cached function (auto cache-or-compute)
+ * const expensive = cached('expensive-key', async () => {
+ *   // Expensive computation
+ *   return result;
+ * }, { ttl: 3600 });
+ * ```
+ */
+
+import { kv as vercelKv } from '@vercel/kv';
+
+// Environment variables
+const KV_REST_API_URL = process.env.KV_REST_API_URL;
+const KV_REST_API_TOKEN = process.env.KV_REST_API_TOKEN;
+
+if (!KV_REST_API_URL || !KV_REST_API_TOKEN) {
+  throw new Error('Vercel KV credentials (KV_REST_API_URL, KV_REST_API_TOKEN) are required');
+}
+
+// Export the Vercel KV client
+export const kv = vercelKv;
+
+/**
+ * Get value by key
+ */
+export async function get<T = any>(key: string): Promise<T | null> {
+  try {
+    return await kv.get<T>(key);
+  } catch (error) {
+    console.error(`Failed to get key ${key} from Vercel KV:`, error);
+    return null;
+  }
+}
+
+/**
+ * Set value with optional TTL (seconds)
+ */
+export async function set<T = any>(key: string, value: T, ttl?: number): Promise<void> {
+  try {
+    if (ttl) {
+      await kv.setex(key, ttl, value);
+    } else {
+      await kv.set(key, value);
+    }
+  } catch (error) {
+    console.error(`Failed to set key ${key} in Vercel KV:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Delete key
+ */
+export async function del(key: string): Promise<void> {
+  try {
+    await kv.del(key);
+  } catch (error) {
+    console.error(`Failed to delete key ${key} from Vercel KV:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Check if key exists
+ */
+export async function exists(key: string): Promise<boolean> {
+  try {
+    const result = await kv.exists(key);
+    return result === 1;
+  } catch (error) {
+    console.error(`Failed to check existence of key ${key}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Get multiple keys at once
+ */
+export async function mget<T = any>(...keys: string[]): Promise<(T | null)[]> {
+  try {
+    return await kv.mget<T>(...keys);
+  } catch (error) {
+    console.error(`Failed to mget keys from Vercel KV:`, error);
+    return keys.map(() => null);
+  }
+}
+
+/**
+ * Set multiple keys at once
+ */
+export async function mset(keyValues: Record<string, any>): Promise<void> {
+  try {
+    const entries = Object.entries(keyValues).flat();
+    await kv.mset(...entries);
+  } catch (error) {
+    console.error('Failed to mset keys in Vercel KV:', error);
+    throw error;
+  }
+}
+
+/**
+ * Increment counter
+ */
+export async function incr(key: string, by: number = 1): Promise<number> {
+  try {
+    return await kv.incrby(key, by);
+  } catch (error) {
+    console.error(`Failed to increment key ${key}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Cached function - cache result or compute if not cached
+ */
+export async function cached<T>(
+  key: string,
+  compute: () => Promise<T> | T,
+  options: { ttl?: number } = {}
+): Promise<T> {
+  // Try to get from cache
+  const cached = await get<T>(key);
+  if (cached !== null) {
+    return cached;
+  }
+
+  // Compute value
+  const value = await compute();
+
+  // Store in cache
+  await set(key, value, options.ttl);
+
+  return value;
+}
+
+/**
+ * Scan keys by pattern
+ */
+export async function scan(pattern: string = '*', limit: number = 100): Promise<string[]> {
+  try {
+    const [_, keys] = await kv.scan(0, { match: pattern, count: limit });
+    return keys;
+  } catch (error) {
+    console.error(`Failed to scan keys with pattern ${pattern}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Delete keys by pattern
+ */
+export async function delPattern(pattern: string): Promise<number> {
+  try {
+    const keys = await scan(pattern);
+    if (keys.length === 0) return 0;
+    
+    await kv.del(...keys);
+    return keys.length;
+  } catch (error) {
+    console.error(`Failed to delete keys with pattern ${pattern}:`, error);
+    return 0;
+  }
+}
+
+/**
+ * Get TTL of a key
+ */
+export async function ttl(key: string): Promise<number> {
+  try {
+    return await kv.ttl(key);
+  } catch (error) {
+    console.error(`Failed to get TTL of key ${key}:`, error);
+    return -1;
+  }
+}
+
+/**
+ * Pipeline operations (batch multiple commands)
+ */
+export function pipeline() {
+  return kv.pipeline();
+}
+
+/**
+ * Health check
+ */
+export async function healthCheck(): Promise<boolean> {
+  try {
+    await kv.ping();
+    return true;
+  } catch (error) {
+    console.error('Vercel KV health check failed:', error);
+    return false;
+  }
+}
+
+export default kv;
+{%- endif %}
