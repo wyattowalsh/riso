@@ -18,6 +18,8 @@ Auto-generated from all feature plans. Last updated: 2025-10-30
 - Git repository (commit history, tags), GitHub Secrets (registry credentials), generated files (CHANGELOG.md, package versions) (014-changelog-release-management)
 - Python 3.11+ (uv-managed), optional Node.js 20 LTS (when api_tracks includes node) (016-conventional-commit-tooling)
 - Version-controlled configuration files (.commitlintrc.yml, pyproject.toml), local log files (optional) (016-conventional-commit-tooling)
+- Documentation frameworks: Sphinx + Shibuya theme (Python), Fumadocs (Node/Next.js), Docusaurus (Node/React) with unified Markdown/RST/MDX transformation, link checking (3× retry, 1s→2s→4s backoff), accessibility validation (WCAG 2.1 AA), Mermaid diagrams, API playgrounds (Swagger/ReDoc), versioning support, deployment configs (GitHub Pages/Netlify/Vercel/Cloudflare) (018-docs-sites-overhaul)
+- Documentation validation: Link checker, accessibility scanner, image validator, cross-reference validator, performance monitoring (90s build target), health checks, metrics collection (018-docs-sites-overhaul)
 
 ## Project Structure
 
@@ -48,12 +50,40 @@ ls -la .github/workflows/
 # Validate rendered workflows with actionlint
 actionlint .github/workflows/riso-*.yml
 
+# Documentation build commands (in rendered project)
+# Sphinx (Python projects)
+uv run make -f Makefile.docs docs          # Build docs
+uv run make -f Makefile.docs linkcheck     # Check links
+uv run make -f Makefile.docs doctest       # Run doctests
+uv run make -f Makefile.docs clean-docs    # Clean build
+
+# Fumadocs (Node projects)
+pnpm docs:build                             # Build docs
+pnpm docs:dev                               # Dev server
+pnpm docs:lint                              # Lint docs
+
+# Docusaurus (Node projects)
+npm run docs:build                          # Build docs
+npm run docs:serve                          # Serve built docs
+npm run docs:deploy                         # Deploy docs
+
+# Documentation validation and utilities
+python scripts/ci/docs_health_check.py                    # Health check
+python scripts/ci/docs_metrics.py --output metrics.json   # Collect metrics
+python scripts/ci/docs_config_compare.py proj1/ proj2/    # Compare configs
+python scripts/ci/validate_docs_config.py                 # Validate config
+python scripts/ci/test_content_transformation.py          # Test transformers
+./scripts/docs-helper.sh setup                            # Setup environment
+./scripts/docs-helper.sh build                            # Build docs
+./scripts/docs-helper.sh validate                         # Validate docs
+./scripts/docs-helper.sh clean                            # Clean artifacts
+
 ## Code Style
 
 Python 3.11 (uv-managed), optional Node.js 20 LTS: Follow standard conventions
 
 ## Recent Changes
-- 016-conventional-commit-tooling: Added Python 3.11+ (uv-managed), optional Node.js 20 LTS (when api_tracks includes node)
+- 018-docs-sites-overhaul: Comprehensive documentation infrastructure with Sphinx/Fumadocs/Docusaurus, unified content transformation (Markdown ↔ RST ↔ MDX), validation suite (link checking with retry, accessibility WCAG 2.1 AA), CI workflows, deployment configs (4 platforms), versioning support, API playground utilities, performance monitoring, 7 automation scripts, 1,450+ lines of documentation
 - 016-conventional-commit-tooling: Added Python 3.11+ (uv-managed), optional Node.js 20 LTS (when api_tracks includes node)
 - 014-changelog-release-management: Added Python 3.11+ (template baseline), Node.js 20 LTS (when api_tracks includes node) + semantic-release (changelog/version), commitlint (commit validation), commitizen (commit authoring), GitHub Actions marketplace actions (release creation, registry publishing)
 
