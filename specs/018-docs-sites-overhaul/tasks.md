@@ -1,9 +1,16 @@
+````markdown
+---
+
+description: "Task list for Documentation Sites Overhaul implementation"
+---
+
 # Tasks: Documentation Sites Overhaul
 
-**Input**: Design documents from `/specs/018-docs-sites-overhaul/`
-**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/
+**Feature Branch**: `018-docs-sites-overhaul`  
+**Input**: Design documents from `/specs/018-docs-sites-overhaul/`  
+**Prerequisites**: plan.md ✅, spec.md ✅, research.md ✅, data-model.md ✅, contracts/ ✅
 
-**Tests**: Tests are NOT explicitly requested in the specification. This implementation focuses on smoke tests and validation scripts per the existing quality framework.
+**Tests**: Tests are included as this is infrastructure code that requires validation.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -13,27 +20,16 @@
 - **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
 - Include exact file paths in descriptions
 
-## Path Conventions
-
-Template system structure (from plan.md):
-
-- `template/` - Copier template files
-- `template/files/python/docs/` - Sphinx-specific templates
-- `template/files/node/docs/` - Fumadocs/Docusaurus templates
-- `template/files/shared/docs/` - Shared transformation logic
-- `scripts/ci/` - CI validation scripts
-- `samples/docs-*/` - Sample renders for testing
-
 ---
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-**Purpose**: Project initialization and basic structure for documentation overhaul
+**Purpose**: Project structure and tooling setup
 
-- [ ] T001 Create directory structure for shared documentation transformation system in template/files/shared/docs/
-- [ ] T002 [P] Create directory structure for Python docs templates in template/files/python/docs/
-- [ ] T003 [P] Create directory structure for Node docs templates in template/files/node/docs/
-- [ ] T004 [P] Verify contracts directory exists and validate completeness of API specifications in specs/018-docs-sites-overhaul/contracts/ (prompts.yml, transformation-api.md, validation-api.md)
+- [ ] T001 Review design documents (plan.md, spec.md, research.md, data-model.md, contracts/) and understand feature scope
+- [ ] T002 [P] Set up Python test infrastructure for transformation validation in tests/test_content_transformation.py
+- [ ] T003 [P] Set up Python test infrastructure for docs validation in tests/test_docs_validation.py
+- [ ] T004 Create shared documentation constants module in template/files/shared/docs/constants.py.jinja
 
 ---
 
@@ -43,11 +39,13 @@ Template system structure (from plan.md):
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T005 [FR-001] Add 7 new documentation configuration prompts to template/copier.yml (docs_theme_mode, docs_search_provider, docs_api_playground, docs_deploy_target, docs_versioning, docs_interactive_features, docs_quality_gates)
-- [ ] T006 [P] [FR-009] Create shared transformation module base in template/files/shared/docs/transformation/common.py.jinja
-- [ ] T007 [P] [FR-013] Create shared validation module base in template/files/shared/docs/validation/common.py.jinja
-- [ ] T008 [FR-001] Update samples answer files with new documentation prompts in samples/docs-sphinx/copier-answers.yml, samples/docs-fumadocs/copier-answers.yml, samples/docs-docusaurus/copier-answers.yml
-- [ ] T009 [FR-005] Create validation script framework in scripts/ci/validate_docs_config.py
+- [ ] T005 [P] Implement ContentFormat enum and base classes in template/files/shared/docs/transformation/common.py.jinja
+- [ ] T006 [P] Implement TransformationError and TransformationResult classes in template/files/shared/docs/transformation/common.py.jinja
+- [ ] T007 [P] Implement RetryConfig class in template/files/shared/docs/validation/common.py.jinja
+- [ ] T008 [P] Implement BrokenLink and LinkCheckResult classes in template/files/shared/docs/validation/common.py.jinja
+- [ ] T009 [P] Implement A11yWarning, A11yError, and AccessibilityResult classes in template/files/shared/docs/validation/common.py.jinja
+- [ ] T010 Create CI validation script template in scripts/ci/validate_docs_config.py
+- [ ] T011 Create CI transformation test script in scripts/ci/test_content_transformation.py
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -55,181 +53,191 @@ Template system structure (from plan.md):
 
 ## Phase 3: User Story 1 - Sphinx Documentation Builds Successfully (Priority: P1) 🎯 MVP
 
-**Goal**: Fix critical Sphinx failures - move smoke test pass rate from 0% to 100%
+**Goal**: Fix Sphinx smoke tests (0% → 100%) with working Makefile targets and autodoc configuration
 
-**Independent Test**: Render with `docs_site=sphinx-shibuya`, run `uv run make -f Makefile.docs docs` and `uv run make -f Makefile.docs linkcheck`, verify HTML output generates without errors
+**Independent Test**: Render with `docs_site=sphinx-shibuya`, run `uv run make -f Makefile.docs docs` and `uv run make -f Makefile.docs linkcheck`, verify HTML output without errors
 
 ### Implementation for User Story 1
 
-- [ ] T010 [P] [US1] [FR-002] Create Makefile.docs template with docs, linkcheck, doctest, clean-docs targets in template/files/python/docs/Makefile.docs.jinja
-- [ ] T011 [P] [US1] [FR-003] Fix Sphinx conf.py template with sys.path modification for autodoc in template/files/python/docs/conf.py.jinja
-- [ ] T012 [P] [US1] [FR-003] Add sphinx.ext.autodoc and sphinx.ext.napoleon extensions to conf.py template
-- [ ] T013 [P] [US1] Configure Shibuya theme options with theme_mode support in conf.py template
-- [ ] T014 [P] [US1] [FR-012] Add linkcheck retry configuration (3 attempts, 10s timeout) to conf.py template
-- [ ] T015 [P] [US1] [FR-003] Configure autodoc_default_options in conf.py template
-- [ ] T016 [US1] [FR-005] Update Sphinx sample render with fixed templates via ./scripts/render-samples.sh --variant docs-sphinx
-- [ ] T017 [US1] [SC-003] Verify Sphinx docs build successfully in samples/docs-sphinx/render/ with uv run make -f Makefile.docs docs
-- [ ] T018 [US1] [SC-003] [FR-012] Verify Sphinx linkcheck runs successfully in samples/docs-sphinx/render/ with uv run make -f Makefile.docs linkcheck
-- [ ] T019 [US1] [SC-003] Update smoke-results.json to reflect 100% pass rate in samples/docs-sphinx/smoke-results.json
-- [ ] T020 [US1] [SC-003] Run render_matrix.py to validate Sphinx smoke tests pass with uv run python scripts/ci/render_matrix.py
+- [ ] T012 [US1] Create Makefile.docs template in template/files/python/docs/Makefile.docs.jinja with targets: docs, linkcheck, doctest, clean-docs
+- [ ] T013 [US1] Fix Sphinx conf.py template in template/files/python/docs/conf.py.jinja with sys.path modification, autodoc/napoleon extensions, and Shibuya theme configuration
+- [ ] T014 [US1] Add sphinxcontrib-mermaid extension configuration to conf.py.jinja
+- [ ] T015 [US1] Configure Sphinx linkcheck settings in conf.py.jinja with retry=3, timeout=10, ignore patterns
+- [ ] T016 [US1] Add conditional theme_mode configuration based on docs_theme_mode prompt in conf.py.jinja
+- [ ] T017 [US1] Update docs-sphinx sample answers in samples/docs-sphinx/copier-answers.yml if needed
+- [ ] T018 [US1] Test Sphinx render and build: run ./scripts/render-samples.sh --variant docs-sphinx
+- [ ] T019 [US1] Verify smoke tests pass: check samples/docs-sphinx/smoke-results.json for 100% pass rate
+- [ ] T020 [US1] Update render_matrix.py to validate Sphinx Makefile.docs targets exist in scripts/ci/render_matrix.py
 
-**Checkpoint**: At this point, Sphinx documentation should build successfully with 100% smoke test pass rate
+**Checkpoint**: At this point, Sphinx documentation should build successfully (SC-003: 0% → 100% pass rate)
 
 ---
 
 ## Phase 4: User Story 2 - Enhanced Documentation Configuration Options (Priority: P1)
 
-**Goal**: Enable prompt-driven configuration for theme, search, API playground, and deployment without manual file editing
+**Goal**: Add 7 new prompts to copier.yml for theme, search, API playground, deployment, versioning, interactive features
 
-**Independent Test**: Render with extended prompts like `docs_theme_mode=dark`, `docs_search_provider=algolia`, `docs_deploy_target=vercel`, verify configuration files reflect choices
+**Independent Test**: Render with extended prompts, verify configuration files reflect choices without placeholder comments
 
 ### Implementation for User Story 2
 
-- [ ] T021 [P] [US2] [FR-001] Add docs_theme_mode conditional rendering to Sphinx conf.py template in template/files/python/docs/conf.py.jinja
-- [ ] T022 [P] [US2] [FR-001] [FR-006] Add docs_theme_mode conditional rendering to Fumadocs next.config.mjs template in template/files/node/docs/fumadocs/next.config.mjs.jinja
-- [ ] T023 [P] [US2] [FR-001] [FR-007] Add docs_theme_mode conditional rendering to Docusaurus config template in template/files/node/docs/docusaurus/docusaurus.config.ts.jinja
-- [ ] T024 [P] [US2] [FR-010] Create search provider configuration templates for local search in template/files/shared/docs/search/local.config.jinja
-- [ ] T025 [P] [US2] [FR-010] Create search provider configuration templates for Algolia in template/files/shared/docs/search/algolia.config.jinja
-- [ ] T026 [P] [US2] [FR-010] Create search provider configuration templates for Typesense in template/files/shared/docs/search/typesense.config.jinja
-- [ ] T027 [P] [US2] [FR-001] Create deployment configuration template for GitHub Pages in template/files/shared/docs/deploy/github-pages.yml.jinja
-- [ ] T028 [P] [US2] [FR-001] Create deployment configuration template for Netlify in template/files/shared/docs/deploy/netlify.toml.jinja
-- [ ] T029 [P] [US2] [FR-001] Create deployment configuration template for Vercel in template/files/shared/docs/deploy/vercel.json.jinja
-- [ ] T030 [P] [US2] [FR-001] Create deployment configuration template for Cloudflare in template/files/shared/docs/deploy/cloudflare.toml.jinja
-- [ ] T031 [P] [US2] [FR-011] Add API playground (Swagger/ReDoc) configuration to Sphinx conf.py when api_tracks includes python
-- [ ] T032 [P] [US2] [FR-011] Add API playground configuration to Fumadocs when api_tracks includes node
-- [ ] T033 [US2] [SC-005] Update sample answer files to test different configuration combinations in samples/docs-sphinx/copier-answers.yml, samples/docs-fumadocs/copier-answers.yml
-- [ ] T034 [US2] [SC-001] Render all documentation variants with new prompts via ./scripts/render-samples.sh
-- [ ] T035 [US2] [FR-005] [SC-005] Validate generated configuration files match prompt selections with uv run python scripts/ci/validate_docs_config.py
-- [ ] T036 [US2] [SC-001] Update smoke tests to verify configuration options in samples/*/smoke-results.json
+- [ ] T021 [P] [US2] Add docs_theme_mode prompt to template/copier.yml (choices: light, dark, auto; default: auto)
+- [ ] T022 [P] [US2] Add docs_search_provider prompt to template/copier.yml (choices: none, local, algolia, typesense; default: local)
+- [ ] T023 [P] [US2] Add docs_api_playground prompt to template/copier.yml (choices: disabled, swagger, redoc, both; default: disabled)
+- [ ] T024 [P] [US2] Add docs_deploy_target prompt to template/copier.yml (choices: github-pages, netlify, vercel, cloudflare; default: github-pages)
+- [ ] T025 [P] [US2] Add docs_versioning prompt to template/copier.yml (choices: disabled, enabled; default: disabled)
+- [ ] T026 [P] [US2] Add docs_interactive_features prompt to template/copier.yml (choices: disabled, enabled; default: disabled)
+- [ ] T027 [P] [US2] Implement Algolia search configuration template in template/files/shared/docs/search/algolia.config.jinja
+- [ ] T028 [P] [US2] Implement Typesense search configuration template in template/files/shared/docs/search/typesense.config.jinja
+- [ ] T029 [US2] Update Fumadocs next.config.mjs.jinja to use docs_search_provider and docs_theme_mode prompts in template/files/node/docs/fumadocs/next.config.mjs.jinja
+- [ ] T030 [US2] Update Docusaurus docusaurus.config.js.jinja to use docs_search_provider and docs_theme_mode prompts in template/files/node/docs/docusaurus/docusaurus.config.js.jinja
+- [ ] T031 [US2] Create GitHub Pages deployment workflow template in template/files/shared/.github/workflows/riso-docs-deploy-ghpages.yml.jinja
+- [ ] T032 [P] [US2] Create Netlify deployment configuration template in template/files/shared/docs/deploy/netlify.toml.jinja
+- [ ] T033 [P] [US2] Create Vercel deployment configuration template in template/files/shared/docs/deploy/vercel.json.jinja
+- [ ] T034 [P] [US2] Create Cloudflare Pages deployment configuration template in template/files/shared/docs/deploy/wrangler.toml.jinja
+- [ ] T035 [US2] Test prompt rendering with various combinations: run copier with custom answer files testing all prompt values
+- [ ] T036 [US2] Update all sample answer files to include new prompts with appropriate defaults in samples/*/copier-answers.yml
+- [ ] T037 [US2] Validate generated configs with scripts/ci/validate_docs_config.py
 
-**Checkpoint**: At this point, all prompt-driven configuration options should work without manual file editing
+**Checkpoint**: At this point, all 7 new prompts should be functional (SC-004) and configuration files generated correctly
 
 ---
 
 ## Phase 5: User Story 3 - Unified Documentation Content Management (Priority: P2)
 
-**Goal**: Enable shared documentation content transformation across frameworks (Markdown → MDX/RST)
+**Goal**: Implement Markdown → MDX/RST transformation system with AST-based conversion
 
-**Independent Test**: Update docs/modules/quality.md.jinja, re-render all three doc variants, verify identical content appears correctly formatted in each framework
+**Independent Test**: Update shared docs, re-render all variants, verify content appears correctly formatted in all frameworks
+
+### Tests for User Story 3
+
+> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
+
+- [ ] T038 [P] [US3] Test Markdown → RST heading conversion in tests/test_content_transformation.py::test_markdown_to_rst_headings
+- [ ] T039 [P] [US3] Test Markdown → RST code block conversion in tests/test_content_transformation.py::test_markdown_to_rst_code_blocks
+- [ ] T040 [P] [US3] Test Markdown → RST link conversion in tests/test_content_transformation.py::test_markdown_to_rst_links
+- [ ] T041 [P] [US3] Test Markdown → RST list conversion in tests/test_content_transformation.py::test_markdown_to_rst_lists
+- [ ] T042 [P] [US3] Test Markdown → MDX minimal transformation in tests/test_content_transformation.py::test_markdown_to_mdx_minimal
+- [ ] T043 [P] [US3] Test Mermaid → RST directive conversion in tests/test_content_transformation.py::test_mermaid_to_rst
+- [ ] T044 [P] [US3] Test transformation failure handling in tests/test_content_transformation.py::test_transformation_failure_halts_build
+- [ ] T045 [P] [US3] Test frontmatter transformation (YAML → RST field lists) in tests/test_content_transformation.py::test_frontmatter_transformation
 
 ### Implementation for User Story 3
 
-- [ ] T037 [P] [US3] [FR-004] Implement AST-based Markdown parser with frontmatter extraction in template/files/shared/docs/transformation/common.py.jinja
-- [ ] T038 [P] [US3] [FR-009] Implement Markdown to RST transformer in template/files/shared/docs/transformation/markdown_to_rst.py.jinja
-- [ ] T039 [P] [US3] [FR-009] Implement Markdown to MDX transformer in template/files/shared/docs/transformation/markdown_to_mdx.py.jinja
-- [ ] T040 [P] [US3] [FR-008] Implement Mermaid diagram transformation for Sphinx directives in markdown_to_rst.py.jinja
-- [ ] T041 [P] [US3] [FR-009] Implement admonition transformation (Markdown → RST directives) in markdown_to_rst.py.jinja
-- [ ] T042 [P] [US3] [FR-009] Implement code block transformation with language detection in markdown_to_rst.py.jinja
-- [ ] T043 [P] [US3] [FR-009] Implement cross-reference transformation (Markdown links → RST :doc:) in markdown_to_rst.py.jinja
-- [ ] T044 [P] [US3] [FR-004] [FR-009] Implement heading and frontmatter transformation (Markdown # → RST underlines, YAML → RST field list) in markdown_to_rst.py.jinja
-- [ ] T045 [P] [US3] Add transformation error handling with file/line reporting per clarification Q1
-- [ ] T046 [P] [US3] Create transformation test script in scripts/ci/test_content_transformation.py
-- [ ] T047 [US3] Create shared module documentation in template/files/shared/docs/modules/docs-site.md.jinja
-- [ ] T048 [US3] Create framework migration guide in template/files/shared/docs/guidance/framework-migration.md.jinja
-- [ ] T049 [US3] Update quickstart documentation with transformation examples in docs/quickstart.md.jinja
-- [ ] T050 [US3] Test transformation with sample content across all frameworks
-- [ ] T051 [US3] Validate transformation preserves semantic meaning with uv run python scripts/ci/test_content_transformation.py
+- [ ] T046 [US3] Implement ContentTransformer class with transform() method in template/files/shared/docs/transformation/common.py.jinja
+- [ ] T047 [US3] Implement markdown_to_rst() transformation function in template/files/shared/docs/transformation/markdown_to_rst.py.jinja (AST-based)
+- [ ] T048 [US3] Implement markdown_to_mdx() transformation function in template/files/shared/docs/transformation/markdown_to_mdx.py.jinja (minimal changes)
+- [ ] T049 [US3] Implement frontmatter transformation for all formats (YAML ↔ RST field lists) in transformation modules
+- [ ] T050 [US3] Implement Mermaid code block → RST directive transformation in markdown_to_rst.py.jinja
+- [ ] T051 [US3] Implement admonition/callout transformation (Markdown → MDX Callout, RST directive) in transformation modules
+- [ ] T052 [US3] Implement code tabs transformation (Markdown → Fumadocs Tabs, RST tabs directive) in transformation modules
+- [ ] T053 [US3] Add transformation error handling with actionable messages (file:line format per FR-009) in common.py.jinja
+- [ ] T054 [US3] Create transformation CLI tool in template/files/shared/docs/scripts/transform_content.py.jinja for manual transformations
+- [ ] T055 [US3] Update render hooks to run transformations during template generation in template/hooks/post_gen_project.py
+- [ ] T056 [US3] Test transformations work end-to-end: render all variants and verify content correctness
+- [ ] T057 [US3] Run transformation test suite: uv run pytest tests/test_content_transformation.py -v
 
-**Checkpoint**: At this point, shared documentation content should transform correctly across all three frameworks
+**Checkpoint**: At this point, shared content should transform correctly to all frameworks (SC-007)
 
 ---
 
 ## Phase 6: User Story 4 - Interactive Documentation Features (Priority: P2)
 
-**Goal**: Enable Mermaid diagrams, API playgrounds, and interactive elements through prompt configuration
+**Goal**: Enable Mermaid diagrams, API playgrounds, and interactive features through prompt configuration
 
-**Independent Test**: Render with `docs_interactive_features=enabled`, verify API playground, Mermaid diagrams render correctly in all frameworks
+**Independent Test**: Render with `docs_interactive_features=enabled`, verify Mermaid diagrams and API playground work
 
 ### Implementation for User Story 4
 
-- [ ] T052 [P] [US4] [FR-008] Create shared Mermaid rendering utility in template/files/shared/docs/utilities/mermaid_renderer.py.jinja for Sphinx
-- [ ] T053 [P] [US4] [FR-008] Create Mermaid configuration for Fumadocs in template/files/node/docs/fumadocs/mermaid.config.ts.jinja
-- [ ] T054 [P] [US4] [FR-008] Create Mermaid configuration for Docusaurus in template/files/node/docs/docusaurus/mermaid.config.ts.jinja
-- [ ] T055 [US4] [FR-008] [FR-011] Add automatic Mermaid theming based on docs_theme_mode to all framework configs
-- [ ] T056 [P] [US4] [FR-008] Create test documentation page with sample Mermaid diagrams (flowchart, sequence, class) in template/files/shared/docs/examples/diagrams.md.jinja
-- [ ] T057 [US4] [SC-007] Add Mermaid test cases to smoke tests in scripts/ci/smoke_test_docs.py
-- [ ] T058 [P] [US4] [FR-011] Create shared link checker configuration in template/files/shared/docs/utilities/link_checker.py.jinja
-- [ ] T059 [US4] [FR-011] Integrate link checker into Makefile.docs check target
-- [ ] T060 [P] [US4] [FR-011] Create shared accessibility scanner configuration in template/files/shared/docs/utilities/a11y_scanner.py.jinja (using pa11y or axe-core)
-- [ ] T061 [US4] [FR-011] Integrate accessibility scanner into Makefile.docs check target
-- [ ] T062 [US4] [SC-008] Add link checker test cases to smoke tests in scripts/ci/smoke_test_docs.py
-- [ ] T063 [US4] [SC-009] Add accessibility scanner test cases to smoke tests in scripts/ci/smoke_test_docs.py
-- [ ] T064 [US4] Render samples and validate Mermaid/link checking/a11y features with ./scripts/render-samples.sh --variant docs-sphinx
+- [ ] T058 [P] [US4] Configure Mermaid plugin for Fumadocs in next.config.mjs.jinja (rehype-mermaid)
+- [ ] T059 [P] [US4] Configure Mermaid plugin for Docusaurus in docusaurus.config.js.jinja (@docusaurus/theme-mermaid)
+- [ ] T060 [P] [US4] Verify Mermaid already configured for Sphinx via sphinxcontrib-mermaid (T014)
+- [ ] T061 [P] [US4] Create Swagger UI integration template for FastAPI in template/files/python/docs/api/swagger.py.jinja
+- [ ] T062 [P] [US4] Create ReDoc integration template for FastAPI in template/files/python/docs/api/redoc.py.jinja
+- [ ] T063 [P] [US4] Create Swagger UI integration template for Fastify in template/files/node/docs/api/swagger.ts.jinja
+- [ ] T064 [P] [US4] Create ReDoc integration template for Fastify in template/files/node/docs/api/redoc.ts.jinja
+- [ ] T065 [US4] Implement API playground configuration with CORS, auth, rate limiting (per FR-011) in API integration templates
+- [ ] T066 [US4] Add graceful degradation for offline API playground (static schema with "API offline" notice per FR-011) in templates
+- [ ] T067 [US4] Create code tabs component template for Fumadocs in template/files/node/docs/fumadocs/components/CodeTabs.tsx.jinja
+- [ ] T068 [US4] Test Mermaid rendering: create test diagrams in sample docs and verify interactive SVGs
+- [ ] T069 [US4] Test API playground: verify Swagger/ReDoc loads with editable payloads and working requests (SC-007)
+- [ ] T070 [US4] Update module documentation to explain interactive features in docs/modules/docs-site.md.jinja
 
-**Checkpoint**: At this point, all documentation sites should support Mermaid diagrams, link checking, and accessibility scanning with zero manual configuration
+**Checkpoint**: At this point, interactive features (Mermaid, API playground) should work when enabled
 
 ---
 
-## Phase 7: User Story 5 - Documentation Versioning and Multi-Version Support (Priority: P3)
+## Phase 7: User Story 5 - Documentation Versioning (Priority: P3)
 
-**Goal**: Enable documentation versioning with version selector UI when docs_versioning=enabled
+**Goal**: Add optional versioning support with framework-specific scaffolding
 
-**Independent Test**: Render with `docs_versioning=enabled`, verify version selector scaffolding and configuration files are generated
+**Independent Test**: Render with `docs_versioning=enabled`, verify version selector appears and switches versions
 
 ### Implementation for User Story 5
 
-- [ ] T065 [P] [US5] [FR-015] Create shared version dropdown component template in template/files/shared/docs/components/version_dropdown.jinja
-- [ ] T066 [P] [US5] [FR-015] Integrate version dropdown into Sphinx sidebar via conf.py template
-- [ ] T067 [P] [US5] [FR-015] Integrate version dropdown into Fumadocs layout component
-- [ ] T068 [P] [US5] [FR-015] Integrate version dropdown into Docusaurus navbar component
-- [ ] T069 [US5] [FR-015] Create version switcher configuration file template in template/files/shared/docs/versioning/versions.json.jinja
-- [ ] T070 [US5] [FR-015] Add version detection logic to shared utilities in template/files/shared/docs/utilities/version_detector.py.jinja
-- [ ] T071 [US5] [FR-015] Document version management workflow in docs/modules/versioning.md.jinja
-- [ ] T072 [US5] [SC-010] Add version switcher test cases to smoke tests in scripts/ci/smoke_test_docs.py
-- [ ] T073 [US5] Render samples with versioning enabled and validate version switcher UI with ./scripts/render-samples.sh
+- [ ] T071 [P] [US5] Create mike configuration template for Sphinx in template/files/python/docs/mike.yml.jinja
+- [ ] T072 [P] [US5] Document mike workflow (mike deploy, mike set-default) in template/files/python/docs/VERSIONING.md.jinja
+- [ ] T073 [P] [US5] Configure Docusaurus native versioning in docusaurus.config.js.jinja (versions array, version dropdown)
+- [ ] T074 [P] [US5] Create Fumadocs version switcher component in template/files/node/docs/fumadocs/components/VersionSwitcher.tsx.jinja
+- [ ] T075 [P] [US5] Document Fumadocs multi-version routing pattern in template/files/node/docs/fumadocs/VERSIONING.md.jinja
+- [ ] T076 [US5] Add conditional versioning scaffolding based on docs_versioning prompt in templates
+- [ ] T077 [US5] Test versioning with Sphinx: set up mike, deploy multiple versions, verify version selector
+- [ ] T078 [US5] Test versioning with Docusaurus: run docs:version command, verify multiple versions build
+- [ ] T079 [US5] Update upgrade guide to explain versioning setup in docs/upgrade-guide/018-docs-sites.md.jinja
 
-**Checkpoint**: At this point, all documentation sites should have a working version switcher UI with dropdown navigation
+**Checkpoint**: At this point, versioning should be functional when enabled (SC-008: <1s version switching)
 
 ---
 
-## Phase 8: Documentation Validation & Quality Gates
+## Phase 8: Documentation Validation & CI Integration
 
-**Purpose**: Implement link checking, accessibility validation, and quality automation
+**Purpose**: Add link checking, accessibility validation, and CI workflows
 
-- [ ] T074 [P] [FR-011] Implement link checker with exponential backoff retry logic (3 attempts, 1s→2s→4s delays) in template/files/shared/docs/validation/link_checker.py.jinja
-- [ ] T075 [P] [FR-011] Implement accessibility validator using axe-core with WCAG 2.1 AA checking (non-blocking warnings per Q3) in template/files/shared/docs/validation/accessibility.py.jinja
-- [ ] T076 [P] [FR-011] Implement image reference validator in template/files/shared/docs/validation/image_validator.py.jinja
-- [ ] T077 [P] [FR-011] Implement cross-reference validator for Sphinx :doc: and :ref: in template/files/shared/docs/validation/cross_ref_validator.py.jinja
-- [ ] T078 [P] [FR-012] Create GitHub Actions workflow for docs build in template/files/shared/.github/workflows/riso-docs-build.yml.jinja
-- [ ] T079 [P] [FR-012] Create GitHub Actions workflow for docs validation in template/files/shared/.github/workflows/riso-docs-validate.yml.jinja
-- [ ] T080 [FR-013] Update render_matrix.py to include documentation validation in smoke tests at scripts/ci/render_matrix.py
-- [ ] T081 [FR-013] Update record_module_success.py to track documentation module success rates at scripts/ci/record_module_success.py
-- [ ] T082 [FR-012] Add documentation validation to quality suite integration
-- [ ] T083 [FR-011] [SC-008] Test link checking with retry logic on sample documentation
-- [ ] T084 [FR-011] [SC-009] Test accessibility validation produces WCAG 2.1 AA warnings without blocking builds
-- [ ] T085 [FR-012] Validate all documentation workflows in CI
+### Tests for Validation
+
+- [ ] T080 [P] Test link checking with retry logic in tests/test_docs_validation.py::test_link_check_with_retry
+- [ ] T081 [P] Test accessibility validation in tests/test_docs_validation.py::test_accessibility_validation
+- [ ] T082 [P] Test image validation in tests/test_docs_validation.py::test_image_validation
+- [ ] T083 [P] Test cross-reference validation in tests/test_docs_validation.py::test_cross_reference_validation
+
+### Implementation for Validation
+
+- [ ] T084 [US2] Implement DocumentationValidator class in template/files/shared/docs/validation/validator.py.jinja
+- [ ] T085 [US2] Implement validate_links() with exponential backoff retry (per clarification Q2) in validator.py.jinja
+- [ ] T086 [US2] Implement validate_accessibility() using axe-core (non-blocking warnings per Q3) in validator.py.jinja
+- [ ] T087 [US2] Implement validate_images() for missing image detection in validator.py.jinja
+- [ ] T088 [US2] Implement validate_cross_references() for invalid internal links in validator.py.jinja
+- [ ] T089 [US2] Create docs build CI workflow in template/files/shared/.github/workflows/riso-docs-build.yml.jinja
+- [ ] T090 [US2] Create docs validation CI workflow in template/files/shared/.github/workflows/riso-docs-validate.yml.jinja
+- [ ] T091 [US2] Add pytest-axe dependency for Python accessibility tests in template/files/python/pyproject.toml.jinja
+- [ ] T092 [US2] Add @axe-core/cli dependency for Node accessibility tests in template/files/node/package.json.jinja
+- [ ] T093 [US2] Update render_matrix.py to run link checking during smoke tests in scripts/ci/render_matrix.py
+- [ ] T094 [US2] Update record_module_success.py to track docs validation metrics in scripts/ci/record_module_success.py
+- [ ] T095 [US2] Run validation test suite: uv run pytest tests/test_docs_validation.py -v
+- [ ] T096 [US2] Test CI workflows locally: verify docs build, link check, and accessibility validation jobs
+
+**Checkpoint**: At this point, validation suite should be complete (SC-002: link checking <2% broken external links, SC-006: <5 min link check)
 
 ---
 
 ## Phase 9: Polish & Cross-Cutting Concerns
 
-**Purpose**: Improvements that affect multiple user stories and final documentation
+**Purpose**: Documentation, optimization, and final quality checks
 
-- [ ] T086 [P] [FR-014] Create comprehensive module documentation guide in docs/modules/docs-site.md.jinja
-- [ ] T087 [P] [FR-014] Create upgrade guide for documentation framework migrations in docs/upgrade-guide/018-docs-sites.md.jinja
-- [ ] T088 [P] [FR-014] Update AGENTS.md with new documentation dependencies and technologies
-- [ ] T089 [P] [FR-014] Update .github/copilot-instructions.md with documentation build commands
-- [ ] T090 [FR-014] Add documentation examples to quickstart.md.jinja
-- [ ] T091 [FR-014] Update constitution.md to document documentation standards (if needed)
-- [ ] T092 [FR-013] Create comprehensive smoke tests for all documentation features (Mermaid, link checking, accessibility)
-- [ ] T093 [FR-013] Create performance benchmarks for documentation builds (<5 seconds per SC-003)
-- [ ] T094 [FR-013] Update samples/metadata/doc_publish.json with final validation metrics
-- [ ] T095 [FR-013] [FR-014] Validate documentation completeness and upgrade guide completeness (FR-014)
-- [ ] T096 [FR-013] [SC-004] Validate documentation builds complete in <5 seconds for projects with <100 Markdown source files (per SC-004)
-- [ ] T097 [FR-013] Final smoke test run: uv run python scripts/ci/render_matrix.py
-- [ ] T098 [FR-013] Final validation: All smoke tests pass for docs-sphinx, docs-fumadocs, docs-docusaurus variants
-- [ ] T099 [FR-013] [SC-001] Final validation: Sphinx smoke test pass rate reaches 100% (from 0%)
-- [ ] T100 [FR-013] Update feature implementation completion checklist in specs/018-docs-sites-overhaul/spec.md
-- [ ] T091 Update README templates with documentation configuration instructions
-- [ ] T092 Verify all sample renders build successfully with new configuration options
-- [ ] T093 Run full quality suite on all documentation variants with make quality
-- [ ] T094 Update module_success.json with documentation smoke test results
-- [ ] T095 Validate quickstart.md instructions work end-to-end and upgrade guide completeness (FR-014)
-- [ ] T096 Performance test: Verify documentation builds complete in <90 seconds for projects with <100 Markdown source files (per SC-004)
-- [ ] T097 Performance test: Verify link checking completes in <5 minutes
-- [ ] T098 Final validation: All smoke tests pass for docs-sphinx, docs-fumadocs, docs-docusaurus variants
-- [ ] T099 Final validation: Sphinx smoke test pass rate reaches 100% (from 0%)
-- [ ] T100 Update feature implementation completion checklist in specs/018-docs-sites-overhaul/spec.md
+- [ ] T097 [P] Create comprehensive module documentation in docs/modules/docs-site.md.jinja explaining all features
+- [ ] T098 [P] Create upgrade guide with migration paths in docs/upgrade-guide/018-docs-sites.md.jinja
+- [ ] T099 [P] Document framework migration (Sphinx ↔ Fumadocs ↔ Docusaurus) in docs/guidance/framework-migration.md.jinja
+- [ ] T100 [P] Add environment variable documentation for search/deployment credentials in module docs
+- [ ] T101 Document build performance optimization tips (caching, incremental builds per FR-016) in module docs
+- [ ] T102 Update AGENTS.md with new docs features and commands
+- [ ] T103 Update copilot-instructions.md with docs technologies and patterns in .github/copilot-instructions.md
+- [ ] T104 Add docs examples to quickstart.md template in docs/quickstart.md.jinja
+- [ ] T105 Run full render matrix: uv run python scripts/ci/render_matrix.py
+- [ ] T106 Verify all sample smoke tests pass: check samples/metadata/module_success.json for 100% docs success
+- [ ] T107 Run quality suite on template code: make quality from repository root
+- [ ] T108 Verify build times meet SC-004 (<90s for <100 pages): measure builds in samples/
+- [ ] T109 Run quickstart validation commands from quickstart.md in multiple sample renders
+- [ ] T110 Final constitution check: verify all 7 principles respected (Module Sovereignty, Deterministic Generation, etc.)
 
 ---
 
@@ -239,232 +247,163 @@ Template system structure (from plan.md):
 
 - **Setup (Phase 1)**: No dependencies - can start immediately
 - **Foundational (Phase 2)**: Depends on Setup completion - BLOCKS all user stories
-- **User Story 1 (Phase 3)**: Depends on Foundational - P1 priority (MVP)
-- **User Story 2 (Phase 4)**: Depends on Foundational - P1 priority, can run parallel with US1
-- **User Story 3 (Phase 5)**: Depends on Foundational - P2 priority, independent of US1/US2
-- **User Story 4 (Phase 6)**: Depends on Foundational + US3 (transformation system) - P2 priority
-- **User Story 5 (Phase 7)**: Depends on Foundational + US1/US2 - P3 priority (advanced feature)
-- **Validation (Phase 8)**: Can start after Foundational, runs parallel with user stories
-- **Polish (Phase 9)**: Depends on all user stories being complete
+- **User Stories (Phase 3-7)**: All depend on Foundational phase completion
+  - User Story 1 (P1): Can start immediately after Foundational - CRITICAL PATH
+  - User Story 2 (P1): Can start immediately after Foundational - parallel with US1
+  - User Story 3 (P2): Can start after Foundational - depends on T005-T011
+  - User Story 4 (P2): Can start after US3 (depends on transformation system)
+  - User Story 5 (P3): Can start after Foundational - independent of other stories
+- **Validation (Phase 8)**: Can start after Foundational - parallel with user stories
+- **Polish (Phase 9)**: Depends on all desired user stories being complete
 
 ### User Story Dependencies
 
-- **User Story 1 (P1 - Sphinx Fix)**: CRITICAL PATH - No dependencies on other stories, must complete first
-- **User Story 2 (P1 - Configuration)**: Can run parallel with US1 - No dependencies on other stories
-- **User Story 3 (P2 - Content Management)**: Independent - Requires transformation system foundation
-- **User Story 4 (P2 - Interactive Features)**: Depends on US3 transformation system
-- **User Story 5 (P3 - Versioning)**: Depends on US1/US2 working configurations
-
-### Critical Path (MVP)
-
-1. Phase 1: Setup (T001-T004)
-2. Phase 2: Foundational (T005-T009) ⚠️ BLOCKS everything
-3. **Phase 3: User Story 1** (T010-T020) 🎯 MVP - Sphinx must work
-4. Validate: Sphinx smoke tests 0% → 100%
+- **User Story 1 (P1) - Sphinx Fix**: CRITICAL PATH - No dependencies on other stories
+- **User Story 2 (P1) - Configuration Prompts**: No dependencies on other stories
+- **User Story 3 (P2) - Content Transformation**: Depends on Foundational entities (T005-T009)
+- **User Story 4 (P2) - Interactive Features**: Soft dependency on US3 (uses transformation system)
+- **User Story 5 (P3) - Versioning**: No dependencies on other stories
+- **Phase 8 - Validation**: No dependencies on user stories (can run in parallel)
 
 ### Within Each User Story
 
-- **US1**: Sphinx templates → render → test → validate smoke tests (sequential)
-- **US2**: All configuration templates can be done in parallel (marked [P]) → render → validate
-- **US3**: All transformation modules can be done in parallel (marked [P]) → test → validate
-- **US4**: All interactive feature templates in parallel (marked [P]) → test → validate
-- **US5**: All versioning templates in parallel (marked [P]) → document → test
+- Tests MUST be written and FAIL before implementation (US3, Phase 8)
+- Template files before integration/testing
+- Individual features can run in parallel when marked [P]
+- Story must be independently testable before moving to next priority
 
 ### Parallel Opportunities
 
-#### After Foundational Phase Completes
+**Phase 1 (Setup)**: All tasks marked [P] can run in parallel (T002, T003)
 
-```text
-┌─────────────────────────────────────────────────────┐
-│ Foundational Phase Complete (T005-T009)             │
-└─────────────────┬───────────────────────────────────┘
-                  │
-    ┌─────────────┼─────────────┬──────────────┐
-    │             │             │              │
-    ▼             ▼             ▼              ▼
-┌───────┐    ┌───────┐    ┌───────┐    ┌──────────┐
-│  US1  │    │  US2  │    │ Phase │    │   US3    │
-│(T010- │    │(T021- │    │   8   │    │ (start   │
-│ T020) │    │ T036) │    │(T074- │    │  after   │
-│       │    │       │    │ T085) │    │  US1/2)  │
-└───────┘    └───────┘    └───────┘    └──────────┘
-```
+**Phase 2 (Foundational)**: All tasks marked [P] can run in parallel (T005-T009)
 
-#### Within User Story 2 (Configuration)
+**Phase 3 (US1 - Sphinx)**: Sequential implementation, but T017-T019 can run as verification batch
 
-- T021-T030 (all configuration templates) can run in parallel
-- T031-T032 (API playground configs) can run in parallel
-- Then T033-T036 (render and validate) run sequentially
+**Phase 4 (US2 - Prompts)**: Many tasks can run in parallel:
+- T021-T026: All prompt additions can run in parallel
+- T027-T028: Search configurations can run in parallel
+- T032-T034: Deployment configs can run in parallel
 
-#### Within User Story 3 (Transformation)
+**Phase 5 (US3 - Transformation)**: Tests can all run in parallel (T038-T045), implementations are more sequential
 
-- T037-T044 (all transformer implementations) can run in parallel
-- T046 (test script) in parallel with T047-T049 (documentation)
-- Then T050-T051 (test and validate) run sequentially
+**Phase 6 (US4 - Interactive Features)**:
+- T058-T060: Mermaid configs can run in parallel
+- T061-T064: API playground templates can run in parallel
 
-#### Within User Story 4 (Interactive)
+**Phase 7 (US5 - Versioning)**: All tasks marked [P] can run in parallel (T071-T075)
 
-- T052-T054 (Mermaid configs) in parallel
-- T055-T060 (API playground and code tabs) in parallel
-- Then T061-T064 (test and validate) run sequentially
+**Phase 8 (Validation)**: Tests can all run in parallel (T080-T083), validations can run in parallel (T084-T088)
+
+**Phase 9 (Polish)**: All documentation tasks marked [P] can run in parallel (T097-T100)
 
 ---
 
-## Parallel Example: User Story 1 (Critical Path)
+## Parallel Example: User Story 3 (Content Transformation)
 
 ```bash
-# These Sphinx template tasks can run in parallel:
-T010: "Create Makefile.docs template"
-T011: "Fix Sphinx conf.py template"
-T012: "Add autodoc extensions"
-T013: "Configure Shibuya theme"
-T014: "Add linkcheck retry config"
-T015: "Configure autodoc options"
+# Launch all transformation tests together:
+Task T038: "Test Markdown → RST heading conversion"
+Task T039: "Test Markdown → RST code block conversion"
+Task T040: "Test Markdown → RST link conversion"
+Task T041: "Test Markdown → RST list conversion"
+Task T042: "Test Markdown → MDX minimal transformation"
+Task T043: "Test Mermaid → RST directive conversion"
+Task T044: "Test transformation failure handling"
+Task T045: "Test frontmatter transformation"
 
-# Then these run sequentially:
-T016: "Update Sphinx sample render" (depends on T010-T015)
-T017: "Verify docs build" (depends on T016)
-T018: "Verify linkcheck" (depends on T016)
-T019: "Update smoke-results.json" (depends on T017-T018)
-T020: "Run render_matrix.py" (depends on T019)
-```
-
----
-
-## Parallel Example: User Story 2 (Configuration)
-
-```bash
-# All configuration templates in parallel:
-T021: "Sphinx theme config"
-T022: "Fumadocs theme config"
-T023: "Docusaurus theme config"
-T024: "Local search template"
-T025: "Algolia search template"
-T026: "Typesense search template"
-T027: "GitHub Pages deploy config"
-T028: "Netlify deploy config"
-T029: "Vercel deploy config"
-T030: "Cloudflare deploy config"
-
-# API playground configs in parallel:
-T031: "Sphinx API playground"
-T032: "Fumadocs API playground"
-
-# Then sequentially:
-T033: "Update sample answers"
-T034: "Render all variants"
-T035: "Validate configs"
-T036: "Update smoke tests"
+# All tests should FAIL initially, then implement transformations sequentially
 ```
 
 ---
 
 ## Implementation Strategy
 
-### MVP First (User Story 1 Only - Sphinx Fix)
+### MVP First (User Story 1 Only)
 
-**Critical Path to MVP**:
+1. Complete Phase 1: Setup (T001-T004)
+2. Complete Phase 2: Foundational (T005-T011) - CRITICAL
+3. Complete Phase 3: User Story 1 - Sphinx Fix (T012-T020)
+4. **STOP and VALIDATE**: Test Sphinx independently (0% → 100% smoke tests)
+5. Deploy/demo if ready
 
-1. ✅ Complete Phase 1: Setup (T001-T004)
-2. ✅ Complete Phase 2: Foundational (T005-T009) - BLOCKING
-3. 🎯 Complete Phase 3: User Story 1 (T010-T020) - Sphinx Fix
-4. **STOP and VALIDATE**:
-   - Sphinx smoke test pass rate: 0% → 100%
-   - Run `uv run make -f Makefile.docs docs` successfully
-   - Run `uv run make -f Makefile.docs linkcheck` successfully
-5. **MVP COMPLETE** - Sphinx documentation is functional
-
-**Why this MVP**: Sphinx is currently at 0% smoke test pass rate (critical blocker). Fixing this unblocks Python teams and demonstrates immediate value.
+**Estimated effort**: ~15 tasks, ~2-3 days for 1 developer
 
 ### Incremental Delivery
 
-1. **Foundation** (Phase 1-2): Setup + Foundational → Foundation ready
-2. **MVP** (Phase 3): User Story 1 → Sphinx works → Deploy/Demo 🎯
-3. **Enhanced Configuration** (Phase 4): User Story 2 → Prompt-driven config → Deploy/Demo
-4. **Content Management** (Phase 5): User Story 3 → Shared content transforms → Deploy/Demo
-5. **Interactive Features** (Phase 6): User Story 4 → Mermaid + API playgrounds → Deploy/Demo
-6. **Versioning** (Phase 7): User Story 5 → Multi-version support → Deploy/Demo
-7. **Quality Gates** (Phase 8): Validation → CI integration → Deploy/Demo
-8. **Polish** (Phase 9): Documentation + final validation → Release
-
-Each increment adds value without breaking previous functionality.
+1. Complete Setup + Foundational → Foundation ready (~10 tasks)
+2. Add User Story 1 (Sphinx Fix) → Test independently → Demo (MVP! SC-003) (~9 tasks)
+3. Add User Story 2 (Configuration Prompts) → Test independently → Demo (SC-004) (~17 tasks)
+4. Add User Story 3 (Content Transformation) → Test independently → Demo (SC-007) (~20 tasks)
+5. Add User Story 4 (Interactive Features) → Test independently → Demo (~13 tasks)
+6. Add User Story 5 (Versioning) → Test independently → Demo (SC-008) (~9 tasks)
+7. Add Phase 8 (Validation) → Test independently → Demo (SC-002, SC-006) (~17 tasks)
+8. Complete Polish → Final validation (~14 tasks)
 
 ### Parallel Team Strategy
 
-With multiple developers:
+With 3 developers after Foundational phase completes:
 
-1. **Week 1**: Team completes Setup + Foundational together (T001-T009)
-2. **Week 2** (once Foundational done):
-   - Developer A: User Story 1 (T010-T020) - PRIORITY
-   - Developer B: User Story 2 (T021-T036)
-   - Developer C: Phase 8 Validation (T074-T085)
-3. **Week 3**:
-   - Developer A: User Story 3 (T037-T051)
-   - Developer B: User Story 4 (T052-T064)
-   - Developer C: Documentation (T086-T091)
-4. **Week 4**:
-   - Developer A: User Story 5 (T065-T073)
-   - Developer B: Final validation (T092-T099)
-   - Developer C: Polish (remaining tasks)
+- **Developer A**: User Story 1 (Sphinx Fix) - CRITICAL PATH
+- **Developer B**: User Story 2 (Configuration Prompts) - HIGH VALUE
+- **Developer C**: Foundational tests + Validation infrastructure (Phase 8)
 
-Stories complete and integrate independently.
+Once US1 and US2 are complete:
+- **Developer A**: User Story 3 (Content Transformation)
+- **Developer B**: User Story 4 (Interactive Features) - depends on US3
+- **Developer C**: User Story 5 (Versioning) - independent
 
 ---
 
-## Success Metrics
+## Success Criteria Checklist
 
 Track progress against spec.md success criteria:
 
-- [ ] **SC-001**: 100% of documentation variants build successfully on first render
-  - Validated by: T092, T098
-  
-- [ ] **SC-002**: Link checking <2% broken external links after 3 retries
-  - Validated by: T083
-  
-- [ ] **SC-003**: Sphinx smoke tests 0% → 100% pass rate
-  - Validated by: T019, T020, T099
-  
-- [ ] **SC-004**: Documentation builds <90 seconds for <100 pages
-  - Validated by: T096
-  
-- [ ] **SC-005**: 95% of users customize via prompts without file editing
-  - Validated by: T035, T092
-  
-- [ ] **SC-006**: Search returns results <200ms (local) <500ms (hosted)
-  - Validated by: T062 (manual testing)
-  
-- [ ] **SC-007**: API playgrounds execute 98% of valid requests
-  - Validated by: T062
-  
-- [ ] **SC-008**: Version switching <1 second
-  - Validated by: T071
+- [ ] **SC-001**: 100% of docs variants build successfully on first render (validate with render_matrix.py)
+- [ ] **SC-002**: Link checking completes with 0 broken internal links, <2% broken external links (validate with link checker)
+- [ ] **SC-003**: Sphinx smoke tests achieve 100% pass rate (currently 0% - PRIMARY GOAL for US1)
+- [ ] **SC-004**: Build time <90 seconds for <100 pages (measure in samples/)
+- [ ] **SC-005**: 95% of users customize through prompts only (post-launch survey)
+- [ ] **SC-006**: Search results <200ms local, <500ms hosted (p95 latency)
+- [ ] **SC-007**: API playgrounds execute 98% of valid requests (test corpus of 50+ scenarios)
+- [ ] **SC-008**: Version switching <1 second (measure time from selection to render)
 
 ---
 
 ## Notes
 
-- **[P] tasks** = different files, no dependencies, can run in parallel
-- **[Story] label** maps task to specific user story for traceability
+- [P] tasks = different files, no dependencies - can run in parallel
+- [Story] label maps task to specific user story (US1-US5) for traceability
 - Each user story should be independently completable and testable
-- **Commit after each task** or logical group for atomic changes
-- **Stop at any checkpoint** to validate story independently
-- Focus on **User Story 1 first** (Sphinx fix) - it's the critical blocker at 0% pass rate
-- Transformation system (US3) is foundation for interactive features (US4)
-- Versioning (US5) is advanced feature - can be deferred if needed
+- Tests marked with "Write FIRST, ensure they FAIL" follow TDD workflow
+- Commit after each task or logical group for incremental progress
+- Stop at any checkpoint to validate story independently
+- **Critical Path**: Phase 1 → Phase 2 → User Story 1 (Sphinx fix) is the MVP
+- Sphinx fix is the highest priority as it's currently at 0% pass rate (spec.md clarification)
 
 ---
 
-**Total Tasks**: 100 tasks across 9 phases
+**Total Tasks**: 110  
+**MVP Tasks** (Setup + Foundational + US1): 20 tasks  
+**Task Breakdown**:
+- Phase 1 (Setup): 4 tasks
+- Phase 2 (Foundational): 7 tasks
+- Phase 3 (US1 - Sphinx Fix): 9 tasks ← MVP COMPLETE HERE
+- Phase 4 (US2 - Configuration): 17 tasks
+- Phase 5 (US3 - Transformation): 20 tasks
+- Phase 6 (US4 - Interactive): 13 tasks
+- Phase 7 (US5 - Versioning): 9 tasks
+- Phase 8 (Validation): 17 tasks
+- Phase 9 (Polish): 14 tasks
 
-**Tasks by Priority**:
+**Parallel Opportunities**: ~40 tasks marked [P] can run in parallel within their phases
 
-- P1 (Critical): User Story 1 (11 tasks) + User Story 2 (16 tasks) = 27 tasks
-- P2 (High Value): User Story 3 (15 tasks) + User Story 4 (13 tasks) = 28 tasks
-- P3 (Advanced): User Story 5 (9 tasks) = 9 tasks
-- Infrastructure: Setup (4) + Foundational (5) + Validation (12) + Polish (15) = 36 tasks
+**Estimated Timeline** (1 developer, sequential):
+- MVP (Phases 1-3): 2-3 days
+- Full Feature (All phases): 2-3 weeks
 
-**Parallel Opportunities**: 55 tasks marked [P] can run in parallel within their phases
+**Estimated Timeline** (3 developers, parallel):
+- MVP (Phases 1-3): 1-2 days
+- Full Feature (All phases): 1-1.5 weeks
 
-**MVP Scope**: Phase 1-3 (Setup + Foundational + User Story 1) = 24 tasks to achieve Sphinx 0% → 100% pass rate
-
-**Status**: ✅ Ready for implementation - Start with T001
+````
