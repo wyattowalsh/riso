@@ -1,0 +1,347 @@
+{% if cms == "contentful" -%}
+/**
+ * Contentful Integration
+ * 
+ * Enterprise headless CMS with CDN-backed content delivery.
+ * Provides powerful content management with localization support.
+ * 
+ * @see https://www.contentful.com
+ */
+
+import * as contentful from 'contentful';
+import * as contentfulManagement from 'contentful-management';
+import { documentToHtmlString } from '@contentful/rich-text-html-renderer';
+import { Document } from '@contentful/rich-text-types';
+
+// Environment validation
+const requiredEnv = {
+  CONTENTFUL_SPACE_ID: process.env.CONTENTFUL_SPACE_ID,
+  CONTENTFUL_ACCESS_TOKEN: process.env.CONTENTFUL_ACCESS_TOKEN,
+  CONTENTFUL_PREVIEW_TOKEN: process.env.CONTENTFUL_PREVIEW_TOKEN,
+  CONTENTFUL_MANAGEMENT_TOKEN: process.env.CONTENTFUL_MANAGEMENT_TOKEN,
+  CONTENTFUL_ENVIRONMENT: process.env.CONTENTFUL_ENVIRONMENT || 'master',
+};
+
+Object.entries(requiredEnv).forEach(([key, value]) => {
+  if (!value && !key.includes('PREVIEW') && !key.includes('MANAGEMENT')) {
+    throw new Error(`Contentful: Missing required environment variable: ${key}`);
+  }
+});
+
+/**
+ * Initialize Contentful Delivery API client (for reading content)
+ */
+export const client = contentful.createClient({
+  space: requiredEnv.CONTENTFUL_SPACE_ID!,
+  accessToken: requiredEnv.CONTENTFUL_ACCESS_TOKEN!,
+  environment: requiredEnv.CONTENTFUL_ENVIRONMENT,
+});
+
+/**
+ * Initialize Contentful Preview API client (for draft content)
+ */
+export const previewClient = requiredEnv.CONTENTFUL_PREVIEW_TOKEN
+  ? contentful.createClient({
+      space: requiredEnv.CONTENTFUL_SPACE_ID!,
+      accessToken: requiredEnv.CONTENTFUL_PREVIEW_TOKEN,
+      host: 'preview.contentful.com',
+      environment: requiredEnv.CONTENTFUL_ENVIRONMENT,
+    })
+  : null;
+
+/**
+ * Initialize Contentful Management API client (for writing content)
+ */
+export const managementClient = requiredEnv.CONTENTFUL_MANAGEMENT_TOKEN
+  ? contentfulManagement.createClient({
+      accessToken: requiredEnv.CONTENTFUL_MANAGEMENT_TOKEN,
+    })
+  : null;
+
+/**
+ * Get entry by ID
+ */
+export async function getEntry<T = any>(
+  entryId: string,
+  options?: {
+    locale?: string;
+    preview?: boolean;
+  }
+): Promise<T | null> {
+  try {
+    const activeClient = options?.preview && previewClient ? previewClient : client;
+    const entry = await activeClient.getEntry(entryId, {
+      locale: options?.locale,
+    });
+    return entry.fields as T;
+  } catch (error) {
+    console.error('Contentful: Get entry failed', error);
+    return null;
+  }
+}
+
+/**
+ * Get entries by content type
+ */
+export async function getEntries<T = any>(
+  contentType: string,
+  options?: {
+    limit?: number;
+    skip?: number;
+    order?: string;
+    locale?: string;
+    preview?: boolean;
+    query?: Record<string, any>;
+  }
+): Promise<T[]> {
+  try {
+    const activeClient = options?.preview && previewClient ? previewClient : client;
+    const response = await activeClient.getEntries({
+      content_type: contentType,
+      limit: options?.limit,
+      skip: options?.skip,
+      order: options?.order,
+      locale: options?.locale,
+      ...options?.query,
+    });
+    return response.items.map(item => item.fields as T);
+  } catch (error) {
+    console.error('Contentful: Get entries failed', error);
+    return [];
+  }
+}
+
+/**
+ * Search entries
+ */
+export async function searchEntries<T = any>(
+  query: string,
+  contentType?: string,
+  options?: {
+    limit?: number;
+    locale?: string;
+  }
+): Promise<T[]> {
+  try {
+    const searchParams: any = {
+      query,
+      limit: options?.limit || 10,
+      locale: options?.locale,
+    };
+
+    if (contentType) {
+      searchParams.content_type = contentType;
+    }
+
+    const response = await client.getEntries(searchParams);
+    return response.items.map(item => item.fields as T);
+  } catch (error) {
+    console.error('Contentful: Search failed', error);
+    return [];
+  }
+}
+
+/**
+ * Get asset by ID
+ */
+export async function getAsset(assetId: string) {
+  try {
+    const asset = await client.getAsset(assetId);
+    return {
+      id: asset.sys.id,
+      title: asset.fields.title,
+      description: asset.fields.description,
+      url: asset.fields.file?.url,
+      contentType: asset.fields.file?.contentType,
+      size: asset.fields.file?.details?.size,
+      width: asset.fields.file?.details?.image?.width,
+      height: asset.fields.file?.details?.image?.height,
+    };
+  } catch (error) {
+    console.error('Contentful: Get asset failed', error);
+    return null;
+  }
+}
+
+/**
+ * Render rich text to HTML
+ */
+export function renderRichText(
+  richTextDocument: Document,
+  options?: {
+    renderNode?: any;
+    renderMark?: any;
+  }
+): string {
+  try {
+    return documentToHtmlString(richTextDocument, options);
+  } catch (error) {
+    console.error('Contentful: Render rich text failed', error);
+    return '';
+  }
+}
+
+/**
+ * Create entry (requires management token)
+ */
+export async function createEntry(
+  contentType: string,
+  fields: Record<string, any>,
+  options?: {
+    locale?: string;
+    publish?: boolean;
+  }
+): Promise<string | null> {
+  if (!managementClient) {
+    throw new Error('Contentful: Management token required for creating entries');
+  }
+
+  try {
+    const space = await managementClient.getSpace(requiredEnv.CONTENTFUL_SPACE_ID!);
+    const environment = await space.getEnvironment(requiredEnv.CONTENTFUL_ENVIRONMENT);
+
+    // Format fields for Contentful (each field needs locale)
+    const locale = options?.locale || 'en-US';
+    const formattedFields: Record<string, any> = {};
+    Object.entries(fields).forEach(([key, value]) => {
+      formattedFields[key] = { [locale]: value };
+    });
+
+    const entry = await environment.createEntry(contentType, {
+      fields: formattedFields,
+    });
+
+    // Publish if requested
+    if (options?.publish) {
+      await entry.publish();
+    }
+
+    return entry.sys.id;
+  } catch (error) {
+    console.error('Contentful: Create entry failed', error);
+    return null;
+  }
+}
+
+/**
+ * Update entry (requires management token)
+ */
+export async function updateEntry(
+  entryId: string,
+  fields: Record<string, any>,
+  options?: {
+    locale?: string;
+    publish?: boolean;
+  }
+): Promise<boolean> {
+  if (!managementClient) {
+    throw new Error('Contentful: Management token required for updating entries');
+  }
+
+  try {
+    const space = await managementClient.getSpace(requiredEnv.CONTENTFUL_SPACE_ID!);
+    const environment = await space.getEnvironment(requiredEnv.CONTENTFUL_ENVIRONMENT);
+    const entry = await environment.getEntry(entryId);
+
+    // Update fields
+    const locale = options?.locale || 'en-US';
+    Object.entries(fields).forEach(([key, value]) => {
+      if (!entry.fields[key]) {
+        entry.fields[key] = {};
+      }
+      entry.fields[key][locale] = value;
+    });
+
+    const updatedEntry = await entry.update();
+
+    // Publish if requested
+    if (options?.publish) {
+      await updatedEntry.publish();
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Contentful: Update entry failed', error);
+    return false;
+  }
+}
+
+/**
+ * Delete entry (requires management token)
+ */
+export async function deleteEntry(entryId: string): Promise<boolean> {
+  if (!managementClient) {
+    throw new Error('Contentful: Management token required for deleting entries');
+  }
+
+  try {
+    const space = await managementClient.getSpace(requiredEnv.CONTENTFUL_SPACE_ID!);
+    const environment = await space.getEnvironment(requiredEnv.CONTENTFUL_ENVIRONMENT);
+    const entry = await environment.getEntry(entryId);
+
+    // Unpublish before delete
+    if (entry.isPublished()) {
+      await entry.unpublish();
+    }
+
+    await entry.delete();
+    return true;
+  } catch (error) {
+    console.error('Contentful: Delete entry failed', error);
+    return false;
+  }
+}
+
+/**
+ * Helper: Get optimized image URL
+ */
+export function getOptimizedImageUrl(
+  imageUrl: string,
+  options?: {
+    width?: number;
+    height?: number;
+    format?: 'jpg' | 'png' | 'webp';
+    quality?: number;
+    fit?: 'pad' | 'fill' | 'scale' | 'crop' | 'thumb';
+  }
+): string {
+  const params = new URLSearchParams();
+
+  if (options?.width) params.append('w', options.width.toString());
+  if (options?.height) params.append('h', options.height.toString());
+  if (options?.format) params.append('fm', options.format);
+  if (options?.quality) params.append('q', options.quality.toString());
+  if (options?.fit) params.append('fit', options.fit);
+
+  return `${imageUrl}?${params.toString()}`;
+}
+
+/**
+ * Health check
+ */
+export async function healthCheck(): Promise<boolean> {
+  try {
+    await client.getSpace();
+    return true;
+  } catch (error) {
+    console.error('Contentful: Health check failed', error);
+    return false;
+  }
+}
+
+export default {
+  client,
+  previewClient,
+  managementClient,
+  getEntry,
+  getEntries,
+  searchEntries,
+  getAsset,
+  renderRichText,
+  createEntry,
+  updateEntry,
+  deleteEntry,
+  getOptimizedImageUrl,
+  healthCheck,
+};
+{%- endif %}
