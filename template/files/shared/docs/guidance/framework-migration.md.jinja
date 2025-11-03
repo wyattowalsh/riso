@@ -1,0 +1,320 @@
+# Framework Migration Guide
+
+This guide helps you migrate documentation between frameworks or upgrade existing documentation configurations.
+
+## Migration Paths
+
+### From Sphinx to Fumadocs
+
+**Why migrate**: Modern Next.js-based experience, better TypeScript integration, faster builds
+
+**Steps**:
+
+1. **Update configuration**:
+```yaml
+# .copier-answers.yml
+docs_site: fumadocs
+docs_theme_mode: auto  # or light/dark
+docs_search_provider: local
+```
+
+2. **Transform content**:
+```bash
+# Use the transformation system
+python -m scripts.transform_docs \
+  --source docs/ \
+  --format rst \
+  --target apps/docs-fumadocs/content/ \
+  --output-format mdx
+```
+
+3. **Manual adjustments**:
+- Convert RST directives to MDX components
+- Update cross-references from `:doc:` to relative paths
+- Migrate API autodoc to TypeDoc or manual documentation
+
+4. **Test and validate**:
+```bash
+pnpm --filter docs-fumadocs dev
+# Visit http://localhost:3000
+```
+
+### From Fumadocs to Sphinx
+
+**Why migrate**: Need Python autodoc, prefer RST, established Python tooling
+
+**Steps**:
+
+1. **Update configuration**:
+```yaml
+# .copier-answers.yml
+docs_site: sphinx-shibuya
+docs_theme_mode: auto
+docs_search_provider: local
+```
+
+2. **Transform content**:
+```bash
+python -m scripts.transform_docs \
+  --source apps/docs-fumadocs/content/ \
+  --format mdx \
+  --target docs/ \
+  --output-format rst
+```
+
+3. **Manual adjustments**:
+- Convert JSX components to RST directives
+- Update relative links to `:doc:` references
+- Configure autodoc for Python modules
+
+4. **Test and validate**:
+```bash
+uv run make -f Makefile.docs docs
+open _build/html/index.html
+```
+
+### From Docusaurus to Fumadocs
+
+**Why migrate**: Better TypeScript support, smaller bundle size, modern Next.js features
+
+**Steps**:
+
+1. **Update configuration**:
+```yaml
+docs_site: fumadocs
+```
+
+2. **Content migration**:
+- Most Markdown/MDX content is compatible
+- Update sidebar configuration from `sidebars.js` to Fumadocs format
+- Migrate plugins to Next.js equivalents
+
+3. **Test**:
+```bash
+pnpm --filter docs-fumadocs dev
+```
+
+## Configuration Upgrades
+
+### Adding Search Provider
+
+#### Algolia Integration
+
+1. Apply for free DocSearch: https://docsearch.algolia.com/apply/
+
+2. Update configuration:
+```yaml
+docs_search_provider: algolia
+```
+
+3. Set environment variables:
+```bash
+export ALGOLIA_APP_ID="your_app_id"
+export ALGOLIA_API_KEY="your_search_key"  
+export ALGOLIA_INDEX_NAME="your_index"
+```
+
+4. Re-run copier update:
+```bash
+copier update
+```
+
+#### Typesense Integration
+
+1. Set up Typesense Cloud or self-hosted instance
+
+2. Update configuration:
+```yaml
+docs_search_provider: typesense
+```
+
+3. Set environment variables:
+```bash
+export TYPESENSE_API_KEY="your_key"
+export TYPESENSE_HOST="your-host:8108"
+```
+
+### Enabling Interactive Features
+
+1. Update configuration:
+```yaml
+docs_interactive_features: enabled
+```
+
+2. Re-run copier update:
+```bash
+copier update
+```
+
+3. Test Mermaid diagrams:
+```markdown
+\`\`\`mermaid
+graph TD
+    A[Start] --> B[Process]
+    B --> C[End]
+\`\`\`
+```
+
+### Switching Deployment Target
+
+1. Update configuration:
+```yaml
+docs_deploy_target: vercel  # or netlify, cloudflare, github-pages
+```
+
+2. Re-run copier update to generate new deployment config
+
+3. Configure deployment secrets in your platform
+
+## Content Transformation Best Practices
+
+### Canonical Markdown Subset
+
+Use these constructs for maximum portability:
+
+✅ **Supported** (transforms reliably):
+- Headings (`#`, `##`, `###`)
+- Paragraphs and line breaks
+- Code blocks with language tags
+- Inline code, bold, italic
+- Ordered and unordered lists
+- Links (inline and reference-style)
+- Images
+- Tables (GFM-style)
+- Blockquotes
+- Horizontal rules
+
+⚠️ **Framework-specific** (requires manual migration):
+- HTML tags (except in MDX)
+- Framework-specific directives
+- Custom components
+- JavaScript/React elements
+
+### Handling Transformation Failures
+
+When transformation fails, you'll see actionable errors:
+
+```
+[ERROR] docs/api.md:42: UNSUPPORTED_SYNTAX - Raw HTML detected
+Suggestion: Remove HTML tags or use framework-specific alternatives
+```
+
+**Resolution options**:
+
+1. **Fix source content** to use portable Markdown
+2. **Manual override** for framework-specific features
+3. **Skip transformation** and maintain separate versions
+
+### Validation After Migration
+
+Always validate after migration:
+
+```bash
+# Link checking
+uv run python scripts/ci/validate_docs_config.py
+
+# Build test
+{% if docs_site == 'sphinx-shibuya' %}
+uv run make -f Makefile.docs docs
+{% elif docs_site == 'fumadocs' %}
+pnpm --filter docs-fumadocs build
+{% elif docs_site == 'docusaurus' %}
+pnpm --filter docs-docusaurus build
+{% endif %}
+
+# Accessibility check (WCAG 2.1 AA)
+python -m shared.docs.validation.accessibility _build/html/
+```
+
+## Rollback Procedures
+
+If migration fails:
+
+1. **Revert configuration**:
+```bash
+git checkout .copier-answers.yml
+```
+
+2. **Restore original content**:
+```bash
+git restore docs/  # or apps/docs-*/
+```
+
+3. **Re-run copier with original settings**:
+```bash
+copier update
+```
+
+4. **Preserve backup** before next attempt:
+```bash
+cp -r docs/ docs.backup/
+```
+
+## Common Issues
+
+### Sphinx: Import Errors
+
+**Symptom**: `ModuleNotFoundError` during autodoc build
+
+**Solution**: Verify `sys.path` in `docs/conf.py`:
+```python
+sys.path.insert(0, os.path.abspath('..'))
+```
+
+### Fumadocs: Build Failures
+
+**Symptom**: TypeScript errors or missing modules
+
+**Solution**: 
+```bash
+pnpm install  # Refresh dependencies
+rm -rf apps/docs-fumadocs/.next  # Clear cache
+pnpm --filter docs-fumadocs build
+```
+
+### Docusaurus: Plugin Conflicts
+
+**Symptom**: Build errors with plugins
+
+**Solution**: Check `docusaurus.config.js` plugin versions and compatibility
+
+### All Frameworks: Broken Links
+
+**Symptom**: 404 errors after migration
+
+**Solution**: Run link checker with detailed output:
+```bash
+python -m shared.docs.validation.link_checker --verbose
+```
+
+## Performance Optimization
+
+After migration, optimize build performance:
+
+1. **Enable caching** (GitHub Actions):
+```yaml
+- uses: actions/cache@v4
+  with:
+    path: |
+      ~/.cache/uv
+      node_modules
+    key: ${{ runner.os }}-docs-${{ hashFiles('**/package.json', '**/pyproject.toml') }}
+```
+
+2. **Incremental builds**:
+- Sphinx: Use `sphinx-autobuild` for development
+- Fumadocs: Next.js incremental builds (automatic)
+- Docusaurus: `--incremental` flag
+
+3. **Parallel processing**:
+```bash
+# Sphinx with parallel workers
+sphinx-build -j auto docs/ _build/html/
+```
+
+## Support
+
+For migration assistance:
+- Check `docs/modules/docs-site.md.jinja` for framework-specific guides
+- Review transformation API in `specs/018-docs-sites-overhaul/contracts/`
+- Run validation scripts to identify issues early

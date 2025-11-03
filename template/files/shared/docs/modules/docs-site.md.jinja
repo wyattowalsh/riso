@@ -1,14 +1,263 @@
-# Docs Site Module
+# Documentation Site Module
 
-Switch the documentation experience to [Fumadocs](https://fumadocs.com/) by setting `docs_site=fumadocs`
-during render. The generator provisions `docs/fumadocs.config.ts` and reserves space for MDX content.
+The Riso template provides comprehensive documentation scaffolding with three framework options: Fumadocs (Next.js), Sphinx-Shibuya (Python), and Docusaurus (React).
 
-## Validation Commands
+## Framework Selection
+
+Choose your documentation framework during render:
 
 ```bash
-pnpm --filter docs-fumadocs install
-pnpm --filter docs-fumadocs build
+# Fumadocs (Next.js + MDX) - Modern, fast, TypeScript-first
+docs_site=fumadocs
+
+# Sphinx-Shibuya (Python + RST) - Python-native, powerful autodoc
+docs_site=sphinx-shibuya  
+
+# Docusaurus (React + Markdown) - Feature-rich, React ecosystem
+docs_site=docusaurus
+
+# No documentation
+docs_site=none
 ```
 
-Add navigation entries to `fumadocs.config.ts` and commit generated assets to ensure deterministic docs
-builds.
+## Configuration Options
+
+### Theme Mode
+Control default appearance:
+- `docs_theme_mode=light`: Light theme
+- `docs_theme_mode=dark`: Dark theme  
+- `docs_theme_mode=auto`: Follow system preference (default)
+
+### Search Provider
+Choose search integration:
+- `docs_search_provider=local`: Framework-native local search (FREE, offline)
+- `docs_search_provider=algolia`: Algolia DocSearch (FREE tier → PAID)
+- `docs_search_provider=typesense`: Typesense Cloud (~$22/month) or self-hosted
+- `docs_search_provider=none`: No search functionality
+
+### API Playground
+Interactive API documentation (requires `api_tracks` enabled):
+- `docs_api_playground=swagger`: Swagger UI
+- `docs_api_playground=redoc`: ReDoc
+- `docs_api_playground=both`: Both interfaces
+- `docs_api_playground=disabled`: No API playground (default)
+
+### Deployment Target
+Generate deployment configuration:
+- `docs_deploy_target=github-pages`: GitHub Pages (FREE for public repos)
+- `docs_deploy_target=netlify`: Netlify (FREE tier: 100GB bandwidth)
+- `docs_deploy_target=vercel`: Vercel (FREE tier: unlimited bandwidth)
+- `docs_deploy_target=cloudflare`: Cloudflare Pages (FREE tier: 500 builds/month)
+
+### Interactive Features
+Enable advanced features:
+- `docs_interactive_features=enabled`: Mermaid diagrams, code tabs, live examples
+- `docs_interactive_features=disabled`: Static documentation only (default)
+
+### Versioning
+Multi-version documentation support:
+- `docs_versioning=enabled`: Version selector UI (⚠️ ADVANCED: ~2x build time)
+- `docs_versioning=disabled`: Single-version documentation (default, recommended)
+
+### Quality Gates
+Documentation validation in CI:
+- `docs_quality_gates=enabled`: Link checking, accessibility audits (default)
+- `docs_quality_gates=disabled`: No automated validation
+
+## Building Documentation
+
+### Sphinx-Shibuya
+
+```bash
+# Install dependencies
+uv sync --group docs
+
+# Build HTML documentation
+uv run make -f Makefile.docs docs
+
+# Check external links (with 3 retries, exponential backoff)
+uv run make -f Makefile.docs linkcheck
+
+# Run doctests
+uv run make -f Makefile.docs doctest
+
+# Clean build artifacts
+uv run make -f Makefile.docs clean-docs
+
+# View locally
+open _build/html/index.html
+```
+
+### Fumadocs
+
+```bash
+# Install dependencies
+pnpm install
+
+# Development server with hot reload
+pnpm --filter docs-fumadocs dev
+
+# Build for production
+pnpm --filter docs-fumadocs build
+
+# View locally
+open apps/docs-fumadocs/out/index.html
+```
+
+### Docusaurus
+
+```bash
+# Install dependencies
+pnpm install
+
+# Development server
+pnpm --filter docs-docusaurus start
+
+# Build for production
+pnpm --filter docs-docusaurus build
+
+# View locally
+open apps/docs-docusaurus/build/index.html
+```
+
+## Content Transformation
+
+The template includes AST-based content transformation for sharing documentation across frameworks:
+
+```python
+from shared.docs.transformation import ContentTransformer, ContentFormat
+
+transformer = ContentTransformer()
+
+# Transform Markdown to RST for Sphinx
+result = transformer.transform(
+    content=markdown_content,
+    source_format=ContentFormat.MARKDOWN,
+    target_format=ContentFormat.RST,
+    file_path="docs/quickstart.md"
+)
+
+if result.success:
+    print(result.content)  # RST output
+else:
+    result.log_errors()  # Actionable error messages
+```
+
+Supported transformations:
+- **Headings**: `#` → RST underlines (`=`, `-`, `` ` ``)
+- **Code blocks**: ` ```python` → `.. code-block:: python`
+- **Mermaid diagrams**: ` ```mermaid` → `.. mermaid::`
+- **Admonitions**: `> **Note**` → `.. note::`
+- **Links**: `[text](url)` → `` `text <url>`_ ``
+
+## Validation
+
+### Link Checking
+
+```python
+from shared.docs.validation import LinkChecker
+
+checker = LinkChecker()
+results = checker.check_links(
+    build_dir=Path("_build/html"),
+    check_external=True  # With 3 retries, exponential backoff
+)
+
+print(results.generate_report())
+```
+
+### Accessibility Validation
+
+```python
+from shared.docs.validation import AccessibilityValidator
+
+validator = AccessibilityValidator()  # WCAG 2.1 Level AA
+results = validator.validate(build_dir=Path("_build/html"))
+
+# Warnings are non-blocking per spec clarification Q3
+for warning in results.accessibility_warnings:
+    print(f"[{warning.rule_id}] {warning.help_text}")
+```
+
+## Search Configuration
+
+### Algolia (External)
+
+Set environment variables:
+
+```bash
+export ALGOLIA_APP_ID="your_app_id"
+export ALGOLIA_API_KEY="your_search_key"
+export ALGOLIA_INDEX_NAME="your_index"
+```
+
+Apply for free DocSearch: https://docsearch.algolia.com/apply/
+
+### Typesense (External)
+
+Set environment variables:
+
+```bash
+export TYPESENSE_API_KEY="your_api_key"
+export TYPESENSE_HOST="localhost:8108"  # or cloud host
+export TYPESENSE_PROTOCOL="http"  # or https
+```
+
+## Deployment
+
+Deployment configurations are generated based on `docs_deploy_target`:
+
+- **GitHub Pages**: `.github/workflows/deploy-docs.yml`
+- **Netlify**: `netlify.toml`
+- **Vercel**: `vercel.json`
+- **Cloudflare**: `wrangler.toml`
+
+All configurations include:
+- Automatic dependency installation
+- Framework-specific build commands
+- Optimized artifact paths
+- Environment variable support
+
+## Migration Between Frameworks
+
+To switch documentation frameworks:
+
+1. Update `docs_site` in `.copier-answers.yml`
+2. Re-run `copier update`
+3. Migrate content using transformation system
+4. Test build locally
+5. Update deployment configuration
+
+See `docs/guidance/framework-migration.md.jinja` for detailed migration guides.
+
+## Troubleshooting
+
+### Sphinx Import Errors
+
+Ensure `sys.path` is configured in `docs/conf.py`:
+
+```python
+import sys
+sys.path.insert(0, os.path.abspath('..'))
+```
+
+### Link Check Failures
+
+External link failures after 3 retries are reported but may be transient. Check:
+- Network connectivity
+- Rate limiting
+- URL validity
+
+### Build Performance
+
+For large documentation (>100 pages):
+- Enable incremental builds
+- Use caching (GitHub Actions: `actions/cache@v4`)
+- Consider parallel builds
+- Target: <90 seconds per build
+
+## Related Modules
+
+- **API Modules**: Auto-generate API reference from docstrings
+- **CLI Module**: Document CLI commands and usage
+- **Quality Suite**: Integrate docs validation in CI pipeline

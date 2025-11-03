@@ -183,6 +183,19 @@ QUALITY_PROFILE=standard uv run task quality
   pnpm --filter docs-fumadocs build
   pnpm --filter docs-fumadocs run dev
   ```
+- `docs_site=sphinx-shibuya`
+  ```bash
+  uv sync --group docs
+  uv run make -f Makefile.docs docs
+  uv run make -f Makefile.docs linkcheck
+  open _build/html/index.html
+  ```
+- `docs_site=docusaurus`
+  ```bash
+  pnpm install
+  pnpm --filter docs-docusaurus build
+  pnpm --filter docs-docusaurus start
+  ```
 - `shared_logic=enabled`
   ```bash
   uv run python -c "from shared.logic import summarize_payload; print(summarize_payload({'service': 'shared', 'status': 'ok'}))"
@@ -204,6 +217,7 @@ QUALITY_PROFILE=standard uv run task quality
 
 ## Recent Changes
 
+- 018-docs-sites-overhaul: Enhanced documentation site scaffolding with 7 new prompts (theme_mode, search_provider, api_playground, deploy_target, versioning, interactive_features, quality_gates), complete Sphinx scaffolding fix (Makefile.docs, conf.py with autodoc/napoleon/shibuya), framework configurations for Fumadocs/Docusaurus/Sphinx with conditional theme/search/mermaid support, AST-based content transformation (Markdown → RST/MDX), link checking with exponential backoff retry (3 attempts, 1s→2s→4s), accessibility validation (WCAG 2.1 AA, non-blocking warnings), deployment configs for GitHub Pages/Netlify/Vercel/Cloudflare, GitHub Actions workflows (riso-docs-build.yml, riso-docs-validate.yml) with artifact storage (90-day retention, 500MB limit), comprehensive documentation guides (docs-site.md, framework-migration.md), versioning support scaffolding (version_dropdown component, version_detector utility)
 - 008-websockets-scaffold: Added WebSocket real-time communication module with connection lifecycle management, heartbeat/ping-pong mechanism (30s interval, 60s timeout), room-based broadcasting with <100ms latency (p95), FastAPI authentication integration, rate limiting (100 msg/60s window, configurable), backpressure handling with bounded queues, structured error responses, pytest fixtures, support for 10K+ concurrent connections with <10MB/1K conn memory overhead, comprehensive docs (websockets.md, quickstart, upgrade guide)
 - 005-container-deployment: Added Docker/docker-compose support with multi-stage Dockerfiles (Python 3.11-slim-bookworm, Node 20-alpine), docker-compose orchestration (API/docs/databases), GitHub Actions workflows (riso-container-build.yml with hadolint/Trivy, riso-container-publish.yml with semantic versioning), container validation (render_matrix.py, record_module_success.py), health endpoints (FastAPI/Fastify /health), security hardening (UID 1000:1000, HEALTHCHECK, SBOM/provenance), registry support (ghcr.io OIDC, Docker Hub, AWS ECR), comprehensive documentation (containers.md, context guide, upgrade guide)
 - 004-github-actions-workflows: Added GitHub Actions CI/CD workflows with quality checks (ruff, mypy, pylint, pytest), matrix testing across Python 3.11/3.12/3.13, retry logic with exponential backoff, dependency caching, artifact uploads with 90-day retention, and conditional Node.js job support
@@ -212,6 +226,7 @@ QUALITY_PROFILE=standard uv run task quality
 
 ## Active Technologies
 
+- Documentation systems: Sphinx ≥7.4 with Shibuya theme ≥2024.10 (Python docs with autodoc), Fumadocs ≥13.0 with Next.js 15 (React/MDX docs), Docusaurus ≥3.5 (React/Markdown docs), AST-based content transformation (Markdown ↔ MDX ↔ RST), link checking with exponential backoff retry (3 attempts, 1s→2s→4s delays), accessibility validation (WCAG 2.1 Level AA), search providers (local/algolia/typesense), deployment configs (GitHub Pages/Netlify/Vercel/Cloudflare), optional versioning support, Mermaid ≥10.0 diagram rendering (018-docs-sites-overhaul)
 - WebSocket communication: FastAPI ≥0.104.0 WebSocket support, websockets ≥14.0 library, python-jose ≥3.3.0 for JWT authentication, Pydantic v2 for message validation, asyncio for concurrent connection handling, Redis pub/sub pattern for multi-server broadcasting (documented, optional), Prometheus metrics integration via prometheus_client (optional) (008-websockets-scaffold)
 - YAML (GitHub Actions workflow syntax), Python 3.11+ (for validation scripts), Jinja2 (for template rendering) + GitHub Actions marketplace actions (`actions/checkout@v4`, `actions/setup-python@v5`, `actions/cache@v4`, `actions/upload-artifact@v4`, `nick-fields/retry@v3`, `docker/setup-buildx-action@v3`, `docker/build-push-action@v5`, `aquasecurity/trivy-action@0.20.0`), actionlint (workflow validation), hadolint (Dockerfile linting), Trivy (container security scanning), existing quality tools from feature 003 (004-github-actions-workflows, 005-container-deployment)
 - Workflow artifacts (JUnit XML, coverage reports, logs, container images, SBOMs, scan results) stored in GitHub Actions artifact storage with 90-day retention (004-github-actions-workflows, 005-container-deployment)

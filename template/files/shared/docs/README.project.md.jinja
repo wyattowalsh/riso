@@ -1,0 +1,334 @@
+# {{ project_name }} Documentation
+
+{% if docs_site == 'sphinx-shibuya' %}
+This project uses **Sphinx** with the **Shibuya** theme for documentation.
+{% elif docs_site == 'fumadocs' %}
+This project uses **Fumadocs** (Next.js-based) for documentation.
+{% elif docs_site == 'docusaurus' %}
+This project uses **Docusaurus** (React-based) for documentation.
+{% endif %}
+
+## Quick Start
+
+{% if docs_site == 'sphinx-shibuya' %}
+### Build Documentation
+
+```bash
+# Build HTML documentation
+uv run make -f Makefile.docs docs
+
+# Build and open in browser
+uv run make -f Makefile.docs docs && open docs/_build/html/index.html
+```
+
+### Check Links
+
+```bash
+# Check all links with retry logic
+uv run make -f Makefile.docs linkcheck
+```
+
+### Run Doctests
+
+```bash
+# Test code examples in documentation
+uv run make -f Makefile.docs doctest
+```
+
+### Clean Build
+
+```bash
+# Remove build artifacts
+uv run make -f Makefile.docs clean-docs
+```
+
+{% elif docs_site == 'fumadocs' %}
+### Development
+
+```bash
+# Start development server
+pnpm docs:dev
+```
+
+### Build Documentation
+
+```bash
+# Build for production
+pnpm docs:build
+
+# Preview production build
+pnpm docs:preview
+```
+
+### Lint Documentation
+
+```bash
+# Check for issues
+pnpm docs:lint
+```
+
+{% elif docs_site == 'docusaurus' %}
+### Development
+
+```bash
+# Start development server
+npm run docs:dev
+```
+
+### Build Documentation
+
+```bash
+# Build for production
+npm run docs:build
+
+# Serve built docs locally
+npm run docs:serve
+```
+
+### Deploy
+
+```bash
+# Deploy to configured platform
+npm run docs:deploy
+```
+
+{% endif %}
+
+## Configuration
+
+{% if docs_theme_mode %}
+- **Theme Mode**: `{{ docs_theme_mode }}` {% if docs_theme_mode == 'auto' %}(follows system preference){% endif %}
+
+{% endif %}
+{% if docs_search_provider and docs_search_provider != 'none' %}
+- **Search**: `{{ docs_search_provider }}` {% if docs_search_provider == 'local' %}(built-in search){% elif docs_search_provider == 'algolia' %}(requires configuration){% endif %}
+
+{% endif %}
+{% if docs_api_playground %}
+- **API Playground**: {% if docs_api_playground == 'swagger' %}Swagger UI{% elif docs_api_playground == 'redoc' %}ReDoc{% else %}Disabled{% endif %}
+
+{% endif %}
+{% if docs_deploy_target %}
+- **Deployment**: `{{ docs_deploy_target }}`{% endif %}
+
+{% if docs_versioning %}
+
+### Versioning
+
+Multi-version documentation support is enabled. See `docs/versioning/versions.json` for configuration.
+{% endif %}
+
+{% if docs_interactive_features %}
+
+### Interactive Features
+
+- **Mermaid Diagrams**: Supported for flowcharts, sequence diagrams, class diagrams
+{% if docs_site == 'sphinx-shibuya' %}
+- Use `.. mermaid::` directive in RST files
+{% else %}
+- Use triple backticks with `mermaid` language tag in Markdown files
+{% endif %}
+{% endif %}
+
+{% if docs_quality_gates %}
+
+## Quality Gates
+
+### Link Checking
+
+Links are validated with exponential backoff retry logic:
+- 3 retry attempts with delays: 1s → 2s → 4s
+- Both internal and external links checked
+- Detailed error reporting
+
+### Accessibility Validation
+
+WCAG 2.1 Level AA compliance checking:
+- Image alt text validation
+- Heading hierarchy checks
+- Non-blocking warnings (build continues on violations)
+
+{% if docs_site == 'sphinx-shibuya' %}
+Run validation:
+```bash
+uv run make -f Makefile.docs linkcheck
+```
+{% endif %}
+{% endif %}
+
+## Content Structure
+
+{% if docs_site == 'sphinx-shibuya' %}
+```
+docs/
+├── conf.py              # Sphinx configuration
+├── index.rst            # Documentation home
+├── api/                 # API reference (auto-generated)
+├── modules/             # Module documentation
+├── _static/             # Static assets (images, CSS)
+└── _templates/          # Custom templates
+```
+
+### RST Format
+
+Sphinx uses reStructuredText (RST) format. Key syntax:
+
+```rst
+Heading
+=======
+
+Subheading
+----------
+
+**bold** *italic* ``code``
+
+.. code-block:: python
+
+   def example():
+       pass
+
+.. mermaid::
+
+   graph TD
+       A-->B
+
+.. note::
+
+   This is a note admonition.
+```
+
+{% elif docs_site == 'fumadocs' %}
+```
+docs/
+├── content/             # Markdown documentation files
+├── public/              # Static assets
+├── app/                 # Fumadocs app structure
+└── fumadocs.config.ts   # Configuration
+```
+
+### MDX Format
+
+Fumadocs uses MDX (Markdown + JSX). Key syntax:
+
+```mdx
+# Heading
+
+## Subheading
+
+**bold** *italic* `code`
+
+\`\`\`python
+def example():
+    pass
+\`\`\`
+
+\`\`\`mermaid
+graph TD
+    A-->B
+\`\`\`
+
+:::note
+This is a note callout.
+:::
+```
+
+{% elif docs_site == 'docusaurus' %}
+```
+docs/
+├── docs/                # Markdown documentation files
+├── static/              # Static assets
+├── src/                 # Custom components
+└── docusaurus.config.js # Configuration
+```
+
+### Markdown Format
+
+Docusaurus uses Markdown with MDX support. Key syntax:
+
+```markdown
+# Heading
+
+## Subheading
+
+**bold** *italic* `code`
+
+\`\`\`python
+def example():
+    pass
+\`\`\`
+
+\`\`\`mermaid
+graph TD
+    A-->B
+\`\`\`
+
+:::note
+This is a note admonition.
+:::
+```
+
+{% endif %}
+
+## Troubleshooting
+
+See `docs/TROUBLESHOOTING.md` for comprehensive troubleshooting guide covering:
+- Build failures
+- Link check issues
+- Theme and styling problems
+- Search integration
+- Performance optimization
+- Deployment issues
+
+## Migration
+
+See `docs/guidance/framework-migration.md` for step-by-step guides on migrating between documentation frameworks.
+
+## Additional Resources
+
+- Module documentation: `docs/modules/docs-site.md`
+- Prompts reference: `docs/PROMPTS.md`
+- Upgrade guide: `docs/UPGRADE.md`
+- Implementation summary: `IMPLEMENTATION_SUMMARY.md`
+
+## Automation Scripts
+
+Several utility scripts are available:
+
+```bash
+# Health check (dependencies, structure, readiness)
+python scripts/ci/docs_health_check.py
+
+# Collect metrics (pages, words, links, images, size)
+python scripts/ci/docs_metrics.py --output metrics.json
+
+# Compare configurations between projects
+python scripts/ci/docs_config_compare.py project1/ project2/
+
+# Environment management helper
+./scripts/docs-helper.sh setup      # Setup environment
+./scripts/docs-helper.sh build      # Build documentation
+./scripts/docs-helper.sh validate   # Run validation
+./scripts/docs-helper.sh clean      # Clean artifacts
+```
+
+## CI/CD Integration
+
+{% if docs_deploy_target == 'github-pages' %}
+Documentation is automatically built and deployed to GitHub Pages via `.github/workflows/riso-docs-build.yml`.
+{% elif docs_deploy_target == 'netlify' %}
+Documentation is configured for deployment to Netlify. See `netlify.toml` for configuration.
+{% elif docs_deploy_target == 'vercel' %}
+Documentation is configured for deployment to Vercel. See `vercel.json` for configuration.
+{% elif docs_deploy_target == 'cloudflare' %}
+Documentation is configured for deployment to Cloudflare Pages. See `wrangler.toml` for configuration.
+{% endif %}
+
+Validation workflows run on every commit:
+- Link checking with retry logic
+- Accessibility scanning (WCAG 2.1 AA)
+- Build performance monitoring (90-second target)
+- Artifact storage (90-day retention, 500MB limit)
+
+---
+
+Generated by [Riso](https://github.com/wyattowalsh/riso) - Professional Python project template

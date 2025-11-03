@@ -37,6 +37,13 @@ defaults:
   mcp_module: "disabled"
   websocket_module: "disabled"
   docs_site: "fumadocs"
+  docs_theme_mode: "auto"
+  docs_search_provider: "local"
+  docs_api_playground: "disabled"
+  docs_deploy_target: "github-pages"
+  docs_versioning: "disabled"
+  docs_interactive_features: "disabled"
+  docs_quality_gates: "enabled"
   shared_logic: "disabled"
   ci_platform: "github-actions"
 
@@ -98,6 +105,69 @@ prompts:
       - sphinx-shibuya
       - docusaurus
       - none
+  docs_theme_mode:
+    type: str
+    help: "Default theme appearance (light/dark/auto for system preference)"
+    choices:
+      - light
+      - dark
+      - auto
+    default: auto
+    when: "{{ docs_site != 'none' }}"
+  docs_search_provider:
+    type: str
+    help: "Search integration provider (local = FREE offline search, algolia = FREE tier → PAID, typesense = PAID ~$22/mo)"
+    choices:
+      - none
+      - local
+      - algolia
+      - typesense
+    default: local
+    when: "{{ docs_site != 'none' }}"
+  docs_api_playground:
+    type: str
+    help: "Interactive API documentation (swagger/redoc/both) - requires API tracks enabled"
+    choices:
+      - disabled
+      - swagger
+      - redoc
+      - both
+    default: disabled
+    when: "{{ api_tracks in ['python', 'node', 'python+node'] }}"
+  docs_deploy_target:
+    type: str
+    help: "Documentation deployment platform (github-pages/netlify/vercel/cloudflare)"
+    choices:
+      - github-pages
+      - netlify
+      - vercel
+      - cloudflare
+    default: github-pages
+    when: "{{ docs_site != 'none' }}"
+  docs_versioning:
+    type: str
+    help: "Enable multi-version documentation (ADVANCED: adds complexity, ~2x build time)"
+    choices:
+      - disabled
+      - enabled
+    default: disabled
+    when: "{{ docs_site != 'none' }}"
+  docs_interactive_features:
+    type: str
+    help: "Enable interactive features (Mermaid diagrams, code playgrounds, live examples)"
+    choices:
+      - disabled
+      - enabled
+    default: disabled
+    when: "{{ docs_site != 'none' }}"
+  docs_quality_gates:
+    type: str
+    help: "Enable documentation quality validation (link checking, accessibility audits) in CI"
+    choices:
+      - disabled
+      - enabled
+    default: enabled
+    when: "{{ docs_site != 'none' }}"
   shared_logic:
     type: str
     help: "Generate shared logic package?"
