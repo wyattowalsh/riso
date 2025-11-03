@@ -1,0 +1,138 @@
+Quickstart
+==========
+
+Welcome to {{ project_name }}!
+
+Installation
+------------
+
+.. code-block:: bash
+
+   # Using uv (recommended)
+   uv sync
+
+   # Or using pip
+   pip install -e .
+
+Usage
+-----
+
+Basic example:
+
+.. code-block:: python
+
+   from {{ package_name }} import main
+   
+   # Your code here
+   main()
+
+Development
+-----------
+
+Running tests:
+
+.. code-block:: bash
+
+   uv run pytest
+
+Building documentation:
+
+.. code-block:: bash
+
+   # Build HTML documentation
+   uv run make -f Makefile.docs docs
+
+   # Check links with retry logic
+   uv run make -f Makefile.docs linkcheck
+
+   # Run doctests
+   uv run make -f Makefile.docs doctest
+
+   # Clean build artifacts
+   uv run make -f Makefile.docs clean-docs
+
+{% if docs_quality_gates %}
+Quality Checks
+--------------
+
+This project includes comprehensive documentation validation:
+
+**Link Checking**:
+   - 3 retry attempts with exponential backoff (1s → 2s → 4s)
+   - Both internal and external links validated
+   - Detailed error reporting with suggestions
+
+**Accessibility Validation**:
+   - WCAG 2.1 Level AA compliance checking
+   - Image alt text validation
+   - Heading hierarchy checks
+   - Non-blocking warnings (build continues)
+
+Run validation:
+
+.. code-block:: bash
+
+   uv run make -f Makefile.docs linkcheck
+
+{% endif %}
+{% if docs_interactive_features %}
+Interactive Features
+--------------------
+
+**Mermaid Diagrams**:
+
+.. mermaid::
+
+   graph LR
+       A[Start] --> B{Decision}
+       B -->|Yes| C[Do Something]
+       B -->|No| D[Do Something Else]
+       C --> E[End]
+       D --> E
+
+**Sequence Diagram**:
+
+.. mermaid::
+
+   sequenceDiagram
+       participant User
+       participant API
+       participant Database
+       User->>API: Request Data
+       API->>Database: Query
+       Database-->>API: Results
+       API-->>User: Response
+
+**Class Diagram**:
+
+.. mermaid::
+
+   classDiagram
+       class Document {
+           +str title
+           +str content
+           +build()
+           +validate()
+       }
+
+{% endif %}
+{% if docs_api_playground %}
+API Documentation
+-----------------
+
+{% if docs_api_playground == 'swagger' %}
+This project includes Swagger UI for interactive API exploration.
+Access it at ``/api/docs`` when running the development server.
+{% elif docs_api_playground == 'redoc' %}
+This project includes ReDoc for beautiful API documentation.
+Access it at ``/api/redoc`` when running the development server.
+{% endif %}
+
+{% endif %}
+Additional Resources
+--------------------
+
+- **Module Documentation**: See ``docs/modules/docs-site.md`` for comprehensive guide
+- **Troubleshooting**: See ``docs/TROUBLESHOOTING.md`` for common issues
+- **Migration Guide**: See ``docs/guidance/framework-migration.md`` for framework migrations
+- **Prompts Reference**: See ``docs/PROMPTS.md`` for configuration options
