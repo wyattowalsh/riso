@@ -1,0 +1,134 @@
+{% if email == "aws-ses" -%}
+/**
+ * AWS SES (Simple Email Service) Integration
+ * 
+ * Reliable, scalable email service with high deliverability rates.
+ * Cost-effective for high-volume email sending.
+ * 
+ * @see https://aws.amazon.com/ses/
+ */
+
+import {
+  SESClient,
+  SendEmailCommand,
+  SendTemplatedEmailCommand,
+  SendBulkTemplatedEmailCommand,
+} from "@aws-sdk/client-ses";
+
+// Validate required environment variables
+const requiredEnvVars = [
+  "AWS_REGION",
+  "AWS_ACCESS_KEY_ID",
+  "AWS_SECRET_ACCESS_KEY",
+  "AWS_SES_FROM_EMAIL",
+];
+const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
+
+if (missingEnvVars.length > 0) {
+  throw new Error(
+    `Missing required AWS SES environment variables: ${missingEnvVars.join(", ")}`
+  );
+}
+
+// Initialize SES client
+const sesClient = new SESClient({
+  region: process.env.AWS_REGION!,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  },
+});
+
+const FROM_EMAIL = process.env.AWS_SES_FROM_EMAIL!;
+
+/**
+ * Send a simple email
+ */
+export async function sendEmail(params: {
+  to: string | string[];
+  subject: string;
+  body: string;
+  isHtml?: boolean;
+  cc?: string[];
+  bcc?: string[];
+  replyTo?: string;
+}): Promise<{ messageId: string }> {
+  const toAddresses = Array.isArray(params.to) ? params.to : [params.to];
+
+  const command = new SendEmailCommand({
+    Source: FROM_EMAIL,
+    Destination: {
+      ToAddresses: toAddresses,
+      CcAddresses: params.cc,
+      BccAddresses: params.bcc,
+    },
+    Message: {
+      Subject: { Data: params.subject, Charset: "UTF-8" },
+      Body: params.isHtml
+        ? { Html: { Data: params.body, Charset: "UTF-8" } }
+        : { Text: { Data: params.body, Charset: "UTF-8" } },
+    },
+    ReplyToAddresses: params.replyTo ? [params.replyTo] : undefined,
+  });
+
+  const response = await sesClient.send(command);
+  return { messageId: response.MessageId! };
+}
+
+/**
+ * Send email using a template
+ */
+export async function sendTemplateEmail(params: {
+  to: string;
+  templateName: string;
+  templateData: Record<string, any>;
+}): Promise<{ messageId: string }> {
+  const command = new SendTemplatedEmailCommand({
+    Source: FROM_EMAIL,
+    Destination: { ToAddresses: [params.to] },
+    Template: params.templateName,
+    TemplateData: JSON.stringify(params.templateData),
+  });
+
+  const response = await sesClient.send(command);
+  return { messageId: response.MessageId! };
+}
+
+/**
+ * Helper: Send welcome email
+ */
+export async function sendWelcomeEmail(
+  to: string,
+  userName: string
+): Promise<{ messageId: string }> {
+  return sendEmail({
+    to,
+    subject: "Welcome to {{ project_name }}!",
+    body: `<h1>Welcome, ${userName}!</h1>`,
+    isHtml: true,
+  });
+}
+
+/**
+ * Health Check
+ */
+export async function checkSESHealth(): Promise<{
+  status: "healthy" | "unhealthy";
+  message: string;
+}> {
+  try {
+    await sendEmail({
+      to: FROM_EMAIL,
+      subject: "AWS SES Health Check",
+      body: "Health check email.",
+      isHtml: false,
+    });
+    return { status: "healthy", message: "AWS SES is operational" };
+  } catch (error) {
+    return {
+      status: "unhealthy",
+      message: `AWS SES health check failed: ${error}`,
+    };
+  }
+}
+{%- endif %}
