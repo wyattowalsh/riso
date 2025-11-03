@@ -1,0 +1,327 @@
+{% if cache_provider == "cloudflare-kv" -%}
+/**
+ * Cloudflare KV Integration
+ * 
+ * Global key-value storage built into Cloudflare's edge network.
+ * Ultra-low latency with automatic global replication.
+ * 
+ * Features:
+ * - Global edge storage (read from nearest location)
+ * - Eventual consistency (60s propagation)
+ * - TTL expiration support
+ * - Bulk operations
+ * - List keys with prefix filtering
+ * - Metadata storage
+ * 
+ * Environment Variables:
+ * - CLOUDFLARE_ACCOUNT_ID: Your Cloudflare account ID
+ * - CLOUDFLARE_KV_NAMESPACE_ID: KV namespace ID
+ * - CLOUDFLARE_API_TOKEN: API token with KV edit permissions
+ * 
+ * Note: This integration uses the REST API. For edge workers,
+ * use the native KV runtime API directly.
+ * 
+ * @example
+ * ```typescript
+ * import { kvGet, kvPut, kvDelete } from './integrations/cloudflare-kv';
+ * 
+ * // Store with TTL
+ * await kvPut('user:123', { name: 'John', email: 'john@example.com' }, {
+ *   expirationTtl: 3600, // 1 hour
+ * });
+ * 
+ * // Retrieve
+ * const user = await kvGet('user:123');
+ * 
+ * // List keys with prefix
+ * const userKeys = await kvList({ prefix: 'user:' });
+ * ```
+ */
+
+// Validate required environment variables
+if (!process.env.CLOUDFLARE_ACCOUNT_ID) {
+  throw new Error('CLOUDFLARE_ACCOUNT_ID environment variable is required');
+}
+
+if (!process.env.CLOUDFLARE_KV_NAMESPACE_ID) {
+  throw new Error('CLOUDFLARE_KV_NAMESPACE_ID environment variable is required');
+}
+
+if (!process.env.CLOUDFLARE_API_TOKEN) {
+  throw new Error('CLOUDFLARE_API_TOKEN environment variable is required');
+}
+
+const ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
+const NAMESPACE_ID = process.env.CLOUDFLARE_KV_NAMESPACE_ID;
+const API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+const BASE_URL = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/storage/kv/namespaces/${NAMESPACE_ID}`;
+
+/**
+ * Make a request to Cloudflare KV API
+ */
+async function kvRequest<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  try {
+    const response = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${API_TOKEN}`,
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Cloudflare KV API error: ${response.status} ${error}`);
+    }
+
+    const data = await response.json();
+    return data.result;
+  } catch (error) {
+    console.error('Cloudflare KV request failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get a value from KV
+ */
+export async function kvGet<T = any>(key: string): Promise<T | null> {
+  try {
+    const response = await fetch(`${BASE_URL}/values/${key}`, {
+      headers: {
+        'Authorization': `Bearer ${API_TOKEN}`,
+      },
+    });
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      throw new Error(`Failed to get key ${key}: ${response.statusText}`);
+    }
+
+    const text = await response.text();
+    
+    // Try to parse as JSON, otherwise return as string
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      return text as any;
+    }
+  } catch (error) {
+    console.error(`Error getting key ${key}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Put a value into KV
+ */
+export async function kvPut<T = any>(
+  key: string,
+  value: T,
+  options: {
+    expirationTtl?: number; // TTL in seconds
+    expiration?: number; // Unix timestamp
+    metadata?: Record<string, any>;
+  } = {}
+): Promise<void> {
+  try {
+    const body = new FormData();
+    
+    // Serialize value
+    const serialized = typeof value === 'string' ? value : JSON.stringify(value);
+    body.append('value', serialized);
+
+    if (options.metadata) {
+      body.append('metadata', JSON.stringify(options.metadata));
+    }
+
+    const url = new URL(`${BASE_URL}/values/${key}`);
+    if (options.expirationTtl) {
+      url.searchParams.set('expiration_ttl', options.expirationTtl.toString());
+    }
+    if (options.expiration) {
+      url.searchParams.set('expiration', options.expiration.toString());
+    }
+
+    const response = await fetch(url.toString(), {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${API_TOKEN}`,
+      },
+      body,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to put key ${key}: ${response.statusText}`);
+    }
+  } catch (error) {
+    console.error(`Error putting key ${key}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a key from KV
+ */
+export async function kvDelete(key: string): Promise<void> {
+  try {
+    const response = await fetch(`${BASE_URL}/values/${key}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${API_TOKEN}`,
+      },
+    });
+
+    if (!response.ok && response.status !== 404) {
+      throw new Error(`Failed to delete key ${key}: ${response.statusText}`);
+    }
+  } catch (error) {
+    console.error(`Error deleting key ${key}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * List keys in KV
+ */
+export async function kvList(options: {
+  prefix?: string;
+  limit?: number;
+  cursor?: string;
+} = {}): Promise<{
+  keys: Array<{
+    name: string;
+    expiration?: number;
+    metadata?: Record<string, any>;
+  }>;
+  cursor?: string;
+  complete: boolean;
+}> {
+  try {
+    const params = new URLSearchParams();
+    if (options.prefix) params.set('prefix', options.prefix);
+    if (options.limit) params.set('limit', options.limit.toString());
+    if (options.cursor) params.set('cursor', options.cursor);
+
+    const result = await kvRequest<{
+      keys: Array<{
+        name: string;
+        expiration?: number;
+        metadata?: Record<string, any>;
+      }>;
+      list_complete: boolean;
+      cursor?: string;
+    }>(`/keys?${params.toString()}`);
+
+    return {
+      keys: result.keys,
+      cursor: result.cursor,
+      complete: result.list_complete,
+    };
+  } catch (error) {
+    console.error('Error listing keys:', error);
+    throw error;
+  }
+}
+
+/**
+ * Bulk write multiple key-value pairs
+ */
+export async function kvBulkPut(
+  entries: Array<{
+    key: string;
+    value: any;
+    expirationTtl?: number;
+    expiration?: number;
+    metadata?: Record<string, any>;
+  }>
+): Promise<void> {
+  try {
+    const payload = entries.map(entry => ({
+      key: entry.key,
+      value: typeof entry.value === 'string' ? entry.value : JSON.stringify(entry.value),
+      expiration_ttl: entry.expirationTtl,
+      expiration: entry.expiration,
+      metadata: entry.metadata,
+    }));
+
+    await kvRequest('/bulk', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    console.error('Error bulk putting keys:', error);
+    throw error;
+  }
+}
+
+/**
+ * Bulk delete multiple keys
+ */
+export async function kvBulkDelete(keys: string[]): Promise<void> {
+  try {
+    await kvRequest('/bulk', {
+      method: 'DELETE',
+      body: JSON.stringify(keys),
+    });
+  } catch (error) {
+    console.error('Error bulk deleting keys:', error);
+    throw error;
+  }
+}
+
+/**
+ * Cache wrapper with automatic JSON serialization
+ */
+export async function cached<T>(
+  key: string,
+  fn: () => Promise<T>,
+  ttl?: number
+): Promise<T> {
+  try {
+    // Try to get from cache
+    const cached = await kvGet<T>(key);
+    if (cached !== null) {
+      return cached;
+    }
+
+    // Compute value
+    const value = await fn();
+
+    // Store in cache with TTL
+    await kvPut(key, value, ttl ? { expirationTtl: ttl } : undefined);
+
+    return value;
+  } catch (error) {
+    console.error(`Error in cached function for key ${key}:`, error);
+    // Fall back to computing value without caching
+    return fn();
+  }
+}
+
+/**
+ * Health check for Cloudflare KV
+ */
+export async function healthCheck(): Promise<{ status: 'healthy' | 'unhealthy'; namespace?: string }> {
+  try {
+    // Try to list keys to verify connection
+    await kvList({ limit: 1 });
+    
+    return {
+      status: 'healthy',
+      namespace: NAMESPACE_ID,
+    };
+  } catch (error) {
+    console.error('Cloudflare KV health check failed:', error);
+    return { status: 'unhealthy' };
+  }
+}
+
+{% endif -%}

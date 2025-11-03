@@ -1,0 +1,311 @@
+{% if usage_metering == "stripe-metering" -%}
+/**
+ * Stripe Usage Metering Integration
+ * 
+ * Track usage-based billing with Stripe's metering API.
+ * Perfect for API calls, storage, compute time, or any metered service.
+ * 
+ * Features:
+ * - Real-time usage reporting
+ * - Aggregate usage per customer
+ * - Usage summaries and reports
+ * - Subscription-based metering
+ * - Multiple meter types (sum, last, max)
+ * 
+ * Environment Variables:
+ * - STRIPE_SECRET_KEY: Your Stripe secret key (sk_...)
+ * - STRIPE_METERING_EVENT_NAME: Meter event name (e.g., 'api_calls')
+ * 
+ * @example
+ * ```typescript
+ * import { recordUsage, getUsageSummary } from './integrations/stripe-metering';
+ * 
+ * // Record API call usage
+ * await recordUsage({
+ *   customerId: 'cus_123',
+ *   quantity: 100, // 100 API calls
+ *   action: 'api_calls',
+ *   timestamp: Date.now(),
+ * });
+ * 
+ * // Get usage summary for billing period
+ * const summary = await getUsageSummary('cus_123', 'sub_123');
+ * console.log(`Total API calls: ${summary.total_usage}`);
+ * ```
+ */
+
+import Stripe from 'stripe';
+
+// Validate required environment variables
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error('STRIPE_SECRET_KEY environment variable is required');
+}
+
+if (!process.env.STRIPE_METERING_EVENT_NAME) {
+  throw new Error('STRIPE_METERING_EVENT_NAME environment variable is required');
+}
+
+/**
+ * Stripe client instance
+ */
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2023-10-16',
+  typescript: true,
+});
+
+const METER_EVENT_NAME = process.env.STRIPE_METERING_EVENT_NAME;
+
+/**
+ * Record a usage event
+ */
+export async function recordUsage(params: {
+  customerId: string;
+  quantity: number;
+  action?: string;
+  timestamp?: number;
+  idempotencyKey?: string;
+}): Promise<{ success: boolean; event?: any }> {
+  try {
+    const event = await stripe.billing.meterEvents.create(
+      {
+        event_name: params.action || METER_EVENT_NAME,
+        payload: {
+          stripe_customer_id: params.customerId,
+          value: params.quantity.toString(),
+        },
+        timestamp: params.timestamp ? Math.floor(params.timestamp / 1000) : Math.floor(Date.now() / 1000),
+      },
+      params.idempotencyKey ? { idempotencyKey: params.idempotencyKey } : undefined
+    );
+
+    return { success: true, event };
+  } catch (error) {
+    console.error('Error recording usage:', error);
+    return { success: false };
+  }
+}
+
+/**
+ * Record multiple usage events in batch
+ */
+export async function recordUsageBatch(
+  events: Array<{
+    customerId: string;
+    quantity: number;
+    action?: string;
+    timestamp?: number;
+  }>
+): Promise<{ successful: number; failed: number }> {
+  let successful = 0;
+  let failed = 0;
+
+  await Promise.all(
+    events.map(async (event) => {
+      const result = await recordUsage(event);
+      if (result.success) {
+        successful++;
+      } else {
+        failed++;
+      }
+    })
+  );
+
+  return { successful, failed };
+}
+
+/**
+ * Get usage summary for a subscription item
+ */
+export async function getUsageSummary(
+  customerId: string,
+  subscriptionId: string
+): Promise<{
+  total_usage: number;
+  period_start: number;
+  period_end: number;
+} | null> {
+  try {
+    // Get subscription to find usage-based items
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    
+    // Find the metered subscription item
+    const meteredItem = subscription.items.data.find(
+      item => item.price.recurring?.usage_type === 'metered'
+    );
+
+    if (!meteredItem) {
+      console.warn('No metered subscription item found');
+      return null;
+    }
+
+    // Get usage records for the current period
+    const usageRecords = await stripe.subscriptionItems.listUsageRecordSummaries(
+      meteredItem.id,
+      {
+        limit: 1,
+      }
+    );
+
+    if (usageRecords.data.length === 0) {
+      return {
+        total_usage: 0,
+        period_start: subscription.current_period_start,
+        period_end: subscription.current_period_end,
+      };
+    }
+
+    const summary = usageRecords.data[0];
+    return {
+      total_usage: summary.total_usage,
+      period_start: summary.period.start,
+      period_end: summary.period.end,
+    };
+  } catch (error) {
+    console.error('Error getting usage summary:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get detailed usage records for a subscription item
+ */
+export async function getUsageRecords(
+  subscriptionItemId: string,
+  options: {
+    limit?: number;
+    startingAfter?: string;
+    endingBefore?: string;
+  } = {}
+): Promise<Array<{
+  id: string;
+  quantity: number;
+  timestamp: number;
+}>> {
+  try {
+    const records = await stripe.subscriptionItems.listUsageRecordSummaries(
+      subscriptionItemId,
+      options
+    );
+
+    return records.data.map(record => ({
+      id: record.id,
+      quantity: record.total_usage,
+      timestamp: record.period.start,
+    }));
+  } catch (error) {
+    console.error('Error getting usage records:', error);
+    throw error;
+  }
+}
+
+/**
+ * Helper to track API calls
+ */
+export async function trackApiCall(
+  customerId: string,
+  endpoint: string,
+  count: number = 1
+): Promise<void> {
+  await recordUsage({
+    customerId,
+    quantity: count,
+    action: 'api_calls',
+    idempotencyKey: `${customerId}-${endpoint}-${Date.now()}`,
+  });
+}
+
+/**
+ * Helper to track storage usage (in bytes)
+ */
+export async function trackStorageUsage(
+  customerId: string,
+  bytes: number
+): Promise<void> {
+  await recordUsage({
+    customerId,
+    quantity: bytes,
+    action: 'storage_bytes',
+  });
+}
+
+/**
+ * Helper to track compute time (in seconds)
+ */
+export async function trackComputeTime(
+  customerId: string,
+  seconds: number
+): Promise<void> {
+  await recordUsage({
+    customerId,
+    quantity: Math.ceil(seconds),
+    action: 'compute_seconds',
+  });
+}
+
+/**
+ * Get customer's current billing period usage across all meters
+ */
+export async function getCustomerUsage(
+  customerId: string
+): Promise<Array<{
+  meter: string;
+  usage: number;
+  period_start: number;
+  period_end: number;
+}>> {
+  try {
+    // Get all customer subscriptions
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status: 'active',
+      limit: 100,
+    });
+
+    const usageData: Array<{
+      meter: string;
+      usage: number;
+      period_start: number;
+      period_end: number;
+    }> = [];
+
+    for (const subscription of subscriptions.data) {
+      for (const item of subscription.items.data) {
+        if (item.price.recurring?.usage_type === 'metered') {
+          const summary = await getUsageSummary(customerId, subscription.id);
+          if (summary) {
+            usageData.push({
+              meter: item.price.nickname || 'unknown',
+              usage: summary.total_usage,
+              period_start: summary.period_start,
+              period_end: summary.period_end,
+            });
+          }
+        }
+      }
+    }
+
+    return usageData;
+  } catch (error) {
+    console.error('Error getting customer usage:', error);
+    throw error;
+  }
+}
+
+/**
+ * Health check for Stripe
+ */
+export async function healthCheck(): Promise<{ status: 'healthy' | 'unhealthy'; account?: string }> {
+  try {
+    const account = await stripe.accounts.retrieve();
+    
+    return {
+      status: 'healthy',
+      account: account.id,
+    };
+  } catch (error) {
+    console.error('Stripe health check failed:', error);
+    return { status: 'unhealthy' };
+  }
+}
+
+{% endif -%}
