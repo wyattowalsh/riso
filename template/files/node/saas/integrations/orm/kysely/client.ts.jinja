@@ -1,0 +1,299 @@
+{% if orm == 'kysely' -%}
+/**
+ * Kysely ORM Integration
+ * 
+ * Type-safe SQL query builder for TypeScript with excellent DX.
+ * Best for: Type safety, SQL control, performance-critical queries
+ * 
+ * Features:
+ * - End-to-end type safety
+ * - Full SQL control with type inference
+ * - Excellent IDE autocomplete
+ * - Supports PostgreSQL, MySQL, SQLite
+ * - Migration system built-in
+ * - No decorators or metadata
+ * 
+ * @see https://kysely.dev/
+ */
+
+import {
+  Kysely,
+  PostgresDialect,
+  MysqlDialect,
+  CamelCasePlugin,
+  Generated,
+  Insertable,
+  Updateable,
+  Selectable,
+} from 'kysely';
+import { Pool } from 'pg';
+import { createPool } from 'mysql2';
+
+// Environment validation
+const requiredEnvVars = [
+  'DATABASE_URL',
+] as const;
+
+for (const envVar of requiredEnvVars) {
+  if (!process.env[envVar]) {
+    throw new Error(`Missing required environment variable: ${envVar}`);
+  }
+}
+
+/**
+ * Define your database schema here
+ * Example schema - customize for your application
+ */
+export interface Database {
+  users: UsersTable;
+  posts: PostsTable;
+  comments: CommentsTable;
+}
+
+interface UsersTable {
+  id: Generated<number>;
+  email: string;
+  name: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+interface PostsTable {
+  id: Generated<number>;
+  user_id: number;
+  title: string;
+  content: string;
+  published: Generated<boolean>;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+interface CommentsTable {
+  id: Generated<number>;
+  post_id: number;
+  user_id: number;
+  content: string;
+  created_at: Generated<Date>;
+}
+
+// Type helpers for insert, update, and select operations
+export type User = Selectable<UsersTable>;
+export type NewUser = Insertable<UsersTable>;
+export type UserUpdate = Updateable<UsersTable>;
+
+export type Post = Selectable<PostsTable>;
+export type NewPost = Insertable<PostsTable>;
+export type PostUpdate = Updateable<PostsTable>;
+
+export type Comment = Selectable<CommentsTable>;
+export type NewComment = Insertable<CommentsTable>;
+export type CommentUpdate = Updateable<CommentsTable>;
+
+/**
+ * Create database instance based on connection string
+ */
+function createDialect() {
+  const url = process.env.DATABASE_URL!;
+  
+  if (url.startsWith('postgres://') || url.startsWith('postgresql://')) {
+    return new PostgresDialect({
+      pool: new Pool({
+        connectionString: url,
+        max: 10,
+      }),
+    });
+  } else if (url.startsWith('mysql://')) {
+    return new MysqlDialect({
+      pool: createPool(url),
+    });
+  }
+  
+  throw new Error('Unsupported database type. Use PostgreSQL or MySQL.');
+}
+
+/**
+ * Database instance with type-safe queries
+ */
+export const db = new Kysely<Database>({
+  dialect: createDialect(),
+  plugins: [new CamelCasePlugin()], // Convert snake_case to camelCase
+});
+
+/**
+ * Example: User repository with common operations
+ */
+export const userRepository = {
+  async findById(id: number): Promise<User | undefined> {
+    return await db
+      .selectFrom('users')
+      .selectAll()
+      .where('id', '=', id)
+      .executeTakeFirst();
+  },
+
+  async findByEmail(email: string): Promise<User | undefined> {
+    return await db
+      .selectFrom('users')
+      .selectAll()
+      .where('email', '=', email)
+      .executeTakeFirst();
+  },
+
+  async create(user: NewUser): Promise<User> {
+    return await db
+      .insertInto('users')
+      .values(user)
+      .returningAll()
+      .executeTakeFirstOrThrow();
+  },
+
+  async update(id: number, update: UserUpdate): Promise<User | undefined> {
+    return await db
+      .updateTable('users')
+      .set(update)
+      .where('id', '=', id)
+      .returningAll()
+      .executeTakeFirst();
+  },
+
+  async delete(id: number): Promise<void> {
+    await db
+      .deleteFrom('users')
+      .where('id', '=', id)
+      .execute();
+  },
+
+  async list(limit: number = 50, offset: number = 0): Promise<User[]> {
+    return await db
+      .selectFrom('users')
+      .selectAll()
+      .orderBy('created_at', 'desc')
+      .limit(limit)
+      .offset(offset)
+      .execute();
+  },
+};
+
+/**
+ * Example: Post repository with join queries
+ */
+export const postRepository = {
+  async findWithAuthor(id: number) {
+    return await db
+      .selectFrom('posts')
+      .innerJoin('users', 'users.id', 'posts.user_id')
+      .select([
+        'posts.id',
+        'posts.title',
+        'posts.content',
+        'posts.published',
+        'posts.created_at',
+        'users.name as author_name',
+        'users.email as author_email',
+      ])
+      .where('posts.id', '=', id)
+      .executeTakeFirst();
+  },
+
+  async findPublishedWithCommentCount() {
+    return await db
+      .selectFrom('posts')
+      .leftJoin('comments', 'comments.post_id', 'posts.id')
+      .select([
+        'posts.id',
+        'posts.title',
+        'posts.created_at',
+        db.fn.count<number>('comments.id').as('comment_count'),
+      ])
+      .where('posts.published', '=', true)
+      .groupBy(['posts.id', 'posts.title', 'posts.created_at'])
+      .execute();
+  },
+
+  async create(post: NewPost): Promise<Post> {
+    return await db
+      .insertInto('posts')
+      .values(post)
+      .returningAll()
+      .executeTakeFirstOrThrow();
+  },
+};
+
+/**
+ * Execute multiple operations in a transaction
+ */
+export async function withTransaction<T>(
+  callback: (trx: Kysely<Database>) => Promise<T>
+): Promise<T> {
+  return await db.transaction().execute(callback);
+}
+
+/**
+ * Example: Complex transaction with rollback on error
+ */
+export async function createPostWithComment(
+  userId: number,
+  postData: NewPost,
+  commentContent: string
+) {
+  return await withTransaction(async (trx) => {
+    // Create post
+    const post = await trx
+      .insertInto('posts')
+      .values(postData)
+      .returningAll()
+      .executeTakeFirstOrThrow();
+
+    // Create comment
+    const comment = await trx
+      .insertInto('comments')
+      .values({
+        post_id: post.id,
+        user_id: userId,
+        content: commentContent,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+
+    return { post, comment };
+  });
+}
+
+/**
+ * Health check endpoint
+ */
+export async function healthCheck(): Promise<{
+  healthy: boolean;
+  latency?: number;
+  error?: string;
+}> {
+  const start = Date.now();
+  
+  try {
+    await db.selectFrom('users').select('id').limit(1).execute();
+    const latency = Date.now() - start;
+    
+    return {
+      healthy: true,
+      latency,
+    };
+  } catch (error: any) {
+    return {
+      healthy: false,
+      error: error.message,
+    };
+  }
+}
+
+/**
+ * Close database connections
+ */
+export async function closeDatabase(): Promise<void> {
+  await db.destroy();
+}
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  await closeDatabase();
+});
+{%- endif %}
