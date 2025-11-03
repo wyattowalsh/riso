@@ -1,0 +1,76 @@
+{% if auth == "supabase-auth" -%}
+/**
+ * Supabase Auth Integration
+ * 
+ * Complete authentication solution with email, OAuth, magic links, and phone auth.
+ * 
+ * @see https://supabase.com/docs/guides/auth
+ */
+
+import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
+
+const requiredEnvVars = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"];
+const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
+
+if (missingEnvVars.length > 0) {
+  throw new Error(
+    `Missing required Supabase environment variables: ${missingEnvVars.join(", ")}`
+  );
+}
+
+export const supabase: SupabaseClient = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+export async function signUpWithEmail(params: {
+  email: string;
+  password: string;
+}): Promise<{ user: User | null; error: Error | null }> {
+  const { data, error } = await supabase.auth.signUp(params);
+  return { user: data.user, error: error ? new Error(error.message) : null };
+}
+
+export async function signInWithEmail(params: {
+  email: string;
+  password: string;
+}): Promise<{ user: User | null; error: Error | null }> {
+  const { data, error } = await supabase.auth.signInWithPassword(params);
+  return { user: data.user, error: error ? new Error(error.message) : null };
+}
+
+export async function signInWithOAuth(
+  provider: "google" | "github" | "gitlab"
+): Promise<{ error: Error | null }> {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: { redirectTo: `${window.location.origin}/auth/callback` },
+  });
+  return { error: error ? new Error(error.message) : null };
+}
+
+export async function signOut(): Promise<{ error: Error | null }> {
+  const { error } = await supabase.auth.signOut();
+  return { error: error ? new Error(error.message) : null };
+}
+
+export async function getCurrentUser(): Promise<User | null> {
+  const { data } = await supabase.auth.getUser();
+  return data.user;
+}
+
+export async function checkSupabaseAuthHealth(): Promise<{
+  status: "healthy" | "unhealthy";
+  message: string;
+}> {
+  try {
+    const { error } = await supabase.auth.getSession();
+    if (error) {
+      return { status: "unhealthy", message: `Error: ${error.message}` };
+    }
+    return { status: "healthy", message: "Supabase Auth is operational" };
+  } catch (error) {
+    return { status: "unhealthy", message: `Health check failed: ${error}` };
+  }
+}
+{%- endif %}
