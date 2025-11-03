@@ -1,0 +1,257 @@
+{% if saas_auth == 'workos' %}
+/**
+ * WorkOS Authentication Client
+ * 
+ * Enterprise-ready SSO with Okta, Azure AD, Google Workspace integration.
+ * Features: SAML/OIDC SSO, Directory Sync (SCIM), Magic Link, MFA.
+ * 
+ * Use when: Building B2B SaaS, need enterprise SSO, 
+ * require SCIM provisioning and directory sync.
+ * 
+ * Environment variables:
+ * - WORKOS_API_KEY: Your WorkOS API key
+ * - WORKOS_CLIENT_ID: Your WorkOS client ID
+ * - NEXT_PUBLIC_WORKOS_REDIRECT_URI: OAuth redirect URI
+ */
+
+import { WorkOS } from '@workos-inc/node';
+
+// Validate environment variables
+const WORKOS_API_KEY = process.env.WORKOS_API_KEY;
+const WORKOS_CLIENT_ID = process.env.WORKOS_CLIENT_ID;
+const WORKOS_REDIRECT_URI = process.env.NEXT_PUBLIC_WORKOS_REDIRECT_URI;
+
+if (!WORKOS_API_KEY || !WORKOS_CLIENT_ID) {
+  throw new Error(
+    'WORKOS_API_KEY and WORKOS_CLIENT_ID are required. ' +
+    'Get your credentials from https://dashboard.workos.com'
+  );
+}
+
+/**
+ * WorkOS client for authentication operations
+ */
+export const workos = new WorkOS(WORKOS_API_KEY);
+
+/**
+ * Generate SSO authorization URL for a connection
+ * 
+ * @example
+ * const url = getAuthorizationUrl('conn_123', 'https://app.com/auth/callback');
+ * // Redirect user to this URL
+ */
+export function getAuthorizationUrl(
+  connectionId: string,
+  redirectUri: string = WORKOS_REDIRECT_URI || ''
+): string {
+  return workos.sso.getAuthorizationURL({
+    connection: connectionId,
+    clientId: WORKOS_CLIENT_ID,
+    redirectUri,
+  });
+}
+
+/**
+ * Generate authorization URL for a specific organization
+ * 
+ * @example
+ * const url = getOrganizationAuthUrl('org_123', 'https://app.com/auth/callback');
+ */
+export function getOrganizationAuthUrl(
+  organizationId: string,
+  redirectUri: string = WORKOS_REDIRECT_URI || ''
+): string {
+  return workos.sso.getAuthorizationURL({
+    organization: organizationId,
+    clientId: WORKOS_CLIENT_ID,
+    redirectUri,
+  });
+}
+
+/**
+ * Get user profile from authorization code
+ * 
+ * @example
+ * const profile = await getUserFromCode(code);
+ * console.log(profile.user.email);
+ */
+export async function getUserFromCode(code: string) {
+  const { profile } = await workos.sso.getProfileAndToken({
+    code,
+    clientId: WORKOS_CLIENT_ID,
+  });
+  
+  return {
+    user: {
+      id: profile.id,
+      email: profile.email,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      organizationId: profile.organizationId,
+      connectionId: profile.connectionId,
+      connectionType: profile.connectionType,
+    },
+    profile,
+  };
+}
+
+/**
+ * Send a Magic Link for passwordless authentication
+ * 
+ * @example
+ * await sendMagicLink('user@company.com', 'https://app.com/auth/verify');
+ */
+export async function sendMagicLink(
+  email: string,
+  redirectUri: string = WORKOS_REDIRECT_URI || ''
+): Promise<void> {
+  await workos.passwordless.sendSession({
+    email,
+    redirectUri,
+  });
+}
+
+/**
+ * Verify a Magic Link session
+ * 
+ * @example
+ * const user = await verifyMagicLink(sessionId);
+ */
+export async function verifyMagicLink(sessionId: string) {
+  const { email } = await workos.passwordless.verifySession({
+    sessionId,
+  });
+  
+  return { email };
+}
+
+/**
+ * List all connections for an organization
+ * 
+ * @example
+ * const connections = await listConnections('org_123');
+ */
+export async function listConnections(organizationId?: string) {
+  const { data } = await workos.sso.listConnections({
+    organization: organizationId,
+  });
+  
+  return data.map((connection) => ({
+    id: connection.id,
+    name: connection.name,
+    type: connection.connectionType,
+    organizationId: connection.organizationId,
+    state: connection.state,
+  }));
+}
+
+/**
+ * List all organizations
+ * 
+ * @example
+ * const orgs = await listOrganizations();
+ */
+export async function listOrganizations() {
+  const { data } = await workos.organizations.listOrganizations();
+  
+  return data.map((org) => ({
+    id: org.id,
+    name: org.name,
+    domains: org.domains,
+  }));
+}
+
+/**
+ * Create a new organization
+ * 
+ * @example
+ * const org = await createOrganization('Acme Corp', ['acme.com']);
+ */
+export async function createOrganization(
+  name: string,
+  domains: string[] = []
+) {
+  const organization = await workos.organizations.createOrganization({
+    name,
+    domains,
+  });
+  
+  return {
+    id: organization.id,
+    name: organization.name,
+    domains: organization.domains,
+  };
+}
+
+/**
+ * Get organization by ID
+ * 
+ * @example
+ * const org = await getOrganization('org_123');
+ */
+export async function getOrganization(organizationId: string) {
+  const organization = await workos.organizations.getOrganization({
+    organization: organizationId,
+  });
+  
+  return {
+    id: organization.id,
+    name: organization.name,
+    domains: organization.domains,
+  };
+}
+
+/**
+ * Directory Sync: List directory users
+ * 
+ * @example
+ * const users = await listDirectoryUsers('directory_123');
+ */
+export async function listDirectoryUsers(directoryId: string) {
+  const { data } = await workos.directorySync.listUsers({
+    directory: directoryId,
+  });
+  
+  return data.map((user) => ({
+    id: user.id,
+    email: user.emails[0]?.value,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    state: user.state,
+  }));
+}
+
+/**
+ * Directory Sync: List directory groups
+ * 
+ * @example
+ * const groups = await listDirectoryGroups('directory_123');
+ */
+export async function listDirectoryGroups(directoryId: string) {
+  const { data } = await workos.directorySync.listGroups({
+    directory: directoryId,
+  });
+  
+  return data.map((group) => ({
+    id: group.id,
+    name: group.name,
+  }));
+}
+
+/**
+ * Health check for WorkOS connection
+ */
+export async function healthCheck(): Promise<boolean> {
+  try {
+    await workos.organizations.listOrganizations({ limit: 1 });
+    return true;
+  } catch (error) {
+    console.error('WorkOS health check failed:', error);
+    return false;
+  }
+}
+
+// Export client for advanced usage
+export { workos };
+
+{% endif %}

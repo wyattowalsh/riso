@@ -1,0 +1,261 @@
+{% if feature_flags == 'launchdarkly' -%}
+/**
+ * LaunchDarkly Feature Flags Integration
+ * 
+ * Enterprise feature flag and experimentation platform.
+ * Best for: Progressive rollouts, A/B testing, instant rollbacks, enterprise compliance
+ * 
+ * Features:
+ * - Instant flag updates without deployment
+ * - Targeting rules and percentage rollouts
+ * - A/B testing and experimentation
+ * - Audit logs and compliance controls
+ * - Multi-environment support
+ * - Real-time flag synchronization
+ * 
+ * @see https://docs.launchdarkly.com/
+ */
+
+import * as LDClient from '@launchdarkly/node-server-sdk';
+
+// Environment validation
+const requiredEnvVars = [
+  'LAUNCHDARKLY_SDK_KEY',
+] as const;
+
+for (const envVar of requiredEnvVars) {
+  if (!process.env[envVar]) {
+    throw new Error(`Missing required environment variable: ${envVar}`);
+  }
+}
+
+export class LaunchDarklyError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'LaunchDarklyError';
+  }
+}
+
+/**
+ * User context for feature flag evaluation
+ */
+export interface LDUser {
+  key: string; // Unique user identifier
+  email?: string;
+  name?: string;
+  custom?: Record<string, any>; // Custom attributes for targeting
+}
+
+// Initialize LaunchDarkly client
+let ldClient: LDClient.LDClient | null = null;
+
+async function getClient(): Promise<LDClient.LDClient> {
+  if (!ldClient) {
+    ldClient = LDClient.init(process.env.LAUNCHDARKLY_SDK_KEY!);
+    
+    try {
+      await ldClient.waitForInitialization({ timeout: 5 });
+    } catch (error: any) {
+      throw new LaunchDarklyError(
+        `Failed to initialize LaunchDarkly: ${error.message}`
+      );
+    }
+  }
+  
+  return ldClient;
+}
+
+/**
+ * Check if a boolean feature flag is enabled for a user
+ */
+export async function isFeatureEnabled(
+  flagKey: string,
+  user: LDUser,
+  defaultValue: boolean = false
+): Promise<boolean> {
+  try {
+    const client = await getClient();
+    return await client.variation(flagKey, user, defaultValue);
+  } catch (error: any) {
+    console.error(`Error evaluating flag ${flagKey}:`, error);
+    return defaultValue;
+  }
+}
+
+/**
+ * Get feature flag value with any type
+ */
+export async function getFeatureValue<T>(
+  flagKey: string,
+  user: LDUser,
+  defaultValue: T
+): Promise<T> {
+  try {
+    const client = await getClient();
+    return await client.variation(flagKey, user, defaultValue);
+  } catch (error: any) {
+    console.error(`Error evaluating flag ${flagKey}:`, error);
+    return defaultValue;
+  }
+}
+
+/**
+ * Get detailed information about a flag evaluation
+ */
+export async function getFeatureDetail<T>(
+  flagKey: string,
+  user: LDUser,
+  defaultValue: T
+): Promise<{
+  value: T;
+  variationIndex: number | null;
+  reason: any;
+}> {
+  try {
+    const client = await getClient();
+    return await client.variationDetail(flagKey, user, defaultValue);
+  } catch (error: any) {
+    console.error(`Error evaluating flag ${flagKey}:`, error);
+    return {
+      value: defaultValue,
+      variationIndex: null,
+      reason: { kind: 'ERROR', errorKind: 'EXCEPTION' },
+    };
+  }
+}
+
+/**
+ * Get all flag values for a user
+ * Useful for client-side initialization
+ */
+export async function getAllFlags(user: LDUser): Promise<Record<string, any>> {
+  try {
+    const client = await getClient();
+    return await client.allFlagsState(user);
+  } catch (error: any) {
+    console.error('Error getting all flags:', error);
+    return {};
+  }
+}
+
+/**
+ * Track a custom event (for experimentation metrics)
+ */
+export async function trackEvent(
+  eventName: string,
+  user: LDUser,
+  data?: any,
+  metricValue?: number
+): Promise<void> {
+  try {
+    const client = await getClient();
+    await client.track(eventName, user, data, metricValue);
+  } catch (error: any) {
+    console.error(`Error tracking event ${eventName}:`, error);
+  }
+}
+
+/**
+ * Identify a user (update user attributes)
+ */
+export async function identify(user: LDUser): Promise<void> {
+  try {
+    const client = await getClient();
+    await client.identify(user);
+  } catch (error: any) {
+    console.error('Error identifying user:', error);
+  }
+}
+
+/**
+ * Flush all pending events to LaunchDarkly
+ */
+export async function flush(): Promise<void> {
+  try {
+    const client = await getClient();
+    await client.flush();
+  } catch (error: any) {
+    console.error('Error flushing events:', error);
+  }
+}
+
+/**
+ * Example: Progressive rollout helper
+ */
+export async function checkRollout(
+  flagKey: string,
+  user: LDUser
+): Promise<{
+  enabled: boolean;
+  percentage?: number;
+  reason: string;
+}> {
+  const detail = await getFeatureDetail(flagKey, user, false);
+  
+  return {
+    enabled: detail.value as boolean,
+    percentage: detail.variationIndex !== null 
+      ? (detail.variationIndex / 100) * 100 
+      : undefined,
+    reason: detail.reason?.kind || 'UNKNOWN',
+  };
+}
+
+/**
+ * Example: A/B test helper
+ */
+export async function getVariant(
+  experimentKey: string,
+  user: LDUser,
+  variants: string[] = ['control', 'treatment']
+): Promise<string> {
+  const variantIndex = await getFeatureValue<number>(
+    experimentKey,
+    user,
+    0
+  );
+  
+  return variants[variantIndex] || variants[0];
+}
+
+/**
+ * Health check endpoint
+ */
+export async function healthCheck(): Promise<{
+  healthy: boolean;
+  error?: string;
+  initialized?: boolean;
+}> {
+  try {
+    const client = await getClient();
+    const initialized = client.initialized();
+    
+    return {
+      healthy: initialized,
+      initialized,
+    };
+  } catch (error: any) {
+    return {
+      healthy: false,
+      error: error.message,
+      initialized: false,
+    };
+  }
+}
+
+/**
+ * Close the LaunchDarkly client
+ */
+export async function closeClient(): Promise<void> {
+  if (ldClient) {
+    await flush();
+    await ldClient.close();
+    ldClient = null;
+  }
+}
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  await closeClient();
+});
+{%- endif %}

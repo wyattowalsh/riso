@@ -1,0 +1,322 @@
+{% if orm == "typeorm" -%}
+/**
+ * TypeORM Integration
+ * 
+ * Comprehensive ORM with decorators, migrations, and relation support.
+ * Provides type-safe database access with entity decorators.
+ * 
+ * @see https://typeorm.io
+ */
+
+import { DataSource, Repository, EntityManager, QueryRunner } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany } from 'typeorm';
+
+// Environment validation
+const requiredEnv = {
+  DATABASE_URL: process.env.DATABASE_URL,
+  DB_TYPE: process.env.DB_TYPE || 'postgres', // postgres, mysql, sqlite
+};
+
+Object.entries(requiredEnv).forEach(([key, value]) => {
+  if (!value && key !== 'DB_TYPE') {
+    throw new Error(`TypeORM: Missing required environment variable: ${key}`);
+  }
+});
+
+/**
+ * Example Entity: User
+ */
+@Entity('users')
+export class User {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ unique: true })
+  email: string;
+
+  @Column()
+  name: string;
+
+  @Column({ nullable: true })
+  avatarUrl?: string;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @OneToMany(() => Post, post => post.author)
+  posts: Post[];
+}
+
+/**
+ * Example Entity: Post
+ */
+@Entity('posts')
+export class Post {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column()
+  title: string;
+
+  @Column('text')
+  content: string;
+
+  @Column({ default: false })
+  published: boolean;
+
+  @ManyToOne(() => User, user => user.posts)
+  author: User;
+
+  @Column()
+  authorId: string;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @OneToMany(() => Comment, comment => comment.post)
+  comments: Comment[];
+}
+
+/**
+ * Example Entity: Comment
+ */
+@Entity('comments')
+export class Comment {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column('text')
+  content: string;
+
+  @ManyToOne(() => Post, post => post.comments)
+  post: Post;
+
+  @Column()
+  postId: string;
+
+  @ManyToOne(() => User)
+  author: User;
+
+  @Column()
+  authorId: string;
+
+  @CreateDateColumn()
+  createdAt: Date;
+}
+
+/**
+ * Initialize TypeORM DataSource
+ */
+export const AppDataSource = new DataSource({
+  type: requiredEnv.DB_TYPE as any,
+  url: requiredEnv.DATABASE_URL,
+  entities: [User, Post, Comment],
+  migrations: ['src/migrations/*.ts'],
+  synchronize: process.env.NODE_ENV === 'development', // Auto-sync in dev only
+  logging: process.env.NODE_ENV === 'development',
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  poolSize: 10,
+});
+
+/**
+ * Initialize connection
+ */
+let initialized = false;
+
+export async function initializeTypeORM(): Promise<DataSource> {
+  if (!initialized) {
+    await AppDataSource.initialize();
+    initialized = true;
+    console.log('TypeORM: Connected to database');
+  }
+  return AppDataSource;
+}
+
+/**
+ * Repository Pattern - Users
+ */
+export class UserRepository {
+  private repo: Repository<User>;
+
+  constructor(dataSource: DataSource) {
+    this.repo = dataSource.getRepository(User);
+  }
+
+  async findByEmail(email: string): Promise<User | null> {
+    return this.repo.findOne({ where: { email } });
+  }
+
+  async findWithPosts(userId: string): Promise<User | null> {
+    return this.repo.findOne({
+      where: { id: userId },
+      relations: ['posts'],
+    });
+  }
+
+  async create(data: Partial<User>): Promise<User> {
+    const user = this.repo.create(data);
+    return this.repo.save(user);
+  }
+
+  async update(userId: string, data: Partial<User>): Promise<User | null> {
+    await this.repo.update(userId, data);
+    return this.repo.findOne({ where: { id: userId } });
+  }
+
+  async delete(userId: string): Promise<boolean> {
+    const result = await this.repo.delete(userId);
+    return (result.affected ?? 0) > 0;
+  }
+}
+
+/**
+ * Repository Pattern - Posts
+ */
+export class PostRepository {
+  private repo: Repository<Post>;
+
+  constructor(dataSource: DataSource) {
+    this.repo = dataSource.getRepository(Post);
+  }
+
+  async findPublished(): Promise<Post[]> {
+    return this.repo.find({
+      where: { published: true },
+      relations: ['author'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findWithComments(postId: string): Promise<Post | null> {
+    return this.repo.findOne({
+      where: { id: postId },
+      relations: ['author', 'comments', 'comments.author'],
+    });
+  }
+
+  async create(data: Partial<Post>): Promise<Post> {
+    const post = this.repo.create(data);
+    return this.repo.save(post);
+  }
+
+  async publish(postId: string): Promise<boolean> {
+    const result = await this.repo.update(postId, { published: true });
+    return (result.affected ?? 0) > 0;
+  }
+}
+
+/**
+ * Advanced Query with QueryBuilder
+ */
+export async function findPostsWithStats(dataSource: DataSource) {
+  return dataSource
+    .getRepository(Post)
+    .createQueryBuilder('post')
+    .leftJoinAndSelect('post.author', 'author')
+    .loadRelationCountAndMap('post.commentCount', 'post.comments')
+    .where('post.published = :published', { published: true })
+    .orderBy('post.createdAt', 'DESC')
+    .getMany();
+}
+
+/**
+ * Transaction support
+ */
+export async function createPostWithComment(
+  dataSource: DataSource,
+  postData: Partial<Post>,
+  commentData: Partial<Comment>
+): Promise<{ post: Post; comment: Comment }> {
+  const queryRunner = dataSource.createQueryRunner();
+
+  await queryRunner.connect();
+  await queryRunner.startTransaction('READ COMMITTED');
+
+  try {
+    // Create post
+    const post = queryRunner.manager.create(Post, postData);
+    await queryRunner.manager.save(post);
+
+    // Create comment
+    const comment = queryRunner.manager.create(Comment, {
+      ...commentData,
+      postId: post.id,
+    });
+    await queryRunner.manager.save(comment);
+
+    await queryRunner.commitTransaction();
+    return { post, comment };
+  } catch (error) {
+    await queryRunner.rollbackTransaction();
+    throw error;
+  } finally {
+    await queryRunner.release();
+  }
+}
+
+/**
+ * Helper: Run in transaction
+ */
+export async function runInTransaction<T>(
+  dataSource: DataSource,
+  work: (manager: EntityManager) => Promise<T>
+): Promise<T> {
+  const queryRunner = dataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+
+  try {
+    const result = await work(queryRunner.manager);
+    await queryRunner.commitTransaction();
+    return result;
+  } catch (error) {
+    await queryRunner.rollbackTransaction();
+    throw error;
+  } finally {
+    await queryRunner.release();
+  }
+}
+
+/**
+ * Health check
+ */
+export async function healthCheck(dataSource: DataSource): Promise<boolean> {
+  try {
+    await dataSource.query('SELECT 1');
+    return true;
+  } catch (error) {
+    console.error('TypeORM: Health check failed', error);
+    return false;
+  }
+}
+
+/**
+ * Get connection statistics
+ */
+export function getConnectionStats(dataSource: DataSource) {
+  return {
+    isInitialized: dataSource.isInitialized,
+    hasMetadata: dataSource.hasMetadata(User),
+    driver: dataSource.driver.options.type,
+    database: dataSource.driver.database,
+  };
+}
+
+export default {
+  AppDataSource,
+  initializeTypeORM,
+  UserRepository,
+  PostRepository,
+  findPostsWithStats,
+  createPostWithComment,
+  runInTransaction,
+  healthCheck,
+  getConnectionStats,
+};
+{%- endif %}

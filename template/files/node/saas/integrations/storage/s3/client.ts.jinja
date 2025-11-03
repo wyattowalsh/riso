@@ -1,0 +1,226 @@
+{% if saas_storage == 's3' %}
+/**
+ * AWS S3 Storage Client
+ * 
+ * Industry standard object storage with lifecycle policies and CloudFront integration.
+ * Features: Unlimited scalability, glacier archival, versioning, fine-grained access control.
+ * 
+ * Use when: Need AWS ecosystem integration, require advanced lifecycle policies,
+ * glacier archival, or enterprise-grade compliance features.
+ * 
+ * Environment variables:
+ * - AWS_ACCESS_KEY_ID: AWS access key
+ * - AWS_SECRET_ACCESS_KEY: AWS secret key
+ * - AWS_REGION: AWS region (e.g., us-east-1)
+ * - AWS_S3_BUCKET: S3 bucket name
+ */
+
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+
+// Validate environment variables
+const AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID;
+const AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY;
+const AWS_REGION = process.env.AWS_REGION || 'us-east-1';
+const AWS_S3_BUCKET = process.env.AWS_S3_BUCKET;
+
+if (!AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY || !AWS_S3_BUCKET) {
+  throw new Error(
+    'AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_S3_BUCKET are required. ' +
+    'Configure credentials from AWS IAM console'
+  );
+}
+
+/**
+ * S3 client for storage operations
+ */
+export const s3 = new S3Client({
+  region: AWS_REGION,
+  credentials: {
+    accessKeyId: AWS_ACCESS_KEY_ID,
+    secretAccessKey: AWS_SECRET_ACCESS_KEY,
+  },
+});
+
+/**
+ * Upload a file to S3
+ * 
+ * @example
+ * await uploadFile('avatars/user-123.jpg', buffer, 'image/jpeg');
+ */
+export async function uploadFile(
+  key: string,
+  body: Buffer | Uint8Array | string,
+  contentType?: string
+): Promise<{ key: string; url: string }> {
+  const command = new PutObjectCommand({
+    Bucket: AWS_S3_BUCKET,
+    Key: key,
+    Body: body,
+    ContentType: contentType,
+  });
+
+  await s3.send(command);
+
+  return {
+    key,
+    url: `https://${AWS_S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com/${key}`,
+  };
+}
+
+/**
+ * Get a signed URL for direct upload (client-side)
+ * 
+ * @example
+ * const uploadUrl = await getUploadUrl('avatars/user-123.jpg', 'image/jpeg');
+ * // Send this URL to client for direct upload
+ */
+export async function getUploadUrl(
+  key: string,
+  contentType: string,
+  expiresIn: number = 3600
+): Promise<string> {
+  const command = new PutObjectCommand({
+    Bucket: AWS_S3_BUCKET,
+    Key: key,
+    ContentType: contentType,
+  });
+
+  return await getSignedUrl(s3, command, { expiresIn });
+}
+
+/**
+ * Get a file from S3
+ * 
+ * @example
+ * const file = await getFile('avatars/user-123.jpg');
+ */
+export async function getFile(key: string): Promise<{
+  body: ReadableStream;
+  contentType?: string;
+}> {
+  const command = new GetObjectCommand({
+    Bucket: AWS_S3_BUCKET,
+    Key: key,
+  });
+
+  const response = await s3.send(command);
+
+  if (!response.Body) {
+    throw new Error(`File not found: ${key}`);
+  }
+
+  return {
+    body: response.Body as unknown as ReadableStream,
+    contentType: response.ContentType,
+  };
+}
+
+/**
+ * Get a signed URL for file download
+ * 
+ * @example
+ * const downloadUrl = await getDownloadUrl('reports/monthly-123.pdf');
+ */
+export async function getDownloadUrl(
+  key: string,
+  expiresIn: number = 3600
+): Promise<string> {
+  const command = new GetObjectCommand({
+    Bucket: AWS_S3_BUCKET,
+    Key: key,
+  });
+
+  return await getSignedUrl(s3, command, { expiresIn });
+}
+
+/**
+ * Delete a file from S3
+ * 
+ * @example
+ * await deleteFile('avatars/user-123.jpg');
+ */
+export async function deleteFile(key: string): Promise<void> {
+  const command = new DeleteObjectCommand({
+    Bucket: AWS_S3_BUCKET,
+    Key: key,
+  });
+
+  await s3.send(command);
+}
+
+/**
+ * List files in a directory (prefix)
+ * 
+ * @example
+ * const files = await listFiles('avatars/');
+ */
+export async function listFiles(
+  prefix: string,
+  maxKeys: number = 1000
+): Promise<Array<{ key: string; size: number; lastModified: Date }>> {
+  const command = new ListObjectsV2Command({
+    Bucket: AWS_S3_BUCKET,
+    Prefix: prefix,
+    MaxKeys: maxKeys,
+  });
+
+  const response = await s3.send(command);
+
+  return (response.Contents || []).map((item) => ({
+    key: item.Key!,
+    size: item.Size!,
+    lastModified: item.LastModified!,
+  }));
+}
+
+/**
+ * Check if a file exists
+ * 
+ * @example
+ * const exists = await fileExists('avatars/user-123.jpg');
+ */
+export async function fileExists(key: string): Promise<boolean> {
+  try {
+    await getFile(key);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get storage statistics
+ * 
+ * @example
+ * const stats = await getStats('avatars/');
+ */
+export async function getStats(prefix: string = ''): Promise<{
+  count: number;
+  totalSize: number;
+}> {
+  const files = await listFiles(prefix);
+  
+  return {
+    count: files.length,
+    totalSize: files.reduce((sum, file) => sum + file.size, 0),
+  };
+}
+
+/**
+ * Health check for S3 connection
+ */
+export async function healthCheck(): Promise<boolean> {
+  try {
+    await listFiles('', 1);
+    return true;
+  } catch (error) {
+    console.error('S3 health check failed:', error);
+    return false;
+  }
+}
+
+// Export client for advanced usage
+export { s3 as storage };
+
+{% endif %}

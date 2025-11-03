@@ -1,0 +1,247 @@
+{% if saas_ai == 'gemini' %}
+/**
+ * Google Gemini AI Client
+ * 
+ * Multimodal AI with long context windows and cost-effective pricing.
+ * Features: Text + image understanding, 1M+ token context, structured outputs.
+ * 
+ * Use when: Need multimodal capabilities, very long context (documents/conversations),
+ * or cost-effective alternative to OpenAI/Anthropic.
+ * 
+ * Environment variables:
+ * - GOOGLE_AI_API_KEY: Google AI API key (Gemini)
+ */
+
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+// Validate environment variables
+const GOOGLE_AI_API_KEY = process.env.GOOGLE_AI_API_KEY;
+
+if (!GOOGLE_AI_API_KEY) {
+  throw new Error(
+    'GOOGLE_AI_API_KEY is required. ' +
+    'Get your API key from https://makersuite.google.com/app/apikey'
+  );
+}
+
+/**
+ * Gemini AI client
+ */
+const genAI = new GoogleGenerativeAI(GOOGLE_AI_API_KEY);
+
+/**
+ * Generate text completion
+ * 
+ * @example
+ * const response = await generateText('Explain quantum computing in simple terms');
+ */
+export async function generateText(
+  prompt: string,
+  options: {
+    model?: 'gemini-pro' | 'gemini-pro-vision';
+    temperature?: number;
+    maxTokens?: number;
+  } = {}
+): Promise<string> {
+  const model = genAI.getGenerativeModel({
+    model: options.model || 'gemini-pro',
+  });
+
+  const result = await model.generateContent({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: options.temperature,
+      maxOutputTokens: options.maxTokens,
+    },
+  });
+
+  const response = result.response;
+  return response.text();
+}
+
+/**
+ * Chat with conversation history
+ * 
+ * @example
+ * const chat = startChat();
+ * const response1 = await chat.sendMessage('Hello!');
+ * const response2 = await chat.sendMessage('Tell me about AI');
+ */
+export function startChat(options: {
+  model?: 'gemini-pro' | 'gemini-pro-vision';
+  history?: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }>;
+} = {}) {
+  const model = genAI.getGenerativeModel({
+    model: options.model || 'gemini-pro',
+  });
+
+  const chat = model.startChat({
+    history: options.history || [],
+  });
+
+  return {
+    async sendMessage(message: string): Promise<string> {
+      const result = await chat.sendMessage(message);
+      return result.response.text();
+    },
+    async getHistory() {
+      return chat.getHistory();
+    },
+  };
+}
+
+/**
+ * Analyze image with text prompt
+ * 
+ * @example
+ * const analysis = await analyzeImage(
+ *   'What is in this image?',
+ *   imageBuffer
+ * );
+ */
+export async function analyzeImage(
+  prompt: string,
+  imageData: Buffer | Uint8Array,
+  mimeType: string = 'image/jpeg'
+): Promise<string> {
+  const model = genAI.getGenerativeModel({ model: 'gemini-pro-vision' });
+
+  const result = await model.generateContent([
+    { text: prompt },
+    {
+      inlineData: {
+        data: Buffer.from(imageData).toString('base64'),
+        mimeType,
+      },
+    },
+  ]);
+
+  return result.response.text();
+}
+
+/**
+ * Stream text generation
+ * 
+ * @example
+ * for await (const chunk of streamText('Write a story')) {
+ *   process.stdout.write(chunk);
+ * }
+ */
+export async function* streamText(
+  prompt: string,
+  options: {
+    model?: 'gemini-pro' | 'gemini-pro-vision';
+    temperature?: number;
+  } = {}
+): AsyncGenerator<string> {
+  const model = genAI.getGenerativeModel({
+    model: options.model || 'gemini-pro',
+  });
+
+  const result = await model.generateContentStream({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: options.temperature,
+    },
+  });
+
+  for await (const chunk of result.stream) {
+    const chunkText = chunk.text();
+    yield chunkText;
+  }
+}
+
+/**
+ * Count tokens in text
+ * 
+ * @example
+ * const count = await countTokens('Hello, world!');
+ */
+export async function countTokens(text: string): Promise<number> {
+  const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+  const result = await model.countTokens(text);
+  return result.totalTokens;
+}
+
+/**
+ * Generate structured output with JSON schema
+ * 
+ * @example
+ * const data = await generateStructured<{ name: string; age: number }>(
+ *   'Extract name and age: John is 25 years old'
+ * );
+ */
+export async function generateStructured<T = any>(
+  prompt: string,
+  schema?: Record<string, any>
+): Promise<T> {
+  const enhancedPrompt = schema
+    ? `${prompt}\n\nRespond ONLY with valid JSON matching this schema: ${JSON.stringify(schema)}`
+    : `${prompt}\n\nRespond ONLY with valid JSON.`;
+
+  const response = await generateText(enhancedPrompt);
+  
+  // Extract JSON from markdown code blocks if present
+  const jsonMatch = response.match(/```json\n(.*?)\n```/s) || 
+                    response.match(/```\n(.*?)\n```/s);
+  
+  const jsonStr = jsonMatch ? jsonMatch[1] : response;
+  return JSON.parse(jsonStr.trim());
+}
+
+/**
+ * Function calling (tool use)
+ * 
+ * @example
+ * const tools = [{
+ *   name: 'get_weather',
+ *   description: 'Get weather for a location',
+ *   parameters: { type: 'object', properties: { location: { type: 'string' } } }
+ * }];
+ * const result = await callFunction('What is the weather in NYC?', tools);
+ */
+export async function callFunction(
+  prompt: string,
+  tools: Array<{
+    name: string;
+    description: string;
+    parameters: Record<string, any>;
+  }>
+): Promise<{
+  functionCalls: Array<{ name: string; args: Record<string, any> }>;
+}> {
+  const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+
+  const result = await model.generateContent({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    tools: [{ functionDeclarations: tools }],
+  });
+
+  const response = result.response;
+  const functionCalls = response.functionCalls() || [];
+
+  return {
+    functionCalls: functionCalls.map((call) => ({
+      name: call.name,
+      args: call.args as Record<string, any>,
+    })),
+  };
+}
+
+/**
+ * Health check for Gemini API
+ */
+export async function healthCheck(): Promise<boolean> {
+  try {
+    await generateText('Test', { maxTokens: 5 });
+    return true;
+  } catch (error) {
+    console.error('Gemini health check failed:', error);
+    return false;
+  }
+}
+
+// Export client for advanced usage
+export { genAI };
+
+{% endif %}

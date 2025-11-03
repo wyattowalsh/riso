@@ -1,0 +1,165 @@
+{% if storage == "uploadthing" -%}
+/**
+ * UploadThing Storage Integration
+ * 
+ * File upload solution built for Next.js with automatic image optimization,
+ * presigned URLs, and built-in CDN.
+ * 
+ * @see https://uploadthing.com/
+ */
+
+import { createUploadthing, type FileRouter } from "uploadthing/next";
+import { UploadThingError } from "uploadthing/server";
+
+// Validate required environment variables
+const requiredEnvVars = ["UPLOADTHING_SECRET", "UPLOADTHING_APP_ID"];
+const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
+
+if (missingEnvVars.length > 0) {
+  throw new Error(
+    `Missing required UploadThing environment variables: ${missingEnvVars.join(", ")}`
+  );
+}
+
+const f = createUploadthing();
+
+/**
+ * File Router Configuration
+ * Define upload endpoints with size limits and file type restrictions
+ */
+export const uploadRouter = {
+  // Profile image upload (max 4MB)
+  profileImage: f({ image: { maxFileSize: "4MB", maxFileCount: 1 } })
+    .middleware(async ({ req }) => {
+      // Add authentication check here
+      // const user = await auth(req);
+      // if (!user) throw new UploadThingError("Unauthorized");
+      
+      return { userId: "user-123" }; // Replace with actual user ID
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      console.log("Profile image uploaded:", file.url);
+      console.log("User ID:", metadata.userId);
+      
+      // Store file URL in database
+      // await db.users.update({ profileImage: file.url });
+      
+      return { url: file.url };
+    }),
+
+  // Document upload (max 16MB)
+  documentUpload: f({ pdf: { maxFileSize: "16MB", maxFileCount: 5 } })
+    .middleware(async ({ req }) => {
+      return { userId: "user-123" };
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      console.log("Document uploaded:", file.name);
+      return { url: file.url, name: file.name };
+    }),
+
+  // Multiple image upload (max 8MB each)
+  imageGallery: f({ image: { maxFileSize: "8MB", maxFileCount: 10 } })
+    .middleware(async ({ req }) => {
+      return { userId: "user-123" };
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      console.log("Gallery image uploaded:", file.url);
+      return { url: file.url };
+    }),
+
+  // Video upload (max 128MB)
+  videoUpload: f({ video: { maxFileSize: "128MB", maxFileCount: 1 } })
+    .middleware(async ({ req }) => {
+      return { userId: "user-123" };
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      console.log("Video uploaded:", file.url);
+      return { url: file.url };
+    }),
+} satisfies FileRouter;
+
+export type UploadRouter = typeof uploadRouter;
+
+/**
+ * Helper: Get file URL from UploadThing key
+ */
+export function getUploadThingUrl(fileKey: string): string {
+  return `https://utfs.io/f/${fileKey}`;
+}
+
+/**
+ * Helper: Delete file from UploadThing
+ */
+export async function deleteUploadThingFile(fileKey: string): Promise<void> {
+  const response = await fetch(
+    `https://uploadthing.com/api/deleteFile?fileKey=${fileKey}`,
+    {
+      method: "POST",
+      headers: {
+        "X-Uploadthing-Api-Key": process.env.UPLOADTHING_SECRET!,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to delete file: ${response.statusText}`);
+  }
+}
+
+/**
+ * Helper: List all files for current app
+ */
+export async function listUploadThingFiles(): Promise<
+  Array<{
+    id: string;
+    key: string;
+    name: string;
+    size: number;
+    uploadedAt: string;
+    url: string;
+  }>
+> {
+  const response = await fetch("https://uploadthing.com/api/listFiles", {
+    headers: {
+      "X-Uploadthing-Api-Key": process.env.UPLOADTHING_SECRET!,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to list files: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.files || [];
+}
+
+/**
+ * Health Check
+ */
+export async function checkUploadThingHealth(): Promise<{
+  status: "healthy" | "unhealthy";
+  message: string;
+}> {
+  try {
+    const response = await fetch("https://uploadthing.com/api/health", {
+      headers: {
+        "X-Uploadthing-Api-Key": process.env.UPLOADTHING_SECRET!,
+      },
+    });
+
+    if (response.ok) {
+      return { status: "healthy", message: "UploadThing is operational" };
+    }
+
+    return {
+      status: "unhealthy",
+      message: `UploadThing health check failed: ${response.status}`,
+    };
+  } catch (error) {
+    return {
+      status: "unhealthy",
+      message: `UploadThing health check error: ${error}`,
+    };
+  }
+}
+{%- endif %}

@@ -1,0 +1,282 @@
+{% if search == 'typesense' -%}
+/**
+ * Typesense Search Integration
+ * 
+ * Open-source typo-tolerant search engine.
+ * Provides instant search experiences with typo tolerance.
+ * 
+ * Features:
+ * - Instant search (sub-50ms)
+ * - Advanced typo tolerance and fuzzy matching
+ * - Faceted search and filtering
+ * - Geo search with radius queries
+ * - Synonym support
+ * - Easy deployment (single binary)
+ * - Real-time index updates
+ * 
+ * @example
+ * ```typescript
+ * import { typesenseClient, searchDocuments, indexDocument } from './integrations/search/typesense';
+ * 
+ * // Create collection
+ * await createCollection('products', {
+ *   name: 'string',
+ *   price: 'float',
+ *   category: 'string[]',
+ * });
+ * 
+ * // Index document
+ * await indexDocument('products', {
+ *   id: '1',
+ *   name: 'Laptop',
+ *   price: 999.99,
+ *   category: ['electronics', 'computers'],
+ * });
+ * 
+ * // Search
+ * const results = await searchDocuments('products', 'lapto', { // typo tolerance!
+ *   query_by: 'name',
+ *   filter_by: 'price:<1000',
+ * });
+ * ```
+ */
+
+import Typesense from 'typesense';
+
+// Environment variables
+const TYPESENSE_API_KEY = process.env.TYPESENSE_API_KEY;
+const TYPESENSE_HOST = process.env.TYPESENSE_HOST || 'localhost';
+const TYPESENSE_PORT = process.env.TYPESENSE_PORT || '8108';
+const TYPESENSE_PROTOCOL = process.env.TYPESENSE_PROTOCOL || 'http';
+
+if (!TYPESENSE_API_KEY) {
+  throw new Error('TYPESENSE_API_KEY environment variable is required');
+}
+
+/**
+ * Typesense client
+ */
+export const typesenseClient = new Typesense.Client({
+  nodes: [{
+    host: TYPESENSE_HOST,
+    port: TYPESENSE_PORT,
+    protocol: TYPESENSE_PROTOCOL,
+  }],
+  apiKey: TYPESENSE_API_KEY,
+  connectionTimeoutSeconds: 2,
+});
+
+/**
+ * Collection field schema
+ */
+export interface FieldSchema {
+  name: string;
+  type: 'string' | 'int32' | 'int64' | 'float' | 'bool' | 'string[]' | 'int32[]' | 'int64[]' | 'float[]' | 'bool[]' | 'geopoint' | 'geopoint[]' | 'object' | 'object[]';
+  facet?: boolean;
+  optional?: boolean;
+  index?: boolean;
+  sort?: boolean;
+}
+
+/**
+ * Create collection (index)
+ */
+export async function createCollection(
+  name: string,
+  schema: Record<string, string>,
+  defaultSortingField?: string
+): Promise<void> {
+  try {
+    const fields: FieldSchema[] = Object.entries(schema).map(([fieldName, fieldType]) => ({
+      name: fieldName,
+      type: fieldType as any,
+      facet: fieldType.includes('[]') || ['string', 'int32', 'int64'].includes(fieldType),
+    }));
+
+    await typesenseClient.collections().create({
+      name,
+      fields,
+      default_sorting_field: defaultSortingField,
+    });
+  } catch (error) {
+    console.error(`Failed to create Typesense collection ${name}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Delete collection
+ */
+export async function deleteCollection(name: string): Promise<void> {
+  try {
+    await typesenseClient.collections(name).delete();
+  } catch (error) {
+    console.error(`Failed to delete Typesense collection ${name}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Index document
+ */
+export async function indexDocument<T extends Record<string, any>>(
+  collection: string,
+  document: T
+): Promise<T> {
+  try {
+    return await typesenseClient.collections(collection).documents().create(document);
+  } catch (error) {
+    console.error(`Failed to index document in Typesense collection ${collection}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Index multiple documents
+ */
+export async function indexDocuments<T extends Record<string, any>>(
+  collection: string,
+  documents: T[]
+): Promise<void> {
+  try {
+    await typesenseClient.collections(collection).documents().import(documents);
+  } catch (error) {
+    console.error(`Failed to index documents in Typesense collection ${collection}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Search documents
+ */
+export async function searchDocuments<T = any>(
+  collection: string,
+  query: string,
+  options: {
+    query_by: string;
+    filter_by?: string;
+    sort_by?: string;
+    facet_by?: string;
+    max_facet_values?: number;
+    page?: number;
+    per_page?: number;
+    typo_tokens_threshold?: number;
+  } = { query_by: 'name' }
+): Promise<{
+  found: number;
+  hits: Array<{ document: T; highlights: any[] }>;
+  facet_counts?: any[];
+}> {
+  try {
+    const searchParameters = {
+      q: query,
+      ...options,
+    };
+
+    const searchResults = await typesenseClient
+      .collections(collection)
+      .documents()
+      .search(searchParameters);
+
+    return searchResults as any;
+  } catch (error) {
+    console.error(`Failed to search in Typesense collection ${collection}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Get document by ID
+ */
+export async function getDocument<T = any>(
+  collection: string,
+  id: string
+): Promise<T | null> {
+  try {
+    return await typesenseClient.collections(collection).documents(id).retrieve();
+  } catch (error) {
+    console.error(`Failed to get document ${id} from Typesense collection ${collection}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Update document
+ */
+export async function updateDocument<T extends Record<string, any>>(
+  collection: string,
+  id: string,
+  document: Partial<T>
+): Promise<T> {
+  try {
+    return await typesenseClient.collections(collection).documents(id).update(document);
+  } catch (error) {
+    console.error(`Failed to update document ${id} in Typesense collection ${collection}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Delete document
+ */
+export async function deleteDocument(
+  collection: string,
+  id: string
+): Promise<void> {
+  try {
+    await typesenseClient.collections(collection).documents(id).delete();
+  } catch (error) {
+    console.error(`Failed to delete document ${id} from Typesense collection ${collection}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Geo search - find documents within radius
+ */
+export async function geoSearch<T = any>(
+  collection: string,
+  lat: number,
+  lon: number,
+  radiusKm: number,
+  options: {
+    query_by?: string;
+    filter_by?: string;
+  } = {}
+): Promise<Array<{ document: T; geo_distance_meters: number }>> {
+  try {
+    const searchResults = await searchDocuments<T>(
+      collection,
+      '*',
+      {
+        ...options,
+        query_by: options.query_by || 'name',
+        filter_by: `location:(${lat}, ${lon}, ${radiusKm} km)${options.filter_by ? ` && ${options.filter_by}` : ''}`,
+      }
+    );
+
+    return searchResults.hits.map(hit => ({
+      document: hit.document,
+      geo_distance_meters: (hit as any).geo_distance_meters || 0,
+    }));
+  } catch (error) {
+    console.error(`Failed to perform geo search in Typesense collection ${collection}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Health check
+ */
+export async function healthCheck(): Promise<boolean> {
+  try {
+    await typesenseClient.health.retrieve();
+    return true;
+  } catch (error) {
+    console.error('Typesense health check failed:', error);
+    return false;
+  }
+}
+
+export default typesenseClient;
+{%- endif %}

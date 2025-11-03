@@ -1,0 +1,310 @@
+{% if ai == "ollama" -%}
+/**
+ * Ollama Integration
+ * 
+ * Run open-source AI models locally for privacy and cost savings.
+ * Supports llama2, mistral, codellama, phi and custom models.
+ * 
+ * @see https://ollama.ai
+ */
+
+import { Ollama } from 'ollama';
+
+// Environment validation
+const requiredEnv = {
+  OLLAMA_HOST: process.env.OLLAMA_HOST || 'http://localhost:11434',
+  OLLAMA_MODEL: process.env.OLLAMA_MODEL || 'llama2',
+};
+
+/**
+ * Initialize Ollama client
+ */
+export const ollama = new Ollama({
+  host: requiredEnv.OLLAMA_HOST,
+});
+
+/**
+ * Generate text completion
+ */
+export async function generate(
+  prompt: string,
+  options?: {
+    model?: string;
+    temperature?: number;
+    stream?: boolean;
+    maxTokens?: number;
+  }
+): Promise<string> {
+  try {
+    const response = await ollama.generate({
+      model: options?.model || requiredEnv.OLLAMA_MODEL,
+      prompt,
+      options: {
+        temperature: options?.temperature ?? 0.7,
+        num_predict: options?.maxTokens,
+      },
+      stream: false,
+    });
+
+    return response.response;
+  } catch (error) {
+    console.error('Ollama: Generate failed', error);
+    throw error;
+  }
+}
+
+/**
+ * Generate text with streaming
+ */
+export async function* generateStream(
+  prompt: string,
+  options?: {
+    model?: string;
+    temperature?: number;
+  }
+): AsyncGenerator<string> {
+  try {
+    const stream = await ollama.generate({
+      model: options?.model || requiredEnv.OLLAMA_MODEL,
+      prompt,
+      options: {
+        temperature: options?.temperature ?? 0.7,
+      },
+      stream: true,
+    });
+
+    for await (const chunk of stream) {
+      yield chunk.response;
+    }
+  } catch (error) {
+    console.error('Ollama: Stream failed', error);
+    throw error;
+  }
+}
+
+/**
+ * Chat with conversation history
+ */
+export interface Message {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
+export async function chat(
+  messages: Message[],
+  options?: {
+    model?: string;
+    temperature?: number;
+  }
+): Promise<string> {
+  try {
+    const response = await ollama.chat({
+      model: options?.model || requiredEnv.OLLAMA_MODEL,
+      messages: messages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+      })),
+      options: {
+        temperature: options?.temperature ?? 0.7,
+      },
+      stream: false,
+    });
+
+    return response.message.content;
+  } catch (error) {
+    console.error('Ollama: Chat failed', error);
+    throw error;
+  }
+}
+
+/**
+ * Chat with streaming
+ */
+export async function* chatStream(
+  messages: Message[],
+  options?: {
+    model?: string;
+    temperature?: number;
+  }
+): AsyncGenerator<string> {
+  try {
+    const stream = await ollama.chat({
+      model: options?.model || requiredEnv.OLLAMA_MODEL,
+      messages: messages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+      })),
+      options: {
+        temperature: options?.temperature ?? 0.7,
+      },
+      stream: true,
+    });
+
+    for await (const chunk of stream) {
+      if (chunk.message?.content) {
+        yield chunk.message.content;
+      }
+    }
+  } catch (error) {
+    console.error('Ollama: Chat stream failed', error);
+    throw error;
+  }
+}
+
+/**
+ * Generate embeddings for RAG applications
+ */
+export async function embed(
+  text: string | string[],
+  options?: {
+    model?: string;
+  }
+): Promise<number[][]> {
+  try {
+    const texts = Array.isArray(text) ? text : [text];
+    const embeddings: number[][] = [];
+
+    for (const t of texts) {
+      const response = await ollama.embeddings({
+        model: options?.model || requiredEnv.OLLAMA_MODEL,
+        prompt: t,
+      });
+      embeddings.push(response.embedding);
+    }
+
+    return embeddings;
+  } catch (error) {
+    console.error('Ollama: Embed failed', error);
+    throw error;
+  }
+}
+
+/**
+ * List available models
+ */
+export async function listModels() {
+  try {
+    const response = await ollama.list();
+    return response.models.map(model => ({
+      name: model.name,
+      size: model.size,
+      modifiedAt: model.modified_at,
+    }));
+  } catch (error) {
+    console.error('Ollama: List models failed', error);
+    throw error;
+  }
+}
+
+/**
+ * Pull a model from registry
+ */
+export async function pullModel(modelName: string): Promise<void> {
+  try {
+    console.log(`Ollama: Pulling model ${modelName}...`);
+    await ollama.pull({
+      model: modelName,
+      stream: false,
+    });
+    console.log(`Ollama: Model ${modelName} pulled successfully`);
+  } catch (error) {
+    console.error('Ollama: Pull model failed', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a model
+ */
+export async function deleteModel(modelName: string): Promise<void> {
+  try {
+    await ollama.delete({ model: modelName });
+    console.log(`Ollama: Model ${modelName} deleted`);
+  } catch (error) {
+    console.error('Ollama: Delete model failed', error);
+    throw error;
+  }
+}
+
+/**
+ * Helper: Conversation manager for chat
+ */
+export class ConversationManager {
+  private messages: Message[] = [];
+  private model: string;
+
+  constructor(
+    systemPrompt?: string,
+    model: string = requiredEnv.OLLAMA_MODEL
+  ) {
+    this.model = model;
+    if (systemPrompt) {
+      this.messages.push({ role: 'system', content: systemPrompt });
+    }
+  }
+
+  async sendMessage(userMessage: string): Promise<string> {
+    this.messages.push({ role: 'user', content: userMessage });
+    
+    const response = await chat(this.messages, { model: this.model });
+    
+    this.messages.push({ role: 'assistant', content: response });
+    
+    return response;
+  }
+
+  getHistory(): Message[] {
+    return [...this.messages];
+  }
+
+  clear(): void {
+    this.messages = [];
+  }
+
+  setSystemPrompt(prompt: string): void {
+    this.messages = this.messages.filter(m => m.role !== 'system');
+    this.messages.unshift({ role: 'system', content: prompt });
+  }
+}
+
+/**
+ * Health check
+ */
+export async function healthCheck(): Promise<boolean> {
+  try {
+    await ollama.list();
+    return true;
+  } catch (error) {
+    console.error('Ollama: Health check failed', error);
+    return false;
+  }
+}
+
+/**
+ * Popular model presets
+ */
+export const MODEL_PRESETS = {
+  LLAMA2: 'llama2',
+  LLAMA2_13B: 'llama2:13b',
+  MISTRAL: 'mistral',
+  CODELLAMA: 'codellama',
+  PHI: 'phi',
+  NEURAL_CHAT: 'neural-chat',
+  STARLING: 'starling-lm',
+};
+
+export default {
+  ollama,
+  generate,
+  generateStream,
+  chat,
+  chatStream,
+  embed,
+  listModels,
+  pullModel,
+  deleteModel,
+  ConversationManager,
+  healthCheck,
+  MODEL_PRESETS,
+};
+{%- endif %}

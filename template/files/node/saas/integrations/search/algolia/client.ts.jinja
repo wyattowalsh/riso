@@ -1,0 +1,210 @@
+{% if saas_search == 'algolia' %}
+/**
+ * Algolia Search Client
+ * 
+ * Premium search with sub-50ms latency, typo tolerance, and analytics.
+ * Features: Instant search, faceting, merchandising, A/B testing.
+ * 
+ * Use when: Need best-in-class search UX, can afford premium pricing,
+ * require analytics and merchandising features.
+ * 
+ * Environment variables:
+ * - ALGOLIA_APP_ID: Your Algolia application ID
+ * - ALGOLIA_ADMIN_KEY: Admin API key (server-side only)
+ * - NEXT_PUBLIC_ALGOLIA_SEARCH_KEY: Search-only API key (client-side safe)
+ */
+
+import algoliasearch, { SearchClient } from 'algoliasearch';
+import type { SearchIndex } from 'algoliasearch';
+
+// Validate environment variables
+const ALGOLIA_APP_ID = process.env.ALGOLIA_APP_ID;
+const ALGOLIA_ADMIN_KEY = process.env.ALGOLIA_ADMIN_KEY;
+const ALGOLIA_SEARCH_KEY = process.env.NEXT_PUBLIC_ALGOLIA_SEARCH_KEY;
+
+if (!ALGOLIA_APP_ID || !ALGOLIA_ADMIN_KEY) {
+  throw new Error(
+    'ALGOLIA_APP_ID and ALGOLIA_ADMIN_KEY are required. ' +
+    'Get your credentials from https://algolia.com/dashboard'
+  );
+}
+
+/**
+ * Algolia client for server-side operations
+ * DO NOT expose this on the client - it has admin permissions
+ */
+export const algoliaClient: SearchClient = algoliasearch(
+  ALGOLIA_APP_ID,
+  ALGOLIA_ADMIN_KEY
+);
+
+/**
+ * Get a search index
+ * 
+ * @example
+ * const productsIndex = getIndex('products');
+ * const results = await productsIndex.search('laptop');
+ */
+export function getIndex(indexName: string): SearchIndex {
+  return algoliaClient.initIndex(indexName);
+}
+
+/**
+ * Client-side search configuration
+ * Safe to use in browser with search-only API key
+ */
+export const clientSearchConfig = {
+  appId: ALGOLIA_APP_ID,
+  searchKey: ALGOLIA_SEARCH_KEY || '',
+};
+
+/**
+ * Index a single object
+ * 
+ * @example
+ * await indexObject('products', { 
+ *   objectID: 'product-123',
+ *   name: 'Laptop',
+ *   price: 999
+ * });
+ */
+export async function indexObject<T extends Record<string, any>>(
+  indexName: string,
+  object: T & { objectID: string }
+): Promise<void> {
+  const index = getIndex(indexName);
+  await index.saveObject(object);
+}
+
+/**
+ * Index multiple objects at once
+ * 
+ * @example
+ * await indexObjects('products', [
+ *   { objectID: '1', name: 'Product 1' },
+ *   { objectID: '2', name: 'Product 2' },
+ * ]);
+ */
+export async function indexObjects<T extends Record<string, any>>(
+  indexName: string,
+  objects: Array<T & { objectID: string }>
+): Promise<void> {
+  const index = getIndex(indexName);
+  await index.saveObjects(objects);
+}
+
+/**
+ * Delete an object from the index
+ * 
+ * @example
+ * await deleteObject('products', 'product-123');
+ */
+export async function deleteObject(
+  indexName: string,
+  objectID: string
+): Promise<void> {
+  const index = getIndex(indexName);
+  await index.deleteObject(objectID);
+}
+
+/**
+ * Search with query and optional filters
+ * 
+ * @example
+ * const results = await search('products', 'laptop', {
+ *   filters: 'price < 1000',
+ *   hitsPerPage: 20
+ * });
+ */
+export async function search<T = any>(
+  indexName: string,
+  query: string,
+  options: {
+    filters?: string;
+    facetFilters?: string[][];
+    hitsPerPage?: number;
+    page?: number;
+  } = {}
+): Promise<{ hits: T[]; nbHits: number; page: number }> {
+  const index = getIndex(indexName);
+  const results = await index.search<T>(query, options);
+  
+  return {
+    hits: results.hits,
+    nbHits: results.nbHits,
+    page: results.page,
+  };
+}
+
+/**
+ * Configure index settings
+ * 
+ * @example
+ * await configureIndex('products', {
+ *   searchableAttributes: ['name', 'description'],
+ *   attributesForFaceting: ['category', 'brand'],
+ *   ranking: ['typo', 'words', 'proximity', 'attribute', 'exact', 'custom']
+ * });
+ */
+export async function configureIndex(
+  indexName: string,
+  settings: {
+    searchableAttributes?: string[];
+    attributesForFaceting?: string[];
+    ranking?: string[];
+    customRanking?: string[];
+  }
+): Promise<void> {
+  const index = getIndex(indexName);
+  await index.setSettings(settings);
+}
+
+{% if saas_database == 'supabase' %}
+/**
+ * Sync Supabase database changes to Algolia in real-time
+ * 
+ * @example
+ * import { supabase } from '@/lib/database';
+ * setupRealtimeSync('products', supabase, 'products');
+ */
+export function setupRealtimeSync(
+  indexName: string,
+  supabase: any,
+  tableName: string
+) {
+  const index = getIndex(indexName);
+  
+  return supabase
+    .channel(`${tableName}-changes`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: tableName },
+      async (payload: any) => {
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          await index.saveObject({
+            objectID: payload.new.id,
+            ...payload.new,
+          });
+        } else if (payload.eventType === 'DELETE') {
+          await index.deleteObject(payload.old.id);
+        }
+      }
+    )
+    .subscribe();
+}
+{% endif %}
+
+/**
+ * Health check for Algolia connection
+ */
+export async function healthCheck(): Promise<boolean> {
+  try {
+    await algoliaClient.listIndices();
+    return true;
+  } catch (error) {
+    console.error('Algolia health check failed:', error);
+    return false;
+  }
+}
+
+{% endif %}
