@@ -200,6 +200,11 @@ QUALITY_PROFILE=standard uv run task quality
 - Module catalog: `template/files/shared/module_catalog.json.jinja`
 
 <!-- MANUAL ADDITIONS START -->
+### Docs Site Maintenance
+- Primary maintainer docs live in `docs/` (Shibuya Sphinx). Build locally with `uv sync --group docs` + `uv run sphinx-build docs docs/_build`.
+- Keep the template copy at `template/files/python/docs/` in lockstep; changes to navigation or config must be mirrored.
+- Doc dependencies are defined in the `docs` dependency group inside `template/files/python/pyproject.toml.jinja`.
+- For rendered projects with `docs_site=sphinx-shibuya`, CI runs `uv run sphinx-build docs dist/docs`.
 <!-- MANUAL ADDITIONS END -->
 
 ## Recent Changes

@@ -4,9 +4,7 @@ The ultimate GitHub Copilot-based project template system with optional CLI, API
 
 ## 📚 Documentation
 
-- **[Next Features Roadmap](NEXT_FEATURES.md)** - Comprehensive roadmap of 30+ planned features
-- **[Quick Reference](docs/NEXT_FEATURES_QUICK_REF.md)** - Scannable summary of next features
-- **[Implementation Guide](docs/FEATURE_IMPLEMENTATION_GUIDE.md)** - Tactical implementation patterns
+- **[Shibuya Dev Docs](docs/index.md)** - Primary maintainer documentation powered by Sphinx
 - **[Agent Operations](AGENTS.md)** - Development setup and automation
 - **[Existing Specs](specs/)** - Completed feature specifications
 

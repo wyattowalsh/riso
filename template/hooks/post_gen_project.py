@@ -74,8 +74,8 @@ def docs_guidance(answers: Dict[str, str]) -> list[str]:
         ]
     if docs_site == "sphinx-shibuya":
         return [
-            "Sphinx build: `uv run make docs`.",
-            "Link check: `uv run make linkcheck`.",
+            "Sphinx build: `uv run sphinx-build docs dist/docs`.",
+            "Link check: `uv run sphinx-build -b linkcheck docs dist/docs-linkcheck`.",
         ]
     if docs_site == "docusaurus":
         return [

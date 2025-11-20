@@ -1,14 +1,23 @@
 # Docs Site Module
 
-Switch the documentation experience to [Fumadocs](https://fumadocs.com/) by setting `docs_site=fumadocs`
-during render. The generator provisions `docs/fumadocs.config.ts` and reserves space for MDX content.
+Pick a documentation surface that matches your toolchain:
+
+- `docs_site=sphinx-shibuya`: Shibuya Sphinx site with MyST Markdown, hover
+  references, Mermaid, and `autodoc2` for import-free API docs.
+- `docs_site=fumadocs`: Next.js + Fumadocs with DocSearch-ready MDX content.
+- `docs_site=docusaurus`: React/TypeScript docs with Algolia search.
+- `docs_site=none`: Skip docs scaffolding.
 
 ## Validation Commands
 
 ```bash
+uv sync --group docs
+uv run sphinx-build docs dist/docs
+
+# If using Fumadocs
 pnpm --filter docs-fumadocs install
 pnpm --filter docs-fumadocs build
 ```
 
-Add navigation entries to `fumadocs.config.ts` and commit generated assets to ensure deterministic docs
-builds.
+Add navigation entries to `fumadocs.config.ts` or the Shibuya toctree files and
+commit generated assets to ensure deterministic docs builds.
