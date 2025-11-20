@@ -55,7 +55,7 @@ template/
 │   │   ├── pyproject.toml.jinja
 │   │   ├── src/{{ package_name }}/
 │   │   ├── tests/
-│   │   └── docs/shibuya/
+│   │   └── docs/
 │   ├── node/
 │   │   ├── package.json.jinja
 │   │   ├── apps/api-node/

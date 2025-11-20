@@ -1,0 +1,324 @@
+"""Sphinx configuration for {{ project_name }} (Shibuya theme)."""
+from __future__ import annotations
+
+import os
+import sys
+from datetime import date
+from pathlib import Path
+from typing import Iterable
+
+import yaml
+
+DOCS_DIR = Path(__file__).resolve().parent
+REPO_ROOT = DOCS_DIR.parent
+PKG_ROOT = REPO_ROOT / "packages"
+APP_ROOT = REPO_ROOT / "apps"
+PROJECT_SLUG = "{{ project_slug }}"
+ORG_SLUG = "{{ author_name | default('riso-template', true) | replace(' ', '-') | lower }}"
+DEFAULT_BRANCH = os.getenv("DOCS_BRANCH", "{{ default_branch | default('main', true) }}")
+
+
+def _iter_sys_paths(roots: Iterable[Path]) -> list[str]:
+    paths: list[str] = []
+    for root in roots:
+        if not root.exists():
+            continue
+        for child in sorted(root.iterdir()):
+            if not child.is_dir():
+                continue
+            candidate = child / "src" if (child / "src").exists() else child
+            if candidate.exists():
+                paths.append(str(candidate))
+    return paths
+
+
+def _inject_sys_path() -> None:
+    prefixes = _iter_sys_paths([PKG_ROOT, APP_ROOT])
+    for prefix in reversed(prefixes):
+        if prefix not in sys.path:
+            sys.path.insert(0, prefix)
+
+
+def load_tools_frontmatter() -> tuple[list[dict], list[dict]]:
+    tools_dir = DOCS_DIR / "tools"
+    if not tools_dir.exists():
+        return [], []
+
+    tools: list[dict] = []
+    tool_items: list[dict] = []
+    for file in tools_dir.iterdir():
+        if file.name in {"index.md", "FRONTMATTER_SCHEMA.md", "AUTHORING_TEMPLATE.md"}:
+            continue
+        if file.suffix != ".md":
+            continue
+        with file.open("r", encoding="utf-8") as handle:
+            content = handle.read()
+        if not content.lstrip().startswith("---"):
+            continue
+        try:
+            _, frontmatter, body = content.split("---", 2)
+        except ValueError:
+            continue
+        data = yaml.safe_load(frontmatter) or {}
+        data["slug"] = file.stem
+        data["_file"] = file.name
+        data["_body"] = body.strip()
+        tools.append(data)
+        if isinstance(data.get("items"), list):
+            for item in data["items"]:
+                if isinstance(item, dict):
+                    item = {**item}
+                    item.setdefault("parent", data.get("name"))
+                    item.setdefault("parent_slug", data.get("slug"))
+                    item.setdefault("type", data.get("type", "tool"))
+                    item.setdefault("parent_category", data.get("category"))
+                    tool_items.append(item)
+    return tools, tool_items
+
+
+_inject_sys_path()
+
+project = "{{ project_name }} Dev Docs"
+author = "{{ author_name | default('Riso Maintainer', true) }}"
+copyright = f"{date.today().year}, {author}"
+version = os.getenv("{{ project_slug | upper }}_VERSION", "0.1.0")
+release = version
+
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.todo",
+    "sphinx.ext.coverage",
+    "sphinx.ext.extlinks",
+    "myst_parser",
+    "sphinx_copybutton",
+    "sphinx_design",
+    "sphinx_tabs.tabs",
+    "sphinx_togglebutton",
+    "sphinxemoji.sphinxemoji",
+    "sphinxcontrib.mermaid",
+    "autodoc2",
+    "sphinx_autodoc_typehints",
+    "autoclasstoc",
+    "sphinx_click",
+    "sphinx-jsonschema",
+    "sphinxcontrib.httpdomain",
+    "sphinx_git",
+    "hoverxref.extension",
+    "sphinx_sitemap",
+    "notfound.extension",
+]
+
+templates_path = ["_templates"]
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    "**/.ipynb_checkpoints",
+    "**/site-packages/**",
+    "**/__pycache__/**",
+    "**/.venv/**",
+    "**/.uv/**",
+    "**/*.jinja",
+    "modules/**",
+    "upgrade-guide/**",
+]
+source_suffix = {".rst": "restructuredtext", ".md": "markdown"}
+language = "en"
+default_role = "py:obj"
+nitpicky = False
+
+html_theme = "shibuya"
+html_title = f"{project} {version}"
+html_short_title = "{{ project_name }} Docs"
+html_static_path = ["_static"]
+html_css_files = [
+    "css/design-tokens.css",
+    "css/custom.css",
+    "css/components.css",
+    "css/lucide-icons.css",
+]
+html_js_files = ["js/custom.js"]
+html_favicon = "_static/img/favicon/favicon.ico"
+html_extra_path = ["_static/img/favicon/site.webmanifest"]
+html_theme_options = {
+    "light_logo": "_static/img/logo.svg",
+    "dark_logo": "_static/img/logo.svg",
+    "github_url": f"https://github.com/{ORG_SLUG}/{PROJECT_SLUG}",
+    "accent_color": "teal",
+    "dark_code": False,
+    "color_mode": "auto",
+    "globaltoc_collapse": True,
+    "toctree_collapse": True,
+    "toctree_maxdepth": 2,
+    "toctree_titles_only": True,
+    "toctree_includehidden": True,
+    "nav_links": [
+        {"title": "📖 Guides", "url": "guides/index"},
+        {"title": "🧰 Tools", "url": "tools/index"},
+        {"title": "📚 Reference", "url": "api/index"},
+        {"title": "📝 Changelog", "url": "changelog"},
+    ],
+    "twitter_url": None,
+    "discord_url": None,
+}
+html_sidebars = {"**": ["sidebars/localtoc.html", "sidebars/repo-stats.html", "sidebars/edit-this-page.html"]}
+
+myst_enable_extensions = {
+    "attrs_block",
+    "attrs_inline",
+    "colon_fence",
+    "deflist",
+    "dollarmath",
+    "amsmath",
+    "fieldlist",
+    "linkify",
+    "substitution",
+    "tasklist",
+    "html_image",
+    "replacements",
+    "smartquotes",
+}
+myst_heading_anchors = 3
+myst_links_external_new_tab = True
+
+autodoc_default_options = {
+    "members": True,
+    "member-order": "bysource",
+    "special-members": "__init__",
+    "undoc-members": True,
+    "exclude-members": "__weakref__",
+    "show-inheritance": True,
+    "inherited-members": False,
+}
+autodoc_typehints = "description"
+autodoc_class_signature = "separated"
+autodoc_member_order = "bysource"
+autodoc_preserve_defaults = True
+autodoc_warningiserror = False
+
+autosummary_generate = True
+autosummary_generate_overwrite = False
+autosummary_imported_members = True
+autosummary_ignore_module_all = False
+
+napoleon_numpy_docstring = True
+napoleon_google_docstring = True
+napoleon_use_param = True
+napoleon_use_rtype = True
+napoleon_use_ivar = True
+napoleon_use_admonition_for_examples = True
+napoleon_use_admonition_for_notes = True
+napoleon_use_admonition_for_references = True
+napoleon_preprocess_types = True
+napoleon_attr_annotations = True
+napoleon_include_init_with_doc = True
+napoleon_include_private_with_doc = False
+napoleon_include_special_with_doc = True
+
+always_document_param_types = True
+typehints_fully_qualified = False
+typehints_use_signature = True
+typehints_use_signature_return = True
+typehints_document_rtype = True
+typehints_defaults = "comma"
+typehints_use_rtype = True
+set_type_checking_flag = True
+typehints_formatter = None
+
+autoclasstoc_sections = ["public-attrs", "public-methods", "private-attrs", "private-methods"]
+
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+    "sphinx": ("https://www.sphinx-doc.org/en/master", None),
+    "numpy": ("https://numpy.org/doc/stable", None),
+    "pandas": ("https://pandas.pydata.org/docs", None),
+    "click": ("https://click.palletsprojects.com/en/8.1.x", None),
+    "pydantic": ("https://docs.pydantic.dev/latest", None),
+    "fastapi": ("https://fastapi.tiangolo.com", None),
+    "uvicorn": ("https://www.uvicorn.org", None),
+}
+
+copybutton_prompt_text = r">>> |\.\.\. |\$ "
+copybutton_prompt_is_regexp = True
+copybutton_remove_prompts = True
+copybutton_only_copy_prompt_lines = False
+copybutton_line_continuation_character = "\\"
+copybutton_selector = "div.highlight pre"
+copybutton_copy_empty_lines = True
+copybutton_here_doc_delimiter = "EOF"
+
+sphinxemoji_style = "twemoji"
+
+mermaid_cmd = (REPO_ROOT / "node_modules/.bin/mmdc") if (REPO_ROOT / "node_modules/.bin/mmdc").exists() else None
+mermaid_cmd = str(mermaid_cmd) if mermaid_cmd else (os.getenv("MERMAID_CMD") or "mmdc")
+mermaid_version = "11.12.1"
+mermaid_output_format = "svg"
+mermaid_d3_zoom = True
+mermaid_params = ["--theme", "default", "--backgroundColor", "transparent"]
+
+viewcode_follow_imported_members = True
+viewcode_enable_epub = False
+
+sphinx_git_show_branches = True
+
+add_module_names = True
+python_use_unqualified_type_names = True
+python_display_short_literal_types = True
+maximum_signature_line_length = 88
+
+notfound_context = {
+    "title": "Page Not Found",
+    "body": (
+        "<h1>404 - Page Not Found</h1>"
+        "<p>Sorry, we couldn't find the page you were looking for.</p>"
+        "<p>The page may have been moved, deleted, or the URL may be incorrect.</p>"
+        "<h2>What you can do:</h2>"
+        "<ul>"
+        "<li>Check the URL for typos</li>"
+        "<li>Return to the <a href=\"/\">home page</a></li>"
+        "<li>Use the search bar to find what you're looking for</li>"
+        "<li>Browse our <a href=\"/guides/\">guides</a> or <a href=\"/reference/\">API reference</a></li>"
+        "</ul>"
+    ),
+}
+notfound_template = "page.html"
+notfound_pagename = "404"
+notfound_urls_prefix = "/"
+
+html_baseurl = "http://localhost:8000/"
+sitemap_url_scheme = "{link}"
+
+linkcheck_ignore = [r"^http://localhost", r"^https://localhost"]
+
+extlinks = {
+    "issue": (f"https://github.com/{ORG_SLUG}/{PROJECT_SLUG}/issues/%s", "issue %s"),
+    "pr": (f"https://github.com/{ORG_SLUG}/{PROJECT_SLUG}/pull/%s", "PR %s"),
+}
+
+hoverxref_auto_ref = True
+hoverxref_domains = ["py"]
+hoverxref_roles = ["option", "doc"]
+hoverxref_role_types = {
+    "mod": "modal",
+    "class": "tooltip",
+    "func": "tooltip",
+    "meth": "tooltip",
+    "attr": "tooltip",
+    "exc": "tooltip",
+    "obj": "tooltip",
+}
+
+(TOOLS_METADATA, TOOL_ITEMS_METADATA) = load_tools_frontmatter()
+html_context = {
+    "source_type": "github",
+    "source_user": ORG_SLUG,
+    "source_repo": PROJECT_SLUG,
+    "source_version": DEFAULT_BRANCH,
+    "source_docs_path": "/docs/",
+    "tools": TOOLS_METADATA,
+    "tool_items": TOOL_ITEMS_METADATA,
+}

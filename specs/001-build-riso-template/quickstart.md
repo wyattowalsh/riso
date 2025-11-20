@@ -51,7 +51,7 @@ Commit updated artifacts under `samples/` before opening a pull request.
 ## 6. Publish Documentation
 
 ```bash
-uv run sphinx-build docs/shibuya build/docs
+uv run sphinx-build docs build/docs
 pnpm --filter docs-fumadocs build
 ```
 
