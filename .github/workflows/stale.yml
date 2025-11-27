@@ -1,0 +1,69 @@
+name: Mark Stale Issues and PRs
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight UTC
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+          # Issues
+          stale-issue-message: |
+            This issue has been automatically marked as stale because it has not had
+            recent activity. It will be closed in 7 days if no further activity occurs.
+
+            If this issue is still relevant, please:
+            - Comment to keep it open
+            - Provide additional information
+            - Update the issue with current status
+
+            Thank you for your contributions!
+          close-issue-message: |
+            This issue has been automatically closed due to inactivity.
+
+            If you believe this issue is still relevant, please reopen it with
+            updated information or create a new issue referencing this one.
+          days-before-stale: 60
+          days-before-close: 7
+          stale-issue-label: 'stale'
+          exempt-issue-labels: 'pinned,security,blocking,critical'
+
+          # Pull Requests
+          stale-pr-message: |
+            This pull request has been automatically marked as stale because it has
+            not had recent activity. It will be closed in 14 days if no further
+            activity occurs.
+
+            If you're still working on this PR, please:
+            - Push new commits
+            - Respond to review comments
+            - Rebase on latest main branch
+            - Comment to indicate you're still working on it
+
+            Thank you for your contribution!
+          close-pr-message: |
+            This pull request has been automatically closed due to inactivity.
+
+            If you would like to resume work on this PR, please reopen it or create
+            a new PR with the changes.
+          days-before-pr-stale: 30
+          days-before-pr-close: 14
+          stale-pr-label: 'stale'
+          exempt-pr-labels: 'work-in-progress,blocked,pinned'
+
+          # General
+          operations-per-run: 100
+          remove-stale-when-updated: true
+          ascending: true
+          exempt-all-milestones: false
