@@ -92,40 +92,71 @@ def permission_required(permission: str) -> Callable:
 async def get_current_user_from_token(token: str) -> dict:
     """
     Extract and validate user from authentication token.
-    
-    This is a placeholder implementation. Replace with your actual
-    authentication logic (JWT validation, session lookup, etc.).
-    
+
+    Implements JWT validation using python-jose. Configure your SECRET_KEY
+    and ALGORITHM in environment variables or configuration.
+
     Args:
-        token: Authentication token (e.g., JWT)
-    
+        token: Authentication token (JWT)
+
     Returns:
         User dictionary with id, email, permissions, etc.
-    
+
     Raises:
         AuthError: If token is invalid or expired
     """
-    # TODO: Implement actual token validation
-    # Example JWT validation:
-    # try:
-    #     payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-    #     user_id = payload.get("user_id")
-    #     # Fetch user from database
-    #     user = await db.get_user(user_id)
-    #     return {
-    #         "id": user.id,
-    #         "email": user.email,
-    #         "permissions": user.permissions,
-    #     }
-    # except jwt.InvalidTokenError:
-    #     raise AuthError("Invalid authentication token")
-    
-    # Placeholder implementation
-    if token == "valid-token":
+    import os
+    from jose import jwt, JWTError
+    from datetime import datetime, timezone
+
+    # Load configuration from environment
+    SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+    if not SECRET_KEY:
+        raise AuthError(
+            "JWT_SECRET_KEY not configured. Set this environment variable before using authentication."
+        )
+
+    ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+
+    try:
+        # Decode and validate JWT token
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+        # Validate expiration
+        exp = payload.get("exp")
+        if exp is None:
+            raise AuthError("Token missing expiration claim")
+
+        if datetime.fromtimestamp(exp, tz=timezone.utc) < datetime.now(timezone.utc):
+            raise AuthError("Token has expired")
+
+        # Extract user information
+        user_id = payload.get("sub")  # 'sub' is standard JWT claim for user ID
+        if not user_id:
+            raise AuthError("Token missing subject claim")
+
+        # NOTE: In production, you should fetch the user from your database here
+        # to get current permissions and ensure the user still exists
+        # Example:
+        # async with get_db_session() as db:
+        #     user = await db.get(User, user_id)
+        #     if not user:
+        #         raise AuthError("User not found")
+        #     return {
+        #         "id": user.id,
+        #         "email": user.email,
+        #         "permissions": user.permissions,
+        #     }
+
+        # For now, return user info from token
         return {
-            "id": "user-123",
-            "email": "user@example.com",
-            "permissions": ["user:read", "user:write"],
+            "id": user_id,
+            "email": payload.get("email", ""),
+            "permissions": payload.get("permissions", []),
+            "username": payload.get("username", ""),
         }
-    else:
-        raise AuthError("Invalid authentication token")
+
+    except JWTError as e:
+        raise AuthError(f"Invalid authentication token: {str(e)}")
+    except Exception as e:
+        raise AuthError(f"Authentication error: {str(e)}")
