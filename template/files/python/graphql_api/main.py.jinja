@@ -1,9 +1,10 @@
 """FastAPI Integration for GraphQL API."""
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from strawberry.fastapi import GraphQLRouter
 {% if api_tracks in ['python', 'python+node'] %}
 from sqlalchemy.ext.asyncio import AsyncSession
+from {{ package_name }}.graphql_api.database import get_db_session, init_db, close_db
 {% endif %}
 
 from {{ package_name }}.graphql_api.schema import schema
@@ -18,15 +19,31 @@ app = FastAPI(
 )
 
 
+{% if api_tracks in ['python', 'python+node'] %}
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database on application startup."""
+    # Note: In production, use Alembic migrations instead of init_db()
+    # await init_db()
+    pass
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Clean up database connections on shutdown."""
+    await close_db()
+{% endif %}
+
+
 async def get_context(
     request: Request,
     {% if api_tracks in ['python', 'python+node'] %}
-    # db: AsyncSession = Depends(get_db_session),  # TODO: Implement get_db_session dependency
+    db: AsyncSession = Depends(get_db_session),
     {% endif %}
 ) -> GraphQLContext:
     """
     Context factory for GraphQL requests.
-    
+
     Creates a new context for each request with:
     - Request object
     - Current user (from authentication)
@@ -37,7 +54,7 @@ async def get_context(
     return await get_graphql_context(
         request=request,
         {% if api_tracks in ['python', 'python+node'] %}
-        # db=db,  # TODO: Pass database session
+        db=db,
         {% endif %}
     )
 

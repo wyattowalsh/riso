@@ -1,7 +1,182 @@
 [project]
 name = "riso"
 version = "0.1.0"
-description = "Add your description here"
+description = "The ultimate GitHub Copilot-based project template system with optional CLI, API, MCP, docs, and more"
 readme = "README.md"
-requires-python = ">=3.13"
-dependencies = []
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Riso Template Working Group"}
+]
+keywords = [
+    "template",
+    "copier",
+    "scaffolding",
+    "python",
+    "typescript",
+    "fastapi",
+    "nextjs",
+    "project-template"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "copier>=9.1.0",
+    "jinja2>=3.1.0",
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+    "loguru>=0.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+    "pylint>=3.0.0",
+    "pytest>=8.0.0",
+    "hypothesis>=6.100.0",
+    "coverage[toml]>=7.0.0",
+    "pytest-cov>=5.0.0",
+    "pytest-xdist>=3.5.0",
+    "pytest-randomly>=3.15.0",
+    "pytest-timeout>=2.3.0",
+    "pytest-rerunfailures>=14.0",
+    "pytest-mock>=3.14.0",
+    "pytest-icdiff>=0.9.0",
+    "pytest-freezer>=0.4.8",
+    "pytest-deadfixtures>=2.2.1",
+    "pytest-picked>=0.5.0",
+    "pytest-subprocess>=1.5.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-insta>=0.3.0",
+    "pytest-html>=4.1.0",
+    "pytest-sugar>=1.0.0",
+    "pytest-clarity>=1.0.1",
+    "pytest-instafail>=0.5.0",
+    "responses>=0.25.0",
+    "pytest-responses>=0.5.1",
+    "respx>=0.21.0",
+    "pytest-recording>=0.13.0",
+    "pytest-socket>=0.7.0",
+    "pytest-env>=1.1.0",
+    "pytest-mypy>=0.10.3",
+    "pytest-mypy-plugins>=3.1.0",
+]
+
+security = [
+    "bandit>=1.7.8",
+    "safety>=3.2.0",
+]
+
+docs = [
+    "sphinx>=7.3.0",
+    "shibuya>=2024.5.0",
+    "autodoc2>=0.7.0",
+    "sphinx-autodoc-typehints>=2.3.0",
+    "myst-parser>=3.0.0",
+]
+
+jupyter = [
+    "jupyterlab>=4.2.0",
+    "notebook>=7.2.0",
+    "jupyter-server>=2.14.0",
+    "ipykernel>=6.29.0",
+    "ipython>=8.25.0",
+    "ipywidgets>=8.1.0",
+    "nbdime>=4.0.0",
+    "jupyterlab-git>=0.50.0",
+    "jupyterlab-github>=4.0.0",
+    "jupyterlab-lsp>=5.1.0",
+    "python-lsp-server[all]>=1.11.0",
+    "jupyterlab-code-formatter>=2.2.0",
+    "jupyter-ai>=2.16.0",
+    "jupytext>=1.16.0",
+    "nbconvert>=7.16.0",
+    "papermill>=2.6.0",
+    "jupysql>=0.10.0",
+    "nbqa[toolchain]>=1.8.0",
+    "nbstripout>=0.7.0",
+    "nbclient>=0.10.0",
+    "jupyter-cache>=1.0.0",
+    "jupyterlab-execute-time>=3.1.0",
+    "jupyterlab-system-monitor>=0.8.0",
+    "jupyterlab-spellchecker>=0.8.0",
+    "pytest-notebook>=0.10.0",
+    "ipyparallel>=8.8.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/wyattowalsh/riso"
+Repository = "https://github.com/wyattowalsh/riso"
+Documentation = "https://github.com/wyattowalsh/riso/tree/main/docs"
+"Bug Tracker" = "https://github.com/wyattowalsh/riso/issues"
+Changelog = "https://github.com/wyattowalsh/riso/blob/main/CHANGELOG.md"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "A", "C4", "DTZ", "T10", "ICN", "PIE", "PYI", "PT", "RSE", "RET", "SIM", "TID", "TCH", "ARG", "PTH", "ERA", "PD", "PGH", "PL", "TRY", "NPY", "RUF"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_calls = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+strict_equality = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=scripts",
+    "--cov=template",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+]
+
+[tool.coverage.run]
+source = ["scripts", "template"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
