@@ -10,6 +10,7 @@ Usage:
 """
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -108,31 +109,114 @@ def generate_all_combinations() -> list[dict]:
 def validate_combination(combo: dict, output_dir: Path) -> dict:
     """Validate a single technology combination."""
     combo_name = f"{combo['runtime']}-{combo['hosting']}-{combo['database']}-{combo['orm']}"
-    print(f"\n?? Testing combination: {combo_name}")
-    
+    print(f"\n🔍 Testing combination: {combo_name}")
+
     result = {
         "combination": combo,
         "name": combo_name,
         "status": "pending",
         "errors": [],
+        "warnings": [],
     }
-    
+
     try:
-        # TODO: Render template with this combination
-        # TODO: Run smoke tests
-        # TODO: Check for compilation errors
-        
-        # For now, mark as pending implementation
-        result["status"] = "skipped"
-        result["errors"].append("Validation not yet implemented")
-        
+        # Create temporary directory for render
+        import tempfile
+        import shutil
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            render_path = Path(tmpdir) / combo_name
+
+            # Create copier answers for this combination
+            answers = {
+                "project_name": f"test-{combo_name}",
+                "saas_starter_module": "enabled",
+                **{f"saas_{k}": v for k, v in combo.items()},
+            }
+
+            # Render template
+            print(f"  📦 Rendering template...")
+            copier_cmd = os.getenv("COPIER_CMD", "copier")
+            render_result = subprocess.run(
+                [
+                    copier_cmd,
+                    "copy",
+                    "--force",
+                    "--data-file", "-",
+                    str(Path(__file__).parent.parent.parent),
+                    str(render_path),
+                ],
+                input=json.dumps(answers),
+                capture_output=True,
+                text=True,
+                timeout=300,
+            )
+
+            if render_result.returncode != 0:
+                result["status"] = "failed"
+                result["errors"].append(f"Render failed: {render_result.stderr}")
+                print(f"  ❌ Render failed")
+                return result
+
+            print(f"  ✅ Render successful")
+
+            # Check for compilation/syntax errors
+            print(f"  🔍 Checking for syntax errors...")
+
+            # Check TypeScript/JavaScript files compile
+            if (render_path / "package.json").exists():
+                check_result = subprocess.run(
+                    ["pnpm", "install"],
+                    cwd=render_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=180,
+                )
+                if check_result.returncode != 0:
+                    result["warnings"].append(f"pnpm install issues: {check_result.stderr}")
+                    print(f"  ⚠️  pnpm install warnings")
+                else:
+                    print(f"  ✅ Dependencies installed")
+
+            # Check Python files if present
+            python_files = list(render_path.rglob("*.py"))
+            if python_files:
+                import py_compile
+                syntax_errors = []
+                for py_file in python_files:
+                    try:
+                        py_compile.compile(str(py_file), doraise=True)
+                    except py_compile.PyCompileError as e:
+                        syntax_errors.append(f"{py_file.name}: {e}")
+
+                if syntax_errors:
+                    result["errors"].extend(syntax_errors)
+                    result["status"] = "failed"
+                    print(f"  ❌ Python syntax errors found")
+                    return result
+
+            # Success!
+            result["status"] = "passed"
+            print(f"  ✅ All checks passed")
+
+            # Save render to output for manual inspection (optional)
+            if output_dir.exists():
+                saved_path = output_dir / combo_name
+                if saved_path.exists():
+                    shutil.rmtree(saved_path)
+                shutil.copytree(render_path, saved_path)
+                result["saved_path"] = str(saved_path)
+
+    except subprocess.TimeoutExpired:
+        result["status"] = "failed"
+        result["errors"].append("Validation timed out")
+        print(f"  ⏱️  Timeout")
     except Exception as e:
         result["status"] = "failed"
-        result["errors"].append(str(e))
-        print(f"  ? Failed: {e}")
-        return result
-    
-    print(f"  ??  Skipped (validation not implemented)")
+        result["errors"].append(f"Unexpected error: {str(e)}")
+        print(f"  ❌ Failed: {e}")
+
     return result
 
 

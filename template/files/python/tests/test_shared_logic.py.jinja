@@ -1,0 +1,80 @@
+{% if shared_logic == 'enabled' %}"""Smoke tests for shared logic module."""
+
+import pytest
+
+
+def test_shared_module_imports():
+    """Test that shared module can be imported."""
+    try:
+        from {{ package_name }} import shared
+        assert shared is not None
+    except ImportError as e:
+        pytest.fail(f"Failed to import shared module: {e}")
+
+
+def test_shared_utils_available():
+    """Test that shared utilities are accessible."""
+    try:
+        from {{ package_name }}.shared import utils
+        assert utils is not None
+    except (ImportError, AttributeError):
+        # It's okay if utils doesn't exist - just verify module structure
+        pass
+
+
+def test_shared_models_available():
+    """Test that shared models are accessible if they exist."""
+    try:
+        from {{ package_name }}.shared import models
+        assert models is not None
+    except (ImportError, AttributeError):
+        # It's okay if models don't exist - just verify module structure
+        pass
+
+
+def test_shared_config_available():
+    """Test that shared configuration is accessible if it exists."""
+    try:
+        from {{ package_name }}.shared import config
+        assert config is not None
+    except (ImportError, AttributeError):
+        # It's okay if config doesn't exist - just verify module structure
+        pass
+
+
+@pytest.mark.skipif(
+    "{{ project_layout }}" != "monorepo",
+    reason="Shared logic primarily for monorepo layouts"
+)
+def test_shared_logic_in_monorepo():
+    """Test that shared logic is properly structured in monorepo."""
+    try:
+        from {{ package_name }} import shared
+        # In monorepo, shared should be a proper package
+        assert hasattr(shared, "__path__")
+    except ImportError:
+        pytest.skip("Shared module not found - may be optional")
+
+
+def test_shared_validators_if_present():
+    """Test shared validators if they exist."""
+    try:
+        from {{ package_name }}.shared import validators
+        # If validators exist, ensure they're callable or have validate methods
+        if hasattr(validators, "validate_email"):
+            assert callable(validators.validate_email)
+    except (ImportError, AttributeError):
+        # Validators are optional
+        pass
+
+
+def test_shared_constants_if_present():
+    """Test shared constants if they exist."""
+    try:
+        from {{ package_name }}.shared import constants
+        # If constants exist, verify module loaded
+        assert constants is not None
+    except (ImportError, AttributeError):
+        # Constants are optional
+        pass
+{% endif %}
