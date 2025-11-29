@@ -33,7 +33,17 @@ jobs:
         run: uv run python scripts/ci/run_quality_suite.py
         env:
           QUALITY_PROFILE: ${{ matrix.quality-profile }}
-      - name: Upload coverage reports
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          flags: py${{ matrix.python-version }}-${{ matrix.quality-profile }}
+          name: coverage-${{ matrix.python-version }}-${{ matrix.quality-profile }}
+          fail_ci_if_error: false
+          verbose: true
+      - name: Upload coverage reports (artifact)
         uses: actions/upload-artifact@v4
         if: always()
         with:

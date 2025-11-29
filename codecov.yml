@@ -1,0 +1,158 @@
+# Codecov configuration for Riso template system
+# See: https://docs.codecov.com/docs/codecov-yaml
+
+codecov:
+  require_ci_to_pass: true
+  notify:
+    wait_for_ci: true
+
+coverage:
+  precision: 2
+  round: down
+  range: "70...100"
+
+  status:
+    # Overall project coverage
+    project:
+      default:
+        target: 80%                    # Target coverage
+        threshold: 2%                  # Allow 2% drop
+        if_ci_failed: error           # Fail if CI failed
+        if_not_found: success         # Allow missing coverage files
+        only_pulls: false             # Report on all commits
+
+    # Patch coverage (changes in PR)
+    patch:
+      default:
+        target: 80%
+        threshold: 5%
+        if_ci_failed: error
+        if_not_found: success
+        only_pulls: true              # Only for pull requests
+
+    # Changes coverage (lines changed)
+    changes:
+      default:
+        if_ci_failed: error
+        if_not_found: success
+        only_pulls: true
+
+# Comment configuration for pull requests
+comment:
+  layout: "header, diff, flags, components, footer"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
+  branches:
+    - main
+    - develop
+
+# GitHub Checks integration
+github_checks:
+  annotations: true
+
+# Ignore paths from coverage
+ignore:
+  - "tests/**/*"
+  - "**/__pycache__/**/*"
+  - "**/.venv/**/*"
+  - "**/venv/**/*"
+  - "**/node_modules/**/*"
+  - "**/.git/**/*"
+  - "**/build/**/*"
+  - "**/dist/**/*"
+  - "**/*.pyc"
+  - "samples/**/*"
+  - ".codex/**/*"
+  - "htmlcov/**/*"
+
+# Flags for different test suites (matches CI matrix)
+flags:
+  # Python version flags
+  py3.11-standard:
+    paths:
+      - scripts/
+      - template/hooks/
+    carryforward: false
+
+  py3.11-strict:
+    paths:
+      - scripts/
+      - template/hooks/
+    carryforward: false
+
+  py3.12-standard:
+    paths:
+      - scripts/
+      - template/hooks/
+    carryforward: false
+
+  py3.12-strict:
+    paths:
+      - scripts/
+      - template/hooks/
+    carryforward: false
+
+  py3.13-standard:
+    paths:
+      - scripts/
+      - template/hooks/
+    carryforward: false
+
+  py3.13-strict:
+    paths:
+      - scripts/
+      - template/hooks/
+    carryforward: false
+
+# Component configuration
+component_management:
+  individual_components:
+    - component_id: scripts
+      name: Scripts
+      paths:
+        - scripts/**/*.py
+
+    - component_id: hooks
+      name: Template Hooks
+      paths:
+        - template/hooks/**/*.py
+
+    - component_id: ci
+      name: CI/CD Scripts
+      paths:
+        - scripts/ci/**/*.py
+
+    - component_id: templates
+      name: Template Files
+      paths:
+        - template/files/**/*.py.jinja
+
+# Pull request comment customization
+comment:
+  layout: "header, diff, flags, components, footer"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
+  hide_project_coverage: false
+
+# Annotation behavior
+annotations:
+  range: 70..100
+  round: down
+  precision: 2
+
+# Require uploading coverage from all matrix jobs
+# This ensures we get comprehensive coverage across Python versions
+flag_management:
+  default_rules:
+    carryforward: false
+    statuses:
+      - type: project
+        target: auto
+        threshold: 2%
+      - type: patch
+        target: auto
+        threshold: 5%
