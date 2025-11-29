@@ -5,11 +5,13 @@ This module executes hook scripts with security restrictions:
 - Restricted environment variables
 - No network access
 - Resource limits
+- NO shell=True (prevents shell injection)
 """
 
 from pathlib import Path
 from typing import Optional
 import subprocess
+import shlex
 import os
 from loguru import logger
 
@@ -114,24 +116,37 @@ class HookExecutor:
         variables: dict,
     ) -> tuple[bool, Optional[str]]:
         """Execute a single hook script.
-        
+
+        SECURITY: This function uses shlex.split() to safely parse commands,
+        preventing shell injection attacks. Never use shell=True.
+
         Args:
             script: Shell command to execute
             timeout: Timeout in seconds
             env_vars: Additional environment variables
             variables: Template variables (passed as env vars)
-            
+
         Returns:
             Tuple of (success, error_message)
         """
         # Build restricted environment
         env = self._build_restricted_env(env_vars, variables)
-        
+
+        # Security: Parse script into command list to prevent shell injection
+        try:
+            cmd_list = shlex.split(script)
+        except ValueError as e:
+            return False, f"Invalid command syntax: {e}"
+
+        if not cmd_list:
+            return False, "Empty command"
+
         try:
             # Execute with timeout and security restrictions
+            # SECURITY: shell=False prevents shell injection attacks
             result = subprocess.run(
-                script,
-                shell=True,
+                cmd_list,
+                shell=False,  # CRITICAL: Never use shell=True
                 cwd=self.project_dir,
                 env=env,
                 capture_output=True,
@@ -139,20 +154,23 @@ class HookExecutor:
                 timeout=timeout,
                 check=False,
             )
-            
+
             if result.returncode != 0:
                 error_msg = result.stderr.strip() or "Hook script failed"
                 return False, error_msg
-            
+
             # Log output if any
             if result.stdout:
                 logger.debug(f"Hook output: {result.stdout.strip()}")
-            
+
             return True, None
-        
+
         except subprocess.TimeoutExpired:
             return False, f"Hook timed out after {timeout} seconds"
-        
+
+        except FileNotFoundError as e:
+            return False, f"Command not found: {cmd_list[0]}"
+
         except Exception as e:
             return False, f"Hook execution error: {str(e)}"
     
