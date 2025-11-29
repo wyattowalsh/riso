@@ -15,6 +15,19 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+try:
+    from logging_config import setup_script_logging, logger
+    # Configure logging
+    setup_script_logging("validate_saas_combinations")
+except ImportError:
+    # Fallback to basic logging if logging_config not available
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
 # Define all valid technology combinations
 TECHNOLOGY_MATRIX = {
     "runtime": ["nextjs-16", "remix-2"],
@@ -48,10 +61,10 @@ def is_combination_valid(combo: dict) -> bool:
 def generate_all_combinations() -> list[dict]:
     """Generate all valid technology combinations."""
     combinations = []
-    
+
     # For testing purposes, generate a subset of representative combinations
     # rather than all 2^12 = 4096 possible combinations
-    
+
     # Recommended stacks (known to work)
     recommended = [
         {  # Vercel Starter
@@ -97,19 +110,23 @@ def generate_all_combinations() -> list[dict]:
             "cicd": "github-actions",
         },
     ]
-    
+
     combinations.extend(recommended)
-    
+
     # Add edge cases and variations
     # TODO: Add more test combinations for comprehensive coverage
-    
+
     return [c for c in combinations if is_combination_valid(c)]
 
 
 def validate_combination(combo: dict, output_dir: Path) -> dict:
     """Validate a single technology combination."""
     combo_name = f"{combo['runtime']}-{combo['hosting']}-{combo['database']}-{combo['orm']}"
-    print(f"\n🔍 Testing combination: {combo_name}")
+
+    if hasattr(logger, 'info'):
+        logger.info(f"Testing combination: {combo_name}")
+    else:
+        print(f"\n🔍 Testing combination: {combo_name}")
 
     result = {
         "combination": combo,
@@ -123,7 +140,6 @@ def validate_combination(combo: dict, output_dir: Path) -> dict:
         # Create temporary directory for render
         import tempfile
         import shutil
-        from pathlib import Path
 
         with tempfile.TemporaryDirectory() as tmpdir:
             render_path = Path(tmpdir) / combo_name
@@ -136,7 +152,9 @@ def validate_combination(combo: dict, output_dir: Path) -> dict:
             }
 
             # Render template
-            print(f"  📦 Rendering template...")
+            if hasattr(logger, 'debug'):
+                logger.debug(f"Rendering template to {render_path}")
+
             copier_cmd = os.getenv("COPIER_CMD", "copier")
             render_result = subprocess.run(
                 [
@@ -156,13 +174,20 @@ def validate_combination(combo: dict, output_dir: Path) -> dict:
             if render_result.returncode != 0:
                 result["status"] = "failed"
                 result["errors"].append(f"Render failed: {render_result.stderr}")
-                print(f"  ❌ Render failed")
+                if hasattr(logger, 'error'):
+                    logger.error(f"Render failed: {render_result.stderr[:200]}")
+                else:
+                    print(f"  ❌ Render failed")
                 return result
 
-            print(f"  ✅ Render successful")
+            if hasattr(logger, 'info'):
+                logger.info("Render successful")
+            else:
+                print(f"  ✅ Render successful")
 
             # Check for compilation/syntax errors
-            print(f"  🔍 Checking for syntax errors...")
+            if hasattr(logger, 'debug'):
+                logger.debug("Checking for syntax errors")
 
             # Check TypeScript/JavaScript files compile
             if (render_path / "package.json").exists():
@@ -175,9 +200,15 @@ def validate_combination(combo: dict, output_dir: Path) -> dict:
                 )
                 if check_result.returncode != 0:
                     result["warnings"].append(f"pnpm install issues: {check_result.stderr}")
-                    print(f"  ⚠️  pnpm install warnings")
+                    if hasattr(logger, 'warning'):
+                        logger.warning("pnpm install had warnings")
+                    else:
+                        print(f"  ⚠️  pnpm install warnings")
                 else:
-                    print(f"  ✅ Dependencies installed")
+                    if hasattr(logger, 'info'):
+                        logger.info("Dependencies installed")
+                    else:
+                        print(f"  ✅ Dependencies installed")
 
             # Check Python files if present
             python_files = list(render_path.rglob("*.py"))
@@ -193,12 +224,18 @@ def validate_combination(combo: dict, output_dir: Path) -> dict:
                 if syntax_errors:
                     result["errors"].extend(syntax_errors)
                     result["status"] = "failed"
-                    print(f"  ❌ Python syntax errors found")
+                    if hasattr(logger, 'error'):
+                        logger.error(f"Python syntax errors found: {len(syntax_errors)}")
+                    else:
+                        print(f"  ❌ Python syntax errors found")
                     return result
 
             # Success!
             result["status"] = "passed"
-            print(f"  ✅ All checks passed")
+            if hasattr(logger, 'info'):
+                logger.info("All checks passed")
+            else:
+                print(f"  ✅ All checks passed")
 
             # Save render to output for manual inspection (optional)
             if output_dir.exists():
@@ -207,65 +244,97 @@ def validate_combination(combo: dict, output_dir: Path) -> dict:
                     shutil.rmtree(saved_path)
                 shutil.copytree(render_path, saved_path)
                 result["saved_path"] = str(saved_path)
+                if hasattr(logger, 'debug'):
+                    logger.debug(f"Saved render to {saved_path}")
 
     except subprocess.TimeoutExpired:
         result["status"] = "failed"
         result["errors"].append("Validation timed out")
-        print(f"  ⏱️  Timeout")
+        if hasattr(logger, 'error'):
+            logger.error("Validation timed out")
+        else:
+            print(f"  ⏱️  Timeout")
     except Exception as e:
         result["status"] = "failed"
         result["errors"].append(f"Unexpected error: {str(e)}")
-        print(f"  ❌ Failed: {e}")
+        if hasattr(logger, 'exception'):
+            logger.exception("Unexpected error during validation")
+        else:
+            print(f"  ❌ Failed: {e}")
 
     return result
 
 
 def main() -> int:
     """Main validation entry point."""
-    print("?? SaaS Starter Combination Validator")
-    print("=" * 60)
-    
+    if hasattr(logger, 'info'):
+        logger.info("🔍 SaaS Starter Combination Validator starting")
+    else:
+        print("🔍 SaaS Starter Combination Validator")
+        print("=" * 60)
+
     # Generate test combinations
     combinations = generate_all_combinations()
-    print(f"\n?? Testing {len(combinations)} technology combinations")
-    
+    if hasattr(logger, 'info'):
+        logger.info(f"Testing {len(combinations)} technology combinations")
+    else:
+        print(f"\n📋 Testing {len(combinations)} technology combinations")
+
     # Validate each combination
     results = []
     output_dir = Path("samples/saas-starter")
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     for combo in combinations:
         result = validate_combination(combo, output_dir)
         results.append(result)
-    
+
     # Save results
     results_file = output_dir / "validation-results.json"
     with results_file.open("w") as f:
         json.dump(results, f, indent=2)
-    
-    print(f"\n?? Results saved to {results_file}")
-    
+
+    if hasattr(logger, 'info'):
+        logger.info(f"Results saved to {results_file}")
+    else:
+        print(f"\n📊 Results saved to {results_file}")
+
     # Summary
     passed = sum(1 for r in results if r["status"] == "passed")
     failed = sum(1 for r in results if r["status"] == "failed")
     skipped = sum(1 for r in results if r["status"] == "skipped")
-    
-    print("\n" + "=" * 60)
-    print("?? Summary:")
-    print(f"  ? Passed: {passed}")
-    print(f"  ? Failed: {failed}")
-    print(f"  ??  Skipped: {skipped}")
-    print(f"  ?? Total: {len(results)}")
-    
+
+    if hasattr(logger, 'info'):
+        logger.info(
+            f"Validation summary: {passed} passed, {failed} failed, "
+            f"{skipped} skipped, {len(results)} total"
+        )
+    else:
+        print("\n" + "=" * 60)
+        print("📊 Summary:")
+        print(f"  ✅ Passed: {passed}")
+        print(f"  ❌ Failed: {failed}")
+        print(f"  ⊘  Skipped: {skipped}")
+        print(f"  📋 Total: {len(results)}")
+
     if failed > 0:
-        print("\n??  Some combinations failed validation")
+        if hasattr(logger, 'error'):
+            logger.error(f"{failed} combinations failed validation")
+        else:
+            print("\n❌ Some combinations failed validation")
         return 1
-    
+
     if skipped == len(results):
-        print("\n??  Validation not yet implemented (all tests skipped)")
-        return 0  # Don't fail CI for not-yet-implemented tests
-    
-    print("\n? All tested combinations passed!")
+        if hasattr(logger, 'warning'):
+            logger.warning("All tests skipped - validation not fully implemented")
+        else:
+            print("\n⚠️  Validation not yet implemented (all tests skipped)")
+        return 0
+
+    if hasattr(logger, 'info'):
+        logger.info("All tested combinations passed!")
+    else:
+        print("\n✅ All tested combinations passed!")
     return 0
 
 

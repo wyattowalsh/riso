@@ -1,0 +1,124 @@
+[bandit]
+# Bandit configuration for Riso template security scanning
+# See: https://bandit.readthedocs.io/en/latest/config.html
+
+# Directories to exclude from scanning
+exclude_dirs = [
+    '/tests/',
+    '/.venv/',
+    '/venv/',
+    '/node_modules/',
+    '/.git/',
+    '/build/',
+    '/dist/',
+    '/.codex/',
+    '/samples/',
+]
+
+# Tests to skip (use sparingly - prefer fixing issues over skipping)
+# Format: B### where ### is the test number
+# skips = ['B101', 'B601']
+
+# Tests to run (default: all)
+# Explicitly enable critical subprocess security tests:
+# - B602: shell=True in subprocess
+# - B603: subprocess without shell=True (low severity, informational)
+# - B604: any exec function
+# - B605: shell=True with os module
+# - B607: start_process_with_partial_path
+# - B608: SQL injection
+
+# Severity level threshold (LOW, MEDIUM, HIGH)
+# Only report issues at or above this level
+level = LOW
+
+# Confidence level threshold (LOW, MEDIUM, HIGH)
+# Only report issues at or above this confidence level
+confidence = LOW
+
+# Output format: csv, custom, html, json, screen, txt, xml, yaml
+# Default: screen (colored terminal output)
+format = screen
+
+# Additional checks for subprocess security
+[bandit.subprocess]
+# Flag any use of shell=True
+shell = ['Popen', 'subprocess.Popen', 'commands.getstatusoutput',
+         'commands.getoutput', 'commands.getstatus', 'os.system',
+         'os.popen', 'popen2.Popen3', 'popen2.Popen4',
+         'subprocess.run', 'subprocess.call', 'subprocess.check_call',
+         'subprocess.check_output']
+
+[bandit.plugins]
+# Enable all security plugins
+B201 = true  # flask_debug_true
+B301 = true  # pickle
+B302 = true  # marshal
+B303 = true  # md5
+B304 = true  # md5 (insecure_hash)
+B305 = true  # cipher
+B306 = true  # mktemp_q
+B307 = true  # eval
+B308 = true  # mark_safe
+B309 = true  # httpsconnection
+B310 = true  # urllib_urlopen
+B311 = true  # random
+B312 = true  # telnetlib
+B313 = true  # xml_bad_cElementTree
+B314 = true  # xml_bad_ElementTree
+B315 = true  # xml_bad_expatreader
+B316 = true  # xml_bad_expatbuilder
+B317 = true  # xml_bad_sax
+B318 = true  # xml_bad_minidom
+B319 = true  # xml_bad_pulldom
+B320 = true  # xml_bad_etree
+B321 = true  # ftplib
+B322 = true  # input
+B323 = true  # unverified_context
+B324 = true  # hashlib_new_insecure_functions
+B325 = true  # tempnam
+B401 = true  # import_telnetlib
+B402 = true  # import_ftplib
+B403 = true  # import_pickle
+B404 = true  # import_subprocess
+B405 = true  # import_xml_etree
+B406 = true  # import_xml_sax
+B407 = true  # import_xml_expat
+B408 = true  # import_xml_minidom
+B409 = true  # import_xml_pulldom
+B410 = true  # import_lxml
+B411 = true  # import_xmlrpclib
+B412 = true  # import_httpoxy
+B413 = true  # import_pycrypto
+B501 = true  # request_with_no_cert_validation
+B502 = true  # ssl_with_bad_version
+B503 = true  # ssl_with_bad_defaults
+B504 = true  # ssl_with_no_version
+B505 = true  # weak_cryptographic_key
+B506 = true  # yaml_load
+B507 = true  # ssh_no_host_key_verification
+B601 = true  # paramiko_calls
+B602 = true  # subprocess_popen_with_shell_equals_true (CRITICAL)
+B603 = true  # subprocess_without_shell_equals_true (informational)
+B604 = true  # any_other_function_with_shell_equals_true
+B605 = true  # start_process_with_a_shell
+B606 = true  # start_process_with_no_shell
+B607 = true  # start_process_with_partial_path
+B608 = true  # hardcoded_sql_expressions
+B609 = true  # linux_commands_wildcard_injection
+B610 = true  # django_extra_used
+B611 = true  # django_rawsql_used
+B701 = true  # jinja2_autoescape_false
+B702 = true  # use_of_mako_templates
+B703 = true  # django_mark_safe
+
+# Specific test configurations
+[bandit.any_other_function_with_shell_equals_true]
+# Subprocess functions that should never use shell=True
+subprocess = [
+    'subprocess.Popen',
+    'subprocess.call',
+    'subprocess.check_call',
+    'subprocess.check_output',
+    'subprocess.run',
+]
