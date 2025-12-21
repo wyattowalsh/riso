@@ -1,0 +1,410 @@
+{
+  "metadata": {
+    "generated": "2025-12-21",
+    "source": "AUDIT_REPORT.md",
+    "total_tasks": 23,
+    "priority_breakdown": {
+      "P0_critical": 5,
+      "P1_high": 5,
+      "P2_medium": 8,
+      "P3_low": 5
+    }
+  },
+  "execution_phases": [
+    {
+      "phase": 1,
+      "name": "Critical Fixes",
+      "tasks": ["TASK-001", "TASK-002", "TASK-003", "TASK-004", "TASK-005"],
+      "parallel": true,
+      "blocking": true
+    },
+    {
+      "phase": 2,
+      "name": "High Priority",
+      "tasks": ["TASK-006", "TASK-007", "TASK-008", "TASK-009", "TASK-010"],
+      "parallel": true,
+      "blocking": false
+    },
+    {
+      "phase": 3,
+      "name": "Medium Priority",
+      "tasks": ["TASK-011", "TASK-012", "TASK-013", "TASK-014", "TASK-015", "TASK-016", "TASK-017", "TASK-018"],
+      "parallel": true,
+      "blocking": false
+    },
+    {
+      "phase": 4,
+      "name": "Low Priority",
+      "tasks": ["TASK-019", "TASK-020", "TASK-021", "TASK-022", "TASK-023"],
+      "parallel": true,
+      "blocking": false
+    }
+  ],
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "Fix Python camel_case filter syntax error",
+      "priority": "P0",
+      "category": "python-templates",
+      "estimated_minutes": 15,
+      "dependencies": [],
+      "file": "/home/user/riso/template/files/python/src/{{ package_name }}/codegen/engine.py.jinja",
+      "lines": "55-58",
+      "issue_type": "syntax_error",
+      "description": "Invalid walrus operator usage in tuple expression causes SyntaxError when codegen_module=enabled",
+      "fix": {
+        "type": "replace",
+        "old_pattern": "env.filters[\"camel_case\"] = lambda s: (\n    parts := s.replace(\"-\", \"_\").split(\"_\"),\n    parts[0].lower() + \"\".join(word.capitalize() for word in parts[1:])\n)[1] if \"_\" in s or \"-\" in s else s[0].lower() + s[1:]",
+        "new_code": "def _camel_case(s: str) -> str:\n    \"\"\"Convert string to camelCase.\"\"\"\n    if \"_\" not in s and \"-\" not in s:\n        return s[0].lower() + s[1:] if len(s) > 1 else s\n    parts = s.replace(\"-\", \"_\").split(\"_\")\n    return parts[0].lower() + \"\".join(p.capitalize() for p in parts[1:])\n\nenv.filters[\"camel_case\"] = _camel_case"
+      },
+      "verification": {
+        "command": "python3 -c \"exec(open('/home/user/riso/template/files/python/src/{{ package_name }}/codegen/engine.py.jinja').read().split('{% if codegen_module')[1].split('%}')[1][:500])\"",
+        "expected": "No SyntaxError"
+      }
+    },
+    {
+      "id": "TASK-002",
+      "title": "Fix CLI test template indentation error",
+      "priority": "P0",
+      "category": "python-templates",
+      "estimated_minutes": 5,
+      "dependencies": [],
+      "file": "/home/user/riso/template/files/python/tests/test_cli.py.jinja",
+      "lines": "14",
+      "issue_type": "whitespace_error",
+      "description": "Leading space on line 14 causes IndentationError when cli_module=enabled",
+      "fix": {
+        "type": "replace",
+        "old_pattern": " CliRunner = typer_testing.CliRunner",
+        "new_code": "CliRunner = typer_testing.CliRunner"
+      },
+      "verification": {
+        "command": "grep -c '^ [A-Z]' /home/user/riso/template/files/python/tests/test_cli.py.jinja",
+        "expected": "0"
+      }
+    },
+    {
+      "id": "TASK-003",
+      "title": "Fix Node.js health endpoint status mismatch",
+      "priority": "P0",
+      "category": "node-templates",
+      "estimated_minutes": 10,
+      "dependencies": [],
+      "files": [
+        "/home/user/riso/template/files/node/apps/api-node/src/health.ts.jinja",
+        "/home/user/riso/template/files/node/apps/api-node/tests/test_api_fastify.spec.ts.jinja"
+      ],
+      "issue_type": "test_mismatch",
+      "description": "Health endpoint returns 'healthy' but test expects 'ok'",
+      "fix": {
+        "type": "replace",
+        "file": "/home/user/riso/template/files/node/apps/api-node/src/health.ts.jinja",
+        "old_pattern": "status: 'healthy'",
+        "new_code": "status: 'ok'"
+      },
+      "verification": {
+        "command": "grep -l \"status.*ok\" /home/user/riso/template/files/node/apps/api-node/src/health.ts.jinja",
+        "expected": "File path returned"
+      }
+    },
+    {
+      "id": "TASK-004",
+      "title": "Add missing Drizzle ORM imports",
+      "priority": "P0",
+      "category": "node-templates",
+      "estimated_minutes": 10,
+      "dependencies": [],
+      "file": "/home/user/riso/template/files/node/saas/app/api/examples/users/route.ts.jinja",
+      "lines": "23",
+      "issue_type": "missing_import",
+      "description": "Uses 'or' and 'sql' from drizzle-orm without importing them",
+      "fix": {
+        "type": "modify_import",
+        "find_pattern": "import { eq, ilike",
+        "add_imports": ["or", "sql"]
+      },
+      "verification": {
+        "command": "grep \"import.*or.*sql.*from 'drizzle-orm'\" /home/user/riso/template/files/node/saas/app/api/examples/users/route.ts.jinja",
+        "expected": "Import line with or and sql"
+      }
+    },
+    {
+      "id": "TASK-005",
+      "title": "Fix semantic-release tag format syntax",
+      "priority": "P0",
+      "category": "shared-templates",
+      "estimated_minutes": 5,
+      "dependencies": [],
+      "file": "/home/user/riso/template/files/shared/.releaserc.yml.jinja",
+      "lines": "18-22",
+      "issue_type": "syntax_error",
+      "description": "Uses shell variable syntax instead of semantic-release lodash template syntax",
+      "fix": {
+        "type": "replace",
+        "old_pattern": "${name}/v${version}",
+        "new_code": "<%=name%>/v<%=version%>"
+      },
+      "verification": {
+        "command": "grep '<%=name%>' /home/user/riso/template/files/shared/.releaserc.yml.jinja",
+        "expected": "tagFormat line with correct syntax"
+      }
+    },
+    {
+      "id": "TASK-006",
+      "title": "Remove undefined job dependency in release workflow",
+      "priority": "P1",
+      "category": "shared-templates",
+      "estimated_minutes": 10,
+      "dependencies": [],
+      "file": "/home/user/riso/template/files/shared/.github/workflows/riso-release.yml.jinja",
+      "lines": "32",
+      "issue_type": "invalid_reference",
+      "description": "References undefined 'quality' job in needs array",
+      "fix": {
+        "type": "delete_line",
+        "pattern": "needs: [quality]"
+      },
+      "verification": {
+        "command": "grep -c 'needs.*quality' /home/user/riso/template/files/shared/.github/workflows/riso-release.yml.jinja",
+        "expected": "0"
+      }
+    },
+    {
+      "id": "TASK-007",
+      "title": "Fix hardcoded CORS origins security issue",
+      "priority": "P1",
+      "category": "python-templates",
+      "estimated_minutes": 15,
+      "dependencies": [],
+      "file": "/home/user/riso/template/files/python/src/{{ package_name }}/api/config.py.jinja",
+      "lines": "81",
+      "issue_type": "security",
+      "description": "Default CORS origins include localhost which is a security risk in production",
+      "fix": {
+        "type": "replace",
+        "old_pattern": "default=[\"http://localhost:3000\"]",
+        "new_code": "default_factory=list"
+      },
+      "verification": {
+        "command": "grep -c 'localhost.*3000' /home/user/riso/template/files/python/src/*/api/config.py.jinja",
+        "expected": "0"
+      }
+    },
+    {
+      "id": "TASK-008",
+      "title": "Remove ESLint configuration conflict",
+      "priority": "P1",
+      "category": "node-templates",
+      "estimated_minutes": 10,
+      "dependencies": [],
+      "file": "/home/user/riso/template/files/node/saas/package.json.jinja",
+      "lines": "206",
+      "issue_type": "dependency_conflict",
+      "description": "Includes both eslint-config-next and @next/eslint-plugin-next causing conflicts",
+      "fix": {
+        "type": "delete_line",
+        "pattern": "\"eslint-config-next\""
+      },
+      "verification": {
+        "command": "grep -c 'eslint-config-next' /home/user/riso/template/files/node/saas/package.json.jinja",
+        "expected": "0"
+      }
+    },
+    {
+      "id": "TASK-009",
+      "title": "Add SHA256 digests to Docker base images",
+      "priority": "P1",
+      "category": "shared-templates",
+      "estimated_minutes": 30,
+      "dependencies": [],
+      "files": [
+        "/home/user/riso/template/files/shared/.docker/Dockerfile.jinja",
+        "/home/user/riso/template/files/shared/.docker/Dockerfile.dev.jinja"
+      ],
+      "lines": "23,49,97,135",
+      "issue_type": "security",
+      "description": "Docker base images use tags without SHA256 digests affecting reproducibility and security",
+      "fix": {
+        "type": "add_digest",
+        "images": ["python:3.11-slim-bookworm", "node:20-alpine"]
+      },
+      "verification": {
+        "command": "grep -c '@sha256:' /home/user/riso/template/files/shared/.docker/Dockerfile.jinja",
+        "expected": "4 or more"
+      }
+    },
+    {
+      "id": "TASK-010",
+      "title": "Document or complete GraphQL authentication stubs",
+      "priority": "P1",
+      "category": "python-templates",
+      "estimated_minutes": 45,
+      "dependencies": [],
+      "files": [
+        "/home/user/riso/template/files/python/graphql_api/auth.py.jinja",
+        "/home/user/riso/template/files/python/graphql_api/main.py.jinja",
+        "/home/user/riso/template/files/python/graphql_api/context.py.jinja"
+      ],
+      "issue_type": "incomplete_implementation",
+      "description": "GraphQL auth contains TODO comments for core functionality",
+      "fix": {
+        "type": "add_documentation",
+        "add_warning": true,
+        "message": "This module contains stub implementations that MUST be completed before production use"
+      },
+      "verification": {
+        "command": "grep -c 'IMPORTANT\\|WARNING\\|MUST be completed' /home/user/riso/template/files/python/graphql_api/auth.py.jinja",
+        "expected": "1 or more"
+      }
+    },
+    {
+      "id": "TASK-011",
+      "title": "Increase coverage threshold to 90%",
+      "priority": "P2",
+      "category": "shared-templates",
+      "estimated_minutes": 5,
+      "dependencies": [],
+      "file": "/home/user/riso/template/files/shared/quality/coverage.cfg.jinja",
+      "lines": "15",
+      "issue_type": "quality",
+      "fix": {
+        "type": "replace",
+        "old_pattern": "fail_under = 85.0",
+        "new_code": "fail_under = 90.0"
+      }
+    },
+    {
+      "id": "TASK-012",
+      "title": "Standardize Python version in workflows",
+      "priority": "P2",
+      "category": "shared-templates",
+      "estimated_minutes": 20,
+      "dependencies": [],
+      "files": [
+        "/home/user/riso/template/files/shared/.github/workflows/riso-quality.yml.jinja",
+        "/home/user/riso/template/files/shared/.github/workflows/quality-matrix.yml.jinja"
+      ],
+      "issue_type": "inconsistency",
+      "fix": {
+        "type": "replace",
+        "old_pattern": "python-version: \"3.11\"",
+        "new_code": "python-version: \"{{ python_versions[0] }}\""
+      }
+    },
+    {
+      "id": "TASK-013",
+      "title": "Fix trailing comma issue in container build workflow",
+      "priority": "P2",
+      "category": "shared-templates",
+      "estimated_minutes": 15,
+      "dependencies": [],
+      "file": "/home/user/riso/template/files/shared/.github/workflows/riso-container-build.yml.jinja",
+      "lines": "175-178",
+      "issue_type": "yaml_syntax",
+      "description": "Complex Jinja2 logic can produce invalid YAML with trailing commas"
+    },
+    {
+      "id": "TASK-014",
+      "title": "Add correlation IDs to parallel publishing",
+      "priority": "P2",
+      "category": "shared-templates",
+      "estimated_minutes": 20,
+      "dependencies": [],
+      "file": "/home/user/riso/template/files/shared/scripts/release/publish-artifacts.py.jinja",
+      "issue_type": "observability"
+    },
+    {
+      "id": "TASK-015",
+      "title": "Add startup delays to docker-compose health checks",
+      "priority": "P2",
+      "category": "shared-templates",
+      "estimated_minutes": 10,
+      "dependencies": [],
+      "file": "/home/user/riso/template/files/shared/docker-compose.yml.jinja",
+      "issue_type": "reliability"
+    },
+    {
+      "id": "TASK-016",
+      "title": "Update OpenAI model references",
+      "priority": "P2",
+      "category": "node-templates",
+      "estimated_minutes": 15,
+      "dependencies": [],
+      "files": ["/home/user/riso/template/files/node/saas/integrations/ai/"],
+      "issue_type": "outdated"
+    },
+    {
+      "id": "TASK-017",
+      "title": "Complete R2 storage multipart upload",
+      "priority": "P2",
+      "category": "node-templates",
+      "estimated_minutes": 45,
+      "dependencies": [],
+      "file": "/home/user/riso/template/files/node/saas/integrations/storage/r2/client.ts.jinja",
+      "lines": "79",
+      "issue_type": "incomplete_implementation"
+    },
+    {
+      "id": "TASK-018",
+      "title": "Complete Paddle webhook routing",
+      "priority": "P2",
+      "category": "node-templates",
+      "estimated_minutes": 30,
+      "dependencies": [],
+      "file": "/home/user/riso/template/files/node/saas/integrations/billing/service.ts.jinja",
+      "lines": "140",
+      "issue_type": "incomplete_implementation"
+    },
+    {
+      "id": "TASK-019",
+      "title": "Add terminal fallback for emoji display",
+      "priority": "P3",
+      "category": "shared-templates",
+      "estimated_minutes": 10,
+      "dependencies": [],
+      "file": "/home/user/riso/template/files/shared/scripts/release/validate-commit.py.jinja",
+      "issue_type": "compatibility"
+    },
+    {
+      "id": "TASK-020",
+      "title": "Add thread-safety to WebSocket singleton",
+      "priority": "P3",
+      "category": "python-templates",
+      "estimated_minutes": 15,
+      "dependencies": [],
+      "file": "/home/user/riso/template/files/python/src/{{ package_name }}/websocket/manager.py.jinja",
+      "issue_type": "thread_safety"
+    },
+    {
+      "id": "TASK-021",
+      "title": "Remove Python reference from Node workspace config",
+      "priority": "P3",
+      "category": "node-templates",
+      "estimated_minutes": 5,
+      "dependencies": [],
+      "file": "/home/user/riso/template/files/node/pnpm-workspace.yaml.jinja",
+      "issue_type": "cleanup"
+    },
+    {
+      "id": "TASK-022",
+      "title": "Update README.md feature status",
+      "priority": "P3",
+      "category": "documentation",
+      "estimated_minutes": 15,
+      "dependencies": [],
+      "file": "/home/user/riso/README.md",
+      "issue_type": "outdated_docs"
+    },
+    {
+      "id": "TASK-023",
+      "title": "Remove redundant conditional logic in changelog docs",
+      "priority": "P3",
+      "category": "shared-templates",
+      "estimated_minutes": 5,
+      "dependencies": [],
+      "file": "/home/user/riso/template/files/shared/docs/modules/changelog-release.md.jinja",
+      "lines": "1-5",
+      "issue_type": "cleanup"
+    }
+  ]
+}
