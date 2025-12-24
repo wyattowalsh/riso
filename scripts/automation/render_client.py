@@ -14,7 +14,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, MutableMapping, Optional
+from typing import Any, Mapping, MutableMapping
 
 
 # Valid variant name pattern
@@ -54,7 +54,7 @@ class APIError(Exception):
 
     message: str
     status_code: int | None = None
-    payload: Optional[Mapping[str, Any]] = None
+    payload: Mapping[str, Any] | None = None
 
     def __str__(self) -> str:
         suffix = f" (status={self.status_code})" if self.status_code else ""
@@ -91,7 +91,7 @@ class RenderClient:
         principle: str,
         status: str,
         evidence: str,
-        metadata: Optional[Mapping[str, Any]] = None,
+        metadata: Mapping[str, Any] | None = None,
     ) -> Mapping[str, Any] | None:
         payload: MutableMapping[str, Any] = {
             "principle": principle,
@@ -114,7 +114,7 @@ class RenderClient:
         self,
         method: str,
         path: str,
-        payload: Optional[Mapping[str, Any]] = None,
+        payload: Mapping[str, Any] | None = None,
     ) -> Mapping[str, Any] | None:
         url = f"{self.base_url}{path}"
         headers = {

@@ -8,7 +8,7 @@ import json
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Iterable, List, MutableMapping
+from typing import Iterable, MutableMapping
 
 
 @dataclass
@@ -25,7 +25,7 @@ class ModuleStats:
         total = self.total()
         return 0.0 if total == 0 else self.passed / total
 
-    def to_dict(self) -> Dict[str, float | int]:
+    def to_dict(self) -> dict[str, float | int]:
         data = asdict(self)
         data["success_rate"] = round(self.success_rate(), 4)
         data["total_recorded"] = self.total()
@@ -41,7 +41,7 @@ class CacheMetrics:
     total_cache_checks: int = 0
     note: str = "Cache metrics tracked from GitHub Actions workflow runs when ci_platform=github-actions"
 
-    def to_dict(self) -> Dict[str, float | int | str | None]:
+    def to_dict(self) -> dict[str, float | int | str | None]:
         return asdict(self)
 
 
@@ -56,7 +56,7 @@ class ContainerMetrics:
     success_rate: float = 0.0
     note: str = "Container metrics tracked from rendered samples with api_tracks or docs_site"
 
-    def to_dict(self) -> Dict[str, float | int | str]:
+    def to_dict(self) -> dict[str, float | int | str]:
         return asdict(self)
 
 
@@ -64,8 +64,8 @@ class ModuleSuccessRecorder:
     """Tracks module-level success metrics across rendered variants."""
 
     def __init__(self) -> None:
-        self.modules: Dict[str, ModuleStats] = {}
-        self.variants: List[Dict[str, object]] = []
+        self.modules: dict[str, ModuleStats] = {}
+        self.variants: list[dict[str, object]] = []
         self.workflow_stats = ModuleStats()
         self.cache_metrics = CacheMetrics()
         self.container_metrics = ContainerMetrics()
@@ -136,8 +136,8 @@ class ModuleSuccessRecorder:
             )
         self.variants.append(variant_summary)
 
-    def to_dict(self) -> Dict[str, object]:
-        workflow_data: Dict[str, object] = dict(self.workflow_stats.to_dict())
+    def to_dict(self) -> dict[str, object]:
+        workflow_data: dict[str, object] = dict(self.workflow_stats.to_dict())
         workflow_data["ci_cache_performance"] = self.cache_metrics.to_dict()
         workflow_data["container_validation"] = self.container_metrics.to_dict()
         
@@ -148,14 +148,14 @@ class ModuleSuccessRecorder:
             "variants": self.variants,
         }
 
-    def write(self, destination: Path) -> Dict[str, object]:
+    def write(self, destination: Path) -> dict[str, object]:
         payload = self.to_dict()
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         return payload
 
 
-def iter_smoke_logs(samples_dir: Path) -> Iterable[tuple[str, List[MutableMapping[str, object]]]]:
+def iter_smoke_logs(samples_dir: Path) -> Iterable[tuple[str, list[MutableMapping[str, object]]]]:
     for answers_file in sorted(samples_dir.glob("*/smoke-results.json")):
         variant = answers_file.parent.name
         data = json.loads(answers_file.read_text(encoding="utf-8"))
