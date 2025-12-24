@@ -41,17 +41,20 @@ def record_metadata(destination: pathlib.Path, data: dict[str, object]) -> None:
 
 
 def load_answers(destination: pathlib.Path) -> Dict[str, str]:
+    """Load answers from YAML file safely."""
     answers_path = destination / ".copier-answers.yml"
     if not answers_path.exists():
         return {}
-    answers: Dict[str, str] = {}
-    for raw_line in answers_path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or ":" not in line:
-            continue
-        key, value = line.split(":", 1)
-        answers[key.strip()] = value.strip()
-    return answers
+    try:
+        import yaml
+        with answers_path.open(encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+            if isinstance(data, dict):
+                return {k: str(v) for k, v in data.items() if v is not None}
+            return {}
+    except Exception as e:
+        sys.stderr.write(f"Warning: Failed to parse answers file: {e}\n")
+        return {}
 
 
 def layout_guidance(layout: str) -> list[str]:
