@@ -7,6 +7,10 @@ on:
   pull_request:
     branches: [main, develop]
 
+concurrency:
+  group: {% raw %}${{ github.workflow }}-${{ github.ref }}{% endraw %}
+  cancel-in-progress: true
+
 env:
   NODE_VERSION: '20'
   PNPM_VERSION: '8'
