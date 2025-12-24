@@ -12,6 +12,10 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: {% raw %}${{ github.workflow }}-${{ github.ref }}{% endraw %}
+  cancel-in-progress: true
+
 env:
   QUALITY_PROFILE: {{ quality_profile }}
   PACKAGE_NAME: {{ package_name }}
@@ -49,8 +53,12 @@ jobs:
             {% raw %}${{ runner.os }}-py${{ matrix.python-version }}-{% endraw %}
             {% raw %}${{ runner.os }}-{% endraw %}
       
-      - name: Install uv package manager
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+          enable-cache: true
+          cache-dependency-glob: "**/uv.lock"
       
       - name: Install dependencies with uv
         run: |
@@ -94,6 +102,7 @@ jobs:
             test-results.xml
             coverage.xml
             .coverage
+          if-no-files-found: warn
           retention-days: 90
       
       - name: Report matrix job status

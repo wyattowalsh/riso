@@ -7,10 +7,9 @@ import argparse
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List
 
 
-def load_existing(path: Path) -> List[Dict[str, Any]]:
+def load_existing(path: Path) -> list[dict[str, object]]:
     if not path.exists():
         return []
     return json.loads(path.read_text(encoding="utf-8"))

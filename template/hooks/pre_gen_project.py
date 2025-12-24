@@ -26,6 +26,12 @@ except ModuleNotFoundError:  # pragma: no cover - during template linting
     ensure_python_quality_tools = lambda: []  # type: ignore
     ToolCheck = None  # type: ignore
 
+# Valid configuration values
+VALID_DOCS_SITES = {"fumadocs", "sphinx-shibuya", "docusaurus", "none"}
+VALID_CI_PLATFORMS = {"github-actions", "none"}
+VALID_PROJECT_LAYOUTS = {"single-package", "monorepo"}
+VALID_QUALITY_PROFILES = {"standard", "strict"}
+
 
 class ProvisionResult(dict):
     """Typed helper for logging provisioning attempts."""
@@ -54,16 +60,28 @@ class ProvisionResult(dict):
             self["retry_command"] = retry_command
 
 
-def _load_docs_site(default: str = "fumadocs") -> str:
-    """Best-effort retrieval of the selected documentation variant."""
+def _load_from_env(
+    key: str,
+    valid_values: set[str] | None = None,
+    default: str = "",
+) -> str:
+    """Load a configuration value from copier environment variables.
 
+    Args:
+        key: The configuration key to look for (e.g., 'docs_site')
+        valid_values: Optional set of allowed values for validation
+        default: Default value if key not found or invalid
+
+    Returns:
+        The configuration value or default
+    """
     candidates = (
         "COPIER_ANSWERS",
         "COPIER_JINJA2_CONTEXT",
         "COPIER_RENDER_CONTEXT",
     )
-    for key in candidates:
-        raw = os.environ.get(key)
+    for env_key in candidates:
+        raw = os.environ.get(env_key)
         if not raw:
             continue
         try:
@@ -71,33 +89,21 @@ def _load_docs_site(default: str = "fumadocs") -> str:
         except json.JSONDecodeError:
             continue
         if isinstance(data, dict):
-            value = data.get("docs_site")
+            value = data.get(key)
             if isinstance(value, str) and value:
-                return value
+                if valid_values is None or value in valid_values:
+                    return value
     return default
+
+
+def _load_docs_site(default: str = "fumadocs") -> str:
+    """Best-effort retrieval of the selected documentation variant."""
+    return _load_from_env("docs_site", VALID_DOCS_SITES, default)
 
 
 def _load_ci_platform(default: str = "github-actions") -> str:
     """Best-effort retrieval of the selected CI platform."""
-
-    candidates = (
-        "COPIER_ANSWERS",
-        "COPIER_JINJA2_CONTEXT",
-        "COPIER_RENDER_CONTEXT",
-    )
-    for key in candidates:
-        raw = os.environ.get(key)
-        if not raw:
-            continue
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(data, dict):
-            value = data.get("ci_platform")
-            if isinstance(value, str) and value:
-                return value
-    return default
+    return _load_from_env("ci_platform", VALID_CI_PLATFORMS, default)
 
 
 def _load_copier_context() -> dict:

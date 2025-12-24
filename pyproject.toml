@@ -1,7 +1,80 @@
 [project]
 name = "riso"
 version = "0.1.0"
-description = "Add your description here"
+description = "Modular Copier-based project template for Python and Node.js applications"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Riso Template Working Group"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Code Generators",
+]
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/wyattowalsh/riso"
+Documentation = "https://github.com/wyattowalsh/riso/tree/main/docs"
+Repository = "https://github.com/wyattowalsh/riso"
+Issues = "https://github.com/wyattowalsh/riso/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-mock>=3.0",
+    "ruff>=0.8.0",
+    "mypy>=1.0",
+    "pylint>=3.0",
+    "pip-audit>=2.0",
+]
+test = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-mock>=3.0",
+    "pyyaml>=6.0",
+]
+docs = [
+    "sphinx>=7.0",
+    "shibuya>=2024.0",
+    "myst-parser>=2.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-ra",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["scripts", "template/hooks"]
+omit = ["*/__pycache__/*", "*/tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]

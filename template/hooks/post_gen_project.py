@@ -9,7 +9,6 @@ import json
 import pathlib
 import sys
 from datetime import datetime
-from typing import Dict
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[2] / "scripts"))
 
@@ -35,26 +34,43 @@ DEFAULT_GUIDANCE = [
 
 
 def record_metadata(destination: pathlib.Path, data: dict[str, object]) -> None:
+    """Record post-generation metadata to a JSON file.
+
+    Args:
+        destination: Root directory of the rendered project.
+        data: Metadata dictionary to write to the file.
+    """
     metadata_file = destination / ".riso" / "post_gen_metadata.json"
     metadata_file.parent.mkdir(parents=True, exist_ok=True)
     metadata_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
-def load_answers(destination: pathlib.Path) -> Dict[str, str]:
+def load_answers(destination: pathlib.Path) -> dict[str, str]:
+    """Load answers from YAML file safely."""
     answers_path = destination / ".copier-answers.yml"
     if not answers_path.exists():
         return {}
-    answers: Dict[str, str] = {}
-    for raw_line in answers_path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or ":" not in line:
-            continue
-        key, value = line.split(":", 1)
-        answers[key.strip()] = value.strip()
-    return answers
+    try:
+        import yaml
+        with answers_path.open(encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+            if isinstance(data, dict):
+                return {k: str(v) for k, v in data.items() if v is not None}
+            return {}
+    except Exception as e:
+        sys.stderr.write(f"Warning: Failed to parse answers file: {e}\n")
+        return {}
 
 
 def layout_guidance(layout: str) -> list[str]:
+    """Generate layout-specific setup guidance.
+
+    Args:
+        layout: Project layout type (e.g., "monorepo", "single-package").
+
+    Returns:
+        List of guidance strings for the specified layout.
+    """
     if layout == "monorepo":
         return [
             "Install workspace dependencies: `pnpm install`.",
@@ -65,7 +81,15 @@ def layout_guidance(layout: str) -> list[str]:
     return []
 
 
-def docs_guidance(answers: Dict[str, str]) -> list[str]:
+def docs_guidance(answers: dict[str, str]) -> list[str]:
+    """Generate documentation-specific setup guidance.
+
+    Args:
+        answers: Dictionary of copier answers containing project configuration.
+
+    Returns:
+        List of guidance strings for the configured documentation site.
+    """
     docs_site = answers.get("docs_site", "fumadocs").lower()
     if docs_site == "fumadocs":
         return [
@@ -87,7 +111,15 @@ def docs_guidance(answers: Dict[str, str]) -> list[str]:
     ]
 
 
-def optional_module_guidance(answers: Dict[str, str]) -> list[str]:
+def optional_module_guidance(answers: dict[str, str]) -> list[str]:
+    """Generate guidance for optional modules based on project configuration.
+
+    Args:
+        answers: Dictionary of copier answers containing module enablement flags.
+
+    Returns:
+        List of guidance strings for enabled optional modules (CLI, API, MCP).
+    """
     guidance: list[str] = []
     if answers.get("cli_module", "").lower() == "enabled":
         guidance.append("Typer CLI ready: `uv run python -m {package}.cli --help`.")
@@ -101,7 +133,16 @@ def optional_module_guidance(answers: Dict[str, str]) -> list[str]:
     return guidance
 
 
-def render_guidance(package: str, answers: Dict[str, str]) -> str:
+def render_guidance(package: str, answers: dict[str, str]) -> str:
+    """Render complete next-steps guidance based on project configuration.
+
+    Args:
+        package: Name of the generated package.
+        answers: Dictionary of copier answers containing project configuration.
+
+    Returns:
+        Formatted multi-line string with all applicable guidance.
+    """
     layout = answers.get("project_layout", "single-package").lower()
     lines = ["Next steps:"]
     for item in DEFAULT_GUIDANCE:
@@ -116,6 +157,11 @@ def render_guidance(package: str, answers: Dict[str, str]) -> str:
 
 
 def main() -> None:
+    """Execute post-generation hook to validate tools and display guidance.
+
+    Validates Python and Node quality tools, validates generated workflows,
+    records metadata, and prints next-steps guidance to stdout.
+    """
     destination = pathlib.Path.cwd()
     package = destination.name.replace("-", "_")
     answers = load_answers(destination)
