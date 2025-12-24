@@ -26,6 +26,12 @@ except ModuleNotFoundError:  # pragma: no cover - during template linting
     ensure_python_quality_tools = lambda: []  # type: ignore
     ToolCheck = None  # type: ignore
 
+# Valid configuration values
+VALID_DOCS_SITES = {"fumadocs", "sphinx-shibuya", "docusaurus", "none"}
+VALID_CI_PLATFORMS = {"github-actions", "none"}
+VALID_PROJECT_LAYOUTS = {"single-package", "monorepo"}
+VALID_QUALITY_PROFILES = {"standard", "strict"}
+
 
 class ProvisionResult(dict):
     """Typed helper for logging provisioning attempts."""
@@ -56,7 +62,6 @@ class ProvisionResult(dict):
 
 def _load_docs_site(default: str = "fumadocs") -> str:
     """Best-effort retrieval of the selected documentation variant."""
-
     candidates = (
         "COPIER_ANSWERS",
         "COPIER_JINJA2_CONTEXT",
@@ -72,14 +77,13 @@ def _load_docs_site(default: str = "fumadocs") -> str:
             continue
         if isinstance(data, dict):
             value = data.get("docs_site")
-            if isinstance(value, str) and value:
+            if isinstance(value, str) and value in VALID_DOCS_SITES:
                 return value
     return default
 
 
 def _load_ci_platform(default: str = "github-actions") -> str:
     """Best-effort retrieval of the selected CI platform."""
-
     candidates = (
         "COPIER_ANSWERS",
         "COPIER_JINJA2_CONTEXT",
@@ -95,7 +99,7 @@ def _load_ci_platform(default: str = "github-actions") -> str:
             continue
         if isinstance(data, dict):
             value = data.get("ci_platform")
-            if isinstance(value, str) and value:
+            if isinstance(value, str) and value in VALID_CI_PLATFORMS:
                 return value
     return default
 
