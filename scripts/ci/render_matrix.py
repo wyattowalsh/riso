@@ -93,12 +93,13 @@ def render_variant(variant: str, answers_file: Path) -> dict[str, object]:
                 
                 # Optional: Run hadolint validation
                 try:
-                    hadolint_result = subprocess.run(
-                        ["docker", "run", "--rm", "-i", "hadolint/hadolint"],
-                        stdin=docker_file.open("rb"),
-                        capture_output=True,
-                        timeout=30,
-                    )
+                    with docker_file.open("rb") as f:
+                        hadolint_result = subprocess.run(
+                            ["docker", "run", "--rm", "-i", "hadolint/hadolint"],
+                            stdin=f,
+                            capture_output=True,
+                            timeout=30,
+                        )
                     if hadolint_result.returncode == 0:
                         container_status = "validated"
                     else:
