@@ -4,6 +4,53 @@
 
 ## Quickstart
 
+### First-Time Setup
+
+Bootstrap your development environment with all required tooling:
+
+```bash
+# Check what tools you have/need (dry-run)
+./scripts/setup/setup.sh
+
+# Install missing tools (with confirmation prompts)
+./scripts/setup/setup.sh --install
+
+# Non-interactive installation (CI/automation)
+./scripts/setup/setup.sh --install --yes
+
+# Or use Make targets
+make bootstrap          # Interactive install
+make setup-check        # Check-only (CI-friendly, exits 0 or 1)
+```
+
+**Windows (PowerShell):**
+```powershell
+.\scripts\setup\setup.ps1                  # Check (dry-run)
+.\scripts\setup\setup.ps1 -Install         # Install with prompts
+.\scripts\setup\setup.ps1 -Install -Yes    # Non-interactive
+```
+
+**CI/CD with GitHub token** (avoids rate limits):
+```bash
+export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+./scripts/setup/setup.sh --install --yes
+```
+
+### Verify Environment
+
+```bash
+# Check all tools are present
+make setup-check
+
+# Verify version constants are synchronized
+make verify-versions
+
+# View setup logs (location printed after setup completes)
+tail -f ~/.local/state/riso/setup_*.log
+```
+
+### Get Started with Template
+
 Get started with the default template variant:
 
 ```bash
@@ -22,6 +69,12 @@ uv run python -m ${PACKAGE}.quickstart
 make quality
 # or, when make is unavailable
 QUALITY_PROFILE=standard uv run task quality
+
+# For Node.js tracks (when applicable)
+pnpm install
+pnpm run build
+pnpm run test
+pnpm run lint
 ```
 
 ## Scope & Ownership
@@ -38,12 +91,57 @@ QUALITY_PROFILE=standard uv run task quality
 
 ## Repository Map
 
-- `template/` – Copier payload (Python + Node variants, shared logic, docs, module catalog).
-- `scripts/` – local/CI automation (rendering, metrics, context sync); run from repo root.
-- `samples/` – curated answer files, rendered artifacts, `smoke-results.json`, performance metrics.
-- `.github/context/` – canonical context snippets; must match `template/files/shared/.github/context/` (`uv run python scripts/ci/verify_context_sync.py`).
-- `docs/` – Jinja-templated quickstart and module docs rendered into downstream projects.
-- `specs/` – GitHub Spec Kit workspace (canonical specifications for features and plans).
+```
+riso/
+├── .claude/                     # Claude Code configuration
+│   ├── skills/                  # AI agent skills
+│   │   ├── agents-md-manager/   # AGENTS.md sync & management
+│   │   └── mcp-installer/       # MCP server installation
+│   └── settings.json            # Claude Code settings
+├── src/                         # Source code (automation)
+│   └── riso/                    # Python package
+├── template/                    # Copier payload
+│   ├── files/                   # Template files
+│   │   ├── python/              # Python project files
+│   │   │   └── src/             # Source directory template
+│   │   ├── node/                # Node.js project files
+│   │   │   ├── packages/        # Monorepo packages
+│   │   │   └── lib/             # Shared libraries
+│   │   └── shared/              # Shared across variants
+│   │       ├── .claude/skills/  # Claude skills for rendered projects
+│   │       ├── quality/         # Quality suite (Makefile, uv tasks)
+│   │       ├── components/      # UI components (when applicable)
+│   │       └── .github/         # CI workflow templates
+│   ├── hooks/                   # Pre/post generation hooks
+│   │   ├── pre_gen_project.py   # Validates tooling
+│   │   └── post_gen_project.py  # Writes metadata
+│   └── prompts/                 # Copier prompt definitions
+├── scripts/                     # Automation (run from repo root)
+│   ├── render-samples.sh        # Main render script
+│   ├── setup/                   # Development environment setup
+│   │   ├── setup.sh             # Bash setup (macOS/Linux/WSL)
+│   │   ├── setup.ps1            # PowerShell setup (Windows)
+│   │   ├── lib/                 # Bash library modules
+│   │   └── lib-ps/              # PowerShell library modules
+│   └── ci/                      # CI automation scripts
+├── samples/                     # Rendered sample projects
+│   ├── default/                 # Default variant
+│   │   ├── copier-answers.yml   # Answer file
+│   │   └── render/              # Rendered output
+│   └── metadata/                # Aggregated metrics
+├── tests/                       # Test suite
+├── docs/                        # Jinja-templated docs
+├── specs/                       # Feature specifications
+└── .github/
+    ├── workflows/               # CI workflows
+    └── context/                 # Canonical context snippets
+```
+
+**Entry Points:**
+- `scripts/render-samples.sh` — Primary automation entry point
+- `template/hooks/pre_gen_project.py` — Validation before rendering
+- `template/copier.yml` — Copier template definition
+- `pyproject.toml` — Project metadata and dependencies
 
 ## Build & Test Parity
 
@@ -93,6 +191,43 @@ Quality tools run via `make quality` or `uv run task quality` in rendered projec
 - **Testing:** pytest with coverage (configuration in `pytest.ini` and `coverage.cfg`)
 - **Profiles:** `QUALITY_PROFILE=standard` (default) or `QUALITY_PROFILE=strict` for enhanced checks
 
+**Test patterns:**
+```python
+# tests/test_hooks.py
+import pytest
+from riso.hooks import validate_tooling
+
+def test_validate_tooling_success():
+    """Test that validation passes with all tools present."""
+    result = validate_tooling()
+    assert result.success is True
+
+@pytest.fixture
+def mock_config():
+    """Provide test configuration fixture."""
+    return {"variant": "default", "force": False}
+
+class TestRenderConfig:
+    def test_init(self, mock_config):
+        """Test configuration initialization."""
+        assert mock_config["variant"] == "default"
+```
+
+**TypeScript test patterns (for Node.js tracks):**
+```typescript
+// packages/api-node/tests/health.test.ts
+import { describe, it, expect } from 'vitest';
+import { createApp } from '../src/app';
+
+describe('Health endpoint', () => {
+  it('should return 200 OK', async () => {
+    const app = createApp();
+    const response = await app.inject({ method: 'GET', url: '/health' });
+    expect(response.statusCode).toBe(200);
+  });
+});
+```
+
 Quality suite implementation:
 
 - `template/files/shared/quality/makefile.quality.jinja` – Makefile targets
@@ -106,6 +241,73 @@ Quality suite implementation:
 - ✅ `uv run task quality`
 - ❌ `python -m pytest` (incorrect)
 - ❌ `pytest tests/` (incorrect)
+
+## Code Style
+
+**Languages & Frameworks:**
+- **Python:** 3.11+ (managed via uv)
+- **Node.js:** 20 LTS with pnpm ≥8
+- **TypeScript:** 5.6+ (strict mode)
+- **Template Engine:** Jinja2 + Copier ≥9.0
+
+**Formatters & Linters:**
+- Python: ruff (format + lint), ty (type checking), pylint (static analysis)
+- TypeScript/Node: ESLint + Prettier
+- YAML: yamllint for workflow validation
+
+**Indentation & Formatting:**
+- Python: 4 spaces (enforced by ruff)
+- TypeScript/JavaScript: 2 spaces (enforced by Prettier)
+- YAML: 2 spaces
+- Jinja: Match target file format
+- Line length: 88 chars (Python), 100 chars (TypeScript)
+
+**Import Order (Python):**
+1. Standard library (`import os`, `from pathlib import Path`)
+2. Third-party (`import pytest`, `from pydantic import BaseModel`)
+3. Local (`from riso.hooks import validate`)
+
+**Naming Conventions:**
+- Python modules: `snake_case` (`render_samples.py`)
+- Python classes: `PascalCase` (`AnalysisResult`)
+- Jinja templates: `snake_case.ext.jinja` (`pyproject.toml.jinja`)
+- Shell scripts: `kebab-case.sh` (`render-samples.sh`)
+
+**Example (Python):**
+```python
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+
+
+@dataclass
+class RenderConfig:
+    """Configuration for template rendering."""
+
+    variant: str
+    output_dir: Path
+    force: bool = False
+
+    def validate(self) -> None:
+        """Validate configuration before rendering."""
+        if not self.output_dir.parent.exists():
+            raise ValueError(f"Parent directory does not exist: {self.output_dir.parent}")
+```
+
+**Example (Jinja template):**
+```jinja
+{# template/files/python/pyproject.toml.jinja #}
+[project]
+name = "{{ package_name }}"
+version = "{{ version }}"
+requires-python = ">={{ python_version }}"
+
+{% if cli_module == "enabled" %}
+[project.scripts]
+{{ package_name }} = "{{ package_name }}.cli:app"
+{% endif %}
+```
 
 ## Security
 
@@ -125,6 +327,27 @@ Quality suite implementation:
 
 - `template/hooks/` – validation and initialization logic
 - `scripts/ci/verify_context_sync.py` – ensures shared context files remain synchronized
+
+## Git Workflow
+
+**Branches:**
+- `main` — Production-ready, protected
+- `feature/*` — New features
+- `fix/*` — Bug fixes
+- `docs/*` — Documentation updates
+
+**Commits:** Conventional Commits format:
+```
+feat(template): add WebSocket module scaffold
+fix(hooks): handle missing uv gracefully
+docs(agents): update repository map with directory tree
+refactor(ci): consolidate quality check scripts
+```
+
+**Pull Requests:**
+- Require passing CI checks (quality + matrix tests)
+- Squash merge to main
+- Delete branch after merge
 
 ## Python Execution Convention
 **CRITICAL**: All Python scripts MUST be executed via `uv run python` to ensure proper virtual environment isolation and dependency management. Never invoke Python directly (`python`, `python3`, or `python3.11`). This applies to all automation scripts, CI workflows, and local development commands.
@@ -205,10 +428,83 @@ QUALITY_PROFILE=standard uv run task quality
 - Keep the template copy at `template/files/python/docs/` in lockstep; changes to navigation or config must be mirrored.
 - Doc dependencies are defined in the `docs` dependency group inside `template/files/python/pyproject.toml.jinja`.
 - For rendered projects with `docs_site=sphinx-shibuya`, CI runs `uv run sphinx-build docs dist/docs`.
+
+### Claude Code Skills
+Two AI agent skills are installed at both project and template levels:
+
+| Skill | Location | Purpose |
+|-------|----------|---------|
+| `agents-md-manager` | `.claude/skills/agents-md-manager/` | AGENTS.md as SSOT with platform sync |
+| `mcp-installer` | `.claude/skills/mcp-installer/` | Universal MCP server management |
+
+**agents-md-manager** — Manages AGENTS.md files across AI coding platforms:
+```bash
+# Detect all agent files in codebase
+uv run python .claude/skills/agents-md-manager/detect.py .
+
+# Analyze AGENTS.md quality (scores against 6-area framework)
+uv run python .claude/skills/agents-md-manager/analyze.py AGENTS.md
+
+# Sync AGENTS.md → all platform pointer files
+uv run python .claude/skills/agents-md-manager/sync.py .
+
+# Migrate deprecated formats (.cursorrules → .cursor/rules/)
+uv run python .claude/skills/agents-md-manager/migrate.py .
+```
+
+**mcp-installer** — Research, install, and sync MCP servers:
+```bash
+# Search MCP registries
+uv run python -m scripts.research --query "github" --cwd .claude/skills/mcp-installer
+
+# Install MCP server to Claude Code
+uv run python -m scripts.cli install github --cwd .claude/skills/mcp-installer
+
+# Sync servers across all AI interfaces
+uv run python -m scripts.sync --from claude-code --to all --cwd .claude/skills/mcp-installer
+
+# Validate MCP configuration
+uv run python -m scripts.validate --interface claude-code --cwd .claude/skills/mcp-installer
+```
+
+Rendered projects inherit these skills via `template/files/shared/.claude/skills/`.
 <!-- MANUAL ADDITIONS END -->
+
+## Boundaries
+
+### Always Do
+- Run `make quality` or `uv run task quality` before committing
+- Use `uv run` prefix for all Python commands
+- Update tests when modifying functionality
+- Keep template and repo context files in sync (`scripts/ci/verify_context_sync.py`)
+- Follow conventional commit format
+
+### Ask First
+- Adding new dependencies to `pyproject.toml`
+- Modifying CI workflow files (`.github/workflows/`)
+- Changing Copier prompt definitions (`template/prompts/`)
+- Updating pre/post generation hooks
+- Adding new sample variants
+
+### Never Touch
+- `.env*` files (secrets, gitignored)
+- `samples/*/render/` directories (generated output, recreate via render script)
+- `node_modules/`, `.venv/`, `__pycache__/` (managed by tools)
+- `.riso/post_gen_metadata.json` (auto-generated)
+- `uv.lock`, `pnpm-lock.yaml` (modify via package manager commands only)
+- Files in `dist/`, `build/`, `.next/` (build outputs)
+- GitHub Actions secrets or repository settings
+
+### Avoid
+- Do not run bare `python` or `pytest` commands—always use `uv run` prefix
+- Do not manually edit rendered sample directories—regenerate instead
+- Do not commit secrets, API keys, or credentials
+- Do not skip CI checks or force-push to main
+- Do not duplicate content between AGENTS.md and platform pointer files
 
 ## Recent Changes
 
+- 015-claude-code-skills: Added AI agent skills for Claude Code at project and template levels—`agents-md-manager` (AGENTS.md SSOT with detection, analysis, platform sync, migration) and `mcp-installer` (universal MCP server research, installation, cross-interface sync, validation). Skills located in `.claude/skills/` and propagate to rendered projects via `template/files/shared/.claude/skills/`.
 - 014-changelog-release-management: Added automated changelog generation and release management with conventional commit enforcement via Git hooks (commitlint ≥18.0.0), semantic versioning automation (semantic-release ≥23.0.0), human-readable changelog generation with categorized changes (💥/✨/🐛 sections), GitHub Release creation, breaking change detection with migration guide templates, multi-registry publishing (PyPI via twine, npm via @semantic-release/npm, Docker Hub), monorepo support with independent package versioning, pre-release versions (alpha, beta, rc), release completion <10min, comprehensive logging with correlation IDs, GitHub Actions workflow (riso-release.yml), credential management via GitHub Secrets with annual rotation, comprehensive docs (changelog-release.md, quickstart, upgrade guide)
 - 008-websockets-scaffold: Added WebSocket real-time communication module with connection lifecycle management, heartbeat/ping-pong mechanism (30s interval, 60s timeout), room-based broadcasting with <100ms latency (p95), FastAPI authentication integration, rate limiting (100 msg/60s window, configurable), backpressure handling with bounded queues, structured error responses, pytest fixtures, support for 10K+ concurrent connections with <10MB/1K conn memory overhead, comprehensive docs (websockets.md, quickstart, upgrade guide)
 - 005-container-deployment: Added Docker/docker-compose support with multi-stage Dockerfiles (Python 3.11-slim-bookworm, Node 20-alpine), docker-compose orchestration (API/docs/databases), GitHub Actions workflows (riso-container-build.yml with hadolint/Trivy, riso-container-publish.yml with semantic versioning), container validation (render_matrix.py, record_module_success.py), health endpoints (FastAPI/Fastify /health), security hardening (UID 1000:1000, HEALTHCHECK, SBOM/provenance), registry support (ghcr.io OIDC, Docker Hub, AWS ECR), comprehensive documentation (containers.md, context guide, upgrade guide)
