@@ -1,0 +1,144 @@
+# Semantic Release configuration for Riso
+# See: https://semantic-release.gitbook.io/semantic-release/usage/configuration
+
+# Branches that trigger releases
+branches:
+  - name: main
+    prerelease: false
+  - name: beta
+    prerelease: true
+  - name: alpha
+    prerelease: true
+    channel: alpha
+
+# Tag format
+tagFormat: "v${version}"
+
+# Plugin configuration (executed in order)
+plugins:
+  # 1. Analyze commits to determine version bump
+  - - "@semantic-release/commit-analyzer"
+    - preset: conventionalcommits
+      releaseRules:
+        # Features trigger minor version bump
+        - type: feat
+          release: minor
+        # Fixes trigger patch version bump
+        - type: fix
+          release: patch
+        - type: perf
+          release: patch
+        - type: revert
+          release: patch
+        # These don't trigger releases by default
+        - type: docs
+          release: false
+        - type: chore
+          release: false
+        - type: refactor
+          release: false
+        - type: test
+          release: false
+        - type: ci
+          release: false
+        - type: build
+          release: false
+        - type: style
+          release: false
+        # Breaking changes always trigger major (handled automatically)
+      parserOpts:
+        noteKeywords:
+          - BREAKING CHANGE
+          - BREAKING CHANGES
+          - BREAKING
+
+  # 2. Generate release notes from commits
+  - - "@semantic-release/release-notes-generator"
+    - preset: conventionalcommits
+      presetConfig:
+        types:
+          - type: feat
+            section: "Features"
+            hidden: false
+          - type: fix
+            section: "Bug Fixes"
+            hidden: false
+          - type: perf
+            section: "Performance Improvements"
+            hidden: false
+          - type: revert
+            section: "Reverts"
+            hidden: false
+          - type: docs
+            section: "Documentation"
+            hidden: false
+          - type: chore
+            section: "Maintenance"
+            hidden: true
+          - type: refactor
+            section: "Code Refactoring"
+            hidden: true
+          - type: test
+            section: "Tests"
+            hidden: true
+          - type: ci
+            section: "CI/CD"
+            hidden: true
+          - type: build
+            section: "Build System"
+            hidden: true
+          - type: style
+            section: "Styles"
+            hidden: true
+      writerOpts:
+        commitsSort:
+          - scope
+          - subject
+
+  # 3. Update CHANGELOG.md
+  - - "@semantic-release/changelog"
+    - changelogFile: CHANGELOG.md
+      changelogTitle: |
+        # Changelog
+
+        All notable changes to the Riso project template will be documented in this file.
+
+        The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+        and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+  # 4. Run custom commands (update pyproject.toml version)
+  - - "@semantic-release/exec"
+    - prepareCmd: |
+        # Update version in pyproject.toml
+        if [ -f pyproject.toml ]; then
+          sed -i.bak 's/^version = .*/version = "${nextRelease.version}"/' pyproject.toml
+          rm -f pyproject.toml.bak
+        fi
+      publishCmd: |
+        echo "Release ${nextRelease.version} published successfully"
+      successCmd: |
+        echo "Release ${nextRelease.version} completed"
+
+  # 5. Commit release artifacts
+  - - "@semantic-release/git"
+    - assets:
+        - CHANGELOG.md
+        - pyproject.toml
+        - package.json
+      message: "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+
+  # 6. Create GitHub Release
+  - - "@semantic-release/github"
+    - assets:
+        - path: dist/*.whl
+          label: "Python Wheel"
+        - path: dist/*.tar.gz
+          label: "Source Distribution"
+      successComment: |
+        :tada: This ${issue.pull_request ? 'PR is included' : 'issue has been resolved'} in version ${nextRelease.version} :tada:
+
+        The release is available on [GitHub Releases](${releases[0].url}).
+      failComment: false
+      releasedLabels:
+        - "released"
+      addReleases: bottom

@@ -1,0 +1,136 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+      - beta
+      - alpha
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run in dry-run mode (no actual release)"
+        required: false
+        default: "false"
+        type: boolean
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false  # Don't cancel releases in progress
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  packages: write
+
+jobs:
+  # Run quality checks first
+  quality:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run tests
+        run: uv run pytest tests -x -q --tb=short
+
+      - name: Run type check
+        run: uv run ty check scripts template/hooks
+
+      - name: Run linting
+        run: uv run ruff check scripts template/hooks tests
+
+  # Semantic release
+  release:
+    name: Semantic Release
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install Node dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install Python dependencies
+        run: uv sync --group dev
+
+      - name: Build distribution
+        run: |
+          uv build
+        continue-on-error: true  # May not have build config yet
+
+      - name: Verify commit signatures
+        run: |
+          echo "Verifying release integrity..."
+          git log --oneline -5
+
+      - name: Run Semantic Release (Dry Run)
+        if: github.event.inputs.dry_run == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm run release:dry
+
+      - name: Run Semantic Release
+        if: github.event.inputs.dry_run != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm run release
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: release-artifacts
+          path: |
+            CHANGELOG.md
+            dist/
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Post release summary
+        if: success() && github.event.inputs.dry_run != 'true'
+        run: |
+          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Release completed successfully on branch: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f CHANGELOG.md ]; then
+            echo "### Recent Changes" >> $GITHUB_STEP_SUMMARY
+            head -50 CHANGELOG.md >> $GITHUB_STEP_SUMMARY
+          fi

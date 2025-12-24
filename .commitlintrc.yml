@@ -1,0 +1,185 @@
+# Commitlint configuration for Riso template development
+# See: https://commitlint.js.org/reference/configuration.html
+
+extends:
+  - "@commitlint/config-conventional"
+
+# Custom rules for the Riso project
+rules:
+  # Allowed commit types
+  type-enum:
+    - 2  # Error level
+    - always
+    - - feat      # New feature
+      - fix       # Bug fix
+      - docs      # Documentation only
+      - chore     # Maintenance tasks
+      - refactor  # Code refactoring
+      - test      # Adding/updating tests
+      - perf      # Performance improvements
+      - ci        # CI/CD changes
+      - build     # Build system changes
+      - revert    # Revert previous commit
+      - style     # Code style (formatting, semicolons, etc.)
+
+  # Allowed scopes for this project
+  scope-enum:
+    - 2
+    - always
+    - - template    # Template files and structure
+      - hooks       # Copier hooks (pre/post generation)
+      - scripts     # CI/automation scripts
+      - tests       # Test infrastructure
+      - docs        # Documentation
+      - deps        # Dependencies
+      - ci          # GitHub Actions workflows
+      - quality     # Pre-commit, linting, type checking
+      - release     # Release automation
+      - samples     # Sample project configurations
+      - makefile    # Makefile targets
+      - config      # Configuration files
+
+  # Subject line constraints
+  subject-max-length:
+    - 2
+    - always
+    - 72
+
+  subject-case:
+    - 2
+    - never
+    - - start-case
+      - pascal-case
+      - upper-case
+
+  subject-empty:
+    - 2
+    - never
+
+  subject-full-stop:
+    - 2
+    - never
+    - "."
+
+  # Type constraints
+  type-empty:
+    - 2
+    - never
+
+  type-case:
+    - 2
+    - always
+    - lower-case
+
+  # Scope constraints
+  scope-case:
+    - 2
+    - always
+    - lower-case
+
+  # Body constraints
+  body-leading-blank:
+    - 1  # Warning level
+    - always
+
+  body-max-line-length:
+    - 2
+    - always
+    - 100
+
+  # Footer constraints
+  footer-leading-blank:
+    - 1
+    - always
+
+  footer-max-line-length:
+    - 2
+    - always
+    - 100
+
+# Help URL shown on validation failure
+helpUrl: "https://www.conventionalcommits.org/"
+
+# Prompt configuration for interactive mode (cz-conventional-changelog)
+prompt:
+  settings:
+    enableMultipleScopes: false
+    scopeEnumSeparator: ","
+
+  messages:
+    skip: "(press enter to skip)"
+    max: "(max %d chars)"
+    min: "(min %d chars)"
+    emptyWarning: "can not be empty"
+    upperLimitWarning: "over limit"
+    lowerLimitWarning: "below limit"
+
+  questions:
+    type:
+      description: "Select the type of change you're committing:"
+      enum:
+        feat:
+          description: "A new feature"
+          title: "Features"
+          emoji: "✨"
+        fix:
+          description: "A bug fix"
+          title: "Bug Fixes"
+          emoji: "🐛"
+        docs:
+          description: "Documentation only changes"
+          title: "Documentation"
+          emoji: "📚"
+        chore:
+          description: "Maintenance tasks"
+          title: "Chores"
+          emoji: "🔧"
+        refactor:
+          description: "Code refactoring (no feature/fix)"
+          title: "Code Refactoring"
+          emoji: "♻️"
+        test:
+          description: "Adding or updating tests"
+          title: "Tests"
+          emoji: "✅"
+        perf:
+          description: "Performance improvements"
+          title: "Performance"
+          emoji: "⚡️"
+        ci:
+          description: "CI/CD configuration changes"
+          title: "CI"
+          emoji: "👷"
+        build:
+          description: "Build system or dependencies"
+          title: "Build"
+          emoji: "📦"
+        revert:
+          description: "Revert a previous commit"
+          title: "Reverts"
+          emoji: "⏪"
+        style:
+          description: "Code style (formatting, etc.)"
+          title: "Styles"
+          emoji: "💄"
+
+    scope:
+      description: "What is the scope of this change (e.g., template, hooks, scripts)?"
+
+    subject:
+      description: "Write a short, imperative mood description of the change:"
+
+    body:
+      description: "Provide a longer description of the change (optional):"
+
+    isBreaking:
+      description: "Are there any breaking changes?"
+
+    breakingBody:
+      description: "Describe the breaking changes:"
+
+    isIssueAffected:
+      description: "Does this change affect any open issues?"
+
+    issuesBody:
+      description: "Add issue references (e.g., 'closes #123'):"

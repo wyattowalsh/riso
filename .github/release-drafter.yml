@@ -1,0 +1,182 @@
+# Release Drafter configuration
+# See: https://github.com/release-drafter/release-drafter
+
+name-template: "v$RESOLVED_VERSION"
+tag-template: "v$RESOLVED_VERSION"
+
+# Categories for organizing changes
+categories:
+  - title: "Breaking Changes"
+    labels:
+      - "breaking"
+      - "breaking-change"
+
+  - title: "Features"
+    labels:
+      - "feature"
+      - "enhancement"
+      - "feat"
+
+  - title: "Bug Fixes"
+    labels:
+      - "bug"
+      - "bugfix"
+      - "fix"
+
+  - title: "Performance"
+    labels:
+      - "performance"
+      - "perf"
+
+  - title: "Documentation"
+    labels:
+      - "documentation"
+      - "docs"
+
+  - title: "Template"
+    labels:
+      - "template"
+      - "copier"
+
+  - title: "Dependencies"
+    labels:
+      - "dependencies"
+      - "deps"
+
+  - title: "CI/CD"
+    labels:
+      - "ci"
+      - "github-actions"
+
+  - title: "Maintenance"
+    labels:
+      - "chore"
+      - "maintenance"
+      - "refactor"
+
+# Labels to exclude from release notes
+exclude-labels:
+  - "skip-changelog"
+  - "wip"
+  - "duplicate"
+  - "invalid"
+
+# Auto-labeling based on file paths
+autolabeler:
+  - label: "template"
+    files:
+      - "template/**/*"
+
+  - label: "hooks"
+    files:
+      - "template/hooks/**/*"
+
+  - label: "scripts"
+    files:
+      - "scripts/**/*"
+
+  - label: "tests"
+    files:
+      - "tests/**/*"
+
+  - label: "docs"
+    files:
+      - "docs/**/*"
+      - "*.md"
+
+  - label: "ci"
+    files:
+      - ".github/**/*"
+
+  - label: "dependencies"
+    files:
+      - "pyproject.toml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "uv.lock"
+
+  - label: "quality"
+    files:
+      - ".pre-commit-config.yaml"
+      - ".commitlintrc.yml"
+      - ".releaserc.yml"
+
+  - label: "feature"
+    branch:
+      - "/^feat(ure)?[/-].+/"
+
+  - label: "fix"
+    branch:
+      - "/^fix[/-].+/"
+      - "/^bugfix[/-].+/"
+
+  - label: "docs"
+    branch:
+      - "/^docs?[/-].+/"
+
+  - label: "chore"
+    branch:
+      - "/^chore[/-].+/"
+
+# Version resolver based on labels
+version-resolver:
+  major:
+    labels:
+      - "breaking"
+      - "breaking-change"
+  minor:
+    labels:
+      - "feature"
+      - "enhancement"
+      - "feat"
+  patch:
+    labels:
+      - "bug"
+      - "bugfix"
+      - "fix"
+      - "performance"
+      - "perf"
+      - "documentation"
+      - "docs"
+      - "dependencies"
+      - "deps"
+      - "chore"
+      - "maintenance"
+  default: patch
+
+# Template for the release body
+template: |
+  ## What's Changed
+
+  $CHANGES
+
+  ## Contributors
+
+  $CONTRIBUTORS
+
+  ---
+
+  **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION
+
+# Replace patterns in PR titles
+replacers:
+  - search: '/\[.*?\]\s*/g'
+    replace: ""
+  - search: '/feat(\(.*?\))?:\s*/g'
+    replace: ""
+  - search: '/fix(\(.*?\))?:\s*/g'
+    replace: ""
+  - search: '/docs(\(.*?\))?:\s*/g'
+    replace: ""
+  - search: '/chore(\(.*?\))?:\s*/g'
+    replace: ""
+
+# Change template for each PR entry
+change-template: "- $TITLE @$AUTHOR (#$NUMBER)"
+change-title-escapes: '\<*_&'
+
+# Exclude contributors
+exclude-contributors:
+  - "dependabot[bot]"
+  - "github-actions[bot]"
+  - "renovate[bot]"
