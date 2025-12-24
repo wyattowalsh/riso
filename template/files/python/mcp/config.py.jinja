@@ -1,0 +1,43 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'python' -%}
+"""MCP Server configuration with Pydantic models.
+
+Supports environment variables, config files, and defaults.
+"""
+
+from __future__ import annotations
+
+from functools import lru_cache
+from typing import Literal
+
+from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class ServerConfig(BaseSettings):
+    """Main server configuration.
+
+    Environment variables use {{ package_name | upper }}_MCP_ prefix.
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="{{ package_name | upper }}_MCP_",
+        env_nested_delimiter="__",
+        extra="ignore",
+    )
+
+    # Server identity
+    name: str = Field(default="{{ package_name }}-mcp", description="Server name")
+    version: str = Field(default="1.0.0", description="Server version")
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = Field(default="INFO")
+
+    # Transport
+    transport: Literal["stdio", "http", "sse"] = Field(default="{{ mcp_transport }}")
+    host: str = Field(default="127.0.0.1")
+    port: int = Field(default=3000, ge=1024, le=65535)
+
+
+@lru_cache
+def get_config() -> ServerConfig:
+    """Get cached server configuration."""
+    return ServerConfig()
+{%- endif %}

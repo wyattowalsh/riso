@@ -1,0 +1,24 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'typescript' -%}
+/**
+ * MCP Tools registration
+ *
+ * Registers all available tools with the MCP server.
+ */
+
+import type { FastMCP } from "fastmcp";
+{%- if mcp_example_tools %}
+import { registerEchoTools } from "./echo.js";
+import { registerTimestampTools } from "./timestamp.js";
+import { registerHttpTools } from "./http-fetch.js";
+{%- endif %}
+
+export function registerTools(mcp: FastMCP): void {
+{%- if mcp_example_tools %}
+  registerEchoTools(mcp);
+  registerTimestampTools(mcp);
+  registerHttpTools(mcp);
+{%- else %}
+  // Add your tool registrations here
+{%- endif %}
+}
+{%- endif %}

@@ -1,0 +1,78 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'python' and mcp_example_tools -%}
+"""Echo tool - simple message reflection.
+
+Demonstrates basic tool implementation with validation.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fastmcp import FastMCP
+
+
+def register_echo_tools(mcp: FastMCP) -> None:
+    """Register echo tools with the MCP server.
+
+    Parameters
+    ----------
+    mcp
+        FastMCP server instance
+    """
+
+    @mcp.tool()
+    def echo(message: str) -> str:
+        """Echo back the provided message.
+
+        A simple tool that returns the input message unchanged.
+        Useful for testing MCP connectivity.
+
+        Parameters
+        ----------
+        message
+            The message to echo back
+
+        Returns
+        -------
+        str
+            The same message that was provided
+        """
+        return message
+
+    @mcp.tool()
+    def echo_reverse(message: str) -> str:
+        """Echo the message in reverse.
+
+        Returns the input message with characters reversed.
+
+        Parameters
+        ----------
+        message
+            The message to reverse
+
+        Returns
+        -------
+        str
+            The reversed message
+        """
+        return message[::-1]
+
+    @mcp.tool()
+    def echo_uppercase(message: str) -> str:
+        """Echo the message in uppercase.
+
+        Returns the input message converted to uppercase.
+
+        Parameters
+        ----------
+        message
+            The message to convert
+
+        Returns
+        -------
+        str
+            The uppercase message
+        """
+        return message.upper()
+{%- endif %}

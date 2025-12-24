@@ -1,17 +1,243 @@
+{%- if mcp_module == 'enabled' -%}
 # MCP Module
 
-The MCP module seeds a lightweight automation registry that mirrors the
-`FastMCP` tooling expectations.
+The Model Context Protocol (MCP) module provides a production-ready server scaffold for exposing your project's functionality to AI assistants like Claude.
 
-## Enabling the Module
+## Configuration
 
-Render with `mcp_module=enabled` to scaffold `shared/mcp/tooling.py`. The helper registers sample tools
-and falls back gracefully if `fastmcp` is unavailable.
+When generating a project with MCP enabled, you can configure:
 
-## Smoke Check
+| Option | Description | Values |
+|--------|-------------|--------|
+| `mcp_language` | Server implementation language | `python`, `typescript`, `rust` |
+| `mcp_transport` | Default transport protocol | `stdio`, `sse`, `http` |
+| `mcp_example_tools` | Include example tools | `true`, `false` |
 
-```bash
-uv run python -c "from shared.mcp import tooling; print(tooling.list_tools())"
+## Generated Structure
+
+{% if mcp_language == 'python' %}
+### Python (FastMCP v2)
+
+```
+src/{{ package_name }}/mcp/
+├── __init__.py          # Package exports
+├── __main__.py          # Module entry point
+├── server.py            # FastMCP server initialization
+├── config.py            # Pydantic configuration
+├── errors.py            # MCP error types
+└── tools/
+    ├── __init__.py      # Tool registration
+{% if mcp_example_tools %}
+    ├── echo.py          # Example: message echoing
+    ├── timestamp.py     # Example: time utilities
+    └── http_fetch.py    # Example: web content retrieval
+{% endif %}
 ```
 
-Extend the registry by adding new `@registry.register(...)` functions inside `tooling.py`.
+### Running the Server
+
+```bash
+# stdio mode (default, for Claude Desktop)
+uv run python -m {{ package_name }}.mcp
+
+# SSE mode (for web clients)
+uv run python -m {{ package_name }}.mcp --transport sse --port 3000
+
+# HTTP streaming mode
+uv run python -m {{ package_name }}.mcp --transport http --port 3000
+
+# With MCP Inspector
+npx @modelcontextprotocol/inspector uv run python -m {{ package_name }}.mcp
+```
+
+{% elif mcp_language == 'typescript' %}
+### TypeScript (FastMCP)
+
+```
+packages/mcp/
+├── package.json
+├── tsconfig.json
+├── biome.json
+└── src/
+    ├── index.ts         # Server entry point
+    ├── config.ts        # Configuration
+    └── tools/
+        ├── index.ts     # Tool registration
+{% if mcp_example_tools %}
+        ├── echo.ts      # Example: message echoing
+        ├── timestamp.ts # Example: time utilities
+        └── http-fetch.ts # Example: web content retrieval
+{% endif %}
+```
+
+### Running the Server
+
+```bash
+# Build the server
+pnpm --filter mcp build
+
+# Run in stdio mode
+pnpm --filter mcp start
+
+# Run in SSE mode
+pnpm --filter mcp start --transport sse --port 3000
+
+# With MCP Inspector
+npx @modelcontextprotocol/inspector pnpm --filter mcp start
+```
+
+{% elif mcp_language == 'rust' %}
+### Rust (rmcp SDK)
+
+```
+crates/mcp/
+├── Cargo.toml
+├── justfile
+└── src/
+    ├── lib.rs           # Library exports
+    ├── main.rs          # Server entry point
+    ├── config.rs        # Configuration
+    ├── error.rs         # Error types
+    └── tools/
+        ├── mod.rs       # Tool registration
+{% if mcp_example_tools %}
+        ├── echo.rs      # Example: message echoing
+        ├── timestamp.rs # Example: time utilities
+        └── http_fetch.rs # Example: web content retrieval
+{% endif %}
+```
+
+### Running the Server
+
+```bash
+# Build the server
+cargo build --release -p {{ package_name }}-mcp
+
+# Run in stdio mode
+./target/release/{{ package_name }}-mcp
+
+# Run in SSE mode
+./target/release/{{ package_name }}-mcp --transport sse --port 3000
+
+# With MCP Inspector
+npx @modelcontextprotocol/inspector ./target/release/{{ package_name }}-mcp
+```
+
+{% endif %}
+
+## Claude Desktop Integration
+
+Add to your `mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "{{ package_name }}": {
+{% if mcp_language == 'python' %}
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "python", "-m", "{{ package_name }}.mcp"],
+{% elif mcp_language == 'typescript' %}
+      "type": "stdio",
+      "command": "pnpm",
+      "args": ["--filter", "mcp", "start"],
+{% elif mcp_language == 'rust' %}
+      "type": "stdio",
+      "command": "./target/release/{{ package_name }}-mcp",
+      "args": [],
+{% endif %}
+      "timeout": 60000
+    }
+  }
+}
+```
+
+## Adding Custom Tools
+
+{% if mcp_language == 'python' %}
+```python
+# In src/{{ package_name }}/mcp/tools/my_tool.py
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fastmcp import FastMCP
+
+
+def register_my_tools(mcp: "FastMCP") -> None:
+    @mcp.tool()
+    def my_tool(param: str) -> dict:
+        """My tool description.
+
+        Parameters
+        ----------
+        param
+            The input parameter
+
+        Returns
+        -------
+        dict
+            The result
+        """
+        return {"result": param}
+```
+
+{% elif mcp_language == 'typescript' %}
+```typescript
+// In src/tools/my-tool.ts
+import { z } from "zod";
+import type { FastMCP } from "fastmcp";
+
+export function registerMyTools(mcp: FastMCP) {
+  mcp.addTool({
+    name: "my_tool",
+    description: "My tool description",
+    parameters: z.object({
+      param: z.string().describe("The input parameter"),
+    }),
+    execute: async ({ param }) => {
+      return { result: param };
+    },
+  });
+}
+```
+
+{% elif mcp_language == 'rust' %}
+```rust
+// In src/tools/my_tool.rs
+use rmcp::tool;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize)]
+pub struct MyToolInput {
+    pub param: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct MyToolOutput {
+    pub result: String,
+}
+
+#[tool(name = "my_tool", description = "My tool description")]
+pub async fn my_tool(input: MyToolInput) -> Result<MyToolOutput, Box<dyn std::error::Error>> {
+    Ok(MyToolOutput {
+        result: input.param,
+    })
+}
+```
+{% endif %}
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `{{ package_name | upper | replace('-', '_') }}_MCP_TRANSPORT` | `{{ mcp_transport }}` | Transport: `stdio`, `sse`, `http` |
+| `{{ package_name | upper | replace('-', '_') }}_MCP_HOST` | `127.0.0.1` | Bind address for HTTP/SSE |
+| `{{ package_name | upper | replace('-', '_') }}_MCP_PORT` | `3000` | Port for HTTP/SSE |
+| `{{ package_name | upper | replace('-', '_') }}_MCP_LOG_LEVEL` | `INFO` | Log level |
+
+## Related
+
+- [FastMCP Documentation](https://github.com/jlowin/fastmcp) - Python/TypeScript framework
+- [rmcp SDK](https://docs.rs/rmcp) - Rust MCP implementation
+- [MCP Specification](https://modelcontextprotocol.io/) - Official protocol documentation
+{%- endif %}

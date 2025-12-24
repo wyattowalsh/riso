@@ -1,0 +1,38 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'python' -%}
+"""MCP tools registration.
+
+Registers all available tools with the MCP server.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fastmcp import FastMCP
+
+
+def register_tools(mcp: FastMCP) -> None:
+    """Register all MCP tools with the server.
+
+    Parameters
+    ----------
+    mcp
+        FastMCP server instance
+    """
+{%- if mcp_example_tools %}
+    from .echo import register_echo_tools
+    from .timestamp import register_timestamp_tools
+    from .http_fetch import register_http_tools
+
+    register_echo_tools(mcp)
+    register_timestamp_tools(mcp)
+    register_http_tools(mcp)
+{%- else %}
+    # Add your tool registrations here
+    pass
+{%- endif %}
+
+
+__all__ = ["register_tools"]
+{%- endif %}

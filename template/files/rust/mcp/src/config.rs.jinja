@@ -1,0 +1,62 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'rust' -%}
+//! MCP Server configuration
+//!
+//! Loaded from environment variables and config files.
+
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize)]
+pub struct Config {
+    #[serde(default = "default_name")]
+    pub name: String,
+
+    #[serde(default = "default_transport")]
+    pub transport: String,
+
+    #[serde(default = "default_host")]
+    pub host: String,
+
+    #[serde(default = "default_port")]
+    pub port: u16,
+
+    #[serde(default = "default_log_level")]
+    pub log_level: String,
+}
+
+fn default_name() -> String {
+    "{{ package_name }}-mcp".to_string()
+}
+
+fn default_transport() -> String {
+    "{{ mcp_transport }}".to_string()
+}
+
+fn default_host() -> String {
+    "127.0.0.1".to_string()
+}
+
+fn default_port() -> u16 {
+    3000
+}
+
+fn default_log_level() -> String {
+    "info".to_string()
+}
+
+impl Config {
+    pub fn load() -> Result<Self, config::ConfigError> {
+        let prefix = "{{ package_name | upper | replace('-', '_') }}_MCP";
+
+        let settings = config::Config::builder()
+            .set_default("name", default_name())?
+            .set_default("transport", default_transport())?
+            .set_default("host", default_host())?
+            .set_default("port", default_port() as i64)?
+            .set_default("log_level", default_log_level())?
+            .add_source(config::Environment::with_prefix(prefix).separator("_"))
+            .build()?;
+
+        settings.try_deserialize()
+    }
+}
+{%- endif %}

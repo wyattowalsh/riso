@@ -1,0 +1,170 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'rust' and mcp_example_tools -%}
+//! HTTP fetch tool - web content retrieval
+//!
+//! Demonstrates async tools with external dependencies.
+
+use rmcp::{Server, tool};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::time::Duration;
+
+#[derive(Deserialize)]
+struct HttpGetParams {
+    url: String,
+    #[serde(default)]
+    headers: HashMap<String, String>,
+    #[serde(default = "default_timeout")]
+    timeout: u64,
+}
+
+fn default_timeout() -> u64 {
+    30
+}
+
+#[derive(Serialize)]
+struct HttpResult {
+    success: bool,
+    status_code: Option<u16>,
+    headers: Option<HashMap<String, String>>,
+    content: Option<String>,
+    content_length: Option<usize>,
+    error: Option<String>,
+}
+
+/// Fetch content from a URL via HTTP GET
+#[tool]
+async fn http_get(params: HttpGetParams) -> Result<HttpResult, String> {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(params.timeout))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let mut request = client.get(&params.url);
+
+    for (key, value) in params.headers {
+        request = request.header(&key, &value);
+    }
+
+    match request.send().await {
+        Ok(response) => {
+            let status = response.status().as_u16();
+            let headers: HashMap<String, String> = response
+                .headers()
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
+                .collect();
+
+            match response.text().await {
+                Ok(content) => {
+                    let len = content.len();
+                    // Limit content size
+                    let truncated = if len > 10000 {
+                        content[..10000].to_string()
+                    } else {
+                        content
+                    };
+
+                    Ok(HttpResult {
+                        success: true,
+                        status_code: Some(status),
+                        headers: Some(headers),
+                        content: Some(truncated),
+                        content_length: Some(len),
+                        error: None,
+                    })
+                }
+                Err(e) => Ok(HttpResult {
+                    success: false,
+                    status_code: Some(status),
+                    headers: Some(headers),
+                    content: None,
+                    content_length: None,
+                    error: Some(e.to_string()),
+                }),
+            }
+        }
+        Err(e) => Ok(HttpResult {
+            success: false,
+            status_code: None,
+            headers: None,
+            content: None,
+            content_length: None,
+            error: Some(if e.is_timeout() {
+                "Request timed out".to_string()
+            } else {
+                e.to_string()
+            }),
+        }),
+    }
+}
+
+#[derive(Deserialize)]
+struct HttpHeadParams {
+    url: String,
+    #[serde(default)]
+    headers: HashMap<String, String>,
+    #[serde(default = "default_timeout")]
+    timeout: u64,
+}
+
+#[derive(Serialize)]
+struct HttpHeadResult {
+    success: bool,
+    status_code: Option<u16>,
+    headers: Option<HashMap<String, String>>,
+    content_type: Option<String>,
+    content_length: Option<String>,
+    error: Option<String>,
+}
+
+/// Get headers from a URL without downloading content
+#[tool]
+async fn http_head(params: HttpHeadParams) -> Result<HttpHeadResult, String> {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(params.timeout))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let mut request = client.head(&params.url);
+
+    for (key, value) in params.headers {
+        request = request.header(&key, &value);
+    }
+
+    match request.send().await {
+        Ok(response) => {
+            let status = response.status().as_u16();
+            let headers: HashMap<String, String> = response
+                .headers()
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
+                .collect();
+
+            let content_type = headers.get("content-type").cloned();
+            let content_length = headers.get("content-length").cloned();
+
+            Ok(HttpHeadResult {
+                success: true,
+                status_code: Some(status),
+                headers: Some(headers),
+                content_type,
+                content_length,
+                error: None,
+            })
+        }
+        Err(e) => Ok(HttpHeadResult {
+            success: false,
+            status_code: None,
+            headers: None,
+            content_type: None,
+            content_length: None,
+            error: Some(e.to_string()),
+        }),
+    }
+}
+
+pub fn register(server: &Server) {
+    server.register_tool("http_get", http_get);
+    server.register_tool("http_head", http_head);
+}
+{%- endif %}

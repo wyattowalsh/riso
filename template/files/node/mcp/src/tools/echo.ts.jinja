@@ -1,0 +1,45 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'typescript' and mcp_example_tools -%}
+/**
+ * Echo tool - simple message reflection
+ *
+ * Demonstrates basic tool implementation with validation.
+ */
+
+import type { FastMCP } from "fastmcp";
+import { z } from "zod";
+
+export function registerEchoTools(mcp: FastMCP): void {
+  mcp.addTool({
+    name: "echo",
+    description: "Echo back the provided message. Useful for testing MCP connectivity.",
+    parameters: z.object({
+      message: z.string().describe("The message to echo back"),
+    }),
+    execute: async ({ message }) => {
+      return message;
+    },
+  });
+
+  mcp.addTool({
+    name: "echo_reverse",
+    description: "Echo the message in reverse",
+    parameters: z.object({
+      message: z.string().describe("The message to reverse"),
+    }),
+    execute: async ({ message }) => {
+      return message.split("").reverse().join("");
+    },
+  });
+
+  mcp.addTool({
+    name: "echo_uppercase",
+    description: "Echo the message in uppercase",
+    parameters: z.object({
+      message: z.string().describe("The message to convert"),
+    }),
+    execute: async ({ message }) => {
+      return message.toUpperCase();
+    },
+  });
+}
+{%- endif %}
