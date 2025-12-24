@@ -70,6 +70,17 @@ class ModuleSuccessRecorder:
         self.cache_metrics = CacheMetrics()
         self.container_metrics = ContainerMetrics()
 
+    def record(self, module_name: str, status: str, variant: str) -> None:
+        """Helper method to record a single module result.
+
+        Args:
+            module_name: Name of the module
+            status: Status of the result (passed, failed, error, skipped)
+            variant: Variant name for tracking
+        """
+        results = [{"name": module_name, "status": status}]
+        self.update_from_results(variant, results)
+
     def update_workflow_validation(self, status: str) -> None:
         """Track workflow validation status."""
         if status == "pass":
