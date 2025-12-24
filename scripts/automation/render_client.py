@@ -140,7 +140,8 @@ class RenderClient:
             try:
                 details = exc.read().decode("utf-8")
                 payload = json.loads(details) if details else None
-            except Exception:  # pragma: no cover - defensive
+            except (json.JSONDecodeError, UnicodeDecodeError, OSError) as e:  # pragma: no cover - defensive
+                # Failed to parse error response - continue with None payload
                 payload = None
             raise APIError(message=str(exc), status_code=exc.code, payload=payload) from exc
         except urllib.error.URLError as exc:
