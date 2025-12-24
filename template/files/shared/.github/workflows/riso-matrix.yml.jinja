@@ -49,8 +49,12 @@ jobs:
             {% raw %}${{ runner.os }}-py${{ matrix.python-version }}-{% endraw %}
             {% raw %}${{ runner.os }}-{% endraw %}
       
-      - name: Install uv package manager
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+          enable-cache: true
+          cache-dependency-glob: "**/uv.lock"
       
       - name: Install dependencies with uv
         run: |
