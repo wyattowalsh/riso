@@ -74,8 +74,13 @@ def render_variant(variant: str, answers_file: Path) -> dict[str, object]:
                 import yaml
                 with open(answers_file, encoding="utf-8") as f:
                     answers_data = yaml.safe_load(f) or {}
-            except Exception:
-                pass
+            except (ImportError, OSError) as e:
+                # YAML module not available or file read error - skip container checks
+                sys.stderr.write(f"Warning: Could not load answers file {answers_file}: {e}\n")
+            except Exception as e:
+                # Catch yaml.YAMLError and other YAML parsing errors
+                # Can't import yaml.YAMLError without yaml being available
+                sys.stderr.write(f"Warning: Failed to parse YAML from {answers_file}: {e}\n")
         
         api_tracks = answers_data.get("api_tracks", "none")
         docs_site = answers_data.get("docs_site", "none")
