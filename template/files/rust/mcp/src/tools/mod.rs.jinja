@@ -1,0 +1,25 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'rust' -%}
+//! MCP Tools registration
+//!
+//! Registers all available tools with the MCP server.
+
+use rmcp::Server;
+
+{%- if mcp_example_tools %}
+mod echo;
+mod timestamp;
+mod http_fetch;
+{%- endif %}
+
+/// Register all tools with the MCP server
+pub fn register(server: &Server) {
+{%- if mcp_example_tools %}
+    echo::register(server);
+    timestamp::register(server);
+    http_fetch::register(server);
+{%- else %}
+    // Add your tool registrations here
+    let _ = server;
+{%- endif %}
+}
+{%- endif %}

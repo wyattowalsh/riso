@@ -1,0 +1,43 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'typescript' -%}
+/**
+ * MCP Server configuration
+ *
+ * Loaded from environment variables with sensible defaults.
+ */
+
+import { config as dotenvConfig } from "dotenv";
+import { z } from "zod";
+
+// Load .env file if present
+dotenvConfig();
+
+const ConfigSchema = z.object({
+  name: z.string().default("{{ package_name }}-mcp"),
+  transport: z.enum(["stdio", "sse", "http"]).default("{{ mcp_transport }}"),
+  host: z.string().default("127.0.0.1"),
+  port: z.coerce.number().int().min(1024).max(65535).default(3000),
+  logLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
+});
+
+export type Config = z.infer<typeof ConfigSchema>;
+
+let cachedConfig: Config | null = null;
+
+export function getConfig(): Config {
+  if (cachedConfig) {
+    return cachedConfig;
+  }
+
+  const envPrefix = "{{ package_name | upper | replace('-', '_') }}_MCP_";
+
+  cachedConfig = ConfigSchema.parse({
+    name: process.env[`${envPrefix}NAME`],
+    transport: process.env[`${envPrefix}TRANSPORT`],
+    host: process.env[`${envPrefix}HOST`],
+    port: process.env[`${envPrefix}PORT`],
+    logLevel: process.env[`${envPrefix}LOG_LEVEL`],
+  });
+
+  return cachedConfig;
+}
+{%- endif %}

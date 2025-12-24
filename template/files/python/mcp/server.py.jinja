@@ -1,0 +1,147 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'python' -%}
+"""{{ project_name }} MCP Server - FastMCP v2 implementation.
+
+Exposes {{ project_name }} functionality as MCP tools, resources, and prompts
+with support for {{ mcp_transport }} transport.
+"""
+
+from __future__ import annotations
+
+import sys
+from typing import TYPE_CHECKING
+
+from fastmcp import FastMCP
+
+from .config import get_config
+
+if TYPE_CHECKING:
+    pass
+
+__version__ = "1.0.0"
+SERVER_NAME = "{{ package_name }}-mcp"
+
+# Create server instance
+config = get_config()
+
+mcp = FastMCP(
+    name=config.name,
+    version=__version__,
+    instructions=(
+        "{{ project_name }} MCP Server - Provides tools and resources for "
+        "{{ project_name }} operations.\n\n"
+        "Available capabilities:\n"
+        "- Tools: Core functionality exposed as MCP tools\n"
+        "- Resources: Data and configuration access\n"
+        "- Prompts: Pre-built workflow templates"
+    ),
+)
+
+
+def _register_tools() -> None:
+    """Register all MCP tools."""
+    from .tools import register_tools
+
+    register_tools(mcp)
+
+
+def _setup_logging() -> None:
+    """Configure logging for MCP server."""
+    try:
+        from loguru import logger
+
+        logger.remove()
+        logger.add(
+            sys.stderr,
+            format="<green>{time:HH:mm:ss}</green> | <cyan>MCP</cyan> | <level>{level: <8}</level> | <level>{message}</level>",
+            level=config.log_level,
+            colorize=True,
+        )
+    except ImportError:
+        import logging
+
+        logging.basicConfig(
+            level=getattr(logging, config.log_level, logging.INFO),
+            format="%(asctime)s | MCP | %(levelname)-8s | %(message)s",
+        )
+
+
+# Register capabilities on import
+_setup_logging()
+_register_tools()
+
+
+def run_server(
+    transport: str | None = None,
+    host: str | None = None,
+    port: int | None = None,
+) -> None:
+    """Run the MCP server with specified transport.
+
+    Parameters
+    ----------
+    transport
+        Transport type: "stdio", "sse", or "http". Defaults to config value.
+    host
+        Bind address for HTTP/SSE transports.
+    port
+        Port for HTTP/SSE transports.
+    """
+    actual_transport = transport or config.transport
+    actual_host = host or config.host
+    actual_port = port or config.port
+
+    try:
+        from loguru import logger
+
+        logger.info(
+            f"Starting {SERVER_NAME} v{__version__} with {actual_transport} transport"
+        )
+    except ImportError:
+        print(
+            f"Starting {SERVER_NAME} v{__version__} with {actual_transport} transport",
+            file=sys.stderr,
+        )
+
+    if actual_transport == "stdio":
+        mcp.run()
+    elif actual_transport == "sse":
+        mcp.run(transport="sse", host=actual_host, port=actual_port)
+    elif actual_transport == "http":
+        mcp.run(transport="streamable-http", host=actual_host, port=actual_port)
+    else:
+        raise ValueError(f"Unknown transport: {actual_transport}")
+
+
+def main() -> None:
+    """CLI entry point."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description="{{ project_name }} MCP Server")
+    parser.add_argument(
+        "--transport",
+        "-t",
+        choices=["stdio", "sse", "http"],
+        default=None,
+        help="Transport type (default: {{ mcp_transport }})",
+    )
+    parser.add_argument(
+        "--host",
+        "-H",
+        default=None,
+        help="Host for HTTP/SSE (default: 127.0.0.1)",
+    )
+    parser.add_argument(
+        "--port",
+        "-p",
+        type=int,
+        default=None,
+        help="Port for HTTP/SSE (default: 3000)",
+    )
+
+    args = parser.parse_args()
+    run_server(transport=args.transport, host=args.host, port=args.port)
+
+
+if __name__ == "__main__":
+    main()
+{%- endif %}

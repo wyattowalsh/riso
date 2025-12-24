@@ -1,0 +1,151 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'python' and mcp_example_tools -%}
+"""Timestamp tool - date and time utilities.
+
+Demonstrates tools with multiple return types and formatting options.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from fastmcp import FastMCP
+
+
+def register_timestamp_tools(mcp: FastMCP) -> None:
+    """Register timestamp tools with the MCP server.
+
+    Parameters
+    ----------
+    mcp
+        FastMCP server instance
+    """
+
+    @mcp.tool()
+    def get_current_time(
+        format: str = "iso",
+        timezone_name: str = "UTC",
+    ) -> dict[str, Any]:
+        """Get the current time in various formats.
+
+        Returns the current date and time with formatting options.
+
+        Parameters
+        ----------
+        format
+            Output format: "iso", "unix", "rfc2822", or "human"
+        timezone_name
+            Timezone name (only "UTC" supported currently)
+
+        Returns
+        -------
+        dict
+            Time information with multiple representations
+        """
+        now = datetime.now(timezone.utc)
+
+        formats = {
+            "iso": now.isoformat(),
+            "unix": int(now.timestamp()),
+            "rfc2822": now.strftime("%a, %d %b %Y %H:%M:%S %z"),
+            "human": now.strftime("%B %d, %Y at %I:%M %p UTC"),
+        }
+
+        return {
+            "timestamp": formats.get(format, formats["iso"]),
+            "format": format,
+            "timezone": timezone_name,
+            "all_formats": formats,
+        }
+
+    @mcp.tool()
+    def parse_timestamp(
+        timestamp: str,
+        input_format: str = "iso",
+    ) -> dict[str, Any]:
+        """Parse a timestamp string into components.
+
+        Converts a timestamp string into structured date/time components.
+
+        Parameters
+        ----------
+        timestamp
+            The timestamp string to parse
+        input_format
+            Format of the input: "iso", "unix"
+
+        Returns
+        -------
+        dict
+            Parsed date/time components
+        """
+        try:
+            if input_format == "unix":
+                dt = datetime.fromtimestamp(int(timestamp), tz=timezone.utc)
+            else:
+                dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+
+            return {
+                "success": True,
+                "year": dt.year,
+                "month": dt.month,
+                "day": dt.day,
+                "hour": dt.hour,
+                "minute": dt.minute,
+                "second": dt.second,
+                "weekday": dt.strftime("%A"),
+                "iso": dt.isoformat(),
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+            }
+
+    @mcp.tool()
+    def time_difference(
+        start: str,
+        end: str | None = None,
+    ) -> dict[str, Any]:
+        """Calculate the difference between two timestamps.
+
+        If end is not provided, calculates difference from start to now.
+
+        Parameters
+        ----------
+        start
+            Start timestamp (ISO format)
+        end
+            End timestamp (ISO format), defaults to now
+
+        Returns
+        -------
+        dict
+            Time difference in various units
+        """
+        try:
+            start_dt = datetime.fromisoformat(start.replace("Z", "+00:00"))
+
+            if end:
+                end_dt = datetime.fromisoformat(end.replace("Z", "+00:00"))
+            else:
+                end_dt = datetime.now(timezone.utc)
+
+            delta = end_dt - start_dt
+            total_seconds = int(delta.total_seconds())
+
+            return {
+                "success": True,
+                "seconds": total_seconds,
+                "minutes": total_seconds // 60,
+                "hours": total_seconds // 3600,
+                "days": delta.days,
+                "human": str(delta),
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+            }
+{%- endif %}

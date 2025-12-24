@@ -1,0 +1,115 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'rust' and mcp_example_tools -%}
+//! Timestamp tool - date and time utilities
+//!
+//! Demonstrates tools with multiple return types.
+
+use chrono::{DateTime, TimeZone, Utc};
+use rmcp::{Server, tool};
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize)]
+struct GetTimeParams {
+    #[serde(default = "default_format")]
+    format: String,
+}
+
+fn default_format() -> String {
+    "iso".to_string()
+}
+
+#[derive(Serialize)]
+struct TimeResult {
+    timestamp: String,
+    format: String,
+    unix: i64,
+}
+
+/// Get the current time in various formats
+#[tool]
+async fn get_current_time(params: GetTimeParams) -> Result<TimeResult, String> {
+    let now = Utc::now();
+
+    let timestamp = match params.format.as_str() {
+        "iso" => now.to_rfc3339(),
+        "unix" => now.timestamp().to_string(),
+        "rfc2822" => now.to_rfc2822(),
+        "human" => now.format("%B %d, %Y at %I:%M %p UTC").to_string(),
+        _ => now.to_rfc3339(),
+    };
+
+    Ok(TimeResult {
+        timestamp,
+        format: params.format,
+        unix: now.timestamp(),
+    })
+}
+
+#[derive(Deserialize)]
+struct ParseParams {
+    timestamp: String,
+    #[serde(default = "default_format")]
+    input_format: String,
+}
+
+#[derive(Serialize)]
+struct ParseResult {
+    success: bool,
+    year: Option<i32>,
+    month: Option<u32>,
+    day: Option<u32>,
+    hour: Option<u32>,
+    minute: Option<u32>,
+    second: Option<u32>,
+    iso: Option<String>,
+    error: Option<String>,
+}
+
+/// Parse a timestamp string into components
+#[tool]
+async fn parse_timestamp(params: ParseParams) -> Result<ParseResult, String> {
+    let result = if params.input_format == "unix" {
+        params
+            .timestamp
+            .parse::<i64>()
+            .ok()
+            .and_then(|ts| Utc.timestamp_opt(ts, 0).single())
+    } else {
+        DateTime::parse_from_rfc3339(&params.timestamp)
+            .ok()
+            .map(|dt| dt.with_timezone(&Utc))
+    };
+
+    match result {
+        Some(dt) => Ok(ParseResult {
+            success: true,
+            year: Some(dt.year()),
+            month: Some(dt.month()),
+            day: Some(dt.day()),
+            hour: Some(dt.hour()),
+            minute: Some(dt.minute()),
+            second: Some(dt.second()),
+            iso: Some(dt.to_rfc3339()),
+            error: None,
+        }),
+        None => Ok(ParseResult {
+            success: false,
+            year: None,
+            month: None,
+            day: None,
+            hour: None,
+            minute: None,
+            second: None,
+            iso: None,
+            error: Some("Failed to parse timestamp".to_string()),
+        }),
+    }
+}
+
+pub fn register(server: &Server) {
+    server.register_tool("get_current_time", get_current_time);
+    server.register_tool("parse_timestamp", parse_timestamp);
+}
+
+// Bring chrono traits into scope
+use chrono::{Datelike, Timelike};
+{%- endif %}

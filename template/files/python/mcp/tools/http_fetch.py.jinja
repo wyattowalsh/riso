@@ -1,0 +1,172 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'python' and mcp_example_tools -%}
+"""HTTP fetch tool - web content retrieval.
+
+Demonstrates async tools with external dependencies.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from fastmcp import FastMCP
+
+
+def register_http_tools(mcp: FastMCP) -> None:
+    """Register HTTP tools with the MCP server.
+
+    Parameters
+    ----------
+    mcp
+        FastMCP server instance
+    """
+
+    @mcp.tool()
+    async def http_get(
+        url: str,
+        headers: dict[str, str] | None = None,
+        timeout: int = 30,
+    ) -> dict[str, Any]:
+        """Fetch content from a URL via HTTP GET.
+
+        Makes an HTTP GET request and returns the response.
+
+        Parameters
+        ----------
+        url
+            The URL to fetch
+        headers
+            Optional request headers
+        timeout
+            Request timeout in seconds
+
+        Returns
+        -------
+        dict
+            Response with status, headers, and content
+        """
+        import httpx
+
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.get(url, headers=headers)
+
+                return {
+                    "success": True,
+                    "status_code": response.status_code,
+                    "headers": dict(response.headers),
+                    "content_type": response.headers.get("content-type", ""),
+                    "content": response.text[:10000],  # Limit content size
+                    "content_length": len(response.content),
+                }
+        except httpx.TimeoutException:
+            return {
+                "success": False,
+                "error": "Request timed out",
+                "timeout": timeout,
+            }
+        except httpx.RequestError as e:
+            return {
+                "success": False,
+                "error": str(e),
+            }
+
+    @mcp.tool()
+    async def http_post(
+        url: str,
+        data: dict[str, Any] | None = None,
+        json_body: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        timeout: int = 30,
+    ) -> dict[str, Any]:
+        """Send data to a URL via HTTP POST.
+
+        Makes an HTTP POST request with optional JSON or form data.
+
+        Parameters
+        ----------
+        url
+            The URL to post to
+        data
+            Form data to send
+        json_body
+            JSON body to send (takes precedence over data)
+        headers
+            Optional request headers
+        timeout
+            Request timeout in seconds
+
+        Returns
+        -------
+        dict
+            Response with status and content
+        """
+        import httpx
+
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                if json_body:
+                    response = await client.post(url, json=json_body, headers=headers)
+                else:
+                    response = await client.post(url, data=data, headers=headers)
+
+                return {
+                    "success": True,
+                    "status_code": response.status_code,
+                    "headers": dict(response.headers),
+                    "content": response.text[:10000],
+                }
+        except httpx.TimeoutException:
+            return {
+                "success": False,
+                "error": "Request timed out",
+            }
+        except httpx.RequestError as e:
+            return {
+                "success": False,
+                "error": str(e),
+            }
+
+    @mcp.tool()
+    async def http_head(
+        url: str,
+        headers: dict[str, str] | None = None,
+        timeout: int = 30,
+    ) -> dict[str, Any]:
+        """Get headers from a URL without downloading content.
+
+        Makes an HTTP HEAD request to check resource metadata.
+
+        Parameters
+        ----------
+        url
+            The URL to check
+        headers
+            Optional request headers
+        timeout
+            Request timeout in seconds
+
+        Returns
+        -------
+        dict
+            Response headers and status
+        """
+        import httpx
+
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.head(url, headers=headers)
+
+                return {
+                    "success": True,
+                    "status_code": response.status_code,
+                    "headers": dict(response.headers),
+                    "content_type": response.headers.get("content-type", ""),
+                    "content_length": response.headers.get("content-length", "unknown"),
+                }
+        except httpx.RequestError as e:
+            return {
+                "success": False,
+                "error": str(e),
+            }
+{%- endif %}

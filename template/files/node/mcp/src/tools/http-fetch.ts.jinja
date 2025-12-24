@@ -1,0 +1,156 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'typescript' and mcp_example_tools -%}
+/**
+ * HTTP fetch tool - web content retrieval
+ *
+ * Demonstrates async tools with external dependencies.
+ */
+
+import type { FastMCP } from "fastmcp";
+import { z } from "zod";
+
+export function registerHttpTools(mcp: FastMCP): void {
+  mcp.addTool({
+    name: "http_get",
+    description: "Fetch content from a URL via HTTP GET",
+    parameters: z.object({
+      url: z.string().url().describe("The URL to fetch"),
+      headers: z.record(z.string()).optional().describe("Request headers"),
+      timeout: z.number().int().min(1).max(120).default(30).describe("Timeout in seconds"),
+    }),
+    execute: async ({ url, headers, timeout }) => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout * 1000);
+
+        const response = await fetch(url, {
+          method: "GET",
+          headers,
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        const content = await response.text();
+
+        return {
+          success: true,
+          statusCode: response.status,
+          headers: Object.fromEntries(response.headers.entries()),
+          contentType: response.headers.get("content-type") ?? "",
+          content: content.slice(0, 10000), // Limit content size
+          contentLength: content.length,
+        };
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          return {
+            success: false,
+            error: "Request timed out",
+            timeout,
+          };
+        }
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+    },
+  });
+
+  mcp.addTool({
+    name: "http_post",
+    description: "Send data to a URL via HTTP POST",
+    parameters: z.object({
+      url: z.string().url().describe("The URL to post to"),
+      data: z.record(z.unknown()).optional().describe("Form data to send"),
+      jsonBody: z.record(z.unknown()).optional().describe("JSON body to send"),
+      headers: z.record(z.string()).optional().describe("Request headers"),
+      timeout: z.number().int().min(1).max(120).default(30).describe("Timeout in seconds"),
+    }),
+    execute: async ({ url, data, jsonBody, headers, timeout }) => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout * 1000);
+
+        const requestHeaders: Record<string, string> = { ...headers };
+        let body: string | URLSearchParams | undefined;
+
+        if (jsonBody) {
+          requestHeaders["Content-Type"] = "application/json";
+          body = JSON.stringify(jsonBody);
+        } else if (data) {
+          requestHeaders["Content-Type"] = "application/x-www-form-urlencoded";
+          body = new URLSearchParams(
+            Object.entries(data).map(([k, v]) => [k, String(v)])
+          );
+        }
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers: requestHeaders,
+          body,
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        const content = await response.text();
+
+        return {
+          success: true,
+          statusCode: response.status,
+          headers: Object.fromEntries(response.headers.entries()),
+          content: content.slice(0, 10000),
+        };
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          return {
+            success: false,
+            error: "Request timed out",
+          };
+        }
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+    },
+  });
+
+  mcp.addTool({
+    name: "http_head",
+    description: "Get headers from a URL without downloading content",
+    parameters: z.object({
+      url: z.string().url().describe("The URL to check"),
+      headers: z.record(z.string()).optional().describe("Request headers"),
+      timeout: z.number().int().min(1).max(120).default(30).describe("Timeout in seconds"),
+    }),
+    execute: async ({ url, headers, timeout }) => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout * 1000);
+
+        const response = await fetch(url, {
+          method: "HEAD",
+          headers,
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        return {
+          success: true,
+          statusCode: response.status,
+          headers: Object.fromEntries(response.headers.entries()),
+          contentType: response.headers.get("content-type") ?? "",
+          contentLength: response.headers.get("content-length") ?? "unknown",
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+    },
+  });
+}
+{%- endif %}

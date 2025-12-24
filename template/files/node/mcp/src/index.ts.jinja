@@ -1,0 +1,82 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'typescript' -%}
+#!/usr/bin/env node
+/**
+ * {{ project_name }} MCP Server
+ *
+ * Exposes {{ project_name }} functionality as MCP tools, resources, and prompts.
+ */
+
+import { FastMCP } from "fastmcp";
+import { getConfig } from "./config.js";
+import { registerTools } from "./tools/index.js";
+
+const VERSION = "1.0.0";
+const SERVER_NAME = "{{ package_name }}-mcp";
+
+// Load configuration
+const config = getConfig();
+
+// Create MCP server
+const mcp = new FastMCP({
+  name: config.name,
+  version: VERSION,
+});
+
+// Register all tools
+registerTools(mcp);
+
+// Parse CLI arguments
+function parseArgs(): { transport: string; host: string; port: number } {
+  const args = process.argv.slice(2);
+  let transport = config.transport;
+  let host = config.host;
+  let port = config.port;
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--transport" || args[i] === "-t") {
+      transport = args[++i] || transport;
+    } else if (args[i] === "--host" || args[i] === "-H") {
+      host = args[++i] || host;
+    } else if (args[i] === "--port" || args[i] === "-p") {
+      port = parseInt(args[++i], 10) || port;
+    }
+  }
+
+  return { transport, host, port };
+}
+
+// Main entry point
+async function main() {
+  const { transport, host, port } = parseArgs();
+
+  console.error(`Starting ${SERVER_NAME} v${VERSION} with ${transport} transport`);
+
+  if (transport === "stdio") {
+    await mcp.start({
+      transportType: "stdio",
+    });
+  } else if (transport === "sse") {
+    await mcp.start({
+      transportType: "sse",
+      sse: { endpoint: "/sse" },
+    });
+    console.error(`SSE server listening on http://${host}:${port}/sse`);
+  } else if (transport === "http") {
+    await mcp.start({
+      transportType: "httpStream",
+      httpStream: { endpoint: "/mcp" },
+    });
+    console.error(`HTTP server listening on http://${host}:${port}/mcp`);
+  } else {
+    console.error(`Unknown transport: ${transport}`);
+    process.exit(1);
+  }
+}
+
+main().catch((error) => {
+  console.error("Failed to start MCP server:", error);
+  process.exit(1);
+});
+
+export { mcp, VERSION, SERVER_NAME };
+{%- endif %}

@@ -1,0 +1,121 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'typescript' and mcp_example_tools -%}
+/**
+ * Timestamp tool - date and time utilities
+ *
+ * Demonstrates tools with multiple return types and formatting options.
+ */
+
+import type { FastMCP } from "fastmcp";
+import { z } from "zod";
+
+export function registerTimestampTools(mcp: FastMCP): void {
+  mcp.addTool({
+    name: "get_current_time",
+    description: "Get the current time in various formats",
+    parameters: z.object({
+      format: z
+        .enum(["iso", "unix", "rfc2822", "human"])
+        .default("iso")
+        .describe("Output format"),
+      timezone: z.string().default("UTC").describe("Timezone name"),
+    }),
+    execute: async ({ format, timezone }) => {
+      const now = new Date();
+
+      const formats: Record<string, string | number> = {
+        iso: now.toISOString(),
+        unix: Math.floor(now.getTime() / 1000),
+        rfc2822: now.toUTCString(),
+        human: now.toLocaleString("en-US", { timeZone: timezone }),
+      };
+
+      return {
+        timestamp: formats[format] ?? formats.iso,
+        format,
+        timezone,
+        allFormats: formats,
+      };
+    },
+  });
+
+  mcp.addTool({
+    name: "parse_timestamp",
+    description: "Parse a timestamp string into components",
+    parameters: z.object({
+      timestamp: z.string().describe("The timestamp string to parse"),
+      inputFormat: z
+        .enum(["iso", "unix"])
+        .default("iso")
+        .describe("Format of the input"),
+    }),
+    execute: async ({ timestamp, inputFormat }) => {
+      try {
+        let date: Date;
+
+        if (inputFormat === "unix") {
+          date = new Date(parseInt(timestamp, 10) * 1000);
+        } else {
+          date = new Date(timestamp);
+        }
+
+        if (isNaN(date.getTime())) {
+          throw new Error("Invalid date");
+        }
+
+        return {
+          success: true,
+          year: date.getUTCFullYear(),
+          month: date.getUTCMonth() + 1,
+          day: date.getUTCDate(),
+          hour: date.getUTCHours(),
+          minute: date.getUTCMinutes(),
+          second: date.getUTCSeconds(),
+          weekday: date.toLocaleDateString("en-US", { weekday: "long" }),
+          iso: date.toISOString(),
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+    },
+  });
+
+  mcp.addTool({
+    name: "time_difference",
+    description: "Calculate the difference between two timestamps",
+    parameters: z.object({
+      start: z.string().describe("Start timestamp (ISO format)"),
+      end: z.string().optional().describe("End timestamp, defaults to now"),
+    }),
+    execute: async ({ start, end }) => {
+      try {
+        const startDate = new Date(start);
+        const endDate = end ? new Date(end) : new Date();
+
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+          throw new Error("Invalid date");
+        }
+
+        const diffMs = endDate.getTime() - startDate.getTime();
+        const diffSeconds = Math.floor(diffMs / 1000);
+
+        return {
+          success: true,
+          milliseconds: diffMs,
+          seconds: diffSeconds,
+          minutes: Math.floor(diffSeconds / 60),
+          hours: Math.floor(diffSeconds / 3600),
+          days: Math.floor(diffSeconds / 86400),
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+    },
+  });
+}
+{%- endif %}

@@ -1,0 +1,48 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'rust' and mcp_example_tools -%}
+//! Echo tool - simple message reflection
+//!
+//! Demonstrates basic tool implementation.
+
+use rmcp::{Server, tool};
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize)]
+struct EchoParams {
+    message: String,
+}
+
+#[derive(Serialize)]
+struct EchoResult {
+    message: String,
+}
+
+/// Echo back the provided message
+#[tool]
+async fn echo(params: EchoParams) -> Result<EchoResult, String> {
+    Ok(EchoResult {
+        message: params.message,
+    })
+}
+
+/// Echo the message in reverse
+#[tool]
+async fn echo_reverse(params: EchoParams) -> Result<EchoResult, String> {
+    Ok(EchoResult {
+        message: params.message.chars().rev().collect(),
+    })
+}
+
+/// Echo the message in uppercase
+#[tool]
+async fn echo_uppercase(params: EchoParams) -> Result<EchoResult, String> {
+    Ok(EchoResult {
+        message: params.message.to_uppercase(),
+    })
+}
+
+pub fn register(server: &Server) {
+    server.register_tool("echo", echo);
+    server.register_tool("echo_reverse", echo_reverse);
+    server.register_tool("echo_uppercase", echo_uppercase);
+}
+{%- endif %}
