@@ -3,6 +3,29 @@
 Follow these steps to work on the template and build confidence before opening a
 pull request.
 
+## Prerequisites
+
+Before working on the template, ensure all required tooling is installed:
+
+```bash
+# Check what tools are installed (dry-run mode)
+./scripts/setup/setup.sh
+
+# Install missing tools (interactive)
+./scripts/setup/setup.sh --install
+
+# Or use the Make target
+make bootstrap
+```
+
+The setup script detects your platform (macOS, Linux distros, Windows/WSL) and
+installs: Python 3.11+, uv, Node.js 20 LTS, pnpm, pre-commit, and actionlint.
+
+**Windows users**: Run `.\scripts\setup\setup.ps1 -Install` in PowerShell.
+
+**CI environments**: Use `./scripts/setup/setup.sh --install --yes` with
+`GITHUB_TOKEN` set to avoid API rate limits.
+
 ## Render and exercise the baseline
 
 ```bash
