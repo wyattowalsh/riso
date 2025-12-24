@@ -28,7 +28,7 @@ test = [
 ]
 quality = [
   "ruff>=0.14.2",
-  "mypy>=1.18.2",
+  "ty>=0.0.6",
   "pylint>=4.0.2",
   "coverage>=7.6.9",
   "taskipy>=1.13.0",
@@ -115,3 +115,16 @@ ignore_errors = false
 
 [tool.taskipy.tasks]
 quality = "python -m tasks.quality"
+
+[tool.ty.environment]
+python-version = "3.11"
+
+[tool.ty.src]
+respect-ignore-files = true
+
+[tool.ty.terminal]
+output-format = "full"
+{% if quality_profile == 'strict' %}error-on-warning = true{% endif %}
+
+[[tool.ty.overrides]]
+path = "tests/*"

@@ -59,11 +59,11 @@ make quality
 
 **CI workflows:** GitHub Actions workflows automatically run quality checks on PRs and commits to main. Rendered projects include:
 
-- **`riso-quality.yml`**: Main quality workflow running ruff, mypy, pylint, pytest with retry logic and artifact uploads (90-day retention)
+- **`riso-quality.yml`**: Main quality workflow running ruff, ty, pylint, pytest with retry logic and artifact uploads (90-day retention)
 - **`riso-matrix.yml`**: Matrix testing across Python 3.11, 3.12, 3.13 with fail-fast disabled and per-version artifacts
 
 **Required branch protection checks:**
-- `python-quality` - Main quality suite (ruff, mypy, pylint, pytest)
+- `python-quality` - Main quality suite (ruff, ty, pylint, pytest)
 - `python-matrix / test-py311` - Python 3.11 compatibility
 - `python-matrix / test-py312` - Python 3.12 compatibility
 - `python-matrix / test-py313` - Python 3.13 compatibility
@@ -88,7 +88,7 @@ gh run view <run-id> --log
 Quality tools run via `make quality` or `uv run task quality` in rendered projects:
 
 - **Linting:** ruff (configuration in `pyproject.toml`)
-- **Type checking:** mypy (configuration in `pyproject.toml`)
+- **Type checking:** ty (configuration in `pyproject.toml` under `[tool.ty]`)
 - **Static analysis:** pylint (configuration in `pyproject.toml`)
 - **Testing:** pytest with coverage (configuration in `pytest.ini` and `coverage.cfg`)
 - **Profiles:** `QUALITY_PROFILE=standard` (default) or `QUALITY_PROFILE=strict` for enhanced checks
@@ -212,8 +212,8 @@ QUALITY_PROFILE=standard uv run task quality
 - 014-changelog-release-management: Added automated changelog generation and release management with conventional commit enforcement via Git hooks (commitlint ≥18.0.0), semantic versioning automation (semantic-release ≥23.0.0), human-readable changelog generation with categorized changes (💥/✨/🐛 sections), GitHub Release creation, breaking change detection with migration guide templates, multi-registry publishing (PyPI via twine, npm via @semantic-release/npm, Docker Hub), monorepo support with independent package versioning, pre-release versions (alpha, beta, rc), release completion <10min, comprehensive logging with correlation IDs, GitHub Actions workflow (riso-release.yml), credential management via GitHub Secrets with annual rotation, comprehensive docs (changelog-release.md, quickstart, upgrade guide)
 - 008-websockets-scaffold: Added WebSocket real-time communication module with connection lifecycle management, heartbeat/ping-pong mechanism (30s interval, 60s timeout), room-based broadcasting with <100ms latency (p95), FastAPI authentication integration, rate limiting (100 msg/60s window, configurable), backpressure handling with bounded queues, structured error responses, pytest fixtures, support for 10K+ concurrent connections with <10MB/1K conn memory overhead, comprehensive docs (websockets.md, quickstart, upgrade guide)
 - 005-container-deployment: Added Docker/docker-compose support with multi-stage Dockerfiles (Python 3.11-slim-bookworm, Node 20-alpine), docker-compose orchestration (API/docs/databases), GitHub Actions workflows (riso-container-build.yml with hadolint/Trivy, riso-container-publish.yml with semantic versioning), container validation (render_matrix.py, record_module_success.py), health endpoints (FastAPI/Fastify /health), security hardening (UID 1000:1000, HEALTHCHECK, SBOM/provenance), registry support (ghcr.io OIDC, Docker Hub, AWS ECR), comprehensive documentation (containers.md, context guide, upgrade guide)
-- 004-github-actions-workflows: Added GitHub Actions CI/CD workflows with quality checks (ruff, mypy, pylint, pytest), matrix testing across Python 3.11/3.12/3.13, retry logic with exponential backoff, dependency caching, artifact uploads with 90-day retention, and conditional Node.js job support
-- 003-code-quality-integrations: Added unified quality suite (ruff, mypy, pylint, pytest, coverage) with standard/strict profiles, auto-healing tool provisioning, parallelized CI jobs, and 90-day artifact retention
+- 004-github-actions-workflows: Added GitHub Actions CI/CD workflows with quality checks (ruff, ty, pylint, pytest), matrix testing across Python 3.11/3.12/3.13, retry logic with exponential backoff, dependency caching, artifact uploads with 90-day retention, and conditional Node.js job support
+- 003-code-quality-integrations: Added unified quality suite (ruff, ty, pylint, pytest, coverage) with standard/strict profiles, auto-healing tool provisioning, parallelized CI jobs, and 90-day artifact retention
 - 002-docs-template-expansion: Added Python 3.11 (uv-managed), Node.js 20 LTS, TypeScript 5.6, POSIX shell + Fumadocs (Next.js 15), Sphinx 7.4 + Shibuya theme, Docusaurus 3, pnpm ≥8, mise 2024.9+, uv ≥0.4
 
 ## Active Technologies
@@ -224,4 +224,4 @@ QUALITY_PROFILE=standard uv run task quality
 - Workflow artifacts (JUnit XML, coverage reports, logs, container images, SBOMs, scan results) stored in GitHub Actions artifact storage with 90-day retention (004-github-actions-workflows, 005-container-deployment)
 - Matrix testing across Python 3.11, 3.12, 3.13 with fail-fast disabled and per-version artifacts (004-github-actions-workflows)
 - Container registries: GitHub Container Registry (ghcr.io, OIDC default), Docker Hub (optional), AWS ECR (optional) with semantic versioning (latest, v1.2.3, v1.2, v1, SHA) (005-container-deployment)
-- Python 3.11 (uv-managed), optional Node.js 20 LTS + ruff, mypy, pylint, pytest, coverage, optional eslint + typescript (003-code-quality-integrations)
+- Python 3.11 (uv-managed), optional Node.js 20 LTS + ruff, ty, pylint, pytest, coverage, optional eslint + typescript (003-code-quality-integrations)

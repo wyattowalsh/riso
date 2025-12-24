@@ -10,7 +10,7 @@ Riso is a batteries-included template system that scaffolds production-ready pro
 
 ## Features
 
-- 🐍 **Python Stack**: Python 3.11+ with uv, pytest, ruff, mypy, pylint
+- 🐍 **Python Stack**: Python 3.11+ with uv, pytest, ruff, ty, pylint
 - 📦 **Node.js Stack**: Node.js 20 LTS with pnpm, TypeScript, Vitest
 - 🔌 **Modular Design**: Mix and match CLI, API, GraphQL, WebSocket, MCP modules
 - 📚 **Documentation**: Choose from Fumadocs, Sphinx Shibuya, or Docusaurus
@@ -73,7 +73,7 @@ Pre-configured samples are available in `samples/`:
 
 - **001** - Riso Template Foundation
 - **002** - Documentation Template Expansion (Fumadocs, Sphinx, Docusaurus)
-- **003** - Code Quality Integrations (Ruff, Mypy, Pylint, pytest)
+- **003** - Code Quality Integrations (Ruff, ty, Pylint, pytest)
 - **004** - GitHub Actions Workflows
 - **005** - Container & Deployment Patterns
 - **006** - FastAPI API Scaffold

@@ -2,13 +2,13 @@ UV ?= uv
 QUALITY_PROFILE ?= {{ quality_profile|default('standard') }}
 PACKAGE_NAME ?= {{ package_name }}
 PYTEST_FLAGS ?= -ra
-MYPY_FLAGS ?=
+TY_FLAGS ?=
 RUFF_FLAGS ?=
 PYLINT_FLAGS ?=
 COVERAGE_FLAGS ?= -m pytest $(PYTEST_FLAGS)
 
 ifeq ($(QUALITY_PROFILE),strict)
-	MYPY_FLAGS := --strict
+	TY_FLAGS := --error-on-warning
 	RUFF_FLAGS := --select ALL --ignore E203,E266,E501
 	PYLINT_FLAGS := --errors-only
 endif
@@ -20,7 +20,7 @@ quality: quality-python{% if api_tracks in ['node', 'python+node'] %} quality-no
 
 quality-python:
 	$(UV) run --group quality --group test ruff check $(RUFF_FLAGS)
-	$(UV) run --group quality --group test mypy $(MYPY_FLAGS) $(PACKAGE_NAME)
+	$(UV) run --group quality --group test ty check $(TY_FLAGS) $(PACKAGE_NAME)
 	$(UV) run --group quality --group test pylint $(PYLINT_FLAGS) $(PACKAGE_NAME) tests
 	$(UV) run --group quality --group test coverage run $(COVERAGE_FLAGS)
 	$(UV) run --group quality coverage report --rcfile coverage.cfg
