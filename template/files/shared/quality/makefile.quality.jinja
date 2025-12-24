@@ -44,3 +44,21 @@ quality-node:
 lint-node:
 	pnpm --filter api-node lint
 {% endif %}
+
+# ============================================
+# Pre-commit Hooks
+# ============================================
+.PHONY: hooks hooks-run hooks-update
+
+hooks: ## Install pre-commit hooks
+	$(UV) run --group quality pre-commit install --install-hooks
+{% if quality_profile == 'strict' %}
+	$(UV) run --group quality pre-commit install --hook-type commit-msg
+	$(UV) run --group quality pre-commit install --hook-type pre-push
+{% endif %}
+
+hooks-run: ## Run all pre-commit hooks manually
+	$(UV) run --group quality pre-commit run --all-files
+
+hooks-update: ## Update pre-commit hook versions
+	$(UV) run --group quality pre-commit autoupdate

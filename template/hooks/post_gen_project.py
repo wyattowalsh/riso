@@ -7,6 +7,8 @@ commands so that renders remain deterministic and constitution-compliant.
 from __future__ import annotations
 import json
 import pathlib
+import shutil
+import subprocess
 import sys
 from datetime import datetime
 
@@ -28,6 +30,7 @@ except ModuleNotFoundError:  # pragma: no cover - template lint
 DEFAULT_GUIDANCE = [
     "Create a virtual environment with `uv venv` (or activate an existing one).",
     "Install dependencies via `uv sync`.",
+    "Install pre-commit hooks via `make hooks` (or `uv run pre-commit install`).",
     "Run the baseline quickstart script: `uv run python -m {package}.quickstart`.",
     "Review docs/modules/prompt-reference.md for module-specific commands.",
 ]
@@ -156,6 +159,54 @@ def render_guidance(package: str, answers: dict[str, str]) -> str:
     return "\n".join(lines)
 
 
+def install_pre_commit_hooks(
+    destination: pathlib.Path, quality_profile: str
+) -> dict[str, object]:
+    """Install pre-commit hooks in the generated project.
+
+    Args:
+        destination: Root directory of the rendered project.
+        quality_profile: The quality profile (standard or strict).
+
+    Returns:
+        Dictionary with installation status and hook types installed.
+    """
+    # Check if pre-commit is available via uv
+    uv_path = shutil.which("uv")
+    if not uv_path:
+        return {"status": "skipped_no_uv", "hooks_installed": []}
+
+    # Determine hook types based on profile
+    hook_types = ["pre-commit"]
+    if quality_profile == "strict":
+        hook_types.extend(["commit-msg", "pre-push"])
+
+    installed_hooks: list[str] = []
+
+    try:
+        # Install each hook type
+        for hook_type in hook_types:
+            result = subprocess.run(
+                [uv_path, "run", "pre-commit", "install", "--hook-type", hook_type],
+                capture_output=True,
+                cwd=destination,
+                timeout=60,
+            )
+            if result.returncode == 0:
+                installed_hooks.append(hook_type)
+
+        # Install hook environments (can be slow, so we skip in post-gen)
+        # Users can run `make hooks` or `pre-commit install --install-hooks`
+        return {
+            "status": "installed" if installed_hooks else "failed",
+            "hooks_installed": installed_hooks,
+        }
+    except subprocess.TimeoutExpired:
+        return {"status": "timeout", "hooks_installed": installed_hooks}
+    except OSError as e:
+        return {"status": f"error: {e}", "hooks_installed": []}
+
+
 def main() -> None:
     """Execute post-generation hook to validate tools and display guidance.
 
@@ -180,6 +231,10 @@ def main() -> None:
         exit_code = validate_workflows_directory(workflows_dir, strict=False)
         workflow_validation_status = "pass" if exit_code == 0 else "fail"
 
+    # Install pre-commit hooks
+    quality_profile = answers.get("quality_profile", "standard")
+    pre_commit_result = install_pre_commit_hooks(destination, quality_profile)
+
     record_metadata(
         destination,
         {
@@ -194,12 +249,13 @@ def main() -> None:
                 "shared_logic": answers.get("shared_logic", "disabled"),
             },
             "quality": {
-                "profile": answers.get("quality_profile", "standard"),
+                "profile": quality_profile,
                 "tool_install_attempts": [
                     check.to_dict() if hasattr(check, "to_dict") else dict(check.__dict__)
                     for check in quality_checks + node_checks
                 ],
             },
+            "pre_commit": pre_commit_result,
             "ci_platform": ci_platform,
             "workflow_validation": workflow_validation_status,
         },
