@@ -9,7 +9,6 @@ Designed to be called from template/hooks/post_gen_project.py.
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
 
 
 def check_actionlint_available() -> bool:
@@ -31,15 +30,15 @@ def check_actionlint_available() -> bool:
         return False
 
 
-def validate_workflow_file(workflow_path: Path) -> tuple[bool, Optional[str]]:
+def validate_workflow_file(workflow_path: Path) -> tuple[bool, str | None]:
     """
     Validate a single workflow file.
-    
+
     Args:
         workflow_path: Path to workflow YAML file
-        
+
     Returns:
-        Tuple of (success: bool, error_message: Optional[str])
+        Tuple of (success: bool, error_message: str | None)
     """
     if not workflow_path.exists():
         return False, f"Workflow file not found: {workflow_path}"

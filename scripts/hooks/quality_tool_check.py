@@ -8,7 +8,7 @@ import shutil
 import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Iterable, List
+from typing import Iterable
 
 QUALITY_TOOLS = ["ruff", "mypy", "pylint", "coverage"]
 
@@ -59,11 +59,11 @@ def _ensure_tool(tool: str) -> ToolCheck:
     )
 
 
-def ensure_python_quality_tools() -> List[ToolCheck]:
+def ensure_python_quality_tools() -> list[ToolCheck]:
     return [_ensure_tool(tool) for tool in QUALITY_TOOLS]
 
 
-def ensure_node_quality_tools(required: bool) -> List[ToolCheck]:
+def ensure_node_quality_tools(required: bool) -> list[ToolCheck]:
     if not required:
         return [
             ToolCheck(
@@ -109,7 +109,7 @@ def ensure_node_quality_tools(required: bool) -> List[ToolCheck]:
     ]
 
 
-def write_metadata(destination: Path, checks: List[ToolCheck]) -> None:
+def write_metadata(destination: Path, checks: list[ToolCheck]) -> None:
     payload = [check.to_dict() for check in checks]
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(payload, indent=2), encoding="utf-8")

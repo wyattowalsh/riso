@@ -9,7 +9,6 @@ import json
 import pathlib
 import sys
 from datetime import datetime
-from typing import Dict
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[2] / "scripts"))
 
@@ -40,7 +39,7 @@ def record_metadata(destination: pathlib.Path, data: dict[str, object]) -> None:
     metadata_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
-def load_answers(destination: pathlib.Path) -> Dict[str, str]:
+def load_answers(destination: pathlib.Path) -> dict[str, str]:
     """Load answers from YAML file safely."""
     answers_path = destination / ".copier-answers.yml"
     if not answers_path.exists():
@@ -68,7 +67,7 @@ def layout_guidance(layout: str) -> list[str]:
     return []
 
 
-def docs_guidance(answers: Dict[str, str]) -> list[str]:
+def docs_guidance(answers: dict[str, str]) -> list[str]:
     docs_site = answers.get("docs_site", "fumadocs").lower()
     if docs_site == "fumadocs":
         return [
@@ -90,7 +89,7 @@ def docs_guidance(answers: Dict[str, str]) -> list[str]:
     ]
 
 
-def optional_module_guidance(answers: Dict[str, str]) -> list[str]:
+def optional_module_guidance(answers: dict[str, str]) -> list[str]:
     guidance: list[str] = []
     if answers.get("cli_module", "").lower() == "enabled":
         guidance.append("Typer CLI ready: `uv run python -m {package}.cli --help`.")
@@ -104,7 +103,7 @@ def optional_module_guidance(answers: Dict[str, str]) -> list[str]:
     return guidance
 
 
-def render_guidance(package: str, answers: Dict[str, str]) -> str:
+def render_guidance(package: str, answers: dict[str, str]) -> str:
     layout = answers.get("project_layout", "single-package").lower()
     lines = ["Next steps:"]
     for item in DEFAULT_GUIDANCE:
