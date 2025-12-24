@@ -14,6 +14,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import TypedDict
 
 try:  # pragma: no cover - import behaviour depends on invocation style
     from record_module_success import ModuleSuccessRecorder
@@ -24,6 +25,25 @@ except ModuleNotFoundError:  # pragma: no cover - fallback for `python path/to/s
     _sys.path.append(str(_Path(__file__).resolve().parent))
     from record_module_success import ModuleSuccessRecorder
 
+
+class VariantResult(TypedDict):
+    """Result metadata from rendering a single variant."""
+    variant: str
+    answers: str
+    destination: str
+    smoke_results: dict[str, object] | None
+    workflow_validation: str
+    container_status: str
+
+
+class RenderSummary(TypedDict, total=False):
+    """Complete render matrix summary with all variant results."""
+    variants: list[dict[str, object]]
+    module_success: dict[str, object]
+    quality_runs: list[dict[str, object]]
+    quality_retention_days: int
+
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SAMPLES_DIR = REPO_ROOT / "samples"
 RENDER_SCRIPT = REPO_ROOT / "scripts" / "render-samples.sh"
@@ -31,6 +51,11 @@ METADATA_DIR = REPO_ROOT / "samples" / "metadata"
 
 
 def discover_variants() -> list[tuple[str, Path]]:
+    """Discover all sample variants by scanning for copier-answers.yml files.
+
+    Returns:
+        List of tuples containing (variant_name, answers_file_path), sorted by variant name.
+    """
     variants: list[tuple[str, Path]] = []
     for answers_file in SAMPLES_DIR.glob("*/copier-answers.yml"):
         variant = answers_file.parent.name
@@ -39,6 +64,14 @@ def discover_variants() -> list[tuple[str, Path]]:
 
 
 def load_smoke_results(answers_file: Path) -> dict[str, object] | None:
+    """Load smoke test results for a rendered variant.
+
+    Args:
+        answers_file: Path to the copier-answers.yml file for the variant.
+
+    Returns:
+        Dictionary containing smoke test results, or None if results file doesn't exist.
+    """
     log_path = answers_file.parent / "smoke-results.json"
     if not log_path.exists():
         return None
@@ -54,7 +87,20 @@ def load_post_gen_metadata(answers_file: Path) -> dict[str, object] | None:
     return json.loads(metadata_path.read_text(encoding="utf-8"))
 
 
-def render_variant(variant: str, answers_file: Path) -> dict[str, object]:
+def render_variant(variant: str, answers_file: Path) -> VariantResult:
+    """Render a single variant and collect metadata about the render.
+
+    Args:
+        variant: Name of the variant to render.
+        answers_file: Path to the copier-answers.yml file for the variant.
+
+    Returns:
+        Dictionary containing variant metadata including smoke results, workflow validation
+        status, and container validation status.
+
+    Raises:
+        subprocess.CalledProcessError: If the render script fails.
+    """
     destination = answers_file.parent / "render"
     cmd = [str(RENDER_SCRIPT), "--variant", variant, "--answers", str(answers_file)]
     env = {**os.environ, "COPIER_CMD": os.environ.get("COPIER_CMD", "copier")}
@@ -116,18 +162,25 @@ def render_variant(variant: str, answers_file: Path) -> dict[str, object]:
                 container_status = "files_missing"
         else:
             container_status = "not_applicable"
-    
-    return {
-        "variant": variant,
-        "answers": str(answers_file),
-        "destination": str(destination),
-        "smoke_results": load_smoke_results(answers_file),
-        "workflow_validation": workflow_status,
-        "container_status": container_status,
-    }
+
+    return VariantResult(
+        variant=variant,
+        answers=str(answers_file),
+        destination=str(destination),
+        smoke_results=load_smoke_results(answers_file),
+        workflow_validation=workflow_status,
+        container_status=container_status,
+    )
 
 
 def main() -> None:
+    """Orchestrate rendering of all discovered variants and aggregate metadata.
+
+    Command-line arguments:
+        --skip-render: Skip rendering and reuse existing render_matrix.json if available.
+        --quality-artifacts: List of paths to quality run artifact JSON files.
+        --retention-days: Number of days to retain quality artifacts (default: 90).
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--skip-render", action="store_true")
     parser.add_argument("--quality-artifacts", nargs="*", default=[])
@@ -138,7 +191,7 @@ def main() -> None:
     output_file = METADATA_DIR / "render_matrix.json"
 
     if args.skip_render and output_file.exists():
-        summary = json.loads(output_file.read_text(encoding="utf-8"))
+        summary: RenderSummary = json.loads(output_file.read_text(encoding="utf-8"))
         recorder = ModuleSuccessRecorder()
         for variant_entry in summary.get("variants", []):
             results = variant_entry.get("smoke_results", {})
@@ -150,7 +203,7 @@ def main() -> None:
         module_metrics = recorder.write(METADATA_DIR / "module_success.json")
         summary["module_success"] = module_metrics
     else:
-        summary: dict[str, object] = {"variants": []}
+        summary: RenderSummary = {"variants": []}
         recorder = ModuleSuccessRecorder()
 
         for variant, answers_file in discover_variants():
