@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Provision quality tooling (ruff, mypy, pylint, coverage) via uv tools."""
+"""Provision quality tooling (ruff, ty, pylint, coverage) via uv tools."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable
 
-QUALITY_TOOLS = ["ruff", "mypy", "pylint", "coverage"]
+QUALITY_TOOLS = ["ruff", "ty", "pylint", "coverage"]
 
 
 @dataclass

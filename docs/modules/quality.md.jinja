@@ -5,19 +5,19 @@ for every rendered project.
 
 ## Commands
 
-- `make quality` – preferred aggregator that runs Ruff, Mypy, Pylint, pytest (via coverage), and
+- `make quality` – preferred aggregator that runs Ruff, ty, Pylint, pytest (via coverage), and
   optional Node checks when `api_tracks` includes `node`.
 - `uv run task quality` – fallback for environments without `make`. Implemented with Taskipy to
   call `python -m tasks.quality` and log durations to `.riso/quality-durations.json`.
 
 Both commands honour the `QUALITY_PROFILE` environment variable. Projects render with
 `quality_profile={{ quality_profile|default('standard') }}` by default; set
-`QUALITY_PROFILE=strict` to enable stricter Mypy and Ruff rules during local runs or CI.
+`QUALITY_PROFILE=strict` to enable stricter ty and Ruff rules during local runs or CI.
 
 ## Configuration Files
 
 - `ruff.toml`
-- `mypy.ini`
+- `pyproject.toml` (contains `[tool.ty]` configuration)
 - `.pylintrc`
 - `coverage.cfg`
 
@@ -29,7 +29,7 @@ ensuring consistent defaults and reproducible automation.
 | Tool      | Provisioning                                  | Notes |
 |-----------|-----------------------------------------------|-------|
 | Ruff      | `uv tool install ruff` via pre/post hooks      | Uses shared ignore list |
-| Mypy      | `uv tool install mypy` via pre/post hooks      | Strict mode toggled by profile |
+| ty        | `uv tool install ty` via pre/post hooks        | Astral's fast type checker; error-on-warning in strict mode |
 | Pylint    | `uv tool install pylint` via pre/post hooks    | Simplified baseline config |
 | Coverage  | Included in quality dependency group           | Generates reports for governance |
 | pnpm lint | Runs when Node API track is enabled            | Skipped when Node is disabled |

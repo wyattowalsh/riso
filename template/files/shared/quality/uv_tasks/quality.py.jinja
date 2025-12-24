@@ -12,12 +12,12 @@ QUALITY_PROFILE = os.environ.get("QUALITY_PROFILE", DEFAULT_PROFILE).lower()
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 RUFF_FLAGS: List[str] = []
-MYPY_FLAGS: List[str] = []
+TY_FLAGS: List[str] = []
 PYLINT_FLAGS: List[str] = []
 
 if QUALITY_PROFILE == "strict":
     RUFF_FLAGS = ["--select", "ALL", "--ignore", "E203,E266,E501"]
-    MYPY_FLAGS = ["--strict"]
+    TY_FLAGS = ["--error-on-warning"]
     PYLINT_FLAGS = ["--errors-only"]
 
 COMMANDS: list[tuple[str, list[str]]] = [
@@ -36,7 +36,7 @@ COMMANDS: list[tuple[str, list[str]]] = [
         ],
     ),
     (
-        "mypy",
+        "ty",
         [
             "uv",
             "run",
@@ -44,8 +44,9 @@ COMMANDS: list[tuple[str, list[str]]] = [
             "quality",
             "--group",
             "test",
-            "mypy",
-            *MYPY_FLAGS,
+            "ty",
+            "check",
+            *TY_FLAGS,
             "{{ package_name }}",
         ],
     ),
