@@ -9,6 +9,19 @@ log() {
   printf "[render-samples] %s\n" "$*" >&2
 }
 
+validate_copier_cmd() {
+  local cmd="${COPIER_CMD:-copier}"
+  if [[ "$cmd" == "copier" ]]; then
+    return 0
+  elif [[ "$cmd" =~ ^/.*copier$ ]] && [[ -x "$cmd" ]]; then
+    return 0
+  else
+    echo "ERROR: Invalid COPIER_CMD: $cmd" >&2
+    echo "Must be 'copier' or absolute path to copier binary" >&2
+    return 1
+  fi
+}
+
 run_module_smoke_tests() {
   local variant="$1"
   local answers_file="$2"
@@ -284,6 +297,7 @@ render_variant() {
   start_ts=$(date +%s)
   rm -rf "${destination}"
   mkdir -p "$(dirname "${destination}")"
+  validate_copier_cmd || exit 1
   ${COPIER_CMD} copy \
     --data-file "${answers_file}" \
     --force \
