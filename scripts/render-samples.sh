@@ -33,6 +33,8 @@ run_module_smoke_tests() {
 import json
 import subprocess
 import sys
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 variant, answers_path, destination, log_path = sys.argv[1:5]
@@ -153,7 +155,8 @@ def collect_modules(config: dict[str, str]) -> list[dict[str, object]]:
     return modules
 
 
-def run_command(cmd: list[str], cwd: Path | None = None) -> tuple[str, dict[str, object]]:
+def run_command(cmd: list[str], cwd: Path | None = None) -> tuple[str, dict[str, object], float]:
+    start_time = time.time()
     try:
         proc = subprocess.run(
             cmd,
@@ -163,56 +166,61 @@ def run_command(cmd: list[str], cwd: Path | None = None) -> tuple[str, dict[str,
             text=True,
         )
     except FileNotFoundError as exc:
+        duration = time.time() - start_time
         return "error", {
             "command": cmd,
             "reason": str(exc),
-        }
+        }, duration
     except subprocess.CalledProcessError as exc:
+        duration = time.time() - start_time
         return "failed", {
             "command": cmd,
             "returncode": exc.returncode,
             "stdout": exc.stdout,
             "stderr": exc.stderr,
-        }
+        }, duration
     else:
+        duration = time.time() - start_time
         return "passed", {
             "command": cmd,
             "stdout": proc.stdout,
             "stderr": proc.stderr,
-        }
+        }, duration
 
 
 config = load_answers(answers_file)
 modules = collect_modules(config)
-results: list[dict[str, object]] = []
+results_dict: dict[str, dict[str, object]] = {}
 
 for module in modules:
+    module_name = module["name"]
     if not module.get("enabled"):
-        results.append(
-            {
-                "name": module["name"],
-                "status": "skipped",
-                "reason": "Module disabled in prompt answers.",
-            }
-        )
+        results_dict[module_name] = {
+            "status": "skipped",
+            "reason": "Module disabled in prompt answers.",
+        }
         continue
     command = module.get("command")
     module_cwd = Path(module.get("cwd", destination_path))
     if not command:
-        results.append(
-            {
-                "name": module["name"],
-                "status": "skipped",
-                "reason": module.get("skip_reason", "No smoke command configured."),
-            }
-        )
+        results_dict[module_name] = {
+            "status": "skipped",
+            "reason": module.get("skip_reason", "No smoke command configured."),
+        }
         continue
-    status, payload = run_command(command, module_cwd)
-    entry = {"name": module["name"], "status": status}
-    entry.update(payload)
-    results.append(entry)
+    status, payload, duration = run_command(command, module_cwd)
+    entry: dict[str, object] = {"status": status, "duration": round(duration, 2)}
+    # Only include command details for failed/error cases to keep output clean
+    if status in ("failed", "error"):
+        entry.update(payload)
+    results_dict[module_name] = entry
 
-summary = {"variant": variant, "results": results}
+timestamp = datetime.now(timezone.utc).isoformat()
+summary = {
+    "variant": variant,
+    "timestamp": timestamp,
+    "modules": results_dict,
+}
 durations_path = destination_path / ".riso" / "quality-durations.json"
 if durations_path.exists():
     summary["quality_durations"] = json.loads(durations_path.read_text(encoding="utf-8"))
