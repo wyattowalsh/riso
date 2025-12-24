@@ -9,11 +9,40 @@ running governance automation.
 from __future__ import annotations
 
 import json
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from typing import Any, Dict, Mapping, MutableMapping, Optional
+
+
+# Valid variant name pattern
+VALID_VARIANT_PATTERN = re.compile(r'^[a-z0-9][a-z0-9_-]*$')
+
+
+def _validate_variant_name(name: str) -> str:
+    """Validate variant name is safe for URL construction.
+
+    Args:
+        name: The variant name to validate
+
+    Returns:
+        The validated name
+
+    Raises:
+        ValueError: If the name is invalid
+    """
+    if not name:
+        raise ValueError("Variant name cannot be empty")
+    if len(name) > 64:
+        raise ValueError(f"Variant name too long: {len(name)} > 64 chars")
+    if not VALID_VARIANT_PATTERN.match(name):
+        raise ValueError(
+            f"Invalid variant name: {name}. "
+            f"Must match pattern: {VALID_VARIANT_PATTERN.pattern}"
+        )
+    return name
 
 
 DEFAULT_BASE_URL = "https://ci.example.com/api"
@@ -74,7 +103,8 @@ class RenderClient:
         return self._request("POST", "/templates/riso/compliance-checks", payload)
 
     def get_sample(self, variant_name: str) -> Mapping[str, Any]:
-        path = f"/templates/riso/samples/{urllib.parse.quote(variant_name)}"
+        validated_name = _validate_variant_name(variant_name)
+        path = f"/templates/riso/samples/{urllib.parse.quote(validated_name)}"
         return self._request("GET", path)
 
     # --------------------------------------------------------------------- #
