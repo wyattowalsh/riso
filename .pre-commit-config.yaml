@@ -177,11 +177,22 @@ repos:
   # ============================================
   # Commit Message Validation (commit-msg stage)
   # ============================================
+  # Primary: commitlint with full .commitlintrc.yml config
+  - repo: local
+    hooks:
+      - id: commitlint
+        name: commitlint
+        entry: pnpm exec commitlint --edit
+        language: system
+        stages: [commit-msg]
+        always_run: true
+
+  # Fallback: conventional-pre-commit (Python-based, no Node required)
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v3.6.0
     hooks:
       - id: conventional-pre-commit
-        name: conventional commits
+        name: conventional commits (fallback)
         stages: [commit-msg]
         args:
           - feat
@@ -213,4 +224,4 @@ ci:
   autofix_prs: true
   autoupdate_schedule: weekly
   # Skip slow/local hooks in CI (run separately in dedicated jobs)
-  skip: [ty-check, pylint, pip-audit, pytest, vulture, gitleaks]
+  skip: [ty-check, pylint, pip-audit, pytest, vulture, gitleaks, commitlint]

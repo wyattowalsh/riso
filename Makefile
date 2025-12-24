@@ -234,6 +234,42 @@ ci-docs: docs-build docs-linkcheck ## Build and verify docs
 	@printf "$(GREEN)✓ Docs CI passed$(RESET)\n"
 
 # ═══════════════════════════════════════════════════════════════════════════════
+## Release & Versioning
+# ═══════════════════════════════════════════════════════════════════════════════
+
+.PHONY: commit
+commit: ## Interactive commit with commitizen
+	@printf "$(BLUE)▸ Starting interactive commit...$(RESET)\n"
+	pnpm run commit
+
+.PHONY: release
+release: ## Run semantic-release (production)
+	@printf "$(BLUE)▸ Running semantic-release...$(RESET)\n"
+	pnpm run release
+	@printf "$(GREEN)✓ Release complete$(RESET)\n"
+
+.PHONY: release-dry
+release-dry: ## Dry-run semantic-release (no changes)
+	@printf "$(BLUE)▸ Running semantic-release (dry run)...$(RESET)\n"
+	pnpm run release:dry
+	@printf "$(GREEN)✓ Dry run complete$(RESET)\n"
+
+.PHONY: changelog
+changelog: ## Show recent changelog entries
+	@printf "$(BOLD)$(BLUE)Recent Changes$(RESET)\n"
+	@head -100 CHANGELOG.md
+
+.PHONY: version
+version: ## Show current version from pyproject.toml
+	@grep -E "^version\s*=" pyproject.toml | head -1 | sed 's/version = //' | tr -d '"'
+
+.PHONY: node-deps
+node-deps: ## Install Node.js dependencies (pnpm)
+	@printf "$(BLUE)▸ Installing Node dependencies...$(RESET)\n"
+	pnpm install
+	@printf "$(GREEN)✓ Node dependencies installed$(RESET)\n"
+
+# ═══════════════════════════════════════════════════════════════════════════════
 ## Info & Debugging
 # ═══════════════════════════════════════════════════════════════════════════════
 
