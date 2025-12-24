@@ -23,6 +23,18 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+# Import shared validation utilities
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from lib.validation import (
+    ValidationResult,
+    YAMLLoadResult,
+    load_yaml_file,
+    validate_path_exists,
+    validate_required_fields,
+    create_validation_result,
+    print_error_list,
+)
+
 try:
     import yaml
 except ImportError:
@@ -33,161 +45,156 @@ except ImportError:
 
 def validate_commitlint_config(config_path: Path) -> tuple[bool, list[str]]:
     """Validate .commitlintrc.yml configuration.
-    
+
     Args:
         config_path: Path to .commitlintrc.yml
-        
+
     Returns:
         Tuple of (is_valid, errors)
     """
     errors = []
-    
+
     if not config_path.exists():
         return True, []  # Not an error if changelog module disabled
-    
-    try:
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config = yaml.safe_load(f)
-        
-        # Validate required fields
-        if 'extends' not in config:
-            errors.append(".commitlintrc.yml: Missing 'extends' field")
-        
-        if 'rules' not in config:
-            errors.append(".commitlintrc.yml: Missing 'rules' field")
+
+    # Use shared YAML loading utility
+    result = load_yaml_file(config_path)
+    if not result["success"]:
+        errors.append(f".commitlintrc.yml: {result['error']}")
+        return False, errors
+
+    config = result["data"]
+
+    # Validate required fields using shared utility
+    field_errors = validate_required_fields(
+        config,
+        ['extends', 'rules'],
+        context=".commitlintrc.yml"
+    )
+    errors.extend(field_errors)
+
+    # Validate type-enum rule
+    if 'rules' in config:
+        if 'type-enum' not in config['rules']:
+            errors.append(".commitlintrc.yml: Missing 'type-enum' rule")
         else:
-            # Validate type-enum rule
-            if 'type-enum' not in config['rules']:
-                errors.append(".commitlintrc.yml: Missing 'type-enum' rule")
-            else:
-                type_enum = config['rules']['type-enum']
-                if not isinstance(type_enum, list) or len(type_enum) < 3:
-                    errors.append(".commitlintrc.yml: Invalid 'type-enum' format")
-        
-        return len(errors) == 0, errors
-        
-    except yaml.YAMLError as e:
-        errors.append(f".commitlintrc.yml: YAML parsing error: {e}")
-        return False, errors
-    except Exception as e:
-        errors.append(f".commitlintrc.yml: Validation error: {e}")
-        return False, errors
+            type_enum = config['rules']['type-enum']
+            if not isinstance(type_enum, list) or len(type_enum) < 3:
+                errors.append(".commitlintrc.yml: Invalid 'type-enum' format")
+
+    return len(errors) == 0, errors
 
 
 def validate_semantic_release_config(config_path: Path) -> tuple[bool, list[str]]:
     """Validate .releaserc.yml configuration.
-    
+
     Args:
         config_path: Path to .releaserc.yml
-        
+
     Returns:
         Tuple of (is_valid, errors)
     """
     errors = []
-    
+
     if not config_path.exists():
         return True, []  # Not an error if changelog module disabled
-    
-    try:
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config = yaml.safe_load(f)
-        
-        # Validate required fields
-        if 'branches' not in config:
-            errors.append(".releaserc.yml: Missing 'branches' field")
-        
-        if 'plugins' not in config:
-            errors.append(".releaserc.yml: Missing 'plugins' field")
-        else:
-            plugins = config['plugins']
-            
-            # Check for required plugins
-            required_plugins = [
-                '@semantic-release/commit-analyzer',
-                '@semantic-release/release-notes-generator',
-                '@semantic-release/changelog',
-            ]
-            
-            plugin_names = []
-            for plugin in plugins:
-                if isinstance(plugin, str):
-                    plugin_names.append(plugin)
-                elif isinstance(plugin, list) and len(plugin) > 0:
-                    plugin_names.append(plugin[0])
-            
-            for required in required_plugins:
-                if required not in plugin_names:
-                    errors.append(f".releaserc.yml: Missing required plugin: {required}")
-        
-        return len(errors) == 0, errors
-        
-    except yaml.YAMLError as e:
-        errors.append(f".releaserc.yml: YAML parsing error: {e}")
+
+    # Use shared YAML loading utility
+    result = load_yaml_file(config_path)
+    if not result["success"]:
+        errors.append(f".releaserc.yml: {result['error']}")
         return False, errors
-    except Exception as e:
-        errors.append(f".releaserc.yml: Validation error: {e}")
-        return False, errors
+
+    config = result["data"]
+
+    # Validate required fields using shared utility
+    field_errors = validate_required_fields(
+        config,
+        ['branches', 'plugins'],
+        context=".releaserc.yml"
+    )
+    errors.extend(field_errors)
+
+    # Check for required plugins
+    if 'plugins' in config:
+        plugins = config['plugins']
+
+        required_plugins = [
+            '@semantic-release/commit-analyzer',
+            '@semantic-release/release-notes-generator',
+            '@semantic-release/changelog',
+        ]
+
+        plugin_names = []
+        for plugin in plugins:
+            if isinstance(plugin, str):
+                plugin_names.append(plugin)
+            elif isinstance(plugin, list) and len(plugin) > 0:
+                plugin_names.append(plugin[0])
+
+        for required in required_plugins:
+            if required not in plugin_names:
+                errors.append(f".releaserc.yml: Missing required plugin: {required}")
+
+    return len(errors) == 0, errors
 
 
 def validate_release_workflow(workflow_path: Path) -> tuple[bool, list[str]]:
     """Validate riso-release.yml workflow.
-    
+
     Args:
         workflow_path: Path to .github/workflows/riso-release.yml
-        
+
     Returns:
         Tuple of (is_valid, errors)
     """
     errors = []
-    
+
     if not workflow_path.exists():
         return True, []  # Not an error if changelog module disabled
-    
-    try:
-        with open(workflow_path, 'r', encoding='utf-8') as f:
-            workflow = yaml.safe_load(f)
-        
-        # Validate required fields
-        if 'name' not in workflow:
-            errors.append("riso-release.yml: Missing 'name' field")
-        
-        if 'on' not in workflow:
-            errors.append("riso-release.yml: Missing 'on' field")
-        
-        if 'jobs' not in workflow:
-            errors.append("riso-release.yml: Missing 'jobs' field")
+
+    # Use shared YAML loading utility
+    result = load_yaml_file(workflow_path)
+    if not result["success"]:
+        errors.append(f"riso-release.yml: {result['error']}")
+        return False, errors
+
+    workflow = result["data"]
+
+    # Validate required fields using shared utility
+    field_errors = validate_required_fields(
+        workflow,
+        ['name', 'on', 'jobs'],
+        context="riso-release.yml"
+    )
+    errors.extend(field_errors)
+
+    # Validate release job exists and has required structure
+    if 'jobs' in workflow:
+        jobs = workflow['jobs']
+
+        if 'release' not in jobs:
+            errors.append("riso-release.yml: Missing 'release' job")
         else:
-            jobs = workflow['jobs']
-            
-            # Validate release job exists
-            if 'release' not in jobs:
-                errors.append("riso-release.yml: Missing 'release' job")
-            else:
-                release_job = jobs['release']
-                
-                # Validate job structure
-                if 'runs-on' not in release_job:
-                    errors.append("riso-release.yml: release job missing 'runs-on'")
-                
-                if 'steps' not in release_job:
-                    errors.append("riso-release.yml: release job missing 'steps'")
-                else:
-                    steps = release_job['steps']
-                    
-                    # Check for required steps
-                    step_names = [step.get('name', '') for step in steps]
-                    
-                    if not any('semantic-release' in name.lower() for name in step_names):
-                        errors.append("riso-release.yml: Missing semantic-release step")
-        
-        return len(errors) == 0, errors
-        
-    except yaml.YAMLError as e:
-        errors.append(f"riso-release.yml: YAML parsing error: {e}")
-        return False, errors
-    except Exception as e:
-        errors.append(f"riso-release.yml: Validation error: {e}")
-        return False, errors
+            release_job = jobs['release']
+
+            # Validate job structure
+            job_errors = validate_required_fields(
+                release_job,
+                ['runs-on', 'steps'],
+                context="riso-release.yml: release job"
+            )
+            errors.extend(job_errors)
+
+            # Check for required steps
+            if 'steps' in release_job:
+                steps = release_job['steps']
+                step_names = [step.get('name', '') for step in steps]
+
+                if not any('semantic-release' in name.lower() for name in step_names):
+                    errors.append("riso-release.yml: Missing semantic-release step")
+
+    return len(errors) == 0, errors
 
 
 def main() -> int:
@@ -208,9 +215,13 @@ def main() -> int:
     
     args = parser.parse_args()
     project_dir = args.project_dir
-    
-    if not project_dir.exists():
-        print(f"? Project directory not found: {project_dir}", file=sys.stderr)
+
+    # Use shared path validation utility
+    path_result = validate_path_exists(project_dir, must_be_dir=True)
+    if not path_result["valid"]:
+        print(f"? Project directory validation failed:", file=sys.stderr)
+        for error in path_result["errors"]:
+            print(f"  - {error}", file=sys.stderr)
         return 1
     
     print("?? Validating release configurations...")
@@ -265,14 +276,9 @@ def main() -> int:
         print("? Not present (changelog module disabled)")
     print()
     
-    # Print errors
+    # Print errors using shared utility
     if all_errors:
-        print("=" * 70)
-        print("? Validation Errors:")
-        print("=" * 70)
-        for error in all_errors:
-            print(f"  ? {error}")
-        print()
+        print_error_list(all_errors, title="Validation Errors")
         return 1
     
     print("=" * 70)
