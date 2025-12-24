@@ -1,50 +1,75 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# Riso Template Constitution
+
+> Governance principles for the Riso project template system.
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Template Quality First
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+All template output must be production-ready. Generated projects should:
+- Pass all quality checks (ruff, mypy, pylint, pytest) without modification
+- Include proper documentation and type hints
+- Follow established patterns for the chosen technology stack
+- Be immediately runnable after generation
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. Modular Composition
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+Features are implemented as composable modules:
+- Modules must be independently testable
+- Module combinations must not create conflicts
+- Each module has clear boundaries and responsibilities
+- Shared logic is extracted to common packages
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. Test-Driven Development
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Testing is non-negotiable:
+- Template changes require corresponding test updates
+- Rendered projects must achieve ≥90% test coverage
+- Integration tests verify module combinations
+- CI must pass before merging
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Documentation Parity
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Documentation stays synchronized:
+- Template docs match generated project docs
+- Changes to one require updates to the other
+- All public APIs are documented
+- Examples are tested and verified
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Backwards Compatibility
+
+Breaking changes are managed carefully:
+- Semantic versioning for template releases
+- Migration guides for breaking changes
+- Deprecation warnings before removal
+- Clear upgrade paths documented
+
+## Development Standards
+
+### Code Style
+- Python: Ruff for linting, Black formatting via Ruff
+- TypeScript: ESLint + Prettier
+- YAML/Jinja: Consistent indentation (2 spaces)
+- Commit messages: Conventional Commits format
+
+### Review Process
+- All changes require PR review
+- CI must pass before merge
+- Breaking changes require maintainer approval
+- Security issues are prioritized
+
+### Quality Gates
+- Ruff check must pass
+- Mypy strict mode must pass
+- Pylint score ≥9.0
+- Test coverage ≥90%
+- No security vulnerabilities (pip-audit)
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+- This constitution supersedes all other practices
+- Amendments require documentation and maintainer approval
+- All PRs must verify compliance with these principles
+- Exceptions must be documented and justified
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2024-12-23 | **Last Amended**: 2024-12-23
