@@ -105,3 +105,23 @@ jobs:
       - name: Run actionlint
         run: |
           ./actionlint -color .github/workflows/*.yml
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Run pip-audit
+        run: |
+          # Audit the project dependencies
+          pip-audit --strict --vulnerability-service osv || echo "::warning::Security vulnerabilities found"
+        continue-on-error: true
