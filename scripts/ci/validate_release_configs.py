@@ -34,12 +34,13 @@ from lib.validation import (
     create_validation_result,
     print_error_list,
 )
+from lib.logger import logger, configure_logging
 
 try:
     import yaml
 except ImportError:
-    print("? Error: PyYAML not installed", file=sys.stderr)
-    print("   Install with: pip install pyyaml", file=sys.stderr)
+    logger.error("PyYAML not installed")
+    logger.info("Install with: pip install pyyaml")
     sys.exit(1)
 
 
@@ -199,10 +200,12 @@ def validate_release_workflow(workflow_path: Path) -> tuple[bool, list[str]]:
 
 def main() -> int:
     """Main entry point for validation script.
-    
+
     Returns:
         Exit code: 0 for success, 1 for failure
     """
+    configure_logging()
+
     parser = argparse.ArgumentParser(
         description='Validate release configuration files'
     )
@@ -212,79 +215,79 @@ def main() -> int:
         default=Path('samples/default/render'),
         help='Path to rendered project directory'
     )
-    
+
     args = parser.parse_args()
     project_dir = args.project_dir
 
     # Use shared path validation utility
     path_result = validate_path_exists(project_dir, must_be_dir=True)
     if not path_result["valid"]:
-        print(f"? Project directory validation failed:", file=sys.stderr)
+        logger.error("Project directory validation failed:")
         for error in path_result["errors"]:
-            print(f"  - {error}", file=sys.stderr)
+            logger.error(f"  - {error}")
         return 1
-    
-    print("?? Validating release configurations...")
-    print(f"?? Project directory: {project_dir}")
-    print()
+
+    logger.info("Validating release configurations...")
+    logger.info(f"Project directory: {project_dir}")
+    logger.info("")
     
     all_valid = True
     all_errors = []
-    
+
     # Validate commitlint config
-    print("Validating .commitlintrc.yml...")
+    logger.info("Validating .commitlintrc.yml...")
     commitlint_path = project_dir / '.commitlintrc.yml'
     is_valid, errors = validate_commitlint_config(commitlint_path)
-    
+
     if not is_valid:
         all_valid = False
         all_errors.extend(errors)
-        print("? Validation failed")
+        logger.error("Validation failed")
     elif commitlint_path.exists():
-        print("? Valid")
+        logger.info("Valid")
     else:
-        print("? Not present (changelog module disabled)")
-    print()
-    
+        logger.info("Not present (changelog module disabled)")
+    logger.info("")
+
     # Validate semantic-release config
-    print("Validating .releaserc.yml...")
+    logger.info("Validating .releaserc.yml...")
     releaserc_path = project_dir / '.releaserc.yml'
     is_valid, errors = validate_semantic_release_config(releaserc_path)
-    
+
     if not is_valid:
         all_valid = False
         all_errors.extend(errors)
-        print("? Validation failed")
+        logger.error("Validation failed")
     elif releaserc_path.exists():
-        print("? Valid")
+        logger.info("Valid")
     else:
-        print("? Not present (changelog module disabled)")
-    print()
-    
+        logger.info("Not present (changelog module disabled)")
+    logger.info("")
+
     # Validate release workflow
-    print("Validating .github/workflows/riso-release.yml...")
+    logger.info("Validating .github/workflows/riso-release.yml...")
     workflow_path = project_dir / '.github' / 'workflows' / 'riso-release.yml'
     is_valid, errors = validate_release_workflow(workflow_path)
-    
+
     if not is_valid:
         all_valid = False
         all_errors.extend(errors)
-        print("? Validation failed")
+        logger.error("Validation failed")
     elif workflow_path.exists():
-        print("? Valid")
+        logger.info("Valid")
     else:
-        print("? Not present (changelog module disabled)")
-    print()
+        logger.info("Not present (changelog module disabled)")
+    logger.info("")
     
     # Print errors using shared utility
     if all_errors:
         print_error_list(all_errors, title="Validation Errors")
         return 1
-    
-    print("=" * 70)
-    print("? All validation checks passed!")
-    print("=" * 70)
-    
+
+    logger.info("=" * 70)
+    logger.info("All validation checks passed!")
+    logger.info("=" * 70)
+
     return 0
 
 

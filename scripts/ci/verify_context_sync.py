@@ -7,6 +7,8 @@ import hashlib
 import sys
 from pathlib import Path
 
+from scripts.lib.logger import logger, configure_logging
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SOURCE_DIR = REPO_ROOT / ".github" / "context"
 TEMPLATE_DIR = (
@@ -28,11 +30,13 @@ def collect_digests(directory: Path) -> dict[str, str]:
 
 
 def main() -> None:
+    configure_logging()
+
     if not SOURCE_DIR.exists():
-        print("Source context directory missing.", file=sys.stderr)
+        logger.error("Source context directory missing.")
         sys.exit(1)
     if not TEMPLATE_DIR.exists():
-        print("Template context directory missing.", file=sys.stderr)
+        logger.error("Template context directory missing.")
         sys.exit(1)
 
     source = collect_digests(SOURCE_DIR)
@@ -47,15 +51,15 @@ def main() -> None:
     )
 
     if not missing and not extra and not mismatched:
-        print("Context directories are in sync.")
+        logger.info("Context directories are in sync.")
         return
 
     if missing:
-        print("Missing context files in template:", ", ".join(missing), file=sys.stderr)
+        logger.error("Missing context files in template: " + ", ".join(missing))
     if extra:
-        print("Unexpected context files in template:", ", ".join(extra), file=sys.stderr)
+        logger.error("Unexpected context files in template: " + ", ".join(extra))
     if mismatched:
-        print("Content mismatches detected:", ", ".join(mismatched), file=sys.stderr)
+        logger.error("Content mismatches detected: " + ", ".join(mismatched))
     sys.exit(1)
 
 
