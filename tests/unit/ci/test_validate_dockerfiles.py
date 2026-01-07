@@ -114,6 +114,8 @@ class TestDockerfileValidation:
 
     def test_valid_dockerfile_passes(self, temp_dir, monkeypatch):
         """Valid Dockerfile should pass basic validation."""
+        # Resolve temp_dir to avoid symlink issues on macOS
+        temp_dir = temp_dir.resolve()
         dockerfile = temp_dir / "Dockerfile"
         dockerfile.write_text("""FROM python:3.11-slim
 WORKDIR /app
@@ -131,22 +133,19 @@ CMD ["python", "main.py"]
             return result
 
         # Change to temp_dir so relative paths work
-        import os
-        original_cwd = os.getcwd()
-        os.chdir(temp_dir)
-        try:
-            monkeypatch.setattr("subprocess.run", mock_run)
-            from validate_dockerfiles import validate_dockerfile
-            result = validate_dockerfile(dockerfile)
+        monkeypatch.chdir(temp_dir)
+        monkeypatch.setattr("subprocess.run", mock_run)
+        from validate_dockerfiles import validate_dockerfile
+        result = validate_dockerfile(dockerfile)
 
-            assert result["passed"] is True
-            assert len(result["errors"]) == 0
-            assert len(result["warnings"]) == 0
-        finally:
-            os.chdir(original_cwd)
+        assert result["passed"] is True
+        assert len(result["errors"]) == 0
+        assert len(result["warnings"]) == 0
 
     def test_dockerfile_with_errors(self, temp_dir, monkeypatch):
         """Dockerfile with errors should fail validation."""
+        # Resolve temp_dir to avoid symlink issues on macOS
+        temp_dir = temp_dir.resolve()
         dockerfile = temp_dir / "Dockerfile"
         dockerfile.write_text("FROM python\n")  # Missing specific version tag
 
@@ -168,23 +167,20 @@ CMD ["python", "main.py"]
             return result
 
         # Change to temp_dir so relative paths work
-        import os
-        original_cwd = os.getcwd()
-        os.chdir(temp_dir)
-        try:
-            monkeypatch.setattr("subprocess.run", mock_run)
-            from validate_dockerfiles import validate_dockerfile
-            result = validate_dockerfile(dockerfile)
+        monkeypatch.chdir(temp_dir)
+        monkeypatch.setattr("subprocess.run", mock_run)
+        from validate_dockerfiles import validate_dockerfile
+        result = validate_dockerfile(dockerfile)
 
-            assert result["passed"] is False
-            assert len(result["errors"]) == 1
-            assert result["errors"][0]["code"] == "DL3006"
-            assert result["errors"][0]["level"] == "error"
-        finally:
-            os.chdir(original_cwd)
+        assert result["passed"] is False
+        assert len(result["errors"]) == 1
+        assert result["errors"][0]["code"] == "DL3006"
+        assert result["errors"][0]["level"] == "error"
 
     def test_dockerfile_with_warnings(self, temp_dir, monkeypatch):
         """Dockerfile with warnings should pass but show warnings."""
+        # Resolve temp_dir to avoid symlink issues on macOS
+        temp_dir = temp_dir.resolve()
         dockerfile = temp_dir / "Dockerfile"
         dockerfile.write_text("FROM python:3.11-slim\nRUN apt-get update\n")
 
@@ -206,23 +202,20 @@ CMD ["python", "main.py"]
             return result
 
         # Change to temp_dir so relative paths work
-        import os
-        original_cwd = os.getcwd()
-        os.chdir(temp_dir)
-        try:
-            monkeypatch.setattr("subprocess.run", mock_run)
-            from validate_dockerfiles import validate_dockerfile
-            result = validate_dockerfile(dockerfile)
+        monkeypatch.chdir(temp_dir)
+        monkeypatch.setattr("subprocess.run", mock_run)
+        from validate_dockerfiles import validate_dockerfile
+        result = validate_dockerfile(dockerfile)
 
-            assert result["passed"] is True  # Warnings don't fail validation
-            assert len(result["errors"]) == 0
-            assert len(result["warnings"]) == 1
-            assert result["warnings"][0]["code"] == "DL3008"
-        finally:
-            os.chdir(original_cwd)
+        assert result["passed"] is True  # Warnings don't fail validation
+        assert len(result["errors"]) == 0
+        assert len(result["warnings"]) == 1
+        assert result["warnings"][0]["code"] == "DL3008"
 
     def test_dockerfile_with_mixed_issues(self, temp_dir, monkeypatch):
         """Dockerfile with errors and warnings should categorize correctly."""
+        # Resolve temp_dir to avoid symlink issues on macOS
+        temp_dir = temp_dir.resolve()
         dockerfile = temp_dir / "Dockerfile"
         dockerfile.write_text("FROM python:3.11-slim\n")
 
@@ -260,19 +253,14 @@ CMD ["python", "main.py"]
             return result
 
         # Change to temp_dir so relative paths work
-        import os
-        original_cwd = os.getcwd()
-        os.chdir(temp_dir)
-        try:
-            monkeypatch.setattr("subprocess.run", mock_run)
-            from validate_dockerfiles import validate_dockerfile
-            result = validate_dockerfile(dockerfile)
+        monkeypatch.chdir(temp_dir)
+        monkeypatch.setattr("subprocess.run", mock_run)
+        from validate_dockerfiles import validate_dockerfile
+        result = validate_dockerfile(dockerfile)
 
-            assert result["passed"] is False
-            assert len(result["errors"]) == 1
-            assert len(result["warnings"]) == 3  # warning, info, and style
-        finally:
-            os.chdir(original_cwd)
+        assert result["passed"] is False
+        assert len(result["errors"]) == 1
+        assert len(result["warnings"]) == 3  # warning, info, and style
 
     def test_handles_missing_file(self, temp_dir):
         """Should handle missing file gracefully."""
@@ -317,6 +305,8 @@ CMD ["python", "main.py"]
 
     def test_empty_hadolint_output(self, temp_dir, monkeypatch):
         """Should handle empty hadolint output correctly."""
+        # Resolve temp_dir to avoid symlink issues on macOS
+        temp_dir = temp_dir.resolve()
         dockerfile = temp_dir / "Dockerfile"
         dockerfile.write_text("FROM python:3.11-slim\n")
 
@@ -328,26 +318,23 @@ CMD ["python", "main.py"]
             return result
 
         # Change to temp_dir so relative paths work
-        import os
-        original_cwd = os.getcwd()
-        os.chdir(temp_dir)
-        try:
-            monkeypatch.setattr("subprocess.run", mock_run)
-            from validate_dockerfiles import validate_dockerfile
-            result = validate_dockerfile(dockerfile)
+        monkeypatch.chdir(temp_dir)
+        monkeypatch.setattr("subprocess.run", mock_run)
+        from validate_dockerfiles import validate_dockerfile
+        result = validate_dockerfile(dockerfile)
 
-            assert result["passed"] is True
-            assert len(result["errors"]) == 0
-            assert len(result["warnings"]) == 0
-        finally:
-            os.chdir(original_cwd)
+        assert result["passed"] is True
+        assert len(result["errors"]) == 0
+        assert len(result["warnings"]) == 0
 
 
 class TestPrintValidationSummary:
     """Tests for validation summary printing."""
 
-    def test_prints_summary_for_all_passed(self, capsys):
+    def test_prints_summary_for_all_passed(self, capfd):
         """Should print summary when all files pass."""
+        from scripts.lib.logger import configure_logging
+        configure_logging()  # Reset logger to ensure clean capture
         from validate_dockerfiles import print_validation_summary
 
         results = [
@@ -366,15 +353,18 @@ class TestPrintValidationSummary:
         ]
 
         print_validation_summary(results)
-        captured = capsys.readouterr()
+        captured = capfd.readouterr()
 
-        assert "Total files scanned: 2" in captured.out
-        assert "Passed: 2" in captured.out
-        assert "Failed: 0" in captured.out
-        assert "✅ PASS" in captured.out
+        # Loguru writes to stderr at file descriptor level
+        assert "Total files scanned: 2" in captured.err
+        assert "Passed: 2" in captured.err
+        assert "Failed: 0" in captured.err
+        assert "✅ PASS" in captured.err
 
-    def test_prints_summary_with_failures(self, capsys):
+    def test_prints_summary_with_failures(self, capfd):
         """Should print summary with failure details."""
+        from scripts.lib.logger import configure_logging
+        configure_logging()  # Reset logger to ensure clean capture
         from validate_dockerfiles import print_validation_summary
 
         results = [
@@ -393,17 +383,20 @@ class TestPrintValidationSummary:
         ]
 
         print_validation_summary(results)
-        captured = capsys.readouterr()
+        captured = capfd.readouterr()
 
-        assert "Total files scanned: 1" in captured.out
-        assert "Passed: 0" in captured.out
-        assert "Failed: 1" in captured.out
-        assert "❌ FAIL" in captured.out
-        assert "DL3006" in captured.out
-        assert "Always tag the version" in captured.out
+        # Loguru writes to stderr at file descriptor level
+        assert "Total files scanned: 1" in captured.err
+        assert "Passed: 0" in captured.err
+        assert "Failed: 1" in captured.err
+        assert "❌ FAIL" in captured.err
+        assert "DL3006" in captured.err
+        assert "Always tag the version" in captured.err
 
-    def test_prints_warnings(self, capsys):
+    def test_prints_warnings(self, capfd):
         """Should print warning details."""
+        from scripts.lib.logger import configure_logging
+        configure_logging()  # Reset logger to ensure clean capture
         from validate_dockerfiles import print_validation_summary
 
         results = [
@@ -422,11 +415,12 @@ class TestPrintValidationSummary:
         ]
 
         print_validation_summary(results)
-        captured = capsys.readouterr()
+        captured = capfd.readouterr()
 
-        assert "Warnings: 1" in captured.out
-        assert "DL3008" in captured.out
-        assert "Pin versions in apt-get" in captured.out
+        # Loguru writes to stderr at file descriptor level
+        assert "Warnings: 1" in captured.err
+        assert "DL3008" in captured.err
+        assert "Pin versions in apt-get" in captured.err
 
 
 class TestMain:

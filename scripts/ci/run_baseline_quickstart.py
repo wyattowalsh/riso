@@ -7,6 +7,8 @@ import json
 import time
 from pathlib import Path
 
+from scripts.lib.logger import logger, configure_logging
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 EVIDENCE_DIR = REPO_ROOT / "samples" / "default"
 RESULT_FILE = EVIDENCE_DIR / "baseline_quickstart_metrics.json"
@@ -38,10 +40,12 @@ def run() -> dict[str, object]:
 
 
 def main() -> None:
+    configure_logging()
+
     EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
     data = run()
     RESULT_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    print(f"Baseline quickstart metrics written to {RESULT_FILE}")
+    logger.info(f"Baseline quickstart metrics written to {RESULT_FILE}")
 
 
 if __name__ == "__main__":

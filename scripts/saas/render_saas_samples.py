@@ -16,6 +16,10 @@ import sys
 from pathlib import Path
 
 WORKSPACE_ROOT = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(WORKSPACE_ROOT))
+
+from scripts.lib.logger import logger, configure_logging
+
 SAMPLES_DIR = WORKSPACE_ROOT / "samples" / "saas-starter"
 
 # Recommended stacks configuration
@@ -152,13 +156,13 @@ def create_copier_answers_file(stack_key: str, config: dict) -> Path:
 
 def render_sample(stack_key: str, stack_config: dict) -> dict:
     """Configure a sample project for the given stack."""
-    print(f"\n?? Configuring: {stack_config['name']}")
-    print(f"   {stack_config['description']}")
+    logger.info(f"Configuring: {stack_config['name']}")
+    logger.info(f"   {stack_config['description']}")
     
     try:
         # Create copier-answers.yml
         answers_file = create_copier_answers_file(stack_key, stack_config["config"])
-        print(f"   ? Created: {answers_file.relative_to(WORKSPACE_ROOT)}")
+        logger.info(f"   Created: {answers_file.relative_to(WORKSPACE_ROOT)}")
         
         # Create metadata file
         metadata = {
@@ -172,8 +176,8 @@ def render_sample(stack_key: str, stack_config: dict) -> dict:
         metadata_file = SAMPLES_DIR / stack_key / "metadata.json"
         with open(metadata_file, "w") as f:
             json.dump(metadata, f, indent=2)
-        
-        print(f"   ? Created: {metadata_file.relative_to(WORKSPACE_ROOT)}")
+
+        logger.info(f"   Created: {metadata_file.relative_to(WORKSPACE_ROOT)}")
         
         return {
             "stack": stack_key,
@@ -184,7 +188,7 @@ def render_sample(stack_key: str, stack_config: dict) -> dict:
         }
         
     except Exception as e:
-        print(f"   ? Error: {e}")
+        logger.error(f"   Error: {e}")
         return {
             "stack": stack_key,
             "status": "failed",
@@ -194,6 +198,8 @@ def render_sample(stack_key: str, stack_config: dict) -> dict:
 
 def main() -> int:
     """Main render entry point."""
+    configure_logging()
+
     parser = argparse.ArgumentParser(
         description="Configure SaaS Starter sample projects"
     )
@@ -203,17 +209,17 @@ def main() -> int:
         help="Configure only the specified stack (default: configure all)",
     )
     args = parser.parse_args()
-    
-    print("?? SaaS Starter Sample Configuration")
-    print("=" * 60)
+
+    logger.info("SaaS Starter Sample Configuration")
+    logger.info("=" * 60)
     
     # Determine which stacks to configure
     if args.stack:
         stacks_to_configure = {args.stack: RECOMMENDED_STACKS[args.stack]}
     else:
         stacks_to_configure = RECOMMENDED_STACKS
-    
-    print(f"\n?? Configuring {len(stacks_to_configure)} stack(s)")
+
+    logger.info(f"Configuring {len(stacks_to_configure)} stack(s)")
     
     # Configure each stack
     results = []
@@ -226,28 +232,28 @@ def main() -> int:
     results_file.parent.mkdir(parents=True, exist_ok=True)
     with results_file.open("w") as f:
         json.dump(results, f, indent=2)
-    
-    print(f"\n?? Results saved to {results_file.relative_to(WORKSPACE_ROOT)}")
+
+    logger.info(f"Results saved to {results_file.relative_to(WORKSPACE_ROOT)}")
     
     # Summary
     configured = sum(1 for r in results if r["status"] == "configured")
     failed = sum(1 for r in results if r["status"] == "failed")
-    
-    print("\n" + "=" * 60)
-    print("?? Summary:")
-    print(f"  ? Configured: {configured}")
-    print(f"  ? Failed: {failed}")
-    print(f"  ?? Total: {len(results)}")
+
+    logger.info("=" * 60)
+    logger.info("Summary:")
+    logger.info(f"  Configured: {configured}")
+    logger.info(f"  Failed: {failed}")
+    logger.info(f"  Total: {len(results)}")
     
     if failed > 0:
-        print("\n? Some configurations failed")
+        logger.warning("Some configurations failed")
         return 1
-    
-    print("\n? All stacks configured successfully!")
-    print("\nNext steps:")
-    print("  1. Render a sample: copier copy . samples/saas-starter/<stack>/render -f samples/saas-starter/<stack>/copier-answers.yml")
-    print("  2. Install deps: cd samples/saas-starter/<stack>/render && pnpm install")
-    print("  3. Run tests: pnpm run test")
+
+    logger.info("All stacks configured successfully!")
+    logger.info("Next steps:")
+    logger.info("  1. Render a sample: copier copy . samples/saas-starter/<stack>/render -f samples/saas-starter/<stack>/copier-answers.yml")
+    logger.info("  2. Install deps: cd samples/saas-starter/<stack>/render && pnpm install")
+    logger.info("  3. Run tests: pnpm run test")
     
     return 0
 
