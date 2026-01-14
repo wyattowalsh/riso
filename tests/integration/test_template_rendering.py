@@ -9,6 +9,7 @@ from pathlib import Path
 pytestmark = pytest.mark.integration
 
 
+@pytest.mark.integration
 class TestDefaultSampleRendering:
     """Tests for default sample rendering."""
 
@@ -48,6 +49,7 @@ class TestDefaultSampleRendering:
                 assert answers_file.exists(), f"{sample_dir.name} missing copier-answers.yml"
 
 
+@pytest.mark.integration
 class TestSampleConfiguration:
     """Tests for sample configuration validity."""
 
@@ -91,6 +93,7 @@ class TestSampleConfiguration:
             assert data.get("project_layout") == "monorepo", f"{sample_name} should be monorepo"
 
 
+@pytest.mark.integration
 class TestTemplateFiles:
     """Tests for template file validity."""
 

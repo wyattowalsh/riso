@@ -1,13 +1,11 @@
 """Unit tests for validate_release_configs.py"""
-import sys
-from pathlib import Path
-
 import pytest
 
-# Add scripts to path for imports
-sys.path.insert(0, str(Path(__file__).parents[3] / "scripts" / "ci"))
+
+pytestmark = pytest.mark.usefixtures("ci_scripts_path")
 
 
+@pytest.mark.unit
 class TestValidateCommitlintConfig:
     """Tests for commitlint configuration validation."""
 
@@ -52,7 +50,8 @@ rules:
 
         valid, errors = validate_commitlint_config(config)
         assert valid is False
-        assert any("extends" in e.lower() for e in errors)
+        assert len(errors) == 1
+        assert "extends" in errors[0].lower()
 
     def test_missing_rules_fails(self, temp_dir):
         """Missing rules field should fail."""
@@ -65,7 +64,8 @@ extends:
 
         valid, errors = validate_commitlint_config(config)
         assert valid is False
-        assert any("rules" in e.lower() for e in errors)
+        assert len(errors) == 1
+        assert "rules" in errors[0].lower()
 
     def test_missing_type_enum_fails(self, temp_dir):
         """Missing type-enum rule should fail."""
@@ -83,7 +83,8 @@ rules:
 
         valid, errors = validate_commitlint_config(config)
         assert valid is False
-        assert any("type-enum" in e.lower() for e in errors)
+        assert len(errors) == 1
+        assert "type-enum" in errors[0].lower()
 
     def test_invalid_type_enum_format_fails(self, temp_dir):
         """Invalid type-enum format should fail."""
@@ -98,7 +99,8 @@ rules:
 
         valid, errors = validate_commitlint_config(config)
         assert valid is False
-        assert any("type-enum" in e.lower() for e in errors)
+        assert len(errors) == 1
+        assert "type-enum" in errors[0].lower()
 
     def test_invalid_yaml_fails(self, temp_dir):
         """Invalid YAML should fail with parsing error."""
@@ -113,9 +115,12 @@ rules:
 
         valid, errors = validate_commitlint_config(config)
         assert valid is False
-        assert any("yaml" in e.lower() or "parsing" in e.lower() for e in errors)
+        assert len(errors) == 1
+        # Error message contains either 'yaml' or 'parsing'
+        assert "yaml" in errors[0].lower() or "parsing" in errors[0].lower()
 
 
+@pytest.mark.unit
 class TestValidateSemanticReleaseConfig:
     """Tests for .releaserc.yml validation."""
 
@@ -159,7 +164,8 @@ plugins:
 
         valid, errors = validate_semantic_release_config(config)
         assert valid is False
-        assert any("branches" in e.lower() for e in errors)
+        assert len(errors) == 1
+        assert "branches" in errors[0].lower()
 
     def test_missing_plugins_fails(self, temp_dir):
         """Missing plugins field should fail."""
@@ -172,7 +178,8 @@ branches:
 
         valid, errors = validate_semantic_release_config(config)
         assert valid is False
-        assert any("plugins" in e.lower() for e in errors)
+        assert len(errors) == 1
+        assert "plugins" in errors[0].lower()
 
     def test_missing_required_plugin_fails(self, temp_dir):
         """Missing required plugin should fail."""
@@ -188,7 +195,12 @@ plugins:
 
         valid, errors = validate_semantic_release_config(config)
         assert valid is False
-        assert any("changelog" in e.lower() or "release-notes" in e.lower() for e in errors)
+        # Should have 2 errors for 2 missing required plugins
+        assert len(errors) == 2
+        # Check that errors mention the missing plugins
+        error_text = " ".join(errors).lower()
+        assert "changelog" in error_text
+        assert "release-notes" in error_text
 
     def test_plugins_with_config_passes(self, temp_dir):
         """Plugins with configuration objects should pass."""
@@ -220,9 +232,12 @@ plugins: [invalid yaml
 
         valid, errors = validate_semantic_release_config(config)
         assert valid is False
-        assert any("yaml" in e.lower() or "parsing" in e.lower() for e in errors)
+        assert len(errors) == 1
+        # Error message contains either 'yaml' or 'parsing'
+        assert "yaml" in errors[0].lower() or "parsing" in errors[0].lower()
 
 
+@pytest.mark.unit
 class TestValidateReleaseWorkflow:
     """Tests for release workflow validation."""
 
@@ -274,6 +289,8 @@ jobs:
 
         valid, errors = validate_release_workflow(workflow)
         assert valid is False
+        assert len(errors) >= 1
+        # Check that at least one error mentions the missing name field
         assert any("name" in e.lower() for e in errors)
 
     def test_missing_on_fails(self, temp_dir):
@@ -291,6 +308,8 @@ jobs:
 
         valid, errors = validate_release_workflow(workflow)
         assert valid is False
+        assert len(errors) >= 1
+        # Check that at least one error mentions the missing 'on' field
         assert any("'on'" in e.lower() or "on" in e for e in errors)
 
     def test_missing_jobs_fails(self, temp_dir):
@@ -306,7 +325,8 @@ name: Release
 
         valid, errors = validate_release_workflow(workflow)
         assert valid is False
-        assert any("jobs" in e.lower() for e in errors)
+        assert len(errors) == 1
+        assert "jobs" in errors[0].lower()
 
     def test_missing_release_job_fails(self, temp_dir):
         """Missing release job should fail."""
@@ -326,7 +346,9 @@ jobs:
 
         valid, errors = validate_release_workflow(workflow)
         assert valid is False
-        assert any("release" in e.lower() and "job" in e.lower() for e in errors)
+        assert len(errors) == 1
+        error_lower = errors[0].lower()
+        assert "release" in error_lower and "job" in error_lower
 
     def test_missing_runs_on_fails(self, temp_dir):
         """Missing runs-on in release job should fail."""
@@ -347,7 +369,8 @@ jobs:
 
         valid, errors = validate_release_workflow(workflow)
         assert valid is False
-        assert any("runs-on" in e.lower() for e in errors)
+        assert len(errors) == 1
+        assert "runs-on" in errors[0].lower()
 
     def test_missing_steps_fails(self, temp_dir):
         """Missing steps in release job should fail."""
@@ -365,7 +388,8 @@ jobs:
 
         valid, errors = validate_release_workflow(workflow)
         assert valid is False
-        assert any("steps" in e.lower() for e in errors)
+        assert len(errors) == 1
+        assert "steps" in errors[0].lower()
 
     def test_missing_semantic_release_step_fails(self, temp_dir):
         """Missing semantic-release step should fail."""
@@ -387,7 +411,8 @@ jobs:
 
         valid, errors = validate_release_workflow(workflow)
         assert valid is False
-        assert any("semantic-release" in e.lower() for e in errors)
+        assert len(errors) == 1
+        assert "semantic-release" in errors[0].lower()
 
     def test_invalid_yaml_fails(self, temp_dir):
         """Invalid YAML should fail with parsing error."""
@@ -403,4 +428,6 @@ jobs: invalid yaml
 
         valid, errors = validate_release_workflow(workflow)
         assert valid is False
-        assert any("yaml" in e.lower() or "parsing" in e.lower() for e in errors)
+        assert len(errors) == 1
+        # Error message contains either 'yaml' or 'parsing'
+        assert "yaml" in errors[0].lower() or "parsing" in errors[0].lower()

@@ -1,6 +1,149 @@
-# Riso Template • Agent Operations
+# AGENTS.md
 
-> Maintained per [AGENTS.md specification](https://agents.md) (observed: 2025-10-30) and [maintainer field guide](https://github.com/openai/agents.md) (observed: 2025-10-30).
+> AI coding agent instructions for **riso**. Human docs: [README.md](./README.md)
+
+## Project Overview
+<!-- agents-md:auto -->
+
+Modular Copier-based project template for Python and Node.js applications.
+
+- **Type**: Copier template project
+- **Languages**: Python 3.11+ (primary), TypeScript, Node.js
+- **Package Manager**: uv (Python), pnpm (Node.js)
+- **License**: MIT
+
+## Quick Reference
+<!-- agents-md:auto -->
+
+| Task | Command |
+|------|---------|
+| Install deps | `uv sync` |
+| Install all extras | `uv sync --all-extras` |
+| Run tests | `uv run pytest` |
+| Run tests (verbose) | `uv run pytest -v` |
+| Run specific test | `uv run pytest tests/path/test_file.py::test_name` |
+| Coverage | `uv run pytest --cov` |
+| Lint (ruff) | `uv run ruff check .` |
+| Format (ruff) | `uv run ruff format .` |
+| Type check (ty) | `uv run ty check scripts template/hooks` |
+| Static analysis | `uv run pylint scripts template/hooks tests` |
+| Pre-commit (all) | `uv run pre-commit run --all-files` |
+| Render samples | `./scripts/render-samples.sh` |
+| Build docs | `uv run sphinx-build docs docs/_build` |
+| Quality suite | `make quality` |
+
+## Setup Commands
+<!-- agents-md:auto -->
+
+```bash
+# Clone and setup
+git clone https://github.com/wyattowalsh/riso.git
+cd riso
+
+# Install dependencies
+uv sync --all-extras
+
+# Install pre-commit hooks
+uv run pre-commit install --install-hooks
+
+# Verify setup
+uv run pytest tests/ -x -q
+```
+
+## Testing Instructions
+<!-- agents-md:auto -->
+
+- **Framework**: pytest with pytest-xdist (parallel), pytest-cov (coverage), pytest-randomly
+- **Test paths**: `tests/`
+- **Markers**: `slow`, `integration`, `unit`
+
+```bash
+# Run all tests (parallel by default)
+uv run pytest
+
+# Run specific test file
+uv run pytest tests/unit/ci/test_render_matrix.py
+
+# Run tests matching pattern
+uv run pytest -k "test_validate"
+
+# Run with coverage report
+uv run pytest --cov=scripts --cov=template/hooks --cov-report=html
+
+# Skip slow tests
+uv run pytest -m "not slow"
+
+# Run only integration tests
+uv run pytest -m integration
+```
+
+## Pre-commit Hooks
+<!-- agents-md:auto -->
+
+Comprehensive pre-commit configuration with multi-stage hooks:
+
+| Stage | Hooks | Purpose |
+|-------|-------|---------|
+| **pre-commit** | ruff (lint+format), ty, pylint, vulture, gitleaks, shellcheck, codespell, actionlint, mdformat, YAML/TOML/JSON checks | Code quality |
+| **commit-msg** | commitlint, conventional-pre-commit | Commit format validation |
+| **pre-push** | pytest, pip-audit | Full test suite + security |
+
+```bash
+# Install all hook types
+uv run pre-commit install --install-hooks
+
+# Run all hooks manually
+uv run pre-commit run --all-files
+
+# Run specific hook
+uv run pre-commit run ruff --all-files
+
+# Skip hooks (emergency only)
+git commit --no-verify -m "emergency: bypass hooks"
+```
+
+## CI/CD Context
+<!-- agents-md:auto -->
+
+- **Platform**: GitHub Actions
+- **Workflows**: `.github/workflows/quality.yml`
+
+| Job | Triggers | Purpose |
+|-----|----------|---------|
+| `python-quality` | push, PR | Ruff, ty, pylint, pytest |
+| `python-matrix` | push, PR | Python 3.11/3.12/3.13 matrix |
+| `matrix-summary` | matrix complete | Block merge if any version fails |
+
+**Required checks before merge**:
+- `python-quality`
+- `python-matrix / test-py311`
+- `python-matrix / test-py312`
+- `python-matrix / test-py313`
+- `matrix-summary`
+
+## CI Scripts Reference
+<!-- agents-md:auto -->
+
+| Script | Purpose | Command |
+|--------|---------|---------|
+| `render_matrix.py` | Render all sample variants | `uv run python scripts/ci/render_matrix.py` |
+| `record_module_success.py` | Aggregate smoke test results | `uv run python scripts/ci/record_module_success.py` |
+| `check_quality_parity.py` | Ensure Makefile/uv tasks sync | `uv run python scripts/ci/check_quality_parity.py` |
+| `verify_context_sync.py` | Verify context file sync | `uv run python scripts/ci/verify_context_sync.py` |
+| `validate_workflows.py` | Validate GitHub workflows | `uv run python scripts/ci/validate_workflows.py` |
+| `validate_dockerfiles.py` | Validate Dockerfiles | `uv run python scripts/ci/validate_dockerfiles.py` |
+| `validate_release_configs.py` | Validate release configs | `uv run python scripts/ci/validate_release_configs.py` |
+
+## Gotchas & Edge Cases
+<!-- agents-md:auto -->
+
+- **CRITICAL**: Always use `uv run` prefix for Python commands (never bare `python` or `pytest`)
+- **Fixtures**: Test fixtures are in `conftest.py` files—check there for utilities
+- **Parallel tests**: Tests run in parallel by default (`-n auto`); use `-n 0` for sequential
+- **Pre-commit CI**: Some hooks are skipped in CI (ty-check, pylint, pytest, vulture, gitleaks)—they run in dedicated jobs
+- **Jinja templates**: Template files in `template/files/` use `.jinja` extension
+- **Sample renders**: Never manually edit `samples/*/render/`—regenerate with render script
+- **Lock files**: Never manually edit `uv.lock` or `pnpm-lock.yaml`—use package manager commands
 
 ## Quickstart
 
@@ -38,12 +181,52 @@ QUALITY_PROFILE=standard uv run task quality
 
 ## Repository Map
 
-- `template/` – Copier payload (Python + Node variants, shared logic, docs, module catalog).
-- `scripts/` – local/CI automation (rendering, metrics, context sync); run from repo root.
-- `samples/` – curated answer files, rendered artifacts, `smoke-results.json`, performance metrics.
-- `.github/context/` – canonical context snippets; must match `template/files/shared/.github/context/` (`uv run python scripts/ci/verify_context_sync.py`).
-- `docs/` – Jinja-templated quickstart and module docs rendered into downstream projects.
-- `specs/` – GitHub Spec Kit workspace (canonical specifications for features and plans).
+```
+riso/
+├── .claude/                       # Claude Code configuration
+│   └── skills/                    # AI agent skills
+├── .github/
+│   ├── workflows/                 # CI/CD workflows
+│   └── context/                   # Canonical context snippets (synced)
+├── src/
+│   └── riso/                      # Python package (automation helpers)
+├── template/                      # Copier payload
+│   ├── files/
+│   │   ├── python/                # Python project template files
+│   │   ├── node/                  # Node.js project template files
+│   │   └── shared/                # Shared across variants
+│   │       ├── .claude/skills/    # Skills for rendered projects
+│   │       ├── .github/           # CI workflow templates
+│   │       └── quality/           # Quality suite templates
+│   ├── hooks/                     # Pre/post generation hooks
+│   │   ├── pre_gen_project.py     # Validates tooling (runs before render)
+│   │   └── post_gen_project.py    # Writes metadata (runs after render)
+│   └── prompts/                   # Copier prompt definitions
+├── scripts/
+│   ├── render-samples.sh          # Primary render automation
+│   ├── setup/                     # Dev environment setup
+│   │   ├── setup.sh               # Bash setup (macOS/Linux/WSL)
+│   │   └── setup.ps1              # PowerShell setup (Windows)
+│   └── ci/                        # CI automation scripts
+├── samples/                       # Rendered sample projects
+│   ├── default/                   # Default variant
+│   │   ├── copier-answers.yml     # Answer file
+│   │   └── render/                # Rendered output (gitignored except AGENTS.md)
+│   └── metadata/                  # Aggregated metrics
+├── tests/                         # Test suite
+│   ├── unit/                      # Unit tests
+│   └── integration/               # Integration tests
+├── docs/                          # Sphinx documentation source
+├── specs/                         # GitHub Spec Kit workspace
+├── web/                           # Web frontend (if applicable)
+├── pyproject.toml                 # Python project config
+└── .pre-commit-config.yaml        # Pre-commit hook configuration
+```
+
+**Key Paths**:
+- `template/hooks/` – Validation and initialization logic (security-critical)
+- `scripts/ci/` – CI automation scripts
+- `.github/context/` – Must stay in sync with `template/files/shared/.github/context/`
 
 ## Build & Test Parity
 
@@ -198,6 +381,67 @@ QUALITY_PROFILE=standard uv run task quality
 - Quickstart playbook: `docs/quickstart.md.jinja`
 - Automation: `scripts/render-samples.sh`, `scripts/hooks/post-init.sh`
 - Module catalog: `template/files/shared/module_catalog.json.jinja`
+
+## Git Workflow & Commits
+<!-- agents-md:auto -->
+
+**Branches:**
+- `main` — Production-ready, protected
+- `feature/*` — New features
+- `fix/*` — Bug fixes
+- `docs/*` — Documentation updates
+- `claude/*` — AI-assisted development branches
+
+**Commit format** (Conventional Commits):
+```
+feat(template): add WebSocket module scaffold
+fix(hooks): handle missing uv gracefully
+docs(agents): update repository map
+refactor(ci): consolidate quality scripts
+test(hooks): add validation edge cases
+```
+
+**Pull request workflow:**
+1. Create feature branch from `main`
+2. Run `uv run pre-commit run --all-files` before committing
+3. Ensure all CI checks pass
+4. Squash merge to main
+5. Delete branch after merge
+
+## Boundaries
+<!-- agents-md:auto -->
+
+### ✅ Always Do
+- Run `uv run pre-commit run --all-files` before committing
+- Use `uv run` prefix for all Python commands
+- Update tests when modifying functionality
+- Keep template and repo context files in sync
+- Follow conventional commit format
+- Run quality checks before pushing (`make quality`)
+
+### ❓ Ask First
+- Adding new dependencies to `pyproject.toml`
+- Modifying CI workflow files (`.github/workflows/`)
+- Changing Copier prompt definitions (`template/prompts/`)
+- Updating pre/post generation hooks
+- Adding new sample variants
+- Modifying `.pre-commit-config.yaml`
+
+### 🚫 Never Touch
+- `.env*` files (secrets, gitignored)
+- `samples/*/render/` directories (generated—regenerate via script)
+- `node_modules/`, `.venv/`, `__pycache__/` (managed by tools)
+- `.riso/post_gen_metadata.json` (auto-generated)
+- `uv.lock`, `pnpm-lock.yaml` (modify via package manager only)
+- `dist/`, `build/`, `.next/` (build outputs)
+- GitHub Actions secrets or repository settings
+
+### ⚠️ Avoid
+- Running bare `python` or `pytest`—always use `uv run`
+- Manually editing rendered sample directories
+- Committing secrets, API keys, or credentials
+- Skipping CI checks or force-pushing to main
+- Duplicating content between AGENTS.md and pointer files
 
 <!-- MANUAL ADDITIONS START -->
 ### Docs Site Maintenance

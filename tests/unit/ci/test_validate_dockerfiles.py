@@ -1,15 +1,14 @@
 """Unit tests for validate_dockerfiles.py"""
 import json
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-import sys
-
-# Add scripts to path
-sys.path.insert(0, str(Path(__file__).parents[3] / "scripts" / "ci"))
 
 
+pytestmark = pytest.mark.usefixtures("ci_scripts_path")
+
+
+@pytest.mark.unit
 class TestCheckHadolintInstalled:
     """Tests for hadolint installation check."""
 
@@ -45,6 +44,7 @@ class TestCheckHadolintInstalled:
         assert check_hadolint_installed() is False
 
 
+@pytest.mark.unit
 class TestDockerfileDiscovery:
     """Tests for Dockerfile discovery."""
 
@@ -109,6 +109,214 @@ class TestDockerfileDiscovery:
         assert len(found) == 1
 
 
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "content,expected_passed,expected_error_codes,expected_warning_codes",
+    [
+        # Valid Dockerfiles
+        pytest.param(
+            "FROM python:3.11-slim\nWORKDIR /app\n",
+            True,
+            [],
+            [],
+            id="valid-simple-dockerfile",
+        ),
+        pytest.param(
+            "FROM python:3.11\nRUN pip install requests\nCMD ['python', 'app.py']\n",
+            True,
+            [],
+            [],
+            id="valid-with-run-and-cmd",
+        ),
+        pytest.param(
+            "FROM alpine:3.18\nRUN apk add --no-cache git=2.40.1-r0\n",
+            True,
+            [],
+            [],
+            id="valid-alpine-with-pinned-version",
+        ),
+        # Dockerfiles with errors
+        pytest.param(
+            "FROM python\n",
+            False,
+            ["DL3006"],
+            [],
+            id="error-missing-version-tag",
+        ),
+        pytest.param(
+            "FROM scratch\nRUN apt-get update\n",
+            False,
+            ["DL3006", "DL3008"],
+            [],
+            id="error-scratch-with-apt-get",
+        ),
+        pytest.param(
+            "RUN echo 'no FROM instruction'\n",
+            False,
+            ["DL3001"],
+            [],
+            id="error-missing-from",
+        ),
+        # Dockerfiles with warnings only
+        pytest.param(
+            "FROM python:3.11-slim\nRUN apt-get update\n",
+            True,
+            [],
+            ["DL3008"],
+            id="warning-apt-get-unpinned",
+        ),
+        pytest.param(
+            "FROM node:20\nRUN npm install\n",
+            True,
+            [],
+            ["DL3016"],
+            id="warning-npm-unpinned",
+        ),
+    ],
+)
+def test_dockerfile_validation_parametrized(
+    content, expected_passed, expected_error_codes, expected_warning_codes, temp_dir, monkeypatch
+):
+    """Test Dockerfile validation with various content scenarios."""
+    # Resolve temp_dir to avoid symlink issues on macOS
+    temp_dir = temp_dir.resolve()
+    dockerfile = temp_dir / "Dockerfile"
+    dockerfile.write_text(content)
+
+    # Build hadolint response based on expected errors and warnings
+    issues = []
+    for code in expected_error_codes:
+        issues.append({
+            "line": 1,
+            "code": code,
+            "message": f"Error for {code}",
+            "column": 1,
+            "file": str(dockerfile),
+            "level": "error"
+        })
+    for code in expected_warning_codes:
+        issues.append({
+            "line": 1,
+            "code": code,
+            "message": f"Warning for {code}",
+            "column": 1,
+            "file": str(dockerfile),
+            "level": "warning"
+        })
+
+    # Mock hadolint
+    def mock_run(*args, **kwargs):
+        result = MagicMock()
+        result.returncode = 1 if expected_error_codes else 0
+        result.stdout = json.dumps(issues)
+        result.stderr = ""
+        return result
+
+    # Change to temp_dir so relative paths work
+    monkeypatch.chdir(temp_dir)
+    monkeypatch.setattr("subprocess.run", mock_run)
+    from validate_dockerfiles import validate_dockerfile
+    result = validate_dockerfile(dockerfile)
+
+    assert result["passed"] is expected_passed
+    assert len(result["errors"]) == len(expected_error_codes)
+    assert len(result["warnings"]) == len(expected_warning_codes)
+
+    # Verify error codes match
+    actual_error_codes = [err["code"] for err in result["errors"]]
+    assert sorted(actual_error_codes) == sorted(expected_error_codes)
+
+    # Verify warning codes match
+    actual_warning_codes = [warn["code"] for warn in result["warnings"]]
+    assert sorted(actual_warning_codes) == sorted(expected_warning_codes)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "level,should_fail",
+    [
+        pytest.param("error", True, id="error-level-should-fail"),
+        pytest.param("warning", False, id="warning-level-should-pass"),
+        pytest.param("info", False, id="info-level-should-pass"),
+        pytest.param("style", False, id="style-level-should-pass"),
+    ],
+)
+def test_hadolint_error_levels(level, should_fail, temp_dir, monkeypatch):
+    """Test that different hadolint severity levels are handled correctly."""
+    # Resolve temp_dir to avoid symlink issues on macOS
+    temp_dir = temp_dir.resolve()
+    dockerfile = temp_dir / "Dockerfile"
+    dockerfile.write_text("FROM python:3.11-slim\n")
+
+    # Mock hadolint to return issue with specified level
+    def mock_run(*args, **kwargs):
+        result = MagicMock()
+        result.returncode = 1 if level == "error" else 0
+        result.stdout = json.dumps([
+            {
+                "line": 1,
+                "code": f"DL{level.upper()}",
+                "message": f"Test {level} message",
+                "column": 1,
+                "file": str(dockerfile),
+                "level": level
+            }
+        ])
+        result.stderr = ""
+        return result
+
+    # Change to temp_dir so relative paths work
+    monkeypatch.chdir(temp_dir)
+    monkeypatch.setattr("subprocess.run", mock_run)
+    from validate_dockerfiles import validate_dockerfile
+    result = validate_dockerfile(dockerfile)
+
+    assert result["passed"] is not should_fail
+
+    if should_fail:
+        assert len(result["errors"]) == 1
+        assert result["errors"][0]["level"] == level
+    else:
+        assert len(result["errors"]) == 0
+        assert len(result["warnings"]) == 1
+        assert result["warnings"][0]["level"] == level
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "dockerfile_name,should_find",
+    [
+        pytest.param("Dockerfile", True, id="standard-dockerfile"),
+        pytest.param("Dockerfile.python", True, id="dockerfile-with-suffix"),
+        pytest.param("Dockerfile.test", True, id="dockerfile-test-suffix"),
+        pytest.param("Dockerfile.prod", True, id="dockerfile-prod-suffix"),
+        pytest.param("Dockerfile.dev", True, id="dockerfile-dev-suffix"),
+        pytest.param(".dockerignore", False, id="dockerignore-excluded"),
+        pytest.param("README.md", False, id="non-dockerfile-excluded"),
+        pytest.param("test.txt", False, id="text-file-excluded"),
+    ],
+)
+def test_dockerfile_discovery_patterns(dockerfile_name, should_find, temp_dir):
+    """Test that Dockerfile discovery finds correct files and excludes others.
+
+    Note: The find_dockerfiles function uses glob patterns '**/Dockerfile' and
+    '**/Dockerfile.*', which only matches files named exactly 'Dockerfile' or
+    starting with 'Dockerfile.' (case-sensitive).
+    """
+    file_path = temp_dir / dockerfile_name
+    file_path.write_text("FROM python:3.11-slim\n")
+
+    from validate_dockerfiles import find_dockerfiles
+    found = find_dockerfiles(temp_dir)
+
+    if should_find:
+        assert len(found) >= 1
+        assert any(dockerfile_name in str(f) for f in found)
+    else:
+        assert all(dockerfile_name not in str(f) for f in found)
+
+
+@pytest.mark.unit
 class TestDockerfileValidation:
     """Tests for Dockerfile validation logic."""
 
@@ -328,6 +536,7 @@ CMD ["python", "main.py"]
         assert len(result["warnings"]) == 0
 
 
+@pytest.mark.unit
 class TestPrintValidationSummary:
     """Tests for validation summary printing."""
 
@@ -423,6 +632,7 @@ class TestPrintValidationSummary:
         assert "Pin versions in apt-get" in captured.err
 
 
+@pytest.mark.unit
 class TestMain:
     """Tests for main entry point."""
 
