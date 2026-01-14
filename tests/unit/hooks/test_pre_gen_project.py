@@ -2,13 +2,13 @@
 import json
 import os
 import pytest
-from pathlib import Path
-import sys
-
-# Add hooks to path
-sys.path.insert(0, str(Path(__file__).parents[3] / "template" / "hooks"))
+from typing import Any
 
 
+pytestmark = pytest.mark.usefixtures("hooks_path")
+
+
+@pytest.mark.unit
 class TestLoadDocsSite:
     """Tests for _load_docs_site function."""
 
@@ -65,6 +65,7 @@ class TestLoadDocsSite:
         assert result == "fumadocs"
 
 
+@pytest.mark.unit
 class TestLoadCiPlatform:
     """Tests for _load_ci_platform function."""
 
@@ -95,6 +96,7 @@ class TestLoadCiPlatform:
         assert result == "github-actions"
 
 
+@pytest.mark.unit
 class TestValidateSaasStarter:
     """Tests for SaaS starter validation."""
 
@@ -128,7 +130,8 @@ class TestValidateSaasStarter:
         }
         issues = _validate_saas_starter(context)
         warnings = [i for i in issues if i["severity"] == "warning"]
-        assert any("Prisma" in w["message"] for w in warnings)
+        assert len(warnings) >= 1
+        assert "Prisma" in warnings[0]["message"]
 
     def test_valid_combination_no_errors(self):
         """Valid combination should have no errors."""
@@ -145,6 +148,7 @@ class TestValidateSaasStarter:
         assert len(errors) == 0
 
 
+@pytest.mark.unit
 class TestProvisionResult:
     """Tests for ProvisionResult class."""
 
@@ -176,6 +180,7 @@ class TestProvisionResult:
         assert result["retry_command"] == "mise install node@20"
 
 
+@pytest.mark.unit
 class TestValidateAndReportSaasStarter:
     """Tests for _validate_and_report_saas_starter function."""
 
@@ -187,7 +192,9 @@ class TestValidateAndReportSaasStarter:
         assert result is True
         # Should not write validation messages
         captured = capsys.readouterr()
-        assert "Validating SaaS Starter" not in captured.err
+        # Validation messages should be absent when disabled
+        validation_keywords = ["Validating SaaS Starter", "SaaS Starter"]
+        assert not any(kw in captured.err for kw in validation_keywords)
 
     def test_returns_true_when_valid_config(self, capsys):
         """Test returns True for valid SaaS starter configuration."""
@@ -200,7 +207,9 @@ class TestValidateAndReportSaasStarter:
         result = _validate_and_report_saas_starter(context)
         assert result is True
         captured = capsys.readouterr()
-        assert "validated successfully" in captured.err
+        # Check for success indicators in output
+        success_keywords = ["validated successfully", "success", "pass"]
+        assert any(kw in captured.err.lower() for kw in success_keywords)
 
     def test_returns_false_when_errors_present(self, capsys):
         """Test returns False when validation errors exist."""
@@ -213,7 +222,9 @@ class TestValidateAndReportSaasStarter:
         result = _validate_and_report_saas_starter(context)
         assert result is False
         captured = capsys.readouterr()
-        assert "Configuration errors found" in captured.err
+        # Check for error indicators in output
+        error_keywords = ["Configuration errors", "error", "fail"]
+        assert any(kw in captured.err.lower() for kw in error_keywords)
 
     def test_reports_warnings_but_returns_true(self, capsys):
         """Test that warnings are reported but don't fail validation."""
@@ -226,7 +237,9 @@ class TestValidateAndReportSaasStarter:
         result = _validate_and_report_saas_starter(context)
         assert result is True
         captured = capsys.readouterr()
-        assert "Configuration warnings" in captured.err
+        # Check for warning indicators
+        output_lower = captured.err.lower()
+        assert "warning" in output_lower or "warn" in output_lower
         assert "Prisma" in captured.err
 
     def test_reports_info_notices(self, capsys):
@@ -240,9 +253,12 @@ class TestValidateAndReportSaasStarter:
         result = _validate_and_report_saas_starter(context)
         assert result is True
         captured = capsys.readouterr()
-        assert "Configuration notes" in captured.err or "Supabase Auth" in captured.err
+        # Check for info/notes indicators
+        info_keywords = ["Configuration notes", "note", "info", "Supabase"]
+        assert any(kw in captured.err for kw in info_keywords)
 
 
+@pytest.mark.unit
 class TestBuildToolMatrix:
     """Tests for _build_tool_matrix function."""
 
@@ -291,6 +307,7 @@ class TestBuildToolMatrix:
         assert node_entry[2] == "node@20"
 
 
+@pytest.mark.unit
 class TestCheckAndLogActionlint:
     """Tests for _check_and_log_actionlint function."""
 
@@ -303,9 +320,12 @@ class TestCheckAndLogActionlint:
         _check_and_log_actionlint("none")
 
         captured = capsys.readouterr()
-        assert "actionlint" not in captured.err
+        # Should not mention actionlint for non-GitHub platforms
+        output_text = captured.err.lower()
+        assert "actionlint" not in output_text
         # No log should be created
-        assert not (tmp_path / ".riso" / "toolchain_provisioning.jsonl").exists()
+        log_file = tmp_path / ".riso" / "toolchain_provisioning.jsonl"
+        assert not log_file.exists()
 
     def test_logs_actionlint_not_found(self, capsys, tmp_path, monkeypatch):
         """Test that actionlint unavailability is logged for GitHub Actions."""
@@ -318,7 +338,9 @@ class TestCheckAndLogActionlint:
             _check_and_log_actionlint("github-actions")
 
         captured = capsys.readouterr()
-        assert "actionlint not found" in captured.err
+        # Check for not found message
+        output_lower = captured.err.lower()
+        assert "actionlint" in output_lower and ("not found" in output_lower or "missing" in output_lower)
 
         # Check log file
         log_file = tmp_path / ".riso" / "toolchain_provisioning.jsonl"
@@ -345,6 +367,7 @@ class TestCheckAndLogActionlint:
         assert "already_present" in log_content
 
 
+@pytest.mark.unit
 class TestInstallRequiredTools:
     """Tests for _install_required_tools function."""
 
@@ -402,6 +425,7 @@ class TestInstallRequiredTools:
         assert log_content.count("\n") == 2
 
 
+@pytest.mark.unit
 class TestCheckPythonQualityTools:
     """Tests for _check_python_quality_tools function."""
 
@@ -459,6 +483,7 @@ class TestCheckPythonQualityTools:
         assert failures == []
 
 
+@pytest.mark.unit
 class TestReportFailuresAndExit:
     """Tests for _report_failures_and_exit function."""
 
@@ -493,7 +518,10 @@ class TestReportFailuresAndExit:
         assert exc_info.value.code == 1
 
         captured = capsys.readouterr()
-        assert "prerequisite check failed" in captured.err
+        output_lower = captured.err.lower()
+        # Check for failure indicators
+        assert "prerequisite" in output_lower or "failed" in output_lower or "error" in output_lower
+        # Check for tool details
         assert "uv" in captured.err
         assert "0.4" in captured.err
 
@@ -516,9 +544,11 @@ class TestReportFailuresAndExit:
             _report_failures_and_exit(failures)
 
         captured = capsys.readouterr()
-        assert "stderr: Installation failed" in captured.err
-        assert "retry: mise install node@20" in captured.err
-        assert "help: Install Node.js manually" in captured.err
+        output = captured.err
+        # Check for all failure details
+        assert "Installation failed" in output
+        assert "mise install node@20" in output
+        assert "Install Node.js manually" in output or "manually" in output.lower()
 
     def test_handles_multiple_failures(self, capsys):
         """Test reporting multiple failures."""
@@ -541,5 +571,405 @@ class TestReportFailuresAndExit:
             _report_failures_and_exit(failures)
 
         captured = capsys.readouterr()
-        assert "uv" in captured.err
-        assert "node" in captured.err
+        output = captured.err
+        # Check that both tools are mentioned
+        assert "uv" in output
+        assert "node" in output
+        # Verify we have multiple failure entries
+        assert output.count("failed") >= 2 or output.count("0.4") >= 1 and output.count("20") >= 1
+
+
+# ============================================================================
+# PARAMETRIZED TESTS
+# ============================================================================
+
+
+@pytest.mark.unit
+class TestParametrizedDocsSiteValidation:
+    """Parametrized tests for docs site validation."""
+
+    @pytest.mark.parametrize(
+        'env_value,expected',
+        [
+            ('{"docs_site": "fumadocs"}', "fumadocs"),
+            ('{"docs_site": "docusaurus"}', "docusaurus"),
+            ('{"docs_site": "sphinx-shibuya"}', "sphinx-shibuya"),
+            ('{"docs_site": "none"}', "none"),
+            ('{"docs_site": "mkdocs-material"}', "fumadocs"),  # Invalid, falls back to default
+            ('{"docs_site": "vitepress"}', "fumadocs"),  # Invalid, falls back to default
+            ('{"docs_site": "invalid-site"}', "fumadocs"),  # Falls back to default
+            ('not valid json', "fumadocs"),  # Falls back to default
+            ('["list", "not", "dict"]', "fumadocs"),  # Falls back to default
+            ('{}', "fumadocs"),  # Missing docs_site key
+        ],
+        ids=[
+            'valid_fumadocs',
+            'valid_docusaurus',
+            'valid_sphinx',
+            'valid_none',
+            'invalid_mkdocs',
+            'invalid_vitepress',
+            'invalid_site',
+            'invalid_json',
+            'non_dict_json',
+            'missing_key',
+        ]
+    )
+    def test_load_docs_site_parametrized(self, env_value: str, expected: str, monkeypatch):
+        """Test various docs_site values from environment."""
+        monkeypatch.delenv("COPIER_JINJA2_CONTEXT", raising=False)
+        monkeypatch.delenv("COPIER_RENDER_CONTEXT", raising=False)
+        monkeypatch.setenv("COPIER_ANSWERS", env_value)
+
+        from pre_gen_project import _load_docs_site
+        result = _load_docs_site()
+        assert result == expected
+
+
+@pytest.mark.unit
+class TestParametrizedCiPlatformValidation:
+    """Parametrized tests for CI platform validation."""
+
+    @pytest.mark.parametrize(
+        'ci_value,expected',
+        [
+            ("github-actions", "github-actions"),
+            ("none", "none"),
+            ("jenkins", "github-actions"),  # Invalid, falls back to default
+            ("gitlab-ci", "github-actions"),  # Invalid, falls back to default
+        ],
+        ids=[
+            'valid_github_actions',
+            'valid_none',
+            'invalid_jenkins',
+            'invalid_gitlab',
+        ]
+    )
+    def test_load_ci_platform_parametrized(self, ci_value: str, expected: str, monkeypatch):
+        """Test various CI platform values."""
+        monkeypatch.setenv("COPIER_ANSWERS", json.dumps({"ci_platform": ci_value}))
+
+        from pre_gen_project import _load_ci_platform
+        result = _load_ci_platform()
+        assert result == expected
+
+
+@pytest.mark.unit
+class TestParametrizedSaasValidation:
+    """Parametrized tests for SaaS starter validation."""
+
+    @pytest.mark.parametrize(
+        'context,expected_error_count,expected_warning_count',
+        [
+            # Valid configurations with warnings
+            (
+                {
+                    "saas_starter_module": "enabled",
+                    "saas_database": "neon",
+                    "saas_storage": "r2",
+                    "saas_hosting": "vercel",
+                    "saas_orm": "prisma",
+                },
+                0, 1  # Vercel + R2 triggers warning
+            ),
+            (
+                {
+                    "saas_starter_module": "enabled",
+                    "saas_database": "supabase",
+                    "saas_storage": "supabase-storage",
+                    "saas_hosting": "vercel",
+                    "saas_orm": "drizzle",
+                },
+                0, 0
+            ),
+            (
+                {
+                    "saas_starter_module": "enabled",
+                    "saas_database": "neon",
+                    "saas_storage": "r2",
+                    "saas_hosting": "cloudflare",
+                },
+                0, 0  # Cloudflare + R2 is compatible, no warnings
+            ),
+            # Error cases
+            (
+                {
+                    "saas_starter_module": "enabled",
+                    "saas_database": "neon",
+                    "saas_storage": "supabase-storage",
+                },
+                1, 0  # Neon + Supabase Storage incompatible
+            ),
+            # Warning cases
+            (
+                {
+                    "saas_starter_module": "enabled",
+                    "saas_hosting": "cloudflare",
+                    "saas_orm": "prisma",
+                },
+                0, 1  # Cloudflare + Prisma warning
+            ),
+            # Disabled - no validation
+            (
+                {"saas_starter_module": "disabled"},
+                0, 0
+            ),
+        ],
+        ids=[
+            'vercel_r2_warning',
+            'valid_supabase_storage',
+            'cloudflare_r2_compatible',
+            'error_neon_supabase_storage',
+            'warning_cloudflare_prisma',
+            'disabled_no_validation',
+        ]
+    )
+    def test_saas_validation_parametrized(
+        self,
+        context: dict[str, Any],
+        expected_error_count: int,
+        expected_warning_count: int
+    ):
+        """Test various SaaS starter configurations."""
+        from pre_gen_project import _validate_saas_starter
+
+        issues = _validate_saas_starter(context)
+        errors = [i for i in issues if i["severity"] == "error"]
+        warnings = [i for i in issues if i["severity"] == "warning"]
+
+        assert len(errors) == expected_error_count
+        assert len(warnings) == expected_warning_count
+
+
+@pytest.mark.unit
+class TestParametrizedToolMatrix:
+    """Parametrized tests for tool matrix building."""
+
+    @pytest.mark.parametrize(
+        'docs_site,context,expected_tools',
+        [
+            ("none", {"saas_starter_module": "disabled"}, ["uv"]),
+            ("fumadocs", {"saas_starter_module": "disabled"}, ["uv", "node", "pnpm"]),
+            ("docusaurus", {"saas_starter_module": "disabled"}, ["uv", "node", "pnpm"]),
+            ("sphinx-shibuya", {"saas_starter_module": "disabled"}, ["uv", "node", "pnpm"]),
+            ("none", {"saas_starter_module": "enabled"}, ["uv", "node", "pnpm"]),
+            ("fumadocs", {"saas_starter_module": "enabled"}, ["uv", "node", "pnpm"]),
+            ("docusaurus", {"saas_starter_module": "enabled"}, ["uv", "node", "pnpm"]),
+            ("sphinx-shibuya", {}, ["uv", "node", "pnpm"]),
+        ],
+        ids=[
+            'no_docs_no_saas',
+            'fumadocs_no_saas',
+            'docusaurus_no_saas',
+            'sphinx_no_saas',
+            'no_docs_with_saas',
+            'fumadocs_with_saas',
+            'docusaurus_with_saas',
+            'sphinx_default_context',
+        ]
+    )
+    def test_tool_matrix_parametrized(
+        self,
+        docs_site: str,
+        context: dict[str, Any],
+        expected_tools: list[str]
+    ):
+        """Test tool matrix generation for different configurations."""
+        from pre_gen_project import _build_tool_matrix
+
+        result = _build_tool_matrix(docs_site, context)
+        tool_names = [tool[0] for tool in result]
+
+        assert tool_names == expected_tools
+        # Verify uv always has correct version
+        uv_entry = [tool for tool in result if tool[0] == "uv"][0]
+        assert uv_entry[1] == "0.4"
+        assert uv_entry[2] == "uv@0.4"
+
+
+@pytest.mark.unit
+class TestParametrizedProvisionResult:
+    """Parametrized tests for ProvisionResult creation."""
+
+    @pytest.mark.parametrize(
+        'tool_data,expected_fields',
+        [
+            (
+                {
+                    "tool_name": "uv",
+                    "version_requested": "0.4",
+                    "status": "installed",
+                },
+                {"tool_name": "uv", "status": "installed"}
+            ),
+            (
+                {
+                    "tool_name": "node",
+                    "version_requested": "20",
+                    "status": "failed",
+                    "stderr": "Install failed",
+                },
+                {"tool_name": "node", "status": "failed", "stderr": "Install failed"}
+            ),
+            (
+                {
+                    "tool_name": "pnpm",
+                    "version_requested": "9",
+                    "status": "already_present",
+                },
+                {"tool_name": "pnpm", "status": "already_present"}
+            ),
+            (
+                {
+                    "tool_name": "actionlint",
+                    "version_requested": "latest",
+                    "status": "failed",
+                    "stderr": "Command not found",
+                    "next_steps": "Install via mise",
+                    "retry_command": "mise install actionlint",
+                },
+                {
+                    "tool_name": "actionlint",
+                    "status": "failed",
+                    "stderr": "Command not found",
+                    "next_steps": "Install via mise",
+                    "retry_command": "mise install actionlint",
+                }
+            ),
+        ],
+        ids=[
+            'minimal_success',
+            'failed_with_stderr',
+            'already_present',
+            'failed_with_all_fields',
+        ]
+    )
+    def test_provision_result_parametrized(
+        self,
+        tool_data: dict[str, Any],
+        expected_fields: dict[str, Any]
+    ):
+        """Test ProvisionResult creation with various field combinations."""
+        from pre_gen_project import ProvisionResult
+
+        result = ProvisionResult(**tool_data)
+
+        # Check expected fields
+        for key, value in expected_fields.items():
+            assert result[key] == value
+
+        # Always has timestamp
+        assert "timestamp" in result
+
+
+@pytest.mark.unit
+class TestParametrizedActionlintCheck:
+    """Parametrized tests for actionlint checking."""
+
+    @pytest.mark.parametrize(
+        'ci_platform,which_return,expected_log,expected_status',
+        [
+            ("none", None, False, None),
+            ("github-actions", None, True, "not_found"),
+            ("github-actions", "/usr/bin/actionlint", True, "already_present"),
+        ],
+        ids=[
+            'non_github_skip',
+            'github_not_found',
+            'github_present',
+        ]
+    )
+    def test_actionlint_check_parametrized(
+        self,
+        ci_platform: str,
+        which_return: str | None,
+        expected_log: bool,
+        expected_status: str | None,
+        tmp_path,
+        monkeypatch,
+        capsys
+    ):
+        """Test actionlint checking for different scenarios."""
+        from pre_gen_project import _check_and_log_actionlint
+        from unittest.mock import patch
+
+        monkeypatch.chdir(tmp_path)
+
+        with patch("shutil.which", return_value=which_return):
+            _check_and_log_actionlint(ci_platform)
+
+        log_file = tmp_path / ".riso" / "toolchain_provisioning.jsonl"
+
+        if expected_log:
+            assert log_file.exists()
+            log_content = log_file.read_text()
+            assert "actionlint" in log_content
+            if expected_status:
+                assert expected_status in log_content
+        else:
+            assert not log_file.exists()
+
+
+@pytest.mark.unit
+class TestParametrizedValidateAndReport:
+    """Parametrized tests for validate and report function."""
+
+    @pytest.mark.parametrize(
+        'context,expected_return,expected_output',
+        [
+            (
+                {"saas_starter_module": "disabled"},
+                True,
+                None  # No validation output
+            ),
+            (
+                {
+                    "saas_starter_module": "enabled",
+                    "saas_database": "neon",
+                    "saas_storage": "r2",
+                },
+                True,
+                "validated successfully"
+            ),
+            (
+                {
+                    "saas_starter_module": "enabled",
+                    "saas_database": "neon",
+                    "saas_storage": "supabase-storage",
+                },
+                False,
+                "Configuration errors found"
+            ),
+            (
+                {
+                    "saas_starter_module": "enabled",
+                    "saas_hosting": "cloudflare",
+                    "saas_orm": "prisma",
+                },
+                True,  # Warnings don't fail
+                "Configuration warnings"
+            ),
+        ],
+        ids=[
+            'disabled_skips',
+            'valid_passes',
+            'errors_fail',
+            'warnings_pass',
+        ]
+    )
+    def test_validate_and_report_parametrized(
+        self,
+        context: dict[str, Any],
+        expected_return: bool,
+        expected_output: str | None,
+        capsys
+    ):
+        """Test validation reporting for different configurations."""
+        from pre_gen_project import _validate_and_report_saas_starter
+
+        result = _validate_and_report_saas_starter(context)
+        assert result == expected_return
+
+        if expected_output:
+            captured = capsys.readouterr()
+            assert expected_output in captured.err

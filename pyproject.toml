@@ -42,6 +42,8 @@ test = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "pytest-mock>=3.0",
+    "pytest-xdist>=3.5",
+    "pytest-randomly>=3.15",
     "pyyaml>=6.0",
 ]
 docs = [
@@ -51,32 +53,83 @@ docs = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py", "*_test.py"]
-python_functions = ["test_*"]
+# Test discovery patterns - defines where and how pytest finds test files
+testpaths = ["tests"]                           # Only search for tests in the tests/ directory
+python_files = ["test_*.py", "*_test.py"]       # Match both test_foo.py and foo_test.py naming conventions
+python_functions = ["test_*"]                   # Only functions starting with 'test_' are treated as tests
+
+# Default command-line options applied to every pytest run
+# To override: use --override-ini or explicit CLI flags
 addopts = [
-    "--strict-markers",
-    "--strict-config",
-    "-ra",
+    "--strict-markers",                         # Fail on unknown @pytest.mark.* decorators to catch typos
+    "--strict-config",                          # Fail on invalid pytest configuration to catch errors early
+    "-ra",                                      # Show extra test summary info: (r)easons for (a)ll non-passed tests
+                                               # Displays failures, errors, skipped tests, and their reasons
+    "-n", "auto",                              # Parallel execution: auto-detect CPU count for optimal parallelization
+                                               # Requires pytest-xdist. Override with '-n 0' for sequential execution
+    "--randomly-seed=last",                     # Randomize test order to detect hidden dependencies between tests
+                                               # Uses last run's seed for reproducibility. Requires pytest-randomly
+                                               # Use '--randomly-seed=<number>' to manually set seed
+    "--tb=short",                              # Shorter traceback format (excludes local variables)
+                                               # Use '--tb=long' for detailed output or '--tb=native' for Python format
 ]
+
+# Test categorization markers for selective test execution
+# Use with: pytest -m "marker_name" to run specific categories
+# Combine with: pytest -m "unit and not slow" for complex selection
 markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks tests as integration tests",
-    "unit: marks tests as unit tests",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",          # Long-running tests (>1s)
+    "integration: marks tests as integration tests",                        # Tests requiring external systems
+    "unit: marks tests as unit tests",                                      # Fast, isolated unit tests
 ]
+
+# Warning filter configuration - controls how warnings are treated during tests
+# Format: "action:message:category:module:lineno"
 filterwarnings = [
-    "error",
-    "ignore::DeprecationWarning",
+    "error",                                    # Convert all warnings to errors to enforce clean code
+                                               # Ensures warnings are addressed, not ignored
+    "ignore::DeprecationWarning",              # Allow DeprecationWarnings from dependencies we don't control
+                                               # Remove once dependencies are updated
 ]
+
+# Console logging configuration - displays logs in real-time during test execution
+log_cli = true                                 # Enable live logging to console during test runs
+log_cli_level = "INFO"                         # Minimum log level to display (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+                                               # Override with --log-cli-level=DEBUG for verbose output
+log_cli_format = "%(asctime)s [%(levelname)8s] %(name)s: %(message)s"  # Log format with timestamp and level
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"      # ISO 8601-style timestamp format for log entries
 
 [tool.coverage.run]
-branch = true
-source = ["scripts", "template/hooks"]
-omit = ["*/__pycache__/*", "*/tests/*"]
+# Coverage measurement configuration for pytest-cov and coverage.py
+# Run with: pytest --cov or coverage run -m pytest
+branch = true                                   # Measure branch coverage, not just line coverage
+                                               # Ensures both if/else paths are tested
+source = ["scripts", "template/hooks"]         # Source code directories to measure coverage for
+                                               # Excludes external dependencies and test code
+omit = ["*/__pycache__/*", "*/tests/*"]        # Exclude patterns from coverage measurement
+                                               # Prevents test code and cache files from inflating metrics
+relative_files = true                          # Use relative file paths in coverage data
+                                               # Improves portability across different environments
+parallel = true                                # Enable parallel coverage collection for pytest-xdist
+                                               # Combines coverage from parallel test runs
+                                               # Use 'coverage combine' to merge .coverage.* files
 
 [tool.coverage.report]
+# Coverage reporting configuration - controls how results are displayed
+# Generate report with: coverage report or pytest --cov-report=term
+fail_under = 70                                # Minimum coverage percentage required (70%)
+                                               # Tests fail if coverage drops below this threshold
+                                               # Adjust upward as codebase matures
+show_missing = true                            # Show line numbers of uncovered code
+                                               # Helps identify gaps in test coverage
+skip_covered = false                           # Include fully covered files in report
+                                               # Set to true to only show files needing attention
+precision = 2                                  # Decimal places for coverage percentages (e.g., 85.42%)
 exclude_lines = [
-    "pragma: no cover",
-    "if TYPE_CHECKING:",
-    "raise NotImplementedError",
+    "pragma: no cover",                        # Explicitly exclude lines marked with this comment
+                                               # Use for defensive code that's hard to test
+    "if TYPE_CHECKING:",                       # Exclude type-checking only imports
+                                               # These blocks never execute at runtime
+    "raise NotImplementedError",               # Exclude abstract method placeholders
+                                               # These are meant to be overridden by subclasses
 ]

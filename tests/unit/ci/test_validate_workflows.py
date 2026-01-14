@@ -1,16 +1,15 @@
 """Unit tests for validate_workflows.py"""
 import json
 import subprocess
-import sys
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
-# Add scripts/ci to path
-sys.path.insert(0, str(Path(__file__).parents[3] / "scripts" / "ci"))
+
+pytestmark = pytest.mark.usefixtures("ci_scripts_path")
 
 
+@pytest.mark.unit
 class TestValidateWorkflow:
     """Tests for validate_workflow function."""
 
@@ -130,6 +129,7 @@ jobs:
         assert len(result["errors"]) > 0
 
 
+@pytest.mark.unit
 class TestValidateWorkflows:
     """Tests for validate_workflows function."""
 
