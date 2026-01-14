@@ -1,0 +1,262 @@
+{% if ci_platform == 'github-actions' %}
+# Matrix Data (SSOT)
+
+The **Matrix Data** system provides a single source of truth (SSOT) for all Riso template options, defaults, and sample render configurations.
+
+## Overview
+
+The `matrix-data.json` file consolidates:
+
+- **Template metadata** - Name, version, description, maintainers, tags
+- **All prompts** - Every Copier prompt with type, choices, defaults, conditions
+- **SaaS prompts** - Filtered subset of SaaS-specific options
+- **Sample configurations** - Render matrix or individual sample answers
+
+This enables:
+
+- 📊 **Documentation generation** - Auto-generate option tables from JSON
+- 🔄 **CI validation** - Verify all combinations are tested
+- 🤖 **AI context** - Feed complete option set to AI assistants
+- 📦 **Downstream tooling** - Build UIs, CLIs, or validators from the schema
+
+## Files
+
+| File | Description |
+|------|-------------|
+| `samples/metadata/matrix-data.json` | Consolidated SSOT snapshot |
+| `samples/metadata/render_matrix.json` | Sample render configurations (when available) |
+| `samples/metadata/module_success.json` | Per-sample module success status |
+| `scripts/ci/generate_matrix_data.py` | Generator script |
+| `.github/workflows/matrix-data.yml` | Automation workflow |
+
+## Usage
+
+### Local Generation
+
+```bash
+# Generate fresh matrix data (requires PyYAML)
+uv run python scripts/ci/generate_matrix_data.py
+
+# View the output
+cat samples/metadata/matrix-data.json | jq '.template.prompts | length'
+# → 50+ prompts
+```
+
+### Full Pipeline (with sample rendering)
+
+```bash
+# 1. Render all sample variants
+uv run python scripts/ci/render_matrix.py
+
+# 2. Generate matrix data from copier.yml + render results
+uv run python scripts/ci/generate_matrix_data.py
+```
+
+### Accessing Data
+
+```python
+import json
+from pathlib import Path
+
+matrix = json.loads(Path("samples/metadata/matrix-data.json").read_text())
+
+# Get all available choices for a prompt
+api_tracks = next(
+    p for p in matrix["template"]["prompts"]
+    if p["key"] == "api_tracks"
+)
+print(api_tracks["choices"])  # ['none', 'python', 'node', 'both']
+
+# Get all SaaS-related prompts
+saas_prompts = matrix["template"]["saas_prompts"]
+print(f"{len(saas_prompts)} SaaS options available")
+```
+
+## Workflow
+
+The `matrix-data.yml` workflow automates SSOT generation:
+
+### Triggers
+
+- **Manual** (`workflow_dispatch`) - Run on-demand with options
+- **Scheduled** - Weekly on Mondays at 07:00 UTC
+
+### Inputs
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `skip_render` | boolean | `false` | Skip sample rendering, reuse existing metadata |
+| `open_pr` | boolean | `true` | Create PR with updated metadata |
+
+### Jobs
+
+1. **Render samples** (unless `skip_render=true`)
+2. **Generate matrix data** from `template/copier.yml`
+3. **Upload artifacts** - `matrix-data.json`, `render_matrix.json`, `module_success.json`
+4. **Create PR** (on schedule or when `open_pr=true`)
+
+### Running Manually
+
+```bash
+# Via GitHub CLI
+gh workflow run matrix-data.yml
+
+# With skip_render option
+gh workflow run matrix-data.yml -f skip_render=true
+
+# Without opening a PR
+gh workflow run matrix-data.yml -f open_pr=false
+```
+
+## Schema
+
+The `matrix-data.json` structure:
+
+```json
+{
+  "generated_at": "2026-01-14T12:00:00+00:00",
+  "sources": {
+    "template": "template/copier.yml",
+    "render_matrix": "samples/metadata/render_matrix.json"
+  },
+  "template": {
+    "metadata": {
+      "name": "riso-template",
+      "version": "0.1.0",
+      "description": "...",
+      "maintainers": ["..."],
+      "tags": ["python", "typer", "fastapi", ...]
+    },
+    "defaults": {
+      "project_name": "riso-example",
+      "cli_module": "disabled",
+      ...
+    },
+    "prompts": [
+      {
+        "key": "api_tracks",
+        "type": "str",
+        "choices": ["none", "python", "node", "both"],
+        "default": "none",
+        "when": null,
+        "help": "Which API tracks to include"
+      },
+      ...
+    ],
+    "saas_prompts": [
+      {
+        "key": "saas_auth",
+        "type": "str",
+        "choices": ["clerk", "authjs", "none"],
+        "default": "clerk",
+        ...
+      },
+      ...
+    ]
+  },
+  "samples": {
+    "source": "samples/metadata/render_matrix.json",
+    "render_matrix": { ... }
+  }
+}
+```
+
+## Integration Examples
+
+### Generate Markdown Table
+
+```python
+#!/usr/bin/env python3
+"""Generate a markdown table of all template options."""
+
+import json
+from pathlib import Path
+
+matrix = json.loads(Path("samples/metadata/matrix-data.json").read_text())
+
+print("| Option | Type | Default | Choices |")
+print("|--------|------|---------|---------|")
+
+for prompt in matrix["template"]["prompts"]:
+    choices = ", ".join(prompt["choices"]) if prompt["choices"] else "-"
+    default = prompt["default"] if prompt["default"] else "-"
+    print(f"| `{prompt['key']}` | {prompt['type'] or 'str'} | `{default}` | {choices} |")
+```
+
+### Validate Sample Coverage
+
+```python
+#!/usr/bin/env python3
+"""Check if all major option combinations are tested."""
+
+import json
+from pathlib import Path
+
+matrix = json.loads(Path("samples/metadata/matrix-data.json").read_text())
+
+# Get all choices for key options
+key_options = ["api_tracks", "docs_site", "cli_module"]
+for key in key_options:
+    prompt = next(p for p in matrix["template"]["prompts"] if p["key"] == key)
+    if prompt["choices"]:
+        print(f"{key}: {len(prompt['choices'])} options")
+```
+
+### Feed to AI Assistant
+
+```bash
+# Include in AI context
+cat samples/metadata/matrix-data.json | jq -c '.template.prompts' > /tmp/riso-options.json
+echo "Available Riso options:" && cat /tmp/riso-options.json
+```
+
+## Troubleshooting
+
+### Generator Fails with "Missing required file"
+
+**Cause:** `template/copier.yml` not found
+
+**Solution:** Run from repository root:
+
+```bash
+cd /path/to/riso
+uv run python scripts/ci/generate_matrix_data.py
+```
+
+### Empty `samples` Section
+
+**Cause:** No `render_matrix.json` and no sample directories
+
+**Solution:** Run the full pipeline:
+
+```bash
+uv run python scripts/ci/render_matrix.py
+uv run python scripts/ci/generate_matrix_data.py
+```
+
+### Workflow PR Not Created
+
+**Cause:** GitHub token lacks `pull-requests: write` permission
+
+**Solution:** The workflow uses `peter-evans/create-pull-request@v6` which requires:
+
+```yaml
+permissions:
+  contents: write
+  pull-requests: write
+```
+
+Verify these are set in the workflow file.
+
+{% else %}
+# Matrix Data (SSOT)
+
+CI platform is set to `{{ ci_platform }}`. The Matrix Data workflow requires GitHub Actions.
+
+To enable:
+
+```bash
+copier update  # Select github-actions for ci_platform
+```
+
+{% endif %}
