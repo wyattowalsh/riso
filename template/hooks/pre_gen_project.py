@@ -261,52 +261,52 @@ def _attempt_install(tool: str, version: str, mise_spec: str | None) -> Provisio
     )
 
 
-def main() -> None:
-    docs_site = _load_docs_site()
-    ci_platform = _load_ci_platform()
-    context = _load_copier_context()
+def _install_required_tools(tool_matrix: list[tuple[str, str, str | None]]) -> list[ProvisionResult]:
+    """Install required tools from the tool matrix.
 
-    # Validate SaaS Starter configuration if enabled
-    if context.get("saas_starter_module") == "enabled":
-        sys.stderr.write("\n🔍 Validating SaaS Starter configuration...\n")
-        issues = _validate_saas_starter(context)
-        
-        # Report errors (blocking)
-        errors = [i for i in issues if i["severity"] == "error"]
-        if errors:
-            sys.stderr.write("\n❌ Configuration errors found:\n\n")
-            for error in errors:
-                sys.stderr.write(f"  {error['message']}\n\n")
-            sys.exit(1)
-        
-        # Report warnings (non-blocking)
-        warnings = [i for i in issues if i["severity"] == "warning"]
-        if warnings:
-            sys.stderr.write("\n⚠️  Configuration warnings:\n\n")
-            for warning in warnings:
-                sys.stderr.write(f"  {warning['message']}\n\n")
-        
-        # Report info notices
-        infos = [i for i in issues if i["severity"] == "info"]
-        if infos:
-            sys.stderr.write("\nℹ️  Configuration notes:\n\n")
-            for info in infos:
-                sys.stderr.write(f"  {info['message']}\n\n")
-        
-        sys.stderr.write("✅ SaaS Starter configuration validated successfully!\n\n")
+    Args:
+        tool_matrix: List of (tool_name, version, mise_spec) tuples
 
-    tool_matrix: list[tuple[str, str, str | None]] = [
-        ("uv", "0.4", "uv@0.4"),
-    ]
+    Returns:
+        List of failed ProvisionResult objects
+    """
+    failures = []
+    for tool, version, mise_spec in tool_matrix:
+        result = _attempt_install(tool, version, mise_spec)
+        _log_attempt(result)
+        if result["status"] == "failed":
+            failures.append(result)
+    return failures
 
-    if docs_site != "none" or context.get("saas_starter_module") == "enabled":
-        tool_matrix.extend(
-            [
-                ("node", "20", "node@20"),
-                ("pnpm", "8", "pnpm@8"),
-            ]
-        )
-    
+
+def _check_python_quality_tools() -> list[ProvisionResult]:
+    """Check availability of Python quality tools.
+
+    Returns:
+        List of failed ProvisionResult objects for unavailable tools
+    """
+    failures = []
+    if ToolCheck is not None:
+        for check in ensure_python_quality_tools():
+            entry = ProvisionResult(
+                tool_name=check.name,
+                version_requested="quality-suite",
+                status=check.status,
+                stderr=getattr(check, "stderr", None),
+                next_steps=getattr(check, "next_steps", None),
+            )
+            _log_attempt(entry)
+            if entry["status"] not in {"present", "installed"}:
+                failures.append(entry)
+    return failures
+
+
+def _check_and_log_actionlint(ci_platform: str) -> None:
+    """Check and log actionlint availability for GitHub Actions.
+
+    Args:
+        ci_platform: The CI platform being used (github_actions, gitlab_ci, etc.)
+    """
     # Add actionlint check if GitHub Actions CI platform selected
     if ci_platform == "github-actions":
         # Check actionlint availability but don't fail on missing
@@ -330,40 +330,120 @@ def main() -> None:
                 status="already_present"
             ))
 
-    failures: list[ProvisionResult] = []
-    for tool, version, mise_spec in tool_matrix:
-        result = _attempt_install(tool, version, mise_spec)
-        _log_attempt(result)
-        if result["status"] == "failed":
-            failures.append(result)
 
-    if ToolCheck is not None:
-        for check in ensure_python_quality_tools():
-            entry = ProvisionResult(
-                tool_name=check.name,
-                version_requested="quality-suite",
-                status=check.status,
-                stderr=getattr(check, "stderr", None),
-                next_steps=getattr(check, "next_steps", None),
-            )
-            _log_attempt(entry)
-            if entry["status"] not in {"present", "installed"}:
-                failures.append(entry)
+def _validate_and_report_saas_starter(context: dict) -> bool:
+    """Validate SaaS starter configuration and report errors.
 
-    if failures:
-        sys.stderr.write(
-            "Riso template prerequisite check failed. Please install the "
-            "following tooling before re-running copier:\n"
+    Args:
+        context: The Copier context dictionary
+
+    Returns:
+        True if validation passed (no errors), False otherwise
+    """
+    if context.get("saas_starter_module") != "enabled":
+        return True
+
+    sys.stderr.write("\n🔍 Validating SaaS Starter configuration...\n")
+    issues = _validate_saas_starter(context)
+
+    # Report errors (blocking)
+    errors = [i for i in issues if i["severity"] == "error"]
+    if errors:
+        sys.stderr.write("\n❌ Configuration errors found:\n\n")
+        for error in errors:
+            sys.stderr.write(f"  {error['message']}\n\n")
+        return False
+
+    # Report warnings (non-blocking)
+    warnings = [i for i in issues if i["severity"] == "warning"]
+    if warnings:
+        sys.stderr.write("\n⚠️  Configuration warnings:\n\n")
+        for warning in warnings:
+            sys.stderr.write(f"  {warning['message']}\n\n")
+
+    # Report info notices
+    infos = [i for i in issues if i["severity"] == "info"]
+    if infos:
+        sys.stderr.write("\nℹ️  Configuration notes:\n\n")
+        for info in infos:
+            sys.stderr.write(f"  {info['message']}\n\n")
+
+    sys.stderr.write("✅ SaaS Starter configuration validated successfully!\n\n")
+    return True
+
+
+def _report_failures_and_exit(failures: list[ProvisionResult]) -> None:
+    """Report all failures and exit with error code.
+
+    Args:
+        failures: List of failed ProvisionResult objects
+
+    Note:
+        This function does not return - it calls sys.exit(1)
+    """
+    if not failures:
+        return
+
+    sys.stderr.write(
+        "Riso template prerequisite check failed. Please install the "
+        "following tooling before re-running copier:\n"
+    )
+    for failure in failures:
+        sys.stderr.write(f"- {failure['tool_name']} (requested {failure['version_requested']}):\n")
+        if failure.get("stderr"):
+            sys.stderr.write(f"  stderr: {failure['stderr']}\n")
+        if failure.get("retry_command"):
+            sys.stderr.write(f"  retry: {failure['retry_command']}\n")
+        if failure.get("next_steps"):
+            sys.stderr.write(f"  help: {failure['next_steps']}\n")
+    sys.exit(1)
+
+
+def _build_tool_matrix(docs_site: str, context: dict) -> list[tuple[str, str, str | None]]:
+    """Build the matrix of required tools with versions.
+
+    Args:
+        docs_site: The documentation site type (sphinx, fumadocs, etc.)
+        context: The Copier context dictionary
+
+    Returns:
+        List of (tool_name, version, mise_spec) tuples
+    """
+    tool_matrix: list[tuple[str, str, str | None]] = [
+        ("uv", "0.4", "uv@0.4"),
+    ]
+
+    if docs_site != "none" or context.get("saas_starter_module") == "enabled":
+        tool_matrix.extend(
+            [
+                ("node", "20", "node@20"),
+                ("pnpm", "8", "pnpm@8"),
+            ]
         )
-        for failure in failures:
-            sys.stderr.write(f"- {failure['tool_name']} (requested {failure['version_requested']}):\n")
-            if failure.get("stderr"):
-                sys.stderr.write(f"  stderr: {failure['stderr']}\n")
-            if failure.get("retry_command"):
-                sys.stderr.write(f"  retry: {failure['retry_command']}\n")
-            if failure.get("next_steps"):
-                sys.stderr.write(f"  help: {failure['next_steps']}\n")
+
+    return tool_matrix
+
+
+def main() -> None:
+    docs_site = _load_docs_site()
+    ci_platform = _load_ci_platform()
+    context = _load_copier_context()
+
+    # Validate SaaS Starter configuration if enabled
+    if not _validate_and_report_saas_starter(context):
         sys.exit(1)
+
+    tool_matrix = _build_tool_matrix(docs_site, context)
+
+    # Check and log actionlint availability
+    _check_and_log_actionlint(ci_platform)
+
+    failures = _install_required_tools(tool_matrix)
+
+    # Check Python quality tools
+    failures.extend(_check_python_quality_tools())
+
+    _report_failures_and_exit(failures)
 
 
 if __name__ == "__main__":  # pragma: no cover - invoked by Copier

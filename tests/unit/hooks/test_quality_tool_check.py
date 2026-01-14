@@ -1,13 +1,12 @@
 """Unit tests for quality_tool_check.py"""
 import pytest
-from pathlib import Path
 from unittest.mock import MagicMock
-import sys
-
-# Add scripts to path
-sys.path.insert(0, str(Path(__file__).parents[3] / "scripts" / "hooks"))
 
 
+pytestmark = pytest.mark.usefixtures("scripts_hooks_path")
+
+
+@pytest.mark.unit
 class TestToolCheck:
     """Tests for ToolCheck dataclass."""
 
@@ -36,6 +35,7 @@ class TestToolCheck:
         assert check.next_steps == "Install manually"
 
 
+@pytest.mark.unit
 class TestEnsurePythonQualityTools:
     """Tests for ensure_python_quality_tools function."""
 
@@ -90,6 +90,7 @@ class TestEnsurePythonQualityTools:
         assert len(failed) > 0
 
 
+@pytest.mark.unit
 class TestEnsureNodeQualityTools:
     """Tests for ensure_node_quality_tools function."""
 

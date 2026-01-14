@@ -2,19 +2,19 @@
 import json
 import pytest
 from pathlib import Path
-import sys
-
-# Add scripts to path
-sys.path.insert(0, str(Path(__file__).parents[3] / "scripts" / "ci"))
-
-from render_matrix import discover_variants, load_smoke_results, load_post_gen_metadata
 
 
+pytestmark = pytest.mark.usefixtures("ci_scripts_path")
+
+
+@pytest.mark.unit
 class TestVariantDiscovery:
     """Tests for sample variant discovery."""
 
     def test_discovers_variants_from_samples(self, temp_dir, monkeypatch):
         """Should discover variants from samples directory."""
+        from render_matrix import discover_variants
+
         samples_dir = temp_dir / "samples"
 
         # Create sample variant directories
@@ -38,6 +38,9 @@ class TestVariantDiscovery:
 
     def test_ignores_metadata_directory(self, temp_dir, monkeypatch):
         """Should ignore metadata directory."""
+        from render_matrix import discover_variants
+        import render_matrix
+
         samples_dir = temp_dir / "samples"
 
         (samples_dir / "default").mkdir(parents=True)
@@ -46,7 +49,6 @@ class TestVariantDiscovery:
         (samples_dir / "metadata").mkdir(parents=True)
         (samples_dir / "metadata" / "module_success.json").write_text("{}")
 
-        import render_matrix
         monkeypatch.setattr(render_matrix, "SAMPLES_DIR", samples_dir)
 
         variants = discover_variants()
@@ -57,10 +59,12 @@ class TestVariantDiscovery:
 
     def test_empty_samples_directory(self, temp_dir, monkeypatch):
         """Should return empty list for empty samples dir."""
+        from render_matrix import discover_variants
+        import render_matrix
+
         samples_dir = temp_dir / "samples"
         samples_dir.mkdir(parents=True)
 
-        import render_matrix
         monkeypatch.setattr(render_matrix, "SAMPLES_DIR", samples_dir)
 
         variants = discover_variants()
@@ -68,6 +72,9 @@ class TestVariantDiscovery:
 
     def test_returns_sorted_variants(self, temp_dir, monkeypatch):
         """Should return variants in sorted order."""
+        from render_matrix import discover_variants
+        import render_matrix
+
         samples_dir = temp_dir / "samples"
 
         # Create variants in non-alphabetical order
@@ -76,7 +83,6 @@ class TestVariantDiscovery:
             variant_dir.mkdir(parents=True)
             (variant_dir / "copier-answers.yml").write_text(f"name: {variant}\n")
 
-        import render_matrix
         monkeypatch.setattr(render_matrix, "SAMPLES_DIR", samples_dir)
 
         variants = discover_variants()
@@ -86,11 +92,14 @@ class TestVariantDiscovery:
         assert variant_names == ["alpha", "middle", "zebra"]
 
 
+@pytest.mark.unit
 class TestSmokeResultsLoading:
     """Tests for smoke results loading."""
 
     def test_loads_valid_smoke_results(self, temp_dir):
         """Should load valid smoke results JSON."""
+        from render_matrix import load_smoke_results
+
         variant_dir = temp_dir / "variant"
         variant_dir.mkdir(parents=True)
 
@@ -114,6 +123,8 @@ class TestSmokeResultsLoading:
 
     def test_returns_none_for_missing_file(self, temp_dir):
         """Should return None for missing smoke results file."""
+        from render_matrix import load_smoke_results
+
         variant_dir = temp_dir / "variant"
         variant_dir.mkdir(parents=True)
 
@@ -125,6 +136,8 @@ class TestSmokeResultsLoading:
 
     def test_handles_invalid_json(self, temp_dir):
         """Should raise error for invalid JSON."""
+        from render_matrix import load_smoke_results
+
         variant_dir = temp_dir / "variant"
         variant_dir.mkdir(parents=True)
 
@@ -139,6 +152,8 @@ class TestSmokeResultsLoading:
 
     def test_loads_empty_results_array(self, temp_dir):
         """Should handle empty results array."""
+        from render_matrix import load_smoke_results
+
         variant_dir = temp_dir / "variant"
         variant_dir.mkdir(parents=True)
 
@@ -153,11 +168,14 @@ class TestSmokeResultsLoading:
         assert results["results"] == []
 
 
+@pytest.mark.unit
 class TestPostGenMetadataLoading:
     """Tests for post-generation metadata loading."""
 
     def test_loads_valid_metadata(self, temp_dir):
         """Should load valid post-gen metadata."""
+        from render_matrix import load_post_gen_metadata
+
         variant_dir = temp_dir / "variant"
         render_dir = variant_dir / "render"
         riso_dir = render_dir / ".riso"
@@ -179,6 +197,8 @@ class TestPostGenMetadataLoading:
 
     def test_returns_none_for_missing_metadata(self, temp_dir):
         """Should return None when metadata file doesn't exist."""
+        from render_matrix import load_post_gen_metadata
+
         variant_dir = temp_dir / "variant"
         variant_dir.mkdir(parents=True)
 
@@ -190,6 +210,8 @@ class TestPostGenMetadataLoading:
 
     def test_handles_invalid_metadata_json(self, temp_dir):
         """Should raise error for invalid metadata JSON."""
+        from render_matrix import load_post_gen_metadata
+
         variant_dir = temp_dir / "variant"
         render_dir = variant_dir / "render"
         riso_dir = render_dir / ".riso"
@@ -206,6 +228,8 @@ class TestPostGenMetadataLoading:
 
     def test_loads_minimal_metadata(self, temp_dir):
         """Should handle minimal metadata with missing fields."""
+        from render_matrix import load_post_gen_metadata
+
         variant_dir = temp_dir / "variant"
         render_dir = variant_dir / "render"
         riso_dir = render_dir / ".riso"
@@ -223,11 +247,15 @@ class TestPostGenMetadataLoading:
         assert len(metadata) == 0
 
 
+@pytest.mark.unit
 class TestIntegration:
     """Integration tests for the complete workflow."""
 
     def test_discovers_and_loads_complete_variant(self, temp_dir, monkeypatch):
         """Should discover variant and load all associated metadata."""
+        from render_matrix import discover_variants, load_smoke_results, load_post_gen_metadata
+        import render_matrix
+
         samples_dir = temp_dir / "samples"
         variant_dir = samples_dir / "default"
         variant_dir.mkdir(parents=True)
@@ -254,7 +282,6 @@ class TestIntegration:
         }))
 
         # Discover variants
-        import render_matrix
         monkeypatch.setattr(render_matrix, "SAMPLES_DIR", samples_dir)
 
         variants = discover_variants()

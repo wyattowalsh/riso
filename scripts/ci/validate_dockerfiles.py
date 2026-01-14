@@ -27,6 +27,8 @@ import sys
 from pathlib import Path
 from typing import Any, TypedDict
 
+from scripts.lib.logger import configure_logging, logger
+
 
 class ValidationResult(TypedDict):
     """Validation result for a single Dockerfile."""
@@ -124,86 +126,87 @@ def validate_dockerfile(dockerfile_path: Path) -> ValidationResult:
 
 def print_validation_summary(results: list[ValidationResult]) -> None:
     """Print human-readable validation summary.
-    
+
     Args:
         results: List of validation results
     """
     total_files = len(results)
     passed_files = sum(1 for r in results if r["passed"])
     failed_files = total_files - passed_files
-    
-    print(f"\n{'=' * 60}")
-    print("Dockerfile Validation Summary")
-    print(f"{'=' * 60}")
-    print(f"Total files scanned: {total_files}")
-    print(f"Passed: {passed_files}")
-    print(f"Failed: {failed_files}")
-    print(f"{'=' * 60}\n")
-    
+
+    logger.info(f"\n{'=' * 60}")
+    logger.info("Dockerfile Validation Summary")
+    logger.info(f"{'=' * 60}")
+    logger.info(f"Total files scanned: {total_files}")
+    logger.info(f"Passed: {passed_files}")
+    logger.info(f"Failed: {failed_files}")
+    logger.info(f"{'=' * 60}\n")
+
     for result in results:
         status = "✅ PASS" if result["passed"] else "❌ FAIL"
-        print(f"{status} - {result['file']}")
-        
+        logger.info(f"{status} - {result['file']}")
+
         if result["errors"]:
-            print(f"  Errors: {len(result['errors'])}")
+            logger.info(f"  Errors: {len(result['errors'])}")
             for error in result["errors"]:
                 rule = error.get("code", "UNKNOWN")
                 line = error.get("line", "?")
                 message = error.get("message", "No message")
-                print(f"    - [{rule}] Line {line}: {message}")
-        
+                logger.info(f"    - [{rule}] Line {line}: {message}")
+
         if result["warnings"]:
-            print(f"  Warnings: {len(result['warnings'])}")
+            logger.info(f"  Warnings: {len(result['warnings'])}")
             for warning in result["warnings"]:
                 rule = warning.get("code", "UNKNOWN")
                 line = warning.get("line", "?")
                 message = warning.get("message", "No message")
-                print(f"    - [{rule}] Line {line}: {message}")
-        
-        print()
+                logger.info(f"    - [{rule}] Line {line}: {message}")
+
+        logger.info("")
 
 
 def main() -> int:
     """Main entry point for Dockerfile validation.
-    
+
     Returns:
         Exit code (0=success, 1=validation failures, 2=tool error)
     """
+    configure_logging()
+
     if len(sys.argv) != 2:
-        print("Usage: python validate_dockerfiles.py <directory>", file=sys.stderr)
+        logger.error("Usage: python validate_dockerfiles.py <directory>")
         return 2
-    
+
     directory = Path(sys.argv[1])
-    
+
     if not directory.exists():
-        print(f"Error: Directory not found: {directory}", file=sys.stderr)
+        logger.error(f"Directory not found: {directory}")
         return 2
-    
+
     if not directory.is_dir():
-        print(f"Error: Not a directory: {directory}", file=sys.stderr)
+        logger.error(f"Not a directory: {directory}")
         return 2
-    
+
     # Check hadolint is installed
     if not check_hadolint_installed():
-        print(
-            "Error: hadolint not installed. Install with:\n"
+        logger.error(
+            "hadolint not installed. Install with:\n"
             "  macOS: brew install hadolint\n"
             "  Linux: wget -O /usr/local/bin/hadolint "
             "https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64 "
-            "&& chmod +x /usr/local/bin/hadolint",
-            file=sys.stderr,
+            "&& chmod +x /usr/local/bin/hadolint"
         )
         return 2
-    
+
     # Find all Dockerfiles
     dockerfiles = find_dockerfiles(directory)
-    
+
     if not dockerfiles:
-        print(f"Warning: No Dockerfiles found in {directory}", file=sys.stderr)
+        logger.warning(f"No Dockerfiles found in {directory}")
         return 0
-    
-    print(f"Found {len(dockerfiles)} Dockerfile(s) in {directory}")
-    
+
+    logger.info(f"Found {len(dockerfiles)} Dockerfile(s) in {directory}")
+
     # Validate each Dockerfile
     results: list[ValidationResult] = []
     for dockerfile in dockerfiles:
@@ -211,12 +214,12 @@ def main() -> int:
             result = validate_dockerfile(dockerfile)
             results.append(result)
         except Exception as e:
-            print(f"Error validating {dockerfile}: {e}", file=sys.stderr)
+            logger.error(f"Error validating {dockerfile}: {e}")
             return 2
-    
+
     # Print summary
     print_validation_summary(results)
-    
+
     # Output JSON for CI parsing
     json_output = {
         "total_files": len(results),
@@ -224,11 +227,11 @@ def main() -> int:
         "failed_files": sum(1 for r in results if not r["passed"]),
         "results": results,
     }
-    
+
     json_file = Path.cwd() / "dockerfile-validation.json"
     json_file.write_text(json.dumps(json_output, indent=2))
-    print(f"JSON report written to: {json_file}")
-    
+    logger.info(f"JSON report written to: {json_file}")
+
     # Return exit code based on validation results
     if all(r["passed"] for r in results):
         return 0

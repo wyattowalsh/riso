@@ -10,6 +10,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from scripts.lib.logger import logger, configure_logging
+
 
 def check_actionlint_available() -> bool:
     """
@@ -76,56 +78,61 @@ def validate_workflows_directory(workflows_dir: Path, strict: bool = False) -> i
     """
     # Check if actionlint is available
     if not check_actionlint_available():
-        print("⚠️  actionlint not found - skipping workflow validation")
-        print("   Install: brew install actionlint (macOS)")
-        print("   Or see: https://github.com/rhysd/actionlint")
+        logger.warning("actionlint not found - skipping workflow validation")
+        logger.info("Install: brew install actionlint (macOS)")
+        logger.info("Or see: https://github.com/rhysd/actionlint")
         return 0 if not strict else 1
     
     # Check if workflows directory exists
     if not workflows_dir.exists():
-        print(f"ℹ️  No workflows directory found at {workflows_dir}")
+        logger.info(f"No workflows directory found at {workflows_dir}")
         return 0
-    
+
     # Find workflow files
     workflow_files = list(workflows_dir.glob("riso-*.yml")) + list(workflows_dir.glob("riso-*.yaml"))
-    
+
     if not workflow_files:
-        print("✅ No template workflows generated (expected for minimal configs)")
+        logger.info("No template workflows generated (expected for minimal configs)")
         return 0
     
     # Validate each workflow
     all_valid = True
     for workflow_file in workflow_files:
         success, error_msg = validate_workflow_file(workflow_file)
-        
+
         if success:
-            print(f"✅ {workflow_file.name} - validated successfully")
+            logger.info(f"{workflow_file.name} - validated successfully")
         else:
             all_valid = False
-            print(f"❌ {workflow_file.name} - validation failed")
+            logger.error(f"{workflow_file.name} - validation failed")
             if error_msg:
-                print(f"   {error_msg}")
-    
+                logger.error(f"   {error_msg}")
+
     # Summary
-    print(f"\n{'✅' if all_valid else '❌'} Validated {len(workflow_files)} workflow(s)")
-    
+    if all_valid:
+        logger.info(f"Validated {len(workflow_files)} workflow(s)")
+    else:
+        logger.error(f"Validated {len(workflow_files)} workflow(s)")
+
     if not all_valid:
         if strict:
-            print("\n❌ Workflow validation failed in strict mode")
-            print("   Fix the errors above and try again")
+            logger.error("Workflow validation failed in strict mode")
+            logger.error("Fix the errors above and try again")
             return 1
         else:
-            print("\n⚠️  Workflow validation failed, but continuing anyway")
-            print("   Workflows may not work correctly")
-            print("   Run 'actionlint .github/workflows/*.yml' to debug")
+            logger.warning("Workflow validation failed, but continuing anyway")
+            logger.warning("Workflows may not work correctly")
+            logger.warning("Run 'actionlint .github/workflows/*.yml' to debug")
             return 0
     
     return 0
 
 
 if __name__ == "__main__":
+    configure_logging()
+
     # When run directly, validate workflows in current directory
     target_dir = Path(".github/workflows")
     is_strict = "--strict" in sys.argv
-    
+
     sys.exit(validate_workflows_directory(target_dir, is_strict))

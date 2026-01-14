@@ -13,6 +13,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from scripts.lib.logger import logger, configure_logging
+
 
 def validate_workflow(workflow_path: Path) -> dict[str, Any]:
     """
@@ -76,25 +78,25 @@ def validate_workflow(workflow_path: Path) -> dict[str, Any]:
 def validate_workflows(workflows_dir: Path, output_json: bool = False) -> int:
     """
     Validate all workflow files in a directory.
-    
+
     Args:
         workflows_dir: Directory containing workflow files
         output_json: Whether to output results as JSON
-        
+
     Returns:
         Exit code (0 for success, 1 for failures)
     """
     if not workflows_dir.exists():
-        print(f"❌ Workflow directory not found: {workflows_dir}")
+        logger.error(f"Workflow directory not found: {workflows_dir}")
         return 1
-    
+
     workflow_files = list(workflows_dir.glob("*.yml")) + list(workflows_dir.glob("*.yaml"))
-    
+
     if not workflow_files:
         if output_json:
             print(json.dumps({"status": "no_workflows", "results": []}))
         else:
-            print("ℹ️  No workflow files found")
+            logger.info("No workflow files found")
         return 0
     
     results = []
@@ -120,28 +122,30 @@ def validate_workflows(workflows_dir: Path, output_json: bool = False) -> int:
         # Human-readable output
         for result in results:
             workflow_name = Path(result["workflow"]).name
-            
+
             if result["status"] == "pass":
-                print(f"✅ {workflow_name} - passed")
+                logger.info(f"{workflow_name} - passed")
             elif result["status"] == "fail":
-                print(f"❌ {workflow_name} - failed")
+                logger.error(f"{workflow_name} - failed")
                 for error in result["errors"]:
                     if "line" in error:
-                        print(f"   Line {error['line']}: {error['message']}")
+                        logger.error(f"   Line {error['line']}: {error['message']}")
                     else:
-                        print(f"   {error['message']}")
+                        logger.error(f"   {error['message']}")
             elif result["status"] == "skipped":
-                print(f"⚠️  {workflow_name} - skipped")
+                logger.warning(f"{workflow_name} - skipped")
                 for error in result["errors"]:
-                    print(f"   {error['message']}")
-        
-        print(f"\nTotal: {len(results)} | Passed: {sum(1 for r in results if r['status'] == 'pass')} | Failed: {sum(1 for r in results if r['status'] == 'fail')} | Skipped: {sum(1 for r in results if r['status'] == 'skipped')}")
-    
+                    logger.warning(f"   {error['message']}")
+
+        logger.info(f"\nTotal: {len(results)} | Passed: {sum(1 for r in results if r['status'] == 'pass')} | Failed: {sum(1 for r in results if r['status'] == 'fail')} | Skipped: {sum(1 for r in results if r['status'] == 'skipped')}")
+
     return 0 if all_passed else 1
 
 
 def main() -> int:
     """Main entry point."""
+    configure_logging()
+
     parser = argparse.ArgumentParser(
         description="Validate GitHub Actions workflow files"
     )
@@ -155,9 +159,9 @@ def main() -> int:
         action="store_true",
         help="Output results as JSON"
     )
-    
+
     args = parser.parse_args()
-    
+
     return validate_workflows(args.workflows_dir, args.json)
 
 
