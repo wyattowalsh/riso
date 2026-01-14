@@ -1,6 +1,6 @@
 """Unit tests for pre_gen_project.py hook."""
+
 import json
-import os
 import pytest
 from typing import Any
 
@@ -19,6 +19,7 @@ class TestLoadDocsSite:
         monkeypatch.delenv("COPIER_RENDER_CONTEXT", raising=False)
 
         from pre_gen_project import _load_docs_site
+
         result = _load_docs_site()
         assert result == "fumadocs"
 
@@ -29,6 +30,7 @@ class TestLoadDocsSite:
         monkeypatch.delenv("COPIER_RENDER_CONTEXT", raising=False)
 
         from pre_gen_project import _load_docs_site
+
         result = _load_docs_site(default="sphinx-shibuya")
         assert result == "sphinx-shibuya"
 
@@ -37,6 +39,7 @@ class TestLoadDocsSite:
         monkeypatch.setenv("COPIER_ANSWERS", json.dumps({"docs_site": "docusaurus"}))
 
         from pre_gen_project import _load_docs_site
+
         result = _load_docs_site()
         assert result == "docusaurus"
 
@@ -45,6 +48,7 @@ class TestLoadDocsSite:
         monkeypatch.setenv("COPIER_ANSWERS", json.dumps({"docs_site": "invalid-site"}))
 
         from pre_gen_project import _load_docs_site
+
         result = _load_docs_site()
         assert result == "fumadocs"
 
@@ -53,6 +57,7 @@ class TestLoadDocsSite:
         monkeypatch.setenv("COPIER_ANSWERS", "not valid json")
 
         from pre_gen_project import _load_docs_site
+
         result = _load_docs_site()
         assert result == "fumadocs"
 
@@ -61,6 +66,7 @@ class TestLoadDocsSite:
         monkeypatch.setenv("COPIER_ANSWERS", json.dumps(["list", "not", "dict"]))
 
         from pre_gen_project import _load_docs_site
+
         result = _load_docs_site()
         assert result == "fumadocs"
 
@@ -76,6 +82,7 @@ class TestLoadCiPlatform:
         monkeypatch.delenv("COPIER_RENDER_CONTEXT", raising=False)
 
         from pre_gen_project import _load_ci_platform
+
         result = _load_ci_platform()
         assert result == "github-actions"
 
@@ -84,6 +91,7 @@ class TestLoadCiPlatform:
         monkeypatch.setenv("COPIER_ANSWERS", json.dumps({"ci_platform": "none"}))
 
         from pre_gen_project import _load_ci_platform
+
         result = _load_ci_platform()
         assert result == "none"
 
@@ -92,6 +100,7 @@ class TestLoadCiPlatform:
         monkeypatch.setenv("COPIER_ANSWERS", json.dumps({"ci_platform": "jenkins"}))
 
         from pre_gen_project import _load_ci_platform
+
         result = _load_ci_platform()
         assert result == "github-actions"
 
@@ -103,6 +112,7 @@ class TestValidateSaasStarter:
     def test_disabled_returns_empty(self):
         """Disabled SaaS module returns no issues."""
         from pre_gen_project import _validate_saas_starter
+
         context = {"saas_starter_module": "disabled"}
         issues = _validate_saas_starter(context)
         assert issues == []
@@ -110,6 +120,7 @@ class TestValidateSaasStarter:
     def test_neon_supabase_storage_incompatible(self):
         """Neon + Supabase Storage should be error."""
         from pre_gen_project import _validate_saas_starter
+
         context = {
             "saas_starter_module": "enabled",
             "saas_database": "neon",
@@ -123,6 +134,7 @@ class TestValidateSaasStarter:
     def test_cloudflare_prisma_warning(self):
         """Cloudflare + Prisma should warn."""
         from pre_gen_project import _validate_saas_starter
+
         context = {
             "saas_starter_module": "enabled",
             "saas_hosting": "cloudflare",
@@ -136,6 +148,7 @@ class TestValidateSaasStarter:
     def test_valid_combination_no_errors(self):
         """Valid combination should have no errors."""
         from pre_gen_project import _validate_saas_starter
+
         context = {
             "saas_starter_module": "enabled",
             "saas_database": "neon",
@@ -155,6 +168,7 @@ class TestProvisionResult:
     def test_minimal_creation(self):
         """Should create with required fields."""
         from pre_gen_project import ProvisionResult
+
         result = ProvisionResult(
             tool_name="uv",
             version_requested="0.4",
@@ -167,6 +181,7 @@ class TestProvisionResult:
     def test_optional_fields(self):
         """Should include optional fields when provided."""
         from pre_gen_project import ProvisionResult
+
         result = ProvisionResult(
             tool_name="node",
             version_requested="20",
@@ -187,6 +202,7 @@ class TestValidateAndReportSaasStarter:
     def test_returns_true_when_saas_disabled(self, capsys):
         """Test returns True when SaaS starter is not enabled."""
         from pre_gen_project import _validate_and_report_saas_starter
+
         context = {"saas_starter_module": "disabled"}
         result = _validate_and_report_saas_starter(context)
         assert result is True
@@ -199,6 +215,7 @@ class TestValidateAndReportSaasStarter:
     def test_returns_true_when_valid_config(self, capsys):
         """Test returns True for valid SaaS starter configuration."""
         from pre_gen_project import _validate_and_report_saas_starter
+
         context = {
             "saas_starter_module": "enabled",
             "saas_database": "neon",
@@ -214,6 +231,7 @@ class TestValidateAndReportSaasStarter:
     def test_returns_false_when_errors_present(self, capsys):
         """Test returns False when validation errors exist."""
         from pre_gen_project import _validate_and_report_saas_starter
+
         context = {
             "saas_starter_module": "enabled",
             "saas_database": "neon",
@@ -229,6 +247,7 @@ class TestValidateAndReportSaasStarter:
     def test_reports_warnings_but_returns_true(self, capsys):
         """Test that warnings are reported but don't fail validation."""
         from pre_gen_project import _validate_and_report_saas_starter
+
         context = {
             "saas_starter_module": "enabled",
             "saas_hosting": "cloudflare",
@@ -245,6 +264,7 @@ class TestValidateAndReportSaasStarter:
     def test_reports_info_notices(self, capsys):
         """Test that info notices are displayed."""
         from pre_gen_project import _validate_and_report_saas_starter
+
         context = {
             "saas_starter_module": "enabled",
             "saas_database": "supabase",
@@ -265,6 +285,7 @@ class TestBuildToolMatrix:
     def test_always_includes_uv(self):
         """Test that uv is always in the tool matrix."""
         from pre_gen_project import _build_tool_matrix
+
         result = _build_tool_matrix("none", {})
         assert any(tool[0] == "uv" for tool in result)
         assert result[0] == ("uv", "0.4", "uv@0.4")
@@ -272,6 +293,7 @@ class TestBuildToolMatrix:
     def test_includes_node_for_docs_site(self):
         """Test that node/pnpm are included when docs_site is not 'none'."""
         from pre_gen_project import _build_tool_matrix
+
         result = _build_tool_matrix("fumadocs", {})
         tool_names = [tool[0] for tool in result]
         assert "node" in tool_names
@@ -280,6 +302,7 @@ class TestBuildToolMatrix:
     def test_includes_node_for_saas_enabled(self):
         """Test that node/pnpm are included when saas_starter is enabled."""
         from pre_gen_project import _build_tool_matrix
+
         result = _build_tool_matrix("none", {"saas_starter_module": "enabled"})
         tool_names = [tool[0] for tool in result]
         assert "node" in tool_names
@@ -288,6 +311,7 @@ class TestBuildToolMatrix:
     def test_excludes_node_when_not_needed(self):
         """Test that node/pnpm are excluded when not needed."""
         from pre_gen_project import _build_tool_matrix
+
         result = _build_tool_matrix("none", {"saas_starter_module": "disabled"})
         tool_names = [tool[0] for tool in result]
         assert "node" not in tool_names
@@ -296,6 +320,7 @@ class TestBuildToolMatrix:
     def test_correct_versions(self):
         """Test that correct versions are specified."""
         from pre_gen_project import _build_tool_matrix
+
         result = _build_tool_matrix("fumadocs", {})
         # Check uv version
         uv_entry = [tool for tool in result if tool[0] == "uv"][0]
@@ -313,7 +338,8 @@ class TestCheckAndLogActionlint:
 
     def test_skips_for_non_github_platform(self, capsys, tmp_path, monkeypatch):
         """Test that function does nothing for non-GitHub CI platforms."""
-        from pre_gen_project import _check_and_log_actionlint, LOG_PATH
+        from pre_gen_project import _check_and_log_actionlint
+
         # Change to temp directory to avoid writing real log
         monkeypatch.chdir(tmp_path)
 
@@ -340,7 +366,9 @@ class TestCheckAndLogActionlint:
         captured = capsys.readouterr()
         # Check for not found message
         output_lower = captured.err.lower()
-        assert "actionlint" in output_lower and ("not found" in output_lower or "missing" in output_lower)
+        assert "actionlint" in output_lower and (
+            "not found" in output_lower or "missing" in output_lower
+        )
 
         # Check log file
         log_file = tmp_path / ".riso" / "toolchain_provisioning.jsonl"
@@ -388,7 +416,7 @@ class TestInstallRequiredTools:
     def test_returns_failures(self, tmp_path, monkeypatch):
         """Test returns list of failures for failed installations."""
         from pre_gen_project import _install_required_tools
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import patch
 
         monkeypatch.chdir(tmp_path)
 
@@ -441,7 +469,9 @@ class TestCheckPythonQualityTools:
             ToolCheck(name="mypy", status="present", command="uv tool run"),
         ]
 
-        with patch("pre_gen_project.ensure_python_quality_tools", return_value=mock_checks):
+        with patch(
+            "pre_gen_project.ensure_python_quality_tools", return_value=mock_checks
+        ):
             failures = _check_python_quality_tools()
 
         assert failures == []
@@ -463,7 +493,9 @@ class TestCheckPythonQualityTools:
             ),
         ]
 
-        with patch("pre_gen_project.ensure_python_quality_tools", return_value=mock_checks):
+        with patch(
+            "pre_gen_project.ensure_python_quality_tools", return_value=mock_checks
+        ):
             failures = _check_python_quality_tools()
 
         assert len(failures) == 1
@@ -520,7 +552,11 @@ class TestReportFailuresAndExit:
         captured = capsys.readouterr()
         output_lower = captured.err.lower()
         # Check for failure indicators
-        assert "prerequisite" in output_lower or "failed" in output_lower or "error" in output_lower
+        assert (
+            "prerequisite" in output_lower
+            or "failed" in output_lower
+            or "error" in output_lower
+        )
         # Check for tool details
         assert "uv" in captured.err
         assert "0.4" in captured.err
@@ -576,7 +612,11 @@ class TestReportFailuresAndExit:
         assert "uv" in output
         assert "node" in output
         # Verify we have multiple failure entries
-        assert output.count("failed") >= 2 or output.count("0.4") >= 1 and output.count("20") >= 1
+        assert (
+            output.count("failed") >= 2
+            or output.count("0.4") >= 1
+            and output.count("20") >= 1
+        )
 
 
 # ============================================================================
@@ -589,39 +629,48 @@ class TestParametrizedDocsSiteValidation:
     """Parametrized tests for docs site validation."""
 
     @pytest.mark.parametrize(
-        'env_value,expected',
+        "env_value,expected",
         [
             ('{"docs_site": "fumadocs"}', "fumadocs"),
             ('{"docs_site": "docusaurus"}', "docusaurus"),
             ('{"docs_site": "sphinx-shibuya"}', "sphinx-shibuya"),
             ('{"docs_site": "none"}', "none"),
-            ('{"docs_site": "mkdocs-material"}', "fumadocs"),  # Invalid, falls back to default
-            ('{"docs_site": "vitepress"}', "fumadocs"),  # Invalid, falls back to default
+            (
+                '{"docs_site": "mkdocs-material"}',
+                "fumadocs",
+            ),  # Invalid, falls back to default
+            (
+                '{"docs_site": "vitepress"}',
+                "fumadocs",
+            ),  # Invalid, falls back to default
             ('{"docs_site": "invalid-site"}', "fumadocs"),  # Falls back to default
-            ('not valid json', "fumadocs"),  # Falls back to default
+            ("not valid json", "fumadocs"),  # Falls back to default
             ('["list", "not", "dict"]', "fumadocs"),  # Falls back to default
-            ('{}', "fumadocs"),  # Missing docs_site key
+            ("{}", "fumadocs"),  # Missing docs_site key
         ],
         ids=[
-            'valid_fumadocs',
-            'valid_docusaurus',
-            'valid_sphinx',
-            'valid_none',
-            'invalid_mkdocs',
-            'invalid_vitepress',
-            'invalid_site',
-            'invalid_json',
-            'non_dict_json',
-            'missing_key',
-        ]
+            "valid_fumadocs",
+            "valid_docusaurus",
+            "valid_sphinx",
+            "valid_none",
+            "invalid_mkdocs",
+            "invalid_vitepress",
+            "invalid_site",
+            "invalid_json",
+            "non_dict_json",
+            "missing_key",
+        ],
     )
-    def test_load_docs_site_parametrized(self, env_value: str, expected: str, monkeypatch):
+    def test_load_docs_site_parametrized(
+        self, env_value: str, expected: str, monkeypatch
+    ):
         """Test various docs_site values from environment."""
         monkeypatch.delenv("COPIER_JINJA2_CONTEXT", raising=False)
         monkeypatch.delenv("COPIER_RENDER_CONTEXT", raising=False)
         monkeypatch.setenv("COPIER_ANSWERS", env_value)
 
         from pre_gen_project import _load_docs_site
+
         result = _load_docs_site()
         assert result == expected
 
@@ -631,7 +680,7 @@ class TestParametrizedCiPlatformValidation:
     """Parametrized tests for CI platform validation."""
 
     @pytest.mark.parametrize(
-        'ci_value,expected',
+        "ci_value,expected",
         [
             ("github-actions", "github-actions"),
             ("none", "none"),
@@ -639,17 +688,20 @@ class TestParametrizedCiPlatformValidation:
             ("gitlab-ci", "github-actions"),  # Invalid, falls back to default
         ],
         ids=[
-            'valid_github_actions',
-            'valid_none',
-            'invalid_jenkins',
-            'invalid_gitlab',
-        ]
+            "valid_github_actions",
+            "valid_none",
+            "invalid_jenkins",
+            "invalid_gitlab",
+        ],
     )
-    def test_load_ci_platform_parametrized(self, ci_value: str, expected: str, monkeypatch):
+    def test_load_ci_platform_parametrized(
+        self, ci_value: str, expected: str, monkeypatch
+    ):
         """Test various CI platform values."""
         monkeypatch.setenv("COPIER_ANSWERS", json.dumps({"ci_platform": ci_value}))
 
         from pre_gen_project import _load_ci_platform
+
         result = _load_ci_platform()
         assert result == expected
 
@@ -659,7 +711,7 @@ class TestParametrizedSaasValidation:
     """Parametrized tests for SaaS starter validation."""
 
     @pytest.mark.parametrize(
-        'context,expected_error_count,expected_warning_count',
+        "context,expected_error_count,expected_warning_count",
         [
             # Valid configurations with warnings
             (
@@ -670,7 +722,8 @@ class TestParametrizedSaasValidation:
                     "saas_hosting": "vercel",
                     "saas_orm": "prisma",
                 },
-                0, 1  # Vercel + R2 triggers warning
+                0,
+                1,  # Vercel + R2 triggers warning
             ),
             (
                 {
@@ -680,7 +733,8 @@ class TestParametrizedSaasValidation:
                     "saas_hosting": "vercel",
                     "saas_orm": "drizzle",
                 },
-                0, 0
+                0,
+                0,
             ),
             (
                 {
@@ -689,7 +743,8 @@ class TestParametrizedSaasValidation:
                     "saas_storage": "r2",
                     "saas_hosting": "cloudflare",
                 },
-                0, 0  # Cloudflare + R2 is compatible, no warnings
+                0,
+                0,  # Cloudflare + R2 is compatible, no warnings
             ),
             # Error cases
             (
@@ -698,7 +753,8 @@ class TestParametrizedSaasValidation:
                     "saas_database": "neon",
                     "saas_storage": "supabase-storage",
                 },
-                1, 0  # Neon + Supabase Storage incompatible
+                1,
+                0,  # Neon + Supabase Storage incompatible
             ),
             # Warning cases
             (
@@ -707,28 +763,26 @@ class TestParametrizedSaasValidation:
                     "saas_hosting": "cloudflare",
                     "saas_orm": "prisma",
                 },
-                0, 1  # Cloudflare + Prisma warning
+                0,
+                1,  # Cloudflare + Prisma warning
             ),
             # Disabled - no validation
-            (
-                {"saas_starter_module": "disabled"},
-                0, 0
-            ),
+            ({"saas_starter_module": "disabled"}, 0, 0),
         ],
         ids=[
-            'vercel_r2_warning',
-            'valid_supabase_storage',
-            'cloudflare_r2_compatible',
-            'error_neon_supabase_storage',
-            'warning_cloudflare_prisma',
-            'disabled_no_validation',
-        ]
+            "vercel_r2_warning",
+            "valid_supabase_storage",
+            "cloudflare_r2_compatible",
+            "error_neon_supabase_storage",
+            "warning_cloudflare_prisma",
+            "disabled_no_validation",
+        ],
     )
     def test_saas_validation_parametrized(
         self,
         context: dict[str, Any],
         expected_error_count: int,
-        expected_warning_count: int
+        expected_warning_count: int,
     ):
         """Test various SaaS starter configurations."""
         from pre_gen_project import _validate_saas_starter
@@ -746,33 +800,34 @@ class TestParametrizedToolMatrix:
     """Parametrized tests for tool matrix building."""
 
     @pytest.mark.parametrize(
-        'docs_site,context,expected_tools',
+        "docs_site,context,expected_tools",
         [
             ("none", {"saas_starter_module": "disabled"}, ["uv"]),
             ("fumadocs", {"saas_starter_module": "disabled"}, ["uv", "node", "pnpm"]),
             ("docusaurus", {"saas_starter_module": "disabled"}, ["uv", "node", "pnpm"]),
-            ("sphinx-shibuya", {"saas_starter_module": "disabled"}, ["uv", "node", "pnpm"]),
+            (
+                "sphinx-shibuya",
+                {"saas_starter_module": "disabled"},
+                ["uv", "node", "pnpm"],
+            ),
             ("none", {"saas_starter_module": "enabled"}, ["uv", "node", "pnpm"]),
             ("fumadocs", {"saas_starter_module": "enabled"}, ["uv", "node", "pnpm"]),
             ("docusaurus", {"saas_starter_module": "enabled"}, ["uv", "node", "pnpm"]),
             ("sphinx-shibuya", {}, ["uv", "node", "pnpm"]),
         ],
         ids=[
-            'no_docs_no_saas',
-            'fumadocs_no_saas',
-            'docusaurus_no_saas',
-            'sphinx_no_saas',
-            'no_docs_with_saas',
-            'fumadocs_with_saas',
-            'docusaurus_with_saas',
-            'sphinx_default_context',
-        ]
+            "no_docs_no_saas",
+            "fumadocs_no_saas",
+            "docusaurus_no_saas",
+            "sphinx_no_saas",
+            "no_docs_with_saas",
+            "fumadocs_with_saas",
+            "docusaurus_with_saas",
+            "sphinx_default_context",
+        ],
     )
     def test_tool_matrix_parametrized(
-        self,
-        docs_site: str,
-        context: dict[str, Any],
-        expected_tools: list[str]
+        self, docs_site: str, context: dict[str, Any], expected_tools: list[str]
     ):
         """Test tool matrix generation for different configurations."""
         from pre_gen_project import _build_tool_matrix
@@ -792,7 +847,7 @@ class TestParametrizedProvisionResult:
     """Parametrized tests for ProvisionResult creation."""
 
     @pytest.mark.parametrize(
-        'tool_data,expected_fields',
+        "tool_data,expected_fields",
         [
             (
                 {
@@ -800,7 +855,7 @@ class TestParametrizedProvisionResult:
                     "version_requested": "0.4",
                     "status": "installed",
                 },
-                {"tool_name": "uv", "status": "installed"}
+                {"tool_name": "uv", "status": "installed"},
             ),
             (
                 {
@@ -809,7 +864,7 @@ class TestParametrizedProvisionResult:
                     "status": "failed",
                     "stderr": "Install failed",
                 },
-                {"tool_name": "node", "status": "failed", "stderr": "Install failed"}
+                {"tool_name": "node", "status": "failed", "stderr": "Install failed"},
             ),
             (
                 {
@@ -817,7 +872,7 @@ class TestParametrizedProvisionResult:
                     "version_requested": "9",
                     "status": "already_present",
                 },
-                {"tool_name": "pnpm", "status": "already_present"}
+                {"tool_name": "pnpm", "status": "already_present"},
             ),
             (
                 {
@@ -834,20 +889,18 @@ class TestParametrizedProvisionResult:
                     "stderr": "Command not found",
                     "next_steps": "Install via mise",
                     "retry_command": "mise install actionlint",
-                }
+                },
             ),
         ],
         ids=[
-            'minimal_success',
-            'failed_with_stderr',
-            'already_present',
-            'failed_with_all_fields',
-        ]
+            "minimal_success",
+            "failed_with_stderr",
+            "already_present",
+            "failed_with_all_fields",
+        ],
     )
     def test_provision_result_parametrized(
-        self,
-        tool_data: dict[str, Any],
-        expected_fields: dict[str, Any]
+        self, tool_data: dict[str, Any], expected_fields: dict[str, Any]
     ):
         """Test ProvisionResult creation with various field combinations."""
         from pre_gen_project import ProvisionResult
@@ -867,17 +920,17 @@ class TestParametrizedActionlintCheck:
     """Parametrized tests for actionlint checking."""
 
     @pytest.mark.parametrize(
-        'ci_platform,which_return,expected_log,expected_status',
+        "ci_platform,which_return,expected_log,expected_status",
         [
             ("none", None, False, None),
             ("github-actions", None, True, "not_found"),
             ("github-actions", "/usr/bin/actionlint", True, "already_present"),
         ],
         ids=[
-            'non_github_skip',
-            'github_not_found',
-            'github_present',
-        ]
+            "non_github_skip",
+            "github_not_found",
+            "github_present",
+        ],
     )
     def test_actionlint_check_parametrized(
         self,
@@ -887,7 +940,7 @@ class TestParametrizedActionlintCheck:
         expected_status: str | None,
         tmp_path,
         monkeypatch,
-        capsys
+        capsys,
     ):
         """Test actionlint checking for different scenarios."""
         from pre_gen_project import _check_and_log_actionlint
@@ -915,12 +968,12 @@ class TestParametrizedValidateAndReport:
     """Parametrized tests for validate and report function."""
 
     @pytest.mark.parametrize(
-        'context,expected_return,expected_output',
+        "context,expected_return,expected_output",
         [
             (
                 {"saas_starter_module": "disabled"},
                 True,
-                None  # No validation output
+                None,  # No validation output
             ),
             (
                 {
@@ -929,7 +982,7 @@ class TestParametrizedValidateAndReport:
                     "saas_storage": "r2",
                 },
                 True,
-                "validated successfully"
+                "validated successfully",
             ),
             (
                 {
@@ -938,7 +991,7 @@ class TestParametrizedValidateAndReport:
                     "saas_storage": "supabase-storage",
                 },
                 False,
-                "Configuration errors found"
+                "Configuration errors found",
             ),
             (
                 {
@@ -947,22 +1000,22 @@ class TestParametrizedValidateAndReport:
                     "saas_orm": "prisma",
                 },
                 True,  # Warnings don't fail
-                "Configuration warnings"
+                "Configuration warnings",
             ),
         ],
         ids=[
-            'disabled_skips',
-            'valid_passes',
-            'errors_fail',
-            'warnings_pass',
-        ]
+            "disabled_skips",
+            "valid_passes",
+            "errors_fail",
+            "warnings_pass",
+        ],
     )
     def test_validate_and_report_parametrized(
         self,
         context: dict[str, Any],
         expected_return: bool,
         expected_output: str | None,
-        capsys
+        capsys,
     ):
         """Test validation reporting for different configurations."""
         from pre_gen_project import _validate_and_report_saas_starter

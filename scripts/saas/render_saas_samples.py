@@ -18,7 +18,7 @@ from pathlib import Path
 WORKSPACE_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(WORKSPACE_ROOT))
 
-from scripts.lib.logger import logger, configure_logging
+from scripts.lib.logger import logger, configure_logging  # noqa: E402
 
 SAMPLES_DIR = WORKSPACE_ROOT / "samples" / "saas-starter"
 
@@ -140,7 +140,7 @@ def create_copier_answers_file(stack_key: str, config: dict) -> Path:
     answers_dir = SAMPLES_DIR / stack_key
     answers_dir.mkdir(parents=True, exist_ok=True)
     answers_file = answers_dir / "copier-answers.yml"
-    
+
     # Convert config to YAML format
     with open(answers_file, "w") as f:
         f.write(f"# Copier Answers: {RECOMMENDED_STACKS[stack_key]['name']}\n")
@@ -150,7 +150,7 @@ def create_copier_answers_file(stack_key: str, config: dict) -> Path:
                 f.write(f"{key}: {str(value).lower()}\n")
             else:
                 f.write(f"{key}: {value}\n")
-    
+
     return answers_file
 
 
@@ -158,12 +158,12 @@ def render_sample(stack_key: str, stack_config: dict) -> dict:
     """Configure a sample project for the given stack."""
     logger.info(f"Configuring: {stack_config['name']}")
     logger.info(f"   {stack_config['description']}")
-    
+
     try:
         # Create copier-answers.yml
         answers_file = create_copier_answers_file(stack_key, stack_config["config"])
         logger.info(f"   Created: {answers_file.relative_to(WORKSPACE_ROOT)}")
-        
+
         # Create metadata file
         metadata = {
             "stack": stack_key,
@@ -172,13 +172,13 @@ def render_sample(stack_key: str, stack_config: dict) -> dict:
             "status": "configured",
             "config": stack_config["config"],
         }
-        
+
         metadata_file = SAMPLES_DIR / stack_key / "metadata.json"
         with open(metadata_file, "w") as f:
             json.dump(metadata, f, indent=2)
 
         logger.info(f"   Created: {metadata_file.relative_to(WORKSPACE_ROOT)}")
-        
+
         return {
             "stack": stack_key,
             "status": "configured",
@@ -186,7 +186,7 @@ def render_sample(stack_key: str, stack_config: dict) -> dict:
             "answers_file": str(answers_file.relative_to(WORKSPACE_ROOT)),
             "metadata_file": str(metadata_file.relative_to(WORKSPACE_ROOT)),
         }
-        
+
     except Exception as e:
         logger.error(f"   Error: {e}")
         return {
@@ -212,7 +212,7 @@ def main() -> int:
 
     logger.info("SaaS Starter Sample Configuration")
     logger.info("=" * 60)
-    
+
     # Determine which stacks to configure
     if args.stack:
         stacks_to_configure = {args.stack: RECOMMENDED_STACKS[args.stack]}
@@ -220,13 +220,13 @@ def main() -> int:
         stacks_to_configure = RECOMMENDED_STACKS
 
     logger.info(f"Configuring {len(stacks_to_configure)} stack(s)")
-    
+
     # Configure each stack
     results = []
     for stack_key, stack_config in stacks_to_configure.items():
         result = render_sample(stack_key, stack_config)
         results.append(result)
-    
+
     # Save results
     results_file = SAMPLES_DIR / "configuration-results.json"
     results_file.parent.mkdir(parents=True, exist_ok=True)
@@ -234,7 +234,7 @@ def main() -> int:
         json.dump(results, f, indent=2)
 
     logger.info(f"Results saved to {results_file.relative_to(WORKSPACE_ROOT)}")
-    
+
     # Summary
     configured = sum(1 for r in results if r["status"] == "configured")
     failed = sum(1 for r in results if r["status"] == "failed")
@@ -244,17 +244,21 @@ def main() -> int:
     logger.info(f"  Configured: {configured}")
     logger.info(f"  Failed: {failed}")
     logger.info(f"  Total: {len(results)}")
-    
+
     if failed > 0:
         logger.warning("Some configurations failed")
         return 1
 
     logger.info("All stacks configured successfully!")
     logger.info("Next steps:")
-    logger.info("  1. Render a sample: copier copy . samples/saas-starter/<stack>/render -f samples/saas-starter/<stack>/copier-answers.yml")
-    logger.info("  2. Install deps: cd samples/saas-starter/<stack>/render && pnpm install")
+    logger.info(
+        "  1. Render a sample: copier copy . samples/saas-starter/<stack>/render -f samples/saas-starter/<stack>/copier-answers.yml"
+    )
+    logger.info(
+        "  2. Install deps: cd samples/saas-starter/<stack>/render && pnpm install"
+    )
     logger.info("  3. Run tests: pnpm run test")
-    
+
     return 0
 
 

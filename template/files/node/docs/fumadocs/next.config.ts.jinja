@@ -1,0 +1,23 @@
+{%- if docs_site == 'fumadocs' -%}
+import { createMDX } from 'fumadocs-mdx/next';
+
+const withMDX = createMDX();
+
+/** @type {import('next').NextConfig} */
+const config = {
+  reactStrictMode: true,
+{%- if fumadocs_llms_txt == 'enabled' %}
+
+  async rewrites() {
+    return [
+      {
+        source: '/docs/:path*.mdx',
+        destination: '/llms.mdx/docs/:path*',
+      },
+    ];
+  },
+{%- endif %}
+};
+
+export default withMDX(config);
+{%- endif -%}

@@ -617,37 +617,6 @@
 :hidden:
 :maxdepth: 1
 
-FRONTMATTER_SCHEMA
-agents-md-manager
-mcp-installer
-riso-tui
-render-samples
-generate-compatibility-matrix
-pre-gen-hook
-post-gen-hook
-quality-suite
-frontend-validator
-tool-validator
-structure-validator
-monorepo-tool-validator
-build-tool-validator
-language-validator
-ruff
-ty
-pylint
-pytest
-coverage
-pre-commit
-uv
-pnpm
-copier
-docker
-github-actions
-fastapi
-fastify
-typer
 fastmcp
 riso-mcp-server
-strawberry-graphql
-websockets
 ```

@@ -1,4 +1,5 @@
 """Unit tests for validate_release_configs.py"""
+
 import pytest
 
 
@@ -431,3 +432,112 @@ jobs: invalid yaml
         assert len(errors) == 1
         # Error message contains either 'yaml' or 'parsing'
         assert "yaml" in errors[0].lower() or "parsing" in errors[0].lower()
+
+
+@pytest.mark.unit
+class TestMain:
+    """Tests for main function."""
+
+    def test_main_with_valid_project(self, temp_dir, monkeypatch):
+        """Should return 0 when all configs valid."""
+        from unittest.mock import patch
+        import validate_release_configs
+
+        project_dir = temp_dir / "project"
+        project_dir.mkdir()
+
+        # Create valid commitlint config
+        commitlint = project_dir / ".commitlintrc.yml"
+        commitlint.write_text("""
+extends:
+  - '@commitlint/config-conventional'
+rules:
+  type-enum:
+    - 2
+    - always
+    - [feat, fix, docs, style, refactor, test, chore]
+""")
+
+        # Create valid releaserc
+        releaserc = project_dir / ".releaserc.yml"
+        releaserc.write_text("""
+branches:
+  - main
+plugins:
+  - '@semantic-release/commit-analyzer'
+  - '@semantic-release/release-notes-generator'
+  - '@semantic-release/changelog'
+  - '@semantic-release/github'
+""")
+
+        # Create valid workflow with named semantic-release step
+        workflows_dir = project_dir / ".github" / "workflows"
+        workflows_dir.mkdir(parents=True)
+        workflow = workflows_dir / "riso-release.yml"
+        workflow.write_text("""
+name: Release
+'on':
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run semantic-release
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+""")
+
+        with patch("sys.argv", ["validate_release_configs.py", 
+                               "--project-dir", str(project_dir)]):
+            result = validate_release_configs.main()
+
+        assert result == 0
+
+    def test_main_with_missing_project_dir(self, temp_dir, monkeypatch):
+        """Should return 1 when project dir doesn't exist."""
+        from unittest.mock import patch
+        import validate_release_configs
+
+        with patch("sys.argv", ["validate_release_configs.py",
+                               "--project-dir", str(temp_dir / "nonexistent")]):
+            result = validate_release_configs.main()
+
+        assert result == 1
+
+    def test_main_with_invalid_config(self, temp_dir, monkeypatch):
+        """Should return 1 when configs are invalid."""
+        from unittest.mock import patch
+        import validate_release_configs
+
+        project_dir = temp_dir / "project"
+        project_dir.mkdir()
+
+        # Create invalid commitlint (missing extends)
+        commitlint = project_dir / ".commitlintrc.yml"
+        commitlint.write_text("rules: {}")
+
+        with patch("sys.argv", ["validate_release_configs.py",
+                               "--project-dir", str(project_dir)]):
+            result = validate_release_configs.main()
+
+        assert result == 1
+
+    def test_main_with_no_configs(self, temp_dir, monkeypatch):
+        """Should return 0 when no configs present (module disabled)."""
+        from unittest.mock import patch
+        import validate_release_configs
+
+        project_dir = temp_dir / "project"
+        project_dir.mkdir()
+
+        with patch("sys.argv", ["validate_release_configs.py",
+                               "--project-dir", str(project_dir)]):
+            result = validate_release_configs.main()
+
+        assert result == 0

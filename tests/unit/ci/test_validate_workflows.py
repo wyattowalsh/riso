@@ -1,4 +1,5 @@
 """Unit tests for validate_workflows.py"""
+
 import json
 import subprocess
 from unittest.mock import MagicMock
@@ -36,6 +37,7 @@ jobs:
         monkeypatch.setattr(subprocess, "run", mock_run)
 
         from validate_workflows import validate_workflow
+
         result = validate_workflow(workflow)
 
         assert result["status"] == "pass"
@@ -58,18 +60,21 @@ jobs:
         def mock_run(*args, **kwargs):
             result = MagicMock()
             result.returncode = 1
-            result.stdout = json.dumps({
-                "line": 7,
-                "column": 9,
-                "message": "shellcheck reported issue",
-                "kind": "error"
-            })
+            result.stdout = json.dumps(
+                {
+                    "line": 7,
+                    "column": 9,
+                    "message": "shellcheck reported issue",
+                    "kind": "error",
+                }
+            )
             result.stderr = ""
             return result
 
         monkeypatch.setattr(subprocess, "run", mock_run)
 
         from validate_workflows import validate_workflow
+
         result = validate_workflow(workflow)
 
         assert result["status"] == "fail"
@@ -78,40 +83,55 @@ jobs:
 
     def test_actionlint_not_installed(self, temp_dir, monkeypatch):
         """Should handle actionlint not being installed."""
+
         def mock_run(*args, **kwargs):
             raise FileNotFoundError("actionlint not found")
 
         monkeypatch.setattr(subprocess, "run", mock_run)
 
         workflow = temp_dir / "test.yml"
-        workflow.write_text("name: Test\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n")
+        workflow.write_text(
+            "name: Test\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n"
+        )
 
         from validate_workflows import validate_workflow
+
         result = validate_workflow(workflow)
 
         assert result["status"] == "skipped"
-        assert any("actionlint not found" in str(e.get("message", "")) for e in result["errors"])
+        assert any(
+            "actionlint not found" in str(e.get("message", ""))
+            for e in result["errors"]
+        )
 
     def test_validation_timeout(self, temp_dir, monkeypatch):
         """Should handle validation timeout."""
+
         def mock_run(*args, **kwargs):
             raise subprocess.TimeoutExpired("actionlint", 30)
 
         monkeypatch.setattr(subprocess, "run", mock_run)
 
         workflow = temp_dir / "test.yml"
-        workflow.write_text("name: Test\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n")
+        workflow.write_text(
+            "name: Test\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n"
+        )
 
         from validate_workflows import validate_workflow
+
         result = validate_workflow(workflow)
 
         assert result["status"] == "fail"
-        assert any("timed out" in str(e.get("message", "")).lower() for e in result["errors"])
+        assert any(
+            "timed out" in str(e.get("message", "")).lower() for e in result["errors"]
+        )
 
     def test_handles_non_json_output(self, temp_dir, monkeypatch):
         """Should handle non-JSON actionlint output gracefully."""
         workflow = temp_dir / "test.yml"
-        workflow.write_text("name: Test\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n")
+        workflow.write_text(
+            "name: Test\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n"
+        )
 
         def mock_run(*args, **kwargs):
             result = MagicMock()
@@ -123,6 +143,7 @@ jobs:
         monkeypatch.setattr(subprocess, "run", mock_run)
 
         from validate_workflows import validate_workflow
+
         result = validate_workflow(workflow)
 
         assert result["status"] == "fail"
@@ -149,6 +170,7 @@ class TestValidateWorkflows:
         monkeypatch.setattr(subprocess, "run", mock_run)
 
         from validate_workflows import validate_workflows
+
         exit_code = validate_workflows(workflows_dir)
 
         assert exit_code == 0
@@ -169,6 +191,7 @@ class TestValidateWorkflows:
         monkeypatch.setattr(subprocess, "run", mock_run)
 
         from validate_workflows import validate_workflows
+
         exit_code = validate_workflows(workflows_dir)
 
         assert exit_code == 0
@@ -176,6 +199,7 @@ class TestValidateWorkflows:
     def test_nonexistent_directory_fails(self, temp_dir):
         """Should fail for non-existent directory."""
         from validate_workflows import validate_workflows
+
         exit_code = validate_workflows(temp_dir / "nonexistent")
 
         assert exit_code == 1
@@ -186,6 +210,7 @@ class TestValidateWorkflows:
         workflows_dir.mkdir()
 
         from validate_workflows import validate_workflows
+
         exit_code = validate_workflows(workflows_dir)
 
         assert exit_code == 0
@@ -207,12 +232,9 @@ class TestValidateWorkflows:
                 result.stdout = ""
             else:
                 result.returncode = 1
-                result.stdout = json.dumps({
-                    "line": 1,
-                    "column": 1,
-                    "message": "error",
-                    "kind": "error"
-                })
+                result.stdout = json.dumps(
+                    {"line": 1, "column": 1, "message": "error", "kind": "error"}
+                )
             result.stderr = ""
             call_count["count"] += 1
             return result
@@ -220,6 +242,7 @@ class TestValidateWorkflows:
         monkeypatch.setattr(subprocess, "run", mock_run)
 
         from validate_workflows import validate_workflows
+
         exit_code = validate_workflows(workflows_dir)
 
         assert exit_code == 1
@@ -240,6 +263,7 @@ class TestValidateWorkflows:
         monkeypatch.setattr(subprocess, "run", mock_run)
 
         from validate_workflows import validate_workflows
+
         exit_code = validate_workflows(workflows_dir, output_json=True)
 
         captured = capsys.readouterr()
@@ -268,6 +292,83 @@ class TestValidateWorkflows:
         monkeypatch.setattr(subprocess, "run", mock_run)
 
         from validate_workflows import validate_workflows
+
         exit_code = validate_workflows(workflows_dir)
 
         assert exit_code == 0
+
+
+@pytest.mark.unit
+class TestMain:
+    """Tests for main function."""
+
+    def test_main_with_valid_dir(self, temp_dir, monkeypatch):
+        """Should validate workflows in directory."""
+        from unittest.mock import patch, MagicMock
+        import validate_workflows
+
+        workflows_dir = temp_dir / "workflows"
+        workflows_dir.mkdir()
+        (workflows_dir / "test.yml").write_text("name: Test\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi")
+
+        def mock_run(*args, **kwargs):
+            result = MagicMock()
+            result.returncode = 0
+            result.stdout = ""
+            return result
+
+        monkeypatch.setattr(subprocess, "run", mock_run)
+
+        with patch("sys.argv", ["validate_workflows.py", str(workflows_dir)]):
+            result = validate_workflows.main()
+
+        assert result == 0
+
+    def test_main_with_json_output(self, temp_dir, monkeypatch):
+        """Should output JSON when --json flag used."""
+        from unittest.mock import patch, MagicMock
+        import validate_workflows
+
+        workflows_dir = temp_dir / "workflows"
+        workflows_dir.mkdir()
+        (workflows_dir / "test.yml").write_text("name: Test")
+
+        def mock_run(*args, **kwargs):
+            result = MagicMock()
+            result.returncode = 0
+            result.stdout = ""
+            return result
+
+        monkeypatch.setattr(subprocess, "run", mock_run)
+
+        with patch("sys.argv", ["validate_workflows.py", str(workflows_dir), "--json"]):
+            result = validate_workflows.main()
+
+        assert result == 0
+
+
+@pytest.mark.unit
+class TestNonJsonErrors:
+    """Tests for non-JSON error handling."""
+
+    def test_handles_non_json_actionlint_output(self, temp_dir, monkeypatch):
+        """Should handle non-JSON actionlint output gracefully."""
+        from unittest.mock import MagicMock
+        workflow = temp_dir / "test.yml"
+        workflow.write_text("name: Test")
+
+        def mock_run(*args, **kwargs):
+            result = MagicMock()
+            result.returncode = 1
+            result.stdout = "Some plain text error\nAnother error line"
+            return result
+
+        monkeypatch.setattr(subprocess, "run", mock_run)
+
+        from validate_workflows import validate_workflow
+
+        result = validate_workflow(workflow)
+
+        assert result["status"] == "fail"
+        assert len(result["errors"]) == 2
+        assert result["errors"][0]["message"] == "Some plain text error"

@@ -16,11 +16,17 @@ import sys
 from pathlib import Path
 from typing import TypedDict
 
-from scripts.lib.logger import logger, configure_logging
+# Support both package import (from project root) and direct import (tests)
+try:
+    from scripts.lib.logger import logger, configure_logging
+except ModuleNotFoundError:
+    from logger import logger, configure_logging  # type: ignore[import-not-found]
 
 try:  # pragma: no cover - import behaviour depends on invocation style
     from record_module_success import ModuleSuccessRecorder
-except ModuleNotFoundError:  # pragma: no cover - fallback for `python path/to/script.py`
+except (
+    ModuleNotFoundError
+):  # pragma: no cover - fallback for `python path/to/script.py`
     import sys as _sys
     from pathlib import Path as _Path
 
@@ -30,6 +36,7 @@ except ModuleNotFoundError:  # pragma: no cover - fallback for `python path/to/s
 
 class VariantResult(TypedDict):
     """Result metadata from rendering a single variant."""
+
     variant: str
     answers: str
     destination: str
@@ -40,6 +47,7 @@ class VariantResult(TypedDict):
 
 class RenderSummary(TypedDict, total=False):
     """Complete render matrix summary with all variant results."""
+
     variants: list[dict[str, object]]
     module_success: dict[str, object]
     quality_runs: list[dict[str, object]]
@@ -107,43 +115,50 @@ def render_variant(variant: str, answers_file: Path) -> VariantResult:
     cmd = [str(RENDER_SCRIPT), "--variant", variant, "--answers", str(answers_file)]
     env = {**os.environ, "COPIER_CMD": os.environ.get("COPIER_CMD", "copier")}
     subprocess.run(cmd, check=True, cwd=REPO_ROOT, env=env)
-    
+
     metadata = load_post_gen_metadata(answers_file)
     workflow_status = "unknown"
     container_status = "not_applicable"
-    
+
     if metadata:
-        workflow_status = metadata.get("workflow_validation", "unknown")
-        
+        workflow_status = str(metadata.get("workflow_validation", "unknown"))
+
         # Check if variant should have container support
         answers_data = {}
         if answers_file.exists():
             try:
                 import yaml
+
                 with open(answers_file, encoding="utf-8") as f:
                     answers_data = yaml.safe_load(f) or {}
             except (ImportError, OSError) as e:
                 # YAML module not available or file read error - skip container checks
-                sys.stderr.write(f"Warning: Could not load answers file {answers_file}: {e}\n")
+                sys.stderr.write(
+                    f"Warning: Could not load answers file {answers_file}: {e}\n"
+                )
             except Exception as e:
                 # Catch yaml.YAMLError and other YAML parsing errors
                 # Can't import yaml.YAMLError without yaml being available
-                sys.stderr.write(f"Warning: Failed to parse YAML from {answers_file}: {e}\n")
-        
+                sys.stderr.write(
+                    f"Warning: Failed to parse YAML from {answers_file}: {e}\n"
+                )
+
         api_tracks = answers_data.get("api_tracks", "none")
         docs_site = answers_data.get("docs_site", "none")
-        
+
         # Container support enabled for API or docs projects
-        has_containers = api_tracks in ["python", "node", "python+node"] or docs_site == "fumadocs"
-        
+        has_containers = (
+            api_tracks in ["python", "node", "python+node"] or docs_site == "fumadocs"
+        )
+
         if has_containers:
             # Validate container files exist
             docker_file = destination / ".docker" / "Dockerfile"
             compose_file = destination / "docker-compose.yml"
-            
+
             if docker_file.exists() and compose_file.exists():
                 container_status = "files_present"
-                
+
                 # Optional: Run hadolint validation
                 try:
                     with docker_file.open("rb") as f:
@@ -211,15 +226,15 @@ def main() -> None:
         for variant, answers_file in discover_variants():
             variant_summary = render_variant(variant, answers_file)
             summary["variants"].append(variant_summary)
-            
+
             # Track workflow validation status
             workflow_status = variant_summary.get("workflow_validation", "unknown")
             recorder.update_workflow_validation(workflow_status)
-            
+
             # Track container validation status
             container_status = variant_summary.get("container_status", "not_applicable")
             recorder.update_container_status(container_status)
-            
+
             smoke_results = variant_summary.get("smoke_results")
             if smoke_results:
                 recorder.update_from_results(

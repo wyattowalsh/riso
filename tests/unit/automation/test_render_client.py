@@ -10,10 +10,10 @@ Tests cover:
 - Error handling for various failure scenarios
 - HTTP request construction and authentication
 """
+
 import json
 import urllib.error
 import urllib.request
-from typing import Any, Mapping
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -363,7 +363,7 @@ class TestHTTPRequest:
     def test_request_with_authentication_header(self, mock_urlopen):
         """Test that authentication token is included in headers."""
         mock_response = MagicMock()
-        mock_response.read.return_value = b'{}'
+        mock_response.read.return_value = b"{}"
         mock_response.__enter__ = Mock(return_value=mock_response)
         mock_response.__exit__ = Mock(return_value=False)
         mock_urlopen.return_value = mock_response
@@ -559,7 +559,7 @@ class TestRenderClientIntegration:
     def test_timeout_configuration(self, mock_urlopen):
         """Test that custom timeout is used in requests."""
         mock_response = MagicMock()
-        mock_response.read.return_value = b'{}'
+        mock_response.read.return_value = b"{}"
         mock_response.__enter__ = Mock(return_value=mock_response)
         mock_response.__exit__ = Mock(return_value=False)
         mock_urlopen.return_value = mock_response

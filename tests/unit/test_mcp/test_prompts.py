@@ -1,7 +1,11 @@
 """Tests for MCP server prompts."""
+
 from __future__ import annotations
 
 import pytest
+
+pytest.importorskip("fastmcp")
+pytest.importorskip("pydantic_settings")
 
 
 class TestWorkflowPrompts:

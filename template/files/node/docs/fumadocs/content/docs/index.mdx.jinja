@@ -1,0 +1,63 @@
+{%- if docs_site == 'fumadocs' -%}
+---
+title: Introduction
+description: Welcome to the {{ project_name }} documentation
+---
+
+# Welcome to {{ project_name }}
+
+This documentation provides comprehensive guides and reference material for {{ project_name }}.
+
+## Getting Started
+
+<Cards>
+  <Card title="Quickstart" href="/docs/quickstart">
+    Get up and running with {{ project_name }} in minutes.
+  </Card>
+{%- if cli_module == 'enabled' %}
+  <Card title="CLI Reference" href="/docs/modules/cli">
+    Learn about the command-line interface.
+  </Card>
+{%- endif %}
+{%- if api_tracks in ['python', 'python+node'] %}
+  <Card title="Python API" href="/docs/modules/api-python">
+    Explore the Python API documentation.
+  </Card>
+{%- endif %}
+{%- if api_tracks in ['node', 'python+node'] %}
+  <Card title="Node.js API" href="/docs/modules/api-node">
+    Explore the Node.js API documentation.
+  </Card>
+{%- endif %}
+</Cards>
+
+## Features
+
+- **Modern Stack**: Built with the latest technologies
+- **Type Safety**: Full TypeScript support
+- **Documentation**: Comprehensive guides and API reference
+{%- if fumadocs_llms_txt == 'enabled' %}
+- **AI-Ready**: llms.txt endpoints for LLM consumption
+{%- endif %}
+{%- if fumadocs_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
+- **OpenAPI**: Interactive API documentation
+{%- endif %}
+
+## Project Structure
+
+```
+{{ project_slug }}/
+├── src/                 # Source code
+{%- if cli_module == 'enabled' %}
+├── cli/                 # CLI module
+{%- endif %}
+{%- if api_tracks in ['python', 'python+node'] %}
+├── api/                 # Python API
+{%- endif %}
+{%- if api_tracks in ['node', 'python+node'] %}
+├── apps/                # Node.js applications
+{%- endif %}
+├── docs/                # Documentation (you are here)
+└── tests/               # Test suites
+```
+{%- endif -%}

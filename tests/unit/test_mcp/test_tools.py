@@ -1,12 +1,15 @@
 """Tests for MCP server tools."""
+
 from __future__ import annotations
 
 import tempfile
 from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+pytest.importorskip("fastmcp")
+pytest.importorskip("pydantic_settings")
 
 
 @pytest.fixture

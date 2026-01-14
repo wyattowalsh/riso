@@ -1,0 +1,98 @@
+{%- if docs_site == 'fumadocs' and mcp_module == 'enabled' -%}
+---
+title: MCP Integration
+description: Model Context Protocol tools and resources
+---
+
+# MCP Integration
+
+{{ project_name }} includes [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) integration for AI assistant tooling.
+
+## Overview
+
+MCP provides a standardized way for AI assistants to interact with external tools and resources.
+
+## Available Tools
+
+### `{{ package_name }}_info`
+
+Get information about the {{ project_name }} installation.
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+**Example Response:**
+
+```json
+{
+  "name": "{{ project_name }}",
+  "version": "0.1.0",
+  "python_version": "3.11.0"
+}
+```
+
+## Resources
+
+### `{{ package_name }}://config`
+
+Access the current configuration.
+
+**URI:** `{{ package_name }}://config`
+
+**MIME Type:** `application/json`
+
+## Configuration
+
+### Claude Desktop
+
+Add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "{{ package_name }}": {
+      "command": "uv",
+      "args": ["run", "{{ package_name }}-mcp"],
+      "cwd": "/path/to/{{ project_slug }}"
+    }
+  }
+}
+```
+
+### VS Code
+
+Add to your VS Code settings:
+
+```json
+{
+  "mcp.servers": {
+    "{{ package_name }}": {
+      "command": "uv",
+      "args": ["run", "{{ package_name }}-mcp"]
+    }
+  }
+}
+```
+
+## Development
+
+### Running the MCP Server
+
+```bash
+uv run {{ package_name }}-mcp
+```
+
+### Testing Tools
+
+Use the MCP Inspector to test tools:
+
+```bash
+npx @anthropic-ai/mcp-inspector uv run {{ package_name }}-mcp
+```
+{%- endif -%}

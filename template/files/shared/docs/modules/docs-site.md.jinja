@@ -2,22 +2,547 @@
 
 Pick a documentation surface that matches your toolchain:
 
+- `docs_site=fumadocs`: Next.js + Fumadocs with AI-ready llms.txt, Orama/Algolia search, and OpenAPI support.
 - `docs_site=sphinx-shibuya`: Shibuya Sphinx site with MyST Markdown, hover
   references, Mermaid, and `autodoc2` for import-free API docs.
-- `docs_site=fumadocs`: Next.js + Fumadocs with DocSearch-ready MDX content.
-- `docs_site=docusaurus`: React/TypeScript docs with Algolia search.
+- `docs_site=docusaurus`: React/TypeScript docs with modern 2025 features.
 - `docs_site=none`: Skip docs scaffolding.
 
 ## Validation Commands
 
 ```bash
+# Sphinx Shibuya
 uv sync --group docs
 uv run sphinx-build docs dist/docs
 
-# If using Fumadocs
+# Fumadocs
 pnpm --filter docs-fumadocs install
 pnpm --filter docs-fumadocs build
+
+# Docusaurus
+pnpm --filter docs-docusaurus install
+pnpm --filter docs-docusaurus build
 ```
 
-Add navigation entries to `fumadocs.config.ts` or the Shibuya toctree files and
-commit generated assets to ensure deterministic docs builds.
+Add navigation entries to `fumadocs.config.ts`, `docusaurus.config.ts`, or the
+Shibuya toctree files and commit generated assets to ensure deterministic builds.
+
+{%- if docs_site == 'fumadocs' %}
+
+## Fumadocs Configuration
+
+This project uses **Fumadocs v16+** with the following configurable features:
+
+### Features Enabled
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Search** | `{{ fumadocs_search_provider }}` | {% if fumadocs_search_provider == 'orama' %}Built-in Orama (free, self-hosted){% elif fumadocs_search_provider == 'algolia' %}Algolia DocSearch{% elif fumadocs_search_provider == 'orama-cloud' %}Orama Cloud{% else %}Disabled{% endif %} |
+| **AI Docs** | `{{ fumadocs_llms_txt }}` | {% if fumadocs_llms_txt == 'enabled' %}llms.txt endpoints for AI/LLM consumption{% else %}Disabled{% endif %} |
+| **AI Search** | `{{ fumadocs_ai_search }}` | {% if fumadocs_ai_search == 'enabled' %}Chat dialog with Vercel AI SDK{% else %}Disabled{% endif %} |
+| **Theme** | `{{ fumadocs_theme }}` | {% if fumadocs_theme == 'ocean' %}Ocean blue preset{% elif fumadocs_theme == 'purple' %}Purple accent{% elif fumadocs_theme == 'custom' %}Custom CSS variables{% else %}Neutral (default){% endif %} |
+| **Sidebar** | `{{ fumadocs_sidebar }}` | {% if fumadocs_sidebar == 'shadcn' %}Custom Shadcn UI sidebar{% else %}Built-in Fumadocs sidebar{% endif %} |
+| **i18n** | `{{ fumadocs_i18n }}` | {% if fumadocs_i18n == 'enabled' %}Internationalization ready{% else %}Single locale{% endif %} |
+| **Blog** | `{{ fumadocs_blog }}` | {% if fumadocs_blog == 'enabled' %}MDX blog collection{% else %}Disabled{% endif %} |
+{%- if api_tracks in ['python', 'node', 'python+node'] %}
+| **OpenAPI** | `{{ fumadocs_openapi }}` | {% if fumadocs_openapi == 'enabled' %}Interactive API documentation{% else %}Disabled{% endif %} |
+{%- endif %}
+{%- if api_tracks in ['node', 'python+node'] %}
+| **TypeDoc** | `{{ fumadocs_typedoc }}` | {% if fumadocs_typedoc == 'enabled' %}TypeScript SDK documentation{% else %}Disabled{% endif %} |
+{%- endif %}
+
+### Quick Start
+
+```bash
+# Start development server
+pnpm --filter docs-fumadocs dev
+
+# Build for production
+pnpm --filter docs-fumadocs build
+
+# Start production server
+pnpm --filter docs-fumadocs start
+```
+
+{%- if fumadocs_llms_txt == 'enabled' %}
+
+### AI-Ready Documentation
+
+This project includes AI-friendly endpoints:
+
+| Endpoint | Description |
+|----------|-------------|
+| `/llms.txt` | Summary with documentation links for LLM context |
+| `/llms-full.txt` | Complete documentation in plain text for RAG |
+| `/docs/*.mdx` | Per-page Markdown access (append `.mdx` to any doc URL) |
+
+**Page Actions**: Each documentation page includes buttons to:
+- Copy page content as Markdown for LLMs
+- View raw `.mdx` content
+- View source on GitHub
+
+**Content Negotiation**: AI agents can request Markdown by setting `Accept: text/markdown` header.
+
+{%- endif %}
+
+{%- if fumadocs_ai_search == 'enabled' %}
+
+### AI Search Dialog
+
+An AI-powered chat interface is available. Configure your AI provider:
+
+```bash
+# .env
+OPENAI_API_KEY=your-openai-key
+# Or for Inkeep:
+INKEEP_API_KEY=your-inkeep-key
+```
+
+Keyboard shortcut: `⌘⇧K` (Mac) or `Ctrl+Shift+K` (Windows/Linux)
+
+{%- endif %}
+
+{%- if fumadocs_search_provider == 'algolia' %}
+
+### Algolia Search
+
+Configure Algolia credentials:
+
+```bash
+# .env
+NEXT_PUBLIC_ALGOLIA_APP_ID=your-app-id
+NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY=your-search-key
+ALGOLIA_ADMIN_API_KEY=your-admin-key  # For syncing
+```
+
+Sync search index:
+
+```bash
+pnpm --filter docs-fumadocs search:sync
+```
+
+{%- endif %}
+
+{%- if fumadocs_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
+
+### OpenAPI Documentation
+
+Update `openapi/openapi.yaml` with your API specification. The interactive
+API reference is automatically generated.
+
+Features:
+- Request/response schema documentation
+- Try-it-out playground
+- Code examples in multiple languages
+
+{%- endif %}
+
+{%- if fumadocs_typedoc == 'enabled' and api_tracks in ['node', 'python+node'] %}
+
+### TypeDoc SDK Documentation
+
+Generate TypeScript API documentation:
+
+```bash
+pnpm --filter docs-fumadocs docs:sdk
+```
+
+Output is placed in `content/docs/sdk/` and integrated with the sidebar.
+
+{%- endif %}
+
+{%- if fumadocs_theme == 'custom' %}
+
+### Custom Theme
+
+Customize colors in `app/global.css`:
+
+```css
+:root {
+  --fd-background: 0 0% 96%;
+  --fd-foreground: 0 0% 3.9%;
+  --fd-primary: 220 70% 50%;
+  --fd-primary-foreground: 0 0% 98%;
+}
+
+.dark {
+  --fd-background: 0 0% 7%;
+  --fd-foreground: 0 0% 98%;
+}
+```
+
+{%- endif %}
+
+{%- if fumadocs_sidebar == 'shadcn' %}
+
+### Custom Sidebar
+
+A Shadcn UI-based sidebar component is included at `components/sidebar/`.
+Customize the navigation behavior and styling as needed.
+
+{%- endif %}
+
+{%- endif %}
+
+{%- if docs_site == 'docusaurus' %}
+
+## Docusaurus Configuration
+
+This project uses **Docusaurus 3.8+** with the following configurable features:
+
+### Features Enabled
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Search** | `{{ docusaurus_search_provider }}` | {% if docusaurus_search_provider == 'local' %}Offline full-text search{% elif docusaurus_search_provider == 'algolia' %}Algolia DocSearch{% elif docusaurus_search_provider == 'typesense' %}Typesense search{% else %}No search{% endif %} |
+| **Analytics** | `{{ docusaurus_analytics }}` | {% if docusaurus_analytics == 'posthog' %}PostHog product analytics{% elif docusaurus_analytics == 'google' %}Google Analytics 4{% elif docusaurus_analytics == 'matomo' %}Matomo analytics{% else %}No analytics{% endif %} |
+| **Theme** | `{{ docusaurus_theme }}` | {% if docusaurus_theme == 'tailwind' %}Tailwind CSS v4{% else %}Classic Infima{% endif %} |
+| **AI Docs** | `{{ docusaurus_llms_txt }}` | {% if docusaurus_llms_txt == 'enabled' %}llms.txt generation enabled{% else %}Disabled{% endif %} |
+| **i18n** | `{{ docusaurus_i18n }}` | {% if docusaurus_i18n == 'enabled' %}Internationalization ready{% else %}Single locale{% endif %} |
+| **Versioning** | `{{ docusaurus_versioning }}` | {% if docusaurus_versioning == 'enabled' %}Multi-version docs{% else %}Single version{% endif %} |
+| **Blog** | `{{ docusaurus_blog }}` | {% if docusaurus_blog == 'enabled' %}Blog with RSS/Atom{% else %}Disabled{% endif %} |
+| **Performance** | `{{ docusaurus_faster }}` | {% if docusaurus_faster == 'enabled' %}Rspack + SWC + LightningCSS{% else %}Standard Webpack{% endif %} |
+| **Mermaid** | `{{ docusaurus_mermaid }}` | {% if docusaurus_mermaid == 'enabled' %}Diagrams in Markdown{% else %}Disabled{% endif %} |
+| **Math** | `{{ docusaurus_math }}` | {% if docusaurus_math == 'enabled' %}KaTeX equations{% else %}Disabled{% endif %} |
+| **Live Code** | `{{ docusaurus_live_codeblock }}` | {% if docusaurus_live_codeblock == 'enabled' %}Interactive React playground{% else %}Disabled{% endif %} |
+| **Git Timestamps** | `{{ docusaurus_show_last_update }}` | {% if docusaurus_show_last_update == 'enabled' %}'Last updated' from git{% else %}Disabled{% endif %} |
+| **Ideal Images** | `{{ docusaurus_ideal_images }}` | {% if docusaurus_ideal_images == 'enabled' %}Responsive images{% else %}Disabled{% endif %} |
+| **Image Zoom** | `{{ docusaurus_image_zoom }}` | {% if docusaurus_image_zoom == 'enabled' %}Medium-style zoom{% else %}Disabled{% endif %} |
+| **PWA** | `{{ docusaurus_pwa }}` | {% if docusaurus_pwa == 'enabled' %}Offline support{% else %}Disabled{% endif %} |
+| **Comments** | `{{ docusaurus_comments }}` | {% if docusaurus_comments == 'giscus' %}Giscus (GitHub Discussions){% else %}Disabled{% endif %} |
+| **Feedback** | `{{ docusaurus_feedback }}` | {% if docusaurus_feedback == 'enabled' %}'Was this helpful?' widget{% else %}Disabled{% endif %} |
+| **Sitemap** | `{{ docusaurus_sitemap }}` | {% if docusaurus_sitemap == 'enabled' %}SEO sitemap.xml{% else %}Disabled{% endif %} |
+| **Redirects** | `{{ docusaurus_redirects }}` | {% if docusaurus_redirects == 'enabled' %}Client-side URL redirects{% else %}Disabled{% endif %} |
+| **Announcement** | `{{ docusaurus_announcement_bar }}` | {% if docusaurus_announcement_bar == 'enabled' %}Top banner{% else %}Disabled{% endif %} |
+| **Back to Top** | `{{ docusaurus_back_to_top }}` | {% if docusaurus_back_to_top == 'enabled' %}Enhanced TOC{% else %}Disabled{% endif %} |
+| **Edit Links** | `{{ docusaurus_edit_url }}` | {% if docusaurus_edit_url == 'enabled' %}'Edit this page' links{% else %}Disabled{% endif %} |
+| **Code Tabs** | `{{ docusaurus_code_tabs }}` | {% if docusaurus_code_tabs == 'enabled' %}Tabbed code blocks{% else %}Disabled{% endif %} |
+| **Changelog** | `{{ docusaurus_changelog }}` | {% if docusaurus_changelog == 'enabled' %}Changelog page{% else %}Disabled{% endif %} |
+| **Debug** | `{{ docusaurus_debug }}` | {% if docusaurus_debug == 'enabled' %}Debug plugin (dev only){% else %}Disabled{% endif %} |
+| **Reading Time** | `{{ docusaurus_reading_time }}` | {% if docusaurus_reading_time == 'enabled' %}'X min read' on posts{% else %}Disabled{% endif %} |
+{%- if api_tracks in ['python', 'node', 'python+node'] %}
+| **OpenAPI** | `{{ docusaurus_openapi }}` | {% if docusaurus_openapi == 'enabled' %}Auto-generated API docs{% else %}Disabled{% endif %} |
+{%- endif %}
+
+### Quick Start
+
+```bash
+# Start development server
+pnpm --filter docs-docusaurus start
+
+# Build for production
+pnpm --filter docs-docusaurus build
+
+# Serve production build locally
+pnpm --filter docs-docusaurus serve
+```
+
+{%- if docusaurus_llms_txt == 'enabled' %}
+
+### AI-Ready Documentation
+
+After building, find AI-friendly documentation at:
+
+- `build/llms.txt` - Summary with key documentation links
+- `build/llms-full.txt` - Full concatenated documentation for RAG pipelines
+
+Use these files with LangChain, LlamaIndex, or custom AI chatbots.
+
+{%- endif %}
+
+{%- if docusaurus_faster == 'enabled' %}
+
+### Performance Optimizations
+
+This project uses **Docusaurus Faster** for significantly improved build times:
+
+- **Rspack** - Rust-based bundler (2-4x faster than Webpack)
+- **SWC** - Fast JavaScript/TypeScript compiler
+- **LightningCSS** - High-performance CSS minifier
+- **Worker Threads** - Parallel static site generation
+
+To disable optimizations, edit `docusaurus.config.ts`:
+
+```typescript
+future: {
+  experimental_faster: false,
+}
+```
+
+{%- endif %}
+
+{%- if docusaurus_i18n == 'enabled' %}
+
+### Internationalization
+
+Generate translation files:
+
+```bash
+pnpm --filter docs-docusaurus write-translations --locale es
+```
+
+Add locales in `docusaurus.config.ts`:
+
+```typescript
+i18n: {
+  locales: ['en', 'es', 'fr'],
+}
+```
+
+{%- endif %}
+
+{%- if docusaurus_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
+
+### OpenAPI Documentation
+
+Update `openapi/openapi.yaml` with your API specification. The docs will be
+auto-generated during build.
+
+Regenerate API docs manually:
+
+```bash
+pnpm --filter docs-docusaurus docusaurus gen-api-docs api
+```
+
+{%- endif %}
+
+{%- if docusaurus_mermaid == 'enabled' %}
+
+### Mermaid Diagrams
+
+Create diagrams directly in Markdown using fenced code blocks:
+
+````markdown
+```mermaid
+flowchart TD
+    A[Start] --> B{Decision}
+    B -->|Yes| C[Action]
+    B -->|No| D[End]
+```
+````
+
+Supports flowcharts, sequence diagrams, entity-relationship diagrams, Gantt charts, and more.
+
+{%- endif %}
+
+{%- if docusaurus_math == 'enabled' %}
+
+### Math Equations
+
+Write LaTeX math using KaTeX:
+
+```markdown
+Inline: $E = mc^2$
+
+Block:
+$$
+\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}
+$$
+```
+
+{%- endif %}
+
+{%- if docusaurus_live_codeblock == 'enabled' %}
+
+### Live Code Playground
+
+Add `live` to JSX code blocks for interactive editing:
+
+````markdown
+```jsx live
+function Demo() {
+  const [count, setCount] = useState(0);
+  return (
+    <button onClick={() => setCount(c => c + 1)}>
+      Clicked {count} times
+    </button>
+  );
+}
+```
+````
+
+{%- endif %}
+
+{%- if docusaurus_show_last_update == 'enabled' %}
+
+### Git Timestamps
+
+Pages show "Last updated" from Git history. Requires full clone in CI:
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0  # Required for accurate timestamps
+```
+
+{%- endif %}
+
+{%- if docusaurus_pwa == 'enabled' %}
+
+### Progressive Web App
+
+Offline support enabled. Update `static/manifest.json` with your app details:
+
+```json
+{
+  "name": "{{ project_name }}",
+  "short_name": "{{ project_slug }}",
+  "theme_color": "#3b82f6"
+}
+```
+
+{%- endif %}
+
+{%- if docusaurus_comments == 'giscus' %}
+
+### Comments with Giscus
+
+GitHub Discussions-powered comments enabled. Configure in `src/components/GiscusComments/`:
+
+1. Enable Discussions on your GitHub repo
+2. Install the [Giscus app](https://github.com/apps/giscus)
+3. Get your repo ID and category ID from [giscus.app](https://giscus.app)
+4. Update the component with your IDs
+
+{%- endif %}
+
+{%- if docusaurus_feedback == 'enabled' %}
+
+### Feedback Widget
+
+A "Was this helpful?" widget is available. Import in your doc layout:
+
+```tsx
+import FeedbackWidget from '@site/src/components/FeedbackWidget';
+
+// At the end of your doc
+<FeedbackWidget />
+```
+
+{%- endif %}
+
+{%- if docusaurus_redirects == 'enabled' %}
+
+### Client-Side Redirects
+
+Handle URL changes gracefully. Edit `docusaurus.config.ts`:
+
+```typescript
+plugins: [
+  [
+    '@docusaurus/plugin-client-redirects',
+    {
+      redirects: [
+        { from: '/old-path', to: '/new-path' },
+        { from: '/docs/v1/intro', to: '/docs/intro' },
+      ],
+    },
+  ],
+],
+```
+
+{%- endif %}
+
+{%- if docusaurus_announcement_bar == 'enabled' %}
+
+### Announcement Bar
+
+Edit the announcement in `docusaurus.config.ts`:
+
+```typescript
+themeConfig: {
+  announcementBar: {
+    id: 'announcement',
+    content: 'Your announcement here!',
+    backgroundColor: '#3b82f6',
+    textColor: '#ffffff',
+    isCloseable: true,
+  },
+},
+```
+
+{%- endif %}
+
+{%- if docusaurus_code_tabs == 'enabled' %}
+
+### Tabbed Code Blocks
+
+Group code samples by language with synchronized tab selection:
+
+````markdown
+```js tab
+console.log("JavaScript");
+```
+
+```ts tab
+console.log("TypeScript");
+```
+
+```python tab
+print("Python")
+```
+````
+
+Tabs with the same language labels synchronize across the page.
+
+{%- endif %}
+
+{%- if docusaurus_changelog == 'enabled' %}
+
+### Changelog
+
+A changelog page is included at `docs/changelog.md`. Keep it updated
+following the [Keep a Changelog](https://keepachangelog.com/) format.
+
+Consider automating with:
+- [semantic-release](https://semantic-release.gitbook.io/)
+- [release-please](https://github.com/googleapis/release-please)
+- [changesets](https://github.com/changesets/changesets)
+
+{%- endif %}
+
+### Custom MDX Components
+
+The template includes reusable MDX components:
+
+#### Card & CardGrid
+
+```jsx
+import Card, { CardGrid } from '@site/src/components/Card';
+
+<CardGrid columns={3}>
+  <Card emoji="🚀" title="Title" description="Description" to="/link" />
+</CardGrid>
+```
+
+#### Highlight & VersionBadge
+
+```jsx
+import Highlight, { VersionBadge } from '@site/src/components/Highlight';
+
+<Highlight color="blue" title="Note">Content here</Highlight>
+
+Feature name <VersionBadge version="2.0" type="new" />
+```
+
+#### YouTube Embed
+
+```jsx
+import YouTube from '@site/src/components/YouTube';
+
+<YouTube id="VIDEO_ID" title="Title" start={30} />
+```
+
+{%- if docusaurus_debug == 'enabled' %}
+
+### Debug Mode
+
+Debug plugin enabled. In development, visit:
+
+- `http://localhost:3000/__docusaurus/debug` - Site metadata
+- `http://localhost:3000/__docusaurus/debug/config` - Configuration
+- `http://localhost:3000/__docusaurus/debug/routes` - All routes
+
+{%- endif %}
+
+{%- endif %}

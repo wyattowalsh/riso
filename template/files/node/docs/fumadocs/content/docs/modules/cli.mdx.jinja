@@ -1,0 +1,66 @@
+{%- if docs_site == 'fumadocs' and cli_module == 'enabled' -%}
+---
+title: CLI Module
+description: Command-line interface reference for {{ project_name }}
+---
+
+# CLI Module
+
+The {{ project_name }} CLI provides a powerful command-line interface built with [Typer](https://typer.tiangolo.com/).
+
+## Installation
+
+The CLI is included with the package:
+
+```bash
+uv sync
+```
+
+## Usage
+
+```bash
+uv run {{ package_name }} --help
+```
+
+## Commands
+
+### `{{ package_name }} --version`
+
+Display the current version.
+
+```bash
+uv run {{ package_name }} --version
+```
+
+### `{{ package_name }} info`
+
+Display system and environment information.
+
+```bash
+uv run {{ package_name }} info
+```
+
+## Configuration
+
+The CLI can be configured via:
+
+1. **Environment variables**: Prefixed with `{{ package_name | upper }}_`
+2. **Config file**: `config.toml` or `.{{ package_name }}.toml`
+3. **Command-line arguments**: Override all other settings
+
+### Example Configuration
+
+```toml
+# config.toml
+[{{ package_name }}]
+verbose = true
+log_level = "INFO"
+```
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `{{ package_name | upper }}_VERBOSE` | Enable verbose output | `false` |
+| `{{ package_name | upper }}_LOG_LEVEL` | Log level | `INFO` |
+{%- endif -%}

@@ -17,7 +17,11 @@ def load_existing(path: Path) -> list[dict[str, object]]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--site", required=True, help="Documentation site identifier (e.g., shibuya, fumadocs).")
+    parser.add_argument(
+        "--site",
+        required=True,
+        help="Documentation site identifier (e.g., shibuya, fumadocs).",
+    )
     parser.add_argument(
         "--status",
         default="unknown",
@@ -35,7 +39,9 @@ def main(argv: list[str] | None = None) -> int:
         default="samples/metadata/doc_publish.json",
         help="File used to persist publish history.",
     )
-    parser.add_argument("--notes", default=None, help="Optional notes or remediation guidance.")
+    parser.add_argument(
+        "--notes", default=None, help="Optional notes or remediation guidance."
+    )
     args = parser.parse_args(argv)
 
     output = Path(args.output)

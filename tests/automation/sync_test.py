@@ -121,7 +121,9 @@ class QualityRunner:
 
     def run_uv_quality(self, cwd: Optional[Path] = None) -> Dict:
         """Run 'uv run task quality' and return metrics."""
-        return self.run_command(["uv", "run", "task", "quality"], "uv run task quality", cwd)
+        return self.run_command(
+            ["uv", "run", "task", "quality"], "uv run task quality", cwd
+        )
 
     def compare_results(
         self, make_result: Dict, uv_result: Dict, threshold: float = 15.0
@@ -150,7 +152,9 @@ class QualityRunner:
 
         # Check if make was skipped
         if make_result.get("skipped"):
-            comparison["issues"].append("make command not available - only tested uv task")
+            comparison["issues"].append(
+                "make command not available - only tested uv task"
+            )
             comparison["status"] = "SKIP" if uv_result["success"] else "FAIL"
             return comparison
 
@@ -251,7 +255,9 @@ class QualityRunner:
         print(f"  make quality:        {comparison['make_duration']:.2f}s")
         print(f"  uv run task quality: {comparison['uv_duration']:.2f}s")
         if comparison["duration_variance_percent"] > 0:
-            print(f"  Variance:            {comparison['duration_variance_percent']:.1f}%")
+            print(
+                f"  Variance:            {comparison['duration_variance_percent']:.1f}%"
+            )
 
         print("=" * 60 + "\n")
 

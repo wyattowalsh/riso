@@ -4,9 +4,9 @@ This module contains comprehensive tests for the post-generation hook,
 focusing on setup functions, metadata recording, guidance rendering,
 and integration with quality tools.
 """
+
 import json
 import pytest
-from unittest.mock import MagicMock, patch, mock_open
 from datetime import datetime
 
 
@@ -198,6 +198,7 @@ class TestLoadAnswers:
 
         # Mock yaml import to raise ImportError
         import builtins
+
         original_import = builtins.__import__
 
         def mock_import(name, *args, **kwargs):
@@ -283,7 +284,7 @@ class TestDocsGuidance:
         result = docs_guidance(answers)
 
         assert len(result) == 2
-        assert any("docs-docusaurus dev" in item for item in result)
+        assert any("docs-docusaurus start" in item for item in result)
         assert any("docs-docusaurus build" in item for item in result)
 
     def test_none_docs_site(self):
@@ -528,6 +529,7 @@ class TestMain:
         )
 
         from post_gen_project import main
+
         main()
 
         metadata_file = tmp_path / ".riso" / "post_gen_metadata.json"
@@ -545,6 +547,7 @@ class TestMain:
         answers_file.write_text("quality_profile: standard\n", encoding="utf-8")
 
         from post_gen_project import main
+
         main()
 
         metadata_file = tmp_path / ".riso" / "post_gen_metadata.json"
@@ -565,6 +568,7 @@ class TestMain:
         answers_file.write_text("ci_platform: github-actions\n", encoding="utf-8")
 
         from post_gen_project import main
+
         main()
 
         metadata_file = tmp_path / ".riso" / "post_gen_metadata.json"
@@ -581,6 +585,7 @@ class TestMain:
         answers_file.write_text("ci_platform: gitlab-ci\n", encoding="utf-8")
 
         from post_gen_project import main
+
         main()
 
         metadata_file = tmp_path / ".riso" / "post_gen_metadata.json"
@@ -596,6 +601,7 @@ class TestMain:
         answers_file.write_text("cli_module: enabled\n", encoding="utf-8")
 
         from post_gen_project import main
+
         main()
 
         captured = capsys.readouterr()
@@ -632,10 +638,14 @@ class TestMain:
 
         # Mock quality tool checks to avoid subprocess calls
         import post_gen_project
+
         monkeypatch.setattr(post_gen_project, "ensure_python_quality_tools", lambda: [])
-        monkeypatch.setattr(post_gen_project, "ensure_node_quality_tools", lambda required: [])
+        monkeypatch.setattr(
+            post_gen_project, "ensure_node_quality_tools", lambda required: []
+        )
 
         from post_gen_project import main
+
         main()
 
         metadata_file = tmp_path / ".riso" / "post_gen_metadata.json"
@@ -658,6 +668,7 @@ class TestMain:
         answers_file.write_text("test: value\n", encoding="utf-8")
 
         from post_gen_project import main
+
         main()
 
         # Package name should be directory name with hyphens converted to underscores
@@ -724,6 +735,7 @@ class TestEdgeCases:
         answers_file.write_text("test: value\n", encoding="utf-8")
 
         from post_gen_project import main
+
         main()
 
         metadata_file = tmp_path / ".riso" / "post_gen_metadata.json"

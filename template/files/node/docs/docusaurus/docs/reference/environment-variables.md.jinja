@@ -1,0 +1,122 @@
+{%- if docs_site == 'docusaurus' -%}
+---
+sidebar_position: 2
+title: Environment Variables
+description: Environment variables reference for {{ project_name }}
+---
+
+# Environment Variables
+
+{{ project_name }} uses environment variables for configuration. This page documents all available variables.
+
+## Core Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `APP_NAME` | No | `{{ project_name }}` | Application name |
+| `APP_ENV` | No | `development` | Environment: `development`, `staging`, `production` |
+| `DEBUG` | No | `false` | Enable debug mode |
+| `LOG_LEVEL` | No | `info` | Logging level: `debug`, `info`, `warn`, `error` |
+
+{%- if api_tracks in ['python', 'node', 'python+node'] %}
+
+## API Configuration
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `API_HOST` | No | `0.0.0.0` | API server host |
+| `API_PORT` | No | `8000` | API server port |
+| `API_WORKERS` | No | `1` | Number of worker processes |
+| `CORS_ORIGINS` | No | `*` | Allowed CORS origins (comma-separated) |
+
+{%- endif %}
+
+{%- if docusaurus_search_provider == 'algolia' %}
+
+## Algolia Search
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `ALGOLIA_APP_ID` | Yes | - | Algolia application ID |
+| `ALGOLIA_API_KEY` | Yes | - | Algolia search-only API key |
+| `ALGOLIA_INDEX_NAME` | Yes | `{{ project_slug }}` | Algolia index name |
+
+{%- endif %}
+
+{%- if docusaurus_search_provider == 'typesense' %}
+
+## Typesense Search
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `TYPESENSE_HOST` | Yes | `localhost` | Typesense server host |
+| `TYPESENSE_PORT` | No | `8108` | Typesense server port |
+| `TYPESENSE_PROTOCOL` | No | `http` | Protocol: `http` or `https` |
+| `TYPESENSE_API_KEY` | Yes | - | Typesense search API key |
+
+{%- endif %}
+
+{%- if docusaurus_analytics == 'posthog' %}
+
+## PostHog Analytics
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `POSTHOG_API_KEY` | Yes | - | PostHog project API key |
+| `POSTHOG_HOST` | No | `https://us.i.posthog.com` | PostHog instance URL |
+
+{%- endif %}
+
+{%- if docusaurus_analytics == 'google' %}
+
+## Google Analytics
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `GOOGLE_ANALYTICS_ID` | Yes | - | Google Analytics 4 measurement ID |
+
+{%- endif %}
+
+## Example .env File
+
+```bash
+# Core
+APP_NAME={{ project_name }}
+APP_ENV=development
+DEBUG=true
+LOG_LEVEL=debug
+
+{%- if api_tracks in ['python', 'node', 'python+node'] %}
+
+# API
+API_HOST=0.0.0.0
+API_PORT=8000
+{%- endif %}
+
+{%- if docusaurus_search_provider == 'algolia' %}
+
+# Algolia
+ALGOLIA_APP_ID=your_app_id
+ALGOLIA_API_KEY=your_search_api_key
+ALGOLIA_INDEX_NAME={{ project_slug }}
+{%- endif %}
+
+{%- if docusaurus_analytics == 'posthog' %}
+
+# PostHog
+POSTHOG_API_KEY=phc_your_key_here
+{%- endif %}
+```
+
+## Loading Environment Variables
+
+Environment variables are loaded automatically in development. For production:
+
+```bash
+# Export variables
+export $(cat .env | xargs)
+
+# Or use dotenv
+source .env
+```
+{%- endif -%}

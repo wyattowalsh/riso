@@ -1,0 +1,71 @@
+{%- if docs_site == 'fumadocs' -%}
+import { source } from '@/lib/source';
+import { DocsPage, DocsBody, DocsTitle, DocsDescription } from 'fumadocs-ui/page';
+import { notFound } from 'next/navigation';
+import defaultMdxComponents from 'fumadocs-ui/mdx';
+{%- if fumadocs_llms_txt == 'enabled' %}
+import { PageActions } from '@/components/page-actions';
+{%- endif %}
+{%- if fumadocs_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
+import { createOpenAPI } from 'fumadocs-openapi/server';
+
+const openapi = createOpenAPI();
+{%- endif %}
+
+interface PageProps {
+  params: Promise<{ slug?: string[] }>;
+}
+
+export default async function Page({ params }: PageProps) {
+  const { slug } = await params;
+  const page = source.getPage(slug);
+  if (!page) notFound();
+
+  const MDX = page.data.body;
+
+  return (
+    <DocsPage
+      toc={page.data.toc}
+      full={page.data.full}
+      editOnGithub={{
+        owner: '{{ project_slug }}',
+        repo: '{{ project_slug }}',
+        sha: 'main',
+        path: `content/docs/${page.file.path}`,
+      }}
+    >
+{%- if fumadocs_llms_txt == 'enabled' %}
+      <PageActions
+        markdownUrl={`${page.url}.mdx`}
+        githubUrl={`https://github.com/{{ project_slug }}/{{ project_slug }}/blob/main/content/docs/${page.file.path}`}
+      />
+{%- endif %}
+      <DocsTitle>{page.data.title}</DocsTitle>
+      <DocsDescription>{page.data.description}</DocsDescription>
+      <DocsBody>
+        <MDX components={{
+          ...defaultMdxComponents,
+{%- if fumadocs_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
+          APIPage: openapi.APIPage,
+{%- endif %}
+        }} />
+      </DocsBody>
+    </DocsPage>
+  );
+}
+
+export async function generateStaticParams() {
+  return source.generateParams();
+}
+
+export async function generateMetadata({ params }: PageProps) {
+  const { slug } = await params;
+  const page = source.getPage(slug);
+  if (!page) notFound();
+
+  return {
+    title: page.data.title,
+    description: page.data.description,
+  };
+}
+{%- endif -%}

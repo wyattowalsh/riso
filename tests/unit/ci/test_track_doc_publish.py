@@ -1,4 +1,5 @@
 """Unit tests for track_doc_publish.py"""
+
 import json
 import pytest
 from datetime import datetime, timezone
@@ -32,7 +33,7 @@ class TestLoadExisting:
         path = tmp_path / "records.json"
         test_data = [
             {"site": "shibuya", "status": "pass", "duration_seconds": 45.2},
-            {"site": "fumadocs", "status": "fail", "duration_seconds": None}
+            {"site": "fumadocs", "status": "fail", "duration_seconds": None},
         ]
         path.write_text(json.dumps(test_data), encoding="utf-8")
 
@@ -51,7 +52,7 @@ class TestLoadExisting:
                 "site": "test",
                 "status": "pass",
                 "duration_seconds": 123.45,
-                "notes": None
+                "notes": None,
             }
         ]
         path.write_text(json.dumps(test_data), encoding="utf-8")
@@ -82,8 +83,10 @@ class TestMain:
         output_file = tmp_path / "output.json"
         args = ["--site", "fumadocs", "--output", str(output_file)]
 
-        with patch('track_doc_publish.datetime') as mock_dt:
-            mock_dt.now.return_value = datetime(2024, 1, 15, 12, 30, 45, tzinfo=timezone.utc)
+        with patch("track_doc_publish.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(
+                2024, 1, 15, 12, 30, 45, tzinfo=timezone.utc
+            )
             result = main(args)
 
         assert result == 0
@@ -99,11 +102,16 @@ class TestMain:
         """Should record all fields when provided."""
         output_file = tmp_path / "output.json"
         args = [
-            "--site", "shibuya",
-            "--status", "pass",
-            "--duration", "67.89",
-            "--notes", "Build completed successfully",
-            "--output", str(output_file)
+            "--site",
+            "shibuya",
+            "--status",
+            "pass",
+            "--duration",
+            "67.89",
+            "--notes",
+            "Build completed successfully",
+            "--output",
+            str(output_file),
         ]
 
         result = main(args)
@@ -148,7 +156,14 @@ class TestMain:
     def test_main_invalid_status_raises_error(self, tmp_path):
         """Should raise error for invalid status."""
         output_file = tmp_path / "output.json"
-        args = ["--site", "test", "--status", "invalid_status", "--output", str(output_file)]
+        args = [
+            "--site",
+            "test",
+            "--status",
+            "invalid_status",
+            "--output",
+            str(output_file),
+        ]
 
         with pytest.raises(SystemExit):
             main(args)
@@ -164,11 +179,7 @@ class TestMain:
     def test_main_duration_as_float(self, tmp_path):
         """Should handle duration as float."""
         output_file = tmp_path / "output.json"
-        args = [
-            "--site", "test",
-            "--duration", "123.456",
-            "--output", str(output_file)
-        ]
+        args = ["--site", "test", "--duration", "123.456", "--output", str(output_file)]
 
         result = main(args)
 
@@ -223,10 +234,14 @@ class TestMain:
         # Record multiple publishes for same site
         for i in range(3):
             args = [
-                "--site", "shibuya",
-                "--status", "pass",
-                "--duration", str(30.0 + i),
-                "--output", str(output_file)
+                "--site",
+                "shibuya",
+                "--status",
+                "pass",
+                "--duration",
+                str(30.0 + i),
+                "--output",
+                str(output_file),
             ]
             main(args)
 
@@ -241,11 +256,7 @@ class TestMain:
         """Should handle notes with special characters."""
         output_file = tmp_path / "output.json"
         notes = "Build failed: Error in line 42. See logs at https://example.com/logs?id=123&format=json"
-        args = [
-            "--site", "test",
-            "--notes", notes,
-            "--output", str(output_file)
-        ]
+        args = ["--site", "test", "--notes", notes, "--output", str(output_file)]
 
         result = main(args)
 

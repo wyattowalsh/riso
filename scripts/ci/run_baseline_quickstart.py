@@ -7,7 +7,11 @@ import json
 import time
 from pathlib import Path
 
-from scripts.lib.logger import logger, configure_logging
+# Support both package import (from project root) and direct import (tests)
+try:
+    from scripts.lib.logger import logger, configure_logging
+except ModuleNotFoundError:
+    from logger import logger, configure_logging  # type: ignore[import-not-found]
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 EVIDENCE_DIR = REPO_ROOT / "samples" / "default"

@@ -1,4 +1,5 @@
 """Unit tests for quality_tool_check.py"""
+
 import pytest
 from unittest.mock import MagicMock
 
@@ -13,6 +14,7 @@ class TestToolCheck:
     def test_tool_check_creation(self):
         """Should create ToolCheck with all fields."""
         from quality_tool_check import ToolCheck
+
         check = ToolCheck(
             name="ruff",
             status="present",
@@ -24,6 +26,7 @@ class TestToolCheck:
     def test_tool_check_with_optional_fields(self):
         """Should handle optional fields."""
         from quality_tool_check import ToolCheck
+
         check = ToolCheck(
             name="mypy",
             status="failed",
@@ -54,6 +57,7 @@ class TestEnsurePythonQualityTools:
         monkeypatch.setattr(subprocess, "run", mock_run)
 
         from quality_tool_check import ensure_python_quality_tools
+
         checks = ensure_python_quality_tools()
 
         # All tools should be present
@@ -83,6 +87,7 @@ class TestEnsurePythonQualityTools:
         monkeypatch.setattr(subprocess, "run", mock_run)
 
         from quality_tool_check import ensure_python_quality_tools
+
         checks = ensure_python_quality_tools()
 
         # At least one tool should have failed status
@@ -99,7 +104,9 @@ class TestEnsureNodeQualityTools:
         import subprocess
         import shutil
 
-        monkeypatch.setattr(shutil, "which", lambda x: "/usr/bin/pnpm" if x == "pnpm" else None)
+        monkeypatch.setattr(
+            shutil, "which", lambda x: "/usr/bin/pnpm" if x == "pnpm" else None
+        )
 
         def mock_run(cmd, *args, **kwargs):
             result = MagicMock()
@@ -111,6 +118,7 @@ class TestEnsureNodeQualityTools:
         monkeypatch.setattr(subprocess, "run", mock_run)
 
         from quality_tool_check import ensure_node_quality_tools
+
         checks = ensure_node_quality_tools(required=True)
 
         pnpm_checks = [c for c in checks if c.name == "pnpm"]
@@ -134,6 +142,7 @@ class TestEnsureNodeQualityTools:
         monkeypatch.setattr(subprocess, "run", mock_run)
 
         from quality_tool_check import ensure_node_quality_tools
+
         checks = ensure_node_quality_tools(required=True)
 
         # Should return failed status for pnpm

@@ -1,0 +1,113 @@
+{%- if docs_site == 'fumadocs' -%}
+# {{ project_name }} Documentation
+
+Documentation site for {{ project_name }} built with [Fumadocs](https://fumadocs.dev/).
+
+## Quick Start
+
+```bash
+# Install dependencies
+pnpm install
+
+# Start development server
+pnpm dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) to view the documentation.
+
+## Features
+
+- 📚 **MDX Support** - Write documentation in Markdown with React components
+- 🔍 **Full-text Search** - {% if fumadocs_search_provider == 'orama' %}Built-in Orama search{% elif fumadocs_search_provider == 'algolia' %}Algolia DocSearch{% elif fumadocs_search_provider == 'orama-cloud' %}Orama Cloud search{% else %}Search disabled{% endif %}
+- 🎨 **Theming** - {% if fumadocs_theme == 'ocean' %}Ocean{% elif fumadocs_theme == 'purple' %}Purple{% elif fumadocs_theme == 'custom' %}Custom{% else %}Neutral{% endif %} theme with dark mode support
+{%- if fumadocs_llms_txt == 'enabled' %}
+- 🤖 **AI-Ready** - llms.txt endpoints for LLM consumption
+{%- endif %}
+{%- if fumadocs_ai_search == 'enabled' %}
+- 💬 **AI Search** - Chat with your documentation using AI
+{%- endif %}
+{%- if fumadocs_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
+- 📖 **OpenAPI Docs** - Interactive API documentation
+{%- endif %}
+
+## Project Structure
+
+```
+docs-fumadocs/
+├── app/                    # Next.js App Router
+│   ├── docs/              # Documentation pages
+│   ├── api/               # API routes (search, chat)
+{%- if fumadocs_llms_txt == 'enabled' %}
+│   ├── llms.txt/          # LLM summary endpoint
+│   ├── llms-full.txt/     # Full docs for LLMs
+│   └── llms.mdx/          # Per-page MDX access
+{%- endif %}
+├── components/            # React components
+├── content/
+│   └── docs/             # MDX documentation files
+├── lib/                  # Utility functions
+{%- if fumadocs_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
+├── openapi/              # OpenAPI specifications
+{%- endif %}
+└── static/               # Static assets
+```
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start development server |
+| `pnpm build` | Build for production |
+| `pnpm start` | Start production server |
+| `pnpm lint` | Run ESLint |
+| `pnpm typecheck` | Run TypeScript checks |
+{%- if fumadocs_typedoc == 'enabled' %}
+| `pnpm docs:sdk` | Generate TypeDoc SDK docs |
+{%- endif %}
+{%- if fumadocs_search_provider == 'algolia' %}
+| `pnpm search:sync` | Sync search index to Algolia |
+{%- endif %}
+
+{%- if fumadocs_llms_txt == 'enabled' %}
+
+## AI/LLM Endpoints
+
+This documentation site includes AI-friendly endpoints:
+
+- `/llms.txt` - Summary of documentation for LLMs
+- `/llms-full.txt` - Complete documentation in plain text
+- `/docs/*.mdx` - Per-page Markdown access
+
+These endpoints make it easy for AI assistants to consume and reference the documentation.
+{%- endif %}
+
+## Environment Variables
+
+{%- if fumadocs_search_provider == 'algolia' %}
+
+### Algolia Search
+
+```bash
+NEXT_PUBLIC_ALGOLIA_APP_ID=your-app-id
+NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY=your-search-key
+ALGOLIA_ADMIN_API_KEY=your-admin-key  # For syncing
+```
+{%- endif %}
+
+{%- if fumadocs_ai_search == 'enabled' %}
+
+### AI Search
+
+```bash
+OPENAI_API_KEY=your-openai-key
+# Or for Inkeep:
+INKEEP_API_KEY=your-inkeep-key
+```
+{%- endif %}
+
+## Learn More
+
+- [Fumadocs Documentation](https://fumadocs.dev/)
+- [Next.js Documentation](https://nextjs.org/docs)
+- [MDX Documentation](https://mdxjs.com/)
+{%- endif -%}

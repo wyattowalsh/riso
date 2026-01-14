@@ -1,0 +1,48 @@
+{%- if docs_site == 'fumadocs' -%}
+import './global.css';
+import { RootProvider } from 'fumadocs-ui/provider';
+import { Inter } from 'next/font/google';
+import type { ReactNode } from 'react';
+{%- if fumadocs_ai_search == 'enabled' %}
+import { AISearchTrigger } from '@/components/search/ai-search';
+{%- endif %}
+
+const inter = Inter({ subsets: ['latin'] });
+
+export const metadata = {
+  title: {
+    default: '{{ project_name }} Documentation',
+    template: '%s | {{ project_name }}',
+  },
+  description: 'Documentation for {{ project_name }}',
+};
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en" className={inter.className} suppressHydrationWarning>
+      <body className="flex flex-col min-h-screen">
+        <RootProvider
+{%- if fumadocs_search_provider != 'none' %}
+          search={{
+            enabled: true,
+{%- if fumadocs_search_provider == 'algolia' %}
+            provider: 'algolia',
+            algolia: {
+              appId: process.env.NEXT_PUBLIC_ALGOLIA_APP_ID!,
+              apiKey: process.env.NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY!,
+              indexName: '{{ project_slug }}_docs',
+            },
+{%- endif %}
+          }}
+{%- endif %}
+        >
+{%- if fumadocs_ai_search == 'enabled' %}
+          <AISearchTrigger />
+{%- endif %}
+          {children}
+        </RootProvider>
+      </body>
+    </html>
+  );
+}
+{%- endif -%}

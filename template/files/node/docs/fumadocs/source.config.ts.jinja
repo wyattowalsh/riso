@@ -1,0 +1,30 @@
+{%- if docs_site == 'fumadocs' -%}
+import { defineDocs, defineConfig } from 'fumadocs-mdx/config';
+
+export const docs = defineDocs({
+  dir: 'content/docs',
+{%- if fumadocs_llms_txt == 'enabled' %}
+  postprocess: {
+    includeProcessedMarkdown: true,
+  },
+{%- endif %}
+});
+
+{%- if fumadocs_blog == 'enabled' %}
+
+export const blog = defineDocs({
+  dir: 'content/blog',
+});
+{%- endif %}
+
+export default defineConfig({
+  mdxOptions: {
+    rehypeCodeOptions: {
+      themes: {
+        light: 'github-light',
+        dark: 'github-dark',
+      },
+    },
+  },
+});
+{%- endif -%}

@@ -1,0 +1,66 @@
+{%- if docs_site == 'docusaurus' and ci_platform == 'github-actions' -%}
+# Docusaurus Documentation Build Check
+# Validates docs build on PRs without deploying
+
+name: Docs Build
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'blog/**'
+      - 'src/**'
+      - 'static/**'
+      - 'docusaurus.config.ts'
+      - 'sidebars.ts'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+{%- if docusaurus_show_last_update == 'enabled' %}
+          fetch-depth: 0
+{%- else %}
+          fetch-depth: 1
+{%- endif %}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build documentation
+        run: pnpm build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      - name: Check for broken links
+        run: |
+          # Basic check that build succeeded and key files exist
+          test -f build/index.html
+          test -f build/docs/index.html
+{%- if docusaurus_sitemap == 'enabled' %}
+          test -f build/sitemap.xml
+{%- endif %}
+{%- if docusaurus_llms_txt == 'enabled' %}
+          test -f build/llms.txt
+{%- endif %}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-preview
+          path: build
+          retention-days: 7
+{%- endif -%}

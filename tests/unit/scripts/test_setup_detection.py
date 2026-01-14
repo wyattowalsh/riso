@@ -12,7 +12,9 @@ SCRIPT_DIR = Path(__file__).parent.parent.parent.parent / "scripts" / "setup"
 LIB_DIR = SCRIPT_DIR / "lib"
 
 
-def run_bash_function(script: str, function: str, *args: str) -> subprocess.CompletedProcess[str]:
+def run_bash_function(
+    script: str, function: str, *args: str
+) -> subprocess.CompletedProcess[str]:
     """Source a bash script and run a function, returning the result.
 
     Args:
@@ -55,22 +57,41 @@ class TestDetectPlatform:
 
     def test_detect_package_manager_returns_value(self):
         """detect_package_manager() should return a package manager or 'none'."""
-        result = run_bash_function(LIB_DIR / "detect-platform.sh", "detect_package_manager")
+        result = run_bash_function(
+            LIB_DIR / "detect-platform.sh", "detect_package_manager"
+        )
         assert result.returncode == 0
-        valid = ["mise", "brew", "apt", "dnf", "yum", "pacman", "apk", "zypper", "winget", "choco", "scoop", "none"]
+        valid = [
+            "mise",
+            "brew",
+            "apt",
+            "dnf",
+            "yum",
+            "pacman",
+            "apk",
+            "zypper",
+            "winget",
+            "choco",
+            "scoop",
+            "none",
+        ]
         assert result.stdout.strip() in valid
 
     def test_detect_linux_distro_on_macos_returns_unknown(self):
         """detect_linux_distro() should return unknown on non-Linux systems."""
         os_result = run_bash_function(LIB_DIR / "detect-platform.sh", "detect_os")
         if os_result.stdout.strip() != "linux":
-            result = run_bash_function(LIB_DIR / "detect-platform.sh", "detect_linux_distro")
+            result = run_bash_function(
+                LIB_DIR / "detect-platform.sh", "detect_linux_distro"
+            )
             # Should return 1 and output "unknown"
             assert result.stdout.strip() == "unknown"
 
     def test_get_platform_summary_outputs_all_fields(self):
         """get_platform_summary() should output all platform information."""
-        result = run_bash_function(LIB_DIR / "detect-platform.sh", "get_platform_summary")
+        result = run_bash_function(
+            LIB_DIR / "detect-platform.sh", "get_platform_summary"
+        )
         assert result.returncode == 0
         output = result.stdout
         # Check for expected fields
@@ -87,8 +108,7 @@ class TestDetectPlatform:
         os_result = run_bash_function(LIB_DIR / "detect-platform.sh", "detect_os")
         if os_result.stdout.strip() == "macos":
             result = run_bash_function(
-                LIB_DIR / "detect-platform.sh",
-                'is_wsl && echo "yes" || echo "no"'
+                LIB_DIR / "detect-platform.sh", 'is_wsl && echo "yes" || echo "no"'
             )
             assert result.stdout.strip() == "no"
 
@@ -96,8 +116,7 @@ class TestDetectPlatform:
         """is_container() should return false when not in a container."""
         # On a regular macOS/Linux host, is_container should be false
         result = run_bash_function(
-            LIB_DIR / "detect-platform.sh",
-            'is_container && echo "yes" || echo "no"'
+            LIB_DIR / "detect-platform.sh", 'is_container && echo "yes" || echo "no"'
         )
         # This may be "yes" if tests are run in Docker, so we just check it runs
         assert result.returncode == 0
@@ -107,7 +126,7 @@ class TestDetectPlatform:
         """get_container_runtime() should return empty string when not in container."""
         result = run_bash_function(
             LIB_DIR / "detect-platform.sh",
-            'runtime=$(get_container_runtime); echo "runtime:${runtime}:"'
+            'runtime=$(get_container_runtime); echo "runtime:${runtime}:"',
         )
         assert result.returncode == 0 or result.returncode == 1
         # On host, should be empty; in container, should be a runtime name
@@ -155,24 +174,29 @@ class TestVersions:
 class TestVersionComparison:
     """Tests for version comparison logic."""
 
-    @pytest.mark.parametrize("v1,v2,expected", [
-        ("3.11", "3.11", True),   # Equal
-        ("3.12", "3.11", True),   # Greater
-        ("3.11.5", "3.11", True), # Patch version >= base
-        ("3.10", "3.11", False),  # Less than
-        ("20", "20", True),       # Node.js style
-        ("20.1", "20", True),     # Node.js with patch
-        ("1.0.0", "0.9.9", True), # Major version bump
-        ("0.4.0", "0.4", True),   # Equal with patch
-    ])
+    @pytest.mark.parametrize(
+        "v1,v2,expected",
+        [
+            ("3.11", "3.11", True),  # Equal
+            ("3.12", "3.11", True),  # Greater
+            ("3.11.5", "3.11", True),  # Patch version >= base
+            ("3.10", "3.11", False),  # Less than
+            ("20", "20", True),  # Node.js style
+            ("20.1", "20", True),  # Node.js with patch
+            ("1.0.0", "0.9.9", True),  # Major version bump
+            ("0.4.0", "0.4", True),  # Equal with patch
+        ],
+    )
     def test_version_gte(self, v1: str, v2: str, expected: bool):
         """version_gte should correctly compare versions."""
         result = run_bash_function(
             LIB_DIR / "install-tools.sh",
-            f'version_gte "{v1}" "{v2}" && echo "true" || echo "false"'
+            f'version_gte "{v1}" "{v2}" && echo "true" || echo "false"',
         )
         assert result.returncode == 0
-        assert (result.stdout.strip() == "true") == expected, f"version_gte({v1}, {v2}) should be {expected}"
+        assert (result.stdout.strip() == "true") == expected, (
+            f"version_gte({v1}, {v2}) should be {expected}"
+        )
 
 
 class TestColors:
@@ -203,7 +227,9 @@ class TestColors:
         )
         # Should have ANSI color code (either literal \033 or escape sequence \x1b)
         assert result.stdout != "", "RED should have ANSI code when colors enabled"
-        assert "\\033[" in result.stdout or "\x1b[" in result.stdout, "Should contain ANSI escape sequence"
+        assert "\\033[" in result.stdout or "\x1b[" in result.stdout, (
+            "Should contain ANSI escape sequence"
+        )
 
     def test_dumb_term_disables_colors(self):
         """Colors should be disabled when TERM=dumb."""
@@ -220,11 +246,18 @@ class TestColors:
 
     def test_log_functions_exist(self):
         """All log functions should be defined."""
-        log_functions = ["log_info", "log_success", "log_warn", "log_error", "log_debug", "log_section"]
+        log_functions = [
+            "log_info",
+            "log_success",
+            "log_warn",
+            "log_error",
+            "log_debug",
+            "log_section",
+        ]
         for func in log_functions:
             result = run_bash_function(
                 LIB_DIR / "colors.sh",
-                f'type {func} >/dev/null 2>&1 && echo "exists" || echo "missing"'
+                f'type {func} >/dev/null 2>&1 && echo "exists" || echo "missing"',
             )
             assert result.stdout.strip() == "exists", f"{func} should be defined"
 
@@ -237,22 +270,21 @@ class TestInstallTools:
         # Test with a command that should always exist
         result = run_bash_function(
             LIB_DIR / "install-tools.sh",
-            'has_cmd "bash" && echo "found" || echo "not_found"'
+            'has_cmd "bash" && echo "found" || echo "not_found"',
         )
         assert result.stdout.strip() == "found"
 
         # Test with a command that shouldn't exist
         result = run_bash_function(
             LIB_DIR / "install-tools.sh",
-            'has_cmd "this_command_does_not_exist_12345" && echo "found" || echo "not_found"'
+            'has_cmd "this_command_does_not_exist_12345" && echo "found" || echo "not_found"',
         )
         assert result.stdout.strip() == "not_found"
 
     def test_get_tool_version_bash(self):
         """get_tool_version should extract version from bash."""
         result = run_bash_function(
-            LIB_DIR / "install-tools.sh",
-            'get_tool_version "bash" "--version"'
+            LIB_DIR / "install-tools.sh", 'get_tool_version "bash" "--version"'
         )
         assert result.returncode == 0
         version = result.stdout.strip()
@@ -265,8 +297,7 @@ class TestInstallTools:
     def test_get_tool_version_nonexistent(self):
         """get_tool_version should return 'unknown' for nonexistent tools."""
         result = run_bash_function(
-            LIB_DIR / "install-tools.sh",
-            'get_tool_version "nonexistent_tool_12345"'
+            LIB_DIR / "install-tools.sh", 'get_tool_version "nonexistent_tool_12345"'
         )
         assert result.stdout.strip() == "unknown"
         assert result.returncode == 1
@@ -277,10 +308,7 @@ class TestLogging:
 
     def test_log_file_creation(self):
         """init_log_file should create a log file path."""
-        result = run_bash_function(
-            LIB_DIR / "logging.sh",
-            'init_log_file "test"'
-        )
+        result = run_bash_function(LIB_DIR / "logging.sh", 'init_log_file "test"')
         assert result.returncode == 0
         log_path = result.stdout.strip()
         assert log_path, "Should return a log file path"
@@ -290,6 +318,6 @@ class TestLogging:
         """log_to_file function should exist."""
         result = run_bash_function(
             LIB_DIR / "logging.sh",
-            'type log_to_file >/dev/null 2>&1 && echo "exists" || echo "missing"'
+            'type log_to_file >/dev/null 2>&1 && echo "exists" || echo "missing"',
         )
         assert result.stdout.strip() == "exists"

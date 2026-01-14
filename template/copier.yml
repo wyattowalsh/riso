@@ -39,6 +39,49 @@ defaults:
   codegen_module: "disabled"
   changelog_module: "disabled"
   docs_site: "fumadocs"
+  # Fumadocs configuration defaults
+  fumadocs_search_provider: "orama"
+  fumadocs_llms_txt: "enabled"
+  fumadocs_ai_search: "disabled"
+  fumadocs_openapi: "enabled"
+  fumadocs_typedoc: "disabled"
+  fumadocs_theme: "default"
+  fumadocs_sidebar: "default"
+  fumadocs_i18n: "disabled"
+  fumadocs_blog: "disabled"
+  # Docusaurus configuration defaults
+  docusaurus_search_provider: "local"
+  docusaurus_analytics: "none"
+  docusaurus_theme: "classic"
+  docusaurus_llms_txt: "enabled"
+  docusaurus_i18n: "disabled"
+  docusaurus_versioning: "disabled"
+  docusaurus_blog: "enabled"
+  docusaurus_faster: "enabled"
+  docusaurus_openapi: "enabled"
+  # Docusaurus content enhancements
+  docusaurus_mermaid: "enabled"
+  docusaurus_math: "disabled"
+  docusaurus_live_codeblock: "disabled"
+  docusaurus_show_last_update: "enabled"
+  # Docusaurus media
+  docusaurus_ideal_images: "enabled"
+  docusaurus_image_zoom: "disabled"
+  # Docusaurus PWA & community
+  docusaurus_pwa: "disabled"
+  docusaurus_comments: "none"
+  docusaurus_feedback: "disabled"
+  # Docusaurus SEO & UI
+  docusaurus_sitemap: "enabled"
+  docusaurus_redirects: "disabled"
+  docusaurus_announcement_bar: "disabled"
+  docusaurus_back_to_top: "enabled"
+  docusaurus_edit_url: "enabled"
+  docusaurus_code_tabs: "disabled"
+  docusaurus_changelog: "disabled"
+  docusaurus_debug: "disabled"
+  docusaurus_reading_time: "enabled"
+  # Other defaults
   shared_logic: "disabled"
   ci_platform: "github-actions"
   saas_starter_module: "disabled"
@@ -130,6 +173,455 @@ prompts:
       - sphinx-shibuya
       - docusaurus
       - none
+  
+  # ========================================
+  # Fumadocs Configuration Options
+  # ========================================
+  fumadocs_search_provider:
+    type: str
+    help: |
+      Select search provider for Fumadocs:
+      - orama: Built-in free search (default, self-hosted)
+      - algolia: Hosted DocSearch, enterprise-grade
+      - orama-cloud: Orama Cloud SDK for scaling
+      - none: No search integration
+    default: orama
+    choices:
+      - orama
+      - algolia
+      - orama-cloud
+      - none
+    when: "{{ docs_site == 'fumadocs' }}"
+
+  fumadocs_llms_txt:
+    type: str
+    help: |
+      Enable llms.txt AI integration?
+      Generates AI-friendly documentation endpoints:
+      - /llms.txt (summary)
+      - /llms-full.txt (complete docs)
+      - /*.mdx (per-page markdown)
+    default: enabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'fumadocs' }}"
+
+  fumadocs_ai_search:
+    type: str
+    help: |
+      Enable AI-powered search dialog?
+      Scaffolds chat interface with Vercel AI SDK.
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'fumadocs' and fumadocs_llms_txt == 'enabled' }}"
+
+  fumadocs_openapi:
+    type: str
+    help: |
+      Enable OpenAPI documentation integration?
+      Auto-generates interactive API reference from specs.
+    default: enabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'fumadocs' and api_tracks in ['python', 'node', 'python+node'] }}"
+
+  fumadocs_typedoc:
+    type: str
+    help: |
+      Enable TypeDoc SDK documentation?
+      Generates TypeScript API docs from source.
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'fumadocs' and api_tracks in ['node', 'python+node'] }}"
+
+  fumadocs_theme:
+    type: str
+    help: |
+      Select theming approach:
+      - default: Fumadocs UI with neutral preset
+      - ocean: Blue-toned ocean preset
+      - purple: Purple accent preset
+      - custom: Custom CSS variables (scaffold only)
+    default: default
+    choices:
+      - default
+      - ocean
+      - purple
+      - custom
+    when: "{{ docs_site == 'fumadocs' }}"
+
+  fumadocs_sidebar:
+    type: str
+    help: |
+      Select sidebar style:
+      - default: Built-in Fumadocs sidebar
+      - shadcn: Shadcn UI sidebar component
+    default: default
+    choices:
+      - default
+      - shadcn
+    when: "{{ docs_site == 'fumadocs' }}"
+
+  fumadocs_i18n:
+    type: str
+    help: |
+      Enable internationalization support?
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'fumadocs' }}"
+
+  fumadocs_blog:
+    type: str
+    help: |
+      Enable blog/changelog section?
+      Uses MDX content collection for posts.
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'fumadocs' }}"
+
+  # ========================================
+  # Docusaurus Configuration Options
+  # ========================================
+  docusaurus_search_provider:
+    type: str
+    help: |
+      Select search provider for Docusaurus:
+      - local: Offline full-text search (docusaurus-search-local)
+      - algolia: Hosted DocSearch, best UX, requires API key
+      - typesense: Self-hosted, privacy-focused search
+      - none: No search integration
+    default: local
+    choices:
+      - local
+      - algolia
+      - typesense
+      - none
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_analytics:
+    type: str
+    help: |
+      Select analytics for Docusaurus:
+      - none: No analytics
+      - posthog: Product analytics + session replay
+      - google: Google Analytics 4
+      - matomo: Privacy-focused, self-hosted option
+    default: none
+    choices:
+      - none
+      - posthog
+      - google
+      - matomo
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_theme:
+    type: str
+    help: |
+      Select theming approach:
+      - classic: Default Infima CSS framework
+      - tailwind: Tailwind CSS v4 + utility-first styling
+    default: classic
+    choices:
+      - classic
+      - tailwind
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_llms_txt:
+    type: str
+    help: |
+      Enable llms.txt plugin for AI-ready documentation?
+      Generates concatenated docs for LLM consumption and RAG pipelines.
+    default: enabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_i18n:
+    type: str
+    help: |
+      Enable internationalization (i18n) support?
+      Scaffolds locale config and translation workflow.
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_versioning:
+    type: str
+    help: |
+      Enable documentation versioning?
+      Allows maintaining multiple doc versions (v1, v2, etc.)
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_blog:
+    type: str
+    help: |
+      Enable blog functionality?
+      Scaffolds blog directory with example posts and RSS/Atom feeds.
+    default: enabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_faster:
+    type: str
+    help: |
+      Enable Docusaurus Faster optimizations?
+      Uses Rspack bundler, SWC, and LightningCSS for 2-4x faster builds.
+    default: enabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_openapi:
+    type: str
+    help: |
+      Enable OpenAPI documentation integration?
+      Auto-generates API reference from OpenAPI specs.
+    default: enabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' and api_tracks in ['python', 'node', 'python+node'] }}"
+
+  # ----------------------------------------
+  # Docusaurus Content Enhancements
+  # ----------------------------------------
+  docusaurus_mermaid:
+    type: str
+    help: |
+      Enable Mermaid diagram support?
+      Render flowcharts, sequence diagrams, ERDs, Gantt charts directly in markdown.
+    default: enabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_math:
+    type: str
+    help: |
+      Enable KaTeX math equation support?
+      Render LaTeX math with $...$ (inline) and $$...$$ (block) syntax.
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_live_codeblock:
+    type: str
+    help: |
+      Enable live code playground?
+      Interactive React code blocks that users can edit and run in the browser.
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  # ----------------------------------------
+  # Docusaurus Git & Metadata
+  # ----------------------------------------
+  docusaurus_show_last_update:
+    type: str
+    help: |
+      Show last updated time on docs?
+      Displays git-based "Last updated" timestamp and author on each page.
+    default: enabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  # ----------------------------------------
+  # Docusaurus Media & Assets
+  # ----------------------------------------
+  docusaurus_ideal_images:
+    type: str
+    help: |
+      Enable ideal-image plugin?
+      Responsive images with lazy loading and low-quality placeholders.
+    default: enabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_image_zoom:
+    type: str
+    help: |
+      Enable image zoom plugin?
+      Medium-style click-to-zoom for documentation images.
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  # ----------------------------------------
+  # Docusaurus PWA & Offline
+  # ----------------------------------------
+  docusaurus_pwa:
+    type: str
+    help: |
+      Enable Progressive Web App (PWA) support?
+      Offline capability, app installation, and service worker caching.
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  # ----------------------------------------
+  # Docusaurus Community & Engagement
+  # ----------------------------------------
+  docusaurus_comments:
+    type: str
+    help: |
+      Enable comments on documentation pages?
+      - giscus: GitHub Discussions-powered comments (recommended)
+      - none: No comments
+    default: none
+    choices:
+      - giscus
+      - none
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_feedback:
+    type: str
+    help: |
+      Enable "Was this page helpful?" feedback widget?
+      Collects reader feedback on documentation quality.
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  # ----------------------------------------
+  # Docusaurus SEO & Discovery
+  # ----------------------------------------
+  docusaurus_sitemap:
+    type: str
+    help: |
+      Enable sitemap.xml generation?
+      Improves search engine discoverability and crawling.
+    default: enabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_redirects:
+    type: str
+    help: |
+      Enable client-side redirects plugin?
+      Handle URL changes and old page preservation gracefully.
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  # ----------------------------------------
+  # Docusaurus UI Enhancements
+  # ----------------------------------------
+  docusaurus_announcement_bar:
+    type: str
+    help: |
+      Enable announcement bar at top of site?
+      Ideal for new releases, events, or important notices.
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_back_to_top:
+    type: str
+    help: |
+      Enable back-to-top button?
+      Floating button for quick scroll to page top.
+    default: enabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_edit_url:
+    type: str
+    help: |
+      Enable "Edit this page" links?
+      Links to source file on GitHub for community contributions.
+    default: enabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_code_tabs:
+    type: str
+    help: |
+      Enable tabbed code blocks plugin?
+      Group code samples by language with synchronized tab selection.
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_changelog:
+    type: str
+    help: |
+      Enable changelog integration?
+      Include CHANGELOG.md as documentation page.
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_debug:
+    type: str
+    help: |
+      Enable debug plugin in development?
+      Adds /__docusaurus/debug route for inspecting site data.
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_reading_time:
+    type: str
+    help: |
+      Show estimated reading time on docs/blog?
+      Displays "X min read" based on word count.
+    default: enabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
   shared_logic:
     type: str
     help: "Generate shared logic package?"

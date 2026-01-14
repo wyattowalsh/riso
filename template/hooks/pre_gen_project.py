@@ -23,7 +23,10 @@ sys.path.append(str(Path(__file__).resolve().parents[2] / "scripts"))
 try:
     from hooks.quality_tool_check import ensure_python_quality_tools, ToolCheck
 except ModuleNotFoundError:  # pragma: no cover - during template linting
-    ensure_python_quality_tools = lambda: []  # type: ignore
+
+    def ensure_python_quality_tools():
+        return []  # type: ignore
+
     ToolCheck = None  # type: ignore
 
 # Valid configuration values
@@ -130,9 +133,9 @@ def _validate_saas_starter(context: dict) -> list[dict]:
     """Validate SaaS Starter module configuration."""
     if context.get("saas_starter_module") != "enabled":
         return []
-    
+
     issues = []
-    
+
     # Error-level incompatibilities (blocking)
     error_incompatibilities = [
         {
@@ -145,7 +148,7 @@ def _validate_saas_starter(context: dict) -> list[dict]:
             ),
         },
     ]
-    
+
     # Warning-level incompatibilities (non-blocking)
     warning_incompatibilities = [
         {
@@ -163,7 +166,7 @@ def _validate_saas_starter(context: dict) -> list[dict]:
             ),
         },
     ]
-    
+
     # Info-level notices
     info_notices = [
         {
@@ -174,40 +177,46 @@ def _validate_saas_starter(context: dict) -> list[dict]:
             ),
         },
     ]
-    
+
     # Extract selected values
     selected_values = [
-        context.get(f"saas_{key}") for key in
-        ["runtime", "hosting", "database", "orm", "auth", "storage", "cicd"]
+        context.get(f"saas_{key}")
+        for key in ["runtime", "hosting", "database", "orm", "auth", "storage", "cicd"]
     ]
-    
+
     # Check error-level incompatibilities
     for rule in error_incompatibilities:
         combo = rule["combination"]
         if all(item in selected_values for item in combo):
-            issues.append({
-                "severity": "error",
-                "message": rule["message"],
-            })
-    
+            issues.append(
+                {
+                    "severity": "error",
+                    "message": rule["message"],
+                }
+            )
+
     # Check warning-level incompatibilities
     for rule in warning_incompatibilities:
         combo = rule["combination"]
         if all(item in selected_values for item in combo):
-            issues.append({
-                "severity": "warning",
-                "message": rule["message"],
-            })
-    
+            issues.append(
+                {
+                    "severity": "warning",
+                    "message": rule["message"],
+                }
+            )
+
     # Check info-level notices
     for rule in info_notices:
         combo = rule["combination"]
         if all(item in selected_values for item in combo):
-            issues.append({
-                "severity": "info",
-                "message": rule["message"],
-            })
-    
+            issues.append(
+                {
+                    "severity": "info",
+                    "message": rule["message"],
+                }
+            )
+
     return issues
 
 
@@ -237,13 +246,17 @@ def _attempt_install(tool: str, version: str, mise_spec: str | None) -> Provisio
     }
 
     if shutil.which(tool):
-        return ProvisionResult(tool_name=tool, version_requested=version, status="already_present")
+        return ProvisionResult(
+            tool_name=tool, version_requested=version, status="already_present"
+        )
 
     # Prefer mise-based installation when possible.
     if mise_spec and shutil.which("mise"):
         result = _run_command(["mise", "install", mise_spec])
         if result.returncode == 0 and shutil.which(tool):
-            return ProvisionResult(tool_name=tool, version_requested=version, status="installed")
+            return ProvisionResult(
+                tool_name=tool, version_requested=version, status="installed"
+            )
         return ProvisionResult(
             tool_name=tool,
             version_requested=version,
@@ -261,7 +274,9 @@ def _attempt_install(tool: str, version: str, mise_spec: str | None) -> Provisio
     )
 
 
-def _install_required_tools(tool_matrix: list[tuple[str, str, str | None]]) -> list[ProvisionResult]:
+def _install_required_tools(
+    tool_matrix: list[tuple[str, str, str | None]],
+) -> list[ProvisionResult]:
     """Install required tools from the tool matrix.
 
     Args:
@@ -312,23 +327,27 @@ def _check_and_log_actionlint(ci_platform: str) -> None:
         # Check actionlint availability but don't fail on missing
         # (post-generation hook will handle validation gracefully)
         if not shutil.which("actionlint"):
-            _log_attempt(ProvisionResult(
-                tool_name="actionlint",
-                version_requested="latest",
-                status="not_found",
-                next_steps="Install actionlint for workflow validation: brew install actionlint (macOS) or see https://github.com/rhysd/actionlint"
-            ))
+            _log_attempt(
+                ProvisionResult(
+                    tool_name="actionlint",
+                    version_requested="latest",
+                    status="not_found",
+                    next_steps="Install actionlint for workflow validation: brew install actionlint (macOS) or see https://github.com/rhysd/actionlint",
+                )
+            )
             sys.stderr.write(
                 "⚠️  actionlint not found - workflow validation will be skipped\n"
                 "   Install: brew install actionlint (macOS)\n"
                 "   Or see: https://github.com/rhysd/actionlint\n"
             )
         else:
-            _log_attempt(ProvisionResult(
-                tool_name="actionlint",
-                version_requested="latest",
-                status="already_present"
-            ))
+            _log_attempt(
+                ProvisionResult(
+                    tool_name="actionlint",
+                    version_requested="latest",
+                    status="already_present",
+                )
+            )
 
 
 def _validate_and_report_saas_starter(context: dict) -> bool:
@@ -389,7 +408,9 @@ def _report_failures_and_exit(failures: list[ProvisionResult]) -> None:
         "following tooling before re-running copier:\n"
     )
     for failure in failures:
-        sys.stderr.write(f"- {failure['tool_name']} (requested {failure['version_requested']}):\n")
+        sys.stderr.write(
+            f"- {failure['tool_name']} (requested {failure['version_requested']}):\n"
+        )
         if failure.get("stderr"):
             sys.stderr.write(f"  stderr: {failure['stderr']}\n")
         if failure.get("retry_command"):
@@ -399,7 +420,9 @@ def _report_failures_and_exit(failures: list[ProvisionResult]) -> None:
     sys.exit(1)
 
 
-def _build_tool_matrix(docs_site: str, context: dict) -> list[tuple[str, str, str | None]]:
+def _build_tool_matrix(
+    docs_site: str, context: dict
+) -> list[tuple[str, str, str | None]]:
     """Build the matrix of required tools with versions.
 
     Args:

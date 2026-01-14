@@ -91,9 +91,7 @@ def parse_pyproject_jinja(path: Path) -> dict[str, str]:
 
     # Find dependency-groups.quality section
     quality_section_match = re.search(
-        r'\[dependency-groups\]\nquality\s*=\s*\[(.*?)\]',
-        content,
-        re.DOTALL
+        r"\[dependency-groups\]\nquality\s*=\s*\[(.*?)\]", content, re.DOTALL
     )
 
     if quality_section_match:
@@ -149,9 +147,7 @@ def normalize_version(version: str) -> str:
 
 
 def compare_versions(
-    source: VersionSource,
-    other_sources: list[VersionSource],
-    tool: str
+    source: VersionSource, other_sources: list[VersionSource], tool: str
 ) -> list[str]:
     """Compare a tool's version across all sources.
 
@@ -186,7 +182,9 @@ def main() -> int:
     # Define all version sources
     versions_sh_path = repo_root / "scripts" / "setup" / "lib" / "versions.sh"
     pre_gen_path = repo_root / "template" / "hooks" / "pre_gen_project.py"
-    pyproject_path = repo_root / "template" / "files" / "python" / "pyproject.toml.jinja"
+    pyproject_path = (
+        repo_root / "template" / "files" / "python" / "pyproject.toml.jinja"
+    )
     mise_path = repo_root / "template" / "files" / ".mise.toml.jinja"
 
     # Verify all files exist
@@ -203,23 +201,15 @@ def main() -> int:
 
     # Parse versions from each source
     source_of_truth = VersionSource(
-        file=versions_sh_path,
-        versions=parse_versions_sh(versions_sh_path)
+        file=versions_sh_path, versions=parse_versions_sh(versions_sh_path)
     )
 
     other_sources = [
+        VersionSource(file=pre_gen_path, versions=parse_pre_gen_project(pre_gen_path)),
         VersionSource(
-            file=pre_gen_path,
-            versions=parse_pre_gen_project(pre_gen_path)
+            file=pyproject_path, versions=parse_pyproject_jinja(pyproject_path)
         ),
-        VersionSource(
-            file=pyproject_path,
-            versions=parse_pyproject_jinja(pyproject_path)
-        ),
-        VersionSource(
-            file=mise_path,
-            versions=parse_mise_toml(mise_path)
-        ),
+        VersionSource(file=mise_path, versions=parse_mise_toml(mise_path)),
     ]
 
     print("Verifying version synchronization...")
@@ -238,7 +228,9 @@ def main() -> int:
         for error in all_errors:
             print(error, file=sys.stderr)
         print(file=sys.stderr)
-        print("Please update the mismatched files to match versions.sh", file=sys.stderr)
+        print(
+            "Please update the mismatched files to match versions.sh", file=sys.stderr
+        )
         return 1
 
     print("✅ All versions synchronized!")

@@ -1,7 +1,12 @@
 import subprocess
 import sys
 
-from scripts.lib.logger import logger, configure_logging
+# Support both package import (from project root) and direct import (tests)
+try:
+    from scripts.lib.logger import logger, configure_logging
+except ModuleNotFoundError:
+    from logger import logger, configure_logging  # type: ignore[import-not-found]
+
 
 def run_command(command, cwd=None):
     """Runs a command and exits if it fails."""
@@ -10,6 +15,7 @@ def run_command(command, cwd=None):
     except (subprocess.CalledProcessError, FileNotFoundError):
         logger.error(f"Command `{' '.join(command)}` failed.")
         sys.exit(1)
+
 
 def main():
     """Runs the quality suite."""
@@ -21,6 +27,7 @@ def main():
     run_command(["mypy", "."])
     logger.info("Running Pylint...")
     run_command(["pylint", "template", "scripts"])
+
 
 if __name__ == "__main__":
     main()

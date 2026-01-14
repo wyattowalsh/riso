@@ -1,0 +1,55 @@
+{%- if docs_site == 'docusaurus' and websocket_module == 'enabled' -%}
+---
+sidebar_position: 5
+title: WebSockets
+description: Real-time communication with WebSockets
+---
+
+# WebSockets Module
+
+{{ project_name }} includes WebSocket support for real-time communication.
+
+## Quick Start
+
+```bash
+# Start the server with WebSocket support
+uv run uvicorn {{ package_name }}.api:app --reload
+```
+
+## Connecting
+
+```typescript
+const ws = new WebSocket('ws://localhost:8000/ws');
+
+ws.onopen = () => {
+  console.log('Connected');
+  ws.send(JSON.stringify({ type: 'ping' }));
+};
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log('Received:', data);
+};
+```
+
+## Message Types
+
+| Type | Description |
+|------|-------------|
+| `ping` | Keep-alive ping |
+| `pong` | Keep-alive response |
+| `subscribe` | Subscribe to a channel |
+| `unsubscribe` | Unsubscribe from a channel |
+
+## Testing
+
+```bash
+# Run WebSocket tests
+uv run pytest tests/websocket/
+```
+
+## See Also
+
+- [FastAPI WebSockets](https://fastapi.tiangolo.com/advanced/websockets/)
+- [Configuration Guide](/docs/guides/configuration)
+{%- endif -%}

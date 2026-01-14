@@ -1,4 +1,5 @@
 """Fixtures for automation tests."""
+
 import sys
 from pathlib import Path
 

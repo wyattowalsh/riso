@@ -8,23 +8,26 @@ import json
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, MutableMapping, TypedDict
+from typing import Iterable, TypedDict
 
 
 class ModuleResult(TypedDict):
     """Individual module test result from smoke tests."""
+
     name: str
     status: str
 
 
 class VariantSummary(TypedDict):
     """Summary of test results for a single variant."""
+
     variant: str
     results: list[ModuleResult]
 
 
 class SmokeResults(TypedDict):
     """Structure of smoke-results.json file."""
+
     results: list[ModuleResult]
 
 
@@ -92,7 +95,9 @@ class ContainerMetrics:
     files_missing: int = 0
     not_applicable: int = 0
     success_rate: float = 0.0
-    note: str = "Container metrics tracked from rendered samples with api_tracks or docs_site"
+    note: str = (
+        "Container metrics tracked from rendered samples with api_tracks or docs_site"
+    )
 
     def to_dict(self) -> dict[str, float | int | str]:
         """Convert container metrics to dictionary format.
@@ -137,11 +142,11 @@ class ModuleSuccessRecorder:
             self.workflow_stats.failed += 1
         else:
             self.workflow_stats.skipped += 1
-    
+
     def update_container_status(self, status: str) -> None:
         """Track container validation status."""
         self.container_metrics.total_checked += 1
-        
+
         if status == "files_present":
             self.container_metrics.files_present += 1
         elif status == "validated":
@@ -152,15 +157,19 @@ class ModuleSuccessRecorder:
             self.container_metrics.files_missing += 1
         elif status == "not_applicable":
             self.container_metrics.not_applicable += 1
-        
+
         # Calculate success rate (validated / (total - not_applicable))
-        applicable = self.container_metrics.total_checked - self.container_metrics.not_applicable
+        applicable = (
+            self.container_metrics.total_checked - self.container_metrics.not_applicable
+        )
         if applicable > 0:
             self.container_metrics.success_rate = round(
                 self.container_metrics.validated / applicable, 4
             )
 
-    def update_from_results(self, variant: str, results: Iterable[MutableMapping[str, object]]) -> None:
+    def update_from_results(
+        self, variant: str, results: Iterable[ModuleResult]
+    ) -> None:
         """Update module statistics from a collection of test results.
 
         Args:
@@ -276,7 +285,11 @@ def main(argv: list[str] | None = None) -> int:
         Exit code (0 for success).
     """
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--samples-dir", default="samples", help="Directory containing rendered sample variants.")
+    parser.add_argument(
+        "--samples-dir",
+        default="samples",
+        help="Directory containing rendered sample variants.",
+    )
     parser.add_argument(
         "--output",
         default="samples/metadata/module_success.json",

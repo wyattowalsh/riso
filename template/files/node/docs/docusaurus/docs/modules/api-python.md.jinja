@@ -1,0 +1,63 @@
+{%- if docs_site == 'docusaurus' and api_tracks in ['python', 'python+node'] -%}
+---
+sidebar_position: 2
+title: Python API
+description: FastAPI backend for {{ project_name }}
+---
+
+# Python API Module
+
+{{ project_name }} includes a Python API built with [FastAPI](https://fastapi.tiangolo.com/).
+
+## Quick Start
+
+```bash
+# Install dependencies
+uv sync
+
+# Start development server
+uv run uvicorn {{ package_name }}.api:app --reload
+
+# Or use the provided script
+./scripts/dev-api.sh
+```
+
+## Endpoints
+
+The API is available at `http://localhost:8000` by default.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Root endpoint |
+| `/health` | GET | Health check |
+| `/docs` | GET | Swagger UI |
+| `/redoc` | GET | ReDoc documentation |
+| `/openapi.json` | GET | OpenAPI specification |
+
+## Configuration
+
+Configure the API via environment variables:
+
+```bash
+# .env
+API_HOST=0.0.0.0
+API_PORT=8000
+API_WORKERS=4
+DEBUG=true
+```
+
+## Testing
+
+```bash
+# Run API tests
+uv run pytest tests/api/
+
+# With coverage
+uv run pytest tests/api/ --cov={{ package_name }}.api
+```
+
+## See Also
+
+- [API Reference](/docs/api-reference)
+- [Configuration Guide](/docs/guides/configuration)
+{%- endif -%}

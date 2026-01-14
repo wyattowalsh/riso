@@ -1,8 +1,8 @@
 """Shared fixtures for hooks unit tests."""
+
 import json
 import pytest
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 
 # ============================================================================
@@ -16,8 +16,8 @@ def mock_subprocess_success(mocker):
 
     Returns a mock subprocess.run that returns success (returncode=0).
     """
-    mock = mocker.patch('subprocess.run')
-    mock.return_value = MagicMock(returncode=0, stdout='', stderr='')
+    mock = mocker.patch("subprocess.run")
+    mock.return_value = MagicMock(returncode=0, stdout="", stderr="")
     return mock
 
 
@@ -27,8 +27,8 @@ def mock_subprocess_failure(mocker):
 
     Returns a mock subprocess.run that returns failure (returncode=1).
     """
-    mock = mocker.patch('subprocess.run')
-    mock.return_value = MagicMock(returncode=1, stdout='', stderr='error')
+    mock = mocker.patch("subprocess.run")
+    mock.return_value = MagicMock(returncode=1, stdout="", stderr="error")
     return mock
 
 
@@ -43,7 +43,7 @@ def mock_shutil_which_found(mocker):
 
     Returns a mock that simulates all tools being available.
     """
-    return mocker.patch('shutil.which', return_value='/usr/bin/tool')
+    return mocker.patch("shutil.which", return_value="/usr/bin/tool")
 
 
 @pytest.fixture
@@ -52,7 +52,7 @@ def mock_shutil_which_missing(mocker):
 
     Returns a mock that simulates all tools being missing.
     """
-    return mocker.patch('shutil.which', return_value=None)
+    return mocker.patch("shutil.which", return_value=None)
 
 
 # ============================================================================
@@ -68,13 +68,13 @@ def sample_python_context():
     with common settings.
     """
     return {
-        'project_name': 'test-project',
-        'project_type': 'python',
-        'python_version': '3.11',
-        'use_docker': True,
-        'ci_platform': 'github-actions',
-        'docs_site': 'sphinx-shibuya',
-        'saas_starter_module': 'disabled',
+        "project_name": "test-project",
+        "project_type": "python",
+        "python_version": "3.11",
+        "use_docker": True,
+        "ci_platform": "github-actions",
+        "docs_site": "sphinx-shibuya",
+        "saas_starter_module": "disabled",
     }
 
 
@@ -86,13 +86,13 @@ def sample_node_context():
     with common settings.
     """
     return {
-        'project_name': 'test-project',
-        'project_type': 'node',
-        'node_version': '20',
-        'use_docker': True,
-        'ci_platform': 'github-actions',
-        'docs_site': 'fumadocs',
-        'saas_starter_module': 'disabled',
+        "project_name": "test-project",
+        "project_type": "node",
+        "node_version": "20",
+        "use_docker": True,
+        "ci_platform": "github-actions",
+        "docs_site": "fumadocs",
+        "saas_starter_module": "disabled",
     }
 
 
@@ -104,18 +104,18 @@ def sample_saas_context():
     starter module enabled.
     """
     return {
-        'project_name': 'test-saas-project',
-        'project_type': 'python',
-        'python_version': '3.11',
-        'use_docker': True,
-        'ci_platform': 'github-actions',
-        'docs_site': 'fumadocs',
-        'saas_starter_module': 'enabled',
-        'saas_database': 'neon',
-        'saas_storage': 'r2',
-        'saas_hosting': 'vercel',
-        'saas_orm': 'prisma',
-        'saas_auth': 'clerk',
+        "project_name": "test-saas-project",
+        "project_type": "python",
+        "python_version": "3.11",
+        "use_docker": True,
+        "ci_platform": "github-actions",
+        "docs_site": "fumadocs",
+        "saas_starter_module": "enabled",
+        "saas_database": "neon",
+        "saas_storage": "r2",
+        "saas_hosting": "vercel",
+        "saas_orm": "prisma",
+        "saas_auth": "clerk",
     }
 
 
@@ -136,8 +136,10 @@ def mock_copier_answers(monkeypatch):
             mock_copier_answers({'docs_site': 'fumadocs'})
             # Now COPIER_ANSWERS env var is set
     """
+
     def _set_copier_answers(answers: dict):
         monkeypatch.setenv("COPIER_ANSWERS", json.dumps(answers))
+
     return _set_copier_answers
 
 
@@ -174,7 +176,7 @@ def mock_tool_check_success(mocker):
 
     return mocker.patch(
         "pre_gen_project.ensure_python_quality_tools",
-        side_effect=_create_success_checks
+        side_effect=_create_success_checks,
     )
 
 
@@ -198,8 +200,7 @@ def mock_tool_check_failure(mocker):
         ]
 
     return mocker.patch(
-        "pre_gen_project.ensure_python_quality_tools",
-        side_effect=_create_failed_checks
+        "pre_gen_project.ensure_python_quality_tools", side_effect=_create_failed_checks
     )
 
 

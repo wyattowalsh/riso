@@ -1,0 +1,112 @@
+{%- if docs_site == 'fumadocs' -%}
+---
+title: Quickstart
+description: Get started with {{ project_name }} in minutes
+---
+
+# Quickstart
+
+This guide will help you get {{ project_name }} up and running quickly.
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- Python 3.11 or later
+- [uv](https://docs.astral.sh/uv/) package manager
+{%- if api_tracks in ['node', 'python+node'] %}
+- Node.js 20 LTS or later
+- pnpm 8 or later
+{%- endif %}
+
+## Installation
+
+### Clone the Repository
+
+```bash
+git clone https://github.com/{{ project_slug }}/{{ project_slug }}.git
+cd {{ project_slug }}
+```
+
+### Install Dependencies
+
+```bash
+# Install Python dependencies
+uv sync
+
+{%- if api_tracks in ['node', 'python+node'] %}
+# Install Node.js dependencies
+pnpm install
+{%- endif %}
+```
+
+### Configure Environment
+
+```bash
+# Copy the example environment file
+cp .env.example .env
+
+# Edit .env with your settings
+```
+
+## Development
+
+{%- if cli_module == 'enabled' %}
+
+### Running the CLI
+
+```bash
+uv run {{ package_name }} --help
+```
+{%- endif %}
+
+{%- if api_tracks in ['python', 'python+node'] %}
+
+### Starting the API Server
+
+```bash
+uv run uvicorn {{ package_name }}.api.main:app --reload
+```
+
+The API will be available at `http://localhost:8000`.
+{%- endif %}
+
+{%- if api_tracks in ['node', 'python+node'] %}
+
+### Starting Node.js Services
+
+```bash
+pnpm dev
+```
+{%- endif %}
+
+## Running Tests
+
+```bash
+# Run all tests
+uv run pytest
+
+# Run with coverage
+uv run pytest --cov
+```
+
+## Next Steps
+
+<Cards>
+{%- if cli_module == 'enabled' %}
+  <Card title="CLI Module" href="/docs/modules/cli">
+    Learn about CLI commands and options.
+  </Card>
+{%- endif %}
+{%- if api_tracks in ['python', 'python+node'] %}
+  <Card title="API Reference" href="/docs/modules/api-python">
+    Explore the API endpoints.
+  </Card>
+{%- endif %}
+{%- if mcp_module == 'enabled' %}
+  <Card title="MCP Integration" href="/docs/modules/mcp">
+    Configure MCP tools.
+  </Card>
+{%- endif %}
+</Cards>
+{%- endif -%}

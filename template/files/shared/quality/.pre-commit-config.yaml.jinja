@@ -18,7 +18,7 @@ repos:
   # Python Code Quality
   # ============================================
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.2
+    rev: v0.14.11
     hooks:
       - id: ruff
         name: ruff lint
@@ -61,7 +61,7 @@ repos:
   # Secrets Detection
   # ============================================
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.21.2
+    rev: v8.30.0
     hooks:
       - id: gitleaks
         name: gitleaks secrets scan
@@ -71,17 +71,17 @@ repos:
   # Node.js Code Quality
   # ============================================
   - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v4.0.0-alpha.8
+    rev: v3.7.4
     hooks:
       - id: prettier
         name: prettier format
-        types_or: [javascript, jsx, ts, tsx, json, yaml, markdown]
+        types_or: [javascript, jsx, ts, tsx, json, yaml]
 {% if project_layout == 'monorepo' %}
         files: ^(apps|packages)/.*\.(js|jsx|ts|tsx|json|ya?ml|md)$
 {% endif %}
 
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v9.17.0
+    rev: v9.39.2
     hooks:
       - id: eslint
         name: eslint lint
@@ -90,17 +90,17 @@ repos:
         files: ^(apps|packages)/.*\.(js|jsx|ts|tsx)$
 {% endif %}
         additional_dependencies:
-          - eslint@8.56.0
-          - typescript@5.3.3
-          - "@typescript-eslint/parser@6.21.0"
-          - "@typescript-eslint/eslint-plugin@6.21.0"
+          - eslint@9.39.2
+          - typescript@5.9.3
+          - "@typescript-eslint/parser@8.53.0"
+          - "@typescript-eslint/eslint-plugin@8.53.0"
 
 {% endif %}
   # ============================================
   # Shell Script Linting
   # ============================================
   - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.10.0.1
+    rev: v0.11.0.1
     hooks:
       - id: shellcheck
         name: shellcheck
@@ -110,7 +110,7 @@ repos:
   # Spell Checking
   # ============================================
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.3.0
+    rev: v2.4.1
     hooks:
       - id: codespell
         name: codespell
@@ -122,7 +122,7 @@ repos:
   # Markdown Formatting
   # ============================================
   - repo: https://github.com/executablebooks/mdformat
-    rev: 0.7.19
+    rev: 1.0.0
     hooks:
       - id: mdformat
         name: mdformat
@@ -136,7 +136,7 @@ repos:
   # General Quality Checks
   # ============================================
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-yaml
         name: check yaml
@@ -166,14 +166,14 @@ repos:
   # GitHub Actions Validation
   # ============================================
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.4
+    rev: v1.7.10
     hooks:
       - id: actionlint
         name: actionlint
         files: ^\.github/workflows/.*\.ya?ml$
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.30.0
+    rev: 0.36.0
     hooks:
       - id: check-github-workflows
         name: validate github workflows
@@ -183,8 +183,19 @@ repos:
   # ============================================
   # Commit Message Validation
   # ============================================
+{% if changelog_module == 'enabled' %}
+  - repo: local
+    hooks:
+      - id: commitlint
+        name: commitlint
+        entry: scripts/hooks/commit-msg.sh
+        language: system
+        stages: [commit-msg]
+        always_run: true
+
+{% endif %}
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v3.6.0
+    rev: v4.3.0
     hooks:
       - id: conventional-pre-commit
         name: conventional commits

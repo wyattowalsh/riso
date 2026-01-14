@@ -1,0 +1,91 @@
+{%- if docs_site == 'fumadocs' and fumadocs_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] -%}
+openapi: 3.1.0
+info:
+  title: {{ project_name }} API
+  description: REST API for {{ project_name }}
+  version: 0.1.0
+  contact:
+    name: {{ project_name }} Team
+    url: https://github.com/{{ project_slug }}/{{ project_slug }}
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+{%- if api_tracks in ['node', 'python+node'] %}
+  - url: http://localhost:3000
+    description: Node.js development server
+{%- endif %}
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns the health status of the API
+      operationId: getHealth
+      tags:
+        - System
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /:
+    get:
+      summary: Root endpoint
+      description: Returns basic API information
+      operationId: getRoot
+      tags:
+        - System
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RootResponse'
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+          example: healthy
+        version:
+          type: string
+          example: 0.1.0
+        timestamp:
+          type: string
+          format: date-time
+
+    RootResponse:
+      type: object
+      properties:
+        name:
+          type: string
+          example: {{ project_name }} API
+        version:
+          type: string
+          example: 0.1.0
+        documentation:
+          type: string
+          format: uri
+          example: /docs
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+tags:
+  - name: System
+    description: System and health endpoints
+{%- endif -%}

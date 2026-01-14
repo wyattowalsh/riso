@@ -1,0 +1,86 @@
+{%- if docs_site == 'docusaurus' and ci_platform == 'github-actions' -%}
+# Docusaurus Documentation Deployment
+# Builds and deploys docs to GitHub Pages on push to main
+
+name: Deploy Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'blog/**'
+      - 'src/**'
+      - 'static/**'
+      - 'docusaurus.config.ts'
+      - 'sidebars.ts'
+      - 'package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+{%- if docusaurus_show_last_update == 'enabled' %}
+          fetch-depth: 0  # Full history for git timestamps
+{%- else %}
+          fetch-depth: 1
+{%- endif %}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build documentation
+        run: pnpm build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+{%- if docusaurus_analytics == 'google' %}
+          GOOGLE_ANALYTICS_ID: ${{ secrets.GOOGLE_ANALYTICS_ID }}
+{%- endif %}
+{%- if docusaurus_analytics == 'posthog' %}
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+{%- endif %}
+{%- if docusaurus_search_provider == 'algolia' %}
+          ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
+          ALGOLIA_API_KEY: ${{ secrets.ALGOLIA_API_KEY }}
+{%- endif %}
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+{%- endif -%}

@@ -1,0 +1,20 @@
+{%- if docs_site == 'fumadocs' and fumadocs_ai_search == 'enabled' -%}
+import { openai } from '@ai-sdk/openai';
+import { streamText } from 'ai';
+
+export const maxDuration = 30;
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+
+  const result = streamText({
+    model: openai('gpt-4o'),
+    system: `You are a helpful documentation assistant for {{ project_name }}.
+Answer questions based on the documentation. Be concise and helpful.
+If you don't know the answer, say so and suggest where to find more information.`,
+    messages,
+  });
+
+  return result.toDataStreamResponse();
+}
+{%- endif -%}

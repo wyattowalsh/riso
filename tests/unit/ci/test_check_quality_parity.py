@@ -1,6 +1,7 @@
 """Unit tests for check_quality_parity.py"""
+
 import pytest
-from unittest.mock import Mock, patch, mock_open
+from unittest.mock import patch
 from io import StringIO
 
 from check_quality_parity import (
@@ -8,8 +9,6 @@ from check_quality_parity import (
     main,
     REQUIRED_PATTERNS,
     NODE_PATTERNS,
-    MAKEFILE,
-    UV_TASK,
 )
 
 
@@ -113,8 +112,8 @@ class TestAssertContains:
 class TestMainFunction:
     """Tests for main function."""
 
-    @patch('check_quality_parity.MAKEFILE')
-    @patch('check_quality_parity.UV_TASK')
+    @patch("check_quality_parity.MAKEFILE")
+    @patch("check_quality_parity.UV_TASK")
     def test_success_case_all_patterns_present(self, mock_uv, mock_make, tmp_path):
         """Should return 0 when all patterns are present in both files."""
         # Create test files with all required patterns
@@ -128,14 +127,14 @@ class TestMainFunction:
         mock_make.read_text.return_value = content
         mock_uv.read_text.return_value = content
 
-        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+        with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
             result = main()
 
         assert result == 0
         assert "Quality parity checks passed" in mock_stdout.getvalue()
 
-    @patch('check_quality_parity.MAKEFILE')
-    @patch('check_quality_parity.UV_TASK')
+    @patch("check_quality_parity.MAKEFILE")
+    @patch("check_quality_parity.UV_TASK")
     def test_failure_makefile_missing_patterns(self, mock_uv, mock_make, tmp_path):
         """Should return 1 when Makefile is missing patterns."""
         makefile_content = "ruff check\n"  # Missing most patterns
@@ -144,7 +143,7 @@ class TestMainFunction:
         mock_make.read_text.return_value = makefile_content
         mock_uv.read_text.return_value = uv_content
 
-        with patch('sys.stderr', new_callable=StringIO) as mock_stderr:
+        with patch("sys.stderr", new_callable=StringIO) as mock_stderr:
             result = main()
 
         assert result == 1
@@ -152,8 +151,8 @@ class TestMainFunction:
         assert "Makefile missing:" in stderr_output
         assert "mypy" in stderr_output
 
-    @patch('check_quality_parity.MAKEFILE')
-    @patch('check_quality_parity.UV_TASK')
+    @patch("check_quality_parity.MAKEFILE")
+    @patch("check_quality_parity.UV_TASK")
     def test_failure_uv_task_missing_patterns(self, mock_uv, mock_make, tmp_path):
         """Should return 1 when uv task is missing patterns."""
         makefile_content = "\n".join(REQUIRED_PATTERNS)
@@ -162,7 +161,7 @@ class TestMainFunction:
         mock_make.read_text.return_value = makefile_content
         mock_uv.read_text.return_value = uv_content
 
-        with patch('sys.stderr', new_callable=StringIO) as mock_stderr:
+        with patch("sys.stderr", new_callable=StringIO) as mock_stderr:
             result = main()
 
         assert result == 1
@@ -170,8 +169,8 @@ class TestMainFunction:
         assert "uv task missing:" in stderr_output
         assert "mypy" in stderr_output
 
-    @patch('check_quality_parity.MAKEFILE')
-    @patch('check_quality_parity.UV_TASK')
+    @patch("check_quality_parity.MAKEFILE")
+    @patch("check_quality_parity.UV_TASK")
     def test_failure_both_files_missing_patterns(self, mock_uv, mock_make, tmp_path):
         """Should report errors for both files when both are missing patterns."""
         makefile_content = "ruff check\n"
@@ -180,7 +179,7 @@ class TestMainFunction:
         mock_make.read_text.return_value = makefile_content
         mock_uv.read_text.return_value = uv_content
 
-        with patch('sys.stderr', new_callable=StringIO) as mock_stderr:
+        with patch("sys.stderr", new_callable=StringIO) as mock_stderr:
             result = main()
 
         assert result == 1
@@ -188,8 +187,8 @@ class TestMainFunction:
         assert "Makefile missing:" in stderr_output
         assert "uv task missing:" in stderr_output
 
-    @patch('check_quality_parity.MAKEFILE')
-    @patch('check_quality_parity.UV_TASK')
+    @patch("check_quality_parity.MAKEFILE")
+    @patch("check_quality_parity.UV_TASK")
     def test_node_parity_when_node_in_makefile(self, mock_uv, mock_make, tmp_path):
         """Should check Node parity when Node patterns exist in Makefile."""
         content_with_node = "\n".join(REQUIRED_PATTERNS + NODE_PATTERNS)
@@ -198,7 +197,7 @@ class TestMainFunction:
         mock_make.read_text.return_value = content_with_node
         mock_uv.read_text.return_value = content_without_node
 
-        with patch('sys.stderr', new_callable=StringIO) as mock_stderr:
+        with patch("sys.stderr", new_callable=StringIO) as mock_stderr:
             result = main()
 
         assert result == 1
@@ -206,38 +205,42 @@ class TestMainFunction:
         assert "uv task missing Node commands:" in stderr_output
         assert "pnpm --filter api-node" in stderr_output
 
-    @patch('check_quality_parity.MAKEFILE')
-    @patch('check_quality_parity.UV_TASK')
-    def test_node_parity_not_checked_when_node_not_in_makefile(self, mock_uv, mock_make, tmp_path):
+    @patch("check_quality_parity.MAKEFILE")
+    @patch("check_quality_parity.UV_TASK")
+    def test_node_parity_not_checked_when_node_not_in_makefile(
+        self, mock_uv, mock_make, tmp_path
+    ):
         """Should not check Node parity when Node patterns missing from Makefile."""
         content = "\n".join(REQUIRED_PATTERNS)
 
         mock_make.read_text.return_value = content
         mock_uv.read_text.return_value = content
 
-        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+        with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
             result = main()
 
         assert result == 0
         assert "Quality parity checks passed" in mock_stdout.getvalue()
 
-    @patch('check_quality_parity.MAKEFILE')
-    @patch('check_quality_parity.UV_TASK')
-    def test_node_parity_success_when_both_have_node(self, mock_uv, mock_make, tmp_path):
+    @patch("check_quality_parity.MAKEFILE")
+    @patch("check_quality_parity.UV_TASK")
+    def test_node_parity_success_when_both_have_node(
+        self, mock_uv, mock_make, tmp_path
+    ):
         """Should succeed when both files have Node patterns."""
         content = "\n".join(REQUIRED_PATTERNS + NODE_PATTERNS)
 
         mock_make.read_text.return_value = content
         mock_uv.read_text.return_value = content
 
-        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+        with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
             result = main()
 
         assert result == 0
         assert "Quality parity checks passed" in mock_stdout.getvalue()
 
-    @patch('check_quality_parity.MAKEFILE')
-    @patch('check_quality_parity.UV_TASK')
+    @patch("check_quality_parity.MAKEFILE")
+    @patch("check_quality_parity.UV_TASK")
     def test_error_message_format(self, mock_uv, mock_make, tmp_path):
         """Should format error messages with [quality-parity] prefix."""
         makefile_content = "ruff check\n"
@@ -246,15 +249,15 @@ class TestMainFunction:
         mock_make.read_text.return_value = makefile_content
         mock_uv.read_text.return_value = uv_content
 
-        with patch('sys.stderr', new_callable=StringIO) as mock_stderr:
-            result = main()
+        with patch("sys.stderr", new_callable=StringIO) as mock_stderr:
+            main()
 
         stderr_output = mock_stderr.getvalue()
-        for line in stderr_output.strip().split('\n'):
+        for line in stderr_output.strip().split("\n"):
             assert line.startswith("[quality-parity]")
 
-    @patch('check_quality_parity.MAKEFILE')
-    @patch('check_quality_parity.UV_TASK')
+    @patch("check_quality_parity.MAKEFILE")
+    @patch("check_quality_parity.UV_TASK")
     def test_multiple_missing_patterns_listed(self, mock_uv, mock_make, tmp_path):
         """Should list all missing patterns in error messages."""
         makefile_content = "ruff check\n"
@@ -263,8 +266,8 @@ class TestMainFunction:
         mock_make.read_text.return_value = makefile_content
         mock_uv.read_text.return_value = uv_content
 
-        with patch('sys.stderr', new_callable=StringIO) as mock_stderr:
-            result = main()
+        with patch("sys.stderr", new_callable=StringIO) as mock_stderr:
+            main()
 
         stderr_output = mock_stderr.getvalue()
         assert "mypy" in stderr_output
@@ -305,14 +308,14 @@ class TestConstantsAndPaths:
 class TestEdgeCases:
     """Tests for edge cases and error handling."""
 
-    @patch('check_quality_parity.MAKEFILE')
-    @patch('check_quality_parity.UV_TASK')
+    @patch("check_quality_parity.MAKEFILE")
+    @patch("check_quality_parity.UV_TASK")
     def test_empty_files(self, mock_uv, mock_make, tmp_path):
         """Should handle empty files gracefully."""
         mock_make.read_text.return_value = ""
         mock_uv.read_text.return_value = ""
 
-        with patch('sys.stderr', new_callable=StringIO) as mock_stderr:
+        with patch("sys.stderr", new_callable=StringIO) as mock_stderr:
             result = main()
 
         assert result == 1
@@ -320,8 +323,8 @@ class TestEdgeCases:
         assert "Makefile missing:" in stderr_output
         assert "uv task missing:" in stderr_output
 
-    @patch('check_quality_parity.MAKEFILE')
-    @patch('check_quality_parity.UV_TASK')
+    @patch("check_quality_parity.MAKEFILE")
+    @patch("check_quality_parity.UV_TASK")
     def test_patterns_in_comments(self, mock_uv, mock_make, tmp_path):
         """Should find patterns even if they appear in comments."""
         content = "# ruff check is used here\n# mypy\n# pylint\n# coverage run\n# coverage report\n"
@@ -329,13 +332,13 @@ class TestEdgeCases:
         mock_make.read_text.return_value = content
         mock_uv.read_text.return_value = content
 
-        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+        with patch("sys.stdout", new_callable=StringIO):
             result = main()
 
         assert result == 0
 
-    @patch('check_quality_parity.MAKEFILE')
-    @patch('check_quality_parity.UV_TASK')
+    @patch("check_quality_parity.MAKEFILE")
+    @patch("check_quality_parity.UV_TASK")
     def test_patterns_with_extra_whitespace(self, mock_uv, mock_make, tmp_path):
         """Should match patterns with surrounding whitespace."""
         content = "    ruff check    \n\tmypy\t\n  pylint  \n  coverage run  \n  coverage report  \n"
@@ -343,7 +346,7 @@ class TestEdgeCases:
         mock_make.read_text.return_value = content
         mock_uv.read_text.return_value = content
 
-        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+        with patch("sys.stdout", new_callable=StringIO):
             result = main()
 
         assert result == 0
@@ -358,17 +361,19 @@ class TestEdgeCases:
 
         assert missing == patterns
 
-    @patch('check_quality_parity.MAKEFILE')
-    @patch('check_quality_parity.UV_TASK')
+    @patch("check_quality_parity.MAKEFILE")
+    @patch("check_quality_parity.UV_TASK")
     def test_node_partial_match_in_makefile(self, mock_uv, mock_make, tmp_path):
         """Should handle when only some Node patterns are in Makefile."""
-        makefile_content = "\n".join(REQUIRED_PATTERNS + ["pnpm --filter api-node lint"])
+        makefile_content = "\n".join(
+            REQUIRED_PATTERNS + ["pnpm --filter api-node lint"]
+        )
         uv_content = "\n".join(REQUIRED_PATTERNS)
 
         mock_make.read_text.return_value = makefile_content
         mock_uv.read_text.return_value = uv_content
 
-        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+        with patch("sys.stdout", new_callable=StringIO):
             result = main()
 
         # Should succeed because not all Node patterns are in Makefile

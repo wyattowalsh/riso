@@ -17,7 +17,9 @@ from typing import Any, Mapping
 
 try:  # pragma: no cover - import resolution depends on invocation style
     from automation.render_client import APIError, RenderClient
-except ModuleNotFoundError:  # pragma: no cover - fallback for `python path/to/script.py`
+except (
+    ModuleNotFoundError
+):  # pragma: no cover - fallback for `python path/to/script.py`
     from pathlib import Path as _Path
 
     sys.path.append(str(_Path(__file__).resolve().parents[1]))
@@ -36,18 +38,36 @@ STATUSES = ["pass", "fail", "needs_review"]
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--principle", required=True, choices=PRINCIPLES, help="Governance principle.")
+    parser.add_argument(
+        "--principle", required=True, choices=PRINCIPLES, help="Governance principle."
+    )
     parser.add_argument(
         "--status",
         required=True,
         choices=STATUSES,
         help="Checkpoint result as observed by the automation system.",
     )
-    parser.add_argument("--evidence", required=True, help="Link or artifact reference supporting the status.")
-    parser.add_argument("--base-url", default=None, help="Override automation API base URL.")
-    parser.add_argument("--token", default=None, help="Optional bearer token for authenticated APIs.")
-    parser.add_argument("--metadata", default=None, help="Path to JSON file providing additional metadata.")
-    parser.add_argument("--dry-run", action="store_true", help="Do not make network requests; print payload instead.")
+    parser.add_argument(
+        "--evidence",
+        required=True,
+        help="Link or artifact reference supporting the status.",
+    )
+    parser.add_argument(
+        "--base-url", default=None, help="Override automation API base URL."
+    )
+    parser.add_argument(
+        "--token", default=None, help="Optional bearer token for authenticated APIs."
+    )
+    parser.add_argument(
+        "--metadata",
+        default=None,
+        help="Path to JSON file providing additional metadata.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Do not make network requests; print payload instead.",
+    )
     return parser.parse_args(argv)
 
 
@@ -77,7 +97,9 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.write("\n")
         return 0
 
-    client = RenderClient(base_url=args.base_url or RenderClient().base_url, token=args.token)
+    client = RenderClient(
+        base_url=args.base_url or RenderClient().base_url, token=args.token
+    )
     try:
         client.record_compliance_checkpoint(
             principle=args.principle,

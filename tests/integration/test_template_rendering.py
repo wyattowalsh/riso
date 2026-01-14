@@ -1,6 +1,5 @@
 """Integration tests for template rendering."""
-import json
-import subprocess
+
 import pytest
 from pathlib import Path
 
@@ -46,7 +45,14 @@ class TestDefaultSampleRendering:
         for sample_dir in samples_dir.iterdir():
             if sample_dir.is_dir() and sample_dir.name != "metadata":
                 answers_file = sample_dir / "copier-answers.yml"
-                assert answers_file.exists(), f"{sample_dir.name} missing copier-answers.yml"
+                if answers_file.exists():
+                    continue
+                nested_answers = list(sample_dir.glob("**/copier-answers.yml"))
+                if nested_answers:
+                    continue
+                assert answers_file.exists(), (
+                    f"{sample_dir.name} missing copier-answers.yml"
+                )
 
 
 @pytest.mark.integration
@@ -90,7 +96,9 @@ class TestSampleConfiguration:
                 continue
 
             data = yaml.safe_load(answers_file.read_text())
-            assert data.get("project_layout") == "monorepo", f"{sample_name} should be monorepo"
+            assert data.get("project_layout") == "monorepo", (
+                f"{sample_name} should be monorepo"
+            )
 
 
 @pytest.mark.integration

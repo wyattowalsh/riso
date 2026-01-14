@@ -27,12 +27,16 @@ import sys
 from pathlib import Path
 from typing import Any, TypedDict
 
-from scripts.lib.logger import configure_logging, logger
+# Support both package import (from project root) and direct import (tests)
+try:
+    from scripts.lib.logger import configure_logging, logger
+except ModuleNotFoundError:
+    from logger import configure_logging, logger  # type: ignore[import-not-found]
 
 
 class ValidationResult(TypedDict):
     """Validation result for a single Dockerfile."""
-    
+
     file: str
     passed: bool
     errors: list[dict[str, Any]]
@@ -41,7 +45,7 @@ class ValidationResult(TypedDict):
 
 def check_hadolint_installed() -> bool:
     """Check if hadolint is installed and accessible.
-    
+
     Returns:
         True if hadolint is available, False otherwise
     """
@@ -59,41 +63,41 @@ def check_hadolint_installed() -> bool:
 
 def find_dockerfiles(directory: Path) -> list[Path]:
     """Find all Dockerfile* files recursively in a directory.
-    
+
     Args:
         directory: Root directory to search
-    
+
     Returns:
         List of Dockerfile paths
     """
     dockerfiles: list[Path] = []
-    
+
     # Search for Dockerfile and Dockerfile.* patterns
     for pattern in ["**/Dockerfile", "**/Dockerfile.*"]:
         dockerfiles.extend(directory.glob(pattern))
-    
+
     # Remove .dockerignore files if accidentally matched
     dockerfiles = [f for f in dockerfiles if f.name != ".dockerignore"]
-    
+
     return sorted(set(dockerfiles))  # Deduplicate and sort
 
 
 def validate_dockerfile(dockerfile_path: Path) -> ValidationResult:
     """Run hadolint on a Dockerfile and return validation result.
-    
+
     Args:
         dockerfile_path: Path to Dockerfile to validate
-    
+
     Returns:
         ValidationResult with errors, warnings, and pass/fail status
-    
+
     Raises:
         FileNotFoundError: If dockerfile_path does not exist
         RuntimeError: If hadolint execution fails
     """
     if not dockerfile_path.exists():
         raise FileNotFoundError(f"Dockerfile not found: {dockerfile_path}")
-    
+
     try:
         result = subprocess.run(
             ["hadolint", "--format", "json", str(dockerfile_path)],
@@ -101,23 +105,31 @@ def validate_dockerfile(dockerfile_path: Path) -> ValidationResult:
             text=True,
             check=False,  # Don't raise on non-zero exit (hadolint returns 1 for linting errors)
         )
-        
+
         # Parse JSON output from hadolint
         issues: list[dict[str, Any]] = []
         if result.stdout.strip():
             issues = json.loads(result.stdout)
-        
+
         # Separate errors from warnings
         errors = [issue for issue in issues if issue.get("level") == "error"]
-        warnings = [issue for issue in issues if issue.get("level") in ("warning", "info", "style")]
-        
+        warnings = [
+            issue
+            for issue in issues
+            if issue.get("level") in ("warning", "info", "style")
+        ]
+
+        try:
+            display_path = dockerfile_path.relative_to(Path.cwd())
+        except ValueError:
+            display_path = dockerfile_path
         return ValidationResult(
-            file=str(dockerfile_path.relative_to(Path.cwd())),
+            file=str(display_path),
             passed=len(errors) == 0,
             errors=errors,
             warnings=warnings,
         )
-    
+
     except json.JSONDecodeError as e:
         raise RuntimeError(f"Failed to parse hadolint JSON output: {e}")
     except subprocess.SubprocessError as e:

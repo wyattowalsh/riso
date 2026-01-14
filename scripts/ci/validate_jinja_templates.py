@@ -101,7 +101,10 @@ def main() -> int:
 
     # Report results
     if errors:
-        print(f"Jinja template validation failed ({len(errors)} error(s)):", file=sys.stderr)
+        print(
+            f"Jinja template validation failed ({len(errors)} error(s)):",
+            file=sys.stderr,
+        )
         for err in errors:
             print(f"  {err}", file=sys.stderr)
         return 1

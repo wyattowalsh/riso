@@ -88,6 +88,8 @@ Comprehensive pre-commit configuration with multi-stage hooks:
 | **commit-msg** | commitlint, conventional-pre-commit | Commit format validation |
 | **pre-push** | pytest, pip-audit | Full test suite + security |
 
+Commitlint runs when `pnpm` is available; conventional-pre-commit serves as the fallback for commit-msg validation.
+
 ```bash
 # Install all hook types
 uv run pre-commit install --install-hooks
@@ -140,7 +142,7 @@ git commit --no-verify -m "emergency: bypass hooks"
 - **CRITICAL**: Always use `uv run` prefix for Python commands (never bare `python` or `pytest`)
 - **Fixtures**: Test fixtures are in `conftest.py` files—check there for utilities
 - **Parallel tests**: Tests run in parallel by default (`-n auto`); use `-n 0` for sequential
-- **Pre-commit CI**: Some hooks are skipped in CI (ty-check, pylint, pytest, vulture, gitleaks)—they run in dedicated jobs
+- **Pre-commit CI**: Some hooks are skipped in CI (ty-check, pylint, pytest, vulture, gitleaks); gitleaks runs in a dedicated workflow with full history
 - **Jinja templates**: Template files in `template/files/` use `.jinja` extension
 - **Sample renders**: Never manually edit `samples/*/render/`—regenerate with render script
 - **Lock files**: Never manually edit `uv.lock` or `pnpm-lock.yaml`—use package manager commands
@@ -719,7 +721,7 @@ Rendered projects inherit these skills via `template/files/shared/.claude/skills
 
 ## Active Technologies
 
-- Changelog & Release Management: commitlint ≥18.0.0 + @commitlint/config-conventional ≥18.0.0 (commit validation), semantic-release ≥23.0.0 (version automation), @semantic-release/changelog ≥6.0.3 (changelog generation), @semantic-release/commit-analyzer ≥11.1.0 (commit analysis), @semantic-release/exec ≥6.0.3 (custom scripts), @semantic-release/git ≥10.0.1 (Git operations), @semantic-release/github ≥9.2.6 (GitHub Releases), @semantic-release/npm ≥11.0.2 (npm publishing), commitizen ≥4.3.0 + cz-conventional-changelog ≥3.3.0 (interactive commits), twine (PyPI publishing), Git hooks (commit-msg validation), GitHub Secrets (credential management), Pydantic v2 (data models), Python 3.11+ (automation scripts) (014-changelog-release-management)
+- Changelog & Release Management: commitlint ≥20.3.1 + @commitlint/config-conventional ≥20.3.1 (commit validation), semantic-release ≥25.0.2 (version automation), @semantic-release/changelog ≥6.0.3 (changelog generation), @semantic-release/commit-analyzer ≥13.0.1 (commit analysis), @semantic-release/exec ≥7.1.0 (custom scripts), @semantic-release/git ≥10.0.1 (Git operations), @semantic-release/github ≥12.0.2 (GitHub Releases), @semantic-release/npm ≥13.1.3 (npm publishing), commitizen ≥4.3.1 + cz-conventional-changelog ≥3.3.0 (interactive commits), twine (PyPI publishing), Git hooks (commit-msg validation), GitHub Secrets (credential management), Pydantic v2 (data models), Python 3.11+ (automation scripts) (014-changelog-release-management)
 - WebSocket communication: FastAPI ≥0.104.0 WebSocket support, websockets ≥14.0 library, python-jose ≥3.3.0 for JWT authentication, Pydantic v2 for message validation, asyncio for concurrent connection handling, Redis pub/sub pattern for multi-server broadcasting (documented, optional), Prometheus metrics integration via prometheus_client (optional) (008-websockets-scaffold)
 - YAML (GitHub Actions workflow syntax), Python 3.11+ (for validation scripts), Jinja2 (for template rendering) + GitHub Actions marketplace actions (`actions/checkout@v4`, `actions/setup-python@v5`, `actions/cache@v4`, `actions/upload-artifact@v4`, `nick-fields/retry@v3`, `docker/setup-buildx-action@v3`, `docker/build-push-action@v5`, `aquasecurity/trivy-action@0.20.0`), actionlint (workflow validation), hadolint (Dockerfile linting), Trivy (container security scanning), existing quality tools from feature 003 (004-github-actions-workflows, 005-container-deployment)
 - Workflow artifacts (JUnit XML, coverage reports, logs, container images, SBOMs, scan results) stored in GitHub Actions artifact storage with 90-day retention (004-github-actions-workflows, 005-container-deployment)
