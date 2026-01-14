@@ -16,6 +16,8 @@ import sys
 from pathlib import Path
 from typing import Literal
 
+from scripts.lib.logger import logger, configure_logging
+
 # Define all valid technology combinations
 TECHNOLOGY_MATRIX = {
     "runtime": ["nextjs-16", "remix-2"],
@@ -240,7 +242,7 @@ def validate_combination(combo: dict, output_dir: Path, json_output: bool = Fals
     combo_name = f"{combo['runtime']}-{combo['hosting']}-{combo['database']}-{combo['orm']}"
 
     if not json_output:
-        print(f"\nValidating combination: {combo_name}")
+        logger.info(f"\nValidating combination: {combo_name}")
 
     result = {
         "combination": combo,
@@ -272,18 +274,18 @@ def validate_combination(combo: dict, output_dir: Path, json_output: bool = Fals
         if not json_output:
             for issue in issues:
                 if issue.severity == "error":
-                    print(f"  ERROR: {issue.message}")
+                    logger.error(f"  ERROR: {issue.message}")
                 elif issue.severity == "warning":
-                    print(f"  WARNING: {issue.message}")
+                    logger.warning(f"  WARNING: {issue.message}")
                 elif issue.severity == "info":
-                    print(f"  INFO: {issue.message}")
+                    logger.info(f"  INFO: {issue.message}")
 
             if result["status"] == "passed":
-                print("  PASSED: No issues found")
+                logger.info("  PASSED: No issues found")
             elif result["status"] == "passed_with_warnings":
-                print("  PASSED: Validation passed with warnings")
+                logger.info("  PASSED: Validation passed with warnings")
             elif result["status"] == "failed":
-                print("  FAILED: Error-level incompatibilities found")
+                logger.error("  FAILED: Error-level incompatibilities found")
 
     except Exception as e:
         result["status"] = "failed"
@@ -293,7 +295,7 @@ def validate_combination(combo: dict, output_dir: Path, json_output: bool = Fals
             "message": f"Validation failed with exception: {str(e)}",
         })
         if not json_output:
-            print(f"  FAILED: {e}")
+            logger.error(f"  FAILED: {e}")
 
     return result
 
@@ -304,6 +306,8 @@ def main() -> int:
     Returns:
         Exit code: 0 for success, 1 for validation failures
     """
+    configure_logging()
+
     # Parse command-line arguments
     parser = argparse.ArgumentParser(
         description="Validate SaaS Starter technology combinations"
@@ -322,14 +326,14 @@ def main() -> int:
     args = parser.parse_args()
 
     if not args.json:
-        print("SaaS Starter Combination Validator")
-        print("=" * 60)
+        logger.info("SaaS Starter Combination Validator")
+        logger.info("=" * 60)
 
     # Generate test combinations
     combinations = generate_all_combinations()
 
     if not args.json:
-        print(f"\nTesting {len(combinations)} technology combinations")
+        logger.info(f"\nTesting {len(combinations)} technology combinations")
 
     # Validate each combination
     results = []
@@ -360,25 +364,25 @@ def main() -> int:
             "results_file": str(results_file),
             "results": results,
         }
-        print(json.dumps(summary, indent=2))
+        logger.info(json.dumps(summary, indent=2))
     else:
         # Human-readable output mode
-        print(f"\nResults saved to {results_file}")
-        print("\n" + "=" * 60)
-        print("Summary:")
-        print(f"  Passed: {passed}")
-        print(f"  Passed with warnings: {passed_with_warnings}")
-        print(f"  Failed: {failed}")
-        print(f"  Total: {len(results)}")
+        logger.info(f"\nResults saved to {results_file}")
+        logger.info("\n" + "=" * 60)
+        logger.info("Summary:")
+        logger.info(f"  Passed: {passed}")
+        logger.info(f"  Passed with warnings: {passed_with_warnings}")
+        logger.info(f"  Failed: {failed}")
+        logger.info(f"  Total: {len(results)}")
 
         if failed > 0:
-            print("\nSome combinations failed validation")
+            logger.warning("\nSome combinations failed validation")
             return 1
         elif passed_with_warnings > 0:
-            print("\nAll combinations passed (some with warnings)")
+            logger.info("\nAll combinations passed (some with warnings)")
             return 0
         else:
-            print("\nAll combinations passed!")
+            logger.info("\nAll combinations passed!")
             return 0
 
     # Return exit code based on failures

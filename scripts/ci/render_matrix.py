@@ -16,6 +16,8 @@ import sys
 from pathlib import Path
 from typing import TypedDict
 
+from scripts.lib.logger import logger, configure_logging
+
 try:  # pragma: no cover - import behaviour depends on invocation style
     from record_module_success import ModuleSuccessRecorder
 except ModuleNotFoundError:  # pragma: no cover - fallback for `python path/to/script.py`
@@ -240,11 +242,13 @@ def main() -> None:
             summary["quality_retention_days"] = args.retention_days
 
     output_file.write_text(json.dumps(summary, indent=2), encoding="utf-8")
-    print(f"Render matrix complete. Metadata saved to {output_file}")
+    logger.info(f"Render matrix complete. Metadata saved to {output_file}")
 
 
 if __name__ == "__main__":
+    configure_logging()
+
     if not RENDER_SCRIPT.exists():
-        sys.stderr.write("render-samples.sh not found; run from repository root.\n")
+        logger.error("render-samples.sh not found; run from repository root.")
         sys.exit(1)
     main()

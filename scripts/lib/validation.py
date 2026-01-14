@@ -21,11 +21,13 @@ import sys
 from pathlib import Path
 from typing import Any, TypedDict
 
+from scripts.lib.logger import logger
+
 try:
     import yaml
 except ImportError:
-    print("Error: PyYAML not installed", file=sys.stderr)
-    print("   Install with: pip install pyyaml", file=sys.stderr)
+    logger.error("PyYAML not installed")
+    logger.error("   Install with: pip install pyyaml")
     sys.exit(1)
 
 
@@ -231,31 +233,31 @@ def print_validation_summary(
     passed_files = sum(1 for r in results if r["valid"])
     failed_files = total_files - passed_files
 
-    print(f"\n{'=' * 70}")
-    print(title)
-    print(f"{'=' * 70}")
-    print(f"Total files: {total_files}")
-    print(f"Passed: {passed_files}")
-    print(f"Failed: {failed_files}")
-    print(f"{'=' * 70}\n")
+    logger.info(f"\n{'=' * 70}")
+    logger.info(title)
+    logger.info(f"{'=' * 70}")
+    logger.info(f"Total files: {total_files}")
+    logger.info(f"Passed: {passed_files}")
+    logger.info(f"Failed: {failed_files}")
+    logger.info(f"{'=' * 70}\n")
 
     for result in results:
         status = "PASS" if result["valid"] else "FAIL"
         status_icon = "✓" if result["valid"] else "✗"
-        print(f"{status_icon} {status} - {result['file']}")
+        logger.info(f"{status_icon} {status} - {result['file']}")
 
         if result["errors"]:
-            print(f"  Errors ({len(result['errors'])}):")
+            logger.info(f"  Errors ({len(result['errors'])}):")
             for error in result["errors"]:
-                print(f"    - {error}")
+                logger.info(f"    - {error}")
 
         if show_warnings and result.get("warnings"):
-            print(f"  Warnings ({len(result['warnings'])}):")
+            logger.info(f"  Warnings ({len(result['warnings'])}):")
             for warning in result["warnings"]:
-                print(f"    - {warning}")
+                logger.info(f"    - {warning}")
 
         if result["errors"] or (show_warnings and result.get("warnings")):
-            print()
+            logger.info("")
 
 
 def create_validation_result(
@@ -326,9 +328,9 @@ def print_error_list(errors: list[str], title: str = "Validation Errors") -> Non
     if not errors:
         return
 
-    print(f"\n{'=' * 70}")
-    print(f"✗ {title}")
-    print(f"{'=' * 70}")
+    logger.error(f"\n{'=' * 70}")
+    logger.error(f"✗ {title}")
+    logger.error(f"{'=' * 70}")
     for error in errors:
-        print(f"  - {error}")
-    print()
+        logger.error(f"  - {error}")
+    logger.error("")

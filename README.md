@@ -5,6 +5,9 @@
 [![Code Quality](https://github.com/wyattowalsh/riso/actions/workflows/quality.yml/badge.svg)](https://github.com/wyattowalsh/riso/actions/workflows/quality.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![Coverage](https://img.shields.io/badge/coverage-70%25-yellow)
+![Tests](https://img.shields.io/badge/tests-398-green)
+![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)
 
 Riso is a batteries-included template system that scaffolds production-ready projects with optional CLI, API, MCP (Model Context Protocol), documentation, and SaaS starter modules.
 
@@ -61,6 +64,25 @@ Pre-configured samples are available in `samples/`:
 - `cli-docs` - CLI with documentation
 - `full-stack` - All modules enabled (strict quality)
 - `saas-starter/*` - Various SaaS stack configurations
+
+## Testing
+
+Run the test suite:
+```bash
+# Run all tests
+uv run pytest
+
+# Run with coverage
+uv run pytest --cov --cov-report=html
+
+# Run only unit tests
+uv run pytest -m unit
+
+# Run only fast tests
+uv run pytest -m "not slow"
+```
+
+See [TESTING.md](TESTING.md) for full documentation.
 
 ## Documentation
 
