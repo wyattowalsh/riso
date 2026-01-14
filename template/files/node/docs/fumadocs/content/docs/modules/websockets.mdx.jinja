@@ -1,0 +1,104 @@
+{%- if docs_site == 'fumadocs' and websocket_module == 'enabled' -%}
+---
+title: WebSockets
+description: Real-time communication reference
+---
+
+# WebSockets
+
+{{ project_name }} includes WebSocket support for real-time communication.
+
+## Connection
+
+Connect to the WebSocket endpoint:
+
+```javascript
+const ws = new WebSocket('ws://localhost:8000/ws');
+
+ws.onopen = () => {
+  console.log('Connected');
+};
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log('Received:', data);
+};
+
+ws.onclose = () => {
+  console.log('Disconnected');
+};
+```
+
+## Message Format
+
+All messages use JSON format:
+
+```json
+{
+  "type": "message",
+  "payload": {
+    "content": "Hello, World!"
+  }
+}
+```
+
+## Message Types
+
+### `ping`
+
+Keep-alive message.
+
+```json
+{ "type": "ping" }
+```
+
+**Response:**
+
+```json
+{ "type": "pong" }
+```
+
+### `subscribe`
+
+Subscribe to a channel.
+
+```json
+{
+  "type": "subscribe",
+  "channel": "updates"
+}
+```
+
+### `unsubscribe`
+
+Unsubscribe from a channel.
+
+```json
+{
+  "type": "unsubscribe",
+  "channel": "updates"
+}
+```
+
+## Python Client
+
+```python
+import asyncio
+import websockets
+
+async def connect():
+    async with websockets.connect('ws://localhost:8000/ws') as ws:
+        await ws.send('{"type": "ping"}')
+        response = await ws.recv()
+        print(response)
+
+asyncio.run(connect())
+```
+
+## Authentication
+
+WebSocket connections can be authenticated via:
+
+1. **Query parameters**: `ws://localhost:8000/ws?token=xxx`
+2. **First message**: Send auth message after connection
+{%- endif -%}

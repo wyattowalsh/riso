@@ -1,0 +1,36 @@
+{%- if docs_site == 'fumadocs' and fumadocs_llms_txt == 'enabled' -%}
+import { source } from '@/lib/source';
+
+export const revalidate = false;
+
+export async function GET() {
+  const pages = source.getPages();
+  
+  const summary = `# {{ project_name }} Documentation
+
+> AI-friendly documentation for {{ project_name }}
+
+## Overview
+
+This documentation covers the {{ project_name }} project including setup, configuration, and module guides.
+
+## Pages
+
+${pages.map((page) => `- [${page.data.title}](${page.url}): ${page.data.description || 'Documentation page'}`).join('\n')}
+
+## Full Documentation
+
+For complete documentation, see [/llms-full.txt](/llms-full.txt)
+
+## Per-Page Access
+
+Append \`.mdx\` to any documentation URL to get the raw markdown content.
+`;
+
+  return new Response(summary, {
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+    },
+  });
+}
+{%- endif -%}

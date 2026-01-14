@@ -1,0 +1,71 @@
+{%- if docs_site == 'docusaurus' -%}
+import React from 'react';
+import Link from '@docusaurus/Link';
+import styles from './styles.module.css';
+
+interface CardProps {
+  title: string;
+  description: string;
+  to?: string;
+  href?: string;
+  icon?: React.ReactNode;
+  emoji?: string;
+}
+
+export default function Card({
+  title,
+  description,
+  to,
+  href,
+  icon,
+  emoji,
+}: CardProps): JSX.Element {
+  const content = (
+    <>
+      {(icon || emoji) && (
+        <div className={styles.cardIcon}>
+          {icon || <span className={styles.emoji}>{emoji}</span>}
+        </div>
+      )}
+      <h3 className={styles.cardTitle}>{title}</h3>
+      <p className={styles.cardDescription}>{description}</p>
+    </>
+  );
+
+  const className = styles.card;
+
+  if (to) {
+    return (
+      <Link to={to} className={className}>
+        {content}
+      </Link>
+    );
+  }
+
+  if (href) {
+    return (
+      <a href={href} className={className} target="_blank" rel="noopener noreferrer">
+        {content}
+      </a>
+    );
+  }
+
+  return <div className={className}>{content}</div>;
+}
+
+interface CardGridProps {
+  children: React.ReactNode;
+  columns?: 2 | 3 | 4;
+}
+
+export function CardGrid({ children, columns = 3 }: CardGridProps): JSX.Element {
+  return (
+    <div
+      className={styles.cardGrid}
+      style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}
+    >
+      {children}
+    </div>
+  );
+}
+{%- endif -%}

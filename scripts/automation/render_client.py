@@ -14,11 +14,11 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
-from typing import Any, Mapping, MutableMapping, TypedDict
+from typing import Any, Mapping, TypedDict
 
 
 # Valid variant name pattern
-VALID_VARIANT_PATTERN = re.compile(r'^[a-z0-9][a-z0-9_-]*$')
+VALID_VARIANT_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 
 
 def _validate_variant_name(name: str) -> str:
@@ -47,12 +47,14 @@ def _validate_variant_name(name: str) -> str:
 
 class RenderRequest(TypedDict):
     """Request payload for template rendering."""
+
     variantName: str
     prompts: dict[str, Any]
 
 
 class ComplianceCheckpointRequest(TypedDict, total=False):
     """Request payload for recording a compliance checkpoint."""
+
     principle: str
     status: str
     evidence: str
@@ -104,7 +106,9 @@ class RenderClient:
     # --------------------------------------------------------------------- #
     # Public API
     # --------------------------------------------------------------------- #
-    def render_template(self, variant_name: str, prompts: Mapping[str, Any]) -> Mapping[str, Any]:
+    def render_template(
+        self, variant_name: str, prompts: Mapping[str, Any]
+    ) -> Mapping[str, Any]:
         """Render a template with the given variant and prompts.
 
         Args:
@@ -115,10 +119,13 @@ class RenderClient:
             Response data from the render endpoint.
 
         Raises:
-            APIError: If the API request fails.
+            APIError: If the API request fails or returns empty response.
         """
         payload: RenderRequest = {"variantName": variant_name, "prompts": dict(prompts)}
-        return self._request("POST", "/templates/riso/render", payload)
+        result = self._request("POST", "/templates/riso/render", payload)
+        if result is None:
+            raise APIError(message="Render endpoint returned empty response")
+        return result
 
     def list_modules(self) -> Mapping[str, Any]:
         """List all available modules for the Riso template.
@@ -127,9 +134,12 @@ class RenderClient:
             Response data containing module information.
 
         Raises:
-            APIError: If the API request fails.
+            APIError: If the API request fails or returns empty response.
         """
-        return self._request("GET", "/templates/riso/modules")
+        result = self._request("GET", "/templates/riso/modules")
+        if result is None:
+            raise APIError(message="Modules endpoint returned empty response")
+        return result
 
     def record_compliance_checkpoint(
         self,
@@ -173,11 +183,14 @@ class RenderClient:
 
         Raises:
             ValueError: If the variant name is invalid.
-            APIError: If the API request fails.
+            APIError: If the API request fails or returns empty response.
         """
         validated_name = _validate_variant_name(variant_name)
         path = f"/templates/riso/samples/{urllib.parse.quote(validated_name)}"
-        return self._request("GET", path)
+        result = self._request("GET", path)
+        if result is None:
+            raise APIError(message="Sample endpoint returned empty response")
+        return result
 
     # --------------------------------------------------------------------- #
     # Internal helpers
@@ -213,7 +226,9 @@ class RenderClient:
         if payload is not None:
             data = json.dumps(payload).encode("utf-8")
 
-        request = urllib.request.Request(url, data=data, headers=headers, method=method.upper())
+        request = urllib.request.Request(
+            url, data=data, headers=headers, method=method.upper()
+        )
 
         try:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:  # type: ignore[arg-type]
@@ -225,10 +240,16 @@ class RenderClient:
             try:
                 details = exc.read().decode("utf-8")
                 payload = json.loads(details) if details else None
-            except (json.JSONDecodeError, UnicodeDecodeError, OSError) as e:  # pragma: no cover - defensive
+            except (
+                json.JSONDecodeError,
+                UnicodeDecodeError,
+                OSError,
+            ):  # pragma: no cover - defensive
                 # Failed to parse error response - continue with None payload
                 payload = None
-            raise APIError(message=str(exc), status_code=exc.code, payload=payload) from exc
+            raise APIError(
+                message=str(exc), status_code=exc.code, payload=payload
+            ) from exc
         except urllib.error.URLError as exc:
             raise APIError(message=str(exc.reason)) from exc
 

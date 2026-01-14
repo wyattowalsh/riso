@@ -1,0 +1,48 @@
+{%- if docs_site == 'fumadocs' -%}
+import { source } from '@/lib/source';
+import { DocsLayout } from 'fumadocs-ui/layouts/docs';
+import type { ReactNode } from 'react';
+{%- if fumadocs_sidebar == 'shadcn' %}
+import { Sidebar } from '@/components/sidebar';
+{%- endif %}
+
+const baseOptions = {
+  nav: {
+    title: '{{ project_name }}',
+  },
+  links: [
+    {
+      text: 'Documentation',
+      url: '/docs',
+      active: 'nested-url',
+    },
+{%- if fumadocs_blog == 'enabled' %}
+    {
+      text: 'Blog',
+      url: '/blog',
+    },
+{%- endif %}
+    {
+      text: 'GitHub',
+      url: 'https://github.com/{{ project_slug }}/{{ project_slug }}',
+      external: true,
+    },
+  ],
+};
+
+export default function Layout({ children }: { children: ReactNode }) {
+  return (
+    <DocsLayout
+      tree={source.pageTree}
+      {...baseOptions}
+{%- if fumadocs_sidebar == 'shadcn' %}
+      sidebar={{
+        component: <Sidebar />,
+      }}
+{%- endif %}
+    >
+      {children}
+    </DocsLayout>
+  );
+}
+{%- endif -%}

@@ -1,0 +1,94 @@
+{%- if docs_site == 'fumadocs' and graphql_api_module == 'enabled' -%}
+---
+title: GraphQL API
+description: Strawberry GraphQL API reference
+---
+
+# GraphQL API
+
+{{ project_name }} includes a GraphQL API built with [Strawberry](https://strawberry.rocks/).
+
+## Starting the Server
+
+```bash
+uv run uvicorn {{ package_name }}.graphql.main:app --reload
+```
+
+## GraphQL Playground
+
+When running, the GraphQL playground is available at:
+
+- **GraphiQL**: [http://localhost:8000/graphql](http://localhost:8000/graphql)
+
+## Schema
+
+### Queries
+
+```graphql
+type Query {
+  hello: String!
+  health: HealthStatus!
+}
+```
+
+### Types
+
+```graphql
+type HealthStatus {
+  status: String!
+  version: String!
+}
+```
+
+## Example Queries
+
+### Hello World
+
+```graphql
+query {
+  hello
+}
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "hello": "Hello from {{ project_name }}!"
+  }
+}
+```
+
+### Health Check
+
+```graphql
+query {
+  health {
+    status
+    version
+  }
+}
+```
+
+## Python Client
+
+```python
+from gql import gql, Client
+from gql.transport.aiohttp import AIOHTTPTransport
+
+transport = AIOHTTPTransport(url="http://localhost:8000/graphql")
+client = Client(transport=transport, fetch_schema_from_transport=True)
+
+query = gql("""
+  query {
+    health {
+      status
+      version
+    }
+  }
+""")
+
+result = client.execute(query)
+```
+{%- endif -%}

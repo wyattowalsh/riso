@@ -53,7 +53,9 @@ class TestSetupBash:
             text=True,
         )
         # Should be 0 or 1, not 2 (script error)
-        assert result.returncode in [0, 1], f"Expected exit code 0 or 1, got {result.returncode}"
+        assert result.returncode in [0, 1], (
+            f"Expected exit code 0 or 1, got {result.returncode}"
+        )
 
     def test_dry_run_makes_no_changes(self):
         """Default mode (no args) should not modify anything."""
@@ -63,7 +65,9 @@ class TestSetupBash:
             text=True,
         )
         # Should exit 0 or 1, and not actually install anything
-        assert result.returncode in [0, 1], f"Expected exit code 0 or 1, got {result.returncode}"
+        assert result.returncode in [0, 1], (
+            f"Expected exit code 0 or 1, got {result.returncode}"
+        )
         # Should show tool status
         assert "Tool Status" in result.stdout or "Tool" in result.stdout
 
@@ -75,7 +79,9 @@ class TestSetupBash:
             text=True,
         )
         # Should fail with error message
-        assert result.returncode == 2, f"Expected exit code 2 for invalid flag, got {result.returncode}"
+        assert result.returncode == 2, (
+            f"Expected exit code 2 for invalid flag, got {result.returncode}"
+        )
         assert "Unknown option" in result.stderr or "ERROR" in result.stderr
 
     def test_conflicting_modes_error(self):
@@ -141,7 +147,7 @@ class TestSetupBash:
 
 @pytest.mark.skipif(
     subprocess.run(["which", "pwsh"], capture_output=True).returncode != 0,
-    reason="PowerShell Core not installed"
+    reason="PowerShell Core not installed",
 )
 class TestSetupPowerShell:
     """Integration tests for setup.ps1 (requires pwsh)."""
@@ -185,13 +191,18 @@ def docker_available() -> bool:
 
 
 @pytest.mark.docker
-@pytest.mark.skipif(not docker_available(), reason="Docker not available or not running")
-@pytest.mark.parametrize("image", [
-    "ubuntu:22.04",
-    "ubuntu:24.04",
-    "fedora:39",
-    "alpine:3.19",
-])
+@pytest.mark.skipif(
+    not docker_available(), reason="Docker not available or not running"
+)
+@pytest.mark.parametrize(
+    "image",
+    [
+        "ubuntu:22.04",
+        "ubuntu:24.04",
+        "fedora:39",
+        "alpine:3.19",
+    ],
+)
 class TestSetupDocker:
     """Integration tests using Docker containers for different Linux distros."""
 
@@ -200,10 +211,15 @@ class TestSetupDocker:
         # This test requires Docker and is marked for CI
         result = subprocess.run(
             [
-                "docker", "run", "--rm",
-                "-v", f"{SCRIPT_DIR}:/setup:ro",
+                "docker",
+                "run",
+                "--rm",
+                "-v",
+                f"{SCRIPT_DIR}:/setup:ro",
                 image,
-                "bash", "-c", "bash /setup/setup.sh --check-only || true"
+                "bash",
+                "-c",
+                "bash /setup/setup.sh --check-only || true",
             ],
             capture_output=True,
             text=True,
@@ -216,10 +232,15 @@ class TestSetupDocker:
         """setup.sh --help should work in different Linux distros."""
         result = subprocess.run(
             [
-                "docker", "run", "--rm",
-                "-v", f"{SCRIPT_DIR}:/setup:ro",
+                "docker",
+                "run",
+                "--rm",
+                "-v",
+                f"{SCRIPT_DIR}:/setup:ro",
                 image,
-                "bash", "-c", "bash /setup/setup.sh --help"
+                "bash",
+                "-c",
+                "bash /setup/setup.sh --help",
             ],
             capture_output=True,
             text=True,
@@ -290,8 +311,9 @@ class TestSetupScriptIntegration:
         expected_tools = ["python3", "uv", "node", "pnpm"]
         for tool in expected_tools:
             # Tool name should appear in output somewhere
-            assert tool in result.stdout.lower() or tool in result.stderr.lower(), \
+            assert tool in result.stdout.lower() or tool in result.stderr.lower(), (
                 f"Tool {tool} not mentioned in output"
+            )
 
 
 class TestSetupDocumentation:
@@ -338,7 +360,11 @@ class TestSetupDocumentation:
         help_text = result.stdout
 
         # Should have an EXAMPLES section
-        assert "EXAMPLES:" in help_text or "Examples:" in help_text or "example" in help_text.lower()
+        assert (
+            "EXAMPLES:" in help_text
+            or "Examples:" in help_text
+            or "example" in help_text.lower()
+        )
 
     def test_help_shows_exit_codes(self):
         """Help text should document exit codes."""

@@ -1,0 +1,365 @@
+{%- if docs_site == 'docusaurus' -%}
+---
+sidebar_position: 10
+title: Features Demo
+description: Demonstration of enabled documentation features
+---
+
+# Features Demo
+
+This page demonstrates the documentation features enabled in this project.
+
+{%- if docusaurus_mermaid == 'enabled' %}
+
+## Mermaid Diagrams
+
+Create flowcharts, sequence diagrams, and more directly in Markdown.
+
+### Flowchart
+
+```mermaid
+flowchart TD
+    A[Start] --> B{Is it working?}
+    B -->|Yes| C[Great!]
+    B -->|No| D[Debug]
+    D --> B
+    C --> E[End]
+```
+
+### Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant API
+    participant Database
+    
+    User->>API: Request data
+    API->>Database: Query
+    Database-->>API: Results
+    API-->>User: Response
+```
+
+### Entity Relationship Diagram
+
+```mermaid
+erDiagram
+    USER ||--o{ ORDER : places
+    ORDER ||--|{ LINE_ITEM : contains
+    PRODUCT ||--o{ LINE_ITEM : "ordered in"
+```
+
+### Gantt Chart
+
+```mermaid
+gantt
+    title Project Timeline
+    dateFormat  YYYY-MM-DD
+    section Planning
+    Research           :a1, 2024-01-01, 30d
+    Design             :after a1, 20d
+    section Development
+    Implementation     :2024-02-20, 45d
+    Testing            :2024-04-05, 20d
+```
+
+{%- endif %}
+
+{%- if docusaurus_math == 'enabled' %}
+
+## Math Equations
+
+Write LaTeX math equations with KaTeX.
+
+### Inline Math
+
+The quadratic formula is $x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$ for solving $ax^2 + bx + c = 0$.
+
+### Block Math
+
+The Gaussian distribution:
+
+$$
+f(x) = \frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{1}{2}\left(\frac{x-\mu}{\sigma}\right)^2}
+$$
+
+### Matrix
+
+$$
+\begin{pmatrix}
+a & b \\
+c & d
+\end{pmatrix}
+\begin{pmatrix}
+x \\
+y
+\end{pmatrix}
+=
+\begin{pmatrix}
+ax + by \\
+cx + dy
+\end{pmatrix}
+$$
+
+### Calculus
+
+The fundamental theorem of calculus:
+
+$$
+\int_a^b f'(x) \, dx = f(b) - f(a)
+$$
+
+{%- endif %}
+
+{%- if docusaurus_live_codeblock == 'enabled' %}
+
+## Live Code Playground
+
+Edit the code below and see the results in real-time!
+
+```jsx live
+function Clock() {
+  const [date, setDate] = useState(new Date());
+  
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setDate(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div style={{
+      padding: '20px',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      borderRadius: '10px',
+      color: 'white',
+      textAlign: 'center'
+    }}>
+      <h2>Current Time</h2>
+      <p style={{ fontSize: '2em', fontFamily: 'monospace' }}>
+        {date.toLocaleTimeString()}
+      </p>
+    </div>
+  );
+}
+```
+
+{%- endif %}
+
+{%- if docusaurus_code_tabs == 'enabled' %}
+
+## Tabbed Code Blocks
+
+Code samples can be grouped by language with synchronized tab selection:
+
+```js tab
+// JavaScript implementation
+function greet(name) {
+  console.log(`Hello, ${name}!`);
+}
+```
+
+```ts tab
+// TypeScript implementation  
+function greet(name: string): void {
+  console.log(`Hello, ${name}!`);
+}
+```
+
+```python tab
+# Python implementation
+def greet(name: str) -> None:
+    print(f"Hello, {name}!")
+```
+
+{%- endif %}
+
+## Code Blocks
+
+Standard code blocks with syntax highlighting:
+
+```typescript title="example.ts"
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+async function getUser(id: string): Promise<User> {
+  const response = await fetch(`/api/users/${id}`);
+  return response.json();
+}
+```
+
+```python title="example.py" {3-5}
+def fibonacci(n: int) -> int:
+    """Calculate the nth Fibonacci number."""
+    if n <= 1:
+        return n
+    return fibonacci(n - 1) + fibonacci(n - 2)
+
+# Example usage
+print(fibonacci(10))  # Output: 55
+```
+
+```diff title="Changes"
+- const oldValue = 'before';
++ const newValue = 'after';
+```
+
+{%- if docusaurus_ideal_images == 'enabled' %}
+
+## Optimized Images
+
+Images are automatically optimized with responsive sizes and lazy loading.
+
+:::tip Image Optimization
+Use the `<Image>` component for optimized images:
+
+```jsx
+import Image from '@theme/IdealImage';
+import photo from './photo.jpg';
+
+<Image img={photo} />
+```
+:::
+
+{%- endif %}
+
+{%- if docusaurus_show_last_update == 'enabled' %}
+
+## Git Integration
+
+This page shows "Last updated" timestamp from Git history at the bottom.
+
+:::info
+Enable full Git history in CI for accurate timestamps:
+```yaml
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0
+```
+:::
+
+{%- endif %}
+
+## Admonitions
+
+:::note
+This is a note admonition.
+:::
+
+:::tip
+This is a tip admonition with helpful advice.
+:::
+
+:::info
+This is an info admonition for general information.
+:::
+
+:::warning
+This is a warning admonition for important notices.
+:::
+
+:::danger
+This is a danger admonition for critical warnings.
+:::
+
+## Tabs
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs>
+  <TabItem value="npm" label="npm" default>
+    ```bash
+    npm install {{ project_slug }}
+    ```
+  </TabItem>
+  <TabItem value="yarn" label="Yarn">
+    ```bash
+    yarn add {{ project_slug }}
+    ```
+  </TabItem>
+  <TabItem value="pnpm" label="pnpm">
+    ```bash
+    pnpm add {{ project_slug }}
+    ```
+  </TabItem>
+</Tabs>
+
+## Details/Collapse
+
+<details>
+  <summary>Click to expand</summary>
+
+  This content is hidden by default but can be expanded.
+
+  - Item 1
+  - Item 2
+  - Item 3
+
+</details>
+
+## Custom Components
+
+### Cards
+
+import Card, { CardGrid } from '@site/src/components/Card';
+
+<CardGrid columns={3}>
+  <Card
+    emoji="🚀"
+    title="Quick Start"
+    description="Get up and running in minutes"
+    to="/docs/quickstart"
+  />
+  <Card
+    emoji="📖"
+    title="Documentation"
+    description="Comprehensive guides and references"
+    to="/docs"
+  />
+  <Card
+    emoji="💡"
+    title="Examples"
+    description="Real-world usage patterns"
+    to="/docs/guides"
+  />
+</CardGrid>
+
+### Highlights & Version Badges
+
+import Highlight, { VersionBadge } from '@site/src/components/Highlight';
+
+<Highlight color="blue" title="Pro Tip">
+  Use highlights to draw attention to important information without using standard admonitions.
+</Highlight>
+
+<Highlight color="green">
+  This feature is stable and production-ready.
+</Highlight>
+
+#### Version Badges
+
+Some feature <VersionBadge version="2.0" type="new" />
+
+Legacy feature <VersionBadge version="1.5" type="deprecated" />
+
+Upcoming feature <VersionBadge version="2.1" type="beta" />
+
+### YouTube Embeds
+
+import YouTube from '@site/src/components/YouTube';
+
+{/* Uncomment to embed a video:
+<YouTube id="dQw4w9WgXcQ" title="Example Video" />
+*/}
+
+To embed a video, use:
+
+```jsx
+<YouTube id="VIDEO_ID" title="Video Title" start={30} />
+```
+{%- endif -%}

@@ -3,9 +3,14 @@ from __future__ import annotations
 
 import os
 import sys
+import warnings
 from datetime import date
 from pathlib import Path
 from typing import Iterable
+
+# Suppress deprecation warnings from third-party extensions (hoverxref uses deprecated Sphinx 9.0 APIs)
+warnings.filterwarnings("ignore", message=".*RemovedInSphinx90Warning.*")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="hoverxref")
 
 import yaml
 
@@ -105,7 +110,7 @@ extensions = [
     # Diagrams
     "sphinxcontrib.mermaid",
     # API quality
-    "autodoc2",
+    "sphinx.ext.autodoc",
     "sphinx_autodoc_typehints",
     "autoclasstoc",
     # CLI docs

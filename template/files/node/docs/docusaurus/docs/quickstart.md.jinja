@@ -1,0 +1,133 @@
+{%- if docs_site == 'docusaurus' -%}
+---
+sidebar_position: 2
+title: Quickstart
+description: Get started with {{ project_name }} in minutes
+---
+
+# Quickstart
+
+Get up and running with {{ project_name }} in just a few minutes.
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+- **Node.js** 20+ ([download](https://nodejs.org/))
+- **pnpm** 8+ (`npm install -g pnpm`)
+{%- if api_tracks in ['python', 'python+node'] %}
+- **Python** 3.11+ with **uv** ([install uv](https://docs.astral.sh/uv/getting-started/installation/))
+{%- endif %}
+
+## Installation
+
+### Clone the repository
+
+```bash
+git clone https://github.com/{{ project_slug }}/{{ project_slug }}.git
+cd {{ project_slug }}
+```
+
+### Install dependencies
+
+```bash
+# Install Node.js dependencies
+pnpm install
+{%- if api_tracks in ['python', 'python+node'] %}
+
+# Install Python dependencies
+uv sync
+{%- endif %}
+```
+
+## Development
+
+{%- if cli_module == 'enabled' %}
+
+### CLI
+
+Run the CLI application:
+
+```bash
+uv run {{ package_name }} --help
+```
+
+{%- endif %}
+
+{%- if api_tracks in ['python', 'python+node'] %}
+
+### API Server
+
+Start the development server:
+
+```bash
+{%- if api_tracks in ['python', 'python+node'] %}
+# Python (FastAPI)
+uv run uvicorn {{ package_name }}.api:app --reload
+{%- endif %}
+{%- if api_tracks in ['node', 'python+node'] %}
+
+# Node.js (Fastify)
+pnpm --filter api-node dev
+{%- endif %}
+```
+
+{%- endif %}
+
+### Documentation
+
+Start the documentation dev server:
+
+```bash
+pnpm --filter docs-docusaurus start
+```
+
+Build the documentation:
+
+```bash
+pnpm --filter docs-docusaurus build
+```
+
+{%- if docusaurus_llms_txt == 'enabled' %}
+
+After building, you'll find AI-ready documentation at:
+- `build/llms.txt` - Summary with key links
+- `build/llms-full.txt` - Full concatenated documentation
+
+{%- endif %}
+
+## Project Structure
+
+```
+{{ project_slug }}/
+├── docs/                    # Documentation source (Docusaurus)
+│   ├── docs/               # Markdown documentation
+│   ├── blog/               # Blog posts
+│   └── src/                # Custom React components
+{%- if api_tracks in ['python', 'python+node'] %}
+├── src/{{ package_name }}/  # Python package source
+{%- endif %}
+{%- if api_tracks in ['node', 'python+node'] %}
+├── apps/api-node/          # Node.js API
+{%- endif %}
+├── pyproject.toml          # Python project config
+└── package.json            # Node.js workspace config
+```
+
+## Next Steps
+
+- 📖 Read the [Configuration Guide](/docs/reference/configuration)
+{%- if cli_module == 'enabled' %}
+- 🖥️ Explore the [CLI Documentation](/docs/modules/cli)
+{%- endif %}
+{%- if api_tracks != 'none' %}
+- 🔌 Check out the [API Reference](/docs/api-reference)
+{%- endif %}
+- 🤝 Learn how to [contribute](https://github.com/{{ project_slug }}/{{ project_slug }}/blob/main/CONTRIBUTING.md)
+
+## Getting Help
+
+- 💬 [GitHub Discussions](https://github.com/{{ project_slug }}/{{ project_slug }}/discussions) - Ask questions
+- 🐛 [Issue Tracker](https://github.com/{{ project_slug }}/{{ project_slug }}/issues) - Report bugs
+- 📚 [Full Documentation](/docs/) - Browse all docs
+{%- endif -%}

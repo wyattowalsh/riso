@@ -21,7 +21,7 @@ app = FastAPI(
 async def get_context(
     request: Request,
     {% if api_tracks in ['python', 'python+node'] %}
-    # db: AsyncSession = Depends(get_db_session),  # TODO: Implement get_db_session dependency
+    # db: AsyncSession = Depends(get_db_session),  # EXTENSION POINT: Implement get_db_session dependency
     {% endif %}
 ) -> GraphQLContext:
     """
@@ -37,7 +37,7 @@ async def get_context(
     return await get_graphql_context(
         request=request,
         {% if api_tracks in ['python', 'python+node'] %}
-        # db=db,  # TODO: Pass database session
+        # db=db,  # EXTENSION POINT: Pass database session when get_db_session is implemented
         {% endif %}
     )
 

@@ -1,10 +1,14 @@
 """Tests for MCP server configuration."""
+
 from __future__ import annotations
 
 import os
 from unittest.mock import patch
 
 import pytest
+
+pytest.importorskip("fastmcp")
+pytest.importorskip("pydantic_settings")
 
 
 class TestServerConfig:
@@ -26,12 +30,15 @@ class TestServerConfig:
         """Test that config can be loaded from environment variables."""
         from riso.mcp.config import ServerConfig
 
-        with patch.dict(os.environ, {
-            "RISO_MCP_TRANSPORT": "http",
-            "RISO_MCP_PORT": "8080",
-            "RISO_MCP_HOST": "0.0.0.0",
-            "RISO_MCP_LOG_LEVEL": "DEBUG",
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "RISO_MCP_TRANSPORT": "http",
+                "RISO_MCP_PORT": "8080",
+                "RISO_MCP_HOST": "0.0.0.0",
+                "RISO_MCP_LOG_LEVEL": "DEBUG",
+            },
+        ):
             config = ServerConfig()
 
             assert config.transport == "http"
@@ -95,7 +102,9 @@ class TestMCPErrors:
         """Test MCPError to_dict method."""
         from riso.mcp.errors import MCPError, MCPErrorCode
 
-        error = MCPError("Test error", code=MCPErrorCode.INTERNAL_ERROR, data={"key": "value"})
+        error = MCPError(
+            "Test error", code=MCPErrorCode.INTERNAL_ERROR, data={"key": "value"}
+        )
         result = error.to_dict()
 
         assert result["code"] == int(MCPErrorCode.INTERNAL_ERROR)
@@ -201,6 +210,7 @@ class TestSessionManager:
 
         # Should raise SessionNotFoundError now
         from riso.mcp.errors import SessionNotFoundError
+
         with pytest.raises(SessionNotFoundError):
             manager.get_session(session_id)
 
@@ -227,6 +237,7 @@ class TestSessionManager:
 
         original_time = session.last_activity
         import time
+
         time.sleep(0.05)
 
         session.set_answers({"project_name": "test", "cli_module": "enabled"})
@@ -269,8 +280,7 @@ class TestSessionManager:
         # Use very short TTL
         manager = SessionManager(ttl_minutes=0)  # Immediate expiry
 
-        session = manager.create_session()
-        session_id = session.session_id
+        manager.create_session()
 
         # Wait briefly for expiry
         time.sleep(0.1)

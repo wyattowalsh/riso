@@ -22,10 +22,18 @@ try:
     )
     from hooks.workflow_validator import validate_workflows_directory
 except ModuleNotFoundError:  # pragma: no cover - template lint
-    ensure_python_quality_tools = lambda: []  # type: ignore
-    ensure_node_quality_tools = lambda _: []  # type: ignore
+
+    def ensure_python_quality_tools():
+        return []  # type: ignore
+
+    def ensure_node_quality_tools(_):
+        return []  # type: ignore
+
     ToolCheck = None  # type: ignore
-    validate_workflows_directory = lambda *_: 0  # type: ignore
+
+    def validate_workflows_directory(*args, **kwargs):  # noqa: ARG001
+        return 0  # type: ignore
+
 
 DEFAULT_GUIDANCE = [
     "Create a virtual environment with `uv venv` (or activate an existing one).",
@@ -55,6 +63,7 @@ def load_answers(destination: pathlib.Path) -> dict[str, str]:
         return {}
     try:
         import yaml
+
         with answers_path.open(encoding="utf-8") as f:
             data = yaml.safe_load(f)
             if isinstance(data, dict):
@@ -105,10 +114,36 @@ def docs_guidance(answers: dict[str, str]) -> list[str]:
             "Link check: `uv run sphinx-build -b linkcheck docs dist/docs-linkcheck`.",
         ]
     if docs_site == "docusaurus":
-        return [
-            "Docusaurus preview: `pnpm --filter docs-docusaurus dev`.",
+        guidance = [
+            "Docusaurus preview: `pnpm --filter docs-docusaurus start`.",
             "Docusaurus build: `pnpm --filter docs-docusaurus build`.",
         ]
+        # Add feature-specific guidance
+        if answers.get("docusaurus_llms_txt", "").lower() == "enabled":
+            guidance.append("AI docs: After build, find `llms.txt` and `llms-full.txt` in `build/`.")
+        if answers.get("docusaurus_faster", "").lower() == "enabled":
+            guidance.append("Performance: Rspack + SWC enabled for 2-4x faster builds.")
+        if answers.get("docusaurus_i18n", "").lower() == "enabled":
+            guidance.append("i18n: Generate translations with `pnpm --filter docs-docusaurus write-translations`.")
+        if answers.get("docusaurus_openapi", "").lower() == "enabled":
+            guidance.append("OpenAPI: Update `openapi/openapi.yaml` to regenerate API docs.")
+        if answers.get("docusaurus_mermaid", "").lower() == "enabled":
+            guidance.append("Diagrams: Use ```mermaid code blocks for flowcharts, sequence diagrams, etc.")
+        if answers.get("docusaurus_math", "").lower() == "enabled":
+            guidance.append("Math: Use $inline$ or $$block$$ LaTeX syntax for equations.")
+        if answers.get("docusaurus_show_last_update", "").lower() == "enabled":
+            guidance.append("Git timestamps: Use `fetch-depth: 0` in CI for accurate 'Last updated' times.")
+        if answers.get("docusaurus_pwa", "").lower() == "enabled":
+            guidance.append("PWA: Update `static/manifest.json` with your app details for offline support.")
+        if answers.get("docusaurus_comments", "").lower() == "giscus":
+            guidance.append("Comments: Configure Giscus repo/category IDs in `src/components/GiscusComments/`.")
+        if answers.get("docusaurus_redirects", "").lower() == "enabled":
+            guidance.append("Redirects: Add URL redirects in `docusaurus.config.ts` plugin config.")
+        if answers.get("docusaurus_announcement_bar", "").lower() == "enabled":
+            guidance.append("Announcement: Edit banner content in `docusaurus.config.ts` themeConfig.")
+        if answers.get("docusaurus_sitemap", "").lower() == "enabled":
+            guidance.append("Sitemap: sitemap.xml generated automatically at build time.")
+        return guidance
     return [
         "Documentation scaffolding skipped (`docs_site=none`). Review docs/guidance/none.md for enabling docs later.",
     ]
@@ -128,11 +163,15 @@ def optional_module_guidance(answers: dict[str, str]) -> list[str]:
         guidance.append("Typer CLI ready: `uv run python -m {package}.cli --help`.")
     api_tracks = answers.get("api_tracks", "").lower()
     if api_tracks in {"python", "python+node"}:
-        guidance.append("FastAPI service: `uv run uvicorn {package}.api.main:app --reload`.")  # noqa: S608
+        guidance.append(
+            "FastAPI service: `uv run uvicorn {package}.api.main:app --reload`."
+        )  # noqa: S608
     if api_tracks in {"node", "python+node"}:
         guidance.append("Fastify service: `pnpm --filter api-node run dev`.")
     if answers.get("mcp_module", "").lower() == "enabled":
-        guidance.append("List MCP tools: `uv run python -c \"from shared.mcp import tooling; print(tooling.list_tools())\"`.")
+        guidance.append(
+            'List MCP tools: `uv run python -c "from shared.mcp import tooling; print(tooling.list_tools())"`.'
+        )
     return guidance
 
 
@@ -219,7 +258,10 @@ def main() -> None:
     quality_checks = ensure_python_quality_tools() if ToolCheck is not None else []
     node_checks = []
     if ToolCheck is not None:
-        node_required = answers.get("api_tracks", "none").lower() in {"node", "python+node"}
+        node_required = answers.get("api_tracks", "none").lower() in {
+            "node",
+            "python+node",
+        }
         node_checks = ensure_node_quality_tools(node_required)
 
     # Validate generated workflows if CI platform is GitHub Actions
@@ -251,7 +293,9 @@ def main() -> None:
             "quality": {
                 "profile": quality_profile,
                 "tool_install_attempts": [
-                    check.to_dict() if hasattr(check, "to_dict") else dict(check.__dict__)
+                    check.to_dict()
+                    if hasattr(check, "to_dict")
+                    else dict(check.__dict__)
                     for check in quality_checks + node_checks
                 ],
             },

@@ -1,0 +1,519 @@
+{%- if docs_site == 'docusaurus' -%}
+import { themes as prismThemes } from 'prism-react-renderer';
+import type { Config } from '@docusaurus/types';
+import type * as Preset from '@docusaurus/preset-classic';
+
+const config: Config = {
+  title: '{{ project_name }}',
+  tagline: 'Documentation for {{ project_name }}',
+  favicon: 'img/favicon.ico',
+  url: 'https://{{ project_slug }}.github.io',
+  baseUrl: '/',
+  organizationName: '{{ project_slug }}',
+  projectName: '{{ project_slug }}',
+  onBrokenLinks: 'throw',
+  onBrokenMarkdownLinks: 'warn',
+  trailingSlash: true,
+
+{%- if docusaurus_mermaid == 'enabled' %}
+
+  markdown: {
+    mermaid: true,
+  },
+{%- endif %}
+
+{%- if docusaurus_i18n == 'enabled' %}
+
+  i18n: {
+    defaultLocale: 'en',
+    locales: ['en'],
+    localeConfigs: {
+      en: { label: 'English', htmlLang: 'en-US' },
+    },
+  },
+{%- endif %}
+
+{%- if docusaurus_faster == 'enabled' %}
+
+  future: {
+    v4: true,
+    experimental_faster: {
+      rspackBundler: true,
+      swcJsLoader: true,
+      swcJsMinimizer: true,
+      lightningCssMinimizer: true,
+      ssgWorkerThreads: true,
+    },
+  },
+{%- endif %}
+
+  presets: [
+    [
+      'classic',
+      {
+        docs: {
+          sidebarPath: './sidebars.ts',
+{%- if docusaurus_edit_url == 'enabled' %}
+          editUrl: 'https://github.com/{{ project_slug }}/{{ project_slug }}/tree/main/docs/',
+{%- endif %}
+{%- if docusaurus_versioning == 'enabled' %}
+          includeCurrentVersion: true,
+          lastVersion: 'current',
+          versions: {
+            current: {
+              label: 'Next',
+              path: 'next',
+            },
+          },
+{%- endif %}
+{%- if docusaurus_show_last_update == 'enabled' %}
+          showLastUpdateTime: true,
+          showLastUpdateAuthor: true,
+{%- endif %}
+{%- if docusaurus_math == 'enabled' or docusaurus_code_tabs == 'enabled' %}
+          remarkPlugins: [
+{%- if docusaurus_math == 'enabled' %}
+            require('remark-math'),
+{%- endif %}
+{%- if docusaurus_code_tabs == 'enabled' %}
+            [require('docusaurus-remark-plugin-tab-blocks'), { sync: true }],
+{%- endif %}
+          ],
+{%- endif %}
+{%- if docusaurus_math == 'enabled' %}
+          rehypePlugins: [require('rehype-katex')],
+{%- endif %}
+        },
+{%- if docusaurus_blog == 'enabled' %}
+        blog: {
+          showReadingTime: {{ 'true' if docusaurus_reading_time == 'enabled' else 'false' }},
+          feedOptions: {
+            type: ['rss', 'atom'],
+            xslt: true,
+          },
+{%- if docusaurus_edit_url == 'enabled' %}
+          editUrl: 'https://github.com/{{ project_slug }}/{{ project_slug }}/tree/main/blog/',
+{%- endif %}
+          blogSidebarTitle: 'Recent posts',
+          blogSidebarCount: 5,
+{%- if docusaurus_show_last_update == 'enabled' %}
+          showLastUpdateTime: true,
+          showLastUpdateAuthor: true,
+{%- endif %}
+{%- if docusaurus_math == 'enabled' or docusaurus_code_tabs == 'enabled' %}
+          remarkPlugins: [
+{%- if docusaurus_math == 'enabled' %}
+            require('remark-math'),
+{%- endif %}
+{%- if docusaurus_code_tabs == 'enabled' %}
+            [require('docusaurus-remark-plugin-tab-blocks'), { sync: true }],
+{%- endif %}
+          ],
+{%- endif %}
+{%- if docusaurus_math == 'enabled' %}
+          rehypePlugins: [require('rehype-katex')],
+{%- endif %}
+        },
+{%- else %}
+        blog: false,
+{%- endif %}
+{%- if docusaurus_sitemap == 'enabled' %}
+        sitemap: {
+          changefreq: 'weekly',
+          priority: 0.5,
+          ignorePatterns: ['/tags/**'],
+          filename: 'sitemap.xml',
+        },
+{%- else %}
+        sitemap: false,
+{%- endif %}
+        theme: {
+{%- if docusaurus_theme == 'tailwind' %}
+          customCss: './src/css/tailwind.css',
+{%- else %}
+          customCss: [
+            './src/css/custom.css',
+{%- if docusaurus_math == 'enabled' %}
+            require.resolve('katex/dist/katex.min.css'),
+{%- endif %}
+          ],
+{%- endif %}
+        },
+{%- if docusaurus_analytics == 'google' %}
+        gtag: {
+          trackingID: 'G-XXXXXXXXXX',
+          anonymizeIP: true,
+        },
+{%- endif %}
+      } satisfies Preset.Options,
+    ],
+  ],
+
+  plugins: [
+{%- if docusaurus_debug == 'enabled' %}
+    process.env.NODE_ENV !== 'production' && '@docusaurus/plugin-debug',
+{%- endif %}
+{%- if docusaurus_llms_txt == 'enabled' %}
+    [
+      'docusaurus-plugin-llms',
+      {
+        generateLLMsTxt: true,
+        generateLLMsFullTxt: true,
+        docsDir: 'docs',
+{%- if docusaurus_blog == 'enabled' %}
+        includeBlog: true,
+{%- endif %}
+        title: '{{ project_name }} Documentation',
+        description: 'AI-friendly documentation for {{ project_name }}',
+        cleanContent: true,
+        removeDuplicateHeadings: true,
+      },
+    ],
+{%- endif %}
+{%- if docusaurus_search_provider == 'local' %}
+    [
+      require.resolve('@easyops-cn/docusaurus-search-local'),
+      {
+        hashed: true,
+        indexDocs: true,
+        indexBlog: {{ 'true' if docusaurus_blog == 'enabled' else 'false' }},
+        indexPages: false,
+        docsRouteBasePath: '/docs',
+        highlightSearchTermsOnTargetPage: true,
+        searchResultLimits: 8,
+        searchResultContextMaxLength: 50,
+        language: ['en'],
+      },
+    ],
+{%- endif %}
+{%- if docusaurus_search_provider == 'typesense' %}
+    [
+      'docusaurus-theme-search-typesense',
+      {
+        typesenseCollectionName: '{{ project_slug }}_docs',
+        typesenseServerConfig: {
+          nodes: [
+            {
+              host: 'localhost',
+              port: 8108,
+              protocol: 'http',
+            },
+          ],
+          apiKey: 'YOUR_TYPESENSE_SEARCH_API_KEY',
+        },
+        typesenseSearchParameters: {},
+        contextualSearch: true,
+      },
+    ],
+{%- endif %}
+{%- if docusaurus_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
+    [
+      'docusaurus-plugin-openapi-docs',
+      {
+        id: 'api',
+        docsPluginId: 'classic',
+        config: {
+          api: {
+            specPath: 'openapi/openapi.yaml',
+            outputDir: 'docs/api-reference',
+            sidebarOptions: {
+              groupPathsBy: 'tag',
+              categoryLinkSource: 'tag',
+            },
+          },
+        },
+      },
+    ],
+{%- endif %}
+{%- if docusaurus_analytics == 'posthog' %}
+    'posthog-docusaurus',
+{%- endif %}
+{%- if docusaurus_redirects == 'enabled' %}
+    [
+      '@docusaurus/plugin-client-redirects',
+      {
+        redirects: [
+          // Example: Redirect old URLs to new ones
+          // { from: '/old-path', to: '/new-path' },
+        ],
+        createRedirects(existingPath) {
+          // Example: Create redirects for renamed paths
+          // if (existingPath.includes('/docs')) {
+          //   return existingPath.replace('/docs', '/documentation');
+          // }
+          return undefined;
+        },
+      },
+    ],
+{%- endif %}
+{%- if docusaurus_ideal_images == 'enabled' %}
+    [
+      '@docusaurus/plugin-ideal-image',
+      {
+        quality: 70,
+        max: 1030,
+        min: 640,
+        steps: 3,
+        disableInDev: false,
+      },
+    ],
+{%- endif %}
+{%- if docusaurus_image_zoom == 'enabled' %}
+    'docusaurus-plugin-image-zoom',
+{%- endif %}
+{%- if docusaurus_pwa == 'enabled' %}
+    [
+      '@docusaurus/plugin-pwa',
+      {
+        debug: false,
+        offlineModeActivationStrategies: [
+          'appInstalled',
+          'standalone',
+          'queryString',
+        ],
+        pwaHead: [
+          {
+            tagName: 'link',
+            rel: 'icon',
+            href: '/img/logo.svg',
+          },
+          {
+            tagName: 'link',
+            rel: 'manifest',
+            href: '/manifest.json',
+          },
+          {
+            tagName: 'meta',
+            name: 'theme-color',
+            content: '#2563eb',
+          },
+          {
+            tagName: 'meta',
+            name: 'apple-mobile-web-app-capable',
+            content: 'yes',
+          },
+          {
+            tagName: 'meta',
+            name: 'apple-mobile-web-app-status-bar-style',
+            content: '#2563eb',
+          },
+          {
+            tagName: 'link',
+            rel: 'apple-touch-icon',
+            href: '/img/logo.svg',
+          },
+        ],
+      },
+    ],
+{%- endif %}
+{%- if docusaurus_theme == 'tailwind' %}
+    async function tailwindPlugin() {
+      return {
+        name: 'tailwind-plugin',
+        configurePostCss(postcssOptions) {
+          postcssOptions.plugins.push(require('@tailwindcss/postcss'));
+          return postcssOptions;
+        },
+      };
+    },
+{%- endif %}
+  ].filter(Boolean),
+
+{%- if docusaurus_mermaid == 'enabled' or docusaurus_live_codeblock == 'enabled' or (docusaurus_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node']) %}
+
+  themes: [
+{%- if docusaurus_mermaid == 'enabled' %}
+    '@docusaurus/theme-mermaid',
+{%- endif %}
+{%- if docusaurus_live_codeblock == 'enabled' %}
+    '@docusaurus/theme-live-codeblock',
+{%- endif %}
+{%- if docusaurus_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
+    'docusaurus-theme-openapi-docs',
+{%- endif %}
+  ],
+{%- endif %}
+
+  themeConfig: {
+    image: 'img/social-card.png',
+    metadata: [
+      { name: 'keywords', content: '{{ project_name }}, documentation, api' },
+      { name: 'twitter:card', content: 'summary_large_image' },
+    ],
+{%- if docusaurus_announcement_bar == 'enabled' %}
+    announcementBar: {
+      id: 'announcement',
+      content:
+        '⭐ If you like {{ project_name }}, give it a star on <a target="_blank" rel="noopener noreferrer" href="https://github.com/{{ project_slug }}/{{ project_slug }}">GitHub</a>!',
+      backgroundColor: '#3b82f6',
+      textColor: '#ffffff',
+      isCloseable: true,
+    },
+{%- endif %}
+    navbar: {
+      title: '{{ project_name }}',
+      logo: {
+        alt: '{{ project_name }} Logo',
+        src: 'img/logo.svg',
+      },
+      items: [
+        {
+          type: 'docSidebar',
+          sidebarId: 'docs',
+          position: 'left',
+          label: 'Docs',
+        },
+{%- if docusaurus_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
+        {
+          type: 'docSidebar',
+          sidebarId: 'api',
+          position: 'left',
+          label: 'API',
+        },
+{%- endif %}
+{%- if docusaurus_blog == 'enabled' %}
+        { to: '/blog', label: 'Blog', position: 'left' },
+{%- endif %}
+{%- if docusaurus_versioning == 'enabled' %}
+        {
+          type: 'docsVersionDropdown',
+          position: 'right',
+          dropdownActiveClassDisabled: true,
+        },
+{%- endif %}
+{%- if docusaurus_i18n == 'enabled' %}
+        {
+          type: 'localeDropdown',
+          position: 'right',
+        },
+{%- endif %}
+        {
+          href: 'https://github.com/{{ project_slug }}/{{ project_slug }}',
+          label: 'GitHub',
+          position: 'right',
+        },
+      ],
+    },
+    footer: {
+      style: 'dark',
+      links: [
+        {
+          title: 'Docs',
+          items: [
+            { label: 'Getting Started', to: '/docs/' },
+            { label: 'Quickstart', to: '/docs/quickstart' },
+          ],
+        },
+        {
+          title: 'Community',
+          items: [
+            { label: 'GitHub Discussions', href: 'https://github.com/{{ project_slug }}/{{ project_slug }}/discussions' },
+            { label: 'Issues', href: 'https://github.com/{{ project_slug }}/{{ project_slug }}/issues' },
+          ],
+        },
+        {
+          title: 'More',
+          items: [
+{%- if docusaurus_blog == 'enabled' %}
+            { label: 'Blog', to: '/blog' },
+{%- endif %}
+            { label: 'GitHub', href: 'https://github.com/{{ project_slug }}/{{ project_slug }}' },
+          ],
+        },
+      ],
+      copyright: `Copyright © ${new Date().getFullYear()} {{ project_name }}. Built with Docusaurus.`,
+    },
+{%- if docusaurus_search_provider == 'algolia' %}
+    algolia: {
+      appId: 'YOUR_ALGOLIA_APP_ID',
+      apiKey: 'YOUR_ALGOLIA_SEARCH_API_KEY',
+      indexName: '{{ project_slug }}',
+      contextualSearch: true,
+      searchParameters: {},
+      searchPagePath: 'search',
+    },
+{%- endif %}
+    prism: {
+      theme: prismThemes.github,
+      darkTheme: prismThemes.dracula,
+      additionalLanguages: ['bash', 'python', 'typescript', 'json', 'yaml', 'toml', 'diff'],
+    },
+{%- if docusaurus_analytics == 'posthog' %}
+    posthog: {
+      apiKey: 'YOUR_POSTHOG_PROJECT_API_KEY',
+      appUrl: 'https://us.i.posthog.com',
+      enableInDevelopment: false,
+    },
+{%- endif %}
+{%- if docusaurus_analytics == 'matomo' %}
+    matomo: {
+      matomoUrl: 'https://YOUR_MATOMO_URL/',
+      siteId: 'YOUR_SITE_ID',
+      phpLoader: 'matomo.php',
+      jsLoader: 'matomo.js',
+    },
+{%- endif %}
+{%- if docusaurus_mermaid == 'enabled' %}
+    mermaid: {
+      theme: { light: 'neutral', dark: 'dark' },
+      options: {
+        maxTextSize: 50000,
+      },
+    },
+{%- endif %}
+{%- if docusaurus_image_zoom == 'enabled' %}
+    zoom: {
+      selector: '.markdown :not(em) > img',
+      background: {
+        light: 'rgb(255, 255, 255)',
+        dark: 'rgb(50, 50, 50)',
+      },
+      config: {},
+    },
+{%- endif %}
+{%- if docusaurus_live_codeblock == 'enabled' %}
+    liveCodeBlock: {
+      playgroundPosition: 'bottom',
+    },
+{%- endif %}
+{%- if docusaurus_comments == 'giscus' %}
+    giscus: {
+      repo: '{{ project_slug }}/{{ project_slug }}',
+      repoId: 'YOUR_REPO_ID',
+      category: 'Documentation',
+      categoryId: 'YOUR_CATEGORY_ID',
+      mapping: 'pathname',
+      strict: '0',
+      reactionsEnabled: '1',
+      emitMetadata: '0',
+      inputPosition: 'bottom',
+      theme: 'preferred_color_scheme',
+      lang: 'en',
+      loading: 'lazy',
+    },
+{%- endif %}
+    docs: {
+      sidebar: {
+        hideable: true,
+        autoCollapseCategories: true,
+      },
+    },
+    colorMode: {
+      defaultMode: 'light',
+      disableSwitch: false,
+      respectPrefersColorScheme: true,
+    },
+{%- if docusaurus_back_to_top == 'enabled' %}
+    tableOfContents: {
+      minHeadingLevel: 2,
+      maxHeadingLevel: 4,
+    },
+{%- endif %}
+  } satisfies Preset.ThemeConfig,
+};
+
+export default config;
+{%- else -%}
+// Docusaurus configuration placeholder - docs_site != 'docusaurus'
+export default {};
+{%- endif -%}

@@ -15,7 +15,14 @@ import yaml
 @pytest.fixture
 def template_config_path() -> Path:
     """Return path to the template pre-commit config."""
-    return Path(__file__).parents[1] / "template" / "files" / "shared" / "quality" / ".pre-commit-config.yaml.jinja"
+    return (
+        Path(__file__).parents[1]
+        / "template"
+        / "files"
+        / "shared"
+        / "quality"
+        / ".pre-commit-config.yaml.jinja"
+    )
 
 
 @pytest.fixture
@@ -62,7 +69,9 @@ class TestRootPrecommitConfig:
         config = yaml.safe_load(content)
         repos = config.get("repos", [])
 
-        conventional_repos = [r for r in repos if "conventional" in str(r.get("repo", ""))]
+        conventional_repos = [
+            r for r in repos if "conventional" in str(r.get("repo", ""))
+        ]
         assert len(conventional_repos) > 0, "Should have conventional-pre-commit repo"
 
     def test_root_config_has_local_hooks(self, root_config_path: Path) -> None:
@@ -135,7 +144,9 @@ class TestRootPrecommitConfig:
         config = yaml.safe_load(content)
         repos = config.get("repos", [])
 
-        jsonschema_repos = [r for r in repos if "check-jsonschema" in str(r.get("repo", ""))]
+        jsonschema_repos = [
+            r for r in repos if "check-jsonschema" in str(r.get("repo", ""))
+        ]
         assert len(jsonschema_repos) > 0, "Should have check-jsonschema pre-commit repo"
 
 
@@ -146,12 +157,16 @@ class TestTemplatePrecommitConfig:
         """Verify template .pre-commit-config.yaml.jinja exists."""
         assert template_config_path.exists(), "Template config should exist"
 
-    def test_template_has_profile_conditionals(self, template_config_path: Path) -> None:
+    def test_template_has_profile_conditionals(
+        self, template_config_path: Path
+    ) -> None:
         """Verify template has quality_profile conditionals."""
         content = template_config_path.read_text(encoding="utf-8")
 
         # Check for profile conditionals
-        assert "quality_profile == 'strict'" in content, "Should have strict profile conditional"
+        assert "quality_profile == 'strict'" in content, (
+            "Should have strict profile conditional"
+        )
         assert "ty-check" in content, "Should reference ty-check hook"
         assert "pylint" in content, "Should reference pylint hook"
 
@@ -164,21 +179,29 @@ class TestTemplatePrecommitConfig:
         assert "prettier" in content, "Should reference prettier hook"
         assert "eslint" in content, "Should reference eslint hook"
 
-    def test_template_has_monorepo_conditionals(self, template_config_path: Path) -> None:
+    def test_template_has_monorepo_conditionals(
+        self, template_config_path: Path
+    ) -> None:
         """Verify template has project_layout conditionals for monorepo."""
         content = template_config_path.read_text(encoding="utf-8")
 
         # Check for monorepo conditionals
-        assert "project_layout == 'monorepo'" in content, "Should have monorepo conditional"
+        assert "project_layout == 'monorepo'" in content, (
+            "Should have monorepo conditional"
+        )
         assert "apps|packages" in content, "Should have monorepo path pattern"
 
-    def test_template_has_changelog_conditionals(self, template_config_path: Path) -> None:
+    def test_template_has_changelog_conditionals(
+        self, template_config_path: Path
+    ) -> None:
         """Verify template has changelog_module conditionals."""
         content = template_config_path.read_text(encoding="utf-8")
 
         # Check for changelog conditionals
         assert "changelog_module" in content, "Should have changelog_module conditional"
-        assert "conventional-pre-commit" in content, "Should reference conventional commits"
+        assert "conventional-pre-commit" in content, (
+            "Should reference conventional commits"
+        )
 
     def test_template_has_prepush_hooks(self, template_config_path: Path) -> None:
         """Verify template includes pre-push hooks for strict profile."""
@@ -196,7 +219,9 @@ class TestTemplatePrecommitConfig:
         # Check for CI configuration
         assert "ci:" in content, "Should have ci configuration section"
         assert "autofix_prs" in content, "Should have autofix_prs setting"
-        assert "autoupdate_schedule" in content, "Should have autoupdate_schedule setting"
+        assert "autoupdate_schedule" in content, (
+            "Should have autoupdate_schedule setting"
+        )
 
     def test_template_has_gitleaks(self, template_config_path: Path) -> None:
         """Verify template includes gitleaks for secrets detection."""
@@ -226,8 +251,9 @@ class TestTemplatePrecommitConfig:
     def test_template_has_check_jsonschema(self, template_config_path: Path) -> None:
         """Verify template includes check-jsonschema for schema validation."""
         content = template_config_path.read_text(encoding="utf-8")
-        assert "check-jsonschema" in content or "check-github-workflows" in content, \
+        assert "check-jsonschema" in content or "check-github-workflows" in content, (
             "Should reference check-jsonschema or check-github-workflows hook"
+        )
 
 
 class TestJinjaValidator:
@@ -236,7 +262,9 @@ class TestJinjaValidator:
     @pytest.fixture
     def validator_path(self) -> Path:
         """Return path to the validator script."""
-        return Path(__file__).parents[1] / "scripts" / "ci" / "validate_jinja_templates.py"
+        return (
+            Path(__file__).parents[1] / "scripts" / "ci" / "validate_jinja_templates.py"
+        )
 
     def test_validator_exists(self, validator_path: Path) -> None:
         """Verify the validator script exists."""
@@ -260,22 +288,37 @@ class TestMakefileIntegration:
     @pytest.fixture
     def template_makefile_path(self) -> Path:
         """Return path to the template makefile.quality.jinja."""
-        return Path(__file__).parents[1] / "template" / "files" / "shared" / "quality" / "makefile.quality.jinja"
+        return (
+            Path(__file__).parents[1]
+            / "template"
+            / "files"
+            / "shared"
+            / "quality"
+            / "makefile.quality.jinja"
+        )
 
     def test_root_makefile_has_hooks_target(self, makefile_path: Path) -> None:
         """Verify root Makefile has hooks target."""
         content = makefile_path.read_text(encoding="utf-8")
         assert "hooks:" in content, "Makefile should have hooks target"
-        assert "pre-commit run --all-files" in content, "hooks target should run pre-commit"
+        assert "pre-commit run --all-files" in content, (
+            "hooks target should run pre-commit"
+        )
 
     def test_root_makefile_has_setup_with_hooks(self, makefile_path: Path) -> None:
         """Verify root Makefile setup installs all hook types."""
         content = makefile_path.read_text(encoding="utf-8")
-        assert "pre-commit install --install-hooks" in content, "setup should install hooks"
-        assert "--hook-type commit-msg" in content, "setup should install commit-msg hooks"
+        assert "pre-commit install --install-hooks" in content, (
+            "setup should install hooks"
+        )
+        assert "--hook-type commit-msg" in content, (
+            "setup should install commit-msg hooks"
+        )
         assert "--hook-type pre-push" in content, "setup should install pre-push hooks"
 
-    def test_template_makefile_has_hooks_targets(self, template_makefile_path: Path) -> None:
+    def test_template_makefile_has_hooks_targets(
+        self, template_makefile_path: Path
+    ) -> None:
         """Verify template makefile has hooks targets."""
         content = template_makefile_path.read_text(encoding="utf-8")
         assert "hooks:" in content, "Template should have hooks target"

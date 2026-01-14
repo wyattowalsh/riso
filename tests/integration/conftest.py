@@ -1,9 +1,9 @@
 """Integration-specific pytest fixtures for riso."""
+
 import pytest
-from pathlib import Path
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def rendered_project(tmp_path_factory):
     """Render a full project for integration testing.
 
@@ -22,14 +22,14 @@ def rendered_project(tmp_path_factory):
             pyproject = rendered_project / 'pyproject.toml'
             assert pyproject.exists()
     """
-    render_dir = tmp_path_factory.mktemp('render')
+    render_dir = tmp_path_factory.mktemp("render")
 
     # Create minimal project structure
-    (render_dir / 'pyproject.toml').write_text(
+    (render_dir / "pyproject.toml").write_text(
         '[project]\nname = "test"\nversion = "0.1.0"\n'
     )
-    (render_dir / 'src').mkdir()
-    (render_dir / 'tests').mkdir()
+    (render_dir / "src").mkdir()
+    (render_dir / "tests").mkdir()
 
     return render_dir
 
@@ -50,12 +50,12 @@ def copier_answers():
             # Use modified answers...
     """
     return {
-        'project_name': 'integration-test',
-        'project_type': 'python',
-        'python_version': '3.11',
-        'use_docker': False,
-        'ci_platform': 'github',
-        'docs_site': 'none',
+        "project_name": "integration-test",
+        "project_type": "python",
+        "python_version": "3.11",
+        "use_docker": False,
+        "ci_platform": "github",
+        "docs_site": "none",
     }
 
 
@@ -75,6 +75,6 @@ def clean_environment(monkeypatch):
             # Test runs without VIRTUAL_ENV, CONDA_PREFIX, or PYTHONPATH set
             assert 'VIRTUAL_ENV' not in os.environ
     """
-    monkeypatch.delenv('VIRTUAL_ENV', raising=False)
-    monkeypatch.delenv('CONDA_PREFIX', raising=False)
-    monkeypatch.delenv('PYTHONPATH', raising=False)
+    monkeypatch.delenv("VIRTUAL_ENV", raising=False)
+    monkeypatch.delenv("CONDA_PREFIX", raising=False)
+    monkeypatch.delenv("PYTHONPATH", raising=False)

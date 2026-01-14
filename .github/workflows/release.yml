@@ -126,11 +126,13 @@ jobs:
       - name: Post release summary
         if: success() && github.event.inputs.dry_run != 'true'
         run: |
-          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Release completed successfully on branch: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f CHANGELOG.md ]; then
-            echo "### Recent Changes" >> $GITHUB_STEP_SUMMARY
-            head -50 CHANGELOG.md >> $GITHUB_STEP_SUMMARY
-          fi
+          {
+            echo "## Release Summary"
+            echo ""
+            echo "Release completed successfully on branch: \`${{ github.ref_name }}\`"
+            echo ""
+            if [ -f CHANGELOG.md ]; then
+              echo "### Recent Changes"
+              head -50 CHANGELOG.md
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,107 @@
+{%- if docs_site == 'docusaurus' -%}
+---
+sidebar_position: 2
+title: Configuration
+description: Configure {{ project_name }} for your needs
+---
+
+# Configuration
+
+{{ project_name }} is highly configurable. This guide covers all configuration options.
+
+## Environment Variables
+
+Configuration is primarily done through environment variables. Create a `.env` file in the project root:
+
+```bash
+# Application
+APP_NAME={{ project_name }}
+APP_ENV=development
+DEBUG=true
+
+{%- if api_tracks in ['python', 'node', 'python+node'] %}
+# API
+API_HOST=0.0.0.0
+API_PORT=8000
+{%- endif %}
+
+{%- if docusaurus_analytics == 'posthog' %}
+# Analytics (PostHog)
+POSTHOG_API_KEY=your_posthog_api_key
+POSTHOG_HOST=https://us.i.posthog.com
+{%- endif %}
+
+{%- if docusaurus_analytics == 'google' %}
+# Analytics (Google)
+GOOGLE_ANALYTICS_ID=G-XXXXXXXXXX
+{%- endif %}
+
+{%- if docusaurus_search_provider == 'algolia' %}
+# Search (Algolia)
+ALGOLIA_APP_ID=your_app_id
+ALGOLIA_API_KEY=your_search_api_key
+ALGOLIA_INDEX_NAME={{ project_slug }}
+{%- endif %}
+```
+
+## Documentation Configuration
+
+The Docusaurus configuration is in `docusaurus.config.ts`. Key settings:
+
+```typescript
+const config: Config = {
+  title: '{{ project_name }}',
+  url: 'https://{{ project_slug }}.github.io',
+  baseUrl: '/',
+  // ... other settings
+};
+```
+
+{%- if docusaurus_faster == 'enabled' %}
+
+## Performance Optimizations
+
+This project uses **Docusaurus Faster** for improved build performance:
+
+- **Rspack bundler** - Rust-based bundler (2-4x faster than Webpack)
+- **SWC** - Fast JavaScript/TypeScript compiler
+- **LightningCSS** - Fast CSS minifier
+- **Worker threads** - Parallel static site generation
+
+To disable these optimizations, edit `docusaurus.config.ts`:
+
+```typescript
+future: {
+  experimental_faster: false, // Disable all optimizations
+}
+```
+
+{%- endif %}
+
+{%- if docusaurus_i18n == 'enabled' %}
+
+## Internationalization
+
+To add a new locale:
+
+1. Update `docusaurus.config.ts`:
+   ```typescript
+   i18n: {
+     locales: ['en', 'es', 'fr'], // Add your locale
+   }
+   ```
+
+2. Generate translation files:
+   ```bash
+   pnpm --filter docs-docusaurus write-translations --locale es
+   ```
+
+3. Translate the generated JSON files in `i18n/es/`
+
+{%- endif %}
+
+## Further Reading
+
+- [Environment Variables Reference](/docs/reference/environment-variables)
+- [Docusaurus Configuration](https://docusaurus.io/docs/configuration)
+{%- endif -%}

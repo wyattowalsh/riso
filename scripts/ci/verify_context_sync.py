@@ -7,13 +7,15 @@ import hashlib
 import sys
 from pathlib import Path
 
-from scripts.lib.logger import logger, configure_logging
+# Support both package import (from project root) and direct import (tests)
+try:
+    from scripts.lib.logger import logger, configure_logging
+except ModuleNotFoundError:
+    from logger import logger, configure_logging  # type: ignore[import-not-found]
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SOURCE_DIR = REPO_ROOT / ".github" / "context"
-TEMPLATE_DIR = (
-    REPO_ROOT / "template" / "files" / "shared" / ".github" / "context"
-)
+TEMPLATE_DIR = REPO_ROOT / "template" / "files" / "shared" / ".github" / "context"
 
 
 def file_digest(path: Path) -> str:
@@ -45,9 +47,7 @@ def main() -> None:
     missing = sorted(set(source) - set(template))
     extra = sorted(set(template) - set(source))
     mismatched = sorted(
-        name
-        for name in source
-        if name in template and source[name] != template[name]
+        name for name in source if name in template and source[name] != template[name]
     )
 
     if not missing and not extra and not mismatched:

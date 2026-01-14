@@ -1,0 +1,95 @@
+{%- if docs_site == 'fumadocs' and api_tracks in ['node', 'python+node'] -%}
+---
+title: Node.js API
+description: Fastify-based REST API reference
+---
+
+# Node.js API
+
+{{ project_name }} includes a Fastify-based REST API for high-performance Node.js services.
+
+## Starting the Server
+
+```bash
+# Development mode
+pnpm dev
+
+# Production build
+pnpm build
+pnpm start
+```
+
+## Configuration
+
+Configure the API via environment variables:
+
+```bash
+# .env
+PORT=3000
+HOST=0.0.0.0
+NODE_ENV=development
+```
+
+## Endpoints
+
+### Health Check
+
+```http
+GET /health
+```
+
+Returns the health status of the API.
+
+**Response:**
+
+```json
+{
+  "status": "ok",
+  "timestamp": "2026-01-14T12:00:00.000Z"
+}
+```
+
+### Root
+
+```http
+GET /
+```
+
+Returns basic API information.
+
+## Fastify Plugins
+
+The API uses the following Fastify plugins:
+
+- `@fastify/cors` - CORS support
+- `@fastify/helmet` - Security headers
+- `@fastify/rate-limit` - Rate limiting
+- `@fastify/swagger` - OpenAPI documentation
+
+## Type Safety
+
+All routes are fully typed with TypeScript:
+
+```typescript
+import { FastifyPluginAsync } from 'fastify';
+
+const routes: FastifyPluginAsync = async (fastify) => {
+  fastify.get<{
+    Reply: { status: string };
+  }>('/health', async () => {
+    return { status: 'ok' };
+  });
+};
+
+export default routes;
+```
+
+{%- if fumadocs_openapi == 'enabled' %}
+
+## Interactive API Reference
+
+<Callout type="info">
+  See the [API Reference](/docs/api) for the full interactive OpenAPI documentation.
+</Callout>
+{%- endif %}
+{%- endif -%}

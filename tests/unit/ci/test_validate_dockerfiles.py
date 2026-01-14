@@ -1,4 +1,5 @@
 """Unit tests for validate_dockerfiles.py"""
+
 import json
 from unittest.mock import MagicMock, patch
 
@@ -14,6 +15,7 @@ class TestCheckHadolintInstalled:
 
     def test_hadolint_installed(self, monkeypatch):
         """Should return True when hadolint is installed."""
+
         def mock_run(*args, **kwargs):
             result = MagicMock()
             result.returncode = 0
@@ -21,15 +23,18 @@ class TestCheckHadolintInstalled:
 
         monkeypatch.setattr("subprocess.run", mock_run)
         from validate_dockerfiles import check_hadolint_installed
+
         assert check_hadolint_installed() is True
 
     def test_hadolint_not_found(self, monkeypatch):
         """Should return False when hadolint is not found."""
+
         def mock_run(*args, **kwargs):
             raise FileNotFoundError("hadolint not found")
 
         monkeypatch.setattr("subprocess.run", mock_run)
         from validate_dockerfiles import check_hadolint_installed
+
         assert check_hadolint_installed() is False
 
     def test_hadolint_execution_error(self, monkeypatch):
@@ -41,6 +46,7 @@ class TestCheckHadolintInstalled:
 
         monkeypatch.setattr("subprocess.run", mock_run)
         from validate_dockerfiles import check_hadolint_installed
+
         assert check_hadolint_installed() is False
 
 
@@ -54,6 +60,7 @@ class TestDockerfileDiscovery:
         dockerfile.write_text("FROM python:3.11-slim\n")
 
         from validate_dockerfiles import find_dockerfiles
+
         found = find_dockerfiles(temp_dir)
         assert len(found) >= 1
         assert any("Dockerfile" in str(f) for f in found)
@@ -66,6 +73,7 @@ class TestDockerfileDiscovery:
         dockerfile.write_text("FROM python:3.11-slim\n")
 
         from validate_dockerfiles import find_dockerfiles
+
         found = find_dockerfiles(temp_dir)
         assert len(found) >= 1
         assert any("Dockerfile.python" in str(f) for f in found)
@@ -79,6 +87,7 @@ class TestDockerfileDiscovery:
         (docker_dir / "Dockerfile.prod").write_text("FROM python:3.11\n")
 
         from validate_dockerfiles import find_dockerfiles
+
         found = find_dockerfiles(temp_dir)
         assert len(found) == 3
 
@@ -88,12 +97,14 @@ class TestDockerfileDiscovery:
         (temp_dir / ".dockerignore").write_text("*.pyc\n__pycache__\n")
 
         from validate_dockerfiles import find_dockerfiles
+
         found = find_dockerfiles(temp_dir)
         assert all(".dockerignore" not in str(f) for f in found)
 
     def test_returns_empty_when_no_dockerfiles(self, temp_dir):
         """Should return empty list when no Dockerfiles exist."""
         from validate_dockerfiles import find_dockerfiles
+
         found = find_dockerfiles(temp_dir)
         assert found == []
 
@@ -102,6 +113,7 @@ class TestDockerfileDiscovery:
         (temp_dir / "Dockerfile").write_text("FROM python:3.11\n")
 
         from validate_dockerfiles import find_dockerfiles
+
         found = find_dockerfiles(temp_dir)
         # Run twice to ensure deduplication works
         found2 = find_dockerfiles(temp_dir)
@@ -175,7 +187,12 @@ class TestDockerfileDiscovery:
     ],
 )
 def test_dockerfile_validation_parametrized(
-    content, expected_passed, expected_error_codes, expected_warning_codes, temp_dir, monkeypatch
+    content,
+    expected_passed,
+    expected_error_codes,
+    expected_warning_codes,
+    temp_dir,
+    monkeypatch,
 ):
     """Test Dockerfile validation with various content scenarios."""
     # Resolve temp_dir to avoid symlink issues on macOS
@@ -186,23 +203,27 @@ def test_dockerfile_validation_parametrized(
     # Build hadolint response based on expected errors and warnings
     issues = []
     for code in expected_error_codes:
-        issues.append({
-            "line": 1,
-            "code": code,
-            "message": f"Error for {code}",
-            "column": 1,
-            "file": str(dockerfile),
-            "level": "error"
-        })
+        issues.append(
+            {
+                "line": 1,
+                "code": code,
+                "message": f"Error for {code}",
+                "column": 1,
+                "file": str(dockerfile),
+                "level": "error",
+            }
+        )
     for code in expected_warning_codes:
-        issues.append({
-            "line": 1,
-            "code": code,
-            "message": f"Warning for {code}",
-            "column": 1,
-            "file": str(dockerfile),
-            "level": "warning"
-        })
+        issues.append(
+            {
+                "line": 1,
+                "code": code,
+                "message": f"Warning for {code}",
+                "column": 1,
+                "file": str(dockerfile),
+                "level": "warning",
+            }
+        )
 
     # Mock hadolint
     def mock_run(*args, **kwargs):
@@ -216,6 +237,7 @@ def test_dockerfile_validation_parametrized(
     monkeypatch.chdir(temp_dir)
     monkeypatch.setattr("subprocess.run", mock_run)
     from validate_dockerfiles import validate_dockerfile
+
     result = validate_dockerfile(dockerfile)
 
     assert result["passed"] is expected_passed
@@ -252,16 +274,18 @@ def test_hadolint_error_levels(level, should_fail, temp_dir, monkeypatch):
     def mock_run(*args, **kwargs):
         result = MagicMock()
         result.returncode = 1 if level == "error" else 0
-        result.stdout = json.dumps([
-            {
-                "line": 1,
-                "code": f"DL{level.upper()}",
-                "message": f"Test {level} message",
-                "column": 1,
-                "file": str(dockerfile),
-                "level": level
-            }
-        ])
+        result.stdout = json.dumps(
+            [
+                {
+                    "line": 1,
+                    "code": f"DL{level.upper()}",
+                    "message": f"Test {level} message",
+                    "column": 1,
+                    "file": str(dockerfile),
+                    "level": level,
+                }
+            ]
+        )
         result.stderr = ""
         return result
 
@@ -269,6 +293,7 @@ def test_hadolint_error_levels(level, should_fail, temp_dir, monkeypatch):
     monkeypatch.chdir(temp_dir)
     monkeypatch.setattr("subprocess.run", mock_run)
     from validate_dockerfiles import validate_dockerfile
+
     result = validate_dockerfile(dockerfile)
 
     assert result["passed"] is not should_fail
@@ -307,6 +332,7 @@ def test_dockerfile_discovery_patterns(dockerfile_name, should_find, temp_dir):
     file_path.write_text("FROM python:3.11-slim\n")
 
     from validate_dockerfiles import find_dockerfiles
+
     found = find_dockerfiles(temp_dir)
 
     if should_find:
@@ -344,6 +370,7 @@ CMD ["python", "main.py"]
         monkeypatch.chdir(temp_dir)
         monkeypatch.setattr("subprocess.run", mock_run)
         from validate_dockerfiles import validate_dockerfile
+
         result = validate_dockerfile(dockerfile)
 
         assert result["passed"] is True
@@ -361,16 +388,18 @@ CMD ["python", "main.py"]
         def mock_run(*args, **kwargs):
             result = MagicMock()
             result.returncode = 1
-            result.stdout = json.dumps([
-                {
-                    "line": 1,
-                    "code": "DL3006",
-                    "message": "Always tag the version of an image explicitly",
-                    "column": 1,
-                    "file": str(dockerfile),
-                    "level": "error"
-                }
-            ])
+            result.stdout = json.dumps(
+                [
+                    {
+                        "line": 1,
+                        "code": "DL3006",
+                        "message": "Always tag the version of an image explicitly",
+                        "column": 1,
+                        "file": str(dockerfile),
+                        "level": "error",
+                    }
+                ]
+            )
             result.stderr = ""
             return result
 
@@ -378,6 +407,7 @@ CMD ["python", "main.py"]
         monkeypatch.chdir(temp_dir)
         monkeypatch.setattr("subprocess.run", mock_run)
         from validate_dockerfiles import validate_dockerfile
+
         result = validate_dockerfile(dockerfile)
 
         assert result["passed"] is False
@@ -396,16 +426,18 @@ CMD ["python", "main.py"]
         def mock_run(*args, **kwargs):
             result = MagicMock()
             result.returncode = 0
-            result.stdout = json.dumps([
-                {
-                    "line": 2,
-                    "code": "DL3008",
-                    "message": "Pin versions in apt-get install",
-                    "column": 1,
-                    "file": str(dockerfile),
-                    "level": "warning"
-                }
-            ])
+            result.stdout = json.dumps(
+                [
+                    {
+                        "line": 2,
+                        "code": "DL3008",
+                        "message": "Pin versions in apt-get install",
+                        "column": 1,
+                        "file": str(dockerfile),
+                        "level": "warning",
+                    }
+                ]
+            )
             result.stderr = ""
             return result
 
@@ -413,6 +445,7 @@ CMD ["python", "main.py"]
         monkeypatch.chdir(temp_dir)
         monkeypatch.setattr("subprocess.run", mock_run)
         from validate_dockerfiles import validate_dockerfile
+
         result = validate_dockerfile(dockerfile)
 
         assert result["passed"] is True  # Warnings don't fail validation
@@ -431,32 +464,34 @@ CMD ["python", "main.py"]
         def mock_run(*args, **kwargs):
             result = MagicMock()
             result.returncode = 1
-            result.stdout = json.dumps([
-                {
-                    "line": 1,
-                    "code": "DL3006",
-                    "message": "Error message",
-                    "level": "error"
-                },
-                {
-                    "line": 2,
-                    "code": "DL3008",
-                    "message": "Warning message",
-                    "level": "warning"
-                },
-                {
-                    "line": 3,
-                    "code": "DL3009",
-                    "message": "Info message",
-                    "level": "info"
-                },
-                {
-                    "line": 4,
-                    "code": "DL3010",
-                    "message": "Style message",
-                    "level": "style"
-                }
-            ])
+            result.stdout = json.dumps(
+                [
+                    {
+                        "line": 1,
+                        "code": "DL3006",
+                        "message": "Error message",
+                        "level": "error",
+                    },
+                    {
+                        "line": 2,
+                        "code": "DL3008",
+                        "message": "Warning message",
+                        "level": "warning",
+                    },
+                    {
+                        "line": 3,
+                        "code": "DL3009",
+                        "message": "Info message",
+                        "level": "info",
+                    },
+                    {
+                        "line": 4,
+                        "code": "DL3010",
+                        "message": "Style message",
+                        "level": "style",
+                    },
+                ]
+            )
             result.stderr = ""
             return result
 
@@ -464,6 +499,7 @@ CMD ["python", "main.py"]
         monkeypatch.chdir(temp_dir)
         monkeypatch.setattr("subprocess.run", mock_run)
         from validate_dockerfiles import validate_dockerfile
+
         result = validate_dockerfile(dockerfile)
 
         assert result["passed"] is False
@@ -473,6 +509,7 @@ CMD ["python", "main.py"]
     def test_handles_missing_file(self, temp_dir):
         """Should handle missing file gracefully."""
         from validate_dockerfiles import validate_dockerfile
+
         non_existent = temp_dir / "NonExistent"
 
         with pytest.raises(FileNotFoundError):
@@ -499,6 +536,7 @@ CMD ["python", "main.py"]
     def test_handles_subprocess_error(self, temp_dir, monkeypatch):
         """Should raise RuntimeError on subprocess errors."""
         import subprocess
+
         dockerfile = temp_dir / "Dockerfile"
         dockerfile.write_text("FROM python:3.11\n")
 
@@ -529,6 +567,7 @@ CMD ["python", "main.py"]
         monkeypatch.chdir(temp_dir)
         monkeypatch.setattr("subprocess.run", mock_run)
         from validate_dockerfiles import validate_dockerfile
+
         result = validate_dockerfile(dockerfile)
 
         assert result["passed"] is True
@@ -542,23 +581,19 @@ class TestPrintValidationSummary:
 
     def test_prints_summary_for_all_passed(self, capfd):
         """Should print summary when all files pass."""
-        from scripts.lib.logger import configure_logging
+        from logger import configure_logging
+
         configure_logging()  # Reset logger to ensure clean capture
         from validate_dockerfiles import print_validation_summary
 
         results = [
-            {
-                "file": "Dockerfile",
-                "passed": True,
-                "errors": [],
-                "warnings": []
-            },
+            {"file": "Dockerfile", "passed": True, "errors": [], "warnings": []},
             {
                 "file": ".docker/Dockerfile.test",
                 "passed": True,
                 "errors": [],
-                "warnings": []
-            }
+                "warnings": [],
+            },
         ]
 
         print_validation_summary(results)
@@ -572,7 +607,8 @@ class TestPrintValidationSummary:
 
     def test_prints_summary_with_failures(self, capfd):
         """Should print summary with failure details."""
-        from scripts.lib.logger import configure_logging
+        from logger import configure_logging
+
         configure_logging()  # Reset logger to ensure clean capture
         from validate_dockerfiles import print_validation_summary
 
@@ -581,13 +617,9 @@ class TestPrintValidationSummary:
                 "file": "Dockerfile",
                 "passed": False,
                 "errors": [
-                    {
-                        "code": "DL3006",
-                        "line": 1,
-                        "message": "Always tag the version"
-                    }
+                    {"code": "DL3006", "line": 1, "message": "Always tag the version"}
                 ],
-                "warnings": []
+                "warnings": [],
             }
         ]
 
@@ -604,7 +636,8 @@ class TestPrintValidationSummary:
 
     def test_prints_warnings(self, capfd):
         """Should print warning details."""
-        from scripts.lib.logger import configure_logging
+        from logger import configure_logging
+
         configure_logging()  # Reset logger to ensure clean capture
         from validate_dockerfiles import print_validation_summary
 
@@ -614,12 +647,8 @@ class TestPrintValidationSummary:
                 "passed": True,
                 "errors": [],
                 "warnings": [
-                    {
-                        "code": "DL3008",
-                        "line": 5,
-                        "message": "Pin versions in apt-get"
-                    }
-                ]
+                    {"code": "DL3008", "line": 5, "message": "Pin versions in apt-get"}
+                ],
             }
         ]
 
@@ -691,3 +720,116 @@ class TestMain:
         with patch("validate_dockerfiles.check_hadolint_installed", mock_check):
             exit_code = main()
         assert exit_code == 0
+
+
+@pytest.mark.unit
+class TestMainWithResults:
+    """Tests for main function with validation results."""
+
+    def test_main_with_passing_dockerfile(self, monkeypatch, temp_dir):
+        """Should return exit code 0 and write JSON when all pass."""
+        import subprocess
+        from validate_dockerfiles import main
+
+        temp_dir = temp_dir.resolve()
+        dockerfile = temp_dir / "Dockerfile"
+        dockerfile.write_text("FROM python:3.11\n")
+
+        # Track which calls we've made
+        calls = []
+
+        def mock_run(*args, **kwargs):
+            result = MagicMock()
+            calls.append(args)
+            cmd = args[0] if args else kwargs.get("args", [])
+            if cmd[0] == "hadolint" and "--version" in cmd:
+                # hadolint version check
+                result.returncode = 0
+                result.stdout = "hadolint 2.12.0"
+                return result
+            # hadolint validation call - pass
+            result.returncode = 0
+            result.stdout = "[]"
+            result.stderr = ""
+            return result
+
+        monkeypatch.chdir(temp_dir)
+        monkeypatch.setattr(subprocess, "run", mock_run)
+        monkeypatch.setattr("sys.argv", ["validate_dockerfiles.py", str(temp_dir)])
+
+        exit_code = main()
+
+        assert exit_code == 0
+        json_file = temp_dir / "dockerfile-validation.json"
+        assert json_file.exists()
+        data = json.loads(json_file.read_text())
+        assert data["passed_files"] == 1
+
+    def test_main_with_failing_dockerfile(self, monkeypatch, temp_dir):
+        """Should return exit code 1 when any dockerfile fails."""
+        import subprocess
+        from validate_dockerfiles import main
+
+        temp_dir = temp_dir.resolve()
+        dockerfile = temp_dir / "Dockerfile"
+        dockerfile.write_text("FROM python:3.11\n")
+
+        def mock_run(*args, **kwargs):
+            result = MagicMock()
+            cmd = args[0] if args else kwargs.get("args", [])
+            if cmd[0] == "hadolint" and "--version" in cmd:
+                result.returncode = 0
+                return result
+            # Validation fails
+            result.returncode = 1
+            result.stdout = json.dumps([{
+                "line": 1,
+                "code": "DL3006",
+                "message": "Error",
+                "column": 1,
+                "file": str(dockerfile),
+                "level": "error"
+            }])
+            result.stderr = ""
+            return result
+
+        monkeypatch.chdir(temp_dir)
+        monkeypatch.setattr(subprocess, "run", mock_run)
+        monkeypatch.setattr("sys.argv", ["validate_dockerfiles.py", str(temp_dir)])
+
+        exit_code = main()
+
+        assert exit_code == 1
+
+    def test_main_writes_json_report(self, monkeypatch, temp_dir):
+        """Should write JSON report with results."""
+        import subprocess
+        from validate_dockerfiles import main
+
+        temp_dir = temp_dir.resolve()
+        (temp_dir / "Dockerfile").write_text("FROM python:3.11\n")
+        (temp_dir / "Dockerfile.test").write_text("FROM node:20\n")
+
+        def mock_run(*args, **kwargs):
+            result = MagicMock()
+            cmd = args[0] if args else kwargs.get("args", [])
+            if cmd[0] == "hadolint" and "--version" in cmd:
+                result.returncode = 0
+                return result
+            result.returncode = 0
+            result.stdout = "[]"
+            result.stderr = ""
+            return result
+
+        monkeypatch.chdir(temp_dir)
+        monkeypatch.setattr(subprocess, "run", mock_run)
+        monkeypatch.setattr("sys.argv", ["validate_dockerfiles.py", str(temp_dir)])
+
+        main()
+
+        json_file = temp_dir / "dockerfile-validation.json"
+        assert json_file.exists()
+        data = json.loads(json_file.read_text())
+        assert data["total_files"] == 2
+        assert data["passed_files"] == 2
+        assert data["failed_files"] == 0

@@ -114,6 +114,7 @@ def write_metadata(destination: Path, checks: list[ToolCheck]) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
+
 __all__ = [
     "ToolCheck",
     "ensure_python_quality_tools",

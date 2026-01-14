@@ -11,12 +11,15 @@ Usage:
 
 import argparse
 import json
-import subprocess
 import sys
 from pathlib import Path
 from typing import Literal
 
-from scripts.lib.logger import logger, configure_logging
+# Support both package import (from project root) and direct import (tests)
+try:
+    from scripts.lib.logger import logger, configure_logging
+except ModuleNotFoundError:
+    from logger import logger, configure_logging  # type: ignore[import-not-found]
 
 # Define all valid technology combinations
 TECHNOLOGY_MATRIX = {
@@ -144,12 +147,16 @@ def validate_combination_rules(combo: dict) -> list[ValidationIssue]:
     # Check required combinations
     for rule in REQUIRED_RULES:
         if rule["condition"](combo):
-            issues.append(ValidationIssue(rule["severity"], rule["name"], rule["message"]))
+            issues.append(
+                ValidationIssue(rule["severity"], rule["name"], rule["message"])
+            )
 
     # Check recommendations
     for rule in RECOMMENDATION_RULES:
         if rule["condition"](combo):
-            issues.append(ValidationIssue(rule["severity"], rule["name"], rule["message"]))
+            issues.append(
+                ValidationIssue(rule["severity"], rule["name"], rule["message"])
+            )
 
     return issues
 
@@ -170,10 +177,10 @@ def is_combination_valid(combo: dict) -> bool:
 def generate_all_combinations() -> list[dict]:
     """Generate all valid technology combinations."""
     combinations = []
-    
+
     # For testing purposes, generate a subset of representative combinations
     # rather than all 2^12 = 4096 possible combinations
-    
+
     # Recommended stacks (known to work)
     recommended = [
         {  # Vercel Starter
@@ -219,16 +226,21 @@ def generate_all_combinations() -> list[dict]:
             "cicd": "github-actions",
         },
     ]
-    
+
     combinations.extend(recommended)
-    
-    # Add edge cases and variations
-    # TODO: Add more test combinations for comprehensive coverage
-    
+
+    # NOTE: Add additional test combinations here for comprehensive coverage.
+    # Recommended additions:
+    # - Edge cases with minimal integrations (e.g., only auth + db)
+    # - Alternative payment providers (e.g., lemonsqueezy, paddle)
+    # - Self-hosted alternatives (e.g., keycloak for auth)
+
     return [c for c in combinations if is_combination_valid(c)]
 
 
-def validate_combination(combo: dict, output_dir: Path, json_output: bool = False) -> dict:
+def validate_combination(
+    combo: dict, output_dir: Path, json_output: bool = False
+) -> dict:
     """Validate a single technology combination.
 
     Args:
@@ -239,7 +251,9 @@ def validate_combination(combo: dict, output_dir: Path, json_output: bool = Fals
     Returns:
         Validation result dictionary
     """
-    combo_name = f"{combo['runtime']}-{combo['hosting']}-{combo['database']}-{combo['orm']}"
+    combo_name = (
+        f"{combo['runtime']}-{combo['hosting']}-{combo['database']}-{combo['orm']}"
+    )
 
     if not json_output:
         logger.info(f"\nValidating combination: {combo_name}")
@@ -289,11 +303,13 @@ def validate_combination(combo: dict, output_dir: Path, json_output: bool = Fals
 
     except Exception as e:
         result["status"] = "failed"
-        result["issues"].append({
-            "severity": "error",
-            "name": "validation_exception",
-            "message": f"Validation failed with exception: {str(e)}",
-        })
+        result["issues"].append(
+            {
+                "severity": "error",
+                "name": "validation_exception",
+                "message": f"Validation failed with exception: {str(e)}",
+            }
+        )
         if not json_output:
             logger.error(f"  FAILED: {e}")
 
@@ -350,7 +366,9 @@ def main() -> int:
 
     # Calculate summary statistics
     passed = sum(1 for r in results if r["status"] == "passed")
-    passed_with_warnings = sum(1 for r in results if r["status"] == "passed_with_warnings")
+    passed_with_warnings = sum(
+        1 for r in results if r["status"] == "passed_with_warnings"
+    )
     failed = sum(1 for r in results if r["status"] == "failed")
 
     # Output results

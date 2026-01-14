@@ -1,14 +1,14 @@
 """Fixtures for CI script tests."""
-import sys
+
 from pathlib import Path
 
 import pytest
 
-# Add scripts/ci directory to path for imports at module load time
-# This allows test files to import directly: from check_quality_parity import ...
-_ci_scripts_path = Path(__file__).parents[3] / "scripts" / "ci"
-if str(_ci_scripts_path) not in sys.path:
-    sys.path.insert(0, str(_ci_scripts_path))
+# NOTE: sys.path setup is handled by the main tests/conftest.py
+# This file only provides CI-specific fixtures
+
+_project_root = Path(__file__).parents[3]
+_ci_scripts_path = _project_root / "scripts" / "ci"
 
 
 @pytest.fixture

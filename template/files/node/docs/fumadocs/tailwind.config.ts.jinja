@@ -1,0 +1,50 @@
+{%- if docs_site == 'fumadocs' -%}
+import type { Config } from 'tailwindcss';
+import { createPreset } from 'fumadocs-ui/tailwind-plugin';
+{%- if fumadocs_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
+import { createOpenAPIPreset } from 'fumadocs-openapi/tailwind-plugin';
+{%- endif %}
+
+const config: Config = {
+  darkMode: 'class',
+  content: [
+    './components/**/*.{ts,tsx}',
+    './app/**/*.{ts,tsx}',
+    './content/**/*.mdx',
+    './node_modules/fumadocs-ui/dist/**/*.js',
+{%- if fumadocs_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
+    './node_modules/fumadocs-openapi/dist/**/*.js',
+{%- endif %}
+  ],
+  presets: [
+{%- if fumadocs_theme == 'ocean' %}
+    createPreset({ preset: 'ocean' }),
+{%- elif fumadocs_theme == 'purple' %}
+    createPreset({ preset: 'purple' }),
+{%- elif fumadocs_theme == 'custom' %}
+    createPreset({ preset: 'default' }),
+{%- else %}
+    createPreset({ preset: 'neutral' }),
+{%- endif %}
+{%- if fumadocs_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
+    createOpenAPIPreset(),
+{%- endif %}
+  ],
+{%- if fumadocs_theme == 'custom' %}
+  theme: {
+    extend: {
+      colors: {
+        // Customize your colors here
+        // fd: {
+        //   background: 'hsl(var(--fd-background))',
+        //   foreground: 'hsl(var(--fd-foreground))',
+        //   primary: 'hsl(var(--fd-primary))',
+        // },
+      },
+    },
+  },
+{%- endif %}
+};
+
+export default config;
+{%- endif -%}

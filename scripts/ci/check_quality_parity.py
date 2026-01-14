@@ -7,8 +7,18 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-MAKEFILE = REPO_ROOT / "template" / "files" / "shared" / "quality" / "makefile.quality.jinja"
-UV_TASK = REPO_ROOT / "template" / "files" / "shared" / "quality" / "uv_tasks" / "quality.py.jinja"
+MAKEFILE = (
+    REPO_ROOT / "template" / "files" / "shared" / "quality" / "makefile.quality.jinja"
+)
+UV_TASK = (
+    REPO_ROOT
+    / "template"
+    / "files"
+    / "shared"
+    / "quality"
+    / "uv_tasks"
+    / "quality.py.jinja"
+)
 
 REQUIRED_PATTERNS = [
     "ruff check",
@@ -47,7 +57,9 @@ def main() -> int:
     if not makefile_node_missing:
         task_node_missing = assert_contains(UV_TASK, NODE_PATTERNS)
         if task_node_missing:
-            errors.append(f"uv task missing Node commands: {', '.join(task_node_missing)}")
+            errors.append(
+                f"uv task missing Node commands: {', '.join(task_node_missing)}"
+            )
 
     if errors:
         for error in errors:

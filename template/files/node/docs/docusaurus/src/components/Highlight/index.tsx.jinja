@@ -1,0 +1,45 @@
+{%- if docs_site == 'docusaurus' -%}
+import React from 'react';
+import styles from './styles.module.css';
+
+type HighlightColor = 'blue' | 'green' | 'yellow' | 'red' | 'purple' | 'gray';
+
+interface HighlightProps {
+  children: React.ReactNode;
+  color?: HighlightColor;
+  title?: string;
+}
+
+export default function Highlight({
+  children,
+  color = 'blue',
+  title,
+}: HighlightProps): JSX.Element {
+  return (
+    <div className={`${styles.highlight} ${styles[color]}`}>
+      {title && <div className={styles.title}>{title}</div>}
+      <div className={styles.content}>{children}</div>
+    </div>
+  );
+}
+
+interface VersionBadgeProps {
+  version: string;
+  type?: 'new' | 'deprecated' | 'beta' | 'experimental';
+}
+
+export function VersionBadge({ version, type = 'new' }: VersionBadgeProps): JSX.Element {
+  const labels = {
+    new: 'New in',
+    deprecated: 'Deprecated in',
+    beta: 'Beta since',
+    experimental: 'Experimental since',
+  };
+
+  return (
+    <span className={`${styles.badge} ${styles[`badge_${type}`]}`}>
+      {labels[type]} v{version}
+    </span>
+  );
+}
+{%- endif -%}

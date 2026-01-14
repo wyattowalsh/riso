@@ -1,0 +1,68 @@
+{%- if docs_site == 'docusaurus' and mcp_module == 'enabled' -%}
+---
+sidebar_position: 6
+title: MCP Module
+description: Model Context Protocol integration
+---
+
+# MCP Module
+
+{{ project_name }} includes [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) integration for AI tool usage.
+
+## Quick Start
+
+```bash
+# Start the MCP server
+pnpm --filter mcp start
+```
+
+## Available Tools
+
+The MCP server exposes the following tools:
+
+| Tool | Description |
+|------|-------------|
+| `echo` | Echo back input text |
+| `timestamp` | Get current timestamp |
+| `http_fetch` | Fetch data from HTTP endpoints |
+
+## Configuration
+
+Configure the MCP server in `mcp/src/config.ts`:
+
+```typescript
+export const config = {
+  name: '{{ project_name }}-mcp',
+  version: '1.0.0',
+};
+```
+
+## Integration
+
+### Claude Desktop
+
+Add to your Claude Desktop config:
+
+```json
+{
+  "mcpServers": {
+    "{{ project_slug }}": {
+      "command": "pnpm",
+      "args": ["--filter", "mcp", "start"]
+    }
+  }
+}
+```
+
+## Testing
+
+```bash
+# Run MCP tests
+pnpm --filter mcp test
+```
+
+## See Also
+
+- [MCP Documentation](https://modelcontextprotocol.io/)
+- [Configuration Guide](/docs/guides/configuration)
+{%- endif -%}

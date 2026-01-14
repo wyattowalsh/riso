@@ -1,0 +1,112 @@
+{%- if docs_site == 'docusaurus' -%}
+import clsx from 'clsx';
+import Heading from '@theme/Heading';
+import styles from './styles.module.css';
+
+type FeatureItem = {
+  title: string;
+  description: JSX.Element;
+  emoji: string;
+};
+
+const FeatureList: FeatureItem[] = [
+{%- if docusaurus_faster == 'enabled' %}
+  {
+    title: 'Lightning Fast',
+    emoji: '⚡',
+    description: (
+      <>
+        Built with Docusaurus Faster using Rspack, SWC, and LightningCSS
+        for 2-4x faster builds.
+      </>
+    ),
+  },
+{%- endif %}
+{%- if docusaurus_llms_txt == 'enabled' %}
+  {
+    title: 'AI-Ready',
+    emoji: '🤖',
+    description: (
+      <>
+        Generates <code>llms.txt</code> for seamless LLM integration and
+        RAG pipelines.
+      </>
+    ),
+  },
+{%- endif %}
+  {
+    title: 'Modern Stack',
+    emoji: '🚀',
+    description: (
+      <>
+        Powered by React 18, TypeScript, and the latest Docusaurus features
+        for a great developer experience.
+      </>
+    ),
+  },
+{%- if docusaurus_search_provider != 'none' %}
+  {
+    title: 'Powerful Search',
+    emoji: '🔍',
+    description: (
+      <>
+{%- if docusaurus_search_provider == 'local' %}
+        Full-text search with offline support using docusaurus-search-local.
+{%- elif docusaurus_search_provider == 'algolia' %}
+        Fast, hosted search powered by Algolia DocSearch.
+{%- elif docusaurus_search_provider == 'typesense' %}
+        Privacy-focused search with Typesense.
+{%- endif %}
+      </>
+    ),
+  },
+{%- endif %}
+{%- if docusaurus_theme == 'tailwind' %}
+  {
+    title: 'Tailwind Styled',
+    emoji: '🎨',
+    description: (
+      <>
+        Beautiful, utility-first styling with Tailwind CSS v4.
+      </>
+    ),
+  },
+{%- endif %}
+  {
+    title: 'Production Ready',
+    emoji: '✅',
+    description: (
+      <>
+        Fully configured with TypeScript, linting, and best practices
+        out of the box.
+      </>
+    ),
+  },
+];
+
+function Feature({title, emoji, description}: FeatureItem) {
+  return (
+    <div className={clsx('col col--4')}>
+      <div className="text--center padding-horiz--md">
+        <div className={styles.featureEmoji}>{emoji}</div>
+        <Heading as="h3">{title}</Heading>
+        <p>{description}</p>
+      </div>
+    </div>
+  );
+}
+
+export default function HomepageFeatures(): JSX.Element {
+  return (
+    <section className={styles.features}>
+      <div className="container">
+        <div className="row">
+          {FeatureList.map((props, idx) => (
+            <Feature key={idx} {...props} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+{%- endif -%}

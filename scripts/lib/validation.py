@@ -21,7 +21,11 @@ import sys
 from pathlib import Path
 from typing import Any, TypedDict
 
-from scripts.lib.logger import logger
+# Support both direct import (tests) and package import (scripts)
+try:
+    from scripts.lib.logger import logger
+except ModuleNotFoundError:
+    from logger import logger  # type: ignore[import-not-found]
 
 try:
     import yaml
@@ -306,7 +310,7 @@ def check_yaml_dependency() -> bool:
         ...     sys.exit(1)
     """
     try:
-        import yaml
+        import yaml  # noqa: F401 - imported to verify availability
         return True
     except ImportError:
         return False

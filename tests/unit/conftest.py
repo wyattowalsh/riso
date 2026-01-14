@@ -3,8 +3,8 @@
 This module provides fixtures specific to unit tests, including mocking
 utilities for subprocess calls, logger functionality, and git repository setup.
 """
+
 import pytest
-from pathlib import Path
 from unittest.mock import MagicMock
 
 
@@ -15,7 +15,7 @@ def mock_logger(mocker):
     Returns:
         MagicMock: Mocked logger instance that can be used to verify log calls
     """
-    return mocker.patch('scripts.lib.logger.logger')
+    return mocker.patch("scripts.lib.logger.logger")
 
 
 @pytest.fixture
@@ -25,8 +25,8 @@ def subprocess_success(mocker):
     Returns:
         MagicMock: Mocked subprocess.run that returns returncode=0
     """
-    mock = mocker.patch('subprocess.run')
-    mock.return_value = MagicMock(returncode=0, stdout='', stderr='')
+    mock = mocker.patch("subprocess.run")
+    mock.return_value = MagicMock(returncode=0, stdout="", stderr="")
     return mock
 
 
@@ -37,8 +37,8 @@ def subprocess_failure(mocker):
     Returns:
         MagicMock: Mocked subprocess.run that returns returncode=1
     """
-    mock = mocker.patch('subprocess.run')
-    mock.return_value = MagicMock(returncode=1, stdout='', stderr='error')
+    mock = mocker.patch("subprocess.run")
+    mock.return_value = MagicMock(returncode=1, stdout="", stderr="error")
     return mock
 
 
@@ -53,6 +53,6 @@ def temp_git_repo(tmp_path, subprocess_success):
     Returns:
         Path: Path to the temporary git repository directory
     """
-    git_dir = tmp_path / '.git'
+    git_dir = tmp_path / ".git"
     git_dir.mkdir()
     return tmp_path

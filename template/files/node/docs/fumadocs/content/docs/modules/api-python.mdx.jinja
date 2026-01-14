@@ -1,0 +1,83 @@
+{%- if docs_site == 'fumadocs' and api_tracks in ['python', 'python+node'] -%}
+---
+title: Python API
+description: FastAPI-based REST API reference
+---
+
+# Python API
+
+{{ project_name }} includes a FastAPI-based REST API for programmatic access.
+
+## Starting the Server
+
+```bash
+# Development mode with auto-reload
+uv run uvicorn {{ package_name }}.api.main:app --reload
+
+# Production mode
+uv run uvicorn {{ package_name }}.api.main:app --host 0.0.0.0 --port 8000
+```
+
+## API Documentation
+
+When running, interactive API documentation is available at:
+
+- **Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **ReDoc**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
+- **OpenAPI JSON**: [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json)
+
+## Endpoints
+
+### Health Check
+
+```http
+GET /health
+```
+
+Returns the health status of the API.
+
+**Response:**
+
+```json
+{
+  "status": "healthy",
+  "version": "0.1.0"
+}
+```
+
+### Root
+
+```http
+GET /
+```
+
+Returns basic API information.
+
+## Authentication
+
+API authentication can be configured via environment variables:
+
+```bash
+API_KEY=your-secret-key
+```
+
+## Error Handling
+
+All errors follow a consistent format:
+
+```json
+{
+  "detail": "Error message",
+  "status_code": 400
+}
+```
+
+{%- if fumadocs_openapi == 'enabled' %}
+
+## Interactive API Reference
+
+<Callout type="info">
+  See the [API Reference](/docs/api) for the full interactive OpenAPI documentation.
+</Callout>
+{%- endif %}
+{%- endif -%}

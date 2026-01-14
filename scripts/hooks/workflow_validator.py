@@ -10,22 +10,22 @@ import subprocess
 import sys
 from pathlib import Path
 
-from scripts.lib.logger import logger, configure_logging
+try:
+    from scripts.lib.logger import logger, configure_logging
+except ModuleNotFoundError:
+    from logger import logger, configure_logging  # type: ignore[import-not-found]
 
 
 def check_actionlint_available() -> bool:
     """
     Check if actionlint is installed and available.
-    
+
     Returns:
         True if actionlint is available, False otherwise
     """
     try:
         subprocess.run(
-            ["actionlint", "--version"],
-            capture_output=True,
-            timeout=5,
-            check=False
+            ["actionlint", "--version"], capture_output=True, timeout=5, check=False
         )
         return True
     except (FileNotFoundError, subprocess.TimeoutExpired):
@@ -44,21 +44,21 @@ def validate_workflow_file(workflow_path: Path) -> tuple[bool, str | None]:
     """
     if not workflow_path.exists():
         return False, f"Workflow file not found: {workflow_path}"
-    
+
     try:
         result = subprocess.run(
             ["actionlint", str(workflow_path)],
             capture_output=True,
             text=True,
             timeout=30,
-            check=False
+            check=False,
         )
-        
+
         if result.returncode == 0:
             return True, None
         else:
             return False, result.stdout + result.stderr
-            
+
     except subprocess.TimeoutExpired:
         return False, "Validation timed out after 30 seconds"
     except (OSError, ValueError) as e:
@@ -68,11 +68,11 @@ def validate_workflow_file(workflow_path: Path) -> tuple[bool, str | None]:
 def validate_workflows_directory(workflows_dir: Path, strict: bool = False) -> int:
     """
     Validate all workflows in a directory.
-    
+
     Args:
         workflows_dir: Directory containing workflow files
         strict: If True, fail on any validation error; if False, warn but continue
-        
+
     Returns:
         Exit code (0 for success, 1 for failures)
     """
@@ -82,19 +82,21 @@ def validate_workflows_directory(workflows_dir: Path, strict: bool = False) -> i
         logger.info("Install: brew install actionlint (macOS)")
         logger.info("Or see: https://github.com/rhysd/actionlint")
         return 0 if not strict else 1
-    
+
     # Check if workflows directory exists
     if not workflows_dir.exists():
         logger.info(f"No workflows directory found at {workflows_dir}")
         return 0
 
     # Find workflow files
-    workflow_files = list(workflows_dir.glob("riso-*.yml")) + list(workflows_dir.glob("riso-*.yaml"))
+    workflow_files = list(workflows_dir.glob("riso-*.yml")) + list(
+        workflows_dir.glob("riso-*.yaml")
+    )
 
     if not workflow_files:
         logger.info("No template workflows generated (expected for minimal configs)")
         return 0
-    
+
     # Validate each workflow
     all_valid = True
     for workflow_file in workflow_files:
@@ -124,7 +126,7 @@ def validate_workflows_directory(workflows_dir: Path, strict: bool = False) -> i
             logger.warning("Workflows may not work correctly")
             logger.warning("Run 'actionlint .github/workflows/*.yml' to debug")
             return 0
-    
+
     return 0
 
 

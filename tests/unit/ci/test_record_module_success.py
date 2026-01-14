@@ -1,4 +1,5 @@
 """Unit tests for record_module_success.py"""
+
 import json
 import pytest
 
@@ -151,3 +152,97 @@ class TestModuleSuccessRecorder:
 
         data = json.loads(output_path.read_text())
         assert data["modules"]["mod"]["success_rate"] == 1.0
+
+
+@pytest.mark.unit
+class TestWorkflowValidation:
+    """Tests for workflow validation tracking."""
+
+    def test_update_workflow_validation_pass(self):
+        """Should increment passed on 'pass' status."""
+        from record_module_success import ModuleSuccessRecorder
+
+        recorder = ModuleSuccessRecorder()
+        recorder.update_workflow_validation("pass")
+        assert recorder.workflow_stats.passed == 1
+        assert recorder.workflow_stats.failed == 0
+        assert recorder.workflow_stats.skipped == 0
+
+    def test_update_workflow_validation_fail(self):
+        """Should increment failed on 'fail' status."""
+        from record_module_success import ModuleSuccessRecorder
+
+        recorder = ModuleSuccessRecorder()
+        recorder.update_workflow_validation("fail")
+        assert recorder.workflow_stats.passed == 0
+        assert recorder.workflow_stats.failed == 1
+
+    def test_update_workflow_validation_unknown(self):
+        """Should increment skipped on unknown status."""
+        from record_module_success import ModuleSuccessRecorder
+
+        recorder = ModuleSuccessRecorder()
+        recorder.update_workflow_validation("unknown")
+        recorder.update_workflow_validation("skipped")
+        assert recorder.workflow_stats.skipped == 2
+
+
+@pytest.mark.unit
+class TestContainerStatus:
+    """Tests for container status tracking."""
+
+    def test_update_container_status_files_present(self):
+        """Should track files_present status."""
+        from record_module_success import ModuleSuccessRecorder
+
+        recorder = ModuleSuccessRecorder()
+        recorder.update_container_status("files_present")
+        assert recorder.container_metrics.files_present == 1
+        assert recorder.container_metrics.total_checked == 1
+
+    def test_update_container_status_validated(self):
+        """Should track validated status and calculate success rate."""
+        from record_module_success import ModuleSuccessRecorder
+
+        recorder = ModuleSuccessRecorder()
+        recorder.update_container_status("validated")
+        assert recorder.container_metrics.validated == 1
+        assert recorder.container_metrics.success_rate == 1.0
+
+    def test_update_container_status_lint_errors(self):
+        """Should track lint_errors status."""
+        from record_module_success import ModuleSuccessRecorder
+
+        recorder = ModuleSuccessRecorder()
+        recorder.update_container_status("lint_errors")
+        assert recorder.container_metrics.lint_errors == 1
+
+    def test_update_container_status_files_missing(self):
+        """Should track files_missing status."""
+        from record_module_success import ModuleSuccessRecorder
+
+        recorder = ModuleSuccessRecorder()
+        recorder.update_container_status("files_missing")
+        assert recorder.container_metrics.files_missing == 1
+
+    def test_update_container_status_not_applicable(self):
+        """Should track not_applicable status."""
+        from record_module_success import ModuleSuccessRecorder
+
+        recorder = ModuleSuccessRecorder()
+        recorder.update_container_status("not_applicable")
+        assert recorder.container_metrics.not_applicable == 1
+        # Not applicable shouldn't count toward success rate
+        assert recorder.container_metrics.success_rate == 0.0
+
+    def test_container_success_rate_calculation(self):
+        """Should calculate success rate excluding not_applicable."""
+        from record_module_success import ModuleSuccessRecorder
+
+        recorder = ModuleSuccessRecorder()
+        recorder.update_container_status("validated")
+        recorder.update_container_status("validated")
+        recorder.update_container_status("lint_errors")
+        recorder.update_container_status("not_applicable")
+        # 2 validated out of 3 applicable (4 total - 1 not_applicable)
+        assert recorder.container_metrics.success_rate == pytest.approx(2 / 3, rel=0.01)

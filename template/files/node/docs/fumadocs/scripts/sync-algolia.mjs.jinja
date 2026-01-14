@@ -1,0 +1,46 @@
+{%- if docs_site == 'fumadocs' and fumadocs_search_provider == 'algolia' -%}
+import { algoliasearch } from 'algoliasearch';
+import { source } from '../lib/source.js';
+
+const client = algoliasearch(
+  process.env.ALGOLIA_APP_ID!,
+  process.env.ALGOLIA_ADMIN_API_KEY!
+);
+
+const indexName = '{{ project_slug }}_docs';
+
+async function sync() {
+  const pages = source.getPages();
+  
+  const records = await Promise.all(
+    pages.map(async (page) => {
+      const content = await page.data.getText('processed');
+      
+      return {
+        objectID: page.url,
+        title: page.data.title,
+        description: page.data.description ?? '',
+        content: content.slice(0, 10000), // Algolia has a 10kb limit per record
+        url: page.url,
+        hierarchy: {
+          lvl0: page.data.title,
+        },
+      };
+    })
+  );
+
+  console.log(`Syncing ${records.length} records to Algolia...`);
+  
+  await client.replaceAllObjects({
+    indexName,
+    objects: records,
+  });
+
+  console.log('✓ Sync complete');
+}
+
+sync().catch((error) => {
+  console.error('Sync failed:', error);
+  process.exit(1);
+});
+{%- endif -%}

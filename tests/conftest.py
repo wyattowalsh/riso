@@ -1,17 +1,44 @@
 """Shared pytest fixtures for riso tests."""
+
 import sys
-import json
 import tempfile
 from pathlib import Path
 from typing import Generator
 
 import pytest
 
-# Add project root to path for scripts module imports
-# This is needed because scripts use `from scripts.lib.logger import ...`
+# Calculate paths at module load time
 _project_root = Path(__file__).parent.parent
-if str(_project_root) not in sys.path:
-    sys.path.insert(0, str(_project_root))
+_ci_scripts_root = _project_root / "scripts" / "ci"
+_lib_scripts_root = _project_root / "scripts" / "lib"
+
+
+def _setup_sys_path():
+    """Setup sys.path for script imports.
+
+    This must be called before any script imports happen.
+    Order matters: project_root must be first for 'from scripts.lib...' imports.
+    """
+    # First, add scripts subdirs (will be pushed back when project_root is added)
+    if str(_ci_scripts_root) not in sys.path:
+        sys.path.insert(0, str(_ci_scripts_root))
+    if str(_lib_scripts_root) not in sys.path:
+        sys.path.insert(0, str(_lib_scripts_root))
+    # Then add project root at position 0
+    if str(_project_root) not in sys.path:
+        sys.path.insert(0, str(_project_root))
+
+
+# Setup sys.path immediately at module load time
+_setup_sys_path()
+
+
+def pytest_configure(config):
+    """Pytest hook: configure before test collection.
+
+    Ensures sys.path is set up in xdist workers.
+    """
+    _setup_sys_path()
 
 
 @pytest.fixture
@@ -26,6 +53,7 @@ def temp_dir() -> Generator[Path, None, None]:
 def mcp_server():
     """Provide the MCP server instance for testing."""
     from riso.mcp.server import mcp
+
     return mcp
 
 
@@ -33,6 +61,7 @@ def mcp_server():
 def session_manager():
     """Provide a fresh session manager for testing."""
     from riso.mcp.session import SessionManager
+
     return SessionManager(ttl_minutes=60)
 
 
@@ -145,8 +174,8 @@ def sample_dockerfile(tmp_path):
     Returns:
         Path: Path to the created Dockerfile
     """
-    dockerfile = tmp_path / 'Dockerfile'
-    dockerfile.write_text('FROM python:3.11-slim\nWORKDIR /app\nCOPY . .\n')
+    dockerfile = tmp_path / "Dockerfile"
+    dockerfile.write_text("FROM python:3.11-slim\nWORKDIR /app\nCOPY . .\n")
     return dockerfile
 
 
@@ -163,17 +192,17 @@ def sample_workflow(tmp_path):
     Returns:
         Path: Path to the created workflow file
     """
-    workflow_dir = tmp_path / '.github' / 'workflows'
+    workflow_dir = tmp_path / ".github" / "workflows"
     workflow_dir.mkdir(parents=True)
-    workflow = workflow_dir / 'test.yml'
-    workflow.write_text('''name: Test
+    workflow = workflow_dir / "test.yml"
+    workflow.write_text("""name: Test
 on: push
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-''')
+""")
     return workflow
 
 
@@ -189,11 +218,11 @@ def sample_pyproject(tmp_path):
     Returns:
         Path: Path to the created pyproject.toml file
     """
-    pyproject = tmp_path / 'pyproject.toml'
-    pyproject.write_text('''[project]
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text("""[project]
 name = "test-project"
 version = "0.1.0"
-''')
+""")
     return pyproject
 
 
@@ -208,10 +237,10 @@ def sample_copier_context():
         dict: Dictionary of copier context variables
     """
     return {
-        'project_name': 'test-project',
-        'project_type': 'python',
-        'python_version': '3.11',
-        'use_docker': True,
-        'ci_platform': 'github',
-        'docs_site': 'sphinx',
+        "project_name": "test-project",
+        "project_type": "python",
+        "python_version": "3.11",
+        "use_docker": True,
+        "ci_platform": "github",
+        "docs_site": "sphinx",
     }
