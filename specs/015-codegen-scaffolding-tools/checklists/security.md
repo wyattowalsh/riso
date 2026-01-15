@@ -228,7 +228,7 @@
 - [ ] CHK119 - Are security assumptions explicitly documented? [Security, Documentation, Gap]
 - [ ] CHK120 - Are secure configuration guidelines provided for users? [Security, Documentation, Gap]
 
----
+______________________________________________________________________
 
 ## Summary Statistics
 

@@ -13,15 +13,15 @@ Technical approach leverages semantic-release ecosystem with customizations for 
 
 ## Technical Context
 
-**Language/Version**: Python 3.11+ (template baseline), Node.js 20 LTS (when api_tracks includes node)  
-**Primary Dependencies**: semantic-release (changelog/version), commitlint (commit validation), commitizen (commit authoring), GitHub Actions marketplace actions (release creation, registry publishing)  
-**Storage**: Git repository (commit history, tags), GitHub Secrets (registry credentials), generated files (CHANGELOG.md, package versions)  
-**Testing**: pytest for Python validation scripts, smoke tests for rendered projects, integration tests for GitHub Actions workflows  
-**Logging**: JSON-structured logs with INFO/DEBUG/ERROR levels, output to stdout and `.riso/logs/release-{timestamp}.log`, 30-day retention policy, correlation IDs for tracing multi-step operations across version calculation → changelog generation → artifact publishing  
-**Target Platform**: GitHub-hosted repositories with GitHub Actions CI/CD, Linux runners for workflow execution  
-**Project Type**: Template module - generates into rendered projects (both single-project and monorepo structures)  
-**Performance Goals**: <30s changelog generation (1000 commits), <10min full release process (3 registries), <2min registry publishing  
-**Constraints**: GitHub API rate limits (5000 req/hour authenticated), registry API timeouts, deterministic template generation, backward compatibility with existing Riso features  
+**Language/Version**: Python 3.11+ (template baseline), Node.js 20 LTS (when api_tracks includes node)\
+**Primary Dependencies**: semantic-release (changelog/version), commitlint (commit validation), commitizen (commit authoring), GitHub Actions marketplace actions (release creation, registry publishing)\
+**Storage**: Git repository (commit history, tags), GitHub Secrets (registry credentials), generated files (CHANGELOG.md, package versions)\
+**Testing**: pytest for Python validation scripts, smoke tests for rendered projects, integration tests for GitHub Actions workflows\
+**Logging**: JSON-structured logs with INFO/DEBUG/ERROR levels, output to stdout and `.riso/logs/release-{timestamp}.log`, 30-day retention policy, correlation IDs for tracing multi-step operations across version calculation → changelog generation → artifact publishing\
+**Target Platform**: GitHub-hosted repositories with GitHub Actions CI/CD, Linux runners for workflow execution\
+**Project Type**: Template module - generates into rendered projects (both single-project and monorepo structures)\
+**Performance Goals**: \<30s changelog generation (1000 commits), \<10min full release process (3 registries), \<2min registry publishing\
+**Constraints**: GitHub API rate limits (5000 req/hour authenticated), registry API timeouts, deterministic template generation, backward compatibility with existing Riso features\
 **Scale/Scope**: Supports monorepo with independent package versioning, handles 1000+ commits per release cycle, manages 3+ concurrent registry publications
 
 ## Constitution Check
@@ -34,7 +34,7 @@ Technical approach leverages semantic-release ecosystem with customizations for 
 
 ✅ **Deterministic Generation**: All template files use Jinja2 with deterministic logic. No random values, timestamps, or system paths in generated code. Configuration files (.commitlintrc.yml, .releaserc.yml) generated from stable templates. Verified via render_matrix.py.
 
-✅ **Minimal Baseline**: Feature is optional module - baseline project (<50 files) unaffected when disabled. When enabled, adds ~10 files (config, hooks, workflows). Core functionality uses established tools (semantic-release, commitlint) rather than custom implementations.
+✅ **Minimal Baseline**: Feature is optional module - baseline project (\<50 files) unaffected when disabled. When enabled, adds ~10 files (config, hooks, workflows). Core functionality uses established tools (semantic-release, commitlint) rather than custom implementations.
 
 ✅ **Quality Integration**: Generated Python scripts (hook installers, version validators) integrate with ruff/mypy/pylint/pytest. Workflows tested via riso-quality.yml. CI validates generated projects across Python 3.11/3.12/3.13.
 
@@ -133,16 +133,18 @@ samples/
 
 *No complexity violations - constitution check passed all principles.*
 
----
+______________________________________________________________________
 
 ## Post-Design Constitution Re-evaluation
 
 After completing Phase 0 (Research) and Phase 1 (Design & Contracts), re-validating all principles with design-level evidence:
 
 ### ✅ Principle 1: Module Sovereignty
+
 **Status**: PASS (Verified Post-Design)
 
 **Evidence**:
+
 - Module fully optional via `changelog_module=enabled/disabled` Copier prompt (copier.yml)
 - No baseline modifications - all files rendered conditionally via Jinja2 `{% if changelog_module == "enabled" %}`
 - Git hooks installed via opt-in scripts (`uv run setup-hooks`, `pnpm run setup-hooks`), not automatic
@@ -151,9 +153,11 @@ After completing Phase 0 (Research) and Phase 1 (Design & Contracts), re-validat
 **Design Validation**: Configuration files (.commitlintrc.yml, .releaserc.yml) scoped to project root, do not conflict with existing tools. Hook installation is manual/scripted, not forced during copier generation.
 
 ### ✅ Principle 2: Deterministic Generation
+
 **Status**: PASS (Verified Post-Design)
 
 **Evidence**:
+
 - All configuration files templated with explicit Jinja2 variables (package_name, project_slug, api_tracks)
 - Commit types, changelog format, tag format all configurable via .releaserc.yml template
 - No runtime environment lookups - registry credentials via GitHub Secrets (documented in README)
@@ -162,9 +166,11 @@ After completing Phase 0 (Research) and Phase 1 (Design & Contracts), re-validat
 **Design Validation**: semantic-release configuration deterministic - same commits + config = same version. Hook installation script idempotent (checks existing hooks before writing). Workflow YAML static, no dynamic job generation.
 
 ### ✅ Principle 3: Minimal Baseline
+
 **Status**: PASS (Verified Post-Design)
 
 **Evidence**:
+
 - Node.js 20 LTS required only when changelog_module=enabled AND api_tracks includes node
 - Python 3.11+ already baseline - no new interpreter requirement
 - commitlint/semantic-release installed as devDependencies (package.json) when Node track enabled
@@ -173,9 +179,11 @@ After completing Phase 0 (Research) and Phase 1 (Design & Contracts), re-validat
 **Design Validation**: Dependency footprint minimal - commitlint (6 deps), semantic-release (12 deps including plugins), commitizen (4 deps). Total ~150MB npm install. Python-only mode defers to existing uv environment.
 
 ### ✅ Principle 4: Quality Integration
+
 **Status**: PASS (Verified Post-Design)
 
 **Evidence**:
+
 - riso-release.yml depends on riso-quality.yml (needs: [quality] gate)
 - Commit message validation (commitlint) runs pre-push via Git hooks
 - Release workflow conditional on quality checks passing
@@ -184,9 +192,11 @@ After completing Phase 0 (Research) and Phase 1 (Design & Contracts), re-validat
 **Design Validation**: Quality gates enforced at three levels: (1) pre-commit hook validates format, (2) CI quality workflow validates code, (3) release workflow blocks on quality pass. Integration tests validate end-to-end release flow including registry publishing.
 
 ### ✅ Principle 5: Test-First Development
+
 **Status**: PASS (Verified Post-Design)
 
 **Evidence**:
+
 - Test structure defined in plan.md before implementation: test_commit_validation.py, test_version_calculation.py, test_changelog_generation.py
 - Contract schemas (commitlint-config.schema.json, semantic-release-config.schema.json) provide test fixtures for configuration validation
 - Sample projects (changelog-python, changelog-monorepo, changelog-full-stack) serve as smoke tests
@@ -194,9 +204,11 @@ After completing Phase 0 (Research) and Phase 1 (Design & Contracts), re-validat
 **Design Validation**: tests/release/ directory includes unit tests (commit/version/changelog) and integration tests (release workflow, registry publishing). Smoke tests validate template rendering + module activation + first release cycle.
 
 ### ✅ Principle 6: Documentation Standards
+
 **Status**: PASS (Verified Post-Design)
 
 **Evidence**:
+
 - quickstart.md: Developer onboarding with setup, first commit, first release walkthroughs
 - docs/modules/changelog-release.md.jinja: Comprehensive module documentation (architecture, configuration, troubleshooting)
 - Inline examples in contract schemas (commitlint-config, semantic-release-config)
@@ -205,9 +217,11 @@ After completing Phase 0 (Research) and Phase 1 (Design & Contracts), re-validat
 **Design Validation**: Documentation covers three audiences: (1) template maintainers (plan.md, research.md, data-model.md), (2) rendered project developers (quickstart.md, module docs), (3) end users (README commit format guide, troubleshooting).
 
 ### ✅ Principle 7: Technology Consistency
+
 **Status**: PASS (Verified Post-Design)
 
 **Evidence**:
+
 - Python 3.11+ baseline - consistent with Features 003/004/005/007/008/009
 - Node.js 20 LTS - consistent with Feature 002 (docs templates)
 - GitHub Actions - extends existing riso-quality.yml/riso-matrix.yml workflows (Feature 004)
@@ -216,11 +230,11 @@ After completing Phase 0 (Research) and Phase 1 (Design & Contracts), re-validat
 
 **Design Validation**: No new technology paradigms introduced. semantic-release (Node) + commitlint (Node) + Python scripts (version updates, publishing) follows established pattern from Feature 002 (mixed Python/Node tracks). Git hooks via Python scripts consistent with uv-first approach.
 
----
+______________________________________________________________________
 
 **Post-Design Conclusion**: All 7 constitution principles remain satisfied after detailed design. No complexity violations detected. Feature integrates cleanly with existing workflows (Feature 004), quality tools (Feature 003), and container publishing (Feature 005). Ready for task breakdown (Phase 2).
 
----
+______________________________________________________________________
 
 ## Phase 1 Completion Report
 
@@ -229,6 +243,7 @@ After completing Phase 0 (Research) and Phase 1 (Design & Contracts), re-validat
 ### Generated Artifacts
 
 **Phase 0: Research (research.md)**
+
 - 8 research sections covering all technical unknowns
 - Tooling decisions: commitlint + commitizen + semantic-release ecosystem
 - Hook strategy: Python script via `uv/pnpm run setup-hooks`
@@ -241,6 +256,7 @@ After completing Phase 0 (Research) and Phase 1 (Design & Contracts), re-validat
 **Phase 1: Design & Contracts**
 
 1. **data-model.md** (10 entities)
+
    - CommitMessage (Conventional Commits format)
    - Version (SemVer 2.0.0 with calculation rules)
    - ChangelogEntry (categorized changes)
@@ -250,26 +266,30 @@ After completing Phase 0 (Research) and Phase 1 (Design & Contracts), re-validat
    - Entity relationships and state transitions
    - Validation rules and performance considerations
 
-2. **contracts/commitlint-config.schema.json** (103 lines)
+1. **contracts/commitlint-config.schema.json** (103 lines)
+
    - JSON Schema validating .commitlintrc.yml files
    - Defines commit types (feat, fix, docs, etc.)
    - Scope restrictions and subject length limits
    - Rule configuration with severity levels
 
-3. **contracts/semantic-release-config.schema.json** (90 lines)
+1. **contracts/semantic-release-config.schema.json** (90 lines)
+
    - JSON Schema validating .releaserc.yml files
    - Branches, tag format, plugin configuration
    - Python (@semantic-release/exec) and npm plugin support
    - Changelog, Git, GitHub integration
 
-4. **contracts/release-workflow.schema.json** (246 lines)
+1. **contracts/release-workflow.schema.json** (246 lines)
+
    - JSON Schema validating .github/workflows/riso-release.yml files
    - Workflow triggers (push, workflow_dispatch)
    - Job structure with quality dependencies
-   - Environment variable definitions (GITHUB_TOKEN, PYPI_TOKEN, NPM_TOKEN, DOCKER_HUB_*)
+   - Environment variable definitions (GITHUB_TOKEN, PYPI_TOKEN, NPM_TOKEN, DOCKER_HUB\_\*)
    - Step validation (checkout, setup-node, setup-python, semantic-release)
 
-5. **quickstart.md** (350+ lines)
+1. **quickstart.md** (350+ lines)
+
    - Developer onboarding guide
    - Setup instructions (hook installation, GitHub Secrets)
    - Commit message format reference
@@ -280,6 +300,7 @@ After completing Phase 0 (Research) and Phase 1 (Design & Contracts), re-validat
 ### Post-Design Constitution Check
 
 All 7 principles verified with design-level evidence:
+
 - ✅ Module Sovereignty: Optional via Copier prompt, no baseline modifications
 - ✅ Deterministic Generation: All configs templated, no runtime lookups
 - ✅ Minimal Baseline: Node.js only when Node track enabled
@@ -291,11 +312,12 @@ All 7 principles verified with design-level evidence:
 ### Agent Context Updates
 
 Updated `.github/copilot-instructions.md`:
+
 - Added commitlint ≥18.0.0, semantic-release ≥23.0.0 to Active Technologies
-- Documented @semantic-release/* plugin ecosystem
+- Documented @semantic-release/\* plugin ecosystem
 - Registered Git hook installation pattern (`uv/pnpm run setup-hooks`)
 - Noted GitHub Secrets credential management with annual rotation
-- Listed performance targets (<30s/1000 commits, <10min release, <2min per registry)
+- Listed performance targets (\<30s/1000 commits, \<10min release, \<2min per registry)
 
 ### Next Steps
 
@@ -304,6 +326,7 @@ Updated `.github/copilot-instructions.md`:
 **Purpose**: Generate `tasks.md` with implementation task breakdown organized by user story.
 
 **Expected Deliverables**:
+
 - Task breakdown for each of 6 user stories (P1: commit enforcement, P1: changelog generation, P1: version automation, P2: GitHub releases, P2: breaking changes, P3: artifact publishing)
 - Tasks organized by implementation order with dependencies marked
 - Parallel tasks flagged with [P] for concurrent execution
@@ -311,12 +334,13 @@ Updated `.github/copilot-instructions.md`:
 - Checkpoints for validation after each user story
 
 **File Paths**:
+
 - Feature Directory: `/Users/ww/dev/projects/riso/specs/014-changelog-release-management/`
 - Implementation Plan: `/Users/ww/dev/projects/riso/specs/014-changelog-release-management/plan.md`
 - Specification: `/Users/ww/dev/projects/riso/specs/014-changelog-release-management/spec.md`
 - Branch: `014-changelog-release-management`
 
----
+______________________________________________________________________
 
-**Planning Phase Complete** ✅  
+**Planning Phase Complete** ✅\
 Ready for task breakdown and implementation.

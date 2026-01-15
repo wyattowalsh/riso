@@ -1,6 +1,6 @@
 # Tasks: API Rate Limiting & Throttling
 
-**Input**: Design documents from `/specs/011-api-rate-limit-throttle/`  
+**Input**: Design documents from `/specs/011-api-rate-limit-throttle/`\
 **Prerequisites**: plan.md ✅, spec.md ✅, research.md ✅, data-model.md ✅, contracts/ ✅, quickstart.md ✅
 
 **Tests**: Test tasks are included per the feature specification requirement SC-010 (≥90% line coverage, ≥80% branch coverage)
@@ -16,12 +16,13 @@
 ## Path Conventions
 
 **Project Structure**: Single project (Riso template shared module)
+
 - **Module**: `template/files/shared/rate_limiting/`
 - **Tests**: `tests/rate_limiting/`
 - **Config**: `template/files/shared/config/rate_limiting.toml.jinja`
 - **Docs**: `docs/modules/rate-limiting.md.jinja`
 
----
+______________________________________________________________________
 
 ## Phase 1: Setup (Shared Infrastructure)
 
@@ -35,7 +36,7 @@
 - [ ] T006 [P] Create TOML config template file in template/files/shared/config/rate_limiting.toml.jinja with schema from research.md
 - [ ] T007 [P] Create module documentation file in docs/modules/rate-limiting.md.jinja based on quickstart.md
 
----
+______________________________________________________________________
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
@@ -60,18 +61,19 @@
 ### Core Utilities
 
 - [ ] T016 [P] Implement client ID extraction logic in template/files/shared/rate_limiting/client_id.py (extract_client_id function with rightmost untrusted IP strategy per research.md)
-- [ ] T017 [P] Implement rate limit headers generation in template/files/shared/rate_limiting/headers.py (generate_headers function for X-RateLimit-*, Retry-After per contracts/openapi.yml)
+- [ ] T017 [P] Implement rate limit headers generation in template/files/shared/rate_limiting/headers.py (generate_headers function for X-RateLimit-\*, Retry-After per contracts/openapi.yml)
 - [ ] T018 [P] Implement Prometheus metrics in template/files/shared/rate_limiting/metrics.py (5 metrics from research.md: requests_total, exceeded_total, current_usage, redis_latency, redis_errors)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
----
+______________________________________________________________________
 
 ## Phase 3: User Story 1 - Basic Per-Client Rate Limiting (Priority: P1) 🎯 MVP
 
 **Goal**: Implement IP-based rate limiting with token bucket algorithm, return HTTP 429 when limit exceeded, include standard rate limit headers in all responses
 
-**Independent Test**: 
+**Independent Test**:
+
 ```bash
 # Start Redis and FastAPI app, send 101 requests from single IP
 for i in {1..101}; do curl -i http://localhost:8000/api/v1/test; done
@@ -97,13 +99,14 @@ for i in {1..101}; do curl -i http://localhost:8000/api/v1/test; done
 
 **Checkpoint**: At this point, basic IP-based rate limiting should be fully functional and testable independently
 
----
+______________________________________________________________________
 
 ## Phase 4: User Story 2 - Per-Endpoint Rate Limiting (Priority: P1)
 
 **Goal**: Support configuring different rate limits for different API endpoints with wildcard patterns, maintain separate counters per endpoint
 
 **Independent Test**:
+
 ```bash
 # Configure /health with 1000 req/min, /compute with 10 req/min in config.toml
 # Send 15 requests to /health, 11 requests to /compute
@@ -124,13 +127,14 @@ for i in {1..101}; do curl -i http://localhost:8000/api/v1/test; done
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently (IP-based + per-endpoint limiting)
 
----
+______________________________________________________________________
 
 ## Phase 5: User Story 3 - Authenticated User Rate Limiting (Priority: P1)
 
 **Goal**: Apply rate limits based on authenticated user identity from JWT tokens, with tier-based limits (anonymous, standard, premium)
 
 **Independent Test**:
+
 ```bash
 # Configure tiers: anonymous=100, standard=1000, premium=5000
 # Send unauthenticated request → verify 100 req/min limit (IP-based)
@@ -154,13 +158,14 @@ for i in {1..101}; do curl -i http://localhost:8000/api/v1/test; done
 
 **Checkpoint**: All three P1 user stories should now be independently functional (IP + per-endpoint + user/tier limiting)
 
----
+______________________________________________________________________
 
 ## Phase 6: User Story 4 - Rate Limit Configuration Management (Priority: P2)
 
 **Goal**: Load rate limits from TOML files and environment variables, support hot reload via SIGHUP, validate configuration at startup
 
 **Independent Test**:
+
 ```bash
 # Start app with config.toml (default_limit=100)
 # Verify 100 req/min limit applied
@@ -184,13 +189,14 @@ for i in {1..101}; do curl -i http://localhost:8000/api/v1/test; done
 
 **Checkpoint**: Configuration management complete, supports TOML + env vars + hot reload
 
----
+______________________________________________________________________
 
 ## Phase 7: User Story 5 - Distributed Rate Limiting (Priority: P2)
 
 **Goal**: Ensure rate limits are enforced consistently across multiple API server instances using Redis as shared state backend
 
 **Independent Test**:
+
 ```bash
 # Start 3 API instances behind load balancer, Redis backend
 # Configure 100 req/min limit
@@ -215,13 +221,14 @@ for i in {1..101}; do curl -i http://localhost:8000/api/v1/test; done
 
 **Checkpoint**: Distributed rate limiting complete with HA, failover, and error handling
 
----
+______________________________________________________________________
 
 ## Phase 8: User Story 6 - Rate Limit Monitoring & Observability (Priority: P2)
 
 **Goal**: Export Prometheus metrics and structured logs for rate limiting activity
 
 **Independent Test**:
+
 ```bash
 # Start app with Prometheus metrics enabled
 # Send requests that hit rate limit
@@ -245,13 +252,14 @@ for i in {1..101}; do curl -i http://localhost:8000/api/v1/test; done
 
 **Checkpoint**: Observability complete with Prometheus metrics and structured logs
 
----
+______________________________________________________________________
 
 ## Phase 9: User Story 7 - Rate Limit Response Headers (Priority: P3)
 
-**Goal**: Include standard rate limit headers (X-RateLimit-*, Retry-After) in all API responses with JSON error body on 429
+**Goal**: Include standard rate limit headers (X-RateLimit-\*, Retry-After) in all API responses with JSON error body on 429
 
 **Independent Test**:
+
 ```bash
 # Send requests to rate-limited endpoint
 # Verify headers in 200 response: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
@@ -275,7 +283,7 @@ for i in {1..101}; do curl -i http://localhost:8000/api/v1/test; done
 
 **Checkpoint**: Response headers and error bodies complete per OpenAPI spec
 
----
+______________________________________________________________________
 
 ## Phase 10: Optional Features (FR-018 to FR-021)
 
@@ -295,7 +303,7 @@ for i in {1..101}; do curl -i http://localhost:8000/api/v1/test; done
 
 ### Multiple Time Windows (FR-020)
 
-- [ ] T082 [P] Extend LimitConfig to support multiple windows in config.py (windows: list[tuple[int, int]] per spec.md FR-020)
+- [ ] T082 [P] Extend LimitConfig to support multiple windows in config.py (windows: list\[tuple[int, int]\] per spec.md FR-020)
 - [ ] T083 Update Redis backend to check all configured windows per spec.md FR-020
 - [ ] T084 Update error response to include all exceeded limits per contracts/openapi.yml multiple_limits_exceeded example
 
@@ -306,7 +314,7 @@ for i in {1..101}; do curl -i http://localhost:8000/api/v1/test; done
 - [ ] T087 Update middleware to apply penalty multiplier to cooldown per quickstart.md
 - [ ] T088 [P] Add progressive penalty tests in tests/rate_limiting/integration/test_middleware.py (test_penalty_escalation per spec.md FR-021)
 
----
+______________________________________________________________________
 
 ## Phase 11: Performance & Load Testing
 
@@ -316,9 +324,9 @@ for i in {1..101}; do curl -i http://localhost:8000/api/v1/test; done
 - [ ] T090 [P] Add latency measurement to load tests (verify P95 < 10ms per spec.md SC-003)
 - [ ] T091 Run load tests and record baseline metrics in samples/metadata/ (throughput, latency, accuracy per spec.md SC-002)
 - [ ] T092 [P] Implement chaos test for Redis shutdown in tests/rate_limiting/chaos/test_redis_failures.py (verify fail-open/closed per research.md)
-- [ ] T093 [P] Implement chaos test for Sentinel failover in tests/rate_limiting/chaos/test_redis_failures.py (verify <1s disruption per research.md)
+- [ ] T093 [P] Implement chaos test for Sentinel failover in tests/rate_limiting/chaos/test_redis_failures.py (verify \<1s disruption per research.md)
 
----
+______________________________________________________________________
 
 ## Phase 12: Documentation & Polish
 
@@ -332,7 +340,7 @@ for i in {1..101}; do curl -i http://localhost:8000/api/v1/test; done
 - [ ] T099 Run quickstart.md validation per quickstart.md steps (Docker Redis, FastAPI app, curl tests)
 - [ ] T100 Code review and refactoring for code quality per spec.md constitution check
 
----
+______________________________________________________________________
 
 ## Dependencies & Execution Order
 
@@ -379,7 +387,7 @@ for i in {1..101}; do curl -i http://localhost:8000/api/v1/test; done
 - **After US1 Complete**: US2, US3, US4, US6, US7 can start in parallel (if team capacity allows)
 - **Optional Features**: T076-T078 (exemptions), T079-T081 (sliding window), T082-T084 (multiple windows), T085-T088 (penalties) can run in parallel
 
----
+______________________________________________________________________
 
 ## Parallel Example: User Story 1 (MVP)
 
@@ -396,30 +404,30 @@ Task T024: "Implement token bucket algorithm (limiters/token_bucket.py)"
 # (Other US1 implementation tasks follow sequentially due to dependencies)
 ```
 
----
+______________________________________________________________________
 
 ## Implementation Strategy
 
 ### MVP First (User Story 1 Only)
 
 1. Complete Phase 1: Setup (T001-T007)
-2. Complete Phase 2: Foundational (T008-T018) - CRITICAL foundation
-3. Complete Phase 3: User Story 1 (T019-T029) - Basic IP-based rate limiting
-4. **STOP and VALIDATE**: Run quickstart.md test (101 requests, verify 100 succeed, 101st fails with 429)
-5. Deploy/demo if ready - this is a working MVP!
+1. Complete Phase 2: Foundational (T008-T018) - CRITICAL foundation
+1. Complete Phase 3: User Story 1 (T019-T029) - Basic IP-based rate limiting
+1. **STOP and VALIDATE**: Run quickstart.md test (101 requests, verify 100 succeed, 101st fails with 429)
+1. Deploy/demo if ready - this is a working MVP!
 
 **MVP Deliverable**: IP-based rate limiting with token bucket, Redis backend, standard headers, 429 responses
 
 ### Incremental Delivery
 
 1. **Foundation** (Phases 1-2): ~15 tasks → Redis backend, config system, utilities ready
-2. **MVP** (Phase 3 - US1): ~11 tasks → Basic rate limiting working end-to-end
-3. **Per-Endpoint** (Phase 4 - US2): ~6 tasks → Add endpoint-specific limits
-4. **User-Based** (Phase 5 - US3): ~7 tasks → Add JWT authentication and tiers
-5. **Configuration** (Phase 6 - US4): ~5 tasks → Add hot reload and env var overrides
-6. **Distributed** (Phase 7 - US5): ~5 tasks → Production-ready with HA
-7. **Observability** (Phase 8 - US6): ~5 tasks → Add metrics and logging
-8. **Polish** (Phases 9-12): ~28 tasks → Headers, optional features, testing, docs
+1. **MVP** (Phase 3 - US1): ~11 tasks → Basic rate limiting working end-to-end
+1. **Per-Endpoint** (Phase 4 - US2): ~6 tasks → Add endpoint-specific limits
+1. **User-Based** (Phase 5 - US3): ~7 tasks → Add JWT authentication and tiers
+1. **Configuration** (Phase 6 - US4): ~5 tasks → Add hot reload and env var overrides
+1. **Distributed** (Phase 7 - US5): ~5 tasks → Production-ready with HA
+1. **Observability** (Phase 8 - US6): ~5 tasks → Add metrics and logging
+1. **Polish** (Phases 9-12): ~28 tasks → Headers, optional features, testing, docs
 
 Each milestone adds value and can be independently deployed/demoed.
 
@@ -428,32 +436,34 @@ Each milestone adds value and can be independently deployed/demoed.
 With 3 developers after Foundation complete:
 
 1. **Team**: Complete Setup (Phase 1) + Foundational (Phase 2) together
-2. **Split after Foundational**:
+1. **Split after Foundational**:
    - Developer A: User Story 1 (Phase 3) - MVP critical path
    - Developer B: Configuration (Phase 6 US4) - can run parallel with US1
    - Developer C: Observability (Phase 8 US6) - can run parallel with US1
-3. **After US1 Complete**:
+1. **After US1 Complete**:
    - Developer A: User Story 2 (Phase 4)
    - Developer B: User Story 3 (Phase 5)
    - Developer C: User Story 7 (Phase 9)
-4. **Final Integration**: Distributed (Phase 7 US5) + Performance Testing (Phase 11) + Documentation (Phase 12)
+1. **Final Integration**: Distributed (Phase 7 US5) + Performance Testing (Phase 11) + Documentation (Phase 12)
 
----
+______________________________________________________________________
 
 ## Test Coverage Targets
 
 Per spec.md SC-010:
+
 - **Line Coverage**: ≥90%
 - **Branch Coverage**: ≥80%
 
 **Test Count by Type**:
+
 - Unit tests: ~15 test tasks (T019-T021, T030, T036-T038, T044-T046, T060, T068-T070, T081)
 - Integration tests: ~10 test tasks (T022-T023, T031, T052-T054, T061-T062, T088)
 - Load tests: ~2 test tasks (T089-T090)
 - Chaos tests: ~2 test tasks (T092-T093)
 - **Total**: ~29 test tasks out of 100 tasks (29% test focus)
 
----
+______________________________________________________________________
 
 ## Success Criteria Mapping
 
@@ -475,7 +485,7 @@ Tasks map to success criteria from spec.md:
 - **SC-014** (Client Library Compatibility): T071-T075
 - **SC-015** (Client Retry Guidance): T094, T096
 
----
+______________________________________________________________________
 
 ## Notes
 
@@ -489,7 +499,7 @@ Tasks map to success criteria from spec.md:
 - Lua script (60 lines) is pre-written in data-model.md - copy into T013
 - OpenAPI spec is complete in contracts/ - use for T023, T028, T070, T073-T075
 
----
+______________________________________________________________________
 
 ## Total Task Count: 100 tasks
 

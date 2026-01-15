@@ -3,8 +3,8 @@
 ## 1. Install Prerequisites
 
 1. Ensure GitHub CLI (or git), Python 3.11+, Node.js 20 LTS, and pnpm are available on your workstation.
-2. Install `uv` once via `pipx install uv` (or download the standalone installer).
-3. Install Playwright browsers only when the docs or API modules request them (CI handles caching).
+1. Install `uv` once via `pipx install uv` (or download the standalone installer).
+1. Install Playwright browsers only when the docs or API modules request them (CI handles caching).
 
 ## 2. Render the Baseline Project
 
@@ -30,6 +30,7 @@ uv run pylint src
 ## 4. Explore Optional Modules
 
 Run `copier copy` with `--data` or interactively to enable modules:
+
 - `cli_module=yes` adds a Typer-powered CLI and Vitest smoke tests.
 - `api_tracks=python,node` scaffolds FastAPI and Fastify services with shared logic.
 - `docs_site=fumadocs` switches the docs prompt to the TypeScript-oriented site.

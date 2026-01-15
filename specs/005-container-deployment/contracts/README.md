@@ -9,6 +9,7 @@ This directory contains API contracts and interface definitions for container-re
 **File**: `health_check_fastapi.py`
 
 **Contract**:
+
 ```python
 from fastapi import FastAPI, Response, status
 from pydantic import BaseModel
@@ -33,20 +34,22 @@ async def health_check() -> HealthResponse:
 ```
 
 **Contract Guarantees**:
+
 - Endpoint path: `/health` (immutable)
-- Response time: <100ms (p95)
+- Response time: \<100ms (p95)
 - Status code: 200 OK when healthy
 - Content-Type: `application/json`
 - No authentication required (public endpoint)
 - No side effects (idempotent)
 
----
+______________________________________________________________________
 
 ### Fastify Health Check
 
 **File**: `health_check_fastify.ts`
 
 **Contract**:
+
 ```typescript
 interface HealthResponse {
   status: string;
@@ -72,14 +75,15 @@ app.get<{ Reply: HealthResponse }>('/health', async (request, reply) => {
 ```
 
 **Contract Guarantees**:
+
 - Endpoint path: `/health` (immutable)
-- Response time: <100ms (p95)
+- Response time: \<100ms (p95)
 - Status code: 200 OK when healthy
 - Content-Type: `application/json`
 - No authentication required (public endpoint)
 - No side effects (idempotent)
 
----
+______________________________________________________________________
 
 ## Dockerfile Template Interface
 
@@ -88,12 +92,14 @@ app.get<{ Reply: HealthResponse }>('/health', async (request, reply) => {
 **Contract**: Dockerfile.jinja must adapt based on copier prompts
 
 **Variables**:
+
 - `api_tracks` (str): One of `"none"`, `"python"`, `"node"`, `"python+node"`
 - `cli_module` (str): One of `"enabled"`, `"disabled"`
 - `docs_site` (str): One of `"fumadocs"`, `"sphinx-shibuya"`, `"docusaurus"`, `"none"`
 - `shared_logic` (str): One of `"enabled"`, `"disabled"`
 
 **Rendering Rules**:
+
 ```jinja2
 {%- if api_tracks | contains("python") %}
 # Python API stage
@@ -114,12 +120,13 @@ CMD ["uv", "run", "python", "-m", "{{ package_name }}.cli", "--help"]
 ```
 
 **Contract Guarantees**:
-- Minimal baseline: `api_tracks=none` + `cli_module=disabled` produces <200MB Python runtime
+
+- Minimal baseline: `api_tracks=none` + `cli_module=disabled` produces \<200MB Python runtime
 - API projects: Include health check endpoint and EXPOSE declaration
 - CLI projects: Set CMD to CLI entrypoint with --help default
 - Docs projects: Multi-stage build with Nginx/Caddy serving static files
 
----
+______________________________________________________________________
 
 ## docker-compose Template Interface
 
@@ -128,11 +135,13 @@ CMD ["uv", "run", "python", "-m", "{{ package_name }}.cli", "--help"]
 **Contract**: docker-compose.yml.jinja must orchestrate services based on enabled modules
 
 **Variables**:
+
 - `api_tracks` (str): Determines which API services to include
 - `docs_site` (str): Determines docs service configuration
 - `include_databases` (bool): Controls PostgreSQL/Redis inclusion
 
 **Service Definitions**:
+
 ```yaml
 services:
   {%- if api_tracks | contains("python") %}
@@ -174,13 +183,14 @@ services:
 ```
 
 **Contract Guarantees**:
+
 - Database services only rendered when `include_databases=yes` AND `api_tracks` includes API
 - Health checks configured with 5s timeout, 3 retries, 2s intervals
 - Service dependencies use `condition: service_healthy` for proper startup order
 - Environment variables use `${VAR:-default}` pattern for flexibility
 - Volume persistence for databases declared in top-level `volumes` section
 
----
+______________________________________________________________________
 
 ## GitHub Actions Workflow Interface
 
@@ -191,12 +201,14 @@ services:
 **Contract**: Workflow must lint, build, scan, and upload artifacts
 
 **Jobs**:
+
 1. **hadolint**: Lint Dockerfile with hadolint
-2. **build**: Build container with BuildKit caching
-3. **scan**: Scan with Trivy for vulnerabilities
-4. **upload-artifacts**: Upload build logs, SBOM, scan reports
+1. **build**: Build container with BuildKit caching
+1. **scan**: Scan with Trivy for vulnerabilities
+1. **upload-artifacts**: Upload build logs, SBOM, scan reports
 
 **Artifact Structure**:
+
 ```text
 artifacts/
 ├── build-log.txt           # Docker build output
@@ -206,13 +218,14 @@ artifacts/
 ```
 
 **Contract Guarantees**:
+
 - hadolint must pass with zero errors (warnings allowed)
 - Trivy scan must pass with zero HIGH/CRITICAL vulnerabilities
 - Artifacts retained for 90 days
 - Build fails fast on linting or scanning errors
 - Cache hit rate >70% for incremental builds
 
----
+______________________________________________________________________
 
 ### Container Publish Workflow
 
@@ -221,12 +234,14 @@ artifacts/
 **Contract**: Workflow must build, scan, tag, and publish to registry
 
 **Jobs**:
+
 1. **build-and-scan**: Build + scan (reuses build workflow logic)
-2. **publish-ghcr**: Publish to GitHub Container Registry
-3. **publish-dockerhub** (optional): Publish to Docker Hub
-4. **publish-ecr** (optional): Publish to AWS ECR
+1. **publish-ghcr**: Publish to GitHub Container Registry
+1. **publish-dockerhub** (optional): Publish to Docker Hub
+1. **publish-ecr** (optional): Publish to AWS ECR
 
 **Tagging Strategy**:
+
 ```bash
 # For main branch push:
 - latest
@@ -240,13 +255,14 @@ artifacts/
 ```
 
 **Contract Guarantees**:
+
 - OIDC authentication for ghcr.io via `GITHUB_TOKEN`
 - Image pushed only after successful scan (zero HIGH/CRITICAL)
 - Multi-platform builds (amd64, arm64) optional via matrix
 - Retry logic with exponential backoff (3 attempts)
 - SBOM and scan reports attached as release artifacts
 
----
+______________________________________________________________________
 
 ## Validation Scripts
 
@@ -255,6 +271,7 @@ artifacts/
 **File**: `.hadolint.yaml.jinja`
 
 **Contract**:
+
 ```yaml
 ignored:
   - DL3008  # Pin versions in apt-get install (not applicable to slim images)
@@ -263,7 +280,7 @@ ignored:
 failure-threshold: error  # Warnings allowed, errors block build
 ```
 
----
+______________________________________________________________________
 
 ### Dockerfile Validation Script
 
@@ -272,6 +289,7 @@ failure-threshold: error  # Warnings allowed, errors block build
 **Contract**: Must validate all rendered Dockerfiles with hadolint
 
 **Function Signature**:
+
 ```python
 def validate_dockerfile(dockerfile_path: Path) -> ValidationResult:
     """Run hadolint on Dockerfile and return validation result.
@@ -289,11 +307,12 @@ def validate_dockerfile(dockerfile_path: Path) -> ValidationResult:
 ```
 
 **Exit Codes**:
+
 - 0: All Dockerfiles pass hadolint (zero errors)
 - 1: One or more Dockerfiles have hadolint errors
 - 2: hadolint not installed or execution error
 
----
+______________________________________________________________________
 
 ## Integration Points
 
@@ -302,12 +321,14 @@ def validate_dockerfile(dockerfile_path: Path) -> ValidationResult:
 **Contract**: Container workflows extend existing CI/CD infrastructure
 
 **Shared Components**:
+
 - `actions/checkout@v4`: Repository checkout
 - `actions/setup-python@v5`: Python environment (for validation scripts)
 - `actions/cache@v4`: BuildKit and layer caching
 - `actions/upload-artifact@v4`: Artifact uploads (90-day retention)
 
 **New Components**:
+
 - `docker/setup-buildx-action@v3`: BuildKit configuration
 - `docker/login-action@v3`: Registry authentication
 - `docker/build-push-action@v5`: Container build and push
@@ -315,16 +336,18 @@ def validate_dockerfile(dockerfile_path: Path) -> ValidationResult:
 - `hadolint/hadolint-action@v3`: Dockerfile linting
 
 **Contract Guarantees**:
+
 - Workflows follow feature 004 naming convention (`riso-*`)
 - Retry logic consistent with feature 004 (3 attempts, exponential backoff)
 - Artifact retention matches feature 004 (90 days)
 - Cache strategy aligns with feature 004 (lock file hashing)
 
----
+______________________________________________________________________
 
 ## Summary
 
 All contracts define clear interfaces for:
+
 - Health check endpoints (Python/Node)
 - Dockerfile conditional rendering
 - docker-compose service orchestration

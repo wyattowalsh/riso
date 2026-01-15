@@ -13,6 +13,7 @@ This document defines the key entities, their attributes, relationships, and val
 **Description**: The main server instance managing protocol implementation, transport layer, capability registration, and request routing.
 
 **Attributes**:
+
 - `name: string` - Server identifier (alphanumeric + hyphens, max 64 chars)
 - `version: string` - Semantic version (MAJOR.MINOR.PATCH format)
 - `configuration: MCPConfiguration` - Server settings
@@ -23,6 +24,7 @@ This document defines the key entities, their attributes, relationships, and val
 - `state: ServerState` - Current lifecycle state (initializing, ready, shutting_down, stopped)
 
 **Relationships**:
+
 - HAS-ONE `MCPConfiguration`
 - HAS-ONE `MCPTransport`
 - HAS-MANY `MCPTool` (registered via decorators/methods)
@@ -30,25 +32,28 @@ This document defines the key entities, their attributes, relationships, and val
 - HAS-MANY `MCPPrompt` (registered via decorators/methods)
 
 **Validation Rules**:
+
 - `name` must match pattern `^[a-z0-9-]+$`
 - `version` must follow semver: `^\d+\.\d+\.\d+$`
 - At least one capability (tool, resource, or prompt) must be registered before server can start
 - State transitions: initializing → ready → shutting_down → stopped (no skipping states)
 
 **State Diagram**:
+
 ```
 initializing → ready ⟷ shutting_down → stopped
                 ↑________________________↓
               (restart)
 ```
 
----
+______________________________________________________________________
 
 ### MCPTool
 
 **Description**: A callable function exposed via MCP protocol with JSON Schema validation and typed responses.
 
 **Attributes**:
+
 - `name: string` - Unique tool identifier (alphanumeric + underscores, max 64 chars)
 - `description: string` - Human-readable purpose (max 500 chars)
 - `input_schema: JSONSchema` - Parameter validation schema
@@ -57,11 +62,13 @@ initializing → ready ⟷ shutting_down → stopped
 - `retry_config: RetryConfig | null` - Optional retry policy for transient failures
 
 **Relationships**:
+
 - BELONGS-TO `MCPServer`
 - USES `JSONSchema` for input validation
 - RETURNS `ToolResult` (success) or `MCPError` (failure)
 
 **Validation Rules**:
+
 - `name` must match pattern `^[a-z][a-z0-9_]*$` (lowercase, starts with letter)
 - `description` required, non-empty
 - `input_schema` must be valid JSON Schema Draft 7 or later
@@ -70,6 +77,7 @@ initializing → ready ⟷ shutting_down → stopped
 - Tool names must be unique within server
 
 **Example**:
+
 ```
 Tool: fetch_url
 Description: "Fetch content from a URL with timeout and retry logic"
@@ -78,13 +86,14 @@ Handler: async (url, timeout) => { /* fetch logic */ }
 Timeout: 30 seconds
 ```
 
----
+______________________________________________________________________
 
 ### MCPResource
 
 **Description**: A URI-addressable piece of data or content with MIME type specification.
 
 **Attributes**:
+
 - `uri_pattern: string` - URI template with optional parameters (e.g., `file:///{path}`)
 - `name: string` - Unique resource identifier
 - `description: string` - Human-readable purpose
@@ -93,10 +102,12 @@ Timeout: 30 seconds
 - `is_static: boolean` - Whether content is fixed (true) or computed (false)
 
 **Relationships**:
+
 - BELONGS-TO `MCPServer`
 - RETURNS `ResourceContent` (success) or `MCPError` (failure)
 
 **Validation Rules**:
+
 - `uri_pattern` must be valid URI template (RFC 6570)
 - `name` must match pattern `^[a-z][a-z0-9_]*$`
 - `description` required, non-empty
@@ -106,6 +117,7 @@ Timeout: 30 seconds
 - Resource names must be unique within server
 
 **Example**:
+
 ```
 Static Resource: about
 URI: resource://about
@@ -118,13 +130,14 @@ MIME Type: application/json
 Content: Directory listing computed from {path} parameter
 ```
 
----
+______________________________________________________________________
 
 ### MCPPrompt
 
 **Description**: A reusable template for LLM interactions with parameter substitution.
 
 **Attributes**:
+
 - `name: string` - Unique prompt identifier
 - `description: string` - Human-readable purpose
 - `parameters: Map<string, ParameterSpec>` - Template variables with types
@@ -132,11 +145,13 @@ Content: Directory listing computed from {path} parameter
 - `examples: List<PromptExample>` - Sample inputs/outputs for documentation
 
 **Relationships**:
+
 - BELONGS-TO `MCPServer`
 - USES `ParameterSpec` for type validation
 - RETURNS `PromptMessages` (list of system/user/assistant messages)
 
 **Validation Rules**:
+
 - `name` must match pattern `^[a-z][a-z0-9_]*$`
 - `description` required, non-empty
 - All parameters referenced in template must be defined in `parameters` map
@@ -145,6 +160,7 @@ Content: Directory listing computed from {path} parameter
 - Prompt names must be unique within server
 
 **Example**:
+
 ```
 Prompt: code_review
 Description: "Generate a code review with specific focus areas"
@@ -157,13 +173,14 @@ Template:
   - User: "Review this {language} code focusing on {focus}: {code}"
 ```
 
----
+______________________________________________________________________
 
 ### MCPConfiguration
 
 **Description**: Server settings loaded from config file and environment variables.
 
 **Attributes**:
+
 - `server_name: string` - Server identifier
 - `server_version: string` - Semantic version
 - `log_level: LogLevel` - Logging verbosity (DEBUG|INFO|WARNING|ERROR|CRITICAL)
@@ -179,10 +196,12 @@ Template:
 - `profile: string` - Environment profile (development|production)
 
 **Relationships**:
+
 - BELONGS-TO `MCPServer`
 - LOADED-FROM config file (TOML/JSON) and environment variables
 
 **Validation Rules**:
+
 - `server_name` and `server_version` required
 - `log_level` must be valid enum value
 - `transport_type` must be STDIO or HTTP
@@ -194,28 +213,32 @@ Template:
 - Environment variables override config file (precedence: env > file > defaults)
 
 **Loading Precedence**:
-1. Environment variables (`MCP_SERVER_NAME`, `MCP_LOG_LEVEL`, etc.)
-2. Config file (`config.toml` or `config.json`)
-3. Built-in defaults
 
----
+1. Environment variables (`MCP_SERVER_NAME`, `MCP_LOG_LEVEL`, etc.)
+1. Config file (`config.toml` or `config.json`)
+1. Built-in defaults
+
+______________________________________________________________________
 
 ### MCPTransport
 
 **Description**: Abstraction over communication mechanism (STDIO or HTTP).
 
 **Attributes**:
+
 - `type: TransportType` - STDIO or HTTP
 - `state: TransportState` - Current connection state (connecting, connected, disconnected)
 - `message_queue: Queue<Message>` - Pending outbound messages
 - `correlation_map: Map<string, Promise>` - Request/response correlation
 
 **Relationships**:
+
 - BELONGS-TO `MCPServer`
 - SENDS `Message` (JSON-RPC 2.0 format)
 - RECEIVES `Message` (JSON-RPC 2.0 format)
 
 **Validation Rules**:
+
 - STDIO transport: Must use stdin for input, stdout for output, stderr for errors
 - HTTP transport: Must expose POST endpoints for all MCP methods
 - HTTP transport: Must implement SSE endpoint for server-initiated messages
@@ -224,34 +247,39 @@ Template:
 - Correlation IDs must be unique per request
 
 **Methods** (Abstract Interface):
+
 - `send_message(message: Message) -> void` - Send JSON-RPC message
 - `receive_message() -> Message` - Receive JSON-RPC message (async/blocking)
 - `close() -> void` - Gracefully close connection
 
 **STDIO Implementation**:
+
 - Read from stdin line by line (newline-delimited JSON)
 - Write to stdout with trailing newline
 - Handle EOF gracefully (client disconnection)
 
 **HTTP Implementation**:
+
 - POST `/mcp/{method}` - Method invocation
 - GET `/mcp/sse` - Server-Sent Events stream
 - CORS headers if configured
 - Authentication middleware (Bearer token, API key)
 
----
+______________________________________________________________________
 
 ## Supporting Types
 
 ### ToolResult
 
 **Attributes**:
+
 - `content: List<Content>` - Response content (text, images, etc.)
 - `is_error: boolean` - Whether result represents an error
 
 ### ResourceContent
 
 **Attributes**:
+
 - `uri: string` - Resource URI
 - `mime_type: string` - Content type
 - `content: string | bytes` - Actual content
@@ -260,17 +288,20 @@ Template:
 ### PromptMessages
 
 **Attributes**:
+
 - `messages: List<Message>` - System/user/assistant messages
 - `message: { role: string, content: string }` - Single message structure
 
 ### MCPError
 
 **Attributes**:
+
 - `code: number` - JSON-RPC error code
 - `message: string` - Error description
 - `data: object | null` - Additional error context
 
 **Error Codes**:
+
 - `-32700`: Parse error (invalid JSON)
 - `-32600`: Invalid request
 - `-32601`: Method not found
@@ -278,11 +309,12 @@ Template:
 - `-32603`: Internal error
 - `-32000 to -32099`: MCP-specific errors
 
----
+______________________________________________________________________
 
 ## Entity Lifecycle
 
 ### Server Lifecycle
+
 ```
 1. Load configuration (file + environment)
 2. Validate configuration schema
@@ -297,6 +329,7 @@ Template:
 ```
 
 ### Tool Invocation Lifecycle
+
 ```
 1. Client sends tools/call request
 2. Server validates tool name exists
@@ -309,6 +342,7 @@ Template:
 ```
 
 ### Resource Fetch Lifecycle
+
 ```
 1. Client sends resources/read request
 2. Server validates URI matches registered pattern
@@ -321,33 +355,33 @@ Template:
 9. Server sends response to client
 ```
 
----
+______________________________________________________________________
 
 ## Validation Constraints
 
 ### Cross-Entity Constraints
 
 1. **Unique Names**: Tool, resource, and prompt names must be unique across all capability types within a server
-2. **Timeout Consistency**: Individual capability timeouts cannot exceed server max timeout (300 seconds)
-3. **Transport Compatibility**: STDIO transport doesn't require authentication; HTTP transport must implement auth
-4. **Resource Size**: All responses (tool results, resource content) must respect max_response_size_mb limit
-5. **Concurrent Execution**: Tools marked as thread-safe can execute concurrently; otherwise, serialized execution
+1. **Timeout Consistency**: Individual capability timeouts cannot exceed server max timeout (300 seconds)
+1. **Transport Compatibility**: STDIO transport doesn't require authentication; HTTP transport must implement auth
+1. **Resource Size**: All responses (tool results, resource content) must respect max_response_size_mb limit
+1. **Concurrent Execution**: Tools marked as thread-safe can execute concurrently; otherwise, serialized execution
 
 ### Configuration Validation
 
 1. **Required Fields**: server_name, server_version, transport_type always required
-2. **HTTP Requirements**: If transport=HTTP, must specify http_host and http_port
-3. **Rate Limiting**: Only applicable for HTTP transport (ignored for STDIO)
-4. **Profile Values**: Must be "development" or "production" (case-sensitive)
+1. **HTTP Requirements**: If transport=HTTP, must specify http_host and http_port
+1. **Rate Limiting**: Only applicable for HTTP transport (ignored for STDIO)
+1. **Profile Values**: Must be "development" or "production" (case-sensitive)
 
 ### Runtime Constraints
 
 1. **Memory Limits**: Total in-flight requests cannot exceed 100MB memory usage
-2. **Concurrent Requests**: Maximum 100 concurrent requests per server instance
-3. **Request Queue**: Maximum 1000 queued requests (reject with 503 if exceeded)
-4. **Graceful Shutdown**: Maximum 30 seconds to complete in-flight requests before forced termination
+1. **Concurrent Requests**: Maximum 100 concurrent requests per server instance
+1. **Request Queue**: Maximum 1000 queued requests (reject with 503 if exceeded)
+1. **Graceful Shutdown**: Maximum 30 seconds to complete in-flight requests before forced termination
 
----
+______________________________________________________________________
 
 ## Persistence
 
@@ -355,7 +389,7 @@ MCP servers are **stateless** - no database or persistent storage required. Conf
 
 **Exception**: Logs are written to configured output (stdout, file, external logging service) but not used for state recovery.
 
----
+______________________________________________________________________
 
 ## Relationships Diagram
 
@@ -391,7 +425,7 @@ MCPConfiguration (1)
     └── loaded from file (TOML/JSON) + environment
 ```
 
----
+______________________________________________________________________
 
 ## Implementation Notes
 

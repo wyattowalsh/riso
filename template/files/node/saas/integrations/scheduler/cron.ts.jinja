@@ -1,0 +1,295 @@
+{% if saas_starter_module == "enabled" %}
+/**
+ * Scheduled Jobs / Cron Tasks
+ * 
+ * Utilities for running scheduled background tasks.
+ * Works with Trigger.dev or Inngest based on your configuration.
+ * 
+ * Common use cases:
+ * - Subscription renewal checks
+ * - Usage report generation
+ * - Data cleanup / archival
+ * - Email digest sending
+ * - Analytics aggregation
+ */
+
+{% if saas_jobs == 'triggerdev' %}
+import { schedules } from '@trigger.dev/sdk/v3';
+{% if saas_observability_structured_logging %}
+import { logger } from '@/lib/observability/logger';
+{% endif %}
+
+// ============================================================================
+// Scheduled Tasks with Trigger.dev
+// ============================================================================
+
+/**
+ * Daily subscription check - runs at midnight UTC
+ * Checks for expiring trials and failed payments
+ */
+export const dailySubscriptionCheck = schedules.task({
+  id: 'daily-subscription-check',
+  cron: '0 0 * * *', // Every day at midnight UTC
+  run: async () => {
+    {% if saas_observability_structured_logging %}
+    logger.info({ msg: 'Running daily subscription check' });
+    {% endif %}
+    
+    {% if saas_orm == 'prisma' %}
+    const { prisma } = await import('@/lib/database/client');
+    
+    // Find trials ending in 3 days
+    const trialEndingSoon = await prisma.subscription.findMany({
+      where: {
+        status: 'trialing',
+        trialEndsAt: {
+          gte: new Date(),
+          lte: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        },
+      },
+      include: { user: true },
+    });
+    
+    // Find past due subscriptions
+    const pastDue = await prisma.subscription.findMany({
+      where: {
+        status: 'past_due',
+        updatedAt: {
+          lte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days old
+        },
+      },
+      include: { user: true },
+    });
+    {% elif saas_orm == 'drizzle' %}
+    const { db } = await import('@/lib/database/client');
+    const { subscriptions, users } = await import('@/db/schema');
+    const { eq, and, gte, lte } = await import('drizzle-orm');
+    
+    const trialEndingSoon = await db.select()
+      .from(subscriptions)
+      .innerJoin(users, eq(subscriptions.userId, users.id))
+      .where(
+        and(
+          eq(subscriptions.status, 'trialing'),
+          gte(subscriptions.trialEndsAt, new Date()),
+          lte(subscriptions.trialEndsAt, new Date(Date.now() + 3 * 24 * 60 * 60 * 1000))
+        )
+      );
+    {% endif %}
+    
+    {% if saas_observability_structured_logging %}
+    logger.info({ 
+      msg: 'Subscription check complete',
+      trialsEndingSoon: trialEndingSoon?.length || 0,
+    });
+    {% endif %}
+    
+    return {
+      trialsEndingSoon: trialEndingSoon?.length || 0,
+    };
+  },
+});
+
+/**
+ * Weekly usage report - runs every Monday at 9am UTC
+ */
+export const weeklyUsageReport = schedules.task({
+  id: 'weekly-usage-report',
+  cron: '0 9 * * 1', // Every Monday at 9am UTC
+  run: async () => {
+    {% if saas_observability_structured_logging %}
+    logger.info({ msg: 'Generating weekly usage report' });
+    {% endif %}
+    
+    // Add your usage report logic here
+    // Example: aggregate analytics, generate PDF, send email
+    
+    return { success: true };
+  },
+});
+
+/**
+ * Hourly cleanup - runs every hour
+ * Cleans up expired sessions, old logs, etc.
+ */
+export const hourlyCleanup = schedules.task({
+  id: 'hourly-cleanup',
+  cron: '0 * * * *', // Every hour
+  run: async () => {
+    {% if saas_orm == 'prisma' %}
+    const { prisma } = await import('@/lib/database/client');
+    
+    // Delete expired password reset tokens
+    const deletedTokens = await prisma.passwordResetToken?.deleteMany({
+      where: {
+        expiresAt: { lt: new Date() },
+      },
+    });
+    
+    // Delete old audit logs (older than 90 days)
+    const deletedLogs = await prisma.auditLog?.deleteMany({
+      where: {
+        createdAt: { lt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) },
+      },
+    });
+    {% endif %}
+    
+    return { 
+      deletedTokens: deletedTokens?.count || 0,
+      deletedLogs: deletedLogs?.count || 0,
+    };
+  },
+});
+
+{% if saas_tenancy_model == 'b2b-teams' %}
+/**
+ * Monthly team usage aggregation
+ */
+export const monthlyTeamUsage = schedules.task({
+  id: 'monthly-team-usage',
+  cron: '0 0 1 * *', // First day of each month
+  run: async () => {
+    {% if saas_observability_structured_logging %}
+    logger.info({ msg: 'Aggregating monthly team usage' });
+    {% endif %}
+    
+    // Add team usage aggregation logic
+    
+    return { success: true };
+  },
+});
+{% endif %}
+
+{% elif saas_jobs == 'inngest' %}
+import { Inngest } from 'inngest';
+{% if saas_observability_structured_logging %}
+import { logger } from '@/lib/observability/logger';
+{% endif %}
+
+// ============================================================================
+// Scheduled Tasks with Inngest
+// ============================================================================
+
+export const inngest = new Inngest({ id: '{{ project_slug }}' });
+
+/**
+ * Daily subscription check - runs at midnight UTC
+ */
+export const dailySubscriptionCheck = inngest.createFunction(
+  { id: 'daily-subscription-check' },
+  { cron: '0 0 * * *' },
+  async ({ step }) => {
+    {% if saas_observability_structured_logging %}
+    logger.info({ msg: 'Running daily subscription check' });
+    {% endif %}
+    
+    const results = await step.run('check-subscriptions', async () => {
+      {% if saas_orm == 'prisma' %}
+      const { prisma } = await import('@/lib/database/client');
+      
+      const trialEndingSoon = await prisma.subscription.findMany({
+        where: {
+          status: 'trialing',
+          trialEndsAt: {
+            gte: new Date(),
+            lte: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+          },
+        },
+        include: { user: true },
+      });
+      
+      return { trialsEndingSoon: trialEndingSoon.length };
+      {% elif saas_orm == 'drizzle' %}
+      return { trialsEndingSoon: 0 };
+      {% endif %}
+    });
+    
+    // Send notifications for trials ending soon
+    {% if saas_email != 'none' %}
+    if (results.trialsEndingSoon > 0) {
+      await step.run('send-trial-reminders', async () => {
+        // Send reminder emails
+      });
+    }
+    {% endif %}
+    
+    return results;
+  }
+);
+
+/**
+ * Weekly usage report
+ */
+export const weeklyUsageReport = inngest.createFunction(
+  { id: 'weekly-usage-report' },
+  { cron: '0 9 * * 1' },
+  async ({ step }) => {
+    {% if saas_observability_structured_logging %}
+    logger.info({ msg: 'Generating weekly usage report' });
+    {% endif %}
+    
+    const report = await step.run('generate-report', async () => {
+      // Generate usage report
+      return { generated: true };
+    });
+    
+    await step.run('send-report', async () => {
+      // Send report via email
+    });
+    
+    return report;
+  }
+);
+
+/**
+ * Hourly cleanup
+ */
+export const hourlyCleanup = inngest.createFunction(
+  { id: 'hourly-cleanup' },
+  { cron: '0 * * * *' },
+  async ({ step }) => {
+    const results = await step.run('cleanup', async () => {
+      {% if saas_orm == 'prisma' %}
+      const { prisma } = await import('@/lib/database/client');
+      
+      const deletedTokens = await prisma.passwordResetToken?.deleteMany({
+        where: { expiresAt: { lt: new Date() } },
+      });
+      
+      return { deletedTokens: deletedTokens?.count || 0 };
+      {% else %}
+      return { deletedTokens: 0 };
+      {% endif %}
+    });
+    
+    return results;
+  }
+);
+
+{% if saas_tenancy_model == 'b2b-teams' %}
+/**
+ * Monthly team usage aggregation
+ */
+export const monthlyTeamUsage = inngest.createFunction(
+  { id: 'monthly-team-usage' },
+  { cron: '0 0 1 * *' },
+  async ({ step }) => {
+    return await step.run('aggregate-usage', async () => {
+      // Aggregate team usage
+      return { success: true };
+    });
+  }
+);
+{% endif %}
+
+// Export all functions for registration
+export const scheduledFunctions = [
+  dailySubscriptionCheck,
+  weeklyUsageReport,
+  hourlyCleanup,
+  {% if saas_tenancy_model == 'b2b-teams' %}
+  monthlyTeamUsage,
+  {% endif %}
+];
+{% endif %}
+{% endif %}

@@ -1,8 +1,8 @@
 # Feature Specification: MCP Server Scaffolds
 
-**Feature Branch**: `013-mcp-servers`  
-**Created**: 2025-11-02  
-**Status**: Draft  
+**Feature Branch**: `013-mcp-servers`\
+**Created**: 2025-11-02\
+**Status**: Draft\
 **Input**: Robust, advanced, and flexible MCP (Model Context Protocol) server scaffolds for both TypeScript and Python, enabling developers to quickly bootstrap production-ready MCP servers with best practices built-in.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -18,10 +18,10 @@ As a Python developer, I want to scaffold a complete MCP server with a single co
 **Acceptance Scenarios**:
 
 1. **Given** I have Python 3.11+ and uv installed, **When** I run `copier copy template/ my-mcp-server` with `mcp_module=enabled` and `mcp_language=python`, **Then** I get a project with `src/mcp_server/`, `pyproject.toml`, example tool/resource/prompt implementations, and complete documentation
-2. **Given** a scaffolded Python MCP server, **When** I run `uv sync && uv run python -m mcp_server`, **Then** the server starts successfully, registers all example capabilities, and responds to MCP protocol messages via STDIO
-3. **Given** a running Python MCP server, **When** I connect with MCP Inspector or Claude Desktop, **Then** I can discover and invoke all registered tools, fetch resources, and execute prompts with proper error handling
+1. **Given** a scaffolded Python MCP server, **When** I run `uv sync && uv run python -m mcp_server`, **Then** the server starts successfully, registers all example capabilities, and responds to MCP protocol messages via STDIO
+1. **Given** a running Python MCP server, **When** I connect with MCP Inspector or Claude Desktop, **Then** I can discover and invoke all registered tools, fetch resources, and execute prompts with proper error handling
 
----
+______________________________________________________________________
 
 ### User Story 2 - Bootstrap TypeScript MCP Server (Priority: P1)
 
@@ -34,10 +34,10 @@ As a TypeScript/Node.js developer, I want to scaffold a complete MCP server with
 **Acceptance Scenarios**:
 
 1. **Given** I have Node.js 20 LTS and pnpm installed, **When** I run `copier copy template/ my-mcp-server` with `mcp_module=enabled` and `mcp_language=typescript`, **Then** I get a project with `src/`, `package.json`, TypeScript configs, example implementations, and complete documentation
-2. **Given** a scaffolded TypeScript MCP server, **When** I run `pnpm install && pnpm run build && pnpm start`, **Then** the server compiles without errors, starts successfully, and responds to MCP protocol messages via STDIO
-3. **Given** a running TypeScript MCP server, **When** I connect with MCP Inspector, **Then** I can discover all capabilities with full type information and invoke them with IDE autocomplete support
+1. **Given** a scaffolded TypeScript MCP server, **When** I run `pnpm install && pnpm run build && pnpm start`, **Then** the server compiles without errors, starts successfully, and responds to MCP protocol messages via STDIO
+1. **Given** a running TypeScript MCP server, **When** I connect with MCP Inspector, **Then** I can discover all capabilities with full type information and invoke them with IDE autocomplete support
 
----
+______________________________________________________________________
 
 ### User Story 3 - Production-Ready Configuration (Priority: P2)
 
@@ -50,10 +50,10 @@ As a developer deploying MCP servers to production, I want built-in configuratio
 **Acceptance Scenarios**:
 
 1. **Given** a scaffolded MCP server, **When** I provide a config file (TOML for Python, JSON for TypeScript) with custom settings, **Then** the server loads and applies all configurations including log levels, timeouts, and resource limits
-2. **Given** a running MCP server with structured logging enabled, **When** any operation occurs (tool call, resource fetch, error), **Then** structured logs are emitted with correlation IDs, timestamps, and full context for debugging
-3. **Given** an MCP tool that throws an error, **When** invoked by a client, **Then** the server catches the error, logs it with stack trace, and returns a properly formatted MCP error response without crashing
+1. **Given** a running MCP server with structured logging enabled, **When** any operation occurs (tool call, resource fetch, error), **Then** structured logs are emitted with correlation IDs, timestamps, and full context for debugging
+1. **Given** an MCP tool that throws an error, **When** invoked by a client, **Then** the server catches the error, logs it with stack trace, and returns a properly formatted MCP error response without crashing
 
----
+______________________________________________________________________
 
 ### User Story 4 - Comprehensive Documentation (Priority: P2)
 
@@ -66,10 +66,10 @@ As a developer new to MCP, I want complete documentation with examples and best 
 **Acceptance Scenarios**:
 
 1. **Given** I've scaffolded an MCP server, **When** I read the generated `README.md`, **Then** I find quickstart instructions, architecture overview, example implementations, testing guide, and deployment instructions
-2. **Given** I want to implement a new MCP tool, **When** I consult the documentation, **Then** I find complete examples showing input validation, error handling, async operations, and response formatting
-3. **Given** I'm deploying to production, **When** I read the deployment guide, **Then** I find instructions for STDIO and HTTP transports, Claude Desktop integration, security hardening, and monitoring setup
+1. **Given** I want to implement a new MCP tool, **When** I consult the documentation, **Then** I find complete examples showing input validation, error handling, async operations, and response formatting
+1. **Given** I'm deploying to production, **When** I read the deployment guide, **Then** I find instructions for STDIO and HTTP transports, Claude Desktop integration, security hardening, and monitoring setup
 
----
+______________________________________________________________________
 
 ### User Story 5 - Advanced MCP Features (Priority: P3)
 
@@ -82,10 +82,10 @@ As an advanced MCP developer, I want examples of sophisticated features like pag
 **Acceptance Scenarios**:
 
 1. **Given** I need to return large datasets, **When** I implement a paginated resource following the scaffold examples, **Then** clients can request pages sequentially and the server efficiently streams results
-2. **Given** I have a long-running operation, **When** I implement a streaming tool, **Then** the server sends progress updates to the client and properly handles cancellation
-3. **Given** I need complex workflows, **When** I implement a multi-step tool chain where Tool B uses results from Tool A, **Then** the server coordinates execution and maintains state correctly
+1. **Given** I have a long-running operation, **When** I implement a streaming tool, **Then** the server sends progress updates to the client and properly handles cancellation
+1. **Given** I need complex workflows, **When** I implement a multi-step tool chain where Tool B uses results from Tool A, **Then** the server coordinates execution and maintains state correctly
 
----
+______________________________________________________________________
 
 ### User Story 6 - Multiple Transport Support (Priority: P3)
 
@@ -98,10 +98,10 @@ As a developer building cloud-based MCP services, I want support for HTTP/SSE tr
 **Acceptance Scenarios**:
 
 1. **Given** a scaffolded MCP server, **When** I configure it for HTTP transport and start it, **Then** it exposes RESTful endpoints for all MCP operations and an SSE endpoint for server-initiated messages
-2. **Given** an MCP server running in HTTP mode, **When** I send authenticated requests from a remote client, **Then** all tool calls, resource fetches, and prompt executions work identically to STDIO mode
-3. **Given** I need to switch transports, **When** I change the config from STDIO to HTTP, **Then** the server adapts without code changes to the tool/resource/prompt implementations
+1. **Given** an MCP server running in HTTP mode, **When** I send authenticated requests from a remote client, **Then** all tool calls, resource fetches, and prompt executions work identically to STDIO mode
+1. **Given** I need to switch transports, **When** I change the config from STDIO to HTTP, **Then** the server adapts without code changes to the tool/resource/prompt implementations
 
----
+______________________________________________________________________
 
 ### Edge Cases
 
@@ -235,23 +235,23 @@ As a developer building cloud-based MCP services, I want support for HTTP/SSE tr
 
 1. **MCP Protocol Stability**: Assumes MCP protocol version 2025-11-05 is stable and won't have breaking changes requiring immediate scaffold updates. If breaking changes occur, scaffolds will need rapid updates.
 
-2. **SDK Availability**: Assumes FastMCP (Python) and @modelcontextprotocol/sdk (TypeScript) remain actively maintained and compatible with latest MCP spec. Python implementation uses FastMCP for its Pythonic decorator-based API. Fallback: implement protocol layer directly if SDKs become unmaintained.
+1. **SDK Availability**: Assumes FastMCP (Python) and @modelcontextprotocol/sdk (TypeScript) remain actively maintained and compatible with latest MCP spec. Python implementation uses FastMCP for its Pythonic decorator-based API. Fallback: implement protocol layer directly if SDKs become unmaintained.
 
-3. **Claude Desktop Integration**: Assumes Claude Desktop remains the primary MCP client and its configuration format stays consistent. Other clients (VS Code extensions, web apps) may emerge but Claude Desktop is reference.
+1. **Claude Desktop Integration**: Assumes Claude Desktop remains the primary MCP client and its configuration format stays consistent. Other clients (VS Code extensions, web apps) may emerge but Claude Desktop is reference.
 
-4. **Developer Environment**: Assumes developers have Python 3.11+/uv or Node.js 20/pnpm already installed per riso baseline requirements. Pre-gen hooks validate these prerequisites.
+1. **Developer Environment**: Assumes developers have Python 3.11+/uv or Node.js 20/pnpm already installed per riso baseline requirements. Pre-gen hooks validate these prerequisites.
 
-5. **Use Case Focus**: Assumes most developers want local/Claude Desktop deployment initially (STDIO transport), with HTTP transport as growth path. STDIO examples are more prominent than HTTP.
+1. **Use Case Focus**: Assumes most developers want local/Claude Desktop deployment initially (STDIO transport), with HTTP transport as growth path. STDIO examples are more prominent than HTTP.
 
-6. **Configuration Preference**: Assumes Python developers prefer TOML (consistent with feature 009 and PEP 621) and TypeScript developers prefer JSON (consistent with package.json conventions).
+1. **Configuration Preference**: Assumes Python developers prefer TOML (consistent with feature 009 and PEP 621) and TypeScript developers prefer JSON (consistent with package.json conventions).
 
-7. **Testing Priority**: Assumes developers value working examples over exhaustive tests initially. Scaffolds provide high-value test examples but not 100% coverage of every edge case.
+1. **Testing Priority**: Assumes developers value working examples over exhaustive tests initially. Scaffolds provide high-value test examples but not 100% coverage of every edge case.
 
-8. **Documentation Format**: Assumes developers want documentation in Markdown within the scaffold project, not separate documentation sites. Links to external MCP spec/SDK docs for deep dives.
+1. **Documentation Format**: Assumes developers want documentation in Markdown within the scaffold project, not separate documentation sites. Links to external MCP spec/SDK docs for deep dives.
 
-9. **Production Deployment**: Assumes most production deployments will use containerization (feature 005). MCP scaffolds should include Dockerfile examples and health check endpoints.
+1. **Production Deployment**: Assumes most production deployments will use containerization (feature 005). MCP scaffolds should include Dockerfile examples and health check endpoints.
 
-10. **Security Model**: Assumes MCP servers deployed locally/Claude Desktop don't require authentication, but HTTP-deployed servers do. Authentication middleware is optional and configurable.
+1. **Security Model**: Assumes MCP servers deployed locally/Claude Desktop don't require authentication, but HTTP-deployed servers do. Authentication middleware is optional and configurable.
 
 ## Open Questions *(if applicable)*
 
@@ -271,23 +271,23 @@ As a developer building cloud-based MCP services, I want support for HTTP/SSE tr
 
 1. **Custom MCP Protocol Extensions**: Scaffolds implement MCP spec as-is. Custom protocol extensions, vendor-specific features, or experimental protocol changes are out of scope.
 
-2. **MCP Client Implementation**: This feature provides server scaffolds only. MCP client libraries, MCP Inspector alternatives, or custom testing clients are separate concerns.
+1. **MCP Client Implementation**: This feature provides server scaffolds only. MCP client libraries, MCP Inspector alternatives, or custom testing clients are separate concerns.
 
-3. **Language Beyond Python/TypeScript**: No support for Go, Rust, Java, or other MCP SDK languages in this feature. Future features may add them if demand warrants.
+1. **Language Beyond Python/TypeScript**: No support for Go, Rust, Java, or other MCP SDK languages in this feature. Future features may add them if demand warrants.
 
-4. **Complex Authentication Schemes**: HTTP transport will support Bearer tokens and API keys. OAuth2, SAML, mTLS, and other enterprise auth schemes are out of scope initially.
+1. **Complex Authentication Schemes**: HTTP transport will support Bearer tokens and API keys. OAuth2, SAML, mTLS, and other enterprise auth schemes are out of scope initially.
 
-5. **Advanced Streaming**: Basic SSE streaming for HTTP transport is in scope. Advanced patterns like bidirectional streaming, backpressure, or custom streaming protocols are out of scope.
+1. **Advanced Streaming**: Basic SSE streaming for HTTP transport is in scope. Advanced patterns like bidirectional streaming, backpressure, or custom streaming protocols are out of scope.
 
-6. **Built-in Tool Libraries**: Scaffolds provide examples of tools. Pre-built libraries of common tools (web search, file operations, database queries) are separate feature opportunities.
+1. **Built-in Tool Libraries**: Scaffolds provide examples of tools. Pre-built libraries of common tools (web search, file operations, database queries) are separate feature opportunities.
 
-7. **GUI/Admin Interface**: MCP servers are headless. Web UIs for server administration, monitoring dashboards, or graphical configuration editors are out of scope.
+1. **GUI/Admin Interface**: MCP servers are headless. Web UIs for server administration, monitoring dashboards, or graphical configuration editors are out of scope.
 
-8. **Multi-Tenancy**: Scaffolds support single-tenant deployments. Multi-tenant architectures, tenant isolation, per-tenant configuration, and tenant billing are out of scope.
+1. **Multi-Tenancy**: Scaffolds support single-tenant deployments. Multi-tenant architectures, tenant isolation, per-tenant configuration, and tenant billing are out of scope.
 
-9. **Distributed MCP Servers**: Scaffolds are for single-process servers. Distributed architectures, server clustering, load balancing, or service mesh integration are out of scope.
+1. **Distributed MCP Servers**: Scaffolds are for single-process servers. Distributed architectures, server clustering, load balancing, or service mesh integration are out of scope.
 
-10. **MCP Registry/Marketplace**: Publishing MCP servers to a registry, discovering public MCP servers, or marketplace features are separate ecosystem concerns.
+1. **MCP Registry/Marketplace**: Publishing MCP servers to a registry, discovering public MCP servers, or marketplace features are separate ecosystem concerns.
 
 ## Dependencies *(include if this feature is blocked by or builds on others)*
 
@@ -317,32 +317,32 @@ As a developer building cloud-based MCP services, I want support for HTTP/SSE tr
    **Impact**: High - Scaffolds could generate incompatible servers.
    **Mitigation**: Pin to specific MCP SDK versions, include protocol version in scaffold metadata, monitor MCP GitHub for changes, provide migration guides for breaking updates.
 
-2. **Risk**: FastMCP or official Python SDK become unmaintained or diverge in implementation.
+1. **Risk**: FastMCP or official Python SDK become unmaintained or diverge in implementation.
    **Likelihood**: Low - FastMCP is actively maintained; TypeScript SDK maintained by Anthropic.
    **Impact**: High - Would require rewriting Python scaffold protocol layer.
    **Mitigation**: Abstract protocol implementation behind interface, monitor FastMCP GitHub activity, have fallback plan to implement protocol directly using official spec or switch to official Python SDK if it becomes available and mature.
 
-3. **Risk**: Developers expect features beyond basic scaffolding (pre-built tool libraries, admin UIs).
+1. **Risk**: Developers expect features beyond basic scaffolding (pre-built tool libraries, admin UIs).
    **Likelihood**: Medium - Feature creep is common for developer tools.
    **Impact**: Medium - Could delay delivery or bloat scaffolds.
    **Mitigation**: Clearly document scope (in-spec, out-of-scope sections), provide extension points for custom features, link to community resources for advanced use cases.
 
-4. **Risk**: HTTP transport adds complexity without proportional value for most users.
+1. **Risk**: HTTP transport adds complexity without proportional value for most users.
    **Likelihood**: Low - STDIO covers majority use case (Claude Desktop).
    **Impact**: Medium - Increases maintenance burden, test matrix, and documentation size.
    **Mitigation**: Make HTTP transport fully optional (can be disabled at scaffold time), provide separate documentation section, ensure STDIO works perfectly first.
 
-5. **Risk**: TypeScript/Python scaffolds diverge in capabilities or quality, confusing users.
+1. **Risk**: TypeScript/Python scaffolds diverge in capabilities or quality, confusing users.
    **Likelihood**: Medium - Different languages, SDKs, and conventions.
    **Impact**: Medium - Users may perceive one language as "second-class."
    **Mitigation**: Share specification and test scenarios across both implementations, maintain feature parity, unified documentation explaining differences are language conventions not feature gaps.
 
-6. **Risk**: Integration with Claude Desktop changes requiring scaffold updates.
+1. **Risk**: Integration with Claude Desktop changes requiring scaffold updates.
    **Likelihood**: Medium - Claude Desktop MCP integration is relatively new.
    **Impact**: Medium - Generated servers might not work with new Claude Desktop versions.
    **Mitigation**: Document Claude Desktop version compatibility, include Claude Desktop config examples in scaffolds, test against both current and beta Claude Desktop versions.
 
-7. **Risk**: Performance issues with STDIO transport for high-throughput use cases.
+1. **Risk**: Performance issues with STDIO transport for high-throughput use cases.
    **Likelihood**: Low - STDIO has minimal overhead for typical Claude Desktop usage.
    **Impact**: Low - Most MCP servers are low-volume interactive tools.
    **Mitigation**: Document performance characteristics, recommend HTTP transport for high-throughput scenarios, include benchmarking examples in scaffold.

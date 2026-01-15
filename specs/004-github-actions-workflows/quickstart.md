@@ -1,7 +1,7 @@
 # Quickstart: GitHub Actions CI/CD Workflows
 
-**Feature**: 004-github-actions-workflows  
-**Target Audience**: Template maintainers and downstream project developers  
+**Feature**: 004-github-actions-workflows\
+**Target Audience**: Template maintainers and downstream project developers\
 **Prerequisites**: Completed features 001-003, GitHub repository with Actions enabled
 
 ## For Template Maintainers
@@ -155,18 +155,18 @@ The following checks must pass before PR merge:
 Enable branch protection rules in rendered project repository:
 
 1. Go to Settings → Branches → Add rule
-2. Branch name pattern: `main`
-3. Check "Require status checks to pass before merging"
-4. Search and select required checks:
+1. Branch name pattern: `main`
+1. Check "Require status checks to pass before merging"
+1. Search and select required checks:
    - `Quality Checks`
    - `Python 3.11 Quality`
    - `Python 3.12 Quality`
    - `Python 3.13 Quality`
    - `Matrix Summary`
-5. Check "Require branches to be up to date"
-6. Save changes
+1. Check "Require branches to be up to date"
+1. Save changes
 
----
+______________________________________________________________________
 
 ## For Downstream Developers
 
@@ -186,8 +186,8 @@ Your project comes with pre-configured GitHub Actions workflows. No manual setup
 After opening a PR or pushing to `main`:
 
 1. Visit the "Actions" tab in your GitHub repository
-2. Click on the most recent workflow run
-3. View individual job status and execution times
+1. Click on the most recent workflow run
+1. View individual job status and execution times
 
 **Expected timeline**:
 
@@ -238,17 +238,21 @@ src/api.py:42: error: Argument 1 to "process" has incompatible type "str"; expec
 If CI is consistently slow:
 
 1. Check cache hit status in workflow logs:
+
    ```
    Cache restored from key: ubuntu-latest-py3.11-abc123def456
    ```
+
    vs
+
    ```
    Cache miss - no matching cache key found
    ```
 
-2. Verify `uv.lock` is committed (required for cache key stability)
+1. Verify `uv.lock` is committed (required for cache key stability)
 
-3. If cache thrashing occurs, manually clear via Actions UI:
+1. If cache thrashing occurs, manually clear via Actions UI:
+
    - Settings → Actions → Caches → Delete old caches
 
 ### Customizing Workflows
@@ -310,7 +314,7 @@ copier update
 # Select "strict" when prompted for quality_profile
 ```
 
----
+______________________________________________________________________
 
 ## Troubleshooting
 
@@ -321,9 +325,9 @@ copier update
 **Solutions**:
 
 1. Verify Actions enabled: Settings → Actions → General → "Allow all actions"
-2. Check `.github/workflows/` directory exists in repository root
-3. Ensure workflows have `.yml` extension (not `.yml.jinja`)
-4. Check workflow `on:` triggers match your branch/event
+1. Check `.github/workflows/` directory exists in repository root
+1. Ensure workflows have `.yml` extension (not `.yml.jinja`)
+1. Check workflow `on:` triggers match your branch/event
 
 ### All Jobs Failing Immediately
 
@@ -332,8 +336,8 @@ copier update
 **Solutions**:
 
 1. Check GitHub Actions service status: https://www.githubstatus.com/
-2. Verify `uv` installation step succeeds (check logs)
-3. Ensure `pyproject.toml` and `uv.lock` are present in repository
+1. Verify `uv` installation step succeeds (check logs)
+1. Ensure `pyproject.toml` and `uv.lock` are present in repository
 
 ### Matrix Summary Always Fails
 
@@ -342,8 +346,8 @@ copier update
 **Solutions**:
 
 1. Check branch protection settings - all matrix jobs must be required checks
-2. Verify no syntax errors in matrix summary job definition
-3. Check for race conditions - ensure `needs: matrix-test` is present
+1. Verify no syntax errors in matrix summary job definition
+1. Check for race conditions - ensure `needs: matrix-test` is present
 
 ### Artifacts Not Uploading
 
@@ -358,8 +362,8 @@ copier update
        ls -la test-results.xml
        ls -la htmlcov/
    ```
-2. Check artifact size limits (500MB per artifact, 2GB total)
-3. Ensure `if: always()` is set so artifacts upload even on failure
+1. Check artifact size limits (500MB per artifact, 2GB total)
+1. Ensure `if: always()` is set so artifacts upload even on failure
 
 ### Cache Never Hits
 
@@ -368,11 +372,11 @@ copier update
 **Solutions**:
 
 1. Verify `uv.lock` is committed and tracked by git
-2. Check cache key matches: `runner.os` and `matrix.python-version` must be consistent
-3. Inspect cache key hash - if `uv.lock` changes frequently, cache won't hit
-4. Ensure previous run completed successfully (incomplete runs don't save cache)
+1. Check cache key matches: `runner.os` and `matrix.python-version` must be consistent
+1. Inspect cache key hash - if `uv.lock` changes frequently, cache won't hit
+1. Ensure previous run completed successfully (incomplete runs don't save cache)
 
----
+______________________________________________________________________
 
 ## Next Steps
 
@@ -381,5 +385,5 @@ copier update
 - **Documentation**: Update upgrade guide with workflow migration instructions
 - **Governance**: Update context files and module success tracking
 
-**Quickstart Complete**: 2025-10-30  
+**Quickstart Complete**: 2025-10-30\
 **Estimated Onboarding Time**: 40 minutes (maintainers), 10 minutes (downstream devs)

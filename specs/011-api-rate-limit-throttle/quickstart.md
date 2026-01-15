@@ -1,10 +1,10 @@
 # Quickstart: API Rate Limiting & Throttling
 
-**Target Audience**: Developers integrating rate limiting into FastAPI applications  
-**Time to Complete**: ~15 minutes  
+**Target Audience**: Developers integrating rate limiting into FastAPI applications\
+**Time to Complete**: ~15 minutes\
 **Prerequisites**: Python 3.11+, Redis 6.0+, FastAPI ≥0.104.0
 
----
+______________________________________________________________________
 
 ## Installation
 
@@ -21,6 +21,7 @@ pip install fastapi[all] redis pydantic
 ### 2. Start Redis (Local Development)
 
 **Option A: Docker** (recommended)
+
 ```bash
 docker run -d --name redis-ratelimit \
   -p 6379:6379 \
@@ -28,6 +29,7 @@ docker run -d --name redis-ratelimit \
 ```
 
 **Option B: Docker Compose** (for full stack)
+
 ```yaml
 # docker-compose.yml
 services:
@@ -46,7 +48,7 @@ services:
 docker-compose up -d
 ```
 
----
+______________________________________________________________________
 
 ## Basic Usage
 
@@ -117,10 +119,12 @@ done
 ```
 
 **Expected Behavior**:
+
 - Requests 1-100: Return HTTP 200 with decreasing `X-RateLimit-Remaining` header
 - Requests 101+: Return HTTP 429 with `Retry-After` header
 
 **Example Response (Request #50)**:
+
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -132,6 +136,7 @@ X-RateLimit-Reset: 1698765492
 ```
 
 **Example Response (Request #101)**:
+
 ```http
 HTTP/1.1 429 Too Many Requests
 Content-Type: application/json
@@ -149,7 +154,7 @@ Retry-After: 30
 }
 ```
 
----
+______________________________________________________________________
 
 ## Advanced Configuration
 
@@ -175,6 +180,7 @@ window = 60
 ```
 
 **Behavior**:
+
 - `/api/v1/search`: 20 requests/minute
 - `/api/v1/compute`: 5 requests/minute
 - `/api/v1/admin/users`, `/api/v1/admin/settings`: 10 requests/minute (wildcard match)
@@ -225,6 +231,7 @@ async def protected_endpoint(authorization: str = Header(None)):
 ```
 
 **JWT Payload Example**:
+
 ```json
 {
   "user_id": "alice",
@@ -234,6 +241,7 @@ async def protected_endpoint(authorization: str = Header(None)):
 ```
 
 **Behavior**:
+
 - Anonymous requests (no JWT): 100 requests/minute (IP-based)
 - Authenticated users (tier=standard): 1000 requests/minute (user-based)
 - Premium users (tier=premium): 5000 requests/minute (user-based)
@@ -267,12 +275,13 @@ penalty_multipliers = [1, 2, 4, 8]  # Cooldown multipliers
 ```
 
 **Behavior**:
+
 - First 3 violations in 1 hour: Normal cooldown (1x)
 - 4th violation: 2x cooldown (wait 2 minutes instead of 1 minute)
 - 5th violation: 4x cooldown (wait 4 minutes)
 - 6th+ violations: 8x cooldown (wait 8 minutes)
 
----
+______________________________________________________________________
 
 ## Production Deployment
 
@@ -339,6 +348,7 @@ volumes:
 ```
 
 **sentinel.conf**:
+
 ```
 sentinel monitor mymaster redis-master 6379 2
 sentinel down-after-milliseconds mymaster 30000
@@ -360,7 +370,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 
 **Priority**: Environment variables > TOML config > Defaults
 
----
+______________________________________________________________________
 
 ## Monitoring & Observability
 
@@ -382,12 +392,14 @@ app.mount("/metrics", metrics_app)
 ```
 
 **Available Metrics**:
+
 - `rate_limit_requests_total` - Total requests by endpoint/tier/status
 - `rate_limit_exceeded_total` - Total rejections by endpoint/tier
 - `rate_limit_redis_latency_seconds` - Redis operation latency histogram
 - `rate_limit_redis_errors_total` - Redis errors by operation/type
 
 **Example Prometheus Queries**:
+
 ```promql
 # Rejection rate (last 5 minutes)
 rate(rate_limit_exceeded_total[5m]) / rate(rate_limit_requests_total[5m])
@@ -421,6 +433,7 @@ logger = structlog.get_logger()
 ```
 
 **Example Log Output** (429 response):
+
 ```json
 {
   "timestamp": "2025-11-01T12:34:56.789Z",
@@ -435,41 +448,45 @@ logger = structlog.get_logger()
 }
 ```
 
----
+______________________________________________________________________
 
 ## Troubleshooting
 
 ### Issue: Rate limiting not working (all requests allowed)
 
 **Check**:
+
 1. Verify Redis connection: `redis-cli ping` → `PONG`
-2. Check `config.toml`: `enabled = true`
-3. Verify middleware order (rate limit should be after authentication)
-4. Check Redis keys: `redis-cli KEYS "ratelimit:*"`
+1. Check `config.toml`: `enabled = true`
+1. Verify middleware order (rate limit should be after authentication)
+1. Check Redis keys: `redis-cli KEYS "ratelimit:*"`
 
 ### Issue: High latency (>10ms per request)
 
 **Check**:
+
 1. Redis latency: `redis-cli --latency`
-2. Network latency: Ensure Redis in same datacenter/region
-3. Redis connection pool size: Increase `pool_size` if exhausted
-4. Use Redis read replicas for distributed deployments
+1. Network latency: Ensure Redis in same datacenter/region
+1. Redis connection pool size: Increase `pool_size` if exhausted
+1. Use Redis read replicas for distributed deployments
 
 ### Issue: Inaccurate rate limits (off by >2%)
 
 **Check**:
+
 1. Clock skew between API instances: Use NTP synchronization
-2. Redis replication lag: Check `info replication` on Redis master
-3. Connection pool exhaustion: Monitor `rate_limit_redis_errors_total` metric
-4. Algorithm choice: Switch to `sliding_window` for stricter enforcement
+1. Redis replication lag: Check `info replication` on Redis master
+1. Connection pool exhaustion: Monitor `rate_limit_redis_errors_total` metric
+1. Algorithm choice: Switch to `sliding_window` for stricter enforcement
 
 ### Issue: Redis failover causes brief disruption
 
 **Expected behavior**: Sentinel failover takes ~30-60 seconds
-- **Mitigation**: Set `failure_mode = "fail_open"` to allow requests during failover
-- **Alternative**: Use Redis Cluster for faster failover (<5 seconds)
 
----
+- **Mitigation**: Set `failure_mode = "fail_open"` to allow requests during failover
+- **Alternative**: Use Redis Cluster for faster failover (\<5 seconds)
+
+______________________________________________________________________
 
 ## Next Steps
 
@@ -484,7 +501,7 @@ logger = structlog.get_logger()
   - [ ] Document rate limits in API documentation
   - [ ] Implement client retry guidance (exponential backoff + jitter)
 
----
+______________________________________________________________________
 
 ## Further Reading
 

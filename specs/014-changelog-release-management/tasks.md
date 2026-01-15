@@ -1,8 +1,8 @@
 # Implementation Tasks: Changelog & Release Management
 
-**Feature**: 014-changelog-release-management  
-**Created**: 2025-11-02  
-**Status**: Ready for Implementation  
+**Feature**: 014-changelog-release-management\
+**Created**: 2025-11-02\
+**Status**: Ready for Implementation\
 **Spec**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md)
 
 ## Overview
@@ -11,7 +11,7 @@ This document provides a complete task breakdown for implementing automated chan
 
 **Implementation Strategy**: MVP-first approach focusing on User Stories 1-3 (commit enforcement, changelog generation, version automation) before adding distribution features (GitHub Releases, breaking change guides, registry publishing).
 
----
+______________________________________________________________________
 
 ## Dependency Graph
 
@@ -40,10 +40,11 @@ Phase 9: Polish & Cross-Cutting (T101-T115) - Final integration
 **Critical Path**: US1 → US2 → US3 form the MVP. US4-US6 can be developed incrementally.
 
 **Parallel Opportunities**:
+
 - Within each user story: Tests, models, and configuration can be parallelized
 - Across user stories after MVP: US4, US5 (partially), US6 (per registry) can proceed independently
 
----
+______________________________________________________________________
 
 ## Phase 1: Setup & Project Structure
 
@@ -65,7 +66,7 @@ Phase 9: Polish & Cross-Cutting (T101-T115) - Final integration
 - [ ] T009 Update template/files/shared/module_catalog.json.jinja with changelog module entry
 - [ ] T010 Add changelog module to AGENTS.md Active Technologies section
 
----
+______________________________________________________________________
 
 ## Phase 2: Foundational Components
 
@@ -92,7 +93,7 @@ Phase 9: Polish & Cross-Cutting (T101-T115) - Final integration
 
 > **Note**: Sample project (samples/changelog-python/) will be incrementally enhanced as each phase completes. Initial version from T019 provides basic structure with copier answers; subsequent phases (T021-T120) will add commit validation, changelog generation, release automation, and publishing features progressively through the release workflow.
 
----
+______________________________________________________________________
 
 ## Phase 3: User Story 1 - Commit Format Enforcement (P1)
 
@@ -128,7 +129,7 @@ Phase 9: Polish & Cross-Cutting (T101-T115) - Final integration
 
 **Checkpoint**: Run `uv run pytest tests/release/test_commit_validation.py` - all tests pass. Manual test: attempt invalid commit, verify rejection.
 
----
+______________________________________________________________________
 
 ## Phase 4: User Story 2 - Automatic Changelog Generation (P1)
 
@@ -162,7 +163,7 @@ Phase 9: Polish & Cross-Cutting (T101-T115) - Final integration
 
 **Checkpoint**: Run `uv run pytest tests/release/test_changelog_generation.py` - all tests pass. Generate test changelog from sample commits.
 
----
+______________________________________________________________________
 
 ## Phase 5: User Story 3 - Semantic Version Automation (P1)
 
@@ -196,7 +197,7 @@ Phase 9: Polish & Cross-Cutting (T101-T115) - Final integration
 
 **Checkpoint**: Run `uv run pytest tests/release/test_version_calculation.py` - all tests pass. Test version bump calculation with sample commits.
 
----
+______________________________________________________________________
 
 ## Phase 6: User Story 4 - GitHub Release Creation (P2)
 
@@ -228,7 +229,7 @@ Phase 9: Polish & Cross-Cutting (T101-T115) - Final integration
 
 **Checkpoint**: Trigger test release in sample project, verify GitHub Release appears with correct tag and notes.
 
----
+______________________________________________________________________
 
 ## Phase 7: User Story 5 - Breaking Change Detection & Migration Guides (P2)
 
@@ -260,7 +261,7 @@ Phase 9: Polish & Cross-Cutting (T101-T115) - Final integration
 
 **Checkpoint**: Create breaking change commit, verify prominent placement in changelog and migration guide generation.
 
----
+______________________________________________________________________
 
 ## Phase 8: User Story 6 - Release Artifact Publishing (P3)
 
@@ -304,7 +305,7 @@ Phase 9: Polish & Cross-Cutting (T101-T115) - Final integration
 
 **Checkpoint**: Run dry-run release, verify all publishing steps execute correctly. Test with test PyPI/npm accounts.
 
----
+______________________________________________________________________
 
 ## Phase 9: Polish & Cross-Cutting Concerns
 
@@ -352,13 +353,14 @@ Phase 9: Polish & Cross-Cutting (T101-T115) - Final integration
 - [ ] T123 [P] Document Monorepo Release Workflow (FR-017 enhanced coverage) - Add dedicated section to docs/modules/changelog-release.md.jinja explaining monorepo release patterns including independent vs fixed versioning, per-package changelogs, publish order
 - [ ] T124 [P] Add Pre-Release Sample Configuration (FR-018 enhanced coverage) - Create sample semantic-release configuration demonstrating alpha, beta, rc channels with branch-to-channel mappings, pre-release tagging patterns, example workflows
 
----
+______________________________________________________________________
 
 ## Parallel Execution Examples
 
 ### Within User Story 1 (Commit Enforcement)
 
 **Parallel Tasks**:
+
 ```bash
 # Run simultaneously (different files)
 T031 - tests/release/test_commit_validation.py
@@ -369,6 +371,7 @@ T033 - tests/release/test_hook_installation.py
 ### Within User Story 2 (Changelog Generation)
 
 **Parallel Tasks**:
+
 ```bash
 # Run simultaneously (different components)
 T046 - tests/release/test_changelog_generation.py (categorization tests)
@@ -378,6 +381,7 @@ T047 - tests/release/test_changelog_generation.py (formatting tests)
 ### Within User Story 6 (Artifact Publishing)
 
 **Parallel Tasks**:
+
 ```bash
 # Run simultaneously (different registries)
 T084-T087 - PyPI publishing scripts
@@ -388,6 +392,7 @@ T091-T095 - Docker Hub publishing scripts
 ### Across User Stories (After MVP Complete)
 
 **Parallel User Stories**:
+
 ```bash
 # After US1-US3 complete, can proceed in parallel:
 US4 - GitHub Releases (T062-T072)
@@ -395,13 +400,14 @@ US5 - Breaking Changes (T073-T083, partially blocked by US4)
 US6 - Artifact Publishing (T084-T100, independent per registry)
 ```
 
----
+______________________________________________________________________
 
 ## Task Summary
 
 **Total Tasks**: 120
 
 **Tasks by User Story**:
+
 - Setup & Foundational: 20 tasks (T001-T020)
 - US1 - Commit Enforcement: 15 tasks (T021-T035)
 - US2 - Changelog Generation: 13 tasks (T036-T048)
@@ -414,6 +420,7 @@ US6 - Artifact Publishing (T084-T100, independent per registry)
 **Parallelizable Tasks**: 45 tasks marked with [P]
 
 **Independent Test Criteria by Story**:
+
 - **US1**: Can commit valid messages, invalid messages rejected with helpful errors
 - **US2**: Generated changelog correctly categorizes commits and includes links
 - **US3**: Version calculation follows SemVer rules for all commit type combinations
@@ -422,21 +429,22 @@ US6 - Artifact Publishing (T084-T100, independent per registry)
 - **US6**: Artifacts published to all configured registries within 2 minutes per registry
 
 **Suggested MVP Scope**: User Stories 1-3 (T001-T061)
+
 - Provides complete commit-to-version automation
 - Deliverable: Developers can use conventional commits, get automatic changelogs, and see correct version bumps
 - Estimated: ~60% of total implementation effort
 - Can be deployed and validated before adding distribution features (US4-US6)
 
----
+______________________________________________________________________
 
 ## Implementation Strategy
 
 ### Phase Approach
 
 1. **Foundation First** (T001-T020): Establish project structure and base templates
-2. **MVP Core** (T021-T061): Implement US1-US3 for complete commit→version workflow
-3. **Distribution** (T062-T100): Add GitHub Releases, breaking change guides, registry publishing
-4. **Polish** (T101-T120): Documentation, error handling, performance, validation
+1. **MVP Core** (T021-T061): Implement US1-US3 for complete commit→version workflow
+1. **Distribution** (T062-T100): Add GitHub Releases, breaking change guides, registry publishing
+1. **Polish** (T101-T120): Documentation, error handling, performance, validation
 
 ### Test-First Discipline
 
@@ -458,7 +466,7 @@ Each user story includes dedicated test tasks (marked with test file paths). Tes
 - End of Distribution (US6): Full end-to-end release test
 - End of Polish: Render all sample projects and validate smoke tests
 
----
+______________________________________________________________________
 
 ## Format Validation
 
@@ -472,6 +480,6 @@ Each user story includes dedicated test tasks (marked with test file paths). Tes
 
 ✅ **File Paths**: Included in all implementation task descriptions
 
----
+______________________________________________________________________
 
 **Ready for Implementation** | Next: Begin with Phase 1 Setup tasks (T001-T010)

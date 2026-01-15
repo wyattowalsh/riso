@@ -3,19 +3,22 @@
 **Branch**: `002-docs-template-expansion` | **Date**: 2025-10-29 | **Spec**: [/.specify/specs/002-docs-template-expansion/spec.md](./spec.md) *(symlinked at `specs/002-docs-template-expansion/spec.md`)*
 
 ## Summary
+
 Deliver three selectable documentation stacks—Fumadocs (Next.js 15 / Tailwind 4 default), Sphinx Shibuya, and Docusaurus 3.9 with DocSearch v4—plus a docs opt-out that strips automation. Hooks will auto-provision Node.js 20 and pnpm via mise, hydrate Python environments through uv, and fail fast when tooling cannot be installed. CI expands to regenerate every docs variant, publish artifacts via `actions/upload-artifact@v4`, and record governance metrics (including support-ticket variance and artifact-expiry warnings) without committing build outputs.
 
 ## Technical Context
+
 - **Languages & Runtimes**: Python 3.11 (uv-managed), Node.js 20 LTS, TypeScript 5.6, POSIX shell hooks
 - **Primary Dependencies**: Fumadocs v15, Sphinx 7.4 + Shibuya theme, Docusaurus 3.9 + DocSearch v4, pnpm ≥8, mise ≥2024.9, uv ≥0.4
 - **Storage**: None (static documentation artifacts only)
 - **Testing / Validation**: `uv run make docs`, `uv run make linkcheck`, `pnpm --filter docs-* lint/test`, Next.js static export, Docusaurus build, GitHub Actions docs smoke matrix
 - **Target Platforms**: macOS 14+, Ubuntu 24.04 LTS, Windows Server 2022 GitHub runners
-- **Performance Goals**: Variant docs build <8 min locally/CI; tooling auto-install <2 min; CI docs matrix <25 min wall clock
+- **Performance Goals**: Variant docs build \<8 min locally/CI; tooling auto-install \<2 min; CI docs matrix \<25 min wall clock
 - **Constraints**: Hooks remain idempotent/offline aside from package registries; `.mise.toml` and `uv.lock` pin toolchains; docs artifacts uploaded only to CI
 - **Scale / Scope**: Four prompt options (`fumadocs`, `sphinx-shibuya`, `docusaurus`, `none`); four smoke-tested samples; artifacts retained 90 days
 
 ## Constitution Check
+
 - **Template Sovereignty**: Update template prompts, hooks, and docs payloads under `template/copier.yml`, `template/prompts/options.yml.jinja`, `template/hooks/*.py`, `template/files/{node,python,shared}/docs-*`; prove via regenerated samples and `copier diff`.
 - **Deterministic Generation**: Extend `scripts/render-samples.sh`, `scripts/ci/render_matrix.py`, and `.github/workflows/template-ci.yml` to render each docs variant, execute smoke commands, upload artifacts, and capture metrics.
 - **Minimal Baseline, Optional Depth**: Keep Fumadocs default lightweight; guard Shibuya/Docusaurus assets and dependencies behind prompts; ensure `docs_site=none` removes docs tooling entirely.
@@ -23,6 +26,7 @@ Deliver three selectable documentation stacks—Fumadocs (Next.js 15 / Tailwind 
 - **Automation-Governed Compliance**: Require docs smoke jobs to pass, artifacts to publish, and `scripts/ci/track_doc_publish.py` to flag stale data before merge.
 
 ## Project Structure
+
 ```
 .specify/specs/002-docs-template-expansion/
 ├── plan.md
@@ -66,4 +70,5 @@ samples/
 > The legacy `specs/` path is maintained as a symlink for compatibility; `.specify/specs/` holds the canonical files.
 
 ## Complexity Tracking
+
 No constitutional deviations anticipated; optional variants remain prompt-gated and leverage existing automation pipelines.

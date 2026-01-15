@@ -1,12 +1,13 @@
 # Quickstart: API Versioning Strategy
 
-**Feature**: 010-api-versioning-strategy  
-**Date**: 2025-11-02  
+**Feature**: 010-api-versioning-strategy\
+**Date**: 2025-11-02\
 **Audience**: Developers integrating API versioning into their applications
 
 ## Overview
 
 This guide helps you quickly integrate the API versioning middleware into your Python API application. The versioning system supports:
+
 - Multiple concurrent API versions (v1, v2, v3, etc.)
 - Version specification via header, URL path, or query parameter
 - Automatic deprecation warnings and sunset enforcement
@@ -497,6 +498,7 @@ uv run pytest tests/performance/test_version_routing.py --benchmark-only
 ### Issue: Version not detected from URL path
 
 **Solution**: Ensure URL path starts with `/v{N}/`:
+
 ```python
 # Correct
 GET /v2/users
@@ -509,6 +511,7 @@ GET /users/v2
 ### Issue: Deprecation headers not appearing
 
 **Solution**: Check version status in config file:
+
 ```yaml
 versions:
   v1:
@@ -519,6 +522,7 @@ versions:
 ### Issue: High latency from version routing
 
 **Solution**: Check middleware order - versioning should be early in stack:
+
 ```python
 # Correct order
 app.add_middleware(APIVersionMiddleware)  # First
@@ -529,9 +533,9 @@ app.add_middleware(AuthMiddleware)
 ## Next Steps
 
 1. Read the [data model documentation](./data-model.md) for entity details
-2. Review the [OpenAPI contract](./contracts/api-versioning.openapi.yaml)
-3. Explore migration patterns in [migration guide](./docs/migrations/)
-4. Set up monitoring for version adoption metrics
+1. Review the [OpenAPI contract](./contracts/api-versioning.openapi.yaml)
+1. Explore migration patterns in [migration guide](./docs/migrations/)
+1. Set up monitoring for version adoption metrics
 
 ## Resources
 

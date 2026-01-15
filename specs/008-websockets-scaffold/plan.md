@@ -7,18 +7,18 @@
 
 ## Summary
 
-Implement production-ready WebSocket integration for FastAPI with real-time bidirectional communication, connection management, authentication, broadcasting, and testing utilities. The scaffold provides FastAPI endpoints with automatic heartbeats, room-based broadcasting, connection lifecycle management, and pytest fixtures. Target: 10,000 concurrent connections with <50ms latency (99th percentile) for 1,000-client broadcasts.
+Implement production-ready WebSocket integration for FastAPI with real-time bidirectional communication, connection management, authentication, broadcasting, and testing utilities. The scaffold provides FastAPI endpoints with automatic heartbeats, room-based broadcasting, connection lifecycle management, and pytest fixtures. Target: 10,000 concurrent connections with \<50ms latency (99th percentile) for 1,000-client broadcasts.
 
 ## Technical Context
 
-**Language/Version**: Python 3.11+  
-**Primary Dependencies**: FastAPI ≥0.104.0 (WebSocket support), websockets library, pydantic ≥2.0.0  
-**Storage**: In-memory connection registry (default), optional Redis for multi-server (documented pattern)  
-**Testing**: pytest with async support, pytest-asyncio, WebSocket test client utilities  
-**Target Platform**: Linux/macOS server (ASGI deployment via uvicorn/hypercorn)  
-**Project Type**: Python module (optional, added to existing FastAPI projects)  
-**Performance Goals**: 10,000 concurrent connections, <50ms broadcast latency (p99) for 1,000 clients, <10MB memory per 1,000 connections  
-**Constraints**: <60s dead connection detection, <100ms room broadcast (p95), ≥80% test coverage  
+**Language/Version**: Python 3.11+\
+**Primary Dependencies**: FastAPI ≥0.104.0 (WebSocket support), websockets library, pydantic ≥2.0.0\
+**Storage**: In-memory connection registry (default), optional Redis for multi-server (documented pattern)\
+**Testing**: pytest with async support, pytest-asyncio, WebSocket test client utilities\
+**Target Platform**: Linux/macOS server (ASGI deployment via uvicorn/hypercorn)\
+**Project Type**: Python module (optional, added to existing FastAPI projects)\
+**Performance Goals**: 10,000 concurrent connections, \<50ms broadcast latency (p99) for 1,000 clients, \<10MB memory per 1,000 connections\
+**Constraints**: \<60s dead connection detection, \<100ms room broadcast (p95), ≥80% test coverage\
 **Scale/Scope**: Single module with ~15 files (manager, middleware, models, utilities, tests), integrates with existing FastAPI (006), Auth (009), Monitoring (010)
 
 ## Constitution Check
@@ -33,7 +33,7 @@ Implement production-ready WebSocket integration for FastAPI with real-time bidi
 
 ✅ **Deterministic Generation**: Same Copier answers produce identical WebSocket scaffold. No timestamps, random values, or system paths in generated code. All connection IDs use deterministic UUID generation from request context.
 
-✅ **Minimal Baseline**: Zero impact on baseline template (module disabled by default). When enabled, adds ~15 files and 3 production dependencies (FastAPI already required, adds websockets + optional async-timeout). Renders in <5 seconds.
+✅ **Minimal Baseline**: Zero impact on baseline template (module disabled by default). When enabled, adds ~15 files and 3 production dependencies (FastAPI already required, adds websockets + optional async-timeout). Renders in \<5 seconds.
 
 ✅ **Quality Integration**: All generated WebSocket code passes ruff, mypy (strict mode with generics), pylint, pytest. Includes type hints for all public APIs. Test coverage target ≥80%. Integrates with `riso-quality.yml` and `riso-matrix.yml` workflows.
 
@@ -141,7 +141,7 @@ After completing Phase 1 design artifacts (data-model.md, contracts/, quickstart
 
 ✅ **Deterministic Generation**: All schemas use explicit types (no random defaults). Connection IDs derived from request context (deterministic). Message timestamps use ISO 8601 UTC (reproducible).
 
-✅ **Minimal Baseline**: Design adds zero files to baseline (module disabled by default). When enabled, data model defines 5 core entities (Connection, Message, Room, Metadata, Middleware) with minimal memory footprint (<10MB per 1,000 connections).
+✅ **Minimal Baseline**: Design adds zero files to baseline (module disabled by default). When enabled, data model defines 5 core entities (Connection, Message, Room, Metadata, Middleware) with minimal memory footprint (\<10MB per 1,000 connections).
 
 ✅ **Quality Integration**: Pydantic models provide type safety and validation. All contracts include JSON Schema Draft-07 validation. Models compatible with mypy strict mode. Test fixtures support pytest-asyncio.
 
@@ -153,9 +153,9 @@ After completing Phase 1 design artifacts (data-model.md, contracts/, quickstart
 
 ### Design Compliance Summary
 
-**Status**: ✅ PASS  
-**Violations**: None  
-**Justifications Required**: None  
+**Status**: ✅ PASS\
+**Violations**: None\
+**Justifications Required**: None\
 **Blockers**: None
 
 Phase 1 design artifacts maintain full constitution compliance. Ready to proceed to Phase 2 (task breakdown via `/speckit.tasks`).

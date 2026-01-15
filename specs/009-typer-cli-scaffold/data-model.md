@@ -1,7 +1,7 @@
 # Data Model: Robust Typer CLI Scaffold
 
-**Feature**: 009-typer-cli-scaffold  
-**Date**: 2025-11-01  
+**Feature**: 009-typer-cli-scaffold\
+**Date**: 2025-11-01\
 **Dependencies**: [research.md](./research.md)
 
 ## Overview
@@ -34,8 +34,8 @@ This document defines the key entities and their relationships for the robust CL
 **State Transitions**:
 
 1. **Initialization**: Load config, discover commands, discover plugins
-2. **Command Execution**: Parse args, validate, execute selected command
-3. **Cleanup**: Save config changes, close resources
+1. **Command Execution**: Parse args, validate, execute selected command
+1. **Cleanup**: Save config changes, close resources
 
 ### Command
 
@@ -116,7 +116,7 @@ This document defines the key entities and their relationships for the robust CL
 **Attributes**:
 
 - `config_file` (Path): Path to TOML configuration file (./config.toml)
-- `env_prefix` (str): Prefix for environment variables (e.g., "MYAPP_")
+- `env_prefix` (str): Prefix for environment variables (e.g., "MYAPP\_")
 - `defaults` (Dict[str, Any]): Default configuration values
 - `cached_config` (Dict[str, Any]): Cached parsed configuration
 - `dirty` (bool): Whether config has unsaved changes
@@ -169,10 +169,10 @@ enabled = ["plugin1", "plugin2"]
 **Lifecycle**:
 
 1. **Discovery**: Found via `importlib.metadata.entry_points(group="myapp.plugins")`
-2. **Registration**: Entry point registered but not loaded (lazy)
-3. **Loading**: `entry_point.load()` called on first use
-4. **Active**: Plugin commands available in CLI
-5. **Error**: If loading fails, plugin marked with error but CLI continues
+1. **Registration**: Entry point registered but not loaded (lazy)
+1. **Loading**: `entry_point.load()` called on first use
+1. **Active**: Plugin commands available in CLI
+1. **Error**: If loading fails, plugin marked with error but CLI continues
 
 ### PluginManager
 
@@ -182,7 +182,7 @@ enabled = ["plugin1", "plugin2"]
 
 - `plugin_group` (str): Entry point group name ("myapp.plugins")
 - `plugins` (Dict[str, Plugin]): Discovered plugins (name → plugin)
-- `load_errors` (List[Tuple[str, Exception]]): Failed plugin loads
+- `load_errors` (List\[Tuple[str, Exception]\]): Failed plugin loads
 
 **Methods**:
 
@@ -236,31 +236,31 @@ CLIApplication
 
 This data model maps to template files as follows:
 
-| Entity | Template File | Purpose |
-|--------|---------------|---------|
-| CLIApplication | `__main__.py.jinja` | App entry point, command registration |
-| Command | `commands/*.py.jinja` | Individual command modules |
-| CommandGroup | `__main__.py.jinja` | Group definitions (e.g., config group) |
-| Parameter | `commands/*.py.jinja` | Typer decorators for parameters |
-| ConfigManager | `core/config.py.jinja` | Configuration management logic |
-| Plugin | `core/plugins.py.jinja` | Plugin discovery and loading |
-| PluginManager | `core/plugins.py.jinja` | Plugin orchestration |
-| OutputFormatter | `core/formatters.py.jinja` | Output formatting utilities |
+| Entity          | Template File              | Purpose                                |
+| --------------- | -------------------------- | -------------------------------------- |
+| CLIApplication  | `__main__.py.jinja`        | App entry point, command registration  |
+| Command         | `commands/*.py.jinja`      | Individual command modules             |
+| CommandGroup    | `__main__.py.jinja`        | Group definitions (e.g., config group) |
+| Parameter       | `commands/*.py.jinja`      | Typer decorators for parameters        |
+| ConfigManager   | `core/config.py.jinja`     | Configuration management logic         |
+| Plugin          | `core/plugins.py.jinja`    | Plugin discovery and loading           |
+| PluginManager   | `core/plugins.py.jinja`    | Plugin orchestration                   |
+| OutputFormatter | `core/formatters.py.jinja` | Output formatting utilities            |
 
 ## Validation Rules Summary
 
 1. **Command Names**: Must be valid Python identifiers, lowercase preferred
-2. **Configuration Keys**: Dot-notation supported (e.g., "api.endpoint")
-3. **Parameter Types**: Must be Typer-compatible (str, int, float, bool, Path, Enum, etc.)
-4. **Plugin Entry Points**: Must follow format `group.name = "package:function"`
-5. **TOML Configuration**: Must be valid TOML syntax, nested sections supported
-6. **Help Text**: All public commands and parameters must have help text
-7. **Exit Codes**: 0=success, 1=general error, 2=usage error, 78=config error, 125-127=system errors
+1. **Configuration Keys**: Dot-notation supported (e.g., "api.endpoint")
+1. **Parameter Types**: Must be Typer-compatible (str, int, float, bool, Path, Enum, etc.)
+1. **Plugin Entry Points**: Must follow format `group.name = "package:function"`
+1. **TOML Configuration**: Must be valid TOML syntax, nested sections supported
+1. **Help Text**: All public commands and parameters must have help text
+1. **Exit Codes**: 0=success, 1=general error, 2=usage error, 78=config error, 125-127=system errors
 
 ## Performance Considerations
 
 - **Configuration**: Parse TOML once at startup, cache in memory (avoid repeated file I/O)
-- **Plugins**: Lazy loading - discover at startup (<50ms), load on first use only
+- **Plugins**: Lazy loading - discover at startup (\<50ms), load on first use only
 - **Commands**: File-based discovery done once at initialization, not per invocation
 - **Rich Formatting**: Console created once, reused across commands (avoid per-command overhead)
 

@@ -1,7 +1,7 @@
 # Quickstart: FastAPI API Scaffold
 
-**Feature**: 006-fastapi-api-scaffold  
-**Audience**: Developers implementing the FastAPI scaffold feature  
+**Feature**: 006-fastapi-api-scaffold\
+**Audience**: Developers implementing the FastAPI scaffold feature\
 **Prerequisites**: Riso template repository cloned, uv installed, Python 3.11+
 
 ## Overview
@@ -549,7 +549,7 @@ QUALITY_PROFILE=standard uv run task quality
 
 ## Phase 3: Validate Success Criteria
 
-### SC-001: Render to Running Server <2 Minutes ✓
+### SC-001: Render to Running Server \<2 Minutes ✓
 
 ```bash
 # Time the full workflow
@@ -573,7 +573,7 @@ curl http://localhost:8000/openapi.json | jq '.paths | keys'
 # Expected: Array of all endpoint paths
 ```
 
-### SC-004: Add Endpoint <5 Minutes ✓
+### SC-004: Add Endpoint \<5 Minutes ✓
 
 ```bash
 # Create new route file
@@ -595,7 +595,7 @@ curl http://localhost:8000/status/
 # Expected: {"status":"operational"}
 ```
 
-### SC-005: Startup <3 Seconds ✓
+### SC-005: Startup \<3 Seconds ✓
 
 ```bash
 # Measure startup time
@@ -632,23 +632,23 @@ CORS_ORIGINS='["http://localhost:3000","http://localhost:8080"]'
 ## Next Steps
 
 1. Update copier.yml with api_tracks prompt
-2. Create documentation (docs/modules/api-fastapi.md.jinja)
-3. Add Docker support (Dockerfile with FastAPI)
-4. Regenerate all sample renders
-5. Run full CI/CD validation
-6. Create pull request with evidence
+1. Create documentation (docs/modules/api-fastapi.md.jinja)
+1. Add Docker support (Dockerfile with FastAPI)
+1. Regenerate all sample renders
+1. Run full CI/CD validation
+1. Create pull request with evidence
 
 ## Success Validation Checklist
 
 - [ ] Template files created in `template/files/python/api_fastapi/`
 - [ ] Test render generates working FastAPI application
-- [ ] Server starts in <3 seconds
+- [ ] Server starts in \<3 seconds
 - [ ] All health check endpoints respond correctly
 - [ ] Example CRUD endpoints work as expected
 - [ ] Interactive documentation accessible at /docs
 - [ ] All tests pass with ≥80% coverage
 - [ ] Quality checks (ruff, mypy, pylint) pass
-- [ ] Can add new endpoint in <5 minutes
+- [ ] Can add new endpoint in \<5 minutes
 - [ ] Constitution compliance validated
 
 **Implementation Complete**: Once all checkboxes are marked, the FastAPI scaffold is ready for integration into the Riso template.

@@ -1,14 +1,14 @@
 # Tasks: SaaS Starter Template
 
-**Feature**: 012-saas-starter  
-**Input**: Design documents from `/workspaces/riso/specs/012-saas-starter/`  
+**Feature**: 012-saas-starter\
+**Input**: Design documents from `/workspaces/riso/specs/012-saas-starter/`\
 **Prerequisites**: plan.md ✅, spec.md ✅, research.md ✅, data-model.md ✅, contracts/ ✅
 
 **Tests**: Not explicitly requested in specification - TESTS OMITTED from task list
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
----
+______________________________________________________________________
 
 ## Format Convention
 
@@ -18,7 +18,7 @@ All tasks follow strict format: `- [ ] [TaskID] [P?] [Story?] Description with f
 - **[Story]**: User story label (US1, US2, US3, US4) - REQUIRED for story phases
 - **File paths**: All paths relative to Riso template repository root
 
----
+______________________________________________________________________
 
 ## Phase 1: Setup (Shared Infrastructure)
 
@@ -32,7 +32,7 @@ All tasks follow strict format: `- [ ] [TaskID] [P?] [Story?] Description with f
 - [ ] T006 [P] Create render script scripts/saas/render_saas_samples.py for generating sample combinations
 - [ ] T007 Create sample answer files in samples/saas-starter/ directory for recommended stacks
 
----
+______________________________________________________________________
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
@@ -42,7 +42,7 @@ All tasks follow strict format: `- [ ] [TaskID] [P?] [Story?] Description with f
 
 - [ ] T008 Implement pre-generation validation hook in template/hooks/pre_gen_project.py with compatibility checking from contracts/validation-rules.md
 - [ ] T009 Implement post-generation setup hook in template/hooks/post_gen_project.py with metadata recording and dependency installation
-- [ ] T010 [P] Create base Jinja2 macro library in template/files/shared/saas-starter/_macros.jinja for reusable template components
+- [ ] T010 [P] Create base Jinja2 macro library in template/files/shared/saas-starter/\_macros.jinja for reusable template components
 - [ ] T011 [P] Create saas-starter.config.ts.jinja template in template/files/shared/saas-starter/ to document user selections
 - [ ] T012 [P] Create .env.example.jinja template in template/files/shared/saas-starter/ with all required environment variables
 - [ ] T013 Create compatibility matrix validation in scripts/saas/compatibility_matrix.py implementing ERROR/WARNING/INFO rules from contracts/validation-rules.md
@@ -50,7 +50,7 @@ All tasks follow strict format: `- [ ] [TaskID] [P?] [Story?] Description with f
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
----
+______________________________________________________________________
 
 ## Phase 3: User Story 1 - Select and Generate SaaS Stack Configuration (Priority: P1) 🎯 MVP
 
@@ -145,7 +145,7 @@ All tasks follow strict format: `- [ ] [TaskID] [P?] [Story?] Description with f
 
 **Checkpoint**: User Story 1 complete - template can generate working SaaS applications with all integrations
 
----
+______________________________________________________________________
 
 ## Phase 4: User Story 2 - Understand Technology Trade-offs (Priority: P2)
 
@@ -179,7 +179,7 @@ All tasks follow strict format: `- [ ] [TaskID] [P?] [Story?] Description with f
 
 **Checkpoint**: User Story 2 complete - developers can make informed technology decisions with clear guidance
 
----
+______________________________________________________________________
 
 ## Phase 5: User Story 3 - Customize Configuration Post-Generation (Priority: P3)
 
@@ -206,7 +206,7 @@ All tasks follow strict format: `- [ ] [TaskID] [P?] [Story?] Description with f
 
 **Checkpoint**: User Story 3 complete - developers can understand their stack and plan migrations
 
----
+______________________________________________________________________
 
 ## Phase 6: User Story 4 - Deploy to Production (Priority: P2)
 
@@ -252,7 +252,7 @@ All tasks follow strict format: `- [ ] [TaskID] [P?] [Story?] Description with f
 
 **Checkpoint**: User Story 4 complete - applications deploy to production successfully
 
----
+______________________________________________________________________
 
 ## Phase 7: Seeded Fixtures & Test Data (Cross-Cutting)
 
@@ -266,7 +266,7 @@ All tasks follow strict format: `- [ ] [TaskID] [P?] [Story?] Description with f
 - [ ] T104 [P] Create fixture subscription data in template/files/node/saas/fixtures/subscriptions.ts.jinja with various plan types
 - [ ] T105 Add pnpm db:seed command to package.json.jinja scripts
 
----
+______________________________________________________________________
 
 ## Phase 8: Enterprise Features (WorkOS Integration)
 
@@ -278,7 +278,7 @@ All tasks follow strict format: `- [ ] [TaskID] [P?] [Story?] Description with f
 - [ ] T109 Create WorkOS webhook handlers in template/files/node/saas/integrations/enterprise/workos/webhooks.ts.jinja
 - [ ] T110 Add WorkOS integration to auth middleware when enterprise_bridge=workos
 
----
+______________________________________________________________________
 
 ## Phase 9: Sample Renders & Testing
 
@@ -292,7 +292,7 @@ All tasks follow strict format: `- [ ] [TaskID] [P?] [Story?] Description with f
 - [ ] T116 Add SaaS starter validation to CI workflow in .github/workflows/saas-validation.yml
 - [ ] T117 Generate smoke results metadata in samples/saas-starter/metadata.json with success rates per combination
 
----
+______________________________________________________________________
 
 ## Phase 10: Documentation & Polish
 
@@ -309,7 +309,7 @@ All tasks follow strict format: `- [ ] [TaskID] [P?] [Story?] Description with f
 - [ ] T126 Run validate_dockerfiles.py and validate_workflows.py on generated SaaS samples
 - [ ] T127 Update .github/copilot-instructions.md with SaaS starter technologies (already complete)
 
----
+______________________________________________________________________
 
 ## Dependencies & Execution Order
 
@@ -378,7 +378,7 @@ In parallel after Foundational:
 - Sample renders (T111-T114) can be developed in parallel
 - Documentation tasks (T118-T126) can be developed in parallel
 
----
+______________________________________________________________________
 
 ## Parallel Example: User Story 1 Integration Templates
 
@@ -404,19 +404,19 @@ Task T028: Create Paddle integration
 # ... all integration categories proceed in parallel
 ```
 
----
+______________________________________________________________________
 
 ## Implementation Strategy
 
 ### MVP First (Recommended Stacks Only)
 
 1. **Complete Phase 1 + 2** (Setup + Foundational) → ~2 days
-2. **Complete Phase 3** (User Story 1 - Core generation) → ~10 days
+1. **Complete Phase 3** (User Story 1 - Core generation) → ~10 days
    - Focus on: Next.js, Vercel, Neon, Prisma, Clerk, Stripe, Trigger.dev, Resend, PostHog, OpenAI, R2, GitHub Actions, Sentry+Datadog
    - This is the "Vercel Starter" stack (FR-029 first option in each category)
-3. **Complete Phase 6** (User Story 4 - Deployment) → ~2 days
-4. **STOP and VALIDATE**: Render Vercel Starter stack, deploy to production, verify all integrations
-5. **MVP COMPLETE**: Template can generate one production-ready SaaS stack
+1. **Complete Phase 6** (User Story 4 - Deployment) → ~2 days
+1. **STOP and VALIDATE**: Render Vercel Starter stack, deploy to production, verify all integrations
+1. **MVP COMPLETE**: Template can generate one production-ready SaaS stack
 
 **Total MVP Timeline**: ~14 days with parallel work
 
@@ -425,20 +425,20 @@ Task T028: Create Paddle integration
 After MVP:
 
 1. **Add Remix option** (T018-T020, T088) → +1 day
-2. **Add Cloudflare option** (T051, T085, T092) → +1 day
-3. **Add Auth.js option** (T025, T094) → +1 day
-4. **Add Paddle option** (T028, T093) → +1 day
-5. Continue adding alternatives for remaining categories → +5 days
-6. **Complete all 28 integrations** → Total ~22 days
+1. **Add Cloudflare option** (T051, T085, T092) → +1 day
+1. **Add Auth.js option** (T025, T094) → +1 day
+1. **Add Paddle option** (T028, T093) → +1 day
+1. Continue adding alternatives for remaining categories → +5 days
+1. **Complete all 28 integrations** → Total ~22 days
 
 Then add:
 
 7. **Phase 4** (User Story 2 - Guidance) → +2 days
-8. **Phase 5** (User Story 3 - Config docs) → +1 day
-9. **Phase 7** (Fixtures) → +1 day
-10. **Phase 8** (Enterprise/WorkOS) → +2 days
-11. **Phase 9** (Sample renders & validation) → +2 days
-12. **Phase 10** (Documentation polish) → +3 days
+1. **Phase 5** (User Story 3 - Config docs) → +1 day
+1. **Phase 7** (Fixtures) → +1 day
+1. **Phase 8** (Enterprise/WorkOS) → +2 days
+1. **Phase 9** (Sample renders & validation) → +2 days
+1. **Phase 10** (Documentation polish) → +3 days
 
 **Total Feature Complete Timeline**: ~33 days with parallel work
 
@@ -460,7 +460,7 @@ This parallel approach reduces Phase 3 from ~10 days to ~4 days.
 
 **Optimized Timeline with 3 developers**: ~20 days to feature complete
 
----
+______________________________________________________________________
 
 ## Task Count Summary
 
@@ -481,17 +481,17 @@ This parallel approach reduces Phase 3 from ~10 days to ~4 days.
 
 **MVP Tasks (Phases 1-3, 6)**: 72 tasks (57% of total)
 
----
+______________________________________________________________________
 
 ## Success Criteria Mapping
 
 Tasks mapped to success criteria from spec.md:
 
-- **SC-001** (render in <5min): T001-T057 (all template generation)
-- **SC-002** (starts in <2min): T054-T055 (env validation), T081-T083 (migrations)
+- **SC-001** (render in \<5min): T001-T057 (all template generation)
+- **SC-002** (starts in \<2min): T054-T055 (env validation), T081-T083 (migrations)
 - **SC-003** (13 categories, 2 options): T004 (copier prompts), T058 (guidance)
 - **SC-004** (health checks pass): T087-T089 (health endpoints)
-- **SC-005** (deploy in <10min): T084-T092 (deployment scripts)
+- **SC-005** (deploy in \<10min): T084-T092 (deployment scripts)
 - **SC-006** (26 combinations work): T115-T117 (validation suite)
 - **SC-007** (auth flow works): T024-T026 (auth integrations)
 - **SC-008** (billing flow works): T027-T029 (billing integrations)
@@ -507,13 +507,13 @@ Tasks mapped to success criteria from spec.md:
 - **SC-018** (OTel correlation): T048-T049 (OTel + logging)
 - **SC-019** (observability in 5min): T046-T049, T096-T098 (observability setup)
 - **SC-020** (5+ fixture entities): T099-T104 (fixtures)
-- **SC-021** (1000+ records <10s): T101 (factory pattern)
+- **SC-021** (1000+ records \<10s): T101 (factory pattern)
 - **SC-022** (migrations validate): T081-T083 (migration validation)
-- **SC-023** (rollback <2min): T081-T083 (migration scripts)
+- **SC-023** (rollback \<2min): T081-T083 (migration scripts)
 - **SC-024** (70% coverage): Tests not included per spec
-- **SC-025** (E2E <3min): Tests not included per spec
+- **SC-025** (E2E \<3min): Tests not included per spec
 
----
+______________________________________________________________________
 
 ## Notes
 

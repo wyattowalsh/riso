@@ -11,11 +11,13 @@ The setup scripts provide automated detection, validation, and installation of a
 ### Main Entry Points
 
 - **`setup.sh`** (495 lines) - Main Bash setup script for Unix-like systems
+
   - Compatible with Bash 3.2+ (including macOS default shell)
   - Uses indexed arrays for compatibility with older Bash versions
   - Full-featured with logging, colored output, and progress tracking
 
 - **`setup.ps1`** (713 lines) - Main PowerShell setup script for Windows
+
   - Requires PowerShell 5.1 or later
   - Self-contained with inline functions (does not require modules)
   - Full-featured with parameter validation and help system
@@ -92,12 +94,14 @@ Located in `lib-ps/`:
 ### Both Scripts
 
 1. **Multi-mode operation**:
+
    - Default: Check and report (dry-run)
    - Check-only: Exit code-based validation for CI
    - Install: Interactive installation with prompts
    - Install --yes: Non-interactive installation
 
-2. **Comprehensive tool detection**:
+1. **Comprehensive tool detection**:
+
    - Python 3.11+
    - uv (Python package manager)
    - Node.js 20 LTS+
@@ -105,29 +109,34 @@ Located in `lib-ps/`:
    - pre-commit (Git hooks)
    - actionlint (GitHub Actions linter)
 
-3. **Version validation**:
+1. **Version validation**:
+
    - Checks minimum version requirements
    - Reports current versions
    - Marks outdated tools for upgrade
 
-4. **Status reporting**:
+1. **Status reporting**:
+
    - Colored, formatted table output
    - Clear status indicators (✓ OK, ✗ MISSING, ⚠ OUTDATED)
    - Respects NO_COLOR environment variable
 
-5. **Smart installation**:
+1. **Smart installation**:
+
    - Tries multiple installation methods (mise, brew, apt, winget, etc.)
    - Falls back gracefully when methods unavailable
    - Tracks success/failure of each installation
    - Provides manual installation instructions for failures
 
-6. **Security features** (Bash):
+1. **Security features** (Bash):
+
    - **Checksum verification** for binary downloads (SHA256/SHA512)
    - **Retry logic** with exponential backoff (3 attempts)
    - **GitHub API authentication** via `GITHUB_TOKEN`/`GH_TOKEN` to avoid rate limits
    - **Secure download utility** with checksum validation before installation
 
-7. **Logging** (Bash):
+1. **Logging** (Bash):
+
    - XDG Base Directory compliant logs
    - Structured logging with ISO 8601 timestamps
    - JSONL provision tracking for tool metrics
@@ -135,7 +144,8 @@ Located in `lib-ps/`:
    - Logs stored in `~/.local/state/riso/`
    - **Log path disclosure** at end of setup for easy troubleshooting
 
-8. **User-friendly output**:
+1. **User-friendly output**:
+
    - Platform information display (in verbose mode)
    - Clear next steps after setup
    - Helpful error messages with links to docs
@@ -169,6 +179,7 @@ Both scripts use consistent exit codes:
 ## Installation Methods
 
 ### Python
+
 - **mise** (priority 1, all platforms)
 - **brew** (macOS)
 - **apt** (Debian/Ubuntu)
@@ -179,6 +190,7 @@ Both scripts use consistent exit codes:
 - **chocolatey** (Windows)
 
 ### uv
+
 - **mise** (priority 1, all platforms)
 - **brew** (macOS)
 - **winget** (Windows)
@@ -186,6 +198,7 @@ Both scripts use consistent exit codes:
 - **PowerShell installer** (fallback, Windows)
 
 ### Node.js
+
 - **mise** (priority 1, all platforms)
 - **brew** (macOS)
 - **apt + NodeSource** (Debian/Ubuntu)
@@ -195,6 +208,7 @@ Both scripts use consistent exit codes:
 - **chocolatey** (Windows)
 
 ### pnpm
+
 - **mise** (priority 1, all platforms)
 - **brew** (macOS)
 - **corepack** (all platforms with Node.js)
@@ -202,9 +216,11 @@ Both scripts use consistent exit codes:
 - **winget** (Windows)
 
 ### pre-commit
+
 - **uv tool install** (all platforms, requires uv)
 
 ### actionlint
+
 - **mise** (priority 1, all platforms)
 - **brew** (macOS)
 - **GitHub release download** (all platforms)
@@ -214,18 +230,22 @@ Both scripts use consistent exit codes:
 The scripts detect and adapt to:
 
 ### Operating Systems
+
 - macOS (Darwin)
 - Linux (various distributions)
 - Windows (native and WSL)
 
 ### WSL Detection
+
 - **WSL1** and **WSL2** automatically detected
 - Uses `/proc/version` parsing for Microsoft kernel signatures
 - Falls back to `WSL_DISTRO_NAME` environment variable
 - Separate `is_wsl()` and `is_wsl2()` functions for fine-grained control
 
 ### Container Detection
+
 Automatically detects when running inside:
+
 - **Docker** (via `/.dockerenv` marker)
 - **Podman** (via `/run/.containerenv` marker)
 - **Kubernetes** (via `KUBERNETES_SERVICE_HOST` env var)
@@ -233,6 +253,7 @@ Automatically detects when running inside:
 - Generic container detection via `systemd-detect-virt`
 
 ### Linux Distributions
+
 - Ubuntu/Debian
 - Fedora/RHEL/CentOS/Rocky/AlmaLinux
 - Arch/Manjaro
@@ -243,6 +264,7 @@ Automatically detects when running inside:
 - **Gentoo** (detected via `/etc/gentoo-release`)
 
 ### Package Managers
+
 - mise (cross-platform, highest priority)
 - Homebrew (macOS/Linux)
 - apt (Debian/Ubuntu)
@@ -258,6 +280,7 @@ Automatically detects when running inside:
 - scoop (Windows)
 
 ### Architectures
+
 - x64 (x86_64, amd64)
 - arm64 (aarch64, Apple Silicon)
 - arm (armv7l, armv6l)
@@ -341,6 +364,7 @@ Tool installations are logged in JSONL format at `~/.local/state/riso/toolchain_
 ## Compatibility
 
 ### Bash Script
+
 - **Minimum**: Bash 3.2 (macOS default)
 - **Recommended**: Bash 4.0+
 - **Tested on**:
@@ -350,6 +374,7 @@ Tool installations are logged in JSONL format at `~/.local/state/riso/toolchain_
   - WSL2 Ubuntu (Bash 5.1)
 
 ### PowerShell Script
+
 - **Minimum**: PowerShell 5.1 (Windows)
 - **Recommended**: PowerShell 7.0+ (cross-platform)
 - **Tested on**:
@@ -385,10 +410,10 @@ Some tools may not report versions in expected format. The script will mark them
 The script tries multiple methods. If all fail:
 
 1. Check log files for detailed error messages
-2. Try manual installation (links provided in error messages)
-3. Ensure you have network connectivity
-4. On Linux, ensure you have sudo access for package managers
-5. On Windows, ensure you're running PowerShell with admin rights
+1. Try manual installation (links provided in error messages)
+1. Ensure you have network connectivity
+1. On Linux, ensure you have sudo access for package managers
+1. On Windows, ensure you're running PowerShell with admin rights
 
 ### GitHub API rate limit exceeded
 
@@ -436,28 +461,33 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ### Adding a New Tool
 
 1. Add version requirement to `lib/versions.sh`:
+
    ```bash
    export NEW_TOOL_VERSION="1.0"
    ```
 
-2. Add installation function to `lib/install-tools.sh`:
+1. Add installation function to `lib/install-tools.sh`:
+
    ```bash
    install_new_tool() {
        # Implementation
    }
    ```
 
-3. Add tool to `TOOLS` array in `setup.sh`:
+1. Add tool to `TOOLS` array in `setup.sh`:
+
    ```bash
    TOOLS=(python3 uv node pnpm pre-commit actionlint new-tool)
    ```
 
-4. Add check in `check_all_tools()`:
+1. Add check in `check_all_tools()`:
+
    ```bash
    check_tool "new-tool" "$NEW_TOOL_VERSION" "--version" || true
    ```
 
-5. Add case in `install_missing_tools()`:
+1. Add case in `install_missing_tools()`:
+
    ```bash
    new-tool)
        if install_new_tool; then

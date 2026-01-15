@@ -1,7 +1,7 @@
 # Research: Code Generation and Scaffolding Tools
 
-**Feature**: 015-codegen-scaffolding-tools  
-**Date**: 2025-11-02  
+**Feature**: 015-codegen-scaffolding-tools\
+**Date**: 2025-11-02\
 **Status**: Complete
 
 ## Executive Summary
@@ -41,6 +41,7 @@ env = Environment(
 ### Key Patterns
 
 **Variable Substitution:**
+
 ```jinja2
 # pyproject.toml.jinja
 [project]
@@ -49,6 +50,7 @@ version = "{{ version }}"
 ```
 
 **Conditional File Generation:**
+
 ```jinja2
 {% if include_tests %}
 # tests/test_{{ module_name }}.py.jinja
@@ -58,6 +60,7 @@ def test_{{ function_name }}():
 ```
 
 **Template Inheritance:**
+
 ```jinja2
 {# base.py.jinja #}
 """{{ docstring }}"""
@@ -72,6 +75,7 @@ from fastapi import FastAPI
 ```
 
 **Macros for Reusable Patterns:**
+
 ```jinja2
 {% macro generate_class(name, fields) %}
 class {{ name }}:
@@ -110,10 +114,10 @@ def validate_template(template_path: Path, env: Environment) -> list[str]:
 ### Security Best Practices
 
 1. **Use Jinja2 ≥3.1.5** (fixes sandbox escape vulnerability)
-2. **Use `SandboxedEnvironment`** if templates come from untrusted sources
-3. **Never let users provide raw template source** via CLI
-4. **Whitelist filters/functions** - only allow safe operations
-5. **Validate context data types** before rendering
+1. **Use `SandboxedEnvironment`** if templates come from untrusted sources
+1. **Never let users provide raw template source** via CLI
+1. **Whitelist filters/functions** - only allow safe operations
+1. **Validate context data types** before rendering
 
 ### Performance Optimization
 
@@ -168,7 +172,7 @@ Use **merge3** library (from breezy-team) for three-way merging of template upda
 
 - **Line-based merging** appropriate for code/config files
 - **Mature implementation** from Bazaar/Breezy VCS (10+ years production use)
-- **Standard conflict markers** compatible with Git (<<<<<<, =======, >>>>>>>)
+- **Standard conflict markers** compatible with Git (\<<\<<\<<, =======, >>>>>>>)
 - **Python-native** with clean API
 - **GPL-2.0+ licensed** (compatible with open source)
 
@@ -270,9 +274,9 @@ def has_unresolved_conflicts(content: str) -> bool:
 ### Validation Strategy
 
 1. **Pre-merge**: Check file exists, is text, within size limits
-2. **Detect conflicts**: Parse output for markers
-3. **Validate balance**: Ensure start/end markers match
-4. **Post-resolution**: Verify no markers remain, optionally run quality checks
+1. **Detect conflicts**: Parse output for markers
+1. **Validate balance**: Ensure start/end markers match
+1. **Post-resolution**: Verify no markers remain, optionally run quality checks
 
 ### Alternatives Considered
 
@@ -642,20 +646,20 @@ dev = [
 
 Based on research and spec requirements:
 
-- **Project generation**: <30 seconds (SC-001)
-- **CLI startup**: <100ms (responsive feel)
-- **Template list**: <5 seconds (includes remote checks)
-- **Template cache**: <2 seconds per 10MB
-- **Quality validation**: <10 seconds for 1000 files
+- **Project generation**: \<30 seconds (SC-001)
+- **CLI startup**: \<100ms (responsive feel)
+- **Template list**: \<5 seconds (includes remote checks)
+- **Template cache**: \<2 seconds per 10MB
+- **Quality validation**: \<10 seconds for 1000 files
 
 ## Security Considerations
 
 1. **Jinja2 ≥3.1.5**: Fixes sandbox escape (CVE-2024-56326)
-2. **SandboxedEnvironment**: Use for untrusted templates
-3. **Input validation**: Regex patterns for project names, file paths
-4. **Path traversal**: Validate all file paths stay within project directory
-5. **Code execution**: Never eval() or exec() user input
-6. **Template sources**: Verify Git URLs before cloning
+1. **SandboxedEnvironment**: Use for untrusted templates
+1. **Input validation**: Regex patterns for project names, file paths
+1. **Path traversal**: Validate all file paths stay within project directory
+1. **Code execution**: Never eval() or exec() user input
+1. **Template sources**: Verify Git URLs before cloning
 
 ## Conclusion
 

@@ -9,7 +9,7 @@ category: audit-prompts
 
 > **Usage:** Copy this entire prompt into Claude Code to conduct a comprehensive audit of Python testing logic using parallel subagents.
 
----
+______________________________________________________________________
 
 ## PROMPT START
 
@@ -27,13 +27,14 @@ PHASE 5: Synthesis & Recommendations (4 parallel agents)
 
 **Total: 34 agents across 5 phases**
 
----
+______________________________________________________________________
 
 ## PHASE 1: Discovery & Inventory
 
 Launch 8 parallel agents to map the testing landscape:
 
 ### Agent 1.1: Test File Inventory
+
 ```
 Prompt: "Inventory ALL test files in this codebase. For each file report:
 - Full path
@@ -47,6 +48,7 @@ Search patterns: **/test_*.py, **/*_test.py, tests/**/*.py"
 ```
 
 ### Agent 1.2: Pytest Configuration Analysis
+
 ```
 Prompt: "Analyze ALL pytest configuration in this codebase:
 - pyproject.toml [tool.pytest.ini_options] section
@@ -63,6 +65,7 @@ For each config, document:
 ```
 
 ### Agent 1.3: Test Fixture Inventory
+
 ```
 Prompt: "Inventory ALL pytest fixtures in this codebase:
 - Location (which conftest.py or test file)
@@ -77,6 +80,7 @@ Flag any fixtures that appear duplicated or could be consolidated."
 ```
 
 ### Agent 1.4: Mock & Patch Pattern Catalog
+
 ```
 Prompt: "Catalog ALL mocking patterns used in tests:
 - unittest.mock usage (patch, MagicMock, Mock, PropertyMock)
@@ -92,6 +96,7 @@ For each pattern found, note:
 ```
 
 ### Agent 1.5: Test Markers & Categories
+
 ```
 Prompt: "Analyze test categorization and markers:
 - All @pytest.mark.X decorators used
@@ -105,6 +110,7 @@ Identify inconsistencies in marker usage."
 ```
 
 ### Agent 1.6: Assertion Pattern Analysis
+
 ```
 Prompt: "Analyze assertion patterns across all test files:
 - Plain assert usage vs pytest assertions
@@ -122,6 +128,7 @@ Identify:
 ```
 
 ### Agent 1.7: Test Data & Fixtures Files
+
 ```
 Prompt: "Inventory all test data and fixture files:
 - JSON fixtures in tests/
@@ -138,6 +145,7 @@ For each, document:
 ```
 
 ### Agent 1.8: Test Dependencies Analysis
+
 ```
 Prompt: "Analyze test-specific dependencies:
 - Test dependencies in pyproject.toml
@@ -152,13 +160,14 @@ Evaluate:
 - Security advisories on test deps"
 ```
 
----
+______________________________________________________________________
 
 ## PHASE 2: Test Quality Deep-Dive
 
 Launch 10 parallel agents for detailed quality analysis:
 
 ### Agent 2.1: Unit Test Isolation Audit
+
 ```
 Prompt: "Audit unit tests for proper isolation:
 - Tests that modify global state
@@ -175,6 +184,7 @@ For each violation, provide:
 ```
 
 ### Agent 2.2: Test Naming Convention Audit
+
 ```
 Prompt: "Audit test naming conventions:
 - Test function naming patterns (test_X_should_Y, test_X_when_Y, etc.)
@@ -187,6 +197,7 @@ Create a style guide recommendation based on current patterns."
 ```
 
 ### Agent 2.3: Arrange-Act-Assert Pattern Audit
+
 ```
 Prompt: "Audit tests for clean AAA (Arrange-Act-Assert) structure:
 - Tests with clear separation of setup/execution/verification
@@ -199,6 +210,7 @@ Provide examples of good and problematic patterns found."
 ```
 
 ### Agent 2.4: Edge Case Coverage Audit
+
 ```
 Prompt: "Audit edge case coverage in tests:
 - Empty input handling tests
@@ -213,6 +225,7 @@ Identify modules with weak edge case coverage."
 ```
 
 ### Agent 2.5: Error Path Testing Audit
+
 ```
 Prompt: "Audit error handling test coverage:
 - Exception raising tests (pytest.raises)
@@ -228,6 +241,7 @@ For each module, assess:
 ```
 
 ### Agent 2.6: Test Documentation Audit
+
 ```
 Prompt: "Audit test documentation:
 - Docstrings on test functions
@@ -243,6 +257,7 @@ Assess:
 ```
 
 ### Agent 2.7: Parametrized Test Quality
+
 ```
 Prompt: "Deep-dive into parametrized tests:
 - @pytest.mark.parametrize usage
@@ -256,6 +271,7 @@ Suggest improvements for existing parametrized tests."
 ```
 
 ### Agent 2.8: Integration Test Analysis
+
 ```
 Prompt: "Analyze integration tests specifically:
 - Identification of integration vs unit tests
@@ -269,6 +285,7 @@ Flag integration tests masquerading as unit tests."
 ```
 
 ### Agent 2.9: Test Performance Analysis
+
 ```
 Prompt: "Analyze test performance characteristics:
 - Slow tests (look for sleep(), large loops, heavy I/O)
@@ -281,6 +298,7 @@ Identify the likely slowest tests and optimization opportunities."
 ```
 
 ### Agent 2.10: Flaky Test Detection
+
 ```
 Prompt: "Identify potential flaky tests:
 - Time-dependent tests
@@ -293,13 +311,14 @@ Prompt: "Identify potential flaky tests:
 For each potential flaky test, explain the risk and mitigation."
 ```
 
----
+______________________________________________________________________
 
 ## PHASE 3: Coverage & Gap Analysis
 
 Launch 6 parallel agents:
 
 ### Agent 3.1: Coverage Configuration Audit
+
 ```
 Prompt: "Audit code coverage configuration:
 - Coverage.py configuration in pyproject.toml
@@ -315,6 +334,7 @@ Identify:
 ```
 
 ### Agent 3.2: Untested Code Identification
+
 ```
 Prompt: "Identify likely untested code paths:
 - Public functions/methods without corresponding tests
@@ -327,6 +347,7 @@ Cross-reference test files with source files to find gaps."
 ```
 
 ### Agent 3.3: Test-to-Code Ratio Analysis
+
 ```
 Prompt: "Analyze test-to-code ratios:
 - Lines of test code vs lines of production code per module
@@ -337,6 +358,7 @@ Create a heatmap-style report of testing density."
 ```
 
 ### Agent 3.4: Critical Path Coverage
+
 ```
 Prompt: "Assess test coverage of critical paths:
 - Main entry points (CLI, API endpoints)
@@ -349,6 +371,7 @@ Prioritize gaps by criticality of the untested code."
 ```
 
 ### Agent 3.5: Regression Test Assessment
+
 ```
 Prompt: "Assess regression testing capability:
 - Tests that would catch common regression types
@@ -360,6 +383,7 @@ Identify areas where regressions could slip through."
 ```
 
 ### Agent 3.6: API Contract Testing
+
 ```
 Prompt: "Analyze API/contract testing:
 - Public API surface test coverage
@@ -371,13 +395,14 @@ Prompt: "Analyze API/contract testing:
 Assess whether public interfaces are adequately tested."
 ```
 
----
+______________________________________________________________________
 
 ## PHASE 4: Configuration & Infrastructure
 
 Launch 6 parallel agents:
 
 ### Agent 4.1: CI Test Integration Audit
+
 ```
 Prompt: "Audit CI/CD test integration:
 - GitHub Actions test workflows
@@ -393,6 +418,7 @@ Identify:
 ```
 
 ### Agent 4.2: Test Environment Management
+
 ```
 Prompt: "Audit test environment management:
 - Virtual environment handling in tests
@@ -405,6 +431,7 @@ Flag environment leakage risks."
 ```
 
 ### Agent 4.3: Test Utility Code Quality
+
 ```
 Prompt: "Audit test utility/helper code:
 - Custom test utilities in conftest.py
@@ -420,6 +447,7 @@ Assess:
 ```
 
 ### Agent 4.4: Pytest Plugin Utilization
+
 ```
 Prompt: "Analyze pytest plugin utilization:
 - Currently used plugins and their effectiveness
@@ -431,6 +459,7 @@ Recommend plugin additions or removals."
 ```
 
 ### Agent 4.5: Test Output & Reporting
+
 ```
 Prompt: "Audit test output and reporting:
 - Console output configuration
@@ -443,6 +472,7 @@ Assess readability and CI integration of test reports."
 ```
 
 ### Agent 4.6: Test Maintenance Burden
+
 ```
 Prompt: "Assess test maintenance burden:
 - Tests tightly coupled to implementation
@@ -454,13 +484,14 @@ Prompt: "Assess test maintenance burden:
 Identify tests that are maintenance liabilities."
 ```
 
----
+______________________________________________________________________
 
 ## PHASE 5: Synthesis & Recommendations
 
 Launch 4 parallel agents:
 
 ### Agent 5.1: Critical Issues Synthesis
+
 ```
 Prompt: "Synthesize critical testing issues from all previous findings:
 - P0: Issues that could cause false confidence (tests that don't test)
@@ -472,6 +503,7 @@ Create a prioritized action plan with effort estimates."
 ```
 
 ### Agent 5.2: Quick Wins Identification
+
 ```
 Prompt: "Identify quick wins for test improvement:
 - Low-effort, high-impact improvements
@@ -483,6 +515,7 @@ Create a checklist of improvements achievable in <1 hour each."
 ```
 
 ### Agent 5.3: Test Architecture Recommendations
+
 ```
 Prompt: "Provide test architecture recommendations:
 - Optimal test directory structure
@@ -495,6 +528,7 @@ Create an ideal state architecture document."
 ```
 
 ### Agent 5.4: Testing Standards Document
+
 ```
 Prompt: "Draft a testing standards document based on findings:
 - Naming conventions
@@ -507,13 +541,14 @@ Prompt: "Draft a testing standards document based on findings:
 Make it actionable and enforceable."
 ```
 
----
+______________________________________________________________________
 
 ## Output Requirements
 
 After all phases complete, synthesize into:
 
 ### 1. Executive Summary
+
 - Total tests: X
 - Estimated coverage: X%
 - Critical issues: X
@@ -521,10 +556,12 @@ After all phases complete, synthesize into:
 - Recommended priority actions
 
 ### 2. Issues Table
-| ID | Severity | Category | Description | File(s) | Effort | Impact |
-|----|----------|----------|-------------|---------|--------|--------|
+
+| ID  | Severity | Category | Description | File(s) | Effort | Impact |
+| --- | -------- | -------- | ----------- | ------- | ------ | ------ |
 
 ### 3. Metrics Dashboard
+
 - Tests by type (unit/integration/e2e)
 - Tests by module
 - Fixture count and reuse rate
@@ -532,27 +569,29 @@ After all phases complete, synthesize into:
 - Parametrization usage
 
 ### 4. Action Plan
+
 Prioritized list of improvements with:
+
 - Description
 - Files affected
 - Estimated effort
 - Expected impact
 - Dependencies
 
----
+______________________________________________________________________
 
 ## Execution Instructions
 
 1. **Start Phase 1** - Launch all 8 agents in parallel
-2. **Wait for Phase 1** - Collect all outputs
-3. **Start Phase 2** - Launch all 10 agents in parallel
-4. **Continue sequentially** through phases 3-5
-5. **Synthesize** - Combine all findings into final report
+1. **Wait for Phase 1** - Collect all outputs
+1. **Start Phase 2** - Launch all 10 agents in parallel
+1. **Continue sequentially** through phases 3-5
+1. **Synthesize** - Combine all findings into final report
 
 Use TodoWrite to track progress through phases.
 
 **BEGIN AUDIT NOW**
 
----
+______________________________________________________________________
 
 ## PROMPT END

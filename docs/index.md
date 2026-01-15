@@ -1,6 +1,7 @@
 # Riso Developer Documentation
 
 <!-- SVG Filters for Risograph Effects -->
+
 <svg class="riso-filters" aria-hidden="true">
   <defs>
     <filter id="riso-rough">
@@ -72,15 +73,16 @@ cd samples/default/render
 # Set up and run
 uv sync && make quality
 ```
+
 :::
 
 :::{toctree}
 :maxdepth: 2
 :hidden:
 
-Guides <guides/index>
-Tools <tools/index>
-API Reference <api/index>
+Guides \<guides/index>
+Tools \<tools/index>
+API Reference \<api/index>
 Changelog <changelog>
 :::
 
@@ -98,7 +100,7 @@ Changelog <changelog>
     </p>
   </div>
 
-  <div class="feature-card">
+<div class="feature-card">
     <div class="feature-icon">
       <iconify-icon icon="tabler:book-2"></iconify-icon>
     </div>
@@ -109,7 +111,7 @@ Changelog <changelog>
     </p>
   </div>
 
-  <div class="feature-card">
+<div class="feature-card">
     <div class="feature-icon">
       <iconify-icon icon="tabler:robot"></iconify-icon>
     </div>
@@ -120,7 +122,7 @@ Changelog <changelog>
     </p>
   </div>
 
-  <div class="feature-card">
+<div class="feature-card">
     <div class="feature-icon">
       <iconify-icon icon="tabler:plug-connected"></iconify-icon>
     </div>
@@ -150,7 +152,7 @@ Changelog <changelog>
     </div>
   </div>
 
-  <div class="callout">
+<div class="callout">
     <div class="callout-icon">
       <iconify-icon icon="tabler:test-pipe"></iconify-icon>
     </div>
@@ -163,7 +165,7 @@ Changelog <changelog>
     </div>
   </div>
 
-  <div class="callout">
+<div class="callout">
     <div class="callout-icon">
       <iconify-icon icon="tabler:git-merge"></iconify-icon>
     </div>
@@ -176,7 +178,7 @@ Changelog <changelog>
     </div>
   </div>
 
-  <div class="callout">
+<div class="callout">
     <div class="callout-icon">
       <iconify-icon icon="tabler:file-text"></iconify-icon>
     </div>
@@ -205,7 +207,7 @@ Changelog <changelog>
     </div>
   </div>
 
-  <div class="stat-card">
+<div class="stat-card">
     <div class="stat-value" style="font-size: 1.5rem;">
       <iconify-icon icon="tabler:package"></iconify-icon>
     </div>
@@ -215,7 +217,7 @@ Changelog <changelog>
     </div>
   </div>
 
-  <div class="stat-card">
+<div class="stat-card">
     <div class="stat-value" style="font-size: 1.5rem;">
       <iconify-icon icon="tabler:versions"></iconify-icon>
     </div>
@@ -273,7 +275,7 @@ and in CI to prevent regressions.
   </a>
 </div>
 
----
+______________________________________________________________________
 
 <p class="text-center text-muted" style="margin-top: 2rem;">
   Built with <iconify-icon icon="tabler:heart" style="color: var(--riso-primary);"></iconify-icon> using

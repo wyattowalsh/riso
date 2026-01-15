@@ -7,13 +7,15 @@ This document provides extension patterns and context for GitHub Actions CI/CD w
 The template provides two core workflows:
 
 1. **riso-quality.yml** – Main quality validation workflow
+
    - Python quality checks (ruff, mypy, pylint, pytest)
    - Optional Node.js quality checks (ESLint, TypeScript, Vitest)
    - Conditional CLI and MCP module tests
    - Retry logic with exponential backoff
    - Artifact uploads with 90-day retention
 
-2. **riso-matrix.yml** – Matrix testing across Python versions
+1. **riso-matrix.yml** – Matrix testing across Python versions
+
    - Tests against Python 3.11, 3.12, 3.13
    - Independent cache keys per version
    - Fail-fast disabled for comprehensive testing
@@ -24,6 +26,7 @@ The template provides two core workflows:
 ### Adding Custom Workflow Steps
 
 **Before quality checks:**
+
 ```yaml
 - name: Custom preparation step
   run: |
@@ -32,6 +35,7 @@ The template provides two core workflows:
 ```
 
 **After quality checks:**
+
 ```yaml
 - name: Custom validation step
   run: |
@@ -42,6 +46,7 @@ The template provides two core workflows:
 ### Adding New Jobs
 
 **Parallel job pattern:**
+
 ```yaml
 custom-checks:
   name: Custom Checks
@@ -58,6 +63,7 @@ custom-checks:
 ```
 
 **Dependent job pattern:**
+
 ```yaml
 custom-checks:
   name: Custom Checks
@@ -71,6 +77,7 @@ custom-checks:
 ### Customizing Cache Keys
 
 **Add custom paths to Python cache:**
+
 ```yaml
 - name: Cache Python dependencies
   uses: actions/cache@v4
@@ -83,6 +90,7 @@ custom-checks:
 ```
 
 **Add custom restore keys:**
+
 ```yaml
 restore-keys: |
   ${{ runner.os }}-py3.11-
@@ -93,6 +101,7 @@ restore-keys: |
 ### Artifact Upload Patterns
 
 **Upload custom artifacts:**
+
 ```yaml
 - name: Upload custom artifacts
   if: always()
@@ -108,6 +117,7 @@ restore-keys: |
 ### Environment Variable Customization
 
 **Project-level environment:**
+
 ```yaml
 env:
   QUALITY_PROFILE: strict
@@ -116,6 +126,7 @@ env:
 ```
 
 **Job-level environment:**
+
 ```yaml
 python-quality:
   env:
@@ -124,6 +135,7 @@ python-quality:
 ```
 
 **Step-level environment:**
+
 ```yaml
 - name: Run tests
   env:
@@ -134,6 +146,7 @@ python-quality:
 ### Conditional Execution Patterns
 
 **Run step only on specific branches:**
+
 ```yaml
 - name: Deploy to staging
   if: github.ref == 'refs/heads/develop'
@@ -142,6 +155,7 @@ python-quality:
 ```
 
 **Run step only on PR:**
+
 ```yaml
 - name: Comment on PR
   if: github.event_name == 'pull_request'
@@ -157,6 +171,7 @@ python-quality:
 ```
 
 **Run step only on failure:**
+
 ```yaml
 - name: Send failure notification
   if: failure()
@@ -167,6 +182,7 @@ python-quality:
 ### Matrix Expansion
 
 **Add custom matrix dimensions:**
+
 ```yaml
 strategy:
   matrix:
@@ -177,6 +193,7 @@ strategy:
 ```
 
 **Use matrix values in steps:**
+
 ```yaml
 - name: Test with ${{ matrix.database }}
   env:
@@ -187,6 +204,7 @@ strategy:
 ### Retry Logic Customization
 
 **Adjust retry parameters:**
+
 ```yaml
 - name: Run quality checks with retry
   uses: nick-fields/retry@v3
@@ -200,6 +218,7 @@ strategy:
 ```
 
 **Retry specific commands only:**
+
 ```yaml
 - name: Install flaky dependency
   uses: nick-fields/retry@v3
@@ -213,6 +232,7 @@ strategy:
 ### Code Coverage Services
 
 **Codecov integration:**
+
 ```yaml
 - name: Upload to Codecov
   uses: codecov/codecov-action@v3
@@ -223,6 +243,7 @@ strategy:
 ```
 
 **Coveralls integration:**
+
 ```yaml
 - name: Upload to Coveralls
   uses: coverallsapp/github-action@v2
@@ -234,6 +255,7 @@ strategy:
 ### Notification Services
 
 **Slack notifications:**
+
 ```yaml
 - name: Notify Slack
   if: always()
@@ -249,6 +271,7 @@ strategy:
 ### Security Scanning
 
 **Snyk security scan:**
+
 ```yaml
 - name: Run Snyk security scan
   uses: snyk/actions/python@master
@@ -261,6 +284,7 @@ strategy:
 ### Free Tier Optimization
 
 **Reduce workflow triggers:**
+
 ```yaml
 on:
   pull_request:
@@ -273,6 +297,7 @@ on:
 ```
 
 **Use concurrency limits:**
+
 ```yaml
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -280,6 +305,7 @@ concurrency:
 ```
 
 **Aggressive caching:**
+
 ```yaml
 - name: Cache everything
   uses: actions/cache@v4
@@ -298,29 +324,29 @@ concurrency:
 ### Workflow Not Triggering
 
 1. Check trigger conditions in `on:` section
-2. Verify branch protection rules don't block workflow
-3. Check if workflow file has syntax errors (run `actionlint`)
+1. Verify branch protection rules don't block workflow
+1. Check if workflow file has syntax errors (run `actionlint`)
 
 ### Cache Not Hitting
 
 1. Check cache key generation logic
-2. Verify lock files haven't changed
-3. Check cache size limits (10GB per repository)
-4. Review cache hit/miss logs in workflow output
+1. Verify lock files haven't changed
+1. Check cache size limits (10GB per repository)
+1. Review cache hit/miss logs in workflow output
 
 ### Job Timeouts
 
 1. Increase `timeout-minutes` in job definition
-2. Use `needs:` to ensure jobs run in correct order
-3. Check for hanging processes or network issues
-4. Consider splitting long jobs into multiple jobs
+1. Use `needs:` to ensure jobs run in correct order
+1. Check for hanging processes or network issues
+1. Consider splitting long jobs into multiple jobs
 
 ### Artifact Upload Failures
 
 1. Check artifact size (500MB limit per file)
-2. Verify paths exist before upload
-3. Use `if-no-files-found: warn` for optional artifacts
-4. Check retention-days is within limits (1-90 days)
+1. Verify paths exist before upload
+1. Use `if-no-files-found: warn` for optional artifacts
+1. Check retention-days is within limits (1-90 days)
 
 ## References
 

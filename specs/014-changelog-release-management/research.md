@@ -1,14 +1,14 @@
 # Research: Changelog & Release Management
 
-**Date**: 2025-11-02  
-**Feature**: 014-changelog-release-management  
+**Date**: 2025-11-02\
+**Feature**: 014-changelog-release-management\
 **Phase**: 0 - Outline & Research
 
 ## Research Questions
 
 Based on Technical Context analysis, the following areas required research to resolve unknowns and establish best practices.
 
----
+______________________________________________________________________
 
 ## 1. Conventional Commit Tooling Selection
 
@@ -23,6 +23,7 @@ Use **commitlint** with **@commitlint/config-conventional** for commit message v
 - **config-conventional**: Standard ruleset based on Angular conventions, matches semantic-release expectations, well-documented
 
 Alternatives evaluated:
+
 - **cocogitto** (Rust-based): Excellent performance but requires Rust toolchain, adds complexity to template baseline
 - **gitlint** (Python-native): Limited ecosystem, lacks semantic-release integration
 - **Custom validator**: Would require maintaining parser, regex patterns, and test suite - violates "use established tools" principle
@@ -33,7 +34,7 @@ Alternatives evaluated:
 - Configuration in `.commitlintrc.yml` (YAML for readability over JS)
 - Hook installation via Python script (cross-platform, no shell dependencies)
 
----
+______________________________________________________________________
 
 ## 2. Semantic Release Tool & Configuration
 
@@ -48,13 +49,14 @@ Use **semantic-release** (npm package) as the primary release orchestration tool
 - **Configuration Format**: `.releaserc.yml` YAML format for template generation
 
 Workflow stages:
+
 1. **verifyConditions**: Check credentials, branch, CI environment
-2. **analyzeCommits**: Parse commit history, calculate next version
-3. **verifyRelease**: Pre-release validation
-4. **generateNotes**: Create changelog content
-5. **prepare**: Update version files (package.json, pyproject.toml, Cargo.toml)
-6. **publish**: Push to registries (PyPI, npm, Docker Hub)
-7. **success**: Create GitHub Release, post notifications
+1. **analyzeCommits**: Parse commit history, calculate next version
+1. **verifyRelease**: Pre-release validation
+1. **generateNotes**: Create changelog content
+1. **prepare**: Update version files (package.json, pyproject.toml, Cargo.toml)
+1. **publish**: Push to registries (PyPI, npm, Docker Hub)
+1. **success**: Create GitHub Release, post notifications
 
 ### Alternatives Considered
 
@@ -70,7 +72,7 @@ Workflow stages:
 - Use `@semantic-release/github` to create GitHub Releases
 - Configuration via Jinja2 template rendering for per-project customization
 
----
+______________________________________________________________________
 
 ## 3. Git Hook Installation Strategy
 
@@ -83,12 +85,14 @@ Implement **automatic Git hook installation via post-clone script** with manual 
 Per clarification decision (Session 2025-11-02): "Automatic installation via post-clone script with manual fallback (uv/pnpm scripts)"
 
 Approach:
+
 - **Python projects**: Add `setup-hooks` script to `[tool.poe.the-poet.tasks]` or `[tool.hatch.scripts]` in pyproject.toml
 - **Node projects**: Add `"setup-hooks": "node scripts/install-hooks.js"` to package.json scripts
 - **Hook script**: Python-based for cross-platform compatibility, copies hook to `.git/hooks/commit-msg`
 - **Fallback**: Document manual hook installation in README for users who skip automated setup
 
 Benefits:
+
 - Works with any Git client (CLI, VS Code, GitKraken, etc.)
 - No external dependencies (husky requires npm, pre-commit requires Python package)
 - Simple uninstall: delete `.git/hooks/commit-msg`
@@ -108,7 +112,7 @@ Benefits:
 - Hook installation documented in README with troubleshooting section
 - Smoke test verifies hook installation in rendered projects
 
----
+______________________________________________________________________
 
 ## 4. Registry Credential Management
 
@@ -121,16 +125,19 @@ Store registry credentials as **GitHub Secrets** with **annual rotation reminder
 Per clarification decision (Session 2025-11-02): "GitHub Secrets with annual rotation reminder (documented in README)"
 
 Credential types:
+
 - **PyPI**: API token with project scope (`pypi-AgEIcHlwaS5vcmc...`)
 - **npm**: Authentication token (`.npmrc` format: `//registry.npmjs.org/:_authToken=npm_...`)
 - **Docker Hub**: Access token (username + token, not password)
 
 GitHub Secrets setup:
+
 - `PYPI_TOKEN`: PyPI API token (if Python project)
 - `NPM_TOKEN`: npm authentication token (if Node project)
 - `DOCKER_HUB_USERNAME`, `DOCKER_HUB_TOKEN`: Docker Hub credentials (if container module enabled)
 
 README documentation includes:
+
 - Credential generation instructions per registry
 - GitHub Secrets setup guide (Settings → Secrets → Actions)
 - Annual rotation schedule recommendation
@@ -149,7 +156,7 @@ README documentation includes:
 - Missing credentials fail gracefully with actionable error message
 - Credential scope limited to publishing (read/write on specific packages)
 
----
+______________________________________________________________________
 
 ## 5. Changelog Format & Customization
 
@@ -160,6 +167,7 @@ Use **standard semantic-release changelog format** with categorization by commit
 ### Rationale
 
 Format structure:
+
 ```markdown
 # [Version] (YYYY-MM-DD)
 
@@ -182,6 +190,7 @@ Format structure:
 ```
 
 Customization options (via `.releaserc.yml`):
+
 - Commit types to include/exclude (e.g., hide `chore`, show `docs`)
 - Section emoji/titles (customize "Features", "Bug Fixes", etc.)
 - PR link format (GitHub, GitLab, Bitbucket)
@@ -200,7 +209,7 @@ Customization options (via `.releaserc.yml`):
 - Template includes default configuration with sane defaults
 - Users can customize via `.releaserc.yml` overrides
 
----
+______________________________________________________________________
 
 ## 6. Monorepo Versioning Strategy
 
@@ -211,11 +220,13 @@ Support **independent versioning per package** using `@semantic-release/monorepo
 ### Rationale
 
 Monorepo scenarios:
+
 - **Python monorepo**: Multiple packages in `packages/` directory, each with `pyproject.toml`
 - **Node monorepo**: pnpm workspace with `pnpm-workspace.yaml`, packages in `packages/` or `apps/`
 - **Mixed monorepo**: Python + Node packages in same repository
 
 Approach:
+
 - Each package has own `.releaserc.yml` (or shared config with package-specific overrides)
 - Conventional commits use scope to target packages (e.g., `feat(api): add endpoint`)
 - Version tags include package name (`api/v1.2.3`, `cli/v2.0.0`)
@@ -234,7 +245,7 @@ Approach:
 - Workflow uses matrix strategy to release packages in dependency order
 - Smoke tests validate monorepo release scenarios
 
----
+______________________________________________________________________
 
 ## 7. GitHub Actions Workflow Integration
 
@@ -245,6 +256,7 @@ Create **dedicated `riso-release.yml` workflow** that integrates with existing `
 ### Rationale
 
 Workflow structure:
+
 ```yaml
 name: Release
 on:
@@ -272,6 +284,7 @@ jobs:
 ```
 
 Integration points:
+
 - **Dependency on quality**: Release job requires successful `riso-quality` workflow
 - **Version consistency**: Matrix tests run on tagged versions
 - **Artifact publishing**: Reuses container images from `riso-container-build` workflow
@@ -291,31 +304,33 @@ Integration points:
 - Detailed logging for debugging release issues
 - Artifact upload for release logs (90-day retention)
 
----
+______________________________________________________________________
 
 ## 8. Performance Optimization
 
 ### Decision
 
-Implement **shallow git clones**, **commit caching**, and **parallel registry publishing** to meet <10 minute total release time constraint.
+Implement **shallow git clones**, **commit caching**, and **parallel registry publishing** to meet \<10 minute total release time constraint.
 
 ### Rationale
 
 Performance bottlenecks:
+
 1. **Git history fetch**: Full clone for 1000+ commits takes 30-60s → Use `fetch-depth: 0` but with sparse checkout
-2. **Commit analysis**: Parsing 1000 commits takes 10-20s → semantic-release handles efficiently
-3. **Changelog generation**: Formatting markdown takes 5-10s → Acceptable within 30s target
-4. **Registry publishing**: Serial publishing takes 2min per registry → Parallelize when possible
+1. **Commit analysis**: Parsing 1000 commits takes 10-20s → semantic-release handles efficiently
+1. **Changelog generation**: Formatting markdown takes 5-10s → Acceptable within 30s target
+1. **Registry publishing**: Serial publishing takes 2min per registry → Parallelize when possible
 
 Optimizations:
+
 - **Shallow clone**: `fetch-depth: 0` only fetches commits since last tag, reduces clone time by 50%
 - **Cache dependencies**: Cache npm/uv dependencies, reduces setup time by 70%
 - **Parallel publishing**: PyPI + npm + Docker Hub publish simultaneously (when independent)
-- **Skip unnecessary steps**: Dry-run mode skips actual publishing, validates in <1 minute
+- **Skip unnecessary steps**: Dry-run mode skips actual publishing, validates in \<1 minute
 
 ### Alternatives Considered
 
-- **Full clone always**: Simpler but slower, fails <10min constraint for large repos
+- **Full clone always**: Simpler but slower, fails \<10min constraint for large repos
 - **Incremental changelog**: semantic-release already does this efficiently
 - **Background publishing**: Complicates error handling, harder to rollback
 
@@ -326,18 +341,18 @@ Optimizations:
 - Parallel jobs for independent registries (PyPI and npm can run simultaneously)
 - Timeout guards (10min workflow timeout) with graceful failure
 
----
+______________________________________________________________________
 
 ## Summary of Research Findings
 
 All technical unknowns resolved. Key decisions:
 
 1. **Tooling**: commitlint + commitizen + semantic-release (established ecosystem)
-2. **Hooks**: Python-based automatic installation via post-clone script
-3. **Credentials**: GitHub Secrets with annual rotation documented in README
-4. **Changelog**: Standard semantic-release format with customizable sections
-5. **Monorepo**: Independent versioning per package via @semantic-release/monorepo
-6. **CI/CD**: Dedicated riso-release.yml workflow integrating with existing workflows
-7. **Performance**: Shallow clones, caching, parallel publishing to meet <10min target
+1. **Hooks**: Python-based automatic installation via post-clone script
+1. **Credentials**: GitHub Secrets with annual rotation documented in README
+1. **Changelog**: Standard semantic-release format with customizable sections
+1. **Monorepo**: Independent versioning per package via @semantic-release/monorepo
+1. **CI/CD**: Dedicated riso-release.yml workflow integrating with existing workflows
+1. **Performance**: Shallow clones, caching, parallel publishing to meet \<10min target
 
 **Next Phase**: Generate data-model.md, contracts/, and quickstart.md based on these research findings.

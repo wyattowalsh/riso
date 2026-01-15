@@ -1,7 +1,7 @@
 # Data Model: GitHub Actions CI/CD Workflows
 
-**Feature**: 004-github-actions-workflows  
-**Date**: 2025-10-30  
+**Feature**: 004-github-actions-workflows\
+**Date**: 2025-10-30\
 **Status**: Complete
 
 ## Overview
@@ -52,7 +52,7 @@ pending → invalid (actionlint fails)
 - At least one job required
 - `quality_profile` must match copier answers
 
----
+______________________________________________________________________
 
 ### JobDefinition
 
@@ -100,7 +100,7 @@ cli_tests.enabled = (cli_module == 'enabled')
 - If `strategy` defined, must include `matrix` configuration
 - If `needs` specified, referenced jobs must exist
 
----
+______________________________________________________________________
 
 ### MatrixStrategy
 
@@ -135,7 +135,7 @@ max_parallel: 3  # All versions in parallel
 - `matrix_dimensions` must include at least one dimension
 - Python versions must be in supported range (3.11-3.13)
 
----
+______________________________________________________________________
 
 ### StepDefinition
 
@@ -167,7 +167,7 @@ Represents a single step within a job, either using a GitHub Action or running a
 - If `uses` specified, must be valid action reference
 - Step names should be descriptive and unique within job
 
----
+______________________________________________________________________
 
 ### RetryConfiguration
 
@@ -211,9 +211,9 @@ with:
 
 - `max_attempts` must be exactly 3
 - `exponential_backoff` must be true
-- `timeout_minutes` must be <= job timeout
+- `timeout_minutes` must be \<= job timeout
 
----
+______________________________________________________________________
 
 ### CacheManifest
 
@@ -279,7 +279,7 @@ enabled=false → enabled=true (when module enabled)
 - At least one lock file required
 - `cache_paths` must be absolute or tilde-prefixed
 
----
+______________________________________________________________________
 
 ### MatrixBuildResult
 
@@ -318,8 +318,8 @@ pending → skipped (if condition not met)
 
 **Success Criteria Mapping**:
 
-- SC-002: `duration_seconds` <= 180 on cache hit, <= 360 on cache miss
-- SC-003: Sum of parallel matrix `duration_seconds` <= 480
+- SC-002: `duration_seconds` \<= 180 on cache hit, \<= 360 on cache miss
+- SC-003: Sum of parallel matrix `duration_seconds` \<= 480
 - SC-004: `cache_hit` rate >= 0.70 across runs
 
 **Validation Rules**:
@@ -328,7 +328,7 @@ pending → skipped (if condition not met)
 - If `cache_hit` true, `cache_hit_duration_seconds` must be > 0
 - If `status` is failure, `error_message` recommended
 
----
+______________________________________________________________________
 
 ### ArtifactMetadata
 
@@ -381,7 +381,7 @@ active → expired (after 90 days)
 - `artifact_type` determines expected `file_paths` contents
 - `size_bytes` must be > 0
 
----
+______________________________________________________________________
 
 ### WorkflowValidationReport
 
@@ -443,7 +443,7 @@ pending → skipped (actionlint not available)
 - Errors must reference valid line/column numbers
 - `actionlint_version` should match documented requirement
 
----
+______________________________________________________________________
 
 ## Entity Relationships
 
@@ -509,18 +509,18 @@ Extended `samples/*/smoke-results.json` to capture workflow-specific outcomes:
 }
 ```
 
----
+______________________________________________________________________
 
 ## Invariants
 
 1. **All matrix jobs must pass**: If `JobDefinition.strategy` is defined, all `MatrixBuildResult` entries must have `status='success'` for overall workflow success
-2. **90-day retention**: All `ArtifactMetadata.retention_days` must equal 90
-3. **Distinctive naming**: All `WorkflowConfiguration.workflow_name` must start with `riso-`
-4. **Cache key integrity**: `CacheManifest.primary_key` must include hash of all `lock_files`
-5. **Retry exhaustion**: `RetryConfiguration.max_attempts` must equal 3
-6. **Timeout hierarchy**: `StepDefinition.timeout_minutes` <= `JobDefinition.timeout_minutes` <= `WorkflowConfiguration.timeout_minutes`
+1. **90-day retention**: All `ArtifactMetadata.retention_days` must equal 90
+1. **Distinctive naming**: All `WorkflowConfiguration.workflow_name` must start with `riso-`
+1. **Cache key integrity**: `CacheManifest.primary_key` must include hash of all `lock_files`
+1. **Retry exhaustion**: `RetryConfiguration.max_attempts` must equal 3
+1. **Timeout hierarchy**: `StepDefinition.timeout_minutes` \<= `JobDefinition.timeout_minutes` \<= `WorkflowConfiguration.timeout_minutes`
 
----
+______________________________________________________________________
 
-**Data Model Complete**: 2025-10-30  
+**Data Model Complete**: 2025-10-30\
 **Next Step**: Generate contracts (Phase 1 continuation)

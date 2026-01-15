@@ -10,22 +10,22 @@
 
 ### Required Inputs
 
-| Variable | Type | Example | Description |
-|----------|------|---------|-------------|
-| `package_name` | string | `myproject` | Python package name for module execution |
-| `quality_profile` | enum | `standard` or `strict` | Quality check strictness level |
-| `api_tracks` | list[string] | `['python']` or `['python', 'node']` | Enabled API frameworks |
-| `cli_module` | enum | `enabled` or `disabled` | Whether CLI module is enabled |
-| `mcp_module` | enum | `enabled` or `disabled` | Whether MCP module is enabled |
-| `docs_site` | enum | `none`, `sphinx`, `fumadocs`, `docusaurus` | Documentation framework |
-| `shared_logic` | enum | `enabled` or `disabled` | Whether shared logic module enabled |
+| Variable          | Type         | Example                                    | Description                              |
+| ----------------- | ------------ | ------------------------------------------ | ---------------------------------------- |
+| `package_name`    | string       | `myproject`                                | Python package name for module execution |
+| `quality_profile` | enum         | `standard` or `strict`                     | Quality check strictness level           |
+| `api_tracks`      | list[string] | `['python']` or `['python', 'node']`       | Enabled API frameworks                   |
+| `cli_module`      | enum         | `enabled` or `disabled`                    | Whether CLI module is enabled            |
+| `mcp_module`      | enum         | `enabled` or `disabled`                    | Whether MCP module is enabled            |
+| `docs_site`       | enum         | `none`, `sphinx`, `fumadocs`, `docusaurus` | Documentation framework                  |
+| `shared_logic`    | enum         | `enabled` or `disabled`                    | Whether shared logic module enabled      |
 
 ### Optional Inputs
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `ci_platform` | enum | `github-actions` | CI platform (future: GitLab, CircleCI) |
-| `python_versions` | list[string] | `['3.11', '3.12', '3.13']` | Python versions to test |
+| Variable          | Type         | Default                    | Description                            |
+| ----------------- | ------------ | -------------------------- | -------------------------------------- |
+| `ci_platform`     | enum         | `github-actions`           | CI platform (future: GitLab, CircleCI) |
+| `python_versions` | list[string] | `['3.11', '3.12', '3.13']` | Python versions to test                |
 
 ## Output Contract (Generated Workflow)
 
@@ -169,37 +169,37 @@ jobs:
 
 - Workflow validates via actionlint with zero errors
 - Jobs execute within timeout (10 min standard, 20 min strict)
-- Cache restoration completes in <10 seconds on hits
+- Cache restoration completes in \<10 seconds on hits
 - All required jobs pass for PR merge to proceed
 - Artifacts upload successfully with 90-day retention
 
 ### Error Handling
 
-| Error Type | Behavior | User-Facing Message |
-|------------|----------|---------------------|
-| Syntax error | actionlint fails during render | "Workflow validation failed: {error details}" |
-| Timeout exceeded | Job cancels after limit | "Quality checks exceeded {timeout} minute limit" |
-| Tool failure | Retry up to 3 attempts | "Retrying after transient failure (attempt {N}/3)" |
-| Service outage | Display after 3 failures | "⚠️ Service Issue - GitHub Actions may be experiencing problems" |
-| Cache miss | Continue with full install | "Cache miss - installing dependencies (this may take 5-6 minutes)" |
+| Error Type       | Behavior                       | User-Facing Message                                                |
+| ---------------- | ------------------------------ | ------------------------------------------------------------------ |
+| Syntax error     | actionlint fails during render | "Workflow validation failed: {error details}"                      |
+| Timeout exceeded | Job cancels after limit        | "Quality checks exceeded {timeout} minute limit"                   |
+| Tool failure     | Retry up to 3 attempts         | "Retrying after transient failure (attempt {N}/3)"                 |
+| Service outage   | Display after 3 failures       | "⚠️ Service Issue - GitHub Actions may be experiencing problems"   |
+| Cache miss       | Continue with full install     | "Cache miss - installing dependencies (this may take 5-6 minutes)" |
 
 ## Validation Rules
 
 ### Pre-Generation (Template)
 
 1. All Jinja2 variables must have defaults or be required in `copier.yml`
-2. Conditional blocks must check existence of variables before use
-3. Action versions must be pinned (e.g., `@v4`, not `@latest`)
-4. Timeout values must respect profile constraints
+1. Conditional blocks must check existence of variables before use
+1. Action versions must be pinned (e.g., `@v4`, not `@latest`)
+1. Timeout values must respect profile constraints
 
 ### Post-Generation (Rendered)
 
 1. Workflow YAML must be valid per GitHub Actions schema
-2. All referenced actions must exist in GitHub marketplace
-3. Cache keys must include hash of lock files
-4. Artifact retention must be exactly 90 days
-5. Job names must be unique within workflow
-6. Required jobs must be specified in branch protection
+1. All referenced actions must exist in GitHub marketplace
+1. Cache keys must include hash of lock files
+1. Artifact retention must be exactly 90 days
+1. Job names must be unique within workflow
+1. Required jobs must be specified in branch protection
 
 ## Dependencies
 
@@ -264,10 +264,10 @@ act pull_request -W .github/workflows/riso-quality.yml
 ### Smoke Tests
 
 1. Render default sample with standard profile
-2. Render full-stack sample with strict profile + Node track
-3. Verify workflow files exist at expected paths
-4. Run actionlint on all generated workflows
-5. Check `smoke-results.json` for workflow validation status
+1. Render full-stack sample with strict profile + Node track
+1. Verify workflow files exist at expected paths
+1. Run actionlint on all generated workflows
+1. Check `smoke-results.json` for workflow validation status
 
 ## Maintenance Notes
 
@@ -276,19 +276,19 @@ act pull_request -W .github/workflows/riso-quality.yml
 When updating GitHub Actions versions (e.g., `actions/checkout@v4` → `@v5`):
 
 1. Update all workflow templates consistently
-2. Test with sample renders
-3. Document breaking changes in upgrade guide
-4. Consider copier update compatibility
+1. Test with sample renders
+1. Document breaking changes in upgrade guide
+1. Consider copier update compatibility
 
 ### Adding New Module Checks
 
 To add validation for a new optional module:
 
 1. Add module flag to input contract
-2. Add conditional step block in workflow
-3. Update data model with new module field
-4. Add smoke test for new module path
-5. Update quickstart docs
+1. Add conditional step block in workflow
+1. Update data model with new module field
+1. Add smoke test for new module path
+1. Update quickstart docs
 
 ### Performance Optimization
 
@@ -298,8 +298,8 @@ Monitor `MatrixBuildResult.duration_seconds` and `CacheManifest` hit rates:
 - If duration > 6 minutes on cache miss, review dependency bloat
 - If duration > 3 minutes on cache hit, check for unnecessary re-installs
 
----
+______________________________________________________________________
 
-**Contract Version**: 1.0  
-**Last Updated**: 2025-10-30  
+**Contract Version**: 1.0\
+**Last Updated**: 2025-10-30\
 **Status**: Complete

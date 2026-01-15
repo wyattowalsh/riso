@@ -1,7 +1,7 @@
 # Quickstart: Code Generation and Scaffolding Tools
 
-**Feature**: 015-codegen-scaffolding-tools  
-**Date**: 2025-11-02  
+**Feature**: 015-codegen-scaffolding-tools\
+**Date**: 2025-11-02\
 **For**: Developers implementing this feature
 
 ## Overview
@@ -253,6 +253,7 @@ Create test fixtures and integration tests for template loading.
 ### 3. Validate Against Research
 
 Ensure implementation follows research.md guidelines for:
+
 - Jinja2 configuration
 - File permission handling
 - Size validation (100MB limit)
@@ -317,6 +318,7 @@ uv run python -m {{package_name}}.codegen.cli new --help
 ### 1. Implement Jinja2 Generator
 
 Follow research.md patterns for:
+
 - Environment configuration
 - Variable substitution
 - Template inheritance
@@ -395,6 +397,7 @@ Create `template/files/shared/docs/modules/codegen-scaffolding.md.jinja`.
 ### 2. Add Examples
 
 Include working examples for:
+
 - Creating projects
 - Adding modules
 - Customizing templates
@@ -463,23 +466,26 @@ cd samples/default/render
 After completing this quickstart:
 
 1. Review implementation against spec.md
-2. Run `/speckit.tasks` to get detailed task breakdown
-3. Begin implementation following TDD approach
-4. Create PR when ready for review
+1. Run `/speckit.tasks` to get detailed task breakdown
+1. Begin implementation following TDD approach
+1. Create PR when ready for review
 
 ## Troubleshooting
 
 **Import errors:**
+
 ```bash
 uv sync  # Re-sync dependencies
 ```
 
 **Test failures:**
+
 ```bash
 uv run pytest -v --tb=short  # Verbose output with short tracebacks
 ```
 
 **Quality check failures:**
+
 ```bash
 uv run ruff check --fix .  # Auto-fix ruff issues
 uv run mypy --show-error-codes .  # Show mypy error codes
@@ -487,18 +493,18 @@ uv run mypy --show-error-codes .  # Show mypy error codes
 
 ## Time Estimates
 
-| Phase | Estimated Time | Cumulative |
-|-------|---------------|------------|
-| Environment Setup | 15 min | 15 min |
-| Core Data Models | 2 hours | 2h 15m |
-| Template Loader | 3 hours | 5h 15m |
-| CLI Implementation | 4 hours | 9h 15m |
-| Generation Engine | 5 hours | 14h 15m |
-| Merge Support | 4 hours | 18h 15m |
-| Integration Tests | 3 hours | 21h 15m |
-| Documentation | 2 hours | 23h 15m |
-| Quality Gates | 1 hour | 24h 15m |
-| Riso Integration | 2 hours | 26h 15m |
-| **Total** | **~26 hours** | **~3-4 days** |
+| Phase              | Estimated Time | Cumulative    |
+| ------------------ | -------------- | ------------- |
+| Environment Setup  | 15 min         | 15 min        |
+| Core Data Models   | 2 hours        | 2h 15m        |
+| Template Loader    | 3 hours        | 5h 15m        |
+| CLI Implementation | 4 hours        | 9h 15m        |
+| Generation Engine  | 5 hours        | 14h 15m       |
+| Merge Support      | 4 hours        | 18h 15m       |
+| Integration Tests  | 3 hours        | 21h 15m       |
+| Documentation      | 2 hours        | 23h 15m       |
+| Quality Gates      | 1 hour         | 24h 15m       |
+| Riso Integration   | 2 hours        | 26h 15m       |
+| **Total**          | **~26 hours**  | **~3-4 days** |
 
 This estimate assumes focused development time with TDD approach.

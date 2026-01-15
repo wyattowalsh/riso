@@ -1,6 +1,5 @@
 ---
-
-description: "Task list template for feature implementation"
+description: Task list template for feature implementation
 ---
 
 # Tasks: Expanded Documentation Template Options
@@ -21,7 +20,7 @@ description: "Task list template for feature implementation"
 - [ ] T001 Create documentation sample scaffolds in `samples/docs-fumadocs/`, `samples/docs-sphinx/`, and `samples/docs-docusaurus/` with placeholder `copier-answers.yml` entries.
 - [ ] T002 [P] Establish shared guidance directory structure in `template/files/shared/docs/guidance/` for variant-specific README snippets.
 
----
+______________________________________________________________________
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
@@ -44,7 +43,7 @@ description: "Task list template for feature implementation"
 
 **Checkpoint**: Foundation ready—user story development may now proceed.
 
----
+______________________________________________________________________
 
 ## Phase 3: User Story 1 – Docs Variant Prompt Guides Baseline (Priority: P1) 🎯 MVP
 
@@ -66,7 +65,7 @@ description: "Task list template for feature implementation"
 
 **Checkpoint**: Baseline render delivers working Fumadocs docs and CI automation evidence.
 
----
+______________________________________________________________________
 
 ## Phase 4: User Story 2 – Python Teams Publish Shibuya Docs (Priority: P2)
 
@@ -86,7 +85,7 @@ description: "Task list template for feature implementation"
 
 **Checkpoint**: Sphinx Shibuya variant builds and uploads artifacts deterministically.
 
----
+______________________________________________________________________
 
 ## Phase 5: User Story 3 – Front-end Orgs Rely on Docusaurus (Priority: P3)
 
@@ -106,7 +105,7 @@ description: "Task list template for feature implementation"
 
 **Checkpoint**: Docusaurus variant compiles, publishes DocSearch-enabled artifacts, and surfaces module health in docs.
 
----
+______________________________________________________________________
 
 ## Final Phase: Polish & Cross-Cutting Concerns
 
@@ -119,12 +118,12 @@ description: "Task list template for feature implementation"
 - [ ] T044 Document doc-site opt-out remediation in `template/files/shared/docs/guidance/none.md.jinja` and align README checkpoints where referenced.
 - [ ] T045 Finalize `AGENTS.md` and `.specify/memory/constitution.md` notes if new tooling integrations require context updates.
 - [ ] T046 Generate `copier diff` evidence for default and each docs variant, storing outputs under `samples/**/copier-diff.txt` before release sign-off.
-- [ ] T047 Implement support-ticket variance tracking in `scripts/compliance/checkpoints.py` (recording results to `samples/metadata/support_tickets.json`) to enforce the <5% threshold.
+- [ ] T047 Implement support-ticket variance tracking in `scripts/compliance/checkpoints.py` (recording results to `samples/metadata/support_tickets.json`) to enforce the \<5% threshold.
 - [ ] T048 Update `docs/modules/governance.md.jinja` and `docs/upgrade-guide.md.jinja` with instructions for reviewing support-ticket metrics each release.
 - [ ] T049 Extend `scripts/ci/track_doc_publish.py` to emit warnings when documentation artifacts are within 14 days of expiry and log status to `samples/metadata/doc_publish.json`.
 - [ ] T050 Document artifact-expiry alert handling in `docs/modules/governance.md.jinja` and `samples/README.md`.
 
----
+______________________________________________________________________
 
 ## Dependencies & Execution Order
 

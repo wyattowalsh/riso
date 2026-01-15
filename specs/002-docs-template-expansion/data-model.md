@@ -1,6 +1,7 @@
 # Data Model: Expanded Documentation Template Options
 
 ## DocumentationVariant
+
 - **Fields**
   - `name` (enum: `fumadocs`, `sphinx-shibuya`, `docusaurus`, `none`)
   - `requires_tooling` (set: `node`, `pnpm`, `uv`)
@@ -9,13 +10,14 @@
   - `docs_path` (string) — relative path of generated docs workspace
   - `is_baseline` (bool)
 - **Relationships**
-  - 1..* -> `DocumentationArtifact`
-  - 1..* -> `DocumentationSampleEvidence`
+  - 1..\* -> `DocumentationArtifact`
+  - 1..\* -> `DocumentationSampleEvidence`
 - **Constraints**
   - Exactly one variant flagged `is_baseline=true` per render
   - `name=none` MUST set `requires_tooling=∅` and `build_command` empty
 
 ## DocumentationSampleEvidence
+
 - **Fields**
   - `variant_name` (foreign key -> `DocumentationVariant.name`)
   - `render_id` (string) — hash or timestamp of sample render
@@ -28,6 +30,7 @@
   - Retain history for last N renders (configurable, default 30)
 
 ## DocumentationArtifact
+
 - **Fields**
   - `variant_name` (foreign key -> `DocumentationVariant.name`)
   - `ci_run_id` (string)
@@ -39,6 +42,7 @@
   - Generate warning when `expires_at` < 14 days to prompt refresh
 
 ## SupportTicketMetric
+
 - **Fields**
   - `observed_at` (datetime)
   - `ticket_count` (integer)
@@ -49,6 +53,7 @@
   - Persisted to `samples/metadata/support_tickets.json` for compliance reviews
 
 ## ArtifactExpiryAlert
+
 - **Fields**
   - `variant_name` (foreign key -> `DocumentationVariant.name`)
   - `expires_at` (datetime)
@@ -59,6 +64,7 @@
   - Logged to `samples/metadata/doc_publish.json` and surfaced in CI output
 
 ## ToolchainProvisioningAttempt
+
 - **Fields**
   - `tool_name` (enum: `node`, `pnpm`, `uv`)
   - `version_requested` (string)

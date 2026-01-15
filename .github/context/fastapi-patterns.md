@@ -596,25 +596,25 @@ logger.addHandler(handler)
 ## Security Best Practices
 
 1. **Input Validation**: Always validate and sanitize user input
-2. **SQL Injection**: Use parameterized queries with SQLAlchemy
-3. **CORS**: Configure specific origins, avoid wildcards in production
-4. **Rate Limiting**: Implement rate limits to prevent abuse
-5. **Authentication**: Use strong authentication mechanisms (JWT, OAuth2)
-6. **HTTPS Only**: Enforce HTTPS in production
-7. **Security Headers**: Set appropriate security headers
-8. **Secrets Management**: Never commit secrets, use environment variables or secret managers
-9. **Dependency Updates**: Keep dependencies up to date
-10. **Error Messages**: Don't leak sensitive information in error messages
+1. **SQL Injection**: Use parameterized queries with SQLAlchemy
+1. **CORS**: Configure specific origins, avoid wildcards in production
+1. **Rate Limiting**: Implement rate limits to prevent abuse
+1. **Authentication**: Use strong authentication mechanisms (JWT, OAuth2)
+1. **HTTPS Only**: Enforce HTTPS in production
+1. **Security Headers**: Set appropriate security headers
+1. **Secrets Management**: Never commit secrets, use environment variables or secret managers
+1. **Dependency Updates**: Keep dependencies up to date
+1. **Error Messages**: Don't leak sensitive information in error messages
 
 ## Performance Optimization
 
 1. **Connection Pooling**: Use connection pools for databases and external services
-2. **Async Operations**: Use async/await for I/O-bound operations
-3. **Caching**: Cache expensive computations and database queries
-4. **Database Indexes**: Create appropriate database indexes
-5. **Query Optimization**: Optimize database queries (N+1 problem, select fields)
-6. **Response Pagination**: Paginate large result sets
-7. **Compression**: Enable response compression
-8. **CDN**: Serve static assets from CDN
-9. **Monitoring**: Monitor response times and optimize slow endpoints
-10. **Load Testing**: Regular load testing to identify bottlenecks
+1. **Async Operations**: Use async/await for I/O-bound operations
+1. **Caching**: Cache expensive computations and database queries
+1. **Database Indexes**: Create appropriate database indexes
+1. **Query Optimization**: Optimize database queries (N+1 problem, select fields)
+1. **Response Pagination**: Paginate large result sets
+1. **Compression**: Enable response compression
+1. **CDN**: Serve static assets from CDN
+1. **Monitoring**: Monitor response times and optimize slow endpoints
+1. **Load Testing**: Regular load testing to identify bottlenecks

@@ -10,11 +10,11 @@ export async function GET() {
   const posts = getAllPosts();
 
   const rss = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
-    <title>{{ project_name }} Blog</title>
+    <title><![CDATA[{{ project_name }} Blog]]></title>
     <link>${baseUrl}/blog</link>
-    <description>Latest news, tutorials, and updates from {{ project_name }}</description>
+    <description><![CDATA[Latest news, tutorials, and updates from {{ project_name }}]]></description>
     <language>en</language>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
     <atom:link href="${baseUrl}/api/blog/rss" rel="self" type="application/rss+xml"/>
@@ -23,12 +23,12 @@ export async function GET() {
         (post) => `
     <item>
       <title><![CDATA[${post.title}]]></title>
-      <link>${baseUrl}/blog/${post.slug}</link>
-      <guid isPermaLink="true">${baseUrl}/blog/${post.slug}</guid>
+      <link>${baseUrl}/blog/${encodeURIComponent(post.slug)}</link>
+      <guid isPermaLink="true">${baseUrl}/blog/${encodeURIComponent(post.slug)}</guid>
       <description><![CDATA[${post.description}]]></description>
-      <author>${post.author}</author>
+      <dc:creator><![CDATA[${post.author}]]></dc:creator>
       <pubDate>${new Date(post.date).toUTCString()}</pubDate>
-      ${post.tags.map((tag) => `<category>${tag}</category>`).join('\n      ')}
+      ${post.tags.map((tag) => `<category><![CDATA[${tag}]]></category>`).join('\n      ')}
     </item>`
       )
       .join('')}

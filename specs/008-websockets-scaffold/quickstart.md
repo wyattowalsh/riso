@@ -440,5 +440,5 @@ except asyncio.QueueFull:
 For issues or questions:
 
 1. Check generated documentation in `docs/modules/websockets.md`
-2. Review test examples in `tests/test_websocket.py`
-3. Consult spec 008 in `specs/008-websockets-scaffold/`
+1. Review test examples in `tests/test_websocket.py`
+1. Consult spec 008 in `specs/008-websockets-scaffold/`

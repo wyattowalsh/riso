@@ -18,22 +18,26 @@ Please be respectful and constructive in all interactions. We welcome contributo
 ### Development Setup
 
 1. Fork and clone the repository:
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/riso.git
    cd riso
    ```
 
-2. Install dependencies:
+1. Install dependencies:
+
    ```bash
    uv sync
    ```
 
-3. Render a sample to test:
+1. Render a sample to test:
+
    ```bash
    ./scripts/render-samples.sh --variant default
    ```
 
-4. Run quality checks:
+1. Run quality checks:
+
    ```bash
    uv run task quality
    ```
@@ -51,23 +55,27 @@ Please be respectful and constructive in all interactions. We welcome contributo
 ### Making Changes
 
 1. Create a feature branch:
+
    ```bash
    git checkout -b feat/my-feature
    ```
 
-2. Make your changes
+1. Make your changes
 
-3. Run quality checks:
+1. Run quality checks:
+
    ```bash
    uv run task quality
    ```
 
-4. Run tests:
+1. Run tests:
+
    ```bash
    uv run pytest tests/
    ```
 
-5. Commit with conventional commits:
+1. Commit with conventional commits:
+
    ```bash
    git commit -m "feat: add amazing feature"
    ```
@@ -85,6 +93,7 @@ type(scope): description
 ```
 
 **Types:**
+
 - `feat` - New features
 - `fix` - Bug fixes
 - `docs` - Documentation changes
@@ -94,6 +103,7 @@ type(scope): description
 - `chore` - Maintenance tasks
 
 **Examples:**
+
 ```
 feat(api): add rate limiting support
 fix(cli): resolve argument parsing error
@@ -122,10 +132,10 @@ docs: update installation instructions
 ## Pull Request Process
 
 1. Ensure all quality checks pass
-2. Update documentation if needed
-3. Add tests for new functionality
-4. Fill out the PR template
-5. Request review from maintainers
+1. Update documentation if needed
+1. Add tests for new functionality
+1. Fill out the PR template
+1. Request review from maintainers
 
 ### PR Checklist
 
@@ -140,6 +150,7 @@ docs: update installation instructions
 ### Bug Reports
 
 Include:
+
 - Steps to reproduce
 - Expected vs actual behavior
 - Environment details (OS, Python version)
@@ -148,6 +159,7 @@ Include:
 ### Feature Requests
 
 Include:
+
 - Use case description
 - Proposed solution
 - Alternatives considered

@@ -1,8 +1,8 @@
 # Feature Specification: Container & Deployment Templates
 
-**Feature Branch**: `005-container-deployment`  
-**Created**: 2025-11-01  
-**Status**: Draft  
+**Feature Branch**: `005-container-deployment`\
+**Created**: 2025-11-01\
+**Status**: Draft\
 **Input**: User description: "Container and deployment templates with Docker, docker-compose, and container registry integration for production-ready deployments"
 
 ## Clarifications
@@ -18,10 +18,10 @@ This feature provides production-ready containerization and deployment infrastru
 **Key Design Decisions:**
 
 1. **Multi-stage Docker builds**: Separate builder and runtime stages to minimize image size and attack surface
-2. **Conditional rendering**: Dockerfile templates adapt based on `api_tracks`, `cli_module`, `docs_site`, and `shared_logic` selections
-3. **Security-first approach**: Non-root users, minimal base images, vulnerability scanning integration
-4. **Local dev parity**: docker-compose configurations mirror production topology for consistent testing
-5. **Registry agnostic**: Support GitHub Container Registry (ghcr.io), Docker Hub, and AWS ECR with template examples
+1. **Conditional rendering**: Dockerfile templates adapt based on `api_tracks`, `cli_module`, `docs_site`, and `shared_logic` selections
+1. **Security-first approach**: Non-root users, minimal base images, vulnerability scanning integration
+1. **Local dev parity**: docker-compose configurations mirror production topology for consistent testing
+1. **Registry agnostic**: Support GitHub Container Registry (ghcr.io), Docker Hub, and AWS ECR with template examples
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -31,17 +31,17 @@ Python teams using FastAPI (or CLI-only projects) need battle-tested Dockerfile 
 
 **Why this priority**: Core container infrastructure enables all deployment scenarios. Without this, teams cannot deploy Riso projects to production environments.
 
-**Independent Test**: Render project with `api_tracks=python`, build container with `docker build -f Dockerfile -t test:latest .`, verify image size <500MB, run container with health check endpoint responding 200 OK, validate non-root user execution with `docker run --rm test:latest id`.
+**Independent Test**: Render project with `api_tracks=python`, build container with `docker build -f Dockerfile -t test:latest .`, verify image size \<500MB, run container with health check endpoint responding 200 OK, validate non-root user execution with `docker run --rm test:latest id`.
 
 **Acceptance Scenarios**:
 
-1. **Given** a rendered project with `api_tracks=python`, **When** running `docker build`, **Then** build completes in <3 minutes with multi-stage optimization
-2. **Given** a built Python API container, **When** starting with `docker run -p 8000:8000`, **Then** health check at `/health` returns 200 OK within 5 seconds
-3. **Given** a production Dockerfile, **When** inspecting running container, **Then** process runs as non-root user (UID 1000+)
-4. **Given** a Python container image, **When** scanning with Trivy/Grype, **Then** zero HIGH or CRITICAL vulnerabilities reported
-5. **Given** CLI-only project (`api_tracks=none`, `cli_module=enabled`), **When** building Dockerfile, **Then** container includes CLI entrypoint and runs `--help` successfully
+1. **Given** a rendered project with `api_tracks=python`, **When** running `docker build`, **Then** build completes in \<3 minutes with multi-stage optimization
+1. **Given** a built Python API container, **When** starting with `docker run -p 8000:8000`, **Then** health check at `/health` returns 200 OK within 5 seconds
+1. **Given** a production Dockerfile, **When** inspecting running container, **Then** process runs as non-root user (UID 1000+)
+1. **Given** a Python container image, **When** scanning with Trivy/Grype, **Then** zero HIGH or CRITICAL vulnerabilities reported
+1. **Given** CLI-only project (`api_tracks=none`, `cli_module=enabled`), **When** building Dockerfile, **Then** container includes CLI entrypoint and runs `--help` successfully
 
----
+______________________________________________________________________
 
 ### User Story 2 - Monorepo Teams Need Local Dev Orchestration (Priority: P2)
 
@@ -54,12 +54,12 @@ Teams building full-stack monorepos with Python + Node.js services need docker-c
 **Acceptance Scenarios**:
 
 1. **Given** a monorepo render, **When** running `docker-compose up`, **Then** all services (Python API, Node API, docs, database) start successfully within 30 seconds
-2. **Given** running docker-compose services, **When** Python API makes a call to shared logic, **Then** response includes expected health payload structure
-3. **Given** docker-compose with PostgreSQL, **When** FastAPI service starts, **Then** Alembic migrations auto-apply and database schema is current
-4. **Given** local development mode, **When** editing source files, **Then** services hot-reload without manual container restarts (volume mounts working)
-5. **Given** docker-compose services running, **When** executing `docker-compose down -v`, **Then** all containers and volumes clean up without orphaned resources
+1. **Given** running docker-compose services, **When** Python API makes a call to shared logic, **Then** response includes expected health payload structure
+1. **Given** docker-compose with PostgreSQL, **When** FastAPI service starts, **Then** Alembic migrations auto-apply and database schema is current
+1. **Given** local development mode, **When** editing source files, **Then** services hot-reload without manual container restarts (volume mounts working)
+1. **Given** docker-compose services running, **When** executing `docker-compose down -v`, **Then** all containers and volumes clean up without orphaned resources
 
----
+______________________________________________________________________
 
 ### User Story 3 - DevOps Teams Publish to Container Registries (Priority: P3)
 
@@ -72,12 +72,12 @@ DevOps teams need CI/CD workflow templates that build, scan, tag, and publish co
 **Acceptance Scenarios**:
 
 1. **Given** a GitHub Actions workflow, **When** pushing to main branch, **Then** container builds with BuildKit layer caching and publishes to ghcr.io
-2. **Given** a container build workflow, **When** scanning with Trivy, **Then** HIGH/CRITICAL vulnerabilities fail the build with actionable report artifacts
-3. **Given** semantic version tag `v1.2.3`, **When** workflow runs, **Then** image tagged with `v1.2.3`, `v1.2`, `v1`, and `latest`
-4. **Given** AWS ECR target, **When** providing AWS credentials via secrets, **Then** image publishes to ECR repository with OIDC authentication
-5. **Given** multi-architecture build requirement, **When** workflow runs, **Then** images built for `linux/amd64` and `linux/arm64` with manifest lists
+1. **Given** a container build workflow, **When** scanning with Trivy, **Then** HIGH/CRITICAL vulnerabilities fail the build with actionable report artifacts
+1. **Given** semantic version tag `v1.2.3`, **When** workflow runs, **Then** image tagged with `v1.2.3`, `v1.2`, `v1`, and `latest`
+1. **Given** AWS ECR target, **When** providing AWS credentials via secrets, **Then** image publishes to ECR repository with OIDC authentication
+1. **Given** multi-architecture build requirement, **When** workflow runs, **Then** images built for `linux/amd64` and `linux/arm64` with manifest lists
 
----
+______________________________________________________________________
 
 ### Edge Cases
 
@@ -122,8 +122,8 @@ DevOps teams need CI/CD workflow templates that build, scan, tag, and publish co
 
 ### Non-Functional Requirements
 
-- **NFR-001 (Performance)**: Docker builds MUST complete in <3 minutes for Python projects and <5 minutes for Python+Node monorepos on GitHub Actions standard runners
-- **NFR-002 (Performance)**: Python container images MUST be <500MB, Node.js images <300MB, documentation images <200MB
+- **NFR-001 (Performance)**: Docker builds MUST complete in \<3 minutes for Python projects and \<5 minutes for Python+Node monorepos on GitHub Actions standard runners
+- **NFR-002 (Performance)**: Python container images MUST be \<500MB, Node.js images \<300MB, documentation images \<200MB
 - **NFR-003 (Performance)**: docker-compose services MUST achieve healthy status within 30 seconds of `docker-compose up`
 - **NFR-004 (Security)**: Containers MUST pass Trivy/Grype scans with zero HIGH or CRITICAL vulnerabilities (MEDIUM acceptable with justification)
 - **NFR-005 (Security)**: Dockerfiles MUST pass hadolint linting with zero errors (warnings acceptable)
@@ -138,8 +138,8 @@ DevOps teams need CI/CD workflow templates that build, scan, tag, and publish co
 ### Measurable Outcomes
 
 - **SC-001**: 100% of sample variants render with valid Dockerfiles that pass hadolint linting (zero errors)
-- **SC-002**: All rendered projects successfully build containers with `docker build` completing in target time (Python <3min, Python+Node <5min)
-- **SC-003**: Container images meet size targets: Python <500MB, Node.js <300MB, docs <200MB
+- **SC-002**: All rendered projects successfully build containers with `docker build` completing in target time (Python \<3min, Python+Node \<5min)
+- **SC-003**: Container images meet size targets: Python \<500MB, Node.js \<300MB, docs \<200MB
 - **SC-004**: docker-compose configurations start all services successfully and pass health checks within 30 seconds for 95%+ of renders
 - **SC-005**: Trivy/Grype security scans pass with zero HIGH/CRITICAL vulnerabilities in 100% of default sample images
 - **SC-006**: GitHub Actions container workflows execute successfully in `samples/default`, `samples/full-stack`, and `samples/api-monorepo` with artifact uploads
@@ -215,7 +215,7 @@ DevOps teams need CI/CD workflow templates that build, scan, tag, and publish co
 
 **Impact**: Images exceeding 1GB slow deployment pipelines and increase registry storage costs.
 
-**Mitigation**: Multi-stage builds with aggressive layer caching, minimal base images (alpine/slim), `.dockerignore` exclusions, size validation in CI (<500MB Python, <300MB Node).
+**Mitigation**: Multi-stage builds with aggressive layer caching, minimal base images (alpine/slim), `.dockerignore` exclusions, size validation in CI (\<500MB Python, \<300MB Node).
 
 ### Risk 2: Security Vulnerabilities in Base Images
 
@@ -260,6 +260,6 @@ DevOps teams need CI/CD workflow templates that build, scan, tag, and publish co
 - **Monitoring integration**: Prometheus exporters, OpenTelemetry instrumentation belong in feature 008 (monitoring/observability)
 - **CI platform support beyond GitHub Actions**: GitLab CI, Jenkins, CircleCI container workflows are out of scope
 
----
+______________________________________________________________________
 
 **Next Steps**: Run `/speckit.clarify` to validate requirements coverage, then `/speckit.plan` to generate implementation plan, followed by `/speckit.tasks` for phased task breakdown.

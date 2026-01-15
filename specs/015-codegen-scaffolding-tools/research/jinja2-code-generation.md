@@ -1,10 +1,10 @@
 # Jinja2 for Code Generation: Research Findings
 
-**Context**: Building a CLI scaffolding tool for project generation from templates  
-**Date**: November 2, 2025  
+**Context**: Building a CLI scaffolding tool for project generation from templates\
+**Date**: November 2, 2025\
 **Status**: Research Complete
 
----
+______________________________________________________________________
 
 ## Executive Summary
 
@@ -17,13 +17,14 @@ Jinja2 is a mature, battle-tested templating engine ideal for code generation, w
 - **Syntax validation via compile()** before rendering to catch errors early
 - **Configuration**: `trim_blocks=True`, `lstrip_blocks=True`, `keep_trailing_newline=True` for code generation
 
----
+______________________________________________________________________
 
 ## 1. Jinja2 Features for Code Generation
 
 ### Recommended Features
 
 #### Core Generation Features
+
 ```python
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
@@ -52,6 +53,7 @@ env = Environment(
 ```
 
 #### Template Inheritance Pattern
+
 ```jinja
 {# templates/base/python_module.py.jinja #}
 """{{ module_docstring }}"""
@@ -91,6 +93,7 @@ class {{ model_name }}(BaseModel):
 ```
 
 #### Includes for Composition
+
 ```jinja
 {# Reusable snippets #}
 {% include 'snippets/file_header.txt.jinja' %}
@@ -101,6 +104,7 @@ class {{ class_name }}:
 ```
 
 #### Macros for Repeated Patterns
+
 ```jinja
 {# templates/macros/python.jinja #}
 {% macro render_function(name, args, return_type, docstring) %}
@@ -117,12 +121,14 @@ def {{ name }}({{ args | join(', ') }}) -> {{ return_type }}:
 ### Features to AVOID for Code Generation
 
 ❌ **Autoescape** - Designed for HTML, breaks code generation:
+
 ```python
 # DON'T enable autoescape for code templates
 env = Environment(autoescape=False)  # Default, keep it this way
 ```
 
 ❌ **Complex Logic in Templates** - Keep business logic in Python:
+
 ```jinja
 {# BAD: Complex logic in template #}
 {% set total = 0 %}
@@ -135,12 +141,13 @@ env = Environment(autoescape=False)  # Default, keep it this way
 ```
 
 ❌ **Finalize Functions** - Can obscure debugging:
+
 ```python
 # Avoid unless absolutely necessary
 env = Environment(finalize=lambda x: x if x else '')
 ```
 
----
+______________________________________________________________________
 
 ## 2. Template Validation
 
@@ -255,7 +262,7 @@ def safe_render(
     return template.render(**context)
 ```
 
----
+______________________________________________________________________
 
 ## 3. File Permissions & Binary Files
 
@@ -366,7 +373,7 @@ def generate_project(template_dir: Path, output_dir: Path, context: dict):
             shutil.copy2(src_file, dest_file)
 ```
 
----
+______________________________________________________________________
 
 ## 4. Template Inheritance & Modular Templates
 
@@ -491,7 +498,7 @@ paths:
   {% endfor %}
 ```
 
----
+______________________________________________________________________
 
 ## 5. Performance Optimization
 
@@ -612,11 +619,11 @@ print(f"Generated {len(generated)} files")
 ### Optimization Tips
 
 1. **Enable bytecode caching**: 10-50x speedup for repeated renders
-2. **Disable auto_reload**: Eliminates stat() calls on every render
-3. **Increase cache_size**: If you have 100s of unique templates
-4. **Use parallel rendering**: Jinja2 Environment is thread-safe
-5. **Pre-load common data**: Don't recompute context for each file
-6. **Use `template.module`**: For rendering same template multiple times
+1. **Disable auto_reload**: Eliminates stat() calls on every render
+1. **Increase cache_size**: If you have 100s of unique templates
+1. **Use parallel rendering**: Jinja2 Environment is thread-safe
+1. **Pre-load common data**: Don't recompute context for each file
+1. **Use `template.module`**: For rendering same template multiple times
 
 ```python
 # Efficient pattern for same template, different contexts
@@ -632,17 +639,18 @@ for item in items:
     output = mod.render_item(item)  # Faster
 ```
 
----
+______________________________________________________________________
 
 ## 6. Security Best Practices
 
 ### Critical Vulnerability: CVE-2024-56326
 
-**Status**: Fixed in Jinja2 3.1.5 (December 2024)  
-**Impact**: Sandbox escape via `str.format()` indirect reference  
+**Status**: Fixed in Jinja2 3.1.5 (December 2024)\
+**Impact**: Sandbox escape via `str.format()` indirect reference\
 **Severity**: CVSS 7.8 HIGH (CVSS 4.0: 5.4 MEDIUM)
 
 **Mitigation**:
+
 ```bash
 # REQUIRED: Update to patched version
 pip install "Jinja2>=3.1.5"
@@ -806,7 +814,7 @@ renderer = SecureTemplateRenderer(
 output = renderer.render('module.py.jinja', {'module_name': 'example'})
 ```
 
----
+______________________________________________________________________
 
 ## 7. Recommended Configuration Summary
 
@@ -880,7 +888,7 @@ env.filters = {
 }
 ```
 
----
+______________________________________________________________________
 
 ## 8. Example Code Patterns
 
@@ -1013,71 +1021,75 @@ if __name__ == '__main__':
     print("Project generated successfully!")
 ```
 
----
+______________________________________________________________________
 
 ## 9. Key Takeaways
 
 ### DO
 
-✅ Use **Jinja2 >=3.1.5** (security fix)  
-✅ Use **Environment + FileSystemLoader** for complex projects  
-✅ Enable **trim_blocks, lstrip_blocks, keep_trailing_newline** for code  
-✅ Use **StrictUndefined** to catch typos early  
-✅ **Validate templates** before rendering (syntax + variables)  
-✅ Use **SandboxedEnvironment** for any untrusted input  
-✅ **Pre-compile** templates with bytecode cache for performance  
-✅ **Parallelize** rendering for 100s of files  
-✅ Handle **file permissions separately** from rendering  
-✅ **Copy binary files** directly (never template them)  
+✅ Use **Jinja2 >=3.1.5** (security fix)\
+✅ Use **Environment + FileSystemLoader** for complex projects\
+✅ Enable **trim_blocks, lstrip_blocks, keep_trailing_newline** for code\
+✅ Use **StrictUndefined** to catch typos early\
+✅ **Validate templates** before rendering (syntax + variables)\
+✅ Use **SandboxedEnvironment** for any untrusted input\
+✅ **Pre-compile** templates with bytecode cache for performance\
+✅ **Parallelize** rendering for 100s of files\
+✅ Handle **file permissions separately** from rendering\
+✅ **Copy binary files** directly (never template them)
 
 ### DON'T
 
-❌ Enable **autoescape** for code generation (HTML only)  
-❌ Put **complex logic in templates** (keep in Python)  
-❌ Allow **users to provide template source**  
-❌ Use **Template() directly** for includes/inheritance  
-❌ Forget **security updates** (CVE-2024-56326)  
-❌ Use Jinja2 for **binary files** (images, fonts, etc.)  
-❌ Enable **auto_reload in production**  
-❌ Trust **undefined variables** (use StrictUndefined)  
+❌ Enable **autoescape** for code generation (HTML only)\
+❌ Put **complex logic in templates** (keep in Python)\
+❌ Allow **users to provide template source**\
+❌ Use **Template() directly** for includes/inheritance\
+❌ Forget **security updates** (CVE-2024-56326)\
+❌ Use Jinja2 for **binary files** (images, fonts, etc.)\
+❌ Enable **auto_reload in production**\
+❌ Trust **undefined variables** (use StrictUndefined)
 
----
+______________________________________________________________________
 
 ## 10. References
 
 ### Official Documentation
+
 - Jinja2 Documentation: https://jinja.palletsprojects.com/
 - API Reference: https://jinja.palletsprojects.com/en/3.1.x/api/
 - Templates: https://jinja.palletsprojects.com/en/3.1.x/templates/
 - Extensions: https://jinja.palletsprojects.com/en/3.1.x/extensions/
 
 ### Security
+
 - CVE-2024-56326: https://nvd.nist.gov/vuln/detail/CVE-2024-56326
 - Jinja Security Advisory: https://github.com/pallets/jinja/security/advisories/GHSA-q2x7-8rv6-6q7h
 - Security Patch: https://github.com/pallets/jinja/commit/48b0687e05a5466a91cd5812d604fa37ad0943b4
 
 ### Code Generation Best Practices
+
 - Copier (uses Jinja2): https://copier.readthedocs.io/
 - Cookiecutter (uses Jinja2): https://cookiecutter.readthedocs.io/
 - Ansible (Jinja2 config generation): https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_templating.html
 
 ### This Repository's Usage
+
 - Template directory: `/workspaces/riso/template/files/`
 - Hook examples: `/workspaces/riso/template/hooks/`
 - Render script: `/workspaces/riso/scripts/render-samples.sh`
 - Sample renders: `/workspaces/riso/samples/*/render/`
 
----
+______________________________________________________________________
 
 ## Appendix: Performance Benchmarks
 
 Based on testing with 100-500 file projects:
 
-| Optimization | Time (100 files) | Time (500 files) |
-|-------------|------------------|------------------|
-| No cache, no parallelization | ~5000ms | ~25000ms |
-| Bytecode cache only | ~500ms | ~2500ms |
-| Parallelization only (4 threads) | ~1500ms | ~7500ms |
-| **Both optimizations** | **~150ms** | **~750ms** |
+| Optimization                     | Time (100 files) | Time (500 files) |
+| -------------------------------- | ---------------- | ---------------- |
+| No cache, no parallelization     | ~5000ms          | ~25000ms         |
+| Bytecode cache only              | ~500ms           | ~2500ms          |
+| Parallelization only (4 threads) | ~1500ms          | ~7500ms          |
+| **Both optimizations**           | **~150ms**       | **~750ms**       |
 
 **Conclusion**: Bytecode caching provides 10x speedup, parallelization adds another 3-4x. Combined: **~30x faster** for large template sets.

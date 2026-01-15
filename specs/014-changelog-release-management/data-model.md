@@ -1,14 +1,14 @@
 # Data Model: Changelog & Release Management
 
-**Date**: 2025-11-02  
-**Feature**: 014-changelog-release-management  
+**Date**: 2025-11-02\
+**Feature**: 014-changelog-release-management\
 **Phase**: 1 - Design & Contracts
 
 ## Overview
 
 This document defines the data structures, entities, and their relationships for the changelog and release management feature. These models drive configuration file generation, commit validation, version calculation, and release orchestration.
 
----
+______________________________________________________________________
 
 ## Core Entities
 
@@ -60,7 +60,7 @@ Migration: Add 'Z' suffix to UTC dates or specify offset.
 - Subject required, no trailing period, lowercase first letter
 - Breaking changes must include migration notes in footer
 
----
+______________________________________________________________________
 
 ### 2. Version
 
@@ -87,14 +87,14 @@ Semantic version number following SemVer 2.0.0 specification.
 
 **Calculation Rules**:
 
-| Commit Type | Version Bump | Example |
-|-------------|--------------|---------|
-| `fix:` | PATCH | 1.0.0 → 1.0.1 |
-| `feat:` | MINOR | 1.0.0 → 1.1.0 |
-| `BREAKING CHANGE` | MAJOR | 1.0.0 → 2.0.0 |
-| `chore:`, `docs:` | None | No release |
+| Commit Type       | Version Bump | Example       |
+| ----------------- | ------------ | ------------- |
+| `fix:`            | PATCH        | 1.0.0 → 1.0.1 |
+| `feat:`           | MINOR        | 1.0.0 → 1.1.0 |
+| `BREAKING CHANGE` | MAJOR        | 1.0.0 → 2.0.0 |
+| `chore:`, `docs:` | None         | No release    |
 
----
+______________________________________________________________________
 
 ### 3. Changelog Entry
 
@@ -136,7 +136,7 @@ Generated markdown documenting changes for a specific version.
 - Empty sections omitted
 - Commits grouped by scope within sections
 
----
+______________________________________________________________________
 
 ### 4. Change
 
@@ -161,7 +161,7 @@ Individual change entry within a changelog section.
 - **scope**: subject (#PR) ([SHA](url))
 ```
 
----
+______________________________________________________________________
 
 ### 5. Release Configuration
 
@@ -172,7 +172,7 @@ Settings defining release behavior for a project.
 - `branches` (array of string): Branches that trigger releases (e.g., `["main", "next"]`)
 - `repository_url` (string): GitHub repository URL
 - `tag_format` (string): Git tag format (e.g., `v${version}`, `${name}/v${version}` for monorepo)
-- `commit_types` (map<string, CommitTypeConfig>): Commit type configurations
+- `commit_types` (map\<string, CommitTypeConfig>): Commit type configurations
 - `changelog_file` (string): Changelog file path (default: `CHANGELOG.md`)
 - `assets` (array of Asset): Files to attach to GitHub Release
 - `plugins` (array of Plugin): semantic-release plugins configuration
@@ -202,7 +202,7 @@ plugins:
   - "@semantic-release/github"
 ```
 
----
+______________________________________________________________________
 
 ### 6. Commit Type Config
 
@@ -216,17 +216,17 @@ Configuration for a specific commit type.
 
 **Defaults**:
 
-| Type | Section | Hidden | Emoji |
-|------|---------|--------|-------|
-| `feat` | Features | false | ✨ |
-| `fix` | Bug Fixes | false | 🐛 |
-| `docs` | Documentation | false | 📝 |
-| `perf` | Performance | false | ⚡ |
-| `refactor` | Refactoring | true | ♻️ |
-| `test` | Tests | true | ✅ |
-| `chore` | Chores | true | 🔧 |
+| Type       | Section       | Hidden | Emoji |
+| ---------- | ------------- | ------ | ----- |
+| `feat`     | Features      | false  | ✨    |
+| `fix`      | Bug Fixes     | false  | 🐛    |
+| `docs`     | Documentation | false  | 📝    |
+| `perf`     | Performance   | false  | ⚡    |
+| `refactor` | Refactoring   | true   | ♻️    |
+| `test`     | Tests         | true   | ✅    |
+| `chore`    | Chores        | true   | 🔧    |
 
----
+______________________________________________________________________
 
 ### 7. Asset
 
@@ -248,7 +248,7 @@ assets:
     name: "Python Wheel"
 ```
 
----
+______________________________________________________________________
 
 ### 8. Plugin Configuration
 
@@ -279,7 +279,7 @@ plugins:
         - path: "dist/*.whl"
 ```
 
----
+______________________________________________________________________
 
 ### 9. Monorepo Configuration
 
@@ -306,7 +306,7 @@ monorepoConfig:
       tagFormat: "cli/v${version}"
 ```
 
----
+______________________________________________________________________
 
 ### 10. Package Configuration
 
@@ -319,7 +319,7 @@ Individual package within a monorepo.
 - `tag_format` (string): Git tag format for this package
 - `dependencies` (array of string, optional): Other packages this depends on (for release ordering)
 
----
+______________________________________________________________________
 
 ## Relationships
 
@@ -343,7 +343,7 @@ Change
   └─ derived from → CommitMessage
 ```
 
----
+______________________________________________________________________
 
 ## State Transitions
 
@@ -387,34 +387,34 @@ Change
 [Released] ──── New commits ────────────────────→ [Unreleased]
 ```
 
----
+______________________________________________________________________
 
 ## Validation Rules
 
 ### Commit Message Validation
 
 1. Type must be in allowed list (default: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`, `ci`, `build`, `revert`)
-2. Scope (if present) must match pattern: `^[a-z0-9-]+$`
-3. Subject required, max 72 characters
-4. Subject must not end with period
-5. Breaking changes must include footer with migration notes
+1. Scope (if present) must match pattern: `^[a-z0-9-]+$`
+1. Subject required, max 72 characters
+1. Subject must not end with period
+1. Breaking changes must include footer with migration notes
 
 ### Version Validation
 
 1. Must follow SemVer 2.0.0 format
-2. Major/minor/patch must be non-negative integers
-3. Pre-release identifier must match `^[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*$`
-4. New version must be greater than previous (no downgrades)
+1. Major/minor/patch must be non-negative integers
+1. Pre-release identifier must match `^[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*$`
+1. New version must be greater than previous (no downgrades)
 
 ### Release Configuration Validation
 
 1. At least one branch specified
-2. Repository URL must be valid GitHub URL
-3. Changelog file must end with `.md`
-4. Plugin names must be valid npm packages
-5. Monorepo package paths must exist and be unique
+1. Repository URL must be valid GitHub URL
+1. Changelog file must end with `.md`
+1. Plugin names must be valid npm packages
+1. Monorepo package paths must exist and be unique
 
----
+______________________________________________________________________
 
 ## Performance Considerations
 
@@ -438,7 +438,7 @@ Change
 - Use commit message cache to avoid re-parsing
 - Memoize version calculation results
 
----
+______________________________________________________________________
 
 ## Summary
 

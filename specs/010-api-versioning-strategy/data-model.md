@@ -1,7 +1,7 @@
 # Data Model: API Versioning Strategy
 
-**Feature**: 010-api-versioning-strategy  
-**Date**: 2025-11-02  
+**Feature**: 010-api-versioning-strategy\
+**Date**: 2025-11-02\
 **Based on**: [spec.md](./spec.md), [research.md](./research.md)
 
 ## Overview
@@ -15,30 +15,35 @@ This document defines the data model for the API versioning system, including en
 **Purpose**: Represents the identity of an API consumer for usage tracking and analytics.
 
 **Attributes**:
+
 - `consumer_id` (str, required): Unique identifier for the consumer
 - `source` (enum: API_KEY, OAUTH_CLIENT, CUSTOM_HEADER, IP_ADDRESS): How the identity was extracted
 - `raw_value` (str, required): The original value extracted from the request
 
 **Validation Rules**:
+
 - `consumer_id` must be non-empty string
 - `source` must be one of the defined enum values
 
 **Extraction Priority** (highest to lowest):
+
 1. `X-API-Key` header → source=API_KEY
-2. OAuth client ID from Authorization header → source=OAUTH_CLIENT  
-3. `X-Consumer-ID` custom header → source=CUSTOM_HEADER
-4. IP address fallback → source=IP_ADDRESS
+1. OAuth client ID from Authorization header → source=OAUTH_CLIENT
+1. `X-Consumer-ID` custom header → source=CUSTOM_HEADER
+1. IP address fallback → source=IP_ADDRESS
 
 **Relationships**:
+
 - Referenced by `VersionUsageMetric.consumer_id` and `consumer_source`
 
----
+______________________________________________________________________
 
 ### 2. VersionMetadata
 
 **Purpose**: Represents a specific version of the API with all its lifecycle metadata.
 
 **Attributes**:
+
 - `version_id` (str, required): Unique version identifier (e.g., "v1", "v2", "v3-beta")
   - Pattern: `^v[0-9]+(-[a-z]+)?$`
   - Examples: "v1", "v2", "v3-alpha", "v3-beta"
@@ -53,6 +58,7 @@ This document defines the data model for the API versioning system, including en
 - `opt_in_required` (bool, default=False): Whether version requires explicit opt-in header
 
 **Validation Rules**:
+
 - `version_id` must be unique across all versions
 - If `status` is `DEPRECATED`, `deprecation_date` must be set
 - If `status` is `SUNSET`, `sunset_date` must be in the past
@@ -64,6 +70,7 @@ This document defines the data model for the API versioning system, including en
 - `migration_guide_url` must match pattern `^https?://` if provided (absolute URL validation)
 
 **State Transitions**:
+
 ```
 PRERELEASE → CURRENT → DEPRECATED → SUNSET
      ↓          ↓           ↓
@@ -71,6 +78,7 @@ PRERELEASE → CURRENT → DEPRECATED → SUNSET
 ```
 
 **Invariants**:
+
 - Exactly one version must have status `CURRENT` at any time (default version)
 - Once a version reaches `SUNSET`, it cannot transition back
 - `VersionMetadata` is immutable (frozen dataclass) for thread safety
@@ -80,12 +88,14 @@ PRERELEASE → CURRENT → DEPRECATED → SUNSET
 **Purpose**: Enum representing the lifecycle state of an API version.
 
 **Values**:
+
 - `CURRENT`: Active, stable version (usually the default)
 - `DEPRECATED`: Still supported but scheduled for removal, deprecation warnings sent
 - `SUNSET`: No longer supported, returns 410 Gone errors
 - `PRERELEASE`: Beta/alpha version, requires explicit opt-in
 
 **Business Rules**:
+
 - Only `CURRENT` and `DEPRECATED` versions are discoverable by default
 - `PRERELEASE` versions only visible to consumers with opt-in header
 - `SUNSET` versions reject all requests immediately
@@ -95,28 +105,32 @@ PRERELEASE → CURRENT → DEPRECATED → SUNSET
 **Purpose**: Represents how a consumer specified their desired version in a request.
 
 **Attributes**:
+
 - `version_id` (str, required): The resolved version identifier
 - `source` (SpecificationSource enum, required): Where the version was specified
 - `raw_value` (str, required): Original value from request
 - `precedence_rank` (int, required): Priority order (1=header, 2=url, 3=query)
 
 **SpecificationSource Enum**:
+
 - `HEADER`: Version from HTTP header (`X-API-Version` or `API-Version`)
 - `URL_PATH`: Version from URL path segment (e.g., `/v2/users`)
 - `QUERY_PARAM`: Version from query parameter (`?version=v2`)
 - `DEFAULT`: No version specified, using default
 
 **Precedence Rules** (FR-016):
+
 1. Header (highest priority)
-2. URL path
-3. Query parameter
-4. Default version (lowest priority)
+1. URL path
+1. Query parameter
+1. Default version (lowest priority)
 
 ### 4. VersionRoute
 
 **Purpose**: Maps version identifiers to handler implementations.
 
 **Attributes**:
+
 - `version_id` (str, required): Version this route applies to
 - `endpoint_pattern` (str, required): Endpoint path pattern (e.g., "/users", "/orders/{id}")
 - `handler` (Callable, required): Version-specific handler function
@@ -124,11 +138,13 @@ PRERELEASE → CURRENT → DEPRECATED → SUNSET
 - `response_schema` (type, optional): Pydantic model or schema for response validation
 
 **Validation Rules**:
+
 - `version_id` must reference an existing version in VersionRegistry
 - `endpoint_pattern` must be unique within a version (but can differ across versions)
 - Handler must be an async callable for ASGI compatibility
 
 **Relationships**:
+
 - Many `VersionRoute` instances can reference one `VersionMetadata`
 - Each version can have different handlers for the same endpoint pattern
 
@@ -137,6 +153,7 @@ PRERELEASE → CURRENT → DEPRECATED → SUNSET
 **Purpose**: Communication about version lifecycle for consumers.
 
 **Attributes**:
+
 - `version_id` (str, required): Version being deprecated
 - `announced_date` (date, required): When deprecation was announced
 - `sunset_date` (date, required): When version will be removed
@@ -146,11 +163,13 @@ PRERELEASE → CURRENT → DEPRECATED → SUNSET
 - `breaking_changes_summary` (list[str], optional): Key breaking changes to be aware of
 
 **Validation Rules**:
+
 - `sunset_date` must be at least 12 months after `announced_date`
 - `recommended_version` must exist and have status `CURRENT` or `DEPRECATED`
 - `migration_guide_url` must be a valid URL or relative path
 
 **Usage**:
+
 - Included in `Deprecation` and `Sunset` response headers
 - Logged when deprecated version is accessed
 - Returned by version discovery endpoint
@@ -160,11 +179,13 @@ PRERELEASE → CURRENT → DEPRECATED → SUNSET
 **Purpose**: Singleton in-memory registry for fast version metadata lookups.
 
 **Attributes**:
+
 - `_versions` (Dict[str, VersionMetadata], private): Version ID → metadata mapping
 - `_config_path` (Path, private): Path to YAML configuration file
 - `_last_loaded` (datetime, private): Timestamp of last config load
 
 **Methods**:
+
 - `load_from_file(config_path: Path) -> VersionRegistry`: Load config, validate, populate registry
 - `get_version(version_id: str) -> Optional[VersionMetadata]`: O(1) lookup by version ID
 - `get_current_version() -> Optional[VersionMetadata]`: Get default/current version
@@ -173,6 +194,7 @@ PRERELEASE → CURRENT → DEPRECATED → SUNSET
 - `reload() -> None`: Re-load configuration file (for hot-reload)
 
 **Invariants**:
+
 - Singleton pattern - only one instance per application
 - Thread-safe for read operations (no write operations after initialization)
 - Immutable after load (except for `reload()` calls)
@@ -182,6 +204,7 @@ PRERELEASE → CURRENT → DEPRECATED → SUNSET
 **Purpose**: Log entry for version usage tracking and analytics (FR-017).
 
 **Attributes**:
+
 - `timestamp` (datetime, required): When the request was processed
 - `version_id` (str, required): Version used for this request
 - `endpoint_path` (str, required): API endpoint accessed
@@ -193,19 +216,21 @@ PRERELEASE → CURRENT → DEPRECATED → SUNSET
 - `is_deprecated_access` (bool, required): Whether accessed version is deprecated
 
 **Usage**:
+
 - Written to structured logs (JSON format)
 - Aggregated for deprecation impact analysis
 - Used to identify consumers needing migration support
 - Monitored for adoption tracking of new versions
 
 **Indexing**:
+
 - Primary: `timestamp` (for time-series queries)
 - Secondary: `version_id` (for adoption metrics)
 - Secondary: `consumer_id` (for targeted outreach)
 
 ## Entity Relationships
 
-```
+````
 VersionRegistry (1) ──── (0..*) VersionMetadata
                                      │
                                      │ (1)
@@ -328,7 +353,7 @@ stateDiagram-v2
         No traffic allowed
         Can be removed from config
     end note
-```
+````
 
 ### Request Version Resolution Flow
 
@@ -355,6 +380,7 @@ stateDiagram-v2
 ## Validation Rules Summary
 
 ### Configuration File Validation
+
 - All required fields present in YAML
 - Date fields in ISO 8601 format
 - Version IDs match pattern `^v[0-9]+(-[a-z]+)?$`
@@ -363,40 +389,43 @@ stateDiagram-v2
 - Deprecation/sunset dates respect 12-month minimum window
 
 ### Runtime Validation
+
 - Version ID exists in registry (404 if not)
 - Version is not sunset (410 if sunset)
 - Pre-release versions require opt-in header (403 if missing)
 - Contradictory version specifications return 400 Bad Request
 
 ### Data Integrity
+
 - VersionMetadata is immutable (frozen dataclass)
 - Registry is singleton (one instance per process)
 - Version IDs are unique and stable
 
 ## Performance Characteristics
 
-| Operation | Complexity | Expected Latency |
-|-----------|-----------|------------------|
-| Version lookup | O(1) | 50-200ns |
-| Version validation | O(1) | 50-200ns |
-| Precedence resolution | O(1) | 100-500ns |
-| Total routing overhead | O(1) | 0.1-1ms |
-| Registry initialization | O(n) | <10ms for 100 versions |
+| Operation               | Complexity | Expected Latency        |
+| ----------------------- | ---------- | ----------------------- |
+| Version lookup          | O(1)       | 50-200ns                |
+| Version validation      | O(1)       | 50-200ns                |
+| Precedence resolution   | O(1)       | 100-500ns               |
+| Total routing overhead  | O(1)       | 0.1-1ms                 |
+| Registry initialization | O(n)       | \<10ms for 100 versions |
 
 ## Storage Requirements
 
-| Entity | Count | Memory per Instance | Total |
-|--------|-------|---------------------|-------|
-| VersionMetadata | 5 | ~500 bytes | ~2.5 KB |
-| VersionRoute | 500 | ~200 bytes | ~100 KB |
-| VersionRegistry | 1 | ~10 KB | ~10 KB |
-| **Total** | - | - | **~112.5 KB** |
+| Entity          | Count | Memory per Instance | Total         |
+| --------------- | ----- | ------------------- | ------------- |
+| VersionMetadata | 5     | ~500 bytes          | ~2.5 KB       |
+| VersionRoute    | 500   | ~200 bytes          | ~100 KB       |
+| VersionRegistry | 1     | ~10 KB              | ~10 KB        |
+| **Total**       | -     | -                   | **~112.5 KB** |
 
 Memory footprint scales linearly with version count and endpoint count.
 
 ## Examples
 
 ### Version Metadata Instance
+
 ```python
 v2_metadata = VersionMetadata(
     version_id="v2",
@@ -413,6 +442,7 @@ v2_metadata = VersionMetadata(
 ```
 
 ### Deprecation Notice Instance
+
 ```python
 v1_deprecation = DeprecationNotice(
     version_id="v1",
@@ -430,6 +460,7 @@ v1_deprecation = DeprecationNotice(
 ```
 
 ### Version Usage Metric Instance
+
 ```python
 metric = VersionUsageMetric(
     timestamp=datetime.now(UTC),
@@ -447,5 +478,5 @@ metric = VersionUsageMetric(
 ## Next Steps
 
 1. Generate API contracts in `/contracts/` directory
-2. Create quickstart guide with integration examples
-3. Implement data model as Python dataclasses with validation
+1. Create quickstart guide with integration examples
+1. Implement data model as Python dataclasses with validation

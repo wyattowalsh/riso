@@ -23,11 +23,12 @@ mcp = FastMCP(
 ```
 
 **Contract**:
+
 - Server name must match `^[a-z0-9-]+$`
 - Version must follow semver format `^\d+\.\d+\.\d+$`
 - Server instance is singleton per process
 
----
+______________________________________________________________________
 
 ## Tool Registration
 
@@ -52,6 +53,7 @@ async def tool_name(
 ```
 
 **Contract**:
+
 - Decorator: `@mcp.tool()`
 - Function name becomes tool name (must match `^[a-z][a-z0-9_]*$`)
 - Parameters must have type hints (Pydantic types recommended)
@@ -80,12 +82,13 @@ async def complex_tool(input: ToolInput) -> dict:
 ```
 
 **Contract**:
+
 - Pydantic models generate JSON Schema automatically
 - Field descriptions become schema descriptions
 - Constraints (ge, le, max_length, etc.) enforced automatically
 - Return type can be dict, list, BaseModel, or primitive
 
----
+______________________________________________________________________
 
 ## Resource Registration
 
@@ -99,6 +102,7 @@ async def resource_name() -> str:
 ```
 
 **Contract**:
+
 - Decorator: `@mcp.resource(uri: str)`
 - URI must be valid (e.g., `resource://name`, `file:///{path}`)
 - Function must be async
@@ -120,12 +124,13 @@ async def file_browser(path: str) -> dict:
 ```
 
 **Contract**:
+
 - URI parameters in `{brackets}` become function parameters
 - Parameter extraction handled by FastMCP automatically
 - Must validate parameters (check path exists, authorized, etc.)
 - Return mime type inferred from content (override with `@mcp.resource(uri, mime_type="...")`)
 
----
+______________________________________________________________________
 
 ## Prompt Registration
 
@@ -147,13 +152,14 @@ async def prompt_name(
 ```
 
 **Contract**:
+
 - Decorator: `@mcp.prompt()`
 - Function must be async
 - Return type: `list[Message]` where `Message` has `role` and `content` fields
 - Roles: `"system"`, `"user"`, or `"assistant"`
 - Parameters can have defaults (making them optional in prompt invocation)
 
----
+______________________________________________________________________
 
 ## Error Handling
 
@@ -188,6 +194,7 @@ async def may_fail(param: str) -> str:
 ```
 
 **Contract**:
+
 - Use `McpError` for expected/business logic errors
 - Error codes:
   - `-32700`: Parse error
@@ -199,7 +206,7 @@ async def may_fail(param: str) -> str:
 - Uncaught exceptions converted to Internal error (-32603) automatically
 - Production mode: stack traces never sent to client (only logged)
 
----
+______________________________________________________________________
 
 ## Configuration
 
@@ -223,6 +230,7 @@ def load_config(config_path: Path = Path("config.toml")) -> dict:
 ```
 
 **Contract**:
+
 - Configuration file: `config.toml` (TOML format)
 - Environment variables override file settings
 - Prefix: `MCP_SERVER_*` or `MCP_*`
@@ -253,11 +261,12 @@ rate_limit_burst = 20        # HTTP only
 ```
 
 **Contract**:
+
 - All sections optional (defaults provided)
 - TOML syntax: valid TOML file required
 - Validation: Server fails fast on startup if invalid
 
----
+______________________________________________________________________
 
 ## Transport
 
@@ -277,6 +286,7 @@ if __name__ == "__main__":
 ```
 
 **Contract**:
+
 - Stdin: newline-delimited JSON-RPC messages
 - Stdout: newline-delimited JSON-RPC responses
 - Stderr: Logs (not part of protocol)
@@ -298,6 +308,7 @@ if __name__ == "__main__":
 ```
 
 **Contract**:
+
 - HTTP endpoints:
   - `POST /mcp/tools/call` - Invoke tool
   - `POST /mcp/resources/read` - Fetch resource
@@ -308,7 +319,7 @@ if __name__ == "__main__":
 - CORS: Configurable via `cors_enabled=True`
 - Auth: Middleware hook for Bearer tokens/API keys
 
----
+______________________________________________________________________
 
 ## Logging
 
@@ -336,6 +347,7 @@ async def logged_tool(param: str) -> str:
 ```
 
 **Contract**:
+
 - Use Loguru for all logging
 - Log levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
 - Structured logs: Use `extra={}` for context
@@ -343,7 +355,7 @@ async def logged_tool(param: str) -> str:
 - Development: DEBUG level, human-readable format
 - Required fields: timestamp, level, message, correlation_id (if applicable)
 
----
+______________________________________________________________________
 
 ## Testing
 
@@ -372,12 +384,13 @@ async def test_tool_invocation(mcp_server):
 ```
 
 **Contract**:
+
 - Use pytest with pytest-asyncio
 - Mock external dependencies (APIs, file systems)
 - Test tool logic in isolation (no transport layer)
 - Integration tests use real STDIO pipes or HTTP requests
 
----
+______________________________________________________________________
 
 ## Lifecycle Hooks
 
@@ -398,35 +411,40 @@ async def shutdown():
 ```
 
 **Contract**:
+
 - `@mcp.on_startup`: Called once after server initialization, before accepting requests
 - `@mcp.on_shutdown`: Called once during graceful shutdown
 - Both must be async functions
 - Exceptions in startup prevent server from starting
 - Exceptions in shutdown are logged but don't prevent shutdown
 
----
+______________________________________________________________________
 
 ## Performance Requirements
 
 From specification and clarifications:
 
 **Timeouts**:
+
 - Tool operations: 30 seconds default (configurable)
 - Resource fetches: 10 seconds default
 - Prompt rendering: 5 seconds default
 
 **Size Limits**:
+
 - Response size: 100MB maximum (configurable via `MAX_RESPONSE_SIZE_MB`)
-- Memory: <100MB per in-flight request
+- Memory: \<100MB per in-flight request
 
 **Concurrency**:
+
 - Handle 100 concurrent requests without errors (SC-007)
 - Rate limiting (HTTP only): 100 requests/minute, burst of 20
 
 **Startup**:
+
 - Server ready within 5 seconds of launch
 
----
+______________________________________________________________________
 
 ## Example Complete Server
 

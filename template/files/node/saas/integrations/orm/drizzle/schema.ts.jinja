@@ -349,6 +349,101 @@ export const apiKeys = pgTable('api_keys', {
   revokedIdx: index('api_keys_revoked_idx').on(table.revokedAt),
 }));
 
+{% if saas_api_access == 'public-api' %}
+// ============================================================================
+// Outgoing Webhooks
+// ============================================================================
+
+export const webhookEndpoints = pgTable('webhook_endpoints', {
+  id: id(),
+  
+  // Ownership
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  organizationId: text('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
+  
+  // Endpoint configuration
+  url: varchar('url', { length: 2048 }).notNull(),
+  secret: text('secret').notNull(),
+  
+  // Events to subscribe to
+  events: json('events').$type<string[]>().default([]),
+  
+  // Status
+  isActive: boolean('is_active').default(true).notNull(),
+  
+  // Failure tracking
+  failureCount: integer('failure_count').default(0).notNull(),
+  lastFailedAt: timestamp('last_failed_at', { mode: 'date' }),
+  lastSuccessAt: timestamp('last_success_at', { mode: 'date' }),
+  disabledAt: timestamp('disabled_at', { mode: 'date' }),
+  disabledReason: text('disabled_reason'),
+  
+  // Metadata
+  description: text('description'),
+  metadata: json('metadata').$type<Record<string, unknown>>().default({}),
+  
+  ...timestamps,
+}, (table) => ({
+  userIdx: index('webhook_endpoints_user_idx').on(table.userId),
+  orgIdx: index('webhook_endpoints_org_idx').on(table.organizationId),
+  activeIdx: index('webhook_endpoints_active_idx').on(table.isActive),
+}));
+
+export const webhookDeliveries = pgTable('webhook_deliveries', {
+  id: id(),
+  
+  // Relationship
+  endpointId: text('endpoint_id').notNull().references(() => webhookEndpoints.id, { onDelete: 'cascade' }),
+  
+  // Event details
+  eventType: text('event_type').notNull(),
+  payload: json('payload').$type<Record<string, unknown>>().notNull(),
+  
+  // Delivery status
+  status: text('status').default('pending').notNull(),
+  attempts: integer('attempts').default(0).notNull(),
+  
+  // Response details
+  statusCode: integer('status_code'),
+  responseBody: text('response_body'),
+  responseTimeMs: integer('response_time_ms'),
+  
+  // Error tracking
+  errorMessage: text('error_message'),
+  
+  // Retry info
+  nextRetryAt: timestamp('next_retry_at', { mode: 'date' }),
+  
+  // Timestamps
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  deliveredAt: timestamp('delivered_at', { mode: 'date' }),
+}, (table) => ({
+  endpointIdx: index('webhook_deliveries_endpoint_idx').on(table.endpointId),
+  statusIdx: index('webhook_deliveries_status_idx').on(table.status),
+  eventTypeIdx: index('webhook_deliveries_event_type_idx').on(table.eventType),
+  createdIdx: index('webhook_deliveries_created_idx').on(table.createdAt),
+}));
+
+export const webhookEndpointRelations = relations(webhookEndpoints, ({ one, many }) => ({
+  user: one(users, {
+    fields: [webhookEndpoints.userId],
+    references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [webhookEndpoints.organizationId],
+    references: [organizations.id],
+  }),
+  deliveries: many(webhookDeliveries),
+}));
+
+export const webhookDeliveryRelations = relations(webhookDeliveries, ({ one }) => ({
+  endpoint: one(webhookEndpoints, {
+    fields: [webhookDeliveries.endpointId],
+    references: [webhookEndpoints.id],
+  }),
+}));
+{% endif %}
+
 // ============================================================================
 // Audit Logging & Compliance
 // ============================================================================
@@ -776,5 +871,10 @@ export type OnboardingProgress = typeof onboardingProgress.$inferSelect;
 {% endif %}
 {% if saas_user_impersonation %}
 export type ImpersonationSession = typeof impersonationSessions.$inferSelect;
+{% endif %}
+{% if saas_api_access == 'public-api' %}
+export type WebhookEndpoint = typeof webhookEndpoints.$inferSelect;
+export type NewWebhookEndpoint = typeof webhookEndpoints.$inferInsert;
+export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
 {% endif %}
 {% endif %}

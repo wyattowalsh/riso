@@ -1,6 +1,6 @@
 # Research: WebSocket Scaffold
 
-**Feature**: 008-websockets-scaffold | **Date**: 2025-11-01  
+**Feature**: 008-websockets-scaffold | **Date**: 2025-11-01\
 **Phase**: 0 (Outline & Research) | **Status**: Complete
 
 ## Overview
@@ -146,7 +146,7 @@ async def heartbeat_loop(websocket: WebSocket, interval: int, timeout: int):
 
 - **Application-level pings (JSON messages)**: Works but wasteful (larger frames, client must manually respond). WebSocket ping/pong is protocol-native and efficient.
 - **No heartbeat**: Relies on TCP keepalive (slow, OS-dependent). Unacceptable for production—dead connections accumulate.
-- **Shorter intervals (<10s)**: Higher overhead, battery drain on mobile. 30s balances responsiveness and efficiency.
+- **Shorter intervals (\<10s)**: Higher overhead, battery drain on mobile. 30s balances responsiveness and efficiency.
 
 ### Decision: 5-Minute Idle Timeout for Silent Connections
 
@@ -201,7 +201,7 @@ class ConnectionManager:
                 logger.warning(f"Broadcast to {cid} failed: {result}")
 ```
 
-**Performance**: Broadcasting to 10,000 connections with asyncio.gather() achieves <100ms latency (p95) due to parallel I/O. FastAPI's async nature prevents blocking.
+**Performance**: Broadcasting to 10,000 connections with asyncio.gather() achieves \<100ms latency (p95) due to parallel I/O. FastAPI's async nature prevents blocking.
 
 **Alternatives Considered**:
 
@@ -378,8 +378,8 @@ async def multi_client_room(app):
 **Test Categories**:
 
 1. **Unit tests**: ConnectionManager, message validation, queue handling
-2. **Integration tests**: Full WebSocket lifecycle, auth, broadcasting
-3. **Load tests**: Concurrent connections, broadcast latency, memory usage
+1. **Integration tests**: Full WebSocket lifecycle, auth, broadcasting
+1. **Load tests**: Concurrent connections, broadcast latency, memory usage
 
 ## 8. Multi-Server Scaling Pattern (Documented, Not Implemented)
 
@@ -548,19 +548,19 @@ class ChatMessage(BaseModel):
 
 ## Summary of Research Decisions
 
-| Aspect | Decision | Rationale |
-|--------|----------|-----------|
-| WebSocket Integration | FastAPI native support | Built-in, mature, performant |
-| Connection Registry | In-memory singleton | O(1) lookup, no external deps |
-| Heartbeat | Ping/pong (30s/60s) | Protocol-native, efficient |
-| Idle Timeout | 5 minutes | Balances UX and resources |
-| Broadcasting | Room-based with async.gather | Targeted, parallel, <100ms |
-| Authentication | FastAPI dependencies | Consistent with HTTP APIs |
-| Backpressure | Bounded queue + errors | Prevents memory exhaustion |
-| Message Size | 1MB limit | Covers 99% use cases |
-| Multi-Server | Documented Redis pattern | Optional, not baseline |
-| Testing | pytest + async fixtures | Standard Python testing |
-| Monitoring | Prometheus + structured logs | Integrates with spec 010 |
-| Configuration | Pydantic settings | Type-safe, env-based |
+| Aspect                | Decision                     | Rationale                     |
+| --------------------- | ---------------------------- | ----------------------------- |
+| WebSocket Integration | FastAPI native support       | Built-in, mature, performant  |
+| Connection Registry   | In-memory singleton          | O(1) lookup, no external deps |
+| Heartbeat             | Ping/pong (30s/60s)          | Protocol-native, efficient    |
+| Idle Timeout          | 5 minutes                    | Balances UX and resources     |
+| Broadcasting          | Room-based with async.gather | Targeted, parallel, \<100ms   |
+| Authentication        | FastAPI dependencies         | Consistent with HTTP APIs     |
+| Backpressure          | Bounded queue + errors       | Prevents memory exhaustion    |
+| Message Size          | 1MB limit                    | Covers 99% use cases          |
+| Multi-Server          | Documented Redis pattern     | Optional, not baseline        |
+| Testing               | pytest + async fixtures      | Standard Python testing       |
+| Monitoring            | Prometheus + structured logs | Integrates with spec 010      |
+| Configuration         | Pydantic settings            | Type-safe, env-based          |
 
 All research findings support the minimal baseline principle while enabling production-ready deployments. No external dependencies required for core functionality (Redis only for multi-server, which is documented but not included).

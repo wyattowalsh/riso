@@ -12,7 +12,7 @@ Implement a comprehensive rate limiting and throttling system to protect API end
 - **Token bucket algorithm** for rate limiting with burst support
 - **Redis-backed distributed counters** with Sentinel topology for high availability
 - **Multi-tier rate limits** (IP-based, user-based, tier-based, endpoint-specific)
-- **Standard HTTP headers** (X-RateLimit-*, Retry-After) conforming to draft RFCs
+- **Standard HTTP headers** (X-RateLimit-\*, Retry-After) conforming to draft RFCs
 - **Configurable security** (rightmost untrusted IP extraction, configurable proxy depth)
 - **Progressive penalties** for repeat violators (optional, default disabled)
 - **Comprehensive observability** (Prometheus metrics, structured JSON logs)
@@ -22,8 +22,9 @@ The implementation will integrate with the existing FastAPI scaffold (006) as mi
 
 ## Technical Context
 
-**Language/Version**: Python 3.11+ (consistent with riso template baseline, managed via uv)  
-**Primary Dependencies**: 
+**Language/Version**: Python 3.11+ (consistent with riso template baseline, managed via uv)\
+**Primary Dependencies**:
+
 - FastAPI ≥0.104.0 (feature 006-fastapi-api-scaffold, middleware integration)
 - Redis ≥6.0 (distributed counter backend with ACL support)
 - redis-py ≥5.0 OR aioredis ≥2.0 (async Python client with connection pooling)
@@ -31,24 +32,27 @@ The implementation will integrate with the existing FastAPI scaffold (006) as mi
 - prometheus-client ≥0.16.0 (optional, metrics export)
 - structlog ≥23.0 (optional, structured logging)
 
-**Storage**: Redis (in-memory key-value store for rate limit counters, TTL-based expiration)  
-**Testing**: pytest with pytest-asyncio (unit tests), pytest-redis (integration tests), locust (load tests), chaos engineering (Redis failure tests)  
-**Target Platform**: Linux server (containerized via Docker/docker-compose from feature 005)  
-**Project Type**: Single project (FastAPI middleware library with optional CLI utilities)  
-**Performance Goals**: 
-- <5ms P95 latency overhead per request
+**Storage**: Redis (in-memory key-value store for rate limit counters, TTL-based expiration)\
+**Testing**: pytest with pytest-asyncio (unit tests), pytest-redis (integration tests), locust (load tests), chaos engineering (Redis failure tests)\
+**Target Platform**: Linux server (containerized via Docker/docker-compose from feature 005)\
+**Project Type**: Single project (FastAPI middleware library with optional CLI utilities)\
+**Performance Goals**:
+
+- \<5ms P95 latency overhead per request
 - 1000+ req/s throughput per instance
 - 99% rate limit accuracy (±1 request per 100 limit)
 - ≤10 Redis connections per API instance
 
-**Constraints**: 
+**Constraints**:
+
 - Must integrate as FastAPI middleware without modifying existing routes
 - Redis operations must be atomic (no race conditions in distributed setup)
 - Must handle Redis failures gracefully (configurable fail-open/fail-closed)
 - Configuration hot reload must preserve existing counters
-- X-RateLimit-* headers required in all responses (200, 429, 5xx)
+- X-RateLimit-\* headers required in all responses (200, 429, 5xx)
 
-**Scale/Scope**: 
+**Scale/Scope**:
+
 - Support 3+ API instances in distributed deployment
 - Handle 100+ concurrent clients per instance
 - Support 1000+ unique client identifiers (IPs/users) with active counters
@@ -63,26 +67,31 @@ The implementation will integrate with the existing FastAPI scaffold (006) as mi
 **Riso Template Principles Assessment**:
 
 1. **Module-Based Architecture**: ✅ PASS
+
    - Rate limiting implements as FastAPI middleware module
    - Self-contained with clear boundaries (middleware → Redis → config)
    - Independently testable (unit tests without FastAPI, integration tests with Redis mock)
 
-2. **Quality-First Development**: ✅ PASS
+1. **Quality-First Development**: ✅ PASS
+
    - Success criteria include ≥90% line coverage, ≥80% branch coverage (SC-010)
    - All 21 functional requirements have validation criteria
    - Test types specified: unit, integration, load, chaos
 
-3. **Configuration-Driven**: ✅ PASS
+1. **Configuration-Driven**: ✅ PASS
+
    - TOML-based configuration with comprehensive schema
    - Environment variable overrides supported (FR-011)
    - Hot reload capability specified (FR-012)
 
-4. **Observability Built-In**: ✅ PASS
+1. **Observability Built-In**: ✅ PASS
+
    - Prometheus metrics defined (FR-016, 5 metric types)
    - Structured JSON logging specified (FR-017)
    - All rate limit events logged with context
 
-5. **Container-Ready**: ✅ PASS
+1. **Container-Ready**: ✅ PASS
+
    - Integrates with feature 005 container deployment
    - Redis topology specified (Sentinel for HA)
    - docker-compose integration for local development
@@ -93,7 +102,7 @@ The implementation will integrate with the existing FastAPI scaffold (006) as mi
 
 ## Project Structure
 
-```
+````
 specs/011-api-rate-limit-throttle/
 ├── spec.md                    # Original specification (input)
 ### Source Code (template integration)
@@ -147,10 +156,8 @@ tests/
 
 docs/modules/
 └── rate-limiting.md.jinja            # NEW: Rate limiting documentation
-```
+````
 
 **Structure Decision**: Single project structure with rate limiting as a shared module in the Riso template. This allows all rendered projects to optionally include rate limiting via copier prompts. The module is self-contained with clear boundaries (middleware → limiters → backends → Redis) and independently testable at each layer.
 
----
-
-
+______________________________________________________________________

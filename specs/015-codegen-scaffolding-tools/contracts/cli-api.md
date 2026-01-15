@@ -1,7 +1,7 @@
 # CLI API Contract
 
-**Feature**: 015-codegen-scaffolding-tools  
-**Version**: 1.0.0  
+**Feature**: 015-codegen-scaffolding-tools\
+**Version**: 1.0.0\
 **Date**: 2025-11-02
 
 ## Overview
@@ -28,27 +28,28 @@ Available for all commands:
 Create a new project from a template.
 
 **Synopsis:**
+
 ```bash
 scaffold new PROJECT_NAME [OPTIONS]
 ```
 
 **Arguments:**
 
-| Argument | Type | Required | Description |
-|----------|------|----------|-------------|
-| `PROJECT_NAME` | string | Yes | Name of the project to create |
+| Argument       | Type   | Required | Description                   |
+| -------------- | ------ | -------- | ----------------------------- |
+| `PROJECT_NAME` | string | Yes      | Name of the project to create |
 
 **Options:**
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `--template, -t` | string | `default` | Template to use |
-| `--output, -o` | path | `.` | Output directory |
-| `--interactive/--no-interactive` | flag | `true` | Enable/disable interactive prompts |
-| `--dry-run` | flag | `false` | Preview without creating files |
-| `--overwrite/--no-overwrite` | flag | `false` | Overwrite existing directory |
-| `--skip-quality` | flag | `false` | Skip quality validation |
-| `--var KEY=VALUE` | multiple | - | Set template variable |
+| Option                           | Type     | Default   | Description                        |
+| -------------------------------- | -------- | --------- | ---------------------------------- |
+| `--template, -t`                 | string   | `default` | Template to use                    |
+| `--output, -o`                   | path     | `.`       | Output directory                   |
+| `--interactive/--no-interactive` | flag     | `true`    | Enable/disable interactive prompts |
+| `--dry-run`                      | flag     | `false`   | Preview without creating files     |
+| `--overwrite/--no-overwrite`     | flag     | `false`   | Overwrite existing directory       |
+| `--skip-quality`                 | flag     | `false`   | Skip quality validation            |
+| `--var KEY=VALUE`                | multiple | -         | Set template variable              |
 
 **Examples:**
 
@@ -73,15 +74,15 @@ scaffold new my-project --output ~/projects/
 
 **Exit Codes:**
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | Invalid arguments |
-| 2 | Template not found |
-| 3 | Output directory exists (without --overwrite) |
-| 4 | Missing required variables |
-| 5 | Quality validation failed (critical errors) |
-| 10 | Network error (fetching remote template) |
+| Code | Meaning                                       |
+| ---- | --------------------------------------------- |
+| 0    | Success                                       |
+| 1    | Invalid arguments                             |
+| 2    | Template not found                            |
+| 3    | Output directory exists (without --overwrite) |
+| 4    | Missing required variables                    |
+| 5    | Quality validation failed (critical errors)   |
+| 10   | Network error (fetching remote template)      |
 
 **Output Format:**
 
@@ -107,33 +108,34 @@ scaffold new my-project --output ~/projects/
     uv run pytest
 ```
 
----
+______________________________________________________________________
 
 ### 2. scaffold add
 
 Add a feature module to an existing project.
 
 **Synopsis:**
+
 ```bash
 scaffold add MODULE_TYPE MODULE_NAME [OPTIONS]
 ```
 
 **Arguments:**
 
-| Argument | Type | Required | Description |
-|----------|------|----------|-------------|
-| `MODULE_TYPE` | enum | Yes | Type of module (api, cli, docs, auth, etc.) |
-| `MODULE_NAME` | string | Yes | Name of the module |
+| Argument      | Type   | Required | Description                                 |
+| ------------- | ------ | -------- | ------------------------------------------- |
+| `MODULE_TYPE` | enum   | Yes      | Type of module (api, cli, docs, auth, etc.) |
+| `MODULE_NAME` | string | Yes      | Name of the module                          |
 
 **Options:**
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `--template, -t` | string | auto | Module template (auto-detected from type) |
-| `--project-dir, -p` | path | `.` | Project root directory |
-| `--overwrite/--no-overwrite` | flag | `false` | Overwrite existing files |
-| `--skip-tests` | flag | `false` | Skip test file generation |
-| `--var KEY=VALUE` | multiple | - | Set module variable |
+| Option                       | Type     | Default | Description                               |
+| ---------------------------- | -------- | ------- | ----------------------------------------- |
+| `--template, -t`             | string   | auto    | Module template (auto-detected from type) |
+| `--project-dir, -p`          | path     | `.`     | Project root directory                    |
+| `--overwrite/--no-overwrite` | flag     | `false` | Overwrite existing files                  |
+| `--skip-tests`               | flag     | `false` | Skip test file generation                 |
+| `--var KEY=VALUE`            | multiple | -       | Set module variable                       |
 
 **Examples:**
 
@@ -153,14 +155,14 @@ scaffold add api products --var auth_required=true
 
 **Exit Codes:**
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | Invalid arguments |
-| 2 | Not in a scaffolded project |
-| 3 | Module already exists |
-| 4 | Template not found |
-| 5 | Dependency conflict |
+| Code | Meaning                     |
+| ---- | --------------------------- |
+| 0    | Success                     |
+| 1    | Invalid arguments           |
+| 2    | Not in a scaffolded project |
+| 3    | Module already exists       |
+| 4    | Template not found          |
+| 5    | Dependency conflict         |
 
 **Output Format:**
 
@@ -179,26 +181,27 @@ scaffold add api products --var auth_required=true
   Run tests: uv run pytest tests/test_api_users.py
 ```
 
----
+______________________________________________________________________
 
 ### 3. scaffold update
 
 Update project from template changes.
 
 **Synopsis:**
+
 ```bash
 scaffold update [OPTIONS]
 ```
 
 **Options:**
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `--project-dir, -p` | path | `.` | Project root directory |
-| `--dry-run` | flag | `false` | Preview changes without applying |
-| `--auto-merge` | flag | `false` | Auto-merge without conflicts |
-| `--strategy` | enum | `three_way` | Merge strategy (three_way, ours, theirs) |
-| `--skip-conflicts` | flag | `false` | Skip files with conflicts |
+| Option              | Type | Default     | Description                              |
+| ------------------- | ---- | ----------- | ---------------------------------------- |
+| `--project-dir, -p` | path | `.`         | Project root directory                   |
+| `--dry-run`         | flag | `false`     | Preview changes without applying         |
+| `--auto-merge`      | flag | `false`     | Auto-merge without conflicts             |
+| `--strategy`        | enum | `three_way` | Merge strategy (three_way, ours, theirs) |
+| `--skip-conflicts`  | flag | `false`     | Skip files with conflicts                |
 
 **Examples:**
 
@@ -221,15 +224,15 @@ scaffold update --project-dir ~/projects/my-app
 
 **Exit Codes:**
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success (clean merge) |
-| 1 | Invalid arguments |
-| 2 | Not in a scaffolded project |
-| 3 | No updates available |
-| 4 | Conflicts detected (manual resolution required) |
-| 5 | Unresolved conflict markers found |
-| 10 | Network error (fetching template) |
+| Code | Meaning                                         |
+| ---- | ----------------------------------------------- |
+| 0    | Success (clean merge)                           |
+| 1    | Invalid arguments                               |
+| 2    | Not in a scaffolded project                     |
+| 3    | No updates available                            |
+| 4    | Conflicts detected (manual resolution required) |
+| 5    | Unresolved conflict markers found               |
+| 10   | Network error (fetching template)               |
 
 **Output Format (clean merge):**
 
@@ -267,25 +270,26 @@ To resolve:
 [EXIT 4] Manual conflict resolution required
 ```
 
----
+______________________________________________________________________
 
 ### 4. scaffold list
 
 List available templates.
 
 **Synopsis:**
+
 ```bash
 scaffold list [OPTIONS]
 ```
 
 **Options:**
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `--format, -f` | enum | `table` | Output format (table, json, yaml) |
-| `--registry, -r` | string | `default` | Registry to query |
-| `--type, -t` | enum | all | Filter by type (project, module, api_spec) |
-| `--search, -s` | string | - | Search template names/descriptions |
+| Option           | Type   | Default   | Description                                |
+| ---------------- | ------ | --------- | ------------------------------------------ |
+| `--format, -f`   | enum   | `table`   | Output format (table, json, yaml)          |
+| `--registry, -r` | string | `default` | Registry to query                          |
+| `--type, -t`     | enum   | all       | Filter by type (project, module, api_spec) |
+| `--search, -s`   | string | -         | Search template names/descriptions         |
 
 **Examples:**
 
@@ -305,11 +309,11 @@ scaffold list --search fastapi
 
 **Exit Codes:**
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | Invalid arguments |
-| 10 | Network error (remote registry) |
+| Code | Meaning                         |
+| ---- | ------------------------------- |
+| 0    | Success                         |
+| 1    | Invalid arguments               |
+| 10   | Network error (remote registry) |
 
 **Output Format (table):**
 
@@ -349,29 +353,30 @@ Total: 5 templates
 }
 ```
 
----
+______________________________________________________________________
 
 ### 5. scaffold info
 
 Show detailed information about a template.
 
 **Synopsis:**
+
 ```bash
 scaffold info TEMPLATE_NAME [OPTIONS]
 ```
 
 **Arguments:**
 
-| Argument | Type | Required | Description |
-|----------|------|----------|-------------|
-| `TEMPLATE_NAME` | string | Yes | Template to inspect |
+| Argument        | Type   | Required | Description         |
+| --------------- | ------ | -------- | ------------------- |
+| `TEMPLATE_NAME` | string | Yes      | Template to inspect |
 
 **Options:**
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `--version, -v` | string | `latest` | Template version |
-| `--format, -f` | enum | `text` | Output format (text, json, yaml) |
+| Option          | Type   | Default  | Description                      |
+| --------------- | ------ | -------- | -------------------------------- |
+| `--version, -v` | string | `latest` | Template version                 |
+| `--format, -f`  | enum   | `text`   | Output format (text, json, yaml) |
 
 **Examples:**
 
@@ -388,11 +393,11 @@ scaffold info fastapi-api --format json
 
 **Exit Codes:**
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | Invalid arguments |
-| 2 | Template not found |
+| Code | Meaning            |
+| ---- | ------------------ |
+| 0    | Success            |
+| 1    | Invalid arguments  |
+| 2    | Template not found |
 
 **Output Format:**
 
@@ -436,13 +441,14 @@ Generated Files: ~47 files
 Source: https://github.com/org/templates
 ```
 
----
+______________________________________________________________________
 
 ### 6. scaffold cache
 
 Manage template cache.
 
 **Synopsis:**
+
 ```bash
 scaffold cache COMMAND [OPTIONS]
 ```
@@ -450,6 +456,7 @@ scaffold cache COMMAND [OPTIONS]
 **Subcommands:**
 
 #### cache list
+
 List cached templates.
 
 ```bash
@@ -457,6 +464,7 @@ scaffold cache list [--format FORMAT]
 ```
 
 #### cache update
+
 Update all cached templates.
 
 ```bash
@@ -464,6 +472,7 @@ scaffold cache update [TEMPLATE_NAME]
 ```
 
 #### cache clear
+
 Clear template cache.
 
 ```bash
@@ -491,19 +500,20 @@ scaffold cache clear --all
 
 **Exit Codes:**
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | Invalid arguments |
-| 10 | Network error |
+| Code | Meaning           |
+| ---- | ----------------- |
+| 0    | Success           |
+| 1    | Invalid arguments |
+| 10   | Network error     |
 
----
+______________________________________________________________________
 
 ### 7. scaffold config
 
 Manage configuration.
 
 **Synopsis:**
+
 ```bash
 scaffold config COMMAND [KEY] [VALUE]
 ```
@@ -511,6 +521,7 @@ scaffold config COMMAND [KEY] [VALUE]
 **Subcommands:**
 
 #### config get
+
 Get configuration value.
 
 ```bash
@@ -518,6 +529,7 @@ scaffold config get KEY
 ```
 
 #### config set
+
 Set configuration value.
 
 ```bash
@@ -525,6 +537,7 @@ scaffold config set KEY VALUE
 ```
 
 #### config list
+
 List all configuration.
 
 ```bash
@@ -544,7 +557,7 @@ scaffold config set default_template python-cli
 scaffold config list
 ```
 
----
+______________________________________________________________________
 
 ## Error Handling
 
@@ -563,6 +576,7 @@ Exit code: N
 ### Common Errors
 
 **Template Not Found (Exit 2):**
+
 ```
 [ERROR] Template not found: invalid-template
   Available templates: python-cli, fastapi-api, react-app
@@ -572,6 +586,7 @@ Exit code: 2
 ```
 
 **Missing Variables (Exit 4):**
+
 ```
 [ERROR] Missing required variables
   Missing: author, python_version
@@ -581,6 +596,7 @@ Exit code: 4
 ```
 
 **Network Error (Exit 10):**
+
 ```
 [ERROR] Failed to fetch template from registry
   URL: https://registry.example.com/templates/python-cli
@@ -590,19 +606,19 @@ Exit code: 4
 Exit code: 10
 ```
 
----
+______________________________________________________________________
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `SCAFFOLD_HOME` | Configuration directory | `~/.scaffold` |
+| Variable             | Description              | Default                 |
+| -------------------- | ------------------------ | ----------------------- |
+| `SCAFFOLD_HOME`      | Configuration directory  | `~/.scaffold`           |
 | `SCAFFOLD_CACHE_DIR` | Template cache directory | `~/.scaffold/templates` |
-| `SCAFFOLD_REGISTRY` | Default registry URL | `default` |
-| `SCAFFOLD_NO_COLOR` | Disable colored output | `false` |
-| `SCAFFOLD_VERBOSE` | Enable verbose logging | `false` |
+| `SCAFFOLD_REGISTRY`  | Default registry URL     | `default`               |
+| `SCAFFOLD_NO_COLOR`  | Disable colored output   | `false`                 |
+| `SCAFFOLD_VERBOSE`   | Enable verbose logging   | `false`                 |
 
----
+______________________________________________________________________
 
 ## Configuration File
 
@@ -644,7 +660,7 @@ logging:
   file: ~/.scaffold/scaffold.log
 ```
 
----
+______________________________________________________________________
 
 ## Shell Completion
 
@@ -675,7 +691,7 @@ scaffold add api <TAB>
 scaffold info <TAB>
 ```
 
----
+______________________________________________________________________
 
 ## Version
 
@@ -688,12 +704,12 @@ Python 3.11.5
 Jinja2 3.1.5
 ```
 
----
+______________________________________________________________________
 
 ## Contract Guarantees
 
 1. **Backward Compatibility**: Minor version updates preserve CLI interface
-2. **Exit Codes**: Consistent exit codes across versions
-3. **Output Format**: JSON/YAML output schemas remain stable
-4. **Error Messages**: Error format and codes remain consistent
-5. **Help Text**: `--help` always available and up-to-date
+1. **Exit Codes**: Consistent exit codes across versions
+1. **Output Format**: JSON/YAML output schemas remain stable
+1. **Error Messages**: Error format and codes remain consistent
+1. **Help Text**: `--help` always available and up-to-date

@@ -11,14 +11,14 @@ Enhance the Riso template's CLI module to provide a robust, production-ready com
 
 ## Technical Context
 
-**Language/Version**: Python 3.11+ (managed via uv, consistent with template baseline)  
-**Primary Dependencies**: Typer ≥0.20.0, Loguru (logging), Rich (formatting), tomli/tomllib (TOML parsing)  
-**Storage**: TOML configuration files (config.toml or .app-name.toml in project directory)  
-**Testing**: pytest with typer.testing.CliRunner, coverage ≥90% target  
-**Target Platform**: Cross-platform (macOS, Linux, Windows) via Python stdlib + uv  
-**Project Type**: Template enhancement (single-package Python, modifies existing cli_module scaffold)  
-**Performance Goals**: CLI startup <500ms, command execution <100ms overhead, plugin discovery <50ms per plugin  
-**Constraints**: Must integrate with existing quality tools (ruff, mypy, pylint), pass all checks with 10/10 pylint score  
+**Language/Version**: Python 3.11+ (managed via uv, consistent with template baseline)\
+**Primary Dependencies**: Typer ≥0.20.0, Loguru (logging), Rich (formatting), tomli/tomllib (TOML parsing)\
+**Storage**: TOML configuration files (config.toml or .app-name.toml in project directory)\
+**Testing**: pytest with typer.testing.CliRunner, coverage ≥90% target\
+**Target Platform**: Cross-platform (macOS, Linux, Windows) via Python stdlib + uv\
+**Project Type**: Template enhancement (single-package Python, modifies existing cli_module scaffold)\
+**Performance Goals**: CLI startup \<500ms, command execution \<100ms overhead, plugin discovery \<50ms per plugin\
+**Constraints**: Must integrate with existing quality tools (ruff, mypy, pylint), pass all checks with 10/10 pylint score\
 **Scale/Scope**: Support 20+ commands per CLI, 10+ plugins, configuration with 50+ keys
 
 ## Constitution Check
@@ -57,14 +57,14 @@ Enhance the Riso template's CLI module to provide a robust, production-ready com
 - `cli_module` defaults to `disabled` in `template/copier.yml`
 - No new dependencies added to baseline (Typer, Rich already in optional CLI group)
 - CLI enhancements only affect projects with `cli_module=enabled`
-- Baseline performance budget unaffected (<10 min render target maintained)
+- Baseline performance budget unaffected (\<10 min render target maintained)
 
 ### IV. Documented Scaffolds
 
 ✅ **Pass** - Comprehensive documentation required as part of implementation:
 
 - Enhanced `docs/modules/cli.md.jinja` with multi-command examples
-- Command authoring guide with <5 minute target
+- Command authoring guide with \<5 minute target
 - Configuration management documentation (TOML format, precedence rules)
 - Plugin development guide with example implementations
 - Troubleshooting section for common CLI issues

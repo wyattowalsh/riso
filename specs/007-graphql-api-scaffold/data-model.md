@@ -5,6 +5,7 @@
 ## Core Types
 
 - User
+
   - id: ID!
   - name: String!
   - email: String!
@@ -12,6 +13,7 @@
   - posts: [Post]
 
 - Post
+
   - id: ID!
   - authorId: ID!
   - title: String!
@@ -21,6 +23,7 @@
 ## Pagination Types
 
 - PageInfo
+
   - hasNextPage: Boolean!
   - hasPreviousPage: Boolean!
   - startCursor: String
@@ -41,9 +44,8 @@ The GraphQL context object (request-scoped) should include:
 ## DataLoader Signatures
 
 - user_loader: async def load_many(user_ids: List[ID]) -> List[User]
-- posts_by_author_loader: async def load_many(author_ids: List[ID]) -> List[List[Post]]
+- posts_by_author_loader: async def load_many(author_ids: List[ID]) -> List\[List[Post]\]
 
 Notes:
 
 - DataLoaders should be created on each request and stored on the context to avoid cross-request caching.
-

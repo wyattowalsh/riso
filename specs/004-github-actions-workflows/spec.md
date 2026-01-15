@@ -1,8 +1,8 @@
 # Feature Specification: GitHub Actions CI/CD Workflows
 
-**Feature Branch**: `004-github-actions-workflows`  
-**Created**: 2025-10-30  
-**Status**: Draft  
+**Feature Branch**: `004-github-actions-workflows`\
+**Created**: 2025-10-30\
+**Status**: Draft\
 **Input**: User description: "GitHub Actions CI/CD Workflows - Implement comprehensive GitHub Actions workflow templates that automate testing, quality checks, building, and deployment for rendered projects. Include matrix builds for Python versions, parallel job execution, caching strategies, and artifact management."
 
 ## Clarifications
@@ -28,10 +28,10 @@ A developer opens a pull request on a rendered project and GitHub Actions automa
 **Acceptance Scenarios**:
 
 1. **Given** a rendered project with GitHub Actions workflows enabled, **When** a developer opens a PR with clean code, **Then** all quality checks pass and the PR shows green status.
-2. **Given** a rendered project with quality workflows, **When** a PR introduces a ruff violation, **Then** the workflow fails and displays the specific lint error in the GitHub UI.
-3. **Given** a failing quality workflow, **When** the developer fixes the code and pushes, **Then** the workflow re-runs automatically and passes.
+1. **Given** a rendered project with quality workflows, **When** a PR introduces a ruff violation, **Then** the workflow fails and displays the specific lint error in the GitHub UI.
+1. **Given** a failing quality workflow, **When** the developer fixes the code and pushes, **Then** the workflow re-runs automatically and passes.
 
----
+______________________________________________________________________
 
 ### User Story 2 - Matrix Testing Across Python Versions (Priority: P2)
 
@@ -44,10 +44,10 @@ A project maintainer relies on automated matrix builds to test their package acr
 **Acceptance Scenarios**:
 
 1. **Given** a rendered project with matrix testing enabled, **When** CI runs on a commit, **Then** workflows execute in parallel for each configured Python version (3.11, 3.12, 3.13).
-2. **Given** matrix builds running in parallel, **When** code uses a feature deprecated in Python 3.13, **Then** only the Python 3.13 job fails with clear error messaging and the overall PR status shows failure (all matrix jobs must pass).
-3. **Given** successful matrix builds, **When** viewing the GitHub Actions summary, **Then** the UI shows individual status for each Python version with execution times.
+1. **Given** matrix builds running in parallel, **When** code uses a feature deprecated in Python 3.13, **Then** only the Python 3.13 job fails with clear error messaging and the overall PR status shows failure (all matrix jobs must pass).
+1. **Given** successful matrix builds, **When** viewing the GitHub Actions summary, **Then** the UI shows individual status for each Python version with execution times.
 
----
+______________________________________________________________________
 
 ### User Story 3 - Dependency Caching for Fast Builds (Priority: P2)
 
@@ -60,10 +60,10 @@ A contributor pushes frequent commits during development and benefits from cache
 **Acceptance Scenarios**:
 
 1. **Given** a rendered project with caching enabled, **When** CI runs for the first time, **Then** dependencies install fully and the cache saves successfully with a key based on lock file hash and OS/Python version.
-2. **Given** a cached CI run, **When** a subsequent commit runs with unchanged lock files, **Then** dependency installation completes in under 10 seconds via cache restoration using the matching cache key.
-3. **Given** a PR that updates `pyproject.toml` dependencies, **When** CI runs, **Then** the lock file hash changes, cache key misses, and dependencies reinstall fresh.
+1. **Given** a cached CI run, **When** a subsequent commit runs with unchanged lock files, **Then** dependency installation completes in under 10 seconds via cache restoration using the matching cache key.
+1. **Given** a PR that updates `pyproject.toml` dependencies, **When** CI runs, **Then** the lock file hash changes, cache key misses, and dependencies reinstall fresh.
 
----
+______________________________________________________________________
 
 ### User Story 4 - Artifact Collection and Retention (Priority: P3)
 
@@ -76,10 +76,10 @@ A team lead reviews CI artifacts (test results, coverage reports, build logs) up
 **Acceptance Scenarios**:
 
 1. **Given** a workflow that generates test results, **When** the workflow completes, **Then** JUnit XML and coverage HTML artifacts upload to GitHub Actions with 90-day retention.
-2. **Given** uploaded artifacts, **When** a maintainer views the workflow run page, **Then** artifact download links appear with file sizes and expiration dates.
-3. **Given** a failed workflow run, **When** reviewing artifacts, **Then** detailed error logs capture the full failure context for debugging.
+1. **Given** uploaded artifacts, **When** a maintainer views the workflow run page, **Then** artifact download links appear with file sizes and expiration dates.
+1. **Given** a failed workflow run, **When** reviewing artifacts, **Then** detailed error logs capture the full failure context for debugging.
 
----
+______________________________________________________________________
 
 ### User Story 5 - Optional Node.js Track CI Integration (Priority: P3)
 
@@ -92,10 +92,10 @@ A full-stack project with both Python and Node API tracks benefits from automate
 **Acceptance Scenarios**:
 
 1. **Given** a rendered project with Node API enabled, **When** CI runs, **Then** separate workflow jobs execute for ESLint, TypeScript checking, and Vitest tests.
-2. **Given** parallel Python and Node jobs, **When** Python tests pass but Node tests fail, **Then** the overall PR status shows failure with clear indication of which track failed.
-3. **Given** a project with only Python API enabled, **When** CI runs, **Then** Node.js jobs are skipped automatically without errors.
+1. **Given** parallel Python and Node jobs, **When** Python tests pass but Node tests fail, **Then** the overall PR status shows failure with clear indication of which track failed.
+1. **Given** a project with only Python API enabled, **When** CI runs, **Then** Node.js jobs are skipped automatically without errors.
 
----
+______________________________________________________________________
 
 ### Edge Cases
 
@@ -105,7 +105,7 @@ A full-stack project with both Python and Node API tracks benefits from automate
 - How are workflows maintained when template updates add new CI capabilities (provide copier update guidance in upgrade-guide.md.jinja)?
 - What happens when matrix builds across Python versions have divergent results (all matrix jobs must pass per FR-002; any single failure blocks merge)?
 
----
+______________________________________________________________________
 
 ## Terminology Clarifications
 

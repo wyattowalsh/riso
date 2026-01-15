@@ -178,18 +178,21 @@ docker push ghcr.io/USERNAME/my-app:v1.0.0
 ### Enable Container Workflows
 
 Rendered projects include:
+
 - `.github/workflows/riso-container-build.yml` - Build and scan on PRs
 - `.github/workflows/riso-container-publish.yml` - Publish on main branch pushes
 
 ### Configure Secrets (Optional)
 
 For Docker Hub:
+
 ```bash
 gh secret set DOCKERHUB_USERNAME --body "your-username"
 gh secret set DOCKERHUB_TOKEN --body "your-access-token"
 ```
 
 For AWS ECR:
+
 ```bash
 gh secret set AWS_REGION --body "us-east-1"
 gh secret set AWS_ROLE_ARN --body "arn:aws:iam::123456789:role/GitHubActionsECRRole"
@@ -310,6 +313,7 @@ aws ecs create-service \
 **Issue**: `uv sync` fails with "package not found"
 
 **Solution**: Check `uv.lock` is committed and up-to-date:
+
 ```bash
 uv lock --upgrade
 git add uv.lock
@@ -318,6 +322,7 @@ git add uv.lock
 **Issue**: Node.js build OOM (out of memory)
 
 **Solution**: Increase Docker memory limit or use multi-stage build with smaller builder:
+
 ```bash
 docker build --memory=4g -t my-app:local .
 ```
@@ -327,6 +332,7 @@ docker build --memory=4g -t my-app:local .
 **Issue**: Container starts but health check fails
 
 **Solution**: Check logs for application errors:
+
 ```bash
 docker logs my-app
 # or
@@ -334,6 +340,7 @@ docker-compose logs api-python
 ```
 
 Verify health endpoint responds:
+
 ```bash
 docker exec my-app curl -f http://localhost:8000/health
 ```
@@ -343,6 +350,7 @@ docker exec my-app curl -f http://localhost:8000/health
 **Issue**: `Permission denied` when writing files in container
 
 **Solution**: Ensure volumes mounted with correct permissions for UID 1000:
+
 ```bash
 sudo chown -R 1000:1000 ./data
 ```
@@ -352,6 +360,7 @@ sudo chown -R 1000:1000 ./data
 **Issue**: `denied: installation not allowed`
 
 **Solution**: Verify GitHub token has `write:packages` scope:
+
 ```bash
 gh auth status
 gh auth refresh --scopes write:packages

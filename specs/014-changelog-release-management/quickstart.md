@@ -1,14 +1,14 @@
 # Quickstart: Changelog & Release Management
 
-**Feature**: 014-changelog-release-management  
-**Date**: 2025-11-02  
+**Feature**: 014-changelog-release-management\
+**Date**: 2025-11-02\
 **For**: Developers implementing or using the changelog module
 
 ## Overview
 
 This guide walks through setting up automated changelog generation and release management for a Riso-generated project. Follow these steps to enable conventional commits, automatic versioning, and registry publishing.
 
----
+______________________________________________________________________
 
 ## Prerequisites
 
@@ -18,23 +18,26 @@ This guide walks through setting up automated changelog generation and release m
 - Python 3.11+ with uv (for Python projects)
 - Registry accounts (PyPI, npm, Docker Hub) with credentials
 
----
+______________________________________________________________________
 
 ## Quick Setup (5 minutes)
 
 ### 1. Install Git Hooks
 
 **For Python projects**:
+
 ```bash
 uv run setup-hooks
 ```
 
 **For Node projects**:
+
 ```bash
 pnpm run setup-hooks
 ```
 
 **Verify installation**:
+
 ```bash
 # Should show commit-msg hook installed
 ls -la .git/hooks/commit-msg
@@ -44,12 +47,12 @@ ls -la .git/hooks/commit-msg
 
 Navigate to repository **Settings → Secrets and variables → Actions** and add:
 
-| Secret Name | Description | How to Get |
-|-------------|-------------|------------|
-| `PYPI_TOKEN` | PyPI API token | [pypi.org/manage/account/token](https://pypi.org/manage/account/token/) |
-| `NPM_TOKEN` | npm authentication token | `npm login && npm token create` |
-| `DOCKER_HUB_USERNAME` | Docker Hub username | Your Docker Hub account |
-| `DOCKER_HUB_TOKEN` | Docker Hub access token | [hub.docker.com/settings/security](https://hub.docker.com/settings/security) |
+| Secret Name           | Description              | How to Get                                                                   |
+| --------------------- | ------------------------ | ---------------------------------------------------------------------------- |
+| `PYPI_TOKEN`          | PyPI API token           | [pypi.org/manage/account/token](https://pypi.org/manage/account/token/)      |
+| `NPM_TOKEN`           | npm authentication token | `npm login && npm token create`                                              |
+| `DOCKER_HUB_USERNAME` | Docker Hub username      | Your Docker Hub account                                                      |
+| `DOCKER_HUB_TOKEN`    | Docker Hub access token  | [hub.docker.com/settings/security](https://hub.docker.com/settings/security) |
 
 **Note**: `GITHUB_TOKEN` is automatically provided by Actions - no manual setup needed.
 
@@ -84,16 +87,17 @@ git push origin main
 ```
 
 The `riso-release.yml` workflow will:
+
 1. Analyze commits since last release
-2. Calculate next version (e.g., 1.0.0 → 1.1.0 for `feat:`)
-3. Generate changelog entry
-4. Update version in package files
-5. Create GitHub Release
-6. Publish to configured registries
+1. Calculate next version (e.g., 1.0.0 → 1.1.0 for `feat:`)
+1. Generate changelog entry
+1. Update version in package files
+1. Create GitHub Release
+1. Publish to configured registries
 
-**Release completes in <10 minutes**.
+**Release completes in \<10 minutes**.
 
----
+______________________________________________________________________
 
 ## Commit Message Format
 
@@ -109,15 +113,15 @@ The `riso-release.yml` workflow will:
 
 ### Types
 
-| Type | Description | Version Bump | Example |
-|------|-------------|--------------|---------|
-| `feat` | New feature | MINOR (1.0.0 → 1.1.0) | `feat(api): add user search` |
-| `fix` | Bug fix | PATCH (1.0.0 → 1.0.1) | `fix(cli): handle empty input` |
-| `docs` | Documentation | None | `docs: update API guide` |
-| `chore` | Maintenance | None | `chore(deps): update dependencies` |
-| `refactor` | Code restructure | None | `refactor(core): simplify auth logic` |
-| `test` | Add tests | None | `test(api): add integration tests` |
-| `perf` | Performance | PATCH | `perf(db): optimize query` |
+| Type       | Description      | Version Bump          | Example                               |
+| ---------- | ---------------- | --------------------- | ------------------------------------- |
+| `feat`     | New feature      | MINOR (1.0.0 → 1.1.0) | `feat(api): add user search`          |
+| `fix`      | Bug fix          | PATCH (1.0.0 → 1.0.1) | `fix(cli): handle empty input`        |
+| `docs`     | Documentation    | None                  | `docs: update API guide`              |
+| `chore`    | Maintenance      | None                  | `chore(deps): update dependencies`    |
+| `refactor` | Code restructure | None                  | `refactor(core): simplify auth logic` |
+| `test`     | Add tests        | None                  | `test(api): add integration tests`    |
+| `perf`     | Performance      | PATCH                 | `perf(db): optimize query`            |
 
 ### Breaking Changes
 
@@ -133,7 +137,7 @@ See docs/migration-v2.md for details.
 
 **Note**: Include migration instructions in footer.
 
----
+______________________________________________________________________
 
 ## Manual Release
 
@@ -147,7 +151,7 @@ Trigger release without pushing to main:
 gh workflow run release.yml
 ```
 
----
+______________________________________________________________________
 
 ## Dry Run (Testing)
 
@@ -163,7 +167,7 @@ DRY_RUN=true npx semantic-release --dry-run
 # - Would-be published artifacts
 ```
 
----
+______________________________________________________________________
 
 ## Monorepo Projects
 
@@ -181,6 +185,7 @@ git commit -m "fix(cli): correct flag parsing"  # Releases cli package
 ### Release Tags
 
 Each package gets independent tags:
+
 - `api/v1.2.0`
 - `cli/v2.0.1`
 
@@ -198,7 +203,7 @@ packages:
     dependencies: [api]  # Released after api
 ```
 
----
+______________________________________________________________________
 
 ## Troubleshooting
 
@@ -207,6 +212,7 @@ packages:
 **Symptom**: Commits with invalid format accepted
 
 **Fix**:
+
 ```bash
 # Reinstall hooks
 uv run setup-hooks  # or pnpm run setup-hooks
@@ -220,16 +226,17 @@ cat .git/hooks/commit-msg
 **Symptom**: GitHub Actions workflow fails with credential error
 
 **Fix**:
+
 1. Verify secrets configured: Settings → Secrets → Actions
-2. Check secret names match exactly (case-sensitive)
-3. Test credentials locally:
+1. Check secret names match exactly (case-sensitive)
+1. Test credentials locally:
    ```bash
    # PyPI
    python -m twine check dist/*
-   
+
    # npm
    npm login && npm whoami
-   
+
    # Docker Hub
    echo $DOCKER_HUB_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
    ```
@@ -241,6 +248,7 @@ cat .git/hooks/commit-msg
 **Cause**: No qualifying commits since last release
 
 **Fix**:
+
 - Ensure commits have `feat:` or `fix:` type
 - Check commit history: `git log --oneline`
 - Verify last release tag: `git describe --tags --abbrev=0`
@@ -250,6 +258,7 @@ cat .git/hooks/commit-msg
 **Symptom**: CHANGELOG.md not generated
 
 **Fix**:
+
 ```bash
 # Check .releaserc.yml includes changelog plugin
 cat .releaserc.yml | grep changelog
@@ -259,7 +268,7 @@ cat .releaserc.yml | grep changelog
 #   - "@semantic-release/changelog"
 ```
 
----
+______________________________________________________________________
 
 ## Advanced Configuration
 
@@ -294,6 +303,7 @@ plugins:
 ### Registry-Specific Configuration
 
 **PyPI only (skip npm)**:
+
 ```yaml
 plugins:
   - "@semantic-release/commit-analyzer"
@@ -305,7 +315,7 @@ plugins:
   # npm plugin omitted
 ```
 
----
+______________________________________________________________________
 
 ## Credential Rotation
 
@@ -314,23 +324,27 @@ plugins:
 **Process**:
 
 1. **Generate new tokens**:
+
    - PyPI: [pypi.org/manage/account/token](https://pypi.org/manage/account/token/)
    - npm: `npm token create`
    - Docker Hub: [hub.docker.com/settings/security](https://hub.docker.com/settings/security)
 
-2. **Update GitHub Secrets**:
+1. **Update GitHub Secrets**:
+
    - Settings → Secrets → Actions → Edit secret
 
-3. **Test new credentials**:
+1. **Test new credentials**:
+
    ```bash
    # Trigger test release
    gh workflow run release.yml
    ```
 
-4. **Revoke old tokens**:
+1. **Revoke old tokens**:
+
    - Only after confirming new tokens work
 
----
+______________________________________________________________________
 
 ## Next Steps
 
@@ -339,11 +353,12 @@ plugins:
 - [Semantic Versioning Guide](https://semver.org/)
 - [semantic-release Documentation](https://semantic-release.gitbook.io/)
 
----
+______________________________________________________________________
 
 ## Summary
 
 You now have:
+
 - ✅ Git hooks validating commit messages
 - ✅ GitHub Actions automating releases
 - ✅ Registry credentials configured

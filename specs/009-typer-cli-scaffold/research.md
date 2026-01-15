@@ -1,7 +1,7 @@
 # Research: Robust Typer CLI Scaffold
 
-**Feature**: 009-typer-cli-scaffold  
-**Date**: 2025-11-01  
+**Feature**: 009-typer-cli-scaffold\
+**Date**: 2025-11-01\
 **Status**: Complete
 
 ## Overview
@@ -13,13 +13,15 @@ This document consolidates research findings for enhancing the Riso template's C
 **Decision**: Use explicit registration via decorators combined with automatic file-based discovery in `commands/` directory
 
 **Rationale**:
+
 - Typer's `@app.command()` decorator provides clear, explicit command registration
 - File-based discovery in `commands/` directory enables "drop a file, get a command" simplicity
 - Combining both approaches: commands can self-register via decorator OR be auto-discovered from `commands/*.py` files
-- Achieves <5 minute target for adding new commands (create file, use decorator, done)
+- Achieves \<5 minute target for adding new commands (create file, use decorator, done)
 - Type hints in decorators enable automatic parameter validation and help text generation
 
 **Alternatives Considered**:
+
 - **Pure manual registration**: Rejected because it requires editing `__main__.py` for every new command, violating the simplicity goal
 - **Import hooks/metaclasses**: Rejected as too magical and harder to debug; explicit decorators are more maintainable
 - **Entry points system**: Rejected for built-in commands (too heavy); reserved for plugins only
@@ -38,9 +40,10 @@ def my_command(name: str = typer.Option(..., help="User name")):
 
 ## Decision 2: Configuration Management Library
 
-**Decision**: Use `tomli` (Python <3.11) / `tomllib` (Python 3.11+) for TOML parsing with custom precedence layering
+**Decision**: Use `tomli` (Python \<3.11) / `tomllib` (Python 3.11+) for TOML parsing with custom precedence layering
 
 **Rationale**:
+
 - TOML is Python-native format (used in pyproject.toml), human-readable, and well-supported
 - `tomllib` is stdlib in Python 3.11+, `tomli` is the backport for 3.10 (minimal external dependency)
 - Simple key-value structure matches CLI configuration needs better than YAML or JSON
@@ -48,6 +51,7 @@ def my_command(name: str = typer.Option(..., help="User name")):
 - File location in project directory (./config.toml) aligns with version control best practices
 
 **Alternatives Considered**:
+
 - **JSON**: Rejected because no comments support, less human-friendly for editing
 - **YAML**: Rejected because adds heavier dependency (PyYAML), more complex parsing, security concerns with `yaml.load()`
 - **INI files**: Rejected because limited type support, no nested structures
@@ -70,6 +74,7 @@ value = config.get("timeout", cli_override=args.timeout)
 **Decision**: Use `rich` library for formatting (tables, progress bars, colors) with graceful fallback for unsupported terminals
 
 **Rationale**:
+
 - `rich` is industry standard for modern Python CLIs (used by Typer, FastAPI docs, many popular tools)
 - Provides tables, progress bars, syntax highlighting, panels, trees out-of-the-box
 - Automatic color degradation for terminals without ANSI support
@@ -77,6 +82,7 @@ value = config.get("timeout", cli_override=args.timeout)
 - Already a common dependency in Python ecosystem (low addition cost)
 
 **Alternatives Considered**:
+
 - **click-based formatters**: Rejected because more limited formatting options, no built-in tables/progress
 - **Colorama**: Rejected because only handles colors, not tables/progress bars
 - **blessed/asciimatics**: Rejected as too heavyweight for our needs
@@ -111,13 +117,15 @@ for item in track(items, description="Processing..."):
 **Decision**: Use entry points (importlib.metadata) with lazy loading and isolated error handling
 
 **Rationale**:
+
 - Entry points are Python's standard plugin mechanism (used by pytest, setuptools, many frameworks)
 - `importlib.metadata.entry_points()` is stdlib in Python 3.10+ (no external dependency)
-- Lazy loading: plugins discovered at startup but only loaded when first used (<50ms overhead)
+- Lazy loading: plugins discovered at startup but only loaded when first used (\<50ms overhead)
 - Error isolation: failed plugin imports logged but don't crash main CLI
 - Enables third-party plugins via standard package distribution (pip install user-plugin)
 
 **Alternatives Considered**:
+
 - **Directory scanning**: Rejected because requires plugins in specific directory, harder to distribute
 - **Configuration-based registration**: Rejected because adds manual configuration burden
 - **Namespace packages**: Rejected as more complex and less explicit than entry points
@@ -148,12 +156,14 @@ for plugin in plugins:
 **Decision**: Use Typer's built-in `--install-completion` and `--show-completion` commands with documentation for manual setup
 
 **Rationale**:
+
 - Typer provides automatic completion generation for bash, zsh, fish, PowerShell
 - Zero implementation effort - works out of the box with properly decorated commands
 - Users run `myapp --install-completion` once to set up
 - Manual documentation provided for advanced users who want custom completion logic
 
 **Alternatives Considered**:
+
 - **argcomplete**: Rejected because Typer already provides this functionality
 - **Custom completion scripts**: Rejected because high maintenance burden, Typer's solution is sufficient
 - **No completion**: Rejected because modern CLIs require this feature for good UX
@@ -173,6 +183,7 @@ myapp --show-completion bash > /etc/bash_completion.d/myapp
 **Decision**: Use `typer.testing.CliRunner` for command testing with pytest fixtures for common setups
 
 **Rationale**:
+
 - `CliRunner` is Typer's official testing utility (similar to Click's CliRunner)
 - Provides isolated test environment with captured stdin/stdout/stderr
 - Enables testing interactive prompts via `input` parameter
@@ -180,6 +191,7 @@ myapp --show-completion bash > /etc/bash_completion.d/myapp
 - Coverage target of 90% achievable with command-level and integration tests
 
 **Alternatives Considered**:
+
 - **subprocess testing**: Rejected because slower, harder to mock, less isolated
 - **Direct function calls**: Rejected because bypasses CLI parsing and validation
 - **Mock-heavy approach**: Rejected because Typer already provides good testing primitives
@@ -209,12 +221,14 @@ def test_interactive_prompt():
 **Decision**: Support both sync and async command functions via Typer's async detection with asyncio runtime
 
 **Rationale**:
+
 - Some commands need async operations (API calls, file I/O, concurrent tasks)
 - Typer automatically detects `async def` and runs with `asyncio.run()`
 - Zero overhead for sync commands - only async commands pay the runtime cost
 - Enables modern async/await patterns for I/O-bound operations
 
 **Alternatives Considered**:
+
 - **Sync-only**: Rejected because limits CLI utility for modern async workflows
 - **Separate async CLI app**: Rejected as unnecessary duplication
 - **Manual event loop management**: Rejected because Typer handles this automatically
@@ -235,12 +249,14 @@ async def fetch_data(url: str):
 **Decision**: Use structured exception hierarchy with rich error formatting and appropriate exit codes
 
 **Rationale**:
+
 - Custom exception classes (`CLIError`, `ConfigError`, `PluginError`) provide clear error categories
 - Rich console formatting makes errors readable with color-coded severity
 - Exit codes follow conventions: 0=success, 1=general error, 2=usage error, 125-127=system errors
 - Errors include actionable guidance (e.g., "Run 'myapp config set api_key <value>' to fix")
 
 **Alternatives Considered**:
+
 - **Generic exceptions**: Rejected because harder to handle different error types appropriately
 - **Plain text errors**: Rejected because less readable, no color coding
 - **Single exit code**: Rejected because automation scripts need to distinguish error types
@@ -321,13 +337,13 @@ except ConfigError as e:
 
 Research establishes technical foundation for robust CLI scaffold:
 
-1. **Command discovery**: Decorator + file-based pattern (achieves <5 min new command target)
-2. **Configuration**: TOML with precedence layering (CLI > env > file > defaults)
-3. **Rich formatting**: Rich library with graceful fallback
-4. **Plugins**: Entry points + lazy loading + error isolation
-5. **Shell completion**: Typer built-in (bash/zsh/fish support)
-6. **Testing**: CliRunner + pytest fixtures (90% coverage target)
-7. **Async support**: Typer automatic detection
-8. **Error handling**: Structured exceptions + rich formatting + standard exit codes
+1. **Command discovery**: Decorator + file-based pattern (achieves \<5 min new command target)
+1. **Configuration**: TOML with precedence layering (CLI > env > file > defaults)
+1. **Rich formatting**: Rich library with graceful fallback
+1. **Plugins**: Entry points + lazy loading + error isolation
+1. **Shell completion**: Typer built-in (bash/zsh/fish support)
+1. **Testing**: CliRunner + pytest fixtures (90% coverage target)
+1. **Async support**: Typer automatic detection
+1. **Error handling**: Structured exceptions + rich formatting + standard exit codes
 
 All decisions align with constitutional principles (template sovereignty, minimal baseline, documented scaffolds) and integrate cleanly with existing Riso template infrastructure.

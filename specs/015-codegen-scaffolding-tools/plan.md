@@ -11,14 +11,14 @@ Implement a CLI-based code generation and scaffolding tool that enables develope
 
 ## Technical Context
 
-**Language/Version**: Python 3.11+  
-**Primary Dependencies**: Jinja2 (template engine), Typer (CLI framework), Loguru (logging), Rich (terminal UI), GitPython (template fetching), merge3 (three-way merge)  
-**Storage**: Local filesystem cache (~/.scaffold/templates/), file-based metadata (.scaffold-metadata.json)  
-**Testing**: pytest with fixtures for filesystem operations, integration tests with real templates  
-**Target Platform**: Linux, macOS, Windows (cross-platform CLI)  
-**Project Type**: Single Python CLI package with plugin architecture  
-**Performance Goals**: <30 seconds for project generation, <5 seconds for template list operations, <100ms CLI startup time  
-**Constraints**: 100MB max template size, support Python 3.11-3.13, no external services required for core functionality  
+**Language/Version**: Python 3.11+\
+**Primary Dependencies**: Jinja2 (template engine), Typer (CLI framework), Loguru (logging), Rich (terminal UI), GitPython (template fetching), merge3 (three-way merge)\
+**Storage**: Local filesystem cache (~/.scaffold/templates/), file-based metadata (.scaffold-metadata.json)\
+**Testing**: pytest with fixtures for filesystem operations, integration tests with real templates\
+**Target Platform**: Linux, macOS, Windows (cross-platform CLI)\
+**Project Type**: Single Python CLI package with plugin architecture\
+**Performance Goals**: \<30 seconds for project generation, \<5 seconds for template list operations, \<100ms CLI startup time\
+**Constraints**: 100MB max template size, support Python 3.11-3.13, no external services required for core functionality\
 **Scale/Scope**: Support 100+ templates in registry, handle projects up to 1000 files, 10K+ lines generated code
 
 ## Constitution Check
@@ -29,7 +29,7 @@ Implement a CLI-based code generation and scaffolding tool that enables develope
 
 ✅ **Deterministic Generation**: Template rendering will be deterministic - same inputs produce same outputs. The scaffolding tool itself generates projects deterministically.
 
-✅ **Minimal Baseline**: This feature is optional via module flag. When disabled, baseline template remains unchanged (<50 files, <10 dependencies).
+✅ **Minimal Baseline**: This feature is optional via module flag. When disabled, baseline template remains unchanged (\<50 files, \<10 dependencies).
 
 ✅ **Quality Integration**: Generated code will integrate with ruff, mypy, pylint, pytest. The scaffolding tool itself will follow quality standards (FR-021).
 
@@ -122,8 +122,9 @@ No violations. This section intentionally left empty.
 
 ## Phase 1 Completion Summary
 
-**Status**: ✅ COMPLETE  
+**Status**: ✅ COMPLETE\
 **Artifacts Created**:
+
 - [research.md](./research.md) - Technical research findings (Jinja2, merge3, Typer, storage, validation)
 - [data-model.md](./data-model.md) - 8 core entities with state transitions and invariants
 - [contracts/cli-api.md](./contracts/cli-api.md) - CLI command interface specification (7 commands)
@@ -134,12 +135,13 @@ No violations. This section intentionally left empty.
 **Constitution Re-check**: ✅ All 7 principles still satisfied after Phase 1 design decisions.
 
 **Key Design Decisions**:
+
 1. **Local cache with remote sync** - Templates stored in `~/.scaffold/templates/` for offline usage (from clarifications)
-2. **Three-way merge with merge3** - Uses merge3 library for Git-style conflict markers (from research)
-3. **Upfront variable validation** - Validate all variables before generation starts (from clarifications)
-4. **Warn-but-allow quality checks** - Quality failures log warnings but don't block generation (from clarifications)
-5. **100MB template limit** - Hard limit with 50MB warning threshold (from clarifications)
-6. **Typer + Rich CLI** - Type-hint-based CLI with colored terminal output (from research)
-7. **Jinja2 with bytecode caching** - Template engine with 10x speedup via bytecode caching (from research)
+1. **Three-way merge with merge3** - Uses merge3 library for Git-style conflict markers (from research)
+1. **Upfront variable validation** - Validate all variables before generation starts (from clarifications)
+1. **Warn-but-allow quality checks** - Quality failures log warnings but don't block generation (from clarifications)
+1. **100MB template limit** - Hard limit with 50MB warning threshold (from clarifications)
+1. **Typer + Rich CLI** - Type-hint-based CLI with colored terminal output (from research)
+1. **Jinja2 with bytecode caching** - Template engine with 10x speedup via bytecode caching (from research)
 
 **Next Step**: Run `/speckit.tasks` to generate detailed task breakdown for implementation.
