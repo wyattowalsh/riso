@@ -1,8 +1,8 @@
 # Feature Specification: SaaS Starter Template
 
-**Feature Branch**: `012-saas-starter`  
-**Created**: 2025-11-02  
-**Status**: Draft  
+**Feature Branch**: `012-saas-starter`\
+**Created**: 2025-11-02\
+**Status**: Draft\
 **Input**: User description: "Create an optional saas-starter to be included in the template with configurable stack options for runtime, hosting, database, ORM, auth, enterprise bridge, billing, jobs, email, analytics, AI, storage, and CI/CD"
 
 ## Clarifications
@@ -28,11 +28,11 @@ A developer runs Copier on the Riso template and is prompted to enable the SaaS 
 **Acceptance Scenarios**:
 
 1. **Given** a developer has Copier and the Riso template, **When** they enable the SaaS starter module during template rendering, **Then** they are presented with binary choices for each of the 13 infrastructure categories
-2. **Given** the developer is viewing a category choice (e.g., "runtime"), **When** they review the options, **Then** they see exactly 2 options with clear labels and guidance on when to use each
-3. **Given** the developer completes all selections, **When** the template finishes rendering, **Then** a working SaaS application is generated with all selected services properly integrated
-4. **Given** the rendered application, **When** the developer runs the quickstart commands, **Then** the application starts successfully with authentication, database, and billing all functional
+1. **Given** the developer is viewing a category choice (e.g., "runtime"), **When** they review the options, **Then** they see exactly 2 options with clear labels and guidance on when to use each
+1. **Given** the developer completes all selections, **When** the template finishes rendering, **Then** a working SaaS application is generated with all selected services properly integrated
+1. **Given** the rendered application, **When** the developer runs the quickstart commands, **Then** the application starts successfully with authentication, database, and billing all functional
 
----
+______________________________________________________________________
 
 ### User Story 2 - Understand Technology Trade-offs (Priority: P2)
 
@@ -45,10 +45,10 @@ A developer is choosing between two authentication providers (Clerk vs Auth.js).
 **Acceptance Scenarios**:
 
 1. **Given** a developer is selecting between two options in any category, **When** they view the options, **Then** each option displays a "use_when" description that clearly differentiates when to choose it
-2. **Given** a developer reads the guidance for both options, **When** they compare them, **Then** the guidance helps them identify which option aligns with their project constraints (team size, budget, technical requirements)
-3. **Given** a developer is unsure which option to choose, **When** they select the default option, **Then** the default represents the most common/recommended choice for typical SaaS projects
+1. **Given** a developer reads the guidance for both options, **When** they compare them, **Then** the guidance helps them identify which option aligns with their project constraints (team size, budget, technical requirements)
+1. **Given** a developer is unsure which option to choose, **When** they select the default option, **Then** the default represents the most common/recommended choice for typical SaaS projects
 
----
+______________________________________________________________________
 
 ### User Story 3 - Customize Configuration Post-Generation (Priority: P3)
 
@@ -61,10 +61,10 @@ After generating a SaaS application, a developer can view a configuration file (
 **Acceptance Scenarios**:
 
 1. **Given** a rendered SaaS application, **When** the developer opens the configuration file, **Then** they see all their technology selections documented with IDs, labels, and use-when guidance
-2. **Given** a developer wants to change a technology choice post-generation, **When** they review the configuration file, **Then** they can identify which components need updating
-3. **Given** the configuration file documents the choices, **When** team members join the project, **Then** they can quickly understand the technology stack decisions and rationale
+1. **Given** a developer wants to change a technology choice post-generation, **When** they review the configuration file, **Then** they can identify which components need updating
+1. **Given** the configuration file documents the choices, **When** team members join the project, **Then** they can quickly understand the technology stack decisions and rationale
 
----
+______________________________________________________________________
 
 ### User Story 4 - Deploy to Production (Priority: P2)
 
@@ -77,11 +77,11 @@ A developer with a rendered SaaS application runs the deployment command. The ap
 **Acceptance Scenarios**:
 
 1. **Given** a developer has a rendered SaaS application with Vercel hosting selected, **When** they run the deployment command, **Then** the application deploys to Vercel with all environment variables configured from their selections
-2. **Given** the application is deployed, **When** a user visits the production URL, **Then** they can create an account, log in, and access a functioning dashboard
-3. **Given** the application uses Stripe billing, **When** a user attempts to upgrade their plan, **Then** the Stripe integration processes the payment successfully
-4. **Given** the application uses Neon database, **When** the user creates data, **Then** it persists correctly and is retrievable across sessions
+1. **Given** the application is deployed, **When** a user visits the production URL, **Then** they can create an account, log in, and access a functioning dashboard
+1. **Given** the application uses Stripe billing, **When** a user attempts to upgrade their plan, **Then** the Stripe integration processes the payment successfully
+1. **Given** the application uses Neon database, **When** the user creates data, **Then** it persists correctly and is retrievable across sessions
 
----
+______________________________________________________________________
 
 ### Edge Cases
 
@@ -143,7 +143,7 @@ A developer with a rendered SaaS application runs the deployment command. The ap
   - **Storage**: Cloudflare R2 OR Supabase Storage
   - **CI/CD**: GitHub Actions → Vercel OR Cloudflare CI → Pages/Workers
   - **Observability**: Sentry + Datadog (bundled) with OpenTelemetry instrumentation
-- **FR-030**: System MUST validate API key formats for all service integrations with service-specific validation rules (e.g., Stripe keys start with "sk_", Clerk keys match publishable/secret patterns, OpenAI keys start with "sk-")
+- **FR-030**: System MUST validate API key formats for all service integrations with service-specific validation rules (e.g., Stripe keys start with "sk\_", Clerk keys match publishable/secret patterns, OpenAI keys start with "sk-")
 - **FR-031**: Generated application MUST implement webhook signature verification for all services that send webhooks (Stripe, Clerk, Paddle, WorkOS) using service-specific signature validation libraries
 - **FR-032**: Generated application MUST redact sensitive data (PII, credentials, tokens) from log output sent to observability platforms using configurable redaction patterns
 - **FR-033**: Generated application MUST implement security headers (HSTS, X-Frame-Options, X-Content-Type-Options, CSP, Referrer-Policy, Permissions-Policy) configured appropriately for the selected hosting platform
@@ -188,53 +188,101 @@ A developer with a rendered SaaS application runs the deployment command. The ap
 ### Measurable Outcomes
 
 - **SC-001**: Developer can render a complete SaaS application in under 5 minutes from running Copier command to having a working local development environment
+
 - **SC-002**: Generated application starts successfully with all selected services functional within 2 minutes of running quickstart script (assuming credentials are configured)
+
 - **SC-003**: 100% of the 14 infrastructure categories present exactly 2 options to choose from
+
 - **SC-004**: Generated application passes all health checks for selected services (database connection, auth provider, billing API, etc.)
+
 - **SC-005**: Developer can deploy to production within 10 minutes of completing local setup (assuming hosting platform account exists)
+
 - **SC-006**: All 26 possible technology combinations (2^13 would be 8,192, but constrained by compatibility rules) generate working applications with no integration errors
+
 - **SC-007**: Generated application includes working authentication flow allowing users to sign up, log in, and access protected content
+
 - **SC-008**: Generated application includes working billing flow allowing users to subscribe to a plan and process payment
+
 - **SC-009**: Generated application includes at least one working example of each selected service (job execution, email sending, analytics event, AI API call, file upload)
+
 - **SC-010**: Documentation covers setup steps for all 26 technology options with service-specific configuration instructions
+
 - **SC-011**: 90% of developers can complete initial setup without external support (measured by successful quickstart completion)
+
 - **SC-012**: Generated applications achieve production deployment success rate of 95% on first attempt (assuming valid credentials)
+
 - **SC-013**: All generated code passes quality checks (linting, type checking, tests) defined in the parent Riso template
+
 - **SC-014**: Configuration file accurately documents all technology selections with IDs matching the actual generated integrations
+
 - **SC-015**: Environment variable validation catches 100% of missing or invalid credentials before application startup
+
 - **SC-016**: Generated CI/CD workflows successfully run tests and deploy to selected hosting platform
+
 - **SC-017**: Average time from project generation to first paying customer is reduced by 50% compared to manual stack assembly
+
 - **SC-018**: Generated application includes OpenTelemetry instrumentation with correlation IDs present in 100% of logged requests
+
 - **SC-019**: Observability dashboards (Sentry + Datadog) are accessible and showing data within 5 minutes of first deployment
+
 - **SC-020**: Environment variable validation detects 100% of missing or invalid credentials before application startup
+
 - **SC-021**: Seeded fixtures include at least 5 example entities per major domain model (users, organizations, subscriptions)
+
 - **SC-022**: Factory/faker tooling can generate 1000+ realistic test records in under 10 seconds
+
 - **SC-023**: Database migrations execute successfully in CI with automated safety validation (no data loss detection)
+
 - **SC-024**: Migration rollback procedures are tested and can restore previous schema state within 2 minutes
+
 - **SC-025**: Test suite achieves minimum 70% code coverage with all service integrations validated
+
 - **SC-026**: End-to-end test suite covers complete user journey from signup through first payment in under 3 minutes execution time
+
 - **SC-027**: All generated code passes accessibility validation with 0 WCAG 2.1 Level AA violations using axe-core automated testing
+
 - **SC-028**: Webhook signature verification prevents 100% of unauthorized webhook requests in integration tests
+
 - **SC-029**: Security headers achieve A+ rating on securityheaders.com for all hosting platform deployments
+
 - **SC-030**: Rate limiting successfully prevents abuse in load tests (blocks requests exceeding 100 req/min per user, 1000 req/min per IP)
+
 - **SC-031**: Performance estimates accuracy within 20% of measured values in production for cold start and request latency
+
 - **SC-032**: Database connection pooling prevents connection exhaustion under load (sustains 1000 concurrent users without errors)
+
 - **SC-033**: Circuit breakers successfully prevent cascading failures in integration tests (service A failure doesn't crash service B)
+
 - **SC-034**: Health check endpoints respond within 500ms and accurately report service availability (database, auth, billing APIs)
+
 - **SC-035**: Structured logging includes correlation IDs in 100% of log entries allowing request tracing across services
+
 - **SC-036**: Retry logic with exponential backoff successfully recovers from transient failures (99% success rate on 3rd attempt in chaos tests)
+
 - **SC-037**: Generated applications achieve 99.9% uptime in production monitoring (measured over 30 days)
+
 - **SC-038**: Deployment rollback procedures restore previous version within 5 minutes with zero data loss
+
 - **SC-039**: API key validation catches 100% of invalid credentials before runtime (validates format at build time)
+
 - **SC-040**: PII redaction successfully removes sensitive data from logs (0 credential leaks in audit of 1M log entries)
+
 - **SC-041**: Documentation coverage includes troubleshooting guides for all ERROR-level compatibility issues with actionable fix suggestions
 
 - Developers have accounts and access credentials for their selected services (Stripe API keys, Clerk publishable keys, etc.)
+
 - Developers have basic familiarity with the selected technologies or can follow service-specific documentation
+
 - The default option in each category represents the most popular/recommended choice for typical SaaS projects as of November 2025
+
 - Service APIs remain stable within major versions; breaking changes will require template updates
+
 - Hosting platforms (Vercel, Cloudflare) provide free tiers sufficient for development and testing
+
 - All selected services support the latest LTS versions of Node.js and modern browsers
+
 - Developers have Node.js 20+ and pnpm installed as prerequisites
+
 - Template updates will be needed as services release new major versions or deprecate features
+
 - Some technology combinations may have limitations documented in the compatibility validation layer

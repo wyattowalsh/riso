@@ -5,9 +5,11 @@ Cross-platform bash library modules for Riso template setup and tooling installa
 ## Modules
 
 ### 1. `versions.sh`
+
 Single source of truth for all version requirements.
 
 **Variables:**
+
 - `PYTHON_MIN_VERSION` - Minimum Python version (3.11)
 - `UV_MIN_VERSION` - Minimum uv version (0.4)
 - `NODE_MIN_VERSION` - Minimum Node.js version (20)
@@ -20,15 +22,18 @@ Single source of truth for all version requirements.
 - `ACTIONLINT_VERSION` - Actionlint version (latest)
 
 **Usage:**
+
 ```bash
 source scripts/setup/lib/versions.sh
 echo "Python minimum version: $PYTHON_MIN_VERSION"
 ```
 
 ### 2. `colors.sh`
+
 ANSI colors and logging functions with NO_COLOR support.
 
 **Functions:**
+
 - `log_info(message)` - Info message with ℹ symbol
 - `log_success(message)` - Success message with ✓ symbol
 - `log_warn(message)` - Warning message with ⚠ symbol
@@ -40,6 +45,7 @@ ANSI colors and logging functions with NO_COLOR support.
 - `log_progress_failed()` - Complete progress line with error
 
 **Usage:**
+
 ```bash
 source scripts/setup/lib/colors.sh
 log_info "Starting installation..."
@@ -49,9 +55,11 @@ log_error "Installation failed"
 ```
 
 ### 3. `detect-platform.sh`
+
 Platform detection functions for OS, distro, package manager, architecture, and shell.
 
 **Functions:**
+
 - `detect_os()` - Returns: macos, linux, windows, unknown
 - `detect_linux_distro()` - Returns: ubuntu, debian, fedora, arch, alpine, opensuse, rhel, unknown
 - `detect_package_manager()` - Returns: mise, brew, apt, dnf, yum, pacman, apk, zypper, winget, choco, scoop, none
@@ -61,6 +69,7 @@ Platform detection functions for OS, distro, package manager, architecture, and 
 - `get_platform_summary()` - Returns multi-line platform summary
 
 **Usage:**
+
 ```bash
 source scripts/setup/lib/detect-platform.sh
 os=$(detect_os)
@@ -70,9 +79,11 @@ echo "Package Manager: $pkg_mgr"
 ```
 
 ### 4. `logging.sh`
+
 File logging with XDG Base Directory specification compliance.
 
 **Functions:**
+
 - `get_xdg_data_home()` - Returns XDG_DATA_HOME or ~/.local/share
 - `get_xdg_config_home()` - Returns XDG_CONFIG_HOME or ~/.config
 - `get_xdg_state_home()` - Returns XDG_STATE_HOME or ~/.local/state
@@ -88,6 +99,7 @@ File logging with XDG Base Directory specification compliance.
 - `show_log_summary(log_file)` - Display log statistics
 
 **Usage:**
+
 ```bash
 source scripts/setup/lib/logging.sh
 LOG_FILE=$(init_log_file "setup")
@@ -96,9 +108,11 @@ log_provision_result "uv" "success" "brew" "0.4.1" 1234
 ```
 
 ### 5. `install-tools.sh`
+
 Cross-platform installation functions for all required tooling.
 
 **Functions:**
+
 - `has_cmd(command)` - Check if command exists
 - `version_gte(current, required)` - Compare versions (returns 0 if current >= required)
 - `get_tool_version(tool, [version_flag])` - Extract version from tool output
@@ -111,14 +125,16 @@ Cross-platform installation functions for all required tooling.
 - `install_actionlint()` - Install actionlint (mise, brew, GitHub releases)
 
 Each installation function:
+
 1. Checks if tool is already present with correct version
-2. Tries mise first if available
-3. Falls back to platform-specific package manager
-4. Falls back to curl installer or manual instructions
-5. Logs results using `log_provision_result()`
-6. Returns 0 on success, 1 on failure
+1. Tries mise first if available
+1. Falls back to platform-specific package manager
+1. Falls back to curl installer or manual instructions
+1. Logs results using `log_provision_result()`
+1. Returns 0 on success, 1 on failure
 
 **Usage:**
+
 ```bash
 source scripts/setup/lib/install-tools.sh
 

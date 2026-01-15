@@ -1,8 +1,8 @@
 # Feature Specification: Code Generation and Scaffolding Tools
 
-**Feature Branch**: `015-codegen-scaffolding-tools`  
-**Created**: 2025-11-02  
-**Status**: Draft  
+**Feature Branch**: `015-codegen-scaffolding-tools`\
+**Created**: 2025-11-02\
+**Status**: Draft\
 **Terminology**: This document uses "scaffolding tool" consistently to refer to the code generation CLI
 **Input**: User description: "create a new feature/spec branch/spec for `015-codegen-scaffolding-tools`"
 
@@ -29,11 +29,11 @@ A developer wants to quickly create a new project with a consistent structure, p
 **Acceptance Scenarios**:
 
 1. **Given** a user has the scaffolding tool installed, **When** they run `scaffold new my-project`, **Then** a new directory is created with project structure, configuration files, and placeholder code
-2. **Given** a generated project, **When** the user runs the project's test suite, **Then** all default tests pass successfully
-3. **Given** a generated project, **When** the user attempts to build/compile it, **Then** the build completes without errors
-4. **Given** a user provides invalid project name (special characters, reserved words), **When** they run the scaffold command, **Then** the tool provides clear error messages and suggests corrections
+1. **Given** a generated project, **When** the user runs the project's test suite, **Then** all default tests pass successfully
+1. **Given** a generated project, **When** the user attempts to build/compile it, **Then** the build completes without errors
+1. **Given** a user provides invalid project name (special characters, reserved words), **When** they run the scaffold command, **Then** the tool provides clear error messages and suggests corrections
 
----
+______________________________________________________________________
 
 ### User Story 2 - Add Feature Modules to Existing Projects (Priority: P2)
 
@@ -46,11 +46,11 @@ A developer working on an existing project wants to add a new feature module (e.
 **Acceptance Scenarios**:
 
 1. **Given** an existing project, **When** a user runs `scaffold add api-endpoint UserProfile`, **Then** the tool generates controller, route, model, test files following project conventions
-2. **Given** a module generation request, **When** the module already exists, **Then** the tool warns the user and offers options to skip, overwrite, or merge
-3. **Given** a newly generated module, **When** the user runs project tests, **Then** the new module includes passing placeholder tests
-4. **Given** a module that requires dependencies, **When** generated, **Then** the tool updates package/dependency files automatically
+1. **Given** a module generation request, **When** the module already exists, **Then** the tool warns the user and offers options to skip, overwrite, or merge
+1. **Given** a newly generated module, **When** the user runs project tests, **Then** the new module includes passing placeholder tests
+1. **Given** a module that requires dependencies, **When** generated, **Then** the tool updates package/dependency files automatically
 
----
+______________________________________________________________________
 
 ### User Story 3 - Customize Templates with Project-Specific Patterns (Priority: P3)
 
@@ -63,10 +63,10 @@ A team lead wants to define organization-specific templates that enforce their c
 **Acceptance Scenarios**:
 
 1. **Given** a template configuration file, **When** a user generates a project with `scaffold new my-project --template my-custom-template`, **Then** the output follows the custom template structure
-2. **Given** custom template variables (e.g., organization name, license type), **When** generating a project, **Then** the tool prompts for these values and substitutes them throughout generated files
-3. **Given** a user wants to preview template output, **When** they run `scaffold preview my-template`, **Then** the tool shows what files and structure would be generated without creating files
+1. **Given** custom template variables (e.g., organization name, license type), **When** generating a project, **Then** the tool prompts for these values and substitutes them throughout generated files
+1. **Given** a user wants to preview template output, **When** they run `scaffold preview my-template`, **Then** the tool shows what files and structure would be generated without creating files
 
----
+______________________________________________________________________
 
 ### User Story 4 - Update Generated Code as Templates Evolve (Priority: P4)
 
@@ -79,11 +79,11 @@ A developer has projects generated from older template versions and wants to upd
 **Acceptance Scenarios**:
 
 1. **Given** a project generated from template v1.0, **When** template v1.1 is released and user runs `scaffold update`, **Then** the tool identifies updatable files and shows a diff
-2. **Given** conflicts between template updates and local changes, **When** update is attempted, **Then** the tool inserts three-way merge conflict markers (<<<<<<, =======, >>>>>>>) showing original, local changes, and template updates
-3. **Given** conflicts have been marked, **When** user resolves them and removes conflict markers, **Then** the update completes successfully
-4. **Given** a user wants to see what changed between template versions, **When** they run `scaffold diff-templates v1.0 v1.1`, **Then** the tool shows a summary of template changes
+1. **Given** conflicts between template updates and local changes, **When** update is attempted, **Then** the tool inserts three-way merge conflict markers (\<<\<<\<<, =======, >>>>>>>) showing original, local changes, and template updates
+1. **Given** conflicts have been marked, **When** user resolves them and removes conflict markers, **Then** the update completes successfully
+1. **Given** a user wants to see what changed between template versions, **When** they run `scaffold diff-templates v1.0 v1.1`, **Then** the tool shows a summary of template changes
 
----
+______________________________________________________________________
 
 ### User Story 5 - Generate Code from API Specifications (Priority: P3)
 
@@ -96,10 +96,10 @@ A developer has an OpenAPI/GraphQL schema and wants to generate client/server co
 **Acceptance Scenarios**:
 
 1. **Given** an OpenAPI specification file, **When** a user runs `scaffold generate-api openapi.yaml --language python`, **Then** the tool generates FastAPI server code with routes, models, and validation
-2. **Given** a GraphQL schema, **When** a user runs `scaffold generate-api schema.graphql --type client`, **Then** the tool generates client code with typed queries and mutations
-3. **Given** generated API code, **When** the specification changes, **Then** the user can re-run generation to update code while preserving custom business logic in designated areas
+1. **Given** a GraphQL schema, **When** a user runs `scaffold generate-api schema.graphql --type client`, **Then** the tool generates client code with typed queries and mutations
+1. **Given** generated API code, **When** the specification changes, **Then** the user can re-run generation to update code while preserving custom business logic in designated areas
 
----
+______________________________________________________________________
 
 ### Edge Cases
 
@@ -161,7 +161,7 @@ A developer has an OpenAPI/GraphQL schema and wants to generate client/server co
 - **FR-020**: System MUST support generating multiple related files atomically (all-or-nothing)
 - **FR-021**: System MUST run quality validation (linting, type checking) on generated projects and display warnings without blocking completion
 - **FR-022**: Users MUST be able to update generated projects when template versions change while preserving custom modifications
-- **FR-023**: System MUST use three-way merge algorithm when updating projects, inserting conflict markers (<<<<<<, =======, >>>>>>>) when automatic merge is not possible
+- **FR-023**: System MUST use three-way merge algorithm when updating projects, inserting conflict markers (\<<\<<\<<, =======, >>>>>>>) when automatic merge is not possible
 - **FR-024**: System MUST validate that all conflict markers are resolved before considering an update complete
 
 ### Security Requirements
@@ -248,7 +248,7 @@ A developer has an OpenAPI/GraphQL schema and wants to generate client/server co
 
 - **SC-001**: Developers can generate a new project scaffold in under 30 seconds from command execution to first successful test run
 - **SC-002**: Generated projects produce zero critical errors when quality checks run (warnings allowed)
-- **SC-003**: 95% of developers successfully generate their first project without consulting documentation beyond the initial command (success = generates project + passes all tests + completes in <5 minutes)
+- **SC-003**: 95% of developers successfully generate their first project without consulting documentation beyond the initial command (success = generates project + passes all tests + completes in \<5 minutes)
 - **SC-004**: Adding a new module to an existing project takes under 60 seconds and produces immediately runnable code
 - **SC-005**: Template updates can be applied to existing projects with zero manual conflict resolution for 80% of cases
 - **SC-006**: Generated code follows project conventions with 100% consistency (naming, structure, imports)

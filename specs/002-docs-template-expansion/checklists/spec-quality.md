@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Expanded Documentation Template Options
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-10-29  
+**Purpose**: Validate specification completeness and quality before proceeding to planning\
+**Created**: 2025-10-29\
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
@@ -32,4 +32,3 @@
 ## Notes
 
 - Items marked incomplete require spec updates before `/speckit.clarify` or `/speckit.plan`
-

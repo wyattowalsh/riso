@@ -1,14 +1,14 @@
 # Data Model: SaaS Starter Template
 
-**Feature**: 012-saas-starter  
-**Date**: 2025-11-02  
+**Feature**: 012-saas-starter\
+**Date**: 2025-11-02\
 **Phase**: 1 - Design
 
 ## Overview
 
 This document defines the data structures, entities, and relationships for the SaaS Starter Template feature. The data model encompasses both template-level entities (configuration, selections) and generated application entities (users, subscriptions, organizations).
 
----
+______________________________________________________________________
 
 ## Template-Level Entities
 
@@ -17,6 +17,7 @@ This document defines the data structures, entities, and relationships for the S
 Represents the complete set of technology selections made during Copier template rendering.
 
 **Attributes:**
+
 - `version`: string - Configuration schema version (e.g., "2025.11.02")
 - `enabled`: boolean - Whether SaaS starter module is active
 - `runtime`: TechnologyChoice - Selected runtime framework
@@ -35,27 +36,31 @@ Represents the complete set of technology selections made during Copier template
 - `observability`: ObservabilityConfiguration - Observability stack configuration
 
 **Relationships:**
+
 - Has many TechnologyChoice (one per category)
 - Has one ObservabilityConfiguration
 
 **Validation Rules:**
+
 - All required categories must have a selection
 - Selected technologies must pass compatibility validation
 - Version must match current schema
 
 **State Lifecycle:**
-1. `uninitialized` - Before Copier prompts
-2. `configuring` - During Copier prompt flow
-3. `validated` - After compatibility check passes
-4. `generated` - After template rendering completes
 
----
+1. `uninitialized` - Before Copier prompts
+1. `configuring` - During Copier prompt flow
+1. `validated` - After compatibility check passes
+1. `generated` - After template rendering completes
+
+______________________________________________________________________
 
 ### TechnologyChoice
 
 Represents a single technology selection within an infrastructure category.
 
 **Attributes:**
+
 - `categoryId`: string - Category identifier (e.g., "runtime", "database")
 - `categoryLabel`: string - Human-readable category name
 - `optionId`: string - Selected option identifier (e.g., "nextjs-16", "remix-2")
@@ -64,19 +69,22 @@ Represents a single technology selection within an infrastructure category.
 - `isDefault`: boolean - Whether this is the default option for the category
 
 **Relationships:**
+
 - Belongs to SaaSStarterConfiguration
 
 **Validation Rules:**
+
 - optionId must be one of exactly 2 valid options for the category
 - categoryId must be one of the 14 defined categories
 
----
+______________________________________________________________________
 
 ### ObservabilityConfiguration
 
 Represents the comprehensive observability stack configuration.
 
 **Attributes:**
+
 - `sentryEnabled`: boolean - Whether Sentry error tracking is enabled
 - `sentryDsn`: string (optional) - Sentry project DSN
 - `datadogEnabled`: boolean - Whether Datadog APM is enabled
@@ -89,21 +97,24 @@ Represents the comprehensive observability stack configuration.
 - `correlationIdStrategy`: string - How correlation IDs are generated (uuid, request-id, custom)
 
 **Relationships:**
+
 - Belongs to SaaSStarterConfiguration
 
 **Validation Rules:**
+
 - At least one observability component must be enabled
 - If Sentry enabled, DSN must be provided or templated
 - If Datadog enabled, API key must be provided or templated
 - Log level must be one of: debug, info, warn, error
 
----
+______________________________________________________________________
 
 ### IntegrationTemplate
 
 Represents code and configuration files generated for a specific technology selection.
 
 **Attributes:**
+
 - `technologyId`: string - Technology identifier (e.g., "clerk", "stripe")
 - `category`: string - Category this belongs to (auth, billing, etc.)
 - `templateFiles`: array<TemplateFile> - List of Jinja2 template files to render
@@ -113,23 +124,26 @@ Represents code and configuration files generated for a specific technology sele
 - `exampleCode`: array<CodeExample> - Working code examples included
 
 **Relationships:**
+
 - References TechnologyChoice
 - Has many TemplateFile
 - Has many Dependency
 - Has many EnvVarSpec
 
 **Validation Rules:**
+
 - All template files must exist in template directory
 - Dependencies must specify version constraints
 - EnvVarSpec must include validation rules
 
----
+______________________________________________________________________
 
 ### CompatibilityRule
 
 Represents compatibility validation between technology choices.
 
 **Attributes:**
+
 - `combination`: array<string> - Technology IDs that form this combination
 - `severity`: string - "error" (blocks) or "warning" (allows with message)
 - `message`: string - Explanation of compatibility issue
@@ -137,14 +151,16 @@ Represents compatibility validation between technology choices.
 - `recommendedAlternative`: string (optional) - Suggested compatible choice
 
 **Relationships:**
+
 - References multiple TechnologyChoice options
 
 **Validation Rules:**
+
 - Combination must have 2-4 technology IDs
 - Severity must be "error" or "warning"
 - Error-level rules must provide recommendedAlternative
 
----
+______________________________________________________________________
 
 ## Generated Application Entities
 
@@ -155,6 +171,7 @@ These entities are included in the rendered SaaS application.
 Represents an authenticated user in the generated SaaS application.
 
 **Attributes:**
+
 - `id`: string (uuid/cuid) - Primary key
 - `email`: string - User email (unique)
 - `name`: string (optional) - User display name
@@ -167,30 +184,34 @@ Represents an authenticated user in the generated SaaS application.
 - `updatedAt`: datetime - Last modification timestamp
 
 **Relationships:**
+
 - Has many OrganizationMembership
 - Has many Subscription (optional, for B2C SaaS)
 - Has many ApiKey (for API access)
 - Has many AuditLogEntry (for security tracking)
 
 **Validation Rules:**
+
 - Email must be valid format and unique
 - Role must be one of: user, admin, owner
 - At least one organization membership required (for B2B SaaS)
 
 **State Lifecycle:**
-1. `invited` - User invited but not yet signed up
-2. `pending_verification` - Signed up, awaiting email verification
-3. `active` - Verified and active
-4. `suspended` - Temporarily disabled
-5. `deleted` - Soft-deleted (for compliance)
 
----
+1. `invited` - User invited but not yet signed up
+1. `pending_verification` - Signed up, awaiting email verification
+1. `active` - Verified and active
+1. `suspended` - Temporarily disabled
+1. `deleted` - Soft-deleted (for compliance)
+
+______________________________________________________________________
 
 ### Organization
 
 Represents a multi-tenant organization (for B2B SaaS).
 
 **Attributes:**
+
 - `id`: string (uuid/cuid) - Primary key
 - `name`: string - Organization name
 - `slug`: string - URL-safe identifier (unique)
@@ -203,29 +224,33 @@ Represents a multi-tenant organization (for B2B SaaS).
 - `updatedAt`: datetime - Last modification timestamp
 
 **Relationships:**
+
 - Has many OrganizationMembership
 - Has one Subscription
 - Has many WorkOSConnection (if enterprise bridge enabled)
 
 **Validation Rules:**
+
 - Slug must be URL-safe and unique
 - currentSeats ≤ maxSeats
 - Plan must be one of: starter, pro, enterprise
 
 **State Lifecycle:**
-1. `trial` - Free trial period
-2. `active` - Paid subscription active
-3. `past_due` - Payment failed, grace period
-4. `suspended` - Subscription lapsed
-5. `cancelled` - Organization deleted
 
----
+1. `trial` - Free trial period
+1. `active` - Paid subscription active
+1. `past_due` - Payment failed, grace period
+1. `suspended` - Subscription lapsed
+1. `cancelled` - Organization deleted
+
+______________________________________________________________________
 
 ### OrganizationMembership
 
 Represents a user's membership in an organization with role-based permissions.
 
 **Attributes:**
+
 - `id`: string (uuid/cuid) - Primary key
 - `userId`: string - Foreign key to User
 - `organizationId`: string - Foreign key to Organization
@@ -236,22 +261,25 @@ Represents a user's membership in an organization with role-based permissions.
 - `createdAt`: datetime - Creation timestamp
 
 **Relationships:**
+
 - Belongs to User
 - Belongs to Organization
 
 **Validation Rules:**
+
 - userId + organizationId must be unique (one membership per user per org)
 - Role must be one of: member, admin, owner
 - Organization must have exactly one "owner" role
 - If invitedAt is set, acceptedAt must be null or >= invitedAt
 
----
+______________________________________________________________________
 
 ### Subscription
 
 Represents a billing subscription (Stripe or Paddle).
 
 **Attributes:**
+
 - `id`: string (uuid/cuid) - Primary key
 - `stripeSubscriptionId`: string (optional) - Stripe subscription ID
 - `paddleSubscriptionId`: string (optional) - Paddle subscription ID
@@ -269,31 +297,35 @@ Represents a billing subscription (Stripe or Paddle).
 - `updatedAt`: datetime - Last modification timestamp
 
 **Relationships:**
+
 - Belongs to Organization (B2B) OR User (B2C)
 - Has many UsageRecord (for metered billing)
 - Has many Invoice
 
 **Validation Rules:**
+
 - Exactly one of stripeSubscriptionId or paddleSubscriptionId must be set
 - Status must be one of: trialing, active, past_due, canceled, incomplete, incomplete_expired
 - Either organizationId or userId must be set (not both)
 - If status is "trialing", trialEnd must be set and in future
 
 **State Lifecycle:**
-1. `incomplete` - Subscription created, payment pending
-2. `trialing` - In free trial period
-3. `active` - Subscription active and paid
-4. `past_due` - Payment failed, attempting retry
-5. `canceled` - Subscription cancelled
-6. `incomplete_expired` - Payment never completed, expired
 
----
+1. `incomplete` - Subscription created, payment pending
+1. `trialing` - In free trial period
+1. `active` - Subscription active and paid
+1. `past_due` - Payment failed, attempting retry
+1. `canceled` - Subscription cancelled
+1. `incomplete_expired` - Payment never completed, expired
+
+______________________________________________________________________
 
 ### UsageRecord
 
 Represents metered usage for usage-based billing (e.g., AI API calls).
 
 **Attributes:**
+
 - `id`: string (uuid/cuid) - Primary key
 - `subscriptionId`: string - Foreign key to Subscription
 - `metricName`: string - Usage metric (e.g., "ai_tokens", "api_calls")
@@ -304,20 +336,23 @@ Represents metered usage for usage-based billing (e.g., AI API calls).
 - `createdAt`: datetime - Record creation timestamp
 
 **Relationships:**
+
 - Belongs to Subscription
 
 **Validation Rules:**
+
 - Quantity must be positive
 - Metric name must be one of predefined metrics
 - Timestamp must be within current billing period
 
----
+______________________________________________________________________
 
 ### Invoice
 
 Represents a billing invoice from Stripe or Paddle.
 
 **Attributes:**
+
 - `id`: string (uuid/cuid) - Primary key
 - `subscriptionId`: string - Foreign key to Subscription
 - `stripeInvoiceId`: string (optional) - Stripe invoice ID
@@ -332,21 +367,24 @@ Represents a billing invoice from Stripe or Paddle.
 - `createdAt`: datetime - Invoice creation timestamp
 
 **Relationships:**
+
 - Belongs to Subscription
 
 **Validation Rules:**
+
 - Exactly one of stripeInvoiceId or paddleInvoiceId must be set
 - Status must be one of: draft, open, paid, void, uncollectible
 - Amount due must be non-negative
 - If status is "paid", paidAt must be set
 
----
+______________________________________________________________________
 
 ### BackgroundJob
 
 Represents a background job (Trigger.dev or Inngest).
 
 **Attributes:**
+
 - `id`: string (uuid/cuid) - Primary key
 - `jobType`: string - Job type identifier (e.g., "send_welcome_email")
 - `status`: string - Job status
@@ -361,21 +399,24 @@ Represents a background job (Trigger.dev or Inngest).
 - `createdAt`: datetime - Job creation timestamp
 
 **Relationships:**
+
 - May belong to User or Organization (depends on job type)
 
 **Validation Rules:**
+
 - Status must be one of: pending, running, completed, failed, cancelled
 - Attempts ≤ maxAttempts
 - If status is "completed", completedAt must be set
 - If status is "failed", error must be set
 
----
+______________________________________________________________________
 
 ### ApiKey
 
 Represents an API key for programmatic access to the SaaS application.
 
 **Attributes:**
+
 - `id`: string (uuid/cuid) - Primary key
 - `userId`: string (optional) - Owner user ID
 - `organizationId`: string (optional) - Owner organization ID
@@ -389,22 +430,25 @@ Represents an API key for programmatic access to the SaaS application.
 - `createdAt`: datetime - Creation timestamp
 
 **Relationships:**
+
 - Belongs to User OR Organization
 
 **Validation Rules:**
+
 - keyHash must use secure hashing (bcrypt, argon2)
 - At least one of userId or organizationId must be set
 - Scopes must be from predefined set
 - If revokedAt is set, key is invalid
 - If expiresAt is set and past, key is invalid
 
----
+______________________________________________________________________
 
 ### AuditLogEntry
 
 Represents a security audit log entry for compliance and debugging.
 
 **Attributes:**
+
 - `id`: string (uuid/cuid) - Primary key
 - `userId`: string (optional) - User who performed action
 - `organizationId`: string (optional) - Organization context
@@ -418,35 +462,40 @@ Represents a security audit log entry for compliance and debugging.
 - `timestamp`: datetime - When action occurred
 
 **Relationships:**
+
 - May belong to User
 - May belong to Organization
 
 **Validation Rules:**
+
 - Action must follow naming convention: `{resource}.{verb}`
 - Timestamp must be immutable (never updated)
 - Retention period: 90 days minimum for compliance
 
----
+______________________________________________________________________
 
 ### SeededFixture
 
 Represents deterministic seed data included in the generated application.
 
 **Attributes:**
+
 - `id`: string - Deterministic ID in reserved range (e.g., "seed-user-1")
 - `entityType`: string - Type of entity (user, organization, subscription)
 - `data`: json - Entity data
 - `createdAt`: datetime - Fixture creation timestamp
 
 **Relationships:**
+
 - No direct relationships (fixtures are standalone)
 
 **Validation Rules:**
-- ID must be in reserved range (1-1000 or "seed-*" prefix)
+
+- ID must be in reserved range (1-1000 or "seed-\*" prefix)
 - Entity type must be one of: user, organization, subscription, usage_record
 - Data must conform to entity schema
 
----
+______________________________________________________________________
 
 ## Relationships Diagram
 
@@ -488,63 +537,72 @@ BackgroundJob
   └─ User or Organization (optional)
 ```
 
----
+______________________________________________________________________
 
 ## Index Strategy
 
 For optimal query performance in generated applications:
 
 **User Table:**
+
 - Primary: `id` (uuid/cuid)
 - Unique: `email`
 - Index: `createdAt` (for pagination)
 
 **Organization Table:**
+
 - Primary: `id` (uuid/cuid)
 - Unique: `slug`
 - Index: `plan` (for filtering by tier)
 
 **OrganizationMembership Table:**
+
 - Primary: `id` (uuid/cuid)
 - Unique: `(userId, organizationId)`
 - Index: `organizationId` (for org member lookups)
 - Index: `userId` (for user org lookups)
 
 **Subscription Table:**
+
 - Primary: `id` (uuid/cuid)
 - Unique: `stripeSubscriptionId` OR `paddleSubscriptionId`
 - Index: `organizationId` (for org subscription lookup)
 - Index: `(status, currentPeriodEnd)` (for expiration checks)
 
 **UsageRecord Table:**
+
 - Primary: `id` (uuid/cuid)
 - Index: `(subscriptionId, timestamp)` (for usage aggregation)
 - Index: `(subscriptionId, reportedToProvider)` (for sync status)
 
 **Invoice Table:**
+
 - Primary: `id` (uuid/cuid)
 - Index: `subscriptionId` (for subscription invoices)
 - Index: `(status, dueDate)` (for payment reminders)
 
 **BackgroundJob Table:**
+
 - Primary: `id` (uuid/cuid)
 - Index: `(status, scheduledAt)` (for job processing)
 - Index: `jobType` (for job type filtering)
 
 **ApiKey Table:**
+
 - Primary: `id` (uuid/cuid)
 - Unique: `keyHash`
 - Index: `prefix` (for key identification)
 - Index: `(organizationId, revokedAt IS NULL)` (for active org keys)
 
 **AuditLogEntry Table:**
+
 - Primary: `id` (uuid/cuid)
 - Index: `userId` (for user activity logs)
 - Index: `organizationId` (for org activity logs)
 - Index: `(action, timestamp)` (for action filtering)
 - Index: `correlationId` (for request tracing)
 
----
+______________________________________________________________________
 
 ## Data Retention Policies
 
@@ -554,24 +612,27 @@ For optimal query performance in generated applications:
 - **Invoice**: Retain for lifetime + 7 years (financial compliance)
 - **SeededFixture**: Never deleted (part of codebase)
 
----
+______________________________________________________________________
 
 ## Migration Strategy
 
 **Initial Setup:**
+
 1. Run `prisma migrate dev` or `drizzle-kit push` to create tables
-2. Run `pnpm seed` to populate fixtures
-3. Validate with `pnpm test:integration:database`
+1. Run `pnpm seed` to populate fixtures
+1. Validate with `pnpm test:integration:database`
 
 **Schema Evolution:**
+
 1. Update schema file (schema.prisma or schema.ts)
-2. Generate migration: `prisma migrate dev --name <description>` or `drizzle-kit generate`
-3. Review migration SQL for safety
-4. Test migration on development database
-5. Run CI validation to detect breaking changes
-6. Deploy migration with rollback procedure documented
+1. Generate migration: `prisma migrate dev --name <description>` or `drizzle-kit generate`
+1. Review migration SQL for safety
+1. Test migration on development database
+1. Run CI validation to detect breaking changes
+1. Deploy migration with rollback procedure documented
 
 **Rollback Procedure:**
+
 ```sql
 -- Prisma
 BEGIN;
@@ -585,17 +646,17 @@ COMMIT;
 -- Manual rollback SQL based on generated migration
 ```
 
----
+______________________________________________________________________
 
 ## Conclusion
 
 This data model provides comprehensive structure for both template configuration (Copier-level) and generated application entities (SaaS-level). Key design decisions:
 
 1. **Template entities** enable deterministic generation and compatibility validation
-2. **Application entities** support both B2B (organization-centric) and B2C (user-centric) SaaS models
-3. **Audit logging** ensures compliance and security tracking
-4. **Usage metering** enables flexible billing models
-5. **Seeded fixtures** provide realistic development data
-6. **Index strategy** optimizes common query patterns
+1. **Application entities** support both B2B (organization-centric) and B2C (user-centric) SaaS models
+1. **Audit logging** ensures compliance and security tracking
+1. **Usage metering** enables flexible billing models
+1. **Seeded fixtures** provide realistic development data
+1. **Index strategy** optimizes common query patterns
 
 Next: Define API contracts for service integrations and template hooks.

@@ -3,6 +3,7 @@
 > AI coding agent instructions for **riso**. Human docs: [README.md](./README.md)
 
 ## Project Overview
+
 <!-- agents-md:auto -->
 
 Modular Copier-based project template for Python and Node.js applications.
@@ -13,26 +14,28 @@ Modular Copier-based project template for Python and Node.js applications.
 - **License**: MIT
 
 ## Quick Reference
+
 <!-- agents-md:auto -->
 
-| Task | Command |
-|------|---------|
-| Install deps | `uv sync` |
-| Install all extras | `uv sync --all-extras` |
-| Run tests | `uv run pytest` |
-| Run tests (verbose) | `uv run pytest -v` |
-| Run specific test | `uv run pytest tests/path/test_file.py::test_name` |
-| Coverage | `uv run pytest --cov` |
-| Lint (ruff) | `uv run ruff check .` |
-| Format (ruff) | `uv run ruff format .` |
-| Type check (ty) | `uv run ty check scripts template/hooks` |
-| Static analysis | `uv run pylint scripts template/hooks tests` |
-| Pre-commit (all) | `uv run pre-commit run --all-files` |
-| Render samples | `./scripts/render-samples.sh` |
-| Build docs | `uv run sphinx-build docs docs/_build` |
-| Quality suite | `make quality` |
+| Task                | Command                                            |
+| ------------------- | -------------------------------------------------- |
+| Install deps        | `uv sync`                                          |
+| Install all extras  | `uv sync --all-extras`                             |
+| Run tests           | `uv run pytest`                                    |
+| Run tests (verbose) | `uv run pytest -v`                                 |
+| Run specific test   | `uv run pytest tests/path/test_file.py::test_name` |
+| Coverage            | `uv run pytest --cov`                              |
+| Lint (ruff)         | `uv run ruff check .`                              |
+| Format (ruff)       | `uv run ruff format .`                             |
+| Type check (ty)     | `uv run ty check scripts template/hooks`           |
+| Static analysis     | `uv run pylint scripts template/hooks tests`       |
+| Pre-commit (all)    | `uv run pre-commit run --all-files`                |
+| Render samples      | `./scripts/render-samples.sh`                      |
+| Build docs          | `uv run sphinx-build docs docs/_build`             |
+| Quality suite       | `make quality`                                     |
 
 ## Setup Commands
+
 <!-- agents-md:auto -->
 
 ```bash
@@ -51,6 +54,7 @@ uv run pytest tests/ -x -q
 ```
 
 ## Testing Instructions
+
 <!-- agents-md:auto -->
 
 - **Framework**: pytest with pytest-xdist (parallel), pytest-cov (coverage), pytest-randomly
@@ -78,15 +82,16 @@ uv run pytest -m integration
 ```
 
 ## Pre-commit Hooks
+
 <!-- agents-md:auto -->
 
 Comprehensive pre-commit configuration with multi-stage hooks:
 
-| Stage | Hooks | Purpose |
-|-------|-------|---------|
-| **pre-commit** | ruff (lint+format), ty, pylint, vulture, gitleaks, shellcheck, codespell, actionlint, mdformat, YAML/TOML/JSON checks | Code quality |
-| **commit-msg** | commitlint, conventional-pre-commit | Commit format validation |
-| **pre-push** | pytest, pip-audit | Full test suite + security |
+| Stage          | Hooks                                                                                                                 | Purpose                    |
+| -------------- | --------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| **pre-commit** | ruff (lint+format), ty, pylint, vulture, gitleaks, shellcheck, codespell, actionlint, mdformat, YAML/TOML/JSON checks | Code quality               |
+| **commit-msg** | commitlint, conventional-pre-commit                                                                                   | Commit format validation   |
+| **pre-push**   | pytest, pip-audit                                                                                                     | Full test suite + security |
 
 Commitlint runs when `pnpm` is available; conventional-pre-commit serves as the fallback for commit-msg validation.
 
@@ -105,18 +110,20 @@ git commit --no-verify -m "emergency: bypass hooks"
 ```
 
 ## CI/CD Context
+
 <!-- agents-md:auto -->
 
 - **Platform**: GitHub Actions
 - **Workflows**: `.github/workflows/quality.yml`
 
-| Job | Triggers | Purpose |
-|-----|----------|---------|
-| `python-quality` | push, PR | Ruff, ty, pylint, pytest |
-| `python-matrix` | push, PR | Python 3.11/3.12/3.13 matrix |
+| Job              | Triggers        | Purpose                          |
+| ---------------- | --------------- | -------------------------------- |
+| `python-quality` | push, PR        | Ruff, ty, pylint, pytest         |
+| `python-matrix`  | push, PR        | Python 3.11/3.12/3.13 matrix     |
 | `matrix-summary` | matrix complete | Block merge if any version fails |
 
 **Required checks before merge**:
+
 - `python-quality`
 - `python-matrix / test-py311`
 - `python-matrix / test-py312`
@@ -124,19 +131,21 @@ git commit --no-verify -m "emergency: bypass hooks"
 - `matrix-summary`
 
 ## CI Scripts Reference
+
 <!-- agents-md:auto -->
 
-| Script | Purpose | Command |
-|--------|---------|---------|
-| `render_matrix.py` | Render all sample variants | `uv run python scripts/ci/render_matrix.py` |
-| `record_module_success.py` | Aggregate smoke test results | `uv run python scripts/ci/record_module_success.py` |
-| `check_quality_parity.py` | Ensure Makefile/uv tasks sync | `uv run python scripts/ci/check_quality_parity.py` |
-| `verify_context_sync.py` | Verify context file sync | `uv run python scripts/ci/verify_context_sync.py` |
-| `validate_workflows.py` | Validate GitHub workflows | `uv run python scripts/ci/validate_workflows.py` |
-| `validate_dockerfiles.py` | Validate Dockerfiles | `uv run python scripts/ci/validate_dockerfiles.py` |
-| `validate_release_configs.py` | Validate release configs | `uv run python scripts/ci/validate_release_configs.py` |
+| Script                        | Purpose                       | Command                                                |
+| ----------------------------- | ----------------------------- | ------------------------------------------------------ |
+| `render_matrix.py`            | Render all sample variants    | `uv run python scripts/ci/render_matrix.py`            |
+| `record_module_success.py`    | Aggregate smoke test results  | `uv run python scripts/ci/record_module_success.py`    |
+| `check_quality_parity.py`     | Ensure Makefile/uv tasks sync | `uv run python scripts/ci/check_quality_parity.py`     |
+| `verify_context_sync.py`      | Verify context file sync      | `uv run python scripts/ci/verify_context_sync.py`      |
+| `validate_workflows.py`       | Validate GitHub workflows     | `uv run python scripts/ci/validate_workflows.py`       |
+| `validate_dockerfiles.py`     | Validate Dockerfiles          | `uv run python scripts/ci/validate_dockerfiles.py`     |
+| `validate_release_configs.py` | Validate release configs      | `uv run python scripts/ci/validate_release_configs.py` |
 
 ## Gotchas & Edge Cases
+
 <!-- agents-md:auto -->
 
 - **CRITICAL**: Always use `uv run` prefix for Python commands (never bare `python` or `pytest`)
@@ -169,6 +178,7 @@ make setup-check        # Check-only (CI-friendly, exits 0 or 1)
 ```
 
 **Windows (PowerShell):**
+
 ```powershell
 .\scripts\setup\setup.ps1                  # Check (dry-run)
 .\scripts\setup\setup.ps1 -Install         # Install with prompts
@@ -176,6 +186,7 @@ make setup-check        # Check-only (CI-friendly, exits 0 or 1)
 ```
 
 **CI/CD with GitHub token** (avoids rate limits):
+
 ```bash
 export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
 ./scripts/setup/setup.sh --install --yes
@@ -229,6 +240,7 @@ pnpm run lint
 - Apply the "lean, link out" pattern—keep this file as the control plane and point to deeper docs like `docs/quickstart.md.jinja`.
 
 ## Required Tooling
+
 - Python ≥3.11 with uv (`python3 --version`, `uv version`); hooks expect uv to manage virtual environments.
 - Node.js 20 LTS and pnpm ≥8 (`node --version`, `pnpm --version`) for TypeScript/Fumadocs/Fastify tracks.
 - Copier CLI (`copier --version`); `template/hooks/pre_gen_project.py` fails fast if any prerequisite is missing.
@@ -282,6 +294,7 @@ riso/
 ```
 
 **Key Paths**:
+
 - `template/hooks/` – Validation and initialization logic (security-critical)
 - `scripts/ci/` – CI automation scripts
 - `.github/context/` – Must stay in sync with `template/files/shared/.github/context/`
@@ -307,6 +320,7 @@ make quality
 - **`riso-matrix.yml`**: Matrix testing across Python 3.11, 3.12, 3.13 with fail-fast disabled and per-version artifacts
 
 **Required branch protection checks:**
+
 - `python-quality` - Main quality suite (ruff, ty, pylint, pytest)
 - `python-matrix / test-py311` - Python 3.11 compatibility
 - `python-matrix / test-py312` - Python 3.12 compatibility
@@ -314,6 +328,7 @@ make quality
 - `matrix-summary` - Overall matrix status (blocks merge if any version fails)
 
 **CI features:**
+
 - Dependency caching with 70%+ hit rate target (uv.lock and pnpm-lock.yaml hashing)
 - Retry logic with exponential backoff (3 attempts)
 - Conditional Node.js job when `api_tracks` includes `node`
@@ -321,6 +336,7 @@ make quality
 - Cache hit/miss logging for debugging
 
 **Viewing CI status:**
+
 ```bash
 # In rendered project with GitHub remote
 gh run list --limit 5
@@ -338,6 +354,7 @@ Quality tools run via `make quality` or `uv run task quality` in rendered projec
 - **Profiles:** `QUALITY_PROFILE=standard` (default) or `QUALITY_PROFILE=strict` for enhanced checks
 
 **Test patterns:**
+
 ```python
 # tests/test_hooks.py
 import pytest
@@ -360,6 +377,7 @@ class TestRenderConfig:
 ```
 
 **TypeScript test patterns (for Node.js tracks):**
+
 ```typescript
 // packages/api-node/tests/health.test.ts
 import { describe, it, expect } from 'vitest';
@@ -382,6 +400,7 @@ Quality suite implementation:
 - `scripts/ci/run_quality_suite.py` – CI orchestration script
 
 **Critical Convention:** All Python commands MUST use `uv run` prefix (never bare `python` or `pytest`). This ensures consistent virtual environment usage across local development, CI/CD workflows, and rendered projects. Examples:
+
 - ✅ `uv run pytest tests/`
 - ✅ `uv run python -m mypackage.cli`
 - ✅ `uv run task quality`
@@ -391,17 +410,20 @@ Quality suite implementation:
 ## Code Style
 
 **Languages & Frameworks:**
+
 - **Python:** 3.11+ (managed via uv)
 - **Node.js:** 20 LTS with pnpm ≥8
 - **TypeScript:** 5.6+ (strict mode)
 - **Template Engine:** Jinja2 + Copier ≥9.0
 
 **Formatters & Linters:**
+
 - Python: ruff (format + lint), ty (type checking), pylint (static analysis)
 - TypeScript/Node: ESLint + Prettier
 - YAML: yamllint for workflow validation
 
 **Indentation & Formatting:**
+
 - Python: 4 spaces (enforced by ruff)
 - TypeScript/JavaScript: 2 spaces (enforced by Prettier)
 - YAML: 2 spaces
@@ -409,17 +431,20 @@ Quality suite implementation:
 - Line length: 88 chars (Python), 100 chars (TypeScript)
 
 **Import Order (Python):**
+
 1. Standard library (`import os`, `from pathlib import Path`)
-2. Third-party (`import pytest`, `from pydantic import BaseModel`)
-3. Local (`from riso.hooks import validate`)
+1. Third-party (`import pytest`, `from pydantic import BaseModel`)
+1. Local (`from riso.hooks import validate`)
 
 **Naming Conventions:**
+
 - Python modules: `snake_case` (`render_samples.py`)
 - Python classes: `PascalCase` (`AnalysisResult`)
 - Jinja templates: `snake_case.ext.jinja` (`pyproject.toml.jinja`)
 - Shell scripts: `kebab-case.sh` (`render-samples.sh`)
 
 **Example (Python):**
+
 ```python
 from __future__ import annotations
 
@@ -442,6 +467,7 @@ class RenderConfig:
 ```
 
 **Example (Jinja template):**
+
 ```jinja
 {# template/files/python/pyproject.toml.jinja #}
 [project]
@@ -477,12 +503,14 @@ requires-python = ">={{ python_version }}"
 ## Git Workflow
 
 **Branches:**
+
 - `main` — Production-ready, protected
 - `feature/*` — New features
 - `fix/*` — Bug fixes
 - `docs/*` — Documentation updates
 
 **Commits:** Conventional Commits format:
+
 ```
 feat(template): add WebSocket module scaffold
 fix(hooks): handle missing uv gracefully
@@ -491,14 +519,17 @@ refactor(ci): consolidate quality check scripts
 ```
 
 **Pull Requests:**
+
 - Require passing CI checks (quality + matrix tests)
 - Squash merge to main
 - Delete branch after merge
 
 ## Python Execution Convention
+
 **CRITICAL**: All Python scripts MUST be executed via `uv run python` to ensure proper virtual environment isolation and dependency management. Never invoke Python directly (`python`, `python3`, or `python3.11`). This applies to all automation scripts, CI workflows, and local development commands.
 
 ## Render & Validate Default Variant
+
 ```bash
 ./scripts/render-samples.sh
 cd samples/default/render
@@ -509,16 +540,20 @@ make quality
 # or, when make is unavailable
 QUALITY_PROFILE=standard uv run task quality
 ```
+
 - The render writes metrics to `samples/default/baseline_quickstart_metrics.json` and smoke logs to `samples/default/smoke-results.json`.
 - The quality suite logs tool durations to `.riso/quality-durations.json`; CI archives the full log bundle with 90-day retention.
 
 ## Render Specific Variant
+
 ```bash
 ./scripts/render-samples.sh --variant full-stack --answers samples/full-stack/copier-answers.yml
 ```
+
 - Output lands in `samples/<variant>/render`; inspect `<variant>/smoke-results.json` for module statuses and `<variant>/metadata.json` for configuration.
 
 ## Aggregate & Governance Checks
+
 - `uv run python scripts/ci/render_matrix.py` – render every `samples/*/copier-answers.yml`, update metadata, and recompute module success.
 - `uv run python scripts/ci/record_module_success.py` – regenerate `samples/metadata/module_success.json` from existing smoke logs.
 - `uv run python scripts/ci/run_quality_suite.py --profile {standard|strict}` – execute make/uv quality lanes and emit artifacts consumed by `.github/workflows/quality-matrix.yml`.
@@ -526,6 +561,7 @@ QUALITY_PROFILE=standard uv run task quality
 - `uv run python scripts/ci/verify_context_sync.py` – ensure shared `.github/context` files stay byte-identical between template and repo.
 
 ## Module Validation Matrix (run inside a rendered project root)
+
 - `cli_module=enabled`
   ```bash
   uv run python -m ${PACKAGE}.cli --help
@@ -558,20 +594,24 @@ QUALITY_PROFILE=standard uv run task quality
   ```
 
 ## Key Artifacts & Logs
+
 - `samples/<variant>/smoke-results.json` – per-module pass/fail/skip reasoning from render scripts.
 - `samples/metadata/render_matrix.json` – inventory of rendered variants and latest smoke outcomes.
 - `samples/metadata/module_success.json` – aggregated success rates per module for trend tracking.
 - `.riso/post_gen_metadata.json` (inside renders) – rendered-at timestamp and module selections.
 
 ## References
+
 - Quickstart playbook: `docs/quickstart.md.jinja`
 - Automation: `scripts/render-samples.sh`, `scripts/hooks/post-init.sh`
 - Module catalog: `template/files/shared/module_catalog.json.jinja`
 
 ## Git Workflow & Commits
+
 <!-- agents-md:auto -->
 
 **Branches:**
+
 - `main` — Production-ready, protected
 - `feature/*` — New features
 - `fix/*` — Bug fixes
@@ -579,6 +619,7 @@ QUALITY_PROFILE=standard uv run task quality
 - `claude/*` — AI-assisted development branches
 
 **Commit format** (Conventional Commits):
+
 ```
 feat(template): add WebSocket module scaffold
 fix(hooks): handle missing uv gracefully
@@ -588,16 +629,19 @@ test(hooks): add validation edge cases
 ```
 
 **Pull request workflow:**
+
 1. Create feature branch from `main`
-2. Run `uv run pre-commit run --all-files` before committing
-3. Ensure all CI checks pass
-4. Squash merge to main
-5. Delete branch after merge
+1. Run `uv run pre-commit run --all-files` before committing
+1. Ensure all CI checks pass
+1. Squash merge to main
+1. Delete branch after merge
 
 ## Boundaries
+
 <!-- agents-md:auto -->
 
 ### ✅ Always Do
+
 - Run `uv run pre-commit run --all-files` before committing
 - Use `uv run` prefix for all Python commands
 - Update tests when modifying functionality
@@ -606,6 +650,7 @@ test(hooks): add validation edge cases
 - Run quality checks before pushing (`make quality`)
 
 ### ❓ Ask First
+
 - Adding new dependencies to `pyproject.toml`
 - Modifying CI workflow files (`.github/workflows/`)
 - Changing Copier prompt definitions (`template/prompts/`)
@@ -614,6 +659,7 @@ test(hooks): add validation edge cases
 - Modifying `.pre-commit-config.yaml`
 
 ### 🚫 Never Touch
+
 - `.env*` files (secrets, gitignored)
 - `samples/*/render/` directories (generated—regenerate via script)
 - `node_modules/`, `.venv/`, `__pycache__/` (managed by tools)
@@ -623,6 +669,7 @@ test(hooks): add validation edge cases
 - GitHub Actions secrets or repository settings
 
 ### ⚠️ Avoid
+
 - Running bare `python` or `pytest`—always use `uv run`
 - Manually editing rendered sample directories
 - Committing secrets, API keys, or credentials
@@ -630,21 +677,25 @@ test(hooks): add validation edge cases
 - Duplicating content between AGENTS.md and pointer files
 
 <!-- MANUAL ADDITIONS START -->
+
 ### Docs Site Maintenance
+
 - Primary maintainer docs live in `docs/` (Shibuya Sphinx). Build locally with `uv sync --group docs` + `uv run sphinx-build docs docs/_build`.
 - Keep the template copy at `template/files/python/docs/` in lockstep; changes to navigation or config must be mirrored.
 - Doc dependencies are defined in the `docs` dependency group inside `template/files/python/pyproject.toml.jinja`.
 - For rendered projects with `docs_site=sphinx-shibuya`, CI runs `uv run sphinx-build docs dist/docs`.
 
 ### Claude Code Skills
+
 Two AI agent skills are installed at both project and template levels:
 
-| Skill | Location | Purpose |
-|-------|----------|---------|
+| Skill               | Location                            | Purpose                              |
+| ------------------- | ----------------------------------- | ------------------------------------ |
 | `agents-md-manager` | `.claude/skills/agents-md-manager/` | AGENTS.md as SSOT with platform sync |
-| `mcp-installer` | `.claude/skills/mcp-installer/` | Universal MCP server management |
+| `mcp-installer`     | `.claude/skills/mcp-installer/`     | Universal MCP server management      |
 
 **agents-md-manager** — Manages AGENTS.md files across AI coding platforms:
+
 ```bash
 # Detect all agent files in codebase
 uv run python .claude/skills/agents-md-manager/detect.py .
@@ -660,6 +711,7 @@ uv run python .claude/skills/agents-md-manager/migrate.py .
 ```
 
 **mcp-installer** — Research, install, and sync MCP servers:
+
 ```bash
 # Search MCP registries
 uv run python -m scripts.research --query "github" --cwd .claude/skills/mcp-installer
@@ -675,11 +727,13 @@ uv run python -m scripts.validate --interface claude-code --cwd .claude/skills/m
 ```
 
 Rendered projects inherit these skills via `template/files/shared/.claude/skills/`.
+
 <!-- MANUAL ADDITIONS END -->
 
 ## Boundaries
 
 ### Always Do
+
 - Run `make quality` or `uv run task quality` before committing
 - Use `uv run` prefix for all Python commands
 - Update tests when modifying functionality
@@ -687,6 +741,7 @@ Rendered projects inherit these skills via `template/files/shared/.claude/skills
 - Follow conventional commit format
 
 ### Ask First
+
 - Adding new dependencies to `pyproject.toml`
 - Modifying CI workflow files (`.github/workflows/`)
 - Changing Copier prompt definitions (`template/prompts/`)
@@ -694,6 +749,7 @@ Rendered projects inherit these skills via `template/files/shared/.claude/skills
 - Adding new sample variants
 
 ### Never Touch
+
 - `.env*` files (secrets, gitignored)
 - `samples/*/render/` directories (generated output, recreate via render script)
 - `node_modules/`, `.venv/`, `__pycache__/` (managed by tools)
@@ -703,6 +759,7 @@ Rendered projects inherit these skills via `template/files/shared/.claude/skills
 - GitHub Actions secrets or repository settings
 
 ### Avoid
+
 - Do not run bare `python` or `pytest` commands—always use `uv run` prefix
 - Do not manually edit rendered sample directories—regenerate instead
 - Do not commit secrets, API keys, or credentials
@@ -712,8 +769,8 @@ Rendered projects inherit these skills via `template/files/shared/.claude/skills
 ## Recent Changes
 
 - 015-claude-code-skills: Added AI agent skills for Claude Code at project and template levels—`agents-md-manager` (AGENTS.md SSOT with detection, analysis, platform sync, migration) and `mcp-installer` (universal MCP server research, installation, cross-interface sync, validation). Skills located in `.claude/skills/` and propagate to rendered projects via `template/files/shared/.claude/skills/`.
-- 014-changelog-release-management: Added automated changelog generation and release management with conventional commit enforcement via Git hooks (commitlint ≥18.0.0), semantic versioning automation (semantic-release ≥23.0.0), human-readable changelog generation with categorized changes (💥/✨/🐛 sections), GitHub Release creation, breaking change detection with migration guide templates, multi-registry publishing (PyPI via twine, npm via @semantic-release/npm, Docker Hub), monorepo support with independent package versioning, pre-release versions (alpha, beta, rc), release completion <10min, comprehensive logging with correlation IDs, GitHub Actions workflow (riso-release.yml), credential management via GitHub Secrets with annual rotation, comprehensive docs (changelog-release.md, quickstart, upgrade guide)
-- 008-websockets-scaffold: Added WebSocket real-time communication module with connection lifecycle management, heartbeat/ping-pong mechanism (30s interval, 60s timeout), room-based broadcasting with <100ms latency (p95), FastAPI authentication integration, rate limiting (100 msg/60s window, configurable), backpressure handling with bounded queues, structured error responses, pytest fixtures, support for 10K+ concurrent connections with <10MB/1K conn memory overhead, comprehensive docs (websockets.md, quickstart, upgrade guide)
+- 014-changelog-release-management: Added automated changelog generation and release management with conventional commit enforcement via Git hooks (commitlint ≥18.0.0), semantic versioning automation (semantic-release ≥23.0.0), human-readable changelog generation with categorized changes (💥/✨/🐛 sections), GitHub Release creation, breaking change detection with migration guide templates, multi-registry publishing (PyPI via twine, npm via @semantic-release/npm, Docker Hub), monorepo support with independent package versioning, pre-release versions (alpha, beta, rc), release completion \<10min, comprehensive logging with correlation IDs, GitHub Actions workflow (riso-release.yml), credential management via GitHub Secrets with annual rotation, comprehensive docs (changelog-release.md, quickstart, upgrade guide)
+- 008-websockets-scaffold: Added WebSocket real-time communication module with connection lifecycle management, heartbeat/ping-pong mechanism (30s interval, 60s timeout), room-based broadcasting with \<100ms latency (p95), FastAPI authentication integration, rate limiting (100 msg/60s window, configurable), backpressure handling with bounded queues, structured error responses, pytest fixtures, support for 10K+ concurrent connections with \<10MB/1K conn memory overhead, comprehensive docs (websockets.md, quickstart, upgrade guide)
 - 005-container-deployment: Added Docker/docker-compose support with multi-stage Dockerfiles (Python 3.11-slim-bookworm, Node 20-alpine), docker-compose orchestration (API/docs/databases), GitHub Actions workflows (riso-container-build.yml with hadolint/Trivy, riso-container-publish.yml with semantic versioning), container validation (render_matrix.py, record_module_success.py), health endpoints (FastAPI/Fastify /health), security hardening (UID 1000:1000, HEALTHCHECK, SBOM/provenance), registry support (ghcr.io OIDC, Docker Hub, AWS ECR), comprehensive documentation (containers.md, context guide, upgrade guide)
 - 004-github-actions-workflows: Added GitHub Actions CI/CD workflows with quality checks (ruff, ty, pylint, pytest), matrix testing across Python 3.11/3.12/3.13, retry logic with exponential backoff, dependency caching, artifact uploads with 90-day retention, and conditional Node.js job support
 - 003-code-quality-integrations: Added unified quality suite (ruff, ty, pylint, pytest, coverage) with standard/strict profiles, auto-healing tool provisioning, parallelized CI jobs, and 90-day artifact retention

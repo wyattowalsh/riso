@@ -5,7 +5,7 @@
 **Feature**: [spec.md](../spec.md) | [plan.md](../plan.md) | [tasks.md](../tasks.md)
 **Scope**: Comprehensive release gate (template layer, generated applications, all 28 service integrations)
 
----
+______________________________________________________________________
 
 ## Requirement Completeness
 
@@ -28,17 +28,17 @@
 - [ ] CHK017 - Are database migration requirements specified for both Prisma Migrate and Drizzle Kit? [Completeness, Spec §FR-027]
 - [ ] CHK018 - Are WorkOS enterprise bridge requirements specified (SSO, SCIM)? [Completeness, Spec §FR-029]
 
----
+______________________________________________________________________
 
 ## Requirement Clarity
 
 - [ ] CHK019 - Is "production-ready" quantified with specific deployment success criteria? [Clarity, Spec §Summary]
 - [ ] CHK020 - Is "working application" defined with measurable validation criteria? [Clarity, Spec §FR-006]
 - [ ] CHK021 - Is "properly configured" and "properly integrated" defined with specific validation checks? [Ambiguity, Spec §FR-006]
-- [ ] CHK022 - Are template rendering performance targets quantified (<5min requirement)? [Clarity, Spec §SC-001, Plan §Performance Goals]
-- [ ] CHK023 - Are generated app startup performance targets quantified (<2min requirement)? [Clarity, Spec §SC-002, Plan §Performance Goals]
-- [ ] CHK024 - Are deployment performance targets quantified (<10min requirement)? [Clarity, Spec §SC-005, Plan §Performance Goals]
-- [ ] CHK025 - Are fixture generation performance targets quantified (1000+ records <10sec)? [Clarity, Spec §SC-021, Plan §Performance Goals]
+- [ ] CHK022 - Are template rendering performance targets quantified (\<5min requirement)? [Clarity, Spec §SC-001, Plan §Performance Goals]
+- [ ] CHK023 - Are generated app startup performance targets quantified (\<2min requirement)? [Clarity, Spec §SC-002, Plan §Performance Goals]
+- [ ] CHK024 - Are deployment performance targets quantified (\<10min requirement)? [Clarity, Spec §SC-005, Plan §Performance Goals]
+- [ ] CHK025 - Are fixture generation performance targets quantified (1000+ records \<10sec)? [Clarity, Spec §SC-021, Plan §Performance Goals]
 - [ ] CHK026 - Is "comprehensive observability" defined with specific components (Sentry + Datadog + OpenTelemetry + structured logging)? [Clarity, Spec §FR-024]
 - [ ] CHK027 - Are "pinned dependencies" version constraint rules explicitly defined? [Clarity, Spec §FR-022]
 - [ ] CHK028 - Is "graceful failure" for service initialization defined with specific error handling requirements? [Ambiguity, Spec §FR-023]
@@ -47,7 +47,7 @@
 - [ ] CHK031 - Are "seeded fixtures" deterministic ID ranges explicitly specified (e.g., 1-1000)? [Clarity, Spec §Edge Cases, FR-026]
 - [ ] CHK032 - Are correlation ID generation strategies explicitly defined for structured logging? [Clarity, Spec §FR-024]
 
----
+______________________________________________________________________
 
 ## Requirement Consistency
 
@@ -62,7 +62,7 @@
 - [ ] CHK041 - Are Python version requirements consistent across template layer and generated apps (3.11+ in Plan §Technical Context)? [Consistency]
 - [ ] CHK042 - Are Node version requirements consistent (Node 20 LTS in Plan §Technical Context)? [Consistency]
 
----
+______________________________________________________________________
 
 ## Compatibility Validation Requirements
 
@@ -79,14 +79,14 @@
 - [ ] CHK053 - Are validation error messages user-friendly with actionable next steps? [Clarity, Gap]
 - [ ] CHK054 - Is the compatibility validation algorithm deterministic (same inputs → same validation results)? [Determinism, Gap]
 
----
+______________________________________________________________________
 
 ## Security & Secrets Management Requirements
 
 - [ ] CHK055 - Are environment variable encryption requirements specified for CI/CD platforms (GitHub Secrets, Vercel, Cloudflare)? [Completeness, Spec §FR-025]
 - [ ] CHK056 - Are environment variable validation requirements specified for all 28 service integrations? [Completeness, Spec §FR-007, FR-025]
 - [ ] CHK057 - Are runtime environment variable validation requirements specified (100% detection before startup)? [Completeness, Spec §SC-015]
-- [ ] CHK058 - Are API key format validation requirements specified for each service (e.g., Stripe keys start with "sk_")? [Completeness, Gap]
+- [ ] CHK058 - Are API key format validation requirements specified for each service (e.g., Stripe keys start with "sk\_")? [Completeness, Gap]
 - [ ] CHK059 - Are credential rotation documentation requirements specified with step-by-step procedures? [Completeness, Spec §FR-025]
 - [ ] CHK060 - Are blue-green credential rotation requirements specified for zero-downtime updates? [Completeness, Spec §Edge Cases]
 - [ ] CHK061 - Are webhook signature verification requirements specified for all webhook handlers (Stripe, Clerk, etc.)? [Completeness, Gap]
@@ -97,7 +97,7 @@
 - [ ] CHK066 - Are service account security requirements specified (least privilege, scoped access)? [Completeness, Gap]
 - [ ] CHK067 - Is sensitive data handling documented for observability platforms (PII redaction in logs)? [Security, Gap]
 
----
+______________________________________________________________________
 
 ## Deterministic Generation Requirements
 
@@ -113,7 +113,7 @@
 - [ ] CHK077 - Are generated file path determinism requirements specified (no UUIDs in paths)? [Determinism, Gap]
 - [ ] CHK078 - Are template macro determinism requirements specified (pure functions only)? [Determinism, Gap]
 
----
+______________________________________________________________________
 
 ## Acceptance Criteria Quality
 
@@ -128,7 +128,7 @@
 - [ ] CHK087 - Are setup completion criteria (90%) verifiable with telemetry or surveys? [Measurability, Spec §SC-011]
 - [ ] CHK088 - Are coverage targets (70% minimum, 95% target) verifiable with automated tools? [Measurability, Plan §Testing]
 
----
+______________________________________________________________________
 
 ## Scenario Coverage - Primary Flows
 
@@ -141,7 +141,7 @@
 - [ ] CHK095 - Are requirements defined for local development environment setup? [Coverage, Spec §FR-008]
 - [ ] CHK096 - Are requirements defined for running quality checks on generated applications? [Coverage, Spec §SC-013]
 
----
+______________________________________________________________________
 
 ## Scenario Coverage - Alternate Flows
 
@@ -152,7 +152,7 @@
 - [ ] CHK101 - Are requirements defined for adding custom integrations beyond the 28 provided? [Coverage, Spec §Edge Cases]
 - [ ] CHK102 - Are requirements defined for using partial features (e.g., only auth + database, no billing)? [Coverage, Gap]
 
----
+______________________________________________________________________
 
 ## Scenario Coverage - Exception/Error Flows
 
@@ -168,7 +168,7 @@
 - [ ] CHK112 - Are requirements defined for handling template rendering errors (invalid Jinja2)? [Coverage, Gap]
 - [ ] CHK113 - Are requirements defined for handling Copier prompt validation errors? [Coverage, Gap]
 
----
+______________________________________________________________________
 
 ## Scenario Coverage - Recovery Flows
 
@@ -180,20 +180,20 @@
 - [ ] CHK119 - Are requirements defined for handling concurrent migration conflicts? [Coverage, Spec §Edge Cases]
 - [ ] CHK120 - Are requirements defined for credential rotation rollback procedures? [Coverage, Spec §Edge Cases]
 
----
+______________________________________________________________________
 
 ## Non-Functional Requirements - Performance
 
-- [ ] CHK121 - Are template rendering performance requirements quantified (<5min from Copier start to working dev environment)? [NFR, Spec §SC-001]
-- [ ] CHK122 - Are generated app startup performance requirements quantified (<2min from quickstart to running app)? [NFR, Spec §SC-002]
-- [ ] CHK123 - Are deployment performance requirements quantified (<10min from deploy command to accessible app)? [NFR, Spec §SC-005]
-- [ ] CHK124 - Are database seeding performance requirements quantified (1000+ records <10sec)? [NFR, Spec §SC-021]
+- [ ] CHK121 - Are template rendering performance requirements quantified (\<5min from Copier start to working dev environment)? [NFR, Spec §SC-001]
+- [ ] CHK122 - Are generated app startup performance requirements quantified (\<2min from quickstart to running app)? [NFR, Spec §SC-002]
+- [ ] CHK123 - Are deployment performance requirements quantified (\<10min from deploy command to accessible app)? [NFR, Spec §SC-005]
+- [ ] CHK124 - Are database seeding performance requirements quantified (1000+ records \<10sec)? [NFR, Spec §SC-021]
 - [ ] CHK125 - Are cold start performance requirements quantified for different hosting platforms? [NFR, Gap, Contracts §validation-rules.md]
 - [ ] CHK126 - Are request latency requirements quantified (p95, p99) for different technology combinations? [NFR, Gap]
 - [ ] CHK127 - Are CI/CD workflow execution time requirements quantified? [NFR, Gap]
 - [ ] CHK128 - Are quality check execution time requirements quantified? [NFR, Gap]
 
----
+______________________________________________________________________
 
 ## Non-Functional Requirements - Scalability
 
@@ -202,7 +202,7 @@
 - [ ] CHK131 - Are autoscaling requirements defined for hosting platforms? [NFR, Gap]
 - [ ] CHK132 - Are rate limiting requirements defined for all service integrations? [NFR, Gap]
 
----
+______________________________________________________________________
 
 ## Non-Functional Requirements - Reliability
 
@@ -213,7 +213,7 @@
 - [ ] CHK137 - Are retry requirements defined with exponential backoff strategies? [NFR, Gap]
 - [ ] CHK138 - Are circuit breaker requirements defined for external service calls? [NFR, Gap]
 
----
+______________________________________________________________________
 
 ## Non-Functional Requirements - Security
 
@@ -228,7 +228,7 @@
 - [ ] CHK147 - Are security header requirements defined (HSTS, X-Frame-Options, etc.)? [NFR, Gap]
 - [ ] CHK148 - Are vulnerability scanning requirements defined for dependencies? [NFR, Gap]
 
----
+______________________________________________________________________
 
 ## Non-Functional Requirements - Accessibility
 
@@ -239,7 +239,7 @@
 - [ ] CHK153 - Are focus indicator requirements defined for interactive elements? [NFR, Gap]
 - [ ] CHK154 - Are ARIA label requirements defined for dynamic content? [NFR, Gap]
 
----
+______________________________________________________________________
 
 ## Dependencies & Assumptions
 
@@ -255,7 +255,7 @@
 - [ ] CHK164 - Are breaking change handling procedures documented for external service dependencies? [Dependencies, Spec §Edge Cases]
 - [ ] CHK165 - Are service tier limitations documented (free vs paid features)? [Dependencies, Spec §Edge Cases]
 
----
+______________________________________________________________________
 
 ## Ambiguities & Conflicts
 
@@ -265,7 +265,7 @@
 - [ ] CHK169 - Is the distinction between "template layer" and "generated application layer" clear in all requirements? [Clarity]
 - [ ] CHK170 - Are there any requirements that conflict with Riso constitution principles? [Conflict, Constitution]
 
----
+______________________________________________________________________
 
 ## Traceability & Documentation
 
@@ -280,7 +280,7 @@
 - [ ] CHK179 - Are rollback procedures documented for all state-changing operations? [Documentation, Spec §FR-027]
 - [ ] CHK180 - Is the quickstart guide complete with all 10 steps validated? [Documentation, Spec §FR-021]
 
----
+______________________________________________________________________
 
 ## Constitution Compliance
 
@@ -293,7 +293,7 @@
 - [ ] CHK187 - Does the feature comply with Technology Consistency (Python 3.11+, uv, approved tools)? [Constitution, Plan §Constitution Check]
 - [ ] CHK188 - Are all complexity justifications documented and approved (28 integrations, 100+ templates, 50+ dependencies, bundled observability)? [Constitution, Plan §Complexity Tracking]
 
----
+______________________________________________________________________
 
 ## Integration Testing Requirements
 
@@ -308,7 +308,7 @@
 - [ ] CHK197 - Are cross-service integration test requirements defined (e.g., auth + database + billing)? [Coverage, Gap]
 - [ ] CHK198 - Are CI validation test requirements defined for all generated workflows? [Coverage, Gap]
 
----
+______________________________________________________________________
 
 ## Generated Application Quality
 
@@ -321,7 +321,7 @@
 - [ ] CHK205 - Are naming convention requirements defined for generated code? [Quality, Gap]
 - [ ] CHK206 - Are comment and documentation requirements defined for generated code? [Quality, Gap]
 
----
+______________________________________________________________________
 
 ## Deployment & Operations
 
@@ -335,7 +335,7 @@
 - [ ] CHK214 - Are incident response requirements defined for production issues? [Operations, Gap]
 - [ ] CHK215 - Are backup and disaster recovery requirements defined? [Operations, Gap]
 
----
+______________________________________________________________________
 
 ## Notes
 
@@ -346,4 +346,3 @@
 - **Traceability**: 180/215 items (84%) include spec/plan/contract references
 - **Gap Markers**: 71 items marked [Gap] indicate missing requirements that should be added to spec.md
 - **Critical Areas**: CHK043-CHK054 (compatibility), CHK055-CHK067 (security), CHK068-CHK078 (determinism)
-

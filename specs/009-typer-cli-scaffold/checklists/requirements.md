@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Robust Typer CLI Scaffold
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-11-01  
+**Purpose**: Validate specification completeness and quality before proceeding to planning\
+**Created**: 2025-11-01\
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
@@ -59,9 +59,9 @@
 ✅ **Pass** - The specification provides a complete picture of a robust CLI scaffold through 4 prioritized user stories:
 
 1. P1: Multi-command structure (foundation)
-2. P2: Rich interactive experience (UX)
-3. P3: Configuration management (persistence)
-4. P4: Plugin architecture (extensibility)
+1. P2: Rich interactive experience (UX)
+1. P3: Configuration management (persistence)
+1. P4: Plugin architecture (extensibility)
 
 Each story can be implemented and tested independently, enabling incremental delivery.
 

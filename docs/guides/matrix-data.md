@@ -28,7 +28,7 @@ uv run python scripts/ci/generate_matrix_data.py
 ## Updating options
 
 1. Update `template/copier.yml`.
-2. Regenerate the matrix snapshot (or run the workflow).
-3. Refresh docs and the web configurator if new options appear.
+1. Regenerate the matrix snapshot (or run the workflow).
+1. Refresh docs and the web configurator if new options appear.
 
 Avoid hand-editing `matrix-data.json`; treat it as generated output.

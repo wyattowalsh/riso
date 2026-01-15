@@ -1,7 +1,7 @@
 # Data Model: FastAPI API Scaffold
 
-**Date**: November 1, 2025  
-**Feature**: 006-fastapi-api-scaffold  
+**Date**: November 1, 2025\
+**Feature**: 006-fastapi-api-scaffold\
 **Phase**: 1 - Design & Contracts
 
 ## Overview
@@ -16,16 +16,16 @@ This document defines the data entities and validation rules for the FastAPI API
 
 **Attributes**:
 
-| Field | Type | Validation | Default | Description |
-|-------|------|------------|---------|-------------|
-| `host` | `str` | Valid IPv4 or hostname | `"0.0.0.0"` | Server bind address |
-| `port` | `int` | Range: 1024-65535 | `8000` | Server port |
-| `reload` | `bool` | Boolean | `True` | Enable auto-reload (dev only) |
-| `cors_origins` | `list[str]` | Valid URLs | `["http://localhost:3000"]` | Allowed CORS origins |
-| `app_name` | `str` | 1-100 characters | `"FastAPI Application"` | Application name |
-| `version` | `str` | Semantic version | `"0.1.0"` | Application version |
-| `log_level` | `str` | Enum: DEBUG, INFO, WARNING, ERROR | `"INFO"` | Logging level |
-| `environment` | `str` | Enum: development, staging, production | `"development"` | Deployment environment |
+| Field          | Type        | Validation                             | Default                     | Description                   |
+| -------------- | ----------- | -------------------------------------- | --------------------------- | ----------------------------- |
+| `host`         | `str`       | Valid IPv4 or hostname                 | `"0.0.0.0"`                 | Server bind address           |
+| `port`         | `int`       | Range: 1024-65535                      | `8000`                      | Server port                   |
+| `reload`       | `bool`      | Boolean                                | `True`                      | Enable auto-reload (dev only) |
+| `cors_origins` | `list[str]` | Valid URLs                             | `["http://localhost:3000"]` | Allowed CORS origins          |
+| `app_name`     | `str`       | 1-100 characters                       | `"FastAPI Application"`     | Application name              |
+| `version`      | `str`       | Semantic version                       | `"0.1.0"`                   | Application version           |
+| `log_level`    | `str`       | Enum: DEBUG, INFO, WARNING, ERROR      | `"INFO"`                    | Logging level                 |
+| `environment`  | `str`       | Enum: development, staging, production | `"development"`             | Deployment environment        |
 
 **Relationships**: None (singleton configuration)
 
@@ -46,12 +46,12 @@ This document defines the data entities and validation rules for the FastAPI API
 
 **Attributes**:
 
-| Field | Type | Validation | Required | Description |
-|-------|------|------------|----------|-------------|
-| `status` | `str` | Enum: healthy, unhealthy, degraded | Yes | Overall health status |
-| `version` | `str` | Semantic version | Yes | Application version |
-| `timestamp` | `str` | ISO 8601 datetime | Yes | Response timestamp |
-| `checks` | `dict[str, str]` | Map of check name to status | No | Individual health checks |
+| Field       | Type             | Validation                         | Required | Description              |
+| ----------- | ---------------- | ---------------------------------- | -------- | ------------------------ |
+| `status`    | `str`            | Enum: healthy, unhealthy, degraded | Yes      | Overall health status    |
+| `version`   | `str`            | Semantic version                   | Yes      | Application version      |
+| `timestamp` | `str`            | ISO 8601 datetime                  | Yes      | Response timestamp       |
+| `checks`    | `dict[str, str]` | Map of check name to status        | No       | Individual health checks |
 
 **Relationships**: None
 
@@ -69,11 +69,11 @@ This document defines the data entities and validation rules for the FastAPI API
 
 **Attributes**:
 
-| Field | Type | Validation | Required | Description |
-|-------|------|------------|----------|-------------|
-| `detail` | `str` or `list[dict]` | Non-empty | Yes | Error message or validation errors |
-| `status_code` | `int` | HTTP status code | No | Error status code (for logging) |
-| `request_id` | `str` | UUID format | No | Request identifier for tracing |
+| Field         | Type                  | Validation       | Required | Description                        |
+| ------------- | --------------------- | ---------------- | -------- | ---------------------------------- |
+| `detail`      | `str` or `list[dict]` | Non-empty        | Yes      | Error message or validation errors |
+| `status_code` | `int`                 | HTTP status code | No       | Error status code (for logging)    |
+| `request_id`  | `str`                 | UUID format      | No       | Request identifier for tracing     |
 
 **Relationships**: None
 
@@ -91,12 +91,12 @@ This document defines the data entities and validation rules for the FastAPI API
 
 **Attributes**:
 
-| Field | Type | Validation | Required | Description |
-|-------|------|------------|----------|-------------|
-| `name` | `str` | 1-100 characters | Yes | Example name |
-| `value` | `int` | Non-negative | Yes | Example integer value |
-| `description` | `str` | Max 500 characters | No | Optional description |
-| `tags` | `list[str]` | Max 10 tags, each 1-50 chars | No | Optional tags |
+| Field         | Type        | Validation                   | Required | Description           |
+| ------------- | ----------- | ---------------------------- | -------- | --------------------- |
+| `name`        | `str`       | 1-100 characters             | Yes      | Example name          |
+| `value`       | `int`       | Non-negative                 | Yes      | Example integer value |
+| `description` | `str`       | Max 500 characters           | No       | Optional description  |
+| `tags`        | `list[str]` | Max 10 tags, each 1-50 chars | No       | Optional tags         |
 
 **Relationships**: None (scaffold example)
 
@@ -116,15 +116,15 @@ This document defines the data entities and validation rules for the FastAPI API
 
 **Attributes**:
 
-| Field | Type | Validation | Required | Description |
-|-------|------|------------|----------|-------------|
-| `id` | `str` | UUID format | Yes | Example identifier |
-| `name` | `str` | 1-100 characters | Yes | Example name |
-| `value` | `int` | Non-negative | Yes | Example integer value |
-| `description` | `str` | Max 500 characters | No | Optional description |
-| `tags` | `list[str]` | List of strings | No | Optional tags |
-| `created_at` | `str` | ISO 8601 datetime | Yes | Creation timestamp |
-| `updated_at` | `str` | ISO 8601 datetime | Yes | Last update timestamp |
+| Field         | Type        | Validation         | Required | Description           |
+| ------------- | ----------- | ------------------ | -------- | --------------------- |
+| `id`          | `str`       | UUID format        | Yes      | Example identifier    |
+| `name`        | `str`       | 1-100 characters   | Yes      | Example name          |
+| `value`       | `int`       | Non-negative       | Yes      | Example integer value |
+| `description` | `str`       | Max 500 characters | No       | Optional description  |
+| `tags`        | `list[str]` | List of strings    | No       | Optional tags         |
+| `created_at`  | `str`       | ISO 8601 datetime  | Yes      | Creation timestamp    |
+| `updated_at`  | `str`       | ISO 8601 datetime  | Yes      | Last update timestamp |
 
 **Relationships**: None (scaffold example)
 
@@ -144,9 +144,9 @@ This document defines the data entities and validation rules for the FastAPI API
 
 **Attributes**:
 
-| Field | Type | Validation | Required | Description |
-|-------|------|------------|----------|-------------|
-| metrics | `str` | Prometheus text format | Yes | Metrics in Prometheus exposition format |
+| Field   | Type  | Validation             | Required | Description                             |
+| ------- | ----- | ---------------------- | -------- | --------------------------------------- |
+| metrics | `str` | Prometheus text format | Yes      | Metrics in Prometheus exposition format |
 
 **Relationships**: None (computed on demand)
 
@@ -164,12 +164,12 @@ This document defines the data entities and validation rules for the FastAPI API
 
 **Attributes**:
 
-| Field | Type | Validation | Required | Description |
-|-------|------|------------|----------|-------------|
-| request_id | `str` | UUID format | Yes | Unique request identifier |
-| start_time | `float` | Unix timestamp | Yes | Request start time |
-| user_agent | `str` | Non-empty | No | Client user agent |
-| ip_address | `str` | Valid IP | No | Client IP address |
+| Field      | Type    | Validation     | Required | Description               |
+| ---------- | ------- | -------------- | -------- | ------------------------- |
+| request_id | `str`   | UUID format    | Yes      | Unique request identifier |
+| start_time | `float` | Unix timestamp | Yes      | Request start time        |
+| user_agent | `str`   | Non-empty      | No       | Client user agent         |
+| ip_address | `str`   | Valid IP       | No       | Client IP address         |
 
 **Relationships**: Attached to each request
 
@@ -187,13 +187,13 @@ This document defines the data entities and validation rules for the FastAPI API
 
 **Attributes**:
 
-| Field | Type | Validation | Required | Description |
-|-------|------|------------|----------|-------------|
-| service_name | `str` | 1-100 characters | Yes | External service identifier |
-| state | `str` | Enum: open, closed, half_open | Yes | Circuit breaker state |
-| failure_count | `int` | Non-negative | Yes | Consecutive failures |
-| last_failure_time | `str` | ISO 8601 datetime | No | Last failure timestamp |
-| next_attempt_time | `str` | ISO 8601 datetime | No | When to retry (if open) |
+| Field             | Type  | Validation                    | Required | Description                 |
+| ----------------- | ----- | ----------------------------- | -------- | --------------------------- |
+| service_name      | `str` | 1-100 characters              | Yes      | External service identifier |
+| state             | `str` | Enum: open, closed, half_open | Yes      | Circuit breaker state       |
+| failure_count     | `int` | Non-negative                  | Yes      | Consecutive failures        |
+| last_failure_time | `str` | ISO 8601 datetime             | No       | Last failure timestamp      |
+| next_attempt_time | `str` | ISO 8601 datetime             | No       | When to retry (if open)     |
 
 **Relationships**: One per external dependency
 
@@ -211,12 +211,12 @@ This document defines the data entities and validation rules for the FastAPI API
 
 **Attributes**:
 
-| Field | Type | Validation | Required | Description |
-|-------|------|------------|----------|-------------|
-| x_content_type_options | `str` | Fixed: "nosniff" | Yes | Prevent MIME sniffing |
-| x_frame_options | `str` | Enum: DENY, SAMEORIGIN | Yes | Clickjacking protection |
-| content_security_policy | `str` | Valid CSP | No | Content Security Policy |
-| strict_transport_security | `str` | Valid HSTS | No | Force HTTPS |
+| Field                     | Type  | Validation             | Required | Description             |
+| ------------------------- | ----- | ---------------------- | -------- | ----------------------- |
+| x_content_type_options    | `str` | Fixed: "nosniff"       | Yes      | Prevent MIME sniffing   |
+| x_frame_options           | `str` | Enum: DENY, SAMEORIGIN | Yes      | Clickjacking protection |
+| content_security_policy   | `str` | Valid CSP              | No       | Content Security Policy |
+| strict_transport_security | `str` | Valid HSTS             | No       | Force HTTPS             |
 
 **Relationships**: None (applied to all responses)
 
@@ -233,14 +233,14 @@ This document defines the data entities and validation rules for the FastAPI API
 
 **Attributes**:
 
-| Field | Type | Validation | Required | Description |
-|-------|------|------------|----------|-------------|
-| timestamp | `str` | ISO 8601 datetime | Yes | Log entry timestamp |
-| level | `str` | Enum: DEBUG, INFO, WARNING, ERROR, CRITICAL | Yes | Log level |
-| message | `str` | Non-empty | Yes | Log message |
-| request_id | `str` | UUID format | No | Associated request ID |
-| logger_name | `str` | Non-empty | Yes | Logger name |
-| extra | `dict` | Valid JSON | No | Additional context |
+| Field       | Type   | Validation                                  | Required | Description           |
+| ----------- | ------ | ------------------------------------------- | -------- | --------------------- |
+| timestamp   | `str`  | ISO 8601 datetime                           | Yes      | Log entry timestamp   |
+| level       | `str`  | Enum: DEBUG, INFO, WARNING, ERROR, CRITICAL | Yes      | Log level             |
+| message     | `str`  | Non-empty                                   | Yes      | Log message           |
+| request_id  | `str`  | UUID format                                 | No       | Associated request ID |
+| logger_name | `str`  | Non-empty                                   | Yes      | Logger name           |
+| extra       | `dict` | Valid JSON                                  | No       | Additional context    |
 
 **Relationships**: Associated with request via request_id
 
@@ -255,20 +255,23 @@ This document defines the data entities and validation rules for the FastAPI API
 All request/response models follow these patterns:
 
 1. **Request Models** (`models/requests.py`):
+
    - Use Pydantic `BaseModel`
    - Define validation with `Field()`
    - Include docstrings for OpenAPI documentation
    - Use descriptive field names
    - Validate at model level (not in route handlers)
 
-2. **Response Models** (`models/responses.py`):
+1. **Response Models** (`models/responses.py`):
+
    - Use Pydantic `BaseModel`
    - Include all fields that will be returned
    - Document field meanings
    - Use consistent field naming across endpoints
    - Include metadata (timestamps, IDs)
 
-3. **Error Models**:
+1. **Error Models**:
+
    - Consistent error response structure
    - Include actionable error messages
    - Provide validation details for 422 errors

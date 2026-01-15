@@ -10,7 +10,7 @@ This quickstart shows how to instantiate the scaffold and run a local developmen
 ## Install
 
 1. Add the `graphql_api_module=enabled` option when rendering the Riso template (copier answers).
-2. Install dependencies (example):
+1. Install dependencies (example):
 
 ```bash
 python -m venv .venv
@@ -55,4 +55,3 @@ pytest tests/graphql
 
 - See `data-model.md` for schema shapes.
 - Configure `config.toml` to tune depth/complexity/pagination settings.
-

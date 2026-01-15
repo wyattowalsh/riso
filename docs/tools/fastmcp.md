@@ -1,15 +1,15 @@
 ---
-name: "FastMCP"
-type: "mcp"
-category: "optional-modules"
-description: "Model Context Protocol server framework for Python"
-icon: "tabler:robot"
+name: FastMCP
+type: mcp
+category: optional-modules
+description: Model Context Protocol server framework for Python
+icon: tabler:robot
 popularity: 85
-homepage: "https://github.com/jlowin/fastmcp"
-repository: "https://github.com/jlowin/fastmcp"
-tags: ["python", "mcp", "llm", "tools", "ai"]
-install_command: "uv add fastmcp"
-provided_by: "external"
+homepage: https://github.com/jlowin/fastmcp
+repository: https://github.com/jlowin/fastmcp
+tags: [python, mcp, llm, tools, ai]
+install_command: uv add fastmcp
+provided_by: external
 brand_colors: false
 ---
 
@@ -175,8 +175,8 @@ Add to `mcp.json`:
 
 Riso supports MCP server generation in multiple languages:
 
-| Language | Framework | When to Use |
-|----------|-----------|-------------|
-| Python | FastMCP v2 | Python projects, AI/ML integration |
-| TypeScript | FastMCP | Node.js projects, web services |
-| Rust | rmcp SDK | Systems programming, performance-critical |
+| Language   | Framework  | When to Use                               |
+| ---------- | ---------- | ----------------------------------------- |
+| Python     | FastMCP v2 | Python projects, AI/ML integration        |
+| TypeScript | FastMCP    | Node.js projects, web services            |
+| Rust       | rmcp SDK   | Systems programming, performance-critical |

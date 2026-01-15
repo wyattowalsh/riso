@@ -1,8 +1,8 @@
 # Feature Specification: Code Quality Integration Suite
 
-**Feature Branch**: `003-code-quality-integrations`  
-**Created**: 2025-10-30  
-**Status**: Draft  
+**Feature Branch**: `003-code-quality-integrations`\
+**Created**: 2025-10-30\
+**Status**: Draft\
 **Input**: User description: "code quality integrations including ruff, mypy, pylint, ci/cd flows, makefile integrations, etc in both the project level and templates levels."
 
 ## Clarifications
@@ -33,9 +33,9 @@ A template maintainer renders the default project and runs a single quality comm
 **Acceptance Scenarios**:
 
 1. **Given** a freshly rendered default project, **When** the maintainer runs the documented quality command, **Then** Ruff, Mypy, Pylint, and pytest all report success and the command exits 0 while logging durations in `baseline_quickstart_metrics.json`.
-2. **Given** the maintainer introduces a Ruff violation in the rendered project, **When** the quality command runs, **Then** it fails fast with actionable messaging and the CI status surfaces the failure in `samples/default/smoke-results.json`.
+1. **Given** the maintainer introduces a Ruff violation in the rendered project, **When** the quality command runs, **Then** it fails fast with actionable messaging and the CI status surfaces the failure in `samples/default/smoke-results.json`.
 
----
+______________________________________________________________________
 
 ### User Story 2 - CI Automation Blocks Template Regressions (Priority: P2)
 
@@ -48,9 +48,9 @@ A template contributor opens a pull request and CI automatically runs the full q
 **Acceptance Scenarios**:
 
 1. **Given** a pull request touching template Python files, **When** GitHub Actions execute, **Then** the workflow runs Ruff, Mypy, and Pylint against the template plus regenerated samples and marks the check as failed when any tool reports errors.
-2. **Given** `scripts/render_matrix.py` regenerates multiple variants, **When** the quality matrix job finishes, **Then** it uploads consolidated lint/type logs and updates `samples/metadata/module_success.json` with pass/fail status per variant.
+1. **Given** `scripts/render_matrix.py` regenerates multiple variants, **When** the quality matrix job finishes, **Then** it uploads consolidated lint/type logs and updates `samples/metadata/module_success.json` with pass/fail status per variant.
 
----
+______________________________________________________________________
 
 ### User Story 3 - Downstream Teams Extend Quality Controls (Priority: P3)
 
@@ -63,9 +63,9 @@ A downstream team toggles optional modules (Node API, shared logic) and can cust
 **Acceptance Scenarios**:
 
 1. **Given** a render with `api_tracks=["python","node"]` and `quality_profile=strict`, **When** the maintainer runs `make quality`, **Then** the command orchestrates Ruff, Mypy, Pylint, pytest, and ESLint/TypeScript checks, and reports per-language sections in the summary artifact.
-2. **Given** a render with Node tracks disabled, **When** the quality command runs, **Then** Node-focused checks are automatically skipped with logged rationale while Python checks still execute.
+1. **Given** a render with Node tracks disabled, **When** the quality command runs, **Then** Node-focused checks are automatically skipped with logged rationale while Python checks still execute.
 
----
+______________________________________________________________________
 
 ### Edge Cases
 
@@ -109,7 +109,7 @@ A downstream team toggles optional modules (Node API, shared logic) and can cust
 - **SC-001**: Baseline quality runs on fresh renders complete in under 4 minutes on a Mac M2–class machine and under 6 minutes in CI 95% of the time.
 - **SC-002**: ≥98% of pull requests finish the template quality workflow without manual retries, with failures attributable to genuine lint/type issues.
 - **SC-003**: 100% of rendered samples publish up-to-date quality evidence (pass/fail, durations) into `samples/metadata/module_success.json` within one business day of template changes.
-- **SC-004**: Downstream projects adopting the template report a <5% month-over-month variance in “quality tooling setup” support tickets after enabling the suite.
+- **SC-004**: Downstream projects adopting the template report a \<5% month-over-month variance in “quality tooling setup” support tickets after enabling the suite.
 
 ## Principle Compliance Evidence *(mandatory)*
 

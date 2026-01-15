@@ -1,8 +1,8 @@
 # Feature Specification: FastAPI API Scaffold
 
-**Feature Branch**: `006-fastapi-api-scaffold`  
-**Created**: November 1, 2025  
-**Status**: Draft  
+**Feature Branch**: `006-fastapi-api-scaffold`\
+**Created**: November 1, 2025\
+**Status**: Draft\
 **Input**: User description: "Create FastAPI API scaffold with project structure, routing, and configuration"
 
 ## Scope & Boundaries
@@ -36,7 +36,7 @@
 - **Development Environment**: Python 3.11+, uv package manager, Docker available
 - **Deployment Target**: Container orchestration platform (Kubernetes, Docker Swarm, ECS)
 - **Network**: HTTP/HTTPS traffic, standard ports (80, 443, 8000)
-- **Scale**: Small to medium APIs (dozens to hundreds of endpoints, <10k requests/second)
+- **Scale**: Small to medium APIs (dozens to hundreds of endpoints, \<10k requests/second)
 - **Team Size**: 1-10 developers working on API codebase
 - **External Dependencies**: Minimal (only FastAPI ecosystem for baseline)
 - **Riso Integration**: Compatible with existing Riso template structure and quality tools
@@ -55,10 +55,10 @@ Template users can render a new project that includes a functional FastAPI appli
 **Acceptance Scenarios**:
 
 1. **Given** a template user wants to create a new project with API capabilities, **When** they render the template with FastAPI selected, **Then** the generated project contains a complete API directory structure with a main application file
-2. **Given** a newly rendered FastAPI project, **When** the user starts the development server, **Then** the server starts successfully on a configured port and can accept HTTP requests
-3. **Given** a running FastAPI application, **When** a user makes a request to the health check endpoint, **Then** the response returns a 200 status code with application status information
+1. **Given** a newly rendered FastAPI project, **When** the user starts the development server, **Then** the server starts successfully on a configured port and can accept HTTP requests
+1. **Given** a running FastAPI application, **When** a user makes a request to the health check endpoint, **Then** the response returns a 200 status code with application status information
 
----
+______________________________________________________________________
 
 ### User Story 2 - Add New API Endpoints (Priority: P2)
 
@@ -71,10 +71,10 @@ Developers can add new API endpoints by creating route modules that automaticall
 **Acceptance Scenarios**:
 
 1. **Given** an existing FastAPI application, **When** a developer adds a new route module following the project conventions, **Then** the new endpoints are automatically discovered and registered with the router
-2. **Given** a newly added route module, **When** the application restarts, **Then** the new endpoints are accessible at their expected paths
-3. **Given** multiple route modules, **When** the application starts, **Then** all routes are organized logically and accessible through the API documentation
+1. **Given** a newly added route module, **When** the application restarts, **Then** the new endpoints are accessible at their expected paths
+1. **Given** multiple route modules, **When** the application starts, **Then** all routes are organized logically and accessible through the API documentation
 
----
+______________________________________________________________________
 
 ### User Story 3 - Configure Application Settings (Priority: P3)
 
@@ -87,10 +87,10 @@ Operators can customize application behavior through environment-based configura
 **Acceptance Scenarios**:
 
 1. **Given** a FastAPI application, **When** an operator sets environment variables for application settings, **Then** the application uses those values at runtime
-2. **Given** different deployment environments (development, staging, production), **When** environment-specific configuration is provided, **Then** the application adapts its behavior appropriately
-3. **Given** configuration errors or missing required values, **When** the application starts, **Then** it provides clear error messages indicating what needs to be corrected
+1. **Given** different deployment environments (development, staging, production), **When** environment-specific configuration is provided, **Then** the application adapts its behavior appropriately
+1. **Given** configuration errors or missing required values, **When** the application starts, **Then** it provides clear error messages indicating what needs to be corrected
 
----
+______________________________________________________________________
 
 ### User Story 4 - Access API Documentation (Priority: P2)
 
@@ -103,10 +103,10 @@ Developers and API consumers can view interactive API documentation that is auto
 **Acceptance Scenarios**:
 
 1. **Given** a running FastAPI application, **When** a user navigates to the documentation endpoint, **Then** they see a complete list of all available endpoints with descriptions
-2. **Given** the interactive documentation interface, **When** a user fills in request parameters and submits a test request, **Then** they receive a real response from the API
-3. **Given** route modules with type hints and docstrings, **When** the documentation is generated, **Then** it accurately reflects the API contract including request/response schemas
+1. **Given** the interactive documentation interface, **When** a user fills in request parameters and submits a test request, **Then** they receive a real response from the API
+1. **Given** route modules with type hints and docstrings, **When** the documentation is generated, **Then** it accurately reflects the API contract including request/response schemas
 
----
+______________________________________________________________________
 
 ### User Story 5 - Extend API with Custom Middleware (Priority: P3)
 
@@ -119,10 +119,10 @@ Developers can add custom middleware to extend application behavior (authenticat
 **Acceptance Scenarios**:
 
 1. **Given** an existing FastAPI application, **When** a developer adds custom middleware following the extension pattern, **Then** the middleware is executed for all matching requests
-2. **Given** multiple middleware components, **When** the application starts, **Then** middleware executes in the correct order (LIFO for request, FIFO for response)
-3. **Given** a middleware error, **When** an exception occurs during middleware execution, **Then** the error is properly handled and logged without crashing the application
+1. **Given** multiple middleware components, **When** the application starts, **Then** middleware executes in the correct order (LIFO for request, FIFO for response)
+1. **Given** a middleware error, **When** an exception occurs during middleware execution, **Then** the error is properly handled and logged without crashing the application
 
----
+______________________________________________________________________
 
 ### User Story 6 - Monitor Application Health and Performance (Priority: P2)
 
@@ -135,10 +135,10 @@ Operations teams can monitor application health, performance metrics, and logs f
 **Acceptance Scenarios**:
 
 1. **Given** a running FastAPI application, **When** an operator queries health check endpoints, **Then** the response accurately reflects application and dependency status
-2. **Given** application under load, **When** an operator accesses the metrics endpoint, **Then** Prometheus-compatible metrics are exposed (request rate, latency, errors)
-3. **Given** application processing requests, **When** an operator reviews structured logs, **Then** all log entries include correlation IDs, timestamps, and relevant context for debugging
+1. **Given** application under load, **When** an operator accesses the metrics endpoint, **Then** Prometheus-compatible metrics are exposed (request rate, latency, errors)
+1. **Given** application processing requests, **When** an operator reviews structured logs, **Then** all log entries include correlation IDs, timestamps, and relevant context for debugging
 
----
+______________________________________________________________________
 
 ### User Story 7 - Deploy API in Containerized Environment (Priority: P2)
 
@@ -151,10 +151,10 @@ DevOps engineers can build and deploy the API as a container with proper health 
 **Acceptance Scenarios**:
 
 1. **Given** a FastAPI project, **When** a DevOps engineer builds the Docker image, **Then** the build completes successfully with optimized layer caching and minimal image size
-2. **Given** a container running the API, **When** the orchestrator queries health endpoints, **Then** liveness, readiness, and startup probes return appropriate responses
-3. **Given** a container security scan, **When** Trivy analyzes the image, **Then** no high or critical vulnerabilities are detected
+1. **Given** a container running the API, **When** the orchestrator queries health endpoints, **Then** liveness, readiness, and startup probes return appropriate responses
+1. **Given** a container security scan, **When** Trivy analyzes the image, **Then** no high or critical vulnerabilities are detected
 
----
+______________________________________________________________________
 
 ### User Story 8 - Handle Errors and Recover Gracefully (Priority: P1)
 
@@ -167,10 +167,10 @@ The application can detect errors, provide meaningful error messages, and recove
 **Acceptance Scenarios**:
 
 1. **Given** invalid request data, **When** validation fails, **Then** the API returns a 422 response with field-level error details
-2. **Given** an unhandled exception in a route handler, **When** the error occurs, **Then** the API returns a 500 response with sanitized error details and logs the full stack trace
-3. **Given** a failing external dependency, **When** the circuit breaker opens, **Then** subsequent requests fail fast with 503 status and the circuit recovers automatically after a timeout
+1. **Given** an unhandled exception in a route handler, **When** the error occurs, **Then** the API returns a 500 response with sanitized error details and logs the full stack trace
+1. **Given** a failing external dependency, **When** the circuit breaker opens, **Then** subsequent requests fail fast with 503 status and the circuit recovers automatically after a timeout
 
----
+______________________________________________________________________
 
 ### Edge Cases
 
@@ -313,7 +313,7 @@ The application can detect errors, provide meaningful error messages, and recove
   - Non-root user execution (UID 1000:1000)
   - HEALTHCHECK instruction using /health/live endpoint
   - Optimized layer caching for dependencies
-  - Final image size target: <200MB
+  - Final image size target: \<200MB
   - Security: no secrets in image, minimal attack surface
 - **FR-014**: System MUST provide logging configuration with appropriate log levels for different environments
   - Structured JSON logging in production
@@ -432,7 +432,7 @@ The application can detect errors, provide meaningful error messages, and recove
 - **SC-005**: Application startup time is under 3 seconds in development mode
   - Measurement: Time from `uvicorn` command execution to "Application startup complete" log
   - Conditions: Development environment, auto-reload enabled, default configuration
-  - Success: Startup completes in <3 seconds measured by process timing
+  - Success: Startup completes in \<3 seconds measured by process timing
   - Validation: Automated benchmark script in CI/CD (average of 10 runs)
 - **SC-006**: All example endpoints return successful responses with properly formatted JSON
   - Measurement: HTTP status code and JSON schema validation for each example endpoint
@@ -442,7 +442,7 @@ The application can detect errors, provide meaningful error messages, and recove
 - **SC-007**: Health check endpoint responds in under 100ms
   - Measurement: p50, p95, p99 latency percentiles for GET /health/ endpoint
   - Tool: Load testing with `wrk` or `locust` (100 concurrent requests over 30 seconds)
-  - Success: p95 latency <100ms, p99 latency <150ms
+  - Success: p95 latency \<100ms, p99 latency \<150ms
   - Validation: Performance test suite in CI/CD
 - **SC-008**: Generated test suite achieves minimum 80% code coverage for scaffold code
   - Measurement: Coverage percentage from `pytest --cov` report
@@ -461,7 +461,7 @@ The application can detect errors, provide meaningful error messages, and recove
 
 - **SC-010**: Container image builds successfully and passes security scanning
   - Measurement: Docker build exit code and Trivy scan results
-  - Success: Build completes, no high/critical vulnerabilities, image size <200MB
+  - Success: Build completes, no high/critical vulnerabilities, image size \<200MB
   - Validation: Container build workflow in CI/CD
 - **SC-011**: All quality tools provision automatically on first run
   - Measurement: Quality suite execution on fresh environment without pre-installed tools
@@ -481,5 +481,5 @@ The application can detect errors, provide meaningful error messages, and recove
   - Validation: Test cases for invalid configuration scenarios
 - **SC-015**: Render time completes within 10-minute budget
   - Measurement: Time from `copier copy` start to completion
-  - Success: Render completes in <10 minutes including all template generation
+  - Success: Render completes in \<10 minutes including all template generation
   - Validation: Render performance metrics in CI/CD

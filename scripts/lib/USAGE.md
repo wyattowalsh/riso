@@ -24,6 +24,7 @@ from lib.validation import (
 ### 1. Loading YAML Files with Error Handling
 
 **Before:**
+
 ```python
 try:
     with open(config_path, 'r', encoding='utf-8') as f:
@@ -37,6 +38,7 @@ except Exception as e:
 ```
 
 **After:**
+
 ```python
 result = load_yaml_file(config_path)
 if not result["success"]:
@@ -49,6 +51,7 @@ config = result["data"]
 ### 2. Validating Required Fields
 
 **Before:**
+
 ```python
 if 'name' not in config:
     errors.append("config.yml: Missing 'name' field")
@@ -57,6 +60,7 @@ if 'version' not in config:
 ```
 
 **After:**
+
 ```python
 field_errors = validate_required_fields(
     config,
@@ -69,6 +73,7 @@ errors.extend(field_errors)
 ### 3. Validating Paths
 
 **Before:**
+
 ```python
 if not directory.exists():
     print(f"Error: Directory not found: {directory}", file=sys.stderr)
@@ -80,6 +85,7 @@ if not directory.is_dir():
 ```
 
 **After:**
+
 ```python
 path_result = validate_path_exists(directory, must_be_dir=True)
 if not path_result["valid"]:
@@ -92,6 +98,7 @@ if not path_result["valid"]:
 ### 4. Creating Validation Results
 
 **Before:**
+
 ```python
 return {
     "file": str(filepath),
@@ -102,6 +109,7 @@ return {
 ```
 
 **After:**
+
 ```python
 return create_validation_result(
     filepath,
@@ -113,6 +121,7 @@ return create_validation_result(
 ### 5. Printing Validation Summaries
 
 **Before:**
+
 ```python
 print(f"\n{'=' * 70}")
 print("Validation Summary")
@@ -123,6 +132,7 @@ print(f"Passed: {sum(1 for r in results if r['valid'])}")
 ```
 
 **After:**
+
 ```python
 print_validation_summary(
     results,
@@ -148,9 +158,9 @@ When migrating a validation script to use shared utilities:
 The following scripts can benefit from using the shared utilities:
 
 1. ✅ **validate_release_configs.py** - Already migrated (reference implementation)
-2. ⏳ **validate_dockerfiles.py** - Can use `validate_path_exists()`, `print_validation_summary()`
-3. ⏳ **validate_workflows.py** - Can use validation result types and summary printing
-4. ⏳ **validate_saas_combinations.py** - Can use result reporting utilities
+1. ⏳ **validate_dockerfiles.py** - Can use `validate_path_exists()`, `print_validation_summary()`
+1. ⏳ **validate_workflows.py** - Can use validation result types and summary printing
+1. ⏳ **validate_saas_combinations.py** - Can use result reporting utilities
 
 ## Examples
 

@@ -1,6 +1,7 @@
 # Data Model: Riso Template Foundation
 
 ## Entity: Template Module Definition
+
 - **Description**: Represents an optional capability that the template can scaffold on demand.
 - **Fields**:
   - `name` (string, required): Human-readable module identifier (e.g., `cli`, `api_python`).
@@ -14,6 +15,7 @@
   - References `Sample Project Artifact` instances that demonstrate the module in action.
 
 ## Entity: Sample Project Artifact
+
 - **Description**: Concrete render of the template captured for CI verification and documentation snapshots.
 - **Fields**:
   - `variant_name` (string, required): Identifier such as `default`, `cli-docs`, `api-monorepo`, `full-stack`.
@@ -25,6 +27,7 @@
   - Includes one or more `Template Module Definition` entries to show combined configurations.
 
 ## Entity: Governance Checkpoint
+
 - **Description**: Recorded assertion that automation enforces constitutional principles for a given template revision.
 - **Fields**:
   - `principle` (enum: `template_sovereignty`, `deterministic_generation`, `minimal_baseline`, `documented_scaffolds`, `automation_governed`, required)

@@ -1,6 +1,6 @@
 # Data Model: WebSocket Scaffold
 
-**Feature**: 008-websockets-scaffold | **Date**: 2025-11-01  
+**Feature**: 008-websockets-scaffold | **Date**: 2025-11-01\
 **Phase**: 1 (Design & Contracts) | **Status**: Complete
 
 ## Overview
@@ -15,17 +15,17 @@ Represents an active WebSocket connection with lifecycle management.
 
 **Attributes**:
 
-| Attribute | Type | Description | Constraints |
-|-----------|------|-------------|-------------|
-| `connection_id` | `str` | Unique connection identifier | UUID4 format, immutable |
-| `websocket` | `WebSocket` | FastAPI WebSocket instance | Required, managed by framework |
-| `user` | `Optional[User]` | Authenticated user object | None for anonymous connections |
-| `connected_at` | `datetime` | Connection establishment time | UTC timezone, auto-generated |
-| `last_activity_at` | `datetime` | Last message send/receive time | Updated on each message |
-| `metadata` | `Dict[str, Any]` | Custom connection attributes | User agent, IP, custom tags |
-| `rooms` | `Set[str]` | Room IDs this connection belongs to | Mutable set |
-| `message_queue` | `asyncio.Queue` | Outbound message buffer | Bounded by `queue_depth` config |
-| `state` | `ConnectionState` | Current connection state | Enum: CONNECTING, CONNECTED, CLOSING, CLOSED |
+| Attribute          | Type              | Description                         | Constraints                                  |
+| ------------------ | ----------------- | ----------------------------------- | -------------------------------------------- |
+| `connection_id`    | `str`             | Unique connection identifier        | UUID4 format, immutable                      |
+| `websocket`        | `WebSocket`       | FastAPI WebSocket instance          | Required, managed by framework               |
+| `user`             | `Optional[User]`  | Authenticated user object           | None for anonymous connections               |
+| `connected_at`     | `datetime`        | Connection establishment time       | UTC timezone, auto-generated                 |
+| `last_activity_at` | `datetime`        | Last message send/receive time      | Updated on each message                      |
+| `metadata`         | `Dict[str, Any]`  | Custom connection attributes        | User agent, IP, custom tags                  |
+| `rooms`            | `Set[str]`        | Room IDs this connection belongs to | Mutable set                                  |
+| `message_queue`    | `asyncio.Queue`   | Outbound message buffer             | Bounded by `queue_depth` config              |
+| `state`            | `ConnectionState` | Current connection state            | Enum: CONNECTING, CONNECTED, CLOSING, CLOSED |
 
 **Methods**:
 
@@ -94,16 +94,16 @@ Data structure for WebSocket messages with routing and metadata.
 
 **Attributes**:
 
-| Attribute | Type | Description | Constraints |
-|-----------|------|-------------|-------------|
-| `message_id` | `str` | Unique message identifier | UUID4 format |
-| `type` | `str` | Message type discriminator | Required, max 50 chars |
-| `payload` | `Dict[str, Any]` | Message content | JSON-serializable |
-| `sender_id` | `str` | Connection ID of sender | Must be valid connection |
-| `room_id` | `Optional[str]` | Target room (for broadcasts) | None for direct messages |
-| `timestamp` | `datetime` | Message creation time | UTC timezone |
-| `correlation_id` | `Optional[str]` | Request-response correlation | UUID4 format |
-| `metadata` | `Dict[str, Any]` | Custom message attributes | Headers, priority, etc. |
+| Attribute        | Type             | Description                  | Constraints              |
+| ---------------- | ---------------- | ---------------------------- | ------------------------ |
+| `message_id`     | `str`            | Unique message identifier    | UUID4 format             |
+| `type`           | `str`            | Message type discriminator   | Required, max 50 chars   |
+| `payload`        | `Dict[str, Any]` | Message content              | JSON-serializable        |
+| `sender_id`      | `str`            | Connection ID of sender      | Must be valid connection |
+| `room_id`        | `Optional[str]`  | Target room (for broadcasts) | None for direct messages |
+| `timestamp`      | `datetime`       | Message creation time        | UTC timezone             |
+| `correlation_id` | `Optional[str]`  | Request-response correlation | UUID4 format             |
+| `metadata`       | `Dict[str, Any]` | Custom message attributes    | Headers, priority, etc.  |
 
 **Message Types** (extensible):
 
@@ -168,15 +168,15 @@ Logical grouping of connections for targeted broadcasting.
 
 **Attributes**:
 
-| Attribute | Type | Description | Constraints |
-|-----------|------|-------------|-------------|
-| `room_id` | `str` | Unique room identifier | Max 100 chars, URL-safe |
-| `name` | `Optional[str]` | Human-readable room name | Max 200 chars |
-| `created_at` | `datetime` | Room creation time | UTC timezone |
-| `connection_ids` | `Set[str]` | Set of connection IDs in room | Dynamically managed |
-| `metadata` | `Dict[str, Any]` | Custom room attributes | Permissions, type, etc. |
-| `max_connections` | `Optional[int]` | Connection limit | None = unlimited |
-| `is_private` | `bool` | Requires authorization | Default False |
+| Attribute         | Type             | Description                   | Constraints             |
+| ----------------- | ---------------- | ----------------------------- | ----------------------- |
+| `room_id`         | `str`            | Unique room identifier        | Max 100 chars, URL-safe |
+| `name`            | `Optional[str]`  | Human-readable room name      | Max 200 chars           |
+| `created_at`      | `datetime`       | Room creation time            | UTC timezone            |
+| `connection_ids`  | `Set[str]`       | Set of connection IDs in room | Dynamically managed     |
+| `metadata`        | `Dict[str, Any]` | Custom room attributes        | Permissions, type, etc. |
+| `max_connections` | `Optional[int]`  | Connection limit              | None = unlimited        |
+| `is_private`      | `bool`           | Requires authorization        | Default False           |
 
 **Operations**:
 
@@ -231,14 +231,14 @@ Extended metadata for connection tracking and monitoring.
 
 **Attributes**:
 
-| Attribute | Type | Description | Constraints |
-|-----------|------|-------------|-------------|
-| `ip_address` | `str` | Client IP address | IPv4/IPv6 format |
-| `user_agent` | `Optional[str]` | Client user agent string | Max 500 chars |
-| `platform` | `Optional[str]` | Client platform | mobile/desktop/bot |
-| `session_id` | `Optional[str]` | Browser session ID | For multi-tab tracking |
-| `referrer` | `Optional[str]` | Connection origin | URL format |
-| `custom` | `Dict[str, Any]` | Application-specific metadata | JSON-serializable |
+| Attribute    | Type             | Description                   | Constraints            |
+| ------------ | ---------------- | ----------------------------- | ---------------------- |
+| `ip_address` | `str`            | Client IP address             | IPv4/IPv6 format       |
+| `user_agent` | `Optional[str]`  | Client user agent string      | Max 500 chars          |
+| `platform`   | `Optional[str]`  | Client platform               | mobile/desktop/bot     |
+| `session_id` | `Optional[str]`  | Browser session ID            | For multi-tab tracking |
+| `referrer`   | `Optional[str]`  | Connection origin             | URL format             |
+| `custom`     | `Dict[str, Any]` | Application-specific metadata | JSON-serializable      |
 
 **Validation Rules**:
 

@@ -11,14 +11,14 @@ Deliver production-ready Docker containerization and deployment infrastructure f
 
 ## Technical Context
 
-**Language/Version**: Python 3.11+ (uv-managed), Node.js 20 LTS (pnpm-managed), Jinja2 templating  
-**Primary Dependencies**: Docker Engine 24+, Docker Compose v2, Docker Buildx, hadolint, Trivy/Grype, existing GitHub Actions infrastructure (feature 004)  
-**Storage**: Container registries (ghcr.io, Docker Hub, AWS ECR), GitHub Actions artifact storage (90-day retention)  
-**Testing**: docker build validation, container smoke tests, hadolint linting, Trivy security scanning, docker-compose health checks  
-**Target Platform**: Docker Engine 24+, Docker Compose v2, Kubernetes 1.28+, GitHub Actions (macOS/Ubuntu runners)  
-**Project Type**: Copier template / Code generation (extends existing Riso template)  
-**Performance Goals**: Docker builds <3min (Python), <5min (Python+Node monorepos), images <500MB (Python), <300MB (Node), <200MB (docs), docker-compose startup <30s  
-**Constraints**: Non-root execution (UID 1000:1000), zero HIGH/CRITICAL vulnerabilities, hadolint compliance, GitHub Actions free tier optimization, conditional database rendering  
+**Language/Version**: Python 3.11+ (uv-managed), Node.js 20 LTS (pnpm-managed), Jinja2 templating\
+**Primary Dependencies**: Docker Engine 24+, Docker Compose v2, Docker Buildx, hadolint, Trivy/Grype, existing GitHub Actions infrastructure (feature 004)\
+**Storage**: Container registries (ghcr.io, Docker Hub, AWS ECR), GitHub Actions artifact storage (90-day retention)\
+**Testing**: docker build validation, container smoke tests, hadolint linting, Trivy security scanning, docker-compose health checks\
+**Target Platform**: Docker Engine 24+, Docker Compose v2, Kubernetes 1.28+, GitHub Actions (macOS/Ubuntu runners)\
+**Project Type**: Copier template / Code generation (extends existing Riso template)\
+**Performance Goals**: Docker builds \<3min (Python), \<5min (Python+Node monorepos), images \<500MB (Python), \<300MB (Node), \<200MB (docs), docker-compose startup \<30s\
+**Constraints**: Non-root execution (UID 1000:1000), zero HIGH/CRITICAL vulnerabilities, hadolint compliance, GitHub Actions free tier optimization, conditional database rendering\
 **Scale/Scope**: ~8 template files (Dockerfile variants, docker-compose, dockerignore, workflows), 4 sample variants validation, 50-60 implementation tasks
 
 ## Constitution Check

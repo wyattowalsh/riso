@@ -68,12 +68,12 @@ Risks:
 ## 8. Performance
 
 - Benchmarks: measure basic query latency (simple object), nested queries with and without DataLoader, subscription end-to-end latency.
-- Target: <100ms for simple queries in dev profile; real-world infra required for scale.
+- Target: \<100ms for simple queries in dev profile; real-world infra required for scale.
 
 ## 9. Security
 
-- Sanitize error messages for production (no stack traces returned).  
-- Rate limiting and complexity/depth checks to prevent abuse.  
+- Sanitize error messages for production (no stack traces returned).
+- Rate limiting and complexity/depth checks to prevent abuse.
 - Ensure subscriptions enforce same auth rules as queries/mutations.
 
 ## 10. Data Source Integration Patterns
@@ -169,11 +169,9 @@ user_api_loader = DataLoader(load_fn=batch_load_users_from_api)
 
 ## Deliverables from Research
 
-- Technology selection rationale (this document)  
-- Sample DataLoader implementation and patterns  
-- Complexity/depth validation approach and pseudocode  
+- Technology selection rationale (this document)
+- Sample DataLoader implementation and patterns
+- Complexity/depth validation approach and pseudocode
 - Subscription architecture options (single instance vs brokered)
 - Testing checklist and CI additions
 - Data source integration patterns (database, REST API, multi-source)
-
-

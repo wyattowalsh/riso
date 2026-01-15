@@ -1,14 +1,14 @@
 # Validation Rules Contract
 
-**Feature**: 012-saas-starter  
-**Date**: 2025-11-02  
+**Feature**: 012-saas-starter\
+**Date**: 2025-11-02\
 **File**: `template/hooks/pre_gen_project.py`
 
 ## Overview
 
 This document defines the validation rules, compatibility checks, and pre-generation logic for the SaaS Starter module. These rules ensure users don't select incompatible technology combinations and provide helpful guidance.
 
----
+______________________________________________________________________
 
 ## Compatibility Matrix
 
@@ -50,7 +50,7 @@ ERROR_INCOMPATIBILITIES = [
 ]
 ```
 
----
+______________________________________________________________________
 
 ### Warning-Level Incompatibilities
 
@@ -94,7 +94,7 @@ WARNING_INCOMPATIBILITIES = [
 ]
 ```
 
----
+______________________________________________________________________
 
 ### Info-Level Notices
 
@@ -131,7 +131,7 @@ INFO_NOTICES = [
 ]
 ```
 
----
+______________________________________________________________________
 
 ## Recommended Stacks
 
@@ -233,7 +233,7 @@ RECOMMENDED_STACKS = {
 }
 ```
 
----
+______________________________________________________________________
 
 ## Validation Functions
 
@@ -290,7 +290,7 @@ def matches_combination(selections: dict, rule: dict) -> bool:
     return all(item in selected_values for item in combination)
 ```
 
----
+______________________________________________________________________
 
 ### Suggest Recommended Stack
 
@@ -314,7 +314,7 @@ def suggest_recommended_stack(selections: dict) -> str | None:
     return None
 ```
 
----
+______________________________________________________________________
 
 ### Performance Estimation
 
@@ -349,7 +349,7 @@ def estimate_performance(selections: dict) -> dict:
     return estimates
 ```
 
----
+______________________________________________________________________
 
 ## Pre-Generation Hook
 
@@ -432,7 +432,7 @@ if __name__ == "__main__":
     main(copier_data)
 ```
 
----
+______________________________________________________________________
 
 ## Post-Generation Hook
 
@@ -522,7 +522,7 @@ if __name__ == "__main__":
     main(copier_data)
 ```
 
----
+______________________________________________________________________
 
 ## Environment Variable Validation
 
@@ -609,7 +609,7 @@ export const env = createEnv({
 });
 ```
 
----
+______________________________________________________________________
 
 ## Edge Deployment Constraints
 
@@ -663,7 +663,7 @@ ORM_EDGE_COMPATIBILITY = {
 }
 ```
 
----
+______________________________________________________________________
 
 ## Validation Determinism
 
@@ -700,16 +700,16 @@ def validate_with_determinism(selections: dict) -> list[ValidationIssue]:
     return issues
 ```
 
----
+______________________________________________________________________
 
 ## Conclusion
 
 This validation contract ensures:
 
 1. **Compatibility**: Prevents invalid technology combinations
-2. **Guidance**: Suggests optimized stacks and alternatives
-3. **Performance**: Estimates cold start, latency, and cost
-4. **Safety**: Validates environment variables at build time
-5. **Automation**: Hooks handle setup and validation automatically
+1. **Guidance**: Suggests optimized stacks and alternatives
+1. **Performance**: Estimates cold start, latency, and cost
+1. **Safety**: Validates environment variables at build time
+1. **Automation**: Hooks handle setup and validation automatically
 
 Next: Create quickstart guide for developers using the generated SaaS application.

@@ -1,7 +1,7 @@
 # Specification Quality Checklist: WebSocket Scaffold
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: 2025-11-01  
+**Purpose**: Validate specification completeness and quality before proceeding to planning\
+**Created**: 2025-11-01\
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality

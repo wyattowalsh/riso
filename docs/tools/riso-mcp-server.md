@@ -1,13 +1,13 @@
 ---
-name: "Riso MCP Server"
-type: "mcp"
-category: "project-tools"
-description: "MCP server exposing Riso template scaffolding to AI assistants"
-icon: "tabler:template"
+name: Riso MCP Server
+type: mcp
+category: project-tools
+description: MCP server exposing Riso template scaffolding to AI assistants
+icon: tabler:template
 popularity: 80
-tags: ["mcp", "copier", "template", "ai", "wizard"]
-install_command: "uv sync --group mcp"
-provided_by: "riso"
+tags: [mcp, copier, template, ai, wizard]
+install_command: uv sync --group mcp
+provided_by: riso
 brand_colors: false
 ---
 
@@ -32,12 +32,12 @@ npx @modelcontextprotocol/inspector uv run python -m riso.mcp
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `RISO_MCP_TRANSPORT` | `stdio` | Transport: `stdio`, `sse`, `http` |
-| `RISO_MCP_HOST` | `127.0.0.1` | Bind address for HTTP/SSE |
-| `RISO_MCP_PORT` | `3000` | Port for HTTP/SSE |
-| `RISO_MCP_LOG_LEVEL` | `INFO` | Log level: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+| Variable             | Default     | Description                                    |
+| -------------------- | ----------- | ---------------------------------------------- |
+| `RISO_MCP_TRANSPORT` | `stdio`     | Transport: `stdio`, `sse`, `http`              |
+| `RISO_MCP_HOST`      | `127.0.0.1` | Bind address for HTTP/SSE                      |
+| `RISO_MCP_PORT`      | `3000`      | Port for HTTP/SSE                              |
+| `RISO_MCP_LOG_LEVEL` | `INFO`      | Log level: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 
 ### Adding to Claude Desktop
 
@@ -60,28 +60,28 @@ Add to your `mcp.json`:
 
 ### Copier API Tools
 
-| Tool | Description |
-|------|-------------|
-| `copier_copy` | Create new project from template with answers |
-| `copier_update` | Update existing project with template changes |
-| `copier_recopy` | Regenerate project from scratch |
-| `list_template_variants` | List all available sample configurations |
-| `validate_template_answers` | Validate answers against schema |
-| `get_prompts` | Get all template prompts with schemas |
+| Tool                        | Description                                   |
+| --------------------------- | --------------------------------------------- |
+| `copier_copy`               | Create new project from template with answers |
+| `copier_update`             | Update existing project with template changes |
+| `copier_recopy`             | Regenerate project from scratch               |
+| `list_template_variants`    | List all available sample configurations      |
+| `validate_template_answers` | Validate answers against schema               |
+| `get_prompts`               | Get all template prompts with schemas         |
 
 ### Wizard Tools
 
 Interactive multi-step project generation:
 
-| Tool | Description |
-|------|-------------|
-| `wizard_start` | Start new wizard session |
-| `wizard_step` | Submit answers for current step |
-| `wizard_back` | Go back to previous step |
-| `wizard_status` | Get current session state |
-| `wizard_generate` | Generate project from completed session (supports `force`) |
-| `wizard_cancel` | Cancel and cleanup session |
-| `wizard_list_sessions` | List all active sessions |
+| Tool                   | Description                                                |
+| ---------------------- | ---------------------------------------------------------- |
+| `wizard_start`         | Start new wizard session                                   |
+| `wizard_step`          | Submit answers for current step                            |
+| `wizard_back`          | Go back to previous step                                   |
+| `wizard_status`        | Get current session state                                  |
+| `wizard_generate`      | Generate project from completed session (supports `force`) |
+| `wizard_cancel`        | Cancel and cleanup session                                 |
+| `wizard_list_sessions` | List all active sessions                                   |
 
 ### Wizard Workflow Example
 
@@ -106,50 +106,50 @@ wizard_generate(session_id, force=True)
 
 The server exposes the following resources:
 
-| URI | Description |
-|-----|-------------|
-| `riso://template/copier.yml` | Main template configuration |
-| `riso://template/files/python/pyproject.toml.jinja` | Python pyproject template |
-| `riso://template/files/shared/module_catalog.json.jinja` | Module catalog template |
-| `riso://template/hooks/pre_gen_project.py` | Pre-generation hook |
-| `riso://template/hooks/post_gen_project.py` | Post-generation hook |
-| `riso://template/structure` | Template file tree (depth-limited) |
-| `riso://samples` | List of sample variants |
-| `riso://samples/default/answers` | Default sample answers |
-| `riso://samples/full-stack/answers` | Full-stack sample answers |
-| `riso://samples/monorepo/answers` | Monorepo sample answers |
-| `riso://samples/metadata/render_matrix.json` | Render matrix metadata |
-| `riso://samples/metadata/module_success.json` | Module success rates |
-| `riso://catalog/modules` | Full module catalog (markdown) |
-| `riso://catalog/modules.json` | Full module catalog (JSON) |
-| `riso://catalog/prompts` | Prompt catalog (markdown) |
-| `riso://catalog/dependencies` | Dependency map |
+| URI                                                      | Description                        |
+| -------------------------------------------------------- | ---------------------------------- |
+| `riso://template/copier.yml`                             | Main template configuration        |
+| `riso://template/files/python/pyproject.toml.jinja`      | Python pyproject template          |
+| `riso://template/files/shared/module_catalog.json.jinja` | Module catalog template            |
+| `riso://template/hooks/pre_gen_project.py`               | Pre-generation hook                |
+| `riso://template/hooks/post_gen_project.py`              | Post-generation hook               |
+| `riso://template/structure`                              | Template file tree (depth-limited) |
+| `riso://samples`                                         | List of sample variants            |
+| `riso://samples/default/answers`                         | Default sample answers             |
+| `riso://samples/full-stack/answers`                      | Full-stack sample answers          |
+| `riso://samples/monorepo/answers`                        | Monorepo sample answers            |
+| `riso://samples/metadata/render_matrix.json`             | Render matrix metadata             |
+| `riso://samples/metadata/module_success.json`            | Module success rates               |
+| `riso://catalog/modules`                                 | Full module catalog (markdown)     |
+| `riso://catalog/modules.json`                            | Full module catalog (JSON)         |
+| `riso://catalog/prompts`                                 | Prompt catalog (markdown)          |
+| `riso://catalog/dependencies`                            | Dependency map                     |
 
 ## Prompts
 
 Pre-built workflow prompts:
 
-| Prompt | Description |
-|--------|-------------|
-| `new_project` | Guided new project creation |
-| `update_existing` | Update project workflow |
-| `full_stack_setup` | Full-stack configuration |
-| `mcp_server_setup` | New MCP server project |
-| `quality_setup` | Quality tools configuration |
+| Prompt             | Description                 |
+| ------------------ | --------------------------- |
+| `new_project`      | Guided new project creation |
+| `update_existing`  | Update project workflow     |
+| `full_stack_setup` | Full-stack configuration    |
+| `mcp_server_setup` | New MCP server project      |
+| `quality_setup`    | Quality tools configuration |
 
 ## Error Codes
 
 MCP-compliant error codes:
 
-| Code | Name | Description |
-|------|------|-------------|
+| Code   | Name                 | Description                |
+| ------ | -------------------- | -------------------------- |
 | -32001 | `TEMPLATE_NOT_FOUND` | Template or file not found |
-| -32002 | `VALIDATION_FAILED` | Answer validation failed |
-| -32003 | `SESSION_NOT_FOUND` | Wizard session not found |
-| -32004 | `SESSION_EXPIRED` | Session has expired |
-| -32005 | `COPIER_ERROR` | Copier operation failed |
-| -32006 | `PATH_NOT_FOUND` | Path does not exist |
-| -32007 | `PERMISSION_DENIED` | Operation not permitted |
+| -32002 | `VALIDATION_FAILED`  | Answer validation failed   |
+| -32003 | `SESSION_NOT_FOUND`  | Wizard session not found   |
+| -32004 | `SESSION_EXPIRED`    | Session has expired        |
+| -32005 | `COPIER_ERROR`       | Copier operation failed    |
+| -32006 | `PATH_NOT_FOUND`     | Path does not exist        |
+| -32007 | `PERMISSION_DENIED`  | Operation not permitted    |
 
 ## Architecture
 

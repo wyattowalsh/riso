@@ -1,6 +1,6 @@
 # Tasks: GraphQL API Scaffold (Strawberry)
 
-**Input**: Design documents from `/specs/007-graphql-api-scaffold/`  
+**Input**: Design documents from `/specs/007-graphql-api-scaffold/`\
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/schema.graphql
 
 **Tests**: Tests are included per specification requirements for GraphQL API validation
@@ -23,7 +23,7 @@ Riso template structure:
 - **Documentation**: `docs/modules/`
 - **CI scripts**: `scripts/ci/`
 
----
+______________________________________________________________________
 
 ## Phase 1: Setup (Shared Infrastructure)
 
@@ -35,7 +35,7 @@ Riso template structure:
 - [ ] T004 [P] Add graphql_api_module option to template/copier.yml
 - [ ] T005 [P] Create module documentation structure at docs/modules/graphql.md.jinja
 
----
+______________________________________________________________________
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
@@ -53,7 +53,7 @@ Riso template structure:
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
----
+______________________________________________________________________
 
 ## Phase 3: User Story 1 - Query Data with Flexible Fields (Priority: P1) 🎯 MVP
 
@@ -83,7 +83,7 @@ Riso template structure:
 
 **Checkpoint**: At this point, User Story 1 should be fully functional - basic GraphQL queries with flexible fields work
 
----
+______________________________________________________________________
 
 ## Phase 4: User Story 2 - Interactive Playground (Priority: P1)
 
@@ -107,7 +107,7 @@ Riso template structure:
 
 **Checkpoint**: Developers can now explore API via playground - US1 queries testable through UI
 
----
+______________________________________________________________________
 
 ## Phase 5: User Story 3 - DataLoader Optimization (Priority: P2)
 
@@ -133,7 +133,7 @@ Riso template structure:
 
 **Checkpoint**: N+1 queries eliminated - performance optimized for nested queries
 
----
+______________________________________________________________________
 
 ## Phase 6: User Story 4 - Mutations (Priority: P2)
 
@@ -160,7 +160,7 @@ Riso template structure:
 
 **Checkpoint**: Full CRUD operations available - API supports both read and write operations
 
----
+______________________________________________________________________
 
 ## Phase 7: User Story 6 - Error Handling (Priority: P2)
 
@@ -184,7 +184,7 @@ Riso template structure:
 
 **Checkpoint**: Clear error messages improve developer experience significantly
 
----
+______________________________________________________________________
 
 ## Phase 8: User Story 5 - Real-time Subscriptions (Priority: P3)
 
@@ -210,7 +210,7 @@ Riso template structure:
 
 **Checkpoint**: Real-time features enabled - API supports live updates via WebSocket
 
----
+______________________________________________________________________
 
 ## Phase 9: Security & Performance Controls
 
@@ -247,7 +247,7 @@ Riso template structure:
 
 **Checkpoint**: Security and performance controls in place - production-ready API
 
----
+______________________________________________________________________
 
 ## Phase 10: Polish & Cross-Cutting Concerns
 
@@ -266,11 +266,11 @@ Riso template structure:
 - [ ] T102 Run quickstart.md end-to-end validation
 - [ ] T103 Generate sample project with graphql_api_module=enabled
 - [ ] T104 Test sample project with all user stories
-- [ ] T105 [P] Create concurrent query load test (100 simultaneous requests, assert <100ms p95 latency, zero errors) for SC-008
-- [ ] T106 [P] Create subscription latency benchmark test (emit event, measure delivery time, assert <100ms) for SC-006
+- [ ] T105 [P] Create concurrent query load test (100 simultaneous requests, assert \<100ms p95 latency, zero errors) for SC-008
+- [ ] T106 [P] Create subscription latency benchmark test (emit event, measure delivery time, assert \<100ms) for SC-006
 - [ ] T107 [P] Create pagination consistency test (query same dataset with cursor and offset, assert identical results) for SC-009
 
----
+______________________________________________________________________
 
 ## Dependencies & Execution Order
 
@@ -331,7 +331,7 @@ Riso template structure:
 - Once US1 completes, US3, US4, US6 can all proceed in parallel
 - US5 can proceed in parallel with any other story
 
----
+______________________________________________________________________
 
 ## Parallel Example: Multiple Stories
 
@@ -359,46 +359,46 @@ Team Member C:
 - Phase 8 (US5): Implement subscriptions independently
 ```
 
----
+______________________________________________________________________
 
 ## Implementation Strategy
 
 ### MVP First (US1 + US2 Only)
 
 1. Complete Phase 1: Setup (5 tasks)
-2. Complete Phase 2: Foundational (7 tasks) - CRITICAL BLOCKER
-3. Complete Phase 3: User Story 1 - Queries (12 tasks)
-4. Complete Phase 4: User Story 2 - Playground (8 tasks)
-5. **STOP and VALIDATE**: Test basic GraphQL queries via playground
-6. Deploy/demo MVP - developers can query data with flexible fields
+1. Complete Phase 2: Foundational (7 tasks) - CRITICAL BLOCKER
+1. Complete Phase 3: User Story 1 - Queries (12 tasks)
+1. Complete Phase 4: User Story 2 - Playground (8 tasks)
+1. **STOP and VALIDATE**: Test basic GraphQL queries via playground
+1. Deploy/demo MVP - developers can query data with flexible fields
 
 ### Incremental Delivery
 
 1. **Foundation**: Setup + Foundational → Template structure ready (12 tasks)
-2. **MVP**: Add US1 + US2 → Basic GraphQL API with playground (20 tasks) → Deploy/Demo
-3. **Performance**: Add US3 → DataLoader optimization (10 tasks) → Deploy/Demo
-4. **Full CRUD**: Add US4 → Mutations enabled (11 tasks) → Deploy/Demo
-5. **Robustness**: Add US6 → Error handling (8 tasks) → Deploy/Demo
-6. **Real-time**: Add US5 → Subscriptions (10 tasks) → Deploy/Demo
-7. **Production**: Add Phase 9 → Security controls (21 tasks) → Deploy/Demo
-8. **Polish**: Add Phase 10 → Documentation, CI/CD (13 tasks) → Final Release
+1. **MVP**: Add US1 + US2 → Basic GraphQL API with playground (20 tasks) → Deploy/Demo
+1. **Performance**: Add US3 → DataLoader optimization (10 tasks) → Deploy/Demo
+1. **Full CRUD**: Add US4 → Mutations enabled (11 tasks) → Deploy/Demo
+1. **Robustness**: Add US6 → Error handling (8 tasks) → Deploy/Demo
+1. **Real-time**: Add US5 → Subscriptions (10 tasks) → Deploy/Demo
+1. **Production**: Add Phase 9 → Security controls (21 tasks) → Deploy/Demo
+1. **Polish**: Add Phase 10 → Documentation, CI/CD (13 tasks) → Final Release
 
 ### Parallel Team Strategy
 
 With 3 developers:
 
 1. **Together**: Complete Setup + Foundational (Phases 1-2, 12 tasks)
-2. **Parallel** (after Foundational):
+1. **Parallel** (after Foundational):
    - Developer A: US1 Queries
    - Developer B: US2 Playground
    - Developer C: US6 Error Handling (prep for future integration)
-3. **Parallel** (after US1):
+1. **Parallel** (after US1):
    - Developer A: US3 DataLoaders
    - Developer B: US4 Mutations
    - Developer C: US5 Subscriptions
-4. **Together**: Phase 9 Security & Phase 10 Polish
+1. **Together**: Phase 9 Security & Phase 10 Polish
 
----
+______________________________________________________________________
 
 ## Task Summary
 
@@ -420,7 +420,7 @@ With 3 developers:
 - Delivers: Basic GraphQL API with flexible queries and interactive playground
 - Time estimate: 1-2 weeks for solo developer, 3-5 days with team
 
----
+______________________________________________________________________
 
 ## Notes
 

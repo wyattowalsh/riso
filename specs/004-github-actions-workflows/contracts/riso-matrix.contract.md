@@ -10,18 +10,18 @@
 
 ### Required Inputs
 
-| Variable | Type | Example | Description |
-|----------|------|---------|-------------|
-| `package_name` | string | `myproject` | Python package name for module execution |
-| `quality_profile` | enum | `standard` or `strict` | Quality check strictness level |
+| Variable          | Type         | Example                    | Description                                            |
+| ----------------- | ------------ | -------------------------- | ------------------------------------------------------ |
+| `package_name`    | string       | `myproject`                | Python package name for module execution               |
+| `quality_profile` | enum         | `standard` or `strict`     | Quality check strictness level                         |
 | `python_versions` | list[string] | `['3.11', '3.12', '3.13']` | Python versions for matrix (default from constitution) |
 
 ### Optional Inputs
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `matrix_fail_fast` | bool | `false` | Whether to cancel other jobs on first failure (always false per research) |
-| `matrix_max_parallel` | int | `3` | Maximum concurrent matrix jobs |
+| Variable              | Type | Default | Description                                                               |
+| --------------------- | ---- | ------- | ------------------------------------------------------------------------- |
+| `matrix_fail_fast`    | bool | `false` | Whether to cancel other jobs on first failure (always false per research) |
+| `matrix_max_parallel` | int  | `3`     | Maximum concurrent matrix jobs                                            |
 
 ## Output Contract (Generated Workflow)
 
@@ -127,7 +127,7 @@ jobs:
 
 ### Success Criteria
 
-- All matrix jobs complete in <8 minutes (SC-003)
+- All matrix jobs complete in \<8 minutes (SC-003)
 - Each individual job respects 15-minute timeout
 - If any matrix job fails, overall workflow fails (per clarifications)
 - Matrix summary job aggregates results clearly
@@ -162,31 +162,31 @@ jobs:
 ### Matrix Configuration
 
 1. `fail-fast` must be `false` (show all failures)
-2. `python-version` must include exactly 3.11, 3.12, 3.13
-3. Each matrix job must be marked as required check
-4. Matrix summary job must depend on all matrix jobs
+1. `python-version` must include exactly 3.11, 3.12, 3.13
+1. Each matrix job must be marked as required check
+1. Matrix summary job must depend on all matrix jobs
 
 ### Cache Strategy
 
 1. Each Python version gets independent cache key
-2. Cache key includes Python version to prevent cross-version corruption
-3. Restore keys allow fallback to same OS without version match
+1. Cache key includes Python version to prevent cross-version corruption
+1. Restore keys allow fallback to same OS without version match
 
 ### Artifact Naming
 
 1. Must include Python version: `matrix-results-py{version}-{run_id}`
-2. Run ID ensures uniqueness across workflow runs
-3. 90-day retention enforced
+1. Run ID ensures uniqueness across workflow runs
+1. 90-day retention enforced
 
 ## Error Scenarios
 
-| Scenario | Behavior | Recovery |
-|----------|----------|----------|
-| Python 3.13 fails, others pass | All jobs complete, summary fails | Fix 3.13-specific issue, re-run |
-| Cache corruption | Fallback to fresh install | Monitor cache hit rate metrics |
-| All versions fail | Summary shows aggregate failure | Check for fundamental code issue |
-| Service outage | Retry 3x per job independently | Wait for service recovery |
-| Timeout on one version | That job fails, others continue | Investigate performance regression |
+| Scenario                       | Behavior                         | Recovery                           |
+| ------------------------------ | -------------------------------- | ---------------------------------- |
+| Python 3.13 fails, others pass | All jobs complete, summary fails | Fix 3.13-specific issue, re-run    |
+| Cache corruption               | Fallback to fresh install        | Monitor cache hit rate metrics     |
+| All versions fail              | Summary shows aggregate failure  | Check for fundamental code issue   |
+| Service outage                 | Retry 3x per job independently   | Wait for service recovery          |
+| Timeout on one version         | That job fails, others continue  | Investigate performance regression |
 
 ## Testing Strategy
 
@@ -226,7 +226,7 @@ gh pr checks --json name,conclusion --jq '.[] | select(.name | startswith("Pytho
 
 ### Performance Tests
 
-Monitor against SC-003: matrix builds must complete in <8 minutes
+Monitor against SC-003: matrix builds must complete in \<8 minutes
 
 ```python
 # In smoke test
@@ -244,9 +244,9 @@ assert matrix_duration < 480, f"Matrix took {matrix_duration}s, expected <480s"
 To support Python 3.14 in future:
 
 1. Update constitution to include 3.14 in supported range
-2. Add `'3.14'` to matrix in template
-3. Update timeout if needed (more versions = longer total time)
-4. Test backward compatibility with 3.11-3.13
+1. Add `'3.14'` to matrix in template
+1. Update timeout if needed (more versions = longer total time)
+1. Test backward compatibility with 3.11-3.13
 
 ### Branch Protection Configuration
 
@@ -264,12 +264,12 @@ All four must pass for PR merge to proceed.
 ### Debugging Matrix Failures
 
 1. Check individual job logs for specific Python version
-2. Download version-specific artifacts for local reproduction
-3. Compare passing vs failing versions to isolate compatibility issue
-4. Use matrix summary output for aggregate view
+1. Download version-specific artifacts for local reproduction
+1. Compare passing vs failing versions to isolate compatibility issue
+1. Use matrix summary output for aggregate view
 
----
+______________________________________________________________________
 
-**Contract Version**: 1.0  
-**Last Updated**: 2025-10-30  
+**Contract Version**: 1.0\
+**Last Updated**: 2025-10-30\
 **Status**: Complete

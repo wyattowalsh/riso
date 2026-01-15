@@ -1,8 +1,8 @@
 # Feature Specification: Expanded Documentation Template Options
 
-**Feature Branch**: `002-docs-template-expansion`  
-**Created**: 2025-10-29  
-**Status**: Draft  
+**Feature Branch**: `002-docs-template-expansion`\
+**Created**: 2025-10-29\
+**Status**: Draft\
 **Input**: User description: "enhanced + extended dev docs templating options (fumadocs + python sphinx shibuya + docusaurus)"
 
 ## Clarifications
@@ -27,9 +27,9 @@ A template maintainer selects a documentation framework during `copier copy` and
 **Acceptance Scenarios**:
 
 1. **Given** the maintainer chooses `docs_site=fumadocs`, **When** the render completes and the quickstart script runs, **Then** the Next.js/Fumadocs dev server boots with the seeded docs navigation and passes linting.
-2. **Given** the maintainer chooses `docs_site=docusaurus`, **When** automation executes sample regeneration, **Then** the generated CI job installs prerequisites and produces a static build artifact without retrying manual steps.
+1. **Given** the maintainer chooses `docs_site=docusaurus`, **When** automation executes sample regeneration, **Then** the generated CI job installs prerequisites and produces a static build artifact without retrying manual steps.
 
----
+______________________________________________________________________
 
 ### User Story 2 - Python Teams Publish Shibuya Docs (Priority: P2)
 
@@ -42,9 +42,9 @@ A Python-focused team enables the Shibuya-themed Sphinx option and can run docum
 **Acceptance Scenarios**:
 
 1. **Given** the Shibuya docs variant is enabled, **When** maintainers run the documented build command locally, **Then** the Sphinx site renders without missing dependencies and outputs to the expected directory.
-2. **Given** CI runs for a Shibuya-enabled render, **When** the docs job executes, **Then** it uploads the built site as an artifact and fails fast on broken references.
+1. **Given** CI runs for a Shibuya-enabled render, **When** the docs job executes, **Then** it uploads the built site as an artifact and fails fast on broken references.
 
----
+______________________________________________________________________
 
 ### User Story 3 - Front-end Orgs Rely on Docusaurus (Priority: P3)
 
@@ -57,9 +57,9 @@ A front-end-heavy organization selects the Docusaurus option to produce a docume
 **Acceptance Scenarios**:
 
 1. **Given** Docusaurus is selected with both API tracks enabled, **When** the maintainer runs the generated build command, **Then** the site compiles, references both API docs, and surfaces module health badges pulled from smoke results.
-2. **Given** a downstream consumer regenerates their project with no docs changes, **When** the comparator script runs, **Then** Docusaurus assets remain stable and regenerate without manual merges.
+1. **Given** a downstream consumer regenerates their project with no docs changes, **When** the comparator script runs, **Then** Docusaurus assets remain stable and regenerate without manual merges.
 
----
+______________________________________________________________________
 
 ### Edge Cases
 

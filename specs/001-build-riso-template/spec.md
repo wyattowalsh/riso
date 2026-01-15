@@ -1,8 +1,8 @@
 # Feature Specification: Riso Template Foundation
 
-**Feature Branch**: `001-build-riso-template`  
-**Created**: 2025-10-29  
-**Status**: Draft  
+**Feature Branch**: `001-build-riso-template`\
+**Created**: 2025-10-29\
+**Status**: Draft\
 **Input**: User description: "`Riso` is the ultimate GH copier-based project template. it has an optional: cli (typer), api (node and/or python), mcp (FastMCP>=2.0.0), docs site (fumadocs or shibuya sphinx), and logic. it should allow for monorepos (apps/ and packages/ as well as single package repos. it should use the latest community-driven best practices ./.github/context/"
 
 ## User Scenarios & Testing *(mandatory)*
@@ -18,9 +18,9 @@ A template consumer scaffolds the default project with no optional modules and c
 **Acceptance Scenarios**:
 
 1. **Given** an empty workspace, **When** the consumer renders the template using default answers, **Then** dependencies install successfully and the quickstart task completes end-to-end.
-2. **Given** a freshly rendered baseline project, **When** a regeneration check compares template source to output, **Then** no drift is detected.
+1. **Given** a freshly rendered baseline project, **When** a regeneration check compares template source to output, **Then** no drift is detected.
 
----
+______________________________________________________________________
 
 ### User Story 2 - Optional Modules Compose (Priority: P2)
 
@@ -33,9 +33,9 @@ A maintainer enables any combination of optional capabilities (CLI, API, MCP, do
 **Acceptance Scenarios**:
 
 1. **Given** a render with CLI and docs modules enabled, **When** the contributor runs the generated command workflows and documentation preview, **Then** both succeed and reference only committed files.
-2. **Given** a render with both API tracks and shared logic enabled, **When** platform tests execute, **Then** each service passes on its own and shared code remains synchronized.
+1. **Given** a render with both API tracks and shared logic enabled, **When** platform tests execute, **Then** each service passes on its own and shared code remains synchronized.
 
----
+______________________________________________________________________
 
 ### User Story 3 - Multi-Layout Support (Priority: P3)
 
@@ -48,9 +48,9 @@ A team chooses between single-package layout and monorepo layout (apps/ + packag
 **Acceptance Scenarios**:
 
 1. **Given** monorepo mode is selected, **When** the render completes, **Then** shared tooling applies uniformly and each app/package can run its quickstart independently.
-2. **Given** single-package mode is selected, **When** the render completes, **Then** no monorepo scaffolding leaks into the project and governance checks still pass.
+1. **Given** single-package mode is selected, **When** the render completes, **Then** no monorepo scaffolding leaks into the project and governance checks still pass.
 
----
+______________________________________________________________________
 
 ### User Story 4 - Governance Automation Protects Releases (Priority: P4)
 
@@ -63,9 +63,9 @@ Maintainers rely on automated checks to confirm every template change still hono
 **Acceptance Scenarios**:
 
 1. **Given** a pull request that modifies template prompts, **When** CI runs, **Then** it regenerates all declared samples and fails if updated artifacts are missing.
-2. **Given** a scheduled governance review job, **When** it executes, **Then** it reports compliance status for each principle and raises issues for any automation gaps.
+1. **Given** a scheduled governance review job, **When** it executes, **Then** it reports compliance status for each principle and raises issues for any automation gaps.
 
----
+______________________________________________________________________
 
 ### Edge Cases
 

@@ -1,6 +1,6 @@
 # Implementation Plan: GraphQL API Scaffold (Strawberry)
 
-**Branch**: `007-graphql-api-scaffold` | **Date**: 2025-11-01 | **Spec**: [spec.md](./spec.md)  
+**Branch**: `007-graphql-api-scaffold` | **Date**: 2025-11-01 | **Spec**: [spec.md](./spec.md)\
 **Input**: Feature specification from `/specs/007-graphql-api-scaffold/spec.md`
 
 ## Summary
@@ -9,14 +9,14 @@ Create a production-ready GraphQL API scaffold using Strawberry framework that p
 
 ## Technical Context
 
-**Language/Version**: Python 3.11+ (consistent with Riso template baseline, managed via uv)  
-**Primary Dependencies**: Strawberry GraphQL ≥0.200.0, FastAPI ≥0.104.0 (ASGI integration), uvicorn (ASGI server), pydantic ≥2.0.0 (data validation)  
-**Storage**: Pluggable resolver pattern - supports any data source (PostgreSQL via async SQLAlchemy recommended, but also REST APIs, in-memory, etc.)  
-**Testing**: pytest ≥7.4.0, pytest-asyncio (async test support), GraphQL query testing via Strawberry test client  
-**Target Platform**: Linux server (containerized via Docker from feature 005), ASGI-compatible deployment  
-**Project Type**: Single project with optional API module track (integrates with existing Riso Python project structure)  
-**Performance Goals**: <100ms response time for simple queries, <200ms for complex queries with joins, handle 100+ concurrent requests  
-**Constraints**: Query depth ≤15 levels, complexity ≤5000 points, pagination max 100 items, per-field auth overhead minimal  
+**Language/Version**: Python 3.11+ (consistent with Riso template baseline, managed via uv)\
+**Primary Dependencies**: Strawberry GraphQL ≥0.200.0, FastAPI ≥0.104.0 (ASGI integration), uvicorn (ASGI server), pydantic ≥2.0.0 (data validation)\
+**Storage**: Pluggable resolver pattern - supports any data source (PostgreSQL via async SQLAlchemy recommended, but also REST APIs, in-memory, etc.)\
+**Testing**: pytest ≥7.4.0, pytest-asyncio (async test support), GraphQL query testing via Strawberry test client\
+**Target Platform**: Linux server (containerized via Docker from feature 005), ASGI-compatible deployment\
+**Project Type**: Single project with optional API module track (integrates with existing Riso Python project structure)\
+**Performance Goals**: \<100ms response time for simple queries, \<200ms for complex queries with joins, handle 100+ concurrent requests\
+**Constraints**: Query depth ≤15 levels, complexity ≤5000 points, pagination max 100 items, per-field auth overhead minimal\
 **Scale/Scope**: Template module generating ~15-20 core files, supports 10-50 GraphQL types in typical project, scales to 1000+ req/s with proper infrastructure
 
 ## Constitution Check
@@ -43,12 +43,12 @@ Create a production-ready GraphQL API scaffold using Strawberry framework that p
 
 ### Potential Complexity Concerns
 
-| Concern | Mitigation | Status |
-|---------|-----------|--------|
+| Concern                            | Mitigation                                                                       | Status       |
+| ---------------------------------- | -------------------------------------------------------------------------------- | ------------ |
 | Additional dependency (Strawberry) | Well-maintained (10k+ GitHub stars), official FastAPI recommendation, stable API | ✅ Justified |
-| GraphQL learning curve | Comprehensive quickstart.md, example queries, playground for experimentation | ✅ Addressed |
-| Schema complexity | Modular schema composition, clear type definitions, auto-generated documentation | ✅ Addressed |
-| Performance overhead (DataLoaders) | Opt-in per resolver, clear patterns, benchmarking in quickstart | ✅ Addressed |
+| GraphQL learning curve             | Comprehensive quickstart.md, example queries, playground for experimentation     | ✅ Addressed |
+| Schema complexity                  | Modular schema composition, clear type definitions, auto-generated documentation | ✅ Addressed |
+| Performance overhead (DataLoaders) | Opt-in per resolver, clear patterns, benchmarking in quickstart                  | ✅ Addressed |
 
 **Gate Status**: ✅ PASS - No constitution violations. Feature aligns with modular, opt-in architecture.
 
@@ -122,7 +122,7 @@ scripts/ci/
 
 > **No violations requiring justification** - All checks passed
 
----
+______________________________________________________________________
 
 ## Phase 0: Research & Technology Decisions
 
@@ -131,48 +131,56 @@ scripts/ci/
 ### Research Tasks
 
 1. **Strawberry vs. Alternatives**:
+
    - Compare Strawberry, Ariadne, Graphene
    - Evaluate FastAPI integration quality
    - Assess type safety and IDE support
    - Decision: Strawberry (official FastAPI recommendation, excellent type hints)
 
-2. **DataLoader Patterns**:
+1. **DataLoader Patterns**:
+
    - Research batching strategies
    - Evaluate caching approaches
    - Study N+1 prevention techniques
    - Best practices from Facebook DataLoader
 
-3. **Authentication Integration**:
+1. **Authentication Integration**:
+
    - Per-field auth decorators
    - Context-based auth checks
    - Integration with FastAPI dependency injection
    - JWT token validation patterns
 
-4. **Query Complexity Analysis**:
+1. **Query Complexity Analysis**:
+
    - Complexity calculation algorithms
    - Depth vs. breadth tradeoffs
    - GitHub GraphQL API approach
    - Shopify GraphQL rate limiting
 
-5. **Pagination Standards**:
+1. **Pagination Standards**:
+
    - Relay Cursor Connections specification
    - Offset pagination patterns
    - Hybrid approach implementation
    - Edge cases and consistency
 
-6. **Subscription Infrastructure**:
+1. **Subscription Infrastructure**:
+
    - WebSocket server configuration
    - Event broadcasting patterns
    - Connection management
    - Cleanup and resource handling
 
-7. **Testing Strategies**:
+1. **Testing Strategies**:
+
    - GraphQL query testing with Strawberry
    - Snapshot testing for schema changes
    - Integration testing with test client
    - Performance testing for DataLoaders
 
-8. **Schema Design Patterns**:
+1. **Schema Design Patterns**:
+
    - Modular schema composition
    - Type reusability
    - Input vs. output types
@@ -188,7 +196,7 @@ Will contain:
 - Performance benchmarks
 - Security considerations
 
----
+______________________________________________________________________
 
 ## Phase 1: Design & Contracts
 
@@ -201,30 +209,43 @@ Extract from spec and design:
 - **Core GraphQL Types**:
 
 - Query (root query type)
+
 - Mutation (root mutation type)
+
 - Subscription (root subscription type)
+
 - User (example domain type)
+
 - Post (example domain type)
+
 - PageInfo (pagination metadata)
+
 - Connection (Relay connection pattern)
+
 - Edge (Relay edge pattern)
 
 - **Authentication Context**:
 
 - User identity
+
 - Permissions
+
 - Request metadata
 
 - **DataLoader Types**:
 
 - Batch function signatures
+
 - Cache keys
+
 - Load strategies
 
 - **Pagination Types**:
 
 - Cursor structure
+
 - Connection metadata
+
 - Edge wrapping
 
 ### 1.2 API Contracts (contracts/schema.graphql)
@@ -300,12 +321,19 @@ input UpdateUserInput {
 - Developer onboarding document:
 
 - Installation instructions
+
 - First query example
+
 - Playground usage
+
 - DataLoader patterns
+
 - Authentication setup
+
 - Testing examples
+
 - Performance tips
+
 - Common pitfalls
 
 ### 1.4 Agent Context Update
@@ -313,11 +341,14 @@ input UpdateUserInput {
 - Run `.specify/scripts/bash/update-agent-context.sh copilot` to add:
 
 - Strawberry GraphQL
+
 - GraphQL schema patterns
+
 - DataLoader usage
+
 - Pagination patterns
 
----
+______________________________________________________________________
 
 ## Phase 2: Task Breakdown
 
@@ -326,25 +357,33 @@ input UpdateUserInput {
 - Will decompose into:
 
 - Template file creation
+
 - Schema generation logic
+
 - DataLoader implementation
+
 - Authentication decorators
+
 - Pagination utilities
+
 - Testing infrastructure
+
 - Documentation generation
+
 - CI integration
+
 - Sample project generation
 
----
+______________________________________________________________________
 
 ## Next Steps
 
 1. ✅ Complete this plan
-2. → Generate research.md (Phase 0)
-3. → Generate data-model.md (Phase 1)
-4. → Generate contracts/schema.graphql (Phase 1)
-5. → Generate quickstart.md (Phase 1)
-6. → Update agent context
-7. → Run `/speckit.tasks` for implementation breakdown
+1. → Generate research.md (Phase 0)
+1. → Generate data-model.md (Phase 1)
+1. → Generate contracts/schema.graphql (Phase 1)
+1. → Generate quickstart.md (Phase 1)
+1. → Update agent context
+1. → Run `/speckit.tasks` for implementation breakdown
 
 **Current Status**: Plan complete, ready for Phase 0 research

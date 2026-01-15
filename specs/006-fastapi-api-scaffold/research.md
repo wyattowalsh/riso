@@ -1,7 +1,7 @@
 # Research: FastAPI API Scaffold
 
-**Date**: November 1, 2025  
-**Feature**: 006-fastapi-api-scaffold  
+**Date**: November 1, 2025\
+**Feature**: 006-fastapi-api-scaffold\
 **Phase**: 0 - Research & Technical Decisions
 
 ## Overview
@@ -344,7 +344,7 @@ async def create_example(request: ExampleCreateRequest):
 
 - Return 200 for healthy, 503 for unhealthy
 - Include version and timestamp in response
-- Keep health checks lightweight (<100ms)
+- Keep health checks lightweight (\<100ms)
 - Consider adding dependency checks (DB, cache) in readiness
 
 **Example Pattern**:
@@ -453,7 +453,7 @@ CMD ["uv", "run", "uvicorn", "{package_name}.api.main:app", "--host", "0.0.0.0",
 
 ### Startup Time
 
-**Target**: <3 seconds in development mode
+**Target**: \<3 seconds in development mode
 
 **Optimizations**:
 
@@ -464,7 +464,7 @@ CMD ["uv", "run", "uvicorn", "{package_name}.api.main:app", "--host", "0.0.0.0",
 
 ### Response Time
 
-**Target**: <100ms for health check, <500ms for typical CRUD operations
+**Target**: \<100ms for health check, \<500ms for typical CRUD operations
 
 **Optimizations**:
 
@@ -541,13 +541,13 @@ This scaffold provides a foundation for future enhancements:
 
 Research findings support all success criteria from spec:
 
-- **SC-001**: Render in <2 min ✓ - Simple template generation, no complex build steps
+- **SC-001**: Render in \<2 min ✓ - Simple template generation, no complex build steps
 - **SC-002**: Pass quality checks ✓ - FastAPI fully typed, linting-friendly
 - **SC-003**: Auto documentation ✓ - FastAPI built-in OpenAPI generation
-- **SC-004**: Add endpoint <5 min ✓ - Copy route template, register router
-- **SC-005**: Startup <3s ✓ - Minimal dependencies, no database connections
+- **SC-004**: Add endpoint \<5 min ✓ - Copy route template, register router
+- **SC-005**: Startup \<3s ✓ - Minimal dependencies, no database connections
 - **SC-006**: Example endpoints work ✓ - Simple CRUD demonstrations included
-- **SC-007**: Health check <100ms ✓ - In-memory status check, no I/O
+- **SC-007**: Health check \<100ms ✓ - In-memory status check, no I/O
 - **SC-008**: ≥80% coverage ✓ - TestClient enables comprehensive testing
 - **SC-009**: 100 concurrent requests ✓ - Async/await architecture supports this
 

@@ -83,7 +83,6 @@ same command (`uv run sphinx-build docs dist/docs`).
 
 ## CI parity
 
-Quality workflows are orchestrated via GitHub Actions, mirroring the `make
-quality` and Taskipy lanes locally. Branch protection relies on matrix jobs
+Quality workflows are orchestrated via GitHub Actions, mirroring the `make quality` and Taskipy lanes locally. Branch protection relies on matrix jobs
 across Python 3.11–3.13; keep dependency groups and lockfiles current to
 maintain parity.

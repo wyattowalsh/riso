@@ -11,14 +11,14 @@ Create a Copier template module that generates FastAPI applications with standar
 
 ## Technical Context
 
-**Language/Version**: Python 3.11+ (managed by uv, matching Riso baseline)  
-**Primary Dependencies**: FastAPI 0.104+, Uvicorn (ASGI server), Pydantic 2.x (validation), python-dotenv (config)  
-**Storage**: N/A (scaffold does not include database integration)  
-**Testing**: pytest with httpx (FastAPI test client), pytest-asyncio for async tests  
-**Target Platform**: Cross-platform (Linux/macOS/Windows), containerized deployment via Docker  
-**Project Type**: Web backend (API server) - single project structure within template  
-**Performance Goals**: <3s startup time, <100ms health check response, handles 100 concurrent requests in local dev  
-**Constraints**: Zero production dependencies beyond FastAPI ecosystem, integrates with existing Riso quality suite  
+**Language/Version**: Python 3.11+ (managed by uv, matching Riso baseline)\
+**Primary Dependencies**: FastAPI 0.104+, Uvicorn (ASGI server), Pydantic 2.x (validation), python-dotenv (config)\
+**Storage**: N/A (scaffold does not include database integration)\
+**Testing**: pytest with httpx (FastAPI test client), pytest-asyncio for async tests\
+**Target Platform**: Cross-platform (Linux/macOS/Windows), containerized deployment via Docker\
+**Project Type**: Web backend (API server) - single project structure within template\
+**Performance Goals**: \<3s startup time, \<100ms health check response, handles 100 concurrent requests in local dev\
+**Constraints**: Zero production dependencies beyond FastAPI ecosystem, integrates with existing Riso quality suite\
 **Scale/Scope**: Scaffold supports small-to-medium APIs (dozens of endpoints), extensible to larger applications
 
 ## Constitution Check
@@ -69,7 +69,7 @@ Create a Copier template module that generates FastAPI applications with standar
   - `riso-container-build.yml` workflow will validate FastAPI Dockerfile if containerization enabled
 - **Module Success Rate**: FastAPI module must maintain ≥98% success rate in render matrix
 - **Quality Gates**: All quality checks must pass on generated FastAPI code without modification
-- **Performance**: FastAPI scaffold must meet <10 minute baseline render budget
+- **Performance**: FastAPI scaffold must meet \<10 minute baseline render budget
 
 ### Constitution Compliance Summary
 
@@ -78,10 +78,10 @@ Create a Copier template module that generates FastAPI applications with standar
 **Key Compliance Points**:
 
 1. FastAPI scaffold is purely additive, no baseline changes
-2. Template-based generation ensures deterministic output
-3. Opt-in architecture preserves minimal baseline
-4. Comprehensive documentation with executable examples
-5. Existing CI/CD workflows provide automation governance
+1. Template-based generation ensures deterministic output
+1. Opt-in architecture preserves minimal baseline
+1. Comprehensive documentation with executable examples
+1. Existing CI/CD workflows provide automation governance
 
 **No Complexity Violations**: FastAPI scaffold aligns with single-project structure, no architectural complexity added
 

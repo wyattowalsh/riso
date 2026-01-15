@@ -1,7 +1,7 @@
 # Quickstart: Robust Typer CLI Scaffold
 
-**Feature**: 009-typer-cli-scaffold  
-**Audience**: Template maintainers and contributors  
+**Feature**: 009-typer-cli-scaffold\
+**Audience**: Template maintainers and contributors\
 **Prerequisites**: Python 3.11+, uv, basic Copier knowledge
 
 ## Overview
@@ -34,9 +34,9 @@ copier --version
 Read these documents in order:
 
 1. [spec.md](./spec.md) - Feature specification with user stories
-2. [research.md](./research.md) - Technical decisions and rationale
-3. [data-model.md](./data-model.md) - Entity definitions and relationships
-4. [contracts/](./contracts/) - Interface contracts for components
+1. [research.md](./research.md) - Technical decisions and rationale
+1. [data-model.md](./data-model.md) - Entity definitions and relationships
+1. [contracts/](./contracts/) - Interface contracts for components
 
 ## Phase 2: Implement CLI Framework Components
 
@@ -250,7 +250,7 @@ Update with:
 
 Add CLI examples:
 
-```markdown
+````markdown
 ## Using the CLI
 
 ```bash
@@ -264,8 +264,9 @@ uv run python -m {{ package_name }}.cli config list
 
 # Show version
 uv run python -m {{ package_name }}.cli version
-```
-```
+````
+
+````
 
 ## Phase 5: Validate Implementation
 
@@ -282,7 +283,7 @@ uv run mypy files/python/
 
 # Static analysis
 uv run pylint files/python/ --rcfile=files/python/.pylintrc
-```
+````
 
 ### 5.2 Render Test Sample
 
@@ -310,7 +311,7 @@ uv run pytest tests/test_cli*.py -v
 
 Check against spec.md success criteria:
 
-- [ ] SC-001: Can add new command in <5 minutes
+- [ ] SC-001: Can add new command in \<5 minutes
 - [ ] SC-002: Passes all quality checks (ruff, mypy, pylint 10/10)
 - [ ] SC-003: Interactive prompts for required parameters
 - [ ] SC-004: 100% commands have comprehensive help text
@@ -376,9 +377,9 @@ Include in PR description:
 After implementation complete:
 
 1. Run `/speckit.tasks` to generate detailed task breakdown
-2. Execute tasks following phased approach
-3. Validate after each checkpoint
-4. Submit PR when all success criteria met
+1. Execute tasks following phased approach
+1. Validate after each checkpoint
+1. Submit PR when all success criteria met
 
 ## Resources
 

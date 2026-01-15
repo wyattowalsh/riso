@@ -1,10 +1,10 @@
 ---
-description: "Task breakdown for WebSocket Scaffold implementation"
+description: Task breakdown for WebSocket Scaffold implementation
 ---
 
 # Tasks: WebSocket Scaffold
 
-**Input**: Design documents from `/specs/008-websockets-scaffold/`  
+**Input**: Design documents from `/specs/008-websockets-scaffold/`\
 **Prerequisites**: plan.md (complete), spec.md (complete), research.md (complete), data-model.md (complete), contracts/ (complete), quickstart.md (complete)
 
 **Tests**: Following Constitution Principle V (Test-First Development), tests MUST be written before implementation. Each user story phase includes test tasks that define expected behavior (RED → GREEN → REFACTOR).
@@ -20,11 +20,12 @@ description: "Task breakdown for WebSocket Scaffold implementation"
 ## Path Conventions
 
 All paths assume template structure:
+
 - Template files: `template/files/python/websocket/`
 - Documentation: `docs/modules/`
 - Rendered project tests: `tests/websocket/` (examples in template)
 
----
+______________________________________________________________________
 
 ## Phase 1: Setup (Shared Infrastructure)
 
@@ -37,7 +38,7 @@ All paths assume template structure:
 - [ ] T005 [P] Create exceptions.py.jinja with WebSocket error hierarchy in template/files/python/websocket/
 - [ ] T006 Update template metadata in template/files/shared/module_catalog.json.jinja to include websocket module
 
----
+______________________________________________________________________
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
@@ -54,7 +55,7 @@ All paths assume template structure:
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
----
+______________________________________________________________________
 
 ## Phase 3: User Story 1 - Basic WebSocket Connection (Priority: P1) 🎯 MVP
 
@@ -86,7 +87,7 @@ All paths assume template structure:
 
 **Checkpoint**: At this point, User Story 1 should be fully functional - basic connections work with message exchange
 
----
+______________________________________________________________________
 
 ## Phase 4: User Story 2 - Connection Health & Heartbeats (Priority: P1)
 
@@ -117,7 +118,7 @@ All paths assume template structure:
 
 **Checkpoint**: Connection health monitoring is complete - dead and idle connections are automatically detected and cleaned up
 
----
+______________________________________________________________________
 
 ## Phase 5: User Story 3 - Authentication & Authorization (Priority: P1)
 
@@ -148,13 +149,13 @@ All paths assume template structure:
 
 **Checkpoint**: Authentication is fully integrated - only authorized users can establish connections
 
----
+______________________________________________________________________
 
 ## Phase 6: User Story 4 - Broadcasting to Multiple Clients (Priority: P2)
 
 **Goal**: Enable room-based broadcasting where messages from one client are efficiently sent to multiple other clients
 
-**Independent Test**: Connect multiple clients to the same room, send a message from one client, verify all other clients in that room receive the message with <100ms latency.
+**Independent Test**: Connect multiple clients to the same room, send a message from one client, verify all other clients in that room receive the message with \<100ms latency.
 
 ### Tests for User Story 4 (Test-First Development)
 
@@ -171,7 +172,7 @@ All paths assume template structure:
 - [ ] T058 [US4] Implement join_room() method in manager.py.jinja to add connection to room
 - [ ] T059 [US4] Implement leave_room() method in manager.py.jinja to remove connection from room
 - [ ] T060 [US4] Implement broadcast_to_room() in manager.py.jinja using asyncio.gather for parallel sends
-- [ ] T061 [US4] Add connection_rooms tracking in manager.py.jinja (Dict[str, Set[str]]) for reverse lookup
+- [ ] T061 [US4] Add connection_rooms tracking in manager.py.jinja (Dict\[str, Set[str]\]) for reverse lookup
 - [ ] T062 [US4] Implement room cleanup in manager.py.jinja when last member leaves
 - [ ] T063 [US4] Add exclude_sender parameter to broadcast_to_room() in manager.py.jinja
 - [ ] T064 [US4] Add room.join, room.leave, room.broadcast message types to models.py.jinja
@@ -182,7 +183,7 @@ All paths assume template structure:
 
 **Checkpoint**: Room-based broadcasting is operational - multi-client scenarios work efficiently
 
----
+______________________________________________________________________
 
 ## Phase 7: User Story 5 - Connection Management & Monitoring (Priority: P2)
 
@@ -214,7 +215,7 @@ All paths assume template structure:
 
 **Checkpoint**: Full operational visibility is available - connections can be monitored and gracefully managed
 
----
+______________________________________________________________________
 
 ## Phase 8: User Story 6 - Error Handling & Resilience (Priority: P2)
 
@@ -249,7 +250,7 @@ All paths assume template structure:
 
 **Checkpoint**: Error handling is comprehensive - system is resilient to failures without cascading
 
----
+______________________________________________________________________
 
 ## Phase 9: User Story 7 - Testing Support (Priority: P3)
 
@@ -275,7 +276,7 @@ All paths assume template structure:
 
 **Checkpoint**: Complete testing infrastructure is available - developers can easily write WebSocket tests
 
----
+______________________________________________________________________
 
 ## Phase 10: Polish & Cross-Cutting Concerns
 
@@ -293,13 +294,13 @@ All paths assume template structure:
 - [ ] T120 [P] Add multi-server Redis pattern documentation to docs/modules/websockets.md.jinja
 - [ ] T121 [P] Add container support documentation (Docker/compose) to docs/modules/websockets.md.jinja
 - [ ] T122 [P] Add monitoring integration examples (Prometheus metrics) to docs/modules/websockets.md.jinja
-- [ ] T123 [P] Create load testing script validating 10K connections and <100ms broadcast latency (SC-002, SC-003, SC-009)
+- [ ] T123 [P] Create load testing script validating 10K connections and \<100ms broadcast latency (SC-002, SC-003, SC-009)
 - [ ] T124 Create upgrade guide section in docs/upgrade-guide.md.jinja for WebSocket module
 - [ ] T125 Validate all contract JSON schemas in contracts/ directory against JSON Schema Draft-07
 - [ ] T126 Run ./scripts/render-samples.sh with websocket_module=enabled and verify smoke tests pass
 - [ ] T127 Update copilot-instructions.md with WebSocket scaffold information
 
----
+______________________________________________________________________
 
 ## Dependencies & Execution Order
 
@@ -364,7 +365,7 @@ US1 (Basic Connection) ─┬─→ US2 (Heartbeats)
 
 **Phase 10 (Polish)**: T093, T094, T095, T096, T101, T102, T103 can run in parallel (different documentation files)
 
----
+______________________________________________________________________
 
 ## Parallel Example: User Story 1
 
@@ -379,50 +380,50 @@ Task: "Implement connect() method in manager.py.jinja"
 Task: "Implement disconnect() method in manager.py.jinja"
 ```
 
----
+______________________________________________________________________
 
 ## Implementation Strategy
 
 ### MVP First (User Stories 1-3 Only)
 
 1. Complete Phase 1: Setup → Module structure ready
-2. Complete Phase 2: Foundational → Core models ready
-3. Complete Phase 3: User Story 1 → Basic connections work
-4. Complete Phase 4: User Story 2 → Connection health monitoring active
-5. Complete Phase 5: User Story 3 → Secure connections enforced
-6. **STOP and VALIDATE**: Test US1-US3 independently, verify authentication and heartbeats
-7. Deploy/demo MVP with secure, healthy connections
+1. Complete Phase 2: Foundational → Core models ready
+1. Complete Phase 3: User Story 1 → Basic connections work
+1. Complete Phase 4: User Story 2 → Connection health monitoring active
+1. Complete Phase 5: User Story 3 → Secure connections enforced
+1. **STOP and VALIDATE**: Test US1-US3 independently, verify authentication and heartbeats
+1. Deploy/demo MVP with secure, healthy connections
 
 ### Incremental Delivery
 
 1. Setup + Foundational → Foundation ready (T001-T012)
-2. Add US1 → Test independently → Basic WebSocket works (T013-T023)
-3. Add US2 → Test independently → Dead connections detected (T024-T033)
-4. Add US3 → Test independently → Secure endpoints enforced (T034-T043)
-5. Add US4 → Test independently → Broadcasting operational (T044-T056)
-6. Add US5 → Test independently → Full monitoring available (T057-T067)
-7. Add US6 → Test independently → Error resilience complete (T068-T081)
-8. Add US7 → Test independently → Testing utilities available (T082-T092)
-9. Polish → Documentation and integration complete (T093-T107)
+1. Add US1 → Test independently → Basic WebSocket works (T013-T023)
+1. Add US2 → Test independently → Dead connections detected (T024-T033)
+1. Add US3 → Test independently → Secure endpoints enforced (T034-T043)
+1. Add US4 → Test independently → Broadcasting operational (T044-T056)
+1. Add US5 → Test independently → Full monitoring available (T057-T067)
+1. Add US6 → Test independently → Error resilience complete (T068-T081)
+1. Add US7 → Test independently → Testing utilities available (T082-T092)
+1. Polish → Documentation and integration complete (T093-T107)
 
 ### Parallel Team Strategy
 
 With multiple developers:
 
 1. Team completes Setup + Foundational together (T001-T012)
-2. Once Foundational is done:
+1. Once Foundational is done:
    - **Developer A**: US1 (Basic Connection) - T013-T023
    - **Developer B**: US2 (Heartbeats) - T024-T033 (waits for US1 to reach T020)
    - **Developer C**: US3 (Authentication) - T034-T043 (waits for US1 to reach T020)
-3. After US1-US3 complete:
+1. After US1-US3 complete:
    - **Developer A**: US4 (Broadcasting) - T044-T056
    - **Developer B**: US6 (Error Handling) - T068-T081
    - **Developer C**: US7 (Testing) - T082-T092
-4. After US4 completes:
+1. After US4 completes:
    - **Developer A**: US5 (Monitoring) - T057-T067
-5. All developers: Polish phase in parallel (T093-T107)
+1. All developers: Polish phase in parallel (T093-T107)
 
----
+______________________________________________________________________
 
 ## Task Count Summary
 
@@ -441,17 +442,18 @@ With multiple developers:
 **Parallel Opportunities**: 49 tasks can run in parallel (marked with [P])
 
 **Independent Test Criteria**:
+
 - US1: Connect, send, receive, disconnect → No resource leaks
 - US2: Dead connection detection within 60s → Resources cleaned
 - US3: Auth rejection on invalid credentials → User context maintained
-- US4: Broadcast to multiple clients → <100ms latency (p95)
+- US4: Broadcast to multiple clients → \<100ms latency (p95)
 - US5: Query connections, graceful shutdown → Metadata accurate
 - US6: Malformed messages handled → No crashes, isolated errors
 - US7: Test fixtures work → Multi-client simulation successful
 
 **Suggested MVP Scope**: Phase 1-2 (Setup + Foundational) + Phase 3-5 (US1-US3) = 42 tasks for secure, healthy WebSocket connections (including test-first development)
 
----
+______________________________________________________________________
 
 ## Notes
 

@@ -11,14 +11,14 @@ Create an optional SaaS starter module for the Riso Copier template that allows 
 
 ## Technical Context
 
-**Language/Version**: Python 3.11+ (template layer, validation scripts), TypeScript/JavaScript (Node 20 LTS for Next.js/Remix runtimes)  
-**Primary Dependencies**: Copier ≥9.0 (template engine), Jinja2 (templating), uv (Python packaging), pnpm ≥8 (Node packaging), runtime-specific frameworks (Next.js 16/Remix 2.x), all integration SDKs (Clerk/Auth.js, Stripe/Paddle, Sentry/Datadog, etc.)  
-**Storage**: PostgreSQL via Neon or Supabase (user choice), persisted via Prisma or Drizzle ORM (user choice)  
-**Testing**: pytest (template validation), Vitest/Jest (generated app unit tests), Playwright (generated app E2E tests), integration tests for all 14 service categories  
-**Target Platform**: Vercel or Cloudflare (user choice for hosting), GitHub Actions or Cloudflare CI (user choice for CI/CD), multi-platform deployment  
-**Project Type**: Copier template module generating full-stack web applications (monorepo structure when Node track enabled)  
-**Performance Goals**: Template rendering <5min, generated app startup <2min, deployment <10min, E2E test suite <3min execution, 1000+ fixture records generated <10sec  
-**Constraints**: Exactly 2 options per category (strict binary choice), deterministic generation (same answers = identical output), all 26 technology combinations must work, 95% deployment success rate, 90% developer setup completion without support  
+**Language/Version**: Python 3.11+ (template layer, validation scripts), TypeScript/JavaScript (Node 20 LTS for Next.js/Remix runtimes)\
+**Primary Dependencies**: Copier ≥9.0 (template engine), Jinja2 (templating), uv (Python packaging), pnpm ≥8 (Node packaging), runtime-specific frameworks (Next.js 16/Remix 2.x), all integration SDKs (Clerk/Auth.js, Stripe/Paddle, Sentry/Datadog, etc.)\
+**Storage**: PostgreSQL via Neon or Supabase (user choice), persisted via Prisma or Drizzle ORM (user choice)\
+**Testing**: pytest (template validation), Vitest/Jest (generated app unit tests), Playwright (generated app E2E tests), integration tests for all 14 service categories\
+**Target Platform**: Vercel or Cloudflare (user choice for hosting), GitHub Actions or Cloudflare CI (user choice for CI/CD), multi-platform deployment\
+**Project Type**: Copier template module generating full-stack web applications (monorepo structure when Node track enabled)\
+**Performance Goals**: Template rendering \<5min, generated app startup \<2min, deployment \<10min, E2E test suite \<3min execution, 1000+ fixture records generated \<10sec\
+**Constraints**: Exactly 2 options per category (strict binary choice), deterministic generation (same answers = identical output), all 26 technology combinations must work, 95% deployment success rate, 90% developer setup completion without support\
 **Scale/Scope**: 14 infrastructure categories × 2 options = 28 total integrations to implement, 100+ Jinja2 templates across all combinations, seeded fixtures for 5+ domain entities, comprehensive test coverage (70% minimum, 95% target), documentation for all 28 technologies
 
 ## Constitution Check
@@ -30,18 +30,21 @@ Create an optional SaaS starter module for the Riso Copier template that allows 
 ### Principle Verification
 
 ✅ **Module Sovereignty** - PASS
+
 - Feature is optional via `saas_starter_module` flag in `copier.yml`
 - Self-contained with no dependencies on other optional modules
 - Independent documentation in `docs/modules/saas-starter.md.jinja`
 - Smoke tests prove standalone functionality across all 26 combinations
 
 ✅ **Deterministic Generation** - PASS
+
 - Same Copier answers produce identical output (no timestamps, random values, system paths)
 - Technology selections are deterministic based on user choices
 - Pinned dependency versions ensure reproducibility
 - CI validation via `render_matrix.py` confirms determinism
 
 ⚠️ **Minimal Baseline** - CONDITIONAL PASS
+
 - Feature is OPTIONAL - baseline render unaffected when disabled
 - When enabled, generates 100+ files with 50+ dependencies
 - Justification: SaaS applications inherently require substantial infrastructure
@@ -49,24 +52,28 @@ Create an optional SaaS starter module for the Riso Copier template that allows 
 - No bloat added to disabled baseline
 
 ✅ **Quality Integration** - PASS
+
 - All generated code integrates with ruff, mypy, pylint, pytest
 - Passes `QUALITY_PROFILE=standard make quality`
 - Python 3.11, 3.12, 3.13 compatibility enforced
 - CI workflows (`riso-quality.yml`, `riso-matrix.yml`) included in generated projects
 
 ✅ **Test-First Development** - PASS
+
 - Template validation tests written first (test rendering logic)
 - Generated applications include comprehensive test suites
 - Unit tests for business logic, integration tests for all services, E2E for critical flows
 - 70% minimum coverage enforced, 95% target for strict profile
 
 ✅ **Documentation Standards** - PASS
+
 - Generated projects include README, quickstart, module docs
 - All documentation auto-generated from Jinja2 templates (`*.md.jinja`)
 - Working code examples for each integration
 - Links to service-specific external documentation
 
 ✅ **Technology Consistency** - PASS
+
 - Template layer uses Python 3.11+ with uv (consistent with Riso baseline)
 - Generated apps use approved tech stack (Node 20 LTS + pnpm when Node track)
 - Quality tools: ruff + mypy + pylint + pytest (no alternatives)
@@ -77,19 +84,20 @@ Create an optional SaaS starter module for the Riso Copier template that allows 
 
 This feature introduces significant complexity that requires justification per Constitution governance:
 
-| Concern | Justification | Mitigation |
-|---------|--------------|------------|
+| Concern                                                | Justification                                                                                                                                                                 | Mitigation                                                                                                                                 |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | 28 technology integrations (14 categories × 2 options) | SaaS applications inherently require auth, billing, database, jobs, email, analytics, AI, storage, observability - cannot be simplified without losing core value proposition | Strict binary choices (max 2 options per category) prevent combinatorial explosion; compatibility validation prevents invalid combinations |
-| 100+ Jinja2 templates across combinations | Each technology requires service-specific integration code (API clients, config, error handling) that cannot be abstracted without sacrificing type safety and DX | Shared template partials for common patterns; integration testing ensures all combinations work |
-| 50+ production dependencies in generated apps | Modern SaaS requires substantial infrastructure (auth SDKs, payment processors, observability agents, ORMs, job queues) - manual integration takes weeks | All dependencies serve specific user requirements from spec; no speculative additions; pinned versions ensure stability |
-| Observability platform bundling (Sentry + Datadog) | Per clarification Q1, users chose comprehensive observability (options D+C+B) requiring multiple platforms for error tracking, APM, and structured logging | OpenTelemetry provides abstraction layer; platforms can be disabled via env vars; documentation shows migration to alternatives |
+| 100+ Jinja2 templates across combinations              | Each technology requires service-specific integration code (API clients, config, error handling) that cannot be abstracted without sacrificing type safety and DX             | Shared template partials for common patterns; integration testing ensures all combinations work                                            |
+| 50+ production dependencies in generated apps          | Modern SaaS requires substantial infrastructure (auth SDKs, payment processors, observability agents, ORMs, job queues) - manual integration takes weeks                      | All dependencies serve specific user requirements from spec; no speculative additions; pinned versions ensure stability                    |
+| Observability platform bundling (Sentry + Datadog)     | Per clarification Q1, users chose comprehensive observability (options D+C+B) requiring multiple platforms for error tracking, APM, and structured logging                    | OpenTelemetry provides abstraction layer; platforms can be disabled via env vars; documentation shows migration to alternatives            |
 
 **Approval**: These complexities are justified because:
+
 1. Feature is optional (baseline unaffected)
-2. Users explicitly opt-in to full-stack SaaS generation
-3. Alternative (manual integration of 14 services) takes 10-100x longer
-4. Success criterion SC-017: "Reduce time to first paying customer by 50%"
-5. All complexity serves measurable user value from specification
+1. Users explicitly opt-in to full-stack SaaS generation
+1. Alternative (manual integration of 14 services) takes 10-100x longer
+1. Success criterion SC-017: "Reduce time to first paying customer by 50%"
+1. All complexity serves measurable user value from specification
 
 ## Project Structure
 
@@ -217,40 +225,45 @@ samples/
 
 > **Filled per Constitution Check violations requiring justification**
 
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| 28 technology integrations | SaaS applications require comprehensive infrastructure (auth, billing, database, jobs, email, analytics, AI, storage, observability, enterprise bridge) - each with 2 vendor options for flexibility | Single-vendor lock-in rejected: users need choice between cost-optimized (Auth.js, Postmark) vs feature-rich (Clerk, Resend) options; spec requirement FR-002 mandates 2 options per category |
-| 100+ Jinja2 templates | Each technology requires service-specific integration code that cannot be abstracted without sacrificing type safety, error handling, and developer experience | Generic abstraction rejected: tried interface-based approach but lost IDE autocomplete, type checking, and service-specific best practices; user feedback prioritizes working examples over DRY principles |
-| 50+ dependencies per generated app | Modern SaaS stack requires substantial SDKs (auth, billing, observability, ORM, runtime frameworks) that cannot be eliminated without requiring manual integration | Manual integration rejected: spec SC-017 requires 50% reduction in time-to-first-customer; benchmarks show manual integration takes 4-8 weeks vs 5 minutes with template |
-| Bundled observability (Sentry + Datadog + OpenTelemetry) | Clarification Q1 answer (D+C+B combination): users chose comprehensive observability requiring multiple platforms for error tracking, APM, metrics, tracing, and structured logging | Minimal logging rejected: production SaaS requires enterprise-grade observability for debugging, performance monitoring, and incident response; users can disable via env vars if needed |
+| Violation                                                | Why Needed                                                                                                                                                                                           | Simpler Alternative Rejected Because                                                                                                                                                                       |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 28 technology integrations                               | SaaS applications require comprehensive infrastructure (auth, billing, database, jobs, email, analytics, AI, storage, observability, enterprise bridge) - each with 2 vendor options for flexibility | Single-vendor lock-in rejected: users need choice between cost-optimized (Auth.js, Postmark) vs feature-rich (Clerk, Resend) options; spec requirement FR-002 mandates 2 options per category              |
+| 100+ Jinja2 templates                                    | Each technology requires service-specific integration code that cannot be abstracted without sacrificing type safety, error handling, and developer experience                                       | Generic abstraction rejected: tried interface-based approach but lost IDE autocomplete, type checking, and service-specific best practices; user feedback prioritizes working examples over DRY principles |
+| 50+ dependencies per generated app                       | Modern SaaS stack requires substantial SDKs (auth, billing, observability, ORM, runtime frameworks) that cannot be eliminated without requiring manual integration                                   | Manual integration rejected: spec SC-017 requires 50% reduction in time-to-first-customer; benchmarks show manual integration takes 4-8 weeks vs 5 minutes with template                                   |
+| Bundled observability (Sentry + Datadog + OpenTelemetry) | Clarification Q1 answer (D+C+B combination): users chose comprehensive observability requiring multiple platforms for error tracking, APM, metrics, tracing, and structured logging                  | Minimal logging rejected: production SaaS requires enterprise-grade observability for debugging, performance monitoring, and incident response; users can disable via env vars if needed                   |
 
-**Approval Rationale**: 
+**Approval Rationale**:
+
 - All complexities serve explicit user requirements from specification
 - Feature is optional - disabled by default, no baseline impact
 - Alternative (manual assembly) measured at 10-100x time investment
 
----
+______________________________________________________________________
 
 ## Security Architecture
 
 ### Defense in Depth
 
 **API Key Validation** (FR-030):
+
 - Build-time format validation using Zod schemas with service-specific regex patterns
 - Runtime validation before first API call with descriptive error messages
 - Validation rules: Stripe (`/^sk_(test|live)_/`), Clerk (`/^pk_|sk_/`), OpenAI (`/^sk-/`), etc.
 
 **Webhook Security** (FR-031):
+
 - Signature verification using service-specific libraries (stripe.webhooks.constructEvent, svix for Clerk)
 - Timestamp validation to prevent replay attacks (reject requests >5 minutes old)
 - Idempotency keys stored in database to prevent duplicate processing
 
 **Secrets Management** (FR-025, FR-032):
+
 - Environment variables encrypted at rest in CI/CD platforms (GitHub Secrets, Vercel)
 - PII redaction in logs using configurable regex patterns (credit cards, emails, tokens)
 - Credential rotation documentation with blue-green rotation support (Edge Cases #9)
 
 **HTTP Security Headers** (FR-033):
+
 ```typescript
 // Security headers template
 {
@@ -264,18 +277,20 @@ samples/
 ```
 
 **Input Validation** (FR-034, FR-037, FR-038):
+
 - Zod schemas for all API inputs with type coercion and sanitization
 - ORM parameterized queries exclusively (Prisma/Drizzle prevent SQL injection by design)
 - Automatic HTML escaping in React/Remix (XSS prevention)
 - CSRF tokens for all mutations (Next.js middleware, Remix action validation)
 
----
+______________________________________________________________________
 
 ## Reliability & Resilience
 
 ### Fault Tolerance Patterns
 
 **Circuit Breakers** (FR-044):
+
 ```typescript
 // Circuit breaker configuration per service
 {
@@ -288,16 +303,19 @@ samples/
 ```
 
 **Retry Logic** (FR-043):
+
 - Exponential backoff: 1s, 2s, 4s delays with jitter (±20%)
 - Idempotent operations only (GET, PUT, DELETE with idempotency keys)
 - Retry on transient errors (429 rate limit, 5xx server errors, network timeouts)
 
 **Graceful Degradation** (FR-042):
+
 - Critical services (auth, database): fail fast with clear errors
 - Non-critical services (analytics, observability): log error and continue
 - Feature flags for disabling problematic integrations in production
 
 **Health Checks** (FR-045):
+
 ```typescript
 // Health check endpoint response
 {
@@ -312,23 +330,26 @@ samples/
 }
 ```
 
----
+______________________________________________________________________
 
 ## Performance Optimization
 
 ### Benchmarking & Estimates (FR-039, FR-040)
 
 **Cold Start Performance**:
+
 - Cloudflare Workers + Drizzle: ~50ms (edge-optimized stack)
 - Vercel Serverless + Prisma: ~300ms (vercel-starter stack)
 - Measurement includes: runtime initialization + ORM connection + first request
 
 **Request Latency (p95)**:
+
 - Edge-optimized: ~100ms (Cloudflare global network)
 - Vercel Starter: ~150ms (multi-region deployment)
 - Database pooling reduces latency by 30-50ms under load
 
 **Cost Estimates at 10k Users** (FR-040):
+
 ```python
 COST_BREAKDOWN = {
     'edge-optimized': {
@@ -366,112 +387,128 @@ COST_BREAKDOWN = {
 ### Resource Limits (FR-041, FR-047)
 
 **Database Connection Pooling**:
+
 - Serverless (Vercel, Cloudflare): 5-10 connections per instance
 - Traditional hosting: 20-50 connections with pgBouncer
 - Prevents exhaustion under burst traffic (SC-032)
 
 **Timeout Configuration**:
+
 - API endpoints: 10s (prevents hung requests)
 - Background jobs: 30s for quick jobs, 300s for migrations
 - Database queries: 5s (log slow queries for optimization)
 
----
+______________________________________________________________________
 
 ## Accessibility Compliance
 
 ### WCAG 2.1 Level AA Requirements (FR-049, SC-027)
 
 **Semantic HTML**:
+
 - All interactive elements use proper ARIA roles and labels
 - Form inputs have associated `<label>` elements
 - Headings follow hierarchical structure (h1 → h2 → h3)
 
 **Keyboard Navigation**:
+
 - All interactive elements accessible via Tab/Shift+Tab
 - Focus indicators visible (2px solid outline, 4.5:1 contrast)
 - Modal dialogs trap focus and restore on close
 - Skip navigation links for screen readers
 
 **Color Contrast**:
+
 - Text: minimum 4.5:1 contrast ratio (WCAG AA)
 - Large text (18pt+): minimum 3:1 contrast ratio
 - UI components: 3:1 contrast ratio for boundaries
 - Automated testing with axe-core in CI (SC-027)
 
 **Screen Reader Compatibility**:
+
 - ARIA labels for dynamic content and complex widgets
 - Live regions (aria-live) for status messages
 - Descriptive alt text for images
 - Tested with NVDA (Windows) and VoiceOver (macOS)
 
----
+______________________________________________________________________
 
 ## Testing Strategy
 
 ### Comprehensive Test Coverage (FR-028, FR-050, FR-051)
 
 **Unit Tests** (70% minimum coverage - SC-025):
+
 - Business logic in isolation (pure functions)
 - ORM model methods
 - Utility functions and helpers
 
 **Integration Tests**:
+
 - Service connectivity: database, auth, billing, jobs, email, AI, storage
 - Webhook handlers: signature verification, event processing, idempotency
 - Cross-service flows: auth → database → billing → email
 
 **End-to-End Tests** (FR-051):
-- Critical user journeys: signup → subscription → payment (SC-026: <3min execution)
+
+- Critical user journeys: signup → subscription → payment (SC-026: \<3min execution)
 - Playwright for browser automation
 - Test data factories with Faker.js for realistic scenarios
 
 **Accessibility Tests** (SC-027):
+
 - axe-core automated scanning in CI
 - 0 violations policy for Level AA compliance
 - Manual testing with keyboard navigation and screen readers
 
----
+______________________________________________________________________
 
 ## Deployment & Operations
 
 ### Zero-Downtime Deployments (FR-053, SC-038)
 
 **Blue-Green Deployment**:
+
 1. Deploy new version to staging environment
-2. Run health checks (database, services, synthetic tests)
-3. Route 10% traffic to new version (canary testing)
-4. Monitor error rates and latency for 5 minutes
-5. If healthy: route 100% traffic; If unhealthy: automatic rollback in <5min
+1. Run health checks (database, services, synthetic tests)
+1. Route 10% traffic to new version (canary testing)
+1. Monitor error rates and latency for 5 minutes
+1. If healthy: route 100% traffic; If unhealthy: automatic rollback in \<5min
 
 **Database Migration Safety** (FR-054, SC-024):
+
 - Migrations validated in CI (no breaking changes, no data loss)
 - Rollback procedures tested automatically
 - Backward-compatible migrations (additive only)
 - Production migrations run during low-traffic windows
 
 **Backup & Recovery** (FR-054):
+
 - Automated daily backups retained for 30 days
 - Point-in-time recovery (PITR) with 1-hour granularity
-- Recovery time objective (RTO): <1 hour
+- Recovery time objective (RTO): \<1 hour
 - Backup verification with monthly restore tests
 
----
+______________________________________________________________________
 
 ## Observability & Monitoring
 
 ### Structured Logging (FR-056, SC-035)
 
 **Correlation IDs**:
+
 - Generated once per request, propagated to all services
 - Included in every log entry, trace span, and error report
 - Format: UUID v4 or nanoid for uniqueness
 
 **Log Levels by Environment**:
+
 - Development: DEBUG (all ORM queries, service calls)
 - Staging: INFO (request summaries, errors)
 - Production: INFO (exclude sensitive PII, redact credentials)
 
 **PII Redaction** (FR-032, SC-040):
+
 ```typescript
 // Redaction patterns
 const REDACT_PATTERNS = [
@@ -485,34 +522,39 @@ const REDACT_PATTERNS = [
 ### Distributed Tracing (FR-029, SC-018)
 
 **OpenTelemetry Instrumentation**:
+
 - Automatic span creation for HTTP requests, database queries, external API calls
 - Custom spans for business logic (process-subscription, send-welcome-email)
 - Trace sampling: 100% in dev, 10% in production (adjustable)
 
 **Metrics Collection**:
+
 - Request throughput, latency (p50, p95, p99), error rates
 - Database query times, connection pool utilization
 - Service-specific metrics: auth success rate, payment conversion, job completion time
 
----
+______________________________________________________________________
 
 ## Documentation Requirements
 
 ### Integration-Specific Docs (FR-021, T122, SC-041)
 
 Each of 28 integrations requires:
+
 1. **Setup Guide**: Account creation, API key generation, environment variables
-2. **API Usage Examples**: Working code snippets for common operations
-3. **Troubleshooting**: Common errors with actionable fixes (e.g., "Invalid API key format" → "Stripe keys start with sk_test_ or sk_live_")
-4. **External Links**: Official docs, SDK references, status pages
+1. **API Usage Examples**: Working code snippets for common operations
+1. **Troubleshooting**: Common errors with actionable fixes (e.g., "Invalid API key format" → "Stripe keys start with sk_test\_ or sk_live\_")
+1. **External Links**: Official docs, SDK references, status pages
 
 ### Compatibility Troubleshooting (SC-041):
+
 - ERROR-level incompatibilities: fix suggestions with copier command examples
 - WARNING-level issues: performance/cost implications, recommended alternatives
 - Migration guides: switching technologies post-generation (US3)
 
----
+______________________________________________________________________
 
 ## Constitution Compliance Summary
+
 - Success criteria SC-011 (90% setup completion) and SC-012 (95% deployment success) require this level of integration
 - Template testing ensures all 26 combinations work correctly

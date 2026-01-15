@@ -1,7 +1,7 @@
 # Tasks: FastAPI API Scaffold
 
-**Feature**: 006-fastapi-api-scaffold  
-**Input**: Design documents from `/specs/006-fastapi-api-scaffold/`  
+**Feature**: 006-fastapi-api-scaffold\
+**Input**: Design documents from `/specs/006-fastapi-api-scaffold/`\
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/
 
 **Tests**: Tests are included as this is a scaffold feature that requires comprehensive test examples per FR-011.
@@ -19,6 +19,7 @@
 ## Path Conventions
 
 Template structure (this repository):
+
 - `template/files/python/api_fastapi/` - FastAPI Jinja2 templates
 - `template/copier.yml` - Template configuration
 - `template/hooks/` - Generation hooks
@@ -26,12 +27,13 @@ Template structure (this repository):
 - `.github/context/` - Extension patterns
 
 Generated project structure (after render):
+
 - `{package_name}/api/` - FastAPI application code
 - `tests/api/` - API tests
 - `pyproject.toml` - Dependencies
 - `.env.example` - Configuration template
 
----
+______________________________________________________________________
 
 ## Phase 1: Setup (Template Infrastructure)
 
@@ -44,7 +46,7 @@ Generated project structure (after render):
 
 **Checkpoint**: Template structure initialized - ready for template file creation
 
----
+______________________________________________________________________
 
 ## Phase 2: Foundational (Core Template Files)
 
@@ -64,7 +66,7 @@ Generated project structure (after render):
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
----
+______________________________________________________________________
 
 ## Phase 3: User Story 1 - Initialize New API Project (Priority: P1) 🎯 MVP
 
@@ -96,7 +98,7 @@ Generated project structure (after render):
 
 **Checkpoint**: User Story 1 complete - can render functional FastAPI app with health checks
 
----
+______________________________________________________________________
 
 ## Phase 4: User Story 2 - Add New API Endpoints (Priority: P2)
 
@@ -106,7 +108,7 @@ Generated project structure (after render):
 
 ### Models for User Story 2
 
-- [ ] T021 [P] [US2] Create template/files/python/api_fastapi/models/requests.py.jinja with ExampleCreateRequest model (name: str with min_length=1, max_length=100; value: int with ge=0; description: Optional[str] with max_length=500; tags: Optional[list[str]] with max_length=10; includes field validators for name whitespace and tag length)
+- [ ] T021 [P] [US2] Create template/files/python/api_fastapi/models/requests.py.jinja with ExampleCreateRequest model (name: str with min_length=1, max_length=100; value: int with ge=0; description: Optional[str] with max_length=500; tags: Optional\[list[str]\] with max_length=10; includes field validators for name whitespace and tag length)
 - [ ] T022 [P] [US2] Create template/files/python/api_fastapi/models/requests.py.jinja with ExampleUpdateRequest model (all fields optional: name, value, description, tags)
 - [ ] T023 [P] [US2] Add ExampleResponse model to template/files/python/api_fastapi/models/responses.py.jinja (id: str, name: str, value: int, description: Optional[str], tags: list[str], created_at: str, updated_at: str)
 
@@ -121,7 +123,7 @@ Generated project structure (after render):
 
 **Checkpoint**: User Story 2 complete - example endpoints demonstrate extensibility pattern
 
----
+______________________________________________________________________
 
 ## Phase 5: User Story 3 - Configure Application Settings (Priority: P3)
 
@@ -146,7 +148,7 @@ Generated project structure (after render):
 
 **Checkpoint**: User Story 3 complete - configuration is flexible and well-documented
 
----
+______________________________________________________________________
 
 ## Phase 6: User Story 4 - Access API Documentation (Priority: P2)
 
@@ -173,7 +175,7 @@ Generated project structure (after render):
 
 **Checkpoint**: User Story 4 complete - comprehensive auto-generated documentation is accessible
 
----
+______________________________________________________________________
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
@@ -211,8 +213,8 @@ Generated project structure (after render):
 ### Validation & Testing
 
 - [ ] T055 Run scripts/render-samples.sh --variant api-python to generate sample with FastAPI enabled
-- [ ] T056 Validate rendered sample: cd samples/api-python/render && uv sync --extra api && uv run uvicorn {package_name}.api.main:app (verify starts in <3s)
-- [ ] T057 Test health endpoints: curl http://localhost:8000/health/ (verify response in <100ms)
+- [ ] T056 Validate rendered sample: cd samples/api-python/render && uv sync --extra api && uv run uvicorn {package_name}.api.main:app (verify starts in \<3s)
+- [ ] T057 Test health endpoints: curl http://localhost:8000/health/ (verify response in \<100ms)
 - [ ] T058 Test example endpoints: curl -X POST http://localhost:8000/examples/ -H "Content-Type: application/json" -d '{"name":"Test","value":42}' (verify 201 response)
 - [ ] T059 Test documentation: open http://localhost:8000/docs (verify all endpoints listed, try interactive testing)
 - [ ] T060 Run quality checks: cd samples/api-python/render && QUALITY_PROFILE=standard uv run task quality (verify all pass)
@@ -223,7 +225,7 @@ Generated project structure (after render):
 
 **Checkpoint**: All polish tasks complete - feature ready for integration
 
----
+______________________________________________________________________
 
 ## Dependencies & Execution Order
 
@@ -247,42 +249,49 @@ Generated project structure (after render):
 ### Within Each User Story
 
 1. Models before routes (data structures needed for handlers)
-2. Routes before tests (implementation before verification)
-3. Core functionality before documentation
-4. Story complete before moving to next priority
+1. Routes before tests (implementation before verification)
+1. Core functionality before documentation
+1. Story complete before moving to next priority
 
 ### Parallel Opportunities
 
 **Phase 1 (Setup) - Parallel Tasks**:
+
 - T002 (init files), T003 (copier.yml), T004 (prompts) can run in parallel
 
 **Phase 2 (Foundational) - Parallel Tasks**:
+
 - T007 (responses.py), T008 (middleware init), T009 (CORS), T010 (errors) can run in parallel after T005/T006
 - T012 (pyproject.toml), T013 (hooks) can run in parallel
 
 **Phase 3 (US1) - Parallel Tasks**:
+
 - T014 (HealthResponse), T015 (routes init) can run in parallel
 - T018 (test init), T019 (test_health), T020 (.env.example) can run in parallel after T016/T017
 
 **Phase 4 (US2) - Parallel Tasks**:
+
 - T021, T022, T023 (all models) can run in parallel
 - T026 (tests) can run after T024/T025
 
 **Phase 5 (US3) - Parallel Tasks**:
+
 - T029, T030 (documentation) can run in parallel
 
 **Phase 6 (US4) - Parallel Tasks**:
+
 - T034, T035, T036, T037 (all docstring updates) can run in parallel
 - T038, T039 (documentation) can run in parallel
 
 **Phase 7 (Polish) - Parallel Tasks**:
+
 - T041, T042, T043, T044 (all documentation) can run in parallel
 - T045, T046 (container files) can run in parallel
 - T047, T048, T049 (quality configs) can run in parallel
 - T050, T051, T052 (sample files) can run in parallel
 - T053, T054 (module tracking) can run in parallel
 
----
+______________________________________________________________________
 
 ## Parallel Example: User Story 1
 
@@ -305,30 +314,30 @@ Task T019: "Create test_health.py"
 Task T020: "Create .env.example"
 ```
 
----
+______________________________________________________________________
 
 ## Implementation Strategy
 
 ### MVP First (User Story 1 Only)
 
 1. Complete Phase 1: Setup (T001-T004)
-2. Complete Phase 2: Foundational (T005-T013) **CRITICAL BLOCKER**
-3. Complete Phase 3: User Story 1 (T014-T020)
-4. **STOP and VALIDATE**: 
+1. Complete Phase 2: Foundational (T005-T013) **CRITICAL BLOCKER**
+1. Complete Phase 3: User Story 1 (T014-T020)
+1. **STOP and VALIDATE**:
    - Render sample: `./scripts/render-samples.sh --variant api-python`
    - Start server: `uv run uvicorn {package_name}.api.main:app`
    - Test health: `curl http://localhost:8000/health/`
    - Run tests: `uv run pytest tests/api/`
-5. **MVP COMPLETE**: Working FastAPI scaffold with health checks
+1. **MVP COMPLETE**: Working FastAPI scaffold with health checks
 
 ### Incremental Delivery
 
 1. **Foundation** (T001-T013) → Template structure ready
-2. **+User Story 1** (T014-T020) → Working API with health checks (MVP! 🎯)
-3. **+User Story 2** (T021-T026) → Extensibility with example CRUD
-4. **+User Story 3** (T027-T032) → Flexible configuration
-5. **+User Story 4** (T033-T040) → Comprehensive documentation
-6. **+Polish** (T041-T064) → Production-ready feature
+1. **+User Story 1** (T014-T020) → Working API with health checks (MVP! 🎯)
+1. **+User Story 2** (T021-T026) → Extensibility with example CRUD
+1. **+User Story 3** (T027-T032) → Flexible configuration
+1. **+User Story 4** (T033-T040) → Comprehensive documentation
+1. **+Polish** (T041-T064) → Production-ready feature
 
 Each increment adds value without breaking previous functionality.
 
@@ -341,23 +350,23 @@ With multiple developers (after Foundational phase):
 - **Developer C**: After US1 completes → User Story 2 (T021-T026)
 - **Developer D**: After US1+US2 complete → User Story 4 (T033-T040)
 
----
+______________________________________________________________________
 
 ## Success Criteria Validation
 
 Map tasks to success criteria from spec.md:
 
-- **SC-001** (Render in <2 min): Validated by T055, T056
+- **SC-001** (Render in \<2 min): Validated by T055, T056
 - **SC-002** (Pass quality checks): Validated by T060
 - **SC-003** (Auto documentation): Validated by T059
-- **SC-004** (Add endpoint <5 min): Validated by T024 example pattern
-- **SC-005** (Startup <3s): Validated by T056
+- **SC-004** (Add endpoint \<5 min): Validated by T024 example pattern
+- **SC-005** (Startup \<3s): Validated by T056
 - **SC-006** (Example endpoints work): Validated by T058
-- **SC-007** (Health <100ms): Validated by T057
+- **SC-007** (Health \<100ms): Validated by T057
 - **SC-008** (≥80% coverage): Validated by T061
 - **SC-009** (100 concurrent requests): Validated by T062
 
----
+______________________________________________________________________
 
 ## Task Summary
 
@@ -373,7 +382,7 @@ Map tasks to success criteria from spec.md:
 **Parallel Opportunities**: 32 tasks marked [P] can run in parallel with other tasks
 **MVP Scope**: Phases 1-3 (Tasks T001-T020) = 20 tasks for working API
 
----
+______________________________________________________________________
 
 ## Notes
 

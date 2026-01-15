@@ -1,7 +1,7 @@
 # Specification Quality Checklist: GitHub Actions CI/CD Workflows
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: 2025-10-30  
+**Created**: 2025-10-30\
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality

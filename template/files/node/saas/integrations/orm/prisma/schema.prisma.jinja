@@ -54,6 +54,9 @@ model User {
   subscriptions Subscription[]
   apiKeys       ApiKey[]
   auditLogs     AuditLog[]
+  {% if saas_api_access == 'public-api' %}
+  webhookEndpoints WebhookEndpoint[]
+  {% endif %}
   
   // Notifications
   {% if saas_notifications != "none" %}
@@ -149,6 +152,9 @@ model Organization {
   subscription Subscription?
   apiKeys      ApiKey[]
   auditLogs    AuditLog[]
+  {% if saas_api_access == 'public-api' %}
+  webhookEndpoints WebhookEndpoint[]
+  {% endif %}
   {% if saas_enterprise_bridge == "workos" %}
   workosOrganizationId String? @unique @map("workos_organization_id")
   {% endif %}
@@ -423,6 +429,92 @@ model ApiKey {
   @@index([revokedAt])
   @@map("api_keys")
 }
+
+{% if saas_api_access == 'public-api' %}
+// ============================================================================
+// Outgoing Webhooks
+// ============================================================================
+
+model WebhookEndpoint {
+  id             String   @id @default(cuid())
+  
+  // Ownership
+  userId         String?  @map("user_id")
+  organizationId String?  @map("organization_id")
+  
+  // Endpoint configuration
+  url            String   @db.VarChar(2048)
+  secret         String   // HMAC signing secret (encrypted)
+  
+  // Events to subscribe to
+  events         String[] @default([]) // subscription.created, user.updated, etc.
+  
+  // Status
+  isActive       Boolean  @default(true) @map("is_active")
+  
+  // Failure tracking
+  failureCount   Int      @default(0) @map("failure_count")
+  lastFailedAt   DateTime? @map("last_failed_at")
+  lastSuccessAt  DateTime? @map("last_success_at")
+  disabledAt     DateTime? @map("disabled_at") // Auto-disabled after too many failures
+  disabledReason String?  @map("disabled_reason")
+  
+  // Relationships
+  user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deliveries   WebhookDelivery[]
+  
+  // Metadata
+  description  String?  @db.Text
+  metadata     Json?    @default("{}")
+  
+  // Timestamps
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  
+  @@index([userId])
+  @@index([organizationId])
+  @@index([isActive])
+  @@map("webhook_endpoints")
+}
+
+model WebhookDelivery {
+  id             String   @id @default(cuid())
+  
+  // Relationship
+  endpointId     String   @map("endpoint_id")
+  endpoint       WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  
+  // Event details
+  eventType      String   @map("event_type")
+  payload        Json
+  
+  // Delivery status
+  status         String   @default("pending") // pending, success, failed, retrying
+  attempts       Int      @default(0)
+  
+  // Response details
+  statusCode     Int?     @map("status_code")
+  responseBody   String?  @map("response_body") @db.Text
+  responseTimeMs Int?     @map("response_time_ms")
+  
+  // Error tracking
+  errorMessage   String?  @map("error_message") @db.Text
+  
+  // Retry info
+  nextRetryAt    DateTime? @map("next_retry_at")
+  
+  // Timestamps
+  createdAt      DateTime @default(now()) @map("created_at")
+  deliveredAt    DateTime? @map("delivered_at")
+  
+  @@index([endpointId])
+  @@index([status])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("webhook_deliveries")
+}
+{% endif %}
 
 // ============================================================================
 // Audit Logging & Compliance

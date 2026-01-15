@@ -41,18 +41,18 @@ copier copy gh:wyattowalsh/riso my-project
 
 ## Module Reference
 
-| Module | Prompt Key | Options | Description |
-|--------|-----------|---------|-------------|
-| **Layout** | `project_layout` | single-package, monorepo | Repository structure |
-| **Quality** | `quality_profile` | standard, strict | Linting strictness |
-| **CLI** | `cli_module` | disabled, enabled | Typer CLI scaffolding |
-| **API** | `api_tracks` | none, python, node, python+node | FastAPI/Fastify services |
-| **GraphQL** | `graphql_api_module` | disabled, enabled | Strawberry GraphQL |
-| **WebSocket** | `websocket_module` | disabled, enabled | Real-time communication |
-| **MCP** | `mcp_module` | disabled, enabled | Model Context Protocol |
-| **Docs** | `docs_site` | fumadocs, sphinx-shibuya, docusaurus, none | Documentation site |
-| **Changelog** | `changelog_module` | disabled, enabled | Semantic release |
-| **SaaS** | `saas_starter_module` | disabled, enabled | Full SaaS boilerplate |
+| Module        | Prompt Key            | Options                                    | Description              |
+| ------------- | --------------------- | ------------------------------------------ | ------------------------ |
+| **Layout**    | `project_layout`      | single-package, monorepo                   | Repository structure     |
+| **Quality**   | `quality_profile`     | standard, strict                           | Linting strictness       |
+| **CLI**       | `cli_module`          | disabled, enabled                          | Typer CLI scaffolding    |
+| **API**       | `api_tracks`          | none, python, node, python+node            | FastAPI/Fastify services |
+| **GraphQL**   | `graphql_api_module`  | disabled, enabled                          | Strawberry GraphQL       |
+| **WebSocket** | `websocket_module`    | disabled, enabled                          | Real-time communication  |
+| **MCP**       | `mcp_module`          | disabled, enabled                          | Model Context Protocol   |
+| **Docs**      | `docs_site`           | fumadocs, sphinx-shibuya, docusaurus, none | Documentation site       |
+| **Changelog** | `changelog_module`    | disabled, enabled                          | Semantic release         |
+| **SaaS**      | `saas_starter_module` | disabled, enabled                          | Full SaaS boilerplate    |
 
 ## Template Matrix Snapshot
 
@@ -62,6 +62,7 @@ Riso ships a consolidated matrix of prompt defaults and sample variants in
 configurator to keep templating options in sync.
 
 Regenerate locally:
+
 ```bash
 uv run python scripts/ci/render_matrix.py
 uv run python scripts/ci/generate_matrix_data.py
@@ -81,6 +82,7 @@ Pre-configured samples are available in `samples/`:
 ## Testing
 
 Run the test suite:
+
 ```bash
 # Run all tests
 uv run pytest
@@ -127,11 +129,11 @@ See [TESTING.md](TESTING.md) for full documentation.
 Contributions are welcome! Please read our contributing guidelines:
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Make your changes
-4. Run quality checks: `make quality` or `uv run task quality`
-5. Commit with conventional commits: `feat: add amazing feature`
-6. Push and open a Pull Request
+1. Create a feature branch: `git checkout -b feature/amazing-feature`
+1. Make your changes
+1. Run quality checks: `make quality` or `uv run task quality`
+1. Commit with conventional commits: `feat: add amazing feature`
+1. Push and open a Pull Request
 
 ## License
 

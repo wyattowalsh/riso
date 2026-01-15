@@ -11,7 +11,7 @@
 - **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
 - Include exact file paths in descriptions
 
----
+______________________________________________________________________
 
 ## Phase 1: Setup (Shared Infrastructure)
 
@@ -24,7 +24,7 @@
 - [ ] T005 [P] Create shared documentation templates in `template/files/mcp/shared/`: README.md.jinja, CONTRIBUTING.md.jinja
 - [ ] T006 Update AGENTS.md with MCP technologies: FastMCP, @modelcontextprotocol/sdk, MCP Inspector, STDIO/HTTP transports
 
----
+______________________________________________________________________
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
@@ -51,11 +51,11 @@
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
----
+______________________________________________________________________
 
 ## Phase 3: User Story 1 - Bootstrap Python MCP Server (Priority: P1) 🎯 MVP
 
-**Goal**: Enable Python developers to scaffold a complete MCP server with example tool/resource/prompt implementations, achieving working server in <5 minutes
+**Goal**: Enable Python developers to scaffold a complete MCP server with example tool/resource/prompt implementations, achieving working server in \<5 minutes
 
 **Independent Test**: Run `copier copy` with Python settings, execute `uv sync && uv run python -m mcp_server`, connect with MCP Inspector, and successfully call echo tool
 
@@ -81,15 +81,15 @@
 - [ ] T040 [US1] Create Python Makefile with dev/test/run targets in `template/files/mcp/python/Makefile.jinja`
 - [ ] T041 [US1] Add validation script for Python scaffold in `scripts/ci/validate_mcp_python.py`
 - [ ] T042 [US1] Create Python sample render in `samples/mcp-servers/python-stdio/`
-- [ ] T043 [US1] Validate Python scaffold meets SC-001 (bootstrap <5 min), SC-003 (quality checks pass), SC-004 (>80% coverage)
+- [ ] T043 [US1] Validate Python scaffold meets SC-001 (bootstrap \<5 min), SC-003 (quality checks pass), SC-004 (>80% coverage)
 
 **Checkpoint**: At this point, User Story 1 should be fully functional - Python developers can scaffold and run MCP servers
 
----
+______________________________________________________________________
 
 ## Phase 4: User Story 2 - Bootstrap TypeScript MCP Server (Priority: P1)
 
-**Goal**: Enable TypeScript/Node.js developers to scaffold a complete MCP server with type safety and modern ESM syntax, achieving working server in <5 minutes
+**Goal**: Enable TypeScript/Node.js developers to scaffold a complete MCP server with type safety and modern ESM syntax, achieving working server in \<5 minutes
 
 **Independent Test**: Run `copier copy` with TypeScript settings, execute `pnpm install && pnpm build && pnpm start`, connect with MCP Inspector, verify types and autocomplete
 
@@ -119,11 +119,11 @@
 - [ ] T065 [US2] Add npm scripts (dev, build, test, lint) to package.json template
 - [ ] T066 [US2] Add validation script for TypeScript scaffold in `scripts/ci/validate_mcp_typescript.py`
 - [ ] T067 [US2] Create TypeScript sample render in `samples/mcp-servers/typescript-stdio/`
-- [ ] T068 [US2] Validate TypeScript scaffold meets SC-002 (bootstrap <5 min), SC-003 (quality checks pass), SC-004 (>80% coverage)
+- [ ] T068 [US2] Validate TypeScript scaffold meets SC-002 (bootstrap \<5 min), SC-003 (quality checks pass), SC-004 (>80% coverage)
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently - both Python and TypeScript developers can scaffold MCP servers
 
----
+______________________________________________________________________
 
 ## Phase 5: User Story 3 - Production-Ready Configuration (Priority: P2)
 
@@ -157,7 +157,7 @@
 
 **Checkpoint**: At this point, all three user stories should work independently - scaffolds are production-ready with observability
 
----
+______________________________________________________________________
 
 ## Phase 6: User Story 4 - Comprehensive Documentation (Priority: P2)
 
@@ -184,11 +184,11 @@
 - [ ] T104 [US4] Create best practices guide in `template/files/mcp/shared/docs/best-practices.md.jinja`
 - [ ] T105 [US4] Add API reference to Python README linking to contracts/python-mcp-api.md
 - [ ] T106 [US4] Add API reference to TypeScript README linking to contracts/typescript-mcp-api.md
-- [ ] T107 [US4] Validate documentation meets SC-006 (custom tool in <15 min)
+- [ ] T107 [US4] Validate documentation meets SC-006 (custom tool in \<15 min)
 
 **Checkpoint**: Documentation enables rapid developer onboarding - all examples work as documented
 
----
+______________________________________________________________________
 
 ## Phase 7: User Story 5 - Advanced MCP Features (Priority: P3)
 
@@ -214,7 +214,7 @@
 
 **Checkpoint**: Advanced features documented with working examples - enables sophisticated MCP server implementations
 
----
+______________________________________________________________________
 
 ## Phase 8: User Story 6 - Multiple Transport Support (Priority: P3)
 
@@ -244,7 +244,7 @@
 
 **Checkpoint**: All six user stories complete - full-featured MCP server scaffolds with both transport options
 
----
+______________________________________________________________________
 
 ## Phase 9: Polish & Cross-Cutting Concerns
 
@@ -268,11 +268,11 @@
 - [ ] T153 Verify SC-001 through SC-012 success criteria on rendered samples
 - [ ] T154 Run quickstart.md validation per contracts
 - [ ] T155 Performance testing: Validate SC-007 (100 concurrent requests)
-- [ ] T156 Performance testing: Validate bootstrap time SC-001/SC-002 (<5 min)
+- [ ] T156 Performance testing: Validate bootstrap time SC-001/SC-002 (\<5 min)
 - [ ] T157 Update NEXT_FEATURES.md removing 013-mcp-servers
 - [ ] T158 Final documentation review and polish
 
----
+______________________________________________________________________
 
 ## Dependencies & Execution Order
 
@@ -292,6 +292,7 @@
 ### User Story Independence
 
 Each user story (except US4 which documents others) can be:
+
 - Implemented independently after Foundational phase completes
 - Tested independently with its own acceptance criteria
 - Deployed independently as an MVP increment
@@ -315,7 +316,7 @@ Each user story (except US4 which documents others) can be:
 - Within each story, all tasks marked [P] can run in parallel
 - Different user stories can be worked on in parallel by different team members
 
----
+______________________________________________________________________
 
 ## Parallel Example: User Story 1 (Python Bootstrap)
 
@@ -344,7 +345,7 @@ Task T034: "Unit tests for Python resources"
 Task T035: "Unit tests for Python prompts"
 ```
 
----
+______________________________________________________________________
 
 ## Parallel Example: After Foundational Phase Completes
 
@@ -359,29 +360,29 @@ Developer B: User Story 2 (TypeScript)
 Developer C: User Story 6 (HTTP Transport for both) - Tasks T121-T137
 ```
 
----
+______________________________________________________________________
 
 ## Implementation Strategy
 
 ### MVP First (User Stories 1 & 2 Only)
 
 1. Complete Phase 1: Setup (T001-T006)
-2. Complete Phase 2: Foundational (T007-T022) - **CRITICAL GATE**
-3. Complete Phase 3: User Story 1 - Python Bootstrap (T023-T043)
-4. Complete Phase 4: User Story 2 - TypeScript Bootstrap (T044-T068)
-5. **STOP and VALIDATE**: Test both scaffolds independently, deploy/demo if ready
+1. Complete Phase 2: Foundational (T007-T022) - **CRITICAL GATE**
+1. Complete Phase 3: User Story 1 - Python Bootstrap (T023-T043)
+1. Complete Phase 4: User Story 2 - TypeScript Bootstrap (T044-T068)
+1. **STOP and VALIDATE**: Test both scaffolds independently, deploy/demo if ready
 
-This delivers a working MVP: developers can scaffold both Python and TypeScript MCP servers in <5 minutes.
+This delivers a working MVP: developers can scaffold both Python and TypeScript MCP servers in \<5 minutes.
 
 ### Incremental Delivery
 
 1. **Foundation** (Setup + Foundational) → Core infrastructure ready
-2. **MVP Release** (US1 + US2) → Basic scaffolds work, both languages supported
-3. **Production Release** (+ US3) → Add config/logging/error handling for production deployments
-4. **Documentation Release** (+ US4) → Comprehensive guides reduce onboarding time
-5. **Advanced Release** (+ US5) → Sophisticated features for complex use cases
-6. **Cloud Release** (+ US6) → HTTP transport enables cloud deployments
-7. **Polish** (Phase 9) → Final validation and CI integration
+1. **MVP Release** (US1 + US2) → Basic scaffolds work, both languages supported
+1. **Production Release** (+ US3) → Add config/logging/error handling for production deployments
+1. **Documentation Release** (+ US4) → Comprehensive guides reduce onboarding time
+1. **Advanced Release** (+ US5) → Sophisticated features for complex use cases
+1. **Cloud Release** (+ US6) → HTTP transport enables cloud deployments
+1. **Polish** (Phase 9) → Final validation and CI integration
 
 Each increment adds value without breaking previous functionality.
 
@@ -395,26 +396,26 @@ With multiple developers after Foundational phase completes:
 
 Stories are designed to minimize conflicts and enable independent progress.
 
----
+______________________________________________________________________
 
 ## Success Criteria Validation Checklist
 
 After implementation, verify all success criteria from spec.md:
 
-- [ ] SC-001: Python bootstrap <5 minutes (measure T001-T043 end-to-end)
-- [ ] SC-002: TypeScript bootstrap <5 minutes (measure T001-T006 + T007-T022 + T044-T068)
+- [ ] SC-001: Python bootstrap \<5 minutes (measure T001-T043 end-to-end)
+- [ ] SC-002: TypeScript bootstrap \<5 minutes (measure T001-T006 + T007-T022 + T044-T068)
 - [ ] SC-003: Quality checks pass without modification (run ruff/mypy/pylint on Python, eslint/tsc on TypeScript)
 - [ ] SC-004: Test coverage >80% (run pytest --cov for Python, vitest --coverage for TypeScript)
 - [ ] SC-005: Claude Desktop integration works (test echo tool invocation)
-- [ ] SC-006: Custom tool implementation <15 minutes (follow documentation from US4)
+- [ ] SC-006: Custom tool implementation \<15 minutes (follow documentation from US4)
 - [ ] SC-007: Handle 100 concurrent requests (load test with T155)
 - [ ] SC-008: Transport switch config-only (validate with T137)
 - [ ] SC-009: Graceful edge case handling (test disconnection, malformed requests, resource exhaustion)
-- [ ] SC-010: CI validation <3 minutes (measure T148 workflow time)
+- [ ] SC-010: CI validation \<3 minutes (measure T148 workflow time)
 - [ ] SC-011: Seamless riso integration (validate quality suite and workflows work)
 - [ ] SC-012: >90% developer success rate (post-generation survey after release)
 
----
+______________________________________________________________________
 
 ## Notes
 
@@ -429,11 +430,12 @@ After implementation, verify all success criteria from spec.md:
 - **Testing**: All scaffolds must pass quality checks and achieve >80% coverage
 - **Validation**: Use MCP Inspector and Claude Desktop for end-to-end testing
 
----
+______________________________________________________________________
 
 ## Total Task Count: 158 tasks
 
 **By Phase**:
+
 - Phase 1 (Setup): 6 tasks
 - Phase 2 (Foundational): 16 tasks
 - Phase 3 (US1 - Python): 21 tasks
@@ -445,6 +447,7 @@ After implementation, verify all success criteria from spec.md:
 - Phase 9 (Polish): 21 tasks
 
 **By User Story**:
+
 - US1 (Python Bootstrap): 21 tasks
 - US2 (TypeScript Bootstrap): 25 tasks
 - US3 (Production Config): 21 tasks
@@ -453,10 +456,11 @@ After implementation, verify all success criteria from spec.md:
 - US6 (HTTP Transport): 17 tasks
 
 **Parallelization**:
+
 - 58 tasks marked [P] for parallel execution
 - User Stories 1 & 2 can proceed in parallel after Foundational
 - User Stories 3, 5, 6 can start in parallel after US1 & US2
 - Within each story, multiple [P] tasks enable concurrent work
 
 **Suggested MVP Scope**: Phases 1-4 (Setup + Foundational + US1 + US2) = 68 tasks
-This delivers both Python and TypeScript scaffolds with basic functionality in <5 minutes bootstrap time.
+This delivers both Python and TypeScript scaffolds with basic functionality in \<5 minutes bootstrap time.

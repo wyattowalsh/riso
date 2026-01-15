@@ -1,6 +1,6 @@
 # Implementation Plan: Riso Template Foundation
 
-**Branch**: `001-build-riso-template` | **Date**: 2025-10-29 | **Spec**: [.specify/specs/001-build-riso-template/spec.md](.specify/specs/001-build-riso-template/spec.md) *(symlinked at `specs/001-build-riso-template/spec.md`)*  
+**Branch**: `001-build-riso-template` | **Date**: 2025-10-29 | **Spec**: [.specify/specs/001-build-riso-template/spec.md](.specify/specs/001-build-riso-template/spec.md) *(symlinked at `specs/001-build-riso-template/spec.md`)*\
 **Input**: Feature specification from `/.specify/specs/001-build-riso-template/spec.md`
 
 ## Summary
@@ -9,14 +9,14 @@ Deliver a copier-driven GitHub template that defaults to a lightweight Python 3.
 
 ## Technical Context
 
-**Language/Version**: Python 3.11 via uv; Node.js 20 LTS with TypeScript 5.x  
-**Primary Dependencies**: uv, pytest, jupyter, nbclient, ruff, mypy, pylint, tenacity, pydantic, pydantic-settings, loguru, typer, fastapi, FastMCP>=2.0.0, sphinx with Shibuya theme, pnpm, TypeScript, Vitest, Playwright, Fumadocs/Next.js  
-**Storage**: N/A (template emits storage-ready interfaces only)  
-**Testing**: uv-run pytest + lint suite, notebook smoke checks via nbclient, Vitest + Playwright for TypeScript modules, automated render smoke scripts per sample  
-**Target Platform**: GitHub-hosted macOS/Linux/Windows runners and local developer environments on macOS, Linux, Windows  
-**Project Type**: Copier template producing configurable single-package or monorepo repositories spanning Python and Node workspaces  
-**Performance Goals**: Baseline render (defaults) including quickstart tests completes <10 minutes; optional permutations matrix <15 minutes; deterministic renders across operating systems  
-**Constraints**: Hooks avoid network calls, optional modules gated by prompts, governance automation must enforce constitutional gates, samples regenerated on every change  
+**Language/Version**: Python 3.11 via uv; Node.js 20 LTS with TypeScript 5.x\
+**Primary Dependencies**: uv, pytest, jupyter, nbclient, ruff, mypy, pylint, tenacity, pydantic, pydantic-settings, loguru, typer, fastapi, FastMCP>=2.0.0, sphinx with Shibuya theme, pnpm, TypeScript, Vitest, Playwright, Fumadocs/Next.js\
+**Storage**: N/A (template emits storage-ready interfaces only)\
+**Testing**: uv-run pytest + lint suite, notebook smoke checks via nbclient, Vitest + Playwright for TypeScript modules, automated render smoke scripts per sample\
+**Target Platform**: GitHub-hosted macOS/Linux/Windows runners and local developer environments on macOS, Linux, Windows\
+**Project Type**: Copier template producing configurable single-package or monorepo repositories spanning Python and Node workspaces\
+**Performance Goals**: Baseline render (defaults) including quickstart tests completes \<10 minutes; optional permutations matrix \<15 minutes; deterministic renders across operating systems\
+**Constraints**: Hooks avoid network calls, optional modules gated by prompts, governance automation must enforce constitutional gates, samples regenerated on every change\
 **Scale/Scope**: Up to five concurrent optional modules, four curated sample variants, downstream teams spanning single-package and monorepo layouts
 
 ## Constitution Check

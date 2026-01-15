@@ -39,7 +39,7 @@ const server = new Server(
 - Capabilities declared at initialization
 - Server instance is singleton per process
 
----
+______________________________________________________________________
 
 ## Tool Registration
 
@@ -154,7 +154,7 @@ if (name === "fetch_url") {
 - Return structured content (text, image, resource reference)
 - Log errors server-side, return sanitized messages
 
----
+______________________________________________________________________
 
 ## Resource Registration
 
@@ -261,7 +261,7 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
 - Return appropriate mime type for content
 - Handle errors gracefully (don't leak system paths)
 
----
+______________________________________________________________________
 
 ## Prompt Registration
 
@@ -327,7 +327,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 - Roles: `"system"`, `"user"`, `"assistant"`
 - Content: structured object with type and text/data fields
 
----
+______________________________________________________________________
 
 ## Error Handling
 
@@ -381,7 +381,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 - Uncaught errors converted to InternalError automatically
 - Production: Never send stack traces to client (log only)
 
----
+______________________________________________________________________
 
 ## Configuration
 
@@ -465,7 +465,7 @@ async function loadConfig(configPath: string = "config.json"): Promise<ServerCon
 - JSON syntax: valid JSON file required
 - Validation: Server fails fast on startup if invalid
 
----
+______________________________________________________________________
 
 ## Transport
 
@@ -523,7 +523,7 @@ app.listen(8000, "0.0.0.0", () => {
 - CORS: Configure via Express middleware
 - Auth: Middleware for Bearer tokens/API keys
 
----
+______________________________________________________________________
 
 ## Logging
 
@@ -582,7 +582,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 - Development: debug level, human-readable format
 - Required fields: timestamp, level, message, correlation_id (if applicable)
 
----
+______________________________________________________________________
 
 ## Testing
 
@@ -637,7 +637,7 @@ describe("MCP Server", () => {
 - Test handler logic in isolation (no transport layer)
 - Integration tests use real STDIO pipes or HTTP requests
 
----
+______________________________________________________________________
 
 ## Lifecycle Hooks
 
@@ -679,7 +679,7 @@ start().catch((error) => {
 - Both hooks optional
 - Exceptions in hooks are logged but don't prevent shutdown
 
----
+______________________________________________________________________
 
 ## Performance Requirements
 
@@ -694,7 +694,7 @@ From specification and clarifications:
 **Size Limits**:
 
 - Response size: 100MB maximum (configurable via `maxResponseSizeMb`)
-- Memory: <100MB per in-flight request
+- Memory: \<100MB per in-flight request
 
 **Concurrency**:
 
@@ -705,7 +705,7 @@ From specification and clarifications:
 
 - Server ready within 5 seconds of launch
 
----
+______________________________________________________________________
 
 ## Example Complete Server
 

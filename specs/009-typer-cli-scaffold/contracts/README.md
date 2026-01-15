@@ -14,9 +14,9 @@ This directory contains interface contracts for the robust CLI scaffold. Since C
 These contracts are enforced through:
 
 1. **Base classes** - Commands inherit from base command class
-2. **Type hints** - MyPy validates adherence to protocols
-3. **Runtime checks** - Plugin loader validates interface compliance
-4. **Tests** - Contract tests verify implementations match interfaces
+1. **Type hints** - MyPy validates adherence to protocols
+1. **Runtime checks** - Plugin loader validates interface compliance
+1. **Tests** - Contract tests verify implementations match interfaces
 
 ## Usage in Templates
 

@@ -1,9 +1,9 @@
 # Feature Specification: Changelog & Release Management
 
-**Feature Branch**: `014-changelog-release-management`  
-**Created**: 2025-11-02  
-**Status**: Draft  
-**Input**: User description: "Conventional commits enforcement, automatic changelog generation (semantic-release). Features: semantic versioning automation, GitHub Releases, breaking change detection, migration guides. Release artifact publishing (PyPI, npm, Docker Hub). Note: Release process completes in <10 minutes target"
+**Feature Branch**: `014-changelog-release-management`\
+**Created**: 2025-11-02\
+**Status**: Draft\
+**Input**: User description: "Conventional commits enforcement, automatic changelog generation (semantic-release). Features: semantic versioning automation, GitHub Releases, breaking change detection, migration guides. Release artifact publishing (PyPI, npm, Docker Hub). Note: Release process completes in \<10 minutes target"
 
 ## Clarifications
 
@@ -25,10 +25,10 @@ Developers commit code changes following a standardized commit message format. T
 **Acceptance Scenarios**:
 
 1. **Given** a developer attempts to commit code, **When** the commit message follows conventional format (e.g., "feat: add user login"), **Then** the commit is accepted
-2. **Given** a developer attempts to commit code, **When** the commit message does not follow format (e.g., "fixed stuff"), **Then** the commit is rejected with helpful error message explaining the format
-3. **Given** a developer uses a Git GUI or CLI, **When** committing, **Then** they receive immediate feedback on commit message validity
+1. **Given** a developer attempts to commit code, **When** the commit message does not follow format (e.g., "fixed stuff"), **Then** the commit is rejected with helpful error message explaining the format
+1. **Given** a developer uses a Git GUI or CLI, **When** committing, **Then** they receive immediate feedback on commit message validity
 
----
+______________________________________________________________________
 
 ### User Story 2 - Automatic Changelog Generation (Priority: P1)
 
@@ -41,11 +41,11 @@ When a release is triggered, the system automatically generates a human-readable
 **Acceptance Scenarios**:
 
 1. **Given** commits exist with types `feat`, `fix`, and `chore`, **When** changelog is generated, **Then** features and fixes appear in separate sections, chores are excluded
-2. **Given** a commit with `BREAKING CHANGE` footer, **When** changelog is generated, **Then** breaking changes are prominently highlighted in a dedicated section
-3. **Given** commits reference pull request numbers, **When** changelog is generated, **Then** links to those PRs are included
-4. **Given** commits span multiple versions, **When** generating changelog for a specific version, **Then** only commits since the previous version are included
+1. **Given** a commit with `BREAKING CHANGE` footer, **When** changelog is generated, **Then** breaking changes are prominently highlighted in a dedicated section
+1. **Given** commits reference pull request numbers, **When** changelog is generated, **Then** links to those PRs are included
+1. **Given** commits span multiple versions, **When** generating changelog for a specific version, **Then** only commits since the previous version are included
 
----
+______________________________________________________________________
 
 ### User Story 3 - Semantic Version Automation (Priority: P1)
 
@@ -58,11 +58,11 @@ The system automatically determines the next version number based on commit type
 **Acceptance Scenarios**:
 
 1. **Given** only `fix` commits since last release, **When** calculating next version, **Then** PATCH version increments (e.g., 1.2.3 → 1.2.4)
-2. **Given** at least one `feat` commit since last release, **When** calculating next version, **Then** MINOR version increments and PATCH resets (e.g., 1.2.3 → 1.3.0)
-3. **Given** at least one breaking change commit, **When** calculating next version, **Then** MAJOR version increments and MINOR/PATCH reset (e.g., 1.2.3 → 2.0.0)
-4. **Given** no qualifying commits since last release, **When** attempting to release, **Then** no release is created
+1. **Given** at least one `feat` commit since last release, **When** calculating next version, **Then** MINOR version increments and PATCH resets (e.g., 1.2.3 → 1.3.0)
+1. **Given** at least one breaking change commit, **When** calculating next version, **Then** MAJOR version increments and MINOR/PATCH reset (e.g., 1.2.3 → 2.0.0)
+1. **Given** no qualifying commits since last release, **When** attempting to release, **Then** no release is created
 
----
+______________________________________________________________________
 
 ### User Story 4 - GitHub Release Creation (Priority: P2)
 
@@ -75,11 +75,11 @@ When a new version is created, the system automatically creates a GitHub Release
 **Acceptance Scenarios**:
 
 1. **Given** a new version is released, **When** the release completes, **Then** a GitHub Release is created with version tag (e.g., `v1.2.3`)
-2. **Given** a new version with changelog content, **When** GitHub Release is created, **Then** the release notes contain the formatted changelog
-3. **Given** a release with breaking changes, **When** GitHub Release is created, **Then** the release is marked as a major version with breaking change warnings
-4. **Given** a pre-release version (e.g., beta), **When** GitHub Release is created, **Then** it is marked as a pre-release
+1. **Given** a new version with changelog content, **When** GitHub Release is created, **Then** the release notes contain the formatted changelog
+1. **Given** a release with breaking changes, **When** GitHub Release is created, **Then** the release is marked as a major version with breaking change warnings
+1. **Given** a pre-release version (e.g., beta), **When** GitHub Release is created, **Then** it is marked as a pre-release
 
----
+______________________________________________________________________
 
 ### User Story 5 - Breaking Change Detection & Migration Guides (Priority: P2)
 
@@ -92,11 +92,11 @@ The system detects breaking changes from commit messages and generates migration
 **Acceptance Scenarios**:
 
 1. **Given** a commit with `BREAKING CHANGE` in body or footer, **When** validating commit, **Then** the commit is flagged as breaking
-2. **Given** breaking change commits, **When** generating changelog, **Then** breaking changes appear first with prominent formatting
-3. **Given** a breaking change commit with migration notes, **When** generating changelog, **Then** migration instructions are included
-4. **Given** multiple breaking changes in one release, **When** generating changelog, **Then** all breaking changes are listed with individual migration guides
+1. **Given** breaking change commits, **When** generating changelog, **Then** breaking changes appear first with prominent formatting
+1. **Given** a breaking change commit with migration notes, **When** generating changelog, **Then** migration instructions are included
+1. **Given** multiple breaking changes in one release, **When** generating changelog, **Then** all breaking changes are listed with individual migration guides
 
----
+______________________________________________________________________
 
 ### User Story 6 - Release Artifact Publishing (Priority: P3)
 
@@ -109,11 +109,11 @@ After version and changelog generation, the system can publish release artifacts
 **Acceptance Scenarios**:
 
 1. **Given** a Python project with PyPI credentials configured, **When** a release completes, **Then** the package is published to PyPI with the new version
-2. **Given** a Node.js project with npm credentials configured, **When** a release completes, **Then** the package is published to npm with the new version
-3. **Given** a project with Docker Hub credentials configured, **When** a release completes, **Then** container images are pushed with version tags (e.g., `v1.2.3`, `v1.2`, `v1`, `latest`)
-4. **Given** publishing fails due to credentials or network issues, **When** the error occurs, **Then** the release process reports the failure and allows manual retry
+1. **Given** a Node.js project with npm credentials configured, **When** a release completes, **Then** the package is published to npm with the new version
+1. **Given** a project with Docker Hub credentials configured, **When** a release completes, **Then** container images are pushed with version tags (e.g., `v1.2.3`, `v1.2`, `v1`, `latest`)
+1. **Given** publishing fails due to credentials or network issues, **When** the error occurs, **Then** the release process reports the failure and allows manual retry
 
----
+______________________________________________________________________
 
 ### Edge Cases
 
@@ -176,13 +176,13 @@ After version and changelog generation, the system can publish release artifacts
 ## Assumptions
 
 1. **Commit Format Adoption**: Assumes team will adapt to conventional commit format with reasonable onboarding period (suggest 2-week grace period with warnings before enforcement)
-2. **GitHub Platform**: Assumes projects use GitHub for repository hosting and GitHub Actions for CI/CD
-3. **Registry Credentials**: Registry credentials stored as GitHub Secrets with annual rotation reminder documented in project README; credentials include PyPI API tokens, npm authentication tokens, and Docker Hub access tokens
-4. **Semantic Versioning**: Assumes projects follow semantic versioning principles and understand MAJOR.MINOR.PATCH significance
-5. **Linear History Preference**: Assumes merge commits or squash merges to main branch (not individual commits from PR branches)
-6. **Release Frequency**: Assumes release frequency of at least weekly for optimal automation value
-7. **Breaking Change Communication**: Assumes developers document breaking changes appropriately in commit messages or PR descriptions
-8. **Monorepo Tooling**: For monorepo scenarios, assumes use of conventional tooling (Lerna, Nx, or similar) for package management
+1. **GitHub Platform**: Assumes projects use GitHub for repository hosting and GitHub Actions for CI/CD
+1. **Registry Credentials**: Registry credentials stored as GitHub Secrets with annual rotation reminder documented in project README; credentials include PyPI API tokens, npm authentication tokens, and Docker Hub access tokens
+1. **Semantic Versioning**: Assumes projects follow semantic versioning principles and understand MAJOR.MINOR.PATCH significance
+1. **Linear History Preference**: Assumes merge commits or squash merges to main branch (not individual commits from PR branches)
+1. **Release Frequency**: Assumes release frequency of at least weekly for optimal automation value
+1. **Breaking Change Communication**: Assumes developers document breaking changes appropriately in commit messages or PR descriptions
+1. **Monorepo Tooling**: For monorepo scenarios, assumes use of conventional tooling (Lerna, Nx, or similar) for package management
 
 ## Dependencies
 

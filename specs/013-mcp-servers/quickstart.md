@@ -10,7 +10,7 @@ This guide walks you through creating your first MCP (Model Context Protocol) se
 
 **Time estimate**: 15-20 minutes
 
----
+______________________________________________________________________
 
 ## Prerequisites
 
@@ -21,7 +21,7 @@ Before starting, ensure you have:
 - **Copier** CLI installed (`copier --version`)
 - **Claude Desktop** application ([download here](https://claude.ai/download))
 
----
+______________________________________________________________________
 
 ## Step 1: Generate Your MCP Server
 
@@ -64,7 +64,7 @@ pnpm install
 - Set up testing and quality tools
 - Provided example tools, resources, and prompts
 
----
+______________________________________________________________________
 
 ## Step 2: Explore the Project Structure
 
@@ -100,7 +100,7 @@ my-mcp-server/
 └── package.json                # Project metadata
 ```
 
----
+______________________________________________________________________
 
 ## Step 3: Implement Your First Tool
 
@@ -198,7 +198,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 ```
 
----
+______________________________________________________________________
 
 ## Step 4: Test Your Tool Locally
 
@@ -232,7 +232,7 @@ console.log(result);
 "
 ```
 
----
+______________________________________________________________________
 
 ## Step 5: Run Your MCP Server
 
@@ -256,7 +256,7 @@ pnpm start
 # Press Ctrl+C to stop
 ```
 
----
+______________________________________________________________________
 
 ## Step 6: Integrate with Claude Desktop
 
@@ -307,25 +307,27 @@ Edit Claude Desktop's configuration file:
 
 **Important**: Replace `/absolute/path/to/my-mcp-server` with your actual project path.
 
----
+______________________________________________________________________
 
 ## Step 7: Test in Claude Desktop
 
 1. **Restart Claude Desktop** to load the new MCP server configuration
 
-2. **Verify server is connected**:
+1. **Verify server is connected**:
+
    - Open Claude Desktop
    - Look for the 🔌 (plug) icon in the bottom-left
    - Click it to see connected MCP servers
    - You should see "my-weather-server" listed
 
-3. **Test your tool**:
+1. **Test your tool**:
+
    - Start a new conversation
    - Type: "What's the weather in San Francisco?"
    - Claude will invoke your `get_weather` tool
    - You should see the simulated weather response
 
----
+______________________________________________________________________
 
 ## Step 8: Add More Capabilities
 
@@ -440,7 +442,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 });
 ```
 
----
+______________________________________________________________________
 
 ## Step 9: Production Configuration
 
@@ -489,41 +491,47 @@ max_response_size_mb = 100
 }
 ```
 
----
+______________________________________________________________________
 
 ## Troubleshooting
 
 ### Server Not Connecting
 
 **Check logs**:
+
 - Python: Logs written to stderr (check terminal output)
 - TypeScript: Logs written to stderr (check terminal output)
 
 **Verify configuration**:
+
 - Ensure absolute paths in `claude_desktop_config.json`
 - Confirm server starts manually before testing in Claude
 
 ### Tool Not Appearing
 
 **Verify tool registration**:
+
 - Python: Check `@mcp.tool()` decorator is present
 - TypeScript: Ensure tool listed in `ListToolsRequestSchema` handler
 
 **Check input schema**:
+
 - Python: Pydantic model must have `Field` descriptions
 - TypeScript: Zod schema must have `.describe()` calls
 
 ### Performance Issues
 
 **Increase timeouts** if operations are slow:
+
 - Edit `config.toml` (Python) or `config.json` (TypeScript)
 - Increase `tool`, `resource`, or `prompt` timeout values
 
 **Add caching** for expensive operations:
+
 - Python: Use `functools.lru_cache` or Redis
 - TypeScript: Use Map/WeakMap or Redis
 
----
+______________________________________________________________________
 
 ## Next Steps
 
@@ -531,15 +539,15 @@ Congratulations! You've built and deployed your first MCP server. Here are some 
 
 1. **Connect to real APIs**: Replace simulated weather with a real weather API (OpenWeatherMap, WeatherAPI, etc.)
 
-2. **Add authentication**: Implement API key validation for HTTP transport
+1. **Add authentication**: Implement API key validation for HTTP transport
 
-3. **Build complex tools**: Chain multiple tool calls, use LLM agents, integrate databases
+1. **Build complex tools**: Chain multiple tool calls, use LLM agents, integrate databases
 
-4. **Deploy to production**: Use HTTP/SSE transport for cloud deployment, add rate limiting and monitoring
+1. **Deploy to production**: Use HTTP/SSE transport for cloud deployment, add rate limiting and monitoring
 
-5. **Contribute examples**: Share your MCP server with the community
+1. **Contribute examples**: Share your MCP server with the community
 
----
+______________________________________________________________________
 
 ## Resources
 
@@ -549,7 +557,7 @@ Congratulations! You've built and deployed your first MCP server. Here are some 
 - **MCP Inspector**: Tool for testing MCP servers locally
 - **Claude Desktop**: [claude.ai/download](https://claude.ai/download)
 
----
+______________________________________________________________________
 
 ## Support
 

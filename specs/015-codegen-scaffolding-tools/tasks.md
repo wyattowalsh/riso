@@ -1,7 +1,7 @@
 # Tasks: Code Generation and Scaffolding Tools
 
-**Feature Branch**: `015-codegen-scaffolding-tools`  
-**Input**: Design documents from `/specs/015-codegen-scaffolding-tools/`  
+**Feature Branch**: `015-codegen-scaffolding-tools`\
+**Input**: Design documents from `/specs/015-codegen-scaffolding-tools/`\
 **Prerequisites**: plan.md ✅, spec.md ✅, research.md ✅, data-model.md ✅, contracts/ ✅
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
@@ -15,12 +15,13 @@
 ## Path Conventions
 
 Based on plan.md, all paths use the Riso template structure:
+
 - Python source: `template/files/python/src/{{package_name}}/codegen/`
 - Tests: `template/files/python/tests/codegen/`
 - Documentation: `template/files/shared/docs/modules/`
 - Integration: `template/copier.yml` for module flag
 
----
+______________________________________________________________________
 
 ## Phase 1: Setup (Shared Infrastructure)
 
@@ -32,7 +33,7 @@ Based on plan.md, all paths use the Riso template structure:
 - [ ] T004 [P] Create test directory structure in template/files/python/tests/codegen/
 - [ ] T005 [P] Create fixtures directory with sample templates in template/files/python/tests/codegen/fixtures/sample_templates/
 
----
+______________________________________________________________________
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
@@ -60,7 +61,7 @@ Based on plan.md, all paths use the Riso template structure:
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
----
+______________________________________________________________________
 
 ## Phase 3: User Story 1 - Generate Project Boilerplate (Priority: P1) 🎯 MVP
 
@@ -101,7 +102,7 @@ Based on plan.md, all paths use the Riso template structure:
 
 **Checkpoint**: User Story 1 complete - can generate projects from templates independently
 
----
+______________________________________________________________________
 
 ## Phase 4: User Story 2 - Add Feature Modules (Priority: P2)
 
@@ -131,7 +132,7 @@ Based on plan.md, all paths use the Riso template structure:
 
 **Checkpoint**: User Story 2 complete - can add modules to existing projects independently
 
----
+______________________________________________________________________
 
 ## Phase 5: User Story 3 - Customize Templates (Priority: P3)
 
@@ -162,7 +163,7 @@ Based on plan.md, all paths use the Riso template structure:
 
 **Checkpoint**: User Story 3 complete - can use custom templates from multiple sources
 
----
+______________________________________________________________________
 
 ## Phase 6: User Story 4 - Update Generated Code (Priority: P4)
 
@@ -176,7 +177,7 @@ Based on plan.md, all paths use the Riso template structure:
 - [ ] T087 [P] [US4] Create MergeResult model in template/files/python/src/{{package_name}}/codegen/models.py
 - [ ] T088 [P] [US4] Create ConflictRegion model in template/files/python/src/{{package_name}}/codegen/models.py
 - [ ] T089 [P] [US4] Implement three-way merge using merge3 in template/files/python/src/{{package_name}}/codegen/updates/merger.py
-- [ ] T090 [P] [US4] Implement conflict marker insertion (<<<<<<, =======, >>>>>>>) in template/files/python/src/{{package_name}}/codegen/updates/merger.py
+- [ ] T090 [P] [US4] Implement conflict marker insertion (\<<\<<\<<, =======, >>>>>>>) in template/files/python/src/{{package_name}}/codegen/updates/merger.py
 - [ ] T091 [P] [US4] Implement conflict detection and parsing in template/files/python/src/{{package_name}}/codegen/updates/conflict.py
 - [ ] T092 [US4] Implement template version comparison in template/files/python/src/{{package_name}}/codegen/updates/differ.py
 - [ ] T093 [US4] Implement base version retrieval from cache in template/files/python/src/{{package_name}}/codegen/templates/cache.py
@@ -198,7 +199,7 @@ Based on plan.md, all paths use the Riso template structure:
 
 **Checkpoint**: User Story 4 complete - can update projects with merge support
 
----
+______________________________________________________________________
 
 ## Phase 7: User Story 5 - Generate from API Specs (Priority: P3)
 
@@ -226,7 +227,7 @@ Based on plan.md, all paths use the Riso template structure:
 
 **Checkpoint**: User Story 5 complete - can generate code from API specifications
 
----
+______________________________________________________________________
 
 ## Phase 8: Additional Commands & Features
 
@@ -243,7 +244,7 @@ Based on plan.md, all paths use the Riso template structure:
 - [ ] T132 [P] Write CLI tests for cache commands in template/files/python/tests/codegen/test_cli.py
 - [ ] T133 [P] Write CLI tests for config commands in template/files/python/tests/codegen/test_cli.py
 
----
+______________________________________________________________________
 
 ## Phase 9: Polish & Cross-Cutting Concerns
 
@@ -267,10 +268,10 @@ Based on plan.md, all paths use the Riso template structure:
 - [ ] T149 Validate against all spec requirements (FR-001 through FR-024)
 - [ ] T150 Validate against all success criteria (SC-001 through SC-010)
 - [ ] T151 Run quickstart.md validation (generate test project, add module, update)
-- [ ] T152 Performance profiling (ensure <30s project generation)
+- [ ] T152 Performance profiling (ensure \<30s project generation)
 - [ ] T153 Create upgrade guide for existing projects in docs/upgrade-guide/015-codegen-scaffolding.md
 
----
+______________________________________________________________________
 
 ## Dependencies & Execution Order
 
@@ -323,7 +324,7 @@ Based on plan.md, all paths use the Riso template structure:
 
 **Phase 9**: Documentation tasks (T134-T136), logging/docs (T142-T144) can run in parallel
 
----
+______________________________________________________________________
 
 ## Parallel Example: User Story 1
 
@@ -351,29 +352,29 @@ Task T047: "Unit tests for atomic operations in test_atomic.py"
 Task T048: "Unit tests for quality checker in test_checker.py"
 ```
 
----
+______________________________________________________________________
 
 ## Implementation Strategy
 
 ### MVP First (User Story 1 Only)
 
 1. **Complete Phase 1**: Setup (T001-T005) - ~1 hour
-2. **Complete Phase 2**: Foundational (T006-T022) - ~4 hours
-3. **Complete Phase 3**: User Story 1 (T023-T050) - ~10 hours
-4. **STOP and VALIDATE**: Test project generation independently
-5. **Deploy/Demo**: Working project generator
+1. **Complete Phase 2**: Foundational (T006-T022) - ~4 hours
+1. **Complete Phase 3**: User Story 1 (T023-T050) - ~10 hours
+1. **STOP and VALIDATE**: Test project generation independently
+1. **Deploy/Demo**: Working project generator
 
 **Total MVP**: ~15 hours, ~2 days
 
 ### Incremental Delivery (Recommended)
 
 1. **Foundation** (Phase 1 + 2): Setup + models/infrastructure → ~5 hours
-2. **US1** (Phase 3): Add project generation → Test independently → **Demo MVP!** → ~10 hours
-3. **US2** (Phase 4): Add module addition → Test independently → Demo enhancement → ~6 hours
-4. **US3** (Phase 5): Add custom templates → Test independently → Demo flexibility → ~5 hours
-5. **US4** (Phase 6): Add update/merge → Test independently → Demo updates → ~8 hours
-6. **US5** (Phase 7): Add API generation → Test independently → Demo API-first → ~5 hours
-7. **Polish** (Phase 8 + 9): Commands + docs + integration → ~6 hours
+1. **US1** (Phase 3): Add project generation → Test independently → **Demo MVP!** → ~10 hours
+1. **US2** (Phase 4): Add module addition → Test independently → Demo enhancement → ~6 hours
+1. **US3** (Phase 5): Add custom templates → Test independently → Demo flexibility → ~5 hours
+1. **US4** (Phase 6): Add update/merge → Test independently → Demo updates → ~8 hours
+1. **US5** (Phase 7): Add API generation → Test independently → Demo API-first → ~5 hours
+1. **Polish** (Phase 8 + 9): Commands + docs + integration → ~6 hours
 
 **Total Feature**: ~45 hours, ~6 days (includes all 5 user stories)
 
@@ -389,7 +390,7 @@ Then merge and complete Phase 8 + 9 together.
 
 **Total Time (parallel)**: ~20 hours, ~3 days
 
----
+______________________________________________________________________
 
 ## Task Count Summary
 
@@ -407,7 +408,7 @@ Then merge and complete Phase 8 + 9 together.
 
 **MVP Subset** (Phase 1 + 2 + 3): 50 tasks
 
----
+______________________________________________________________________
 
 ## Notes
 

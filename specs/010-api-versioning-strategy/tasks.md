@@ -1,6 +1,6 @@
 # Tasks: Comprehensive API Versioning Strategy
 
-**Input**: Design documents from `/specs/010-api-versioning-strategy/`  
+**Input**: Design documents from `/specs/010-api-versioning-strategy/`\
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/api-versioning.openapi.yaml
 
 **Tests**: Tests are NOT explicitly requested in this specification, so test tasks are excluded. Focus is on implementation.
@@ -16,11 +16,12 @@
 ## Path Conventions
 
 Single project structure (API middleware/library):
+
 - `src/api_versioning/` - Source code
 - `tests/` - Test files
 - `config/` - Configuration files
 
----
+______________________________________________________________________
 
 ## Phase 1: Setup (Shared Infrastructure)
 
@@ -32,7 +33,7 @@ Single project structure (API middleware/library):
 - [ ] T004 [P] Setup pytest configuration in pyproject.toml with coverage and asyncio support
 - [ ] T005 [P] Create README.md with installation and quick start instructions
 
----
+______________________________________________________________________
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
@@ -49,14 +50,14 @@ Single project structure (API middleware/library):
 - [ ] T012 [P] Implement semantic versioning utilities in src/api_versioning/utils/semver.py for version parsing and validation
 - [ ] T013 [P] Implement version ID validation in src/api_versioning/utils/validation.py matching pattern ^v[0-9]+(-[a-z]+)?$
 - [ ] T014 Create base error classes in src/api_versioning/handlers/error.py: VersionNotFoundError, VersionSunsetError, VersionConflictError, PrereleaseOptInRequiredError
-- [ ] T014b [P] Implement FR-020 validation in src/api_versioning/utils/validation.py: check sunset_date <= deprecation_date + 12 months for all version configurations
+- [ ] T014b [P] Implement FR-020 validation in src/api_versioning/utils/validation.py: check sunset_date \<= deprecation_date + 12 months for all version configurations
 - [ ] T014c [P] Create SecurityContext dataclass in src/api_versioning/security/context.py with authentication, rate limiting, and validation fields (FR-022, FR-026)
 - [ ] T014d [P] Create PerformanceMetric dataclass in src/api_versioning/monitoring/metrics.py for latency tracking (FR-031, FR-037)
 - [ ] T014e [P] Create ConfigurationMetadata dataclass in src/api_versioning/core/config.py for integrity validation (FR-029)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
----
+______________________________________________________________________
 
 ## Phase 3: User Story 1 - API Consumer Discovers Version Support (Priority: P1) 🎯 MVP
 
@@ -66,9 +67,9 @@ Single project structure (API middleware/library):
 
 ### Implementation for User Story 1
 
-- [ ] T015 [P] [US1] Implement version extraction from header in src/api_versioning/middleware/parser.py (_from_header method checking X-API-Version and API-Version headers)
-- [ ] T016 [P] [US1] Implement version extraction from URL path in src/api_versioning/middleware/parser.py (_from_url method with regex pattern ^/v(\d+)/)
-- [ ] T017 [P] [US1] Implement version extraction from query parameter in src/api_versioning/middleware/parser.py (_from_query method parsing version=vN)
+- [ ] T015 [P] [US1] Implement version extraction from header in src/api_versioning/middleware/parser.py (\_from_header method checking X-API-Version and API-Version headers)
+- [ ] T016 [P] [US1] Implement version extraction from URL path in src/api_versioning/middleware/parser.py (\_from_url method with regex pattern ^/v(\\d+)/)
+- [ ] T017 [P] [US1] Implement version extraction from query parameter in src/api_versioning/middleware/parser.py (\_from_query method parsing version=vN)
 - [ ] T018 [US1] Implement version precedence resolution in src/api_versioning/middleware/precedence.py applying Header > URL > Query > Default order
 - [ ] T019 [US1] Create APIVersionMiddleware ASGI middleware class in src/api_versioning/middleware/__init__.py with __call__ method extracting version and storing in scope["api_version"]
 - [ ] T020 [US1] Add response header injection in APIVersionMiddleware to include X-API-Version header in all responses
@@ -82,7 +83,7 @@ Single project structure (API middleware/library):
 
 **Checkpoint**: At this point, User Story 1 should be fully functional - consumers can discover versions and specify them in requests
 
----
+______________________________________________________________________
 
 ## Phase 4: User Story 2 - Breaking Changes Handled Gracefully (Priority: P1)
 
@@ -104,7 +105,7 @@ Single project structure (API middleware/library):
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work - multiple versions can coexist with isolated handlers
 
----
+______________________________________________________________________
 
 ## Phase 5: User Story 3 - Deprecation Communication and Migration (Priority: P2)
 
@@ -128,7 +129,7 @@ Single project structure (API middleware/library):
 
 **Checkpoint**: At this point, User Stories 1, 2, AND 3 should work - deprecation warnings communicated, sunset dates enforced
 
----
+______________________________________________________________________
 
 ## Phase 6: User Story 4 - Version-Specific Feature Discovery (Priority: P2)
 
@@ -150,7 +151,7 @@ Single project structure (API middleware/library):
 
 **Checkpoint**: At this point, all P1-P2 user stories complete - consumers can discover, use, and understand all version capabilities
 
----
+______________________________________________________________________
 
 ## Phase 7: User Story 5 - Backward-Compatible Enhancements (Priority: P3)
 
@@ -170,7 +171,7 @@ Single project structure (API middleware/library):
 
 **Checkpoint**: All user stories complete - full versioning system operational with pre-release support
 
----
+______________________________________________________________________
 
 ## Phase 8: Usage Metrics & Monitoring
 
@@ -183,7 +184,7 @@ Single project structure (API middleware/library):
 - [ ] T068 [P] Add is_deprecated_access flag to metrics when deprecated version is used
 - [ ] T069 [P] Document metrics format and log aggregation patterns in docs/metrics.md
 
----
+______________________________________________________________________
 
 ## Phase 9: Error Handling & Edge Cases
 
@@ -198,7 +199,7 @@ Single project structure (API middleware/library):
 - [ ] T076 [P] Document error response formats in contracts/api-versioning.openapi.yaml
 - [ ] T076b [P] Add content negotiation handling (FR-018): implement Accept header processing alongside version routing in middleware
 
----
+______________________________________________________________________
 
 ## Phase 10: Hot Reload & Development Tools
 
@@ -210,7 +211,7 @@ Single project structure (API middleware/library):
 - [ ] T080 [P] Add start_config_watcher() function for development mode only
 - [ ] T081 [P] Document hot reload usage and production restart patterns in quickstart.md
 
----
+______________________________________________________________________
 
 ## Phase 11: Integration Examples & Documentation
 
@@ -224,7 +225,7 @@ Single project structure (API middleware/library):
 - [ ] T087 [P] Create migration guide template in docs/migrations/migration_template.md
 - [ ] T088 Update quickstart.md with all working examples and error response documentation
 
----
+______________________________________________________________________
 
 ## Phase 13: Security & Validation (Critical - Before Production)
 
@@ -241,7 +242,7 @@ Single project structure (API middleware/library):
 - [ ] T107 [P] Implement configuration file checksum validation in src/api_versioning/core/config.py (FR-029)
 - [ ] T108 [P] Add GDPR-compliant data retention logic in src/api_versioning/logging/retention.py (FR-030)
 
----
+______________________________________________________________________
 
 ## Phase 14: Performance Optimization & Monitoring
 
@@ -258,7 +259,7 @@ Single project structure (API middleware/library):
 - [ ] T117 Validate stateless middleware design for horizontal scaling (FR-038)
 - [ ] T118 [P] Implement graceful degradation under load with p99 ≤20ms at 150% capacity (FR-039)
 
----
+______________________________________________________________________
 
 ## Phase 15: Observability & Alerting
 
@@ -269,7 +270,7 @@ Single project structure (API middleware/library):
 - [ ] T121 [P] Implement alerting rules in src/api_versioning/monitoring/alerts.py for anomalous patterns (FR-042)
 - [ ] T122 [P] Add distributed tracing support with trace ID propagation (FR-043)
 
----
+______________________________________________________________________
 
 ## Phase 16: Reliability & Error Handling
 
@@ -282,7 +283,7 @@ Single project structure (API middleware/library):
 - [ ] T127 [P] Enforce case-sensitive version IDs and whitespace trimming (FR-048)
 - [ ] T128 [P] Implement IP address fallback for consumer ID when auth unavailable (FR-049)
 
----
+______________________________________________________________________
 
 ## Phase 17: API Contract Completion
 
@@ -293,7 +294,7 @@ Single project structure (API middleware/library):
 - [ ] T131 [P] Add request/response examples for all endpoints and error scenarios to OpenAPI spec (FR-052)
 - [ ] T132 [P] Define and document CORS policy for version discovery endpoints (FR-053)
 
----
+______________________________________________________________________
 
 ## Phase 18: Final Polish & Cross-Cutting Concerns
 
@@ -305,7 +306,7 @@ Single project structure (API middleware/library):
 - [ ] T092 Run mypy type checking and resolve issues: uv run mypy src/
 - [ ] T093 [P] Add py.typed marker file to enable type checking for library consumers
 - [ ] T094 Validate against quickstart.md - test all code examples work as documented
-- [ ] T095 [P] Add performance benchmark tests in tests/performance/ validating <10ms routing overhead
+- [ ] T095 [P] Add performance benchmark tests in tests/performance/ validating \<10ms routing overhead
 - [ ] T096 [P] Create CHANGELOG.md documenting versioning system capabilities
 - [ ] T097 [P] Add CONTRIBUTING.md with development setup and testing instructions
 - [ ] T098 Final review of OpenAPI contract ensuring all endpoints documented
@@ -315,7 +316,7 @@ Single project structure (API middleware/library):
 - [ ] T098e [P] Validate configuration checksum integrity and corruption detection
 - [ ] T098f [P] Run OpenAPI spec validation with spectral/swagger-cli tools
 
----
+______________________________________________________________________
 
 ## Dependencies & Execution Order
 
@@ -350,19 +351,19 @@ Single project structure (API middleware/library):
 ### Critical Path (Minimum for Production-Ready)
 
 1. Phase 1: Setup → Phase 2: Foundational → Phase 3: User Story 1
-2. **Phase 13: Security (BLOCKER)** - Must complete before production
-3. Phase 4 (US2) for multi-version support
-4. Phase 5 (US3) for deprecation handling
-5. **Phase 14: Performance** - Validate SLAs met
-6. **Phase 15: Observability** - Production monitoring
-7. **Phase 17: API Contract** - Complete OpenAPI spec
+1. **Phase 13: Security (BLOCKER)** - Must complete before production
+1. Phase 4 (US2) for multi-version support
+1. Phase 5 (US3) for deprecation handling
+1. **Phase 14: Performance** - Validate SLAs met
+1. **Phase 15: Observability** - Production monitoring
+1. **Phase 17: API Contract** - Complete OpenAPI spec
 
 ### MVP Path (Development/Testing Only - NOT Production)
 
 1. Phase 1: Setup → Phase 2: Foundational → Phase 3: User Story 1
-2. **STOP HERE** for MVP - consumers can discover and use versions (8-11 hours)
-3. Add Phase 4 (US2) for multi-version support (3-4 hours)
-4. Add Phase 5 (US3) for deprecation handling (3-4 hours)
+1. **STOP HERE** for MVP - consumers can discover and use versions (8-11 hours)
+1. Add Phase 4 (US2) for multi-version support (3-4 hours)
+1. Add Phase 5 (US3) for deprecation handling (3-4 hours)
 
 **WARNING**: MVP path lacks security, performance validation, and production observability - suitable only for development/testing environments.
 
@@ -372,25 +373,30 @@ Single project structure (API middleware/library):
 
 **Foundational Phase (Phase 2)**: Tasks T010-T014 can run in parallel after T006-T009 complete
 
-**User Story 1 (Phase 3)**: 
+**User Story 1 (Phase 3)**:
+
 - Tasks T015, T016, T017 can run in parallel (different version extraction methods)
 - Tasks T022, T023, T024 can run in parallel (different discovery endpoints)
 
 **User Story 2 (Phase 4)**:
+
 - Tasks T033, T034 can run in parallel (example handlers)
 
 **User Story 3 (Phase 5)**:
+
 - Tasks T037, T045, T046 can run in parallel
 
 **User Story 4 (Phase 6)**:
+
 - Tasks T048, T049, T055 can run in parallel
 
 **User Story 5 (Phase 7)**:
+
 - Tasks T057, T062 can run in parallel
 
 **Multiple User Stories**: After Foundational phase, US1 and US2 can proceed in parallel with separate team members
 
----
+______________________________________________________________________
 
 ## Parallel Example: User Story 1
 
@@ -406,28 +412,28 @@ Task T023: "Create GET /versions/{version_id} endpoint in src/api_versioning/api
 Task T024: "Create GET /versions/current endpoint in src/api_versioning/api/discovery.py"
 ```
 
----
+______________________________________________________________________
 
 ## Implementation Strategy
 
 ### MVP First (User Story 1 Only)
 
 1. Complete Phase 1: Setup (5 tasks, ~1 hour)
-2. Complete Phase 2: Foundational (9 tasks, ~3-4 hours)
-3. Complete Phase 3: User Story 1 (13 tasks, ~4-6 hours)
-4. **STOP and VALIDATE**: Test version discovery, version specification, response headers
-5. **MVP READY** - consumers can discover and use API versions
-6. Estimated MVP time: 8-11 hours total
+1. Complete Phase 2: Foundational (9 tasks, ~3-4 hours)
+1. Complete Phase 3: User Story 1 (13 tasks, ~4-6 hours)
+1. **STOP and VALIDATE**: Test version discovery, version specification, response headers
+1. **MVP READY** - consumers can discover and use API versions
+1. Estimated MVP time: 8-11 hours total
 
 ### Incremental Delivery
 
 1. **Foundation** (Phase 1-2): Setup + Core entities → 4-5 hours
-2. **MVP** (Phase 3): Add User Story 1 → Version discovery working → 4-6 hours → **DEPLOY**
-3. **Multi-Version** (Phase 4): Add User Story 2 → Multiple versions with isolation → 3-4 hours → **DEPLOY**
-4. **Deprecation** (Phase 5): Add User Story 3 → Sunset enforcement → 3-4 hours → **DEPLOY**
-5. **Discovery** (Phase 6): Add User Story 4 → Feature discovery → 2-3 hours → **DEPLOY**
-6. **Pre-release** (Phase 7): Add User Story 5 → Beta versions → 2-3 hours → **DEPLOY**
-7. **Complete** (Phases 8-12): Add metrics, examples, polish → 6-8 hours → **FINALIZE**
+1. **MVP** (Phase 3): Add User Story 1 → Version discovery working → 4-6 hours → **DEPLOY**
+1. **Multi-Version** (Phase 4): Add User Story 2 → Multiple versions with isolation → 3-4 hours → **DEPLOY**
+1. **Deprecation** (Phase 5): Add User Story 3 → Sunset enforcement → 3-4 hours → **DEPLOY**
+1. **Discovery** (Phase 6): Add User Story 4 → Feature discovery → 2-3 hours → **DEPLOY**
+1. **Pre-release** (Phase 7): Add User Story 5 → Beta versions → 2-3 hours → **DEPLOY**
+1. **Complete** (Phases 8-12): Add metrics, examples, polish → 6-8 hours → **FINALIZE**
 
 Total estimated time: 24-32 hours for complete implementation
 
@@ -436,24 +442,28 @@ Total estimated time: 24-32 hours for complete implementation
 With multiple developers after Foundational phase completes:
 
 **Team A (Senior)**:
+
 - Phase 3: User Story 1 (version discovery & routing)
 - Phase 8: Metrics logging
 
 **Team B (Mid)**:
+
 - Phase 4: User Story 2 (multi-version support)
 - Phase 9: Error handling
 
 **Team C (Junior)**:
+
 - Phase 5: User Story 3 (deprecation)
 - Phase 11: Examples & documentation
 
 Estimated parallel completion: 12-16 hours with 3 developers
 
----
+______________________________________________________________________
 
 ## Task Summary
 
 **Total Tasks**: 102
+
 - Phase 1 (Setup): 5 tasks
 - Phase 2 (Foundational): 10 tasks
 - Phase 3 (US1 - P1): 13 tasks ← **MVP**
@@ -471,7 +481,7 @@ Estimated parallel completion: 12-16 hours with 3 developers
 
 **MVP Scope**: 28 tasks (Phase 1 + Phase 2 + Phase 3) = 8-11 hours
 
----
+______________________________________________________________________
 
 ## Notes
 
@@ -483,5 +493,5 @@ Estimated parallel completion: 12-16 hours with 3 developers
 - Commit after each task or logical group for incremental progress
 - Framework: Pure ASGI middleware (framework-agnostic)
 - Storage: YAML config + in-memory registry
-- Performance target: <10ms routing overhead (expected: 0.1-1ms)
+- Performance target: \<10ms routing overhead (expected: 0.1-1ms)
 - All file paths are relative to repository root

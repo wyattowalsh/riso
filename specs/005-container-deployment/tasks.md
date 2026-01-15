@@ -20,7 +20,7 @@
 
 **Checkpoint**: Directory structure ready for template files
 
----
+______________________________________________________________________
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
@@ -32,18 +32,18 @@
 - [ ] T006 [P] [Foundation] Create `.hadolint.yaml.jinja` config in `template/files/shared/` (ignore DL3008, DL3009, failure-threshold=error)
 - [ ] T007 [P] [Foundation] Implement health check endpoint for FastAPI in `template/files/python/src/{{ package_name }}/api/health.py.jinja` (GET /health → {"status": "healthy", "service": "api-python"})
 - [ ] T008 [P] [Foundation] Implement health check endpoint for Fastify in `template/files/node/apps/api-node/src/health.ts.jinja` (GET /health → {"status": "healthy", "service": "api-node"})
-- [ ] T009 [Foundation] Create `scripts/ci/validate_dockerfiles.py` - Python 3.11+ script using subprocess to invoke hadolint binary (install via `brew install hadolint` on macOS, `wget` on Linux), accepts directory path as argument, scans all Dockerfile* files recursively, invokes `hadolint --format json <file>` for each Dockerfile, aggregates results, outputs JSON error summary for CI parsing, exit codes: 0=all pass, 1=linting errors found, 2=hadolint tool error or not installed
+- [ ] T009 [Foundation] Create `scripts/ci/validate_dockerfiles.py` - Python 3.11+ script using subprocess to invoke hadolint binary (install via `brew install hadolint` on macOS, `wget` on Linux), accepts directory path as argument, scans all Dockerfile\* files recursively, invokes `hadolint --format json <file>` for each Dockerfile, aggregates results, outputs JSON error summary for CI parsing, exit codes: 0=all pass, 1=linting errors found, 2=hadolint tool error or not installed
 - [ ] T010 [Foundation] Extend `scripts/render-samples.sh` with container build validation (add --validate-containers flag)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
----
+______________________________________________________________________
 
 ## Phase 3: User Story 1 - Python Production Containers (Priority: P1) 🎯 MVP
 
 **Goal**: Production-ready Dockerfiles with multi-stage builds, non-root execution (UID 1000:1000), HTTP health checks
 
-**Independent Test**: Render project with `api_tracks=python`, build with `docker build -f Dockerfile -t test:latest .`, verify image size <500MB, run with `docker run -p 8000:8000 test:latest`, check /health returns 200 OK, validate non-root with `docker run --rm test:latest id`
+**Independent Test**: Render project with `api_tracks=python`, build with `docker build -f Dockerfile -t test:latest .`, verify image size \<500MB, run with `docker run -p 8000:8000 test:latest`, check /health returns 200 OK, validate non-root with `docker run --rm test:latest id`
 
 ### Implementation for User Story 1
 
@@ -56,13 +56,13 @@
 - [ ] T017 [P] [US1] Create development Dockerfile variant `template/files/shared/.docker/Dockerfile.dev.jinja` with volume mounts and hot reload (optional)
 - [ ] T018 [US1] Update `samples/default/copier-answers.yml` with `include_databases: "no"` default
 - [ ] T019 [US1] Validate default sample renders Dockerfile with hadolint (zero errors expected)
-- [ ] T020 [US1] Test default sample container build completes in <3min with image size <500MB
+- [ ] T020 [US1] Test default sample container build completes in \<3min with image size \<500MB
 - [ ] T021 [US1] Test default sample container runs successfully with health check responding 200 OK
 - [ ] T022 [US1] Validate CLI-only sample (cli-docs variant) renders Dockerfile with CLI entrypoint
 
 **Checkpoint**: At this point, User Story 1 should be fully functional - Python containers build, run, and pass health checks independently
 
----
+______________________________________________________________________
 
 ## Phase 4: User Story 2 - docker-compose Orchestration (Priority: P2)
 
@@ -87,7 +87,7 @@
 - [ ] T034 [US2] Implement Node.js runtime stage in Dockerfile.jinja (FROM node:20-alpine AS runtime-node, non-root UID 1000:1000, COPY from builder)
 - [ ] T035 [US2] Add conditional Node.js API entrypoint in Dockerfile.jinja (CMD with `node apps/api-node/dist/main.js` when api_tracks includes node)
 - [ ] T036 [US2] Update `samples/api-monorepo/copier-answers.yml` with `api_tracks: python+node`, `include_databases: yes`
-- [ ] T037 [US2] Test api-monorepo sample docker-compose up completes with all services healthy in <30s
+- [ ] T037 [US2] Test api-monorepo sample docker-compose up completes with all services healthy in \<30s
 - [ ] T038 [US2] Test inter-service communication (Python API → shared logic → PostgreSQL connection)
 - [ ] T038b [US2] Implement inter-service communication test script `tests/integration/test_inter_service.py` that: (1) Starts docker-compose services, (2) Waits for all health checks to pass, (3) Makes HTTP request to Python API endpoint that calls shared logic function, (4) Verifies shared logic queries PostgreSQL and returns expected data structure, (5) Asserts response contains database query results, (6) Cleans up containers after test completion
 - [ ] T039 [US2] Test volume mounts enable hot reload for local development
@@ -95,7 +95,7 @@
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently - single containers AND multi-service orchestration
 
----
+______________________________________________________________________
 
 ## Phase 5: User Story 3 - Container Registry Publishing (Priority: P3)
 
@@ -122,7 +122,7 @@
 
 **Checkpoint**: All user stories should now be independently functional - local builds, orchestration, AND registry publishing
 
----
+______________________________________________________________________
 
 ## Phase 6: Documentation & Context
 
@@ -135,7 +135,7 @@
 - [ ] T059 [P] [Docs] Update upgrade guide `docs/upgrade-guide.md.jinja` with container feature (migration notes for projects adding containers)
 - [ ] T060 [Docs] Create container quickstart `specs/005-container-deployment/quickstart.md` based on existing draft (10-section deployment guide)
 
----
+______________________________________________________________________
 
 ## Phase 7: Validation & Integration
 
@@ -150,7 +150,7 @@
 
 **Note**: samples/default and samples/cli-docs validation already covered by Phase 3 tasks (T019-T022). Phase 7 focuses on complex multi-service variants.
 
----
+______________________________________________________________________
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
@@ -160,8 +160,8 @@
 - [ ] T070 [P] [Polish] Optimize Dockerfile layer caching with targeted COPY commands (lock files before source)
 - [ ] T071 [P] [Polish] Add Dockerfile comments explaining security hardening decisions (non-root, minimal packages)
 - [ ] T072 [P] [Polish] Pin all base image digests in Dockerfile.jinja (SHA256 hashes)
-- [ ] T073 [Polish] Performance test: Validate Python builds complete in <3min, Node builds <5min in CI
-- [ ] T074 [Polish] Performance test: Validate image sizes meet targets (Python <500MB, Node <300MB, docs <200MB)
+- [ ] T073 [Polish] Performance test: Validate Python builds complete in \<3min, Node builds \<5min in CI
+- [ ] T074 [Polish] Performance test: Validate image sizes meet targets (Python \<500MB, Node \<300MB, docs \<200MB)
 - [ ] T075 [Polish] Security review: Validate Trivy scans pass with zero HIGH/CRITICAL CVEs in all samples
 - [ ] T076 [Polish] Security review: Validate hadolint passes with zero errors in all samples
 - [ ] T077 [P] [Polish] Update module_catalog.json.jinja with container module metadata
@@ -169,7 +169,7 @@
 - [ ] T079 [Polish] Run quickstart.md validation for container deployment workflow
 - [ ] T080 [Polish] Final code cleanup and comment consistency across all Jinja templates
 
----
+______________________________________________________________________
 
 ## Dependencies & Execution Order
 
@@ -211,15 +211,18 @@ Phase 1 (Setup) → Phase 2 (Foundational) → Phase 3 (US1 - Dockerfiles)
 ### Within Each User Story
 
 **User Story 1 (T011-T022)**:
+
 - T011-T017 [P] Templates can be created in parallel
 - T018-T022 Validation tasks run sequentially after templates complete
 
 **User Story 2 (T023-T040)**:
+
 - T024-T028 [P] Service definitions can be created in parallel
 - T033-T035 Node.js stages can be created in parallel with service definitions
 - T036-T040 Validation tasks run sequentially after docker-compose complete
 
 **User Story 3 (T041-T054)**:
+
 - T041-T042 [P] Workflow templates can be created in parallel
 - T043-T050 [P] Workflow jobs can be created in parallel
 - T051-T054 Validation tasks run sequentially after workflows complete
@@ -235,45 +238,45 @@ Phase 1 (Setup) → Phase 2 (Foundational) → Phase 3 (US1 - Dockerfiles)
 - **Phase 7 Validation**: Tasks T063-T066 [P] can run in parallel (different sample variants)
 - **Phase 8 Polish**: Tasks T069-T072, T077-T078 [P] can run in parallel
 
----
+______________________________________________________________________
 
 ## Implementation Strategy
 
 ### MVP First (User Story 1 Only)
 
 1. Complete Phase 1: Setup (T001-T004)
-2. Complete Phase 2: Foundational (T005-T010) **CRITICAL - blocks all stories**
-3. Complete Phase 3: User Story 1 (T011-T022)
-4. **STOP and VALIDATE**: Build default sample, test health checks, verify image size
-5. Deploy/demo if ready
+1. Complete Phase 2: Foundational (T005-T010) **CRITICAL - blocks all stories**
+1. Complete Phase 3: User Story 1 (T011-T022)
+1. **STOP and VALIDATE**: Build default sample, test health checks, verify image size
+1. Deploy/demo if ready
 
 ### Incremental Delivery
 
 1. Complete Setup + Foundational (T001-T010) → Foundation ready
-2. Add User Story 1 (T011-T022) → Test independently → Deploy/Demo (MVP - production Dockerfiles!)
-3. Add User Story 2 (T023-T040) → Test independently → Deploy/Demo (docker-compose orchestration!)
-4. Add User Story 3 (T041-T054) → Test independently → Deploy/Demo (container registry publishing!)
-5. Complete Documentation (T055-T060) → Documentation ready
-6. Complete Validation (T061-T068) → CI integration ready
-7. Complete Polish (T069-T080) → Production ready
-8. Each story adds value without breaking previous stories
+1. Add User Story 1 (T011-T022) → Test independently → Deploy/Demo (MVP - production Dockerfiles!)
+1. Add User Story 2 (T023-T040) → Test independently → Deploy/Demo (docker-compose orchestration!)
+1. Add User Story 3 (T041-T054) → Test independently → Deploy/Demo (container registry publishing!)
+1. Complete Documentation (T055-T060) → Documentation ready
+1. Complete Validation (T061-T068) → CI integration ready
+1. Complete Polish (T069-T080) → Production ready
+1. Each story adds value without breaking previous stories
 
 ### Parallel Team Strategy
 
 With multiple developers:
 
 1. Team completes Setup + Foundational together (T001-T010)
-2. Once Foundational is done:
+1. Once Foundational is done:
    - Developer A: User Story 1 (T011-T022) - Python Dockerfiles
    - Developer B: Documentation (T055-T060) - can start early with draft docs
    - Developer C: Validation infrastructure (T061-T062) - prepare for integration
-3. After US1 complete:
+1. After US1 complete:
    - Developer A: User Story 2 (T023-T040) - docker-compose
    - Developer B: User Story 3 (T041-T054) - registry workflows
    - Developer C: Validation (T063-T068) - test all samples
-4. Final: All developers on Polish (T069-T080)
+1. Final: All developers on Polish (T069-T080)
 
----
+______________________________________________________________________
 
 ## Task Count Summary
 
@@ -289,6 +292,7 @@ With multiple developers:
 **Total**: 79 tasks (updated from 80 after consolidation)
 
 **Estimated Effort**:
+
 - Setup + Foundational: 1-2 days
 - User Story 1 (MVP): 2-3 days
 - User Story 2: 3-4 days (increased slightly due to CI mode and inter-service test additions)
@@ -297,7 +301,7 @@ With multiple developers:
 - **Total**: 10-15 days (single developer, sequential)
 - **Parallel**: 5-7 days (3 developers)
 
----
+______________________________________________________________________
 
 ## Notes
 
@@ -312,4 +316,4 @@ With multiple developers:
 - All Trivy scans must pass with zero HIGH/CRITICAL vulnerabilities
 - All hadolint checks must pass with zero errors
 - Health checks must respond within 5s with 200 OK
-- Image sizes must meet NFR-002 targets (Python <500MB, Node <300MB, docs <200MB)
+- Image sizes must meet NFR-002 targets (Python \<500MB, Node \<300MB, docs \<200MB)
