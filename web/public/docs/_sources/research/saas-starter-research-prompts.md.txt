@@ -1,0 +1,485 @@
+# SaaS Starter Research - Parallel Subagent Architecture
+
+> Multi-wave parallel research architecture for analyzing SaaS starter templates and synthesizing recommendations for the Riso template.
+
+---
+
+## Overview
+
+| Wave | Agents | Type | Purpose | Dependencies |
+|------|--------|------|---------|--------------|
+| 1 | 10 parallel | explore | Analyze individual starters | None |
+| 2 | 6 parallel | explore | Research trends/gaps | None (can run with Wave 1) |
+| 3 | 1 | general-purpose | Synthesize all findings | Waves 1 & 2 complete |
+
+**Total agents:** 17 (16 parallel in waves 1+2, 1 sequential for synthesis)
+
+---
+
+## WAVE 1: Parallel Starter Analysis
+
+Each subagent researches ONE specific SaaS starter. Launch all simultaneously.
+
+### Starters to Analyze
+
+1. ShipFast
+2. Supastarter
+3. SaaS UI (by Tremor)
+4. Makerkit
+5. Nextless.js
+6. SaaSrock
+7. Bedrock
+8. LaunchFast
+9. T3 Stack / create-t3-app
+10. Vercel SaaS templates
+
+### Wave 1 Prompt Template
+
+```xml
+<task>
+Research the SaaS starter "{STARTER_NAME}" and extract a comprehensive feature inventory.
+
+Use web_search to find:
+1. Official website and documentation
+2. GitHub repository (if public)
+3. Pricing page
+4. Recent reviews or comparisons mentioning this starter
+
+Extract and report:
+</task>
+
+<output_format>
+## {STARTER_NAME} Analysis
+
+### Metadata
+- **Website:** [URL]
+- **GitHub:** [URL or "Private"]
+- **Framework:** [Next.js/Remix/Nuxt/etc]
+- **Pricing:** [Free/$X one-time/$X/mo]
+- **Last Updated:** [Date if found]
+- **Active Maintenance:** [Yes/No/Unknown]
+
+### Features Inventory
+**Authentication:**
+- [ ] Email/Password
+- [ ] Social OAuth (list providers)
+- [ ] Magic Links
+- [ ] Passkeys/WebAuthn
+- [ ] MFA/2FA
+- [ ] SSO/SAML
+- Provider: [Clerk/Auth.js/Supabase Auth/etc]
+
+**Payments:**
+- [ ] Stripe
+- [ ] Lemon Squeezy
+- [ ] Paddle
+- [ ] Usage-based billing
+- [ ] Subscription management
+- [ ] Invoice generation
+
+**Database:**
+- ORM: [Prisma/Drizzle/none]
+- Default DB: [PostgreSQL/MySQL/SQLite/etc]
+- Serverless support: [Neon/PlanetScale/Supabase/etc]
+
+**Email:**
+- [ ] Transactional emails
+- [ ] Email templates
+- Provider: [Resend/Postmark/SendGrid/etc]
+
+**AI/LLM:**
+- [ ] OpenAI integration
+- [ ] Anthropic integration
+- [ ] Vector DB support
+- [ ] AI features scaffolded
+
+**Multi-tenancy:**
+- [ ] Team/Org workspaces
+- [ ] Role-based access (RBAC)
+- [ ] Invitations system
+- [ ] Per-seat billing
+
+**UI/Components:**
+- Component library: [shadcn/ui/Radix/Chakra/etc]
+- Styling: [Tailwind/CSS Modules/etc]
+- [ ] Dark mode
+- [ ] Dashboard scaffold
+- [ ] Landing page templates
+
+**DevEx:**
+- [ ] TypeScript
+- [ ] Testing setup
+- [ ] CI/CD templates
+- [ ] Documentation
+- Monorepo: [Turborepo/Nx/none]
+
+**Deployment:**
+- Default target: [Vercel/Railway/etc]
+- [ ] Docker support
+- [ ] Self-host guide
+
+**Legal/Compliance:**
+- [ ] GDPR tools
+- [ ] Cookie consent
+- [ ] Terms/Privacy generators
+
+**Marketing:**
+- [ ] Blog scaffold
+- [ ] SEO optimization
+- [ ] Waitlist/early access
+- [ ] Changelog page
+
+### Unique/Standout Features
+[List any features this starter has that others typically don't]
+
+### Gaps/Limitations
+[What's missing or weak compared to expectations]
+
+### Sources
+- [URL 1] (accessed YYYY-MM-DD)
+- [URL 2] (accessed YYYY-MM-DD)
+</output_format>
+
+<constraints>
+- Use web_search tool for all research
+- Prioritize official sources over third-party reviews
+- If information unavailable, mark as "Unknown" not guessed
+- Complete in under 5 searches if possible
+</constraints>
+```
+
+---
+
+## WAVE 2: Parallel Trend/Gap Research
+
+Launch after Wave 1 completes (or in parallel). Each subagent researches a specific trend/gap area.
+
+### Topics to Research
+
+1. Authentication trends 2025-2026
+2. Payment processing trends 2025-2026
+3. AI/LLM SaaS features 2025-2026
+4. Developer pain points with SaaS starters
+5. Emerging SaaS frameworks 2025-2026
+6. SaaS security & compliance 2025-2026
+
+### Wave 2A: Authentication Trends
+
+```xml
+<task>
+Research authentication trends for SaaS applications in 2025-2026.
+
+Search for:
+- "passkeys adoption SaaS 2026"
+- "best authentication provider SaaS 2025"
+- "Clerk vs Auth.js vs Supabase Auth 2026"
+- Developer discussions on auth in SaaS starters
+</task>
+
+<output_format>
+## Authentication Trends 2025-2026
+
+### Provider Market Share
+| Provider | Popularity | Trend | Notes |
+|----------|------------|-------|-------|
+
+### Emerging Methods
+- **Passkeys:** [Adoption rate, implementation guidance]
+- **Magic Links:** [Current state]
+- **Social OAuth:** [Which providers most requested]
+
+### Developer Preferences
+[What auth features do developers want in starters?]
+
+### Recommendations
+**Must-have:** [list]
+**Growing demand:** [list]
+**Declining:** [list]
+
+### Sources
+[URLs with dates]
+</output_format>
+```
+
+### Wave 2B: Payment Trends
+
+```xml
+<task>
+Research payment processing trends for SaaS in 2025-2026.
+
+Search for:
+- "Stripe vs Lemon Squeezy vs Paddle 2026"
+- "SaaS billing best practices 2025"
+- "usage-based billing implementation"
+- "Stripe alternatives for SaaS"
+</task>
+
+<output_format>
+## Payment Processing Trends 2025-2026
+
+### Provider Comparison
+| Provider | Pros | Cons | Best For |
+|----------|------|------|----------|
+
+### Billing Models
+- **Subscription:** [State of art]
+- **Usage-based:** [Implementation patterns]
+- **Hybrid:** [Emerging patterns]
+
+### Developer Pain Points
+[Common complaints about payment implementation]
+
+### Recommendations
+**Default choice:** [with rationale]
+**Alternative options:** [when to use each]
+
+### Sources
+[URLs with dates]
+</output_format>
+```
+
+### Wave 2C: AI/LLM Integration
+
+```xml
+<task>
+Research AI/LLM integration patterns in SaaS starters for 2025-2026.
+
+Search for:
+- "AI features SaaS starter 2026"
+- "OpenAI integration boilerplate"
+- "vector database SaaS template"
+- "AI-native SaaS trends"
+</task>
+
+<output_format>
+## AI/LLM Integration Trends 2025-2026
+
+### Common AI Features in Starters
+- [ ] Chat/assistant interfaces
+- [ ] Content generation
+- [ ] Semantic search
+- [ ] Embeddings/vector storage
+
+### Provider Preferences
+| Provider | Integration Complexity | Cost | Notes |
+|----------|----------------------|------|-------|
+
+### Vector Database Options
+[Pinecone vs Weaviate vs pgvector vs etc]
+
+### Implementation Patterns
+[How starters typically scaffold AI features]
+
+### Recommendations
+**Essential scaffolding:** [list]
+**Opt-in features:** [list]
+
+### Sources
+[URLs with dates]
+</output_format>
+```
+
+### Wave 2D: Developer Pain Points
+
+```xml
+<task>
+Research developer complaints and requests for SaaS starters.
+
+Search for:
+- "SaaS starter problems reddit"
+- "SaaS boilerplate complaints hacker news"
+- "what's missing in SaaS templates"
+- GitHub issues on popular SaaS starters
+</task>
+
+<output_format>
+## Developer Pain Points & Requests
+
+### Common Complaints
+1. [Pain point] - Frequency: [High/Medium/Low]
+2. [Pain point] - Frequency: [High/Medium/Low]
+
+### Most Requested Missing Features
+1. [Feature] - Request frequency
+2. [Feature] - Request frequency
+
+### Quality Concerns
+[What makes developers abandon a starter?]
+
+### Documentation Gaps
+[What do developers wish was better documented?]
+
+### Recommendations
+**Must address:** [list]
+**Quick wins:** [list]
+
+### Sources
+[URLs with dates]
+</output_format>
+```
+
+### Wave 2E: Emerging Frameworks
+
+```xml
+<task>
+Research emerging frameworks and architectural patterns for SaaS in 2025-2026.
+
+Search for:
+- "Next.js 15 SaaS 2026"
+- "Remix SaaS starter 2025"
+- "SvelteKit SaaS template"
+- "React Server Components SaaS"
+- "edge-first SaaS architecture"
+</task>
+
+<output_format>
+## Emerging Frameworks & Patterns 2025-2026
+
+### Framework Landscape
+| Framework | Momentum | SaaS Suitability | Notes |
+|-----------|----------|------------------|-------|
+
+### Architectural Shifts
+- **Server Components:** [Adoption in starters]
+- **Edge Runtime:** [Patterns emerging]
+- **Hybrid Rendering:** [SSR/SSG/ISR patterns]
+
+### New Players
+[Any new frameworks gaining traction for SaaS?]
+
+### Recommendations
+**Primary framework:** [with rationale]
+**Secondary options:** [when to offer alternatives]
+
+### Sources
+[URLs with dates]
+</output_format>
+```
+
+### Wave 2F: Security & Compliance
+
+```xml
+<task>
+Research security and compliance requirements for SaaS starters in 2025-2026.
+
+Search for:
+- "GDPR SaaS template 2025"
+- "SOC 2 SaaS starter"
+- "SaaS security best practices 2026"
+- "cookie consent implementation 2025"
+</task>
+
+<output_format>
+## Security & Compliance Trends 2025-2026
+
+### Regulatory Requirements
+| Regulation | Scope | Implementation Effort |
+|------------|-------|----------------------|
+
+### Standard Security Features
+- [ ] Rate limiting
+- [ ] CSRF protection
+- [ ] Input validation
+- [ ] Audit logging
+
+### Compliance Tooling
+[What tools/services help with compliance?]
+
+### Cookie/Consent Patterns
+[Current best practices]
+
+### Recommendations
+**Must-include:** [list]
+**Compliance-tier add-ons:** [list]
+
+### Sources
+[URLs with dates]
+</output_format>
+```
+
+---
+
+## WAVE 3: Synthesis
+
+After Waves 1 and 2 complete, a single agent synthesizes all findings.
+
+### Synthesis Prompt Template
+
+```xml
+<context>
+You are synthesizing research from multiple parallel agents analyzing SaaS starter templates.
+Your job is to consolidate findings into actionable template configuration recommendations.
+</context>
+
+<task>
+Given the research outputs below, create a comprehensive SaaS starter template specification.
+
+Synthesize:
+1. Feature recommendations (must-have / should-have / nice-to-have)
+2. Configuration options for a copier template
+3. Dependency recommendations with specific versions
+4. Priority ranking for implementation
+</task>
+
+<wave1_results>
+{PASTE ALL WAVE 1 SUBAGENT OUTPUTS HERE}
+</wave1_results>
+
+<wave2_results>
+{PASTE ALL WAVE 2 SUBAGENT OUTPUTS HERE}
+</wave2_results>
+
+<output_format>
+## Executive Summary
+[4-5 sentences on key findings]
+
+## Feature Matrix: Industry Standard vs Our Template
+
+| Category | Industry Standard | Our Recommendation | Priority |
+|----------|------------------|-------------------|----------|
+| Auth Provider | Clerk (45%), Auth.js (30%) | [choice] | P0 |
+| ... | ... | ... | ... |
+
+## Recommended Configuration Schema
+
+```yaml
+# copier.yml - SaaS Starter Options
+# [Full YAML schema for template configuration]
+```
+
+## Dependency Versions (as of Jan 2026)
+
+```yaml
+# Core dependencies with pinned versions
+```
+
+## Implementation Priority
+
+### P0 - Core (Week 1-2)
+[list]
+
+### P1 - Essential (Week 3-4)
+[list]
+
+### P2 - Value-Add (Week 5-6)
+[list]
+
+### P3 - Polish (Week 7+)
+[list]
+
+## Differentiation Opportunities
+[Based on gap analysis - what we can do better than existing starters]
+
+## Sources Consolidated
+[All unique sources from both waves]
+</output_format>
+```
+
+---
+
+## Execution Notes
+
+- Waves 1 and 2 can run in parallel (no dependencies between them)
+- Wave 3 requires all Wave 1 and Wave 2 outputs
+- Estimated total time: ~3-5 minutes (vs 30+ minutes sequential)
+- Use `subagent_type=Explore` for Waves 1 & 2, `subagent_type=general-purpose` for Wave 3
