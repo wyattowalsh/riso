@@ -107,6 +107,7 @@ export const verificationTokens = pgTable('verification_tokens', {
 }));
 {% endif %}
 
+{% if saas_tenancy_model == "b2b-teams" %}
 // ============================================================================
 // Multi-Tenant Organizations
 // ============================================================================
@@ -143,7 +144,11 @@ export const organizationMemberships = pgTable('organization_memberships', {
   id: id(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  {% if saas_rbac_system == "basic-roles" %}
   role: roleEnum('role').default('member').notNull(),
+  {% elif saas_rbac_system == "custom-permissions" %}
+  roleId: text('role_id').references(() => roles.id, { onDelete: 'set null' }),
+  {% endif %}
   
   // Invitation tracking
   invitedBy: text('invited_by'),
@@ -155,8 +160,41 @@ export const organizationMemberships = pgTable('organization_memberships', {
   userOrgIdx: uniqueIndex('memberships_user_org_idx').on(table.userId, table.organizationId),
   orgIdx: index('memberships_org_idx').on(table.organizationId),
   userIdx: index('memberships_user_idx').on(table.userId),
+  {% if saas_rbac_system == "basic-roles" %}
   roleIdx: index('memberships_role_idx').on(table.role),
+  {% elif saas_rbac_system == "custom-permissions" %}
+  roleIdx: index('memberships_role_id_idx').on(table.roleId),
+  {% endif %}
 }));
+
+// Team Invitations
+export const teamInvitations = pgTable('team_invitations', {
+  id: id(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  email: text('email').notNull(),
+  {% if saas_rbac_system == "basic-roles" %}
+  role: roleEnum('role').default('member').notNull(),
+  {% elif saas_rbac_system == "custom-permissions" %}
+  roleId: text('role_id').references(() => roles.id, { onDelete: 'set null' }),
+  {% endif %}
+  
+  // Invitation details
+  token: text('token').unique().notNull(),
+  invitedBy: text('invited_by').notNull(),
+  
+  // Status
+  status: text('status').default('pending').notNull(), // pending, accepted, expired, revoked
+  expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
+  acceptedAt: timestamp('accepted_at', { mode: 'date' }),
+  
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+}, (table) => ({
+  tokenIdx: uniqueIndex('invitations_token_idx').on(table.token),
+  orgEmailIdx: uniqueIndex('invitations_org_email_idx').on(table.organizationId, table.email),
+  orgStatusIdx: index('invitations_org_status_idx').on(table.organizationId, table.status),
+  emailIdx: index('invitations_email_idx').on(table.email),
+}));
+{% endif %}
 
 // ============================================================================
 // Billing & Subscriptions
@@ -376,26 +414,54 @@ export const featureFlags = pgTable('feature_flags', {
 // Relations (for Drizzle query builder)
 // ============================================================================
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ many, one }) => ({
   {% if saas_auth == "authjs" %}
   accounts: many(accounts),
   sessions: many(sessions),
   {% endif %}
+  {% if saas_tenancy_model == "b2b-teams" %}
   memberships: many(organizationMemberships),
+  {% endif %}
   subscriptions: many(subscriptions),
   apiKeys: many(apiKeys),
   auditLogs: many(auditLogs),
+  {% if saas_notifications != "none" %}
+  notifications: many(notifications),
+  notificationPreferences: many(notificationPreferences),
+  {% endif %}
+  {% if saas_onboarding != "none" %}
+  onboardingProgress: one(onboardingProgress),
+  {% endif %}
 }));
 
+{% if saas_tenancy_model == "b2b-teams" %}
 export const organizationsRelations = relations(organizations, ({ many, one }) => ({
   memberships: many(organizationMemberships),
+  invitations: many(teamInvitations),
   subscription: one(subscriptions, {
     fields: [organizations.id],
     references: [subscriptions.organizationId],
   }),
   apiKeys: many(apiKeys),
   auditLogs: many(auditLogs),
+  {% if saas_rbac_system == "custom-permissions" %}
+  roles: many(roles),
+  {% endif %}
 }));
+
+export const teamInvitationsRelations = relations(teamInvitations, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [teamInvitations.organizationId],
+    references: [organizations.id],
+  }),
+  {% if saas_rbac_system == "custom-permissions" %}
+  role: one(roles, {
+    fields: [teamInvitations.roleId],
+    references: [roles.id],
+  }),
+  {% endif %}
+}));
+{% endif %}
 
 export const subscriptionsRelations = relations(subscriptions, ({ one, many }) => ({
   user: one(users, {
@@ -410,6 +476,7 @@ export const subscriptionsRelations = relations(subscriptions, ({ one, many }) =
   invoices: many(invoices),
 }));
 
+{% if saas_tenancy_model == "b2b-teams" %}
 export const organizationMembershipsRelations = relations(organizationMemberships, ({ one }) => ({
   user: one(users, {
     fields: [organizationMemberships.userId],
@@ -419,7 +486,258 @@ export const organizationMembershipsRelations = relations(organizationMembership
     fields: [organizationMemberships.organizationId],
     references: [organizations.id],
   }),
+  {% if saas_rbac_system == "custom-permissions" %}
+  role: one(roles, {
+    fields: [organizationMemberships.roleId],
+    references: [roles.id],
+  }),
+  {% endif %}
 }));
+{% endif %}
+
+{% if saas_rbac_system == "custom-permissions" %}
+// ============================================================================
+// Custom RBAC System
+// ============================================================================
+
+export const permissions = pgTable('permissions', {
+  id: id(),
+  key: text('key').unique().notNull(), // e.g., "projects.create", "billing.manage"
+  name: text('name').notNull(),
+  description: text('description'),
+  category: text('category').notNull(), // Grouping: "projects", "billing", "users"
+  
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+}, (table) => ({
+  keyIdx: uniqueIndex('permissions_key_idx').on(table.key),
+  categoryIdx: index('permissions_category_idx').on(table.category),
+}));
+
+export const roles = pgTable('roles', {
+  id: id(),
+  organizationId: text('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  description: text('description'),
+  isSystem: boolean('is_system').default(false).notNull(),
+  
+  ...timestamps,
+}, (table) => ({
+  orgNameIdx: uniqueIndex('roles_org_name_idx').on(table.organizationId, table.name),
+  orgIdx: index('roles_org_idx').on(table.organizationId),
+  systemIdx: index('roles_system_idx').on(table.isSystem),
+}));
+
+export const rolePermissions = pgTable('role_permissions', {
+  id: id(),
+  roleId: text('role_id').notNull().references(() => roles.id, { onDelete: 'cascade' }),
+  permissionId: text('permission_id').notNull().references(() => permissions.id, { onDelete: 'cascade' }),
+  
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+}, (table) => ({
+  rolePermIdx: uniqueIndex('role_permissions_idx').on(table.roleId, table.permissionId),
+  roleIdx: index('role_permissions_role_idx').on(table.roleId),
+  permIdx: index('role_permissions_perm_idx').on(table.permissionId),
+}));
+
+export const rolesRelations = relations(roles, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [roles.organizationId],
+    references: [organizations.id],
+  }),
+  rolePermissions: many(rolePermissions),
+  memberships: many(organizationMemberships),
+}));
+
+export const permissionsRelations = relations(permissions, ({ many }) => ({
+  rolePermissions: many(rolePermissions),
+}));
+
+export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => ({
+  role: one(roles, {
+    fields: [rolePermissions.roleId],
+    references: [roles.id],
+  }),
+  permission: one(permissions, {
+    fields: [rolePermissions.permissionId],
+    references: [permissions.id],
+  }),
+}));
+{% endif %}
+
+{% if saas_notifications != "none" %}
+// ============================================================================
+// Notification System
+// ============================================================================
+
+export const notifications = pgTable('notifications', {
+  id: id(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  
+  // Content
+  type: text('type').notNull(), // e.g., "team.invite", "billing.payment_failed"
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  actionUrl: text('action_url'),
+  
+  // Status
+  read: boolean('read').default(false).notNull(),
+  readAt: timestamp('read_at', { mode: 'date' }),
+  {% if saas_notifications == "both" %}
+  emailSent: boolean('email_sent').default(false).notNull(),
+  emailSentAt: timestamp('email_sent_at', { mode: 'date' }),
+  {% endif %}
+  
+  // Metadata
+  metadata: json('metadata').$type<Record<string, unknown>>().default({}),
+  
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  expiresAt: timestamp('expires_at', { mode: 'date' }),
+}, (table) => ({
+  userReadIdx: index('notifications_user_read_idx').on(table.userId, table.read),
+  userCreatedIdx: index('notifications_user_created_idx').on(table.userId, table.createdAt),
+  typeIdx: index('notifications_type_idx').on(table.type),
+}));
+
+export const notificationPreferences = pgTable('notification_preferences', {
+  id: id(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  
+  type: text('type').notNull(), // Notification type pattern
+  inAppEnabled: boolean('in_app_enabled').default(true).notNull(),
+  emailEnabled: boolean('email_enabled').default(true).notNull(),
+  
+  ...timestamps,
+}, (table) => ({
+  userTypeIdx: uniqueIndex('notification_prefs_user_type_idx').on(table.userId, table.type),
+  userIdx: index('notification_prefs_user_idx').on(table.userId),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+  }),
+}));
+
+export const notificationPreferencesRelations = relations(notificationPreferences, ({ one }) => ({
+  user: one(users, {
+    fields: [notificationPreferences.userId],
+    references: [users.id],
+  }),
+}));
+{% endif %}
+
+{% if saas_waitlist %}
+// ============================================================================
+// Waitlist System
+// ============================================================================
+
+export const waitlistStatusEnum = pgEnum('waitlist_status', ['waiting', 'invited', 'converted', 'unsubscribed']);
+
+export const waitlistEntries = pgTable('waitlist_entries', {
+  id: id(),
+  email: text('email').unique().notNull(),
+  name: text('name'),
+  
+  // Referral tracking
+  referredBy: text('referred_by'),
+  referralCode: text('referral_code').unique().notNull(),
+  referralCount: integer('referral_count').default(0).notNull(),
+  
+  // Status
+  status: waitlistStatusEnum('status').default('waiting').notNull(),
+  position: integer('position'),
+  
+  // Invite details
+  inviteCode: text('invite_code'),
+  invitedAt: timestamp('invited_at', { mode: 'date' }),
+  convertedAt: timestamp('converted_at', { mode: 'date' }),
+  convertedUserId: text('converted_user_id').unique(),
+  
+  // Marketing
+  source: text('source'),
+  metadata: json('metadata').$type<Record<string, unknown>>().default({}),
+  
+  ...timestamps,
+}, (table) => ({
+  statusIdx: index('waitlist_status_idx').on(table.status),
+  referralCodeIdx: uniqueIndex('waitlist_referral_code_idx').on(table.referralCode),
+  positionIdx: index('waitlist_position_idx').on(table.position),
+}));
+
+export const inviteCodes = pgTable('invite_codes', {
+  id: id(),
+  code: text('code').unique().notNull(),
+  
+  maxUses: integer('max_uses').default(1).notNull(),
+  currentUses: integer('current_uses').default(0).notNull(),
+  
+  expiresAt: timestamp('expires_at', { mode: 'date' }),
+  isActive: boolean('is_active').default(true).notNull(),
+  
+  createdBy: text('created_by'),
+  note: text('note'),
+  
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+}, (table) => ({
+  codeIdx: uniqueIndex('invite_codes_code_idx').on(table.code),
+  activeIdx: index('invite_codes_active_idx').on(table.isActive),
+}));
+{% endif %}
+
+{% if saas_onboarding != "none" %}
+// ============================================================================
+// Onboarding System
+// ============================================================================
+
+export const onboardingProgress = pgTable('onboarding_progress', {
+  id: id(),
+  userId: text('user_id').unique().notNull().references(() => users.id, { onDelete: 'cascade' }),
+  
+  currentStep: text('current_step').notNull(),
+  completedSteps: json('completed_steps').$type<string[]>().default([]),
+  isComplete: boolean('is_complete').default(false).notNull(),
+  completedAt: timestamp('completed_at', { mode: 'date' }),
+  
+  responses: json('responses').$type<Record<string, unknown>>().default({}),
+  
+  skippedAt: timestamp('skipped_at', { mode: 'date' }),
+  
+  ...timestamps,
+}, (table) => ({
+  userIdx: uniqueIndex('onboarding_user_idx').on(table.userId),
+}));
+
+export const onboardingProgressRelations = relations(onboardingProgress, ({ one }) => ({
+  user: one(users, {
+    fields: [onboardingProgress.userId],
+    references: [users.id],
+  }),
+}));
+{% endif %}
+
+{% if saas_user_impersonation %}
+// ============================================================================
+// User Impersonation Audit
+// ============================================================================
+
+export const impersonationSessions = pgTable('impersonation_sessions', {
+  id: id(),
+  adminUserId: text('admin_user_id').notNull(),
+  targetUserId: text('target_user_id').notNull(),
+  
+  reason: text('reason'),
+  startedAt: timestamp('started_at', { mode: 'date' }).defaultNow().notNull(),
+  endedAt: timestamp('ended_at', { mode: 'date' }),
+  
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+}, (table) => ({
+  adminIdx: index('impersonation_admin_idx').on(table.adminUserId),
+  targetIdx: index('impersonation_target_idx').on(table.targetUserId),
+  startedIdx: index('impersonation_started_idx').on(table.startedAt),
+}));
+{% endif %}
 
 // ============================================================================
 // Type Exports
@@ -427,9 +745,12 @@ export const organizationMembershipsRelations = relations(organizationMembership
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+{% if saas_tenancy_model == "b2b-teams" %}
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
 export type OrganizationMembership = typeof organizationMemberships.$inferSelect;
+export type TeamInvitation = typeof teamInvitations.$inferSelect;
+{% endif %}
 export type Subscription = typeof subscriptions.$inferSelect;
 export type NewSubscription = typeof subscriptions.$inferInsert;
 export type UsageRecord = typeof usageRecords.$inferSelect;
@@ -437,4 +758,23 @@ export type Invoice = typeof invoices.$inferSelect;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type FeatureFlag = typeof featureFlags.$inferSelect;
+{% if saas_rbac_system == "custom-permissions" %}
+export type Permission = typeof permissions.$inferSelect;
+export type Role = typeof roles.$inferSelect;
+export type RolePermission = typeof rolePermissions.$inferSelect;
+{% endif %}
+{% if saas_notifications != "none" %}
+export type Notification = typeof notifications.$inferSelect;
+export type NotificationPreference = typeof notificationPreferences.$inferSelect;
+{% endif %}
+{% if saas_waitlist %}
+export type WaitlistEntry = typeof waitlistEntries.$inferSelect;
+export type InviteCode = typeof inviteCodes.$inferSelect;
+{% endif %}
+{% if saas_onboarding != "none" %}
+export type OnboardingProgress = typeof onboardingProgress.$inferSelect;
+{% endif %}
+{% if saas_user_impersonation %}
+export type ImpersonationSession = typeof impersonationSessions.$inferSelect;
+{% endif %}
 {% endif %}

@@ -35,6 +35,9 @@ defaults:
   api_tracks: "none"
   graphql_api_module: "disabled"
   mcp_module: "disabled"
+  mcp_language: "python"
+  mcp_transport: "stdio"
+  mcp_example_tools: true
   websocket_module: "disabled"
   codegen_module: "disabled"
   changelog_module: "disabled"
@@ -49,6 +52,16 @@ defaults:
   fumadocs_sidebar: "default"
   fumadocs_i18n: "disabled"
   fumadocs_blog: "disabled"
+  fumadocs_code_theme: "github"
+  fumadocs_twoslash: "disabled"
+  fumadocs_image_zoom: "enabled"
+  fumadocs_banner: "disabled"
+  fumadocs_last_updated: "enabled"
+  fumadocs_edit_on_github: "enabled"
+  fumadocs_feedback: "disabled"
+  fumadocs_toc_depth: "3"
+  fumadocs_mermaid: "disabled"
+  fumadocs_math: "disabled"
   # Docusaurus configuration defaults
   docusaurus_search_provider: "local"
   docusaurus_analytics: "none"
@@ -73,6 +86,7 @@ defaults:
   docusaurus_feedback: "disabled"
   # Docusaurus SEO & UI
   docusaurus_sitemap: "enabled"
+  docusaurus_structured_data: "enabled"
   docusaurus_redirects: "disabled"
   docusaurus_announcement_bar: "disabled"
   docusaurus_back_to_top: "enabled"
@@ -81,6 +95,11 @@ defaults:
   docusaurus_changelog: "disabled"
   docusaurus_debug: "disabled"
   docusaurus_reading_time: "enabled"
+  # Docusaurus remark/rehype plugins
+  docusaurus_gfm: "enabled"
+  docusaurus_emoji: "disabled"
+  docusaurus_github_links: "disabled"
+  docusaurus_autolink_headings: "enabled"
   # Other defaults
   shared_logic: "disabled"
   ci_platform: "github-actions"
@@ -98,6 +117,13 @@ defaults:
   saas_ai: "openai"
   saas_storage: "r2"
   saas_cicd: "github-actions"
+  # AI Tools configuration
+  ai_tools_module: "enabled"
+  ai_tools_mcp_thinking: true
+  ai_tools_mcp_web: true
+  ai_tools_mcp_documents: true
+  ai_tools_mcp_utilities: true
+  ai_tools_mcp_search: false
   saas_observability_sentry: true
   saas_observability_datadog: true
   saas_observability_otel: true
@@ -116,6 +142,15 @@ prompts:
     choices:
       - single-package
       - monorepo
+  project_language:
+    type: str
+    help: "Select the primary project language"
+    default: python
+    choices:
+      - python
+      - rust
+      - typescript
+
   quality_profile:
     type: str
     help: "Select baseline quality suite profile"
@@ -128,6 +163,7 @@ prompts:
     choices:
       - disabled
       - enabled
+    when: "{{ project_language == 'python' }}"
   api_tracks:
     type: str
     help: "Select API tracks to scaffold"
@@ -136,6 +172,7 @@ prompts:
       - python
       - node
       - python+node
+    when: "{{ project_language == 'python' }}"
   graphql_api_module:
     type: str
     help: "Enable GraphQL API scaffolding (Strawberry)?"
@@ -149,6 +186,41 @@ prompts:
     choices:
       - disabled
       - enabled
+
+  mcp_language:
+    type: str
+    help: |
+      Select MCP server implementation language:
+      - python: FastMCP v2 with Pydantic
+      - typescript: FastMCP (Node.js) with Zod
+      - rust: Rust SDK (rmcp)
+    choices:
+      - python
+      - typescript
+      - rust
+    default: python
+    when: "{{ mcp_module == 'enabled' }}"
+
+  mcp_transport:
+    type: str
+    help: |
+      Select default transport protocol:
+      - stdio: Standard I/O (default, best for local agents)
+      - sse: Server-Sent Events (for web clients)
+      - http: HTTP streaming
+    choices:
+      - stdio
+      - sse
+      - http
+    default: stdio
+    when: "{{ mcp_module == 'enabled' }}"
+
+  mcp_example_tools:
+    type: bool
+    help: "Include example tools (echo, timestamp, fetch)?"
+    default: true
+    when: "{{ mcp_module == 'enabled' }}"
+
   websocket_module:
     type: str
     help: "Enable WebSocket real-time communication module?"
@@ -159,12 +231,14 @@ prompts:
   codegen_module:
     type: str
     help: "Enable code generation and scaffolding tools?"
+    when: "{{ project_language == 'python' }}"
   changelog_module:
     type: str
     help: "Enable changelog generation and release management?"
     choices:
       - disabled
       - enabled
+    when: "{{ project_language == 'python' }}"
   docs_site:
     type: str
     help: "Pick documentation variant"
@@ -173,6 +247,7 @@ prompts:
       - sphinx-shibuya
       - docusaurus
       - none
+    when: "{{ project_language == 'python' }}"
   
   # ========================================
   # Fumadocs Configuration Options
@@ -283,6 +358,121 @@ prompts:
     help: |
       Enable blog/changelog section?
       Uses MDX content collection for posts.
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'fumadocs' }}"
+
+  fumadocs_code_theme:
+    type: str
+    help: |
+      Select syntax highlighting theme for code blocks:
+      - github: GitHub light/dark (default)
+      - catppuccin: Catppuccin latte/mocha
+      - dracula: Dracula theme
+      - nord: Nord theme
+      - one: One light/dark
+    default: github
+    choices:
+      - github
+      - catppuccin
+      - dracula
+      - nord
+      - one
+    when: "{{ docs_site == 'fumadocs' }}"
+
+  fumadocs_twoslash:
+    type: str
+    help: |
+      Enable Twoslash for TypeScript code blocks?
+      Shows inline type hints, errors, and completions.
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'fumadocs' and api_tracks in ['node', 'python+node'] }}"
+
+  fumadocs_image_zoom:
+    type: str
+    help: |
+      Enable medium-style image zoom on click?
+    default: enabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'fumadocs' }}"
+
+  fumadocs_banner:
+    type: str
+    help: |
+      Enable announcement banner at top of docs?
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'fumadocs' }}"
+
+  fumadocs_last_updated:
+    type: str
+    help: |
+      Show "Last updated" timestamp from git history?
+    default: enabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'fumadocs' }}"
+
+  fumadocs_edit_on_github:
+    type: str
+    help: |
+      Show "Edit on GitHub" links on documentation pages?
+    default: enabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'fumadocs' }}"
+
+  fumadocs_feedback:
+    type: str
+    help: |
+      Enable "Was this helpful?" feedback widget on pages?
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'fumadocs' }}"
+
+  fumadocs_toc_depth:
+    type: str
+    help: |
+      Table of contents heading depth (2-6):
+      - 2: H2 headings only
+      - 3: H2-H3 headings (default)
+      - 4: H2-H4 headings
+    default: "3"
+    choices:
+      - "2"
+      - "3"
+      - "4"
+    when: "{{ docs_site == 'fumadocs' }}"
+
+  fumadocs_mermaid:
+    type: str
+    help: |
+      Enable Mermaid diagrams in Markdown?
+      Supports flowcharts, sequence diagrams, ERDs, etc.
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'fumadocs' }}"
+
+  fumadocs_math:
+    type: str
+    help: |
+      Enable KaTeX math equations in Markdown?
+      Supports inline ($) and block ($$) LaTeX.
     default: disabled
     choices:
       - enabled
@@ -531,6 +721,17 @@ prompts:
       - disabled
     when: "{{ docs_site == 'docusaurus' }}"
 
+  docusaurus_structured_data:
+    type: str
+    help: |
+      Enable JSON-LD structured data for SEO?
+      Adds schema.org Organization, WebSite, and Article markup for rich results.
+    default: enabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
   docusaurus_redirects:
     type: str
     help: |
@@ -621,6 +822,108 @@ prompts:
       - enabled
       - disabled
     when: "{{ docs_site == 'docusaurus' }}"
+
+  # ----------------------------------------
+  # Docusaurus Remark/Rehype Plugins
+  # ----------------------------------------
+  docusaurus_gfm:
+    type: str
+    help: |
+      Enable GitHub Flavored Markdown (GFM)?
+      Adds tables, strikethrough, task lists, and autolink literals.
+    default: enabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_emoji:
+    type: str
+    help: |
+      Enable emoji shortcode support?
+      Converts :smile: to 😄 and other emoji shortcodes.
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_github_links:
+    type: str
+    help: |
+      Enable GitHub reference autolinking?
+      Autolinks #issues, @mentions, and commit SHAs to GitHub.
+    default: disabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  docusaurus_autolink_headings:
+    type: str
+    help: |
+      Enable autolinked headings?
+      Adds clickable anchor links to all headings.
+    default: enabled
+    choices:
+      - enabled
+      - disabled
+    when: "{{ docs_site == 'docusaurus' }}"
+
+  # ========================================
+  # AI Tools Configuration
+  # ========================================
+  ai_tools_module:
+    type: str
+    help: |
+      Enable AI coding tools configuration?
+      Generates config files for Claude Code, Codex CLI, GitHub Copilot CLI,
+      Cursor CLI, Gemini CLI, Amazon Q CLI, and OpenCode.
+      All tools share AGENTS.md as the single source of truth.
+    default: enabled
+    choices:
+      - enabled
+      - disabled
+
+  ai_tools_mcp_thinking:
+    type: bool
+    help: |
+      Include thinking/reasoning MCP servers?
+      (sequential-thinking, structured-thinking, cascade-thinking, etc.)
+    default: true
+    when: "{{ ai_tools_module == 'enabled' }}"
+
+  ai_tools_mcp_web:
+    type: bool
+    help: |
+      Include web MCP servers?
+      (fetch, fetcher, playwright, deepwiki)
+    default: true
+    when: "{{ ai_tools_module == 'enabled' }}"
+
+  ai_tools_mcp_documents:
+    type: bool
+    help: |
+      Include document processing MCP servers?
+      (docling for PDF/DOCX, repomix for repo context)
+    default: true
+    when: "{{ ai_tools_module == 'enabled' }}"
+
+  ai_tools_mcp_utilities:
+    type: bool
+    help: |
+      Include utility MCP servers?
+      (memory persistence)
+    default: true
+    when: "{{ ai_tools_module == 'enabled' }}"
+
+  ai_tools_mcp_search:
+    type: bool
+    help: |
+      Include search MCP servers (requires API keys)?
+      (brave-search, tavily, context7 - keys via env vars)
+    default: false
+    when: "{{ ai_tools_module == 'enabled' }}"
 
   shared_logic:
     type: str
@@ -863,6 +1166,132 @@ prompts:
       - comprehensive
     when: "{{ saas_starter_module == 'enabled' }}"
 
+  # ============================================================================
+  # Application-Level Scaffolding Options
+  # These options generate actual business logic and UI components
+  # ============================================================================
+
+  saas_tenancy_model:
+    type: str
+    help: |
+      Select tenancy model for your SaaS application:
+      - B2B Teams: Organization-centric with team workspaces, seat-based billing, team invites,
+        shared resources, and organization switching. Best for collaboration tools, project
+        management, and enterprise software.
+      - B2C Users: User-centric with individual accounts, personal subscriptions, no team
+        features. Best for consumer apps, personal productivity tools, and individual SaaS.
+    default: b2b-teams
+    choices:
+      - b2b-teams
+      - b2c-users
+    when: "{{ saas_starter_module == 'enabled' }}"
+
+  saas_rbac_system:
+    type: str
+    help: |
+      Select role-based access control (RBAC) system:
+      - Basic Roles: Fixed owner/admin/member roles with hardcoded permissions. Simple,
+        predictable, covers 80% of use cases. No admin UI needed.
+      - Custom Permissions: Dynamic permission system with role management UI, granular
+        access control, and permission inheritance. Best for enterprise or complex access needs.
+    default: basic-roles
+    choices:
+      - basic-roles
+      - custom-permissions
+    when: "{{ saas_starter_module == 'enabled' }}"
+
+  saas_onboarding:
+    type: str
+    help: |
+      Include user onboarding flow scaffolding?
+      - Wizard: Multi-step guided setup with progress indicator, data collection, and
+        completion tracking. Great for complex products requiring initial configuration.
+      - Checklist: Dashboard checklist with completion tracking and contextual prompts.
+        Non-blocking, lets users explore while guiding them to key actions.
+      - None: No onboarding scaffolding. Users land directly on the dashboard.
+    default: wizard
+    choices:
+      - wizard
+      - checklist
+      - none
+    when: "{{ saas_starter_module == 'enabled' }}"
+
+  saas_admin_dashboard:
+    type: bool
+    help: |
+      Include admin dashboard scaffolding? Generates:
+      - Admin-only routes with role-based authentication
+      - User management (list, search, view details, suspend accounts)
+      - Organization management (for B2B) or subscription overview (for B2C)
+      - User impersonation for debugging customer issues
+      - Basic metrics dashboard (signups, active users, revenue)
+    default: true
+    when: "{{ saas_starter_module == 'enabled' }}"
+
+  saas_user_impersonation:
+    type: bool
+    help: |
+      Enable user impersonation for admin users? Allows admins to:
+      - View the app as any user for debugging and support
+      - Audit trail of all impersonation sessions
+      - Clear visual indicator when impersonating
+      Requires saas_admin_dashboard to be enabled.
+    default: true
+    when: "{{ saas_starter_module == 'enabled' and saas_admin_dashboard }}"
+
+  saas_notifications:
+    type: str
+    help: |
+      Select notification system scaffolding:
+      - Both: Real-time in-app notification center + email notifications with preferences.
+        Includes notification bell component, WebSocket/SSE delivery, and email digests.
+      - Email Only: Email notifications only. Simpler architecture, no real-time component.
+      - None: No notification scaffolding. You'll implement notifications manually.
+    default: both
+    choices:
+      - both
+      - email-only
+      - none
+    when: "{{ saas_starter_module == 'enabled' }}"
+
+  saas_waitlist:
+    type: bool
+    help: |
+      Include pre-launch waitlist scaffolding? Generates:
+      - Waitlist landing page with email capture
+      - Invite code system with limited-use codes
+      - Referral tracking (who invited whom)
+      - Admin panel for managing waitlist and sending invites
+      Best for validating demand before full launch.
+    default: false
+    when: "{{ saas_starter_module == 'enabled' }}"
+
+  saas_i18n:
+    type: bool
+    help: |
+      Include internationalization (i18n) scaffolding? Generates:
+      - next-intl (Next.js) or remix-i18next (Remix) configuration
+      - Default English locale with placeholder translations
+      - Language switcher component in navigation
+      - Date, number, and currency formatting utilities
+      - Translation key extraction setup
+    default: false
+    when: "{{ saas_starter_module == 'enabled' }}"
+
+  saas_api_access:
+    type: str
+    help: |
+      Select API access model for your SaaS:
+      - Public API: Full API key management with user-facing UI, rate limiting dashboard,
+        usage tracking, and auto-generated API documentation. Best for developer platforms.
+      - Internal Only: API routes exist but for internal use only. No API key management UI.
+        Users interact via web interface only.
+    default: internal-only
+    choices:
+      - public-api
+      - internal-only
+    when: "{{ saas_starter_module == 'enabled' }}"
+
 exclude:
   - ".git"
   - ".github"
@@ -871,6 +1300,10 @@ exclude:
   - "config/"
   - "samples/"
   - "scripts/"
+  - "{% if project_language != 'python' %}python/{% endif %}"
+  - "{% if project_language != 'rust' %}rust/{% endif %}"
+  - "{% if project_language != 'python' %}pyproject.toml{% endif %}"
+  - "{% if project_language != 'rust' %}Cargo.toml{% endif %}"
 
 tasks:
   post_init:

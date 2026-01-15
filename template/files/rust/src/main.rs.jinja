@@ -1,0 +1,28 @@
+{% if project_language == 'rust' %}
+use clap::Parser;
+use tracing::info;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Cli {
+    /// Optional name to greet
+    #[arg(short, long)]
+    name: Option<String>,
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    // Initialize logging
+    tracing_subscriber::fmt::init();
+
+    let cli = Cli::parse();
+
+    if let Some(name) = cli.name {
+        info!("Hello, {}!", name);
+    } else {
+        info!("Hello, world!");
+    }
+
+    Ok(())
+}
+{% endif %}

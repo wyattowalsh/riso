@@ -1,0 +1,31 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'typescript' and mcp_example_tools -%}
+/**
+ * System resources - basic system information access.
+ */
+
+import type { FastMCP } from "fastmcp";
+import * as os from "os";
+
+export function registerSystemResources(mcp: FastMCP): void {
+  mcp.addResource({
+    uri: "system://info",
+    name: "System Information",
+    description: "Get basic system information",
+    async load() {
+      const info = {
+        platform: os.platform(),
+        release: os.release(),
+        type: os.type(),
+        arch: os.arch(),
+        cpus: os.cpus().length,
+        totalmem: os.totalmem(),
+        freemem: os.freemem(),
+      };
+      
+      return {
+        text: JSON.stringify(info, null, 2),
+      };
+    },
+  });
+}
+{%- endif %}

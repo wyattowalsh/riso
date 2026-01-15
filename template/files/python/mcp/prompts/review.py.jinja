@@ -1,0 +1,47 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'python' and mcp_example_tools -%}
+"""Review prompts - code review templates.
+
+Demonstrates prompt implementation.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fastmcp import FastMCP
+
+
+def register_review_prompts(mcp: FastMCP) -> None:
+    """Register review prompts with the MCP server.
+
+    Parameters
+    ----------
+    mcp
+        FastMCP server instance
+    """
+
+    @mcp.prompt("review_code")
+    def review_code_prompt(code: str, language: str = "python") -> str:
+        """Create a code review prompt.
+        
+        Parameters
+        ----------
+        code
+            The code to review
+        language
+            Programming language of the code
+        """
+        return f"""Please review the following {language} code for:
+1. Bugs and potential runtime errors
+2. Security vulnerabilities
+3. Performance optimization opportunities
+4. Code style and best practices conformance
+
+Code to review:
+```{language}
+{code}
+```
+"""
+
+{%- endif %}

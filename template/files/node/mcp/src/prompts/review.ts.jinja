@@ -1,0 +1,52 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'typescript' and mcp_example_tools -%}
+/**
+ * Review prompts - code review templates.
+ */
+
+import type { FastMCP } from "fastmcp";
+
+export function registerReviewPrompts(mcp: FastMCP): void {
+  mcp.addPrompt({
+    name: "review_code",
+    description: "Create a code review prompt",
+    arguments: [
+      {
+        name: "code",
+        description: "The code to review",
+        required: true,
+      },
+      {
+        name: "language",
+        description: "Programming language of the code",
+        required: false,
+      },
+    ],
+    load: async (args) => {
+      const code = args.code;
+      const language = args.language || "typescript";
+      
+      return {
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Please review the following ${language} code for:
+1. Bugs and potential runtime errors
+2. Security vulnerabilities
+3. Performance optimization opportunities
+4. Code style and best practices conformance
+
+Code to review:
+\`\`\`${language}
+${code}
+\`\`\`
+`,
+            },
+          },
+        ],
+      };
+    },
+  });
+}
+{%- endif %}

@@ -79,6 +79,7 @@ def register_copier_tools(mcp: FastMCP) -> None:
             merge_answers_with_defaults,
             run_generator,
             load_copier_config,
+            validate_answers,
         )
 
         try:
@@ -91,19 +92,26 @@ def register_copier_tools(mcp: FastMCP) -> None:
 
             # Build complete answers
             provided = answers or {}
-            project_name = provided.get("project_name", defaults.get("project_name", "riso-project"))
+            project_name = provided.get(
+                "project_name", defaults.get("project_name", "riso-project")
+            )
             final_answers = merge_answers_with_defaults(
                 project_name=project_name,
                 config=copier_config,
                 provided_answers=provided,
             )
 
+            validation = validate_answers(final_answers, template_path)
+            if not validation.valid:
+                raise ValidationFailedError(validation.errors)
+
             result = run_generator(
-                destination=Path(destination),
+                destination=Path(destination).expanduser().resolve(),
                 data=final_answers,
                 template_path=template_path,
                 force=force,
                 vcs_ref=vcs_ref,
+                timeout=config.timeouts.copier_copy,
             )
 
             return result.to_dict()
@@ -156,6 +164,7 @@ def register_copier_tools(mcp: FastMCP) -> None:
                 destination=dest_path,
                 template_path=template_path,
                 skip_answered=skip_answered,
+                timeout=config.timeouts.tool,
             )
 
             return result.to_dict()
@@ -202,6 +211,7 @@ def register_copier_tools(mcp: FastMCP) -> None:
                 destination=dest_path,
                 data=answers,
                 template_path=template_path,
+                timeout=config.timeouts.tool,
             )
 
             return result.to_dict()

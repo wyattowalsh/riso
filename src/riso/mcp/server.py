@@ -7,65 +7,50 @@ with support for stdio, SSE, and HTTP streaming transports.
 from __future__ import annotations
 
 import sys
-from typing import TYPE_CHECKING
 
 from fastmcp import FastMCP
 
-from .config import ServerConfig, get_config, load_config
+from .config import ServerConfig, load_config
 from .session import SessionManager
-
-if TYPE_CHECKING:
-    pass
 
 __version__ = "1.0.0"
 SERVER_NAME = "riso-mcp"
 
-# Create server instance
-config = get_config()
+def create_server(config: ServerConfig | None = None) -> tuple[FastMCP, SessionManager]:
+    """Create and register a configured MCP server instance."""
+    server_config = config or load_config()
 
-mcp = FastMCP(
-    name=config.name,
-    version=__version__,
-    instructions=(
-        "Riso MCP Server - Scaffolds Python, Node.js, and full-stack projects "
-        "using the Riso Copier template. Supports interactive wizard workflows "
-        "and direct Copier API access.\n\n"
-        "Available capabilities:\n"
-        "- Tools: Template operations (copy, update, recopy) and wizard workflow\n"
-        "- Resources: Template files, sample configurations, module catalog\n"
-        "- Prompts: Pre-built workflows for common project setups"
-    ),
-)
+    mcp = FastMCP(
+        name=server_config.name,
+        version=__version__,
+        instructions=(
+            "Riso MCP Server - Scaffolds Python, Node.js, and full-stack projects "
+            "using the Riso Copier template. Supports interactive wizard workflows "
+            "and direct Copier API access.\n\n"
+            "Available capabilities:\n"
+            "- Tools: Template operations (copy, update, recopy) and wizard workflow\n"
+            "- Resources: Template files, sample configurations, module catalog\n"
+            "- Prompts: Pre-built workflows for common project setups"
+        ),
+    )
 
-# Session manager for wizard state
-session_manager = SessionManager(
-    ttl_minutes=config.wizard.session_ttl_minutes,
-    max_sessions=config.wizard.max_sessions,
-)
+    session_manager = SessionManager(
+        ttl_minutes=server_config.wizard.session_ttl_minutes,
+        max_sessions=server_config.wizard.max_sessions,
+    )
 
-
-def _register_tools() -> None:
-    """Register all MCP tools."""
     from .tools import register_tools
-
-    register_tools(mcp, session_manager)
-
-
-def _register_resources() -> None:
-    """Register all MCP resources."""
     from .resources import register_resources
-
-    register_resources(mcp)
-
-
-def _register_prompts() -> None:
-    """Register all MCP prompts."""
     from .prompts import register_prompts
 
+    register_tools(mcp, session_manager)
+    register_resources(mcp)
     register_prompts(mcp)
 
+    return mcp, session_manager
 
-def _setup_logging() -> None:
+
+def _setup_logging(config: ServerConfig) -> None:
     """Configure logging for MCP server."""
     try:
         from loguru import logger
@@ -86,11 +71,9 @@ def _setup_logging() -> None:
         )
 
 
-# Register all capabilities on import
-_setup_logging()
-_register_tools()
-_register_resources()
-_register_prompts()
+# Create server instance on import for entry points/tests.
+_CONFIG = load_config()
+mcp, session_manager = create_server(_CONFIG)
 
 
 def run_server(
@@ -110,6 +93,8 @@ def run_server(
         Port for HTTP/SSE transports. Defaults to config value.
     """
     server_config = load_config()
+
+    _setup_logging(server_config)
 
     actual_transport = transport or server_config.transport
     actual_host = host or server_config.host

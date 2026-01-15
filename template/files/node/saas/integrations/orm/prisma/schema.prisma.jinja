@@ -46,12 +46,25 @@ model User {
   {% endif %}
   
   // Multi-tenancy
+  {% if saas_tenancy_model == "b2b-teams" %}
   memberships   OrganizationMembership[]
+  {% endif %}
   
   // SaaS entities
   subscriptions Subscription[]
   apiKeys       ApiKey[]
   auditLogs     AuditLog[]
+  
+  // Notifications
+  {% if saas_notifications != "none" %}
+  notifications          Notification[]
+  notificationPreferences NotificationPreference[]
+  {% endif %}
+  
+  // Onboarding
+  {% if saas_onboarding != "none" %}
+  onboardingProgress OnboardingProgress?
+  {% endif %}
   
   // Metadata
   metadata      Json?     @default("{}")
@@ -113,6 +126,7 @@ model VerificationToken {
 }
 {% endif %}
 
+{% if saas_tenancy_model == "b2b-teams" %}
 // ============================================================================
 // Multi-Tenant Organizations
 // ============================================================================
@@ -131,11 +145,15 @@ model Organization {
   
   // Relationships
   memberships  OrganizationMembership[]
+  invitations  TeamInvitation[]
   subscription Subscription?
   apiKeys      ApiKey[]
   auditLogs    AuditLog[]
   {% if saas_enterprise_bridge == "workos" %}
   workosOrganizationId String? @unique @map("workos_organization_id")
+  {% endif %}
+  {% if saas_rbac_system == "custom-permissions" %}
+  roles        Role[]
   {% endif %}
   
   // Metadata
@@ -156,7 +174,11 @@ model OrganizationMembership {
   id             String   @id @default(cuid())
   userId         String   @map("user_id")
   organizationId String   @map("organization_id")
+  {% if saas_rbac_system == "basic-roles" %}
   role           String   @default("member") // owner, admin, member
+  {% elif saas_rbac_system == "custom-permissions" %}
+  roleId         String?  @map("role_id") // Custom role reference
+  {% endif %}
   
   // Invitation tracking
   invitedBy      String?  @map("invited_by")
@@ -166,6 +188,9 @@ model OrganizationMembership {
   // Relationships
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  {% if saas_rbac_system == "custom-permissions" %}
+  role         Role?        @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  {% endif %}
   
   // Timestamps
   createdAt    DateTime @default(now()) @map("created_at")
@@ -174,9 +199,50 @@ model OrganizationMembership {
   @@unique([userId, organizationId])
   @@index([organizationId])
   @@index([userId])
+  {% if saas_rbac_system == "basic-roles" %}
   @@index([role])
+  {% elif saas_rbac_system == "custom-permissions" %}
+  @@index([roleId])
+  {% endif %}
   @@map("organization_memberships")
 }
+
+// ============================================================================
+// Team Invitations
+// ============================================================================
+
+model TeamInvitation {
+  id             String   @id @default(cuid())
+  organizationId String   @map("organization_id")
+  email          String
+  {% if saas_rbac_system == "basic-roles" %}
+  role           String   @default("member") // Role to assign on acceptance
+  {% elif saas_rbac_system == "custom-permissions" %}
+  roleId         String?  @map("role_id") // Custom role to assign
+  {% endif %}
+  
+  // Invitation details
+  token          String   @unique // Secure token for invitation link
+  invitedBy      String   @map("invited_by") // User ID who sent invite
+  
+  // Status
+  status         String   @default("pending") // pending, accepted, expired, revoked
+  expiresAt      DateTime @map("expires_at")
+  acceptedAt     DateTime? @map("accepted_at")
+  
+  // Relationships
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt      DateTime @default(now()) @map("created_at")
+  
+  @@unique([organizationId, email])
+  @@index([token])
+  @@index([organizationId, status])
+  @@index([email])
+  @@map("team_invitations")
+}
+{% endif %}
 
 // ============================================================================
 // Billing & Subscriptions
@@ -426,4 +492,250 @@ model FeatureFlag {
   @@index([enabled])
   @@map("feature_flags")
 }
+
+{% if saas_rbac_system == "custom-permissions" %}
+// ============================================================================
+// Custom RBAC System
+// ============================================================================
+
+model Permission {
+  id          String   @id @default(cuid())
+  key         String   @unique // e.g., "projects.create", "billing.manage", "users.invite"
+  name        String
+  description String?  @db.Text
+  category    String   // Grouping: "projects", "billing", "users", "settings"
+  
+  // Relationships
+  rolePermissions RolePermission[]
+  
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@index([category])
+  @@map("permissions")
+}
+
+model Role {
+  id             String   @id @default(cuid())
+  organizationId String?  @map("organization_id") // null = system role
+  name           String
+  description    String?  @db.Text
+  isSystem       Boolean  @default(false) @map("is_system") // System roles can't be deleted
+  
+  // Relationships
+  rolePermissions RolePermission[]
+  memberships     OrganizationMembership[]
+  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@index([isSystem])
+  @@map("roles")
+}
+
+model RolePermission {
+  id           String   @id @default(cuid())
+  roleId       String   @map("role_id")
+  permissionId String   @map("permission_id")
+  
+  // Relationships
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt  DateTime @default(now()) @map("created_at")
+  
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+{% endif %}
+
+{% if saas_notifications != "none" %}
+// ============================================================================
+// Notification System
+// ============================================================================
+
+model Notification {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  
+  // Content
+  type           String   // e.g., "team.invite", "billing.payment_failed", "system.announcement"
+  title          String
+  body           String   @db.Text
+  actionUrl      String?  @map("action_url") // Optional link for the notification
+  
+  // Status
+  read           Boolean  @default(false)
+  readAt         DateTime? @map("read_at")
+  {% if saas_notifications == "both" %}
+  emailSent      Boolean  @default(false) @map("email_sent")
+  emailSentAt    DateTime? @map("email_sent_at")
+  {% endif %}
+  
+  // Metadata
+  metadata       Json?    @default("{}")
+  
+  // Relationships
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt      DateTime @default(now()) @map("created_at")
+  expiresAt      DateTime? @map("expires_at") // Optional expiration for transient notifications
+  
+  @@index([userId, read])
+  @@index([userId, createdAt])
+  @@index([type])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  
+  // Preference settings
+  type           String   // Notification type (e.g., "team.invite", "billing.*")
+  inAppEnabled   Boolean  @default(true) @map("in_app_enabled")
+  emailEnabled   Boolean  @default(true) @map("email_enabled")
+  
+  // Relationships
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  
+  @@unique([userId, type])
+  @@index([userId])
+  @@map("notification_preferences")
+}
+{% endif %}
+
+{% if saas_waitlist %}
+// ============================================================================
+// Waitlist System
+// ============================================================================
+
+model WaitlistEntry {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String?
+  
+  // Referral tracking
+  referredBy     String?  @map("referred_by") // WaitlistEntry ID who referred them
+  referralCode   String   @unique @map("referral_code") // Their unique referral code
+  referralCount  Int      @default(0) @map("referral_count")
+  
+  // Status
+  status         String   @default("waiting") // waiting, invited, converted, unsubscribed
+  position       Int?     // Queue position (optional, for showing "You're #X in line")
+  
+  // Invite details
+  inviteCode     String?  @map("invite_code")
+  invitedAt      DateTime? @map("invited_at")
+  convertedAt    DateTime? @map("converted_at") // When they signed up
+  convertedUserId String? @unique @map("converted_user_id")
+  
+  // Marketing
+  source         String?  // utm_source or how they found waitlist
+  metadata       Json?    @default("{}")
+  
+  // Timestamps
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  
+  @@index([status])
+  @@index([referralCode])
+  @@index([position])
+  @@map("waitlist_entries")
+}
+
+model InviteCode {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  
+  // Usage limits
+  maxUses        Int      @default(1) @map("max_uses")
+  currentUses    Int      @default(0) @map("current_uses")
+  
+  // Validity
+  expiresAt      DateTime? @map("expires_at")
+  isActive       Boolean  @default(true) @map("is_active")
+  
+  // Tracking
+  createdBy      String?  @map("created_by") // Admin user ID who created it
+  note           String?  // Internal note about this code
+  
+  // Timestamps
+  createdAt      DateTime @default(now()) @map("created_at")
+  
+  @@index([code])
+  @@index([isActive])
+  @@map("invite_codes")
+}
+{% endif %}
+
+{% if saas_onboarding != "none" %}
+// ============================================================================
+// Onboarding System
+// ============================================================================
+
+model OnboardingProgress {
+  id             String   @id @default(cuid())
+  userId         String   @unique @map("user_id")
+  
+  // Progress tracking
+  currentStep    String   @map("current_step") // Current step ID
+  completedSteps String[] @default([]) @map("completed_steps") // Array of completed step IDs
+  isComplete     Boolean  @default(false) @map("is_complete")
+  completedAt    DateTime? @map("completed_at")
+  
+  // User choices during onboarding
+  responses      Json?    @default("{}") // Store answers from onboarding questions
+  
+  // Skipping
+  skippedAt      DateTime? @map("skipped_at") // If user skipped onboarding
+  
+  // Relationships
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  
+  @@map("onboarding_progress")
+}
+{% endif %}
+
+{% if saas_user_impersonation %}
+// ============================================================================
+// User Impersonation Audit
+// ============================================================================
+
+model ImpersonationSession {
+  id             String   @id @default(cuid())
+  adminUserId    String   @map("admin_user_id") // Admin who is impersonating
+  targetUserId   String   @map("target_user_id") // User being impersonated
+  
+  // Session details
+  reason         String?  // Why impersonation was needed
+  startedAt      DateTime @default(now()) @map("started_at")
+  endedAt        DateTime? @map("ended_at")
+  
+  // Request context
+  ipAddress      String?  @map("ip_address")
+  userAgent      String?  @map("user_agent") @db.Text
+  
+  @@index([adminUserId])
+  @@index([targetUserId])
+  @@index([startedAt])
+  @@map("impersonation_sessions")
+}
+{% endif %}
 {% endif %}

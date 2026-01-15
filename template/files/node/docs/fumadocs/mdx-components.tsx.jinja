@@ -1,0 +1,65 @@
+{%- if docs_site == 'fumadocs' -%}
+import type { MDXComponents } from 'mdx/types';
+import defaultComponents from 'fumadocs-ui/mdx';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { File, Folder, Files } from 'fumadocs-ui/components/files';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+import { Card, Cards } from 'fumadocs-ui/components/card';
+{%- if fumadocs_image_zoom == 'enabled' %}
+import { ImageZoom } from 'fumadocs-ui/components/image-zoom';
+{%- endif %}
+{%- if fumadocs_twoslash == 'enabled' %}
+import { Popup, PopupContent, PopupTrigger } from 'fumadocs-twoslash/ui';
+{%- endif %}
+{%- if fumadocs_mermaid == 'enabled' %}
+import dynamic from 'next/dynamic';
+
+const Mermaid = dynamic(() => import('@/components/mermaid'), { ssr: false });
+{%- endif %}
+
+export function useMDXComponents(components: MDXComponents): MDXComponents {
+  return {
+    ...defaultComponents,
+    // Layout Components
+    Callout,
+    Tab,
+    Tabs,
+    Step,
+    Steps,
+    Card,
+    Cards,
+    // File Tree
+    File,
+    Folder,
+    Files,
+    // Accordion
+    Accordion,
+    Accordions,
+{%- if fumadocs_image_zoom == 'enabled' %}
+    // Image Zoom - replace default img
+    img: (props) => <ImageZoom {...(props as any)} />,
+{%- endif %}
+{%- if fumadocs_twoslash == 'enabled' %}
+    // Twoslash Popup
+    Popup,
+    PopupContent,
+    PopupTrigger,
+{%- endif %}
+{%- if fumadocs_mermaid == 'enabled' %}
+    // Mermaid Diagrams
+    Mermaid,
+    // Handle mermaid code blocks
+    pre: ({ children, ...props }: any) => {
+      const lang = children?.props?.className?.replace('language-', '');
+      if (lang === 'mermaid') {
+        return <Mermaid chart={children.props.children} />;
+      }
+      return <defaultComponents.pre {...props}>{children}</defaultComponents.pre>;
+    },
+{%- endif %}
+    ...components,
+  };
+}
+{%- endif -%}

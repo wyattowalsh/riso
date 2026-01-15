@@ -217,6 +217,108 @@ def _validate_saas_starter(context: dict) -> list[dict]:
                 }
             )
 
+    # ============================================================================
+    # New scaffolding option validations
+    # ============================================================================
+
+    # B2C disables team-related features - info notice
+    if context.get("saas_tenancy_model") == "b2c-users":
+        issues.append(
+            {
+                "severity": "info",
+                "message": (
+                    "ℹ️  B2C tenancy model selected.\n"
+                    "Organization/team models will not be generated.\n"
+                    "Billing will be attached to individual users."
+                ),
+            }
+        )
+
+    # Custom permissions without admin dashboard - warning
+    if (
+        context.get("saas_rbac_system") == "custom-permissions"
+        and not context.get("saas_admin_dashboard")
+    ):
+        issues.append(
+            {
+                "severity": "warning",
+                "message": (
+                    "⚠️  Custom permissions enabled without admin dashboard.\n"
+                    "You'll need to build a custom UI for role management,\n"
+                    "or manage roles directly in the database."
+                ),
+            }
+        )
+
+    # In-app notifications on Cloudflare require Durable Objects
+    if (
+        context.get("saas_notifications") == "both"
+        and context.get("saas_hosting") == "cloudflare"
+    ):
+        issues.append(
+            {
+                "severity": "warning",
+                "message": (
+                    "⚠️  In-app notifications on Cloudflare Workers require\n"
+                    "Durable Objects for WebSocket/SSE support.\n"
+                    "Consider 'email-only' for simpler architecture."
+                ),
+            }
+        )
+
+    # User impersonation requires admin dashboard
+    if context.get("saas_user_impersonation") and not context.get("saas_admin_dashboard"):
+        issues.append(
+            {
+                "severity": "warning",
+                "message": (
+                    "⚠️  User impersonation requires admin dashboard to be enabled.\n"
+                    "Impersonation UI will not be generated."
+                ),
+            }
+        )
+
+    # Public API without custom RBAC - info
+    if (
+        context.get("saas_api_access") == "public-api"
+        and context.get("saas_rbac_system") == "basic-roles"
+    ):
+        issues.append(
+            {
+                "severity": "info",
+                "message": (
+                    "ℹ️  Public API with basic roles selected.\n"
+                    "API key scopes will be limited to: read, write, admin.\n"
+                    "Consider custom-permissions for granular API scopes."
+                ),
+            }
+        )
+
+    # Waitlist + onboarding - info about flow
+    if context.get("saas_waitlist") and context.get("saas_onboarding") != "none":
+        issues.append(
+            {
+                "severity": "info",
+                "message": (
+                    "ℹ️  Both waitlist and onboarding enabled.\n"
+                    "User flow: Waitlist → Invite → Signup → Onboarding → Dashboard"
+                ),
+            }
+        )
+
+    # i18n adds build complexity - info
+    if context.get("saas_i18n"):
+        issues.append(
+            {
+                "severity": "info",
+                "message": (
+                    "ℹ️  Internationalization (i18n) enabled.\n"
+                    "Default locale files will be generated for English.\n"
+                    "Run 'pnpm i18n:extract' to extract translation keys."
+                ),
+            }
+        )
+
     return issues
 
 
@@ -242,7 +344,7 @@ def _attempt_install(tool: str, version: str, mise_spec: str | None) -> Provisio
     next_steps = {
         "uv": "Install uv from https://github.com/astral-sh/uv or ensure it is available on PATH.",
         "node": "Install Node.js 20 LTS (https://nodejs.org/) or enable mise auto-install.",
-        "pnpm": "Install pnpm 8+ from https://pnpm.io/installation or enable mise auto-install.",
+        "pnpm": "Install pnpm 9+ from https://pnpm.io/installation or enable mise auto-install.",
     }
 
     if shutil.which(tool):
@@ -440,7 +542,7 @@ def _build_tool_matrix(
         tool_matrix.extend(
             [
                 ("node", "20", "node@20"),
-                ("pnpm", "8", "pnpm@8"),
+                ("pnpm", "9", "pnpm@9"),
             ]
         )
 

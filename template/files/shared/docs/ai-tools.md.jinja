@@ -1,0 +1,118 @@
+# AI Coding Tools Configuration
+
+This project includes configuration files for multiple AI coding assistants. All tools
+share **AGENTS.md** as the single source of truth for project instructions.
+
+## Supported Tools
+
+| Tool | Config Location | MCP Config | Instructions |
+|------|-----------------|------------|--------------|
+| **Claude Code** | `.claude/settings.json` | `.mcp.json` | `CLAUDE.md` → `AGENTS.md` |
+| **Codex CLI** | `.codex/config.toml` | (embedded) | `AGENTS.md` |
+| **GitHub Copilot CLI** | `.copilot/` | `.copilot/mcp-config.json` | `AGENTS.md` |
+| **Cursor CLI** | `.cursor/cli.json` | `mcp.json` | `.cursor/rules` → `AGENTS.md` |
+| **Gemini CLI** | `.gemini/settings.json` | (embedded) | `AGENTS.md` |
+| **Amazon Q CLI** | `.amazonq/` | `.amazonq/mcp.json` | `AGENTS.md` |
+| **OpenCode** | `opencode.json` | (embedded) | `AGENTS.md` |
+| **Warp Agent** | `.warp/` | `.warp/mcp.json` | `.warp/WARP.md` → `AGENTS.md` |
+
+## MCP Servers
+
+The following MCP server categories are available:
+
+### Thinking/Reasoning (Default: Enabled)
+- `sequential-thinking` - Step-by-step reasoning
+- `structured-thinking` - Problem decomposition
+- `cascade-thinking` - Cascading thought chains
+- `shannon-thinking` - Information-theoretic reasoning
+- `lotus-wisdom-mcp` - Wisdom-based patterns
+- `think-strategies` - Strategic frameworks
+- `crash` - Chain-of-thought reasoning
+
+### Web (Default: Enabled)
+- `fetch` - HTTP fetching
+- `fetcher` - Advanced web fetching
+- `playwright` - Browser automation
+- `deepwiki` - Wikipedia/knowledge lookup
+
+### Documents (Default: Enabled)
+- `docling` - Document parsing (PDF, DOCX, etc.)
+- `repomix` - Repository context packing
+
+### Utilities (Default: Enabled)
+- `memory` - Persistent memory store
+
+### Search (Default: Disabled - Requires API Keys)
+- `brave-search` - Brave web search (requires `BRAVE_API_KEY`)
+- `tavily` - Tavily AI search (requires `TAVILY_API_KEY`)
+- `context7` - Context7 knowledge base (requires `CONTEXT7_API_KEY`)
+
+## Environment Variables
+
+If you enabled search MCP servers, set these environment variables:
+
+```bash
+# In your shell profile (~/.zshrc, ~/.bashrc)
+export BRAVE_API_KEY="your-brave-api-key"
+export TAVILY_API_KEY="your-tavily-api-key"
+export CONTEXT7_API_KEY="your-context7-api-key"
+```
+
+**Important**: Never commit API keys to version control. The config files use
+`${ENV_VAR}` syntax to reference environment variables at runtime.
+
+## Global vs Project Configuration
+
+Each tool supports both global (user-level) and project-level configuration:
+
+### Claude Code
+- Global: `~/.claude.json`
+- Project: `.claude/settings.json`, `.mcp.json`
+
+### Codex CLI
+- Global: `~/.codex/config.toml`
+- Project: `.codex/config.toml`
+
+### GitHub Copilot CLI
+- Global: `~/.copilot/mcp-config.json`
+- Project: `.copilot/mcp-config.json`
+
+### Cursor CLI
+- Global: `~/.cursor/mcp.json`
+- Project: `mcp.json`, `.cursor/cli.json`
+
+### Gemini CLI
+- Global: `~/.gemini/settings.json`
+- Project: `.gemini/settings.json`
+
+### Amazon Q CLI
+- Global: `~/.aws/amazonq/mcp.json`
+- Project: `.amazonq/mcp.json`
+
+### OpenCode
+- Global: `~/.config/opencode/opencode.json`
+- Project: `opencode.json`
+
+### Warp Agent
+- Global: `~/Library/Application Support/dev.warp.Warp-Stable/mcp/`
+- Project: `.warp/mcp.json` (import via Settings > AI > Manage MCP servers)
+
+## Ask-First Behavior
+
+All tools are configured with "ask-first" (approval required) behavior by default:
+
+- **Claude Code**: Project settings with approval prompts
+- **Codex CLI**: `approval_policy = "on-request"`
+- **Cursor CLI**: `.cursor/cli.json` permissions
+- **OpenCode**: `permission: { edit: "ask", write: "ask", bash: "ask" }`
+- **Gemini CLI**: `tools.autoAccept = false`
+- **Amazon Q CLI**: Tool allowlists
+
+## Customization
+
+To add custom MCP servers, edit the relevant config file for your preferred tool.
+All generated configs follow the same server list, so changes to one should be
+mirrored to others for consistency.
+
+For project-specific instructions, edit `AGENTS.md` - all tools will pick up
+the changes automatically.

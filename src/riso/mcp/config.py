@@ -93,7 +93,7 @@ class ServerConfig(BaseSettings):
 @lru_cache
 def get_config() -> ServerConfig:
     """Get cached server configuration."""
-    return ServerConfig()
+    return load_config()
 
 
 def load_config(config_path: Path | None = None) -> ServerConfig:

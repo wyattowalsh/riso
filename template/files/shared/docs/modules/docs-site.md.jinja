@@ -212,6 +212,7 @@ This project uses **Docusaurus 3.8+** with the following configurable features:
 | **Comments** | `{{ docusaurus_comments }}` | {% if docusaurus_comments == 'giscus' %}Giscus (GitHub Discussions){% else %}Disabled{% endif %} |
 | **Feedback** | `{{ docusaurus_feedback }}` | {% if docusaurus_feedback == 'enabled' %}'Was this helpful?' widget{% else %}Disabled{% endif %} |
 | **Sitemap** | `{{ docusaurus_sitemap }}` | {% if docusaurus_sitemap == 'enabled' %}SEO sitemap.xml{% else %}Disabled{% endif %} |
+| **Structured Data** | `{{ docusaurus_structured_data }}` | {% if docusaurus_structured_data == 'enabled' %}JSON-LD schema.org{% else %}Disabled{% endif %} |
 | **Redirects** | `{{ docusaurus_redirects }}` | {% if docusaurus_redirects == 'enabled' %}Client-side URL redirects{% else %}Disabled{% endif %} |
 | **Announcement** | `{{ docusaurus_announcement_bar }}` | {% if docusaurus_announcement_bar == 'enabled' %}Top banner{% else %}Disabled{% endif %} |
 | **Back to Top** | `{{ docusaurus_back_to_top }}` | {% if docusaurus_back_to_top == 'enabled' %}Enhanced TOC{% else %}Disabled{% endif %} |
@@ -542,6 +543,33 @@ Debug plugin enabled. In development, visit:
 - `http://localhost:3000/__docusaurus/debug` - Site metadata
 - `http://localhost:3000/__docusaurus/debug/config` - Configuration
 - `http://localhost:3000/__docusaurus/debug/routes` - All routes
+
+{%- endif %}
+
+{%- if docusaurus_structured_data == 'enabled' %}
+
+### Structured Data (JSON-LD)
+
+Schema.org structured data is automatically added for SEO:
+
+- **Organization** - Company/project info
+- **WebSite** - Site metadata with search action
+- **Article** - For blog posts and docs
+
+Add article structured data to custom pages:
+
+```jsx
+import { ArticleStructuredData } from '@site/src/components/StructuredData';
+
+<ArticleStructuredData
+  title="Page Title"
+  description="Page description"
+  datePublished="2025-01-14"
+  author="Your Name"
+/>
+```
+
+Validate with [Google's Rich Results Test](https://search.google.com/test/rich-results).
 
 {%- endif %}
 

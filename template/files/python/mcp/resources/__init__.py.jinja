@@ -1,0 +1,34 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'python' -%}
+"""MCP resources registration.
+
+Registers all available resources with the MCP server.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fastmcp import FastMCP
+
+
+def register_resources(mcp: FastMCP) -> None:
+    """Register all MCP resources with the server.
+
+    Parameters
+    ----------
+    mcp
+        FastMCP server instance
+    """
+{%- if mcp_example_tools %}
+    from .system import register_system_resources
+
+    register_system_resources(mcp)
+{%- else %}
+    # Add your resource registrations here
+    pass
+{%- endif %}
+
+
+__all__ = ["register_resources"]
+{%- endif %}

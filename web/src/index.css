@@ -1,0 +1,155 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+:root {
+  --color-primary: #0ea5e9;
+  --color-primary-dark: #0284c7;
+  --riso-sand: #f5f1ea;
+  --riso-ink: #0f172a;
+  --riso-rose: #f97316;
+  --riso-teal: #14b8a6;
+}
+
+body {
+  @apply antialiased;
+  font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  background: var(--riso-sand);
+  color: var(--riso-ink);
+}
+
+h1, h2, h3, .font-display {
+  font-family: 'Fraunces', ui-serif, Georgia, serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100 dark:bg-gray-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400 dark:bg-gray-500;
+}
+
+/* Focus styles */
+*:focus-visible {
+  @apply outline-none ring-2 ring-riso-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-950;
+}
+
+/* Code block styling */
+pre, code {
+  @apply font-mono;
+}
+
+pre {
+  @apply bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto;
+}
+
+code:not(pre code) {
+  @apply bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float-slow {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 600ms ease-out both;
+}
+
+.animate-float {
+  animation: float-slow 10s ease-in-out infinite;
+}
+
+.riso-backdrop {
+  position: relative;
+  isolation: isolate;
+  background-image:
+    radial-gradient(900px circle at 10% -10%, rgba(20, 184, 166, 0.18), transparent 55%),
+    radial-gradient(700px circle at 90% 0%, rgba(249, 115, 22, 0.18), transparent 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(245, 241, 234, 0.9) 100%);
+}
+
+.riso-backdrop::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(15, 23, 42, 0.12) 1px, transparent 1px);
+  background-size: 12px 12px;
+  opacity: 0.12;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  z-index: 0;
+}
+
+.riso-backdrop > * {
+  position: relative;
+  z-index: 1;
+}
+
+.dark .riso-backdrop {
+  background-image:
+    radial-gradient(900px circle at 10% -10%, rgba(20, 184, 166, 0.12), transparent 55%),
+    radial-gradient(700px circle at 90% 0%, rgba(249, 115, 22, 0.12), transparent 60%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(2, 6, 23, 0.95) 100%);
+}
+
+.dark .riso-backdrop::before {
+  background-image: radial-gradient(rgba(148, 163, 184, 0.4) 1px, transparent 1px);
+  opacity: 0.08;
+  mix-blend-mode: screen;
+}
+
+.riso-card {
+  @apply bg-white/90 dark:bg-gray-900/80 border border-white/60 dark:border-gray-800 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl;
+}
+
+.riso-card-soft {
+  @apply bg-white/70 dark:bg-gray-900/70 border border-white/50 dark:border-gray-800/80 shadow-[0_14px_36px_rgba(15,23,42,0.06)] backdrop-blur;
+}
+
+.riso-pill {
+  @apply inline-flex items-center gap-2 rounded-full border border-gray-200/80 dark:border-gray-700/60 bg-white/80 dark:bg-gray-900/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400;
+}
+
+::selection {
+  background: rgba(14, 165, 233, 0.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-float {
+    animation: none !important;
+  }
+}
