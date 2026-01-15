@@ -287,7 +287,7 @@ from pydantic import BaseModel, Field, field_validator
 class ExampleCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="Example name")
     value: int = Field(..., ge=0, description="Non-negative integer")
-    
+
     @field_validator('name')
     @classmethod
     def name_must_not_be_whitespace(cls, v: str) -> str:
@@ -304,7 +304,7 @@ from pydantic import BaseModel, model_validator
 class ExampleUpdateRequest(BaseModel):
     name: str | None = None
     value: int | None = None
-    
+
     @model_validator(mode='after')
     def at_least_one_field(self):
         if self.name is None and self.value is None:
@@ -322,7 +322,7 @@ Configuration (1)
 Application (1)
     ↓ (generates)
 Health Check Response (*)
-    
+
 Application (1)
     ↓ (handles)
 HTTP Requests (*)
@@ -387,11 +387,11 @@ def test_example_request_validation():
     # Valid request
     valid = ExampleCreateRequest(name="Test", value=42)
     assert valid.name == "Test"
-    
+
     # Invalid: empty name
     with pytest.raises(ValidationError):
         ExampleCreateRequest(name="", value=42)
-    
+
     # Invalid: negative value
     with pytest.raises(ValidationError):
         ExampleCreateRequest(name="Test", value=-1)

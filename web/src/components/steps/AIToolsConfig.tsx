@@ -50,14 +50,14 @@ export function AIToolsConfig() {
         <>
           <div className="p-4 bg-blue-50/80 dark:bg-blue-900/20 border border-blue-200/80 dark:border-blue-800/60 rounded-xl">
             <p className="text-sm text-blue-700 dark:text-blue-300">
-              Generates config files for Claude Code, Codex CLI, GitHub Copilot CLI, Cursor CLI, 
+              Generates config files for Claude Code, Codex CLI, GitHub Copilot CLI, Cursor CLI,
               Gemini CLI, Amazon Q CLI, and OpenCode. All tools share <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">AGENTS.md</code> as the single source of truth.
             </p>
           </div>
 
           <div className="space-y-4">
             <h3 className="font-medium text-gray-900 dark:text-white">MCP Servers</h3>
-            
+
             <div className="grid gap-4 sm:grid-cols-2">
               <MCPToggle
                 label="Thinking/Reasoning"

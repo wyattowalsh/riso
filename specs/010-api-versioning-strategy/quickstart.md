@@ -49,7 +49,7 @@ versions:
       - basic_crud
       - pagination
     migration_guide_url: "/docs/migrations/v1-to-v2"
-    
+
   v2:
     status: current
     release_date: "2025-06-01"
@@ -98,7 +98,7 @@ router = APIRouter()
 async def get_users(request: Request):
     # Access resolved version from request scope
     version = request.scope["api_version"]
-    
+
     # Route to version-specific handler
     if version == "v1":
         return await get_users_v1(request)
@@ -170,12 +170,12 @@ app.include_router(VersionDiscoveryRouter(), prefix="/versions")
 async def get_users(request: Request):
     version = request.scope["api_version"]
     metadata = get_version_metadata(version)
-    
+
     # Check if deprecated
     if metadata.is_deprecated():
         # Deprecation header automatically added by middleware
         pass
-    
+
     # Route to version-specific logic
     return version_handlers[version](request)
 ```
@@ -266,7 +266,7 @@ class CustomVersionMiddleware(APIVersionMiddleware):
         headers = dict(scope.get("headers", []))
         if b"x-client-version" in headers:
             return headers[b"x-client-version"].decode()
-        
+
         # Fall back to default logic
         return super()._extract_version(scope)
 

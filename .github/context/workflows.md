@@ -52,11 +52,11 @@ custom-checks:
   name: Custom Checks
   runs-on: ubuntu-latest
   timeout-minutes: 10
-  
+
   steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-    
+
     - name: Run custom checks
       run: |
         # Your custom logic
@@ -69,7 +69,7 @@ custom-checks:
   name: Custom Checks
   runs-on: ubuntu-latest
   needs: [python-quality, node-quality]  # Wait for other jobs
-  
+
   steps:
     # Your steps
 ```

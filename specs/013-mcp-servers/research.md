@@ -276,10 +276,10 @@ ______________________________________________________________________
 class MCPTransport(ABC):
     @abstractmethod
     async def send_message(self, message: dict) -> None: ...
-    
+
     @abstractmethod
     async def receive_message(self) -> dict: ...
-    
+
     @abstractmethod
     async def close(self) -> None: ...
 ```

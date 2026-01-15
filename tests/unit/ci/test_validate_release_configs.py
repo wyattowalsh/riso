@@ -493,7 +493,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 """)
 
-        with patch("sys.argv", ["validate_release_configs.py", 
+        with patch("sys.argv", ["validate_release_configs.py",
                                "--project-dir", str(project_dir)]):
             result = validate_release_configs.main()
 

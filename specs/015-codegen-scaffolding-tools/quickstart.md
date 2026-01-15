@@ -202,20 +202,20 @@ from ..models import Template, TemplateType, VariableDefinition
 
 class TemplateLoader:
     """Load and validate templates."""
-    
+
     def __init__(self, cache_dir: Path):
         self.cache_dir = cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-    
+
     def load_template(self, template_path: Path) -> Template:
         """Load template from directory."""
         metadata_file = template_path / "template.yml"
         if not metadata_file.exists():
             raise FileNotFoundError(f"template.yml not found in {template_path}")
-        
+
         with open(metadata_file) as f:
             data = yaml.safe_load(f)
-        
+
         # Parse variables
         variables = {}
         for name, var_data in data.get("variables", {}).items():
@@ -223,14 +223,14 @@ class TemplateLoader:
                 name=name,
                 **var_data
             )
-        
+
         # Calculate size
         size_bytes = sum(
             f.stat().st_size
             for f in template_path.rglob("*")
             if f.is_file()
         )
-        
+
         return Template(
             name=data["name"],
             version=data["version"],

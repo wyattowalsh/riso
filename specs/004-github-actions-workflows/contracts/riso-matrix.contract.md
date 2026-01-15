@@ -44,21 +44,21 @@ jobs:
     name: Python ${{ matrix.python-version }} Quality
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    
+
     strategy:
       fail-fast: false
       max-parallel: 3
       matrix:
         python-version: ['3.11', '3.12', '3.13']
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      
+
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
@@ -69,13 +69,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-py${{ matrix.python-version }}-
             ${{ runner.os }}-
-      
+
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
-      
+
       - name: Install dependencies
         run: uv sync
-      
+
       - name: Run tests with retry
         uses: nick-fields/retry@v3
         with:
@@ -85,13 +85,13 @@ jobs:
           exponential_backoff: true
           command: |
             uv run pytest --tb=short
-      
+
       - name: Run type checking
         run: uv run mypy .
-      
+
       - name: Run linting
         run: uv run ruff check .
-      
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -101,7 +101,7 @@ jobs:
             test-results.xml
             .coverage
           retention-days: 90
-      
+
       - name: Report matrix status
         if: failure()
         run: |
@@ -113,7 +113,7 @@ jobs:
     needs: matrix-test
     runs-on: ubuntu-latest
     if: always()
-    
+
     steps:
       - name: Check matrix results
         run: |
@@ -197,7 +197,7 @@ def test_matrix_workflow_generation():
     """Verify matrix workflow generates with correct strategy"""
     answers = {'package_name': 'testpkg', 'quality_profile': 'standard'}
     workflow = render_template('riso-matrix.yml.jinja', answers)
-    
+
     assert 'fail-fast: false' in workflow
     assert "'3.11', '3.12', '3.13'" in workflow
     assert 'matrix-summary:' in workflow
@@ -206,7 +206,7 @@ def test_matrix_workflow_generation():
 def test_matrix_cache_keys():
     """Verify each Python version gets unique cache key"""
     workflow = render_template('riso-matrix.yml.jinja', {...})
-    
+
     assert 'py${{ matrix.python-version }}' in workflow
     assert 'hashFiles' in workflow
 ```

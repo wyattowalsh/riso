@@ -111,11 +111,11 @@ config_app = typer.Typer(help="Manage configuration")
 @config_app.command()
 def set(key: str, value: str):
     """Set configuration value."""
-    
+
 @config_app.command()
 def get(key: str):
     """Get configuration value."""
-    
+
 @config_app.command()
 def list():
     """List all configuration."""
@@ -174,13 +174,13 @@ Test structure:
 ```python
 def test_quickstart_command():
     """Test quickstart command execution."""
-    
+
 def test_config_set_get():
     """Test config set and get roundtrip."""
-    
+
 def test_version_command():
     """Test version display."""
-    
+
 def test_init_command():
     """Test init command with various options."""
 ```

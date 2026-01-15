@@ -593,7 +593,7 @@ services:
     environment:
       - ENV=development
       - RATE_LIMIT_ENABLED=true
-  
+
   redis:
     image: redis:7-alpine
     ports:
@@ -674,11 +674,11 @@ versions:
     released_at: '2023-01-01T00:00:00Z'
     deprecated_at: '2024-01-01T00:00:00Z'
     sunset_at: '2025-01-01T00:00:00Z'
-  
+
   - version_id: v2
     status: current
     released_at: '2024-01-01T00:00:00Z'
-  
+
   - version_id: v3-beta
     status: prerelease
     released_at: '2024-11-01T00:00:00Z'

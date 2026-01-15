@@ -77,16 +77,16 @@ class ConnectionManager:
         self._connections: Dict[str, WebSocketConnection] = {}
         self._rooms: Dict[str, Set[str]] = {}  # room_id -> connection_ids
         self._lock = asyncio.Lock()
-    
+
     async def connect(self, connection_id: str, websocket: WebSocket, metadata: dict):
         async with self._lock:
             self._connections[connection_id] = WebSocketConnection(...)
-    
+
     async def disconnect(self, connection_id: str):
         async with self._lock:
             if connection_id in self._connections:
                 del self._connections[connection_id]
-    
+
     async def broadcast_to_room(self, room_id: str, message: dict):
         # Send to all connections in room
         connection_ids = self._rooms.get(room_id, set())
@@ -121,21 +121,21 @@ class ConnectionManager:
 async def heartbeat_loop(websocket: WebSocket, interval: int, timeout: int):
     """Background task sending pings and checking pongs."""
     last_pong = time.time()
-    
+
     async def pong_handler():
         nonlocal last_pong
         last_pong = time.time()
-    
+
     websocket.on_pong = pong_handler
-    
+
     while True:
         await asyncio.sleep(interval)
-        
+
         if time.time() - last_pong > timeout:
             # No pong received, connection dead
             await websocket.close(code=1000, reason="Heartbeat timeout")
             break
-        
+
         try:
             await websocket.send_bytes(b"PING")  # WebSocket ping frame
         except Exception:
@@ -176,25 +176,25 @@ class ConnectionManager:
     def __init__(self):
         self._rooms: Dict[str, Set[str]] = {}  # room_id -> {connection_ids}
         self._connection_rooms: Dict[str, Set[str]] = {}  # connection_id -> {room_ids}
-    
+
     async def join_room(self, connection_id: str, room_id: str):
         self._rooms.setdefault(room_id, set()).add(connection_id)
         self._connection_rooms.setdefault(connection_id, set()).add(room_id)
-    
+
     async def leave_room(self, connection_id: str, room_id: str):
         self._rooms.get(room_id, set()).discard(connection_id)
         self._connection_rooms.get(connection_id, set()).discard(room_id)
-    
+
     async def broadcast_to_room(self, room_id: str, message: dict, exclude: Optional[str] = None):
         """Send message to all connections in room except excluded one."""
         connection_ids = self._rooms.get(room_id, set()) - ({exclude} if exclude else set())
-        
+
         # Parallel send with error handling
         results = await asyncio.gather(
             *[self._send_to_connection(cid, message) for cid in connection_ids],
             return_exceptions=True
         )
-        
+
         # Log failures but don't raise
         for cid, result in zip(connection_ids, results):
             if isinstance(result, Exception):
@@ -235,7 +235,7 @@ async def get_current_user_ws(
     if not token:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         raise WebSocketException("Authentication required")
-    
+
     # Validate JWT and get user
     user = await verify_jwt_token(token)
     return user
@@ -280,7 +280,7 @@ class WebSocketConnection:
     def __init__(self, websocket: WebSocket, queue_size: int = 100):
         self.websocket = websocket
         self.message_queue: asyncio.Queue[dict] = asyncio.Queue(maxsize=queue_size)
-    
+
     async def send_json(self, message: dict):
         try:
             self.message_queue.put_nowait(message)
@@ -291,7 +291,7 @@ class WebSocketConnection:
                 "code": "BACKPRESSURE",
                 "message": "Server processing slower than client sending rate. Retry after delay."
             })
-    
+
     async def _send_loop(self):
         """Background task draining queue and sending to WebSocket."""
         while True:
@@ -368,9 +368,9 @@ async def multi_client_room(app):
         ws = client.websocket_connect(f"/ws?user_id={i}")
         await ws.send_json({"type": "join_room", "room_id": "test_room"})
         clients.append(ws)
-    
+
     yield clients
-    
+
     for ws in clients:
         await ws.close()
 ```
@@ -403,14 +403,14 @@ class RedisConnectionManager(ConnectionManager):
         super().__init__()
         self.redis = redis.from_url(redis_url)
         self.pubsub = self.redis.pubsub()
-    
+
     async def broadcast_to_room(self, room_id: str, message: dict):
         # Publish to Redis channel
         await self.redis.publish(
             f"room:{room_id}",
             json.dumps(message)
         )
-    
+
     async def _subscribe_loop(self):
         """Background task listening to Redis pub/sub."""
         await self.pubsub.subscribe("room:*")
@@ -476,19 +476,19 @@ class WebSocketConfig(BaseSettings):
     max_connections_global: int = 10000
     max_connections_per_user: int = 5
     max_connections_per_ip: int = 100
-    
+
     # Timeouts
     heartbeat_interval: int = 30  # seconds
     heartbeat_timeout: int = 60
     idle_timeout: int = 300  # 5 minutes
-    
+
     # Message handling
     max_message_size: int = 1024 * 1024  # 1MB
     message_queue_depth: int = 100
-    
+
     # Broadcasting
     broadcast_timeout: float = 5.0  # seconds
-    
+
     class Config:
         env_prefix = "WS_"  # WS_MAX_CONNECTIONS_GLOBAL, etc.
 ```
@@ -514,17 +514,17 @@ class RateLimiter:
         self.max_messages = max_messages
         self.window = window
         self._buckets: Dict[str, List[float]] = defaultdict(list)
-    
+
     def check(self, connection_id: str) -> bool:
         now = time.time()
         bucket = self._buckets[connection_id]
-        
+
         # Remove old timestamps
         bucket[:] = [ts for ts in bucket if now - ts < self.window]
-        
+
         if len(bucket) >= self.max_messages:
             return False  # Rate limit exceeded
-        
+
         bucket.append(now)
         return True
 ```
@@ -538,7 +538,7 @@ class ChatMessage(BaseModel):
     type: Literal["chat"]
     room_id: str
     content: str
-    
+
     @validator("content")
     def content_not_empty(cls, v):
         if not v.strip():

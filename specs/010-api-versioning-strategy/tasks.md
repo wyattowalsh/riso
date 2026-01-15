@@ -403,7 +403,7 @@ ______________________________________________________________________
 ```bash
 # Launch all version extraction methods together:
 Task T015: "Implement version extraction from header in src/api_versioning/middleware/parser.py"
-Task T016: "Implement version extraction from URL path in src/api_versioning/middleware/parser.py"  
+Task T016: "Implement version extraction from URL path in src/api_versioning/middleware/parser.py"
 Task T017: "Implement version extraction from query parameter in src/api_versioning/middleware/parser.py"
 
 # Launch all discovery endpoints together after routing is ready:

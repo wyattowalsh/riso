@@ -1,6 +1,6 @@
 /**
  * MCP Connection Status Indicator
- * 
+ *
  * Shows connection state and provides connect/disconnect controls.
  */
 
@@ -31,10 +31,10 @@ export function MCPStatus({ compact = false, className }: MCPStatusProps) {
           className
         )}
         aria-label={
-          connecting 
-            ? 'Connecting to MCP server...' 
-            : connected 
-              ? 'MCP server connected. Click to disconnect.' 
+          connecting
+            ? 'Connecting to MCP server...'
+            : connected
+              ? 'MCP server connected. Click to disconnect.'
               : 'MCP server offline. Click to connect.'
         }
       >

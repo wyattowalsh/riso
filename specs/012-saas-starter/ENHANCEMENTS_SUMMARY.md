@@ -280,9 +280,9 @@ const user = await cache.wrap('user:123', async () => {
 Stable feature rollouts with consistent hashing:
 
 ```typescript
-await setFlag('new-feature', { 
-  enabled: true, 
-  rolloutPercentage: 10 
+await setFlag('new-feature', {
+  enabled: true,
+  rolloutPercentage: 10
 });
 
 // Users consistently in same rollout group
@@ -294,9 +294,9 @@ const enabled = await isFeatureEnabled('new-feature', { userId });
 Domain-specific errors with automatic handling:
 
 ```typescript
-throw new ValidationError('Invalid email', { 
-  field: 'email', 
-  reason: 'must be a valid email address' 
+throw new ValidationError('Invalid email', {
+  field: 'email',
+  reason: 'must be a valid email address'
 });
 // Automatically converted to 422 response with details
 ```
@@ -310,18 +310,18 @@ export async function GET(request: Request) {
   return withErrorHandler(async () => {
     const { valid, error } = await validateCsrf(request);
     if (!valid) return error;
-    
+
     const rateLimit = await limiter.check(getIdentifier(request));
     if (rateLimit.limited) return tooManyRequests();
-    
+
     const userId = await requireAuth();
-    
+
     const data = await cache.wrap('data', async () => {
       return await monitorQuery('getData', async () => {
         return await db.query();
       });
     });
-    
+
     return success(data);
   }, request);
 }

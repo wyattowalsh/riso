@@ -40,23 +40,23 @@ DESCRIPTION: Demonstrates how to use field aliases in Pydantic models, including
 SOURCE: /docs/concepts/fields.md
 
 ```plaintext
-1. *Not* accepted by type checkers.  
+1. *Not* accepted by type checkers.
 If you still want type checkers to use the field name and not the alias, the [annotated pattern](#the-annotated-pattern)
-can be used (which is only understood by Pydantic):  
+can be used (which is only understood by Pydantic):
 ```
 
 ```plaintext
 1. Accepted by type checkers.
-2. *Not* accepted by type checkers.  
-<h3>Validation Alias</h3>  
+2. *Not* accepted by type checkers.
+<h3>Validation Alias</h3>
 Even though Pydantic treats `alias` and `validation_alias` the same when creating model instances, type checkers
 only understand the `alias` field parameter. As a workaround, you can instead specify both an `alias` and
 `serialization_alias` (identical to the field name), as the `serialization_alias` will override the `alias` during
-serialization:  
+serialization:
 ```
 
 ```plaintext
-with:  
+with:
 ```
 
 ---
@@ -97,11 +97,11 @@ SOURCE: /docs/concepts/serialization.md
 ```plaintext
 1. As mentioned in the [annotated pattern](./fields.md#the-annotated-pattern) documentation,
 we can also make use of serializers for specific parts of the annotation (in this case,
-serialization is applied for list items, but not the whole list).  
-It is also easier to understand which serializers are applied to a type, by just looking at the field annotation.  
+serialization is applied for list items, but not the whole list).
+It is also easier to understand which serializers are applied to a type, by just looking at the field annotation.
 ##### Using the decorator pattern
 One of the key benefits of using the [`@field_serializer`][pydantic.field_serializer] decorator is to apply
-the function to multiple fields:  
+the function to multiple fields:
 ```
 
 ---
@@ -209,37 +209,37 @@ Value error, 1 is not an even number [type=value_error, input_value=1, input_typ
 
 ```plaintext
 1. `'after'` is the default mode for the decorator, and can be omitted.
-2. Note that it is important to return the validated value.  
+2. Note that it is important to return the validated value.
 ??? example "Example mutating the value"
-Here is an example of a validator making changes to the validated value (no exception is raised).  
-=== "Annotated pattern"  
+Here is an example of a validator making changes to the validated value (no exception is raised).
+=== "Annotated pattern"
 ```
 
 ```plaintext
-=== "Decorator"  
+=== "Decorator"
 ```
 
 ```plaintext
-1. `'after'` is the default mode for the decorator, and can be omitted.  
+1. `'after'` is the default mode for the decorator, and can be omitted.
 * ***Before* validators**: run before Pydantic's internal parsing and validation (e.g. coercion of a `str` to an `int`).
 These are more flexible than [*after* validators](#field-after-validator), but they also have to deal with the raw input, which
 in theory could be any arbitrary object. You should also avoid mutating the value directly if you are raising a
 [validation error](#raising-validation-errors) later in your validator function, as the mutated value may be passed to other
 validators if using [unions](./unions.md).
-{#field-before-validator}  
-The value returned from this callable is then validated against the provided type annotation by Pydantic.  
-=== "Annotated pattern"  
+{#field-before-validator}
+The value returned from this callable is then validated against the provided type annotation by Pydantic.
+=== "Annotated pattern"
 ```
 
 ```plaintext
 1. Notice the use of [`Any`][typing.Any] as a type hint for `value`. *Before* validators take the raw input, which
-can be anything.  
+can be anything.
 2. Note that you might want to check for other sequence types (such as tuples) that would normally successfully
 validate against the `list` type. *Before* validators give you more flexibility, but you have to account for
-every possible case.  
+every possible case.
 3. Pydantic still performs validation against the `int` type, no matter if our `ensure_list` validator
-did operations on the original input type.  
-=== "Decorator"  
+did operations on the original input type.
+=== "Decorator"
 ```
 
 ---
@@ -262,7 +262,7 @@ DESCRIPTION: Illustrates how the library handles circular reference schemas that
 SOURCE: /docs/errors/usage_errors.md
 
 ```plaintext
-while these are not:  
+while these are not:
 ```
 
 ---
@@ -305,7 +305,7 @@ SOURCE: /docs/concepts/serialization.md
 
 ```plaintext
 The `exclude` parameter can be used to specify which fields should be excluded (including the others), and vice-versa
-using the `include` parameter.  
+using the `include` parameter.
 # using a set:
 print(t.model_dump(exclude={'user', 'value'}))
 #> {'id': '1234567890'}
@@ -320,11 +320,11 @@ print(t.model_dump(include={'id': True, 'user': {'id'}}))
 ```
 
 ```plaintext
-1. The equivalent call with `include` would be:  
+1. The equivalent call with `include` would be:
 ```
 
 ```plaintext
-The special key `'__all__'` can be used to apply an exclusion/inclusion pattern to all members:  
+The special key `'__all__'` can be used to apply an exclusion/inclusion pattern to all members:
 print(user.model_dump(exclude={'hobbies': {'__all__': {'info'}}}))
 #> {'hobbies': [{'name': 'Programming'}, {'name': 'Gaming'}]}
 ```
@@ -419,14 +419,14 @@ print(Model.model_json_schema())  # (1)!
 ```
 
 ```plaintext
-!!! warning "When to use named type aliases"  
+!!! warning "When to use named type aliases"
 While (named) PEP 695 and implicit type aliases are meant to be equivalent for static type checkers,
 Pydantic will *not* understand field-specific metadata inside named aliases. That is, metadata such as
-`alias`, `default`, `deprecated`, *cannot* be used:  
+`alias`, `default`, `deprecated`, *cannot* be used:
 ```
 
 ```plaintext
-=== "Python 3.12 and above (new syntax)"  
+=== "Python 3.12 and above (new syntax)"
 ```
 
 ```plaintext
@@ -434,14 +434,14 @@ Only metadata that can be applied to the annotated type itself is allowed
 (e.g. [validation constraints](./fields.md#field-constraints) and JSON metadata).
 Trying to support field-specific metadata would require eagerly inspecting the
 type alias's [`__value__`][typing.TypeAliasType.__value__], and as such Pydantic
-wouldn't be able to have the alias stored as a JSON Schema definition.  
+wouldn't be able to have the alias stored as a JSON Schema definition.
 !!! note
-As with implicit type aliases, [type variables][typing.TypeVar] can also be used inside the generic alias:  
-=== "Python 3.9 and above"  
+As with implicit type aliases, [type variables][typing.TypeVar] can also be used inside the generic alias:
+=== "Python 3.9 and above"
 ```
 
 ```plaintext
-=== "Python 3.12 and above (new syntax)"  
+=== "Python 3.12 and above (new syntax)"
 ```
 
 ---
@@ -604,7 +604,7 @@ SOURCE: /docs/internals/resolving_annotations.md
 ```plaintext
 When the `Model` class is being built, different [namespaces][namespace] are at play. For each base class
 of the `Model`'s [MRO][method resolution order] (in reverse order — that is, starting with `Base`), the
-following logic is applied:  
+following logic is applied:
 1. Fetch the `__annotations__` key from the current base class' `__dict__`, if present. For `Base`, this will be
 `{'f1': 'MyType'}`.
 2. Iterate over the `__annotations__` items and try to evaluate the annotation [^1] using a custom wrapper around
@@ -620,8 +620,8 @@ in order to support recursive references.
 defined in the module directly, this namespace won't be used as it will result in the globals being used again.
 For `Model`, the parent namespace is the locals of the frame of `inner()`.
 3. If the annotation failed to evaluate, it is kept as is, so that the model can be rebuilt at a later stage. This will
-be the case for `f5`.  
-The following table lists the resolved type annotations for every field, once the `Model` class has been created:  
+be the case for `f5`.
+The following table lists the resolved type annotations for every field, once the `Model` class has been created:
 | Field name | Resolved annotation |
 |------------|---------------------|
 | `f1`       | [`int`][]           |
@@ -632,8 +632,8 @@ The following table lists the resolved type annotations for every field, once th
 
 ## Limitations and backwards compatibility concerns
 
-While the namespace fetching logic is trying to be as accurate as possible, we still face some limitations:  
-<div class="annotate" markdown>  
+While the namespace fetching logic is trying to be as accurate as possible, we still face some limitations:
+<div class="annotate" markdown>
 * The locals of the current class (`cls.__dict__`) may include irrelevant entries, most of them being dunder attributes.
 This means that the following annotation: `f: '__doc__'` will successfully (and unexpectedly) be resolved.
 * When the `Model` class is being created inside a function, we keep a copy of the [locals][frame.f_locals] of the frame.
@@ -642,16 +642,16 @@ This copy only includes the symbols defined in the locals when `Model` is being 
 * To avoid memory leaks, we use [weak references][weakref] to the locals of the function, meaning some forward references might
 not resolve outside the function (1).
 * Locals of the function are only taken into account for Pydantic models, but this pattern does not apply to dataclasses, typed
-dictionaries or named tuples.  
-</div>  
-1. Here is an example:  
+dictionaries or named tuples.
+</div>
+1. Here is an example:
 ```
 
 ```plaintext
 For backwards compatibility reasons, and to be able to support valid use cases without having to rebuild models,
 the namespace logic described above is a bit different when it comes to core schema generation.
 Taking the following example:
-{#backwards-compatibility-logic}  
+{#backwards-compatibility-logic}
 ```
 
 ```plaintext
@@ -659,13 +659,13 @@ Once the fields for `Bar` have been collected (meaning annotations resolved), th
 every field into a core schema. When it encounters another class-like field type (such as a dataclass), it will
 try to evaluate annotations, following roughly the same logic as [described above](#resolving-annotations-at-class-definition).
 However, to evaluate the `'Bar | None'` annotation, `Bar` needs to be present in the globals or locals, which is normally
-*not* the case: `Bar` is being created, so it is not "assigned" to the current module's `__dict__` at that point.  
+*not* the case: `Bar` is being created, so it is not "assigned" to the current module's `__dict__` at that point.
 To avoid having to call [`model_rebuild()`][pydantic.BaseModel.model_rebuild] on `Bar`, both the parent namespace
 (if `Bar` was to be defined inside a function, and [the namespace provided during a model rebuild](#model-rebuild-semantics))
 and the `{Bar.__name__: Bar}` namespace are included in the locals during annotations evaluation of `Foo`
 (with the lowest priority) (1).
-{ .annotate }  
-1. This backwards compatibility logic can introduce some inconsistencies, such as the following:  
+{ .annotate }
+1. This backwards compatibility logic can introduce some inconsistencies, such as the following:
 ```
 
 ---
@@ -1072,7 +1072,7 @@ SOURCE: /docs/examples/requests.md
 
 ```plaintext
 The [`TypeAdapter`][pydantic.type_adapter.TypeAdapter] tool from Pydantic often comes in quite
-handy when working with HTTP requests. Consider a similar example where we are validating a list of users:  
+handy when working with HTTP requests. Consider a similar example where we are validating a list of users:
 from pprint import pprint
 
 import httpx
@@ -1195,10 +1195,10 @@ String should have at least 5 characters [type=string_too_short, input_value='12
 
 ```plaintext
 1. This will pass validation as expected although the last field will be omitted as it failed validation.
-2. This will also pass validation since the binary representation of the JSON data passed to pydantic-core is indistinguishable from the previous case.  
+2. This will also pass validation since the binary representation of the JSON data passed to pydantic-core is indistinguishable from the previous case.
 #### Any error in the last field of the input will be ignored
-As described [above](#2-ignore-errors-in-last), many errors can result from truncating the input. Rather than trying to specifically ignore errors that could result from truncation, Pydantic ignores all errors in the last element of the input in partial validation mode.  
-This means clearly invalid data will pass validation if the error is in the last field of the input:  
+As described [above](#2-ignore-errors-in-last), many errors can result from truncating the input. Rather than trying to specifically ignore errors that could result from truncation, Pydantic ignores all errors in the last element of the input in partial validation mode.
+This means clearly invalid data will pass validation if the error is in the last field of the input:
 ```
 
 ---
@@ -1220,7 +1220,7 @@ assert exc_info.code == 'model-field-missing-annotation'
 ```
 
 ```plaintext
-Or updating `model_config['ignored_types']`:  
+Or updating `model_config['ignored_types']`:
 from pydantic import BaseModel, ConfigDict
 
 class IgnoredType:
@@ -1269,7 +1269,7 @@ Recursion error - cyclic reference detected [type=recursion_loop, input_value={'
 
 ```plaintext
 Similarly, if Pydantic encounters a recursive reference during *serialization*, rather than waiting
-for the maximum recursion depth to be exceeded, a [`ValueError`][] is raised immediately:  
+for the maximum recursion depth to be exceeded, a [`ValueError`][] is raised immediately:
 from pydantic import TypeAdapter
 
 # Create data with cyclic references representing the graph 1 -> 2 -> 3 -> 1
@@ -1617,16 +1617,16 @@ ThanksgivingDinner(dessert=PumpkinPie(time_to_cook=40, num_ingredients=6, fillin
 
 ```plaintext
 1. Notice the callable discriminator function returns `None` if a discriminator value is not found.
-When `None` is returned, this `union_tag_not_found` error is raised.  
+When `None` is returned, this `union_tag_not_found` error is raised.
 !!! note
 Using the [annotated pattern](./fields.md#the-annotated-pattern) can be handy to regroup
-the `Union` and `discriminator` information. See the next example for more details.  
-There are a few ways to set a discriminator for a field, all varying slightly in syntax.  
-For `str` discriminators:  
+the `Union` and `discriminator` information. See the next example for more details.
+There are a few ways to set a discriminator for a field, all varying slightly in syntax.
+For `str` discriminators:
 ```
 
 ```plaintext
-For callable `Discriminator`s:  
+For callable `Discriminator`s:
 some_field: Union[...] = Field(discriminator=Discriminator(...))
 some_field: Annotated[Union[...], Discriminator(...)]
 some_field: Annotated[Union[...], Field(discriminator=Discriminator(...))]
@@ -1855,11 +1855,11 @@ DESCRIPTION: Defines how `pydantic` uses core schemas to communicate model defin
 SOURCE: /docs/internals/architecture.md
 
 ```plaintext
-When defining a Pydantic model with a boolean field:  
+When defining a Pydantic model with a boolean field:
 ```
 
 ```plaintext
-The core schema for the `foo` field will look like:  
+The core schema for the `foo` field will look like:
 {
 'type': 'bool',
 'strict': True,

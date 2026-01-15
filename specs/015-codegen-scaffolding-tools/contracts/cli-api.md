@@ -258,7 +258,7 @@ scaffold update --project-dir ~/projects/my-app
   ⚠ src/my_project/config.py (CONFLICT)
   ✓ README.md (updated)
 [WARNING] Conflicts detected in 1 file(s)
-  
+
 Conflicted files:
   - src/my_project/config.py (lines 15-23)
 
@@ -637,7 +637,7 @@ registries:
   default:
     type: local
     path: ~/.scaffold/templates
-  
+
   remote:
     type: git
     url: https://github.com/org/templates

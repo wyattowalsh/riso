@@ -12,25 +12,25 @@ Feature 013 delivers production-ready Copier template scaffolds for building Mod
 
 ## Technical Context
 
-**Language/Version**: Python 3.11+ (uv-managed), TypeScript 5.x with Node.js 20 LTS  
-**Primary Dependencies**: 
+**Language/Version**: Python 3.11+ (uv-managed), TypeScript 5.x with Node.js 20 LTS
+**Primary Dependencies**:
 - Python: FastMCP, Loguru, tomli/tomllib, pytest
 - TypeScript: @modelcontextprotocol/sdk, vitest, tsup/esbuild
-**Storage**: File-based (TOML for Python, JSON/YAML for TypeScript)  
-**Testing**: pytest (Python), vitest (TypeScript), integration tests via MCP Inspector  
-**Target Platform**: Cross-platform (Linux, macOS, Windows) - STDIO primary, HTTP/SSE optional  
-**Project Type**: Template (Copier) - generates dual-language scaffold projects  
-**Performance Goals**: 
+**Storage**: File-based (TOML for Python, JSON/YAML for TypeScript)
+**Testing**: pytest (Python), vitest (TypeScript), integration tests via MCP Inspector
+**Target Platform**: Cross-platform (Linux, macOS, Windows) - STDIO primary, HTTP/SSE optional
+**Project Type**: Template (Copier) - generates dual-language scaffold projects
+**Performance Goals**:
 - Bootstrap time < 5 minutes (SC-001, SC-002)
 - Handle 100 concurrent requests without errors (SC-007)
 - Tool timeout 30s, Resource 10s, Prompt 5s (FR-053)
 - Response size limit 100MB (Edge Case clarification)
-**Constraints**: 
+**Constraints**:
 - >80% test coverage required (FR-046)
 - Quality checks pass without modification (SC-003)
 - CI validation < 3 minutes (SC-010)
 - Transport-agnostic tool implementations (FR-045)
-**Scale/Scope**: 
+**Scale/Scope**:
 - 2 language implementations (Python, TypeScript)
 - 3 MCP capabilities (tools, resources, prompts)
 - 2 transports (STDIO default, HTTP/SSE optional)
@@ -44,11 +44,11 @@ Feature 013 delivers production-ready Copier template scaffolds for building Mod
 
 Since the constitution file is currently a template placeholder, we apply riso project best practices:
 
-✅ **Modularity**: MCP scaffolds are self-contained modules within `template/files/mcp/`  
-✅ **Testability**: Both Python and TypeScript scaffolds include comprehensive test suites (FR-046, FR-047, FR-048)  
-✅ **Documentation**: Complete README, quickstart, examples required (FR-033, FR-034)  
-✅ **Quality Integration**: Inherits riso quality suite (FR-050, FR-051)  
-✅ **Simplicity**: STDIO transport primary, HTTP optional; no over-engineering  
+✅ **Modularity**: MCP scaffolds are self-contained modules within `template/files/mcp/`
+✅ **Testability**: Both Python and TypeScript scaffolds include comprehensive test suites (FR-046, FR-047, FR-048)
+✅ **Documentation**: Complete README, quickstart, examples required (FR-033, FR-034)
+✅ **Quality Integration**: Inherits riso quality suite (FR-050, FR-051)
+✅ **Simplicity**: STDIO transport primary, HTTP optional; no over-engineering
 ✅ **Observability**: Structured logging required (FR-010, Loguru for Python)
 
 ## Project Structure

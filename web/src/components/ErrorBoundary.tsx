@@ -39,11 +39,11 @@ export class ErrorBoundary extends Component<Props, State> {
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
               <AlertTriangle className="h-8 w-8 text-red-600 dark:text-red-400" />
             </div>
-            
+
             <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
               Something went wrong
             </h1>
-            
+
             <p className="text-gray-600 dark:text-gray-400 mb-6">
               An unexpected error occurred. You can try resetting the application to fix this.
             </p>

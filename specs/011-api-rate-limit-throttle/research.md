@@ -146,21 +146,21 @@ ______________________________________________________________________
 def extract_client_ip(request: Request, trusted_proxy_depth: int = 1) -> str:
     """
     Extract client IP using rightmost untrusted IP strategy.
-    
+
     Examples:
       X-Forwarded-For: "client, proxy1, proxy2, load_balancer"
       trusted_proxy_depth=1 → returns "proxy2" (rightmost untrusted)
       trusted_proxy_depth=2 → returns "proxy1"
     """
     xff_header = request.headers.get("X-Forwarded-For")
-    
+
     if not xff_header:
         # No XFF header, use direct connection IP
         return request.client.host
-    
+
     # Split by comma, strip whitespace
     ips = [ip.strip() for ip in xff_header.split(",")]
-    
+
     # Validate all IPs (reject if any malformed)
     for ip in ips:
         try:
@@ -168,7 +168,7 @@ def extract_client_ip(request: Request, trusted_proxy_depth: int = 1) -> str:
         except ValueError:
             # Malformed header, fall back to connection IP
             return request.client.host
-    
+
     # Return rightmost untrusted IP (skip trusted_proxy_depth hops from right)
     if len(ips) > trusted_proxy_depth:
         return ips[-(trusted_proxy_depth + 1)]
@@ -221,20 +221,20 @@ def check_progressive_penalty(client_id: str, config: ProgressivePenaltyConfig) 
     """
     if not config.enabled:
         return 1  # No penalty
-    
+
     # Redis key: "ratelimit:penalties:{client_id}"
     key = f"ratelimit:penalties:{client_id}"
     now = time.time()
     window_start = now - config.detection_window
-    
+
     # Count violations in detection window
     # ZSET: {violation_timestamp: violation_count}
     redis.zremrangebyscore(key, 0, window_start)  # Remove old violations
     violation_count = redis.zcount(key, window_start, now)
-    
+
     if violation_count < config.violation_threshold:
         return 1  # Below threshold, no penalty
-    
+
     # Apply penalty based on violation count
     # multipliers = [1, 2, 4, 8]
     # violations = 3 → multipliers[0] = 1x (no penalty, at threshold)
@@ -247,10 +247,10 @@ def record_violation(client_id: str, config: ProgressivePenaltyConfig):
     """Record a rate limit violation for progressive penalty tracking."""
     if not config.enabled:
         return
-    
+
     key = f"ratelimit:penalties:{client_id}"
     now = time.time()
-    
+
     # Add violation timestamp to ZSET
     redis.zadd(key, {now: now})
     redis.expire(key, config.detection_window)  # TTL for cleanup
@@ -311,20 +311,20 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.redis = redis_backend
         self.config = config
-    
+
     async def dispatch(self, request: Request, call_next):
         # 1. Extract client identifier
         client_id = extract_client_id(request, self.config.trusted_proxy_depth)
         endpoint = request.url.path
-        
+
         # 2. Get applicable rate limit
         limit_config = self.config.get_limit(endpoint, client_id)
-        
+
         # 3. Check rate limit
         allowed, remaining, reset_at = await self.redis.check_limit(
             client_id, endpoint, limit_config
         )
-        
+
         # 4. Handle rejection
         if not allowed:
             return JSONResponse(
@@ -341,15 +341,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     "Retry-After": str(int(reset_at - time.time()))
                 }
             )
-        
+
         # 5. Process request
         response = await call_next(request)
-        
+
         # 6. Add headers
         response.headers["X-RateLimit-Limit"] = str(limit_config.limit)
         response.headers["X-RateLimit-Remaining"] = str(remaining)
         response.headers["X-RateLimit-Reset"] = str(int(reset_at))
-        
+
         return response
 
 # Application setup
@@ -494,14 +494,14 @@ ______________________________________________________________________
 # tests/rate_limiting/unit/test_token_bucket.py
 def test_token_bucket_refill():
     bucket = TokenBucket(max_tokens=100, refill_rate=10)  # 10 tokens/sec
-    
+
     # Initial state
     assert bucket.consume(50) == (True, 50)  # 50 remaining
-    
+
     # Fast forward 2 seconds (refill 20 tokens)
     bucket.advance_time(2.0)
     assert bucket.consume(60) == (True, 10)  # 70 tokens available, consume 60, 10 remaining
-    
+
     # Exceed limit
     assert bucket.consume(20) == (False, 10)  # Only 10 remaining, deny
 
@@ -511,10 +511,10 @@ def test_client_id_extraction_xff():
         headers={"X-Forwarded-For": "client, proxy1, proxy2"},
         client_host="load_balancer"
     )
-    
+
     # Trust depth = 1 (trust load_balancer only)
     assert extract_client_ip(request, trusted_proxy_depth=1) == "proxy2"
-    
+
     # Trust depth = 2 (trust load_balancer + proxy2)
     assert extract_client_ip(request, trusted_proxy_depth=2) == "proxy1"
 ```
@@ -527,17 +527,17 @@ def test_client_id_extraction_xff():
 async def test_redis_backend_atomic_incr(redis_client):
     backend = RedisBackend(redis_client)
     config = LimitConfig(limit=10, window=60)
-    
+
     # 10 concurrent requests (should all succeed atomically)
     tasks = [
         backend.check_limit("client1", "/api/test", config)
         for _ in range(10)
     ]
     results = await asyncio.gather(*tasks)
-    
+
     # All 10 should be allowed
     assert all(allowed for allowed, _, _ in results)
-    
+
     # 11th request should be denied
     allowed, remaining, _ = await backend.check_limit("client1", "/api/test", config)
     assert not allowed
@@ -548,7 +548,7 @@ async def test_distributed_consistency(redis_client):
     """Test consistency across 3 simulated API instances."""
     backend = RedisBackend(redis_client)
     config = LimitConfig(limit=100, window=60)
-    
+
     # Simulate 3 instances each processing 40 requests (120 total)
     async def instance_requests(instance_id: int, count: int):
         results = []
@@ -556,13 +556,13 @@ async def test_distributed_consistency(redis_client):
             result = await backend.check_limit(f"instance{instance_id}", "client1", "/api/test", config)
             results.append(result[0])  # allowed bool
         return results
-    
+
     instance1 = await instance_requests(1, 40)
     instance2 = await instance_requests(2, 40)
     instance3 = await instance_requests(3, 40)
-    
+
     total_allowed = sum(instance1) + sum(instance2) + sum(instance3)
-    
+
     # Should allow exactly 100 (within ±2 due to timing)
     assert 98 <= total_allowed <= 102
 ```
@@ -575,15 +575,15 @@ from locust import HttpUser, task, between
 
 class RateLimitUser(HttpUser):
     wait_time = between(0.1, 0.5)  # Random delay between requests
-    
+
     @task
     def get_endpoint(self):
         response = self.client.get("/api/v1/test")
-        
+
         # Verify rate limit headers present
         assert "X-RateLimit-Limit" in response.headers
         assert "X-RateLimit-Remaining" in response.headers
-        
+
         # Record latency
         if response.elapsed.total_seconds() > 0.010:  # >10ms
             print(f"WARNING: High latency {response.elapsed.total_seconds():.3f}s")
@@ -599,21 +599,21 @@ class RateLimitUser(HttpUser):
 async def test_redis_failure_fail_open(redis_client, redis_server):
     backend = RedisBackend(redis_client, failure_mode="fail_open")
     config = LimitConfig(limit=10, window=60)
-    
+
     # Normal operation
     allowed, _, _ = await backend.check_limit("client1", "/api/test", config)
     assert allowed
-    
+
     # Shutdown Redis
     redis_server.stop()
-    
+
     # Should fail open (allow requests)
     allowed, _, _ = await backend.check_limit("client1", "/api/test", config)
     assert allowed  # Fail open = allow when Redis down
-    
+
     # Restart Redis
     redis_server.start()
-    
+
     # Should resume normal operation
     allowed, _, _ = await backend.check_limit("client1", "/api/test", config)
     assert allowed
@@ -622,10 +622,10 @@ async def test_redis_failure_fail_open(redis_client, redis_server):
 async def test_redis_failure_fail_closed(redis_client, redis_server):
     backend = RedisBackend(redis_client, failure_mode="fail_closed")
     config = LimitConfig(limit=10, window=60)
-    
+
     # Shutdown Redis
     redis_server.stop()
-    
+
     # Should fail closed (reject requests)
     allowed, _, _ = await backend.check_limit("client1", "/api/test", config)
     assert not allowed  # Fail closed = reject when Redis down

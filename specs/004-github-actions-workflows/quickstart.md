@@ -53,17 +53,17 @@ from pathlib import Path
 def validate_workflows():
     """Validate generated workflow YAML files"""
     workflows_dir = Path(".github/workflows")
-    
+
     if not workflows_dir.exists():
         print("⚠️  No workflows directory found")
         return
-    
+
     workflow_files = list(workflows_dir.glob("riso-*.yml"))
-    
+
     if not workflow_files:
         print("✅ No template workflows generated (expected for minimal configs)")
         return
-    
+
     # Attempt actionlint validation
     try:
         result = subprocess.run(
@@ -72,14 +72,14 @@ def validate_workflows():
             text=True,
             timeout=30
         )
-        
+
         if result.returncode == 0:
             print(f"✅ Validated {len(workflow_files)} workflow(s)")
         else:
             print(f"❌ Workflow validation failed:\n{result.stderr}")
             print("\nℹ️  Run 'actionlint .github/workflows/*.yml' to see details")
             # Don't fail render - workflows may still work
-            
+
     except FileNotFoundError:
         print("⚠️  actionlint not found - skipping workflow validation")
         print("   Install: brew install actionlint (macOS) or see https://github.com/rhysd/actionlint")

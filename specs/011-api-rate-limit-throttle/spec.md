@@ -157,12 +157,12 @@ Given a configuration file config.toml:
   [rate_limiting]
   default_limit = 100
   default_window = 60
-  
+
   [[rate_limiting.endpoints]]
   pattern = "/api/v1/search"
   limit = 20
   window = 60
-  
+
   [[rate_limiting.tiers]]
   name = "premium"
   limit = 5000
@@ -292,7 +292,7 @@ Then the response includes:
   X-RateLimit-Remaining: 0
   X-RateLimit-Reset: 1698765492
   Retry-After: 30 (seconds until reset)
-  
+
 And the response body contains JSON:
   {
     "error": "rate_limit_exceeded",
@@ -815,19 +815,19 @@ async def rate_limit_middleware(request: Request, call_next):
     # 1. Extract client identifier (IP or user_id from JWT)
     client_id = get_client_id(request)
     endpoint = request.url.path
-    
+
     # 2. Get applicable rate limit config
     limit_config = get_limit_config(endpoint, client_id)
-    
+
     # 3. Check rate limit in Redis
     allowed, remaining, reset_at = await check_rate_limit(client_id, endpoint, limit_config)
-    
+
     # 4. Add headers to response
     response = await call_next(request)
     response.headers["X-RateLimit-Limit"] = str(limit_config.limit)
     response.headers["X-RateLimit-Remaining"] = str(remaining)
     response.headers["X-RateLimit-Reset"] = str(reset_at)
-    
+
     # 5. Reject if limit exceeded
     if not allowed:
         raise HTTPException(
@@ -835,7 +835,7 @@ async def rate_limit_middleware(request: Request, call_next):
             detail={"error": "rate_limit_exceeded", "retry_after_seconds": reset_at - now()},
             headers={"Retry-After": str(reset_at - now())}
         )
-    
+
     return response
 ```
 

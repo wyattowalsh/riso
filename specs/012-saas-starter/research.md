@@ -183,19 +183,19 @@ app/
 export async function action({ request }: ActionFunctionArgs) {
   const session = await requireAuth(request);
   const formData = await request.formData();
-  
+
   // Validate with Zod
   const result = updateSettingsSchema.safeParse(Object.fromEntries(formData));
   if (!result.success) {
     return json({ errors: result.error.flatten() });
   }
-  
+
   // Update database via ORM
   await prisma.user.update({
     where: { id: session.userId },
     data: result.data,
   });
-  
+
   return redirect("/dashboard/settings?success=true");
 }
 ```
@@ -206,13 +206,13 @@ export async function action({ request }: ActionFunctionArgs) {
 export async function loader({ request }: LoaderFunctionArgs) {
   const session = await getSession(request.headers.get("Cookie"));
   if (!session) throw redirect("/login");
-  
+
   // Inject tracing
   const span = tracer.startSpan("dashboard.settings");
-  
+
   // Load user data
   const user = await prisma.user.findUnique({ where: { id: session.userId } });
-  
+
   span.end();
   return json({ user });
 }
@@ -965,19 +965,19 @@ jobs:
           - database-neon
           - jobs-trigger
           - email-resend
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
-      
+
       - name: Install dependencies
         run: pnpm install
-      
+
       - name: Run ${{ matrix.service }} tests
         run: pnpm test:integration:${{ matrix.service }}
         env:
@@ -1048,7 +1048,7 @@ const prisma = new PrismaClient();
 async function main() {
   // Deterministic seed data with IDs 1-1000
   const users = await Promise.all(
-    Array.from({ length: 10 }, (_, i) => 
+    Array.from({ length: 10 }, (_, i) =>
       prisma.user.create({
         data: {
           id: `seed-user-${i + 1}`,
@@ -1094,12 +1094,12 @@ describe("Billing", () => {
 
   it("creates checkout session for user", async () => {
     const { user } = await createUserWithSubscription("starter");
-    
+
     const session = await createCheckoutSession({
       userId: user.id,
       plan: "pro",
     });
-    
+
     expect(session.url).toContain("checkout.stripe.com");
   });
 });
@@ -1152,13 +1152,13 @@ def validate_compatibility(answers):
     database = answers.get("database")
     orm = answers.get("orm")
     storage = answers.get("storage")
-    
+
     combos = [
         (hosting, orm),
         (hosting, storage),
         (database, storage),
     ]
-    
+
     for combo in combos:
         if combo in COMPATIBILITY_MATRIX:
             issue = COMPATIBILITY_MATRIX[combo]

@@ -68,16 +68,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 // Call tool handler
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-  
+
   if (name === "echo") {
     // Validate input
     const parsed = EchoInputSchema.parse(args);
-    
+
     // Execute tool logic
-    const result = parsed.uppercase 
+    const result = parsed.uppercase
       ? parsed.message.toUpperCase()
       : parsed.message;
-    
+
     return {
       content: [
         {
@@ -87,7 +87,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       ]
     };
   }
-  
+
   throw new Error(`Unknown tool: ${name}`);
 });
 ```
@@ -116,17 +116,17 @@ type FetchUrlInput = z.infer<typeof FetchUrlInputSchema>;
 async function fetchUrl(input: FetchUrlInput): Promise<string> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), input.timeout);
-  
+
   try {
     const response = await fetch(input.url, {
       headers: input.headers,
       signal: controller.signal
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-    
+
     return await response.text();
   } finally {
     clearTimeout(timeoutId);
@@ -137,7 +137,7 @@ async function fetchUrl(input: FetchUrlInput): Promise<string> {
 if (name === "fetch_url") {
   const parsed = FetchUrlInputSchema.parse(args);
   const content = await fetchUrl(parsed);
-  
+
   return {
     content: [
       { type: "text", text: content }
@@ -178,7 +178,7 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => ({
 // Read resource handler
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   const { uri } = request.params;
-  
+
   if (uri === "resource://about") {
     return {
       contents: [
@@ -194,7 +194,7 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
       ]
     };
   }
-  
+
   throw new Error(`Unknown resource: ${uri}`);
 });
 ```
@@ -227,18 +227,18 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => ({
 // Read resource with parameter extraction
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   const { uri } = request.params;
-  
+
   const fileMatch = uri.match(/^file:\/\/\/(.+)$/);
   if (fileMatch) {
     const path = fileMatch[1];
-    
+
     // Validate path (security critical!)
     if (!isPathAllowed(path)) {
       throw new Error("Access denied");
     }
-    
+
     const files = await fs.readdir(path);
-    
+
     return {
       contents: [
         {
@@ -249,7 +249,7 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
       ]
     };
   }
-  
+
   throw new Error(`Unknown resource: ${uri}`);
 });
 ```
@@ -290,10 +290,10 @@ server.setRequestHandler(ListPromptsRequestSchema, async () => ({
 // Get prompt handler
 server.setRequestHandler(GetPromptRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-  
+
   if (name === "greeting") {
     const personName = args?.name || "friend";
-    
+
     return {
       messages: [
         {
@@ -313,7 +313,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
       ]
     };
   }
-  
+
   throw new Error(`Unknown prompt: ${name}`);
 });
 ```
@@ -338,7 +338,7 @@ import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-  
+
   if (name === "risky_operation") {
     // Validate input
     if (!args.param) {
@@ -348,14 +348,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         { param: "param" }
       );
     }
-    
+
     try {
       const result = await performOperation(args.param);
       return { content: [{ type: "text", text: result }] };
     } catch (error) {
       // Log full error server-side
       logger.error("Operation failed", { error, tool: name });
-      
+
       // Return sanitized error to client
       throw new McpError(
         ErrorCode.InternalError,
@@ -364,7 +364,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       );
     }
   }
-  
+
   throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
 });
 ```
@@ -417,12 +417,12 @@ interface ServerConfig {
 async function loadConfig(configPath: string = "config.json"): Promise<ServerConfig> {
   const content = await fs.readFile(configPath, "utf-8");
   const config = JSON.parse(content) as ServerConfig;
-  
+
   // Override with environment variables
   if (process.env.MCP_LOG_LEVEL) {
     config.server.logLevel = process.env.MCP_LOG_LEVEL as any;
   }
-  
+
   return config;
 }
 ```
@@ -501,7 +501,7 @@ const app = express();
 app.post("/mcp/tools/call", async (req, res) => {
   const transport = new SSEServerTransport("/mcp/sse", res);
   await server.connect(transport);
-  
+
   // Handle request
   // ...
 });
@@ -539,7 +539,7 @@ interface Logger {
 
 class ConsoleLogger implements Logger {
   constructor(private level: string = "info") {}
-  
+
   private log(level: string, message: string, context?: Record<string, any>) {
     if (this.shouldLog(level)) {
       const timestamp = new Date().toISOString();
@@ -547,12 +547,12 @@ class ConsoleLogger implements Logger {
       console.error(`${timestamp} | ${level.toUpperCase()} | ${message}${data}`);
     }
   }
-  
+
   private shouldLog(level: string): boolean {
     const levels = ["debug", "info", "warn", "error"];
     return levels.indexOf(level) >= levels.indexOf(this.level);
   }
-  
+
   debug(message: string, context?: Record<string, any>) { this.log("debug", message, context); }
   info(message: string, context?: Record<string, any>) { this.log("info", message, context); }
   warn(message: string, context?: Record<string, any>) { this.log("warn", message, context); }
@@ -565,9 +565,9 @@ const logger = new ConsoleLogger(process.env.MCP_LOG_LEVEL || "info");
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
   logger.info("Tool invoked", { tool: name, args });
-  
+
   // ...
-  
+
   logger.info("Tool completed", { tool: name, result });
   return result;
 });
@@ -595,13 +595,13 @@ import { CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 
 describe("MCP Server", () => {
   let server: Server;
-  
+
   beforeEach(() => {
     server = new Server(
       { name: "test-server", version: "1.0.0" },
       { capabilities: { tools: {} } }
     );
-    
+
     // Register test tool
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (request.params.name === "echo") {
@@ -614,7 +614,7 @@ describe("MCP Server", () => {
       throw new Error("Unknown tool");
     });
   });
-  
+
   it("should echo message", async () => {
     const handler = server.getRequestHandler(CallToolRequestSchema);
     const result = await handler({
@@ -624,7 +624,7 @@ describe("MCP Server", () => {
         arguments: { message: "hello" }
       }
     });
-    
+
     expect(result.content[0].text).toBe("hello");
   });
 });
@@ -661,7 +661,7 @@ async function start() {
   logger.info("Server starting");
   // Initialize connections, load resources, etc.
   await initialize();
-  
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }

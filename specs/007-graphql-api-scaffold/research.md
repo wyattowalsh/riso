@@ -108,12 +108,12 @@ Combine data from multiple sources in a single resolver:
 async def resolve_user_with_posts(user_id: str, info: Info) -> User:
     # Fetch user from database
     db_user = await info.context.db.get_user(user_id)
-    
+
     # Fetch posts from external API
     async with httpx.AsyncClient() as client:
         posts_response = await client.get(f"https://blog-api.example.com/posts?author={user_id}")
         posts_data = posts_response.json()
-    
+
     # Combine into single GraphQL response
     return User(
         id=db_user.id,

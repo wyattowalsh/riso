@@ -491,7 +491,7 @@ class TestMain:
 
         monkeypatch.setattr(render_matrix, "METADATA_DIR", metadata_dir)
 
-        with patch("sys.argv", ["render_matrix.py", "--skip-render", 
+        with patch("sys.argv", ["render_matrix.py", "--skip-render",
                                "--quality-artifacts", str(artifact_file),
                                "--retention-days", "30"]):
             render_matrix.main()

@@ -114,7 +114,7 @@ class LimitConfig:
     limit: int  # Max requests
     window: int  # Time window in seconds
     algorithm: Literal["token_bucket", "sliding_window"] = "token_bucket"
-    
+
     @property
     def refill_rate(self) -> float:
         """Tokens per second."""
@@ -146,12 +146,12 @@ class RateLimitConfig:
     default_window: int = 60
     trusted_proxy_depth: int = 1
     failure_mode: Literal["fail_open", "fail_closed"] = "fail_open"
-    
+
     redis_url: str
     redis_topology: Literal["single", "sentinel", "cluster"] = "sentinel"
     redis_pool_size: int = 20
     redis_socket_timeout: float = 5.0
-    
+
     endpoints: list[EndpointConfig] = field(default_factory=list)
     tiers: list[TierConfig] = field(default_factory=list)
     progressive_penalties: ProgressivePenaltyConfig = field(default_factory=ProgressivePenaltyConfig)
@@ -227,7 +227,7 @@ def extract_client_id(request: Request, config: RateLimitConfig) -> str:
                 return f"user:{payload['user_id']}"
         except JWTError:
             pass  # Invalid token, fall back to IP
-    
+
     # Extract IP from X-Forwarded-For (rightmost untrusted IP)
     xff_header = request.headers.get("X-Forwarded-For")
     if xff_header:
@@ -238,10 +238,10 @@ def extract_client_id(request: Request, config: RateLimitConfig) -> str:
             client_ip = ips[0]
     else:
         client_ip = request.client.host
-    
+
     # Normalize IPv6 addresses
     client_ip = str(ipaddress.ip_address(client_ip))
-    
+
     return f"ip:{client_ip}"
 ```
 

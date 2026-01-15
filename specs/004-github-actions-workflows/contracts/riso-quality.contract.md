@@ -48,15 +48,15 @@ jobs:
     name: Python Quality Checks
     runs-on: ubuntu-latest
     timeout-minutes: {% if quality_profile == 'strict' %}20{% else %}10{% endif %}
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      
+
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
@@ -67,13 +67,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-py3.11-
             ${{ runner.os }}-
-      
+
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
-      
+
       - name: Install dependencies
         run: uv sync
-      
+
       - name: Run quality checks with retry
         uses: nick-fields/retry@v3
         with:
@@ -83,17 +83,17 @@ jobs:
           exponential_backoff: true
           command: |
             uv run task quality
-      
+
       {% if cli_module == 'enabled' %}
       - name: Test CLI module
         run: uv run pytest tests/test_cli.py -v
       {% endif %}
-      
+
       {% if mcp_module == 'enabled' %}
       - name: Test MCP module
         run: uv run pytest tests/test_mcp.py -v
       {% endif %}
-      
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -104,7 +104,7 @@ jobs:
             htmlcov/
             .coverage
           retention-days: 90
-      
+
       - name: Upload quality logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -121,18 +121,18 @@ jobs:
     name: Node.js Quality Checks
     runs-on: ubuntu-latest
     timeout-minutes: {% if quality_profile == 'strict' %}20{% else %}10{% endif %}
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      
+
       - name: Enable corepack
         run: corepack enable
-      
+
       - name: Cache pnpm dependencies
         uses: actions/cache@v4
         with:
@@ -142,19 +142,19 @@ jobs:
           key: ${{ runner.os }}-node-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-node-
-      
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      
+
       - name: Run ESLint
         run: pnpm run lint
-      
+
       - name: Run TypeScript check
         run: pnpm run type-check
-      
+
       - name: Run tests
         run: pnpm test
-      
+
       - name: Upload Node.js test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -233,7 +233,7 @@ def test_quality_workflow_generation():
         'cli_module': 'enabled'
     }
     workflow = render_template('riso-quality.yml.jinja', answers)
-    
+
     assert 'name: Quality Checks' in workflow
     assert 'timeout-minutes: 10' in workflow
     assert 'Test CLI module' in workflow
@@ -243,7 +243,7 @@ def test_strict_profile_timeout():
     """Verify strict profile uses 20-minute timeout"""
     answers = {'quality_profile': 'strict', ...}
     workflow = render_template('riso-quality.yml.jinja', answers)
-    
+
     assert 'timeout-minutes: 20' in workflow
 ```
 

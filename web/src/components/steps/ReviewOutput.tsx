@@ -79,7 +79,7 @@ export function ReviewOutput() {
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-xl overflow-x-auto text-sm leading-relaxed max-h-96">
           <code>{mode === 'cli' ? cliCommand : yamlConfig}</code>
         </pre>
-        
+
         <div className="absolute top-2 right-2 flex gap-2">
           <button
             onClick={handleCopy}
@@ -217,7 +217,7 @@ function generateCliCommand(config: Partial<RisoConfig>): string {
 
   // Documentation
   if (config.docs_site) args.push(`docs_site="${config.docs_site}"`)
-  
+
   // Fumadocs options
   if (config.docs_site === 'fumadocs') {
     if (config.fumadocs_search_provider) args.push(`fumadocs_search_provider="${config.fumadocs_search_provider}"`)

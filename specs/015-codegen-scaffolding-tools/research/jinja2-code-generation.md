@@ -31,19 +31,19 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 # Optimal configuration for code generation
 env = Environment(
     loader=FileSystemLoader(['templates', 'templates/shared']),
-    
+
     # Code-generation specific settings
     trim_blocks=True,           # Remove first newline after block
     lstrip_blocks=True,         # Strip leading whitespace before blocks
     keep_trailing_newline=True, # Preserve file-ending newlines
-    
+
     # Error handling
     undefined=StrictUndefined,  # Fail on undefined variables (catch typos)
-    
+
     # Performance
     auto_reload=False,          # Disable in production (templates are static)
     cache_size=400,             # Default is 400, increase if 100s of templates
-    
+
     # Extension support
     extensions=[
         'jinja2.ext.do',        # {% do %} for side effects
@@ -163,30 +163,30 @@ def validate_template(
     template_path: str
 ) -> Tuple[bool, str]:
     """Validate template syntax without rendering.
-    
+
     Returns:
         (success, error_message)
     """
     try:
         # This compiles template to bytecode and caches it
         template = env.get_template(template_path)
-        
+
         # Optional: Parse to AST for deeper analysis
         source = env.loader.get_source(env, template_path)
         ast = env.parse(source[0])
-        
+
         return True, ""
-        
+
     except TemplateNotFound as e:
         return False, f"Template not found: {e}"
-        
+
     except TemplateSyntaxError as e:
         return False, (
             f"Syntax error in {e.filename or template_path}:\n"
             f"  Line {e.lineno}: {e.message}\n"
             f"  {e.source or ''}"
         )
-        
+
     except Exception as e:
         return False, f"Unexpected error: {type(e).__name__}: {e}"
 
@@ -195,7 +195,7 @@ def validate_all_templates(
     template_dirs: List[Path]
 ) -> List[Tuple[str, bool, str]]:
     """Validate all .jinja templates in directories.
-    
+
     Returns:
         List of (template_path, success, error_message)
     """
@@ -203,14 +203,14 @@ def validate_all_templates(
         loader=FileSystemLoader([str(d) for d in template_dirs]),
         undefined=StrictUndefined,
     )
-    
+
     results = []
     for template_dir in template_dirs:
         for template_file in template_dir.rglob("*.jinja"):
             relative_path = template_file.relative_to(template_dir)
             success, error = validate_template(env, str(relative_path))
             results.append((str(relative_path), success, error))
-    
+
     return results
 
 
@@ -218,9 +218,9 @@ def validate_all_templates(
 def test_template_syntax():
     """Validate all templates compile without errors."""
     results = validate_all_templates([Path("templates")])
-    
+
     failures = [(path, err) for path, ok, err in results if not ok]
-    
+
     if failures:
         msg = "\n".join(f"{path}: {err}" for path, err in failures)
         raise AssertionError(f"Template validation failed:\n{msg}")
@@ -251,13 +251,13 @@ def safe_render(
     """Render with upfront validation."""
     required = get_required_variables(env, template_name)
     missing = required - set(context.keys())
-    
+
     if missing:
         raise ValueError(
             f"Template {template_name} requires missing variables: "
             f"{', '.join(sorted(missing))}"
         )
-    
+
     template = env.get_template(template_name)
     return template.render(**context)
 ```
@@ -284,15 +284,15 @@ def render_template_with_permissions(
     mode: int = 0o644,  # Default: rw-r--r--
 ):
     """Render template and set file permissions."""
-    
+
     # Render template
     template = env.get_template(template_name)
     content = template.render(**context)
-    
+
     # Write file
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(content, encoding='utf-8')
-    
+
     # Set permissions
     os.chmod(output_path, mode)
 
@@ -327,15 +327,15 @@ def copy_template_assets(
     binary_extensions: set[str] = {'.png', '.jpg', '.ico', '.woff', '.woff2', '.ttf'}
 ):
     """Copy binary assets without templating."""
-    
+
     for src_file in template_dir.rglob('*'):
         if not src_file.is_file():
             continue
-            
+
         # Skip Jinja2 templates
         if src_file.suffix == '.jinja':
             continue
-            
+
         # Copy binary files directly
         if src_file.suffix in binary_extensions:
             relative = src_file.relative_to(template_dir)
@@ -347,15 +347,15 @@ def copy_template_assets(
 # Mixed approach: Some files templated, some copied
 def generate_project(template_dir: Path, output_dir: Path, context: dict):
     """Generate project with both templated and binary files."""
-    
+
     env = Environment(loader=FileSystemLoader(str(template_dir)))
-    
+
     for src_file in template_dir.rglob('*'):
         if not src_file.is_file():
             continue
-            
+
         relative = src_file.relative_to(template_dir)
-        
+
         # Template Jinja2 files
         if src_file.suffix == '.jinja':
             output_name = relative.with_suffix('')  # Remove .jinja
@@ -365,7 +365,7 @@ def generate_project(template_dir: Path, output_dir: Path, context: dict):
                 output_dir / output_name,
                 context
             )
-        
+
         # Copy binary files
         elif src_file.suffix in {'.png', '.jpg', '.woff'}:
             dest_file = output_dir / relative
@@ -542,10 +542,10 @@ def render_single_file(
     """Render one template file."""
     template = env.get_template(template_name)
     content = template.render(**context)
-    
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(content, encoding='utf-8')
-    
+
     return output_path
 
 
@@ -555,22 +555,22 @@ def generate_project_parallel(
     max_workers: int = 4
 ) -> List[Path]:
     """Generate multiple files in parallel.
-    
+
     Args:
         templates: List of (template_name, output_path, context)
         max_workers: Concurrent render threads (Jinja2 is thread-safe)
-    
+
     Returns:
         List of generated file paths
     """
     results = []
-    
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
             executor.submit(render_single_file, env, tmpl, out, ctx): tmpl
             for tmpl, out, ctx in templates
         }
-        
+
         for future in as_completed(futures):
             try:
                 result = future.result()
@@ -579,7 +579,7 @@ def generate_project_parallel(
                 template_name = futures[future]
                 print(f"Error rendering {template_name}: {e}")
                 raise
-    
+
     return results
 
 
@@ -752,21 +752,21 @@ import json
 
 class SecureTemplateRenderer:
     """Production-grade secure template renderer."""
-    
+
     def __init__(self, template_dir: Path, allowed_templates: set[str]):
         self.template_dir = template_dir
         self.allowed_templates = allowed_templates
-        
+
         # Use immutable sandbox (extra protection)
         self.env = ImmutableSandboxedEnvironment(
             loader=FileSystemLoader(str(template_dir)),
             undefined=StrictUndefined,
             autoescape=False,  # Code generation, not HTML
         )
-        
+
         # Compute template hashes for integrity checking
         self.template_hashes = self._compute_hashes()
-    
+
     def _compute_hashes(self) -> dict[str, str]:
         """Compute SHA256 hashes of all templates."""
         hashes = {}
@@ -774,27 +774,27 @@ class SecureTemplateRenderer:
             source = self.env.loader.get_source(self.env, tmpl_name)[0]
             hashes[tmpl_name] = hashlib.sha256(source.encode()).hexdigest()
         return hashes
-    
+
     def render(self, template_name: str, context: dict) -> str:
         """Render template with security checks."""
-        
+
         # 1. Whitelist check
         if template_name not in self.allowed_templates:
             raise ValueError(f"Template {template_name} not in whitelist")
-        
+
         # 2. Integrity check
         source = self.env.loader.get_source(self.env, template_name)[0]
         current_hash = hashlib.sha256(source.encode()).hexdigest()
         if current_hash != self.template_hashes[template_name]:
             raise ValueError(f"Template {template_name} has been modified")
-        
+
         # 3. Context validation
         self._validate_context(context)
-        
+
         # 4. Render in sandbox
         template = self.env.get_template(template_name)
         return template.render(**context)
-    
+
     def _validate_context(self, context: dict):
         """Validate context data types."""
         for key, value in context.items():
@@ -830,19 +830,19 @@ env = Environment(
         'templates/shared',   # Shared components
         'templates/base',     # Base templates
     ]),
-    
+
     # Code generation settings
     trim_blocks=True,           # Remove newline after block tags
     lstrip_blocks=True,         # Strip leading whitespace before blocks
     keep_trailing_newline=True, # Keep final newline in files
-    
+
     # Error handling (catch issues early)
     undefined=StrictUndefined,  # Fail on undefined variables
-    
+
     # Development
     auto_reload=True,           # Hot reload during development
     cache_size=400,             # Default cache
-    
+
     # Extensions
     extensions=[
         'jinja2.ext.do',          # {% do %} statements
@@ -861,20 +861,20 @@ from jinja2.sandbox import ImmutableSandboxedEnvironment
 # Production: Use sandbox + bytecode cache
 env = ImmutableSandboxedEnvironment(
     loader=FileSystemLoader(['templates']),
-    
+
     # Code generation
     trim_blocks=True,
     lstrip_blocks=True,
     keep_trailing_newline=True,
-    
+
     # Security
     undefined=StrictUndefined,
-    
+
     # Performance
     auto_reload=False,                                    # Never reload in prod
     cache_size=1000,                                      # Larger cache
     bytecode_cache=FileSystemBytecodeCache('.cache/jinja2'),
-    
+
     # Extensions
     extensions=['jinja2.ext.do', 'jinja2.ext.loopcontrols'],
 )
@@ -906,10 +906,10 @@ import shutil
 
 class ProjectGenerator:
     """Generate project from Jinja2 templates."""
-    
+
     def __init__(self, template_dir: Path):
         self.template_dir = template_dir
-        
+
         # Configure environment for code generation
         self.env = Environment(
             loader=FileSystemLoader(str(template_dir)),
@@ -918,47 +918,47 @@ class ProjectGenerator:
             keep_trailing_newline=True,
             undefined=StrictUndefined,
         )
-    
+
     def validate_templates(self) -> List[str]:
         """Validate all templates compile successfully."""
         errors = []
-        
+
         for template_file in self.template_dir.rglob("*.jinja"):
             relative = template_file.relative_to(self.template_dir)
             try:
                 self.env.get_template(str(relative))
             except TemplateSyntaxError as e:
                 errors.append(f"{relative}: Line {e.lineno}: {e.message}")
-        
+
         return errors
-    
+
     def generate(self, output_dir: Path, context: Dict):
         """Generate complete project."""
-        
+
         # 1. Validate context has required variables
         required = {'project_name', 'package_name'}
         missing = required - set(context.keys())
         if missing:
             raise ValueError(f"Missing required variables: {missing}")
-        
+
         # 2. Create output directory
         output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # 3. Process all templates
         for src_file in self.template_dir.rglob("*"):
             if not src_file.is_file():
                 continue
-            
+
             relative = src_file.relative_to(self.template_dir)
-            
+
             # Handle Jinja2 templates
             if src_file.suffix == ".jinja":
                 self._render_template(relative, output_dir, context)
-            
+
             # Copy binary/static files
             else:
                 self._copy_static_file(relative, output_dir)
-    
+
     def _render_template(
         self,
         template_path: Path,
@@ -966,29 +966,29 @@ class ProjectGenerator:
         context: Dict
     ):
         """Render a single template file."""
-        
+
         # Remove .jinja extension for output
         output_name = template_path.with_suffix('')
-        
+
         # Support {{ variable }} in file paths
         output_name_str = str(output_name)
         for key, value in context.items():
             output_name_str = output_name_str.replace(f"{{{{{key}}}}}", str(value))
-        
+
         output_path = output_dir / output_name_str
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Render template
         template = self.env.get_template(str(template_path))
         content = template.render(**context)
-        
+
         # Write file
         output_path.write_text(content, encoding='utf-8')
-        
+
         # Set executable permission for scripts
         if output_name.suffix in {'.sh', '.bash', '.py'} and content.startswith('#!'):
             os.chmod(output_path, 0o755)
-    
+
     def _copy_static_file(self, relative_path: Path, output_dir: Path):
         """Copy non-template files."""
         src = self.template_dir / relative_path
@@ -1000,7 +1000,7 @@ class ProjectGenerator:
 # Usage
 if __name__ == '__main__':
     generator = ProjectGenerator(Path('templates/python-project'))
-    
+
     # Validate templates
     errors = generator.validate_templates()
     if errors:
@@ -1008,7 +1008,7 @@ if __name__ == '__main__':
         for error in errors:
             print(f"  {error}")
         exit(1)
-    
+
     # Generate project
     context = {
         'project_name': 'My Project',
@@ -1016,7 +1016,7 @@ if __name__ == '__main__':
         'author': 'Dev Team',
         'python_version': '3.11',
     }
-    
+
     generator.generate(Path('output/my-project'), context)
     print("Project generated successfully!")
 ```

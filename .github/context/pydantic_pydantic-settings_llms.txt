@@ -51,15 +51,15 @@ print(Settings().model_dump())
 ```
 
 ```plaintext
-You could load them into the following settings model:  
+You could load them into the following settings model:
 ```
 
 ```plaintext
 Without `env_nested_max_split=1` set, `GENERATION_LLM_API_KEY` would be parsed as `llm.api.key` instead of `llm.api_key`
-and it would raise a `ValidationError`.  
+and it would raise a `ValidationError`.
 Nested environment variables take precedence over the top-level environment variable JSON
-(e.g. in the example above, `SUB_MODEL__V2` trumps `SUB_MODEL`).  
-You may also populate a complex type by providing your own source class.  
+(e.g. in the example above, `SUB_MODEL__V2` trumps `SUB_MODEL`).
+You may also populate a complex type by providing your own source class.
 import json
 import os
 from typing import Any
@@ -373,12 +373,12 @@ print(Settings().model_dump())
 
 ```plaintext
 #### Literals and Enums
-CLI argument parsing of literals and enums are converted into CLI choices.  
+CLI argument parsing of literals and enums are converted into CLI choices.
 ```
 
 ```plaintext
 #### Aliases
-Pydantic field aliases are added as CLI argument aliases. Aliases of length one are converted into short options.  
+Pydantic field aliases are added as CLI argument aliases. Aliases of length one are converted into short options.
 ```
 
 ---
@@ -800,7 +800,7 @@ SOURCE: /docs/index.md
 
 ```plaintext
 #### Aliases
-Pydantic field aliases are added as CLI argument aliases. Aliases of length one are converted into short options.  
+Pydantic field aliases are added as CLI argument aliases. Aliases of length one are converted into short options.
 ```
 
 ---
@@ -1065,24 +1065,24 @@ SOURCE: /docs/index.md
 #### Enforce Required Arguments at CLI
 Pydantic settings is designed to pull values in from various sources when instantating a model. This means a field that
 is required is not strictly required from any single source (e.g. the CLI). Instead, all that matters is that one of the
-sources provides the required value.  
+sources provides the required value.
 However, if your use case [aligns more with #2](#command-line-support), using Pydantic models to define CLIs, you will
 likely want required fields to be _strictly required at the CLI_. We can enable this behavior by using
-`cli_enforce_required`.  
+`cli_enforce_required`.
 !!! note
-A required `CliPositionalArg` field is always strictly required (enforced) at the CLI.  
+A required `CliPositionalArg` field is always strictly required (enforced) at the CLI.
 ```
 
 ```plaintext
 #### Change the None Type Parse String
 Change the CLI string value that will be parsed (e.g. "null", "void", "None", etc.) into `None` by setting
 `cli_parse_none_str`. By default it will use the `env_parse_none_str` value if set. Otherwise, it will default to "null"
-if `cli_avoid_json` is `False`, and "None" if `cli_avoid_json` is `True`.  
+if `cli_avoid_json` is `False`, and "None" if `cli_avoid_json` is `True`.
 ```
 
 ```plaintext
 #### Hide None Type Values
-Hide `None` values from the CLI help text by enabling `cli_hide_none_type`.  
+Hide `None` values from the CLI help text by enabling `cli_hide_none_type`.
 from typing import Optional
 
 from pydantic import Field
@@ -1110,10 +1110,10 @@ options:
 ```plaintext
 #### Use Class Docstring for Group Help Text
 By default, when populating the group help text for nested models it will pull from the field descriptions.
-Alternatively, we can also configure CLI settings to pull from the class docstring instead.  
+Alternatively, we can also configure CLI settings to pull from the class docstring instead.
 !!! note
 If the field is a union of nested models the group help text will always be pulled from the field description;
-even if `cli_use_class_docs_for_groups` is set to `True`.  
+even if `cli_use_class_docs_for_groups` is set to `True`.
 
 from pydantic import BaseModel, Field
 
@@ -1172,12 +1172,12 @@ database_password: str
 ````
 In either case, the value of the passed argument can be any valid directory, either absolute or relative to the
 current working directory. **Note that a non existent directory will only generate a warning**.
-From there, *pydantic* will handle everything for you by loading in your variables and validating them.  
+From there, *pydantic* will handle everything for you by loading in your variables and validating them.
 Even when using a secrets directory, *pydantic* will still read environment variables from a dotenv file or the environment,
-**a dotenv file and environment variables will always take priority over values loaded from the secrets directory**.  
+**a dotenv file and environment variables will always take priority over values loaded from the secrets directory**.
 Passing a file path via the `_secrets_dir` keyword argument on instantiation (method 2) will override
-the value (if any) set on the `model_config` class.  
-If you need to load settings from multiple secrets directories, you can pass multiple paths as a tuple or list. Just like for `env_file`, values from subsequent paths override previous ones.  
+the value (if any) set on the `model_config` class.
+If you need to load settings from multiple secrets directories, you can pass multiple paths as a tuple or list. Just like for `env_file`, values from subsequent paths override previous ones.
 ```
 
 ---
@@ -1187,13 +1187,13 @@ SOURCE: /docs/index.md
 
 ```plaintext
 #### Change the CLI Flag Prefix Character
-Change The CLI flag prefix character used in CLI optional arguments by settings `cli_flag_prefix_char`.  
+Change The CLI flag prefix character used in CLI optional arguments by settings `cli_flag_prefix_char`.
 ```
 
 ```plaintext
 #### Suppressing Fields from CLI Help Text
 To suppress a field from the CLI help text, the `CliSuppress` annotation can be used for field types, or the
-`CLI_SUPPRESS` string constant can be used for field descriptions.  
+`CLI_SUPPRESS` string constant can be used for field descriptions.
 import sys
 
 from pydantic import Field
@@ -1223,7 +1223,7 @@ options:
 ```
 
 ```plaintext
-**Nested Example:**  
+**Nested Example:**
 ```
 
 ---
@@ -1511,7 +1511,7 @@ implicit_opt: bool = False
 
 ```plaintext
 #### CLI Kebab Case for Arguments
-Change whether CLI arguments should use kebab case by enabling `cli_kebab_case`.  
+Change whether CLI arguments should use kebab case by enabling `cli_kebab_case`.
 
 from pydantic import Field
 
@@ -1539,12 +1539,12 @@ options:
 #### Enforce Required Arguments at CLI
 Pydantic settings is designed to pull values in from various sources when instantating a model. This means a field that
 is required is not strictly required from any single source (e.g. the CLI). Instead, all that matters is that one of the
-sources provides the required value.  
+sources provides the required value.
 However, if your use case [aligns more with #2](#command-line-support), using Pydantic models to define CLIs, you will
 likely want required fields to be _strictly required at the CLI_. We can enable this behavior by using
-`cli_enforce_required`.  
+`cli_enforce_required`.
 !!! note
-A required `CliPositionalArg` field is always strictly required (enforced) at the CLI.  
+A required `CliPositionalArg` field is always strictly required (enforced) at the CLI.
 ```
 
 ---

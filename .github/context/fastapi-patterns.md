@@ -27,11 +27,11 @@ from pydantic_settings import BaseSettings
 
 class ApiConfig(BaseSettings):
     environment: Literal["development", "staging", "production"]
-    
+
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
-    
+
     @property
     def debug_mode(self) -> bool:
         return self.environment == "development"
@@ -71,7 +71,7 @@ def get_secret(secret_name: str) -> str:
 
 class ApiConfig(BaseSettings):
     database_password: str = Field(default="")
-    
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if self.is_production:
@@ -343,7 +343,7 @@ async def get_cached_data(response: Response):
     if cached:
         response.headers["X-Cache"] = "HIT"
         return {"data": cached}
-    
+
     # Compute and cache
     data = compute_expensive_data()
     await redis_client.setex("cached_key", 300, data)
@@ -511,30 +511,30 @@ Comprehensive health checks:
 @router.get("/health/")
 async def health_check():
     checks = {}
-    
+
     # Database check
     try:
         await db.execute("SELECT 1")
         checks["database"] = "pass"
     except Exception:
         checks["database"] = "fail"
-    
+
     # Redis check
     try:
         await redis_client.ping()
         checks["redis"] = "pass"
     except Exception:
         checks["redis"] = "fail"
-    
+
     # External API check
     try:
         response = await httpx.get("https://api.example.com/health")
         checks["external_api"] = "pass" if response.status_code == 200 else "fail"
     except Exception:
         checks["external_api"] = "fail"
-    
+
     overall_status = "healthy" if all(v == "pass" for v in checks.values()) else "degraded"
-    
+
     return {
         "status": overall_status,
         "checks": checks,

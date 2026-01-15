@@ -264,16 +264,16 @@ semantic-release plugin with options.
 ```yaml
 plugins:
   - "@semantic-release/commit-analyzer"
-  
+
   - - "@semantic-release/release-notes-generator"
     - preset: "angular"
       writerOpts:
         commitGroupsSort: ["feat", "fix", "perf"]
-  
+
   - - "@semantic-release/exec"
     - prepareCmd: "python scripts/update-version.py ${nextRelease.version}"
       publishCmd: "python scripts/publish-pypi.py"
-  
+
   - - "@semantic-release/github"
     - assets:
         - path: "dist/*.whl"

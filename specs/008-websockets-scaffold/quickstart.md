@@ -65,13 +65,13 @@ from datetime import datetime
 
 async def test_websocket():
     uri = "ws://localhost:8000/ws"
-    
+
     async with websockets.connect(uri) as websocket:
         # Receive connection confirmation
         connect_msg = await websocket.recv()
         data = json.loads(connect_msg)
         print(f"Connected: {data['payload']['connection_id']}")
-        
+
         # Send a text message
         message = {
             "type": "message.text",
@@ -79,7 +79,7 @@ async def test_websocket():
             "timestamp": datetime.utcnow().isoformat() + "Z"
         }
         await websocket.send(json.dumps(message))
-        
+
         # Receive response
         response = await websocket.recv()
         print(f"Response: {response}")
@@ -111,11 +111,11 @@ import uuid
 
 async def broadcast_demo():
     uri = "ws://localhost:8000/ws"
-    
+
     async with websockets.connect(uri) as ws:
         # Wait for connection
         await ws.recv()
-        
+
         # Join room
         join_request = {
             "type": "room.join",
@@ -125,11 +125,11 @@ async def broadcast_demo():
             "payload": {"room_id": "chat_general"}
         }
         await ws.send(json.dumps(join_request))
-        
+
         # Receive join confirmation
         join_response = await ws.recv()
         print(f"Joined: {join_response}")
-        
+
         # Broadcast to room
         broadcast_msg = {
             "type": "room.broadcast",
@@ -143,7 +143,7 @@ async def broadcast_demo():
             }
         }
         await ws.send(json.dumps(broadcast_msg))
-        
+
         # Receive broadcast echo
         echo = await ws.recv()
         print(f"Broadcast echo: {echo}")
@@ -203,7 +203,7 @@ async def connect_with_auth():
     token = "your-jwt-token-here"
     uri = f"ws://localhost:8000/ws"
     headers = {"Authorization": f"Bearer {token}"}
-    
+
     async with websockets.connect(uri, extra_headers=headers) as ws:
         connect_msg = await ws.recv()
         print(f"Authenticated: {connect_msg}")
@@ -223,7 +223,7 @@ async def handle_heartbeat(websocket):
     """Client-side heartbeat handler."""
     async for message in websocket:
         data = json.loads(message)
-        
+
         if data["type"] == "heartbeat.ping":
             pong = {
                 "type": "heartbeat.pong",
@@ -270,21 +270,21 @@ Create an HTML client for browser testing:
     <script>
         let ws = null;
         const log = document.getElementById('log');
-        
+
         document.getElementById('connect').onclick = () => {
             ws = new WebSocket('ws://localhost:8000/ws');
-            
+
             ws.onopen = () => {
                 log.innerHTML += '<p>Connected!</p>';
                 document.getElementById('connect').disabled = true;
                 document.getElementById('disconnect').disabled = false;
                 document.getElementById('send').disabled = false;
             };
-            
+
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 log.innerHTML += `<p>← ${JSON.stringify(data)}</p>`;
-                
+
                 // Auto-respond to heartbeat
                 if (data.type === 'heartbeat.ping') {
                     ws.send(JSON.stringify({
@@ -298,7 +298,7 @@ Create an HTML client for browser testing:
                     }));
                 }
             };
-            
+
             ws.onclose = () => {
                 log.innerHTML += '<p>Disconnected</p>';
                 document.getElementById('connect').disabled = false;
@@ -306,11 +306,11 @@ Create an HTML client for browser testing:
                 document.getElementById('send').disabled = true;
             };
         };
-        
+
         document.getElementById('disconnect').onclick = () => {
             ws.close();
         };
-        
+
         document.getElementById('send').onclick = () => {
             const text = document.getElementById('message').value;
             const message = {
