@@ -8,7 +8,7 @@ export interface RisoConfig {
   project_name: string
   project_layout: 'single-package' | 'monorepo'
   quality_profile: 'standard' | 'strict'
-  
+
   // Modules
   cli_module: 'disabled' | 'enabled'
   api_tracks: 'none' | 'python' | 'node' | 'python+node'
@@ -18,10 +18,10 @@ export interface RisoConfig {
   codegen_module: 'disabled' | 'enabled'
   changelog_module: 'disabled' | 'enabled'
   shared_logic: 'disabled' | 'enabled'
-  
+
   // Documentation
   docs_site: 'fumadocs' | 'sphinx-shibuya' | 'docusaurus' | 'none'
-  
+
   // Fumadocs options
   fumadocs_search_provider: 'orama' | 'algolia' | 'orama-cloud' | 'none'
   fumadocs_llms_txt: 'enabled' | 'disabled'
@@ -42,7 +42,7 @@ export interface RisoConfig {
   fumadocs_toc_depth: '2' | '3' | '4'
   fumadocs_mermaid: 'enabled' | 'disabled'
   fumadocs_math: 'enabled' | 'disabled'
-  
+
   // Docusaurus options
   docusaurus_search_provider: 'local' | 'algolia' | 'typesense' | 'none'
   docusaurus_analytics: 'none' | 'posthog' | 'google' | 'matomo'
@@ -76,11 +76,11 @@ export interface RisoConfig {
   docusaurus_emoji: 'enabled' | 'disabled'
   docusaurus_github_links: 'enabled' | 'disabled'
   docusaurus_autolink_headings: 'enabled' | 'disabled'
-  
+
   // Infrastructure
   ci_platform: 'github-actions' | 'none'
   include_databases: 'yes' | 'no'
-  
+
   // AI Tools
   ai_tools_module: 'enabled' | 'disabled'
   ai_tools_mcp_thinking: boolean
@@ -88,7 +88,7 @@ export interface RisoConfig {
   ai_tools_mcp_documents: boolean
   ai_tools_mcp_utilities: boolean
   ai_tools_mcp_search: boolean
-  
+
   // SaaS Starter
   saas_starter_module: 'enabled' | 'disabled'
   saas_runtime: 'nextjs-16' | 'remix-2'
@@ -124,7 +124,7 @@ interface RisoStore {
   config: Partial<RisoConfig>
   history: ConfigHistory[]
   currentStep: number
-  
+
   // Actions
   updateConfig: (config: Partial<RisoConfig>) => void
   resetConfig: () => void
@@ -147,7 +147,7 @@ const defaultConfig: Partial<RisoConfig> = {
   project_name: '',
   project_layout: fromMatrix('project_layout', 'single-package'),
   quality_profile: fromMatrix('quality_profile', 'standard'),
-  
+
   // Modules
   cli_module: fromMatrix('cli_module', 'disabled'),
   api_tracks: fromMatrix('api_tracks', 'none'),
@@ -157,10 +157,10 @@ const defaultConfig: Partial<RisoConfig> = {
   codegen_module: fromMatrix('codegen_module', 'disabled'),
   changelog_module: fromMatrix('changelog_module', 'disabled'),
   shared_logic: fromMatrix('shared_logic', 'disabled'),
-  
+
   // Documentation
   docs_site: fromMatrix('docs_site', 'fumadocs'),
-  
+
   // Fumadocs defaults
   fumadocs_search_provider: fromMatrix('fumadocs_search_provider', 'orama'),
   fumadocs_llms_txt: fromMatrix('fumadocs_llms_txt', 'enabled'),
@@ -181,7 +181,7 @@ const defaultConfig: Partial<RisoConfig> = {
   fumadocs_toc_depth: fromMatrix('fumadocs_toc_depth', '3'),
   fumadocs_mermaid: fromMatrix('fumadocs_mermaid', 'disabled'),
   fumadocs_math: fromMatrix('fumadocs_math', 'disabled'),
-  
+
   // Docusaurus defaults
   docusaurus_search_provider: fromMatrix('docusaurus_search_provider', 'local'),
   docusaurus_analytics: fromMatrix('docusaurus_analytics', 'none'),
@@ -215,10 +215,10 @@ const defaultConfig: Partial<RisoConfig> = {
   docusaurus_emoji: fromMatrix('docusaurus_emoji', 'disabled'),
   docusaurus_github_links: fromMatrix('docusaurus_github_links', 'disabled'),
   docusaurus_autolink_headings: fromMatrix('docusaurus_autolink_headings', 'enabled'),
-  
+
   // Infrastructure
   ci_platform: fromMatrix('ci_platform', 'github-actions'),
-  
+
   // AI Tools
   ai_tools_module: fromMatrix('ai_tools_module', 'enabled'),
   ai_tools_mcp_thinking: fromMatrix('ai_tools_mcp_thinking', true),
@@ -226,7 +226,7 @@ const defaultConfig: Partial<RisoConfig> = {
   ai_tools_mcp_documents: fromMatrix('ai_tools_mcp_documents', true),
   ai_tools_mcp_utilities: fromMatrix('ai_tools_mcp_utilities', true),
   ai_tools_mcp_search: fromMatrix('ai_tools_mcp_search', false),
-  
+
   // SaaS Starter
   saas_starter_module: fromMatrix('saas_starter_module', 'disabled'),
   saas_runtime: fromMatrix('saas_runtime', 'nextjs-16'),
@@ -257,21 +257,21 @@ export const useRisoStore = create<RisoStore>()(
       config: defaultConfig,
       history: [],
       currentStep: 0,
-      
+
       updateConfig: (config) =>
         set((state) => ({
           config: { ...state.config, ...config },
         })),
-      
+
       resetConfig: () =>
         set({
           config: defaultConfig,
           currentStep: 0,
         }),
-      
+
       setStep: (step) =>
         set({ currentStep: step }),
-      
+
       saveToHistory: (name) =>
         set((state) => ({
           history: [
@@ -284,14 +284,14 @@ export const useRisoStore = create<RisoStore>()(
             ...state.history,
           ].slice(0, 10), // Keep last 10
         })),
-      
+
       loadFromHistory: (id) => {
         const history = get().history.find((h) => h.id === id)
         if (history) {
           set({ config: history.config })
         }
       },
-      
+
       deleteFromHistory: (id) =>
         set((state) => ({
           history: state.history.filter((h) => h.id !== id),
