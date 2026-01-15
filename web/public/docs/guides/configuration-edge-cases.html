@@ -1,0 +1,2156 @@
+<!DOCTYPE html>
+<html lang="en" data-accent-color="teal" data-content_root="../">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Configuration Edge Cases &amp; Conflict Resolution - Riso Dev Docs 0.1.0</title><link rel="shortcut icon" href="../_static/favicon.ico"/><link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" />
+      <link rel="canonical" href="http://localhost:8000/guides/configuration-edge-cases.html" /><script>
+    function setColorMode(t){let e=document.documentElement;e.setAttribute("data-color-mode",t);let a=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches,s=t;"auto"===t&&(s=a?"dark":"light"),"light"===s?(e.classList.remove("dark"),e.classList.add("light")):(e.classList.remove("light"),e.classList.add("dark"))}
+    setColorMode(localStorage._theme||"auto");
+  </script><link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=e1a1ceaf" />
+    <link rel="stylesheet" type="text/css" href="../_static/shibuya.css?v=a318c5d4" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../_static/twemoji.css?v=2199c511" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tooltipster.custom.css?v=7bc2f056" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tooltipster.bundle.min.css?v=37217874" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tooltipster-sideTip-shadow.min.css?v=6227e517" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tooltipster-sideTip-punk.min.css?v=94669e23" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tooltipster-sideTip-noir.min.css?v=21a39f42" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tooltipster-sideTip-light.min.css?v=a18b2449" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tooltipster-sideTip-borderless.min.css?v=dbff53e4" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/micromodal.css?v=d7bf34ee" />
+    <link rel="stylesheet" type="text/css" href="../_static/autoclasstoc.css?v=08871587" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link media="print" rel="stylesheet" type="text/css" href="../_static/print.css?v=20ff2c19" />
+    <link rel="stylesheet" type="text/css" href="../_static/tabs.css?v=a5c4661c" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/design-tokens.css?v=06072868" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=ea525553" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/components.css?v=bfea75b3" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/lucide-icons.css?v=d252316b" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tool-catalog.css?v=7fd15ab7" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/mermaid.css?v=b1821ef9" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/riso-effects.css?v=53662340" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/riso-copier.css?v=15eea25d" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sy-f-text: "Inter", var(--sy-f-sys), var(--sy-f-cjk), sans-serif;
+  --sy-f-heading: "Inter", var(--sy-f-sys), var(--sy-f-cjk), sans-serif;
+}
+</style>
+    <meta property="og:type" content="website"/>
+  <meta property="og:url" content="http://localhost:8000/guides/configuration-edge-cases.html"/>
+  <meta property="og:title" content="Configuration Edge Cases &amp; Conflict Resolution"/>
+    <meta name="twitter:card" content="summary"/>
+  </head>
+<body><div class="sy-head">
+  <div class="sy-head-blur"></div>
+  <div class="sy-head-inner sy-container mx-auto">
+    <a class="sy-head-brand" href="../index.html">
+      <img class="light-logo" src="../_static/img/logo.webp" alt="Riso Dev Docs" height="28" loading="lazy" />
+      <img class="dark-logo" src="../_static/img/logo.webp" alt="Riso Dev Docs" height="28" loading="lazy" />
+      <strong>Riso Dev Docs</strong>
+    </a>
+    <div class="sy-head-nav" id="head-nav">
+      <nav class="sy-head-links"><ul><li class="link"><a href="index.html">📖 Guides</a></li><li class="link"><a href="../tools/index.html">🧰 Tools</a></li><li class="link"><a href="../api/index.html">📚 Reference</a></li><li class="link"><a href="../changelog.html">📝 Changelog</a></li></ul></nav>
+      <div class="sy-head-extra flex items-center print:hidden"><form class="searchbox flex items-center" action="../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <kbd>/</kbd>
+</form><div class="sy-head-socials">
+  <a href="https://github.com/openai/riso" aria-label="GitHub">
+    <iconify-icon icon="simple-icons:github"></iconify-icon>
+  </a></div></div>
+    </div>
+    <div class="sy-head-actions flex items-center shrink-0 print:hidden"><button class="js-theme theme-switch flex items-center"
+data-aria-auto="Switch to light color mode"
+data-aria-light="Switch to dark color mode"
+data-aria-dark="Switch to auto color mode">
+<i class="i-lucide theme-icon"></i>
+</button><button class="md:hidden flex items-center js-menu" aria-label="Menu" type="button" aria-controls="head-nav" aria-expanded="false">
+        <div class="hamburger">
+          <span class="hamburger_1"></span>
+          <span class="hamburger_2"></span>
+          <span class="hamburger_3"></span>
+        </div>
+      </button>
+    </div>
+  </div>
+</div>
+<div class="sy-page sy-container flex mx-auto">
+  <aside id="lside" class="sy-lside md:w-72 md:shrink-0 print:hidden">
+    <div class="sy-lside-inner md:sticky">
+      <div class="sy-scrollbar p-6">
+        <div class="globaltoc" data-expand-depth="0"><ul>
+<li class="toctree-l1"><a class="reference internal" href="index.html">📖 Guides</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tools/index.html">🛠️ Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">📚 API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">📋 Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="lside-overlay js-menu" role="button" aria-label="Close left sidebar" aria-controls="lside" aria-expanded="false"></div>
+  <aside id="rside" class="sy-rside pb-3 w-64 shrink-0 order-last">
+    <button class="rside-close js-menu xl:hidden" aria-label="Close Table of Contents" type="button" aria-controls="rside" aria-expanded="false">
+      <i class="i-lucide close"></i>
+    </button>
+    <div class="sy-scrollbar sy-rside-inner px-6 xl:top-16 xl:sticky xl:pl-0 pt-6 pb-4"><div class="localtoc"><h3>On this page</h3><ul>
+<li><a class="reference internal" href="#overview">Overview</a></li>
+<li><a class="reference internal" href="#validation-architecture">Validation Architecture</a><ul>
+<li><a class="reference internal" href="#validation-flow">Validation Flow</a></li>
+<li><a class="reference internal" href="#validator-locations">Validator Locations</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#saas-starter-edge-cases">SaaS Starter Edge Cases</a><ul>
+<li><a class="reference internal" href="#error-level-incompatibilities">Error-Level Incompatibilities</a><ul>
+<li><a class="reference internal" href="#neon-database-supabase-storage">Neon Database + Supabase Storage</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#warning-level-incompatibilities">Warning-Level Incompatibilities</a><ul>
+<li><a class="reference internal" href="#cloudflare-workers-prisma-orm">Cloudflare Workers + Prisma ORM</a></li>
+<li><a class="reference internal" href="#vercel-hosting-cloudflare-r2-storage">Vercel Hosting + Cloudflare R2 Storage</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#info-level-notices">Info-Level Notices</a><ul>
+<li><a class="reference internal" href="#supabase-database-clerk-auth">Supabase Database + Clerk Auth</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#frontend-framework-edge-cases">Frontend Framework Edge Cases</a><ul>
+<li><a class="reference internal" href="#component-library-incompatibilities">Component Library Incompatibilities</a><ul>
+<li><a class="reference internal" href="#shadcn-ui-requirements">shadcn/ui Requirements</a></li>
+<li><a class="reference internal" href="#component-library-compatibility-matrix">Component Library Compatibility Matrix</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#state-management-incompatibilities">State Management Incompatibilities</a><ul>
+<li><a class="reference internal" href="#react-state-management-with-vue">React State Management with Vue</a></li>
+<li><a class="reference internal" href="#state-management-compatibility-matrix">State Management Compatibility Matrix</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#meta-framework-conflicts">Meta-Framework Conflicts</a><ul>
+<li><a class="reference internal" href="#multiple-react-meta-frameworks">Multiple React Meta-Frameworks</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#build-tool-edge-cases">Build Tool Edge Cases</a><ul>
+<li><a class="reference internal" href="#turbopack-exclusivity">Turbopack Exclusivity</a></li>
+<li><a class="reference internal" href="#build-tool-compatibility-matrix">Build Tool Compatibility Matrix</a></li>
+<li><a class="reference internal" href="#esbuild-plugin-limitations">esbuild Plugin Limitations</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#monorepo-tool-edge-cases">Monorepo Tool Edge Cases</a><ul>
+<li><a class="reference internal" href="#package-manager-incompatibility">Package Manager Incompatibility</a><ul>
+<li><a class="reference internal" href="#lerna-bun">Lerna + Bun</a></li>
+<li><a class="reference internal" href="#package-manager-compatibility-matrix">Package Manager Compatibility Matrix</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#repository-structure-mismatches">Repository Structure Mismatches</a><ul>
+<li><a class="reference internal" href="#flat-structure-monorepo-tool">Flat Structure + Monorepo Tool</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#language-support-limitations">Language Support Limitations</a><ul>
+<li><a class="reference internal" href="#turborepo-with-python-rust">Turborepo with Python/Rust</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#project-scale-mismatches">Project Scale Mismatches</a><ul>
+<li><a class="reference internal" href="#bazel-for-small-projects">Bazel for Small Projects</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#repository-structure-edge-cases">Repository Structure Edge Cases</a><ul>
+<li><a class="reference internal" href="#structure-layout-conflicts">Structure-Layout Conflicts</a><ul>
+<li><a class="reference internal" href="#monorepo-layout-with-single-package-structure">Monorepo Layout with Single-Package Structure</a></li>
+<li><a class="reference internal" href="#structure-layout-compatibility">Structure-Layout Compatibility</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#multiple-languages-with-simple-structures">Multiple Languages with Simple Structures</a></li>
+<li><a class="reference internal" href="#service-count-mismatches">Service Count Mismatches</a><ul>
+<li><a class="reference internal" href="#monorepo-structure-with-single-service">Monorepo Structure with Single Service</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#tool-availability-edge-cases">Tool Availability Edge Cases</a><ul>
+<li><a class="reference internal" href="#missing-required-tools">Missing Required Tools</a><ul>
+<li><a class="reference internal" href="#python-project-without-uv">Python Project without uv</a></li>
+<li><a class="reference internal" href="#node-js-project-without-pnpm">Node.js Project without pnpm</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#missing-optional-tools">Missing Optional Tools</a><ul>
+<li><a class="reference internal" href="#build-tools-not-found-non-blocking">Build Tools Not Found (Non-Blocking)</a></li>
+<li><a class="reference internal" href="#monorepo-tools-not-found-non-blocking">Monorepo Tools Not Found (Non-Blocking)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#complex-valid-configurations">Complex Valid Configurations</a><ul>
+<li><a class="reference internal" href="#edge-optimized-stack-with-workarounds">Edge-Optimized Stack with Workarounds</a></li>
+<li><a class="reference internal" href="#full-stack-monorepo-with-multiple-languages">Full-Stack Monorepo with Multiple Languages</a></li>
+<li><a class="reference internal" href="#enterprise-saas-with-all-observability">Enterprise SaaS with All Observability</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#decision-trees">Decision Trees</a><ul>
+<li><a class="reference internal" href="#choosing-database-storage-combination">Choosing Database + Storage Combination</a></li>
+<li><a class="reference internal" href="#choosing-orm-for-edge-deployment">Choosing ORM for Edge Deployment</a></li>
+<li><a class="reference internal" href="#choosing-monorepo-tool">Choosing Monorepo Tool</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#adding-custom-validation-rules">Adding Custom Validation Rules</a><ul>
+<li><a class="reference internal" href="#validator-structure">Validator Structure</a></li>
+<li><a class="reference internal" href="#integrating-validators">Integrating Validators</a></li>
+<li><a class="reference internal" href="#validation-severity-levels">Validation Severity Levels</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#troubleshooting-validation-failures">Troubleshooting Validation Failures</a><ul>
+<li><a class="reference internal" href="#view-validation-logs">View Validation Logs</a></li>
+<li><a class="reference internal" href="#common-error-patterns">Common Error Patterns</a><ul>
+<li><a class="reference internal" href="#error-cannot-use-neon-database-with-supabase-storage">Error: &#8220;Cannot use Neon database with Supabase Storage&#8221;</a></li>
+<li><a class="reference internal" href="#error-build-tool-turbopack-is-not-compatible-with-vue">Error: &#8220;Build tool &#8216;turbopack&#8217; is not compatible with &#8216;vue&#8217;&#8221;</a></li>
+<li><a class="reference internal" href="#error-monorepo-tool-lerna-is-not-compatible-with-package-manager-bun">Error: &#8220;Monorepo tool &#8216;lerna&#8217; is not compatible with package manager &#8216;bun&#8217;&#8221;</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#override-validation-not-recommended">Override Validation (Not Recommended)</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#related-documentation">Related Documentation</a></li>
+<li><a class="reference internal" href="#changelog">Changelog</a><ul>
+<li><a class="reference internal" href="#id1">2025-12-26</a></li>
+</ul>
+</li>
+</ul>
+</div><a class="js-repo-stats repo-stats flex items-center" href="https://github.com/openai/riso"
+  data-type="github" data-user="openai" data-repo="riso">
+  <span class="w-8 flex items-center justify-around shrink-0 text-3xl">
+    <iconify-icon icon="simple-icons:github"></iconify-icon>
+  </span>
+  <span class="flex-grow px-2 break-all">
+    
+    
+      <span>openai/riso</span>
+    
+    <span class="flex text-sm repo-stats-count">
+      <span class="flex items-center pr-3">
+        <iconify-icon icon="lucide:star"></iconify-icon>
+        <strong class="js-repo-stars ml-1">0</strong>
+      </span>
+      <span class="flex items-center">
+        <iconify-icon icon="lucide:git-fork"></iconify-icon>
+        <strong class="js-repo-forks ml-1">0</strong>
+      </span>
+    </span>
+  </span>
+</a><div class="edit-this-page">
+  <a href="https://github.com/openai/riso/blob/main/docs/guides/configuration-edge-cases.md">Edit this page</a>
+</div></div>
+  </aside>
+  <div class="rside-overlay js-menu" role="button" aria-label="Close Table of Contents" aria-controls="rside" aria-expanded="false"></div>
+  <main class="sy-main w-full max-sm:max-w-full print:pt-6">
+<div class="sy-breadcrumbs" role="navigation">
+  <div class="sy-breadcrumbs-inner flex items-center">
+    <div class="md:hidden mr-3">
+      <button class="js-menu" aria-label="Menu" type="button" aria-controls="lside" aria-expanded="false">
+        <i class="i-lucide menu"></i>
+      </button>
+    </div>
+    <ol class="flex-1" itemscope itemtype="https://schema.org/BreadcrumbList"><li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+        <a itemprop="item" href="../index.html"><span itemprop="name">Riso Dev Docs</span></a>
+        <span>/</span>
+        <meta itemprop="position" content="1" />
+      </li><li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+        <strong itemprop="name">Configuration Edge Cases &amp; Conflict Resolution</strong>
+        <meta itemprop="position" content="2" />
+      </li></ol>
+    <div class="xl:hidden ml-1">
+      <button class="js-menu" aria-label="Show table of contents" type="button" aria-controls="rside"
+        aria-expanded="false">
+        <i class="i-lucide outdent"></i>
+      </button>
+    </div>
+  </div>
+</div><div class="flex flex-col break-words justify-between">
+      <div class="relative min-w-0 max-w-6xl px-6 pb-6 pt-8 xl:px-12">
+  <div class="copy-page-wrapper relative pb-4 lg:absolute lg:top-8 lg:right-6 xl:right-12">
+  <div id="copy-page-trigger">
+    <button
+      type="button"
+      class="js-copy px-3 py-1 inline-flex items-center gap-1"
+      data-url="http://localhost:8000/_sources/guides/configuration-edge-cases.md.txt"
+    >
+      <i class="i-lucide" data-icon="copy"></i>
+      <span>Copy page</span>
+    </button>
+    <button class="js-menu px-2 py-1" type="button" aria-label="More actions"
+      aria-haspopup="menu" aria-expanded="false" aria-controls="copy-page-content">
+      <i class="i-lucide chevron-down"></i>
+    </button>
+  </div>
+  <div id="copy-page-content" role="menu" aria-orientation="vertical" aria-hidden="true">
+    <div role="presentation">
+      <div class="flex flex-col" role="group">
+        <button class="js-copy" type="button" role="menuitem"
+          data-url="http://localhost:8000/_sources/guides/configuration-edge-cases.md.txt">
+          <span class="iconify-icon">
+            <i class="i-lucide" data-icon="copy"></i>
+          </span>
+          <span>Copy page</span>
+        </button>
+        <a role="menuitem" href="http://localhost:8000/_sources/guides/configuration-edge-cases.md.txt" target="_blank" rel="nofollow"><iconify-icon icon="bi:markdown"></iconify-icon>
+            <span>View as Markdown</span></a><a role="menuitem" href="https://chatgpt.com/?hints=search&q=Read%20http%3A//localhost%3A8000/_sources/guides/configuration-edge-cases.md.txt%20so%20I%20can%20ask%20questions%20about%20it." target="_blank" rel="nofollow">
+          <iconify-icon icon="bi:openai"></iconify-icon>
+          <span>Open in ChatGPT</span>
+        </a><a role="menuitem" href="https://claude.ai/new?q=Read%20http%3A//localhost%3A8000/_sources/guides/configuration-edge-cases.md.txt%20so%20I%20can%20ask%20questions%20about%20it." target="_blank" rel="nofollow">
+          <iconify-icon icon="bi:claude"></iconify-icon>
+          <span>Open in Claude</span>
+        </a></div>
+    </div>
+  </div>
+</div><article class="yue" role="main">
+          <section class="tex2jax_ignore mathjax_ignore" id="configuration-edge-cases-conflict-resolution">
+<h1>Configuration Edge Cases &amp; Conflict Resolution<a class="headerlink" href="#configuration-edge-cases-conflict-resolution" title="Link to this heading">¶</a></h1>
+<div class="note admonition">
+<p class="admonition-title">Purpose</p>
+<p>This guide documents known edge cases, configuration conflicts, and resolution strategies in the Riso template framework. It complements the <a class="reference internal" href="#configuration-decision-guide.md"><span class="xref myst">Configuration Decision Guide</span></a> by focusing on validation rules, error handling, and complex configuration scenarios.</p>
+</div>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">¶</a></h2>
+<p>The Riso template uses a multi-layered validation framework to detect and report configuration conflicts:</p>
+<ul class="simple">
+<li><p><strong>Error-level issues</strong> — Blocking incompatibilities that prevent project generation</p></li>
+<li><p><strong>Warning-level issues</strong> — Non-blocking incompatibilities with workarounds or performance implications</p></li>
+<li><p><strong>Info-level notices</strong> — Configuration notes and behavioral changes</p></li>
+<li><p><strong>Recommendations</strong> — Suggestions for optimal tool combinations</p></li>
+</ul>
+</section>
+<section id="validation-architecture">
+<h2>Validation Architecture<a class="headerlink" href="#validation-architecture" title="Link to this heading">¶</a></h2>
+<section id="validation-flow">
+<h3>Validation Flow<a class="headerlink" href="#validation-flow" title="Link to this heading">¶</a></h3>
+<object data="../_images/mermaid-b2eba0620678008445c121e9310321dc14ce3153.svg" type="image/svg+xml">
+            <p class="warning">graph TD
+    A[User Answers] --&gt; B[pre_gen_project.py]
+    B --&gt; C{Load Context}
+    C --&gt; D[SaaS Starter Validation]
+    C --&gt; E[Tooling Validation]
+    C --&gt; F[Module Validators]
+
+    D --&gt; G{Check Errors}
+    F --&gt; G
+
+    G --&gt;|Has Errors| H[Exit with Error Message]
+    G --&gt;|No Errors| I{Check Warnings}
+
+    I --&gt;|Has Warnings| J[Display Warnings &amp; Continue]
+    I --&gt;|No Warnings| K[Continue Generation]
+    J --&gt; K
+
+    F --&gt; L[Frontend Validator]
+    F --&gt; M[Build Tool Validator]
+    F --&gt; N[Monorepo Tool Validator]
+    F --&gt; O[Structure Validator]
+    F --&gt; P[Language Validator]
+    F --&gt; Q[Tool Validator]</p></object>
+</section>
+<section id="validator-locations">
+<h3>Validator Locations<a class="headerlink" href="#validator-locations" title="Link to this heading">¶</a></h3>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Validator</p></th>
+<th class="head"><p>Path</p></th>
+<th class="head"><p>Responsibility</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Pre-generation hook</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">template/hooks/pre_gen_project.py</span></code></p></td>
+<td><p>Orchestrates all validations</p></td>
+</tr>
+<tr class="row-odd"><td><p>SaaS validator</p></td>
+<td><p>Embedded in pre-gen hook</p></td>
+<td><p>SaaS Starter configuration rules</p></td>
+</tr>
+<tr class="row-even"><td><p>Frontend validator</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">template/hooks/validators/frontend_validator.py</span></code></p></td>
+<td><p>Frontend framework compatibility</p></td>
+</tr>
+<tr class="row-odd"><td><p>Build tool validator</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">template/hooks/validators/build_tool_validator.py</span></code></p></td>
+<td><p>Build tool compatibility</p></td>
+</tr>
+<tr class="row-even"><td><p>Monorepo validator</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">template/hooks/validators/monorepo_tool_validator.py</span></code></p></td>
+<td><p>Monorepo tool compatibility</p></td>
+</tr>
+<tr class="row-odd"><td><p>Structure validator</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">template/hooks/validators/structure_validator.py</span></code></p></td>
+<td><p>Repository structure validation</p></td>
+</tr>
+<tr class="row-even"><td><p>Language validator</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">template/hooks/validators/language_validator.py</span></code></p></td>
+<td><p>Backend language validation</p></td>
+</tr>
+<tr class="row-odd"><td><p>Tool validator</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">template/hooks/validators/tool_validator.py</span></code></p></td>
+<td><p>Tool availability checks</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="saas-starter-edge-cases">
+<h2>SaaS Starter Edge Cases<a class="headerlink" href="#saas-starter-edge-cases" title="Link to this heading">¶</a></h2>
+<section id="error-level-incompatibilities">
+<h3>Error-Level Incompatibilities<a class="headerlink" href="#error-level-incompatibilities" title="Link to this heading">¶</a></h3>
+<section id="neon-database-supabase-storage">
+<h4>Neon Database + Supabase Storage<a class="headerlink" href="#neon-database-supabase-storage" title="Link to this heading">¶</a></h4>
+<p><strong>Conflict:</strong> Cannot use Neon database with Supabase Storage.</p>
+<p><strong>Reason:</strong> Supabase Storage requires Supabase’s authentication and database layer for Row-Level Security (RLS) policies.</p>
+<p><strong>Resolution Options:</strong></p>
+<ol class="arabic">
+<li><p><strong>Full Supabase Stack</strong> (recommended for integrated platforms):</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">saas_database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">supabase</span>
+</span><span data-line="2"><span class="nt">saas_storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">supabase-storage</span>
+</span><span data-line="3"><span class="nt">saas_auth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">clerk</span><span class="w">  </span><span class="c1"># or authjs</span>
+</span></pre></div>
+</div>
+</li>
+<li><p><strong>Neon + R2 Stack</strong> (recommended for edge deployment):</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">saas_database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">neon</span>
+</span><span data-line="2"><span class="nt">saas_storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">r2</span>
+</span><span data-line="3"><span class="nt">saas_auth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">clerk</span><span class="w">  </span><span class="c1"># or authjs</span>
+</span></pre></div>
+</div>
+</li>
+</ol>
+<p><strong>Detection:</strong> Pre-generation hook checks if both <code class="docutils literal notranslate"><span class="pre">neon</span></code> database and <code class="docutils literal notranslate"><span class="pre">supabase-storage</span></code> are selected.</p>
+<p><strong>Error Message:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="n">Cannot</span> <span class="n">use</span> <span class="n">Neon</span> <span class="n">database</span> <span class="k">with</span> <span class="n">Supabase</span> <span class="n">Storage</span><span class="o">.</span> <span class="n">Choose</span> <span class="n">either</span><span class="p">:</span>
+</span><span data-line="2">  <span class="mf">1.</span> <span class="n">Full</span> <span class="n">Supabase</span> <span class="p">(</span><span class="n">database</span> <span class="o">+</span> <span class="n">storage</span><span class="p">)</span>
+</span><span data-line="3">  <span class="mf">2.</span> <span class="n">Neon</span> <span class="n">database</span> <span class="o">+</span> <span class="n">Cloudflare</span> <span class="n">R2</span> <span class="n">storage</span>
+</span></pre></div>
+</div>
+</section>
+</section>
+<section id="warning-level-incompatibilities">
+<h3>Warning-Level Incompatibilities<a class="headerlink" href="#warning-level-incompatibilities" title="Link to this heading">¶</a></h3>
+<section id="cloudflare-workers-prisma-orm">
+<h4>Cloudflare Workers + Prisma ORM<a class="headerlink" href="#cloudflare-workers-prisma-orm" title="Link to this heading">¶</a></h4>
+<p><strong>Conflict:</strong> Prisma requires TCP connections, which Cloudflare Workers don’t support.</p>
+<p><strong>Reason:</strong> Cloudflare Workers run in V8 isolates without TCP socket access. Prisma uses direct TCP connections to databases.</p>
+<p><strong>Workaround:</strong> Use Prisma Data Proxy (adds latency ~50-150ms and monthly cost).</p>
+<p><strong>Resolution Options:</strong></p>
+<ol class="arabic">
+<li><p><strong>Switch to Drizzle ORM</strong> (recommended):</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">saas_hosting</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cloudflare</span>
+</span><span data-line="2"><span class="nt">saas_orm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">drizzle</span><span class="w">  </span><span class="c1"># Edge-compatible</span>
+</span></pre></div>
+</div>
+</li>
+<li><p><strong>Use Prisma Data Proxy</strong>:</p>
+<ul class="simple">
+<li><p>Enable Prisma Data Proxy in your Prisma Cloud account</p></li>
+<li><p>Update connection string: <code class="docutils literal notranslate"><span class="pre">prisma://proxy.prisma-data.com/?api_key=...</span></code></p></li>
+<li><p>Accept latency trade-off (~50-150ms per query)</p></li>
+</ul>
+</li>
+<li><p><strong>Switch to Vercel hosting</strong>:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">saas_hosting</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vercel</span><span class="w">  </span><span class="c1"># Supports native Prisma</span>
+</span><span data-line="2"><span class="nt">saas_orm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prisma</span>
+</span></pre></div>
+</div>
+</li>
+</ol>
+<p><strong>Performance Impact:</strong></p>
+<ul class="simple">
+<li><p>Direct connection (Vercel): ~1-5ms query latency</p></li>
+<li><p>Prisma Data Proxy (Cloudflare): ~50-150ms query latency</p></li>
+<li><p>Drizzle on Edge (Cloudflare): ~1-10ms query latency</p></li>
+</ul>
+<p><strong>Detection:</strong> Pre-generation hook checks if both <code class="docutils literal notranslate"><span class="pre">cloudflare</span></code> hosting and <code class="docutils literal notranslate"><span class="pre">prisma</span></code> ORM are selected.</p>
+<p><strong>Warning Message:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span data-line="1">⚠️  Prisma requires TCP connections, which Cloudflare Workers don&#39;t support.
+</span><span data-line="2">You&#39;ll need to use Prisma Data Proxy (adds latency and cost).
+</span><span data-line="3">Recommendation: Use Drizzle ORM for better edge compatibility.
+</span></pre></div>
+</div>
+</section>
+<section id="vercel-hosting-cloudflare-r2-storage">
+<h4>Vercel Hosting + Cloudflare R2 Storage<a class="headerlink" href="#vercel-hosting-cloudflare-r2-storage" title="Link to this heading">¶</a></h4>
+<p><strong>Conflict:</strong> Cloudflare R2 works with Vercel but incurs egress bandwidth charges.</p>
+<p><strong>Reason:</strong> Cross-cloud egress from Cloudflare R2 to Vercel functions incurs Cloudflare’s bandwidth fees.</p>
+<p><strong>Cost Implications:</strong></p>
+<ul class="simple">
+<li><p>Cloudflare R2 egress to Vercel: $0.09/GB (after 10GB free monthly)</p></li>
+<li><p>Vercel Blob storage: <span class="math notranslate nohighlight">\(0.15/GB stored + \)</span>0.30/GB transferred (included in Pro plan)</p></li>
+</ul>
+<p><strong>Resolution Options:</strong></p>
+<ol class="arabic">
+<li><p><strong>Accept egress charges</strong> (best for low traffic):</p>
+<ul class="simple">
+<li><p>Good if serving &lt;100GB/month</p></li>
+<li><p>Monitor bandwidth usage</p></li>
+<li><p>Set up Cloudflare Analytics alerts</p></li>
+</ul>
+</li>
+<li><p><strong>Switch to Vercel Blob</strong> (best for Vercel-native deployments):</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">saas_hosting</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vercel</span>
+</span><span data-line="2"><span class="nt">saas_storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vercel-blob</span><span class="w">  </span><span class="c1"># Note: Not currently a template option</span>
+</span></pre></div>
+</div>
+</li>
+<li><p><strong>Switch to Cloudflare Pages</strong> (best for edge deployment):</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">saas_hosting</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cloudflare</span>
+</span><span data-line="2"><span class="nt">saas_storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">r2</span><span class="w">  </span><span class="c1"># No egress fees within Cloudflare</span>
+</span></pre></div>
+</div>
+</li>
+</ol>
+<p><strong>Detection:</strong> Pre-generation hook checks if both <code class="docutils literal notranslate"><span class="pre">vercel</span></code> hosting and <code class="docutils literal notranslate"><span class="pre">r2</span></code> storage are selected.</p>
+<p><strong>Warning Message:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span data-line="1">⚠️  Cloudflare R2 works with Vercel but egress bandwidth charges apply.
+</span></pre></div>
+</div>
+</section>
+</section>
+<section id="info-level-notices">
+<h3>Info-Level Notices<a class="headerlink" href="#info-level-notices" title="Link to this heading">¶</a></h3>
+<section id="supabase-database-clerk-auth">
+<h4>Supabase Database + Clerk Auth<a class="headerlink" href="#supabase-database-clerk-auth" title="Link to this heading">¶</a></h4>
+<p><strong>Notice:</strong> Supabase Auth will be disabled when using Clerk.</p>
+<p><strong>Reason:</strong> Using two authentication systems creates conflicts. Clerk provides more features (organizations, passkeys) than Supabase Auth.</p>
+<p><strong>Behavioral Changes:</strong></p>
+<ul class="simple">
+<li><p>Supabase Auth APIs disabled</p></li>
+<li><p>Auth tables/schemas not created</p></li>
+<li><p>Row-Level Security (RLS) must use Clerk JWTs</p></li>
+<li><p>Supabase Storage RLS must reference Clerk user IDs</p></li>
+</ul>
+<p><strong>Integration Pattern:</strong></p>
+<div class="highlight-typescript notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1">// Use Clerk JWTs with Supabase RLS</span>
+</span><span data-line="2"><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">auth</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@clerk/nextjs&#39;</span><span class="p">;</span>
+</span><span data-line="3"><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">createClient</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@supabase/supabase-js&#39;</span><span class="p">;</span>
+</span><span data-line="4">
+</span><span data-line="5"><span class="kd">const</span><span class="w"> </span><span class="nx">supabase</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">createClient</span><span class="p">(</span>
+</span><span data-line="6"><span class="w">  </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">SUPABASE_URL</span><span class="o">!</span><span class="p">,</span>
+</span><span data-line="7"><span class="w">  </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">SUPABASE_ANON_KEY</span><span class="o">!</span><span class="p">,</span>
+</span><span data-line="8"><span class="w">  </span><span class="p">{</span>
+</span><span data-line="9"><span class="w">    </span><span class="nb">global</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+</span><span data-line="10"><span class="w">      </span><span class="nx">headers</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+</span><span data-line="11"><span class="w">        </span><span class="nx">Authorization</span><span class="o">:</span><span class="w"> </span><span class="sb">`Bearer </span><span class="si">${</span><span class="k">await</span><span class="w"> </span><span class="nx">auth</span><span class="p">().</span><span class="nx">getToken</span><span class="p">({</span><span class="w"> </span><span class="nx">template</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;supabase&#39;</span><span class="w"> </span><span class="si">}</span><span class="sb">)}`</span><span class="p">,</span>
+</span><span data-line="12"><span class="w">      </span><span class="p">},</span>
+</span><span data-line="13"><span class="w">    </span><span class="p">},</span>
+</span><span data-line="14"><span class="w">  </span><span class="p">}</span>
+</span><span data-line="15"><span class="p">);</span>
+</span></pre></div>
+</div>
+<p><strong>Detection:</strong> Pre-generation hook checks if both <code class="docutils literal notranslate"><span class="pre">supabase</span></code> database and <code class="docutils literal notranslate"><span class="pre">clerk</span></code> auth are selected.</p>
+<p><strong>Info Message:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="n">ℹ️</span>  <span class="n">You</span><span class="s1">&#39;ve selected both Supabase and Clerk.</span>
+</span><span data-line="2"><span class="n">Supabase</span> <span class="n">Auth</span> <span class="n">will</span> <span class="n">be</span> <span class="n">disabled</span> <span class="ow">in</span> <span class="n">favor</span> <span class="n">of</span> <span class="n">Clerk</span><span class="o">.</span>
+</span></pre></div>
+</div>
+</section>
+</section>
+</section>
+<section id="frontend-framework-edge-cases">
+<h2>Frontend Framework Edge Cases<a class="headerlink" href="#frontend-framework-edge-cases" title="Link to this heading">¶</a></h2>
+<section id="component-library-incompatibilities">
+<h3>Component Library Incompatibilities<a class="headerlink" href="#component-library-incompatibilities" title="Link to this heading">¶</a></h3>
+<section id="shadcn-ui-requirements">
+<h4>shadcn/ui Requirements<a class="headerlink" href="#shadcn-ui-requirements" title="Link to this heading">¶</a></h4>
+<p><strong>Requirements:</strong></p>
+<ul class="simple">
+<li><p>Frontend framework: React only</p></li>
+<li><p>CSS framework: Tailwind CSS only</p></li>
+</ul>
+<p><strong>Conflict Scenarios:</strong></p>
+<ol class="arabic">
+<li><p><strong>shadcn/ui + Vue</strong>:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># ❌ Invalid</span>
+</span><span data-line="2"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vue</span>
+</span><span data-line="3"><span class="nt">component_library</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shadcn-ui</span>
+</span></pre></div>
+</div>
+<p><strong>Error:</strong> “shadcn/ui requires React framework, but vue was selected. shadcn/ui is built specifically for React with Tailwind CSS”</p>
+<p><strong>Resolution:</strong> Use Headless UI or Radix Vue instead:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vue</span>
+</span><span data-line="2"><span class="nt">component_library</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">headless-ui</span><span class="w">  </span><span class="c1"># or none</span>
+</span></pre></div>
+</div>
+</li>
+<li><p><strong>shadcn/ui without Tailwind</strong>:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># ❌ Invalid</span>
+</span><span data-line="2"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">react</span>
+</span><span data-line="3"><span class="nt">component_library</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shadcn-ui</span>
+</span><span data-line="4"><span class="nt">css_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">styled-components</span>
+</span></pre></div>
+</div>
+<p><strong>Error:</strong> “shadcn/ui requires Tailwind CSS framework, but styled-components was selected”</p>
+<p><strong>Resolution:</strong> Add Tailwind CSS:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">react</span>
+</span><span data-line="2"><span class="nt">component_library</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shadcn-ui</span>
+</span><span data-line="3"><span class="nt">css_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tailwind</span>
+</span></pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="component-library-compatibility-matrix">
+<h4>Component Library Compatibility Matrix<a class="headerlink" href="#component-library-compatibility-matrix" title="Link to this heading">¶</a></h4>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Component Library</p></th>
+<th class="head"><p>Compatible Frameworks</p></th>
+<th class="head"><p>Required CSS</p></th>
+<th class="head"><p>Notes</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>shadcn/ui</p></td>
+<td><p>React</p></td>
+<td><p>Tailwind</p></td>
+<td><p>Most popular React+Tailwind combo</p></td>
+</tr>
+<tr class="row-odd"><td><p>Material-UI (MUI)</p></td>
+<td><p>React</p></td>
+<td><p>None (CSS-in-JS)</p></td>
+<td><p>Complete design system</p></td>
+</tr>
+<tr class="row-even"><td><p>Ant Design</p></td>
+<td><p>React, Vue</p></td>
+<td><p>None (CSS-in-JS)</p></td>
+<td><p>Enterprise-focused</p></td>
+</tr>
+<tr class="row-odd"><td><p>Chakra UI</p></td>
+<td><p>React</p></td>
+<td><p>None (CSS-in-JS)</p></td>
+<td><p>Accessible components</p></td>
+</tr>
+<tr class="row-even"><td><p>Mantine</p></td>
+<td><p>React</p></td>
+<td><p>None (CSS-in-JS)</p></td>
+<td><p>Full-featured with hooks</p></td>
+</tr>
+<tr class="row-odd"><td><p>NextUI</p></td>
+<td><p>React</p></td>
+<td><p>None (built-in)</p></td>
+<td><p>Modern, fast</p></td>
+</tr>
+<tr class="row-even"><td><p>Headless UI</p></td>
+<td><p>React, Vue</p></td>
+<td><p>Any</p></td>
+<td><p>Unstyled, accessible</p></td>
+</tr>
+<tr class="row-odd"><td><p>Tremor</p></td>
+<td><p>React</p></td>
+<td><p>Tailwind</p></td>
+<td><p>Analytics/dashboard focus</p></td>
+</tr>
+<tr class="row-even"><td><p>Preline</p></td>
+<td><p>Any</p></td>
+<td><p>Tailwind</p></td>
+<td><p>Tailwind plugin</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="state-management-incompatibilities">
+<h3>State Management Incompatibilities<a class="headerlink" href="#state-management-incompatibilities" title="Link to this heading">¶</a></h3>
+<section id="react-state-management-with-vue">
+<h4>React State Management with Vue<a class="headerlink" href="#react-state-management-with-vue" title="Link to this heading">¶</a></h4>
+<p><strong>Conflict:</strong> Zustand, Redux, Jotai, Valtio only work with React.</p>
+<p><strong>Error Scenario:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># ❌ Invalid</span>
+</span><span data-line="2"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vue</span>
+</span><span data-line="3"><span class="nt">react_state_management</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">zustand</span>
+</span></pre></div>
+</div>
+<p><strong>Error:</strong> “zustand is not compatible with Vue. It’s designed for react.”</p>
+<p><strong>Resolution:</strong> Use Vue-specific state management:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vue</span>
+</span><span data-line="2"><span class="nt">vue_state_management</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinia</span><span class="w">  </span><span class="c1"># Modern Vue 3 state management</span>
+</span></pre></div>
+</div>
+</section>
+<section id="state-management-compatibility-matrix">
+<h4>State Management Compatibility Matrix<a class="headerlink" href="#state-management-compatibility-matrix" title="Link to this heading">¶</a></h4>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>State Library</p></th>
+<th class="head"><p>Compatible Frameworks</p></th>
+<th class="head"><p>Bundle Size</p></th>
+<th class="head"><p>Learning Curve</p></th>
+<th class="head"><p>Best For</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Zustand</p></td>
+<td><p>React</p></td>
+<td><p>~1KB</p></td>
+<td><p>Easy</p></td>
+<td><p>Simple global state</p></td>
+</tr>
+<tr class="row-odd"><td><p>Redux Toolkit</p></td>
+<td><p>React</p></td>
+<td><p>~12KB</p></td>
+<td><p>Moderate</p></td>
+<td><p>Complex state, DevTools</p></td>
+</tr>
+<tr class="row-even"><td><p>Jotai</p></td>
+<td><p>React</p></td>
+<td><p>~3KB</p></td>
+<td><p>Easy</p></td>
+<td><p>Atomic state, concurrent mode</p></td>
+</tr>
+<tr class="row-odd"><td><p>Valtio</p></td>
+<td><p>React</p></td>
+<td><p>~3KB</p></td>
+<td><p>Easy</p></td>
+<td><p>Proxy-based state</p></td>
+</tr>
+<tr class="row-even"><td><p>MobX</p></td>
+<td><p>React</p></td>
+<td><p>~16KB</p></td>
+<td><p>Moderate</p></td>
+<td><p>Observable state</p></td>
+</tr>
+<tr class="row-odd"><td><p>Context API</p></td>
+<td><p>React</p></td>
+<td><p>0KB (built-in)</p></td>
+<td><p>Easy</p></td>
+<td><p>Small apps, theme/auth</p></td>
+</tr>
+<tr class="row-even"><td><p>Pinia</p></td>
+<td><p>Vue</p></td>
+<td><p>~2KB</p></td>
+<td><p>Easy</p></td>
+<td><p>Vue 3 (official)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Vuex</p></td>
+<td><p>Vue</p></td>
+<td><p>~10KB</p></td>
+<td><p>Moderate</p></td>
+<td><p>Vue 2/3 (legacy)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="meta-framework-conflicts">
+<h3>Meta-Framework Conflicts<a class="headerlink" href="#meta-framework-conflicts" title="Link to this heading">¶</a></h3>
+<section id="multiple-react-meta-frameworks">
+<h4>Multiple React Meta-Frameworks<a class="headerlink" href="#multiple-react-meta-frameworks" title="Link to this heading">¶</a></h4>
+<p><strong>Conflict:</strong> Next.js, Remix, Gatsby, Astro, TanStack Router are mutually exclusive.</p>
+<p><strong>Error Scenario:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># ❌ Invalid</span>
+</span><span data-line="2"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">react</span>
+</span><span data-line="3"><span class="nt">react_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nextjs</span>
+</span><span data-line="4"><span class="nt">web_app_engine</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">remix</span>
+</span></pre></div>
+</div>
+<p><strong>Error:</strong> “nextjs and remix are mutually exclusive. Choose one meta-framework.”</p>
+<p><strong>Resolution:</strong> Choose one based on use case:</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Framework</p></th>
+<th class="head"><p>Best For</p></th>
+<th class="head"><p>Routing</p></th>
+<th class="head"><p>Data Loading</p></th>
+<th class="head"><p>Deployment</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Next.js</p></td>
+<td><p>Full-stack apps, SEO</p></td>
+<td><p>File-based</p></td>
+<td><p>Server Components</p></td>
+<td><p>Vercel, Cloudflare</p></td>
+</tr>
+<tr class="row-odd"><td><p>Remix</p></td>
+<td><p>Complex forms, mutations</p></td>
+<td><p>Nested routes</p></td>
+<td><p>Loaders/actions</p></td>
+<td><p>Cloudflare, <a class="reference external" href="http://Fly.io" rel="noreferer noopener" target="_blank">Fly.io</a></p></td>
+</tr>
+<tr class="row-even"><td><p>Gatsby</p></td>
+<td><p>Static sites, blogs</p></td>
+<td><p>File-based</p></td>
+<td><p>GraphQL</p></td>
+<td><p>Netlify, Vercel</p></td>
+</tr>
+<tr class="row-odd"><td><p>Astro</p></td>
+<td><p>Content sites</p></td>
+<td><p>File-based</p></td>
+<td><p>Islands</p></td>
+<td><p>Any static host</p></td>
+</tr>
+<tr class="row-even"><td><p>TanStack Router</p></td>
+<td><p>SPAs</p></td>
+<td><p>Type-safe routes</p></td>
+<td><p>Loaders</p></td>
+<td><p>Client-side</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+</section>
+<section id="build-tool-edge-cases">
+<h2>Build Tool Edge Cases<a class="headerlink" href="#build-tool-edge-cases" title="Link to this heading">¶</a></h2>
+<section id="turbopack-exclusivity">
+<h3>Turbopack Exclusivity<a class="headerlink" href="#turbopack-exclusivity" title="Link to this heading">¶</a></h3>
+<p><strong>Limitation:</strong> Turbopack only works with Next.js.</p>
+<p><strong>Conflict Scenario:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># ❌ Invalid</span>
+</span><span data-line="2"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">react</span>
+</span><span data-line="3"><span class="nt">react_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vite</span>
+</span><span data-line="4"><span class="nt">build_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">turbopack</span>
+</span></pre></div>
+</div>
+<p><strong>Error:</strong> “Build tool ‘turbopack’ is not compatible with ‘vite’ framework. Compatible frameworks: react”</p>
+<p><strong>Additional Context:</strong> Turbopack is Next.js’s built-in bundler, not a standalone tool.</p>
+<p><strong>Resolution:</strong> Use framework-appropriate build tools:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Next.js → Turbopack or Webpack</span>
+</span><span data-line="2"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">react</span>
+</span><span data-line="3"><span class="nt">react_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nextjs</span>
+</span><span data-line="4"><span class="nt">build_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">turbopack</span>
+</span><span data-line="5">
+</span><span data-line="6"><span class="c1"># Remix → Vite or esbuild</span>
+</span><span data-line="7"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">react</span>
+</span><span data-line="8"><span class="nt">react_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">remix</span>
+</span><span data-line="9"><span class="nt">build_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vite</span>
+</span><span data-line="10">
+</span><span data-line="11"><span class="c1"># Vanilla React → Vite, Webpack, Rspack</span>
+</span><span data-line="12"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">react</span>
+</span><span data-line="13"><span class="nt">react_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
+</span><span data-line="14"><span class="nt">build_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vite</span>
+</span></pre></div>
+</div>
+</section>
+<section id="build-tool-compatibility-matrix">
+<h3>Build Tool Compatibility Matrix<a class="headerlink" href="#build-tool-compatibility-matrix" title="Link to this heading">¶</a></h3>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Build Tool</p></th>
+<th class="head"><p>Frameworks</p></th>
+<th class="head"><p>Strengths</p></th>
+<th class="head"><p>Weaknesses</p></th>
+<th class="head"><p>Typical Build Time</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Vite</p></td>
+<td><p>React, Vue, Svelte, Solid</p></td>
+<td><p>Fast HMR, modern defaults</p></td>
+<td><p>Limited legacy support</p></td>
+<td><p>1-5s (dev), 10-30s (prod)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Webpack</p></td>
+<td><p>All</p></td>
+<td><p>Ecosystem, plugins</p></td>
+<td><p>Slow, complex config</p></td>
+<td><p>5-20s (dev), 30-120s (prod)</p></td>
+</tr>
+<tr class="row-even"><td><p>esbuild</p></td>
+<td><p>React, Solid</p></td>
+<td><p>Extremely fast</p></td>
+<td><p>Limited plugins</p></td>
+<td><p>&lt;1s (dev), 5-10s (prod)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Rollup</p></td>
+<td><p>React, Vue, Svelte</p></td>
+<td><p>Library builds, tree-shaking</p></td>
+<td><p>Slow for apps</p></td>
+<td><p>10-30s (prod)</p></td>
+</tr>
+<tr class="row-even"><td><p>Rspack</p></td>
+<td><p>React, Vue, Svelte</p></td>
+<td><p>Fast, Webpack-compatible</p></td>
+<td><p>Newer, fewer plugins</p></td>
+<td><p>2-8s (dev), 15-45s (prod)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Turbopack</p></td>
+<td><p>Next.js only</p></td>
+<td><p>Fastest for Next.js</p></td>
+<td><p>Next.js exclusive</p></td>
+<td><p>1-3s (dev), 10-25s (prod)</p></td>
+</tr>
+<tr class="row-even"><td><p>Parcel</p></td>
+<td><p>React, Vue, Svelte</p></td>
+<td><p>Zero config</p></td>
+<td><p>Less control</p></td>
+<td><p>3-10s (dev), 20-60s (prod)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="esbuild-plugin-limitations">
+<h3>esbuild Plugin Limitations<a class="headerlink" href="#esbuild-plugin-limitations" title="Link to this heading">¶</a></h3>
+<p><strong>Warning:</strong> esbuild has limited plugin support for Vue and Svelte.</p>
+<p><strong>Affected Scenarios:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># ⚠️  Warning</span>
+</span><span data-line="2"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vue</span>
+</span><span data-line="3"><span class="nt">build_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">esbuild</span>
+</span></pre></div>
+</div>
+<p><strong>Warning:</strong> “esbuild has limited plugin support for vue. Consider using Vite or Rollup instead.”</p>
+<p><strong>Workarounds:</strong></p>
+<ol class="arabic simple">
+<li><p><strong>Switch to Vite</strong> (recommended): Vite uses esbuild internally but adds Vue plugin support</p></li>
+<li><p><strong>Use Rollup</strong>: Slower but full Vue plugin ecosystem</p></li>
+<li><p><strong>Accept limitations</strong>: esbuild can compile Vue SFCs but lacks advanced features</p></li>
+</ol>
+<p><strong>Missing esbuild Features:</strong></p>
+<ul class="simple">
+<li><p>Hot Module Replacement (HMR) for Vue</p></li>
+<li><p>Vue Devtools integration</p></li>
+<li><p>Advanced template compilation optimizations</p></li>
+<li><p>CSS scoping edge cases</p></li>
+</ul>
+</section>
+</section>
+<section id="monorepo-tool-edge-cases">
+<h2>Monorepo Tool Edge Cases<a class="headerlink" href="#monorepo-tool-edge-cases" title="Link to this heading">¶</a></h2>
+<section id="package-manager-incompatibility">
+<h3>Package Manager Incompatibility<a class="headerlink" href="#package-manager-incompatibility" title="Link to this heading">¶</a></h3>
+<section id="lerna-bun">
+<h4>Lerna + Bun<a class="headerlink" href="#lerna-bun" title="Link to this heading">¶</a></h4>
+<p><strong>Conflict:</strong> Lerna doesn’t support Bun package manager yet.</p>
+<p><strong>Error Scenario:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># ❌ Invalid</span>
+</span><span data-line="2"><span class="nt">project_layout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">monorepo</span>
+</span><span data-line="3"><span class="nt">monorepo_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lerna</span>
+</span><span data-line="4"><span class="nt">node_package_manager</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bun</span>
+</span></pre></div>
+</div>
+<p><strong>Error:</strong> “Monorepo tool ‘lerna’ is not compatible with package manager ‘bun’. Compatible managers: pnpm, npm, yarn”</p>
+<p><strong>Resolution Options:</strong></p>
+<ol class="arabic">
+<li><p><strong>Switch to Turborepo or Nx</strong> (supports Bun):</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">monorepo_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">turborepo</span><span class="w">  </span><span class="c1"># or nx</span>
+</span><span data-line="2"><span class="nt">node_package_manager</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bun</span>
+</span></pre></div>
+</div>
+</li>
+<li><p><strong>Switch to pnpm</strong> (best monorepo experience):</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">monorepo_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lerna</span>
+</span><span data-line="2"><span class="nt">node_package_manager</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pnpm</span>
+</span></pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="package-manager-compatibility-matrix">
+<h4>Package Manager Compatibility Matrix<a class="headerlink" href="#package-manager-compatibility-matrix" title="Link to this heading">¶</a></h4>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Monorepo Tool</p></th>
+<th class="head"><p>pnpm</p></th>
+<th class="head"><p>npm</p></th>
+<th class="head"><p>Yarn Classic</p></th>
+<th class="head"><p>Yarn Berry</p></th>
+<th class="head"><p>Bun</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Turborepo</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-odd"><td><p>Nx</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-even"><td><p>Lerna</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+<td><p>⚠️ Limited</p></td>
+<td><p>❌</p></td>
+</tr>
+<tr class="row-odd"><td><p>Moon</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-even"><td><p>Bazel</p></td>
+<td><p>N/A (language-agnostic)</p></td>
+<td><p>N/A</p></td>
+<td><p>N/A</p></td>
+<td><p>N/A</p></td>
+<td><p>N/A</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="repository-structure-mismatches">
+<h3>Repository Structure Mismatches<a class="headerlink" href="#repository-structure-mismatches" title="Link to this heading">¶</a></h3>
+<section id="flat-structure-monorepo-tool">
+<h4>Flat Structure + Monorepo Tool<a class="headerlink" href="#flat-structure-monorepo-tool" title="Link to this heading">¶</a></h4>
+<p><strong>Warning:</strong> Flat structure not ideal for monorepo tools.</p>
+<p><strong>Scenario:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># ⚠️  Warning</span>
+</span><span data-line="2"><span class="nt">project_layout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">monorepo</span>
+</span><span data-line="3"><span class="nt">repository_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">flat</span>
+</span><span data-line="4"><span class="nt">monorepo_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">turborepo</span>
+</span></pre></div>
+</div>
+<p><strong>Warning:</strong> “Repository structure ‘flat’ is not ideal for monorepo tool ‘turborepo’. Consider using ‘apps-packages’ or ‘multi-workspace’ structure.”</p>
+<p><strong>Recommended Structures:</strong></p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Structure</p></th>
+<th class="head"><p>Layout</p></th>
+<th class="head"><p>Best For</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">apps-packages</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">apps/</span></code>, <code class="docutils literal notranslate"><span class="pre">packages/</span></code></p></td>
+<td><p>Mixed apps + shared libs</p></td>
+<td><p>Next.js app + React components</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">multi-workspace</span></code></p></td>
+<td><p>Multiple workspace roots</p></td>
+<td><p>Independent services</p></td>
+<td><p>API + Web + Mobile</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">domain-driven</span></code></p></td>
+<td><p>Domain-based folders</p></td>
+<td><p>Enterprise apps</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">auth/</span></code>, <code class="docutils literal notranslate"><span class="pre">billing/</span></code>, <code class="docutils literal notranslate"><span class="pre">analytics/</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Resolution:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Recommended for monorepo tools</span>
+</span><span data-line="2"><span class="nt">project_layout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">monorepo</span>
+</span><span data-line="3"><span class="nt">repository_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apps-packages</span>
+</span><span data-line="4"><span class="nt">monorepo_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">turborepo</span>
+</span></pre></div>
+</div>
+</section>
+</section>
+<section id="language-support-limitations">
+<h3>Language Support Limitations<a class="headerlink" href="#language-support-limitations" title="Link to this heading">¶</a></h3>
+<section id="turborepo-with-python-rust">
+<h4>Turborepo with Python/Rust<a class="headerlink" href="#turborepo-with-python-rust" title="Link to this heading">¶</a></h4>
+<p><strong>Warning:</strong> Turborepo is optimized for Node.js but can work with other languages.</p>
+<p><strong>Scenario:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># ⚠️  Warning</span>
+</span><span data-line="2"><span class="nt">monorepo_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">turborepo</span>
+</span><span data-line="3"><span class="nt">backend_languages</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">python</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rust</span><span class="p p-Indicator">]</span>
+</span></pre></div>
+</div>
+<p><strong>Warning:</strong> “Monorepo tool ‘turborepo’ is optimized for Node.js but your project uses: python, rust. Consider using ‘moon’ or ‘bazel’ for better multi-language support.”</p>
+<p><strong>Language Support Matrix:</strong></p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Tool</p></th>
+<th class="head"><p>Node.js</p></th>
+<th class="head"><p>Python</p></th>
+<th class="head"><p>Rust</p></th>
+<th class="head"><p>Go</p></th>
+<th class="head"><p>Java</p></th>
+<th class="head"><p>Multi-Language Quality</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Turborepo</p></td>
+<td><p>✅ Excellent</p></td>
+<td><p>⚠️ Basic</p></td>
+<td><p>⚠️ Basic</p></td>
+<td><p>⚠️ Basic</p></td>
+<td><p>❌</p></td>
+<td><p>Poor (Node-focused)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Nx</p></td>
+<td><p>✅ Excellent</p></td>
+<td><p>✅ Good</p></td>
+<td><p>✅ Good</p></td>
+<td><p>✅ Good</p></td>
+<td><p>⚠️ Basic</p></td>
+<td><p>Good (plugins available)</p></td>
+</tr>
+<tr class="row-even"><td><p>Lerna</p></td>
+<td><p>✅ Excellent</p></td>
+<td><p>❌</p></td>
+<td><p>❌</p></td>
+<td><p>❌</p></td>
+<td><p>❌</p></td>
+<td><p>None (Node-only)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Moon</p></td>
+<td><p>✅ Excellent</p></td>
+<td><p>✅ Excellent</p></td>
+<td><p>✅ Excellent</p></td>
+<td><p>✅ Excellent</p></td>
+<td><p>⚠️ Basic</p></td>
+<td><p>Excellent (language-agnostic)</p></td>
+</tr>
+<tr class="row-even"><td><p>Bazel</p></td>
+<td><p>✅ Good</p></td>
+<td><p>✅ Excellent</p></td>
+<td><p>✅ Excellent</p></td>
+<td><p>✅ Excellent</p></td>
+<td><p>✅ Excellent</p></td>
+<td><p>Excellent (enterprise-grade)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Resolution for Multi-Language Projects:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Best for Python + Rust + Node.js</span>
+</span><span data-line="2"><span class="nt">monorepo_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">moon</span>
+</span><span data-line="3"><span class="nt">backend_languages</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">python</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rust</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">node</span><span class="p p-Indicator">]</span>
+</span></pre></div>
+</div>
+</section>
+</section>
+<section id="project-scale-mismatches">
+<h3>Project Scale Mismatches<a class="headerlink" href="#project-scale-mismatches" title="Link to this heading">¶</a></h3>
+<section id="bazel-for-small-projects">
+<h4>Bazel for Small Projects<a class="headerlink" href="#bazel-for-small-projects" title="Link to this heading">¶</a></h4>
+<p><strong>Warning:</strong> Bazel is designed for very large monorepos (100+ packages).</p>
+<p><strong>Scenario:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># ⚠️  Warning</span>
+</span><span data-line="2"><span class="nt">monorepo_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bazel</span>
+</span><span data-line="3"><span class="nt">repository_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apps-packages</span><span class="w">  </span><span class="c1"># Estimated 5 packages</span>
+</span></pre></div>
+</div>
+<p><strong>Warning:</strong> “Bazel is designed for very large monorepos (100+ packages). For smaller projects, consider ‘turborepo’ or ‘nx’ instead.”</p>
+<p><strong>Scale Recommendations:</strong></p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Tool</p></th>
+<th class="head"><p>Ideal Package Count</p></th>
+<th class="head"><p>Setup Complexity</p></th>
+<th class="head"><p>Build Speed</p></th>
+<th class="head"><p>Remote Caching</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Turborepo</p></td>
+<td><p>2-50</p></td>
+<td><p>Low</p></td>
+<td><p>Fast</p></td>
+<td><p>✅ (Vercel/custom)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Nx</p></td>
+<td><p>5-200</p></td>
+<td><p>Medium</p></td>
+<td><p>Fast</p></td>
+<td><p>✅ (Nx Cloud/custom)</p></td>
+</tr>
+<tr class="row-even"><td><p>Lerna</p></td>
+<td><p>3-30</p></td>
+<td><p>Low</p></td>
+<td><p>Medium</p></td>
+<td><p>❌ (use with Nx)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Moon</p></td>
+<td><p>3-100</p></td>
+<td><p>Medium</p></td>
+<td><p>Fast</p></td>
+<td><p>✅ (built-in)</p></td>
+</tr>
+<tr class="row-even"><td><p>Bazel</p></td>
+<td><p>20-10000+</p></td>
+<td><p>High</p></td>
+<td><p>Very Fast</p></td>
+<td><p>✅ (enterprise-grade)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+</section>
+<section id="repository-structure-edge-cases">
+<h2>Repository Structure Edge Cases<a class="headerlink" href="#repository-structure-edge-cases" title="Link to this heading">¶</a></h2>
+<section id="structure-layout-conflicts">
+<h3>Structure-Layout Conflicts<a class="headerlink" href="#structure-layout-conflicts" title="Link to this heading">¶</a></h3>
+<section id="monorepo-layout-with-single-package-structure">
+<h4>Monorepo Layout with Single-Package Structure<a class="headerlink" href="#monorepo-layout-with-single-package-structure" title="Link to this heading">¶</a></h4>
+<p><strong>Error:</strong> Certain structures require monorepo layout.</p>
+<p><strong>Scenario:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># ❌ Invalid</span>
+</span><span data-line="2"><span class="nt">project_layout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single-package</span>
+</span><span data-line="3"><span class="nt">repository_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apps-packages</span>
+</span></pre></div>
+</div>
+<p><strong>Error:</strong> “Repository structure ‘apps-packages’ requires project_layout=‘monorepo’, but ‘single-package’ was selected. Change project_layout to ‘monorepo’.”</p>
+<p><strong>Resolution:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">project_layout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">monorepo</span>
+</span><span data-line="2"><span class="nt">repository_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apps-packages</span>
+</span></pre></div>
+</div>
+</section>
+<section id="structure-layout-compatibility">
+<h4>Structure-Layout Compatibility<a class="headerlink" href="#structure-layout-compatibility" title="Link to this heading">¶</a></h4>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Structure</p></th>
+<th class="head"><p>Requires Monorepo?</p></th>
+<th class="head"><p>Best Project Layout</p></th>
+<th class="head"><p>Example Use Case</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">flat</span></code></p></td>
+<td><p>No</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">single-package</span></code></p></td>
+<td><p>Simple CLI tool</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">src-layout</span></code></p></td>
+<td><p>No</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">single-package</span></code></p></td>
+<td><p>Python package following PEP 517</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">apps-packages</span></code></p></td>
+<td><p>Yes</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">monorepo</span></code></p></td>
+<td><p>Full-stack app with shared libs</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">multi-workspace</span></code></p></td>
+<td><p>Yes</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">monorepo</span></code></p></td>
+<td><p>Multiple independent apps</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">domain-driven</span></code></p></td>
+<td><p>No (but recommended)</p></td>
+<td><p>Either</p></td>
+<td><p>Large app by business domains</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="multiple-languages-with-simple-structures">
+<h3>Multiple Languages with Simple Structures<a class="headerlink" href="#multiple-languages-with-simple-structures" title="Link to this heading">¶</a></h3>
+<p><strong>Warning:</strong> Multiple backend languages with flat/src-layout structures.</p>
+<p><strong>Scenario:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># ⚠️  Warning</span>
+</span><span data-line="2"><span class="nt">repository_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">src-layout</span>
+</span><span data-line="3"><span class="nt">backend_languages</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">python</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rust</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">node</span><span class="p p-Indicator">]</span>
+</span></pre></div>
+</div>
+<p><strong>Warning:</strong> “Multiple backend languages (python, rust, node) selected with ‘src-layout’ structure. Consider ‘apps-packages’ or ‘multi-workspace’ for better polyglot project organization.”</p>
+<p><strong>Resolution for Polyglot Projects:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">repository_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apps-packages</span>
+</span><span data-line="2"><span class="nt">backend_languages</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">python</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rust</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">node</span><span class="p p-Indicator">]</span>
+</span><span data-line="3"><span class="nt">monorepo_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">moon</span><span class="w">  </span><span class="c1"># Best multi-language support</span>
+</span></pre></div>
+</div>
+<p><strong>Directory Structure Example:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span data-line="1">project/
+</span><span data-line="2">├── apps/
+</span><span data-line="3">│   ├── api-python/      # FastAPI service
+</span><span data-line="4">│   ├── api-node/        # Fastify service
+</span><span data-line="5">│   └── cli-rust/        # Rust CLI tool
+</span><span data-line="6">├── packages/
+</span><span data-line="7">│   ├── shared-types/    # TypeScript type definitions
+</span><span data-line="8">│   └── shared-utils/    # Shared utilities
+</span><span data-line="9">└── libs/
+</span><span data-line="10">    ├── python-common/   # Python shared code
+</span><span data-line="11">    └── rust-common/     # Rust shared code
+</span></pre></div>
+</div>
+</section>
+<section id="service-count-mismatches">
+<h3>Service Count Mismatches<a class="headerlink" href="#service-count-mismatches" title="Link to this heading">¶</a></h3>
+<section id="monorepo-structure-with-single-service">
+<h4>Monorepo Structure with Single Service<a class="headerlink" href="#monorepo-structure-with-single-service" title="Link to this heading">¶</a></h4>
+<p><strong>Warning:</strong> Using monorepo structure for simple projects.</p>
+<p><strong>Scenario:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># ⚠️  Warning</span>
+</span><span data-line="2"><span class="nt">repository_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apps-packages</span>
+</span><span data-line="3"><span class="nt">cli_module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">disabled</span>
+</span><span data-line="4"><span class="nt">backend_languages</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
+</span><span data-line="5"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
+</span><span data-line="6"><span class="nt">docs_site</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
+</span></pre></div>
+</div>
+<p><strong>Warning:</strong> “Repository structure ‘apps-packages’ is designed for at least 2 services, but only 1 detected. Consider ‘src-layout’ for simpler projects.”</p>
+<p><strong>Service Count Estimation:</strong></p>
+<ul class="simple">
+<li><p>CLI module enabled: +1</p></li>
+<li><p>Each backend language: +1</p></li>
+<li><p>Frontend framework (not none): +1</p></li>
+<li><p>Docs site (not none): +1</p></li>
+</ul>
+<p><strong>Resolution for Simple Projects:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">repository_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">src-layout</span>
+</span></pre></div>
+</div>
+</section>
+</section>
+</section>
+<section id="tool-availability-edge-cases">
+<h2>Tool Availability Edge Cases<a class="headerlink" href="#tool-availability-edge-cases" title="Link to this heading">¶</a></h2>
+<section id="missing-required-tools">
+<h3>Missing Required Tools<a class="headerlink" href="#missing-required-tools" title="Link to this heading">¶</a></h3>
+<section id="python-project-without-uv">
+<h4>Python Project without uv<a class="headerlink" href="#python-project-without-uv" title="Link to this heading">¶</a></h4>
+<p><strong>Error:</strong> Required tools not found in PATH.</p>
+<p><strong>Scenario:</strong> Running copier without uv installed.</p>
+<p><strong>Error:</strong> “Python package manager ‘uv’ (uv) not found in PATH. Install it or select a different package manager.”</p>
+<p><strong>Resolution:</strong></p>
+<ol class="arabic">
+<li><p><strong>Install uv</strong> (recommended):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1">curl<span class="w"> </span>-LsSf<span class="w"> </span>https://astral.sh/uv/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
+</span></pre></div>
+</div>
+</li>
+<li><p><strong>Use different package manager</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1">copier<span class="w"> </span>copy<span class="w"> </span>gh:yourusername/riso<span class="w"> </span>my-project<span class="w"> </span><span class="se">\</span>
+</span><span data-line="2"><span class="w">  </span>--data<span class="w"> </span><span class="nv">python_package_manager</span><span class="o">=</span>poetry
+</span></pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="node-js-project-without-pnpm">
+<h4>Node.js Project without pnpm<a class="headerlink" href="#node-js-project-without-pnpm" title="Link to this heading">¶</a></h4>
+<p><strong>Error:</strong> Node.js package manager not found.</p>
+<p><strong>Error:</strong> “Node.js package manager ‘pnpm’ (pnpm) not found. Install it with: npm install -g pnpm”</p>
+<p><strong>Resolution:</strong></p>
+<ol class="arabic">
+<li><p><strong>Install pnpm</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1">npm<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span>pnpm
+</span><span data-line="2"><span class="c1"># or with Homebrew</span>
+</span><span data-line="3">brew<span class="w"> </span>install<span class="w"> </span>pnpm
+</span><span data-line="4"><span class="c1"># or with mise</span>
+</span><span data-line="5">mise<span class="w"> </span>install<span class="w"> </span>pnpm@latest
+</span></pre></div>
+</div>
+</li>
+<li><p><strong>Use npm instead</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1">copier<span class="w"> </span>copy<span class="w"> </span>gh:yourusername/riso<span class="w"> </span>my-project<span class="w"> </span><span class="se">\</span>
+</span><span data-line="2"><span class="w">  </span>--data<span class="w"> </span><span class="nv">node_package_manager</span><span class="o">=</span>npm
+</span></pre></div>
+</div>
+</li>
+</ol>
+</section>
+</section>
+<section id="missing-optional-tools">
+<h3>Missing Optional Tools<a class="headerlink" href="#missing-optional-tools" title="Link to this heading">¶</a></h3>
+<section id="build-tools-not-found-non-blocking">
+<h4>Build Tools Not Found (Non-Blocking)<a class="headerlink" href="#build-tools-not-found-non-blocking" title="Link to this heading">¶</a></h4>
+<p><strong>Warning:</strong> Build tool will be installed as project dependency.</p>
+<p><strong>Warning:</strong> “Build tool ‘vite’ (vite) not found. It will be installed as a project dependency.”</p>
+<p><strong>Behavior:</strong> Template continues generation. Build tool installed during <code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">install</span></code> or <code class="docutils literal notranslate"><span class="pre">pnpm</span> <span class="pre">install</span></code>.</p>
+</section>
+<section id="monorepo-tools-not-found-non-blocking">
+<h4>Monorepo Tools Not Found (Non-Blocking)<a class="headerlink" href="#monorepo-tools-not-found-non-blocking" title="Link to this heading">¶</a></h4>
+<p><strong>Warning:</strong> Monorepo tool should be installed globally.</p>
+<p><strong>Warning:</strong> “Monorepo tool ‘turborepo’ (turbo) not found. Install it globally: npm install -g turborepo”</p>
+<p><strong>Resolution (post-generation):</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1">npm<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span>turborepo
+</span><span data-line="2"><span class="c1"># or use package manager scripts</span>
+</span><span data-line="3">pnpm<span class="w"> </span>run<span class="w"> </span>turbo
+</span></pre></div>
+</div>
+</section>
+</section>
+</section>
+<section id="complex-valid-configurations">
+<h2>Complex Valid Configurations<a class="headerlink" href="#complex-valid-configurations" title="Link to this heading">¶</a></h2>
+<p>These configurations pass validation but require careful attention:</p>
+<section id="edge-optimized-stack-with-workarounds">
+<h3>Edge-Optimized Stack with Workarounds<a class="headerlink" href="#edge-optimized-stack-with-workarounds" title="Link to this heading">¶</a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Valid but requires Prisma Data Proxy setup</span>
+</span><span data-line="2"><span class="nt">saas_starter_module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enabled</span>
+</span><span data-line="3"><span class="nt">saas_runtime</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nextjs-16</span>
+</span><span data-line="4"><span class="nt">saas_hosting</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cloudflare</span>
+</span><span data-line="5"><span class="nt">saas_database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">neon</span>
+</span><span data-line="6"><span class="nt">saas_orm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prisma</span><span class="w">  </span><span class="c1"># ⚠️  Requires Data Proxy</span>
+</span><span data-line="7"><span class="nt">saas_auth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">clerk</span>
+</span><span data-line="8"><span class="nt">saas_storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">r2</span>
+</span><span data-line="9"><span class="nt">saas_cicd</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cloudflare-ci</span>
+</span></pre></div>
+</div>
+<p><strong>Setup Requirements:</strong></p>
+<ol class="arabic simple">
+<li><p>Enable Prisma Data Proxy in Prisma Cloud</p></li>
+<li><p>Update <code class="docutils literal notranslate"><span class="pre">DATABASE_URL</span></code> to use proxy URL</p></li>
+<li><p>Accept 50-150ms query latency overhead</p></li>
+<li><p>Monitor Data Proxy usage and costs</p></li>
+</ol>
+</section>
+<section id="full-stack-monorepo-with-multiple-languages">
+<h3>Full-Stack Monorepo with Multiple Languages<a class="headerlink" href="#full-stack-monorepo-with-multiple-languages" title="Link to this heading">¶</a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Complex but fully supported</span>
+</span><span data-line="2"><span class="nt">project_layout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">monorepo</span>
+</span><span data-line="3"><span class="nt">repository_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apps-packages</span>
+</span><span data-line="4"><span class="nt">monorepo_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">moon</span><span class="w">  </span><span class="c1"># Best for multi-language</span>
+</span><span data-line="5"><span class="nt">backend_languages</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">python</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">node</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rust</span><span class="p p-Indicator">]</span>
+</span><span data-line="6"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">react</span>
+</span><span data-line="7"><span class="nt">react_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nextjs</span>
+</span><span data-line="8"><span class="nt">build_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vite</span>
+</span><span data-line="9"><span class="nt">node_package_manager</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pnpm</span>
+</span><span data-line="10"><span class="nt">python_package_manager</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">uv</span>
+</span></pre></div>
+</div>
+<p><strong>Project Structure:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span data-line="1">project/
+</span><span data-line="2">├── apps/
+</span><span data-line="3">│   ├── web/              # Next.js app (Node.js)
+</span><span data-line="4">│   ├── api-python/       # FastAPI service (Python)
+</span><span data-line="5">│   └── cli/              # Rust CLI tool
+</span><span data-line="6">├── packages/
+</span><span data-line="7">│   ├── ui/               # Shared React components
+</span><span data-line="8">│   ├── types/            # TypeScript definitions
+</span><span data-line="9">│   └── python-common/    # Shared Python utilities
+</span><span data-line="10">└── moon.yml              # Moon workspace config
+</span></pre></div>
+</div>
+</section>
+<section id="enterprise-saas-with-all-observability">
+<h3>Enterprise SaaS with All Observability<a class="headerlink" href="#enterprise-saas-with-all-observability" title="Link to this heading">¶</a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Maximum observability stack</span>
+</span><span data-line="2"><span class="nt">saas_starter_module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enabled</span>
+</span><span data-line="3"><span class="nt">saas_runtime</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nextjs-16</span>
+</span><span data-line="4"><span class="nt">saas_hosting</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vercel</span>
+</span><span data-line="5"><span class="nt">saas_database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">neon</span>
+</span><span data-line="6"><span class="nt">saas_orm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prisma</span>
+</span><span data-line="7"><span class="nt">saas_observability_sentry</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">      </span><span class="c1"># Error tracking</span>
+</span><span data-line="8"><span class="nt">saas_observability_datadog</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">     </span><span class="c1"># APM</span>
+</span><span data-line="9"><span class="nt">saas_observability_otel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">        </span><span class="c1"># OpenTelemetry</span>
+</span><span data-line="10"><span class="nt">saas_observability_structured_logging</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">  </span><span class="c1"># JSON logs</span>
+</span></pre></div>
+</div>
+<p><strong>Cost Considerations:</strong></p>
+<ul class="simple">
+<li><p>Sentry: $26/month (Developer plan)</p></li>
+<li><p>Datadog: $31/host/month (Pro plan)</p></li>
+<li><p>OpenTelemetry: Free (self-hosted) or $0.10/GB (managed)</p></li>
+<li><p>Total: ~$60-100/month for observability</p></li>
+</ul>
+<p><strong>Setup Complexity:</strong> High (requires configuring 3-4 services)</p>
+</section>
+</section>
+<section id="decision-trees">
+<h2>Decision Trees<a class="headerlink" href="#decision-trees" title="Link to this heading">¶</a></h2>
+<section id="choosing-database-storage-combination">
+<h3>Choosing Database + Storage Combination<a class="headerlink" href="#choosing-database-storage-combination" title="Link to this heading">¶</a></h3>
+<object data="../_images/mermaid-dff9566b434a7639690781f443818acf2d8e1c27.svg" type="image/svg+xml">
+            <p class="warning">graph TD
+    A[Need database + storage?] --&gt;|Yes| B{Using Supabase?}
+    B --&gt;|Yes| C[Use Supabase for both]
+    B --&gt;|No| D{Edge deployment?}
+    D --&gt;|Yes| E[Neon + R2]
+    D --&gt;|No| F{Prefer single vendor?}
+    F --&gt;|Yes| G[Neon + R2 or Supabase + Supabase]
+    F --&gt;|No| H[Neon + R2 or Vercel Blob]
+
+    C --&gt; I[✅ Supabase DB + Supabase Storage]
+    E --&gt; J[✅ Neon + R2]
+    G --&gt; K[Choose based on features]
+    H --&gt; L[Choose based on cost]</p></object>
+</section>
+<section id="choosing-orm-for-edge-deployment">
+<h3>Choosing ORM for Edge Deployment<a class="headerlink" href="#choosing-orm-for-edge-deployment" title="Link to this heading">¶</a></h3>
+<object data="../_images/mermaid-717edce9952cb3c791270d131b2da20f0ddb2e0e.svg" type="image/svg+xml">
+            <p class="warning">graph TD
+    A[Deploying to edge?] --&gt;|No| B[Use Prisma]
+    A --&gt;|Yes| C{Hosting platform?}
+    C --&gt;|Cloudflare| D[Use Drizzle]
+    C --&gt;|Vercel| E{Need Prisma features?}
+    E --&gt;|Yes| F[Use Prisma]
+    E --&gt;|No| G[Use Drizzle for speed]
+    C --&gt;|Other| H[Use Drizzle]
+
+    B --&gt; I[✅ Prisma]
+    D --&gt; J[✅ Drizzle]
+    F --&gt; K[✅ Prisma]
+    G --&gt; L[✅ Drizzle]
+    H --&gt; M[✅ Drizzle]</p></object>
+</section>
+<section id="choosing-monorepo-tool">
+<h3>Choosing Monorepo Tool<a class="headerlink" href="#choosing-monorepo-tool" title="Link to this heading">¶</a></h3>
+<object data="../_images/mermaid-76eaca0eb7bba740e2ed82e86302269a8e25d175.svg" type="image/svg+xml">
+            <p class="warning">graph TD
+    A[Need monorepo tool?] --&gt;|No| B[Skip]
+    A --&gt;|Yes| C{Package count?}
+    C --&gt;|2-10| D[Turborepo]
+    C --&gt;|10-50| E{Multi-language?}
+    C --&gt;|50+| F[Nx or Bazel]
+
+    E --&gt;|Yes| G[Moon]
+    E --&gt;|No| H[Turborepo or Nx]
+
+    F --&gt; I{Enterprise scale?}
+    I --&gt;|Yes| J[Bazel]
+    I --&gt;|No| K[Nx]
+
+    B --&gt; L[✅ No tool]
+    D --&gt; M[✅ Turborepo]
+    G --&gt; N[✅ Moon]
+    H --&gt; O[✅ Turborepo or Nx]
+    J --&gt; P[✅ Bazel]
+    K --&gt; Q[✅ Nx]</p></object>
+</section>
+</section>
+<section id="adding-custom-validation-rules">
+<h2>Adding Custom Validation Rules<a class="headerlink" href="#adding-custom-validation-rules" title="Link to this heading">¶</a></h2>
+<section id="validator-structure">
+<h3>Validator Structure<a class="headerlink" href="#validator-structure" title="Link to this heading">¶</a></h3>
+<p>Create new validator in <code class="docutils literal notranslate"><span class="pre">template/hooks/validators/</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="sd">&quot;&quot;&quot;Custom validator for [feature] configurations.&quot;&quot;&quot;</span>
+</span><span data-line="2">
+</span><span data-line="3"><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span>
+</span><span data-line="4">
+</span><span data-line="5">
+</span><span data-line="6"><span class="k">def</span><span class="w"> </span><span class="nf">validate_feature_compatibility</span><span class="p">(</span><span class="n">answers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</span><span data-line="7"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate [feature] compatibility.</span>
+</span><span data-line="8">
+</span><span data-line="9"><span class="sd">    Args:</span>
+</span><span data-line="10"><span class="sd">        answers: Dictionary of copier answers</span>
+</span><span data-line="11">
+</span><span data-line="12"><span class="sd">    Returns:</span>
+</span><span data-line="13"><span class="sd">        List of error messages (empty if valid)</span>
+</span><span data-line="14"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span data-line="15">    <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span data-line="16">    <span class="n">feature</span> <span class="o">=</span> <span class="n">answers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;feature_name&quot;</span><span class="p">)</span>
+</span><span data-line="17">
+</span><span data-line="18">    <span class="c1"># Add validation logic</span>
+</span><span data-line="19">    <span class="k">if</span> <span class="n">feature</span> <span class="o">==</span> <span class="s2">&quot;incompatible_value&quot;</span><span class="p">:</span>
+</span><span data-line="20">        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Feature incompatibility message&quot;</span><span class="p">)</span>
+</span><span data-line="21">
+</span><span data-line="22">    <span class="k">return</span> <span class="n">errors</span>
+</span><span data-line="23">
+</span><span data-line="24">
+</span><span data-line="25"><span class="k">def</span><span class="w"> </span><span class="nf">validate</span><span class="p">(</span><span class="n">answers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</span><span data-line="26"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Run all [feature] validations.</span>
+</span><span data-line="27">
+</span><span data-line="28"><span class="sd">    Args:</span>
+</span><span data-line="29"><span class="sd">        answers: Dictionary of copier answers</span>
+</span><span data-line="30">
+</span><span data-line="31"><span class="sd">    Returns:</span>
+</span><span data-line="32"><span class="sd">        List of all validation error messages</span>
+</span><span data-line="33"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span data-line="34">    <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span data-line="35">    <span class="n">errors</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">validate_feature_compatibility</span><span class="p">(</span><span class="n">answers</span><span class="p">))</span>
+</span><span data-line="36">    <span class="k">return</span> <span class="n">errors</span>
+</span></pre></div>
+</div>
+</section>
+<section id="integrating-validators">
+<h3>Integrating Validators<a class="headerlink" href="#integrating-validators" title="Link to this heading">¶</a></h3>
+<p>Add to <code class="docutils literal notranslate"><span class="pre">template/hooks/pre_gen_project.py</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Import validator</span>
+</span><span data-line="2"><span class="k">try</span><span class="p">:</span>
+</span><span data-line="3">    <span class="kn">from</span><span class="w"> </span><span class="nn">hooks.validators.custom_validator</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate</span> <span class="k">as</span> <span class="n">validate_custom</span>
+</span><span data-line="4"><span class="k">except</span> <span class="ne">ModuleNotFoundError</span><span class="p">:</span>
+</span><span data-line="5">    <span class="n">validate_custom</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">answers</span><span class="p">:</span> <span class="p">[]</span>
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Run validation</span>
+</span><span data-line="8"><span class="n">custom_errors</span> <span class="o">=</span> <span class="n">validate_custom</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
+</span><span data-line="9"><span class="k">if</span> <span class="n">custom_errors</span><span class="p">:</span>
+</span><span data-line="10">    <span class="k">for</span> <span class="n">error</span> <span class="ow">in</span> <span class="n">custom_errors</span><span class="p">:</span>
+</span><span data-line="11">        <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ❌ </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span data-line="12">    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span></pre></div>
+</div>
+</section>
+<section id="validation-severity-levels">
+<h3>Validation Severity Levels<a class="headerlink" href="#validation-severity-levels" title="Link to this heading">¶</a></h3>
+<p>Use return type to indicate severity:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="k">def</span><span class="w"> </span><span class="nf">validate</span><span class="p">(</span><span class="n">answers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+</span><span data-line="2"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Run validations with different severity levels.&quot;&quot;&quot;</span>
+</span><span data-line="3">    <span class="k">return</span> <span class="p">{</span>
+</span><span data-line="4">        <span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="p">[],</span>      <span class="c1"># Blocking (exit 1)</span>
+</span><span data-line="5">        <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="p">[],</span>    <span class="c1"># Non-blocking (display + continue)</span>
+</span><span data-line="6">        <span class="s2">&quot;info&quot;</span><span class="p">:</span> <span class="p">[]</span>        <span class="c1"># Informational (display)</span>
+</span><span data-line="7">    <span class="p">}</span>
+</span></pre></div>
+</div>
+</section>
+</section>
+<section id="troubleshooting-validation-failures">
+<h2>Troubleshooting Validation Failures<a class="headerlink" href="#troubleshooting-validation-failures" title="Link to this heading">¶</a></h2>
+<section id="view-validation-logs">
+<h3>View Validation Logs<a class="headerlink" href="#view-validation-logs" title="Link to this heading">¶</a></h3>
+<p>All validation attempts logged to <code class="docutils literal notranslate"><span class="pre">.riso/toolchain_provisioning.jsonl</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># View all validation logs</span>
+</span><span data-line="2">cat<span class="w"> </span>.riso/toolchain_provisioning.jsonl<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;.&#39;</span>
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Filter by status</span>
+</span><span data-line="5">cat<span class="w"> </span>.riso/toolchain_provisioning.jsonl<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;select(.status == &quot;failed&quot;)&#39;</span>
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># View recent entries</span>
+</span><span data-line="8">tail<span class="w"> </span>-n<span class="w"> </span><span class="m">20</span><span class="w"> </span>.riso/toolchain_provisioning.jsonl<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;.&#39;</span>
+</span></pre></div>
+</div>
+</section>
+<section id="common-error-patterns">
+<h3>Common Error Patterns<a class="headerlink" href="#common-error-patterns" title="Link to this heading">¶</a></h3>
+<section id="error-cannot-use-neon-database-with-supabase-storage">
+<h4>Error: “Cannot use Neon database with Supabase Storage”<a class="headerlink" href="#error-cannot-use-neon-database-with-supabase-storage" title="Link to this heading">¶</a></h4>
+<p><strong>Cause:</strong> Selecting incompatible SaaS options.</p>
+<p><strong>Fix:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Option 1: Full Supabase</span>
+</span><span data-line="2">copier<span class="w"> </span>copy<span class="w"> </span>gh:yourusername/riso<span class="w"> </span>my-project<span class="w"> </span><span class="se">\</span>
+</span><span data-line="3"><span class="w">  </span>--data<span class="w"> </span><span class="nv">saas_database</span><span class="o">=</span>supabase<span class="w"> </span><span class="se">\</span>
+</span><span data-line="4"><span class="w">  </span>--data<span class="w"> </span><span class="nv">saas_storage</span><span class="o">=</span>supabase-storage
+</span><span data-line="5">
+</span><span data-line="6"><span class="c1"># Option 2: Neon + R2</span>
+</span><span data-line="7">copier<span class="w"> </span>copy<span class="w"> </span>gh:yourusername/riso<span class="w"> </span>my-project<span class="w"> </span><span class="se">\</span>
+</span><span data-line="8"><span class="w">  </span>--data<span class="w"> </span><span class="nv">saas_database</span><span class="o">=</span>neon<span class="w"> </span><span class="se">\</span>
+</span><span data-line="9"><span class="w">  </span>--data<span class="w"> </span><span class="nv">saas_storage</span><span class="o">=</span>r2
+</span></pre></div>
+</div>
+</section>
+<section id="error-build-tool-turbopack-is-not-compatible-with-vue">
+<h4>Error: “Build tool ‘turbopack’ is not compatible with ‘vue’”<a class="headerlink" href="#error-build-tool-turbopack-is-not-compatible-with-vue" title="Link to this heading">¶</a></h4>
+<p><strong>Cause:</strong> Selecting framework-exclusive build tool.</p>
+<p><strong>Fix:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1">copier<span class="w"> </span>copy<span class="w"> </span>gh:yourusername/riso<span class="w"> </span>my-project<span class="w"> </span><span class="se">\</span>
+</span><span data-line="2"><span class="w">  </span>--data<span class="w"> </span><span class="nv">frontend_framework</span><span class="o">=</span>vue<span class="w"> </span><span class="se">\</span>
+</span><span data-line="3"><span class="w">  </span>--data<span class="w"> </span><span class="nv">build_tool</span><span class="o">=</span>vite
+</span></pre></div>
+</div>
+</section>
+<section id="error-monorepo-tool-lerna-is-not-compatible-with-package-manager-bun">
+<h4>Error: “Monorepo tool ‘lerna’ is not compatible with package manager ‘bun’”<a class="headerlink" href="#error-monorepo-tool-lerna-is-not-compatible-with-package-manager-bun" title="Link to this heading">¶</a></h4>
+<p><strong>Cause:</strong> Unsupported package manager for monorepo tool.</p>
+<p><strong>Fix:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Option 1: Switch to compatible tool</span>
+</span><span data-line="2">copier<span class="w"> </span>copy<span class="w"> </span>gh:yourusername/riso<span class="w"> </span>my-project<span class="w"> </span><span class="se">\</span>
+</span><span data-line="3"><span class="w">  </span>--data<span class="w"> </span><span class="nv">monorepo_tool</span><span class="o">=</span>turborepo<span class="w"> </span><span class="se">\</span>
+</span><span data-line="4"><span class="w">  </span>--data<span class="w"> </span><span class="nv">node_package_manager</span><span class="o">=</span>bun
+</span><span data-line="5">
+</span><span data-line="6"><span class="c1"># Option 2: Switch to compatible package manager</span>
+</span><span data-line="7">copier<span class="w"> </span>copy<span class="w"> </span>gh:yourusername/riso<span class="w"> </span>my-project<span class="w"> </span><span class="se">\</span>
+</span><span data-line="8"><span class="w">  </span>--data<span class="w"> </span><span class="nv">monorepo_tool</span><span class="o">=</span>lerna<span class="w"> </span><span class="se">\</span>
+</span><span data-line="9"><span class="w">  </span>--data<span class="w"> </span><span class="nv">node_package_manager</span><span class="o">=</span>pnpm
+</span></pre></div>
+</div>
+</section>
+</section>
+<section id="override-validation-not-recommended">
+<h3>Override Validation (Not Recommended)<a class="headerlink" href="#override-validation-not-recommended" title="Link to this heading">¶</a></h3>
+<p>For testing only, modify <code class="docutils literal notranslate"><span class="pre">template/hooks/pre_gen_project.py</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Temporarily disable specific validator</span>
+</span><span data-line="2"><span class="k">if</span> <span class="n">context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;saas_starter_module&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;enabled&quot;</span><span class="p">:</span>
+</span><span data-line="3">    <span class="c1"># Skip validation</span>
+</span><span data-line="4">    <span class="k">pass</span>
+</span></pre></div>
+</div>
+<p><strong>Warning:</strong> This may produce non-functional projects. Only use for debugging validators.</p>
+</section>
+</section>
+<section id="related-documentation">
+<h2>Related Documentation<a class="headerlink" href="#related-documentation" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="#configuration-decision-guide.md"><span class="xref myst">Configuration Decision Guide</span></a> — Choosing the right options</p></li>
+<li><p><a class="reference internal" href="../compatibility-matrix.html"><span class="std std-doc">Compatibility Matrix</span></a> — Tool compatibility reference</p></li>
+<li><p><a class="reference internal" href="#../tools/saas-starter.md"><span class="xref myst">SaaS Starter Configuration</span></a> — SaaS-specific options</p></li>
+<li><p><a class="reference internal" href="#../modules/monorepo-tools.md"><span class="xref myst">Monorepo Tools</span></a> — Monorepo tool comparison</p></li>
+<li><p><a class="reference internal" href="#../modules/build-tools.md"><span class="xref myst">Build Tools</span></a> — Build tool comparison</p></li>
+</ul>
+</section>
+<section id="changelog">
+<h2>Changelog<a class="headerlink" href="#changelog" title="Link to this heading">¶</a></h2>
+<section id="id1">
+<h3>2025-12-26<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Initial documentation of edge cases and conflict resolution</p></li>
+<li><p>Added SaaS Starter validation rules</p></li>
+<li><p>Documented frontend, build tool, monorepo, structure validators</p></li>
+<li><p>Added decision trees and troubleshooting guide</p></li>
+<li><p>Added custom validator integration guide</p></li>
+</ul>
+</section>
+</section>
+</section>
+
+        </article><button class="back-to-top" type="button">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+  </svg>
+  <span>Back to top</span>
+</button><div class="navigation flex print:hidden"></div></div>
+    </div>
+  </main>
+</div>
+<footer class="sy-foot">
+  <div class="sy-foot-inner sy-container mx-auto">
+    <div class="sy-foot-reserved md:flex justify-between items-center">
+      <div class="sy-foot-copyright"><p>2025, Riso</p>
+  
+  <p>
+    Made with
+    
+    <a href="https://www.sphinx-doc.org/">Sphinx</a> and
+    
+    <a href="https://shibuya.lepture.com">Shibuya theme</a>.
+  </p>
+</div>
+      <div class="sy-foot-socials">
+<a href="https://github.com/openai/riso" aria-label="GitHub">
+  <iconify-icon icon="simple-icons:github"></iconify-icon>
+</a></div>
+    </div>
+  </div>
+</footer>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=6870ed9c"></script>
+      <script src="https://unpkg.com/twemoji@latest/dist/twemoji.min.js"></script>
+      <script src="../_static/twemoji.js?v=a4381b3f"></script>
+      <script src="../_static/js/hoverxref.js?v=85f38ef1"></script>
+      <script src="../_static/js/tooltipster.bundle.min.js?v=18bf091b"></script>
+      <script src="../_static/js/micromodal.min.js?v=04d6302d"></script>
+      <script>let toggleHintShow = 'Click to show';</script>
+      <script>let toggleHintHide = 'Click to hide';</script>
+      <script>let toggleOpenOnPrint = 'true';</script>
+      <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+      <script src="../_static/design-tabs.js?v=f930bc37"></script>
+      <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+      <script src="../_static/shibuya.js?v=cac61aee"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../_static/tabs.js?v=3030b3cb"></script>
+      <script type="module" src="https://cdn.jsdelivr.net/npm/mermaid@11.4.2/dist/mermaid.esm.min.mjs"></script>
+      <script type="module" src="https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.0/dist/mermaid-layout-elk.esm.min.mjs"></script>
+      <script type="module">
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'base',
+  themeVariables: {
+    fontFamily: 'system-ui, -apple-system, sans-serif',
+    fontSize: '14px',
+    primaryColor: '#ccfbf1',
+    primaryBorderColor: '#14b8a6',
+    primaryTextColor: '#0f172a',
+    secondaryColor: '#f1f5f9',
+    secondaryBorderColor: '#94a3b8',
+    tertiaryColor: '#fef3c7',
+    tertiaryBorderColor: '#f59e0b',
+    lineColor: '#14b8a6',
+    textColor: '#1e293b',
+    noteBkgColor: '#fef9c3',
+    noteTextColor: '#713f12',
+    noteBorderColor: '#facc15',
+    actorBkg: '#f8fafc',
+    actorBorder: '#14b8a6',
+    signalColor: '#14b8a6',
+    nodeBkg: '#f8fafc',
+    nodeBorder: '#14b8a6',
+    clusterBkg: '#f1f5f9',
+    clusterBorder: '#e2e8f0',
+    defaultLinkColor: '#14b8a6'
+  },
+  flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+  sequence: { useMaxWidth: true, mirrorActors: true },
+  gantt: { useMaxWidth: true },
+  pie: { useMaxWidth: true }
+});
+</script>
+      <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.4.2/dist/mermaid.esm.min.mjs";
+
+const defaultStyle = document.createElement('style');
+defaultStyle.textContent = `pre.mermaid {
+    /* Same as .mermaid-container > pre */
+    display: block;
+    width: 100%;
+}
+
+pre.mermaid > svg {
+    /* Same as .mermaid-container > pre > svg */
+    height: 500px;
+    width: 100%;
+    max-width: 100% !important;
+}
+`;
+document.head.appendChild(defaultStyle);
+
+const fullscreenStyle = document.createElement('style');
+fullscreenStyle.textContent = `.mermaid-container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+}
+
+.mermaid-container > pre {
+    display: block;
+    width: 100%;
+}
+
+.mermaid-container > pre > svg {
+    height: 500px;
+    width: 100%;
+    max-width: 100% !important;
+}
+
+.mermaid-fullscreen-btn {
+    width: 28px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+    color: #333;
+}
+
+.mermaid-fullscreen-btn:hover {
+    opacity: 100% !important;
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-btn.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-btn.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 3px 10px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal {
+    display: none;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 95vw;
+    height: 100vh;
+    background: rgba(255, 255, 255, 0.98);
+    z-index: 9999;
+    padding: 20px;
+    overflow: auto;
+}
+
+.mermaid-fullscreen-modal.dark-theme {
+    background: rgba(0, 0, 0, 0.98);
+}
+
+.mermaid-fullscreen-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen {
+    position: relative;
+    width: 95vw;
+    height: 90vh;
+    max-width: 95vw;
+    max-height: 90vh;
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen.dark-theme {
+    background: #1a1a1a;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+
+.mermaid-container-fullscreen pre.mermaid {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen .mermaid svg {
+    height: 100% !important;
+    width: 100% !important;
+    cursor: grab;
+}
+
+.mermaid-fullscreen-close {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s;
+    font-size: 24px;
+    line-height: 1;
+    color: #333;
+}
+
+.mermaid-fullscreen-close:hover {
+    background: white;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-close.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-close.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 6px 16px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal .mermaid-fullscreen-btn {
+    display: none !important;
+}`;
+document.head.appendChild(fullscreenStyle);
+
+// Detect if page has dark background
+const isDarkTheme = () => {
+    const bgColor = window.getComputedStyle(document.body).backgroundColor;
+    const match = bgColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)/);
+    if (match) {
+        const r = parseInt(match[1]);
+        const g = parseInt(match[2]);
+        const b = parseInt(match[3]);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        return brightness < 128;
+    }
+    return false;
+};
+
+const load = async () => {
+    await mermaid.run();
+
+    const all_mermaids = document.querySelectorAll(".mermaid");
+    const mermaids_processed = document.querySelectorAll(".mermaid[data-processed='true']");
+
+    if ("False" === "True") {
+        const mermaids_to_add_zoom = -1 === -1 ? all_mermaids.length : -1;
+        if(mermaids_to_add_zoom > 0) {
+            var svgs = d3.selectAll("");
+            if(all_mermaids.length !== mermaids_processed.length) {
+                setTimeout(load, 200);
+                return;
+            } else if(svgs.size() !== mermaids_to_add_zoom) {
+                setTimeout(load, 200);
+                return;
+            } else {
+                svgs.each(function() {
+                    var svg = d3.select(this);
+                    svg.html("<g class='wrapper'>" + svg.html() + "</g>");
+                    var inner = svg.select("g");
+                    var zoom = d3.zoom().on("zoom", function(event) {
+                        inner.attr("transform", event.transform);
+                    });
+                    svg.call(zoom);
+                });
+            }
+        }
+    } else if(all_mermaids.length !== mermaids_processed.length) {
+        // Wait for mermaid to process all diagrams
+        setTimeout(load, 200);
+        return;
+    }
+
+    const darkTheme = isDarkTheme();
+
+    // Stop here if not adding fullscreen capability
+    if ("True" !== "True") return;
+
+    const modal = document.createElement('div');
+    modal.className = 'mermaid-fullscreen-modal' + (darkTheme ? ' dark-theme' : '');
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Fullscreen diagram viewer');
+    modal.innerHTML = `
+        <button class="mermaid-fullscreen-close${darkTheme ? ' dark-theme' : ''}" aria-label="Close fullscreen">✕</button>
+        <div class="mermaid-container-fullscreen${darkTheme ? ' dark-theme' : ''}"></div>
+    `;
+    document.body.appendChild(modal);
+
+    const modalContent = modal.querySelector('.mermaid-container-fullscreen');
+    const closeBtn = modal.querySelector('.mermaid-fullscreen-close');
+
+    let previousScrollOffset = [window.scrollX, window.scrollY];
+
+    const closeModal = () => {
+        modal.classList.remove('active');
+        modalContent.innerHTML = '';
+        document.body.style.overflow = ''
+        window.scrollTo({left: previousScrollOffset[0], top: previousScrollOffset[1], behavior: 'instant'});
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            closeModal();
+        }
+    });
+
+    const allButtons = [];
+
+    document.querySelectorAll('.mermaid').forEach((mermaidDiv) => {
+        if (mermaidDiv.parentNode.classList.contains('mermaid-container') ||
+            mermaidDiv.closest('.mermaid-fullscreen-modal')) {
+            return;
+        }
+
+        const container = document.createElement('div');
+        container.className = 'mermaid-container';
+        mermaidDiv.parentNode.insertBefore(container, mermaidDiv);
+        container.appendChild(mermaidDiv);
+
+        const fullscreenBtn = document.createElement('button');
+        fullscreenBtn.className = 'mermaid-fullscreen-btn' + (darkTheme ? ' dark-theme' : '');
+        fullscreenBtn.setAttribute('aria-label', 'View diagram in fullscreen');
+        fullscreenBtn.textContent = '⛶';
+        fullscreenBtn.style.opacity = '50%';
+
+        // Calculate dynamic position based on diagram's margin and padding
+        const diagramStyle = window.getComputedStyle(mermaidDiv);
+        const marginTop = parseFloat(diagramStyle.marginTop) || 0;
+        const marginRight = parseFloat(diagramStyle.marginRight) || 0;
+        const paddingTop = parseFloat(diagramStyle.paddingTop) || 0;
+        const paddingRight = parseFloat(diagramStyle.paddingRight) || 0;
+        fullscreenBtn.style.top = `${marginTop + paddingTop + 4}px`;
+        fullscreenBtn.style.right = `${marginRight + paddingRight + 4}px`;
+
+        fullscreenBtn.addEventListener('click', () => {
+            previousScrollOffset = [window.scroll, window.scrollY];
+            const clone = mermaidDiv.cloneNode(true);
+            modalContent.innerHTML = '';
+            modalContent.appendChild(clone);
+
+            const svg = clone.querySelector('svg');
+            if (svg) {
+                svg.removeAttribute('width');
+                svg.removeAttribute('height');
+                svg.style.width = '100%';
+                svg.style.height = 'auto';
+                svg.style.maxWidth = '100%';
+                svg.style.sdisplay = 'block';
+
+                if ("False" === "True") {
+                    setTimeout(() => {
+                        const g = svg.querySelector('g');
+                        if (g) {
+                            var svgD3 = d3.select(svg);
+                            svgD3.html("<g class='wrapper'>" + svgD3.html() + "</g>");
+                            var inner = svgD3.select("g");
+                            var zoom = d3.zoom().on("zoom", function(event) {
+                                inner.attr("transform", event.transform);
+                            });
+                            svgD3.call(zoom);
+                        }
+                    }, 100);
+                }
+            }
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
+
+        container.appendChild(fullscreenBtn);
+        allButtons.push(fullscreenBtn);
+    });
+
+    // Update theme classes when theme changes
+    const updateTheme = () => {
+        const dark = isDarkTheme();
+        allButtons.forEach(btn => {
+            if (dark) {
+                btn.classList.add('dark-theme');
+            } else {
+                btn.classList.remove('dark-theme');
+            }
+        });
+        if (dark) {
+            modal.classList.add('dark-theme');
+            modalContent.classList.add('dark-theme');
+            closeBtn.classList.add('dark-theme');
+        } else {
+            modal.classList.remove('dark-theme');
+            modalContent.classList.remove('dark-theme');
+            closeBtn.classList.remove('dark-theme');
+        }
+    };
+
+    // Watch for theme changes
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class', 'style', 'data-theme']
+    });
+    observer.observe(document.body, {
+        attributes: true,
+        attributeFilter: ['class', 'style']
+    });
+};
+
+window.addEventListener("load", load);
+</script>
+      <script src="../_static/js/custom.js?v=d0f0919d"></script>
+      <script src="../_static/js/tool-catalog.js?v=e9e09451"></script>
+      <script defer="defer" src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script></body>
+</html>

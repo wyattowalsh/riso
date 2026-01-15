@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en" data-accent-color="teal" data-content_root="../">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Post-Generation Hook - Riso Dev Docs 0.1.0</title><link rel="shortcut icon" href="../_static/favicon.ico"/><link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Quality Suite" href="quality-suite.html" /><link rel="prev" title="Pre-Generation Hook" href="pre-gen-hook.html" />
+      <link rel="canonical" href="http://localhost:8000/tools/post-gen-hook.html" /><script>
+    function setColorMode(t){let e=document.documentElement;e.setAttribute("data-color-mode",t);let a=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches,s=t;"auto"===t&&(s=a?"dark":"light"),"light"===s?(e.classList.remove("dark"),e.classList.add("light")):(e.classList.remove("light"),e.classList.add("dark"))}
+    setColorMode(localStorage._theme||"auto");
+  </script><link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=e1a1ceaf" />
+    <link rel="stylesheet" type="text/css" href="../_static/shibuya.css?v=a318c5d4" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../_static/twemoji.css?v=2199c511" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tooltipster.custom.css?v=7bc2f056" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tooltipster.bundle.min.css?v=37217874" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tooltipster-sideTip-shadow.min.css?v=6227e517" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tooltipster-sideTip-punk.min.css?v=94669e23" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tooltipster-sideTip-noir.min.css?v=21a39f42" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tooltipster-sideTip-light.min.css?v=a18b2449" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tooltipster-sideTip-borderless.min.css?v=dbff53e4" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/micromodal.css?v=d7bf34ee" />
+    <link rel="stylesheet" type="text/css" href="../_static/autoclasstoc.css?v=08871587" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link media="print" rel="stylesheet" type="text/css" href="../_static/print.css?v=20ff2c19" />
+    <link rel="stylesheet" type="text/css" href="../_static/tabs.css?v=a5c4661c" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/design-tokens.css?v=06072868" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=294b5bd4" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/components.css?v=bfea75b3" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/lucide-icons.css?v=d252316b" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tool-catalog.css?v=7fd15ab7" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/mermaid.css?v=b1821ef9" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/riso-effects.css?v=53662340" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/riso-copier.css?v=7efcb1ea" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sy-f-text: "Inter", var(--sy-f-sys), var(--sy-f-cjk), sans-serif;
+  --sy-f-heading: "Inter", var(--sy-f-sys), var(--sy-f-cjk), sans-serif;
+}
+</style>
+    <meta property="og:type" content="website"/>
+  <meta property="og:url" content="http://localhost:8000/tools/post-gen-hook.html"/>
+  <meta property="og:title" content="Post-Generation Hook"/>
+    <meta name="description" content="Performs post-processing tasks after template generation completes"/>
+    <meta property="og:description" content="Performs post-processing tasks after template generation completes"/>
+    <meta name="twitter:card" content="summary"/>
+  </head>
+<body><div class="sy-head">
+  <div class="sy-head-blur"></div>
+  <div class="sy-head-inner sy-container mx-auto">
+    <a class="sy-head-brand" href="../index.html">
+      <img class="light-logo" src="../_static/img/logo.webp" alt="Riso Dev Docs" height="28" loading="lazy" />
+      <img class="dark-logo" src="../_static/img/logo.webp" alt="Riso Dev Docs" height="28" loading="lazy" />
+      <strong>Riso Dev Docs</strong>
+    </a>
+    <div class="sy-head-nav" id="head-nav">
+      <nav class="sy-head-links"><ul><li class="link"><a href="../guides/index.html">📖 Guides</a></li><li class="link"><a href="index.html">🧰 Tools</a></li><li class="link"><a href="../api/index.html">📚 Reference</a></li><li class="link"><a href="../changelog.html">📝 Changelog</a></li></ul></nav>
+      <div class="sy-head-extra flex items-center print:hidden"><form class="searchbox flex items-center" action="../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <kbd>/</kbd>
+</form><div class="sy-head-socials">
+  <a href="https://github.com/openai/riso" aria-label="GitHub">
+    <iconify-icon icon="simple-icons:github"></iconify-icon>
+  </a></div></div>
+    </div>
+    <div class="sy-head-actions flex items-center shrink-0 print:hidden"><button class="js-theme theme-switch flex items-center"
+data-aria-auto="Switch to light color mode"
+data-aria-light="Switch to dark color mode"
+data-aria-dark="Switch to auto color mode">
+<i class="i-lucide theme-icon"></i>
+</button><button class="md:hidden flex items-center js-menu" aria-label="Menu" type="button" aria-controls="head-nav" aria-expanded="false">
+        <div class="hamburger">
+          <span class="hamburger_1"></span>
+          <span class="hamburger_2"></span>
+          <span class="hamburger_3"></span>
+        </div>
+      </button>
+    </div>
+  </div>
+</div>
+<div class="sy-page sy-container flex mx-auto">
+  <aside id="lside" class="sy-lside md:w-72 md:shrink-0 print:hidden">
+    <div class="sy-lside-inner md:sticky">
+      <div class="sy-scrollbar p-6">
+        <div class="globaltoc" data-expand-depth="0"><ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../guides/index.html">Guides</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Tools</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="FRONTMATTER_SCHEMA.html">Tool Frontmatter Schema</a></li>
+<li class="toctree-l2"><a class="reference internal" href="agents-md-manager.html">agents-md-manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mcp-installer.html">mcp-installer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="riso-tui.html">Riso TUI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="render-samples.html">Render Samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generate-compatibility-matrix.html">Generate Compatibility Matrix</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pre-gen-hook.html">Pre-Generation Hook</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Post-Generation Hook</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quality-suite.html">Quality Suite</a></li>
+<li class="toctree-l2"><a class="reference internal" href="frontend-validator.html">Frontend Validator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tool-validator.html">Tool Validator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="structure-validator.html">Structure Validator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="monorepo-tool-validator.html">Monorepo Tool Validator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="build-tool-validator.html">Build Tool Validator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="language-validator.html">Language Validator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ruff.html">Ruff</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ty.html">ty</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pylint.html">Pylint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pytest.html">pytest</a></li>
+<li class="toctree-l2"><a class="reference internal" href="coverage.html">Coverage.py</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pre-commit.html">pre-commit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="uv.html">uv</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pnpm.html">pnpm</a></li>
+<li class="toctree-l2"><a class="reference internal" href="copier.html">Copier</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docker.html">Docker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="github-actions.html">GitHub Actions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fastapi.html">FastAPI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fastify.html">Fastify</a></li>
+<li class="toctree-l2"><a class="reference internal" href="typer.html">Typer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fastmcp.html">FastMCP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="riso-mcp-server.html">Riso MCP Server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="strawberry-graphql.html">Strawberry GraphQL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="websockets.html">WebSockets Module</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="lside-overlay js-menu" role="button" aria-label="Close left sidebar" aria-controls="lside" aria-expanded="false"></div>
+  <aside id="rside" class="sy-rside pb-3 w-64 shrink-0 order-last">
+    <button class="rside-close js-menu xl:hidden" aria-label="Close Table of Contents" type="button" aria-controls="rside" aria-expanded="false">
+      <i class="i-lucide close"></i>
+    </button>
+    <div class="sy-scrollbar sy-rside-inner px-6 xl:top-16 xl:sticky xl:pl-0 pt-6 pb-4"><div class="localtoc"><h3>On this page</h3><ul>
+<li><a class="reference internal" href="#purpose">Purpose</a></li>
+<li><a class="reference internal" href="#location">Location</a></li>
+<li><a class="reference internal" href="#execution">Execution</a></li>
+<li><a class="reference internal" href="#tasks-performed">Tasks Performed</a><ul>
+<li><a class="reference internal" href="#git-initialization">Git Initialization</a></li>
+<li><a class="reference internal" href="#dependency-installation">Dependency Installation</a></li>
+<li><a class="reference internal" href="#pre-commit-setup">Pre-commit Setup</a></li>
+<li><a class="reference internal" href="#cleanup">Cleanup</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#output">Output</a></li>
+<li><a class="reference internal" href="#related">Related</a></li>
+</ul>
+</div><a class="js-repo-stats repo-stats flex items-center" href="https://github.com/openai/riso"
+  data-type="github" data-user="openai" data-repo="riso">
+  <span class="w-8 flex items-center justify-around shrink-0 text-3xl">
+    <iconify-icon icon="simple-icons:github"></iconify-icon>
+  </span>
+  <span class="flex-grow px-2 break-all">
+    
+    
+      <span>openai/riso</span>
+    
+    <span class="flex text-sm repo-stats-count">
+      <span class="flex items-center pr-3">
+        <iconify-icon icon="lucide:star"></iconify-icon>
+        <strong class="js-repo-stars ml-1">0</strong>
+      </span>
+      <span class="flex items-center">
+        <iconify-icon icon="lucide:git-fork"></iconify-icon>
+        <strong class="js-repo-forks ml-1">0</strong>
+      </span>
+    </span>
+  </span>
+</a><div class="edit-this-page">
+  <a href="https://github.com/openai/riso/blob/main/docs/tools/post-gen-hook.md">Edit this page</a>
+</div></div>
+  </aside>
+  <div class="rside-overlay js-menu" role="button" aria-label="Close Table of Contents" aria-controls="rside" aria-expanded="false"></div>
+  <main class="sy-main w-full max-sm:max-w-full print:pt-6">
+<div class="sy-breadcrumbs" role="navigation">
+  <div class="sy-breadcrumbs-inner flex items-center">
+    <div class="md:hidden mr-3">
+      <button class="js-menu" aria-label="Menu" type="button" aria-controls="lside" aria-expanded="false">
+        <i class="i-lucide menu"></i>
+      </button>
+    </div>
+    <ol class="flex-1" itemscope itemtype="https://schema.org/BreadcrumbList"><li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+        <a itemprop="item" href="../index.html"><span itemprop="name">Riso Dev Docs</span></a>
+        <span>/</span>
+        <meta itemprop="position" content="1" />
+      </li><li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+        <a itemprop="item" href="index.html"><span itemprop="name">Tool Catalog</span></a>
+        <span>/</span>
+        <meta itemprop="position" content="2" />
+      </li><li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+        <strong itemprop="name">Post-Generation Hook</strong>
+        <meta itemprop="position" content="3" />
+      </li></ol>
+    <div class="xl:hidden ml-1">
+      <button class="js-menu" aria-label="Show table of contents" type="button" aria-controls="rside"
+        aria-expanded="false">
+        <i class="i-lucide outdent"></i>
+      </button>
+    </div>
+  </div>
+</div><div class="flex flex-col break-words justify-between">
+      <div class="relative min-w-0 max-w-6xl px-6 pb-6 pt-8 xl:px-12">
+  <div class="copy-page-wrapper relative pb-4 lg:absolute lg:top-8 lg:right-6 xl:right-12">
+  <div id="copy-page-trigger">
+    <button
+      type="button"
+      class="js-copy px-3 py-1 inline-flex items-center gap-1"
+      data-url="http://localhost:8000/_sources/tools/post-gen-hook.md.txt"
+    >
+      <i class="i-lucide" data-icon="copy"></i>
+      <span>Copy page</span>
+    </button>
+    <button class="js-menu px-2 py-1" type="button" aria-label="More actions"
+      aria-haspopup="menu" aria-expanded="false" aria-controls="copy-page-content">
+      <i class="i-lucide chevron-down"></i>
+    </button>
+  </div>
+  <div id="copy-page-content" role="menu" aria-orientation="vertical" aria-hidden="true">
+    <div role="presentation">
+      <div class="flex flex-col" role="group">
+        <button class="js-copy" type="button" role="menuitem"
+          data-url="http://localhost:8000/_sources/tools/post-gen-hook.md.txt">
+          <span class="iconify-icon">
+            <i class="i-lucide" data-icon="copy"></i>
+          </span>
+          <span>Copy page</span>
+        </button>
+        <a role="menuitem" href="http://localhost:8000/_sources/tools/post-gen-hook.md.txt" target="_blank" rel="nofollow"><iconify-icon icon="bi:markdown"></iconify-icon>
+            <span>View as Markdown</span></a><a role="menuitem" href="https://chatgpt.com/?hints=search&q=Read%20http%3A//localhost%3A8000/_sources/tools/post-gen-hook.md.txt%20so%20I%20can%20ask%20questions%20about%20it." target="_blank" rel="nofollow">
+          <iconify-icon icon="bi:openai"></iconify-icon>
+          <span>Open in ChatGPT</span>
+        </a><a role="menuitem" href="https://claude.ai/new?q=Read%20http%3A//localhost%3A8000/_sources/tools/post-gen-hook.md.txt%20so%20I%20can%20ask%20questions%20about%20it." target="_blank" rel="nofollow">
+          <iconify-icon icon="bi:claude"></iconify-icon>
+          <span>Open in Claude</span>
+        </a></div>
+    </div>
+  </div>
+</div><article class="yue" role="main">
+          <section class="tex2jax_ignore mathjax_ignore" id="post-generation-hook">
+<h1>Post-Generation Hook<a class="headerlink" href="#post-generation-hook" title="Link to this heading">¶</a></h1>
+<p>The post-generation hook performs setup tasks after Copier finishes generating the template files.</p>
+<section id="purpose">
+<h2>Purpose<a class="headerlink" href="#purpose" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Initialize git repository</p></li>
+<li><p>Install dependencies</p></li>
+<li><p>Set up pre-commit hooks</p></li>
+<li><p>Display next-steps guidance</p></li>
+</ul>
+</section>
+<section id="location">
+<h2>Location<a class="headerlink" href="#location" title="Link to this heading">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="n">template</span><span class="o">/</span><span class="n">hooks</span><span class="o">/</span><span class="n">post_gen_project</span><span class="o">.</span><span class="n">py</span>
+</span></pre></div>
+</div>
+</section>
+<section id="execution">
+<h2>Execution<a class="headerlink" href="#execution" title="Link to this heading">¶</a></h2>
+<p>This hook runs automatically after template generation:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Generation completes, then hook executes</span>
+</span><span data-line="2">copier<span class="w"> </span>copy<span class="w"> </span>.<span class="w"> </span>./my-project
+</span><span data-line="3"><span class="c1"># -&gt; Files generated</span>
+</span><span data-line="4"><span class="c1"># -&gt; post_gen_project.py runs</span>
+</span><span data-line="5"><span class="c1"># -&gt; Setup complete</span>
+</span></pre></div>
+</div>
+</section>
+<section id="tasks-performed">
+<h2>Tasks Performed<a class="headerlink" href="#tasks-performed" title="Link to this heading">¶</a></h2>
+<section id="git-initialization">
+<h3>Git Initialization<a class="headerlink" href="#git-initialization" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Initialize new git repository</span>
+</span><span data-line="2"><span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="s2">&quot;git&quot;</span><span class="p">,</span> <span class="s2">&quot;init&quot;</span><span class="p">],</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span data-line="3"><span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="s2">&quot;git&quot;</span><span class="p">,</span> <span class="s2">&quot;add&quot;</span><span class="p">,</span> <span class="s2">&quot;.&quot;</span><span class="p">],</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span data-line="4"><span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="s2">&quot;git&quot;</span><span class="p">,</span> <span class="s2">&quot;commit&quot;</span><span class="p">,</span> <span class="s2">&quot;-m&quot;</span><span class="p">,</span> <span class="s2">&quot;Initial commit from Riso template&quot;</span><span class="p">],</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></pre></div>
+</div>
+</section>
+<section id="dependency-installation">
+<h3>Dependency Installation<a class="headerlink" href="#dependency-installation" title="Link to this heading">¶</a></h3>
+<p>Based on project configuration:</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Configuration</p></th>
+<th class="head"><p>Installation</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Python backend</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">sync</span> <span class="pre">--group</span> <span class="pre">dev</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Node frontend</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">pnpm</span> <span class="pre">install</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Monorepo</p></td>
+<td><p>Both, plus workspace setup</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="pre-commit-setup">
+<h3>Pre-commit Setup<a class="headerlink" href="#pre-commit-setup" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="s2">&quot;uv&quot;</span><span class="p">,</span> <span class="s2">&quot;run&quot;</span><span class="p">,</span> <span class="s2">&quot;pre-commit&quot;</span><span class="p">,</span> <span class="s2">&quot;install&quot;</span><span class="p">],</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span data-line="2"><span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="s2">&quot;uv&quot;</span><span class="p">,</span> <span class="s2">&quot;run&quot;</span><span class="p">,</span> <span class="s2">&quot;pre-commit&quot;</span><span class="p">,</span> <span class="s2">&quot;install&quot;</span><span class="p">,</span> <span class="s2">&quot;--hook-type&quot;</span><span class="p">,</span> <span class="s2">&quot;commit-msg&quot;</span><span class="p">],</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></pre></div>
+</div>
+</section>
+<section id="cleanup">
+<h3>Cleanup<a class="headerlink" href="#cleanup" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Remove conditional template files that don’t apply</p></li>
+<li><p>Clean up empty directories</p></li>
+<li><p>Fix file permissions</p></li>
+</ul>
+</section>
+</section>
+<section id="output">
+<h2>Output<a class="headerlink" href="#output" title="Link to this heading">¶</a></h2>
+<p>After completion, displays:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span data-line="1">✅ Project generated successfully!
+</span><span data-line="2">
+</span><span data-line="3">Next steps:
+</span><span data-line="4">  cd my-project
+</span><span data-line="5">  make quality     # Run linting and tests
+</span><span data-line="6">  make docs        # Start documentation server
+</span></pre></div>
+</div>
+</section>
+<section id="related">
+<h2>Related<a class="headerlink" href="#related" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="pre-gen-hook.html"><span class="std std-doc">Pre-Generation Hook</span></a> - Validation before generation</p></li>
+<li><p><a class="reference internal" href="copier.html"><span class="std std-doc">Copier</span></a> - Template engine</p></li>
+<li><p><a class="reference internal" href="pre-commit.html"><span class="std std-doc">pre-commit</span></a> - Git hooks framework</p></li>
+</ul>
+</section>
+</section>
+
+        </article><button class="back-to-top" type="button">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+  </svg>
+  <span>Back to top</span>
+</button><div class="navigation flex print:hidden"><div class="navigation-prev">
+    <a href="pre-gen-hook.html">
+      <i class="i-lucide chevron-left"></i>
+      <div class="page-info">
+        <span>Previous</span><div class="title">Pre-Generation Hook</div></div>
+    </a>
+  </div><div class="navigation-next">
+    <a href="quality-suite.html">
+      <div class="page-info">
+        <span>Next</span>
+        <div class="title">Quality Suite</div>
+      </div>
+      <i class="i-lucide chevron-right"></i>
+    </a>
+  </div></div></div>
+    </div>
+  </main>
+</div>
+<footer class="sy-foot">
+  <div class="sy-foot-inner sy-container mx-auto">
+    <div class="sy-foot-reserved md:flex justify-between items-center">
+      <div class="sy-foot-copyright"><p>2025, Riso</p>
+  
+  <p>
+    Made with
+    
+    <a href="https://www.sphinx-doc.org/">Sphinx</a> and
+    
+    <a href="https://shibuya.lepture.com">Shibuya theme</a>.
+  </p>
+</div>
+      <div class="sy-foot-socials">
+<a href="https://github.com/openai/riso" aria-label="GitHub">
+  <iconify-icon icon="simple-icons:github"></iconify-icon>
+</a></div>
+    </div>
+  </div>
+</footer>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=6870ed9c"></script>
+      <script src="https://unpkg.com/twemoji@latest/dist/twemoji.min.js"></script>
+      <script src="../_static/twemoji.js?v=a4381b3f"></script>
+      <script src="../_static/js/hoverxref.js?v=85f38ef1"></script>
+      <script src="../_static/js/tooltipster.bundle.min.js?v=18bf091b"></script>
+      <script src="../_static/js/micromodal.min.js?v=04d6302d"></script>
+      <script>let toggleHintShow = 'Click to show';</script>
+      <script>let toggleHintHide = 'Click to hide';</script>
+      <script>let toggleOpenOnPrint = 'true';</script>
+      <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+      <script src="../_static/design-tabs.js?v=f930bc37"></script>
+      <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+      <script src="../_static/shibuya.js?v=cac61aee"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../_static/tabs.js?v=3030b3cb"></script>
+      <script src="../_static/js/custom.js?v=c8f3429d"></script>
+      <script src="../_static/js/tool-catalog.js?v=e9e09451"></script>
+      <script defer="defer" src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script></body>
+</html>

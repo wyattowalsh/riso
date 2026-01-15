@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en" data-accent-color="teal" data-content_root="./">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Phase 0 Implementation Summary: Tasks A1-A4 - Riso Dev Docs 0.1.0</title><link rel="shortcut icon" href="_static/favicon.ico"/><link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" />
+      <link rel="canonical" href="http://localhost:8000/PHASE0_IMPLEMENTATION_SUMMARY.html" /><script>
+    function setColorMode(t){let e=document.documentElement;e.setAttribute("data-color-mode",t);let a=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches,s=t;"auto"===t&&(s=a?"dark":"light"),"light"===s?(e.classList.remove("dark"),e.classList.add("light")):(e.classList.remove("light"),e.classList.add("dark"))}
+    setColorMode(localStorage._theme||"auto");
+  </script><link rel="stylesheet" type="text/css" href="_static/pygments.css?v=e1a1ceaf" />
+    <link rel="stylesheet" type="text/css" href="_static/shibuya.css?v=a318c5d4" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="_static/twemoji.css?v=2199c511" />
+    <link rel="stylesheet" type="text/css" href="_static/css/tooltipster.custom.css?v=7bc2f056" />
+    <link rel="stylesheet" type="text/css" href="_static/css/tooltipster.bundle.min.css?v=37217874" />
+    <link rel="stylesheet" type="text/css" href="_static/css/tooltipster-sideTip-shadow.min.css?v=6227e517" />
+    <link rel="stylesheet" type="text/css" href="_static/css/tooltipster-sideTip-punk.min.css?v=94669e23" />
+    <link rel="stylesheet" type="text/css" href="_static/css/tooltipster-sideTip-noir.min.css?v=21a39f42" />
+    <link rel="stylesheet" type="text/css" href="_static/css/tooltipster-sideTip-light.min.css?v=a18b2449" />
+    <link rel="stylesheet" type="text/css" href="_static/css/tooltipster-sideTip-borderless.min.css?v=dbff53e4" />
+    <link rel="stylesheet" type="text/css" href="_static/css/micromodal.css?v=d7bf34ee" />
+    <link rel="stylesheet" type="text/css" href="_static/autoclasstoc.css?v=08871587" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link media="print" rel="stylesheet" type="text/css" href="_static/print.css?v=20ff2c19" />
+    <link rel="stylesheet" type="text/css" href="_static/tabs.css?v=a5c4661c" />
+    <link rel="stylesheet" type="text/css" href="_static/css/design-tokens.css?v=06072868" />
+    <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=294b5bd4" />
+    <link rel="stylesheet" type="text/css" href="_static/css/components.css?v=bfea75b3" />
+    <link rel="stylesheet" type="text/css" href="_static/css/lucide-icons.css?v=d252316b" />
+    <link rel="stylesheet" type="text/css" href="_static/css/tool-catalog.css?v=7fd15ab7" />
+    <link rel="stylesheet" type="text/css" href="_static/css/mermaid.css?v=b1821ef9" />
+    <link rel="stylesheet" type="text/css" href="_static/css/riso-effects.css?v=53662340" />
+    <link rel="stylesheet" type="text/css" href="_static/css/riso-copier.css?v=7efcb1ea" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sy-f-text: "Inter", var(--sy-f-sys), var(--sy-f-cjk), sans-serif;
+  --sy-f-heading: "Inter", var(--sy-f-sys), var(--sy-f-cjk), sans-serif;
+}
+</style>
+    <meta property="og:type" content="website"/>
+  <meta property="og:url" content="http://localhost:8000/PHASE0_IMPLEMENTATION_SUMMARY.html"/>
+  <meta property="og:title" content="Phase 0 Implementation Summary: Tasks A1-A4"/>
+    <meta name="twitter:card" content="summary"/>
+  </head>
+<body><div class="sy-head">
+  <div class="sy-head-blur"></div>
+  <div class="sy-head-inner sy-container mx-auto">
+    <a class="sy-head-brand" href="index.html">
+      <img class="light-logo" src="_static/img/logo.webp" alt="Riso Dev Docs" height="28" loading="lazy" />
+      <img class="dark-logo" src="_static/img/logo.webp" alt="Riso Dev Docs" height="28" loading="lazy" />
+      <strong>Riso Dev Docs</strong>
+    </a>
+    <div class="sy-head-nav" id="head-nav">
+      <nav class="sy-head-links"><ul><li class="link"><a href="guides/index.html">📖 Guides</a></li><li class="link"><a href="tools/index.html">🧰 Tools</a></li><li class="link"><a href="api/index.html">📚 Reference</a></li><li class="link"><a href="changelog.html">📝 Changelog</a></li></ul></nav>
+      <div class="sy-head-extra flex items-center print:hidden"><form class="searchbox flex items-center" action="search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <kbd>/</kbd>
+</form><div class="sy-head-socials">
+  <a href="https://github.com/openai/riso" aria-label="GitHub">
+    <iconify-icon icon="simple-icons:github"></iconify-icon>
+  </a></div></div>
+    </div>
+    <div class="sy-head-actions flex items-center shrink-0 print:hidden"><button class="js-theme theme-switch flex items-center"
+data-aria-auto="Switch to light color mode"
+data-aria-light="Switch to dark color mode"
+data-aria-dark="Switch to auto color mode">
+<i class="i-lucide theme-icon"></i>
+</button><button class="md:hidden flex items-center js-menu" aria-label="Menu" type="button" aria-controls="head-nav" aria-expanded="false">
+        <div class="hamburger">
+          <span class="hamburger_1"></span>
+          <span class="hamburger_2"></span>
+          <span class="hamburger_3"></span>
+        </div>
+      </button>
+    </div>
+  </div>
+</div>
+<div class="sy-page sy-container flex mx-auto">
+  <aside id="lside" class="sy-lside md:w-72 md:shrink-0 print:hidden">
+    <div class="sy-lside-inner md:sticky">
+      <div class="sy-scrollbar p-6">
+        <div class="globaltoc" data-expand-depth="0"><ul>
+<li class="toctree-l1"><a class="reference internal" href="guides/index.html">Guides</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools/index.html">Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="lside-overlay js-menu" role="button" aria-label="Close left sidebar" aria-controls="lside" aria-expanded="false"></div>
+  <aside id="rside" class="sy-rside pb-3 w-64 shrink-0 order-last">
+    <button class="rside-close js-menu xl:hidden" aria-label="Close Table of Contents" type="button" aria-controls="rside" aria-expanded="false">
+      <i class="i-lucide close"></i>
+    </button>
+    <div class="sy-scrollbar sy-rside-inner px-6 xl:top-16 xl:sticky xl:pl-0 pt-6 pb-4"><div class="localtoc"><h3>On this page</h3><ul>
+<li><a class="reference internal" href="#a1-prompt-system-enhancement-complete">A1: Prompt System Enhancement &#9989; COMPLETE</a><ul>
+<li><a class="reference internal" href="#implemented-changes">Implemented Changes</a><ul>
+<li><a class="reference internal" href="#enhanced-template-copier-yml">1. Enhanced <code class="docutils literal notranslate"><span class="pre">template/copier.yml</span></code></a></li>
+<li><a class="reference internal" href="#created-template-prompts-prompt-metadata-json">2. Created <code class="docutils literal notranslate"><span class="pre">template/prompts/prompt_metadata.json</span></code></a></li>
+<li><a class="reference internal" href="#created-template-prompts-copier-answers-schema-yml">3. Created <code class="docutils literal notranslate"><span class="pre">template/prompts/copier-answers-schema.yml</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#a2-validation-framework-validators-complete">A2: Validation Framework &#9989; VALIDATORS COMPLETE</a><ul>
+<li><a class="reference internal" href="#implemented-validators">Implemented Validators</a><ul>
+<li><a class="reference internal" href="#directory-structure">1. Directory Structure</a></li>
+<li><a class="reference internal" href="#language-validator-py">2. <code class="docutils literal notranslate">py</span></code></a></li>
+<li><a class="reference internal" href="#frontend-validator-py">3. <code class="docutils literal notranslate">py</span></code></a></li>
+<li><a class="reference internal" href="#tool-validator-py">4. <code class="docutils literal notranslate">py</span></code></a></li>
+<li><a class="reference internal" href="#structure-validator-py">5. <code class="docutils literal notranslate">py</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#pending-integration-a2-6-a2-7">Pending Integration (A2.6, A2.7)</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#a3-shared-macros-utilities-pending">A3: Shared Macros &amp; Utilities (PENDING)</a><ul>
+<li><a class="reference internal" href="#planned-implementation">Planned Implementation</a><ul>
+<li><a class="reference internal" href="#template-files-shared-macros-jinja-updates">1. <code class="docutils literal notranslate"><span class="pre">template/files/shared/macros.jinja</span></code> Updates</a></li>
+<li><a class="reference internal" href="#utility-files-to-create">2. Utility Files to Create</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#a4-repository-structure-templates-pending">A4: Repository Structure Templates (PENDING)</a><ul>
+<li><a class="reference internal" href="#id1">Planned Implementation</a><ul>
+<li><a class="reference internal" href="#id2">1. Directory Structure</a></li>
+<li><a class="reference internal" href="#structure-definitions">2. Structure Definitions</a></li>
+<li><a class="reference internal" href="#conditional-file-placement">3. Conditional File Placement</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#validation-criteria-checklist">Validation Criteria Checklist</a><ul>
+<li><a class="reference internal" href="#a1-prompt-system-enhancement">A1: Prompt System Enhancement</a></li>
+<li><a class="reference internal" href="#a2-validation-framework">A2: Validation Framework</a></li>
+<li><a class="reference internal" href="#a3-shared-macros-utilities">A3: Shared Macros &amp; Utilities</a></li>
+<li><a class="reference internal" href="#a4-repository-structure-templates">A4: Repository Structure Templates</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#next-steps">Next Steps</a><ul>
+<li><a class="reference internal" href="#immediate-to-complete-phase-0">Immediate (To Complete Phase 0):</a></li>
+<li><a class="reference internal" href="#testing-validation">Testing &amp; Validation:</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#key-achievements">Key Achievements</a></li>
+<li><a class="reference internal" href="#files-created-modified">Files Created/Modified</a><ul>
+<li><a class="reference internal" href="#created">Created:</a></li>
+<li><a class="reference internal" href="#modified">Modified:</a></li>
+<li><a class="reference internal" href="#pending-creation">Pending Creation:</a></li>
+<li><a class="reference internal" href="#pending-modification">Pending Modification:</a></li>
+</ul>
+</li>
+</ul>
+</div><a class="js-repo-stats repo-stats flex items-center" href="https://github.com/openai/riso"
+  data-type="github" data-user="openai" data-repo="riso">
+  <span class="w-8 flex items-center justify-around shrink-0 text-3xl">
+    <iconify-icon icon="simple-icons:github"></iconify-icon>
+  </span>
+  <span class="flex-grow px-2 break-all">
+    
+    
+      <span>openai/riso</span>
+    
+    <span class="flex text-sm repo-stats-count">
+      <span class="flex items-center pr-3">
+        <iconify-icon icon="lucide:star"></iconify-icon>
+        <strong class="js-repo-stars ml-1">0</strong>
+      </span>
+      <span class="flex items-center">
+        <iconify-icon icon="lucide:git-fork"></iconify-icon>
+        <strong class="js-repo-forks ml-1">0</strong>
+      </span>
+    </span>
+  </span>
+</a><div class="edit-this-page">
+  <a href="https://github.com/openai/riso/blob/main/docs/PHASE0_IMPLEMENTATION_SUMMARY.md">Edit this page</a>
+</div></div>
+  </aside>
+  <div class="rside-overlay js-menu" role="button" aria-label="Close Table of Contents" aria-controls="rside" aria-expanded="false"></div>
+  <main class="sy-main w-full max-sm:max-w-full print:pt-6">
+<div class="sy-breadcrumbs" role="navigation">
+  <div class="sy-breadcrumbs-inner flex items-center">
+    <div class="md:hidden mr-3">
+      <button class="js-menu" aria-label="Menu" type="button" aria-controls="lside" aria-expanded="false">
+        <i class="i-lucide menu"></i>
+      </button>
+    </div>
+    <ol class="flex-1" itemscope itemtype="https://schema.org/BreadcrumbList"><li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+        <a itemprop="item" href="index.html"><span itemprop="name">Riso Dev Docs</span></a>
+        <span>/</span>
+        <meta itemprop="position" content="1" />
+      </li><li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+        <strong itemprop="name">Phase 0 Implementation Summary: Tasks A1-A4</strong>
+        <meta itemprop="position" content="2" />
+      </li></ol>
+    <div class="xl:hidden ml-1">
+      <button class="js-menu" aria-label="Show table of contents" type="button" aria-controls="rside"
+        aria-expanded="false">
+        <i class="i-lucide outdent"></i>
+      </button>
+    </div>
+  </div>
+</div><div class="flex flex-col break-words justify-between">
+      <div class="relative min-w-0 max-w-6xl px-6 pb-6 pt-8 xl:px-12">
+  <div class="copy-page-wrapper relative pb-4 lg:absolute lg:top-8 lg:right-6 xl:right-12">
+  <div id="copy-page-trigger">
+    <button
+      type="button"
+      class="js-copy px-3 py-1 inline-flex items-center gap-1"
+      data-url="http://localhost:8000/_sources/PHASE0_IMPLEMENTATION_SUMMARY.md.txt"
+    >
+      <i class="i-lucide" data-icon="copy"></i>
+      <span>Copy page</span>
+    </button>
+    <button class="js-menu px-2 py-1" type="button" aria-label="More actions"
+      aria-haspopup="menu" aria-expanded="false" aria-controls="copy-page-content">
+      <i class="i-lucide chevron-down"></i>
+    </button>
+  </div>
+  <div id="copy-page-content" role="menu" aria-orientation="vertical" aria-hidden="true">
+    <div role="presentation">
+      <div class="flex flex-col" role="group">
+        <button class="js-copy" type="button" role="menuitem"
+          data-url="http://localhost:8000/_sources/PHASE0_IMPLEMENTATION_SUMMARY.md.txt">
+          <span class="iconify-icon">
+            <i class="i-lucide" data-icon="copy"></i>
+          </span>
+          <span>Copy page</span>
+        </button>
+        <a role="menuitem" href="http://localhost:8000/_sources/PHASE0_IMPLEMENTATION_SUMMARY.md.txt" target="_blank" rel="nofollow"><iconify-icon icon="bi:markdown"></iconify-icon>
+            <span>View as Markdown</span></a><a role="menuitem" href="https://chatgpt.com/?hints=search&q=Read%20http%3A//localhost%3A8000/_sources/PHASE0_IMPLEMENTATION_SUMMARY.md.txt%20so%20I%20can%20ask%20questions%20about%20it." target="_blank" rel="nofollow">
+          <iconify-icon icon="bi:openai"></iconify-icon>
+          <span>Open in ChatGPT</span>
+        </a><a role="menuitem" href="https://claude.ai/new?q=Read%20http%3A//localhost%3A8000/_sources/PHASE0_IMPLEMENTATION_SUMMARY.md.txt%20so%20I%20can%20ask%20questions%20about%20it." target="_blank" rel="nofollow">
+          <iconify-icon icon="bi:claude"></iconify-icon>
+          <span>Open in Claude</span>
+        </a></div>
+    </div>
+  </div>
+</div><article class="yue" role="main">
+          <section class="tex2jax_ignore mathjax_ignore" id="phase-0-implementation-summary-tasks-a1-a4">
+<h1>Phase 0 Implementation Summary: Tasks A1-A4<a class="headerlink" href="#phase-0-implementation-summary-tasks-a1-a4" title="Link to this heading">¶</a></h1>
+<p><strong>Date:</strong> November 20, 2025<br />
+<strong>Status:</strong> In Progress<br />
+<strong>Completion:</strong> A1 (✅ Complete), A2 (✅ Complete - validators created, hooks integration pending), A3 (Pending), A4 (Pending)</p>
+<hr class="docutils" />
+<section id="a1-prompt-system-enhancement-complete">
+<h2>A1: Prompt System Enhancement ✅ COMPLETE<a class="headerlink" href="#a1-prompt-system-enhancement-complete" title="Link to this heading">¶</a></h2>
+<section id="implemented-changes">
+<h3>Implemented Changes<a class="headerlink" href="#implemented-changes" title="Link to this heading">¶</a></h3>
+<section id="enhanced-template-copier-yml">
+<h4>1. Enhanced <code class="docutils literal notranslate"><span class="pre">template/copier.yml</span></code><a class="headerlink" href="#enhanced-template-copier-yml" title="Link to this heading">¶</a></h4>
+<p><strong>New Prompts Added:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">repository_structure</span></code>: 5 choices (flat, src-layout, apps-packages, multi-workspace, domain-driven)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">backend_languages</span></code>: Multiselect (python, rust, node, go, java, csharp)</p></li>
+</ul>
+<p><strong>Language-Specific Sub-Prompts:</strong></p>
+<p><strong>Python:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">python_version</span></code> (3.11, 3.12, 3.13)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">python_api_framework</span></code> (fastapi, django, flask)</p></li>
+</ul>
+<p><strong>Rust:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">rust_edition</span></code> (2021, 2024)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">rust_web_framework</span></code> (axum, actix-web, rocket, warp, poem)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">rust_async_runtime</span></code> (tokio, async-std, smol)</p></li>
+</ul>
+<p><strong>Node.js:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">node_version</span></code> (20, 21, 22)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">node_api_framework</span></code> (fastify, express, koa, nestjs, hono)</p></li>
+</ul>
+<p><strong>Go:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">go_version</span></code> (1.21, 1.22, 1.23)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">go_web_framework</span></code> (gin, echo, fiber, chi, gorilla)</p></li>
+</ul>
+<p><strong>Frontend Framework Prompts:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">frontend_framework</span></code>: 9 choices (none, react, vue, svelte, solid, angular, preact, qwik, lit)</p></li>
+</ul>
+<p><strong>React Sub-Prompts:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">react_framework</span></code> (vite, nextjs, remix, gatsby, astro, tanstack)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">react_state_management</span></code> (zustand, redux, mobx, jotai, valtio, context)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">react_routing</span></code> (tanstack-router, react-router, wouter, framework)</p></li>
+</ul>
+<p><strong>Vue Sub-Prompts:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">vue_framework</span></code> (vite, nuxt, quasar, vitepress)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vue_state_management</span></code> (pinia, vuex, harlem)</p></li>
+</ul>
+<p><strong>Svelte Sub-Prompts:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">svelte_framework</span></code> (sveltekit, vite, elderjs)</p></li>
+</ul>
+<p><strong>Component &amp; Styling Prompts:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">component_library</span></code>: 12 choices (none, shadcn-ui, mui, ant-design, chakra-ui, mantine, nextui, headless-ui, arco-design, semi-design, tremor, preline)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">css_framework</span></code>: 9 choices (tailwind, vanilla-extract, styled-components, emotion, css-modules, sass, postcss, uno, panda)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">icon_library</span></code>: Multiselect (lucide, heroicons, tabler, phosphor, feather, boxicons, iconify, radix-icons)</p></li>
+</ul>
+<p><strong>Development Tools Prompts:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">shell_type</span></code>: 5 choices (bash, zsh, fish, nushell, posix)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">frontend_testing</span></code>: Multiselect (vitest, jest, playwright, cypress, testing-library, storybook, chromatic)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">api_testing</span></code>: Multiselect (pytest, jest, supertest, pact, k6, artillery)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">build_tool</span></code>: 8 choices (vite, webpack, parcel, esbuild, rollup, turbopack, rspack, farm)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">monorepo_tool</span></code>: 7 choices (none, turborepo, nx, rush, lerna, moon, bazel)</p></li>
+</ul>
+<p><strong>Enhanced IDE &amp; AI Prompts:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ide_config</span></code>: Multiselect expanded to 11 options (vscode, cursor, windsurf, zed, neovim, emacs, jetbrains, sublime, nova, antigravity, warp)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ai_tools</span></code>: NEW multiselect (copilot, cursor-agent, codeium, tabnine, claude, gemini, amazon-q, cody, continue, aider)</p></li>
+</ul>
+<p><strong>Updated Defaults Section:</strong></p>
+<p>Added default values for all new prompts to ensure backward compatibility and sensible starting points.</p>
+</section>
+<section id="created-template-prompts-prompt-metadata-json">
+<h4>2. Created <code class="docutils literal notranslate"><span class="pre">template/prompts/prompt_metadata.json</span></code><a class="headerlink" href="#created-template-prompts-prompt-metadata-json" title="Link to this heading">¶</a></h4>
+<p>Comprehensive metadata file containing:</p>
+<ul class="simple">
+<li><p><strong>Prompt Definitions</strong>: Full documentation for each prompt</p>
+<ul>
+<li><p>Type specifications</p></li>
+<li><p>Choice descriptions with rationale</p></li>
+<li><p>Default values with conditional logic</p></li>
+<li><p>Validation rules</p></li>
+<li><p>Dependencies between prompts</p></li>
+<li><p>Affected systems/files</p></li>
+</ul>
+</li>
+<li><p><strong>Compatibility Matrix</strong>: Documents incompatible combinations</p>
+<ul>
+<li><p>Django vs. Vite/Next.js conflicts</p></li>
+<li><p>Next.js vs. other meta-frameworks</p></li>
+<li><p>shadcn-ui requirements (React + Tailwind)</p></li>
+<li><p>State management framework requirements</p></li>
+</ul>
+</li>
+<li><p><strong>Tool Dependencies</strong>: Maps languages to required CLI tools</p>
+<ul>
+<li><p>Python → python3, pip</p></li>
+<li><p>Rust → cargo, rustc</p></li>
+<li><p>Node → node, npm</p></li>
+<li><p>Go → go</p></li>
+<li><p>Java → java, javac</p></li>
+<li><p>C# → dotnet</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="created-template-prompts-copier-answers-schema-yml">
+<h4>3. Created <code class="docutils literal notranslate"><span class="pre">template/prompts/copier-answers-schema.yml</span></code><a class="headerlink" href="#created-template-prompts-copier-answers-schema-yml" title="Link to this heading">¶</a></h4>
+<p>JSON Schema for validating copier answers:</p>
+<ul class="simple">
+<li><p><strong>Schema Definitions</strong>: Type definitions for all prompts</p></li>
+<li><p><strong>Enum Validations</strong>: Valid choices for each prompt</p></li>
+<li><p><strong>Array Validations</strong>: Constraints for multiselect prompts (uniqueItems, minItems)</p></li>
+<li><p><strong>Pattern Validations</strong>: Regex patterns for project_name, project_slug, package_name</p></li>
+<li><p><strong>Required Fields</strong>: Identifies mandatory prompts</p></li>
+<li><p><strong>Conditional Fields</strong>: Documents when-clause dependencies</p></li>
+</ul>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="a2-validation-framework-validators-complete">
+<h2>A2: Validation Framework ✅ VALIDATORS COMPLETE<a class="headerlink" href="#a2-validation-framework-validators-complete" title="Link to this heading">¶</a></h2>
+<section id="implemented-validators">
+<h3>Implemented Validators<a class="headerlink" href="#implemented-validators" title="Link to this heading">¶</a></h3>
+<section id="directory-structure">
+<h4>1. Directory Structure<a class="headerlink" href="#directory-structure" title="Link to this heading">¶</a></h4>
+<p>Created <code class="docutils literal notranslate"><span class="pre">template/hooks/validators/</span></code> with:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">__init__.py</span></code> - Module initialization and exports</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">language_validator.py</span></code> - Backend language validation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">frontend_validator.py</span></code> - Frontend framework validation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tool_validator.py</span></code> - Development tool validation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">structure_validator.py</span></code> - Repository structure validation</p></li>
+</ul>
+</section>
+<section id="language-validator-py">
+<h4>2. <code class="docutils literal notranslate"><span class="pre">language_validator.py</span></code><a class="headerlink" href="#language-validator-py" title="Link to this heading">¶</a></h4>
+<p><strong>Features:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">validate_backend_languages()</span></code> - Ensures at least one language selected</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">validate_language_framework_compatibility()</span></code> - Checks framework conflicts</p>
+<ul>
+<li><p>Django incompatibility with Vite/Next.js</p></li>
+<li><p>Rust framework/runtime compatibility (e.g., Axum requires Tokio)</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">validate_package_managers()</span></code> - Verifies package managers are installed</p></li>
+<li><p>Tool availability checks using <code class="docutils literal notranslate"><span class="pre">shutil.which()</span></code></p></li>
+</ul>
+<p><strong>Data Structures:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">LANGUAGE_TOOLS</span></code>: Required tools per language</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FRAMEWORK_COMPATIBILITY</span></code>: Framework requirements and conflicts</p></li>
+<li><p>Package manager command mappings</p></li>
+</ul>
+</section>
+<section id="frontend-validator-py">
+<h4>3. <code class="docutils literal notranslate"><span class="pre">frontend_validator.py</span></code><a class="headerlink" href="#frontend-validator-py" title="Link to this heading">¶</a></h4>
+<p><strong>Features:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">validate_frontend_framework()</span></code> - Ensures frontend config consistency</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">validate_component_library_compatibility()</span></code> - Checks library requirements</p>
+<ul>
+<li><p>shadcn-ui requires React + Tailwind</p></li>
+<li><p>MUI/Chakra/Mantine require React</p></li>
+<li><p>Ant Design supports React + Vue</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">validate_state_management_compatibility()</span></code> - Framework-specific state mgmt</p>
+<ul>
+<li><p>Zustand/Redux/Jotai → React only</p></li>
+<li><p>Pinia/Vuex → Vue only</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">validate_meta_framework_compatibility()</span></code> - Prevents meta-framework conflicts</p>
+<ul>
+<li><p>Next.js/Remix/Gatsby mutual exclusivity</p></li>
+<li><p>Nuxt/Quasar/VitePress conflicts</p></li>
+</ul>
+</li>
+</ul>
+<p><strong>Data Structures:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">COMPONENT_LIBRARY_REQUIREMENTS</span></code>: Library dependencies</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">STATE_MANAGEMENT_COMPATIBILITY</span></code>: State library framework requirements</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">META_FRAMEWORK_CONFLICTS</span></code>: Mutually exclusive frameworks</p></li>
+</ul>
+</section>
+<section id="tool-validator-py">
+<h4>4. <code class="docutils literal notranslate"><span class="pre">tool_validator.py</span></code><a class="headerlink" href="#tool-validator-py" title="Link to this heading">¶</a></h4>
+<p><strong>Features:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">validate_language_tools()</span></code> - Checks language-specific CLIs</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">validate_package_managers()</span></code> - Verifies pm availability (uv, pnpm, etc.)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">validate_build_tools()</span></code> - Warns about missing build tools (non-blocking)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">validate_monorepo_tools()</span></code> - Warns about missing monorepo tools</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">validate_ide_tools()</span></code> - Informational checks for IDE CLI commands</p></li>
+<li><p>Returns categorized results: errors, warnings, info</p></li>
+</ul>
+<p><strong>Data Structures:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">REQUIRED_TOOLS</span></code>: Language → required commands</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PACKAGE_MANAGER_COMMANDS</span></code>: PM name → CLI command</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BUILD_TOOL_COMMANDS</span></code>: Build tool → CLI command</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MONOREPO_TOOL_COMMANDS</span></code>: Monorepo tool → CLI command</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">IDE_COMMANDS</span></code>: IDE → CLI command</p></li>
+</ul>
+</section>
+<section id="structure-validator-py">
+<h4>5. <code class="docutils literal notranslate"><span class="pre">structure_validator.py</span></code><a class="headerlink" href="#structure-validator-py" title="Link to this heading">¶</a></h4>
+<p><strong>Features:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">validate_structure_compatibility()</span></code> - Ensures structure matches project_layout</p>
+<ul>
+<li><p>apps-packages/multi-workspace require monorepo</p></li>
+<li><p>flat/src-layout not recommended for monorepos</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">validate_structure_language_compatibility()</span></code> - Warns about polyglot issues</p>
+<ul>
+<li><p>Multiple languages with flat/src-layout → suggest apps-packages</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">validate_structure_tools()</span></code> - Recommends appropriate monorepo tools</p>
+<ul>
+<li><p>apps-packages → Turborepo/Nx</p></li>
+<li><p>multi-workspace → pnpm/yarn workspaces</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">validate_structure_service_count()</span></code> - Checks if structure fits service count</p>
+<ul>
+<li><p>Warns if too many services for simple structures</p></li>
+<li><p>Warns if too few services for complex structures</p></li>
+</ul>
+</li>
+</ul>
+<p><strong>Data Structures:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">STRUCTURE_REQUIREMENTS</span></code>: Structure-specific recommendations and constraints</p></li>
+</ul>
+</section>
+</section>
+<section id="pending-integration-a2-6-a2-7">
+<h3>Pending Integration (A2.6, A2.7)<a class="headerlink" href="#pending-integration-a2-6-a2-7" title="Link to this heading">¶</a></h3>
+<p><strong>Still To Do:</strong></p>
+<ul class="simple">
+<li><p>Update <code class="docutils literal notranslate"><span class="pre">template/hooks/pre_gen_project.py</span></code> to import and use validators</p></li>
+<li><p>Update <code class="docutils literal notranslate"><span class="pre">template/hooks/post_gen_project.py</span></code> to write extended metadata</p></li>
+<li><p>Add comprehensive error reporting and user-friendly messages</p></li>
+<li><p>Implement validation orchestration logic</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="a3-shared-macros-utilities-pending">
+<h2>A3: Shared Macros &amp; Utilities (PENDING)<a class="headerlink" href="#a3-shared-macros-utilities-pending" title="Link to this heading">¶</a></h2>
+<section id="planned-implementation">
+<h3>Planned Implementation<a class="headerlink" href="#planned-implementation" title="Link to this heading">¶</a></h3>
+<section id="template-files-shared-macros-jinja-updates">
+<h4>1. <code class="docutils literal notranslate"><span class="pre">template/files/shared/macros.jinja</span></code> Updates<a class="headerlink" href="#template-files-shared-macros-jinja-updates" title="Link to this heading">¶</a></h4>
+<p><strong>Language Helpers:</strong></p>
+<div class="highlight-jinja notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="cp">{%</span> <span class="k">macro</span> <span class="nv">rust_enabled</span><span class="o">()</span> <span class="cp">%}{{</span> <span class="s1">&#39;rust&#39;</span> <span class="k">in</span> <span class="nv">backend_languages</span> <span class="cp">}}{%</span> <span class="k">endmacro</span> <span class="cp">%}</span>
+</span><span data-line="2"><span class="cp">{%</span> <span class="k">macro</span> <span class="nv">go_enabled</span><span class="o">()</span> <span class="cp">%}{{</span> <span class="s1">&#39;go&#39;</span> <span class="k">in</span> <span class="nv">backend_languages</span> <span class="cp">}}{%</span> <span class="k">endmacro</span> <span class="cp">%}</span>
+</span><span data-line="3"><span class="cp">{%</span> <span class="k">macro</span> <span class="nv">java_enabled</span><span class="o">()</span> <span class="cp">%}{{</span> <span class="s1">&#39;java&#39;</span> <span class="k">in</span> <span class="nv">backend_languages</span> <span class="cp">}}{%</span> <span class="k">endmacro</span> <span class="cp">%}</span>
+</span><span data-line="4"><span class="cp">{%</span> <span class="k">macro</span> <span class="nv">csharp_enabled</span><span class="o">()</span> <span class="cp">%}{{</span> <span class="s1">&#39;csharp&#39;</span> <span class="k">in</span> <span class="nv">backend_languages</span> <span class="cp">}}{%</span> <span class="k">endmacro</span> <span class="cp">%}</span>
+</span></pre></div>
+</div>
+<p><strong>Framework Helpers:</strong></p>
+<div class="highlight-jinja notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="cp">{%</span> <span class="k">macro</span> <span class="nv">is_react</span><span class="o">()</span> <span class="cp">%}{{</span> <span class="nv">frontend_framework</span> <span class="o">==</span> <span class="s1">&#39;react&#39;</span> <span class="cp">}}{%</span> <span class="k">endmacro</span> <span class="cp">%}</span>
+</span><span data-line="2"><span class="cp">{%</span> <span class="k">macro</span> <span class="nv">is_vue</span><span class="o">()</span> <span class="cp">%}{{</span> <span class="nv">frontend_framework</span> <span class="o">==</span> <span class="s1">&#39;vue&#39;</span> <span class="cp">}}{%</span> <span class="k">endmacro</span> <span class="cp">%}</span>
+</span><span data-line="3"><span class="cp">{%</span> <span class="k">macro</span> <span class="nv">is_svelte</span><span class="o">()</span> <span class="cp">%}{{</span> <span class="nv">frontend_framework</span> <span class="o">==</span> <span class="s1">&#39;svelte&#39;</span> <span class="cp">}}{%</span> <span class="k">endmacro</span> <span class="cp">%}</span>
+</span><span data-line="4"><span class="cp">{%</span> <span class="k">macro</span> <span class="nv">is_solid</span><span class="o">()</span> <span class="cp">%}{{</span> <span class="nv">frontend_framework</span> <span class="o">==</span> <span class="s1">&#39;solid&#39;</span> <span class="cp">}}{%</span> <span class="k">endmacro</span> <span class="cp">%}</span>
+</span></pre></div>
+</div>
+<p><strong>Structure Helpers:</strong></p>
+<div class="highlight-jinja notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="cp">{%</span> <span class="k">macro</span> <span class="nv">is_monorepo</span><span class="o">()</span> <span class="cp">%}{{</span> <span class="nv">project_layout</span> <span class="o">==</span> <span class="s1">&#39;monorepo&#39;</span> <span class="cp">}}{%</span> <span class="k">endmacro</span> <span class="cp">%}</span>
+</span><span data-line="2"><span class="cp">{%</span> <span class="k">macro</span> <span class="nv">has_apps_dir</span><span class="o">()</span> <span class="cp">%}{{</span> <span class="nv">repository_structure</span> <span class="o">==</span> <span class="s1">&#39;apps-packages&#39;</span> <span class="cp">}}{%</span> <span class="k">endmacro</span> <span class="cp">%}</span>
+</span><span data-line="3"><span class="cp">{%</span> <span class="k">macro</span> <span class="nv">is_flat_structure</span><span class="o">()</span> <span class="cp">%}{{</span> <span class="nv">repository_structure</span> <span class="o">==</span> <span class="s1">&#39;flat&#39;</span> <span class="cp">}}{%</span> <span class="k">endmacro</span> <span class="cp">%}</span>
+</span></pre></div>
+</div>
+<p><strong>Package Manager Helpers:</strong></p>
+<div class="highlight-jinja notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="cp">{%</span> <span class="k">macro</span> <span class="nv">python_pm_command</span><span class="o">()</span> <span class="cp">%}</span>
+</span><span data-line="2"><span class="x">  </span><span class="cp">{%</span>- <span class="k">if</span> <span class="nv">python_package_manager</span> <span class="o">==</span> <span class="s1">&#39;uv&#39;</span> -<span class="cp">%}</span><span class="x">uv</span>
+</span><span data-line="3"><span class="x">  </span><span class="cp">{%</span>- <span class="k">elif</span> <span class="nv">python_package_manager</span> <span class="o">==</span> <span class="s1">&#39;poetry&#39;</span> -<span class="cp">%}</span><span class="x">poetry</span>
+</span><span data-line="4"><span class="x">  </span><span class="cp">{%</span>- <span class="k">elif</span> <span class="nv">python_package_manager</span> <span class="o">==</span> <span class="s1">&#39;pdm&#39;</span> -<span class="cp">%}</span><span class="x">pdm</span>
+</span><span data-line="5"><span class="x">  </span><span class="cp">{%</span>- <span class="k">endif</span> -<span class="cp">%}</span>
+</span><span data-line="6"><span class="cp">{%</span> <span class="k">endmacro</span> <span class="cp">%}</span>
+</span></pre></div>
+</div>
+</section>
+<section id="utility-files-to-create">
+<h4>2. Utility Files to Create<a class="headerlink" href="#utility-files-to-create" title="Link to this heading">¶</a></h4>
+<p><strong><code class="docutils literal notranslate"><span class="pre">template/files/shared/utils/structure_utils.jinja</span></code>:</strong></p>
+<ul class="simple">
+<li><p>Path resolution for different structures</p></li>
+<li><p>Directory traversal helpers</p></li>
+<li><p>Package/module path calculations</p></li>
+</ul>
+<p><strong><code class="docutils literal notranslate"><span class="pre">template/files/shared/utils/language_utils.jinja</span></code>:</strong></p>
+<ul class="simple">
+<li><p>Language detection from file extensions</p></li>
+<li><p>Binary/command path resolution</p></li>
+<li><p>Version detection helpers</p></li>
+</ul>
+<p><strong><code class="docutils literal notranslate"><span class="pre">template/files/shared/utils/framework_utils.jinja</span></code>:</strong></p>
+<ul class="simple">
+<li><p>Framework-specific configuration generators</p></li>
+<li><p>Import path resolvers</p></li>
+<li><p>Config file path helpers</p></li>
+</ul>
+<p><strong><code class="docutils literal notranslate"><span class="pre">template/files/shared/utils/tool_utils.jinja</span></code>:</strong></p>
+<ul class="simple">
+<li><p>Tool availability checks (Jinja-compatible)</p></li>
+<li><p>Version comparison helpers</p></li>
+<li><p>CLI command builders</p></li>
+</ul>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="a4-repository-structure-templates-pending">
+<h2>A4: Repository Structure Templates (PENDING)<a class="headerlink" href="#a4-repository-structure-templates-pending" title="Link to this heading">¶</a></h2>
+<section id="id1">
+<h3>Planned Implementation<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
+<section id="id2">
+<h4>1. Directory Structure<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span data-line="1">template/files/layouts/
+</span><span data-line="2">├── flat/
+</span><span data-line="3">│   ├── .structure.yml
+</span><span data-line="4">│   └── README.md.jinja
+</span><span data-line="5">├── src-layout/
+</span><span data-line="6">│   ├── .structure.yml
+</span><span data-line="7">│   └── README.md.jinja
+</span><span data-line="8">├── apps-packages/
+</span><span data-line="9">│   ├── .structure.yml
+</span><span data-line="10">│   ├── README.md.jinja
+</span><span data-line="11">│   └── turbo.json.jinja
+</span><span data-line="12">├── multi-workspace/
+</span><span data-line="13">│   ├── .structure.yml
+</span><span data-line="14">│   ├── README.md.jinja
+</span><span data-line="15">│   └── pnpm-workspace.yaml.jinja
+</span><span data-line="16">└── domain-driven/
+</span><span data-line="17">    ├── .structure.yml
+</span><span data-line="18">    └── README.md.jinja
+</span></pre></div>
+</div>
+</section>
+<section id="structure-definitions">
+<h4>2. Structure Definitions<a class="headerlink" href="#structure-definitions" title="Link to this heading">¶</a></h4>
+<p><strong>Flat Structure:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">structure</span><span class="p">:</span>
+</span><span data-line="2"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">src/</span>
+</span><span data-line="3"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tests/</span>
+</span><span data-line="4"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">docs/</span>
+</span><span data-line="5"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scripts/</span>
+</span></pre></div>
+</div>
+<p><strong>Src-Layout Structure:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">structure</span><span class="p">:</span>
+</span><span data-line="2"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">src/</span>
+</span><span data-line="3"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">- {{ package_name }}/</span>
+</span><span data-line="4"><span class="w">      </span><span class="l l-Scalar l-Scalar-Plain">- __init__.py</span>
+</span><span data-line="5"><span class="w">      </span><span class="l l-Scalar l-Scalar-Plain">- main.py</span>
+</span><span data-line="6"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tests/</span>
+</span><span data-line="7"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">docs/</span>
+</span></pre></div>
+</div>
+<p><strong>Apps-Packages Structure:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">structure</span><span class="p">:</span>
+</span><span data-line="2"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apps/</span>
+</span><span data-line="3"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">{% if &#39;python&#39; in backend_languages %}</span>
+</span><span data-line="4"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">- api/</span>
+</span><span data-line="5"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">{% endif %}</span>
+</span><span data-line="6"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">{% if frontend_framework != &#39;none&#39; %}</span>
+</span><span data-line="7"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">- web/</span>
+</span><span data-line="8"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">{% endif %}</span>
+</span><span data-line="9"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">{% if cli_module == &#39;enabled&#39; %}</span>
+</span><span data-line="10"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">- cli/</span>
+</span><span data-line="11"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">{% endif %}</span>
+</span><span data-line="12"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">packages/</span>
+</span><span data-line="13"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">{% if shared_logic == &#39;enabled&#39; %}</span>
+</span><span data-line="14"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">- shared/</span>
+</span><span data-line="15"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">{% endif %}</span>
+</span><span data-line="16"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">- config/</span>
+</span><span data-line="17"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tooling/</span>
+</span></pre></div>
+</div>
+<p><strong>Multi-Workspace Structure:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">structure</span><span class="p">:</span>
+</span><span data-line="2"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">backend/</span>
+</span><span data-line="3"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">- services/</span>
+</span><span data-line="4"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">- package.json</span>
+</span><span data-line="5"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">frontend/</span>
+</span><span data-line="6"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">- apps/</span>
+</span><span data-line="7"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">- package.json</span>
+</span><span data-line="8"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shared/</span>
+</span><span data-line="9"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">- libs/</span>
+</span><span data-line="10"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">- package.json</span>
+</span><span data-line="11"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pnpm-workspace.yaml</span>
+</span></pre></div>
+</div>
+<p><strong>Domain-Driven Structure:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">structure</span><span class="p">:</span>
+</span><span data-line="2"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">domains/</span>
+</span><span data-line="3"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">- user/</span>
+</span><span data-line="4"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">- product/</span>
+</span><span data-line="5"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">- order/</span>
+</span><span data-line="6"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shared/</span>
+</span><span data-line="7"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">- kernel/</span>
+</span><span data-line="8"><span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">- infrastructure/</span>
+</span></pre></div>
+</div>
+</section>
+<section id="conditional-file-placement">
+<h4>3. Conditional File Placement<a class="headerlink" href="#conditional-file-placement" title="Link to this heading">¶</a></h4>
+<p>Update <code class="docutils literal notranslate"><span class="pre">copier.yml</span></code> with:</p>
+<div class="highlight-jinja notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="cp">{%</span> <span class="k">if</span> <span class="nv">repository_structure</span> <span class="o">==</span> <span class="s1">&#39;apps-packages&#39;</span> <span class="cp">%}</span>
+</span><span data-line="2"><span class="x">apps/</span><span class="cp">{{</span> <span class="nv">module_name</span> <span class="cp">}}</span><span class="x">/...</span>
+</span><span data-line="3"><span class="cp">{%</span> <span class="k">elif</span> <span class="nv">repository_structure</span> <span class="o">==</span> <span class="s1">&#39;src-layout&#39;</span> <span class="cp">%}</span>
+</span><span data-line="4"><span class="x">src/</span><span class="cp">{{</span> <span class="nv">package_name</span> <span class="cp">}}</span><span class="x">/...</span>
+</span><span data-line="5"><span class="cp">{%</span> <span class="k">elif</span> <span class="nv">repository_structure</span> <span class="o">==</span> <span class="s1">&#39;flat&#39;</span> <span class="cp">%}</span>
+</span><span data-line="6"><span class="cp">{{</span> <span class="nv">module_name</span> <span class="cp">}}</span><span class="x">/...</span>
+</span><span data-line="7"><span class="cp">{%</span> <span class="k">endif</span> <span class="cp">%}</span>
+</span></pre></div>
+</div>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="validation-criteria-checklist">
+<h2>Validation Criteria Checklist<a class="headerlink" href="#validation-criteria-checklist" title="Link to this heading">¶</a></h2>
+<section id="a1-prompt-system-enhancement">
+<h3>A1: Prompt System Enhancement<a class="headerlink" href="#a1-prompt-system-enhancement" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>✅ All prompts have valid YAML syntax</p></li>
+<li><p>✅ Conditional logic uses correct Jinja2</p></li>
+<li><p>✅ Default values are sensible</p></li>
+<li><p>✅ No circular dependencies between prompts</p></li>
+<li><p>✅ Prompt metadata documented</p></li>
+<li><p>✅ Schema file created</p></li>
+</ul>
+</section>
+<section id="a2-validation-framework">
+<h3>A2: Validation Framework<a class="headerlink" href="#a2-validation-framework" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>✅ All validators have comprehensive logic</p></li>
+<li><p>✅ Error messages are clear and actionable</p></li>
+<li><p>⏳ Tool checks work across platforms (to be tested)</p></li>
+<li><p>⏳ Integration with pre_gen_project.py (pending)</p></li>
+<li><p>⏳ Integration with post_gen_project.py (pending)</p></li>
+</ul>
+</section>
+<section id="a3-shared-macros-utilities">
+<h3>A3: Shared Macros &amp; Utilities<a class="headerlink" href="#a3-shared-macros-utilities" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>⏳ All macros have examples in docstrings</p></li>
+<li><p>⏳ Macros work with all prompt combinations</p></li>
+<li><p>⏳ No syntax errors in Jinja2 templates</p></li>
+</ul>
+</section>
+<section id="a4-repository-structure-templates">
+<h3>A4: Repository Structure Templates<a class="headerlink" href="#a4-repository-structure-templates" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>⏳ Each structure template renders correctly</p></li>
+<li><p>⏳ Directory trees are well-documented</p></li>
+<li><p>⏳ Conditional logic places files correctly</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="next-steps">
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading">¶</a></h2>
+<section id="immediate-to-complete-phase-0">
+<h3>Immediate (To Complete Phase 0):<a class="headerlink" href="#immediate-to-complete-phase-0" title="Link to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Update <code class="docutils literal notranslate"><span class="pre">pre_gen_project.py</span></code></strong> (A2.6)</p>
+<ul class="simple">
+<li><p>Import all validators</p></li>
+<li><p>Run validation suite</p></li>
+<li><p>Display errors/warnings/info</p></li>
+<li><p>Exit with clear error messages if validation fails</p></li>
+</ul>
+</li>
+<li><p><strong>Update <code class="docutils literal notranslate"><span class="pre">post_gen_project.py</span></code></strong> (A2.7)</p>
+<ul class="simple">
+<li><p>Write comprehensive metadata JSON</p></li>
+<li><p>Include all new prompt values</p></li>
+<li><p>Add timestamp and version info</p></li>
+</ul>
+</li>
+<li><p><strong>Implement A3: Macros &amp; Utilities</strong></p>
+<ul class="simple">
+<li><p>Update <code class="docutils literal notranslate"><span class="pre">macros.jinja</span></code></p></li>
+<li><p>Create all utility files in <code class="docutils literal notranslate"><span class="pre">utils/</span></code> directory</p></li>
+<li><p>Add comprehensive documentation</p></li>
+</ul>
+</li>
+<li><p><strong>Implement A4: Structure Templates</strong></p>
+<ul class="simple">
+<li><p>Create 5 layout directories</p></li>
+<li><p>Write <code class="docutils literal notranslate"><span class="pre">.structure.yml</span></code> for each</p></li>
+<li><p>Create <code class="docutils literal notranslate"><span class="pre">README.md.jinja</span></code> templates</p></li>
+<li><p>Add conditional file placement in <code class="docutils literal notranslate"><span class="pre">copier.yml</span></code></p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="testing-validation">
+<h3>Testing &amp; Validation:<a class="headerlink" href="#testing-validation" title="Link to this heading">¶</a></h3>
+<ol class="arabic simple" start="5">
+<li><p><strong>Integration Testing</strong></p>
+<ul class="simple">
+<li><p>Test all prompt combinations</p></li>
+<li><p>Validate generated projects</p></li>
+<li><p>Check compatibility matrix enforcement</p></li>
+<li><p>Verify structure templates render correctly</p></li>
+</ul>
+</li>
+<li><p><strong>Documentation</strong></p>
+<ul class="simple">
+<li><p>Update <a class="reference external" href="http://AGENTS.md" rel="noreferer noopener" target="_blank">AGENTS.md</a> with new prompts</p></li>
+<li><p>Update .github/copilot-instructions.md</p></li>
+<li><p>Create migration guide for existing projects</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="key-achievements">
+<h2>Key Achievements<a class="headerlink" href="#key-achievements" title="Link to this heading">¶</a></h2>
+<ol class="arabic simple">
+<li><p><strong>Massive Expansion of Configuration Options</strong></p>
+<ul class="simple">
+<li><p>From ~15 prompts to 50+ prompts</p></li>
+<li><p>Support for 6 backend languages (was 3)</p></li>
+<li><p>Support for 9 frontend frameworks (was limited React/Next.js)</p></li>
+<li><p>12 component libraries</p></li>
+<li><p>10 AI tools</p></li>
+<li><p>5 repository structures</p></li>
+</ul>
+</li>
+<li><p><strong>Robust Validation Framework</strong></p>
+<ul class="simple">
+<li><p>250+ lines of validation logic</p></li>
+<li><p>Categorized error/warning/info messages</p></li>
+<li><p>Tool availability checks</p></li>
+<li><p>Framework compatibility enforcement</p></li>
+</ul>
+</li>
+<li><p><strong>Comprehensive Documentation</strong></p>
+<ul class="simple">
+<li><p>prompt_metadata.json: 500+ lines</p></li>
+<li><p>copier-answers-schema.yml: 300+ lines</p></li>
+<li><p>This summary document</p></li>
+</ul>
+</li>
+<li><p><strong>Future-Proof Architecture</strong></p>
+<ul class="simple">
+<li><p>Modular validator design</p></li>
+<li><p>Extensible prompt system</p></li>
+<li><p>Clear separation of concerns</p></li>
+<li><p>Easy to add new languages/frameworks</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="files-created-modified">
+<h2>Files Created/Modified<a class="headerlink" href="#files-created-modified" title="Link to this heading">¶</a></h2>
+<section id="created">
+<h3>Created:<a class="headerlink" href="#created" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">template/prompts/prompt_metadata.json</span></code> (500+ lines)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">template/prompts/copier-answers-schema.yml</span></code> (300+ lines)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">template/hooks/validators/__init__.py</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">template/hooks/validators/language_validator.py</span></code> (250+ lines)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">template/hooks/validators/frontend_validator.py</span></code> (280+ lines)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">template/hooks/validators/tool_validator.py</span></code> (200+ lines)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">template/hooks/validators/structure_validator.py</span></code> (200+ lines)</p></li>
+</ul>
+</section>
+<section id="modified">
+<h3>Modified:<a class="headerlink" href="#modified" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">template/copier.yml</span></code> (expanded from 387 to 622 lines)</p>
+<ul>
+<li><p>Added 35+ new prompts</p></li>
+<li><p>Updated defaults section</p></li>
+<li><p>Enhanced conditional logic</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="pending-creation">
+<h3>Pending Creation:<a class="headerlink" href="#pending-creation" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">template/files/shared/utils/structure_utils.jinja</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">template/files/shared/utils/language_utils.jinja</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">template/files/shared/utils/framework_utils.jinja</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">template/files/shared/utils/tool_utils.jinja</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">template/files/layouts/*/</span></code> (5 layout directories with files)</p></li>
+</ul>
+</section>
+<section id="pending-modification">
+<h3>Pending Modification:<a class="headerlink" href="#pending-modification" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">template/files/shared/macros.jinja</span></code> (add new helpers)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">template/hooks/pre_gen_project.py</span></code> (integrate validators)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">template/hooks/post_gen_project.py</span></code> (enhanced metadata)</p></li>
+</ul>
+<hr class="docutils" />
+<p><strong>Total Lines of Code Added: ~2,000+</strong><br />
+<strong>Estimated Remaining Work: ~1,500+ lines for A3+A4+integration</strong></p>
+</section>
+</section>
+</section>
+
+        </article><button class="back-to-top" type="button">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+  </svg>
+  <span>Back to top</span>
+</button><div class="navigation flex print:hidden"></div></div>
+    </div>
+  </main>
+</div>
+<footer class="sy-foot">
+  <div class="sy-foot-inner sy-container mx-auto">
+    <div class="sy-foot-reserved md:flex justify-between items-center">
+      <div class="sy-foot-copyright"><p>2025, Riso</p>
+  
+  <p>
+    Made with
+    
+    <a href="https://www.sphinx-doc.org/">Sphinx</a> and
+    
+    <a href="https://shibuya.lepture.com">Shibuya theme</a>.
+  </p>
+</div>
+      <div class="sy-foot-socials">
+<a href="https://github.com/openai/riso" aria-label="GitHub">
+  <iconify-icon icon="simple-icons:github"></iconify-icon>
+</a></div>
+    </div>
+  </div>
+</footer>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=6870ed9c"></script>
+      <script src="https://unpkg.com/twemoji@latest/dist/twemoji.min.js"></script>
+      <script src="_static/twemoji.js?v=a4381b3f"></script>
+      <script src="_static/js/hoverxref.js?v=85f38ef1"></script>
+      <script src="_static/js/tooltipster.bundle.min.js?v=18bf091b"></script>
+      <script src="_static/js/micromodal.min.js?v=04d6302d"></script>
+      <script>let toggleHintShow = 'Click to show';</script>
+      <script>let toggleHintHide = 'Click to hide';</script>
+      <script>let toggleOpenOnPrint = 'true';</script>
+      <script src="_static/togglebutton.js?v=4a39c7ea"></script>
+      <script src="_static/design-tabs.js?v=f930bc37"></script>
+      <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+      <script src="_static/shibuya.js?v=cac61aee"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="_static/tabs.js?v=3030b3cb"></script>
+      <script src="_static/js/custom.js?v=c8f3429d"></script>
+      <script src="_static/js/tool-catalog.js?v=e9e09451"></script>
+      <script defer="defer" src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script></body>
+</html>

@@ -1,0 +1,1030 @@
+# SaaS Compatibility Guide
+
+Comprehensive guide to selecting and combining SaaS providers in the Riso template framework.
+
+```{contents}
+:depth: 3
+:local:
+```
+
+## Overview
+
+Riso supports 14 SaaS categories with 37+ provider options, enabling you to build production-ready applications with best-in-class services. This guide helps you navigate the complex interdependencies and choose the optimal stack for your use case.
+
+### Technology Categories
+
+| Category | Options | Purpose |
+|----------|---------|---------|
+| **Runtime** | Next.js 16, Remix 2 | Application framework |
+| **Hosting** | Vercel, Cloudflare | Deployment platform |
+| **Database** | Neon, Supabase | Postgres database |
+| **ORM** | Prisma, Drizzle | Database toolkit |
+| **Auth** | Clerk, AuthJS | User authentication |
+| **Billing** | Stripe, Paddle | Payment processing |
+| **Jobs** | Trigger.dev, Inngest | Background tasks |
+| **Email** | Resend, Postmark | Transactional email |
+| **Analytics** | PostHog, Amplitude | Product analytics |
+| **AI** | OpenAI, Anthropic | AI/LLM integration |
+| **Storage** | R2, Supabase Storage | File storage |
+| **CI/CD** | GitHub Actions, Cloudflare CI | Deployment automation |
+
+## Quick Start Decision Tree
+
+### 1. Choose Your Deployment Strategy
+
+```{mermaid}
+graph TD
+    A[Start] --> B{Need Edge Runtime?}
+    B -->|Yes| C[Cloudflare + Drizzle]
+    B -->|No| D{Prefer Vercel DX?}
+    D -->|Yes| E[Vercel + Prisma]
+    D -->|No| F[Either Platform]
+
+    C --> G[Remix Recommended]
+    E --> H[Next.js Recommended]
+    F --> I{Framework Preference?}
+
+    I -->|Next.js| H
+    I -->|Remix| J[Remix on Vercel]
+
+    style C fill:#f96,stroke:#333,stroke-width:2px
+    style E fill:#90EE90,stroke:#333,stroke-width:2px
+```
+
+### 2. Select Database + Storage
+
+```{mermaid}
+graph TD
+    A[Database Choice] --> B{Need Built-in Storage?}
+    B -->|Yes| C[Supabase Full Stack]
+    B -->|No| D{Edge Optimized?}
+
+    D -->|Yes| E[Neon + R2]
+    D -->|No| F[Either Option]
+
+    C --> G[Supabase DB + Storage]
+    E --> H[Neon Serverless + Cloudflare R2]
+    F --> I{Budget Conscious?}
+
+    I -->|Yes| E
+    I -->|No| C
+
+    style C fill:#90EE90,stroke:#333,stroke-width:2px
+    style E fill:#87CEEB,stroke:#333,stroke-width:2px
+```
+
+### 3. Choose Auth + Billing
+
+```{mermaid}
+graph TD
+    A[Authentication] --> B{Enterprise SSO?}
+    B -->|Required| C[Clerk Enterprise]
+    B -->|Not Needed| D{Prefer Simplicity?}
+
+    D -->|Yes| C
+    D -->|No| E[AuthJS]
+
+    C --> F{Global Payments?}
+    E --> F
+
+    F -->|Yes| G[Stripe]
+    F -->|No| H{EU Focus?}
+
+    H -->|Yes| I[Paddle]
+    H -->|No| G
+
+    style G fill:#90EE90,stroke:#333,stroke-width:2px
+```
+
+## Compatibility Matrix
+
+### Critical Incompatibilities
+
+These combinations **cannot** be used together:
+
+| Provider A | Provider B | Severity | Reason | Solution |
+|------------|------------|----------|--------|----------|
+| Neon | Supabase Storage | ERROR | Storage requires Supabase DB | Use Supabase (DB + Storage) OR Neon + R2 |
+
+### Compatibility Warnings
+
+These combinations work but have trade-offs:
+
+| Provider A | Provider B | Impact | Workaround | Recommendation |
+|------------|------------|--------|------------|----------------|
+| Cloudflare | Prisma | Requires Data Proxy | Add `@prisma/client/edge` + Prisma Data Proxy | Use Drizzle ORM instead |
+| Vercel | R2 | Egress charges | Use Cloudflare CDN | Accept egress costs or use Vercel Blob |
+
+### Information Notices
+
+| Provider A | Provider B | Note |
+|------------|------------|------|
+| Supabase | Clerk | Supabase Auth disabled in favor of Clerk |
+| Clerk | WorkOS | WorkOS handles enterprise SSO, Clerk handles consumer auth |
+
+### Required Dependencies
+
+| Feature | Requires | Reason |
+|---------|----------|--------|
+| Billing (Stripe/Paddle) | Auth (Clerk/AuthJS) | Customer identity needed |
+| Database | ORM (recommended) | Better developer experience |
+| Background Jobs | Database | Job persistence |
+
+## Recommended Stacks
+
+### Startup MVP (Speed + Simplicity)
+
+**Goal**: Launch quickly with minimal complexity, optimize later.
+
+```yaml
+runtime: nextjs-16
+hosting: vercel
+database: neon
+orm: prisma
+auth: clerk
+billing: stripe
+jobs: inngest
+email: resend
+analytics: posthog
+ai: openai
+storage: r2
+cicd: github-actions
+```
+
+**Why This Stack**:
+- **Next.js 16**: Best-in-class DX, React Server Components, App Router
+- **Vercel**: Zero-config deployments, preview environments, edge network
+- **Neon**: Serverless Postgres, generous free tier, instant provisioning
+- **Prisma**: Best TypeScript ORM, great migrations, Prisma Studio
+- **Clerk**: Fastest auth setup, beautiful pre-built UI, org management
+- **Stripe**: Industry standard, best docs, Stripe Test Clock
+- **Inngest**: Simplest background jobs, great local DX, generous free tier
+- **Resend**: Best email DX, React Email components, good deliverability
+- **PostHog**: Open source, product analytics + feature flags + session replay
+- **OpenAI**: Most capable models, largest ecosystem
+- **R2**: Zero egress fees, S3-compatible, 10GB free
+- **GitHub Actions**: Native GitHub integration, mature ecosystem
+
+**Monthly Cost Estimate** (assuming 10K MAU):
+- Vercel Pro: $20
+- Neon Scale: $19 (1GB)
+- Clerk Pro: $25
+- Stripe: 2.9% + $0.30 per transaction
+- Inngest: Free (up to 50K steps)
+- Resend: Free (up to 3K emails)
+- PostHog: Free (up to 1M events)
+- OpenAI: Pay-per-use (~$50-200)
+- R2: Free (10GB storage, zero egress)
+
+**Total**: ~$134-264/month + transaction fees
+
+### Enterprise (Scale + Reliability)
+
+**Goal**: Battle-tested stack for high-volume production applications.
+
+```yaml
+runtime: nextjs-16
+hosting: vercel
+database: supabase
+orm: prisma
+auth: clerk
+billing: stripe
+jobs: triggerdev
+email: postmark
+analytics: amplitude
+ai: anthropic
+storage: supabase-storage
+cicd: github-actions
+enterprise_bridge: workos  # SSO, SCIM, Directory Sync
+observability_sentry: true
+observability_datadog: true
+observability_otel: true
+```
+
+**Why This Stack**:
+- **Supabase**: Full Postgres (not serverless), realtime, storage included
+- **Clerk + WorkOS**: Consumer auth + enterprise SSO/SCIM/directory sync
+- **Trigger.dev**: Enterprise features, long-running jobs, observability
+- **Postmark**: Highest deliverability, dedicated IPs, compliance
+- **Amplitude**: Enterprise analytics, cohort analysis, behavioral insights
+- **Anthropic**: Claude models, better reasoning, lower hallucinations
+- **Sentry + Datadog + OTEL**: Full observability stack
+
+**Monthly Cost Estimate** (assuming 100K MAU):
+- Vercel Enterprise: Custom ($$$)
+- Supabase Pro: $25 + usage
+- Clerk Enterprise: Custom ($$)
+- WorkOS: Custom ($$)
+- Trigger.dev: $100+
+- Postmark: $15+ (50K emails)
+- Amplitude: Custom ($$$)
+- Sentry: $26+
+- Datadog: Custom ($$$)
+
+**Total**: $5,000-20,000/month (highly variable)
+
+### Edge-First (Global + Performance)
+
+**Goal**: Ultra-low latency for global users, edge-native architecture.
+
+```yaml
+runtime: remix-2
+hosting: cloudflare
+database: neon
+orm: drizzle
+auth: clerk
+billing: stripe
+jobs: inngest
+email: resend
+analytics: posthog
+ai: anthropic
+storage: r2
+cicd: cloudflare-ci
+```
+
+**Why This Stack**:
+- **Remix 2**: Excellent streaming, nested routing, Cloudflare Workers support
+- **Cloudflare**: Global edge network (300+ locations), zero cold starts
+- **Drizzle**: Edge-compatible, HTTP-based queries, minimal bundle size
+- **Neon**: Serverless Postgres with HTTP API, edge-compatible
+- **R2**: Co-located with Cloudflare Workers, zero egress within network
+- **Anthropic**: Edge-compatible SDK, streaming responses
+
+**Edge Deployment Flow**:
+```mermaid
+graph LR
+    A[User Request] -->|<50ms| B[Cloudflare Edge]
+    B --> C[Remix SSR]
+    C --> D[Drizzle HTTP Query]
+    D --> E[Neon Serverless]
+    C --> F[R2 Storage]
+    C --> G[Clerk Auth]
+
+    style B fill:#f96,stroke:#333,stroke-width:2px
+    style C fill:#87CEEB,stroke:#333,stroke-width:2px
+```
+
+**Performance Characteristics**:
+- **TTFB**: <100ms globally (p95)
+- **Cold Start**: 0ms (Workers are instant)
+- **Database Latency**: 50-150ms (HTTP overhead vs TCP)
+- **Storage Latency**: <50ms (co-located R2)
+
+**Monthly Cost Estimate** (assuming 10M requests):
+- Cloudflare Workers: $5 (1M requests free)
+- Neon: $19
+- R2: Free (10GB)
+- Others: Same as MVP stack
+
+**Total**: ~$150-300/month
+
+### Cost-Optimized (Bootstrap Budget)
+
+**Goal**: Maximize free tiers, minimize operational costs.
+
+```yaml
+runtime: nextjs-16
+hosting: vercel
+database: neon
+orm: drizzle
+auth: clerk
+billing: stripe
+jobs: inngest
+email: resend
+analytics: posthog
+ai: anthropic  # Better value per token
+storage: r2
+cicd: github-actions
+```
+
+**Free Tier Limits**:
+- Vercel Hobby: Unlimited personal projects
+- Neon Free: 0.5GB storage, 1 project
+- Clerk Free: 10K MAU, email/password auth
+- Inngest: 50K function steps/month
+- Resend: 3K emails/month, 1 domain
+- PostHog: 1M events/month
+- R2: 10GB storage, zero egress
+- GitHub Actions: 2K minutes/month
+
+**Breakeven Points**:
+| Resource | Hits Free Limit At | Upgrade Cost |
+|----------|-------------------|--------------|
+| Users | 10K MAU | Clerk Pro ($25/mo) |
+| Database | 0.5GB data | Neon Scale ($19/mo) |
+| Emails | 3K/month | Resend Pro ($20/mo) |
+| Background Jobs | 50K steps | Inngest Pro ($40/mo) |
+| Bandwidth | Unlimited | Vercel Pro ($20/mo for analytics) |
+
+**Strategy**: Stay free until PMF, upgrade incrementally.
+
+## Migration Paths
+
+### Database Migration
+
+#### Supabase → Neon
+
+**Reason**: Better edge performance, lower cost at scale.
+
+```bash
+# 1. Export Supabase database
+pg_dump $SUPABASE_URL > supabase_dump.sql
+
+# 2. Create Neon database
+neon projects create --name my-app
+
+# 3. Import to Neon
+psql $NEON_URL < supabase_dump.sql
+
+# 4. Migrate storage (Supabase Storage → R2)
+node scripts/migrate-storage-to-r2.js
+
+# 5. Update environment variables
+# DATABASE_URL=$NEON_URL
+# Remove SUPABASE_* vars
+```
+
+**Downtime**: ~15 minutes (for read-only mode + cutover)
+
+**Gotchas**:
+- Supabase Auth → Clerk migration requires user data export
+- Realtime subscriptions need alternative (Inngest, websockets)
+- Storage migration is one-way (R2 doesn't support Supabase transforms)
+
+#### Neon → Supabase
+
+**Reason**: Need realtime features, storage integration.
+
+```bash
+# 1. Create Supabase project
+supabase projects create my-app
+
+# 2. Export Neon database
+pg_dump $NEON_URL > neon_dump.sql
+
+# 3. Import to Supabase
+psql $SUPABASE_URL < neon_dump.sql
+
+# 4. Enable Supabase features
+supabase db push
+supabase storage create-bucket uploads
+```
+
+### ORM Migration
+
+#### Prisma → Drizzle
+
+**Reason**: Better edge compatibility, smaller bundle size.
+
+**Step 1: Install Drizzle**
+```bash
+pnpm add drizzle-orm @neondatabase/serverless
+pnpm add -D drizzle-kit
+```
+
+**Step 2: Convert Schema**
+```typescript
+// Before (Prisma)
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+}
+
+// After (Drizzle)
+import { pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+
+export const users = pgTable('users', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  email: text('email').notNull().unique(),
+  name: text('name'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+```
+
+**Step 3: Migrate Queries**
+```typescript
+// Before (Prisma)
+const user = await prisma.user.findUnique({
+  where: { email: 'user@example.com' },
+});
+
+// After (Drizzle)
+const user = await db.query.users.findFirst({
+  where: eq(users.email, 'user@example.com'),
+});
+```
+
+**Migration Time**: 2-8 hours (depending on schema complexity)
+
+**Automation Script**:
+```bash
+# Convert Prisma schema to Drizzle
+npx prisma-to-drizzle schema.prisma > drizzle.schema.ts
+```
+
+#### Drizzle → Prisma
+
+**Reason**: Need Prisma Client features (middleware, metrics).
+
+Similar process in reverse, use `drizzle-to-prisma` converter.
+
+### Auth Migration
+
+#### AuthJS → Clerk
+
+**Reason**: Better UX, pre-built components, org management.
+
+**Data Migration**:
+```typescript
+// 1. Export users from AuthJS
+const users = await prisma.user.findMany({
+  include: { accounts: true },
+});
+
+// 2. Import to Clerk
+for (const user of users) {
+  await clerkClient.users.createUser({
+    emailAddress: [user.email],
+    firstName: user.name?.split(' ')[0],
+    lastName: user.name?.split(' ')[1],
+    publicMetadata: { legacyId: user.id },
+  });
+}
+```
+
+**Downtime**: ~1 hour (user re-authentication required)
+
+### Storage Migration
+
+#### R2 → Supabase Storage
+
+**Reason**: Need image transformations, simpler auth model.
+
+```typescript
+import { r2, supabase } from '@/lib/clients';
+
+async function migrateFiles() {
+  const { files } = await r2.listFiles({ prefix: 'uploads/' });
+
+  for (const file of files) {
+    // Download from R2
+    const buffer = await r2.downloadFile(file.key);
+
+    // Upload to Supabase
+    await supabase.uploadFile({
+      path: file.key,
+      file: buffer,
+      contentType: file.contentType,
+    });
+
+    console.log(`Migrated: ${file.key}`);
+  }
+}
+```
+
+**Migration Time**: Depends on file count (10K files = ~1 hour)
+
+## Cost Optimization Strategies
+
+### 1. Database Costs
+
+#### Neon Autoscaling
+
+```yaml
+# neon.toml
+[compute]
+autoscaling_limit_min_cu = 0.25  # Sleep to zero
+autoscaling_limit_max_cu = 2     # Cap at 2 CU
+autosuspend_delay_seconds = 300  # 5 min idle timeout
+```
+
+**Savings**: ~70% reduction vs always-on instance
+
+#### Connection Pooling
+
+```typescript
+// Use Neon serverless driver (HTTP-based)
+import { neon } from '@neondatabase/serverless';
+
+const sql = neon(process.env.DATABASE_URL!);
+
+// Or use connection pooling
+const pooledUrl = process.env.DATABASE_URL!.replace(
+  'postgres://',
+  'postgres-pooler://'
+);
+```
+
+**Impact**: Reduce connection overhead by 90%
+
+#### Query Optimization
+
+```typescript
+// ❌ N+1 query problem
+const users = await db.query.users.findMany();
+for (const user of users) {
+  const posts = await db.query.posts.findMany({
+    where: eq(posts.userId, user.id),
+  });
+}
+
+// ✅ Use joins
+const users = await db.query.users.findMany({
+  with: { posts: true },
+});
+```
+
+**Impact**: 100x faster, 10x cheaper
+
+### 2. Storage Costs
+
+#### R2 vs S3 Cost Comparison
+
+| Operation | R2 | S3 Standard | Savings |
+|-----------|-----|-------------|---------|
+| Storage | $0.015/GB | $0.023/GB | 35% |
+| Egress | $0 | $0.09/GB | 100% |
+| Class A Ops | $4.50/M | $5.00/M | 10% |
+
+**Example**: 100GB storage + 1TB egress/month
+- R2: $1.50 storage + $0 egress = **$1.50**
+- S3: $2.30 storage + $90 egress = **$92.30**
+- **Savings: $90.80/month (98%)**
+
+#### Image Optimization
+
+```typescript
+// Use Cloudflare Image Transformations with R2
+const optimizedUrl = `https://imagedelivery.net/${ACCOUNT_HASH}/${IMAGE_ID}/public`;
+
+// Or use Supabase image transforms
+const url = supabase.getPublicUrlWithTransform('avatar.jpg', {
+  width: 300,
+  height: 300,
+  quality: 80,
+  format: 'webp',
+});
+```
+
+**Impact**: 60-80% bandwidth reduction
+
+### 3. AI/LLM Costs
+
+#### Token Usage Optimization
+
+```typescript
+// ❌ Sending full conversation history
+const completion = await openai.chat.completions.create({
+  model: 'gpt-4',
+  messages: allMessages, // 10K tokens
+});
+
+// ✅ Summarize old messages
+const completion = await openai.chat.completions.create({
+  model: 'gpt-4',
+  messages: [
+    { role: 'system', content: summaryOfOldMessages },
+    ...recentMessages,
+  ], // 2K tokens
+});
+```
+
+**Savings**: 80% token reduction
+
+#### Model Selection
+
+| Model | Cost/1M Tokens | Use Case |
+|-------|----------------|----------|
+| GPT-4o | $2.50 in / $10 out | Complex reasoning |
+| GPT-4o-mini | $0.15 in / $0.60 out | Simple tasks |
+| Claude 3.5 Sonnet | $3 in / $15 out | Long context |
+| Claude 3.5 Haiku | $0.25 in / $1.25 out | Fast, simple tasks |
+
+**Strategy**: Use cheap models for classification, expensive for generation.
+
+#### Prompt Caching
+
+```typescript
+// Anthropic prompt caching (50% cost reduction)
+const response = await anthropic.messages.create({
+  model: 'claude-3-5-sonnet-20241022',
+  system: [
+    {
+      type: 'text',
+      text: LONG_SYSTEM_PROMPT, // Cached
+      cache_control: { type: 'ephemeral' },
+    },
+  ],
+  messages: [{ role: 'user', content: userQuery }],
+});
+```
+
+**Savings**: 90% cost reduction for repeated system prompts
+
+### 4. Email Costs
+
+#### Batch Sending
+
+```typescript
+// ❌ Individual sends
+for (const user of users) {
+  await resend.emails.send({ to: user.email, subject, html });
+}
+
+// ✅ Batch API (50% cost reduction)
+await resend.batch.send(
+  users.map(user => ({ to: user.email, subject, html }))
+);
+```
+
+#### Transactional vs Marketing
+
+| Provider | Transactional | Marketing | Savings |
+|----------|---------------|-----------|---------|
+| Resend | $1/1K emails | N/A | - |
+| SendGrid | $1.95/1K | $0.08/1K | 96% |
+| Postmark | $1.25/1K | N/A | - |
+
+**Strategy**: Use SendGrid Marketing Cloud for bulk emails.
+
+### 5. Monitoring Costs
+
+#### Sampling Strategy
+
+```typescript
+// Send 10% of traces to Sentry
+Sentry.init({
+  tracesSampleRate: 0.1,
+  profilesSampleRate: 0.1,
+});
+
+// Use PostHog session recording sparingly
+posthog.init(POSTHOG_KEY, {
+  session_recording: {
+    recordCrossOriginIframes: false,
+    maskAllInputs: true,
+    sampleRate: 0.1, // Record 10% of sessions
+  },
+});
+```
+
+**Impact**: 90% cost reduction, maintains statistical significance
+
+## Example Configurations
+
+### Configuration 1: Solo Founder SaaS
+
+**Profile**:
+- Building MVP
+- Need fast iteration
+- Budget: <$200/month
+- Expected users: <5K MAU
+
+**Stack**:
+```yaml
+runtime: nextjs-16
+hosting: vercel
+database: neon
+orm: prisma
+auth: clerk
+billing: stripe
+jobs: inngest
+email: resend
+analytics: posthog
+ai: openai
+storage: r2
+cicd: github-actions
+
+# Optional features
+test_suite_level: basic
+include_fixtures: true
+include_factories: true
+observability_structured_logging: true
+```
+
+**Setup Time**: 2-3 hours
+
+**Deployment**:
+```bash
+# 1. Clone and customize
+copier copy gh:your-org/riso my-saas-app
+cd my-saas-app
+
+# 2. Configure environment
+cp .env.example .env.local
+# Fill in API keys
+
+# 3. Database setup
+pnpm db:push
+pnpm db:seed
+
+# 4. Deploy
+vercel deploy
+```
+
+### Configuration 2: B2B SaaS Startup
+
+**Profile**:
+- Team of 3-5 engineers
+- Need org/team features
+- Budget: $500-2K/month
+- Expected users: 50K MAU
+
+**Stack**:
+```yaml
+runtime: nextjs-16
+hosting: vercel
+database: supabase
+orm: prisma
+auth: clerk
+billing: stripe
+jobs: triggerdev
+email: postmark
+analytics: posthog
+ai: anthropic
+storage: supabase-storage
+cicd: github-actions
+
+# Enterprise features
+enterprise_bridge: workos
+observability_sentry: true
+observability_structured_logging: true
+test_suite_level: comprehensive
+```
+
+**Key Features**:
+- **WorkOS**: SSO (SAML, OIDC), SCIM provisioning
+- **Clerk Organizations**: Team management, role-based access
+- **Trigger.dev**: Long-running workflows, scheduled jobs
+- **Supabase**: Postgres full power (functions, triggers, row-level security)
+
+**Setup Time**: 1-2 days
+
+### Configuration 3: AI-First Application
+
+**Profile**:
+- Heavy LLM usage
+- Need streaming responses
+- Budget: $1K-5K/month (mostly LLM costs)
+- Expected users: 10K MAU
+
+**Stack**:
+```yaml
+runtime: nextjs-16
+hosting: vercel
+database: neon
+orm: drizzle
+auth: clerk
+billing: stripe
+jobs: inngest
+email: resend
+analytics: posthog
+ai: anthropic
+storage: r2
+cicd: github-actions
+
+# AI-specific features
+observability_otel: true  # Track LLM latency
+observability_structured_logging: true  # Log prompts/completions
+```
+
+**AI Infrastructure**:
+```typescript
+// app/api/chat/route.ts
+import Anthropic from '@anthropic-ai/sdk';
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+
+  const stream = await anthropic.messages.stream({
+    model: 'claude-3-5-sonnet-20241022',
+    max_tokens: 4096,
+    messages,
+    system: [
+      {
+        type: 'text',
+        text: CACHED_SYSTEM_PROMPT,
+        cache_control: { type: 'ephemeral' },
+      },
+    ],
+  });
+
+  return new Response(stream.toReadableStream());
+}
+```
+
+**Cost Optimization**:
+- Prompt caching: 90% cost reduction
+- Streaming: Better UX, lower timeout risk
+- Token counting: Budget enforcement per user
+- Model routing: Haiku for simple, Sonnet for complex
+
+### Configuration 4: Global Marketplace
+
+**Profile**:
+- Users in 100+ countries
+- Need <100ms TTFB globally
+- Heavy read workload
+- Budget: $2K-10K/month
+
+**Stack**:
+```yaml
+runtime: remix-2
+hosting: cloudflare
+database: neon
+orm: drizzle
+auth: clerk
+billing: stripe
+jobs: inngest
+email: resend
+analytics: posthog
+ai: anthropic
+storage: r2
+cicd: cloudflare-ci
+
+# Performance features
+observability_otel: true
+observability_datadog: true
+```
+
+**Architecture**:
+```mermaid
+graph TD
+    A[User - Tokyo] -->|<50ms| B[Cloudflare Edge - Tokyo]
+    C[User - London] -->|<50ms| D[Cloudflare Edge - London]
+    E[User - NYC] -->|<50ms| F[Cloudflare Edge - NYC]
+
+    B --> G[Remix SSR]
+    D --> G
+    F --> G
+
+    G --> H[KV Cache]
+    G --> I[Neon Read Replica - Tokyo]
+    G --> J[Neon Read Replica - London]
+    G --> K[Neon Primary - US]
+
+    H -.->|Cache Miss| I
+    H -.->|Cache Miss| J
+
+    style B fill:#f96,stroke:#333,stroke-width:2px
+    style D fill:#f96,stroke:#333,stroke-width:2px
+    style F fill:#f96,stroke:#333,stroke-width:2px
+```
+
+**Performance Optimizations**:
+- Edge caching with Cloudflare KV
+- Neon read replicas in multiple regions
+- Drizzle prepared statements
+- R2 co-located with Workers
+
+**Expected Performance**:
+- TTFB: <100ms globally (p95)
+- Time to Interactive: <1.5s (p75)
+- Core Web Vitals: All green
+
+## Validation & Testing
+
+### Pre-Generation Validation
+
+The Riso template validates your SaaS combination before rendering:
+
+```bash
+# Run validation
+uv run python scripts/ci/validate_saas_combinations.py
+
+# Output
+✓ PASSED: nextjs-16-vercel-neon-prisma
+⚠ WARNING: nextjs-16-cloudflare-neon-prisma
+  Prisma requires TCP connections (Cloudflare Workers use HTTP)
+  Recommendation: Use Drizzle ORM for edge compatibility
+✗ ERROR: vercel-neon-supabase-storage
+  Cannot use Neon database with Supabase Storage
+  Choose: (1) Supabase DB + Storage OR (2) Neon + R2
+```
+
+### Post-Generation Testing
+
+After rendering your project:
+
+```bash
+# 1. Environment validation
+pnpm validate:env
+
+# 2. Database connectivity
+pnpm db:test
+
+# 3. Integration tests
+pnpm test:integration
+
+# 4. E2E tests (if comprehensive suite enabled)
+pnpm test:e2e
+```
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. Prisma on Cloudflare Workers
+
+**Error**: `PrismaClient is unable to run in Cloudflare Workers`
+
+**Solution**: Use Drizzle ORM or Prisma Data Proxy
+
+```typescript
+// Option A: Switch to Drizzle (recommended)
+import { drizzle } from 'drizzle-orm/neon-http';
+const db = drizzle(process.env.DATABASE_URL);
+
+// Option B: Use Prisma Data Proxy (adds cost + latency)
+// DATABASE_URL=prisma://aws-us-east-1.prisma-data.com/?api_key=xxx
+```
+
+#### 2. Neon + Supabase Storage
+
+**Error**: `Supabase Storage requires Supabase Database`
+
+**Solution**: Choose one of:
+- Full Supabase: `database: supabase` + `storage: supabase-storage`
+- Neon + R2: `database: neon` + `storage: r2`
+
+#### 3. Clerk + Supabase Auth Conflict
+
+**Warning**: Both Clerk and Supabase provide authentication
+
+**Solution**: Disable Supabase Auth in dashboard:
+1. Go to Supabase Dashboard → Authentication
+2. Disable "Enable email confirmations"
+3. Use Clerk as single source of truth for auth
+
+#### 4. High R2 Egress from Vercel
+
+**Issue**: R2 egress is free within Cloudflare network, but costs apply from Vercel
+
+**Solutions**:
+1. Use Cloudflare CDN in front of R2
+2. Switch to Vercel Blob (if budget allows)
+3. Accept egress costs (still cheaper than S3)
+
+#### 5. Background Jobs Not Running
+
+**Debugging**:
+```typescript
+// Check Inngest dashboard
+await inngest.send({
+  name: 'test/job',
+  data: { test: true },
+});
+
+// Verify webhook endpoint
+// Inngest needs to reach: https://your-app.com/api/inngest
+```
+
+## Resources
+
+### Provider Documentation
+
+- [Next.js Docs](https://nextjs.org/docs)
+- [Remix Docs](https://remix.run/docs)
+- [Vercel Docs](https://vercel.com/docs)
+- [Cloudflare Workers](https://developers.cloudflare.com/workers)
+- [Neon Docs](https://neon.tech/docs)
+- [Supabase Docs](https://supabase.com/docs)
+- [Prisma Docs](https://www.prisma.io/docs)
+- [Drizzle Docs](https://orm.drizzle.team/docs/overview)
+- [Clerk Docs](https://clerk.com/docs)
+- [Stripe Docs](https://stripe.com/docs)
+- [Paddle Docs](https://developer.paddle.com)
+
+### Comparison Tools
+
+- [Database Cost Calculator](https://neon.tech/pricing#calculator)
+- [Vercel vs Cloudflare Pricing](https://vercel.com/pricing)
+- [LLM Cost Comparison](https://docsbot.ai/tools/gpt-openai-api-pricing-calculator)
+
+### Community
+
+- [Riso Discord](https://discord.gg/riso) - Get help with stack selection
+- [Riso GitHub Discussions](https://github.com/your-org/riso/discussions) - Share your stack
+
+## Next Steps
+
+1. **Review Use Cases**: Match your requirements to recommended stacks
+2. **Check Compatibility**: Validate your combination doesn't have conflicts
+3. **Estimate Costs**: Use provider calculators for your expected usage
+4. **Generate Project**: Use Copier to render your customized project
+5. **Deploy**: Follow deployment guide for your hosting provider
+
+```bash
+# Generate your project
+copier copy gh:your-org/riso my-app \
+  --data runtime=nextjs-16 \
+  --data hosting=vercel \
+  --data database=neon \
+  --data auth=clerk
+
+# Deploy
+cd my-app
+vercel deploy
+```

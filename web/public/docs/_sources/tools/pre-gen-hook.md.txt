@@ -1,0 +1,85 @@
+---
+name: "Pre-Generation Hook"
+type: "validator"
+category: "riso-scripts"
+description: "Validates configuration before template generation begins"
+icon: "tabler:shield-check"
+popularity: 70
+tags: ["hook", "validation", "pre-generation", "copier"]
+provided_by: "template"
+---
+
+# Pre-Generation Hook
+
+The pre-generation hook validates user inputs and configuration before Copier starts generating the template.
+
+## Purpose
+
+- Validate user-provided answers against schema
+- Check for incompatible configuration combinations
+- Ensure required dependencies are available
+- Fail early with helpful error messages
+
+## Location
+
+```
+template/hooks/pre_gen_project.py
+```
+
+## Execution
+
+This hook runs automatically when:
+
+```bash
+# Via Copier
+copier copy . ./my-project
+
+# Via Riso TUI
+make tui
+
+# Via CLI generate
+make generate
+```
+
+## Validation Checks
+
+### Configuration Validation
+
+- Project name format (valid Python/npm package name)
+- Slug generation (kebab-case, no special characters)
+- Required field presence
+
+### Compatibility Checks
+
+- Frontend framework + component library compatibility
+- Backend language + framework combinations
+- Monorepo tool requirements based on layout
+
+### Environment Validation
+
+- Python version requirements (3.11+)
+- Node.js version requirements (18+)
+- Required tooling availability
+
+## Error Handling
+
+When validation fails, the hook:
+
+1. Prints detailed error message with context
+2. Suggests corrective action
+3. Exits with non-zero code to abort generation
+
+```python
+# Example validation failure
+if project_layout == "monorepo" and not monorepo_tool:
+    raise ValueError(
+        "Monorepo layout requires a monorepo tool. "
+        "Set monorepo_tool to 'turborepo', 'nx', or 'none'."
+    )
+```
+
+## Related
+
+- [Post-Generation Hook](post-gen-hook.md) - Post-processing after generation
+- [Structure Validator](structure-validator.md) - Layout validation
+- [Tool Validator](tool-validator.md) - Tool compatibility checks
