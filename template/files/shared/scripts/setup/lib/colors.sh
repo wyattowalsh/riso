@@ -3,24 +3,26 @@
 # ANSI color codes and formatted logging with NO_COLOR support
 
 # ANSI color codes (respect NO_COLOR environment variable)
+# Exported for use by scripts that source this library
+# shellcheck disable=SC2034  # Variables are exported for external use
 if [ -n "${NO_COLOR:-}" ] || [ "${TERM:-}" = "dumb" ]; then
-    RED=""
-    GREEN=""
-    YELLOW=""
-    BLUE=""
-    CYAN=""
-    MAGENTA=""
-    BOLD=""
-    NC=""
+    export RED=""
+    export GREEN=""
+    export YELLOW=""
+    export BLUE=""
+    export CYAN=""
+    export MAGENTA=""
+    export BOLD=""
+    export NC=""
 else
-    RED='\033[0;31m'
-    GREEN='\033[0;32m'
-    YELLOW='\033[1;33m'
-    BLUE='\033[0;34m'
-    CYAN='\033[0;36m'
-    MAGENTA='\033[0;35m'
-    BOLD='\033[1m'
-    NC='\033[0m' # No Color
+    export RED='\033[0;31m'
+    export GREEN='\033[0;32m'
+    export YELLOW='\033[1;33m'
+    export BLUE='\033[0;34m'
+    export CYAN='\033[0;36m'
+    export MAGENTA='\033[0;35m'
+    export BOLD='\033[1m'
+    export NC='\033[0m' # No Color
 fi
 
 # Status symbols
