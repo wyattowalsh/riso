@@ -1292,6 +1292,173 @@ prompts:
       - internal-only
     when: "{{ saas_starter_module == 'enabled' }}"
 
+  # ============================================================================
+  # UI & Frontend Options
+  # ============================================================================
+
+  saas_ui_framework:
+    type: str
+    help: |
+      Select UI component framework:
+      - shadcn-ui: Copy-paste components built on Radix, full customization, Tailwind-native.
+        Best for: Custom designs, full control over styling.
+      - Radix Primitives: Unstyled accessible primitives, bring your own styles.
+        Best for: Design systems, maximum flexibility.
+      - Headless UI: Tailwind Labs components, simpler API, good defaults.
+        Best for: Quick prototypes, Tailwind-first teams.
+    default: shadcn-ui
+    choices:
+      - shadcn-ui
+      - radix-primitives
+      - headless-ui
+    when: "{{ saas_starter_module == 'enabled' }}"
+
+  saas_form_library:
+    type: str
+    help: |
+      Select form handling library:
+      - React Hook Form: Performance-focused, minimal re-renders, Zod integration.
+      - Conform: Remix-native, progressive enhancement, server validation.
+      - None: Manual form handling with native React.
+    default: react-hook-form
+    choices:
+      - react-hook-form
+      - conform
+      - none
+    when: "{{ saas_starter_module == 'enabled' }}"
+
+  # ============================================================================
+  # Real-time & Communication
+  # ============================================================================
+
+  saas_realtime:
+    type: str
+    help: |
+      Select real-time communication provider:
+      - Pusher: Industry standard, channels/presence, easy setup, generous free tier.
+      - Ably: Enterprise-grade, message history, global edge network.
+      - Supabase Realtime: Integrated with Supabase, Postgres changes, presence.
+      - None: No real-time features (polling or SSE only).
+    default: none
+    choices:
+      - pusher
+      - ably
+      - supabase-realtime
+      - none
+    when: "{{ saas_starter_module == 'enabled' }}"
+
+  # ============================================================================
+  # Marketing & Growth
+  # ============================================================================
+
+  saas_landing_page:
+    type: bool
+    help: |
+      Include marketing landing page scaffolding? Generates:
+      - Hero section with CTA
+      - Features grid
+      - Pricing table (connected to billing plans)
+      - Testimonials section
+      - FAQ accordion
+      - Footer with links
+    default: true
+    when: "{{ saas_starter_module == 'enabled' }}"
+
+  saas_blog:
+    type: bool
+    help: |
+      Include MDX blog scaffolding? Generates:
+      - Blog listing page
+      - Individual post pages with MDX support
+      - Author profiles
+      - Categories/tags
+      - RSS feed
+      - SEO metadata
+    default: false
+    when: "{{ saas_starter_module == 'enabled' }}"
+
+  saas_changelog_public:
+    type: bool
+    help: |
+      Include public changelog page? Generates:
+      - Changelog listing from MDX files
+      - Version badges (new, improved, fixed)
+      - Subscribe to updates
+      - RSS feed for changelog
+    default: false
+    when: "{{ saas_starter_module == 'enabled' }}"
+
+  # ============================================================================
+  # Security & Compliance
+  # ============================================================================
+
+  saas_2fa:
+    type: bool
+    help: |
+      Include two-factor authentication (2FA) scaffolding? Generates:
+      - TOTP setup flow (Google Authenticator, Authy compatible)
+      - Backup codes generation and storage
+      - 2FA enforcement settings per organization
+      - Recovery flow
+      Note: Clerk has built-in 2FA. This adds custom 2FA for Auth.js.
+    default: false
+    when: "{{ saas_starter_module == 'enabled' and saas_auth == 'authjs' }}"
+
+  saas_gdpr_tools:
+    type: bool
+    help: |
+      Include GDPR compliance tools? Generates:
+      - Data export endpoint (download all user data as JSON/ZIP)
+      - Account deletion flow with grace period
+      - Cookie consent banner
+      - Privacy preference center
+      - Data processing records
+    default: false
+    when: "{{ saas_starter_module == 'enabled' }}"
+
+  # ============================================================================
+  # Developer Experience
+  # ============================================================================
+
+  saas_api_docs:
+    type: bool
+    help: |
+      Include API documentation generation? Generates:
+      - OpenAPI 3.1 schema from route handlers
+      - Swagger UI at /api/docs
+      - TypeScript client generation script
+      - API versioning support
+    default: false
+    when: "{{ saas_starter_module == 'enabled' and saas_api_access == 'public-api' }}"
+
+  saas_rate_limiting:
+    type: str
+    help: |
+      Select rate limiting implementation:
+      - Upstash: Redis-based, serverless, sliding window, great for edge.
+      - Built-in: In-memory rate limiting (resets on deploy, single-instance only).
+      - None: No rate limiting (handle at infrastructure level).
+    default: upstash
+    choices:
+      - upstash
+      - built-in
+      - none
+    when: "{{ saas_starter_module == 'enabled' }}"
+
+  saas_file_upload:
+    type: str
+    help: |
+      Select file upload widget:
+      - UploadThing: Type-safe uploads, built for Next.js, S3-compatible backend.
+      - React Dropzone: Flexible, bring your own backend, more control.
+      - None: Manual file input handling.
+    default: uploadthing
+    choices:
+      - uploadthing
+      - react-dropzone
+      - none
+    when: "{{ saas_starter_module == 'enabled' }}"
+
 exclude:
   - ".git"
   - ".github"

@@ -61,6 +61,11 @@ export function SidebarSummary() {
             <dd>{config.docs_site !== 'none' ? config.docs_site ?? 'fumadocs' : 'Disabled'}</dd>
           </div>
         </dl>
+        {!config.project_name && (
+          <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
+            Tip: add a project name to personalize your Copier command.
+          </p>
+        )}
       </div>
 
       <div className="riso-card-soft p-5">
