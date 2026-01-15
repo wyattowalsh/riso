@@ -3,7 +3,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { z } from 'zod'
 
 // @ts-expect-error - JSON import works at runtime
-import matrixData from '../../samples/metadata/matrix-data.json'
+import matrixData from '../src/data/matrix-data.json'
 
 const server = new McpServer({
   name: 'riso-mcp',
