@@ -493,8 +493,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 """)
 
-        with patch("sys.argv", ["validate_release_configs.py",
-                               "--project-dir", str(project_dir)]):
+        with patch(
+            "sys.argv",
+            ["validate_release_configs.py", "--project-dir", str(project_dir)],
+        ):
             result = validate_release_configs.main()
 
         assert result == 0
@@ -504,8 +506,14 @@ jobs:
         from unittest.mock import patch
         import validate_release_configs
 
-        with patch("sys.argv", ["validate_release_configs.py",
-                               "--project-dir", str(temp_dir / "nonexistent")]):
+        with patch(
+            "sys.argv",
+            [
+                "validate_release_configs.py",
+                "--project-dir",
+                str(temp_dir / "nonexistent"),
+            ],
+        ):
             result = validate_release_configs.main()
 
         assert result == 1
@@ -522,8 +530,10 @@ jobs:
         commitlint = project_dir / ".commitlintrc.yml"
         commitlint.write_text("rules: {}")
 
-        with patch("sys.argv", ["validate_release_configs.py",
-                               "--project-dir", str(project_dir)]):
+        with patch(
+            "sys.argv",
+            ["validate_release_configs.py", "--project-dir", str(project_dir)],
+        ):
             result = validate_release_configs.main()
 
         assert result == 1
@@ -536,8 +546,10 @@ jobs:
         project_dir = temp_dir / "project"
         project_dir.mkdir()
 
-        with patch("sys.argv", ["validate_release_configs.py",
-                               "--project-dir", str(project_dir)]):
+        with patch(
+            "sys.argv",
+            ["validate_release_configs.py", "--project-dir", str(project_dir)],
+        ):
             result = validate_release_configs.main()
 
         assert result == 0

@@ -235,9 +235,8 @@ def _validate_saas_starter(context: dict) -> list[dict]:
         )
 
     # Custom permissions without admin dashboard - warning
-    if (
-        context.get("saas_rbac_system") == "custom-permissions"
-        and not context.get("saas_admin_dashboard")
+    if context.get("saas_rbac_system") == "custom-permissions" and not context.get(
+        "saas_admin_dashboard"
     ):
         issues.append(
             {
@@ -267,7 +266,9 @@ def _validate_saas_starter(context: dict) -> list[dict]:
         )
 
     # User impersonation requires admin dashboard
-    if context.get("saas_user_impersonation") and not context.get("saas_admin_dashboard"):
+    if context.get("saas_user_impersonation") and not context.get(
+        "saas_admin_dashboard"
+    ):
         issues.append(
             {
                 "severity": "warning",

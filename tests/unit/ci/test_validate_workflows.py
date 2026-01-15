@@ -309,7 +309,9 @@ class TestMain:
 
         workflows_dir = temp_dir / "workflows"
         workflows_dir.mkdir()
-        (workflows_dir / "test.yml").write_text("name: Test\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi")
+        (workflows_dir / "test.yml").write_text(
+            "name: Test\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi"
+        )
 
         def mock_run(*args, **kwargs):
             result = MagicMock()
@@ -354,6 +356,7 @@ class TestNonJsonErrors:
     def test_handles_non_json_actionlint_output(self, temp_dir, monkeypatch):
         """Should handle non-JSON actionlint output gracefully."""
         from unittest.mock import MagicMock
+
         workflow = temp_dir / "test.yml"
         workflow.write_text("name: Test")
 

@@ -85,64 +85,48 @@ def load_yaml_file(path: Path) -> YAMLLoadResult:
         ...     print(f"Error: {result['error']}")
     """
     if not path.exists():
-        return YAMLLoadResult(
-            success=False,
-            data=None,
-            error=f"File not found: {path}"
-        )
+        return YAMLLoadResult(success=False, data=None, error=f"File not found: {path}")
 
     if not path.is_file():
         return YAMLLoadResult(
-            success=False,
-            data=None,
-            error=f"Path is not a file: {path}"
+            success=False, data=None, error=f"Path is not a file: {path}"
         )
 
     try:
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         if data is None:
             return YAMLLoadResult(
-                success=False,
-                data=None,
-                error="File is empty or contains only null"
+                success=False, data=None, error="File is empty or contains only null"
             )
 
         if not isinstance(data, dict):
             return YAMLLoadResult(
                 success=False,
                 data=None,
-                error=f"Expected YAML dictionary, got {type(data).__name__}"
+                error=f"Expected YAML dictionary, got {type(data).__name__}",
             )
 
-        return YAMLLoadResult(
-            success=True,
-            data=data,
-            error=None
-        )
+        return YAMLLoadResult(success=True, data=data, error=None)
 
     except yaml.YAMLError as e:
         return YAMLLoadResult(
-            success=False,
-            data=None,
-            error=f"YAML parsing error: {e}"
+            success=False, data=None, error=f"YAML parsing error: {e}"
         )
     except UnicodeDecodeError as e:
         return YAMLLoadResult(
-            success=False,
-            data=None,
-            error=f"File encoding error: {e}"
+            success=False, data=None, error=f"File encoding error: {e}"
         )
     except Exception as e:
         return YAMLLoadResult(
-            success=False,
-            data=None,
-            error=f"Unexpected error loading file: {e}"
+            success=False, data=None, error=f"Unexpected error loading file: {e}"
         )
 
 
-def validate_path_exists(path: Path, must_be_file: bool = False, must_be_dir: bool = False) -> ValidationResult:
+def validate_path_exists(
+    path: Path, must_be_file: bool = False, must_be_dir: bool = False
+) -> ValidationResult:
     """Validate that a path exists and optionally check its type.
 
     Args:
@@ -163,12 +147,7 @@ def validate_path_exists(path: Path, must_be_file: bool = False, must_be_dir: bo
 
     if not path.exists():
         errors.append(f"Path does not exist: {path}")
-        return ValidationResult(
-            file=str(path),
-            valid=False,
-            errors=errors,
-            warnings=[]
-        )
+        return ValidationResult(file=str(path), valid=False, errors=errors, warnings=[])
 
     if must_be_file and not path.is_file():
         errors.append(f"Path exists but is not a file: {path}")
@@ -177,14 +156,13 @@ def validate_path_exists(path: Path, must_be_file: bool = False, must_be_dir: bo
         errors.append(f"Path exists but is not a directory: {path}")
 
     return ValidationResult(
-        file=str(path),
-        valid=len(errors) == 0,
-        errors=errors,
-        warnings=[]
+        file=str(path), valid=len(errors) == 0, errors=errors, warnings=[]
     )
 
 
-def validate_required_fields(data: dict[str, Any], required_fields: list[str], context: str = "") -> list[str]:
+def validate_required_fields(
+    data: dict[str, Any], required_fields: list[str], context: str = ""
+) -> list[str]:
     """Validate that a dictionary contains all required fields.
 
     Args:
@@ -217,7 +195,7 @@ def validate_required_fields(data: dict[str, Any], required_fields: list[str], c
 def print_validation_summary(
     results: list[ValidationResult],
     title: str = "Validation Summary",
-    show_warnings: bool = True
+    show_warnings: bool = True,
 ) -> None:
     """Print a formatted validation summary.
 
@@ -265,9 +243,7 @@ def print_validation_summary(
 
 
 def create_validation_result(
-    file_path: Path | str,
-    errors: list[str],
-    warnings: list[str] | None = None
+    file_path: Path | str, errors: list[str], warnings: list[str] | None = None
 ) -> ValidationResult:
     """Create a ValidationResult from a file path and error/warning lists.
 
@@ -294,7 +270,7 @@ def create_validation_result(
         file=str(file_path),
         valid=len(errors) == 0,
         errors=errors,
-        warnings=warnings or []
+        warnings=warnings or [],
     )
 
 
@@ -311,6 +287,7 @@ def check_yaml_dependency() -> bool:
     """
     try:
         import yaml  # noqa: F401 - imported to verify availability
+
         return True
     except ImportError:
         return False

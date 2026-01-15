@@ -16,6 +16,7 @@ from .session import SessionManager
 __version__ = "1.0.0"
 SERVER_NAME = "riso-mcp"
 
+
 def create_server(config: ServerConfig | None = None) -> tuple[FastMCP, SessionManager]:
     """Create and register a configured MCP server instance."""
     server_config = config or load_config()

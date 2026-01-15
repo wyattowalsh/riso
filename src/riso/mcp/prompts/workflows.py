@@ -85,12 +85,12 @@ Choose your docs platform:
 
 To proceed, use the `wizard_start` tool:
 ```
-wizard_start(project_name="{name or 'my-project'}", destination="~/projects/{name or 'my-project'}")
+wizard_start(project_name="{name or "my-project"}", destination="~/projects/{name or "my-project"}")
 ```
 
 Or use `copier_copy` for a quick start with defaults:
 ```
-copier_copy(destination="~/projects/{name or 'my-project'}", answers={{"project_name": "{name or 'my-project'}"}})
+copier_copy(destination="~/projects/{name or "my-project"}", answers={{"project_name": "{name or "my-project"}"}})
 ```
 """
         return intro
@@ -131,19 +131,19 @@ When you update a project, Copier will:
 ### Standard Update (recommended)
 Applies changes while keeping your existing answers:
 ```
-copier_update(destination="{project_path or '/path/to/project'}")
+copier_update(destination="{project_path or "/path/to/project"}")
 ```
 
 ### Re-prompt Update
 Re-asks questions even if they have answers:
 ```
-copier_update(destination="{project_path or '/path/to/project'}", skip_answered=False)
+copier_update(destination="{project_path or "/path/to/project"}", skip_answered=False)
 ```
 
 ### Full Recopy
 Regenerates everything (for major version updates):
 ```
-copier_recopy(destination="{project_path or '/path/to/project'}")
+copier_recopy(destination="{project_path or "/path/to/project"}")
 ```
 
 ## After Updating
@@ -348,10 +348,7 @@ async fn hello(name: String) -> String {
 """,
         }
 
-        lang_content = lang_specific.get(
-            language.lower(),
-            lang_specific["python"]
-        )
+        lang_content = lang_specific.get(language.lower(), lang_specific["python"])
 
         return f"""# MCP Server Project Setup
 
@@ -431,16 +428,23 @@ Set up comprehensive code quality for your project.
 {"### Standard Profile" if profile == "standard" else "### Strict Profile"}
 
 {
-"Balanced configuration suitable for most projects:" if profile == "standard" else
-"Maximum strictness for high-reliability code:"
-}
+            "Balanced configuration suitable for most projects:"
+            if profile == "standard"
+            else "Maximum strictness for high-reliability code:"
+        }
 
 | Tool | {profile.capitalize()} Setting |
 |------|-----------|
 | Ruff | {"Base rules + imports" if profile == "standard" else "All rules enabled"} |
-| ty | {"Standard type checking" if profile == "standard" else "Strict mode + inference"} |
+| ty | {
+            "Standard type checking"
+            if profile == "standard"
+            else "Strict mode + inference"
+        } |
 | Pylint | {"Core checks" if profile == "standard" else "All categories enabled"} |
-| pytest | {"Standard coverage" if profile == "standard" else "100% coverage required"} |
+| pytest | {
+            "Standard coverage" if profile == "standard" else "100% coverage required"
+        } |
 
 ## Running Quality Checks
 

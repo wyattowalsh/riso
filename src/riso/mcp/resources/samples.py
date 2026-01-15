@@ -5,10 +5,8 @@ Exposes sample project configurations and their answer files.
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-import yaml
 
 from ..config import get_config
 
