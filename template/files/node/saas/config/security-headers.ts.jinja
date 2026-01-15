@@ -1,0 +1,309 @@
+{% if saas_starter_module == "enabled" %}
+/**
+ * Security Headers Configuration
+ * 
+ * Configures essential security headers to protect against common attacks:
+ * - XSS (Cross-Site Scripting)
+ * - Clickjacking
+ * - MIME type sniffing
+ * - Insecure connections
+ * 
+ * @see https://owasp.org/www-project-secure-headers/
+ */
+
+// ============================================================================
+// Security Headers Configuration
+// ============================================================================
+
+export interface SecurityHeadersConfig {
+  /** Content Security Policy directives */
+  contentSecurityPolicy?: Record<string, string[]>;
+  /** Enable/disable specific headers */
+  headers?: {
+    xFrameOptions?: boolean;
+    xContentTypeOptions?: boolean;
+    referrerPolicy?: boolean;
+    strictTransportSecurity?: boolean;
+    permissionsPolicy?: boolean;
+  };
+}
+
+const defaultConfig: SecurityHeadersConfig = {
+  headers: {
+    xFrameOptions: true,
+    xContentTypeOptions: true,
+    referrerPolicy: true,
+    strictTransportSecurity: true,
+    permissionsPolicy: true,
+  },
+};
+
+/**
+ * Default Content Security Policy
+ * Customize based on your app's requirements
+ */
+export const defaultCSP: Record<string, string[]> = {
+  'default-src': ["'self'"],
+  'script-src': [
+    "'self'",
+    "'unsafe-inline'", // Required for Next.js
+    "'unsafe-eval'", // Required for development
+    {% if saas_analytics == 'posthog' %}
+    'https://app.posthog.com',
+    'https://us.posthog.com',
+    'https://eu.posthog.com',
+    {% elif saas_analytics == 'amplitude' %}
+    'https://cdn.amplitude.com',
+    {% endif %}
+    {% if saas_billing == 'stripe' %}
+    'https://js.stripe.com',
+    {% elif saas_billing == 'paddle' %}
+    'https://cdn.paddle.com',
+    {% endif %}
+    {% if saas_observability_sentry %}
+    'https://*.sentry.io',
+    {% endif %}
+  ],
+  'style-src': ["'self'", "'unsafe-inline'"],
+  'img-src': [
+    "'self'",
+    'data:',
+    'blob:',
+    'https:',
+    {% if saas_storage == 'r2' %}
+    'https://*.r2.cloudflarestorage.com',
+    {% elif saas_storage == 'supabase-storage' %}
+    'https://*.supabase.co',
+    {% endif %}
+  ],
+  'font-src': ["'self'", 'data:'],
+  'connect-src': [
+    "'self'",
+    {% if saas_analytics == 'posthog' %}
+    'https://app.posthog.com',
+    'https://us.posthog.com',
+    'https://eu.posthog.com',
+    {% elif saas_analytics == 'amplitude' %}
+    'https://api.amplitude.com',
+    {% endif %}
+    {% if saas_billing == 'stripe' %}
+    'https://api.stripe.com',
+    {% elif saas_billing == 'paddle' %}
+    'https://api.paddle.com',
+    'https://checkout.paddle.com',
+    {% endif %}
+    {% if saas_realtime == 'pusher' %}
+    'wss://*.pusher.com',
+    'https://*.pusher.com',
+    {% elif saas_realtime == 'ably' %}
+    'wss://*.ably.io',
+    'https://*.ably.io',
+    {% elif saas_realtime == 'supabase-realtime' %}
+    'wss://*.supabase.co',
+    {% endif %}
+    {% if saas_observability_sentry %}
+    'https://*.sentry.io',
+    {% endif %}
+  ],
+  'frame-src': [
+    "'self'",
+    {% if saas_billing == 'stripe' %}
+    'https://js.stripe.com',
+    'https://hooks.stripe.com',
+    {% elif saas_billing == 'paddle' %}
+    'https://checkout.paddle.com',
+    {% endif %}
+    {% if saas_auth == 'clerk' %}
+    'https://*.clerk.accounts.dev',
+    'https://clerk.{{ project_slug }}.com',
+    {% endif %}
+  ],
+  'worker-src': ["'self'", 'blob:'],
+  'object-src': ["'none'"],
+  'base-uri': ["'self'"],
+  'form-action': ["'self'"],
+  'frame-ancestors': ["'none'"],
+  'upgrade-insecure-requests': [],
+};
+
+// ============================================================================
+// Header Generators
+// ============================================================================
+
+/**
+ * Generate CSP header value from directives
+ */
+export function generateCSP(directives: Record<string, string[]>): string {
+  return Object.entries(directives)
+    .filter(([, values]) => values.length > 0 || values.length === 0)
+    .map(([key, values]) => {
+      if (values.length === 0) return key;
+      return `${key} ${values.join(' ')}`;
+    })
+    .join('; ');
+}
+
+/**
+ * Get all security headers
+ */
+export function getSecurityHeaders(
+  config: SecurityHeadersConfig = defaultConfig
+): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const opts = { ...defaultConfig.headers, ...config.headers };
+
+  // Content Security Policy
+  const csp = { ...defaultCSP, ...config.contentSecurityPolicy };
+  headers['Content-Security-Policy'] = generateCSP(csp);
+
+  // X-Frame-Options - Prevent clickjacking
+  if (opts.xFrameOptions) {
+    headers['X-Frame-Options'] = 'DENY';
+  }
+
+  // X-Content-Type-Options - Prevent MIME sniffing
+  if (opts.xContentTypeOptions) {
+    headers['X-Content-Type-Options'] = 'nosniff';
+  }
+
+  // Referrer-Policy - Control referrer information
+  if (opts.referrerPolicy) {
+    headers['Referrer-Policy'] = 'strict-origin-when-cross-origin';
+  }
+
+  // Strict-Transport-Security - Force HTTPS
+  if (opts.strictTransportSecurity) {
+    headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload';
+  }
+
+  // Permissions-Policy - Control browser features
+  if (opts.permissionsPolicy) {
+    headers['Permissions-Policy'] = [
+      'camera=()',
+      'microphone=()',
+      'geolocation=()',
+      'interest-cohort=()',
+    ].join(', ');
+  }
+
+  // X-DNS-Prefetch-Control
+  headers['X-DNS-Prefetch-Control'] = 'on';
+
+  return headers;
+}
+
+// ============================================================================
+// Next.js Integration
+// ============================================================================
+
+{% if saas_runtime == 'nextjs-16' %}
+/**
+ * Next.js security headers configuration
+ * Add to next.config.js:
+ * 
+ * @example
+ * ```js
+ * const { nextSecurityHeaders } = require('./config/security-headers');
+ * 
+ * module.exports = {
+ *   async headers() {
+ *     return nextSecurityHeaders();
+ *   },
+ * };
+ * ```
+ */
+export function nextSecurityHeaders(config?: SecurityHeadersConfig) {
+  const headers = getSecurityHeaders(config);
+
+  return [
+    {
+      source: '/:path*',
+      headers: Object.entries(headers).map(([key, value]) => ({
+        key,
+        value,
+      })),
+    },
+  ];
+}
+
+/**
+ * Middleware helper for dynamic CSP (e.g., with nonce)
+ */
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export function withSecurityHeaders(
+  request: NextRequest,
+  response: NextResponse,
+  config?: SecurityHeadersConfig
+): NextResponse {
+  const headers = getSecurityHeaders(config);
+
+  Object.entries(headers).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
+
+  return response;
+}
+{% endif %}
+
+// ============================================================================
+// Remix Integration
+// ============================================================================
+
+{% if saas_runtime == 'remix-2' %}
+/**
+ * Remix security headers for entry.server.tsx
+ * 
+ * @example
+ * ```tsx
+ * import { getSecurityHeaders } from '~/config/security-headers';
+ * 
+ * export default function handleRequest(
+ *   request: Request,
+ *   responseStatusCode: number,
+ *   responseHeaders: Headers,
+ *   remixContext: EntryContext
+ * ) {
+ *   const securityHeaders = getSecurityHeaders();
+ *   Object.entries(securityHeaders).forEach(([key, value]) => {
+ *     responseHeaders.set(key, value);
+ *   });
+ *   
+ *   // ... rest of handler
+ * }
+ * ```
+ */
+export { getSecurityHeaders };
+{% endif %}
+
+// ============================================================================
+// Nonce Generation (for stricter CSP)
+// ============================================================================
+
+/**
+ * Generate a cryptographic nonce for inline scripts
+ * Use when you need stricter CSP without 'unsafe-inline'
+ */
+export function generateNonce(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return Buffer.from(crypto.randomUUID()).toString('base64');
+  }
+  // Fallback for environments without crypto
+  return Buffer.from(Math.random().toString(36).substring(2)).toString('base64');
+}
+
+/**
+ * Create CSP with nonce for inline scripts
+ */
+export function getCSPWithNonce(nonce: string): Record<string, string[]> {
+  const csp = { ...defaultCSP };
+  csp['script-src'] = csp['script-src'].filter(
+    (src) => src !== "'unsafe-inline'" && src !== "'unsafe-eval'"
+  );
+  csp['script-src'].push(`'nonce-${nonce}'`);
+  csp['style-src'] = csp['style-src'].filter((src) => src !== "'unsafe-inline'");
+  csp['style-src'].push(`'nonce-${nonce}'`);
+  return csp;
+}
+{% endif %}

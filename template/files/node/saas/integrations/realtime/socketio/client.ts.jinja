@@ -1,0 +1,336 @@
+{% if saas_starter_module == "enabled" and saas_realtime == "socketio" %}
+/**
+ * Socket.io Real-time Client
+ * 
+ * Provides WebSocket-based real-time communication using Socket.io.
+ * Includes both client and server utilities.
+ * 
+ * Features:
+ * - Auto-reconnection
+ * - Room-based messaging
+ * - Type-safe events
+ * - Authentication integration
+ * 
+ * @see https://socket.io/docs/v4/
+ */
+
+{% if saas_runtime == 'nextjs-16' %}
+'use client';
+{% endif %}
+
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { io, Socket } from 'socket.io-client';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface SocketConfig {
+  url?: string;
+  path?: string;
+  auth?: Record<string, string>;
+  autoConnect?: boolean;
+}
+
+export type ConnectionStatus = 'connected' | 'disconnected' | 'connecting' | 'error';
+
+// Define your event types here for type safety
+export interface ServerToClientEvents {
+  // Notifications
+  'notification': (data: { id: string; type: string; message: string; createdAt: string }) => void;
+  
+  {% if saas_tenancy_model == 'b2b-teams' %}
+  // Team events
+  'team:member-joined': (data: { userId: string; name: string; teamId: string }) => void;
+  'team:member-left': (data: { userId: string; teamId: string }) => void;
+  'team:updated': (data: { teamId: string; changes: Record<string, unknown> }) => void;
+  {% endif %}
+  
+  // Presence
+  'presence:online': (data: { userId: string }) => void;
+  'presence:offline': (data: { userId: string }) => void;
+  
+  // Custom events (add your own)
+  'message': (data: { from: string; content: string; timestamp: string }) => void;
+}
+
+export interface ClientToServerEvents {
+  // Join/leave rooms
+  'join-room': (roomId: string, callback?: (success: boolean) => void) => void;
+  'leave-room': (roomId: string) => void;
+  
+  // Presence
+  'presence:ping': () => void;
+  
+  // Custom events
+  'message': (data: { to: string; content: string }) => void;
+}
+
+// ============================================================================
+// Socket Instance
+// ============================================================================
+
+let socket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
+
+/**
+ * Get or create socket instance
+ */
+export function getSocket(config?: SocketConfig): Socket<ServerToClientEvents, ClientToServerEvents> {
+  if (!socket) {
+    const url = config?.url || process.env.NEXT_PUBLIC_SOCKET_URL || '';
+    
+    socket = io(url, {
+      path: config?.path || '/api/socket',
+      auth: config?.auth,
+      autoConnect: config?.autoConnect ?? false,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      transports: ['websocket', 'polling'],
+    });
+  }
+  return socket;
+}
+
+/**
+ * Disconnect and cleanup socket
+ */
+export function disconnectSocket(): void {
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
+}
+
+// ============================================================================
+// React Hooks
+// ============================================================================
+
+/**
+ * Hook to manage socket connection
+ * 
+ * @example
+ * ```tsx
+ * function MyComponent() {
+ *   const { status, socket } = useSocket({ auth: { token: userToken } });
+ *   
+ *   if (status === 'connecting') return <Spinner />;
+ *   if (status === 'error') return <ErrorMessage />;
+ *   
+ *   return <div>Connected!</div>;
+ * }
+ * ```
+ */
+export function useSocket(config?: SocketConfig) {
+  const [status, setStatus] = useState<ConnectionStatus>('disconnected');
+  const socketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
+
+  useEffect(() => {
+    const socket = getSocket(config);
+    socketRef.current = socket;
+
+    const onConnect = () => setStatus('connected');
+    const onDisconnect = () => setStatus('disconnected');
+    const onConnectError = () => setStatus('error');
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('connect_error', onConnectError);
+
+    // Connect if not already connected
+    if (!socket.connected) {
+      setStatus('connecting');
+      socket.connect();
+    } else {
+      setStatus('connected');
+    }
+
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('connect_error', onConnectError);
+    };
+  }, [config?.url, config?.auth]);
+
+  return {
+    status,
+    socket: socketRef.current,
+    isConnected: status === 'connected',
+  };
+}
+
+/**
+ * Hook to subscribe to socket events
+ * 
+ * @example
+ * ```tsx
+ * function NotificationListener() {
+ *   useSocketEvent('notification', (data) => {
+ *     toast.info(data.message);
+ *   });
+ *   return null;
+ * }
+ * ```
+ */
+export function useSocketEvent<K extends keyof ServerToClientEvents>(
+  event: K,
+  handler: ServerToClientEvents[K]
+) {
+  useEffect(() => {
+    const socket = getSocket();
+    
+    socket.on(event, handler as any);
+    
+    return () => {
+      socket.off(event, handler as any);
+    };
+  }, [event, handler]);
+}
+
+/**
+ * Hook to emit socket events
+ * 
+ * @example
+ * ```tsx
+ * function ChatInput() {
+ *   const sendMessage = useSocketEmit('message');
+ *   
+ *   const handleSend = (content: string) => {
+ *     sendMessage({ to: 'room-123', content });
+ *   };
+ *   
+ *   return <input onSubmit={handleSend} />;
+ * }
+ * ```
+ */
+export function useSocketEmit<K extends keyof ClientToServerEvents>(event: K) {
+  const emit = useCallback(
+    (...args: Parameters<ClientToServerEvents[K]>) => {
+      const socket = getSocket();
+      if (socket.connected) {
+        socket.emit(event, ...args);
+      }
+    },
+    [event]
+  );
+  
+  return emit;
+}
+
+/**
+ * Hook to join a room
+ * 
+ * @example
+ * ```tsx
+ * function TeamChat({ teamId }: { teamId: string }) {
+ *   const { joined } = useSocketRoom(`team:${teamId}`);
+ *   
+ *   if (!joined) return <Spinner />;
+ *   return <ChatMessages />;
+ * }
+ * ```
+ */
+export function useSocketRoom(roomId: string) {
+  const [joined, setJoined] = useState(false);
+  const { isConnected, socket } = useSocket();
+
+  useEffect(() => {
+    if (!isConnected || !socket) {
+      setJoined(false);
+      return;
+    }
+
+    socket.emit('join-room', roomId, (success) => {
+      setJoined(success);
+    });
+
+    return () => {
+      socket.emit('leave-room', roomId);
+      setJoined(false);
+    };
+  }, [roomId, isConnected, socket]);
+
+  return { joined };
+}
+
+{% if saas_notifications != 'none' %}
+// ============================================================================
+// Notification Helpers
+// ============================================================================
+
+/**
+ * Hook to listen for real-time notifications
+ */
+export function useRealtimeNotifications(
+  onNotification: (notification: ServerToClientEvents['notification'] extends (data: infer T) => void ? T : never) => void
+) {
+  useSocketEvent('notification', onNotification);
+}
+{% endif %}
+
+{% if saas_tenancy_model == 'b2b-teams' %}
+// ============================================================================
+// Team Presence
+// ============================================================================
+
+interface TeamMember {
+  userId: string;
+  name?: string;
+  online: boolean;
+}
+
+/**
+ * Hook to track team member presence
+ */
+export function useTeamPresence(teamId: string) {
+  const [members, setMembers] = useState<Map<string, TeamMember>>(new Map());
+  const { joined } = useSocketRoom(`team:${teamId}`);
+
+  useSocketEvent('presence:online', ({ userId }) => {
+    setMembers(prev => {
+      const next = new Map(prev);
+      const member = next.get(userId);
+      if (member) {
+        next.set(userId, { ...member, online: true });
+      }
+      return next;
+    });
+  });
+
+  useSocketEvent('presence:offline', ({ userId }) => {
+    setMembers(prev => {
+      const next = new Map(prev);
+      const member = next.get(userId);
+      if (member) {
+        next.set(userId, { ...member, online: false });
+      }
+      return next;
+    });
+  });
+
+  useSocketEvent('team:member-joined', ({ userId, name }) => {
+    setMembers(prev => {
+      const next = new Map(prev);
+      next.set(userId, { userId, name, online: true });
+      return next;
+    });
+  });
+
+  useSocketEvent('team:member-left', ({ userId }) => {
+    setMembers(prev => {
+      const next = new Map(prev);
+      next.delete(userId);
+      return next;
+    });
+  });
+
+  return {
+    members: Array.from(members.values()),
+    onlineCount: Array.from(members.values()).filter(m => m.online).length,
+    isJoined: joined,
+  };
+}
+{% endif %}
+{% endif %}

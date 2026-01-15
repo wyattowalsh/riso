@@ -1,0 +1,476 @@
+{% if saas_starter_module == "enabled" and saas_billing == "lemonsqueezy" %}
+/**
+ * LemonSqueezy Webhook Handler
+ * 
+ * Handles LemonSqueezy webhook events for subscription management.
+ * 
+ * Events handled:
+ * - subscription_created
+ * - subscription_updated
+ * - subscription_cancelled
+ * - subscription_resumed
+ * - subscription_payment_success
+ * - subscription_payment_failed
+ * - order_created
+ * 
+ * @see https://docs.lemonsqueezy.com/api/webhooks
+ */
+
+import crypto from 'crypto';
+{% if saas_orm == 'prisma' %}
+import { prisma } from '@/lib/database/client';
+{% elif saas_orm == 'drizzle' %}
+import { db } from '@/lib/database/client';
+import { users, subscriptions } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+{% endif %}
+{% if saas_observability_structured_logging %}
+import { logger } from '@/lib/observability/logger';
+{% endif %}
+{% if saas_email == 'resend' %}
+import { sendPaymentFailedEmail, sendSubscriptionUpdatedEmail } from '@/lib/email';
+{% elif saas_email == 'postmark' %}
+import { sendPaymentFailedEmail, sendSubscriptionUpdatedEmail } from '@/lib/email/postmark';
+{% endif %}
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface LemonSqueezyWebhookPayload {
+  meta: {
+    event_name: string;
+    custom_data?: {
+      user_id?: string;
+    };
+  };
+  data: {
+    id: string;
+    type: string;
+    attributes: Record<string, unknown>;
+    relationships?: Record<string, unknown>;
+  };
+}
+
+interface SubscriptionAttributes {
+  store_id: number;
+  customer_id: number;
+  order_id: number;
+  product_id: number;
+  variant_id: number;
+  product_name: string;
+  variant_name: string;
+  user_name: string;
+  user_email: string;
+  status: 'on_trial' | 'active' | 'paused' | 'past_due' | 'unpaid' | 'cancelled' | 'expired';
+  status_formatted: string;
+  card_brand: string | null;
+  card_last_four: string | null;
+  pause: unknown | null;
+  cancelled: boolean;
+  trial_ends_at: string | null;
+  billing_anchor: number;
+  renews_at: string | null;
+  ends_at: string | null;
+  created_at: string;
+  updated_at: string;
+  test_mode: boolean;
+}
+
+// ============================================================================
+// Webhook Verification
+// ============================================================================
+
+/**
+ * Verify LemonSqueezy webhook signature
+ */
+export function verifyLemonSqueezyWebhook(
+  payload: string,
+  signature: string
+): boolean {
+  const secret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET!;
+  
+  const hmac = crypto.createHmac('sha256', secret);
+  const digest = hmac.update(payload).digest('hex');
+  
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(digest)
+  );
+}
+
+// ============================================================================
+// Event Handlers
+// ============================================================================
+
+/**
+ * Handle subscription_created event
+ */
+async function handleSubscriptionCreated(data: LemonSqueezyWebhookPayload) {
+  const attrs = data.data.attributes as SubscriptionAttributes;
+  const userId = data.meta.custom_data?.user_id;
+  const subscriptionId = data.data.id;
+
+  if (!userId) {
+    {% if saas_observability_structured_logging %}
+    logger.warn({ msg: 'Subscription created without user_id', subscriptionId });
+    {% endif %}
+    return;
+  }
+
+  {% if saas_orm == 'prisma' %}
+  await prisma.subscription.upsert({
+    where: { userId },
+    create: {
+      userId,
+      lemonSqueezySubscriptionId: subscriptionId,
+      lemonSqueezyCustomerId: String(attrs.customer_id),
+      status: mapStatus(attrs.status),
+      plan: attrs.variant_name,
+      currentPeriodEnd: attrs.renews_at ? new Date(attrs.renews_at) : null,
+      trialEndsAt: attrs.trial_ends_at ? new Date(attrs.trial_ends_at) : null,
+    },
+    update: {
+      lemonSqueezySubscriptionId: subscriptionId,
+      lemonSqueezyCustomerId: String(attrs.customer_id),
+      status: mapStatus(attrs.status),
+      plan: attrs.variant_name,
+    },
+  });
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { lemonSqueezyCustomerId: String(attrs.customer_id) },
+  });
+  {% elif saas_orm == 'drizzle' %}
+  await db.insert(subscriptions)
+    .values({
+      userId,
+      lemonSqueezySubscriptionId: subscriptionId,
+      lemonSqueezyCustomerId: String(attrs.customer_id),
+      status: mapStatus(attrs.status),
+      plan: attrs.variant_name,
+      currentPeriodEnd: attrs.renews_at ? new Date(attrs.renews_at) : null,
+      trialEndsAt: attrs.trial_ends_at ? new Date(attrs.trial_ends_at) : null,
+    })
+    .onConflictDoUpdate({
+      target: subscriptions.userId,
+      set: {
+        lemonSqueezySubscriptionId: subscriptionId,
+        lemonSqueezyCustomerId: String(attrs.customer_id),
+        status: mapStatus(attrs.status),
+        plan: attrs.variant_name,
+      },
+    });
+
+  await db.update(users)
+    .set({ lemonSqueezyCustomerId: String(attrs.customer_id) })
+    .where(eq(users.id, userId));
+  {% endif %}
+
+  {% if saas_observability_structured_logging %}
+  logger.info({ msg: 'Subscription created', userId, subscriptionId, plan: attrs.variant_name });
+  {% endif %}
+}
+
+/**
+ * Handle subscription_updated event
+ */
+async function handleSubscriptionUpdated(data: LemonSqueezyWebhookPayload) {
+  const attrs = data.data.attributes as SubscriptionAttributes;
+  const subscriptionId = data.data.id;
+
+  {% if saas_orm == 'prisma' %}
+  const sub = await prisma.subscription.update({
+    where: { lemonSqueezySubscriptionId: subscriptionId },
+    data: {
+      status: mapStatus(attrs.status),
+      plan: attrs.variant_name,
+      currentPeriodEnd: attrs.renews_at ? new Date(attrs.renews_at) : null,
+      cancelAtPeriodEnd: attrs.cancelled,
+    },
+    include: { user: true },
+  });
+
+  {% if saas_email != 'none' %}
+  if (sub.user.email) {
+    await sendSubscriptionUpdatedEmail(sub.user.email, {
+      name: sub.user.name || attrs.user_name || 'there',
+      planName: attrs.variant_name,
+      action: attrs.cancelled ? 'cancelled' : 'upgraded',
+    });
+  }
+  {% endif %}
+  {% elif saas_orm == 'drizzle' %}
+  await db.update(subscriptions)
+    .set({
+      status: mapStatus(attrs.status),
+      plan: attrs.variant_name,
+      currentPeriodEnd: attrs.renews_at ? new Date(attrs.renews_at) : null,
+      cancelAtPeriodEnd: attrs.cancelled,
+    })
+    .where(eq(subscriptions.lemonSqueezySubscriptionId, subscriptionId));
+  {% endif %}
+
+  {% if saas_observability_structured_logging %}
+  logger.info({ msg: 'Subscription updated', subscriptionId, status: attrs.status });
+  {% endif %}
+}
+
+/**
+ * Handle subscription_cancelled event
+ */
+async function handleSubscriptionCancelled(data: LemonSqueezyWebhookPayload) {
+  const attrs = data.data.attributes as SubscriptionAttributes;
+  const subscriptionId = data.data.id;
+
+  {% if saas_orm == 'prisma' %}
+  await prisma.subscription.update({
+    where: { lemonSqueezySubscriptionId: subscriptionId },
+    data: {
+      status: 'canceled',
+      canceledAt: new Date(),
+      cancelAtPeriodEnd: true,
+    },
+  });
+  {% elif saas_orm == 'drizzle' %}
+  await db.update(subscriptions)
+    .set({
+      status: 'canceled',
+      canceledAt: new Date(),
+      cancelAtPeriodEnd: true,
+    })
+    .where(eq(subscriptions.lemonSqueezySubscriptionId, subscriptionId));
+  {% endif %}
+
+  {% if saas_observability_structured_logging %}
+  logger.info({ msg: 'Subscription cancelled', subscriptionId });
+  {% endif %}
+}
+
+/**
+ * Handle subscription_payment_failed event
+ */
+async function handlePaymentFailed(data: LemonSqueezyWebhookPayload) {
+  const attrs = data.data.attributes as SubscriptionAttributes;
+  const subscriptionId = data.data.id;
+
+  {% if saas_orm == 'prisma' %}
+  const sub = await prisma.subscription.update({
+    where: { lemonSqueezySubscriptionId: subscriptionId },
+    data: { status: 'past_due' },
+    include: { user: true },
+  });
+
+  {% if saas_email != 'none' %}
+  if (sub.user.email) {
+    await sendPaymentFailedEmail(sub.user.email, {
+      name: sub.user.name || attrs.user_name || 'there',
+      amount: 'your subscription',
+      updateUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/billing`,
+    });
+  }
+  {% endif %}
+  {% elif saas_orm == 'drizzle' %}
+  await db.update(subscriptions)
+    .set({ status: 'past_due' })
+    .where(eq(subscriptions.lemonSqueezySubscriptionId, subscriptionId));
+  {% endif %}
+
+  {% if saas_observability_structured_logging %}
+  logger.warn({ msg: 'Payment failed', subscriptionId });
+  {% endif %}
+}
+
+/**
+ * Handle subscription_payment_success event
+ */
+async function handlePaymentSuccess(data: LemonSqueezyWebhookPayload) {
+  const subscriptionId = data.data.id;
+
+  {% if saas_orm == 'prisma' %}
+  await prisma.subscription.update({
+    where: { lemonSqueezySubscriptionId: subscriptionId },
+    data: { status: 'active' },
+  });
+  {% elif saas_orm == 'drizzle' %}
+  await db.update(subscriptions)
+    .set({ status: 'active' })
+    .where(eq(subscriptions.lemonSqueezySubscriptionId, subscriptionId));
+  {% endif %}
+
+  {% if saas_observability_structured_logging %}
+  logger.info({ msg: 'Payment succeeded', subscriptionId });
+  {% endif %}
+}
+
+// ============================================================================
+// Main Webhook Handler
+// ============================================================================
+
+/**
+ * Process LemonSqueezy webhook event
+ * 
+ * @example
+ * ```ts
+ * // app/api/webhooks/lemonsqueezy/route.ts (Next.js)
+ * import { handleLemonSqueezyWebhook, verifyLemonSqueezyWebhook } from '@/lib/billing/lemonsqueezy/webhooks';
+ * 
+ * export async function POST(request: Request) {
+ *   const body = await request.text();
+ *   const signature = request.headers.get('x-signature')!;
+ *   
+ *   if (!verifyLemonSqueezyWebhook(body, signature)) {
+ *     return new Response('Invalid signature', { status: 401 });
+ *   }
+ *   
+ *   const payload = JSON.parse(body);
+ *   await handleLemonSqueezyWebhook(payload);
+ *   
+ *   return new Response('OK', { status: 200 });
+ * }
+ * ```
+ */
+export async function handleLemonSqueezyWebhook(payload: LemonSqueezyWebhookPayload): Promise<void> {
+  const eventName = payload.meta.event_name;
+
+  {% if saas_observability_structured_logging %}
+  logger.info({ msg: 'Processing LemonSqueezy webhook', eventName, dataId: payload.data.id });
+  {% endif %}
+
+  switch (eventName) {
+    case 'subscription_created':
+      await handleSubscriptionCreated(payload);
+      break;
+
+    case 'subscription_updated':
+      await handleSubscriptionUpdated(payload);
+      break;
+
+    case 'subscription_cancelled':
+      await handleSubscriptionCancelled(payload);
+      break;
+
+    case 'subscription_payment_failed':
+      await handlePaymentFailed(payload);
+      break;
+
+    case 'subscription_payment_success':
+      await handlePaymentSuccess(payload);
+      break;
+
+    case 'subscription_resumed':
+      // Treat resume as an update
+      await handleSubscriptionUpdated(payload);
+      break;
+
+    default:
+      {% if saas_observability_structured_logging %}
+      logger.debug({ msg: 'Unhandled LemonSqueezy event', eventName });
+      {% endif %}
+  }
+}
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+function mapStatus(status: SubscriptionAttributes['status']): string {
+  switch (status) {
+    case 'active':
+    case 'on_trial':
+      return 'active';
+    case 'past_due':
+    case 'unpaid':
+      return 'past_due';
+    case 'cancelled':
+    case 'expired':
+      return 'canceled';
+    case 'paused':
+      return 'paused';
+    default:
+      return status;
+  }
+}
+
+// ============================================================================
+// LemonSqueezy API Helpers
+// ============================================================================
+
+const LEMONSQUEEZY_API = 'https://api.lemonsqueezy.com/v1';
+
+async function lemonSqueezyFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(`${LEMONSQUEEZY_API}${endpoint}`, {
+    ...options,
+    headers: {
+      'Authorization': `Bearer ${process.env.LEMONSQUEEZY_API_KEY}`,
+      'Content-Type': 'application/vnd.api+json',
+      'Accept': 'application/vnd.api+json',
+      ...options?.headers,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`LemonSqueezy API error: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get checkout URL for a variant
+ */
+export async function getCheckoutUrl(
+  variantId: string,
+  options: {
+    userId: string;
+    email?: string;
+    successUrl?: string;
+  }
+): Promise<string> {
+  const storeId = process.env.LEMONSQUEEZY_STORE_ID;
+  
+  const response = await lemonSqueezyFetch<{ data: { attributes: { url: string } } }>(
+    '/checkouts',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        data: {
+          type: 'checkouts',
+          attributes: {
+            checkout_data: {
+              custom: {
+                user_id: options.userId,
+              },
+              email: options.email,
+            },
+            product_options: {
+              redirect_url: options.successUrl,
+            },
+          },
+          relationships: {
+            store: {
+              data: { type: 'stores', id: storeId },
+            },
+            variant: {
+              data: { type: 'variants', id: variantId },
+            },
+          },
+        },
+      }),
+    }
+  );
+
+  return response.data.attributes.url;
+}
+
+/**
+ * Get customer portal URL
+ */
+export async function getCustomerPortalUrl(customerId: string): Promise<string> {
+  const response = await lemonSqueezyFetch<{ data: { attributes: { urls: { customer_portal: string } } } }>(
+    `/customers/${customerId}`
+  );
+  return response.data.attributes.urls.customer_portal;
+}
+{% endif %}

@@ -1,0 +1,296 @@
+{% if saas_starter_module == "enabled" and saas_observability_structured_logging %}
+/**
+ * Structured Logger
+ * 
+ * Production-ready logging with pino.
+ * Features:
+ * - Structured JSON logging
+ * - Request correlation IDs
+ * - Log levels with pretty printing in dev
+ * - Automatic context enrichment
+ * 
+ * @see https://getpino.io
+ */
+
+import pino from 'pino';
+
+// ============================================================================
+// Logger Configuration
+// ============================================================================
+
+const isDev = process.env.NODE_ENV !== 'production';
+
+/**
+ * Main logger instance
+ */
+export const logger = pino({
+  level: process.env.LOG_LEVEL || (isDev ? 'debug' : 'info'),
+  
+  // Pretty print in development
+  transport: isDev
+    ? {
+        target: 'pino-pretty',
+        options: {
+          colorize: true,
+          translateTime: 'HH:MM:ss',
+          ignore: 'pid,hostname',
+        },
+      }
+    : undefined,
+
+  // Base context included in all logs
+  base: {
+    env: process.env.NODE_ENV,
+    service: '{{ project_slug }}',
+    {% if saas_hosting == 'vercel' %}
+    region: process.env.VERCEL_REGION,
+    deploymentId: process.env.VERCEL_DEPLOYMENT_ID,
+    {% elif saas_hosting == 'cloudflare' %}
+    datacenter: process.env.CF_RAY?.split('-')[1],
+    {% endif %}
+  },
+
+  // Timestamp format
+  timestamp: pino.stdTimeFunctions.isoTime,
+
+  // Redact sensitive fields
+  redact: {
+    paths: [
+      'req.headers.authorization',
+      'req.headers.cookie',
+      'password',
+      'token',
+      'apiKey',
+      'secret',
+      '*.password',
+      '*.token',
+      '*.apiKey',
+    ],
+    censor: '[REDACTED]',
+  },
+
+  // Custom serializers
+  serializers: {
+    err: pino.stdSerializers.err,
+    req: (req) => ({
+      method: req.method,
+      url: req.url,
+      path: req.path,
+      query: req.query,
+      headers: {
+        host: req.headers?.host,
+        'user-agent': req.headers?.['user-agent'],
+        'x-forwarded-for': req.headers?.['x-forwarded-for'],
+      },
+    }),
+    res: (res) => ({
+      statusCode: res.statusCode,
+    }),
+  },
+});
+
+// ============================================================================
+// Child Loggers
+// ============================================================================
+
+/**
+ * Create a child logger with additional context
+ * 
+ * @example
+ * ```ts
+ * const log = createLogger({ module: 'billing', userId: 'user123' });
+ * log.info('Processing payment');
+ * ```
+ */
+export function createLogger(context: Record<string, unknown>) {
+  return logger.child(context);
+}
+
+/**
+ * Create a request-scoped logger with correlation ID
+ * 
+ * @example
+ * ```ts
+ * // In middleware
+ * const requestLogger = createRequestLogger(request);
+ * requestLogger.info('Processing request');
+ * ```
+ */
+export function createRequestLogger(
+  request: Request,
+  additionalContext?: Record<string, unknown>
+) {
+  const correlationId = 
+    request.headers.get('x-correlation-id') ||
+    request.headers.get('x-request-id') ||
+    crypto.randomUUID();
+
+  return logger.child({
+    correlationId,
+    method: request.method,
+    path: new URL(request.url).pathname,
+    ...additionalContext,
+  });
+}
+
+// ============================================================================
+// Convenience Methods
+// ============================================================================
+
+/**
+ * Log an error with stack trace
+ */
+export function logError(
+  message: string,
+  error: Error | unknown,
+  context?: Record<string, unknown>
+) {
+  const errorObj = error instanceof Error 
+    ? { 
+        name: error.name, 
+        message: error.message, 
+        stack: error.stack,
+        cause: error.cause,
+      }
+    : { message: String(error) };
+
+  logger.error({ msg: message, error: errorObj, ...context });
+}
+
+/**
+ * Log a warning
+ */
+export function logWarning(message: string, context?: Record<string, unknown>) {
+  logger.warn({ msg: message, ...context });
+}
+
+/**
+ * Log info
+ */
+export function logInfo(message: string, context?: Record<string, unknown>) {
+  logger.info({ msg: message, ...context });
+}
+
+/**
+ * Log debug (only in dev/when LOG_LEVEL=debug)
+ */
+export function logDebug(message: string, context?: Record<string, unknown>) {
+  logger.debug({ msg: message, ...context });
+}
+
+// ============================================================================
+// Performance Logging
+// ============================================================================
+
+/**
+ * Measure and log execution time
+ * 
+ * @example
+ * ```ts
+ * const timer = startTimer('database-query');
+ * await db.query(...);
+ * timer.done({ rowCount: 100 });
+ * // Logs: { msg: "database-query completed", duration: 45, rowCount: 100 }
+ * ```
+ */
+export function startTimer(operation: string, context?: Record<string, unknown>) {
+  const start = performance.now();
+  const log = context ? logger.child(context) : logger;
+
+  return {
+    done: (additionalContext?: Record<string, unknown>) => {
+      const duration = Math.round(performance.now() - start);
+      log.info({ 
+        msg: `${operation} completed`, 
+        duration,
+        ...additionalContext,
+      });
+    },
+    fail: (error: Error | unknown, additionalContext?: Record<string, unknown>) => {
+      const duration = Math.round(performance.now() - start);
+      logError(`${operation} failed`, error, { duration, ...additionalContext });
+    },
+  };
+}
+
+// ============================================================================
+// Audit Logging
+// ============================================================================
+
+{% if saas_admin_dashboard or saas_rbac_system != 'basic-roles' %}
+/**
+ * Log audit events for security-sensitive actions
+ */
+export function logAudit(
+  action: string,
+  context: {
+    userId: string;
+    {% if saas_tenancy_model == 'b2b-teams' %}
+    organizationId?: string;
+    {% endif %}
+    resourceType?: string;
+    resourceId?: string;
+    details?: Record<string, unknown>;
+    ip?: string;
+  }
+) {
+  logger.info({
+    audit: true,
+    action,
+    ...context,
+  });
+}
+{% endif %}
+
+// ============================================================================
+// HTTP Request Logging (Middleware)
+// ============================================================================
+
+/**
+ * Log HTTP request/response
+ * Use in middleware for request tracing
+ * 
+ * @example
+ * ```ts
+ * // middleware.ts
+ * export async function middleware(request: NextRequest) {
+ *   const end = logHttpRequest(request);
+ *   const response = NextResponse.next();
+ *   end(response);
+ *   return response;
+ * }
+ * ```
+ */
+export function logHttpRequest(request: Request) {
+  const start = performance.now();
+  const correlationId = crypto.randomUUID();
+
+  const requestLog = {
+    correlationId,
+    method: request.method,
+    path: new URL(request.url).pathname,
+    userAgent: request.headers.get('user-agent'),
+    ip: request.headers.get('x-forwarded-for')?.split(',')[0],
+  };
+
+  logger.info({ msg: 'Request started', ...requestLog });
+
+  return (response: Response) => {
+    const duration = Math.round(performance.now() - start);
+    
+    logger.info({
+      msg: 'Request completed',
+      ...requestLog,
+      status: response.status,
+      duration,
+    });
+  };
+}
+
+// ============================================================================
+// Type Exports
+// ============================================================================
+
+export type Logger = typeof logger;
+export type { pino };
+{% endif %}

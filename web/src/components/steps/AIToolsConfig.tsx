@@ -10,15 +10,15 @@ export function AIToolsConfig() {
   const moduleHelp = getPromptHelpSummary('ai_tools_module')
 
   const thinkingEnabled =
-    config.ai_tools_mcp_thinking ?? getPromptDefault<boolean>('ai_tools_mcp_thinking', true)
+    config.ai_tools_mcp_thinking ?? getPromptDefault<boolean>('ai_tools_mcp_thinking', true) ?? true
   const webEnabled =
-    config.ai_tools_mcp_web ?? getPromptDefault<boolean>('ai_tools_mcp_web', true)
+    config.ai_tools_mcp_web ?? getPromptDefault<boolean>('ai_tools_mcp_web', true) ?? true
   const docsEnabled =
-    config.ai_tools_mcp_documents ?? getPromptDefault<boolean>('ai_tools_mcp_documents', true)
+    config.ai_tools_mcp_documents ?? getPromptDefault<boolean>('ai_tools_mcp_documents', true) ?? true
   const utilitiesEnabled =
-    config.ai_tools_mcp_utilities ?? getPromptDefault<boolean>('ai_tools_mcp_utilities', true)
+    config.ai_tools_mcp_utilities ?? getPromptDefault<boolean>('ai_tools_mcp_utilities', true) ?? true
   const searchEnabled =
-    config.ai_tools_mcp_search ?? getPromptDefault<boolean>('ai_tools_mcp_search', false)
+    config.ai_tools_mcp_search ?? getPromptDefault<boolean>('ai_tools_mcp_search', false) ?? false
 
   return (
     <div className="space-y-6">

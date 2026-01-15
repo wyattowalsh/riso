@@ -1,0 +1,418 @@
+{% if saas_starter_module == "enabled" and saas_2fa and saas_auth == 'authjs' %}
+/**
+ * Two-Factor Authentication (2FA) Module
+ * 
+ * Provides TOTP-based 2FA for Auth.js:
+ * - Secret generation and QR code display
+ * - TOTP verification
+ * - Backup codes generation
+ * - Enable/disable 2FA flow
+ * 
+ * @see https://github.com/hectorm/otpauth
+ */
+
+import * as OTPAuth from 'otpauth';
+import QRCode from 'qrcode';
+import { randomBytes, createHash } from 'crypto';
+{% if saas_observability_structured_logging %}
+import { logger } from '@/lib/observability/logger';
+{% endif %}
+
+// ============================================================================
+// Configuration
+// ============================================================================
+
+const TWO_FA_CONFIG = {
+  /** Your app name (shown in authenticator apps) */
+  issuer: process.env.NEXT_PUBLIC_APP_NAME || '{{ project_name }}',
+  /** TOTP algorithm */
+  algorithm: 'SHA1' as const,
+  /** Number of digits in OTP code */
+  digits: 6,
+  /** Time period in seconds */
+  period: 30,
+  /** Number of backup codes to generate */
+  backupCodeCount: 10,
+  /** Length of each backup code */
+  backupCodeLength: 8,
+};
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface TwoFactorSetupResult {
+  /** Base32-encoded secret */
+  secret: string;
+  /** QR code as data URL */
+  qrCode: string;
+  /** TOTP URI for manual entry */
+  uri: string;
+}
+
+export interface TwoFactorVerifyResult {
+  success: boolean;
+  error?: string;
+}
+
+export interface BackupCodesResult {
+  /** Plain backup codes (show once to user) */
+  codes: string[];
+  /** Hashed codes (store in database) */
+  hashedCodes: string[];
+}
+
+// ============================================================================
+// Secret Generation
+// ============================================================================
+
+/**
+ * Generate a new 2FA secret for a user
+ * 
+ * @example
+ * ```ts
+ * const setup = await generateTwoFactorSecret(user.email);
+ * // Store setup.secret in database (encrypted)
+ * // Show setup.qrCode to user
+ * ```
+ */
+export async function generateTwoFactorSecret(
+  userEmail: string
+): Promise<TwoFactorSetupResult> {
+  // Generate random secret
+  const secretBytes = randomBytes(20);
+  const secret = new OTPAuth.Secret({ buffer: secretBytes });
+  
+  // Create TOTP instance
+  const totp = new OTPAuth.TOTP({
+    issuer: TWO_FA_CONFIG.issuer,
+    label: userEmail,
+    algorithm: TWO_FA_CONFIG.algorithm,
+    digits: TWO_FA_CONFIG.digits,
+    period: TWO_FA_CONFIG.period,
+    secret,
+  });
+  
+  // Generate URI and QR code
+  const uri = totp.toString();
+  const qrCode = await QRCode.toDataURL(uri, {
+    errorCorrectionLevel: 'M',
+    type: 'image/png',
+    margin: 2,
+    width: 256,
+  });
+  
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: '2FA secret generated',
+    email: userEmail.substring(0, 3) + '***', // Partial email for privacy
+  });
+  {% endif %}
+  
+  return {
+    secret: secret.base32,
+    qrCode,
+    uri,
+  };
+}
+
+// ============================================================================
+// TOTP Verification
+// ============================================================================
+
+/**
+ * Verify a TOTP code against a secret
+ * 
+ * @param code - 6-digit code from authenticator app
+ * @param secret - Base32-encoded secret stored for user
+ * @returns Verification result
+ */
+export function verifyTOTP(code: string, secret: string): TwoFactorVerifyResult {
+  // Validate code format
+  if (!/^\d{6}$/.test(code)) {
+    return { success: false, error: 'Invalid code format. Please enter 6 digits.' };
+  }
+  
+  try {
+    const totp = new OTPAuth.TOTP({
+      issuer: TWO_FA_CONFIG.issuer,
+      algorithm: TWO_FA_CONFIG.algorithm,
+      digits: TWO_FA_CONFIG.digits,
+      period: TWO_FA_CONFIG.period,
+      secret: OTPAuth.Secret.fromBase32(secret),
+    });
+    
+    // Allow 1 window before and after for clock drift
+    const delta = totp.validate({ token: code, window: 1 });
+    
+    if (delta !== null) {
+      return { success: true };
+    }
+    
+    return { success: false, error: 'Invalid code. Please try again.' };
+  } catch (error) {
+    {% if saas_observability_structured_logging %}
+    logger.error({
+      msg: '2FA verification error',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    {% endif %}
+    return { success: false, error: 'Verification failed. Please try again.' };
+  }
+}
+
+// ============================================================================
+// Backup Codes
+// ============================================================================
+
+/**
+ * Generate backup codes for account recovery
+ * Store the hashed codes in database, show plain codes once to user
+ */
+export function generateBackupCodes(): BackupCodesResult {
+  const codes: string[] = [];
+  const hashedCodes: string[] = [];
+  
+  for (let i = 0; i < TWO_FA_CONFIG.backupCodeCount; i++) {
+    // Generate random alphanumeric code
+    const code = randomBytes(TWO_FA_CONFIG.backupCodeLength)
+      .toString('base64')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .substring(0, TWO_FA_CONFIG.backupCodeLength)
+      .toUpperCase();
+    
+    codes.push(code);
+    hashedCodes.push(hashBackupCode(code));
+  }
+  
+  return { codes, hashedCodes };
+}
+
+/**
+ * Hash a backup code for storage
+ */
+export function hashBackupCode(code: string): string {
+  return createHash('sha256')
+    .update(code.toUpperCase())
+    .digest('hex');
+}
+
+/**
+ * Verify a backup code
+ * 
+ * @param code - User-provided backup code
+ * @param hashedCodes - Array of hashed backup codes from database
+ * @returns Index of used code, or -1 if invalid
+ */
+export function verifyBackupCode(code: string, hashedCodes: string[]): number {
+  const hashedInput = hashBackupCode(code);
+  return hashedCodes.findIndex((stored) => stored === hashedInput);
+}
+
+// ============================================================================
+// Database Schema Types
+// ============================================================================
+
+/**
+ * User 2FA fields to add to your User model
+ * 
+ * Prisma schema addition:
+ * ```prisma
+ * model User {
+ *   // ... existing fields
+ *   twoFactorEnabled    Boolean   @default(false)
+ *   twoFactorSecret     String?   // Encrypted
+ *   twoFactorBackupCodes String[] // Hashed
+ *   twoFactorVerifiedAt DateTime?
+ * }
+ * ```
+ */
+export interface UserTwoFactorFields {
+  twoFactorEnabled: boolean;
+  twoFactorSecret: string | null;
+  twoFactorBackupCodes: string[];
+  twoFactorVerifiedAt: Date | null;
+}
+
+// ============================================================================
+// Session Handling
+// ============================================================================
+
+/**
+ * 2FA session state management
+ * Store this in your session to track 2FA verification status
+ */
+export interface TwoFactorSession {
+  /** Whether user passed 2FA in this session */
+  verified: boolean;
+  /** When 2FA was verified */
+  verifiedAt?: Date;
+  /** Require re-verification for sensitive actions */
+  requiresReauth?: boolean;
+}
+
+/**
+ * Check if user needs to complete 2FA
+ */
+export function requiresTwoFactor(
+  userHas2FA: boolean,
+  session: TwoFactorSession | undefined
+): boolean {
+  // User doesn't have 2FA enabled
+  if (!userHas2FA) return false;
+  
+  // No session info, require verification
+  if (!session) return true;
+  
+  // Already verified
+  if (session.verified) return false;
+  
+  return true;
+}
+
+// ============================================================================
+// Auth.js Integration
+// ============================================================================
+
+/**
+ * Auth.js callback to handle 2FA during sign-in
+ * 
+ * @example
+ * ```ts
+ * // In auth.config.ts
+ * callbacks: {
+ *   async signIn({ user, account }) {
+ *     // After password verification, check if 2FA is needed
+ *     const dbUser = await getUserById(user.id);
+ *     if (dbUser?.twoFactorEnabled) {
+ *       // Redirect to 2FA verification page
+ *       // Or use a custom session flag
+ *       return '/auth/two-factor';
+ *     }
+ *     return true;
+ *   },
+ *   async session({ session, user }) {
+ *     // Add 2FA status to session
+ *     session.user.twoFactorEnabled = user.twoFactorEnabled;
+ *     session.user.twoFactorVerified = user.twoFactorVerified;
+ *     return session;
+ *   },
+ * }
+ * ```
+ */
+export const twoFactorCallbacksDocumentation = `
+Add these callbacks to your Auth.js configuration:
+
+1. signIn callback - Check if user has 2FA enabled after initial auth
+2. session callback - Include 2FA status in session
+3. jwt callback - Persist 2FA verification state
+
+See the Auth.js documentation for implementation details.
+`;
+
+// ============================================================================
+// API Route Handlers
+// ============================================================================
+
+/**
+ * Example API route handler for enabling 2FA
+ * 
+ * POST /api/auth/2fa/setup
+ */
+export async function handleSetup2FA(
+  userId: string,
+  userEmail: string,
+  db: {
+    updateUser: (id: string, data: Partial<UserTwoFactorFields>) => Promise<void>;
+  }
+): Promise<TwoFactorSetupResult> {
+  // Generate secret
+  const setup = await generateTwoFactorSecret(userEmail);
+  
+  // Generate backup codes
+  const backupCodes = generateBackupCodes();
+  
+  // Store secret and backup codes (don't enable yet)
+  // User must verify with a code first
+  await db.updateUser(userId, {
+    twoFactorSecret: setup.secret, // Should be encrypted!
+    twoFactorBackupCodes: backupCodes.hashedCodes,
+  });
+  
+  // Return setup info + backup codes to show user
+  return {
+    ...setup,
+    // Include backup codes in response (show once!)
+    // backupCodes: backupCodes.codes,
+  };
+}
+
+/**
+ * Example API route handler for verifying 2FA setup
+ * 
+ * POST /api/auth/2fa/verify-setup
+ */
+export async function handleVerifySetup(
+  userId: string,
+  code: string,
+  secret: string,
+  db: {
+    updateUser: (id: string, data: Partial<UserTwoFactorFields>) => Promise<void>;
+  }
+): Promise<TwoFactorVerifyResult> {
+  // Verify the code
+  const result = verifyTOTP(code, secret);
+  
+  if (result.success) {
+    // Enable 2FA
+    await db.updateUser(userId, {
+      twoFactorEnabled: true,
+      twoFactorVerifiedAt: new Date(),
+    });
+    
+    {% if saas_observability_structured_logging %}
+    logger.info({
+      msg: '2FA enabled for user',
+      userId,
+    });
+    {% endif %}
+  }
+  
+  return result;
+}
+
+/**
+ * Example API route handler for disabling 2FA
+ * 
+ * POST /api/auth/2fa/disable
+ */
+export async function handleDisable2FA(
+  userId: string,
+  code: string,
+  secret: string,
+  db: {
+    updateUser: (id: string, data: Partial<UserTwoFactorFields>) => Promise<void>;
+  }
+): Promise<TwoFactorVerifyResult> {
+  // Require current TOTP code to disable
+  const result = verifyTOTP(code, secret);
+  
+  if (result.success) {
+    await db.updateUser(userId, {
+      twoFactorEnabled: false,
+      twoFactorSecret: null,
+      twoFactorBackupCodes: [],
+      twoFactorVerifiedAt: null,
+    });
+    
+    {% if saas_observability_structured_logging %}
+    logger.info({
+      msg: '2FA disabled for user',
+      userId,
+    });
+    {% endif %}
+  }
+  
+  return result;
+}
+{% endif %}

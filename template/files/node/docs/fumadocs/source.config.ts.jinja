@@ -1,5 +1,5 @@
 {%- if docs_site == 'fumadocs' -%}
-import { defineDocs, defineConfig{%- if fumadocs_last_updated == 'enabled' %}, frontmatterSchema{%- endif %} } from 'fumadocs-mdx/config';
+import { defineDocs, defineConfig{%- if fumadocs_last_updated == 'enabled' or fumadocs_blog == 'enabled' %}, frontmatterSchema{%- endif %}{%- if fumadocs_blog == 'enabled' %}, defineCollections{%- endif %} } from 'fumadocs-mdx/config';
 {%- if fumadocs_twoslash == 'enabled' %}
 import { transformerTwoslash } from 'fumadocs-twoslash';
 {%- endif %}
@@ -7,7 +7,7 @@ import { transformerTwoslash } from 'fumadocs-twoslash';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 {%- endif %}
-{%- if fumadocs_last_updated == 'enabled' %}
+{%- if fumadocs_last_updated == 'enabled' or fumadocs_blog == 'enabled' %}
 import { z } from 'zod';
 {%- endif %}
 
@@ -27,8 +27,14 @@ export const docs = defineDocs({
 
 {%- if fumadocs_blog == 'enabled' %}
 
-export const blog = defineDocs({
+export const blog = defineCollections({
+  type: 'doc',
   dir: 'content/blog',
+  schema: frontmatterSchema.extend({
+    author: z.string(),
+    date: z.string().date().or(z.date()),
+    tags: z.array(z.string()).optional(),
+  }),
 });
 {%- endif %}
 

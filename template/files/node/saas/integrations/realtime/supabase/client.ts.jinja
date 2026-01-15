@@ -1,0 +1,288 @@
+{% if saas_starter_module == "enabled" and saas_realtime == "supabase-realtime" and saas_database == "supabase" %}
+/**
+ * Supabase Realtime Client
+ * 
+ * Real-time subscriptions integrated with your Supabase database.
+ * Subscribe to database changes, broadcast messages, and track presence.
+ * 
+ * @see https://supabase.com/docs/guides/realtime
+ */
+
+import { createClient, RealtimeChannel } from '@supabase/supabase-js';
+{% if saas_observability_structured_logging %}
+import { logger } from '@/lib/observability/logger';
+{% endif %}
+
+// ============================================================================
+// Client Setup
+// ============================================================================
+
+/**
+ * Supabase client with realtime enabled
+ * Use this client for browser-side realtime subscriptions
+ */
+export const supabaseRealtime = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  {
+    realtime: {
+      params: {
+        eventsPerSecond: 10,
+      },
+    },
+  }
+);
+
+// ============================================================================
+// Database Change Subscriptions
+// ============================================================================
+
+export type PostgresChangeEvent = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
+
+/**
+ * Subscribe to changes on a database table
+ * 
+ * @example
+ * ```ts
+ * const channel = subscribeToTable('notifications', 'INSERT', {
+ *   filter: `user_id=eq.${userId}`,
+ *   callback: (payload) => {
+ *     console.log('New notification:', payload.new);
+ *   },
+ * });
+ * 
+ * // Clean up
+ * channel.unsubscribe();
+ * ```
+ */
+export function subscribeToTable<T extends Record<string, unknown>>(
+  table: string,
+  event: PostgresChangeEvent,
+  options: {
+    filter?: string;
+    schema?: string;
+    callback: (payload: { new: T; old: T | null; eventType: PostgresChangeEvent }) => void;
+  }
+): RealtimeChannel {
+  const channelName = `table:${table}:${event}`;
+  
+  {% if saas_observability_structured_logging %}
+  logger.debug({
+    msg: 'Subscribing to table changes',
+    table,
+    event,
+    filter: options.filter,
+  });
+  {% endif %}
+  
+  const channel = supabaseRealtime
+    .channel(channelName)
+    .on<T>(
+      'postgres_changes',
+      {
+        event,
+        schema: options.schema || 'public',
+        table,
+        filter: options.filter,
+      },
+      (payload) => {
+        options.callback({
+          new: payload.new as T,
+          old: payload.old as T | null,
+          eventType: payload.eventType as PostgresChangeEvent,
+        });
+      }
+    )
+    .subscribe();
+  
+  return channel;
+}
+
+// ============================================================================
+// Broadcast Channels (Pub/Sub)
+// ============================================================================
+
+/**
+ * Create a broadcast channel for sending/receiving messages
+ * 
+ * @example
+ * ```ts
+ * const channel = createBroadcastChannel('room:123');
+ * 
+ * // Send a message
+ * channel.send({
+ *   type: 'broadcast',
+ *   event: 'cursor-move',
+ *   payload: { x: 100, y: 200 },
+ * });
+ * 
+ * // Receive messages
+ * channel.on('broadcast', { event: 'cursor-move' }, ({ payload }) => {
+ *   console.log('Cursor moved:', payload);
+ * });
+ * ```
+ */
+export function createBroadcastChannel(
+  channelName: string,
+  options?: { self?: boolean }
+): RealtimeChannel {
+  return supabaseRealtime.channel(channelName, {
+    config: {
+      broadcast: { self: options?.self ?? false },
+    },
+  });
+}
+
+// ============================================================================
+// Presence (Who's Online)
+// ============================================================================
+
+export interface PresenceState {
+  id: string;
+  name?: string;
+  avatar?: string;
+  onlineAt: string;
+}
+
+/**
+ * Create a presence channel to track who's online
+ * 
+ * @example
+ * ```tsx
+ * const { channel, presenceState } = usePresenceChannel('room:123', {
+ *   id: user.id,
+ *   name: user.name,
+ *   avatar: user.avatar,
+ * });
+ * 
+ * // presenceState is a Map of all online users
+ * ```
+ */
+export function createPresenceChannel(
+  channelName: string,
+  userState: PresenceState
+): RealtimeChannel {
+  const channel = supabaseRealtime.channel(channelName);
+  
+  channel
+    .on('presence', { event: 'sync' }, () => {
+      const state = channel.presenceState();
+      {% if saas_observability_structured_logging %}
+      logger.debug({
+        msg: 'Presence sync',
+        channel: channelName,
+        userCount: Object.keys(state).length,
+      });
+      {% endif %}
+    })
+    .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+      {% if saas_observability_structured_logging %}
+      logger.debug({ msg: 'User joined', key, users: newPresences });
+      {% endif %}
+    })
+    .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+      {% if saas_observability_structured_logging %}
+      logger.debug({ msg: 'User left', key, users: leftPresences });
+      {% endif %}
+    })
+    .subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await channel.track({
+          ...userState,
+          onlineAt: new Date().toISOString(),
+        });
+      }
+    });
+  
+  return channel;
+}
+
+// ============================================================================
+// Notification Subscriptions
+// ============================================================================
+
+/**
+ * Subscribe to user notifications from the database
+ */
+export function subscribeToUserNotifications(
+  userId: string,
+  onNotification: (notification: {
+    id: string;
+    type: string;
+    title: string;
+    body: string;
+    actionUrl?: string;
+  }) => void
+): RealtimeChannel {
+  return subscribeToTable('notifications', 'INSERT', {
+    filter: `user_id=eq.${userId}`,
+    callback: (payload) => {
+      onNotification({
+        id: payload.new.id as string,
+        type: payload.new.type as string,
+        title: payload.new.title as string,
+        body: payload.new.body as string,
+        actionUrl: payload.new.action_url as string | undefined,
+      });
+    },
+  });
+}
+
+{% if saas_tenancy_model == 'b2b-teams' %}
+// ============================================================================
+// Organization Channels
+// ============================================================================
+
+/**
+ * Subscribe to organization-wide events
+ */
+export function subscribeToOrganization(
+  organizationId: string,
+  options: {
+    onMemberJoined?: (member: { userId: string; role: string }) => void;
+    onMemberLeft?: (member: { userId: string }) => void;
+    onUpdate?: (data: Record<string, unknown>) => void;
+  }
+): RealtimeChannel {
+  const channel = createBroadcastChannel(`org:${organizationId}`);
+  
+  if (options.onMemberJoined) {
+    channel.on('broadcast', { event: 'member:joined' }, ({ payload }) => {
+      options.onMemberJoined!(payload as any);
+    });
+  }
+  
+  if (options.onMemberLeft) {
+    channel.on('broadcast', { event: 'member:left' }, ({ payload }) => {
+      options.onMemberLeft!(payload as any);
+    });
+  }
+  
+  if (options.onUpdate) {
+    channel.on('broadcast', { event: 'update' }, ({ payload }) => {
+      options.onUpdate!(payload as any);
+    });
+  }
+  
+  channel.subscribe();
+  return channel;
+}
+
+/**
+ * Broadcast an event to all organization members
+ */
+export async function broadcastToOrganization(
+  organizationId: string,
+  event: string,
+  payload: Record<string, unknown>
+): Promise<void> {
+  const channel = supabaseRealtime.channel(`org:${organizationId}`);
+  
+  await channel.send({
+    type: 'broadcast',
+    event,
+    payload,
+  });
+}
+{% endif %}
+{% endif %}

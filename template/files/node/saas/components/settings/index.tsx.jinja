@@ -1,0 +1,474 @@
+{% if saas_starter_module == "enabled" %}
+/**
+ * Settings Page Components
+ * 
+ * Pre-built settings page with tabs for:
+ * - Profile settings
+ * - Security settings
+ * - Notification preferences
+ * - Billing (links to billing portal)
+ * 
+ * Usage:
+ * ```tsx
+ * <SettingsLayout>
+ *   <ProfileSettings user={user} />
+ * </SettingsLayout>
+ * ```
+ */
+
+{% if saas_runtime == 'nextjs-16' %}
+'use client';
+{% endif %}
+
+import * as React from 'react';
+{% if saas_runtime == 'nextjs-16' %}
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+{% elif saas_runtime == 'remix-2' %}
+import { Link, useLocation } from '@remix-run/react';
+{% endif %}
+{% if saas_ui_framework == 'shadcn-ui' %}
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+{% endif %}
+
+// ============================================================================
+// Settings Layout
+// ============================================================================
+
+const settingsTabs = [
+  { id: 'profile', label: 'Profile', href: '/dashboard/settings' },
+  { id: 'security', label: 'Security', href: '/dashboard/settings/security' },
+  {% if saas_notifications != 'none' %}
+  { id: 'notifications', label: 'Notifications', href: '/dashboard/settings/notifications' },
+  {% endif %}
+  {% if saas_billing != 'none' %}
+  { id: 'billing', label: 'Billing', href: '/dashboard/settings/billing' },
+  {% endif %}
+];
+
+export interface SettingsLayoutProps {
+  children: React.ReactNode;
+  activeTab?: string;
+}
+
+export function SettingsLayout({ children, activeTab }: SettingsLayoutProps) {
+  {% if saas_runtime == 'nextjs-16' %}
+  const pathname = usePathname();
+  {% elif saas_runtime == 'remix-2' %}
+  const { pathname } = useLocation();
+  {% endif %}
+  const currentTab = activeTab || settingsTabs.find(tab => 
+    pathname === tab.href || (tab.id !== 'profile' && pathname.startsWith(tab.href))
+  )?.id || 'profile';
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+        <p className="text-muted-foreground">Manage your account settings and preferences.</p>
+      </div>
+      
+      {% if saas_ui_framework == 'shadcn-ui' %}
+      <Tabs value={currentTab} className="space-y-6">
+        <TabsList>
+          {settingsTabs.map(tab => (
+            <TabsTrigger key={tab.id} value={tab.id} asChild>
+              <Link href={tab.href}>{tab.label}</Link>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        {children}
+      </Tabs>
+      {% else %}
+      <div className="border-b">
+        <nav className="-mb-px flex space-x-8">
+          {settingsTabs.map(tab => (
+            <Link
+              key={tab.id}
+              href={tab.href}
+              className={`border-b-2 py-4 px-1 text-sm font-medium ${
+                currentTab === tab.id
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+              }`}
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
+      <div className="pt-6">{children}</div>
+      {% endif %}
+    </div>
+  );
+}
+
+// ============================================================================
+// Profile Settings
+// ============================================================================
+
+export interface ProfileSettingsProps {
+  user: {
+    name: string;
+    email: string;
+    avatar?: string;
+  };
+  onSave?: (data: { name: string }) => Promise<void>;
+}
+
+export function ProfileSettings({ user, onSave }: ProfileSettingsProps) {
+  const [name, setName] = React.useState(user.name);
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onSave) return;
+    
+    setIsSaving(true);
+    try {
+      await onSave({ name });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    {% if saas_ui_framework == 'shadcn-ui' %}
+    <TabsContent value="profile" className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Profile Information</CardTitle>
+          <CardDescription>Update your personal information.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <input
+                id="email"
+                type="email"
+                value={user.email}
+                disabled
+                className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm text-muted-foreground"
+              />
+              <p className="text-xs text-muted-foreground">
+                Contact support to change your email address.
+              </p>
+            </div>
+            
+            <Button type="submit" disabled={isSaving}>
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+      
+      <Card className="border-red-200">
+        <CardHeader>
+          <CardTitle className="text-red-600">Danger Zone</CardTitle>
+          <CardDescription>Irreversible actions for your account.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="destructive">Delete Account</Button>
+        </CardContent>
+      </Card>
+    </TabsContent>
+    {% else %}
+    <div className="space-y-6">
+      <div className="bg-white shadow rounded-lg p-6">
+        <h3 className="text-lg font-medium mb-4">Profile Information</h3>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
+            <input
+              id="email"
+              type="email"
+              value={user.email}
+              disabled
+              className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+          >
+            {isSaving ? 'Saving...' : 'Save Changes'}
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  );
+}
+
+// ============================================================================
+// Security Settings
+// ============================================================================
+
+export interface SecuritySettingsProps {
+  has2FA?: boolean;
+  {% if saas_2fa %}
+  onEnable2FA?: () => void;
+  onDisable2FA?: () => void;
+  {% endif %}
+  sessions?: Array<{
+    id: string;
+    device: string;
+    location: string;
+    lastActive: string;
+    current: boolean;
+  }>;
+  onRevokeSession?: (sessionId: string) => Promise<void>;
+}
+
+export function SecuritySettings({ 
+  has2FA = false,
+  {% if saas_2fa %}
+  onEnable2FA,
+  onDisable2FA,
+  {% endif %}
+  sessions = [],
+  onRevokeSession,
+}: SecuritySettingsProps) {
+  return (
+    {% if saas_ui_framework == 'shadcn-ui' %}
+    <TabsContent value="security" className="space-y-6">
+      {% if saas_2fa and saas_auth == 'authjs' %}
+      <Card>
+        <CardHeader>
+          <CardTitle>Two-Factor Authentication</CardTitle>
+          <CardDescription>
+            Add an extra layer of security to your account.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">
+              {has2FA ? 'Enabled' : 'Disabled'}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {has2FA 
+                ? 'Your account is protected with 2FA.'
+                : 'Protect your account with an authenticator app.'}
+            </p>
+          </div>
+          <Button 
+            variant={has2FA ? 'destructive' : 'default'}
+            onClick={has2FA ? onDisable2FA : onEnable2FA}
+          >
+            {has2FA ? 'Disable' : 'Enable'}
+          </Button>
+        </CardContent>
+      </Card>
+      {% endif %}
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Active Sessions</CardTitle>
+          <CardDescription>
+            Manage your active sessions across devices.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {sessions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No active sessions.</p>
+            ) : (
+              sessions.map(session => (
+                <div key={session.id} className="flex items-center justify-between py-2">
+                  <div>
+                    <p className="text-sm font-medium">
+                      {session.device}
+                      {session.current && (
+                        <span className="ml-2 text-xs text-green-600">(Current)</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {session.location} • Last active {session.lastActive}
+                    </p>
+                  </div>
+                  {!session.current && onRevokeSession && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => onRevokeSession(session.id)}
+                    >
+                      Revoke
+                    </Button>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </TabsContent>
+    {% else %}
+    <div className="space-y-6">
+      <div className="bg-white shadow rounded-lg p-6">
+        <h3 className="text-lg font-medium mb-4">Active Sessions</h3>
+        <div className="space-y-4">
+          {sessions.map(session => (
+            <div key={session.id} className="flex items-center justify-between py-2 border-b last:border-0">
+              <div>
+                <p className="text-sm font-medium">{session.device}</p>
+                <p className="text-xs text-gray-500">{session.location}</p>
+              </div>
+              {!session.current && (
+                <button className="text-sm text-red-600 hover:text-red-800">
+                  Revoke
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  );
+}
+
+// ============================================================================
+// Notification Settings
+// ============================================================================
+
+{% if saas_notifications != 'none' %}
+export interface NotificationPreference {
+  key: string;
+  label: string;
+  description: string;
+  email: boolean;
+  {% if saas_notifications == 'both' %}
+  inApp: boolean;
+  {% endif %}
+}
+
+export interface NotificationSettingsProps {
+  preferences: NotificationPreference[];
+  onSave: (preferences: NotificationPreference[]) => Promise<void>;
+}
+
+export function NotificationSettings({ preferences, onSave }: NotificationSettingsProps) {
+  const [prefs, setPrefs] = React.useState(preferences);
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  const togglePreference = (key: string, field: 'email' {% if saas_notifications == 'both' %}| 'inApp'{% endif %}) => {
+    setPrefs(prev => prev.map(p => 
+      p.key === key ? { ...p, [field]: !p[field] } : p
+    ));
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onSave(prefs);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    {% if saas_ui_framework == 'shadcn-ui' %}
+    <TabsContent value="notifications" className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Notification Preferences</CardTitle>
+          <CardDescription>
+            Choose how you want to be notified.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {prefs.map(pref => (
+            <div key={pref.key} className="flex items-start justify-between py-4 border-b last:border-0">
+              <div className="space-y-1">
+                <Label>{pref.label}</Label>
+                <p className="text-sm text-muted-foreground">{pref.description}</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={pref.email}
+                    onCheckedChange={() => togglePreference(pref.key, 'email')}
+                  />
+                  <Label className="text-xs">Email</Label>
+                </div>
+                {% if saas_notifications == 'both' %}
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={pref.inApp}
+                    onCheckedChange={() => togglePreference(pref.key, 'inApp')}
+                  />
+                  <Label className="text-xs">In-App</Label>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          ))}
+          
+          <Button onClick={handleSave} disabled={isSaving}>
+            {isSaving ? 'Saving...' : 'Save Preferences'}
+          </Button>
+        </CardContent>
+      </Card>
+    </TabsContent>
+    {% else %}
+    <div className="bg-white shadow rounded-lg p-6">
+      <h3 className="text-lg font-medium mb-4">Notification Preferences</h3>
+      <div className="space-y-4">
+        {prefs.map(pref => (
+          <div key={pref.key} className="flex items-center justify-between py-2">
+            <div>
+              <p className="text-sm font-medium">{pref.label}</p>
+              <p className="text-xs text-gray-500">{pref.description}</p>
+            </div>
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={pref.email}
+                onChange={() => togglePreference(pref.key, 'email')}
+                className="rounded border-gray-300"
+              />
+              <span className="ml-2 text-sm">Email</span>
+            </label>
+          </div>
+        ))}
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white"
+        >
+          {isSaving ? 'Saving...' : 'Save Preferences'}
+        </button>
+      </div>
+    </div>
+    {% endif %}
+  );
+}
+{% endif %}
+{% endif %}

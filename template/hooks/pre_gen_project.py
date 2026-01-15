@@ -319,6 +319,35 @@ def _validate_saas_starter(context: dict) -> list[dict]:
             }
         )
 
+    # Supabase Realtime requires Supabase database - error
+    if (
+        context.get("saas_realtime") == "supabase-realtime"
+        and context.get("saas_database") != "supabase"
+    ):
+        issues.append(
+            {
+                "severity": "error",
+                "message": (
+                    "❌ Supabase Realtime requires Supabase as your database.\n"
+                    "Either change saas_database to 'supabase' or choose a\n"
+                    "different realtime provider (pusher, ably, or none)."
+                ),
+            }
+        )
+
+    # 2FA with Clerk - info (Clerk has built-in 2FA)
+    if context.get("saas_2fa") and context.get("saas_auth") == "clerk":
+        issues.append(
+            {
+                "severity": "info",
+                "message": (
+                    "ℹ️  Clerk already includes built-in 2FA support.\n"
+                    "The saas_2fa option only applies to Auth.js authentication.\n"
+                    "Configure 2FA in your Clerk dashboard instead."
+                ),
+            }
+        )
+
     return issues
 
 

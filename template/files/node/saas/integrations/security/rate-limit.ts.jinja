@@ -1,0 +1,370 @@
+{% if saas_starter_module == "enabled" and saas_rate_limiting != "none" %}
+/**
+ * Rate Limiting Middleware
+ * 
+ * Provides API rate limiting to prevent abuse and ensure fair usage.
+ * 
+ * Features:
+ * - Per-user rate limits
+ * - Per-IP rate limits (for unauthenticated requests)
+ * - Configurable limits per endpoint
+ * - Sliding window algorithm
+ * 
+ * @see https://upstash.com/docs/redis/sdks/ratelimit-ts/overview
+ */
+
+{% if saas_rate_limiting == 'upstash' %}
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
+{% endif %}
+{% if saas_observability_structured_logging %}
+import { logger } from '@/lib/observability/logger';
+{% endif %}
+
+// ============================================================================
+// Configuration
+// ============================================================================
+
+export interface RateLimitConfig {
+  /** Requests allowed per window */
+  requests: number;
+  /** Window duration in seconds */
+  window: number;
+  /** Identifier prefix for grouping limits */
+  prefix?: string;
+}
+
+/** Default rate limit configurations */
+export const RATE_LIMITS = {
+  /** Standard API routes */
+  api: { requests: 100, window: 60, prefix: 'api' } as RateLimitConfig,
+  /** Authentication endpoints (stricter) */
+  auth: { requests: 10, window: 60, prefix: 'auth' } as RateLimitConfig,
+  /** Webhook endpoints (more lenient) */
+  webhook: { requests: 1000, window: 60, prefix: 'webhook' } as RateLimitConfig,
+  /** AI/expensive operations (strictest) */
+  ai: { requests: 20, window: 60, prefix: 'ai' } as RateLimitConfig,
+  /** File uploads */
+  upload: { requests: 30, window: 60, prefix: 'upload' } as RateLimitConfig,
+} as const;
+
+// ============================================================================
+// Rate Limiter Implementation
+// ============================================================================
+
+{% if saas_rate_limiting == 'upstash' %}
+// Initialize Redis client for Upstash
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
+
+// Create rate limiters for different tiers
+const rateLimiters = new Map<string, Ratelimit>();
+
+function getRateLimiter(config: RateLimitConfig): Ratelimit {
+  const key = `${config.prefix}-${config.requests}-${config.window}`;
+  
+  if (!rateLimiters.has(key)) {
+    rateLimiters.set(
+      key,
+      new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(config.requests, `${config.window} s`),
+        prefix: `ratelimit:${config.prefix}`,
+        analytics: true,
+      })
+    );
+  }
+  
+  return rateLimiters.get(key)!;
+}
+
+{% elif saas_rate_limiting == 'built-in' %}
+// In-memory rate limiting store
+// NOTE: This resets on deploy and doesn't work across multiple instances
+interface RateLimitEntry {
+  count: number;
+  resetAt: number;
+}
+
+const store = new Map<string, RateLimitEntry>();
+
+// Clean up expired entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of store.entries()) {
+    if (entry.resetAt < now) {
+      store.delete(key);
+    }
+  }
+}, 60000); // Clean up every minute
+{% endif %}
+
+// ============================================================================
+// Rate Limit Check
+// ============================================================================
+
+export interface RateLimitResult {
+  /** Whether the request is allowed */
+  success: boolean;
+  /** Remaining requests in current window */
+  remaining: number;
+  /** When the rate limit resets (Unix timestamp) */
+  reset: number;
+  /** Total requests allowed per window */
+  limit: number;
+}
+
+/**
+ * Check rate limit for an identifier
+ * 
+ * @param identifier - User ID, IP address, or API key
+ * @param config - Rate limit configuration
+ * @returns Rate limit result
+ * 
+ * @example
+ * ```ts
+ * const result = await checkRateLimit(userId, RATE_LIMITS.api);
+ * if (!result.success) {
+ *   return new Response('Too Many Requests', { status: 429 });
+ * }
+ * ```
+ */
+export async function checkRateLimit(
+  identifier: string,
+  config: RateLimitConfig = RATE_LIMITS.api
+): Promise<RateLimitResult> {
+  {% if saas_rate_limiting == 'upstash' %}
+  const limiter = getRateLimiter(config);
+  const result = await limiter.limit(identifier);
+  
+  {% if saas_observability_structured_logging %}
+  if (!result.success) {
+    logger.warn({
+      msg: 'Rate limit exceeded',
+      identifier,
+      prefix: config.prefix,
+      remaining: result.remaining,
+    });
+  }
+  {% endif %}
+  
+  return {
+    success: result.success,
+    remaining: result.remaining,
+    reset: result.reset,
+    limit: config.requests,
+  };
+  
+  {% elif saas_rate_limiting == 'built-in' %}
+  const key = `${config.prefix}:${identifier}`;
+  const now = Date.now();
+  const windowMs = config.window * 1000;
+  
+  let entry = store.get(key);
+  
+  // Create new entry if doesn't exist or window expired
+  if (!entry || entry.resetAt < now) {
+    entry = {
+      count: 0,
+      resetAt: now + windowMs,
+    };
+    store.set(key, entry);
+  }
+  
+  // Increment count
+  entry.count++;
+  
+  const success = entry.count <= config.requests;
+  const remaining = Math.max(0, config.requests - entry.count);
+  
+  {% if saas_observability_structured_logging %}
+  if (!success) {
+    logger.warn({
+      msg: 'Rate limit exceeded',
+      identifier,
+      prefix: config.prefix,
+      remaining,
+    });
+  }
+  {% endif %}
+  
+  return {
+    success,
+    remaining,
+    reset: Math.floor(entry.resetAt / 1000),
+    limit: config.requests,
+  };
+  {% endif %}
+}
+
+// ============================================================================
+// Middleware Helpers
+// ============================================================================
+
+/**
+ * Get rate limit headers for response
+ */
+export function getRateLimitHeaders(result: RateLimitResult): Record<string, string> {
+  return {
+    'X-RateLimit-Limit': result.limit.toString(),
+    'X-RateLimit-Remaining': result.remaining.toString(),
+    'X-RateLimit-Reset': result.reset.toString(),
+    'Retry-After': result.success ? '' : Math.ceil((result.reset * 1000 - Date.now()) / 1000).toString(),
+  };
+}
+
+/**
+ * Create rate-limited API response
+ */
+export function rateLimitResponse(result: RateLimitResult): Response {
+  const headers = getRateLimitHeaders(result);
+  
+  if (!result.success) {
+    return new Response(
+      JSON.stringify({
+        error: 'Too Many Requests',
+        message: 'Rate limit exceeded. Please try again later.',
+        retryAfter: Math.ceil((result.reset * 1000 - Date.now()) / 1000),
+      }),
+      {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+      }
+    );
+  }
+  
+  // Return null to indicate request should proceed
+  return null as any;
+}
+
+// ============================================================================
+// Next.js/Remix Middleware Integration
+// ============================================================================
+
+{% if saas_runtime == 'nextjs-16' %}
+import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * Rate limiting middleware for Next.js API routes
+ * 
+ * @example
+ * ```ts
+ * // In middleware.ts
+ * import { withRateLimit } from '@/lib/security/rate-limit';
+ * 
+ * export async function middleware(req: NextRequest) {
+ *   const rateLimitResult = await withRateLimit(req);
+ *   if (rateLimitResult) return rateLimitResult;
+ *   
+ *   return NextResponse.next();
+ * }
+ * ```
+ */
+export async function withRateLimit(
+  req: NextRequest,
+  config: RateLimitConfig = RATE_LIMITS.api
+): Promise<NextResponse | null> {
+  // Get identifier (user ID from auth or IP address)
+  const userId = req.headers.get('x-user-id');
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0] ?? 
+             req.headers.get('x-real-ip') ?? 
+             'unknown';
+  
+  const identifier = userId || `ip:${ip}`;
+  const result = await checkRateLimit(identifier, config);
+  
+  if (!result.success) {
+    return new NextResponse(
+      JSON.stringify({
+        error: 'Too Many Requests',
+        message: 'Rate limit exceeded. Please try again later.',
+        retryAfter: Math.ceil((result.reset * 1000 - Date.now()) / 1000),
+      }),
+      {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          ...getRateLimitHeaders(result),
+        },
+      }
+    );
+  }
+  
+  return null;
+}
+{% endif %}
+
+// ============================================================================
+// API Route Helper
+// ============================================================================
+
+/**
+ * Wrap an API route handler with rate limiting
+ * 
+ * @example
+ * ```ts
+ * // In app/api/ai/route.ts
+ * export const POST = withRateLimitHandler(
+ *   async (req) => {
+ *     // Your API logic
+ *   },
+ *   RATE_LIMITS.ai
+ * );
+ * ```
+ */
+export function withRateLimitHandler<T>(
+  handler: (req: Request) => Promise<Response>,
+  config: RateLimitConfig = RATE_LIMITS.api
+) {
+  return async (req: Request): Promise<Response> => {
+    // Get identifier from request
+    const userId = req.headers.get('x-user-id');
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0] ?? 
+               req.headers.get('x-real-ip') ?? 
+               'unknown';
+    
+    const identifier = userId || `ip:${ip}`;
+    const result = await checkRateLimit(identifier, config);
+    
+    // Add rate limit headers to all responses
+    const headers = getRateLimitHeaders(result);
+    
+    if (!result.success) {
+      return new Response(
+        JSON.stringify({
+          error: 'Too Many Requests',
+          message: 'Rate limit exceeded. Please try again later.',
+          retryAfter: Math.ceil((result.reset * 1000 - Date.now()) / 1000),
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            ...headers,
+          },
+        }
+      );
+    }
+    
+    // Call the actual handler
+    const response = await handler(req);
+    
+    // Clone response to add headers
+    const newHeaders = new Headers(response.headers);
+    Object.entries(headers).forEach(([key, value]) => {
+      if (value) newHeaders.set(key, value);
+    });
+    
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: newHeaders,
+    });
+  };
+}
+{% endif %}

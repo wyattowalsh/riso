@@ -75,6 +75,10 @@ def _setup_logging(config: ServerConfig) -> None:
 _CONFIG = load_config()
 mcp, session_manager = create_server(_CONFIG)
 
+# ASGI app for HTTP deployments (Vercel, Railway, etc.)
+# Usage: uvicorn riso.mcp.server:app --host 0.0.0.0 --port 8000
+app = mcp.http_app()
+
 
 def run_server(
     transport: str | None = None,

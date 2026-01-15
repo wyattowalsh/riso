@@ -336,7 +336,7 @@ export function SaaSConfig() {
               label="Sentry (Error Tracking)"
               checked={
                 config.saas_observability_sentry ??
-                getPromptDefault<boolean>('saas_observability_sentry', true)
+                getPromptDefault<boolean>('saas_observability_sentry', true) ?? true
               }
               onChange={(v) => updateConfig({ saas_observability_sentry: v })}
             />
@@ -344,7 +344,7 @@ export function SaaSConfig() {
               label="Datadog (APM)"
               checked={
                 config.saas_observability_datadog ??
-                getPromptDefault<boolean>('saas_observability_datadog', true)
+                getPromptDefault<boolean>('saas_observability_datadog', true) ?? true
               }
               onChange={(v) => updateConfig({ saas_observability_datadog: v })}
             />
@@ -352,7 +352,7 @@ export function SaaSConfig() {
               label="OpenTelemetry"
               checked={
                 config.saas_observability_otel ??
-                getPromptDefault<boolean>('saas_observability_otel', true)
+                getPromptDefault<boolean>('saas_observability_otel', true) ?? true
               }
               onChange={(v) => updateConfig({ saas_observability_otel: v })}
             />
@@ -360,7 +360,7 @@ export function SaaSConfig() {
               label="Structured Logging"
               checked={
                 config.saas_observability_structured_logging ??
-                getPromptDefault<boolean>('saas_observability_structured_logging', true)
+                getPromptDefault<boolean>('saas_observability_structured_logging', true) ?? true
               }
               onChange={(v) => updateConfig({ saas_observability_structured_logging: v })}
             />

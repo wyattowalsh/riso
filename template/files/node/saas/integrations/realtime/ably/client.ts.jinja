@@ -1,0 +1,186 @@
+{% if saas_starter_module == "enabled" and saas_realtime == "ably" %}
+/**
+ * Ably Real-time Client
+ * 
+ * Enterprise-grade real-time communication with message history,
+ * presence, and global edge network.
+ * 
+ * @see https://ably.com/docs
+ */
+
+import Ably from 'ably';
+{% if saas_observability_structured_logging %}
+import { logger } from '@/lib/observability/logger';
+{% endif %}
+
+// ============================================================================
+// Server-Side Client
+// ============================================================================
+
+/**
+ * Server-side Ably client for publishing messages
+ */
+export const ablyServer = new Ably.Rest({
+  key: process.env.ABLY_API_KEY!,
+});
+
+// ============================================================================
+// Client-Side Setup
+// ============================================================================
+
+/**
+ * Create an Ably Realtime client for the browser
+ * Uses token authentication for security
+ */
+export function createAblyClient(): Ably.Realtime {
+  return new Ably.Realtime({
+    authUrl: '/api/ably/token',
+    authMethod: 'POST',
+  });
+}
+
+// ============================================================================
+// Channel Helpers
+// ============================================================================
+
+export const CHANNELS = {
+  /** User-specific notifications */
+  userNotifications: (userId: string) => `user:${userId}:notifications`,
+  {% if saas_tenancy_model == 'b2b-teams' %}
+  /** Organization-wide updates */
+  orgUpdates: (orgId: string) => `org:${orgId}:updates`,
+  /** Organization presence (who's online) */
+  orgPresence: (orgId: string) => `org:${orgId}:presence`,
+  {% endif %}
+} as const;
+
+// ============================================================================
+// Server-Side Publishing
+// ============================================================================
+
+/**
+ * Publish a message to an Ably channel
+ */
+export async function publishMessage(
+  channelName: string,
+  eventName: string,
+  data: Record<string, unknown>
+): Promise<void> {
+  const channel = ablyServer.channels.get(channelName);
+  
+  {% if saas_observability_structured_logging %}
+  logger.debug({
+    msg: 'Publishing Ably message',
+    channel: channelName,
+    event: eventName,
+  });
+  {% endif %}
+  
+  await channel.publish(eventName, data);
+}
+
+/**
+ * Send notification to a user
+ */
+export async function sendUserNotification(
+  userId: string,
+  notification: {
+    id: string;
+    type: string;
+    title: string;
+    body: string;
+    actionUrl?: string;
+  }
+): Promise<void> {
+  await publishMessage(
+    CHANNELS.userNotifications(userId),
+    'notification:new',
+    notification
+  );
+}
+
+{% if saas_tenancy_model == 'b2b-teams' %}
+/**
+ * Broadcast to organization members
+ */
+export async function broadcastToOrganization(
+  organizationId: string,
+  eventName: string,
+  data: Record<string, unknown>
+): Promise<void> {
+  await publishMessage(
+    CHANNELS.orgUpdates(organizationId),
+    eventName,
+    data
+  );
+}
+{% endif %}
+
+// ============================================================================
+// Token Authentication Endpoint
+// ============================================================================
+
+/**
+ * Generate an Ably token for client authentication
+ * 
+ * @example
+ * ```ts
+ * // In app/api/ably/token/route.ts
+ * export async function POST(req: Request) {
+ *   const user = await getCurrentUser();
+ *   if (!user) return new Response('Unauthorized', { status: 401 });
+ *   
+ *   const token = await generateAblyToken(user.id);
+ *   return Response.json(token);
+ * }
+ * ```
+ */
+export async function generateAblyToken(
+  clientId: string,
+  capabilities?: Record<string, string[]>
+): Promise<Ably.TokenRequest> {
+  const defaultCapabilities = {
+    [`user:${clientId}:*`]: ['subscribe', 'history'],
+    '*': ['subscribe'],
+  };
+  
+  return ablyServer.auth.createTokenRequest({
+    clientId,
+    capability: capabilities || defaultCapabilities,
+  });
+}
+
+// ============================================================================
+// React Hook (Client-Side Usage)
+// ============================================================================
+
+/**
+ * React hook for subscribing to Ably channels
+ * 
+ * @example
+ * ```tsx
+ * import { useAbly, useChannel } from 'ably/react';
+ * 
+ * function NotificationBell() {
+ *   const { channel } = useChannel(`user:${userId}:notifications`, (message) => {
+ *     console.log('New notification:', message.data);
+ *   });
+ *   
+ *   return <Bell />;
+ * }
+ * ```
+ */
+export const ablyReactHookExample = `
+// Wrap your app with AblyProvider
+import { AblyProvider } from 'ably/react';
+
+function App({ children }) {
+  const client = createAblyClient();
+  return (
+    <AblyProvider client={client}>
+      {children}
+    </AblyProvider>
+  );
+}
+`;
+{% endif %}

@@ -1,0 +1,180 @@
+{% if saas_starter_module == "enabled" and saas_api_docs %}
+/**
+ * OpenAPI Schema Generation
+ * 
+ * Generates OpenAPI 3.1 documentation from your API routes.
+ * Integrates with zod-to-openapi for automatic schema generation.
+ */
+
+import { OpenAPIRegistry, OpenApiGeneratorV31 } from '@asteasolutions/zod-to-openapi';
+import { z } from 'zod';
+
+// ============================================================================
+// Registry Setup
+// ============================================================================
+
+export const registry = new OpenAPIRegistry();
+
+// ============================================================================
+// Common Schemas
+// ============================================================================
+
+/** Standard error response */
+export const ErrorResponseSchema = registry.register(
+  'ErrorResponse',
+  z.object({
+    error: z.string().describe('Error type'),
+    message: z.string().describe('Human-readable error message'),
+    code: z.string().optional().describe('Error code for programmatic handling'),
+    details: z.record(z.unknown()).optional().describe('Additional error details'),
+  })
+);
+
+/** Pagination parameters */
+export const PaginationParamsSchema = registry.register(
+  'PaginationParams',
+  z.object({
+    page: z.coerce.number().min(1).default(1).describe('Page number'),
+    limit: z.coerce.number().min(1).max(100).default(20).describe('Items per page'),
+  })
+);
+
+/** Paginated response wrapper */
+export const PaginatedResponseSchema = <T extends z.ZodType>(itemSchema: T) =>
+  z.object({
+    data: z.array(itemSchema),
+    pagination: z.object({
+      page: z.number(),
+      limit: z.number(),
+      total: z.number(),
+      totalPages: z.number(),
+      hasMore: z.boolean(),
+    }),
+  });
+
+// ============================================================================
+// API Documentation Registration
+// ============================================================================
+
+/**
+ * Register an API endpoint with the OpenAPI registry
+ * 
+ * @example
+ * ```ts
+ * registerEndpoint({
+ *   method: 'get',
+ *   path: '/api/users/{id}',
+ *   summary: 'Get user by ID',
+ *   tags: ['Users'],
+ *   params: z.object({ id: z.string().uuid() }),
+ *   response: UserSchema,
+ * });
+ * ```
+ */
+export interface EndpointConfig<TParams, TQuery, TBody, TResponse> {
+  method: 'get' | 'post' | 'put' | 'patch' | 'delete';
+  path: string;
+  summary: string;
+  description?: string;
+  tags?: string[];
+  params?: z.ZodObject<any>;
+  query?: z.ZodObject<any>;
+  body?: z.ZodType;
+  response: z.ZodType;
+  errorResponses?: { status: number; description: string }[];
+  security?: { bearerAuth?: [] }[];
+}
+
+export function registerEndpoint<TParams, TQuery, TBody, TResponse>(
+  config: EndpointConfig<TParams, TQuery, TBody, TResponse>
+) {
+  const request: any = {};
+  
+  if (config.params) {
+    request.params = config.params;
+  }
+  if (config.query) {
+    request.query = config.query;
+  }
+  if (config.body) {
+    request.body = {
+      content: { 'application/json': { schema: config.body } },
+    };
+  }
+  
+  const responses: any = {
+    200: {
+      description: 'Successful response',
+      content: { 'application/json': { schema: config.response } },
+    },
+  };
+  
+  // Add common error responses
+  const errorResponses = config.errorResponses || [
+    { status: 400, description: 'Bad request' },
+    { status: 401, description: 'Unauthorized' },
+    { status: 404, description: 'Not found' },
+    { status: 500, description: 'Internal server error' },
+  ];
+  
+  for (const error of errorResponses) {
+    responses[error.status] = {
+      description: error.description,
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    };
+  }
+  
+  registry.registerPath({
+    method: config.method,
+    path: config.path,
+    summary: config.summary,
+    description: config.description,
+    tags: config.tags,
+    request: Object.keys(request).length > 0 ? request : undefined,
+    responses,
+    security: config.security,
+  });
+}
+
+// ============================================================================
+// Generate OpenAPI Document
+// ============================================================================
+
+export function generateOpenAPIDocument() {
+  const generator = new OpenApiGeneratorV31(registry.definitions);
+  
+  return generator.generateDocument({
+    openapi: '3.1.0',
+    info: {
+      title: '{{ project_name }} API',
+      version: '1.0.0',
+      description: 'API documentation for {{ project_name }}',
+    },
+    servers: [
+      { url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000', description: 'Current environment' },
+    ],
+    security: [{ bearerAuth: [] }],
+  });
+}
+
+// ============================================================================
+// API Route Handler
+// ============================================================================
+
+/**
+ * API route to serve OpenAPI JSON
+ * 
+ * @example
+ * ```ts
+ * // app/api/docs/openapi.json/route.ts
+ * import { getOpenAPIRoute } from '@/lib/api-docs/openapi';
+ * export const GET = getOpenAPIRoute;
+ * ```
+ */
+export function getOpenAPIRoute() {
+  const doc = generateOpenAPIDocument();
+  return new Response(JSON.stringify(doc, null, 2), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+{% endif %}
