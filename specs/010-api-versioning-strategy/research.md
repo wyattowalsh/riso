@@ -41,20 +41,20 @@ This document consolidates research findings for implementing a comprehensive AP
 ```python
 class APIVersionMiddleware:
     """Framework-agnostic ASGI middleware for API versioning."""
-    
+
     def __init__(self, app, default_version: str = "v1"):
         self.app = app
         self.default_version = default_version
-    
+
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        
+
         # Extract version and store in scope
         version = self._extract_version(scope)
         scope["api_version"] = version
-        
+
         # Add version to response headers
         async def send_wrapper(message):
             if message["type"] == "http.response.start":
@@ -62,7 +62,7 @@ class APIVersionMiddleware:
                 headers.append((b"x-api-version", version.encode()))
                 message["headers"] = headers
             await send(message)
-        
+
         await self.app(scope, receive, send_wrapper)
 ```
 
@@ -110,7 +110,7 @@ versions:
       - pagination
     breaking_changes_from: null
     migration_guide_url: "/docs/migrations/v1-to-v2"
-    
+
   v2:
     status: current
     release_date: "2025-06-01"
@@ -124,7 +124,7 @@ versions:
       - batch_operations
     breaking_changes_from: v1
     migration_guide_url: null
-    
+
   v3-beta:
     status: prerelease
     release_date: "2025-11-01"
@@ -159,7 +159,7 @@ class VersionMetadata:
 class VersionRegistry:
     """Singleton in-memory registry for O(1) version metadata lookups."""
     _versions: Dict[str, VersionMetadata] = {}
-    
+
     @classmethod
     def load_from_file(cls, config_path: Path):
         """Load version metadata from YAML at startup."""
@@ -167,7 +167,7 @@ class VersionRegistry:
             config = yaml.safe_load(f)
         for version_id, data in config['versions'].items():
             cls._versions[version_id] = VersionMetadata(...)
-    
+
     def get_version(self, version_id: str) -> Optional[VersionMetadata]:
         """Fast O(1) lookup - expected 50-200ns latency."""
         return self._versions.get(version_id)

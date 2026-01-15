@@ -60,7 +60,7 @@ export function ProjectBasics() {
     'ci_platform',
     'github-actions'
   )
-  
+
   const validation = validateProjectName(config.project_name || '')
 
   return (

@@ -16,10 +16,10 @@ SOURCE: /docs/resources/migration.rst
 
 ## Replacing `Logger` objects
 
-Loguru replaces the standard {{ Logger }} configuration by a proper {ref}`sink <sink>` definition. Instead of configuring a logger, you should {{ add }} and parametrize your handlers. The {{ logger.setLevel }} and {{ logger.addFilter }} are suppressed by the configured sink `level` and `filter` parameters. The {{ propagate }} attribute and {{ disable }} function can be replaced by the `filter` option too. The {{ makeRecord }} method can be replaced using the `record["extra"]` dict.  
-Sometimes, more fine-grained control is required over a particular logger. In such case, Loguru provides the {{ bind }} method which can be in particular used to generate a specifically named logger.  
-For example, by calling `other_logger = logger.bind(name="other")`, each {ref}`message <message>` logged using `other_logger` will populate the `record["extra"]` dict with the `name` value, while using `logger` won't. This permits differentiating logs from `logger` or `other_logger` from within your sink or filter function.  
-Let suppose you want a sink to log only some very specific messages:  
+Loguru replaces the standard {{ Logger }} configuration by a proper {ref}`sink <sink>` definition. Instead of configuring a logger, you should {{ add }} and parametrize your handlers. The {{ logger.setLevel }} and {{ logger.addFilter }} are suppressed by the configured sink `level` and `filter` parameters. The {{ propagate }} attribute and {{ disable }} function can be replaced by the `filter` option too. The {{ makeRecord }} method can be replaced using the `record["extra"]` dict.
+Sometimes, more fine-grained control is required over a particular logger. In such case, Loguru provides the {{ bind }} method which can be in particular used to generate a specifically named logger.
+For example, by calling `other_logger = logger.bind(name="other")`, each {ref}`message <message>` logged using `other_logger` will populate the `record["extra"]` dict with the `name` value, while using `logger` won't. This permits differentiating logs from `logger` or `other_logger` from within your sink or filter function.
+Let suppose you want a sink to log only some very specific messages:
 def specific_only(record):
 return "specific" in record["extra"]
 
@@ -53,7 +53,7 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Avoiding logs to be printed twice on the terminal
 
-The logger is pre-configured for convenience with a default handler which writes messages to {{ sys.stderr }}. You should {{ remove }} it first if you plan to {{ add }} another handler logging messages to the console, otherwise you may end up with duplicated logs.  
+The logger is pre-configured for convenience with a default handler which writes messages to {{ sys.stderr }}. You should {{ remove }} it first if you plan to {{ add }} another handler logging messages to the console, otherwise you may end up with duplicated logs.
 ```
 
 ---
@@ -65,8 +65,8 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Resolving `UnicodeEncodeError` and other encoding issues
 
-When you write a log message, the handler may need to encode the received [unicode] string to a specific sequence of bytes. The `encoding` used to perform this operation varies depending on the sink type and your environment. Problem may occur if you try to write a character which is not supported by the handler `encoding`. In such case, it's likely that Python will raise an {{ UnicodeEncodeError }}.  
-For example, this may happen while printing to the terminal:  
+When you write a log message, the handler may need to encode the received [unicode] string to a specific sequence of bytes. The `encoding` used to perform this operation varies depending on the sink type and your environment. Problem may occur if you try to write a character which is not supported by the handler `encoding`. In such case, it's likely that Python will raise an {{ UnicodeEncodeError }}.
+For example, this may happen while printing to the terminal:
 print("天")
 # UnicodeEncodeError: 'charmap' codec can't encode character '\u5929' in position 0: character maps to <undefined>
 ```
@@ -80,8 +80,8 @@ SOURCE: /docs/resources/migration.rst
 
 ## Replacing `LogRecord` objects
 
-In Loguru, the equivalence of a {{ LogRecord }} instance is a simple `dict` which stores the details of a logged message. To find the correspondence with {{ LogRecord }} attributes, please refer to {ref}`the "record dict" documentation <record>` which lists all available keys.  
-This `dict` is attached to each {ref}`logged message <message>` through a special `record` attribute of the `str`-like object received by sinks. For example:  
+In Loguru, the equivalence of a {{ LogRecord }} instance is a simple `dict` which stores the details of a logged message. To find the correspondence with {{ LogRecord }} attributes, please refer to {ref}`the "record dict" documentation <record>` which lists all available keys.
+This `dict` is attached to each {ref}`logged message <message>` through a special `record` attribute of the `str`-like object received by sinks. For example:
 def simple_sink(message):
 # A simple sink can use "message" as a basic string and ignore the "record" attribute.
 print(message, end="")
@@ -109,7 +109,7 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Customizing the formatting of exceptions
 
-Loguru will automatically add the traceback of occurring exception while using `logger.exception()` or `logger.opt(exception=True)`:  
+Loguru will automatically add the traceback of occurring exception while using `logger.exception()` or `logger.opt(exception=True)`:
 def inverse(x):
 try:
 1 / x
@@ -129,7 +129,7 @@ ZeroDivisionError: division by zero
 ```
 
 ```plaintext
-If the handler is added with `diagnose=True`, then the traceback is annotated to see what caused the problem:  
+If the handler is added with `diagnose=True`, then the traceback is annotated to see what caused the problem:
 
 File "foo.py", line 6, in inverse
 1 / x
@@ -147,12 +147,12 @@ SOURCE: /docs/resources/troubleshooting.rst
 
 ## How do I create and configure a logger?
 
-Loguru differs from standard logging as you don't need to create a logger. It is directly provided by Loguru, and you should just import it:  
+Loguru differs from standard logging as you don't need to create a logger. It is directly provided by Loguru, and you should just import it:
 ```
 
 ```plaintext
-This {{ Logger }} object is unique and shared across all modules of your application. Import it into every file where you need to use it. It acts as a basic facade interface around a list of handlers. These handlers are responsible for receiving log messages, formatting them, and logging them to one or more desired destinations (file, console, etc.).  
-When you first import Loguru's logger, it comes pre-configured with a default handler that displays your logs on the standard error output ({{ sys.stderr }}). However, you can easily change the logger's configuration to suit your needs. First, use {{ remove }} to discard the default handler. Then, use {{ add }} to register one or more handlers that will log messages to the desired destinations. For example:  
+This {{ Logger }} object is unique and shared across all modules of your application. Import it into every file where you need to use it. It acts as a basic facade interface around a list of handlers. These handlers are responsible for receiving log messages, formatting them, and logging them to one or more desired destinations (file, console, etc.).
+When you first import Loguru's logger, it comes pre-configured with a default handler that displays your logs on the standard error output ({{ sys.stderr }}). However, you can easily change the logger's configuration to suit your needs. First, use {{ remove }} to discard the default handler. Then, use {{ add }} to register one or more handlers that will log messages to the desired destinations. For example:
 ```
 
 ---
@@ -164,11 +164,11 @@ SOURCE: /docs/resources/troubleshooting.rst
 
 ## Why are my logs not showing up?
 
-Ensure that you've added at least one sink using {{ add }}. You can get an overview of the configured handlers by simply printing the logger object:  
+Ensure that you've added at least one sink using {{ add }}. You can get an overview of the configured handlers by simply printing the logger object:
 ```
 
 ```plaintext
-Check also the logging level: messages below the set level won't appear:  
+Check also the logging level: messages below the set level won't appear:
 ```
 
 ---
@@ -180,7 +180,7 @@ SOURCE: /docs/resources/troubleshooting.rst
 
 ## Why are my logs duplicated in the output?
 
-Remember that the initial `logger` has a default handler for convenience. If you plan to change the logging configuration, make sure to {{ remove }} this default handler before to {{ add }} a new one. Otherwise, messages will be duplicated because they will be sent to both the default handler and your new handler:  
+Remember that the initial `logger` has a default handler for convenience. If you plan to change the logging configuration, make sure to {{ remove }} this default handler before to {{ add }} a new one. Otherwise, messages will be duplicated because they will be sent to both the default handler and your new handler:
 # Replace the default handler with a new one.
 logger.remove()
 logger.add(sys.stderr, format="{time} - {level} - {message}")
@@ -237,18 +237,18 @@ SOURCE: /docs/resources/migration.rst
 
 ## Replacing `caplog` fixture from `pytest` library
 
-[pytest] is a very common testing framework. The [caplog] fixture captures logging output so that it can be tested against. For example:  
+[pytest] is a very common testing framework. The [caplog] fixture captures logging output so that it can be tested against. For example:
 ```
 
 ```plaintext
-If you've followed all the migration guidelines thus far, you'll notice that this test will fail. This is because [pytest] links to the standard library's `logging` module.  
+If you've followed all the migration guidelines thus far, you'll notice that this test will fail. This is because [pytest] links to the standard library's `logging` module.
 So to fix things, we need to add a sink that propagates Loguru to the caplog handler.
-This is done by overriding the [caplog] fixture to capture its handler. In your `conftest.py` file, add the following:  
+This is done by overriding the [caplog] fixture to capture its handler. In your `conftest.py` file, add the following:
 ```
 
 ```plaintext
-Run your tests and things should all be working as expected. Additional information can be found in [GH#59] and [GH#474]. You can also install and use the [pytest-loguru] package created by [@mcarans].  
-Note that if you want Loguru logs to be propagated to Pytest terminal reporter, you can do so by overriding the `reportlog` fixture as follows:  
+Run your tests and things should all be working as expected. Additional information can be found in [GH#59] and [GH#474]. You can also install and use the [pytest-loguru] package created by [@mcarans].
+Note that if you want Loguru logs to be propagated to Pytest terminal reporter, you can do so by overriding the `reportlog` fixture as follows:
 from loguru import logger
 
 @pytest.fixture
@@ -344,7 +344,7 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Using ZMQ to send and receive log messages
 
-Third-party libraries like [zmq] can be leveraged to exchange messages between multiple processes. Here is an example of a basic server and client:  
+Third-party libraries like [zmq] can be leveraged to exchange messages between multiple processes. Here is an example of a basic server and client:
 ```
 
 ```plaintext
@@ -388,11 +388,11 @@ SOURCE: /docs/resources/migration.rst
 
 ## Replacing `isEnabledFor()` method
 
-If you wish to log useful information for your debug logs, but don't want to pay the performance penalty in release mode while no debug handler is configured, standard logging provides the {{ isEnabledFor }} method:  
+If you wish to log useful information for your debug logs, but don't want to pay the performance penalty in release mode while no debug handler is configured, standard logging provides the {{ isEnabledFor }} method:
 ```
 
 ```plaintext
-You can replace this with the {{ opt }} method and `lazy` option:  
+You can replace this with the {{ opt }} method and `lazy` option:
 # Arguments should be functions which will be called if needed
 logger.opt(lazy=True).debug("Message data: {}", expensive_func)
 ```
@@ -406,8 +406,8 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Circumventing modules whose `__name__` value is absent
 
-Loguru makes use of the global variable `__name__` to determine from where the logged message is coming from. However, it may happen in very specific situation (like some Dask distributed environment) that this value is not set. In such case, Loguru will use `None` to make up for the lack of the value. This implies that if you want to {{ disable }} messages coming from such special module, you have to explicitly call `logger.disable(None)`.  
-Similar considerations should be taken into account while dealing with the `filter` attribute. As `__name__` is missing, Loguru will assign the `None` value to the `record["name"]` entry. It also means that once formatted in your log messages, the `{name}` token will be equals to `"None"`. This can be worked around by manually overriding the `record["name"]` value using {{ patch }} from inside the faulty module:  
+Loguru makes use of the global variable `__name__` to determine from where the logged message is coming from. However, it may happen in very specific situation (like some Dask distributed environment) that this value is not set. In such case, Loguru will use `None` to make up for the lack of the value. This implies that if you want to {{ disable }} messages coming from such special module, you have to explicitly call `logger.disable(None)`.
+Similar considerations should be taken into account while dealing with the `filter` attribute. As `__name__` is missing, Loguru will assign the `None` value to the `record["name"]` entry. It also means that once formatted in your log messages, the `{name}` token will be equals to `"None"`. This can be worked around by manually overriding the `record["name"]` value using {{ patch }} from inside the faulty module:
 # If Loguru fails to retrieve the proper "name" value, assign it manually
 logger = logger.patch(lambda record: record.update(name="my_module"))
 ```
@@ -421,7 +421,7 @@ SOURCE: /docs/resources/troubleshooting.rst
 
 ## Why are my logs not colored?
 
-Log colors are configured using {ref}`special tags <color>` in the `format` of the handlers. If you use a custom `format`, make sure that these tags are included, for example:  
+Log colors are configured using {ref}`special tags <color>` in the `format` of the handlers. If you use a custom `format`, make sure that these tags are included, for example:
 logger.add(sys.stderr, format="<green>{time}</green> | <level>{message}</level>")
 ```
 
@@ -443,7 +443,7 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Preserving an `opt()` parameter for the whole module
 
-Supposing you wish to color each of your log messages without having to call `logger.opt(colors=True)` every time, you can add this at the very beginning of your module:  
+Supposing you wish to color each of your log messages without having to call `logger.opt(colors=True)` every time, you can add this at the very beginning of your module:
 logger = logger.opt(colors=True)
 
 logger.info("It <green>works</>!")
@@ -458,8 +458,8 @@ SOURCE: /docs/resources/troubleshooting.rst
 
 ## Why is the captured exception missing from the formatted message?
 
-When `logger.exception()` or `logger.opt(exception=True)` is used within an `except` clause, Loguru automatically captures the exception information and includes it in {ref}`the logged message <message>`.  
-The position of the exception in the message is controlled by the `"{exception}"` field of the configured log format. By default, when the `format` argument of {{ add }} is a string, the `"{exception}"` field is automatically appended to the format:  
+When `logger.exception()` or `logger.opt(exception=True)` is used within an `except` clause, Loguru automatically captures the exception information and includes it in {ref}`the logged message <message>`.
+The position of the exception in the message is controlled by the `"{exception}"` field of the configured log format. By default, when the `format` argument of {{ add }} is a string, the `"{exception}"` field is automatically appended to the format:
 # The "{exception}" placeholder is implicit here (at the end of the format).
 log_format = "{time} - {level} - {message}"
 logger.add(sys.stderr, format=log_format)
@@ -474,8 +474,8 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Dynamically formatting messages to properly align values with padding
 
-The default formatter is unable to vertically align log messages because the length of `{name}`, `{function}` and `{line}` are not fixed.  
-One workaround consists of using padding with some maximum value that should suffice most of the time. For this purpose, you can use Python's string formatting directives, like in this example:  
+The default formatter is unable to vertically align log messages because the length of `{name}`, `{function}` and `{line}` are not fixed.
+One workaround consists of using padding with some maximum value that should suffice most of the time. For this purpose, you can use Python's string formatting directives, like in this example:
 fmt = "{time} | {level: <8} | {name: ^15} | {function: ^15} | {line: >3} | {message}"
 logger.add(sys.stderr, format=fmt)
 ```
@@ -489,11 +489,11 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Unit testing logs emitted by Loguru
 
-Logging calls can be tested using [logot], a high-level log testing library with built-in support for Loguru:  
+Logging calls can be tested using [logot], a high-level log testing library with built-in support for Loguru:
 ```
 
 ```plaintext
-Enable Loguru log capture in your [pytest] configuration:  
+Enable Loguru log capture in your [pytest] configuration:
 ```
 
 ---
@@ -525,23 +525,23 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Logging entry and exit of functions with a decorator
 
-In some cases, it might be useful to log entry and exit values of a function. Although Loguru doesn't provide such feature out of the box, it can be easily implemented by using Python decorators:  
+In some cases, it might be useful to log entry and exit values of a function. Although Loguru doesn't provide such feature out of the box, it can be easily implemented by using Python decorators:
 ```
 
 ```plaintext
-You could then use it like this:  
+You could then use it like this:
 ```
 
 ```plaintext
-Which would result in:  
+Which would result in:
 ```
 
 ```plaintext
-Here is another simple example to record timing of a function:  
+Here is another simple example to record timing of a function:
 ```
 
 ```plaintext
-Finally, here is an example of a generic wrapper that combines a success message with error handling during function execution:  
+Finally, here is an example of a generic wrapper that combines a success message with error handling during function execution:
 ```
 
 ---
@@ -553,8 +553,8 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Adapting colors and format of logged messages dynamically
 
-It is possible to customize the colors of your logs thanks to several {ref}`markup tags <color>`. Those are used to configure the `format` of your handler. By creating a appropriate formatting function, you can easily define colors depending on the logged message.  
-For example, if you want to associate each module with a unique color:  
+It is possible to customize the colors of your logs thanks to several {ref}`markup tags <color>`. Those are used to configure the `format` of your handler. By creating a appropriate formatting function, you can easily define colors depending on the logged message.
+For example, if you want to associate each module with a unique color:
 from collections import defaultdict
 from random import choice
 
@@ -625,12 +625,12 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Configuring Loguru to be used by a library or an application
 
-A clear distinction must be made between the use of Loguru within a library or an application.  
-In case of an application, you can add handlers from anywhere in your code. It's advised though to configure the logger from within a [if-name-equals-main] block inside the entry file of your script.  
-However, if your work is intended to be used as a library, you usually should not add any handler. This is user responsibility to configure logging according to its preferences, and it's better not to interfere with that. Indeed, since Loguru is based on a single common logger, handlers added by a library will also receive user logs, which is generally not desirable.  
-By default, a third-library should not emit logs except if specifically requested. For this reason, there exist the {{ disable }} and {{ enable }} methods. Make sure to first call `logger.disable("mylib")`. This avoids library logs to be mixed with those of the user. The user can always call `logger.enable("mylib")` if he wants to access the logs of your library.  
-If you would like to ease logging configuration for your library users, it is advised to provide a function like `configure_logger()` in charge of adding the desired handlers. This will allow the user to activate the logging only if he needs to.  
-To summarize, let's look at this hypothetical package (none of the listed files are required, it all depends on how you plan your project to be used):  
+A clear distinction must be made between the use of Loguru within a library or an application.
+In case of an application, you can add handlers from anywhere in your code. It's advised though to configure the logger from within a [if-name-equals-main] block inside the entry file of your script.
+However, if your work is intended to be used as a library, you usually should not add any handler. This is user responsibility to configure logging according to its preferences, and it's better not to interfere with that. Indeed, since Loguru is based on a single common logger, handlers added by a library will also receive user logs, which is generally not desirable.
+By default, a third-library should not emit logs except if specifically requested. For this reason, there exist the {{ disable }} and {{ enable }} methods. Make sure to first call `logger.disable("mylib")`. This avoids library logs to be mixed with those of the user. The user can always call `logger.enable("mylib")` if he wants to access the logs of your library.
+If you would like to ease logging configuration for your library users, it is advised to provide a function like `configure_logger()` in charge of adding the desired handlers. This will allow the user to activate the logging only if he needs to.
+To summarize, let's look at this hypothetical package (none of the listed files are required, it all depends on how you plan your project to be used):
 ```
 
 ---
@@ -649,11 +649,11 @@ $ source env/bin/activate
 ```
 
 ```plaintext
-05. Install pre-commit hooks that will check your commits:  
+05. Install pre-commit hooks that will check your commits:
 ```
 
 ```plaintext
-06. Create a new branch from `master`:  
+06. Create a new branch from `master`:
 $ git checkout master
 $ git branch fix_bug
 $ git checkout fix_bug
@@ -668,11 +668,11 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Using logging function based on custom added levels
 
-After adding a new level, it's habitually used with the {{ log }} function:  
+After adding a new level, it's habitually used with the {{ log }} function:
 ```
 
 ```plaintext
-For convenience, one can assign a new logging function which automatically uses the custom added level:  
+For convenience, one can assign a new logging function which automatically uses the custom added level:
 ```
 
 ---
@@ -684,9 +684,9 @@ SOURCE: /docs/resources/troubleshooting.rst
 
 ## How do I prevent "RuntimeError" due to "deadlock avoided"?
 
-The logging functions are not reentrant. This means you must not use the logger when it's already in use in the same thread. This situation can occur notably if you use the logger inside a sink (which itself is called by the logger). Logically, this would result in an infinite recursive loop. In practice, it would more likely cause your application to hang because logging is protected by an internal lock.  
-To prevent such problems, there is a mechanism that detects and prevents the logger from being called recursively. This is what might lead to a `RuntimeError`. When faced with such an error, you need to ensure that the handlers you configure do not internally call the logger. This also applies to the logger from the standard `logging` library.  
-If you cannot prevent the use of the logger inside a handler, you should implement a `filter` to avoid recursive calls. For example:  
+The logging functions are not reentrant. This means you must not use the logger when it's already in use in the same thread. This situation can occur notably if you use the logger inside a sink (which itself is called by the logger). Logically, this would result in an infinite recursive loop. In practice, it would more likely cause your application to hang because logging is protected by an internal lock.
+To prevent such problems, there is a mechanism that detects and prevents the logger from being called recursively. This is what might lead to a `RuntimeError`. When faced with such an error, you need to ensure that the handlers you configure do not internally call the logger. This also applies to the logger from the standard `logging` library.
+If you cannot prevent the use of the logger inside a handler, you should implement a `filter` to avoid recursive calls. For example:
 import sys
 from loguru import logger
 
@@ -715,15 +715,15 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Capturing standard `stdout`, `stderr` and `warnings`
 
-The use of logging should be privileged over {{ print }}, yet, it may happen that you don't have plain control over code executed in your application. If you wish to capture standard output, you can suppress {{ sys.stdout }} (and {{ sys.stderr }}) with a custom stream object using {{ contextlib.redirect_stdout }}. You have to take care of first removing the default handler, and not adding a new stdout sink once redirected or that would cause dead lock (you may use {{ sys.__stdout__ }} instead):  
+The use of logging should be privileged over {{ print }}, yet, it may happen that you don't have plain control over code executed in your application. If you wish to capture standard output, you can suppress {{ sys.stdout }} (and {{ sys.stderr }}) with a custom stream object using {{ contextlib.redirect_stdout }}. You have to take care of first removing the default handler, and not adding a new stdout sink once redirected or that would cause dead lock (you may use {{ sys.__stdout__ }} instead):
 ```
 
 ```plaintext
-You may also capture warnings emitted by your application by replacing {{ warnings.showwarning }}:  
+You may also capture warnings emitted by your application by replacing {{ warnings.showwarning }}:
 ```
 
 ```plaintext
-Alternatively, if you want to emit warnings based on logged messages, you can simply use {{ warnings.warn }} as a sink:  
+Alternatively, if you want to emit warnings based on logged messages, you can simply use {{ warnings.warn }} as a sink:
 ```
 
 ---
@@ -749,7 +749,7 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Compatibility with `multiprocessing` using `enqueue` argument
 
-On Linux, thanks to {{ os.fork }} there is no pitfall while using the `logger` inside another process started by the {{ multiprocessing }} module. The child process will automatically inherit added handlers, the `enqueue=True` parameter is optional but is recommended as it would avoid concurrent access of your sink:  
+On Linux, thanks to {{ os.fork }} there is no pitfall while using the `logger` inside another process started by the {{ multiprocessing }} module. The child process will automatically inherit added handlers, the `enqueue=True` parameter is optional but is recommended as it would avoid concurrent access of your sink:
 # Linux implementation
 import multiprocessing
 from loguru import logger
@@ -769,8 +769,8 @@ logger.info("Done")
 ```
 
 ```plaintext
-Windows requires the added sinks to be picklable or otherwise will raise an error while creating the child process. Many stream objects like standard output and file descriptors are not picklable. In such case, the `enqueue=True` argument is required as it will allow the child process to only inherit the queue object where logs are sent.  
-The {{ multiprocessing }} library is also commonly used to start a pool of workers using for example {{ Pool.map }} or {{ Pool.apply }}. Again, it will work flawlessly on Linux, but it will require some tinkering on Windows. You will probably not be able to pass the `logger` as an argument for your worker functions because it needs to be picklable, but although handlers added using `enqueue=True` are "inheritable", they are not "picklable". Instead, you will need to make use of the `initializer` and `initargs` parameters while creating the {{ Pool }} object in a way allowing your workers to access the shared `logger`. You can either assign it to a class attribute or override the global logger of your child processes:  
+Windows requires the added sinks to be picklable or otherwise will raise an error while creating the child process. Many stream objects like standard output and file descriptors are not picklable. In such case, the `enqueue=True` argument is required as it will allow the child process to only inherit the queue object where logs are sent.
+The {{ multiprocessing }} library is also commonly used to start a pool of workers using for example {{ Pool.map }} or {{ Pool.apply }}. Again, it will work flawlessly on Linux, but it will require some tinkering on Windows. You will probably not be able to pass the `logger` as an argument for your worker functions because it needs to be picklable, but although handlers added using `enqueue=True` are "inheritable", they are not "picklable". Instead, you will need to make use of the `initializer` and `initargs` parameters while creating the {{ Pool }} object in a way allowing your workers to access the shared `logger`. You can either assign it to a class attribute or override the global logger of your child processes:
 # workers_a.py
 class Worker:
 
@@ -839,8 +839,8 @@ SOURCE: /docs/resources/troubleshooting.rst
 
 ## How do I set the logging level?
 
-The {ref}`logging levels <levels>` allow filtering messages based on their importance. It is a minimum threshold above which messages are logged (or ignored otherwise). This makes it possible, for example, to adjust the verbosity of logs depending on the execution environment (development or production).  
-The {{ Logger }} itself is not associated with any specific level. Instead, it is the level of each handler that individually determines whether a message is logged or not. This level is defined when configuring the handler and adding it to the logger using the `level` argument of the {{ add }} method:  
+The {ref}`logging levels <levels>` allow filtering messages based on their importance. It is a minimum threshold above which messages are logged (or ignored otherwise). This makes it possible, for example, to adjust the verbosity of logs depending on the execution environment (development or production).
+The {{ Logger }} itself is not associated with any specific level. Instead, it is the level of each handler that individually determines whether a message is logged or not. This level is defined when configuring the handler and adding it to the logger using the `level` argument of the {{ add }} method:
 logger.add(sys.stdout, level="WARNING")  # Log only messages with level "WARNING" or higher.
 logger.debug("Some debug message")  # Will be ignored.
 logger.error("Some error message")  # Will be displayed.
@@ -860,7 +860,7 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Serializing log messages using a custom function
 
-Each handler added with `serialize=True` will create messages by converting the logging record to a valid JSON string. Depending on the sink for which the messages are intended, it may be useful to make changes to the generated string. Instead of using the `serialize` parameter, you can implement your own serialization function and use it directly in your sink:  
+Each handler added with `serialize=True` will create messages by converting the logging record to a valid JSON string. Depending on the sink for which the messages are intended, it may be useful to make changes to the generated string. Instead of using the `serialize` parameter, you can implement your own serialization function and use it directly in your sink:
 def serialize(record):
 subset = {"timestamp": record["time"].timestamp(), "message": record["message"]}
 return json.dumps(subset)
@@ -873,7 +873,7 @@ logger.add(sink)
 ```
 
 ```plaintext
-You can also use {{ patch }} for this, so the serialization function will be called only once in case you want to use it in multiple sinks:  
+You can also use {{ patch }} for this, so the serialization function will be called only once in case you want to use it in multiple sinks:
 ```
 
 ---
@@ -885,11 +885,11 @@ SOURCE: /docs/resources/migration.rst
 
 ## Replacing `assertLogs()` method from `unittest` library
 
-The {{ assertLogs }} method defined in the {{ unittest }} from standard library is used to capture and test logged messages. However, it can't be made compatible with Loguru. It needs to be replaced with a custom context manager possibly implemented as follows:  
+The {{ assertLogs }} method defined in the {{ unittest }} from standard library is used to capture and test logged messages. However, it can't be made compatible with Loguru. It needs to be replaced with a custom context manager possibly implemented as follows:
 ```
 
 ```plaintext
-It provides the list of {ref}`logged messages <message>` for each of which you can access {ref}`the record attribute<record>`. Here is a usage example:  
+It provides the list of {ref}`logged messages <message>` for each of which you can access {ref}`the record attribute<record>`. Here is a usage example:
 def do_something(val):
 if val < 0:
 logger.error("Invalid value")
@@ -938,15 +938,15 @@ SOURCE: /docs/resources/troubleshooting.rst
 
 ## How do I fix "ValueError: I/O operation error on closed file"?
 
-This error occurs because the logger is trying to write to a stream object (like `sys.stderr` or `sys.stdout`) that has been closed, which is invalid (see {{ IOBase.close }}).  
-When stream objects are used as logging sink, Loguru will not close them. This would be very inconvenient and incorrect (as the stream is global, it must remain usable after the sink has been removed). Since Loguru does not close such a stream by itself, this means something else closed the stream while it was still in use by the `logger`.  
+This error occurs because the logger is trying to write to a stream object (like `sys.stderr` or `sys.stdout`) that has been closed, which is invalid (see {{ IOBase.close }}).
+When stream objects are used as logging sink, Loguru will not close them. This would be very inconvenient and incorrect (as the stream is global, it must remain usable after the sink has been removed). Since Loguru does not close such a stream by itself, this means something else closed the stream while it was still in use by the `logger`.
 This is generally due to some tools or specific environments that take the liberty of replacing `sys.stdout` and `sys.stderr` with their own stream object. In this way, they can capture what is written to the standard output. This is the case with some libraries, IDEs and cloud platforms.
-The problem is that the `logger` will use this wrapped stream as well. If the third-party tool happens to clean up and close the stream, then the `logger` is left with an unusable sink.  
-Here is a simplified example to illustrate the issue:  
+The problem is that the `logger` will use this wrapped stream as well. If the third-party tool happens to clean up and close the stream, then the `logger` is left with an unusable sink.
+Here is a simplified example to illustrate the issue:
 ```
 
 ```plaintext
-And here is another example causing the same error with Pytest:  
+And here is another example causing the same error with Pytest:
 ```
 
 ---
@@ -987,7 +987,7 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Interoperability with `tqdm` iterations
 
-Trying to use the Loguru's `logger` during an iteration wrapped by the `tqdm` library may disturb the displayed progress bar. As a workaround, one can use the `tqdm.write()` function instead of writings logs directly to `sys.stderr`:  
+Trying to use the Loguru's `logger` during an iteration wrapped by the `tqdm` library may disturb the displayed progress bar. As a workaround, one can use the `tqdm.write()` function instead of writings logs directly to `sys.stderr`:
 import time
 
 from loguru import logger
@@ -1021,11 +1021,11 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Displaying a stacktrace without using the error context
 
-It may be useful in some cases to display the traceback at the time your message is logged, while no exceptions have been raised. Although this feature is not built-in into Loguru as it is more related to debugging than logging, it is possible to {{ patch }} your logger and then display the stacktrace as needed (using the {{ traceback }} module):  
+It may be useful in some cases to display the traceback at the time your message is logged, while no exceptions have been raised. Although this feature is not built-in into Loguru as it is more related to debugging than logging, it is possible to {{ patch }} your logger and then display the stacktrace as needed (using the {{ traceback }} module):
 ```
 
 ```plaintext
-Here is another example that demonstrates how to prefix the logged message with the full call stack:  
+Here is another example that demonstrates how to prefix the logged message with the full call stack:
 ```
 
 ---
@@ -1037,11 +1037,11 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Security considerations when using Loguru
 
-Firstly, if you use {{ pickle }} to load log messages (e.g. from the network), make sure the source is trustable or sign the data to verify its authenticity before deserializing it. If you do not take these precautions, malicious code could be executed by an attacker. You can read more details in this article: [What’s so dangerous about pickles?](https://intoli.com/blog/dangerous-pickles/)  
+Firstly, if you use {{ pickle }} to load log messages (e.g. from the network), make sure the source is trustable or sign the data to verify its authenticity before deserializing it. If you do not take these precautions, malicious code could be executed by an attacker. You can read more details in this article: [What’s so dangerous about pickles?](https://intoli.com/blog/dangerous-pickles/)
 ```
 
 ```plaintext
-You should also avoid logging a message that could be maliciously hand-crafted by an attacker. Calling `logger.debug(message, value)` is roughly equivalent to calling `print(message.format(value))` and the same safety rules apply. In particular, an attacker could force printing of assumed hidden variables of your application. Here is an article explaining the possible vulnerability: [Be Careful with Python's New-Style String Format](https://lucumr.pocoo.org/2016/12/29/careful-with-str-format/).  
+You should also avoid logging a message that could be maliciously hand-crafted by an attacker. Calling `logger.debug(message, value)` is roughly equivalent to calling `print(message.format(value))` and the same safety rules apply. In particular, an attacker could force printing of assumed hidden variables of your application. Here is an article explaining the possible vulnerability: [Be Careful with Python's New-Style String Format](https://lucumr.pocoo.org/2016/12/29/careful-with-str-format/).
 SECRET_KEY = 'Y0UC4NTS33Th1S!'
 
 class SomeValue:
@@ -1063,7 +1063,7 @@ logger.info("User " + username + " logged in.")
 ```
 
 ```plaintext
-Another thing you should consider is to change the access permissions of your log file. Loguru creates files using the built-in {{ open }} function, which means by default they might be read by a different user than the owner. If this is not desirable, be sure to modify the default access rights.  
+Another thing you should consider is to change the access permissions of your log file. Loguru creates files using the built-in {{ open }} function, which means by default they might be read by a different user than the owner. If this is not desirable, be sure to modify the default access rights.
 ```
 
 ---
@@ -1075,13 +1075,13 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Using Loguru's `logger` within a Cython module
 
-Loguru and Cython do not interoperate very well. This is because Loguru (and logging generally) heavily relies on Python stack frames while Cython, being an alternative Python implementation, try to get rid of these frames for optimization reasons.  
-Calling the `logger` from code compiled with Cython may result in "incomplete" logs (missing call context):  
+Loguru and Cython do not interoperate very well. This is because Loguru (and logging generally) heavily relies on Python stack frames while Cython, being an alternative Python implementation, try to get rid of these frames for optimization reasons.
+Calling the `logger` from code compiled with Cython may result in "incomplete" logs (missing call context):
 ```
 
 ```plaintext
-This happens when Loguru tries to access a stack frame which has been suppressed by Cython. In such a case, there is no way for Loguru to retrieve contextual information of the logged message.  
-You can update the default `format` of your handlers and omit the uninteresting fields. You can also tries to {{ patch }} the `logger` to manually add information you may know about the caller, for example:  
+This happens when Loguru tries to access a stack frame which has been suppressed by Cython. In such a case, there is no way for Loguru to retrieve contextual information of the logged message.
+You can update the default `format` of your handlers and omit the uninteresting fields. You can also tries to {{ patch }} the `logger` to manually add information you may know about the caller, for example:
 logger = logger.patch(lambda record: record.update(name="my_cython_module"))
 ```
 
@@ -1094,11 +1094,11 @@ SOURCE: /docs/resources/migration.rst
 
 ## Replacing `addLevelName()` and `getLevelName()` functions
 
-To add a new custom level, you can replace {{ addLevelName }} with the {{ level }} function:  
+To add a new custom level, you can replace {{ addLevelName }} with the {{ level }} function:
 ```
 
 ```plaintext
-The same function can be used to replace {{ getLevelName }}:  
+The same function can be used to replace {{ getLevelName }}:
 ```
 
 ---
@@ -1110,7 +1110,7 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Setting permissions on created log files
 
-To set desired permissions on created log files, use the `opener` argument to pass in a custom opener with permissions octal:  
+To set desired permissions on created log files, use the `opener` argument to pass in a custom opener with permissions octal:
 def opener(file, flags):
 return os.open(file, flags, 0o600)  # read/write by owner only
 
@@ -1126,8 +1126,8 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Creating independent loggers with separate set of handlers
 
-Loguru is fundamentally designed to be usable with exactly one global `logger` object dispatching logging messages to the configured handlers. In some circumstances, it may be useful to have specific messages logged to specific handlers.  
-For example, supposing you want to split your logs in two files based on an arbitrary identifier, you can achieve that by combining {{ bind }} and `filter`:  
+Loguru is fundamentally designed to be usable with exactly one global `logger` object dispatching logging messages to the configured handlers. In some circumstances, it may be useful to have specific messages logged to specific handlers.
+For example, supposing you want to split your logs in two files based on an arbitrary identifier, you can achieve that by combining {{ bind }} and `filter`:
 from loguru import logger
 
 def task_A():
@@ -1158,13 +1158,13 @@ SOURCE: /docs/resources/troubleshooting.rst
 
 ## How do I customize the log format and re-use the default one?
 
-The log format must be defined using the `format` argument of the {{ add }} method:  
+The log format must be defined using the `format` argument of the {{ add }} method:
 logger.add(sys.stderr, format="{time} - {level} - {message}")
 ```
 
 ```plaintext
 For advanced configuration, the `format` argument also accepts a function, allowing you to dynamically generate the desired format. Be aware that in this case, you have to explicitly include the line ending and exception field (since you gain full control over the formatting, while `"
-{exception}"` is added automatically when the `format` is a string). For example, to include the thread identifier but only for error messages and above:  
+{exception}"` is added automatically when the `format` is a string). For example, to include the thread identifier but only for error messages and above:
 def custom_formatter(record):
 if record["level"].no >= 40:
 return "<green>{time}</> - {level} - <red>{thread}</> - <lvl>{message}</>
@@ -1220,11 +1220,11 @@ SOURCE: /docs/resources/troubleshooting.rst
 
 ## Why is the source (name, file, function, line) of the log message incorrect or missing?
 
-In some very specific circumstances, the module name might be `None` and the filename and function name might be `"<unknown>"`.  
+In some very specific circumstances, the module name might be `None` and the filename and function name might be `"<unknown>"`.
 ```
 
 ```plaintext
-Such a situation indicates that the `logger` was unable to retrieve the caller's context. In particular, this can happen when Loguru is used with Dask or Cython. In such cases, this behavior is normal, and there is nothing to do unless you wish to implement a custom {{ patch }} function:  
+Such a situation indicates that the `logger` was unable to retrieve the caller's context. In particular, this can happen when Loguru is used with Dask or Cython. In such cases, this behavior is normal, and there is nothing to do unless you wish to implement a custom {{ patch }} function:
 logger = logger.patch(lambda record: record.update(name="my_module"))
 ```
 
@@ -1237,8 +1237,8 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Changing the level of an existing handler
 
-Once a handler has been added, it is actually not possible to update it. This is a deliberate choice in order to keep the Loguru's API minimal. Several solutions are possible, though, if you need to change the configured `level` of a handler. Chose the one that best fits your use case.  
-The most straightforward workaround is to {{ remove }} your handler and then re-{{ add }} it with the updated `level` parameter. To do so, you have to keep a reference to the identifier number returned while adding a handler:  
+Once a handler has been added, it is actually not possible to update it. This is a deliberate choice in order to keep the Loguru's API minimal. Several solutions are possible, though, if you need to change the configured `level` of a handler. Chose the one that best fits your use case.
+The most straightforward workaround is to {{ remove }} your handler and then re-{{ add }} it with the updated `level` parameter. To do so, you have to keep a reference to the identifier number returned while adding a handler:
 handler_id = logger.add(sys.stderr, level="WARNING")
 
 logger.info("Logging 'WARNING' or higher messages only")
@@ -1252,7 +1252,7 @@ logger.debug("Logging 'DEBUG' messages too")
 ```
 
 ```plaintext
-Finally, more advanced control over handler's level can be achieved by using a callable object as the `filter`:  
+Finally, more advanced control over handler's level can be achieved by using a callable object as the `filter`:
 min_level = logger.level("DEBUG").no
 
 def filter_by_level(record):
@@ -1299,17 +1299,17 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Transmitting log messages across network, processes or Gunicorn workers
 
-It is possible to send and receive logs between different processes and even between different computers if needed. Once the connection is established between the two Python programs, this requires serializing the logging record in one side while re-constructing the message on the other hand. Keep in mind though that [pickling is unsafe](https://intoli.com/blog/dangerous-pickles/), you should use this with care.  
-The first thing you will need is to run a server responsible for receiving log messages emitted by other processes:  
+It is possible to send and receive logs between different processes and even between different computers if needed. Once the connection is established between the two Python programs, this requires serializing the logging record in one side while re-constructing the message on the other hand. Keep in mind though that [pickling is unsafe](https://intoli.com/blog/dangerous-pickles/), you should use this with care.
+The first thing you will need is to run a server responsible for receiving log messages emitted by other processes:
 ```
 
 ```plaintext
-Then, you need your clients to send messages using a specific handler:  
+Then, you need your clients to send messages using a specific handler:
 ```
 
 ```plaintext
-Make sure that the server is running while the clients are logging messages, and note that they must communicate on the same port.  
-Another example, when using Gunicorn and FastAPI you should add the previously defined `SocketHandler` to each of the running workers, possibly like so:  
+Make sure that the server is running while the clients are logging messages, and note that they must communicate on the same port.
+Another example, when using Gunicorn and FastAPI you should add the previously defined `SocketHandler` to each of the running workers, possibly like so:
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from loguru import logger
@@ -1335,7 +1335,7 @@ logger.add(handler)
 ```
 
 ```plaintext
-Want to intercept standard `logging` messages toward your Loguru sinks?  
+Want to intercept standard `logging` messages toward your Loguru sinks?
 class InterceptHandler(logging.Handler):
 def emit(self, record: logging.LogRecord) -> None:
 # Get corresponding Loguru level if it exists.
@@ -1369,8 +1369,8 @@ SOURCE: /docs/resources/troubleshooting.rst
 
 ## How can I use different loggers in different modules of my application?
 
-Since Loguru is designed on the use of a single `logger`, it is fundamentally not possible to create different loggers for multiple modules. The idea is that modules should simply import the global `logger` from `loguru`, and log differentiation should be handled through handlers (which should only be configured once, at the application's entry point).  
-Note that is generally possible to identify the origin of a log message via the `record["name"]` field in the record dict. This field contains the name of the module that emitted the message. For example, you can use this information to redirect messages based on their origin:  
+Since Loguru is designed on the use of a single `logger`, it is fundamentally not possible to create different loggers for multiple modules. The idea is that modules should simply import the global `logger` from `loguru`, and log differentiation should be handled through handlers (which should only be configured once, at the application's entry point).
+Note that is generally possible to identify the origin of a log message via the `record["name"]` field in the record dict. This field contains the name of the module that emitted the message. For example, you can use this information to redirect messages based on their origin:
 logger.add("my_app.log")  # All messages.
 logger.add("module_1.log", filter="module_1")  # Messages from "module_1" only.
 logger.add("module_2.log", filter="module_2")  # Messages from "module_2" only.
@@ -1385,7 +1385,7 @@ SOURCE: /docs/resources/recipes.rst
 
 ## Manipulating newline terminator to write multiple logs on the same line
 
-You can temporarily log a message on a continuous line by combining the use of {{ bind }}, {{ opt }} and a custom `format` function. This is especially useful if you want to illustrate a step-by-step process in progress, for example:  
+You can temporarily log a message on a continuous line by combining the use of {{ bind }}, {{ opt }} and a custom `format` function. This is especially useful if you want to illustrate a step-by-step process in progress, for example:
 def formatter(record):
 end = record["extra"].get("end", "
 ")
@@ -1461,7 +1461,7 @@ SOURCE: /docs/resources/migration.rst
 
 ## Replacing `captureWarnings()` function
 
-The {{ captureWarnings }} function which redirects alerts from the {{ warnings }} module to the logging system can be implemented by simply replacing {{ warnings.showwarning }} function as follow:  
+The {{ captureWarnings }} function which redirects alerts from the {{ warnings }} module to the logging system can be implemented by simply replacing {{ warnings.showwarning }} function as follow:
 ```
 
 ---
@@ -1473,13 +1473,13 @@ SOURCE: /docs/resources/troubleshooting.rst
 
 ## Why can't I access the `Logger` class and other types at runtime?
 
-The `logger` object imported from the `loguru` library is an instance of the {{ Logger }} class. However, you should not attempt to instantiate a logger yourself. The {{ Logger }} class is not public and will be unusable by your Python application. It is therefore expected that the following code will raise an error:  
+The `logger` object imported from the `loguru` library is an instance of the {{ Logger }} class. However, you should not attempt to instantiate a logger yourself. The {{ Logger }} class is not public and will be unusable by your Python application. It is therefore expected that the following code will raise an error:
 from loguru import Logger
 # Output: ImportError: cannot import name 'Logger' from 'loguru'
 ```
 
 ```plaintext
-If for some reason you need to perform type checking at runtime, you can make a comparison with the type on the `logger` instance:  
+If for some reason you need to perform type checking at runtime, you can make a comparison with the type on the `logger` instance:
 import loguru
 import logging
 
@@ -1499,14 +1499,14 @@ SOURCE: /docs/resources/migration.rst
 
 ## Replacing `Handler`, `Filter` and `Formatter` objects
 
-Standard `logging` requires you to create an {{ Handler }} object and then call {{ addHandler }}. Using Loguru, the handlers are started using {{ add }}. The sink defines how the handler should manage incoming logging messages, as would do {{ handle }} or {{ emit }}. To log from multiple modules, you just have to import the logger, all messages will be dispatched to the added handlers.  
-While calling {{ add }}, the `level` parameter replaces {{ handler.setLevel }}, the `format` parameter replaces {{ setFormatter }}, the `filter` parameter replaces {{ handler.addFilter }}. The thread-safety is managed automatically by Loguru, so there is no need for {{ createLock }}, {{ acquire }} nor {{ release }}. The equivalent method of {{ removeHandler }} is {{ remove }} which should be used with the identifier returned by {{ add }}.  
-Note that you don't necessarily need to replace your {{ Handler }} objects because {{ add }} accepts them as valid sinks.  
-In short, you can replace:  
+Standard `logging` requires you to create an {{ Handler }} object and then call {{ addHandler }}. Using Loguru, the handlers are started using {{ add }}. The sink defines how the handler should manage incoming logging messages, as would do {{ handle }} or {{ emit }}. To log from multiple modules, you just have to import the logger, all messages will be dispatched to the added handlers.
+While calling {{ add }}, the `level` parameter replaces {{ handler.setLevel }}, the `format` parameter replaces {{ setFormatter }}, the `filter` parameter replaces {{ handler.addFilter }}. The thread-safety is managed automatically by Loguru, so there is no need for {{ createLock }}, {{ acquire }} nor {{ release }}. The equivalent method of {{ removeHandler }} is {{ remove }} which should be used with the identifier returned by {{ add }}.
+Note that you don't necessarily need to replace your {{ Handler }} objects because {{ add }} accepts them as valid sinks.
+In short, you can replace:
 ```
 
 ```plaintext
-With:  
+With:
 ```
 
 ---
@@ -1518,7 +1518,7 @@ SOURCE: /docs/resources/migration.rst
 
 ## Replacing `extra` argument and `LoggerAdapter` objects
 
-To pass contextual information to log messages, replace `extra` by inlining {{ bind }} method:  
+To pass contextual information to log messages, replace `extra` by inlining {{ bind }} method:
 context = {"clientip": "192.168.0.1", "user": "fbloggs"}
 
 logger.info("Protocol problem", extra=context)   # Standard logging
@@ -1526,7 +1526,7 @@ logger.bind(**context).info("Protocol problem")  # Loguru
 ```
 
 ```plaintext
-You can also replace {{ LoggerAdapter }} by calling `logger = logger.bind(clientip="192.168.0.1")` before using it, or by assigning the bound logger to a class instance:  
+You can also replace {{ LoggerAdapter }} by calling `logger = logger.bind(clientip="192.168.0.1")` before using it, or by assigning the bound logger to a class instance:
 class MyClass:
 
 def __init__(self, clientip):

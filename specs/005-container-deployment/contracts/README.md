@@ -18,14 +18,14 @@ class HealthResponse(BaseModel):
     status: str
     service: str
     version: str | None = None
-    
+
 @app.get("/health", response_model=HealthResponse, status_code=status.HTTP_200_OK)
 async def health_check() -> HealthResponse:
     """HTTP health check endpoint for container orchestrators.
-    
+
     Returns:
         HealthResponse with status="healthy" when service is ready
-    
+
     Response Codes:
         200: Service is healthy and ready to accept requests
         503: Service is starting or degraded (not yet implemented)
@@ -60,9 +60,9 @@ interface HealthResponse {
 app.get<{ Reply: HealthResponse }>('/health', async (request, reply) => {
   /**
    * HTTP health check endpoint for container orchestrators.
-   * 
+   *
    * @returns HealthResponse with status="healthy" when service is ready
-   * 
+   *
    * Response Codes:
    *   200: Service is healthy and ready to accept requests
    *   503: Service is starting or degraded (not yet implemented)
@@ -162,7 +162,7 @@ services:
         condition: service_healthy
     {%- endif %}
   {%- endif %}
-  
+
   {%- if include_databases and (api_tracks | contains("python") or api_tracks | contains("node")) %}
   postgres:
     image: postgres:16-alpine
@@ -276,7 +276,7 @@ ______________________________________________________________________
 ignored:
   - DL3008  # Pin versions in apt-get install (not applicable to slim images)
   - DL3009  # Delete apt-get lists (handled by slim base)
-  
+
 failure-threshold: error  # Warnings allowed, errors block build
 ```
 
@@ -293,13 +293,13 @@ ______________________________________________________________________
 ```python
 def validate_dockerfile(dockerfile_path: Path) -> ValidationResult:
     """Run hadolint on Dockerfile and return validation result.
-    
+
     Args:
         dockerfile_path: Path to Dockerfile to validate
-        
+
     Returns:
         ValidationResult with errors, warnings, and pass/fail status
-        
+
     Raises:
         FileNotFoundError: If dockerfile_path does not exist
         ValidationError: If hadolint not installed

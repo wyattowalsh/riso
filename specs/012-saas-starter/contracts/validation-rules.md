@@ -161,7 +161,7 @@ RECOMMENDED_STACKS = {
         "estimated_cold_start": "300ms",
         "estimated_monthly_cost": "$200-500 (at 10k users)",
     },
-    
+
     "edge-optimized": {
         "label": "Edge-Optimized Stack",
         "description": "Global edge deployment, low latency, cost-effective",
@@ -184,7 +184,7 @@ RECOMMENDED_STACKS = {
         "estimated_cold_start": "50ms",
         "estimated_monthly_cost": "$100-300 (at 10k users)",
     },
-    
+
     "all-in-one-platform": {
         "label": "All-in-One Platform Stack",
         "description": "Single vendor (Supabase + Vercel), simplified operations",
@@ -207,7 +207,7 @@ RECOMMENDED_STACKS = {
         "estimated_cold_start": "250ms",
         "estimated_monthly_cost": "$150-400 (at 10k users)",
     },
-    
+
     "enterprise-ready": {
         "label": "Enterprise-Ready Stack",
         "description": "SSO, SCIM, compliance-focused, mature services",
@@ -243,11 +243,11 @@ ______________________________________________________________________
 def check_compatibility(selections: dict) -> list[ValidationIssue]:
     """
     Check all compatibility rules against user selections.
-    
+
     Returns list of validation issues with severity levels.
     """
     issues = []
-    
+
     # Check error-level incompatibilities
     for rule in ERROR_INCOMPATIBILITIES:
         if matches_combination(selections, rule):
@@ -256,7 +256,7 @@ def check_compatibility(selections: dict) -> list[ValidationIssue]:
                 "message": rule["message"],
                 "fix_suggestions": rule["fix_suggestions"],
             })
-    
+
     # Check warning-level incompatibilities
     for rule in WARNING_INCOMPATIBILITIES:
         if matches_combination(selections, rule):
@@ -266,7 +266,7 @@ def check_compatibility(selections: dict) -> list[ValidationIssue]:
                 "alternative": rule.get("alternative"),
                 "documentation": rule.get("documentation"),
             })
-    
+
     # Check info-level notices
     for rule in INFO_NOTICES:
         if matches_combination(selections, rule):
@@ -274,18 +274,18 @@ def check_compatibility(selections: dict) -> list[ValidationIssue]:
                 "severity": "info",
                 "message": rule["message"],
             })
-    
+
     return issues
 
 
 def matches_combination(selections: dict, rule: dict) -> bool:
     """Check if user selections match a rule's combination."""
     combination = rule["combination"]
-    selected_values = [selections.get(f"saas_{key}") for key in 
-                       ["runtime", "hosting", "database", "orm", "auth", 
-                        "enterprise_bridge", "billing", "jobs", "email", 
+    selected_values = [selections.get(f"saas_{key}") for key in
+                       ["runtime", "hosting", "database", "orm", "auth",
+                        "enterprise_bridge", "billing", "jobs", "email",
                         "analytics", "ai", "storage", "cicd"]]
-    
+
     # Check if all items in combination are in selected values
     return all(item in selected_values for item in combination)
 ```
@@ -298,7 +298,7 @@ ______________________________________________________________________
 def suggest_recommended_stack(selections: dict) -> str | None:
     """
     Suggest a recommended stack if user's selections are close to one.
-    
+
     Returns stack key if 80%+ match, None otherwise.
     """
     for stack_key, stack in RECOMMENDED_STACKS.items():
@@ -307,10 +307,10 @@ def suggest_recommended_stack(selections: dict) -> str | None:
             if selections.get(key) == value
         )
         total = len(stack["selections"])
-        
+
         if matches / total >= 0.8:
             return stack_key
-    
+
     return None
 ```
 
@@ -322,7 +322,7 @@ ______________________________________________________________________
 def estimate_performance(selections: dict) -> dict:
     """
     Estimate performance characteristics based on stack choices.
-    
+
     Returns estimated metrics for cold start, latency, cost.
     """
     # Base estimates
@@ -331,21 +331,21 @@ def estimate_performance(selections: dict) -> dict:
         "request_latency_p95_ms": 100,
         "monthly_cost_usd": 100,
     }
-    
+
     # Adjust based on selections
     if selections.get("saas_hosting") == "cloudflare":
         estimates["cold_start_ms"] -= 150  # Edge is faster
         estimates["monthly_cost_usd"] -= 50  # Lower egress
-    
+
     if selections.get("saas_orm") == "drizzle":
         estimates["cold_start_ms"] -= 50  # Lighter runtime
-    
+
     if selections.get("saas_database") == "neon":
         estimates["request_latency_p95_ms"] += 20  # Serverless overhead
-    
+
     if selections.get("saas_observability_datadog"):
         estimates["monthly_cost_usd"] += 100  # APM costs
-    
+
     return estimates
 ```
 
@@ -367,16 +367,16 @@ from typing import Any
 
 def main(copier_data: dict[str, Any]) -> None:
     """Execute pre-generation validation."""
-    
+
     # Skip if module disabled
     if copier_data.get("saas_starter_module") != "enabled":
         return
-    
+
     print("\n🔍 Validating SaaS Starter configuration...")
-    
+
     # Check compatibility
     issues = check_compatibility(copier_data)
-    
+
     # Report errors (blocking)
     errors = [i for i in issues if i["severity"] == "error"]
     if errors:
@@ -388,7 +388,7 @@ def main(copier_data: dict[str, Any]) -> None:
                 for idx, fix in enumerate(error["fix_suggestions"], 1):
                     print(f"    {idx}. {fix}")
         sys.exit(1)
-    
+
     # Report warnings (non-blocking)
     warnings = [i for i in issues if i["severity"] == "warning"]
     if warnings:
@@ -398,14 +398,14 @@ def main(copier_data: dict[str, Any]) -> None:
             if warning.get("documentation"):
                 print(f"    Learn more: {warning['documentation']}")
             print()
-    
+
     # Report info notices
     infos = [i for i in issues if i["severity"] == "info"]
     if infos:
         print("\nℹ️  Configuration notes:\n")
         for info in infos:
             print(f"  {info['message']}\n")
-    
+
     # Suggest optimized stack if close match
     suggested_stack = suggest_recommended_stack(copier_data)
     if suggested_stack:
@@ -414,7 +414,7 @@ def main(copier_data: dict[str, Any]) -> None:
         print(f"   {stack['description']}")
         print(f"   Ideal for: {stack['ideal_for']}")
         print()
-    
+
     # Show performance estimates
     perf = estimate_performance(copier_data)
     print("\n📊 Estimated performance characteristics:")
@@ -422,7 +422,7 @@ def main(copier_data: dict[str, Any]) -> None:
     print(f"   Request latency (p95): ~{perf['request_latency_p95_ms']}ms")
     print(f"   Monthly cost (10k users): ~${perf['monthly_cost_usd']}")
     print()
-    
+
     print("✅ Configuration validated successfully!\n")
 
 
@@ -452,13 +452,13 @@ from datetime import datetime
 
 def main(copier_data: dict) -> None:
     """Execute post-generation setup."""
-    
+
     # Skip if module disabled
     if copier_data.get("saas_starter_module") != "enabled":
         return
-    
+
     print("\n🚀 Setting up SaaS Starter project...")
-    
+
     # Record generation metadata
     metadata = {
         "generated_at": datetime.utcnow().isoformat(),
@@ -470,36 +470,36 @@ def main(copier_data: dict) -> None:
             if key.startswith("saas_")
         },
     }
-    
+
     metadata_path = Path(".saas-starter") / "metadata.json"
     metadata_path.parent.mkdir(exist_ok=True)
     metadata_path.write_text(json.dumps(metadata, indent=2))
-    
+
     print("✓ Recorded generation metadata")
-    
+
     # Install dependencies
     print("\n📦 Installing dependencies...")
     subprocess.run(["pnpm", "install"], check=True)
     print("✓ Dependencies installed")
-    
+
     # Run database setup if fixtures enabled
     if copier_data.get("saas_include_fixtures"):
         print("\n🗄️  Setting up database with fixtures...")
         subprocess.run(["pnpm", "db:push"], check=True)
         subprocess.run(["pnpm", "db:seed"], check=True)
         print("✓ Database initialized with seed data")
-    
+
     # Generate types
     print("\n🔧 Generating TypeScript types...")
     subprocess.run(["pnpm", "generate"], check=True)
     print("✓ Types generated")
-    
+
     # Run quality checks
     print("\n✨ Running quality checks...")
     subprocess.run(["pnpm", "lint"], check=True)
     subprocess.run(["pnpm", "typecheck"], check=True)
     print("✓ Quality checks passed")
-    
+
     # Print next steps
     print("\n" + "=" * 60)
     print("🎉 SaaS Starter project generated successfully!")
@@ -536,7 +536,7 @@ export const env = createEnv({
   server: {
     // Database
     DATABASE_URL: z.string().url(),
-    
+
     // Auth (conditional based on selection)
     {% if saas_auth == "clerk" %}
     CLERK_SECRET_KEY: z.string().min(1),
@@ -544,7 +544,7 @@ export const env = createEnv({
     NEXTAUTH_SECRET: z.string().min(32),
     NEXTAUTH_URL: z.string().url(),
     {% endif %}
-    
+
     // Billing
     {% if saas_billing == "stripe" %}
     STRIPE_SECRET_KEY: z.string().startsWith("sk_"),
@@ -553,7 +553,7 @@ export const env = createEnv({
     PADDLE_API_KEY: z.string().min(1),
     PADDLE_WEBHOOK_SECRET: z.string().min(1),
     {% endif %}
-    
+
     // Observability
     {% if saas_observability_sentry %}
     SENTRY_DSN: z.string().url().optional(),
@@ -561,14 +561,14 @@ export const env = createEnv({
     {% if saas_observability_datadog %}
     DD_API_KEY: z.string().min(1).optional(),
     {% endif %}
-    
+
     // Email
     {% if saas_email == "resend" %}
     RESEND_API_KEY: z.string().startsWith("re_"),
     {% elif saas_email == "postmark" %}
     POSTMARK_API_KEY: z.string().min(1),
     {% endif %}
-    
+
     // Jobs
     {% if saas_jobs == "triggerdev" %}
     TRIGGER_API_KEY: z.string().min(1),
@@ -576,7 +576,7 @@ export const env = createEnv({
     INNGEST_SIGNING_KEY: z.string().min(1),
     INNGEST_EVENT_KEY: z.string().min(1),
     {% endif %}
-    
+
     // AI
     {% if saas_ai == "openai" %}
     OPENAI_API_KEY: z.string().startsWith("sk-"),
@@ -584,24 +584,24 @@ export const env = createEnv({
     ANTHROPIC_API_KEY: z.string().startsWith("sk-ant-"),
     {% endif %}
   },
-  
+
   client: {
     {% if saas_auth == "clerk" %}
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
     {% endif %}
-    
+
     {% if saas_analytics == "posthog" %}
     NEXT_PUBLIC_POSTHOG_KEY: z.string().min(1),
     NEXT_PUBLIC_POSTHOG_HOST: z.string().url(),
     {% elif saas_analytics == "amplitude" %}
     NEXT_PUBLIC_AMPLITUDE_API_KEY: z.string().min(1),
     {% endif %}
-    
+
     {% if saas_observability_sentry %}
     NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
     {% endif %}
   },
-  
+
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
     // ... map all variables
@@ -673,14 +673,14 @@ ______________________________________________________________________
 def ensure_deterministic_validation():
     """
     Validation MUST be deterministic: same inputs → same results.
-    
+
     Forbidden:
     - Random values in error messages
     - Timestamps in validation output
     - System-dependent paths
     - Network calls during validation
     - Non-deterministic ordering of error messages
-    
+
     Required:
     - Stable sort order for validation issues (by severity, then alphabetically)
     - Reproducible error messages with fixed templates
@@ -692,11 +692,11 @@ def ensure_deterministic_validation():
 def validate_with_determinism(selections: dict) -> list[ValidationIssue]:
     """Validate selections with guaranteed determinism."""
     issues = check_compatibility(selections)
-    
+
     # Sort deterministically: ERROR > WARNING > INFO, then alphabetically
     severity_order = {"error": 0, "warning": 1, "info": 2}
     issues.sort(key=lambda i: (severity_order[i["severity"]], i["message"]))
-    
+
     return issues
 ```
 

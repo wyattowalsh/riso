@@ -8,13 +8,13 @@ interface ToggleOption {
   description?: string
 }
 
-function ToggleGroup({ 
-  label, 
-  options, 
-  value, 
+function ToggleGroup({
+  label,
+  options,
+  value,
   onChange,
-  disabled = false 
-}: { 
+  disabled = false
+}: {
   label: string
   options: ToggleOption[]
   value: string

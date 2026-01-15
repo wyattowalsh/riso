@@ -14,7 +14,7 @@ export function Header() {
 
   useEffect(() => {
     localStorage.setItem(DARK_MODE_KEY, String(darkMode))
-    
+
     if (darkMode) {
       document.documentElement.classList.add('dark')
     } else {
@@ -51,7 +51,7 @@ export function Header() {
               Docs
             </a>
           </nav>
-          
+
           <div className="flex items-center gap-2">
             <button
               onClick={() => setDarkMode(!darkMode)}

@@ -164,7 +164,7 @@ ______________________________________________________________________
 ```
 Prompt: code_review
 Description: "Generate a code review with specific focus areas"
-Parameters: 
+Parameters:
   - code: string (required)
   - language: string (default: "python")
   - focus: array<string> (default: ["security", "performance"])

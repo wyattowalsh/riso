@@ -21,23 +21,23 @@ jobs:
     name: Python {% raw %}${{ matrix.python-version }}{% endraw %} Quality
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    
+
     strategy:
       # Never fail-fast - we want to see all Python version results
       fail-fast: false
       max-parallel: 3
       matrix:
         python-version: {{ python_versions|tojson }}
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
+
       - name: Set up Python {% raw %}${{ matrix.python-version }}{% endraw %}
         uses: actions/setup-python@v5
         with:
           python-version: {% raw %}${{ matrix.python-version }}{% endraw %}
-      
+
       - name: Cache dependencies (version-specific)
         uses: actions/cache@v4
         id: cache-matrix
@@ -49,7 +49,7 @@ jobs:
           restore-keys: |
             {% raw %}${{ runner.os }}-py${{ matrix.python-version }}-{% endraw %}
             {% raw %}${{ runner.os }}-{% endraw %}
-      
+
       - name: Cache status
         run: |
           if [ "{% raw %}${{ steps.cache-matrix.outputs.cache-hit }}{% endraw %}" == "true" ]; then
@@ -57,15 +57,15 @@ jobs:
           else
             echo "❌ Cache miss for Python {% raw %}${{ matrix.python-version }}{% endraw %}"
           fi
-      
+
       - name: Install uv package manager
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
-      
+
       - name: Install dependencies with uv
         run: |
           export PATH="$HOME/.cargo/bin:$PATH"
           uv sync
-      
+
       - name: Run pytest with retry logic
         uses: nick-fields/retry@v3
         with:
@@ -76,24 +76,24 @@ jobs:
           command: |
             export PATH="$HOME/.cargo/bin:$PATH"
             uv run pytest --tb=short --junit-xml=test-results.xml --cov --cov-report=xml
-      
+
       - name: Run type checking (mypy)
         run: |
           export PATH="$HOME/.cargo/bin:$PATH"
           uv run mypy .
-      
+
       - name: Run linting (ruff)
         run: |
           export PATH="$HOME/.cargo/bin:$PATH"
           uv run ruff check .
 {% if quality_profile == 'strict' %}
-      
+
       - name: Run static analysis (pylint) - strict profile only
         run: |
           export PATH="$HOME/.cargo/bin:$PATH"
           uv run pylint src/
 {% endif %}
-      
+
       - name: Upload test results and coverage
         if: always()
         uses: actions/upload-artifact@v4
@@ -104,7 +104,7 @@ jobs:
             coverage.xml
             .coverage
           retention-days: 90
-      
+
       - name: Report matrix job status
         if: failure()
         run: |
@@ -117,7 +117,7 @@ jobs:
     needs: matrix-test
     runs-on: ubuntu-latest
     if: always()
-    
+
     steps:
       - name: Check matrix results
         run: |

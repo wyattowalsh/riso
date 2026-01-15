@@ -5,21 +5,21 @@ info:
   description: |
     Rate limit middleware responses for API endpoints. This specification documents
     the HTTP headers and error responses produced by the rate limiting system.
-    
+
     ## Rate Limit Headers
-    
+
     All API responses include standard rate limit headers:
     - `X-RateLimit-Limit`: Maximum requests allowed per time window
     - `X-RateLimit-Remaining`: Requests remaining in current window
     - `X-RateLimit-Reset`: Unix timestamp when the limit resets
-    
+
     ## HTTP 429 Responses
-    
+
     When rate limit is exceeded, requests receive:
     - HTTP status code: 429 Too Many Requests
     - `Retry-After` header: Seconds until retry is allowed
     - JSON error body with details
-    
+
   contact:
     name: Riso Template
     url: https://github.com/wyattowalsh/riso
@@ -45,7 +45,7 @@ paths:
             type: string
           description: API resource identifier
           example: users
-        
+
         - name: X-Forwarded-For
           in: header
           required: false
@@ -53,7 +53,7 @@ paths:
             type: string
           description: Client IP addresses (used for rate limit identification)
           example: "203.0.113.1, 198.51.100.42"
-        
+
         - name: Authorization
           in: header
           required: false
@@ -61,7 +61,7 @@ paths:
             type: string
           description: JWT bearer token (used for user-based rate limiting)
           example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-      
+
       responses:
         '200':
           description: Successful request (within rate limit)
@@ -92,7 +92,7 @@ paths:
                   data:
                     type: object
                     description: Resource-specific response data
-        
+
         '429':
           description: Rate limit exceeded
           headers:
@@ -130,7 +130,7 @@ paths:
                     limit: 100
                     window_seconds: 60
                     documentation_url: "https://docs.example.com/rate-limiting"
-                
+
                 multiple_limits_exceeded:
                   summary: Multiple rate limits exceeded (minute + hour)
                   value:
@@ -147,7 +147,7 @@ paths:
                         retry_after_seconds: 1800
                     retry_after_seconds: 1800
                     documentation_url: "https://docs.example.com/rate-limiting"
-        
+
         '500':
           description: Internal server error (rate limit headers still included)
           headers:
@@ -193,48 +193,48 @@ components:
             - rate_limit_exceeded
           description: Error code indicating rate limit exceeded
           example: rate_limit_exceeded
-        
+
         message:
           type: string
           description: Human-readable error message
           example: "Rate limit of 100 requests per 60 seconds exceeded for endpoint /api/v1/users"
-        
+
         retry_after_seconds:
           type: integer
           minimum: 0
           description: Seconds until retry is allowed (matches Retry-After header)
           example: 30
-        
+
         limit:
           type: integer
           minimum: 1
           description: Rate limit threshold (requests per window)
           example: 100
-        
+
         window_seconds:
           type: integer
           minimum: 1
           description: Time window in seconds
           example: 60
-        
+
         current_count:
           type: integer
           minimum: 0
           description: Current request count (optional, for debugging)
           example: 101
-        
+
         limits_exceeded:
           type: array
           description: Details for multiple rate limits (when multiple windows configured)
           items:
             $ref: '#/components/schemas/LimitExceededDetail'
-        
+
         documentation_url:
           type: string
           format: uri
           description: Link to rate limiting documentation
           example: "https://docs.example.com/rate-limiting"
-    
+
     LimitExceededDetail:
       type: object
       required:
@@ -247,25 +247,25 @@ components:
           type: string
           description: Time window description
           example: "60 seconds"
-        
+
         limit:
           type: integer
           minimum: 1
           description: Rate limit threshold for this window
           example: 100
-        
+
         current:
           type: integer
           minimum: 0
           description: Current request count in this window
           example: 101
-        
+
         retry_after_seconds:
           type: integer
           minimum: 0
           description: Seconds until this limit resets
           example: 30
-    
+
     RateLimitHeaders:
       type: object
       description: Standard rate limit headers (informational schema, not used in responses)
@@ -279,19 +279,19 @@ components:
           minimum: 1
           description: Maximum requests allowed per time window
           example: 100
-        
+
         X-RateLimit-Remaining:
           type: integer
           minimum: 0
           description: Requests remaining in current window
           example: 42
-        
+
         X-RateLimit-Reset:
           type: integer
           minimum: 0
           description: Unix timestamp when rate limit resets
           example: 1698765492
-        
+
         Retry-After:
           type: integer
           minimum: 0

@@ -467,7 +467,7 @@ ______________________________________________________________________
 **Example:**
 
 ```markdown
-According to the official AGENTS.md specification (https://agents.md, observed: 2025-10-29), 
+According to the official AGENTS.md specification (https://agents.md, observed: 2025-10-29),
 files should include a Quickstart section with copy-pasteable commands.
 ```
 

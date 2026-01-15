@@ -108,7 +108,7 @@ strategy:
   fail-fast: false
   matrix:
     python-version: ['3.11', '3.12', '3.13']
-    
+
 steps:
   - uses: actions/setup-python@v5
     with:
@@ -202,7 +202,7 @@ jobs:
     name: Python Quality Checks
     runs-on: ubuntu-latest
     steps: [...]
-  
+
   node-quality:
     name: Node.js Quality Checks
     runs-on: ubuntu-latest
@@ -425,7 +425,7 @@ ______________________________________________________________________
 jobs:
   quality:
     timeout-minutes: {% if quality_profile == 'strict' %}20{% else %}10{% endif %}
-    
+
   matrix:
     strategy:
       matrix:

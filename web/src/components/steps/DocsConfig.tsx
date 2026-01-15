@@ -162,7 +162,7 @@ export function DocsConfig() {
         <div className="p-4 riso-card-soft rounded-xl">
           <h3 className="font-medium text-gray-900 dark:text-white mb-2">Sphinx Shibuya</h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Sphinx with the Shibuya theme is auto-configured with sensible defaults. 
+            Sphinx with the Shibuya theme is auto-configured with sensible defaults.
             No additional options required.
           </p>
           <div className="mt-3 text-xs text-gray-500 dark:text-gray-500 space-y-1">
@@ -178,7 +178,7 @@ export function DocsConfig() {
       {isFumadocs && (
         <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
           <h3 className="font-medium text-gray-900 dark:text-white">Fumadocs Options</h3>
-          
+
           <div className="grid gap-4 sm:grid-cols-2">
             <SelectField
               label="Search Provider"
@@ -190,7 +190,7 @@ export function DocsConfig() {
               onChange={(v) => updateConfig({ fumadocs_search_provider: v as RisoConfig['fumadocs_search_provider'] })}
               options={fumadocsSearchOptions}
             />
-            
+
             <SelectField
               label="Theme"
               value={
@@ -315,7 +315,7 @@ export function DocsConfig() {
       {isDocusaurus && (
         <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
           <h3 className="font-medium text-gray-900 dark:text-white">Docusaurus Options</h3>
-          
+
           <div className="grid gap-4 sm:grid-cols-2">
             <SelectField
               label="Search Provider"
@@ -327,7 +327,7 @@ export function DocsConfig() {
               onChange={(v) => updateConfig({ docusaurus_search_provider: v as RisoConfig['docusaurus_search_provider'] })}
               options={docusaurusSearchOptions}
             />
-            
+
             <SelectField
               label="Theme"
               value={
@@ -451,12 +451,12 @@ export function DocsConfig() {
   )
 }
 
-function SelectField({ 
-  label, 
-  value, 
-  onChange, 
-  options 
-}: { 
+function SelectField({
+  label,
+  value,
+  onChange,
+  options
+}: {
   label: string
   value: string
   onChange: (value: string) => void
@@ -480,11 +480,11 @@ function SelectField({
   )
 }
 
-function ToggleCheckbox({ 
-  label, 
-  checked, 
-  onChange 
-}: { 
+function ToggleCheckbox({
+  label,
+  checked,
+  onChange
+}: {
   label: string
   checked: boolean
   onChange: (checked: boolean) => void

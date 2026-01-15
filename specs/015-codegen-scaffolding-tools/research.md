@@ -91,23 +91,23 @@ class {{ name }}:
 def validate_template(template_path: Path, env: Environment) -> list[str]:
     """Validate template syntax and detect issues."""
     errors = []
-    
+
     try:
         # Compile template (catches syntax errors)
         template = env.get_template(str(template_path))
-        
+
         # Find undeclared variables
         from jinja2 import meta
         source = template_path.read_text()
         ast = env.parse(source)
         undeclared = meta.find_undeclared_variables(ast)
-        
+
         if undeclared:
             errors.append(f"Undeclared variables: {', '.join(undeclared)}")
-            
+
     except Exception as e:
         errors.append(f"Template syntax error: {e}")
-    
+
     return errors
 ```
 
@@ -189,12 +189,12 @@ from merge3 import Merge3
 
 def merge_template_update(base: str, user: str, template: str) -> tuple[str, bool]:
     """Merge template update with user modifications.
-    
+
     Args:
         base: Original template version (when project was generated)
         user: User's current version (with modifications)
         template: New template version (to be applied)
-    
+
     Returns:
         (merged_content, has_conflicts)
     """
@@ -203,7 +203,7 @@ def merge_template_update(base: str, user: str, template: str) -> tuple[str, boo
         user.splitlines(keepends=True),
         template.splitlines(keepends=True)
     )
-    
+
     lines = list(m3.merge_lines(
         name_a="USER",
         name_b="TEMPLATE",
@@ -212,10 +212,10 @@ def merge_template_update(base: str, user: str, template: str) -> tuple[str, boo
         mid_marker="|||||||",
         end_marker=">>>>>>>"
     ))
-    
+
     merged = "".join(lines)
     has_conflicts = "<<<<<<<" in merged
-    
+
     return merged, has_conflicts
 ```
 
@@ -253,14 +253,14 @@ def find_conflicts(content: str) -> list[tuple[int, int]]:
     lines = content.splitlines()
     regions = []
     start = None
-    
+
     for i, line in enumerate(lines, 1):
         if line.startswith("<<<<<<<"):
             start = i
         elif line.startswith(">>>>>>>") and start:
             regions.append((start, i))
             start = None
-    
+
     return regions
 
 def has_unresolved_conflicts(content: str) -> bool:
@@ -326,7 +326,7 @@ def new(
     """Create a new project from template."""
     if interactive:
         project_name = typer.prompt("Project name", default=project_name)
-    
+
     console.print(f"[cyan]Creating:[/cyan] {project_name}")
     # Implementation...
 
@@ -419,16 +419,16 @@ CACHE_DIR = Path.home() / ".scaffold" / "templates"
 def fetch_template(url: str, name: str) -> Path:
     """Fetch template from remote and cache locally."""
     cache_path = CACHE_DIR / name
-    
+
     if cache_path.exists():
         console.print(f"[yellow]Using cached template:[/yellow] {name}")
         return cache_path
-    
+
     console.print(f"[cyan]Fetching template:[/cyan] {url}")
     # Clone or download template
     cache_path.mkdir(parents=True, exist_ok=True)
     # ... fetch logic ...
-    
+
     return cache_path
 
 def update_template(name: str) -> bool:
@@ -437,11 +437,11 @@ def update_template(name: str) -> bool:
     if not cache_path.exists():
         console.print(f"[red]Template not cached:[/red] {name}")
         return False
-    
+
     console.print(f"[cyan]Updating template:[/cyan] {name}")
     # Pull latest changes
     # ... update logic ...
-    
+
     return True
 ```
 
@@ -491,7 +491,7 @@ def collect_variables(
 ) -> dict[str, str]:
     """Collect and validate all variables before generation."""
     values = {}
-    
+
     for var_name, var_def in template.variables.items():
         # Try CLI args first
         if var_name in args:
@@ -508,17 +508,17 @@ def collect_variables(
             value = var_def.default
         else:
             raise ValueError(f"Missing required variable: {var_name}")
-        
+
         # Validate
         if var_def.pattern:
             if not re.match(var_def.pattern, value):
                 raise ValueError(f"Invalid {var_name}: must match {var_def.pattern}")
-        
+
         if var_def.choices and value not in var_def.choices:
             raise ValueError(f"Invalid {var_name}: choose from {var_def.choices}")
-        
+
         values[var_name] = value
-    
+
     return values
 ```
 
@@ -543,14 +543,14 @@ def validate_quality(project_dir: Path) -> QualityResult:
     """Run quality checks on generated project."""
     warnings = []
     errors = []
-    
+
     # Syntax validation (blocking errors)
     for file in project_dir.rglob("*.py"):
         try:
             compile(file.read_text(), file, "exec")
         except SyntaxError as e:
             errors.append(f"{file}: {e}")
-    
+
     # Linting (non-blocking warnings)
     result = subprocess.run(
         ["ruff", "check", str(project_dir)],
@@ -559,7 +559,7 @@ def validate_quality(project_dir: Path) -> QualityResult:
     )
     if result.returncode != 0:
         warnings.append(f"Ruff warnings:\n{result.stdout}")
-    
+
     # Type checking (non-blocking warnings)
     result = subprocess.run(
         ["mypy", str(project_dir)],
@@ -568,9 +568,9 @@ def validate_quality(project_dir: Path) -> QualityResult:
     )
     if result.returncode != 0:
         warnings.append(f"Mypy warnings:\n{result.stdout}")
-    
+
     passed = len(errors) == 0
-    
+
     return QualityResult(passed, warnings, errors)
 
 def report_quality(result: QualityResult):
@@ -580,12 +580,12 @@ def report_quality(result: QualityResult):
         for error in result.errors:
             console.print(f"  - {error}")
         raise typer.Exit(1)
-    
+
     if result.warnings:
         console.print("[yellow]Warnings (non-blocking):[/yellow]")
         for warning in result.warnings:
             console.print(f"  {warning}")
-    
+
     console.print("[green]✓ Generation complete[/green]")
 ```
 
@@ -602,18 +602,18 @@ def validate_template_size(template_path: Path) -> tuple[int, list[str]]:
     """Validate template size and return warnings."""
     warnings = []
     total_size = 0
-    
+
     for file in template_path.rglob("*"):
         if file.is_file():
             total_size += file.stat().st_size
-    
+
     size_mb = total_size / (1024 * 1024)
-    
+
     if size_mb > 100:
         raise ValueError(f"Template too large: {size_mb:.1f}MB (max 100MB)")
     elif size_mb > 50:
         warnings.append(f"Large template: {size_mb:.1f}MB (consider splitting)")
-    
+
     return total_size, warnings
 ```
 

@@ -45,7 +45,7 @@ async def tool_name(
 ) -> str:
     """
     Tool description that appears in MCP protocol.
-    
+
     This docstring becomes the tool's description field.
     """
     # Implementation
@@ -176,7 +176,7 @@ async def may_fail(param: str) -> str:
             message="Parameter cannot be empty",
             data={"param": "param"}
         )
-    
+
     try:
         # Operation that may fail
         result = await risky_operation(param)
@@ -189,7 +189,7 @@ async def may_fail(param: str) -> str:
             message="Operation failed",
             data={"hint": "Check server logs"}
         )
-    
+
     return result
 ```
 
@@ -220,12 +220,12 @@ def load_config(config_path: Path = Path("config.toml")) -> dict:
     """Load TOML configuration with environment overrides."""
     with open(config_path, "rb") as f:
         config = tomli.load(f)
-    
+
     # Override with environment variables
     import os
     if log_level := os.getenv("MCP_LOG_LEVEL"):
         config["server"]["log_level"] = log_level
-    
+
     return config
 ```
 
@@ -368,12 +368,12 @@ from fastmcp import FastMCP
 @pytest.fixture
 def mcp_server():
     mcp = FastMCP("test-server")
-    
+
     @mcp.tool()
     async def echo(message: str) -> str:
         """Echo the message."""
         return message
-    
+
     return mcp
 
 @pytest.mark.asyncio

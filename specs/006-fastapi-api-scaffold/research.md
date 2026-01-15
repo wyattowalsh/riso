@@ -117,15 +117,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
-    
+
     # Server configuration
     host: str = "0.0.0.0"
     port: int = 8000
     reload: bool = True
-    
+
     # CORS configuration
     cors_origins: list[str] = ["http://localhost:3000"]
-    
+
     # Application metadata
     app_name: str = "FastAPI Application"
     version: str = "0.1.0"
@@ -321,7 +321,7 @@ app = FastAPI(
 async def create_example(request: ExampleCreateRequest):
     """
     Create a new example.
-    
+
     - **name**: The name of the example (1-100 characters)
     - **value**: A non-negative integer value
     """

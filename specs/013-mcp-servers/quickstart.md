@@ -124,11 +124,11 @@ class WeatherInput(BaseModel):
 async def get_weather(input: WeatherInput) -> dict:
     """
     Get current weather for a city.
-    
+
     This is a simulated tool for demonstration purposes.
     """
     logger.info(f"Fetching weather for {input.city}")
-    
+
     # Simulated weather data
     weather_data = {
         "city": input.city,
@@ -137,7 +137,7 @@ async def get_weather(input: WeatherInput) -> dict:
         "condition": "sunny",
         "humidity": 65
     }
-    
+
     return weather_data
 ```
 
@@ -169,12 +169,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 // Handle tool calls
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-  
+
   if (name === "get_weather") {
     const { city, units } = WeatherInputSchema.parse(args);
-    
+
     logger.info(`Fetching weather for ${city}`);
-    
+
     // Simulated weather data
     const weatherData = {
       city,
@@ -183,7 +183,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       condition: "sunny",
       humidity: 65
     };
-    
+
     return {
       content: [
         {
@@ -193,7 +193,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       ]
     };
   }
-  
+
   throw new Error(`Unknown tool: ${name}`);
 });
 ```
@@ -418,7 +418,7 @@ server.setRequestHandler(ListPromptsRequestSchema, async () => ({
 server.setRequestHandler(GetPromptRequestSchema, async (request) => {
   if (request.params.name === "weather_report") {
     const city = request.params.arguments?.city || "a city";
-    
+
     return {
       messages: [
         {

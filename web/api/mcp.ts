@@ -18,7 +18,7 @@ server.tool('get_modules', 'List all available Riso template modules', {}, async
   }
 })
 
-// Tool: Get module details  
+// Tool: Get module details
 server.tool(
   'get_module',
   'Get details for a specific module',
@@ -108,14 +108,14 @@ const sessions = new Map<string, WebStandardStreamableHTTPServerTransport>()
 export default async function handler(req: Request): Promise<Response> {
   // Get or create session
   const sessionId = req.headers.get('mcp-session-id') || crypto.randomUUID()
-  
+
   let transport = sessions.get(sessionId)
   if (!transport) {
     transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: () => sessionId })
     sessions.set(sessionId, transport)
     await server.connect(transport)
   }
-  
+
   return transport.handleRequest(req)
 }
 

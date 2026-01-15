@@ -241,7 +241,7 @@ VersionSpecification (0..*)  DeprecationNotice (0..1)
                                      │ (1)
                                      │
                                      ▼
-                              VersionRoute (0..*)  
+                              VersionRoute (0..*)
                                      │
                                      │
                                      ▼
@@ -341,13 +341,13 @@ stateDiagram-v2
     CURRENT --> DEPRECATED: Mark deprecated (announce 12-month window)
     DEPRECATED --> SUNSET: Sunset date reached
     SUNSET --> [*]: Removed from registry
-    
+
     note right of DEPRECATED
         12-month minimum support window
         Deprecation headers added
         Migration guides published
     end note
-    
+
     note right of SUNSET
         410 Gone errors returned
         No traffic allowed
@@ -362,11 +362,11 @@ stateDiagram-v2
                      ├─ Header: X-API-Version
                      ├─ URL: /v{N}/...
                      └─ Query: ?version=v{N}
-                     
+
 2. Apply precedence → Header > URL > Query > Default
 
 3. Validate version → Check if exists in registry
-                     
+
 4. Check lifecycle → SUNSET? → Return 410 Gone
                    → PRERELEASE + no opt-in? → Return 403 Forbidden
                    → DEPRECATED? → Add Deprecation header

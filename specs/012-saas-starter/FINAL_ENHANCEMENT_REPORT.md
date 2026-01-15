@@ -378,21 +378,21 @@ export async function GET(request: Request) {
     // CSRF validation
     const { valid, error } = await validateCsrf(request);
     if (!valid) return error;
-    
+
     // Rate limiting
     const rateLimit = await limiter.check(getIdentifier(request));
     if (rateLimit.limited) return tooManyRequests();
-    
+
     // Authentication
     const userId = await requireAuth();
-    
+
     // Cached query with monitoring
     const data = await cache.wrap('data', async () => {
       return await monitorQuery('getData', async () => {
         return await db.query();
       });
     });
-    
+
     return success(data);
   }, request);
 }

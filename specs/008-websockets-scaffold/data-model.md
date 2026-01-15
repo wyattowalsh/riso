@@ -77,13 +77,13 @@ class WebSocketConnectionModel(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
     rooms: Set[str] = Field(default_factory=set)
     state: ConnectionState = ConnectionState.CONNECTING
-    
+
     @validator("last_activity_at")
     def activity_after_connection(cls, v, values):
         if "connected_at" in values and v < values["connected_at"]:
             raise ValueError("last_activity_at cannot be before connected_at")
         return v
-    
+
     class Config:
         use_enum_values = True
 ```
@@ -143,19 +143,19 @@ class Message(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     correlation_id: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
-    
+
     @validator("type")
     def validate_type_format(cls, v):
         if not re.match(r"^[a-z0-9._-]+$", v):
             raise ValueError("type must contain only lowercase alphanumeric, dots, dashes, underscores")
         return v
-    
+
     @validator("timestamp")
     def timestamp_not_future(cls, v):
         if v > datetime.utcnow():
             raise ValueError("timestamp cannot be in future")
         return v
-    
+
     class Config:
         json_encoders = {
             datetime: lambda v: v.isoformat()
@@ -209,18 +209,18 @@ class Room(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
     max_connections: Optional[int] = Field(None, gt=0)
     is_private: bool = False
-    
+
     @validator("room_id")
     def validate_room_id_format(cls, v):
         if not re.match(r"^[a-zA-Z0-9_-]+$", v):
             raise ValueError("room_id must be URL-safe (alphanumeric, dashes, underscores)")
         return v
-    
+
     def is_full(self) -> bool:
         if self.max_connections is None:
             return False
         return len(self.connection_ids) >= self.max_connections
-    
+
     def get_connection_count(self) -> int:
         return len(self.connection_ids)
 ```
@@ -260,7 +260,7 @@ class ConnectionMetadata(BaseModel):
     session_id: Optional[str] = None
     referrer: Optional[str] = None
     custom: Dict[str, Any] = Field(default_factory=dict)
-    
+
     @validator("ip_address")
     def validate_ip_address(cls, v):
         try:
@@ -282,7 +282,7 @@ from typing import Optional
 
 class ConnectionMiddleware(ABC):
     """Base class for WebSocket middleware."""
-    
+
     @abstractmethod
     async def on_connect(
         self,
@@ -291,7 +291,7 @@ class ConnectionMiddleware(ABC):
     ) -> Optional[dict]:
         """Called when connection is established. Return metadata or None."""
         pass
-    
+
     @abstractmethod
     async def on_disconnect(
         self,
@@ -301,7 +301,7 @@ class ConnectionMiddleware(ABC):
     ):
         """Called when connection closes."""
         pass
-    
+
     @abstractmethod
     async def on_message(
         self,
@@ -310,7 +310,7 @@ class ConnectionMiddleware(ABC):
     ) -> Message:
         """Called on incoming message. Can modify or reject message."""
         pass
-    
+
     @abstractmethod
     async def on_error(
         self,
@@ -396,29 +396,29 @@ from pydantic_settings import BaseSettings
 
 class WebSocketConfig(BaseSettings):
     """WebSocket configuration with environment variable support."""
-    
+
     # Connection limits
     max_connections_global: int = 10000
     max_connections_per_user: int = 5
     max_connections_per_ip: int = 100
-    
+
     # Timeouts (seconds)
     heartbeat_interval: int = 30
     heartbeat_timeout: int = 60
     idle_timeout: int = 300  # 5 minutes
-    
+
     # Message handling
     max_message_size: int = 1024 * 1024  # 1MB
     message_queue_depth: int = 100
-    
+
     # Broadcasting
     broadcast_timeout: float = 5.0
     broadcast_chunk_size: int = 1000  # Max connections per parallel batch
-    
+
     # Rate limiting
     rate_limit_messages: int = 100  # Max messages per window
     rate_limit_window: int = 60  # Window in seconds
-    
+
     class Config:
         env_prefix = "WS_"
         case_sensitive = False

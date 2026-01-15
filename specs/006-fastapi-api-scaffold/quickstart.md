@@ -101,25 +101,25 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     """Application settings."""
-    
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
     )
-    
+
     # Server configuration
     host: str = "0.0.0.0"
     port: int = 8000
     reload: bool = True
-    
+
     # CORS configuration
     cors_origins: list[str] = ["http://localhost:3000"]
-    
+
     # Application metadata
     app_name: str = "{{ project_name }}"
     version: str = "0.1.0"
-    
+
     # Logging
     log_level: str = "INFO"
     environment: str = "development"
@@ -197,7 +197,7 @@ async def create_example(request: ExampleCreateRequest):
     """Create a new example."""
     example_id = str(uuid4())
     now = datetime.utcnow().isoformat() + "Z"
-    
+
     example = {
         "id": example_id,
         "name": request.name,
@@ -207,7 +207,7 @@ async def create_example(request: ExampleCreateRequest):
         "created_at": now,
         "updated_at": now,
     }
-    
+
     _examples[example_id] = example
     return example
 
@@ -225,9 +225,9 @@ async def update_example(example_id: str, request: ExampleUpdateRequest):
     """Update an existing example."""
     if example_id not in _examples:
         raise HTTPException(status_code=404, detail="Example not found")
-    
+
     example = _examples[example_id]
-    
+
     if request.name is not None:
         example["name"] = request.name
     if request.value is not None:
@@ -236,9 +236,9 @@ async def update_example(example_id: str, request: ExampleUpdateRequest):
         example["description"] = request.description
     if request.tags is not None:
         example["tags"] = request.tags
-    
+
     example["updated_at"] = datetime.utcnow().isoformat() + "Z"
-    
+
     return example
 
 
@@ -264,12 +264,12 @@ from pydantic import BaseModel, Field, field_validator
 
 class ExampleCreateRequest(BaseModel):
     """Request model for creating an example."""
-    
+
     name: str = Field(..., min_length=1, max_length=100, description="Example name")
     value: int = Field(..., ge=0, description="Non-negative integer value")
     description: str | None = Field(None, max_length=500, description="Optional description")
     tags: list[str] | None = Field(None, max_length=10, description="Optional tags")
-    
+
     @field_validator("name")
     @classmethod
     def name_must_not_be_whitespace(cls, v: str) -> str:
@@ -277,7 +277,7 @@ class ExampleCreateRequest(BaseModel):
         if not v.strip():
             raise ValueError("Name cannot be whitespace only")
         return v.strip()
-    
+
     @field_validator("tags")
     @classmethod
     def validate_tags(cls, v: list[str] | None) -> list[str] | None:
@@ -291,7 +291,7 @@ class ExampleCreateRequest(BaseModel):
 
 class ExampleUpdateRequest(BaseModel):
     """Request model for updating an example."""
-    
+
     name: str | None = Field(None, min_length=1, max_length=100)
     value: int | None = Field(None, ge=0)
     description: str | None = Field(None, max_length=500)
@@ -309,7 +309,7 @@ from pydantic import BaseModel
 
 class ExampleResponse(BaseModel):
     """Response model for example entities."""
-    
+
     id: str
     name: str
     value: int
@@ -321,7 +321,7 @@ class ExampleResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     """Standard error response model."""
-    
+
     detail: str | list[dict]
     status_code: int | None = None
     request_id: str | None = None
@@ -404,7 +404,7 @@ def test_get_example(client):
     # Create example first
     create_response = client.post("/examples/", json={"name": "Test", "value": 42})
     example_id = create_response.json()["id"]
-    
+
     # Get example
     response = client.get(f"/examples/{example_id}")
     assert response.status_code == 200
@@ -422,7 +422,7 @@ def test_update_example(client):
     # Create example
     create_response = client.post("/examples/", json={"name": "Test", "value": 42})
     example_id = create_response.json()["id"]
-    
+
     # Update example
     update_payload = {"name": "Updated", "value": 100}
     response = client.put(f"/examples/{example_id}", json=update_payload)
@@ -437,11 +437,11 @@ def test_delete_example(client):
     # Create example
     create_response = client.post("/examples/", json={"name": "Test", "value": 42})
     example_id = create_response.json()["id"]
-    
+
     # Delete example
     response = client.delete(f"/examples/{example_id}")
     assert response.status_code == 204
-    
+
     # Verify deleted
     get_response = client.get(f"/examples/{example_id}")
     assert get_response.status_code == 404

@@ -343,7 +343,7 @@ EOF
 
 main() {
   local validate_containers="false"
-  
+
   if [[ $# -eq 0 ]]; then
     log "Starting sample render orchestrator (defaults)"
     render_default "${validate_containers}"
@@ -387,7 +387,7 @@ main() {
   fi
 
   render_variant "${variant}" "${answers}" "${SAMPLES_DIR}/${variant}/render"
-  
+
   if [[ "${validate_containers}" == "true" ]]; then
     log "Validating containers for variant '${variant}'..."
     python3 "${REPO_ROOT}/scripts/ci/validate_dockerfiles.py" "${SAMPLES_DIR}/${variant}/render"

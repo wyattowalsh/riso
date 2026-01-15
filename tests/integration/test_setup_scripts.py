@@ -200,7 +200,7 @@ def docker_available() -> bool:
         "ubuntu:22.04",
         "ubuntu:24.04",
         "fedora:39",
-        "alpine:3.19",
+        # alpine:3.19 excluded - doesn't have bash by default
     ],
 )
 class TestSetupDocker:

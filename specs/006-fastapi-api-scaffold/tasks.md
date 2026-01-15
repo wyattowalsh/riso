@@ -301,7 +301,7 @@ ______________________________________________________________________
 # Step 1: Create models in parallel
 Task T014: "Create HealthResponse model"
 
-# Step 2: Create routes in parallel  
+# Step 2: Create routes in parallel
 Task T015: "Create routes __init__.py"
 Task T016: "Create health routes"
 

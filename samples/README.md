@@ -10,7 +10,7 @@
 | `python scripts/ci/track_doc_publish.py --site fumadocs --status pending` | ⚠️ Pending | `samples/metadata/doc_publish.json` | Fumadocs build requires pnpm install; deferred. |
 | `python scripts/compliance/checkpoints.py --principle automation_governed --status pass --evidence "local validation run" --dry-run` | ✅ Dry-run payload | — | Ready for CI integration with real endpoint. |
 
-> **Follow-up**  
-> - Install uv/pnpm dependencies and re-run `scripts/render-samples.sh` for `cli-docs`, `api-monorepo`, and `full-stack` to eliminate smoke-test failures.  
-> - Execute real documentation builds before merge (Sphinx + Fumadocs).  
+> **Follow-up**
+> - Install uv/pnpm dependencies and re-run `scripts/render-samples.sh` for `cli-docs`, `api-monorepo`, and `full-stack` to eliminate smoke-test failures.
+> - Execute real documentation builds before merge (Sphinx + Fumadocs).
 > - Post compliance checkpoints to the automation API (drop `--dry-run`) during CI.
