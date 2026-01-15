@@ -171,13 +171,13 @@ export function SaaSConfig() {
       <div>
         <h2 className="text-2xl font-display font-semibold text-gray-900 dark:text-white">SaaS Starter</h2>
         <p className="mt-1 text-gray-500 dark:text-gray-400">
-          Production-ready SaaS boilerplate with 14 technology categories
+          Configure a production-grade SaaS stack across 14 categories.
         </p>
         {moduleHelp && <p className="mt-2 text-xs text-gray-500">{moduleHelp}</p>}
       </div>
 
       {/* Enable/Disable Toggle */}
-      <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+      <div className="flex items-center gap-4 p-4 riso-card-soft rounded-xl">
         <label className="relative inline-flex items-center cursor-pointer">
           <input
             type="checkbox"
@@ -185,7 +185,7 @@ export function SaaSConfig() {
             onChange={(e) => updateConfig({ saas_starter_module: e.target.checked ? 'enabled' : 'disabled' })}
             className="sr-only peer"
           />
-          <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-riso-300 dark:peer-focus:ring-riso-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-riso-500"></div>
+          <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-riso-300/60 dark:peer-focus:ring-riso-800/60 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-riso-500"></div>
         </label>
         <span className="font-medium text-gray-900 dark:text-white">
           {isEnabled ? 'SaaS Starter Enabled' : 'SaaS Starter Disabled'}
@@ -393,11 +393,12 @@ function CategorySelect({
             key={option.value}
             type="button"
             onClick={() => onChange(option.value)}
+            aria-pressed={value === option.value}
             className={cn(
-              'w-full p-3 rounded-lg border text-left transition-colors',
+              'w-full p-4 rounded-2xl border text-left transition-all hover:-translate-y-0.5 hover:shadow-md',
               value === option.value
-                ? 'border-riso-500 bg-riso-50 dark:bg-riso-900/20'
-                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                ? 'border-riso-500 bg-riso-50/80 dark:bg-riso-900/20'
+                : 'border-white/70 dark:border-gray-700/60 bg-white/70 dark:bg-gray-900/60 hover:border-riso-300'
             )}
           >
             <div className="font-medium text-sm text-gray-900 dark:text-white">{option.label}</div>
@@ -421,7 +422,7 @@ function ToggleCheckbox({
   onChange: (checked: boolean) => void
 }) {
   return (
-    <label className="flex items-center gap-2 cursor-pointer">
+    <label className="flex items-center gap-2 rounded-xl border border-white/70 dark:border-gray-700/60 bg-white/70 dark:bg-gray-900/60 px-3 py-2 cursor-pointer">
       <input
         type="checkbox"
         checked={checked}

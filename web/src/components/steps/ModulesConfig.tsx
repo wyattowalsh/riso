@@ -32,12 +32,13 @@ function ToggleGroup({
             key={option.value}
             type="button"
             disabled={disabled}
+            aria-pressed={value === option.value}
             onClick={() => onChange(option.value)}
             className={cn(
-              'px-4 py-2 rounded-lg text-sm font-medium transition-colors border',
+              'px-4 py-2 rounded-full text-sm font-semibold transition-all border hover:-translate-y-0.5',
               value === option.value
-                ? 'bg-riso-500 text-white border-riso-500'
-                : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-riso-300'
+                ? 'bg-riso-500 text-white border-riso-500 shadow-md shadow-riso-500/30'
+                : 'bg-white/80 dark:bg-gray-900/70 text-gray-700 dark:text-gray-300 border-white/70 dark:border-gray-700/60 hover:border-riso-300'
             )}
             title={option.description}
           >
@@ -84,7 +85,9 @@ export function ModulesConfig() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-display font-semibold text-gray-900 dark:text-white">Modules</h2>
-        <p className="mt-1 text-gray-500 dark:text-gray-400">Select which modules to include in your project</p>
+        <p className="mt-1 text-gray-500 dark:text-gray-400">
+          Layer on the capabilities your project actually needs.
+        </p>
       </div>
 
       <div className="grid gap-6">
