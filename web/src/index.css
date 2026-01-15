@@ -21,6 +21,15 @@ body {
   color: var(--riso-ink);
 }
 
+/* Skip to content link for accessibility */
+.skip-link {
+  @apply absolute -top-10 left-4 z-[100] rounded-md bg-riso-500 px-4 py-2 text-sm font-semibold text-white;
+  transition: top 0.2s ease;
+}
+.skip-link:focus {
+  @apply top-4;
+}
+
 h1, h2, h3, .font-display {
   font-family: 'Fraunces', ui-serif, Georgia, serif;
 }
@@ -43,9 +52,17 @@ h1, h2, h3, .font-display {
   @apply bg-gray-400 dark:bg-gray-500;
 }
 
-/* Focus styles */
+/* Focus styles - enhanced for accessibility */
 *:focus-visible {
   @apply outline-none ring-2 ring-riso-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-950;
+}
+
+/* Interactive element focus enhancements */
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  @apply ring-offset-1;
 }
 
 /* Code block styling */
@@ -101,6 +118,7 @@ code:not(pre code) {
     linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(245, 241, 234, 0.9) 100%);
 }
 
+/* Riso grain texture - dot matrix overlay */
 .riso-backdrop::before {
   content: '';
   position: absolute;
@@ -110,6 +128,18 @@ code:not(pre code) {
   opacity: 0.12;
   pointer-events: none;
   mix-blend-mode: multiply;
+  z-index: 0;
+}
+
+/* Subtle noise grain layer for print-inspired texture */
+.riso-backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+  mix-blend-mode: overlay;
   z-index: 0;
 }
 
@@ -132,11 +162,19 @@ code:not(pre code) {
 }
 
 .riso-card {
-  @apply bg-white/90 dark:bg-gray-900/80 border border-white/60 dark:border-gray-800 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl;
+  @apply bg-white/90 dark:bg-gray-900/80 border border-white/60 dark:border-gray-800 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl rounded-2xl transition-shadow duration-200;
+}
+
+.riso-card:hover {
+  @apply shadow-[0_24px_60px_rgba(15,23,42,0.10)];
 }
 
 .riso-card-soft {
-  @apply bg-white/70 dark:bg-gray-900/70 border border-white/50 dark:border-gray-800/80 shadow-[0_14px_36px_rgba(15,23,42,0.06)] backdrop-blur;
+  @apply bg-white/70 dark:bg-gray-900/70 border border-white/50 dark:border-gray-800/80 shadow-[0_14px_36px_rgba(15,23,42,0.06)] backdrop-blur rounded-2xl transition-all duration-200;
+}
+
+.riso-card-soft:hover {
+  @apply shadow-[0_18px_44px_rgba(15,23,42,0.08)] border-white/70 dark:border-gray-700/70;
 }
 
 .riso-pill {
@@ -151,5 +189,11 @@ code:not(pre code) {
   .animate-fade-up,
   .animate-float {
     animation: none !important;
+  }
+  
+  .riso-card,
+  .riso-card-soft,
+  * {
+    transition-duration: 0.01ms !important;
   }
 }
