@@ -1,0 +1,27 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'rust' and mcp_transport in ['sse', 'http'] -%}
+use axum::{
+    extract::State,
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    Json,
+};
+use serde_json::Value;
+use std::sync::Arc;
+use rmcp::Server;
+
+pub struct AppState {
+    pub server: Arc<Server>,
+}
+
+pub async fn handle_request(
+    State(_state): State<Arc<AppState>>,
+    Json(payload): Json<Value>,
+) -> Response {
+    tracing::debug!("Received HTTP request: {:?}", payload);
+    
+    // Placeholder: Process via RMCP server
+    // let _res = _state.server.handle_request(payload).await;
+
+    (StatusCode::OK, Json(payload)).into_response()
+}
+{%- endif -%}

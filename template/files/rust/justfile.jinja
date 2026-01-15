@@ -1,0 +1,34 @@
+{% if project_language == 'rust' %}
+set shell := ["zsh", "-c"]
+
+# Build the project
+build:
+    cargo build
+
+# Run the project
+run:
+    cargo run
+
+# Run tests
+test:
+    cargo test
+
+# Check code quality (fmt + clippy + test)
+quality: fmt-check clippy test
+
+# Format code
+fmt:
+    cargo fmt
+
+# Check formatting
+fmt-check:
+    cargo fmt -- --check
+
+# Run clippy
+clippy:
+    cargo clippy -- -D warnings
+
+# Build for release
+release:
+    cargo build --release
+{% endif %}

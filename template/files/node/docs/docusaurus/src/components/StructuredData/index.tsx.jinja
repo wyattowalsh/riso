@@ -1,0 +1,139 @@
+{%- if docs_site == 'docusaurus' and docusaurus_structured_data == 'enabled' -%}
+import React from 'react';
+import Head from '@docusaurus/Head';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
+
+interface ArticleStructuredDataProps {
+  title: string;
+  description: string;
+  datePublished?: string;
+  dateModified?: string;
+  author?: string;
+  image?: string;
+}
+
+export function ArticleStructuredData({
+  title,
+  description,
+  datePublished,
+  dateModified,
+  author = '{{ project_name }}',
+  image,
+}: ArticleStructuredDataProps): JSX.Element {
+  const { siteConfig } = useDocusaurusContext();
+
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: title,
+    description,
+    author: {
+      '@type': 'Organization',
+      name: author,
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: siteConfig.title,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${siteConfig.url}/img/logo.svg`,
+      },
+    },
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': typeof window !== 'undefined' ? window.location.href : '',
+    },
+    ...(datePublished && { datePublished }),
+    ...(dateModified && { dateModified }),
+    ...(image && { image }),
+  };
+
+  return (
+    <Head>
+      <script type="application/ld+json">{JSON.stringify(structuredData)}</script>
+    </Head>
+  );
+}
+
+interface BreadcrumbStructuredDataProps {
+  items: Array<{ name: string; url?: string }>;
+}
+
+export function BreadcrumbStructuredData({
+  items,
+}: BreadcrumbStructuredDataProps): JSX.Element {
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.name,
+      ...(item.url && { item: item.url }),
+    })),
+  };
+
+  return (
+    <Head>
+      <script type="application/ld+json">{JSON.stringify(structuredData)}</script>
+    </Head>
+  );
+}
+
+export function OrganizationStructuredData(): JSX.Element {
+  const { siteConfig } = useDocusaurusContext();
+
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: '{{ project_name }}',
+    url: siteConfig.url,
+    logo: `${siteConfig.url}/img/logo.svg`,
+    sameAs: [
+      'https://github.com/{{ project_slug }}/{{ project_slug }}',
+    ],
+  };
+
+  return (
+    <Head>
+      <script type="application/ld+json">{JSON.stringify(structuredData)}</script>
+    </Head>
+  );
+}
+
+export function WebSiteStructuredData(): JSX.Element {
+  const { siteConfig } = useDocusaurusContext();
+
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: siteConfig.title,
+    url: siteConfig.url,
+{%- if docusaurus_search_provider != 'none' %}
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${siteConfig.url}/search?q={search_term_string}`,
+      },
+      'query-input': 'required name=search_term_string',
+    },
+{%- endif %}
+  };
+
+  return (
+    <Head>
+      <script type="application/ld+json">{JSON.stringify(structuredData)}</script>
+    </Head>
+  );
+}
+
+export default function StructuredData(): JSX.Element {
+  return (
+    <>
+      <OrganizationStructuredData />
+      <WebSiteStructuredData />
+    </>
+  );
+}
+{%- endif -%}

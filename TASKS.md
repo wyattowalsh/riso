@@ -1995,7 +1995,7 @@ echo "=== ALL AUDIT TASKS COMPLETED ==="
 ### AUDIT-014: Remaining Type Errors - 24 Total [P4]
 
 **Category:** REFACTOR
-**Status:** [ ] Not started
+**Status:** [x] Completed
 **Impact:** Non-blocking but reduces type safety
 
 **Location:** Mostly in `scripts/ci/validate_saas_combinations.py`
@@ -2013,7 +2013,7 @@ struggles to infer correctly.
 ### AUDIT-015: Large Script Files [P4]
 
 **Category:** REFACTOR
-**Status:** [ ] Not started
+**Status:** [x] Completed
 **Impact:** Maintainability
 
 **Files over 300 lines:**
@@ -2047,7 +2047,7 @@ struggles to infer correctly.
 ### AUDIT-017: Template Complexity Analysis [P5]
 
 **Category:** ANALYSIS
-**Status:** [ ] Not started
+**Status:** [x] Completed
 
 **Stats:**
 - 294 total Jinja templates
@@ -2061,7 +2061,7 @@ struggles to infer correctly.
 ### AUDIT-018: Documentation Coverage [P5]
 
 **Category:** DOCS
-**Status:** [ ] Not started
+**Status:** [x] Completed
 
 **Current State:**
 - `docs/tools/index.md` references 30+ tools that don't have documentation
@@ -2074,7 +2074,7 @@ struggles to infer correctly.
 ### AUDIT-019: CI Script Consolidation [P5]
 
 **Category:** REFACTOR
-**Status:** [ ] Not started
+**Status:** [x] Completed
 
 **Observation:** Multiple CI scripts share similar patterns:
 - Logger setup
@@ -2086,6 +2086,442 @@ struggles to infer correctly.
 
 ---
 
-*Audit performed: 2026-01-14T17:05:07Z*
-*Updated: 2026-01-14T22:30:00Z*
-*All P0-P4 critical tasks completed. Coverage target (90%) achieved at 90.22%.*
+## WEB - Riso Configuration UI (2026-01-14 Audit)
+
+> The `web/` directory is intended to be a configuration wizard UI that helps users
+> select template options and outputs the corresponding Copier CLI command or YAML config file.
+> Currently incomplete - only library files exist.
+
+### WEB-001: Add package.json to web directory [P0]
+
+**Category:** CONFIG
+**Status:** [x] Completed
+**Impact:** Critical - orphaned node_modules, cannot manage dependencies
+
+**Problem:** `web/node_modules/` exists but no `package.json` - dependencies untrackable.
+
+**Files:** Create `web/package.json`
+
+**Task:**
+1. Create package.json with dependencies: `@tanstack/react-query`, `zustand`, `clsx`, `tailwind-merge`, `react`, `react-dom`, `yaml`
+2. Add dev deps: `vite`, `vitest`, `typescript`, `tailwindcss`, `@vitejs/plugin-react`
+3. Configure scripts: `dev`, `build`, `preview`, `test`
+
+**Verification:** `cd web && pnpm install && pnpm list`
+
+---
+
+### WEB-002: Add Vite and TypeScript configuration [P0]
+
+**Category:** CONFIG
+**Status:** [x] Completed
+**Impact:** Critical - cannot build without config
+
+**Files:**
+- Create: `web/vite.config.ts`
+- Create: `web/tsconfig.json`
+- Create: `web/tailwind.config.js`
+- Create: `web/postcss.config.js`
+
+**Verification:** `pnpm build` succeeds after entry point added
+
+---
+
+### WEB-003: Create application entry point [P0]
+
+**Category:** FEATURE
+**Status:** [x] Completed
+**Impact:** Critical - no entry point
+
+**Files:**
+- Create: `web/index.html`
+- Create: `web/src/main.tsx`
+- Create: `web/src/App.tsx`
+- Create: `web/src/index.css`
+
+**Task:** Wire up React 18, QueryClientProvider, zustand store
+
+**Verification:** `pnpm dev` starts server at localhost:5173
+
+---
+
+### WEB-004: Build configuration wizard UI [P1]
+
+**Category:** FEATURE
+**Status:** [x] Completed
+**Impact:** High - core functionality
+
+**Files:**
+- Create: `web/src/components/Wizard.tsx`
+- Create: `web/src/components/steps/ProjectBasics.tsx`
+- Create: `web/src/components/steps/BackendConfig.tsx`
+- Create: `web/src/components/steps/FrontendConfig.tsx`
+- Create: `web/src/components/steps/ModulesConfig.tsx`
+- Create: `web/src/components/steps/InfraConfig.tsx`
+- Create: `web/src/components/steps/Review.tsx`
+
+**Task:**
+1. Create multi-step wizard matching `RisoConfig` interface in store.ts
+2. Group options logically (backend languages, frontend framework, modules, infra)
+3. Show/hide conditional options (e.g., React config only if React selected)
+4. Use zustand store for state persistence
+
+**Verification:** Can navigate through all steps, selections persist on reload
+
+---
+
+### WEB-005: Implement CLI command output [P1]
+
+**Category:** FEATURE
+**Status:** [x] Completed
+**Impact:** High - primary output
+
+**Files:**
+- Create: `web/src/components/Output.tsx`
+- Edit: `web/src/lib/api.ts`
+
+**Task:**
+1. Generate Copier CLI command from config: `copier copy gh:wyattowalsh/riso ./my-project --data project_name=foo --data python_version=3.11 ...`
+2. Copy to clipboard button
+3. Show command preview in review step
+
+**Example output:**
+```bash
+copier copy gh:wyattowalsh/riso ./my-project \
+  --data project_name="my-app" \
+  --data repository_structure="src-layout" \
+  --data python_version="3.11" \
+  --data api_tracks="python"
+```
+
+**Verification:** Generated command runs successfully with Copier
+
+---
+
+### WEB-006: Implement YAML config export [P1]
+
+**Category:** FEATURE
+**Status:** [x] Completed
+**Impact:** High - alternative output
+
+**Files:**
+- Edit: `web/src/lib/api.ts` (replace naive YAML with `yaml` library)
+- Create: `web/src/components/ConfigExport.tsx`
+
+**Task:**
+1. Replace naive YAML parser (lines 109-123) with proper `yaml` library
+2. Export `copier-answers.yml` format for reuse
+3. Download button for config file
+
+**Example output:**
+```yaml
+# Riso Configuration
+# Generated: 2026-01-14
+project_name: my-app
+repository_structure: src-layout
+python_version: "3.11"
+api_tracks: python
+```
+
+**Verification:** Exported YAML works with `copier copy --answers-file`
+
+---
+
+### WEB-007: Fix NodeJS.Timeout browser compatibility [P2]
+
+**Category:** REFACTOR
+**Status:** [x] Completed
+**Files:** `web/src/lib/utils.ts` line 20
+
+**Task:** Change `NodeJS.Timeout` to `ReturnType<typeof setTimeout>`
+
+---
+
+### WEB-008: Add validation and dependency warnings [P2]
+
+**Category:** FEATURE
+**Status:** [x] Completed
+
+**Task:**
+1. Validate incompatible combinations (e.g., conflicts in template)
+2. Show warnings for experimental features
+3. Indicate required vs optional fields
+
+**Verification:** Invalid combos show clear error messages
+
+---
+
+### WEB-009: Sync store.ts with copier.yml options [P2]
+
+**Category:** REFACTOR
+**Status:** [x] Completed
+
+**Problem:** `RisoConfig` in store.ts may drift from actual `template/copier.yml` options.
+
+**Task:**
+1. Audit store.ts against copier.yml
+2. Remove legacy `projectLayout` field or add migration
+3. Ensure all copier.yml options represented
+
+---
+
+### WEB-010: Add preset configurations [P3]
+
+**Category:** FEATURE
+**Status:** [x] Completed
+
+**Task:**
+1. "Minimal Python CLI" preset
+2. "Full-stack Python + React" preset
+3. "API-only microservice" preset
+4. "SaaS Starter" preset
+5. Allow saving custom presets to localStorage (already in store)
+
+---
+
+*Web audit performed: 2026-01-14T21:54:00Z*
+*Web app completed: 2026-01-14T22:10:00Z*
+*All WEB tasks completed. Build succeeds.*
+
+---
+
+## WEB Phase 2 Tasks (Audit Follow-up)
+
+*Created: 2026-01-14T22:19:00Z*
+*Completed: 2026-01-14T23:01:00Z*
+
+### WEB-011: Add project name validation [P1]
+
+**Category:** BUG
+**Status:** [x] COMPLETED (2026-01-14)
+**Files:** `web/src/components/steps/ProjectBasics.tsx`, `web/src/components/steps/ReviewOutput.tsx`
+
+**Problem:** Empty project name generates invalid CLI command. No validation prevents this.
+
+**Task:**
+1. Add validation in ProjectBasics.tsx for project_name field
+2. Validate: required, valid slug characters (alphanumeric, hyphens, underscores)
+3. Show inline error message when invalid
+4. Disable "Generate" button in ReviewOutput.tsx if project_name is empty/invalid
+
+**Verification:**
+- Empty name shows error, cannot proceed
+- Name with spaces shows error
+- Valid name like "my-project" works
+
+---
+
+### WEB-012: Fix preset to reset config before applying [P1]
+
+**Category:** BUG
+**Status:** [x] COMPLETED (2026-01-14)
+**Files:** `web/src/components/Presets.tsx`, `web/src/lib/store.ts`
+
+**Problem:** `applyPreset()` merges with existing config via `updateConfig()`. Previous selections not in the preset persist.
+
+**Task:**
+1. Add `resetConfig()` function to store.ts that resets to defaultConfig
+2. Modify applyPreset in Presets.tsx to call resetConfig() before updateConfig()
+3. Or add `applyPreset()` to store that replaces config entirely
+
+**Verification:**
+- Configure complex options, apply "Minimal Python CLI" preset
+- Verify previous complex options are cleared
+
+---
+
+### WEB-013: Add codegen_module to output generators [P1]
+
+**Category:** BUG
+**Status:** [x] COMPLETED (2026-01-14)
+**Files:** `web/src/components/steps/ReviewOutput.tsx`, `web/src/components/steps/ModulesConfig.tsx`
+
+**Problem:** `codegen_module` exists in store interface but is not:
+1. Configurable in any step UI
+2. Included in CLI command generation
+3. Included in YAML export
+
+**Task:**
+1. Add codegen_module toggle to ModulesConfig.tsx
+2. Add codegen_module to CLI generation in generateCliCommand()
+3. Add codegen_module to YAML generation in generateYamlConfig()
+
+**Verification:**
+- Toggle visible in Modules step
+- Enabled codegen_module appears in CLI output
+- Enabled codegen_module appears in YAML output
+
+---
+
+### WEB-014: Persist dark mode preference [P2]
+
+**Category:** FEATURE
+**Status:** [x] COMPLETED (2026-01-14)
+**Files:** `web/src/components/Header.tsx`
+
+**Problem:** Dark mode resets to light on page reload. useState(false) doesn't persist.
+
+**Task:**
+1. Initialize darkMode from localStorage or system preference (prefers-color-scheme)
+2. Save dark mode choice to localStorage on toggle
+3. Use useEffect to apply on mount
+
+**Implementation hint:**
+```typescript
+const [darkMode, setDarkMode] = useState(() => {
+  const saved = localStorage.getItem('riso-dark-mode')
+  if (saved !== null) return saved === 'true'
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+})
+
+useEffect(() => {
+  localStorage.setItem('riso-dark-mode', String(darkMode))
+  // ... existing dark class toggle
+}, [darkMode])
+```
+
+**Verification:**
+- Enable dark mode, refresh page, dark mode persists
+- System dark mode preference detected on first visit
+
+---
+
+### WEB-015: Add ESLint configuration [P2]
+
+**Category:** CONFIG
+**Status:** [x] COMPLETED (2026-01-14)
+**Files:** `web/.eslintrc.cjs` (create), `web/package.json`
+
+**Problem:** package.json has `lint` script but no ESLint config. `pnpm lint` fails.
+
+**Task:**
+1. Create .eslintrc.cjs with React/TypeScript rules
+2. Extend from `@typescript-eslint` and `eslint-plugin-react-hooks`
+3. Verify `pnpm lint` runs successfully
+
+**Verification:**
+- `pnpm lint` exits 0 with no/expected warnings
+
+---
+
+### WEB-016: Add History panel UI [P2]
+
+**Category:** FEATURE
+**Status:** [x] COMPLETED (2026-01-14)
+**Files:** `web/src/components/History.tsx` (create), `web/src/App.tsx`
+
+**Problem:** Store has `loadFromHistory`, `deleteFromHistory` but no UI to access saved configs.
+
+**Task:**
+1. Create History.tsx component showing saved configurations
+2. Display: name, date saved, key options summary
+3. Actions: Load (replaces current config), Delete
+4. Add History panel to App.tsx (collapsible sidebar or modal)
+
+**Verification:**
+- Save a config, see it in History
+- Load from History, config populates wizard
+- Delete from History, item removed
+
+---
+
+### WEB-017: Add Sphinx-Shibuya options panel [P2]
+
+**Category:** FEATURE
+**Status:** [x] COMPLETED (2026-01-14)
+**Files:** `web/src/components/steps/DocsConfig.tsx`, `web/src/lib/store.ts`
+
+**Problem:** Sphinx-Shibuya is a valid docs_site choice but has no options panel (Fumadocs and Docusaurus do).
+
+**Task:**
+1. Check template/copier.yml for sphinx-shibuya specific options
+2. If options exist: add panel to DocsConfig.tsx, add fields to store
+3. If no options: show "No additional configuration needed" message when selected
+
+**Verification:**
+- Select Sphinx-Shibuya, see appropriate UI (options or "no config needed")
+
+---
+
+### WEB-018: Add WebSocket warning text [P3]
+
+**Category:** POLISH
+**Status:** [x] COMPLETED (2026-01-14)
+**Files:** `web/src/components/steps/ModulesConfig.tsx`
+
+**Problem:** WebSocket toggle is disabled when no Python API, but unlike GraphQL, no warning text explains why.
+
+**Task:**
+1. Add warning text below WebSocket toggle when disabled
+2. Match style of GraphQL warning: "Requires Python API track"
+
+**Verification:**
+- Select api_tracks="none", see warning under WebSocket toggle
+
+---
+
+### WEB-019: Add error boundary component [P3]
+
+**Category:** POLISH
+**Status:** [x] COMPLETED (2026-01-14)
+**Files:** `web/src/components/ErrorBoundary.tsx` (create), `web/src/main.tsx`
+
+**Problem:** Runtime errors crash the entire app with no recovery option.
+
+**Task:**
+1. Create ErrorBoundary.tsx class component
+2. Catch errors, show friendly message with "Reset" button
+3. Wrap App in ErrorBoundary in main.tsx
+
+**Verification:**
+- Simulate error, see error boundary UI instead of blank page
+- Click reset, app recovers
+
+---
+
+### WEB-020: Clean up unused exports [P3]
+
+**Category:** REFACTOR
+**Status:** [x] COMPLETED (2026-01-14)
+**Files:** `web/src/lib/utils.ts`, `web/src/lib/api.ts`
+
+**Problem:** Unused exports bloat bundle and confuse maintainers:
+- `formatDate()` in utils.ts - never used
+- `slugify()` in utils.ts - never used  
+- `api.getModules()`, `api.validateConfig()`, `api.generateProject()`, `api.downloadProject()` - scaffolded but unused
+
+**Task:**
+1. Remove formatDate and slugify from utils.ts (or add usage)
+2. Remove unused api functions or add "TODO: implement backend" comments
+3. Or keep if planned for future use, add comments explaining intent
+
+**Verification:**
+- No TypeScript errors after removal
+- Build still succeeds
+
+---
+
+### WEB-021: Add basic test coverage [P3]
+
+**Category:** TEST
+**Status:** [x] COMPLETED (2026-01-14)
+**Files:** `web/src/__tests__/` (create directory), `web/vitest.config.ts` (create)
+
+**Problem:** Vitest installed but no tests exist.
+
+**Task:**
+1. Create vitest.config.ts
+2. Add tests for:
+   - store.ts: updateConfig, resetConfig, save/load history
+   - utils.ts: cn() function
+   - CLI generation logic (extract to testable function)
+3. Ensure `pnpm test` runs successfully
+
+**Verification:**
+- `pnpm test` exits 0
+- Basic coverage of critical paths
+
+---
+
+*Web Phase 2 audit tasks: 11 items (3 P1, 4 P2, 4 P3)*
+*All tasks completed: 2026-01-14*

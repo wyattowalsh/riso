@@ -10,6 +10,8 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilte
 mod config;
 mod error;
 mod tools;
+mod resources;
+mod prompts;
 
 use config::Config;
 
@@ -53,40 +55,81 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
-async fn run_stdio() -> Result<(), Box<dyn std::error::Error>> {
-    use rmcp::Server;
+{%- if mcp_transport in ['sse', 'http'] %}
+use axum::{
+    routing::{get, post},
+    Router,
+};
+use std::net::SocketAddr;
+use std::sync::Arc;
+use tower_http::trace::TraceLayer;
 
-    let server = Server::builder()
+mod transport;
+{%- endif %}
+
+// ... (existing imports kept or implied context)
+
+// Helper to build the server
+fn build_server() -> rmcp::Server {
+    let server = rmcp::Server::builder()
         .name(SERVER_NAME)
         .version(VERSION)
         .build();
 
-    // Register tools
     tools::register(&server);
+    resources::register(&server);
+    prompts::register(&server);
+    server
+}
 
+async fn run_stdio() -> Result<(), Box<dyn std::error::Error>> {
+    let server = build_server();
     server.run_stdio().await?;
     Ok(())
 }
 
 async fn run_sse(host: &str, port: u16) -> Result<(), Box<dyn std::error::Error>> {
-    // EXTENSION POINT: Implement SSE transport with axum
-    // See: https://docs.rs/rmcp/latest/rmcp/ for transport options
-    tracing::warn!(
-        "SSE transport not yet implemented, falling back to stdio. \
-         Requested: http://{}:{}",
-        host, port
-    );
-    run_stdio().await
+{%- if mcp_transport in ['sse', 'http'] %}
+    let server = build_server();
+    let state = Arc::new(transport::http::AppState { server: Arc::new(server) });
+
+    let app = Router::new()
+        .route("/sse", get(transport::sse::handle_sse))
+        .route("/mcp", post(transport::http::handle_request))
+        .layer(TraceLayer::new_for_http())
+        .with_state(state);
+
+    let addr: SocketAddr = format!("{}:{}", host, port).parse()?;
+    tracing::info!("SSE server listening on {}", addr);
+    
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
+    Ok(())
+{%- else %}
+    tracing::error!("SSE transport not enabled in this build. Please regenerate with mcp_transport='sse'.");
+    std::process::exit(1);
+{%- endif %}
 }
 
 async fn run_http(host: &str, port: u16) -> Result<(), Box<dyn std::error::Error>> {
-    // EXTENSION POINT: Implement HTTP streaming transport with axum
-    // See: https://docs.rs/rmcp/latest/rmcp/ for transport options
-    tracing::warn!(
-        "HTTP transport not yet implemented, falling back to stdio. \
-         Requested: http://{}:{}",
-        host, port
-    );
-    run_stdio().await
+{%- if mcp_transport in ['sse', 'http'] %}
+    let server = build_server();
+    let state = Arc::new(transport::http::AppState { server: Arc::new(server) });
+
+    let app = Router::new()
+        .route("/mcp", post(transport::http::handle_request))
+        .layer(TraceLayer::new_for_http())
+        .with_state(state);
+
+    let addr: SocketAddr = format!("{}:{}", host, port).parse()?;
+    tracing::info!("HTTP server listening on {}", addr);
+    
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
+    Ok(())
+{%- else %}
+    tracing::error!("HTTP transport not enabled in this build. Please regenerate with mcp_transport='http'.");
+    std::process::exit(1);
+{%- endif %}
 }
 {%- endif %}

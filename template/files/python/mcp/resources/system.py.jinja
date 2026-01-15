@@ -1,0 +1,43 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'python' and mcp_example_tools -%}
+"""System resources - basic system information access.
+
+Demonstrates resource implementation.
+"""
+
+from __future__ import annotations
+
+import platform
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fastmcp import FastMCP
+
+
+def register_system_resources(mcp: FastMCP) -> None:
+    """Register system resources with the MCP server.
+
+    Parameters
+    ----------
+    mcp
+        FastMCP server instance
+    """
+
+    @mcp.resource("system://info")
+    def get_system_info() -> str:
+        """Get basic system information.
+        
+        Returns JSON string with OS details.
+        """
+        import json
+        
+        info = {
+            "system": platform.system(),
+            "release": platform.release(),
+            "version": platform.version(),
+            "machine": platform.machine(),
+            "processor": platform.processor(),
+            "python_version": platform.python_version(),
+        }
+        return json.dumps(info, indent=2)
+
+{%- endif %}

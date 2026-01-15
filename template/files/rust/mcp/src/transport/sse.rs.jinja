@@ -1,0 +1,28 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'rust' and mcp_transport in ['sse', 'http'] -%}
+use axum::{
+    extract::State,
+    response::sse::{Event, Sse},
+};
+use futures::stream::{self, Stream};
+use std::{convert::Infallible, sync::Arc, time::Duration};
+use tokio_stream::StreamExt;
+use crate::transport::http::AppState;
+
+pub async fn handle_sse(
+    State(_state): State<Arc<AppState>>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    tracing::info!("New SSE connection established");
+
+    // TODO: Connect to actual MCP event stream
+    // let stream = state.server.event_stream()....
+
+    // Simple keep-alive stream for now
+    let stream = stream::repeat_with(|| {
+        Event::default().comment("keep-alive")
+    })
+    .map(Ok)
+    .throttle(Duration::from_secs(15));
+
+    Sse::new(stream).keep_alive(axum::response::sse::KeepAlive::default())
+}
+{%- endif -%}

@@ -6,6 +6,9 @@ import type { ReactNode } from 'react';
 {%- if fumadocs_ai_search == 'enabled' %}
 import { AISearchTrigger } from '@/components/search/ai-search';
 {%- endif %}
+{%- if fumadocs_banner == 'enabled' %}
+import { Banner } from '@/components/banner';
+{%- endif %}
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -21,6 +24,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={inter.className} suppressHydrationWarning>
       <body className="flex flex-col min-h-screen">
+{%- if fumadocs_banner == 'enabled' %}
+        <Banner id="announcement">
+          🚀 <strong>New:</strong> Check out our latest release!{' '}
+          <a href="/docs/changelog" className="underline hover:no-underline">
+            Learn more →
+          </a>
+        </Banner>
+{%- endif %}
         <RootProvider
 {%- if fumadocs_search_provider != 'none' %}
           search={{

@@ -27,6 +27,17 @@ def register_template_resources(mcp: FastMCP) -> None:
         FastMCP server instance
     """
     config = get_config()
+    max_bytes = config.max_response_size_mb * 1024 * 1024
+
+    def _read_with_limit(path: Path) -> str:
+        if not path.exists():
+            return f"# {path.name} not found"
+        try:
+            if path.stat().st_size > max_bytes:
+                return f"# {path.name} exceeds {config.max_response_size_mb}MB limit"
+        except OSError:
+            return f"# {path.name} could not be accessed"
+        return path.read_text(encoding="utf-8")
 
     @mcp.resource("riso://template/copier.yml")
     def get_copier_yml() -> str:
@@ -42,10 +53,7 @@ def register_template_resources(mcp: FastMCP) -> None:
             template_path = get_template_path()
 
         copier_yml = template_path / "copier.yml"
-        if not copier_yml.exists():
-            return "# copier.yml not found"
-
-        return copier_yml.read_text(encoding="utf-8")
+        return _read_with_limit(copier_yml)
 
     @mcp.resource("riso://template/files/python/pyproject.toml.jinja")
     def get_pyproject_template() -> str:
@@ -61,10 +69,7 @@ def register_template_resources(mcp: FastMCP) -> None:
             template_path = get_template_path()
 
         pyproject = template_path / "files" / "python" / "pyproject.toml.jinja"
-        if not pyproject.exists():
-            return "# pyproject.toml.jinja not found"
-
-        return pyproject.read_text(encoding="utf-8")
+        return _read_with_limit(pyproject)
 
     @mcp.resource("riso://template/files/shared/module_catalog.json.jinja")
     def get_module_catalog_template() -> str:
@@ -83,10 +88,7 @@ def register_template_resources(mcp: FastMCP) -> None:
         if not catalog.exists():
             catalog = template_path / "files" / "shared" / "module_catalog.json"
 
-        if not catalog.exists():
-            return "// module_catalog.json not found"
-
-        return catalog.read_text(encoding="utf-8")
+        return _read_with_limit(catalog)
 
     @mcp.resource("riso://template/hooks/pre_gen_project.py")
     def get_pre_gen_hook() -> str:
@@ -101,10 +103,7 @@ def register_template_resources(mcp: FastMCP) -> None:
             template_path = get_template_path()
 
         hook = template_path / "hooks" / "pre_gen_project.py"
-        if not hook.exists():
-            return "# pre_gen_project.py not found"
-
-        return hook.read_text(encoding="utf-8")
+        return _read_with_limit(hook)
 
     @mcp.resource("riso://template/hooks/post_gen_project.py")
     def get_post_gen_hook() -> str:
@@ -119,10 +118,7 @@ def register_template_resources(mcp: FastMCP) -> None:
             template_path = get_template_path()
 
         hook = template_path / "hooks" / "post_gen_project.py"
-        if not hook.exists():
-            return "# post_gen_project.py not found"
-
-        return hook.read_text(encoding="utf-8")
+        return _read_with_limit(hook)
 
     @mcp.resource("riso://template/structure")
     def get_template_structure() -> str:

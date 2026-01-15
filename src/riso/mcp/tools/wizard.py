@@ -68,7 +68,12 @@ def register_wizard_tools(mcp: FastMCP, session_manager: SessionManager) -> None
             - total_steps: Total number of steps
             - prompts_for_step: Prompts to answer for current step
         """
-        from riso.template import get_prompts, get_defaults, get_template_path
+        from riso.template import (
+            get_defaults,
+            get_prompts,
+            get_template_path,
+            load_sample_answers,
+        )
 
         session = session_manager.create_session(
             project_name=project_name,
@@ -84,12 +89,33 @@ def register_wizard_tools(mcp: FastMCP, session_manager: SessionManager) -> None
         defaults = get_defaults(template_path)
         session.set_answers(defaults)
 
+        samples_path = config.samples_path
+        if not samples_path.exists():
+            from riso.template import get_samples_path
+
+            samples_path = get_samples_path()
+
+        if template_variant:
+            variant_answers = load_sample_answers(
+                samples_path=samples_path,
+                variant=template_variant,
+            )
+            if variant_answers:
+                session.set_answers(variant_answers)
+
         if project_name:
             session.set_answer("project_name", project_name)
             session.set_answer("project_slug", project_name.replace(" ", "-").lower())
             session.set_answer(
                 "package_name", project_name.replace(" ", "-").lower().replace("-", "_")
             )
+
+        if destination:
+            session.destination = destination
+            session.set_answer("destination", destination)
+
+        if session.answers.get("project_name"):
+            session.project_name = str(session.answers["project_name"])
 
         # Get prompts for current step
         all_prompts = get_prompts(template_path)
@@ -99,6 +125,11 @@ def register_wizard_tools(mcp: FastMCP, session_manager: SessionManager) -> None
             for name in current_step.prompts
             if name in all_prompts
         }
+        if "destination" in current_step.prompts and "destination" not in step_prompts:
+            step_prompts["destination"] = {
+                "type": "str",
+                "help": "Output directory for the generated project",
+            }
 
         return {
             "session_id": session.session_id,
@@ -145,18 +176,46 @@ def register_wizard_tools(mcp: FastMCP, session_manager: SessionManager) -> None
         # Store answers
         session.set_answers(answers)
 
+        if "project_name" in answers:
+            name_value = str(answers["project_name"])
+            session.project_name = name_value
+            session.set_answer("project_slug", name_value.replace(" ", "-").lower())
+            session.set_answer(
+                "package_name", name_value.replace(" ", "-").lower().replace("-", "_")
+            )
+
+        if "destination" in answers:
+            session.destination = str(answers["destination"])
+
         # Validate current answers
         template_path = config.template_path
         if not template_path.exists():
             template_path = get_template_path()
 
-        validation = validate_answers(session.answers, template_path)
+        all_prompts = get_prompts(template_path)
+        validation_answers = {
+            key: value for key, value in session.answers.items() if key in all_prompts
+        }
+        validation = validate_answers(
+            validation_answers,
+            template_path,
+            limit_to_answers=True,
+        )
         session.validation_errors = validation.errors
+
+        if "destination" in session.steps[session.current_step].prompts:
+            if not session.destination:
+                session.validation_errors.append("destination: required")
 
         # Mark current step as completed
         current_step = session.steps[session.current_step]
-        current_step.completed = True
-        current_step.data = {name: session.answers.get(name) for name in current_step.prompts}
+        current_step.data = {
+            name: session.answers.get(name) for name in current_step.prompts
+        }
+        error_keys = {err.split(":", 1)[0] for err in session.validation_errors}
+        current_step.completed = not any(
+            name in error_keys for name in current_step.prompts
+        )
 
         # Advance if requested and not at end
         if advance and session.current_step < len(session.steps) - 1:
@@ -165,16 +224,20 @@ def register_wizard_tools(mcp: FastMCP, session_manager: SessionManager) -> None
         # Check if all steps completed
         if session.current_step >= len(session.steps) - 1:
             if all(s.completed or not s.required for s in session.steps):
-                session.is_complete = True
+                session.is_complete = len(session.validation_errors) == 0
 
         # Get prompts for new current step
-        all_prompts = get_prompts(template_path)
         new_step = session.steps[session.current_step]
         step_prompts = {
             name: all_prompts.get(name, {})
             for name in new_step.prompts
             if name in all_prompts
         }
+        if "destination" in new_step.prompts and "destination" not in step_prompts:
+            step_prompts["destination"] = {
+                "type": "str",
+                "help": "Output directory for the generated project",
+            }
 
         return {
             "session_id": session.session_id,
@@ -223,6 +286,11 @@ def register_wizard_tools(mcp: FastMCP, session_manager: SessionManager) -> None
             for name in current_step.prompts
             if name in all_prompts
         }
+        if "destination" in current_step.prompts and "destination" not in step_prompts:
+            step_prompts["destination"] = {
+                "type": "str",
+                "help": "Output directory for the generated project",
+            }
 
         return {
             "session_id": session.session_id,
@@ -288,6 +356,7 @@ def register_wizard_tools(mcp: FastMCP, session_manager: SessionManager) -> None
     def wizard_generate(
         session_id: str,
         destination: str | None = None,
+        force: bool = False,
     ) -> dict[str, Any]:
         """Generate the project from a completed wizard session.
 
@@ -297,6 +366,8 @@ def register_wizard_tools(mcp: FastMCP, session_manager: SessionManager) -> None
             Completed wizard session ID
         destination
             Override destination directory (optional)
+        force
+            Overwrite existing destination (default: False)
 
         Returns
         -------
@@ -309,6 +380,7 @@ def register_wizard_tools(mcp: FastMCP, session_manager: SessionManager) -> None
         """
         from riso.template import (
             get_template_path,
+            get_prompts,
             load_copier_config,
             merge_answers_with_defaults,
             run_generator,
@@ -332,22 +404,32 @@ def register_wizard_tools(mcp: FastMCP, session_manager: SessionManager) -> None
             project_name = session.answers.get("project_name", "riso-project")
             final_destination = str(Path.cwd() / project_name)
 
-        # Build final answers
+        # Build final answers (exclude non-template keys)
         copier_config = load_copier_config(template_path)
         project_name = session.answers.get("project_name", "riso-project")
+        prompt_keys = set(get_prompts(template_path).keys())
+        filtered_answers = {
+            key: value
+            for key, value in session.answers.items()
+            if key in prompt_keys
+        }
         final_answers = merge_answers_with_defaults(
             project_name=project_name,
             config=copier_config,
-            provided_answers=session.answers,
+            provided_answers=filtered_answers,
         )
 
         # Generate
-        result = run_generator(
-            destination=Path(final_destination),
-            data=final_answers,
-            template_path=template_path,
-            force=True,
-        )
+        try:
+            result = run_generator(
+                destination=Path(final_destination).expanduser().resolve(),
+                data=final_answers,
+                template_path=template_path,
+                force=force,
+                timeout=config.timeouts.copier_copy,
+            )
+        except Exception as exc:
+            raise CopierOperationError("copy", str(exc)) from exc
 
         if result.success:
             # Cleanup session

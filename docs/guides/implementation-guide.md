@@ -33,6 +33,8 @@ Use this checklist when rolling out new modules or refreshing existing ones.
 
 ## Delivery
 
+- Regenerate the matrix snapshot with `uv run python scripts/ci/generate_matrix_data.py`
+  (and `render_matrix.py` if prompts or samples changed).
 - Regenerate sample renders with `scripts/render-samples.sh` to keep fixtures and
   metadata current.
 - Commit updated lockfiles and docs assets so CI can reuse caches.

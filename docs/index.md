@@ -26,6 +26,10 @@
       <iconify-icon icon="tabler:printer"></iconify-icon>
       Get Started
     </a>
+    <a href="/" class="btn btn-secondary">
+      <iconify-icon icon="tabler:settings"></iconify-icon>
+      Open Configurator
+    </a>
     <a href="tools/index.html" class="btn btn-secondary">
       <iconify-icon icon="tabler:palette"></iconify-icon>
       Browse Tools
@@ -258,6 +262,10 @@ and in CI to prevent regressions.
   <a href="tools/riso-mcp-server.html" class="quick-link">
     <iconify-icon icon="tabler:plug-connected"></iconify-icon>
     MCP Server
+  </a>
+  <a href="guides/matrix-data.html" class="quick-link">
+    <iconify-icon icon="tabler:layout-grid"></iconify-icon>
+    Matrix Data
   </a>
   <a href="https://github.com/openai/riso" class="quick-link" target="_blank">
     <iconify-icon icon="tabler:brand-github"></iconify-icon>

@@ -90,7 +90,7 @@ DEFAULT_WIZARD_STEPS = [
     WizardStep(
         name="project_basics",
         title="Project Basics",
-        prompts=["project_name", "project_layout"],
+        prompts=["project_name", "project_layout", "project_language"],
         required=True,
     ),
     WizardStep(

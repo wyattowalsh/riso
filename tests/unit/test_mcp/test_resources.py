@@ -71,7 +71,8 @@ class TestResourceIntegration:
     def test_all_resources_registered_on_server(self):
         """Test that all resources are properly set up on server."""
         from riso.mcp.server import mcp as server
+        from riso.mcp.config import load_config
 
         # The server should be properly configured
         assert server is not None
-        assert server.name == "riso-mcp"
+        assert server.name == load_config().name

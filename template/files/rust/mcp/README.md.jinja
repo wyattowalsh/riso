@@ -1,0 +1,49 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'rust' -%}
+# {{ project_name }} MCP Server
+
+Rust implementation of the Model Context Protocol (MCP) server.
+
+## Features
+
+- **Language**: Rust 1.75+
+- **Transport**: {{ mcp_transport | upper }} (support for stdio, sse, http)
+- **Framework**: Axum (for web transports), Tokio (async runtime)
+- **SDK**: `rmcp`
+
+## Running
+
+You can use `just` for common tasks:
+
+```bash
+just build    # Build the project
+just test     # Run tests
+just quality  # Run format checks, clippy, and tests
+just run      # Run the server
+```
+
+### Stdio Mode (Default)
+Suitable for local integration with Claude Desktop or generic MCP clients.
+
+```bash
+cargo run -- --transport stdio
+```
+
+### SSE Mode
+Server-Sent Events for streaming updates.
+
+```bash
+cargo run -- --transport sse --port 3000
+```
+
+### HTTP Mode
+Standard JSON-RPC over HTTP.
+
+```bash
+cargo run -- --transport http --port 3000
+```
+
+## Adding Tools
+
+Edit `src/tools/mod.rs` to register new tools. Implement them using the `#[tool]` macro from `rmcp`.
+
+{%- endif -%}

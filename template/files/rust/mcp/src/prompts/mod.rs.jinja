@@ -1,0 +1,21 @@
+{%- if mcp_module == 'enabled' and mcp_language == 'rust' -%}
+//! MCP Prompts registration
+//!
+//! Registers all available prompts with the MCP server.
+
+use rmcp::Server;
+
+{%- if mcp_example_tools %}
+mod review;
+{%- endif %}
+
+/// Register all prompts with the MCP server
+pub fn register(server: &Server) {
+{%- if mcp_example_tools %}
+    review::register(server);
+{%- else %}
+    // Add your prompt registrations here
+    let _ = server;
+{%- endif %}
+}
+{%- endif %}

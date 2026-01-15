@@ -1,8 +1,23 @@
 {%- if docs_site == 'fumadocs' -%}
-import { defineDocs, defineConfig } from 'fumadocs-mdx/config';
+import { defineDocs, defineConfig{%- if fumadocs_last_updated == 'enabled' %}, frontmatterSchema{%- endif %} } from 'fumadocs-mdx/config';
+{%- if fumadocs_twoslash == 'enabled' %}
+import { transformerTwoslash } from 'fumadocs-twoslash';
+{%- endif %}
+{%- if fumadocs_math == 'enabled' %}
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+{%- endif %}
+{%- if fumadocs_last_updated == 'enabled' %}
+import { z } from 'zod';
+{%- endif %}
 
 export const docs = defineDocs({
   dir: 'content/docs',
+{%- if fumadocs_last_updated == 'enabled' %}
+  schema: frontmatterSchema.extend({
+    lastModified: z.date().optional(),
+  }),
+{%- endif %}
 {%- if fumadocs_llms_txt == 'enabled' %}
   postprocess: {
     includeProcessedMarkdown: true,
@@ -19,11 +34,34 @@ export const blog = defineDocs({
 
 export default defineConfig({
   mdxOptions: {
+{%- if fumadocs_math == 'enabled' %}
+    remarkPlugins: [remarkMath],
+    rehypePlugins: [rehypeKatex],
+{%- endif %}
     rehypeCodeOptions: {
       themes: {
+{%- if fumadocs_code_theme == 'catppuccin' %}
+        light: 'catppuccin-latte',
+        dark: 'catppuccin-mocha',
+{%- elif fumadocs_code_theme == 'dracula' %}
+        light: 'github-light',
+        dark: 'dracula',
+{%- elif fumadocs_code_theme == 'nord' %}
+        light: 'nord',
+        dark: 'nord',
+{%- elif fumadocs_code_theme == 'one' %}
+        light: 'one-light',
+        dark: 'one-dark-pro',
+{%- else %}
         light: 'github-light',
         dark: 'github-dark',
+{%- endif %}
       },
+{%- if fumadocs_twoslash == 'enabled' %}
+      transformers: [
+        transformerTwoslash(),
+      ],
+{%- endif %}
     },
   },
 });

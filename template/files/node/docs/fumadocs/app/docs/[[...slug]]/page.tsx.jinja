@@ -6,6 +6,9 @@ import defaultMdxComponents from 'fumadocs-ui/mdx';
 {%- if fumadocs_llms_txt == 'enabled' %}
 import { PageActions } from '@/components/page-actions';
 {%- endif %}
+{%- if fumadocs_feedback == 'enabled' %}
+import { FeedbackWidget } from '@/components/feedback';
+{%- endif %}
 {%- if fumadocs_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
 import { createOpenAPI } from 'fumadocs-openapi/server';
 
@@ -27,12 +30,19 @@ export default async function Page({ params }: PageProps) {
     <DocsPage
       toc={page.data.toc}
       full={page.data.full}
+      tableOfContent={{ style: 'clerk' }}
+      tableOfContentPopover={{ style: 'clerk' }}
+{%- if fumadocs_last_updated == 'enabled' %}
+      lastUpdate={page.data.lastModified}
+{%- endif %}
+{%- if fumadocs_edit_on_github == 'enabled' %}
       editOnGithub={{
         owner: '{{ project_slug }}',
         repo: '{{ project_slug }}',
         sha: 'main',
         path: `content/docs/${page.file.path}`,
       }}
+{%- endif %}
     >
 {%- if fumadocs_llms_txt == 'enabled' %}
       <PageActions
@@ -49,6 +59,9 @@ export default async function Page({ params }: PageProps) {
           APIPage: openapi.APIPage,
 {%- endif %}
         }} />
+{%- if fumadocs_feedback == 'enabled' %}
+        <FeedbackWidget pageUrl={page.url} />
+{%- endif %}
       </DocsBody>
     </DocsPage>
   );

@@ -204,5 +204,6 @@ class TestToolIntegration:
     def test_server_name(self):
         """Test that server has correct name."""
         from riso.mcp.server import mcp
+        from riso.mcp.config import load_config
 
-        assert mcp.name == "riso-mcp"
+        assert mcp.name == load_config().name

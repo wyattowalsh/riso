@@ -18,6 +18,9 @@ uv run sphinx-build docs docs/_build
 - **Automation:** `scripts/render-samples.sh` (from the template) shows how the
   project is rendered and exercised; use it as a baseline for your own smoke
   scripts.
+- **Matrix snapshot:** `samples/metadata/matrix-data.json` aggregates prompt
+  defaults and sample variants; see {doc}`guides/matrix-data` before changing
+  options.
 - **Quality:** The bundled Makefile/Taskipy quality targets live in
   `quality/` (Makefile) and `.taskipy.toml` so `make quality` and
   `uv run task quality` stay in lockstep.

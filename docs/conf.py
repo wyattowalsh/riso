@@ -175,6 +175,7 @@ html_theme_options = {
     "toctree_titles_only": True,
     "toctree_includehidden": True,
     "nav_links": [
+        {"title": "🧭 Configurator", "url": "/"},
         {"title": "📖 Guides", "url": "guides/index"},
         {"title": "🧰 Tools", "url": "tools/index"},
         {"title": "📚 Reference", "url": "api/index"},

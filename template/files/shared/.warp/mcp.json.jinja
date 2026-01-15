@@ -1,0 +1,39 @@
+{#- Warp Agent MCP configuration (.warp/mcp.json) -#}
+{#- Warp reads MCP servers from Settings > AI > Manage MCP servers -#}
+{#- This file can be imported via the + Add button in Warp's MCP settings -#}
+{
+  "mcpServers": {
+{%- set servers = [] %}
+{%- if ai_tools_mcp_thinking | default(true) %}
+{%- set _ = servers.append('"sequential-thinking": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]}') %}
+{%- set _ = servers.append('"structured-thinking": {"command": "npx", "args": ["-y", "structured-thinking"]}') %}
+{%- set _ = servers.append('"cascade-thinking": {"command": "npx", "args": ["-y", "cascade-thinking-mcp"]}') %}
+{%- set _ = servers.append('"shannon-thinking": {"command": "npx", "args": ["-y", "server-shannon-thinking@latest"]}') %}
+{%- set _ = servers.append('"lotus-wisdom-mcp": {"command": "npx", "args": ["-y", "lotus-wisdom-mcp"]}') %}
+{%- set _ = servers.append('"think-strategies": {"command": "npx", "args": ["-y", "github:aaronsb/think-strategies"]}') %}
+{%- set _ = servers.append('"crash": {"command": "npx", "args": ["-y", "crash-mcp"]}') %}
+{%- endif %}
+{%- if ai_tools_mcp_web | default(true) %}
+{%- set _ = servers.append('"fetch": {"command": "npx", "args": ["mcp-fetch-server"]}') %}
+{%- set _ = servers.append('"fetcher": {"command": "npx", "args": ["-y", "fetcher-mcp"]}') %}
+{%- set _ = servers.append('"playwright": {"command": "npx", "args": ["@playwright/mcp@latest"]}') %}
+{%- set _ = servers.append('"deepwiki": {"url": "https://mcp.deepwiki.com/mcp"}') %}
+{%- endif %}
+{%- if ai_tools_mcp_documents | default(true) %}
+{%- set _ = servers.append('"docling": {"command": "uvx", "args": ["--from=docling-mcp", "docling-mcp-server"]}') %}
+{%- set _ = servers.append('"repomix": {"command": "npx", "args": ["-y", "repomix", "--mcp"]}') %}
+{%- endif %}
+{%- if ai_tools_mcp_utilities | default(true) %}
+{%- set _ = servers.append('"memory": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-memory"]}') %}
+{%- endif %}
+{%- if ai_tools_mcp_search | default(false) %}
+{%- set _ = servers.append('"brave-search": {"command": "npx", "args": ["-y", "@brave/brave-search-mcp-server"], "env": {"BRAVE_API_KEY": "${BRAVE_API_KEY}"}}') %}
+{%- set _ = servers.append('"tavily": {"command": "npx", "args": ["-y", "tavily-mcp"], "env": {"TAVILY_API_KEY": "${TAVILY_API_KEY}"}}') %}
+{%- set _ = servers.append('"context7": {"command": "npx", "args": ["-y", "@upstash/context7-mcp"], "env": {"CONTEXT7_API_KEY": "${CONTEXT7_API_KEY}"}}') %}
+{%- endif %}
+{%- if mcp_module == 'enabled' %}
+{%- set _ = servers.append('"' ~ project_slug ~ '": {"command": "uv", "args": ["run", "--group", "mcp", "python", "-m", "' ~ package_name ~ '.mcp"], "working_directory": "."}') %}
+{%- endif %}
+    {{ servers | join(',\n    ') }}
+  }
+}

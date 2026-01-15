@@ -79,7 +79,7 @@ Interactive multi-step project generation:
 | `wizard_step` | Submit answers for current step |
 | `wizard_back` | Go back to previous step |
 | `wizard_status` | Get current session state |
-| `wizard_generate` | Generate project from completed session |
+| `wizard_generate` | Generate project from completed session (supports `force`) |
 | `wizard_cancel` | Cancel and cleanup session |
 | `wizard_list_sessions` | List all active sessions |
 
@@ -91,12 +91,15 @@ result = wizard_start(project_name="my-app", destination="~/projects/my-app")
 session_id = result["session_id"]
 
 # Complete each step
-wizard_step(session_id, {"project_name": "my-app", "project_layout": "single-package"})
+wizard_step(session_id, {"project_name": "my-app", "project_layout": "single-package", "project_language": "python"})
 wizard_step(session_id, {"quality_profile": "strict", "python_versions": ["3.11", "3.12"]})
 wizard_step(session_id, {"cli_module": "enabled", "api_tracks": "python"})
 
 # Generate the project
 wizard_generate(session_id)
+
+# Overwrite an existing destination
+wizard_generate(session_id, force=True)
 ```
 
 ## Resources
@@ -106,10 +109,21 @@ The server exposes the following resources:
 | URI | Description |
 |-----|-------------|
 | `riso://template/copier.yml` | Main template configuration |
-| `riso://template/files/{path}` | Template files |
+| `riso://template/files/python/pyproject.toml.jinja` | Python pyproject template |
+| `riso://template/files/shared/module_catalog.json.jinja` | Module catalog template |
+| `riso://template/hooks/pre_gen_project.py` | Pre-generation hook |
+| `riso://template/hooks/post_gen_project.py` | Post-generation hook |
+| `riso://template/structure` | Template file tree (depth-limited) |
 | `riso://samples` | List of sample variants |
-| `riso://samples/{variant}/answers` | Sample answer files |
-| `riso://catalog/modules` | Full module catalog |
+| `riso://samples/default/answers` | Default sample answers |
+| `riso://samples/full-stack/answers` | Full-stack sample answers |
+| `riso://samples/monorepo/answers` | Monorepo sample answers |
+| `riso://samples/metadata/render_matrix.json` | Render matrix metadata |
+| `riso://samples/metadata/module_success.json` | Module success rates |
+| `riso://catalog/modules` | Full module catalog (markdown) |
+| `riso://catalog/modules.json` | Full module catalog (JSON) |
+| `riso://catalog/prompts` | Prompt catalog (markdown) |
+| `riso://catalog/dependencies` | Dependency map |
 
 ## Prompts
 
@@ -167,10 +181,10 @@ src/riso/mcp/
 
 ```bash
 # Run MCP unit tests
-uv run pytest tests/unit/mcp/ -v
+uv run pytest tests/unit/test_mcp/ -v
 
 # With coverage
-uv run pytest tests/unit/mcp/ --cov=src/riso/mcp
+uv run pytest tests/unit/test_mcp/ --cov=src/riso/mcp
 ```
 
 ### Adding New Tools
