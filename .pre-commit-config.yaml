@@ -172,6 +172,11 @@ repos:
         entry: uv run python scripts/ci/validate_jinja_templates.py
         language: system
         files: \.jinja$
+        # Exclude files with syntax conflicts:
+        # - TypeScript: type annotations (: Type) conflict with Jinja
+        # - Markdown: may contain code blocks with conflicting syntax
+        # - Shell scripts: ${#array[@]} bash syntax conflicts with Jinja comments
+        exclude: \.(tsx?|md|sh)\.jinja$
         pass_filenames: true
 
   # ============================================
