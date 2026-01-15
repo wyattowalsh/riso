@@ -782,14 +782,18 @@ class TestMainWithResults:
                 return result
             # Validation fails
             result.returncode = 1
-            result.stdout = json.dumps([{
-                "line": 1,
-                "code": "DL3006",
-                "message": "Error",
-                "column": 1,
-                "file": str(dockerfile),
-                "level": "error"
-            }])
+            result.stdout = json.dumps(
+                [
+                    {
+                        "line": 1,
+                        "code": "DL3006",
+                        "message": "Error",
+                        "column": 1,
+                        "file": str(dockerfile),
+                        "level": "error",
+                    }
+                ]
+            )
             result.stderr = ""
             return result
 

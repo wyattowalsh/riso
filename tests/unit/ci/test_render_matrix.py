@@ -332,9 +332,11 @@ class TestRenderVariant:
         answers_file.write_text("project_name: Test\napi_tracks: none\n")
 
         # Mock subprocess.run to avoid actually running render script
-        with patch("subprocess.run") as mock_run, \
-             patch.object(render_matrix, "load_post_gen_metadata") as mock_metadata, \
-             patch.object(render_matrix, "load_smoke_results") as mock_smoke:
+        with (
+            patch("subprocess.run") as mock_run,
+            patch.object(render_matrix, "load_post_gen_metadata") as mock_metadata,
+            patch.object(render_matrix, "load_smoke_results") as mock_smoke,
+        ):
             mock_run.return_value = MagicMock(returncode=0)
             mock_metadata.return_value = {"workflow_validation": "passed"}
             mock_smoke.return_value = None
@@ -367,9 +369,11 @@ class TestRenderVariant:
         (docker_dir / "Dockerfile").write_text("FROM python:3.11")
         (render_dir / "docker-compose.yml").write_text("version: '3'")
 
-        with patch("subprocess.run") as mock_run, \
-             patch.object(render_matrix, "load_post_gen_metadata") as mock_metadata, \
-             patch.object(render_matrix, "load_smoke_results") as mock_smoke:
+        with (
+            patch("subprocess.run") as mock_run,
+            patch.object(render_matrix, "load_post_gen_metadata") as mock_metadata,
+            patch.object(render_matrix, "load_smoke_results") as mock_smoke,
+        ):
             # First call is render script, second could be hadolint
             mock_run.return_value = MagicMock(returncode=0)
             mock_metadata.return_value = {"workflow_validation": "passed"}
@@ -397,9 +401,11 @@ class TestRenderVariant:
         answers_file = variant_dir / "copier-answers.yml"
         answers_file.write_text("project_name: API\napi_tracks: python\n")
 
-        with patch("subprocess.run") as mock_run, \
-             patch.object(render_matrix, "load_post_gen_metadata") as mock_metadata, \
-             patch.object(render_matrix, "load_smoke_results") as mock_smoke:
+        with (
+            patch("subprocess.run") as mock_run,
+            patch.object(render_matrix, "load_post_gen_metadata") as mock_metadata,
+            patch.object(render_matrix, "load_smoke_results") as mock_smoke,
+        ):
             mock_run.return_value = MagicMock(returncode=0)
             mock_metadata.return_value = {"workflow_validation": "passed"}
             mock_smoke.return_value = None
@@ -429,7 +435,9 @@ class TestMain:
             "variants": [
                 {
                     "variant": "default",
-                    "smoke_results": {"results": [{"module": "cli", "status": "passed"}]}
+                    "smoke_results": {
+                        "results": [{"module": "cli", "status": "passed"}]
+                    },
                 }
             ]
         }
@@ -446,7 +454,7 @@ class TestMain:
 
     def test_main_renders_variants(self, temp_dir, monkeypatch):
         """Should render all discovered variants."""
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import patch
         import render_matrix
 
         metadata_dir = temp_dir / "metadata"
@@ -458,8 +466,10 @@ class TestMain:
         monkeypatch.setattr(render_matrix, "METADATA_DIR", metadata_dir)
         monkeypatch.setattr(render_matrix, "SAMPLES_DIR", samples_dir)
 
-        with patch("sys.argv", ["render_matrix.py"]), \
-             patch.object(render_matrix, "render_variant") as mock_render:
+        with (
+            patch("sys.argv", ["render_matrix.py"]),
+            patch.object(render_matrix, "render_variant") as mock_render,
+        ):
             mock_render.return_value = {
                 "variant": "test",
                 "answers": str(variant_dir / "copier-answers.yml"),
@@ -491,9 +501,17 @@ class TestMain:
 
         monkeypatch.setattr(render_matrix, "METADATA_DIR", metadata_dir)
 
-        with patch("sys.argv", ["render_matrix.py", "--skip-render",
-                               "--quality-artifacts", str(artifact_file),
-                               "--retention-days", "30"]):
+        with patch(
+            "sys.argv",
+            [
+                "render_matrix.py",
+                "--skip-render",
+                "--quality-artifacts",
+                str(artifact_file),
+                "--retention-days",
+                "30",
+            ],
+        ):
             render_matrix.main()
 
         result = json.loads((metadata_dir / "render_matrix.json").read_text())

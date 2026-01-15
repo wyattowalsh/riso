@@ -10,6 +10,7 @@ Usage:
     logger.info("Processing file...")
     logger.error("Validation failed")
 """
+
 import sys
 from loguru import logger
 

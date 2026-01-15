@@ -343,11 +343,14 @@ def register_wizard_tools(mcp: FastMCP, session_manager: SessionManager) -> None
             "total_steps": len(session.steps),
             "steps": steps_info,
             "answers": session.answers,
-            "project_name": session.project_name or session.answers.get("project_name", ""),
-            "destination": session.destination or session.answers.get("destination", ""),
+            "project_name": session.project_name
+            or session.answers.get("project_name", ""),
+            "destination": session.destination
+            or session.answers.get("destination", ""),
             "is_complete": session.is_complete,
             "validation_errors": session.validation_errors,
-            "ready_to_generate": session.is_complete and len(session.validation_errors) == 0,
+            "ready_to_generate": session.is_complete
+            and len(session.validation_errors) == 0,
             "created_at": session.created_at.isoformat(),
             "last_activity": session.last_activity.isoformat(),
         }
@@ -409,9 +412,7 @@ def register_wizard_tools(mcp: FastMCP, session_manager: SessionManager) -> None
         project_name = session.answers.get("project_name", "riso-project")
         prompt_keys = set(get_prompts(template_path).keys())
         filtered_answers = {
-            key: value
-            for key, value in session.answers.items()
-            if key in prompt_keys
+            key: value for key, value in session.answers.items() if key in prompt_keys
         }
         final_answers = merge_answers_with_defaults(
             project_name=project_name,

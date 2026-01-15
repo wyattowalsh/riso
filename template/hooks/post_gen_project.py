@@ -120,29 +120,51 @@ def docs_guidance(answers: dict[str, str]) -> list[str]:
         ]
         # Add feature-specific guidance
         if answers.get("docusaurus_llms_txt", "").lower() == "enabled":
-            guidance.append("AI docs: After build, find `llms.txt` and `llms-full.txt` in `build/`.")
+            guidance.append(
+                "AI docs: After build, find `llms.txt` and `llms-full.txt` in `build/`."
+            )
         if answers.get("docusaurus_faster", "").lower() == "enabled":
             guidance.append("Performance: Rspack + SWC enabled for 2-4x faster builds.")
         if answers.get("docusaurus_i18n", "").lower() == "enabled":
-            guidance.append("i18n: Generate translations with `pnpm --filter docs-docusaurus write-translations`.")
+            guidance.append(
+                "i18n: Generate translations with `pnpm --filter docs-docusaurus write-translations`."
+            )
         if answers.get("docusaurus_openapi", "").lower() == "enabled":
-            guidance.append("OpenAPI: Update `openapi/openapi.yaml` to regenerate API docs.")
+            guidance.append(
+                "OpenAPI: Update `openapi/openapi.yaml` to regenerate API docs."
+            )
         if answers.get("docusaurus_mermaid", "").lower() == "enabled":
-            guidance.append("Diagrams: Use ```mermaid code blocks for flowcharts, sequence diagrams, etc.")
+            guidance.append(
+                "Diagrams: Use ```mermaid code blocks for flowcharts, sequence diagrams, etc."
+            )
         if answers.get("docusaurus_math", "").lower() == "enabled":
-            guidance.append("Math: Use $inline$ or $$block$$ LaTeX syntax for equations.")
+            guidance.append(
+                "Math: Use $inline$ or $$block$$ LaTeX syntax for equations."
+            )
         if answers.get("docusaurus_show_last_update", "").lower() == "enabled":
-            guidance.append("Git timestamps: Use `fetch-depth: 0` in CI for accurate 'Last updated' times.")
+            guidance.append(
+                "Git timestamps: Use `fetch-depth: 0` in CI for accurate 'Last updated' times."
+            )
         if answers.get("docusaurus_pwa", "").lower() == "enabled":
-            guidance.append("PWA: Update `static/manifest.json` with your app details for offline support.")
+            guidance.append(
+                "PWA: Update `static/manifest.json` with your app details for offline support."
+            )
         if answers.get("docusaurus_comments", "").lower() == "giscus":
-            guidance.append("Comments: Configure Giscus repo/category IDs in `src/components/GiscusComments/`.")
+            guidance.append(
+                "Comments: Configure Giscus repo/category IDs in `src/components/GiscusComments/`."
+            )
         if answers.get("docusaurus_redirects", "").lower() == "enabled":
-            guidance.append("Redirects: Add URL redirects in `docusaurus.config.ts` plugin config.")
+            guidance.append(
+                "Redirects: Add URL redirects in `docusaurus.config.ts` plugin config."
+            )
         if answers.get("docusaurus_announcement_bar", "").lower() == "enabled":
-            guidance.append("Announcement: Edit banner content in `docusaurus.config.ts` themeConfig.")
+            guidance.append(
+                "Announcement: Edit banner content in `docusaurus.config.ts` themeConfig."
+            )
         if answers.get("docusaurus_sitemap", "").lower() == "enabled":
-            guidance.append("Sitemap: sitemap.xml generated automatically at build time.")
+            guidance.append(
+                "Sitemap: sitemap.xml generated automatically at build time."
+            )
         return guidance
     return [
         "Documentation scaffolding skipped (`docs_site=none`). Review docs/guidance/none.md for enabling docs later.",

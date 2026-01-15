@@ -118,7 +118,9 @@ def register_catalog_resources(mcp: FastMCP) -> None:
             choices = prompt.get("choices")
             if choices:
                 lines.append("- **Choices:**")
-                choice_list = list(choices.keys()) if isinstance(choices, dict) else choices
+                choice_list = (
+                    list(choices.keys()) if isinstance(choices, dict) else choices
+                )
                 for choice in choice_list:
                     lines.append(f"  - `{choice}`")
 
