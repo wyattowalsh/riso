@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## <small>1.1.1 (2026-01-15)</small>
+
+* fix(pre-commit): exclude web/public/docs/ from formatting hooks ([e22bd2f](https://github.com/wyattowalsh/riso/commit/e22bd2f))
+
 ## 1.1.0 (2026-01-15)
 
 * feat(web): include pre-built Sphinx docs for Vercel deployment ([1695b51](https://github.com/wyattowalsh/riso/commit/1695b51))
