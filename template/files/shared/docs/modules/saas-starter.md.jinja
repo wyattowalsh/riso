@@ -276,6 +276,51 @@ Visit [http://localhost:3000](http://localhost:3000)
 **Storage**: {% if saas_storage == "r2" %}Cloudflare R2 (S3-compatible, zero egress){% else %}Supabase Storage (RLS policies, transformations){% endif %}  
 **Observability**: {% if saas_observability_sentry %}Sentry (errors){% endif %}{% if saas_observability_datadog %}, Datadog (APM){% endif %}{% if saas_observability_otel %}, OpenTelemetry (traces){% endif %}
 
+{% if saas_blog %}
+### Blog
+
+A blog is integrated with your SaaS application for content marketing and announcements.
+
+**Structure:**
+
+```
+content/blog/
+├── welcome.mdx           # Welcome post
+├── getting-started.mdx   # Getting started guide
+└── [slug].mdx            # Add more posts
+```
+
+**Frontmatter Schema:**
+
+```yaml
+---
+title: Post Title
+description: Brief description
+author: Author Name
+date: 2025-01-15
+tags:
+  - announcement
+  - tutorial
+---
+```
+
+**Routes:**
+
+| URL | Description |
+|-----|-------------|
+| `/blog` | Blog listing page |
+| `/blog/[slug]` | Individual post page |
+| `/api/blog/rss` | RSS feed |
+
+**Adding New Posts:**
+
+1. Create a new `.mdx` file in `content/blog/`
+2. Add frontmatter with title, description, author, date, and tags
+3. Write your content in MDX (Markdown with JSX support)
+
+Posts are automatically sorted by date (newest first) and include reading time estimates.
+
+{% endif %}
 ## Development Workflows
 
 ### Running Tests

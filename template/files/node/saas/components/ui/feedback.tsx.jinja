@@ -1,0 +1,360 @@
+{% if saas_starter_module == "enabled" %}
+/**
+ * Error Boundary & Loading Components
+ * 
+ * Provides:
+ * - Error boundary for catching React errors
+ * - Loading skeletons for async content
+ * - Empty states for no-data scenarios
+ */
+
+{% if saas_runtime == 'nextjs-16' %}
+'use client';
+{% endif %}
+
+import * as React from 'react';
+{% if saas_ui_framework == 'shadcn-ui' %}
+import { Button } from '@/components/ui/button';
+{% endif %}
+
+// ============================================================================
+// Error Boundary
+// ============================================================================
+
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+  onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+/**
+ * Error boundary component for catching and displaying errors
+ * 
+ * @example
+ * ```tsx
+ * <ErrorBoundary fallback={<ErrorFallback />}>
+ *   <YourComponent />
+ * </ErrorBoundary>
+ * ```
+ */
+export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    this.props.onError?.(error, errorInfo);
+    
+    {% if saas_observability_sentry %}
+    // Report to Sentry
+    if (typeof window !== 'undefined') {
+      import('@sentry/nextjs').then((Sentry) => {
+        Sentry.captureException(error, { extra: { errorInfo } });
+      });
+    }
+    {% endif %}
+  }
+
+  render() {
+    if (this.state.hasError) {
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+      return <ErrorFallback error={this.state.error} onReset={() => this.setState({ hasError: false })} />;
+    }
+
+    return this.props.children;
+  }
+}
+
+// ============================================================================
+// Error Fallback
+// ============================================================================
+
+interface ErrorFallbackProps {
+  error?: Error;
+  onReset?: () => void;
+}
+
+export function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
+  return (
+    <div className="flex min-h-[400px] flex-col items-center justify-center p-8 text-center">
+      <div className="rounded-full bg-red-100 p-3 mb-4">
+        <svg
+          className="h-6 w-6 text-red-600"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+          />
+        </svg>
+      </div>
+      <h2 className="text-lg font-semibold text-gray-900 mb-2">Something went wrong</h2>
+      <p className="text-sm text-gray-500 mb-4 max-w-md">
+        {error?.message || 'An unexpected error occurred. Please try again.'}
+      </p>
+      <div className="flex gap-2">
+        {% if saas_ui_framework == 'shadcn-ui' %}
+        <Button onClick={() => window.location.reload()}>Refresh Page</Button>
+        {onReset && (
+          <Button variant="outline" onClick={onReset}>Try Again</Button>
+        )}
+        {% else %}
+        <button
+          onClick={() => window.location.reload()}
+          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+        >
+          Refresh Page
+        </button>
+        {onReset && (
+          <button
+            onClick={onReset}
+            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold hover:bg-gray-50"
+          >
+            Try Again
+          </button>
+        )}
+        {% endif %}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Loading Skeletons
+// ============================================================================
+
+interface SkeletonProps {
+  className?: string;
+}
+
+/**
+ * Basic skeleton loading placeholder
+ */
+export function Skeleton({ className = '' }: SkeletonProps) {
+  return (
+    <div
+      className={`animate-pulse rounded-md bg-gray-200 ${className}`}
+      aria-hidden="true"
+    />
+  );
+}
+
+/**
+ * Text skeleton (single line)
+ */
+export function SkeletonText({ className = '' }: SkeletonProps) {
+  return <Skeleton className={`h-4 ${className}`} />;
+}
+
+/**
+ * Avatar skeleton
+ */
+export function SkeletonAvatar({ className = '' }: SkeletonProps) {
+  return <Skeleton className={`h-10 w-10 rounded-full ${className}`} />;
+}
+
+/**
+ * Card skeleton
+ */
+export function SkeletonCard({ className = '' }: SkeletonProps) {
+  return (
+    <div className={`rounded-lg border bg-white p-6 ${className}`}>
+      <div className="space-y-3">
+        <Skeleton className="h-5 w-1/3" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-2/3" />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Table row skeleton
+ */
+export function SkeletonTableRow({ columns = 4 }: { columns?: number }) {
+  return (
+    <tr>
+      {Array.from({ length: columns }).map((_, i) => (
+        <td key={i} className="px-4 py-3">
+          <Skeleton className="h-4 w-full" />
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+/**
+ * Dashboard skeleton
+ */
+export function SkeletonDashboard() {
+  return (
+    <div className="space-y-6">
+      {/* Stats row */}
+      <div className="grid gap-4 md:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <SkeletonCard key={i} />
+        ))}
+      </div>
+      
+      {/* Main content */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-lg border bg-white p-6">
+          <Skeleton className="h-6 w-1/4 mb-4" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+        <div className="rounded-lg border bg-white p-6">
+          <Skeleton className="h-6 w-1/4 mb-4" />
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <SkeletonAvatar />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-1/3" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Empty States
+// ============================================================================
+
+interface EmptyStateProps {
+  icon?: React.ReactNode;
+  title: string;
+  description?: string;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
+}
+
+/**
+ * Empty state component for no-data scenarios
+ * 
+ * @example
+ * ```tsx
+ * <EmptyState
+ *   title="No projects yet"
+ *   description="Get started by creating your first project."
+ *   action={% raw %}{{ label: 'Create Project', onClick: () => {} }}{% endraw %}
+ * />
+ * ```
+ */
+export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      {icon ? (
+        <div className="mb-4 text-gray-400">{icon}</div>
+      ) : (
+        <div className="mb-4 rounded-full bg-gray-100 p-3">
+          <svg
+            className="h-6 w-6 text-gray-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+            />
+          </svg>
+        </div>
+      )}
+      <h3 className="text-sm font-medium text-gray-900">{title}</h3>
+      {description && (
+        <p className="mt-1 text-sm text-gray-500 max-w-sm">{description}</p>
+      )}
+      {action && (
+        <div className="mt-4">
+          {% if saas_ui_framework == 'shadcn-ui' %}
+          <Button onClick={action.onClick}>{action.label}</Button>
+          {% else %}
+          <button
+            onClick={action.onClick}
+            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+          >
+            {action.label}
+          </button>
+          {% endif %}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// Spinner
+// ============================================================================
+
+interface SpinnerProps {
+  size?: 'sm' | 'md' | 'lg';
+  className?: string;
+}
+
+export function Spinner({ size = 'md', className = '' }: SpinnerProps) {
+  const sizeClasses = {
+    sm: 'h-4 w-4',
+    md: 'h-6 w-6',
+    lg: 'h-8 w-8',
+  };
+
+  return (
+    <svg
+      className={`animate-spin ${sizeClasses[size]} ${className}`}
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+      />
+    </svg>
+  );
+}
+
+/**
+ * Full page loading spinner
+ */
+export function PageLoader() {
+  return (
+    <div className="flex min-h-[400px] items-center justify-center">
+      <Spinner size="lg" className="text-indigo-600" />
+    </div>
+  );
+}
+{% endif %}

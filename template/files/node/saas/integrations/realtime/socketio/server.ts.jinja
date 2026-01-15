@@ -1,0 +1,281 @@
+{% if saas_starter_module == "enabled" and saas_realtime == "socketio" %}
+/**
+ * Socket.io Server Setup
+ * 
+ * Server-side Socket.io configuration for real-time features.
+ * 
+ * For Next.js: Use with custom server or API route
+ * For Remix: Use with Express adapter
+ * 
+ * @see https://socket.io/docs/v4/server-api/
+ */
+
+import { Server as SocketIOServer } from 'socket.io';
+import type { Server as HTTPServer } from 'http';
+import type { 
+  ServerToClientEvents, 
+  ClientToServerEvents 
+} from './client';
+{% if saas_observability_structured_logging %}
+import { logger } from '@/lib/observability/logger';
+{% endif %}
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface SocketData {
+  userId: string;
+  {% if saas_tenancy_model == 'b2b-teams' %}
+  teamId?: string;
+  {% endif %}
+}
+
+export type AppSocketServer = SocketIOServer<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  Record<string, never>,
+  SocketData
+>;
+
+// ============================================================================
+// Server Setup
+// ============================================================================
+
+let io: AppSocketServer | null = null;
+
+/**
+ * Initialize Socket.io server
+ * 
+ * @example
+ * ```ts
+ * // Next.js custom server (server.ts)
+ * import { createServer } from 'http';
+ * import { parse } from 'url';
+ * import next from 'next';
+ * import { initSocketServer } from '@/lib/realtime/socket.server';
+ * 
+ * const app = next({ dev: process.env.NODE_ENV !== 'production' });
+ * const handle = app.getRequestHandler();
+ * 
+ * app.prepare().then(() => {
+ *   const server = createServer((req, res) => {
+ *     const parsedUrl = parse(req.url!, true);
+ *     handle(req, res, parsedUrl);
+ *   });
+ *   
+ *   initSocketServer(server);
+ *   
+ *   server.listen(3000);
+ * });
+ * ```
+ */
+export function initSocketServer(httpServer: HTTPServer): AppSocketServer {
+  if (io) {
+    return io;
+  }
+
+  io = new SocketIOServer(httpServer, {
+    path: '/api/socket',
+    cors: {
+      origin: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+      methods: ['GET', 'POST'],
+      credentials: true,
+    },
+    transports: ['websocket', 'polling'],
+    pingTimeout: 60000,
+    pingInterval: 25000,
+  });
+
+  // Authentication middleware
+  io.use(async (socket, next) => {
+    try {
+      const token = socket.handshake.auth.token;
+      
+      if (!token) {
+        return next(new Error('Authentication required'));
+      }
+
+      // Verify token and get user
+      // Replace with your auth logic
+      const user = await verifySocketToken(token);
+      
+      if (!user) {
+        return next(new Error('Invalid token'));
+      }
+
+      socket.data.userId = user.id;
+      {% if saas_tenancy_model == 'b2b-teams' %}
+      socket.data.teamId = user.teamId;
+      {% endif %}
+      
+      next();
+    } catch (error) {
+      next(new Error('Authentication failed'));
+    }
+  });
+
+  // Connection handling
+  io.on('connection', (socket) => {
+    const userId = socket.data.userId;
+    
+    {% if saas_observability_structured_logging %}
+    logger.info({ msg: 'Socket connected', userId, socketId: socket.id });
+    {% endif %}
+
+    // Join user's personal room
+    socket.join(`user:${userId}`);
+    
+    {% if saas_tenancy_model == 'b2b-teams' %}
+    // Join team room if applicable
+    if (socket.data.teamId) {
+      socket.join(`team:${socket.data.teamId}`);
+      
+      // Notify team of online presence
+      socket.to(`team:${socket.data.teamId}`).emit('presence:online', { userId });
+    }
+    {% endif %}
+
+    // Room management
+    socket.on('join-room', (roomId, callback) => {
+      // Add authorization logic here
+      socket.join(roomId);
+      callback?.(true);
+      
+      {% if saas_observability_structured_logging %}
+      logger.debug({ msg: 'User joined room', userId, roomId });
+      {% endif %}
+    });
+
+    socket.on('leave-room', (roomId) => {
+      socket.leave(roomId);
+    });
+
+    // Presence ping (keep-alive)
+    socket.on('presence:ping', () => {
+      // Update last seen timestamp in database if needed
+    });
+
+    // Message handling
+    socket.on('message', (data) => {
+      // Emit to target room/user
+      io?.to(data.to).emit('message', {
+        from: userId,
+        content: data.content,
+        timestamp: new Date().toISOString(),
+      });
+    });
+
+    // Disconnection
+    socket.on('disconnect', (reason) => {
+      {% if saas_observability_structured_logging %}
+      logger.info({ msg: 'Socket disconnected', userId, socketId: socket.id, reason });
+      {% endif %}
+      
+      {% if saas_tenancy_model == 'b2b-teams' %}
+      // Notify team of offline presence
+      if (socket.data.teamId) {
+        socket.to(`team:${socket.data.teamId}`).emit('presence:offline', { userId });
+      }
+      {% endif %}
+    });
+  });
+
+  {% if saas_observability_structured_logging %}
+  logger.info({ msg: 'Socket.io server initialized' });
+  {% endif %}
+
+  return io;
+}
+
+/**
+ * Get Socket.io server instance
+ */
+export function getIO(): AppSocketServer | null {
+  return io;
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Verify socket authentication token
+ * Replace with your actual auth verification
+ */
+async function verifySocketToken(token: string): Promise<{ id: string; teamId?: string } | null> {
+  {% if saas_auth == 'clerk' %}
+  // Clerk verification
+  try {
+    const { verifyToken } = await import('@clerk/backend');
+    const payload = await verifyToken(token, {
+      secretKey: process.env.CLERK_SECRET_KEY,
+    });
+    return { 
+      id: payload.sub,
+      {% if saas_tenancy_model == 'b2b-teams' %}
+      teamId: payload.org_id,
+      {% endif %}
+    };
+  } catch {
+    return null;
+  }
+  {% elif saas_auth == 'authjs' %}
+  // Auth.js verification
+  try {
+    const { decode } = await import('next-auth/jwt');
+    const decoded = await decode({
+      token,
+      secret: process.env.AUTH_SECRET!,
+    });
+    return decoded ? { 
+      id: decoded.sub as string,
+      {% if saas_tenancy_model == 'b2b-teams' %}
+      teamId: decoded.teamId as string | undefined,
+      {% endif %}
+    } : null;
+  } catch {
+    return null;
+  }
+  {% else %}
+  // Generic JWT verification
+  try {
+    const jwt = await import('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { sub: string; teamId?: string };
+    return { id: decoded.sub, teamId: decoded.teamId };
+  } catch {
+    return null;
+  }
+  {% endif %}
+}
+
+/**
+ * Emit event to a specific user
+ */
+export function emitToUser(userId: string, event: keyof ServerToClientEvents, data: any) {
+  io?.to(`user:${userId}`).emit(event, data);
+}
+
+{% if saas_tenancy_model == 'b2b-teams' %}
+/**
+ * Emit event to all team members
+ */
+export function emitToTeam(teamId: string, event: keyof ServerToClientEvents, data: any) {
+  io?.to(`team:${teamId}`).emit(event, data);
+}
+{% endif %}
+
+/**
+ * Emit event to a room
+ */
+export function emitToRoom(roomId: string, event: keyof ServerToClientEvents, data: any) {
+  io?.to(roomId).emit(event, data);
+}
+
+/**
+ * Broadcast to all connected clients
+ */
+export function broadcast(event: keyof ServerToClientEvents, data: any) {
+  io?.emit(event, data);
+}
+{% endif %}

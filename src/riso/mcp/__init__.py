@@ -15,12 +15,13 @@ from .errors import (
     TemplateNotFoundError,
     ValidationFailedError,
 )
-from .server import __version__, create_server, mcp, run_server, session_manager
+from .server import __version__, app, create_server, mcp, run_server, session_manager
 from .session import SessionManager, WizardSession, WizardStep
 
 __all__ = [
     # Server
     "__version__",
+    "app",
     "mcp",
     "run_server",
     "create_server",

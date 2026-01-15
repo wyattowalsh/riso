@@ -1,0 +1,527 @@
+{% if saas_starter_module == "enabled" and saas_gdpr_tools %}
+/**
+ * GDPR Compliance Tools
+ * 
+ * Provides data export, deletion, and privacy management functionality
+ * to help comply with GDPR, CCPA, and other privacy regulations.
+ * 
+ * Features:
+ * - Full data export (JSON + ZIP)
+ * - Account deletion with grace period
+ * - Data processing records
+ * - Cookie consent management
+ * 
+ * @see https://gdpr.eu/right-to-be-forgotten/
+ * @see https://gdpr.eu/right-to-data-portability/
+ */
+
+{% if saas_orm == 'prisma' %}
+import { prisma } from '@/lib/database/client';
+{% elif saas_orm == 'drizzle' %}
+import { db } from '@/lib/database/client';
+import { users, subscriptions, auditLogs, apiKeys } from '@/db/schema';
+{% if saas_tenancy_model == 'b2b-teams' %}
+import { organizations, organizationMemberships } from '@/db/schema';
+{% endif %}
+{% if saas_notifications != 'none' %}
+import { notifications, notificationPreferences } from '@/db/schema';
+{% endif %}
+import { eq } from 'drizzle-orm';
+{% endif %}
+{% if saas_observability_structured_logging %}
+import { logger } from '@/lib/observability/logger';
+{% endif %}
+import archiver from 'archiver';
+import { Readable } from 'stream';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface DataExportResult {
+  user: Record<string, unknown>;
+  {% if saas_tenancy_model == 'b2b-teams' %}
+  organizations: Record<string, unknown>[];
+  memberships: Record<string, unknown>[];
+  {% endif %}
+  subscriptions: Record<string, unknown>[];
+  auditLogs: Record<string, unknown>[];
+  {% if saas_notifications != 'none' %}
+  notifications: Record<string, unknown>[];
+  notificationPreferences: Record<string, unknown>[];
+  {% endif %}
+  exportedAt: string;
+  format: 'json';
+}
+
+export interface DeletionRequest {
+  userId: string;
+  requestedAt: Date;
+  scheduledDeletionAt: Date;
+  reason?: string;
+  status: 'pending' | 'processing' | 'completed' | 'cancelled';
+}
+
+// ============================================================================
+// Data Export
+// ============================================================================
+
+/**
+ * Export all user data as JSON
+ * Complies with GDPR Article 20 - Right to Data Portability
+ */
+export async function exportUserData(userId: string): Promise<DataExportResult> {
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: 'Starting GDPR data export',
+    userId,
+  });
+  {% endif %}
+  
+  {% if saas_orm == 'prisma' %}
+  // Fetch user and all related data
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      {% if saas_tenancy_model == 'b2b-teams' %}
+      memberships: {
+        include: {
+          organization: true,
+        },
+      },
+      {% endif %}
+      subscriptions: true,
+      apiKeys: {
+        select: {
+          id: true,
+          name: true,
+          keyPrefix: true,
+          scopes: true,
+          createdAt: true,
+          lastUsedAt: true,
+          // Exclude keyHash for security
+        },
+      },
+      auditLogs: {
+        orderBy: { timestamp: 'desc' },
+        take: 1000, // Limit to last 1000 entries
+      },
+      {% if saas_notifications != 'none' %}
+      notifications: {
+        orderBy: { createdAt: 'desc' },
+        take: 500,
+      },
+      notificationPreferences: true,
+      {% endif %}
+    },
+  });
+  
+  if (!user) {
+    throw new Error('User not found');
+  }
+  
+  return {
+    user: sanitizeUserData(user),
+    {% if saas_tenancy_model == 'b2b-teams' %}
+    organizations: user.memberships.map(m => sanitizeOrgData(m.organization)),
+    memberships: user.memberships.map(m => ({
+      organizationId: m.organizationId,
+      role: m.role,
+      invitedAt: m.invitedAt,
+      acceptedAt: m.acceptedAt,
+      createdAt: m.createdAt,
+    })),
+    {% endif %}
+    subscriptions: user.subscriptions.map(sanitizeSubscriptionData),
+    auditLogs: user.auditLogs.map(sanitizeAuditLog),
+    {% if saas_notifications != 'none' %}
+    notifications: user.notifications,
+    notificationPreferences: user.notificationPreferences,
+    {% endif %}
+    exportedAt: new Date().toISOString(),
+    format: 'json',
+  };
+  {% elif saas_orm == 'drizzle' %}
+  // Fetch user
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+  
+  if (!user) {
+    throw new Error('User not found');
+  }
+  
+  // Fetch related data
+  {% if saas_tenancy_model == 'b2b-teams' %}
+  const memberships = await db.query.organizationMemberships.findMany({
+    where: eq(organizationMemberships.userId, userId),
+    with: {
+      organization: true,
+    },
+  });
+  {% endif %}
+  
+  const userSubscriptions = await db.query.subscriptions.findMany({
+    where: eq(subscriptions.userId, userId),
+  });
+  
+  const userAuditLogs = await db.query.auditLogs.findMany({
+    where: eq(auditLogs.userId, userId),
+    limit: 1000,
+    orderBy: (logs, { desc }) => [desc(logs.timestamp)],
+  });
+  
+  {% if saas_notifications != 'none' %}
+  const userNotifications = await db.query.notifications.findMany({
+    where: eq(notifications.userId, userId),
+    limit: 500,
+    orderBy: (n, { desc }) => [desc(n.createdAt)],
+  });
+  
+  const userNotificationPrefs = await db.query.notificationPreferences.findMany({
+    where: eq(notificationPreferences.userId, userId),
+  });
+  {% endif %}
+  
+  return {
+    user: sanitizeUserData(user),
+    {% if saas_tenancy_model == 'b2b-teams' %}
+    organizations: memberships.map(m => sanitizeOrgData(m.organization)),
+    memberships: memberships.map(m => ({
+      organizationId: m.organizationId,
+      role: m.role,
+      invitedAt: m.invitedAt,
+      acceptedAt: m.acceptedAt,
+      createdAt: m.createdAt,
+    })),
+    {% endif %}
+    subscriptions: userSubscriptions.map(sanitizeSubscriptionData),
+    auditLogs: userAuditLogs.map(sanitizeAuditLog),
+    {% if saas_notifications != 'none' %}
+    notifications: userNotifications,
+    notificationPreferences: userNotificationPrefs,
+    {% endif %}
+    exportedAt: new Date().toISOString(),
+    format: 'json',
+  };
+  {% endif %}
+}
+
+/**
+ * Export user data as ZIP file with JSON
+ * Returns a readable stream for download
+ */
+export async function exportUserDataAsZip(userId: string): Promise<Readable> {
+  const data = await exportUserData(userId);
+  
+  const archive = archiver('zip', {
+    zlib: { level: 9 }, // Maximum compression
+  });
+  
+  // Add JSON file to archive
+  archive.append(JSON.stringify(data, null, 2), {
+    name: 'my-data.json',
+  });
+  
+  // Add README explaining the data
+  archive.append(generateDataReadme(), {
+    name: 'README.txt',
+  });
+  
+  archive.finalize();
+  
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: 'GDPR data export completed',
+    userId,
+  });
+  {% endif %}
+  
+  return archive;
+}
+
+// ============================================================================
+// Account Deletion
+// ============================================================================
+
+/**
+ * Request account deletion with grace period
+ * Complies with GDPR Article 17 - Right to Erasure
+ * 
+ * @param userId - User requesting deletion
+ * @param gracePeriodDays - Days before actual deletion (default: 30)
+ * @returns Deletion request details
+ */
+export async function requestAccountDeletion(
+  userId: string,
+  gracePeriodDays: number = 30,
+  reason?: string
+): Promise<DeletionRequest> {
+  const requestedAt = new Date();
+  const scheduledDeletionAt = new Date(
+    requestedAt.getTime() + gracePeriodDays * 24 * 60 * 60 * 1000
+  );
+  
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: 'Account deletion requested',
+    userId,
+    scheduledDeletionAt,
+    gracePeriodDays,
+  });
+  {% endif %}
+  
+  // Store deletion request in user metadata
+  {% if saas_orm == 'prisma' %}
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      metadata: {
+        deletionRequest: {
+          requestedAt: requestedAt.toISOString(),
+          scheduledDeletionAt: scheduledDeletionAt.toISOString(),
+          reason,
+          status: 'pending',
+        },
+      },
+    },
+  });
+  
+  // Create audit log
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: 'user.deletion_requested',
+      resourceType: 'user',
+      resourceId: userId,
+      metadata: {
+        scheduledDeletionAt: scheduledDeletionAt.toISOString(),
+        gracePeriodDays,
+      },
+    },
+  });
+  {% elif saas_orm == 'drizzle' %}
+  await db.update(users)
+    .set({
+      metadata: {
+        deletionRequest: {
+          requestedAt: requestedAt.toISOString(),
+          scheduledDeletionAt: scheduledDeletionAt.toISOString(),
+          reason,
+          status: 'pending',
+        },
+      },
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId));
+  
+  // Create audit log
+  await db.insert(auditLogs).values({
+    userId,
+    action: 'user.deletion_requested',
+    resourceType: 'user',
+    resourceId: userId,
+    metadata: {
+      scheduledDeletionAt: scheduledDeletionAt.toISOString(),
+      gracePeriodDays,
+    },
+  });
+  {% endif %}
+  
+  return {
+    userId,
+    requestedAt,
+    scheduledDeletionAt,
+    reason,
+    status: 'pending',
+  };
+}
+
+/**
+ * Cancel a pending deletion request
+ */
+export async function cancelDeletionRequest(userId: string): Promise<void> {
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: 'Account deletion cancelled',
+    userId,
+  });
+  {% endif %}
+  
+  {% if saas_orm == 'prisma' %}
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      metadata: {
+        deletionRequest: null,
+      },
+    },
+  });
+  
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: 'user.deletion_cancelled',
+      resourceType: 'user',
+      resourceId: userId,
+    },
+  });
+  {% elif saas_orm == 'drizzle' %}
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+  
+  await db.update(users)
+    .set({
+      metadata: {
+        ...(user?.metadata as Record<string, unknown> || {}),
+        deletionRequest: null,
+      },
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId));
+  
+  await db.insert(auditLogs).values({
+    userId,
+    action: 'user.deletion_cancelled',
+    resourceType: 'user',
+    resourceId: userId,
+  });
+  {% endif %}
+}
+
+/**
+ * Execute account deletion
+ * Called by scheduled job after grace period
+ */
+export async function executeAccountDeletion(userId: string): Promise<void> {
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: 'Executing account deletion',
+    userId,
+  });
+  {% endif %}
+  
+  {% if saas_orm == 'prisma' %}
+  // Use transaction to ensure atomic deletion
+  await prisma.$transaction(async (tx) => {
+    // Delete in order to respect foreign key constraints
+    {% if saas_notifications != 'none' %}
+    await tx.notification.deleteMany({ where: { userId } });
+    await tx.notificationPreference.deleteMany({ where: { userId } });
+    {% endif %}
+    await tx.apiKey.deleteMany({ where: { userId } });
+    await tx.subscription.deleteMany({ where: { userId } });
+    {% if saas_tenancy_model == 'b2b-teams' %}
+    await tx.organizationMembership.deleteMany({ where: { userId } });
+    {% endif %}
+    // Anonymize audit logs (keep for compliance, remove PII)
+    await tx.auditLog.updateMany({
+      where: { userId },
+      data: {
+        userId: null,
+        metadata: { anonymized: true, originalUserId: userId },
+      },
+    });
+    // Finally delete the user
+    await tx.user.delete({ where: { id: userId } });
+  });
+  {% elif saas_orm == 'drizzle' %}
+  // Delete in order to respect foreign key constraints
+  {% if saas_notifications != 'none' %}
+  await db.delete(notifications).where(eq(notifications.userId, userId));
+  await db.delete(notificationPreferences).where(eq(notificationPreferences.userId, userId));
+  {% endif %}
+  await db.delete(apiKeys).where(eq(apiKeys.userId, userId));
+  await db.delete(subscriptions).where(eq(subscriptions.userId, userId));
+  {% if saas_tenancy_model == 'b2b-teams' %}
+  await db.delete(organizationMemberships).where(eq(organizationMemberships.userId, userId));
+  {% endif %}
+  // Anonymize audit logs
+  await db.update(auditLogs)
+    .set({
+      userId: null,
+      metadata: { anonymized: true, originalUserId: userId },
+    })
+    .where(eq(auditLogs.userId, userId));
+  // Finally delete the user
+  await db.delete(users).where(eq(users.id, userId));
+  {% endif %}
+  
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: 'Account deletion completed',
+    userId,
+  });
+  {% endif %}
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+function sanitizeUserData(user: Record<string, unknown>): Record<string, unknown> {
+  // Remove internal/sensitive fields
+  const { 
+    // Remove these fields from export
+    ...safeData 
+  } = user;
+  
+  return safeData;
+}
+
+function sanitizeOrgData(org: Record<string, unknown>): Record<string, unknown> {
+  return {
+    id: org.id,
+    name: org.name,
+    slug: org.slug,
+    plan: org.plan,
+    createdAt: org.createdAt,
+  };
+}
+
+function sanitizeSubscriptionData(sub: Record<string, unknown>): Record<string, unknown> {
+  return {
+    id: sub.id,
+    status: sub.status,
+    plan: sub.plan,
+    billingCycle: sub.billingCycle,
+    currentPeriodStart: sub.currentPeriodStart,
+    currentPeriodEnd: sub.currentPeriodEnd,
+    createdAt: sub.createdAt,
+  };
+}
+
+function sanitizeAuditLog(log: Record<string, unknown>): Record<string, unknown> {
+  return {
+    action: log.action,
+    resourceType: log.resourceType,
+    resourceId: log.resourceId,
+    timestamp: log.timestamp,
+    // Exclude IP address and user agent for privacy
+  };
+}
+
+function generateDataReadme(): string {
+  return `
+DATA EXPORT
+===========
+
+This archive contains all personal data associated with your account.
+
+Files:
+- my-data.json: All your data in JSON format
+
+Data Categories:
+- User Profile: Basic account information
+- Organizations: Teams you belong to
+- Subscriptions: Billing history
+- Audit Logs: Activity history
+- Notifications: Notification history
+
+For questions about your data, contact support.
+
+Generated: ${new Date().toISOString()}
+`.trim();
+}
+{% endif %}

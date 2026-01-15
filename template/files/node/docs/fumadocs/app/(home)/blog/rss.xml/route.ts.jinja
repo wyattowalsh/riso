@@ -1,0 +1,51 @@
+{%- if docs_site == 'fumadocs' and fumadocs_blog == 'enabled' -%}
+import { Feed } from 'feed';
+import { blog } from '@/lib/source';
+import { NextResponse } from 'next/server';
+
+export const revalidate = false;
+
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+
+export function GET() {
+  const feed = new Feed({
+    title: '{{ project_name }} Blog',
+    id: `${baseUrl}/blog`,
+    link: `${baseUrl}/blog`,
+    language: 'en',
+    description: 'Latest news, updates, and articles from {{ project_name }}',
+    favicon: `${baseUrl}/favicon.ico`,
+    copyright: `All rights reserved ${new Date().getFullYear()}, {{ project_name }}`,
+    feedLinks: {
+      rss: `${baseUrl}/blog/rss.xml`,
+    },
+  });
+
+  const posts = [...blog.getPages()].sort(
+    (a, b) =>
+      new Date(b.data.date).getTime() - new Date(a.data.date).getTime(),
+  );
+
+  for (const page of posts) {
+    feed.addItem({
+      id: `${baseUrl}${page.url}`,
+      title: page.data.title,
+      description: page.data.description,
+      link: `${baseUrl}${page.url}`,
+      date: new Date(page.data.date),
+      author: [
+        {
+          name: page.data.author,
+        },
+      ],
+      category: page.data.tags?.map((tag: string) => ({ name: tag })) ?? [],
+    });
+  }
+
+  return new NextResponse(feed.rss2(), {
+    headers: {
+      'Content-Type': 'application/rss+xml; charset=utf-8',
+    },
+  });
+}
+{%- endif -%}

@@ -1,0 +1,545 @@
+{% if saas_starter_module == "enabled" and saas_landing_page %}
+/**
+ * Landing Page Components
+ * 
+ * Pre-built marketing components for your SaaS landing page.
+ * Customize these components with your branding and copy.
+ * 
+ * Components:
+ * - Hero section with CTA
+ * - Features grid
+ * - Pricing section
+ * - Testimonials
+ * - FAQ accordion
+ * - CTA section
+ */
+
+{% if saas_runtime == 'nextjs-16' %}
+'use client';
+{% endif %}
+
+import * as React from 'react';
+{% if saas_ui_framework == 'shadcn-ui' %}
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+{% endif %}
+
+// ============================================================================
+// Hero Section
+// ============================================================================
+
+export interface HeroProps {
+  title: string;
+  subtitle: string;
+  primaryCta: {
+    text: string;
+    href: string;
+  };
+  secondaryCta?: {
+    text: string;
+    href: string;
+  };
+  /** Optional hero image or component */
+  media?: React.ReactNode;
+}
+
+export function Hero({ title, subtitle, primaryCta, secondaryCta, media }: HeroProps) {
+  return (
+    <section className="relative overflow-hidden py-20 sm:py-32 lg:pb-32 xl:pb-36">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="lg:grid lg:grid-cols-12 lg:gap-x-8 lg:gap-y-20">
+          {/* Text content */}
+          <div className="relative z-10 mx-auto max-w-2xl lg:col-span-7 lg:max-w-none lg:pt-6 xl:col-span-6">
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
+              {title}
+            </h1>
+            <p className="mt-6 text-lg text-gray-600">
+              {subtitle}
+            </p>
+            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-4">
+              {% if saas_ui_framework == 'shadcn-ui' %}
+              <Button size="lg" asChild>
+                <a href={primaryCta.href}>{primaryCta.text}</a>
+              </Button>
+              {secondaryCta && (
+                <Button size="lg" variant="outline" asChild>
+                  <a href={secondaryCta.href}>{secondaryCta.text}</a>
+                </Button>
+              )}
+              {% else %}
+              <a
+                href={primaryCta.href}
+                className="rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+              >
+                {primaryCta.text}
+              </a>
+              {secondaryCta && (
+                <a
+                  href={secondaryCta.href}
+                  className="rounded-lg border border-gray-300 px-6 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-50"
+                >
+                  {secondaryCta.text}
+                </a>
+              )}
+              {% endif %}
+            </div>
+          </div>
+          
+          {/* Media content */}
+          {media && (
+            <div className="relative mt-10 sm:mt-20 lg:col-span-5 lg:row-span-2 lg:mt-0 xl:col-span-6">
+              {media}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ============================================================================
+// Features Section
+// ============================================================================
+
+export interface Feature {
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+}
+
+export interface FeaturesProps {
+  title: string;
+  subtitle: string;
+  features: Feature[];
+}
+
+export function Features({ title, subtitle, features }: FeaturesProps) {
+  return (
+    <section id="features" className="py-20 sm:py-32">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-2xl sm:text-center">
+          <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+            {title}
+          </h2>
+          <p className="mt-6 text-lg leading-8 text-gray-600">
+            {subtitle}
+          </p>
+        </div>
+        
+        <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
+          <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-3">
+            {features.map((feature, index) => (
+              {% if saas_ui_framework == 'shadcn-ui' %}
+              <Card key={index}>
+                <CardHeader>
+                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600">
+                    <div className="h-6 w-6 text-white">{feature.icon}</div>
+                  </div>
+                  <CardTitle>{feature.name}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>{feature.description}</CardDescription>
+                </CardContent>
+              </Card>
+              {% else %}
+              <div key={index} className="flex flex-col">
+                <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-gray-900">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600">
+                    <div className="h-6 w-6 text-white">{feature.icon}</div>
+                  </div>
+                  {feature.name}
+                </dt>
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-gray-600">
+                  <p className="flex-auto">{feature.description}</p>
+                </dd>
+              </div>
+              {% endif %}
+            ))}
+          </dl>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ============================================================================
+// Pricing Section
+// ============================================================================
+
+export interface PricingTier {
+  name: string;
+  price: {
+    monthly: number | string;
+    annually?: number | string;
+  };
+  description: string;
+  features: string[];
+  cta: {
+    text: string;
+    href: string;
+  };
+  featured?: boolean;
+}
+
+export interface PricingProps {
+  title: string;
+  subtitle: string;
+  tiers: PricingTier[];
+}
+
+export function Pricing({ title, subtitle, tiers }: PricingProps) {
+  const [annual, setAnnual] = React.useState(false);
+  
+  return (
+    <section id="pricing" className="py-20 sm:py-32">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-2xl text-center">
+          <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+            {title}
+          </h2>
+          <p className="mt-6 text-lg leading-8 text-gray-600">
+            {subtitle}
+          </p>
+          
+          {/* Billing toggle */}
+          <div className="mt-8 flex items-center justify-center gap-4">
+            <span className={`text-sm ${!annual ? 'font-semibold text-gray-900' : 'text-gray-500'}`}>
+              Monthly
+            </span>
+            <button
+              type="button"
+              className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-gray-200 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2"
+              role="switch"
+              aria-checked={annual}
+              onClick={() => setAnnual(!annual)}
+            >
+              <span
+                aria-hidden="true"
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  annual ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+            <span className={`text-sm ${annual ? 'font-semibold text-gray-900' : 'text-gray-500'}`}>
+              Annual
+              <span className="ml-1.5 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                Save 20%
+              </span>
+            </span>
+          </div>
+        </div>
+        
+        <div className="mx-auto mt-16 grid max-w-lg grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-3">
+          {tiers.map((tier, index) => (
+            <div
+              key={index}
+              className={`flex flex-col rounded-3xl p-8 ring-1 ${
+                tier.featured
+                  ? 'bg-gray-900 ring-gray-900'
+                  : 'ring-gray-200'
+              }`}
+            >
+              <h3
+                className={`text-lg font-semibold leading-8 ${
+                  tier.featured ? 'text-white' : 'text-gray-900'
+                }`}
+              >
+                {tier.name}
+              </h3>
+              <p
+                className={`mt-4 text-sm leading-6 ${
+                  tier.featured ? 'text-gray-300' : 'text-gray-600'
+                }`}
+              >
+                {tier.description}
+              </p>
+              <p className="mt-6 flex items-baseline gap-x-1">
+                <span
+                  className={`text-4xl font-bold tracking-tight ${
+                    tier.featured ? 'text-white' : 'text-gray-900'
+                  }`}
+                >
+                  ${annual && tier.price.annually ? tier.price.annually : tier.price.monthly}
+                </span>
+                <span
+                  className={`text-sm font-semibold leading-6 ${
+                    tier.featured ? 'text-gray-300' : 'text-gray-600'
+                  }`}
+                >
+                  /month
+                </span>
+              </p>
+              
+              <ul
+                role="list"
+                className={`mt-8 space-y-3 text-sm leading-6 ${
+                  tier.featured ? 'text-gray-300' : 'text-gray-600'
+                }`}
+              >
+                {tier.features.map((feature, featureIndex) => (
+                  <li key={featureIndex} className="flex gap-x-3">
+                    <svg
+                      className={`h-6 w-5 flex-none ${
+                        tier.featured ? 'text-white' : 'text-indigo-600'
+                      }`}
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              
+              {% if saas_ui_framework == 'shadcn-ui' %}
+              <Button
+                className="mt-8"
+                variant={tier.featured ? 'secondary' : 'default'}
+                asChild
+              >
+                <a href={tier.cta.href}>{tier.cta.text}</a>
+              </Button>
+              {% else %}
+              <a
+                href={tier.cta.href}
+                className={`mt-8 block rounded-md px-3.5 py-2 text-center text-sm font-semibold leading-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                  tier.featured
+                    ? 'bg-white text-gray-900 hover:bg-gray-100 focus-visible:outline-white'
+                    : 'bg-indigo-600 text-white hover:bg-indigo-500 focus-visible:outline-indigo-600'
+                }`}
+              >
+                {tier.cta.text}
+              </a>
+              {% endif %}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ============================================================================
+// Testimonials Section
+// ============================================================================
+
+export interface Testimonial {
+  content: string;
+  author: {
+    name: string;
+    role: string;
+    company?: string;
+    image?: string;
+  };
+}
+
+export interface TestimonialsProps {
+  title: string;
+  testimonials: Testimonial[];
+}
+
+export function Testimonials({ title, testimonials }: TestimonialsProps) {
+  return (
+    <section id="testimonials" className="py-20 sm:py-32">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+          {title}
+        </h2>
+        
+        <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-3">
+          {testimonials.map((testimonial, index) => (
+            <figure
+              key={index}
+              className="rounded-2xl bg-gray-50 p-8"
+            >
+              <blockquote className="text-gray-900">
+                <p className="text-lg font-medium leading-8">
+                  "{testimonial.content}"
+                </p>
+              </blockquote>
+              <figcaption className="mt-6 flex items-center gap-x-4">
+                {testimonial.author.image ? (
+                  <img
+                    className="h-10 w-10 rounded-full bg-gray-50"
+                    src={testimonial.author.image}
+                    alt=""
+                  />
+                ) : (
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600 text-white font-semibold">
+                    {testimonial.author.name.charAt(0)}
+                  </div>
+                )}
+                <div>
+                  <div className="font-semibold">{testimonial.author.name}</div>
+                  <div className="text-gray-600">
+                    {testimonial.author.role}
+                    {testimonial.author.company && `, ${testimonial.author.company}`}
+                  </div>
+                </div>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ============================================================================
+// FAQ Section
+// ============================================================================
+
+export interface FAQItem {
+  question: string;
+  answer: string;
+}
+
+export interface FAQProps {
+  title: string;
+  faqs: FAQItem[];
+}
+
+export function FAQ({ title, faqs }: FAQProps) {
+  const [openIndex, setOpenIndex] = React.useState<number | null>(null);
+  
+  return (
+    <section id="faq" className="py-20 sm:py-32">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-2xl lg:text-center">
+          <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+            {title}
+          </h2>
+        </div>
+        
+        <div className="mx-auto mt-16 max-w-3xl">
+          <dl className="space-y-6">
+            {faqs.map((faq, index) => (
+              <div
+                key={index}
+                className="rounded-lg border border-gray-200 p-6"
+              >
+                <dt>
+                  <button
+                    type="button"
+                    className="flex w-full items-start justify-between text-left text-gray-900"
+                    onClick={() => setOpenIndex(openIndex === index ? null : index)}
+                    aria-expanded={openIndex === index}
+                  >
+                    <span className="text-base font-semibold leading-7">
+                      {faq.question}
+                    </span>
+                    <span className="ml-6 flex h-7 items-center">
+                      <svg
+                        className={`h-6 w-6 transform transition-transform ${
+                          openIndex === index ? 'rotate-180' : ''
+                        }`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth="1.5"
+                        stroke="currentColor"
+                        aria-hidden="true"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+                        />
+                      </svg>
+                    </span>
+                  </button>
+                </dt>
+                {openIndex === index && (
+                  <dd className="mt-4 text-base leading-7 text-gray-600">
+                    {faq.answer}
+                  </dd>
+                )}
+              </div>
+            ))}
+          </dl>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ============================================================================
+// CTA Section
+// ============================================================================
+
+export interface CTASectionProps {
+  title: string;
+  description: string;
+  primaryCta: {
+    text: string;
+    href: string;
+  };
+  secondaryCta?: {
+    text: string;
+    href: string;
+  };
+}
+
+export function CTASection({ title, description, primaryCta, secondaryCta }: CTASectionProps) {
+  return (
+    <section className="relative isolate overflow-hidden bg-gray-900 py-24 sm:py-32">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-2xl text-center">
+          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            {title}
+          </h2>
+          <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-gray-300">
+            {description}
+          </p>
+          <div className="mt-10 flex items-center justify-center gap-x-6">
+            {% if saas_ui_framework == 'shadcn-ui' %}
+            <Button size="lg" variant="secondary" asChild>
+              <a href={primaryCta.href}>{primaryCta.text}</a>
+            </Button>
+            {secondaryCta && (
+              <Button size="lg" variant="ghost" className="text-white hover:text-white hover:bg-white/10" asChild>
+                <a href={secondaryCta.href}>{secondaryCta.text}</a>
+              </Button>
+            )}
+            {% else %}
+            <a
+              href={primaryCta.href}
+              className="rounded-md bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              {primaryCta.text}
+            </a>
+            {secondaryCta && (
+              <a
+                href={secondaryCta.href}
+                className="text-sm font-semibold leading-6 text-white"
+              >
+                {secondaryCta.text} <span aria-hidden="true">→</span>
+              </a>
+            )}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      
+      {/* Background gradient */}
+      {/* Background gradient */}
+      <div
+        className="absolute -top-24 right-0 -z-10 transform-gpu blur-3xl"
+        aria-hidden="true"
+      >
+        <div
+          className="aspect-[1404/767] w-[87.75rem] bg-gradient-to-r from-[#80caff] to-[#4f46e5] opacity-25"
+          style={% raw %}{{{% endraw %}
+            clipPath: 'polygon(73.6% 51.7%, 91.7% 11.8%, 100% 46.4%, 97.4% 82.2%, 92.5% 84.9%, 75.7% 64%, 55.3% 47.5%, 46.5% 49.4%, 45% 62.9%, 50.3% 87.2%, 21.3% 64.1%, 0.1% 100%, 5.4% 51.1%, 21.4% 63.9%, 58.9% 0.2%, 73.6% 51.7%)',
+          {% raw %}}}{% endraw %}
+        />
+      </div>
+    </section>
+  );
+}
+{% endif %}

@@ -1,0 +1,238 @@
+{% if saas_starter_module == "enabled" and saas_analytics == "posthog" %}
+/**
+ * Feature Flags Client (Client-Side)
+ * 
+ * Provides feature flag functionality using PostHog:
+ * - Client-side React hooks
+ * - Type-safe flag definitions
+ * 
+ * For server-side evaluation, see posthog.server.ts
+ * 
+ * @see https://posthog.com/docs/feature-flags
+ */
+
+{% if saas_runtime == 'nextjs-16' %}
+'use client';
+{% endif %}
+
+import { useEffect, useState } from 'react';
+import posthog from 'posthog-js';
+
+// ============================================================================
+// Feature Flag Definitions
+// ============================================================================
+
+/**
+ * Define your feature flags here for type safety
+ * Add new flags as you create them in PostHog
+ */
+export const FEATURE_FLAGS = {
+  /** Example: New dashboard design */
+  NEW_DASHBOARD: 'new-dashboard',
+  /** Example: Beta features */
+  BETA_FEATURES: 'beta-features',
+  /** Example: AI-powered suggestions */
+  AI_SUGGESTIONS: 'ai-suggestions',
+  {% if saas_tenancy_model == 'b2b-teams' %}
+  /** Example: Team analytics */
+  TEAM_ANALYTICS: 'team-analytics',
+  {% endif %}
+  {% if saas_billing != 'none' %}
+  /** Example: New pricing page */
+  NEW_PRICING: 'new-pricing',
+  {% endif %}
+} as const;
+
+export type FeatureFlag = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS];
+
+// ============================================================================
+// Client-Side Initialization
+// ============================================================================
+
+let isInitialized = false;
+
+/**
+ * Initialize PostHog for feature flags
+ * Call this once in your app's root component
+ */
+export function initFeatureFlags() {
+  if (isInitialized || typeof window === 'undefined') return;
+  
+  const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+  const host = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com';
+  
+  if (!key) {
+    console.warn('PostHog key not configured. Feature flags will not work.');
+    return;
+  }
+  
+  posthog.init(key, {
+    api_host: host,
+    // Load feature flags immediately
+    bootstrap: {
+      featureFlags: {},
+    },
+    loaded: (posthog) => {
+      // Reload feature flags
+      posthog.reloadFeatureFlags();
+    },
+  });
+  
+  isInitialized = true;
+}
+
+// ============================================================================
+// Client-Side Hooks
+// ============================================================================
+
+/**
+ * Check if a feature flag is enabled
+ * 
+ * @example
+ * ```tsx
+ * function Dashboard() {
+ *   const showNewDashboard = useFeatureFlag(FEATURE_FLAGS.NEW_DASHBOARD);
+ *   
+ *   if (showNewDashboard) {
+ *     return <NewDashboard />;
+ *   }
+ *   return <OldDashboard />;
+ * }
+ * ```
+ */
+export function useFeatureFlag(flag: FeatureFlag): boolean {
+  const [isEnabled, setIsEnabled] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Check if PostHog is ready
+    if (typeof window === 'undefined' || !posthog.__loaded) {
+      setIsLoading(false);
+      return;
+    }
+
+    // Get initial value
+    const value = posthog.isFeatureEnabled(flag);
+    setIsEnabled(value ?? false);
+    setIsLoading(false);
+
+    // Listen for flag changes
+    const unsubscribe = posthog.onFeatureFlags(() => {
+      const newValue = posthog.isFeatureEnabled(flag);
+      setIsEnabled(newValue ?? false);
+    });
+
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
+  }, [flag]);
+
+  return isEnabled;
+}
+
+/**
+ * Get feature flag with loading state
+ */
+export function useFeatureFlagWithLoading(flag: FeatureFlag): {
+  isEnabled: boolean;
+  isLoading: boolean;
+} {
+  const [isEnabled, setIsEnabled] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !posthog.__loaded) {
+      setIsLoading(false);
+      return;
+    }
+
+    const checkFlag = () => {
+      const value = posthog.isFeatureEnabled(flag);
+      setIsEnabled(value ?? false);
+      setIsLoading(false);
+    };
+
+    // Check immediately
+    checkFlag();
+
+    // Listen for updates
+    const unsubscribe = posthog.onFeatureFlags(checkFlag);
+
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
+  }, [flag]);
+
+  return { isEnabled, isLoading };
+}
+
+/**
+ * Get a multivariate feature flag value
+ * 
+ * @example
+ * ```tsx
+ * function PricingPage() {
+ *   const variant = useFeatureFlagVariant('pricing-experiment');
+ *   
+ *   if (variant === 'control') return <PricingA />;
+ *   if (variant === 'variant-a') return <PricingB />;
+ *   return <PricingDefault />;
+ * }
+ * ```
+ */
+export function useFeatureFlagVariant(flag: FeatureFlag): string | boolean | undefined {
+  const [variant, setVariant] = useState<string | boolean | undefined>(undefined);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !posthog.__loaded) {
+      return;
+    }
+
+    const checkVariant = () => {
+      const value = posthog.getFeatureFlag(flag);
+      setVariant(value);
+    };
+
+    checkVariant();
+
+    const unsubscribe = posthog.onFeatureFlags(checkVariant);
+
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
+  }, [flag]);
+
+  return variant;
+}
+
+// ============================================================================
+// Feature Flag Component
+// ============================================================================
+
+interface FeatureProps {
+  flag: FeatureFlag;
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+}
+
+/**
+ * Conditionally render content based on feature flag
+ * 
+ * @example
+ * ```tsx
+ * <Feature flag={FEATURE_FLAGS.NEW_DASHBOARD}>
+ *   <NewDashboard />
+ * </Feature>
+ * ```
+ */
+export function Feature({ flag, children, fallback = null }: FeatureProps) {
+  const isEnabled = useFeatureFlag(flag);
+  return <>{isEnabled ? children : fallback}</>;
+}
+{% endif %}

@@ -1,0 +1,380 @@
+{% if saas_starter_module == "enabled" %}
+/**
+ * Health Check Endpoint
+ * 
+ * Provides health status for load balancers, monitoring, and debugging.
+ * 
+ * Endpoints:
+ * - GET /api/health - Basic health check (fast)
+ * - GET /api/health/ready - Readiness check (includes dependencies)
+ * - GET /api/health/live - Liveness check (basic ping)
+ * 
+ * @example
+ * ```ts
+ * // app/api/health/route.ts
+ * export { GET } from '@/lib/api/health';
+ * 
+ * // app/api/health/ready/route.ts
+ * export { GET } from '@/lib/api/health';
+ * ```
+ */
+
+{% if saas_observability_structured_logging %}
+import { logger } from '@/lib/observability/logger';
+{% endif %}
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface HealthStatus {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  timestamp: string;
+  version: string;
+  uptime: number;
+  checks?: Record<string, CheckResult>;
+}
+
+export interface CheckResult {
+  status: 'pass' | 'fail' | 'warn';
+  latency?: number;
+  message?: string;
+}
+
+// ============================================================================
+// Health Check Functions
+// ============================================================================
+
+const startTime = Date.now();
+
+/**
+ * Get basic health status
+ */
+export function getBasicHealth(): HealthStatus {
+  return {
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    version: process.env.npm_package_version || '0.0.0',
+    uptime: Math.floor((Date.now() - startTime) / 1000),
+  };
+}
+
+/**
+ * Check database connectivity
+ */
+async function checkDatabase(): Promise<CheckResult> {
+  const start = Date.now();
+  
+  try {
+    {% if saas_orm == 'prisma' %}
+    const { prisma } = await import('@/lib/db');
+    await prisma.$queryRaw`SELECT 1`;
+    {% elif saas_orm == 'drizzle' %}
+    const { db } = await import('@/lib/db');
+    await db.execute('SELECT 1');
+    {% endif %}
+    
+    return {
+      status: 'pass',
+      latency: Date.now() - start,
+    };
+  } catch (error) {
+    {% if saas_observability_structured_logging %}
+    logger.error({
+      msg: 'Database health check failed',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    {% endif %}
+    
+    return {
+      status: 'fail',
+      latency: Date.now() - start,
+      message: error instanceof Error ? error.message : 'Database connection failed',
+    };
+  }
+}
+
+{% if saas_rate_limiting == 'upstash' %}
+/**
+ * Check Redis connectivity
+ */
+async function checkRedis(): Promise<CheckResult> {
+  const start = Date.now();
+  
+  try {
+    const { Redis } = await import('@upstash/redis');
+    const redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL!,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    });
+    
+    await redis.ping();
+    
+    return {
+      status: 'pass',
+      latency: Date.now() - start,
+    };
+  } catch (error) {
+    return {
+      status: 'fail',
+      latency: Date.now() - start,
+      message: error instanceof Error ? error.message : 'Redis connection failed',
+    };
+  }
+}
+{% endif %}
+
+{% if saas_storage == 'r2' %}
+/**
+ * Check R2 storage connectivity
+ */
+async function checkStorage(): Promise<CheckResult> {
+  const start = Date.now();
+  
+  try {
+    // Just check if credentials are configured
+    const configured = !!(
+      process.env.R2_ACCESS_KEY_ID &&
+      process.env.R2_SECRET_ACCESS_KEY &&
+      process.env.R2_BUCKET_NAME
+    );
+    
+    return {
+      status: configured ? 'pass' : 'warn',
+      latency: Date.now() - start,
+      message: configured ? undefined : 'R2 credentials not configured',
+    };
+  } catch (error) {
+    return {
+      status: 'fail',
+      latency: Date.now() - start,
+      message: error instanceof Error ? error.message : 'Storage check failed',
+    };
+  }
+}
+{% endif %}
+
+{% if saas_email == 'resend' %}
+/**
+ * Check Resend email service
+ */
+async function checkEmail(): Promise<CheckResult> {
+  const start = Date.now();
+  
+  try {
+    const configured = !!process.env.RESEND_API_KEY;
+    if (!configured) {
+      return {
+        status: 'warn',
+        latency: Date.now() - start,
+        message: 'RESEND_API_KEY not configured',
+      };
+    }
+    
+    // Optionally verify API key by checking domains
+    const { Resend } = await import('resend');
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    await resend.domains.list();
+    
+    return {
+      status: 'pass',
+      latency: Date.now() - start,
+    };
+  } catch (error) {
+    return {
+      status: 'fail',
+      latency: Date.now() - start,
+      message: error instanceof Error ? error.message : 'Email service check failed',
+    };
+  }
+}
+{% elif saas_email == 'postmark' %}
+/**
+ * Check Postmark email service
+ */
+async function checkEmail(): Promise<CheckResult> {
+  const start = Date.now();
+  
+  try {
+    const configured = !!process.env.POSTMARK_API_TOKEN;
+    if (!configured) {
+      return {
+        status: 'warn',
+        latency: Date.now() - start,
+        message: 'POSTMARK_API_TOKEN not configured',
+      };
+    }
+    
+    const { ServerClient } = await import('postmark');
+    const client = new ServerClient(process.env.POSTMARK_API_TOKEN);
+    await client.getServer();
+    
+    return {
+      status: 'pass',
+      latency: Date.now() - start,
+    };
+  } catch (error) {
+    return {
+      status: 'fail',
+      latency: Date.now() - start,
+      message: error instanceof Error ? error.message : 'Email service check failed',
+    };
+  }
+}
+{% endif %}
+
+/**
+ * Get full health status with all dependency checks
+ */
+export async function getFullHealth(): Promise<HealthStatus> {
+  const basic = getBasicHealth();
+  
+  // Run all checks in parallel
+  const [
+    database,
+    {% if saas_rate_limiting == 'upstash' %}
+    redis,
+    {% endif %}
+    {% if saas_storage == 'r2' %}
+    storage,
+    {% endif %}
+    {% if saas_email == 'resend' or saas_email == 'postmark' %}
+    email,
+    {% endif %}
+  ] = await Promise.all([
+    checkDatabase(),
+    {% if saas_rate_limiting == 'upstash' %}
+    checkRedis(),
+    {% endif %}
+    {% if saas_storage == 'r2' %}
+    checkStorage(),
+    {% endif %}
+    {% if saas_email == 'resend' or saas_email == 'postmark' %}
+    checkEmail(),
+    {% endif %}
+  ]);
+  
+  const checks: Record<string, CheckResult> = {
+    database,
+    {% if saas_rate_limiting == 'upstash' %}
+    redis,
+    {% endif %}
+    {% if saas_storage == 'r2' %}
+    storage,
+    {% endif %}
+    {% if saas_email == 'resend' or saas_email == 'postmark' %}
+    email,
+    {% endif %}
+  };
+  
+  // Determine overall status
+  const hasFailure = Object.values(checks).some(c => c.status === 'fail');
+  const hasWarning = Object.values(checks).some(c => c.status === 'warn');
+  
+  return {
+    ...basic,
+    status: hasFailure ? 'unhealthy' : hasWarning ? 'degraded' : 'healthy',
+    checks,
+  };
+}
+
+// ============================================================================
+// API Route Handlers
+// ============================================================================
+
+/**
+ * Basic health check (for load balancer)
+ * Fast, doesn't check dependencies
+ */
+export async function healthHandler(): Promise<Response> {
+  const health = getBasicHealth();
+  
+  return Response.json(health, {
+    status: 200,
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+    },
+  });
+}
+
+/**
+ * Readiness check (for Kubernetes readiness probe)
+ * Checks all dependencies
+ */
+export async function readyHandler(): Promise<Response> {
+  const health = await getFullHealth();
+  
+  const statusCode = health.status === 'healthy' ? 200 : 
+                     health.status === 'degraded' ? 200 : 503;
+  
+  return Response.json(health, {
+    status: statusCode,
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+    },
+  });
+}
+
+/**
+ * Liveness check (for Kubernetes liveness probe)
+ * Simple ping, always returns 200 if process is alive
+ */
+export async function liveHandler(): Promise<Response> {
+  return Response.json({ status: 'ok' }, {
+    status: 200,
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+    },
+  });
+}
+
+// ============================================================================
+// Next.js Route Exports
+// ============================================================================
+
+{% if saas_runtime == 'nextjs-16' %}
+/**
+ * Export these from your route files:
+ * 
+ * // app/api/health/route.ts
+ * import { healthHandler } from '@/lib/api/health';
+ * export const GET = healthHandler;
+ * export const dynamic = 'force-dynamic';
+ * 
+ * // app/api/health/ready/route.ts
+ * import { readyHandler } from '@/lib/api/health';
+ * export const GET = readyHandler;
+ * export const dynamic = 'force-dynamic';
+ * 
+ * // app/api/health/live/route.ts
+ * import { liveHandler } from '@/lib/api/health';
+ * export const GET = liveHandler;
+ * export const dynamic = 'force-dynamic';
+ */
+export const GET = healthHandler;
+{% endif %}
+
+// ============================================================================
+// Remix Loader Export
+// ============================================================================
+
+{% if saas_runtime == 'remix-2' %}
+/**
+ * Use in Remix routes:
+ * 
+ * // app/routes/api.health.tsx
+ * import { healthLoader } from '~/lib/api/health';
+ * export const loader = healthLoader;
+ */
+export async function healthLoader() {
+  const health = getBasicHealth();
+  return Response.json(health);
+}
+
+export async function readyLoader() {
+  const health = await getFullHealth();
+  const statusCode = health.status === 'healthy' ? 200 : 503;
+  return Response.json(health, { status: statusCode });
+}
+{% endif %}
+{% endif %}

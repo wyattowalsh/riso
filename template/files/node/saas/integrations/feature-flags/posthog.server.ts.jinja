@@ -1,0 +1,200 @@
+{% if saas_starter_module == "enabled" and saas_analytics == "posthog" %}
+/**
+ * Feature Flags Server (Server-Side)
+ * 
+ * Server-side feature flag evaluation using PostHog Node.js SDK.
+ * Use this in Server Components, API routes, and middleware.
+ * 
+ * For client-side hooks, see posthog.ts (client)
+ * 
+ * @see https://posthog.com/docs/feature-flags/server-side
+ */
+
+import { PostHog } from 'posthog-node';
+{% if saas_observability_structured_logging %}
+import { logger } from '@/lib/observability/logger';
+{% endif %}
+
+// Re-export flag definitions for type safety
+export { FEATURE_FLAGS, type FeatureFlag } from './posthog';
+
+// ============================================================================
+// Server PostHog Instance
+// ============================================================================
+
+let serverPostHog: PostHog | null = null;
+
+function getServerPostHog(): PostHog {
+  if (!serverPostHog) {
+    const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+    const host = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com';
+    
+    if (!key) {
+      throw new Error('PostHog key not configured');
+    }
+    
+    serverPostHog = new PostHog(key, { host });
+  }
+  return serverPostHog;
+}
+
+// ============================================================================
+// Server-Side Evaluation
+// ============================================================================
+
+/**
+ * Check feature flag on the server
+ * 
+ * @example
+ * ```ts
+ * // In a Server Component or API route
+ * import { getFeatureFlagServer, FEATURE_FLAGS } from '@/lib/feature-flags/posthog.server';
+ * 
+ * const isEnabled = await getFeatureFlagServer(
+ *   FEATURE_FLAGS.NEW_DASHBOARD,
+ *   userId
+ * );
+ * ```
+ */
+export async function getFeatureFlagServer(
+  flag: string,
+  distinctId: string,
+  properties?: Record<string, unknown>
+): Promise<boolean> {
+  try {
+    const ph = getServerPostHog();
+    const isEnabled = await ph.isFeatureEnabled(flag, distinctId, {
+      personProperties: properties,
+    });
+    
+    {% if saas_observability_structured_logging %}
+    logger.debug({
+      msg: 'Feature flag evaluated',
+      flag,
+      distinctId,
+      isEnabled,
+    });
+    {% endif %}
+    
+    return isEnabled ?? false;
+  } catch (error) {
+    {% if saas_observability_structured_logging %}
+    logger.error({
+      msg: 'Feature flag evaluation failed',
+      flag,
+      distinctId,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    {% endif %}
+    return false;
+  }
+}
+
+/**
+ * Get feature flag variant (for A/B tests)
+ */
+export async function getFeatureFlagVariantServer(
+  flag: string,
+  distinctId: string,
+  properties?: Record<string, unknown>
+): Promise<string | boolean | undefined> {
+  try {
+    const ph = getServerPostHog();
+    return await ph.getFeatureFlag(flag, distinctId, {
+      personProperties: properties,
+    });
+  } catch (error) {
+    {% if saas_observability_structured_logging %}
+    logger.error({
+      msg: 'Feature flag variant evaluation failed',
+      flag,
+      distinctId,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    {% endif %}
+    return undefined;
+  }
+}
+
+/**
+ * Get all feature flags for a user (server-side)
+ * 
+ * Useful for passing to client components for initial hydration
+ */
+export async function getAllFeatureFlagsServer(
+  distinctId: string,
+  properties?: Record<string, unknown>
+): Promise<Record<string, boolean | string>> {
+  try {
+    const ph = getServerPostHog();
+    const flags = await ph.getAllFlags(distinctId, {
+      personProperties: properties,
+    });
+    return flags;
+  } catch (error) {
+    {% if saas_observability_structured_logging %}
+    logger.error({
+      msg: 'Failed to get all feature flags',
+      distinctId,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    {% endif %}
+    return {};
+  }
+}
+
+// ============================================================================
+// Middleware Helper
+// ============================================================================
+
+/**
+ * Check feature flag in middleware
+ * 
+ * @example
+ * ```ts
+ * // middleware.ts
+ * import { checkFeatureFlagMiddleware } from '@/lib/feature-flags/posthog.server';
+ * 
+ * export async function middleware(request: NextRequest) {
+ *   const userId = request.cookies.get('userId')?.value;
+ *   if (userId) {
+ *     const isBetaUser = await checkFeatureFlagMiddleware('beta-features', userId);
+ *     if (isBetaUser) {
+ *       return NextResponse.rewrite(new URL('/beta', request.url));
+ *     }
+ *   }
+ * }
+ * ```
+ */
+export async function checkFeatureFlagMiddleware(
+  flag: string,
+  distinctId: string
+): Promise<boolean> {
+  // Use a shorter timeout for middleware to avoid blocking
+  try {
+    const ph = getServerPostHog();
+    const result = await Promise.race([
+      ph.isFeatureEnabled(flag, distinctId),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 500)),
+    ]);
+    return result ?? false;
+  } catch {
+    return false;
+  }
+}
+
+// ============================================================================
+// Cleanup
+// ============================================================================
+
+/**
+ * Shutdown PostHog server client
+ * Call during graceful shutdown
+ */
+export async function shutdownFeatureFlags() {
+  if (serverPostHog) {
+    await serverPostHog.shutdown();
+    serverPostHog = null;
+  }
+}
+{% endif %}
