@@ -1,6 +1,6 @@
 /**
  * MCP Client for Riso Web App
- * 
+ *
  * Connects to the Riso MCP server via SSE transport for real-time
  * template operations directly from the browser.
  */
@@ -187,10 +187,10 @@ class RisoMCPClient {
     answers: Record<string, unknown>,
     advance = true
   ): Promise<{ is_complete: boolean; current_step: number; [key: string]: unknown }> {
-    const result = await this.callTool('wizard_step', { 
-      session_id: sessionId, 
+    const result = await this.callTool('wizard_step', {
+      session_id: sessionId,
       answers,
-      advance 
+      advance
     })
     const text = result.content.find((c) => c.type === 'text')?.text
     if (!text) return { is_complete: false, current_step: 0 }
@@ -223,7 +223,7 @@ class RisoMCPClient {
     destination?: string,
     force = false
   ): Promise<{ success: boolean; destination?: string; message?: string }> {
-    const result = await this.callTool('wizard_generate', { 
+    const result = await this.callTool('wizard_generate', {
       session_id: sessionId,
       destination,
       force

@@ -47,7 +47,7 @@ export interface GenerateResult {
 
 /**
  * API client for Riso backend services.
- * 
+ *
  * NOTE: getModules, validateConfig, generateProject, and downloadProject are
  * scaffolded for future backend integration. Currently only exportConfig and
  * importConfig are used for client-side YAML generation.

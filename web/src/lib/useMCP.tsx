@@ -34,10 +34,10 @@ export function MCPProvider({ children, config, autoConnect = false }: MCPProvid
 
   const connect = useCallback(async () => {
     if (connected || connecting) return
-    
+
     setConnecting(true)
     setError(null)
-    
+
     try {
       await client.connect()
       setConnected(true)
@@ -61,7 +61,7 @@ export function MCPProvider({ children, config, autoConnect = false }: MCPProvid
     if (autoConnect) {
       connect()
     }
-    
+
     return () => {
       // Disconnect but don't reset the singleton - other components may still use it
       client.disconnect().catch(() => {
