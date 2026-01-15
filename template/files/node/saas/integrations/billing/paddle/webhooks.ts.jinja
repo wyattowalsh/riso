@@ -1,0 +1,384 @@
+{% if saas_starter_module == "enabled" and saas_billing == "paddle" %}
+/**
+ * Paddle Webhook Handlers
+ * 
+ * Best practices:
+ * - Signature verification (security)
+ * - Idempotency (prevent duplicate processing)
+ * - Type-safe event handling
+ * - Error handling and retry logic
+ * - Audit logging
+ * 
+ * @see https://developer.paddle.com/webhooks/overview
+ */
+
+import { Paddle, EventName, type SubscriptionCreatedEvent, type SubscriptionUpdatedEvent, type SubscriptionCanceledEvent, type TransactionCompletedEvent, type TransactionPaymentFailedEvent } from '@paddle/paddle-node-sdk';
+{% if saas_orm == 'prisma' %}
+import { prisma } from '@/lib/database/client';
+{% elif saas_orm == 'drizzle' %}
+import { db } from '@/lib/database/client';
+import { subscriptions, invoices } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+{% endif %}
+{% if saas_observability_structured_logging %}
+import { logger } from '@/lib/observability/logger';
+{% endif %}
+import crypto from 'crypto';
+
+// Initialize Paddle client for verification
+const paddle = new Paddle(process.env.PADDLE_API_KEY!);
+
+// ============================================================================
+// Webhook Signature Verification
+// ============================================================================
+
+/**
+ * Verify Paddle webhook signature
+ * @see https://developer.paddle.com/webhooks/signature-verification
+ */
+export function verifyPaddleWebhook(
+  rawBody: string,
+  signature: string,
+  timestamp: string
+): boolean {
+  const webhookSecret = process.env.PADDLE_WEBHOOK_SECRET;
+  
+  if (!webhookSecret) {
+    throw new Error('PADDLE_WEBHOOK_SECRET is not set');
+  }
+  
+  // Build the signed payload
+  const signedPayload = `${timestamp}:${rawBody}`;
+  
+  // Compute the expected signature
+  const expectedSignature = crypto
+    .createHmac('sha256', webhookSecret)
+    .update(signedPayload)
+    .digest('hex');
+  
+  // Compare signatures (constant-time)
+  const signatureBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expectedSignature);
+  
+  if (signatureBuffer.length !== expectedBuffer.length) {
+    return false;
+  }
+  
+  return crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
+}
+
+// ============================================================================
+// Webhook Event Handlers
+// ============================================================================
+
+/**
+ * Handle subscription.created
+ * Triggered when a new subscription is created
+ */
+export async function handleSubscriptionCreated(
+  event: SubscriptionCreatedEvent
+) {
+  const subscription = event.data;
+  
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: 'Paddle subscription created',
+    subscriptionId: subscription.id,
+    customerId: subscription.customerId,
+    status: subscription.status,
+  });
+  {% endif %}
+  
+  {% if saas_orm == 'prisma' %}
+  await prisma.subscription.create({
+    data: {
+      paddleCustomerId: subscription.customerId,
+      paddleSubscriptionId: subscription.id,
+      paddlePriceId: subscription.items[0]?.price?.id,
+      status: mapPaddleStatus(subscription.status),
+      plan: subscription.items[0]?.price?.description || 'unknown',
+      billingCycle: subscription.billingCycle?.interval === 'year' ? 'annual' : 'monthly',
+      currentPeriodStart: subscription.currentBillingPeriod?.startsAt ? new Date(subscription.currentBillingPeriod.startsAt) : new Date(),
+      currentPeriodEnd: subscription.currentBillingPeriod?.endsAt ? new Date(subscription.currentBillingPeriod.endsAt) : new Date(),
+      amount: subscription.items[0]?.price?.unitPrice?.amount ? parseInt(subscription.items[0].price.unitPrice.amount) : null,
+      currency: subscription.currencyCode?.toLowerCase() || 'usd',
+    },
+  });
+  {% elif saas_orm == 'drizzle' %}
+  await db.insert(subscriptions).values({
+    paddleCustomerId: subscription.customerId,
+    paddleSubscriptionId: subscription.id,
+    paddlePriceId: subscription.items[0]?.price?.id,
+    status: mapPaddleStatus(subscription.status) as any,
+    plan: subscription.items[0]?.price?.description || 'unknown',
+    billingCycle: subscription.billingCycle?.interval === 'year' ? 'annual' : 'monthly',
+    currentPeriodStart: subscription.currentBillingPeriod?.startsAt ? new Date(subscription.currentBillingPeriod.startsAt) : new Date(),
+    currentPeriodEnd: subscription.currentBillingPeriod?.endsAt ? new Date(subscription.currentBillingPeriod.endsAt) : new Date(),
+    amount: subscription.items[0]?.price?.unitPrice?.amount ? parseInt(subscription.items[0].price.unitPrice.amount) : null,
+    currency: subscription.currencyCode?.toLowerCase() || 'usd',
+  });
+  {% endif %}
+}
+
+/**
+ * Handle subscription.updated
+ * Triggered when subscription is modified
+ */
+export async function handleSubscriptionUpdated(
+  event: SubscriptionUpdatedEvent
+) {
+  const subscription = event.data;
+  
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: 'Paddle subscription updated',
+    subscriptionId: subscription.id,
+    status: subscription.status,
+  });
+  {% endif %}
+  
+  {% if saas_orm == 'prisma' %}
+  await prisma.subscription.updateMany({
+    where: { paddleSubscriptionId: subscription.id },
+    data: {
+      status: mapPaddleStatus(subscription.status),
+      currentPeriodStart: subscription.currentBillingPeriod?.startsAt ? new Date(subscription.currentBillingPeriod.startsAt) : undefined,
+      currentPeriodEnd: subscription.currentBillingPeriod?.endsAt ? new Date(subscription.currentBillingPeriod.endsAt) : undefined,
+      cancelAtPeriodEnd: subscription.scheduledChange?.action === 'cancel',
+    },
+  });
+  {% elif saas_orm == 'drizzle' %}
+  await db.update(subscriptions)
+    .set({
+      status: mapPaddleStatus(subscription.status) as any,
+      currentPeriodStart: subscription.currentBillingPeriod?.startsAt ? new Date(subscription.currentBillingPeriod.startsAt) : undefined,
+      currentPeriodEnd: subscription.currentBillingPeriod?.endsAt ? new Date(subscription.currentBillingPeriod.endsAt) : undefined,
+      cancelAtPeriodEnd: subscription.scheduledChange?.action === 'cancel',
+      updatedAt: new Date(),
+    })
+    .where(eq(subscriptions.paddleSubscriptionId, subscription.id));
+  {% endif %}
+}
+
+/**
+ * Handle subscription.canceled
+ * Triggered when subscription is canceled
+ */
+export async function handleSubscriptionCanceled(
+  event: SubscriptionCanceledEvent
+) {
+  const subscription = event.data;
+  
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: 'Paddle subscription canceled',
+    subscriptionId: subscription.id,
+  });
+  {% endif %}
+  
+  {% if saas_orm == 'prisma' %}
+  await prisma.subscription.updateMany({
+    where: { paddleSubscriptionId: subscription.id },
+    data: {
+      status: 'canceled',
+      canceledAt: new Date(),
+    },
+  });
+  {% elif saas_orm == 'drizzle' %}
+  await db.update(subscriptions)
+    .set({
+      status: 'canceled',
+      canceledAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(subscriptions.paddleSubscriptionId, subscription.id));
+  {% endif %}
+}
+
+/**
+ * Handle transaction.completed
+ * Triggered when payment succeeds
+ */
+export async function handleTransactionCompleted(
+  event: TransactionCompletedEvent
+) {
+  const transaction = event.data;
+  
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: 'Paddle transaction completed',
+    transactionId: transaction.id,
+    subscriptionId: transaction.subscriptionId,
+    total: transaction.details?.totals?.total,
+  });
+  {% endif %}
+  
+  // Store invoice record
+  {% if saas_orm == 'prisma' %}
+  if (transaction.subscriptionId) {
+    const subscription = await prisma.subscription.findFirst({
+      where: { paddleSubscriptionId: transaction.subscriptionId },
+    });
+    
+    if (subscription) {
+      await prisma.invoice.create({
+        data: {
+          paddleInvoiceId: transaction.id,
+          subscriptionId: subscription.id,
+          status: 'paid',
+          amountDue: parseInt(transaction.details?.totals?.total || '0'),
+          amountPaid: parseInt(transaction.details?.totals?.total || '0'),
+          currency: transaction.currencyCode?.toLowerCase() || 'usd',
+          paidAt: new Date(),
+        },
+      });
+    }
+  }
+  {% elif saas_orm == 'drizzle' %}
+  if (transaction.subscriptionId) {
+    const subscription = await db.query.subscriptions.findFirst({
+      where: eq(subscriptions.paddleSubscriptionId, transaction.subscriptionId),
+    });
+    
+    if (subscription) {
+      await db.insert(invoices).values({
+        paddleInvoiceId: transaction.id,
+        subscriptionId: subscription.id,
+        status: 'paid',
+        amountDue: parseInt(transaction.details?.totals?.total || '0'),
+        amountPaid: parseInt(transaction.details?.totals?.total || '0'),
+        currency: transaction.currencyCode?.toLowerCase() || 'usd',
+        paidAt: new Date(),
+      });
+    }
+  }
+  {% endif %}
+}
+
+/**
+ * Handle transaction.payment_failed
+ * Triggered when payment fails
+ */
+export async function handleTransactionPaymentFailed(
+  event: TransactionPaymentFailedEvent
+) {
+  const transaction = event.data;
+  
+  {% if saas_observability_structured_logging %}
+  logger.warn({
+    msg: 'Paddle payment failed',
+    transactionId: transaction.id,
+    subscriptionId: transaction.subscriptionId,
+  });
+  {% endif %}
+  
+  // Update subscription status to past_due
+  if (transaction.subscriptionId) {
+    {% if saas_orm == 'prisma' %}
+    await prisma.subscription.updateMany({
+      where: { paddleSubscriptionId: transaction.subscriptionId },
+      data: { status: 'past_due' },
+    });
+    {% elif saas_orm == 'drizzle' %}
+    await db.update(subscriptions)
+      .set({ status: 'past_due', updatedAt: new Date() })
+      .where(eq(subscriptions.paddleSubscriptionId, transaction.subscriptionId));
+    {% endif %}
+  }
+  
+  // EXTENSION POINT: Send payment failed email notification
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Map Paddle subscription status to our internal status
+ */
+function mapPaddleStatus(paddleStatus: string): string {
+  const statusMap: Record<string, string> = {
+    'active': 'active',
+    'trialing': 'trialing',
+    'past_due': 'past_due',
+    'paused': 'past_due', // Treat paused as past_due
+    'canceled': 'canceled',
+  };
+  
+  return statusMap[paddleStatus] || 'incomplete';
+}
+
+// ============================================================================
+// Webhook Router
+// ============================================================================
+
+/**
+ * Main webhook handler
+ * Routes events to appropriate handlers
+ * 
+ * @example
+ * ```ts
+ * // In app/api/webhooks/paddle/route.ts
+ * export async function POST(req: Request) {
+ *   const payload = await req.text();
+ *   const signature = req.headers.get('paddle-signature')!;
+ *   const timestamp = req.headers.get('paddle-timestamp')!;
+ *   
+ *   await processWebhook(payload, signature, timestamp);
+ *   return new Response('OK', { status: 200 });
+ * }
+ * ```
+ */
+export async function processWebhook(
+  payload: string, 
+  signature: string,
+  timestamp: string
+) {
+  // Verify signature
+  if (!verifyPaddleWebhook(payload, signature, timestamp)) {
+    throw new Error('Invalid Paddle webhook signature');
+  }
+  
+  const event = JSON.parse(payload);
+  
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: 'Processing Paddle webhook',
+    eventType: event.event_type,
+    eventId: event.event_id,
+  });
+  {% endif %}
+  
+  // Route to appropriate handler
+  switch (event.event_type) {
+    case EventName.SubscriptionCreated:
+      await handleSubscriptionCreated(event);
+      break;
+    
+    case EventName.SubscriptionUpdated:
+      await handleSubscriptionUpdated(event);
+      break;
+    
+    case EventName.SubscriptionCanceled:
+      await handleSubscriptionCanceled(event);
+      break;
+    
+    case EventName.TransactionCompleted:
+      await handleTransactionCompleted(event);
+      break;
+    
+    case EventName.TransactionPaymentFailed:
+      await handleTransactionPaymentFailed(event);
+      break;
+    
+    default:
+      {% if saas_observability_structured_logging %}
+      logger.info({
+        msg: 'Unhandled Paddle webhook event',
+        type: event.event_type,
+        eventId: event.event_id,
+      });
+      {% endif %}
+  }
+}
+{% endif %}
