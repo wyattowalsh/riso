@@ -1,0 +1,50 @@
+---
+name: "GitHub Actions"
+type: "ci"
+category: "container-ci"
+description: "CI/CD platform built into GitHub"
+icon: "simple-icons:githubactions"
+popularity: 95
+homepage: "https://docs.github.com/en/actions"
+repository: "https://github.com/features/actions"
+tags: ["ci", "cd", "automation", "github", "workflows"]
+install_command: null
+provided_by: "external"
+brand_colors: true
+---
+
+# GitHub Actions
+
+GitHub Actions is a CI/CD platform integrated directly into GitHub. Riso generates workflow files for quality checks, testing, and deployment.
+
+## Features
+
+- **Native**: Built into GitHub
+- **Marketplace**: Thousands of reusable actions
+- **Matrix**: Test across multiple versions
+- **Caching**: Speed up workflows
+
+## Generated Workflows
+
+Riso generates:
+
+- `.github/workflows/riso-quality.yml` - Lint, type check, test
+- `.github/workflows/riso-docs.yml` - Build documentation (optional)
+- `.github/workflows/riso-frontend.yml` - Frontend checks (if enabled)
+
+## Example Workflow
+
+```yaml
+name: Quality
+on: [push, pull_request]
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --group quality
+      - run: uv run ruff check
+      - run: uv run ty check
+      - run: uv run pytest
+```

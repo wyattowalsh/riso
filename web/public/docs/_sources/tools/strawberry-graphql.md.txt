@@ -1,0 +1,64 @@
+---
+name: "Strawberry GraphQL"
+type: "framework"
+category: "optional-modules"
+description: "Python GraphQL library using dataclasses and type hints"
+icon: "tabler:strawberry"
+popularity: 80
+homepage: "https://strawberry.rocks/"
+repository: "https://github.com/strawberry-graphql/strawberry"
+tags: ["python", "graphql", "api", "type-hints", "dataclasses"]
+install_command: "uv add strawberry-graphql[fastapi]"
+provided_by: "external"
+brand_colors: false
+---
+
+# Strawberry GraphQL
+
+Strawberry is a Python GraphQL library that uses dataclasses and type annotations to define schemas. It integrates seamlessly with FastAPI.
+
+## Features
+
+- **Type-first**: Schema from Python types
+- **Dataclasses**: Native Python dataclass support
+- **FastAPI**: First-class FastAPI integration
+- **Federation**: Apollo Federation support
+
+## Usage in Riso
+
+Enable `graphql_api_module: enabled` with `api_tracks: python`:
+
+```bash
+# Run with FastAPI
+uv run uvicorn src.api.main:app --reload
+# GraphQL playground at /graphql
+```
+
+## Generated Structure
+
+```
+src/
+├── api/
+│   └── graphql/
+│       ├── __init__.py
+│       ├── schema.py    # GraphQL schema
+│       ├── types/       # Type definitions
+│       └── resolvers/   # Resolver functions
+```
+
+## Example
+
+```python
+import strawberry
+
+@strawberry.type
+class User:
+    id: int
+    name: str
+
+@strawberry.type
+class Query:
+    @strawberry.field
+    def user(self, id: int) -> User:
+        return User(id=id, name="John")
+```

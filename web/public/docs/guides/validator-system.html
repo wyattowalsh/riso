@@ -1,0 +1,2031 @@
+<!DOCTYPE html>
+<html lang="en" data-accent-color="teal" data-content_root="../">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Validator System - Riso Dev Docs 0.1.0</title><link rel="shortcut icon" href="../_static/favicon.ico"/><link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" />
+      <link rel="canonical" href="http://localhost:8000/guides/validator-system.html" /><script>
+    function setColorMode(t){let e=document.documentElement;e.setAttribute("data-color-mode",t);let a=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches,s=t;"auto"===t&&(s=a?"dark":"light"),"light"===s?(e.classList.remove("dark"),e.classList.add("light")):(e.classList.remove("light"),e.classList.add("dark"))}
+    setColorMode(localStorage._theme||"auto");
+  </script><link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=e1a1ceaf" />
+    <link rel="stylesheet" type="text/css" href="../_static/shibuya.css?v=a318c5d4" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../_static/twemoji.css?v=2199c511" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tooltipster.custom.css?v=7bc2f056" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tooltipster.bundle.min.css?v=37217874" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tooltipster-sideTip-shadow.min.css?v=6227e517" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tooltipster-sideTip-punk.min.css?v=94669e23" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tooltipster-sideTip-noir.min.css?v=21a39f42" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tooltipster-sideTip-light.min.css?v=a18b2449" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tooltipster-sideTip-borderless.min.css?v=dbff53e4" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/micromodal.css?v=d7bf34ee" />
+    <link rel="stylesheet" type="text/css" href="../_static/autoclasstoc.css?v=08871587" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link media="print" rel="stylesheet" type="text/css" href="../_static/print.css?v=20ff2c19" />
+    <link rel="stylesheet" type="text/css" href="../_static/tabs.css?v=a5c4661c" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/design-tokens.css?v=06072868" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=ea525553" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/components.css?v=bfea75b3" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/lucide-icons.css?v=d252316b" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/tool-catalog.css?v=7fd15ab7" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/mermaid.css?v=b1821ef9" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/riso-effects.css?v=53662340" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/riso-copier.css?v=15eea25d" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sy-f-text: "Inter", var(--sy-f-sys), var(--sy-f-cjk), sans-serif;
+  --sy-f-heading: "Inter", var(--sy-f-sys), var(--sy-f-cjk), sans-serif;
+}
+</style>
+    <meta property="og:type" content="website"/>
+  <meta property="og:url" content="http://localhost:8000/guides/validator-system.html"/>
+  <meta property="og:title" content="Validator System"/>
+    <meta name="twitter:card" content="summary"/>
+  </head>
+<body><div class="sy-head">
+  <div class="sy-head-blur"></div>
+  <div class="sy-head-inner sy-container mx-auto">
+    <a class="sy-head-brand" href="../index.html">
+      <img class="light-logo" src="../_static/img/logo.webp" alt="Riso Dev Docs" height="28" loading="lazy" />
+      <img class="dark-logo" src="../_static/img/logo.webp" alt="Riso Dev Docs" height="28" loading="lazy" />
+      <strong>Riso Dev Docs</strong>
+    </a>
+    <div class="sy-head-nav" id="head-nav">
+      <nav class="sy-head-links"><ul><li class="link"><a href="index.html">📖 Guides</a></li><li class="link"><a href="../tools/index.html">🧰 Tools</a></li><li class="link"><a href="../api/index.html">📚 Reference</a></li><li class="link"><a href="../changelog.html">📝 Changelog</a></li></ul></nav>
+      <div class="sy-head-extra flex items-center print:hidden"><form class="searchbox flex items-center" action="../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <kbd>/</kbd>
+</form><div class="sy-head-socials">
+  <a href="https://github.com/openai/riso" aria-label="GitHub">
+    <iconify-icon icon="simple-icons:github"></iconify-icon>
+  </a></div></div>
+    </div>
+    <div class="sy-head-actions flex items-center shrink-0 print:hidden"><button class="js-theme theme-switch flex items-center"
+data-aria-auto="Switch to light color mode"
+data-aria-light="Switch to dark color mode"
+data-aria-dark="Switch to auto color mode">
+<i class="i-lucide theme-icon"></i>
+</button><button class="md:hidden flex items-center js-menu" aria-label="Menu" type="button" aria-controls="head-nav" aria-expanded="false">
+        <div class="hamburger">
+          <span class="hamburger_1"></span>
+          <span class="hamburger_2"></span>
+          <span class="hamburger_3"></span>
+        </div>
+      </button>
+    </div>
+  </div>
+</div>
+<div class="sy-page sy-container flex mx-auto">
+  <aside id="lside" class="sy-lside md:w-72 md:shrink-0 print:hidden">
+    <div class="sy-lside-inner md:sticky">
+      <div class="sy-scrollbar p-6">
+        <div class="globaltoc" data-expand-depth="0"><ul>
+<li class="toctree-l1"><a class="reference internal" href="index.html">📖 Guides</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tools/index.html">🛠️ Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">📚 API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">📋 Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="lside-overlay js-menu" role="button" aria-label="Close left sidebar" aria-controls="lside" aria-expanded="false"></div>
+  <aside id="rside" class="sy-rside pb-3 w-64 shrink-0 order-last">
+    <button class="rside-close js-menu xl:hidden" aria-label="Close Table of Contents" type="button" aria-controls="rside" aria-expanded="false">
+      <i class="i-lucide close"></i>
+    </button>
+    <div class="sy-scrollbar sy-rside-inner px-6 xl:top-16 xl:sticky xl:pl-0 pt-6 pb-4"><div class="localtoc"><h3>On this page</h3><ul>
+<li><a class="reference internal" href="#overview">Overview</a><ul>
+<li><a class="reference internal" href="#validation-pipeline">Validation Pipeline</a></li>
+<li><a class="reference internal" href="#validation-entry-point">Validation Entry Point</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#validators">Validators</a><ul>
+<li><a class="reference internal" href="#language-validator">Language Validator</a><ul>
+<li><a class="reference internal" href="#validation-rules">Validation Rules</a></li>
+<li><a class="reference internal" href="#example-errors">Example Errors</a></li>
+<li><a class="reference internal" href="#configuration-matrix">Configuration Matrix</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#frontend-validator">Frontend Validator</a><ul>
+<li><a class="reference internal" href="#id1">Validation Rules</a></li>
+<li><a class="reference internal" href="#id2">Example Errors</a></li>
+<li><a class="reference internal" href="#component-library-requirements">Component Library Requirements</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#build-tool-validator">Build Tool Validator</a><ul>
+<li><a class="reference internal" href="#id3">Validation Rules</a></li>
+<li><a class="reference internal" href="#id4">Example Errors</a></li>
+<li><a class="reference internal" href="#build-tool-compatibility-matrix">Build Tool Compatibility Matrix</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#monorepo-tool-validator">Monorepo Tool Validator</a><ul>
+<li><a class="reference internal" href="#id5">Validation Rules</a></li>
+<li><a class="reference internal" href="#id6">Example Errors</a></li>
+<li><a class="reference internal" href="#monorepo-tool-comparison">Monorepo Tool Comparison</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#tool-validator">Tool Validator</a><ul>
+<li><a class="reference internal" href="#id7">Validation Rules</a></li>
+<li><a class="reference internal" href="#example-messages">Example Messages</a></li>
+<li><a class="reference internal" href="#severity-levels">Severity Levels</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#structure-validator">Structure Validator</a><ul>
+<li><a class="reference internal" href="#id8">Validation Rules</a></li>
+<li><a class="reference internal" href="#id9">Example Errors</a></li>
+<li><a class="reference internal" href="#structure-requirements">Structure Requirements</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#validator-composition-and-precedence">Validator Composition and Precedence</a><ul>
+<li><a class="reference internal" href="#execution-order">Execution Order</a></li>
+<li><a class="reference internal" href="#error-aggregation">Error Aggregation</a></li>
+<li><a class="reference internal" href="#precedence-rules">Precedence Rules</a></li>
+<li><a class="reference internal" href="#cross-validator-dependencies">Cross-Validator Dependencies</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#error-resolution-guide">Error Resolution Guide</a><ul>
+<li><a class="reference internal" href="#common-error-scenarios">Common Error Scenarios</a><ul>
+<li><a class="reference internal" href="#scenario-1-missing-language-tool">Scenario 1: Missing Language Tool</a></li>
+<li><a class="reference internal" href="#scenario-2-package-manager-missing">Scenario 2: Package Manager Missing</a></li>
+<li><a class="reference internal" href="#scenario-3-framework-incompatibility">Scenario 3: Framework Incompatibility</a></li>
+<li><a class="reference internal" href="#scenario-4-meta-framework-conflict">Scenario 4: Meta-Framework Conflict</a></li>
+<li><a class="reference internal" href="#scenario-5-monorepo-tool-incompatibility">Scenario 5: Monorepo Tool Incompatibility</a></li>
+<li><a class="reference internal" href="#scenario-6-structure-mismatch">Scenario 6: Structure Mismatch</a></li>
+<li><a class="reference internal" href="#scenario-7-saas-starter-incompatibility">Scenario 7: SaaS Starter Incompatibility</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#debugging-validation-failures">Debugging Validation Failures</a><ul>
+<li><a class="reference internal" href="#review-provisioning-log">1. Review Provisioning Log</a></li>
+<li><a class="reference internal" href="#manually-verify-configuration">2. Manually Verify Configuration</a></li>
+<li><a class="reference internal" href="#run-validators-standalone">3. Run Validators Standalone</a></li>
+<li><a class="reference internal" href="#enable-verbose-logging">4. Enable Verbose Logging</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#valid-configuration-examples">Valid Configuration Examples</a><ul>
+<li><a class="reference internal" href="#example-1-python-fastapi-react-vite">Example 1: Python FastAPI + React + Vite</a></li>
+<li><a class="reference internal" href="#example-2-rust-axum-vue-nuxt">Example 2: Rust Axum + Vue + Nuxt</a></li>
+<li><a class="reference internal" href="#example-3-multi-language-monorepo">Example 3: Multi-Language Monorepo</a></li>
+<li><a class="reference internal" href="#example-4-go-svelte-sveltekit">Example 4: Go + Svelte + SvelteKit</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#invalid-configuration-examples">Invalid Configuration Examples</a><ul>
+<li><a class="reference internal" href="#invalid-example-1-incompatible-component-library">Invalid Example 1: Incompatible Component Library</a></li>
+<li><a class="reference internal" href="#invalid-example-2-missing-css-framework">Invalid Example 2: Missing CSS Framework</a></li>
+<li><a class="reference internal" href="#invalid-example-3-meta-framework-conflict">Invalid Example 3: Meta-Framework Conflict</a></li>
+<li><a class="reference internal" href="#invalid-example-4-monorepo-mismatch">Invalid Example 4: Monorepo Mismatch</a></li>
+<li><a class="reference internal" href="#invalid-example-5-package-manager-incompatibility">Invalid Example 5: Package Manager Incompatibility</a></li>
+<li><a class="reference internal" href="#invalid-example-6-wrong-async-runtime">Invalid Example 6: Wrong Async Runtime</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#extending-validators">Extending Validators</a><ul>
+<li><a class="reference internal" href="#adding-a-new-validator">Adding a New Validator</a></li>
+<li><a class="reference internal" href="#adding-custom-validation-rules">Adding Custom Validation Rules</a></li>
+<li><a class="reference internal" href="#creating-severity-aware-validators">Creating Severity-Aware Validators</a></li>
+<li><a class="reference internal" href="#testing-custom-validators">Testing Custom Validators</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#best-practices">Best Practices</a><ul>
+<li><a class="reference internal" href="#for-validator-authors">For Validator Authors</a></li>
+<li><a class="reference internal" href="#for-template-users">For Template Users</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#summary">Summary</a></li>
+</ul>
+</div><a class="js-repo-stats repo-stats flex items-center" href="https://github.com/openai/riso"
+  data-type="github" data-user="openai" data-repo="riso">
+  <span class="w-8 flex items-center justify-around shrink-0 text-3xl">
+    <iconify-icon icon="simple-icons:github"></iconify-icon>
+  </span>
+  <span class="flex-grow px-2 break-all">
+    
+    
+      <span>openai/riso</span>
+    
+    <span class="flex text-sm repo-stats-count">
+      <span class="flex items-center pr-3">
+        <iconify-icon icon="lucide:star"></iconify-icon>
+        <strong class="js-repo-stars ml-1">0</strong>
+      </span>
+      <span class="flex items-center">
+        <iconify-icon icon="lucide:git-fork"></iconify-icon>
+        <strong class="js-repo-forks ml-1">0</strong>
+      </span>
+    </span>
+  </span>
+</a><div class="edit-this-page">
+  <a href="https://github.com/openai/riso/blob/main/docs/guides/validator-system.md">Edit this page</a>
+</div></div>
+  </aside>
+  <div class="rside-overlay js-menu" role="button" aria-label="Close Table of Contents" aria-controls="rside" aria-expanded="false"></div>
+  <main class="sy-main w-full max-sm:max-w-full print:pt-6">
+<div class="sy-breadcrumbs" role="navigation">
+  <div class="sy-breadcrumbs-inner flex items-center">
+    <div class="md:hidden mr-3">
+      <button class="js-menu" aria-label="Menu" type="button" aria-controls="lside" aria-expanded="false">
+        <i class="i-lucide menu"></i>
+      </button>
+    </div>
+    <ol class="flex-1" itemscope itemtype="https://schema.org/BreadcrumbList"><li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+        <a itemprop="item" href="../index.html"><span itemprop="name">Riso Dev Docs</span></a>
+        <span>/</span>
+        <meta itemprop="position" content="1" />
+      </li><li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+        <strong itemprop="name">Validator System</strong>
+        <meta itemprop="position" content="2" />
+      </li></ol>
+    <div class="xl:hidden ml-1">
+      <button class="js-menu" aria-label="Show table of contents" type="button" aria-controls="rside"
+        aria-expanded="false">
+        <i class="i-lucide outdent"></i>
+      </button>
+    </div>
+  </div>
+</div><div class="flex flex-col break-words justify-between">
+      <div class="relative min-w-0 max-w-6xl px-6 pb-6 pt-8 xl:px-12">
+  <div class="copy-page-wrapper relative pb-4 lg:absolute lg:top-8 lg:right-6 xl:right-12">
+  <div id="copy-page-trigger">
+    <button
+      type="button"
+      class="js-copy px-3 py-1 inline-flex items-center gap-1"
+      data-url="http://localhost:8000/_sources/guides/validator-system.md.txt"
+    >
+      <i class="i-lucide" data-icon="copy"></i>
+      <span>Copy page</span>
+    </button>
+    <button class="js-menu px-2 py-1" type="button" aria-label="More actions"
+      aria-haspopup="menu" aria-expanded="false" aria-controls="copy-page-content">
+      <i class="i-lucide chevron-down"></i>
+    </button>
+  </div>
+  <div id="copy-page-content" role="menu" aria-orientation="vertical" aria-hidden="true">
+    <div role="presentation">
+      <div class="flex flex-col" role="group">
+        <button class="js-copy" type="button" role="menuitem"
+          data-url="http://localhost:8000/_sources/guides/validator-system.md.txt">
+          <span class="iconify-icon">
+            <i class="i-lucide" data-icon="copy"></i>
+          </span>
+          <span>Copy page</span>
+        </button>
+        <a role="menuitem" href="http://localhost:8000/_sources/guides/validator-system.md.txt" target="_blank" rel="nofollow"><iconify-icon icon="bi:markdown"></iconify-icon>
+            <span>View as Markdown</span></a><a role="menuitem" href="https://chatgpt.com/?hints=search&q=Read%20http%3A//localhost%3A8000/_sources/guides/validator-system.md.txt%20so%20I%20can%20ask%20questions%20about%20it." target="_blank" rel="nofollow">
+          <iconify-icon icon="bi:openai"></iconify-icon>
+          <span>Open in ChatGPT</span>
+        </a><a role="menuitem" href="https://claude.ai/new?q=Read%20http%3A//localhost%3A8000/_sources/guides/validator-system.md.txt%20so%20I%20can%20ask%20questions%20about%20it." target="_blank" rel="nofollow">
+          <iconify-icon icon="bi:claude"></iconify-icon>
+          <span>Open in Claude</span>
+        </a></div>
+    </div>
+  </div>
+</div><article class="yue" role="main">
+          <section class="tex2jax_ignore mathjax_ignore" id="validator-system">
+<h1>Validator System<a class="headerlink" href="#validator-system" title="Link to this heading">¶</a></h1>
+<p>The Riso template uses a comprehensive validation system to ensure project configurations are valid, compatible, and properly tooled before generation. This guide explains the validation pipeline, individual validators, error resolution, and how to extend the system.</p>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">¶</a></h2>
+<section id="validation-pipeline">
+<h3>Validation Pipeline<a class="headerlink" href="#validation-pipeline" title="Link to this heading">¶</a></h3>
+<p>The validation system runs during Copier’s pre-generation phase via <code class="docutils literal notranslate"><span class="pre">template/hooks/pre_gen_project.py</span></code>. The pipeline executes in this order:</p>
+<ol class="arabic simple">
+<li><p><strong>Tool Provisioning</strong> - Attempts to auto-install missing tools (uv, Node.js, pnpm) via mise</p></li>
+<li><p><strong>Configuration Loading</strong> - Extracts user answers from Copier environment variables</p></li>
+<li><p><strong>SaaS Starter Validation</strong> - Validates SaaS module configurations (if enabled)</p></li>
+<li><p><strong>Specialized Validators</strong> - Runs domain-specific validators (languages, frontend, build tools, etc.)</p></li>
+<li><p><strong>Quality Tool Provisioning</strong> - Ensures Python and Node.js quality tools are available</p></li>
+<li><p><strong>Failure Reporting</strong> - Aggregates errors and provides actionable guidance</p></li>
+</ol>
+<p><strong>Key Principles:</strong></p>
+<ul class="simple">
+<li><p><strong>Fail Fast</strong>: Renders never proceed in partially configured states</p></li>
+<li><p><strong>Auto-Healing</strong>: Attempts single-pass auto-install before failing</p></li>
+<li><p><strong>Actionable Errors</strong>: Every error includes installation commands or configuration fixes</p></li>
+<li><p><strong>Audit Trail</strong>: All provisioning attempts logged to <code class="docutils literal notranslate"><span class="pre">.riso/toolchain_provisioning.jsonl</span></code></p></li>
+</ul>
+</section>
+<section id="validation-entry-point">
+<h3>Validation Entry Point<a class="headerlink" href="#validation-entry-point" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># template/hooks/pre_gen_project.py</span>
+</span><span data-line="2"><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span data-line="3">    <span class="n">context</span> <span class="o">=</span> <span class="n">_load_copier_context</span><span class="p">()</span>
+</span><span data-line="4">
+</span><span data-line="5">    <span class="c1"># SaaS Starter validation (if enabled)</span>
+</span><span data-line="6">    <span class="k">if</span> <span class="n">context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;saas_starter_module&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;enabled&quot;</span><span class="p">:</span>
+</span><span data-line="7">        <span class="n">issues</span> <span class="o">=</span> <span class="n">_validate_saas_starter</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
+</span><span data-line="8">        <span class="c1"># Block on errors, warn on warnings, inform on notices</span>
+</span><span data-line="9">
+</span><span data-line="10">    <span class="c1"># Tool matrix provisioning</span>
+</span><span data-line="11">    <span class="n">tool_matrix</span> <span class="o">=</span> <span class="p">[(</span><span class="s2">&quot;uv&quot;</span><span class="p">,</span> <span class="s2">&quot;0.4&quot;</span><span class="p">,</span> <span class="s2">&quot;uv@0.4&quot;</span><span class="p">)]</span>
+</span><span data-line="12">    <span class="k">if</span> <span class="n">docs_site</span> <span class="o">!=</span> <span class="s2">&quot;none&quot;</span><span class="p">:</span>
+</span><span data-line="13">        <span class="n">tool_matrix</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span>
+</span><span data-line="14">            <span class="p">(</span><span class="s2">&quot;node&quot;</span><span class="p">,</span> <span class="s2">&quot;20&quot;</span><span class="p">,</span> <span class="s2">&quot;node@20&quot;</span><span class="p">),</span>
+</span><span data-line="15">            <span class="p">(</span><span class="s2">&quot;pnpm&quot;</span><span class="p">,</span> <span class="s2">&quot;8&quot;</span><span class="p">,</span> <span class="s2">&quot;pnpm@8&quot;</span><span class="p">),</span>
+</span><span data-line="16">        <span class="p">])</span>
+</span><span data-line="17">
+</span><span data-line="18">    <span class="c1"># Auto-provision with mise, log attempts</span>
+</span><span data-line="19">    <span class="n">failures</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span data-line="20">    <span class="k">for</span> <span class="n">tool</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">mise_spec</span> <span class="ow">in</span> <span class="n">tool_matrix</span><span class="p">:</span>
+</span><span data-line="21">        <span class="n">result</span> <span class="o">=</span> <span class="n">_attempt_install</span><span class="p">(</span><span class="n">tool</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">mise_spec</span><span class="p">)</span>
+</span><span data-line="22">        <span class="n">_log_attempt</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+</span><span data-line="23">        <span class="k">if</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;failed&quot;</span><span class="p">:</span>
+</span><span data-line="24">            <span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+</span><span data-line="25">
+</span><span data-line="26">    <span class="c1"># Quality tool checks</span>
+</span><span data-line="27">    <span class="k">for</span> <span class="n">check</span> <span class="ow">in</span> <span class="n">ensure_python_quality_tools</span><span class="p">():</span>
+</span><span data-line="28">        <span class="c1"># ... provision and log</span>
+</span><span data-line="29">
+</span><span data-line="30">    <span class="c1"># Exit with actionable errors if any failures</span>
+</span><span data-line="31">    <span class="k">if</span> <span class="n">failures</span><span class="p">:</span>
+</span><span data-line="32">        <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;...actionable instructions...&quot;</span><span class="p">)</span>
+</span><span data-line="33">        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span></pre></div>
+</div>
+</section>
+</section>
+<section id="validators">
+<h2>Validators<a class="headerlink" href="#validators" title="Link to this heading">¶</a></h2>
+<section id="language-validator">
+<h3>Language Validator<a class="headerlink" href="#language-validator" title="Link to this heading">¶</a></h3>
+<p><strong>Location</strong>: <code class="docutils literal notranslate"><span class="pre">template/hooks/validators/language_validator.py</span></code></p>
+<p><strong>Purpose</strong>: Validates backend language selections, tool availability, and language-specific framework compatibility.</p>
+<section id="validation-rules">
+<h4>Validation Rules<a class="headerlink" href="#validation-rules" title="Link to this heading">¶</a></h4>
+<ol class="arabic simple">
+<li><p><strong>Language Tool Availability</strong> (<code class="docutils literal notranslate"><span class="pre">validate_backend_languages</span></code>)</p>
+<ul class="simple">
+<li><p>Checks that required language tools are in PATH</p></li>
+<li><p>Python requires: <code class="docutils literal notranslate"><span class="pre">python3</span></code></p></li>
+<li><p>Rust requires: <code class="docutils literal notranslate"><span class="pre">cargo</span></code>, <code class="docutils literal notranslate"><span class="pre">rustc</span></code></p></li>
+<li><p>Node requires: <code class="docutils literal notranslate"><span class="pre">node</span></code></p></li>
+<li><p>Go requires: <code class="docutils literal notranslate"><span class="pre">go</span></code></p></li>
+<li><p>Java requires: <code class="docutils literal notranslate"><span class="pre">java</span></code>, <code class="docutils literal notranslate"><span class="pre">javac</span></code></p></li>
+<li><p>C# requires: <code class="docutils literal notranslate"><span class="pre">dotnet</span></code></p></li>
+</ul>
+</li>
+<li><p><strong>Framework Compatibility</strong> (<code class="docutils literal notranslate"><span class="pre">validate_language_framework_compatibility</span></code>)</p>
+<ul class="simple">
+<li><p>Validates backend framework matches selected language</p></li>
+<li><p>Checks for incompatibilities with frontend frameworks</p></li>
+<li><p>Example: Django is incompatible with Vite/Next.js/Remix (has its own template system)</p></li>
+<li><p>Example: Axum (Rust) requires Tokio async runtime</p></li>
+</ul>
+</li>
+<li><p><strong>Package Manager Availability</strong> (<code class="docutils literal notranslate"><span class="pre">validate_package_managers</span></code>)</p>
+<ul class="simple">
+<li><p>Python: <code class="docutils literal notranslate"><span class="pre">uv</span></code>, <code class="docutils literal notranslate"><span class="pre">poetry</span></code>, <code class="docutils literal notranslate"><span class="pre">pdm</span></code>, <code class="docutils literal notranslate"><span class="pre">pip-tools</span></code>, <code class="docutils literal notranslate"><span class="pre">conda</span></code>, <code class="docutils literal notranslate"><span class="pre">pixi</span></code></p></li>
+<li><p>Node: <code class="docutils literal notranslate"><span class="pre">pnpm</span></code>, <code class="docutils literal notranslate"><span class="pre">npm</span></code>, <code class="docutils literal notranslate"><span class="pre">yarn</span></code>, <code class="docutils literal notranslate"><span class="pre">yarn-berry</span></code>, <code class="docutils literal notranslate"><span class="pre">bun</span></code></p></li>
+<li><p>Validates selected package manager command exists in PATH</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="example-errors">
+<h4>Example Errors<a class="headerlink" href="#example-errors" title="Link to this heading">¶</a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Missing language tool</span>
+</span><span data-line="2">Python<span class="w"> </span>requires<span class="w"> </span><span class="s1">&#39;python3&#39;</span><span class="w"> </span>but<span class="w"> </span>it<span class="s1">&#39;s not found in PATH. Install it before continuing.</span>
+</span><span data-line="3">
+</span><span data-line="4"><span class="s1"># Framework incompatibility</span>
+</span><span data-line="5"><span class="s1">django is incompatible with vite. Django has its own template system</span>
+</span><span data-line="6">
+</span><span data-line="7"><span class="s1"># Runtime mismatch</span>
+</span><span data-line="8"><span class="s1">axum requires tokio async runtime, but async-std was selected</span>
+</span><span data-line="9">
+</span><span data-line="10"><span class="s1"># Missing package manager</span>
+</span><span data-line="11"><span class="s1">Python package manager &#39;</span>poetry<span class="err">&#39;</span><span class="w"> </span><span class="o">(</span>poetry<span class="o">)</span><span class="w"> </span>not<span class="w"> </span>found<span class="w"> </span><span class="k">in</span><span class="w"> </span>PATH.<span class="w"> </span>Install<span class="w"> </span>it<span class="w"> </span>or<span class="w"> </span><span class="k">select</span><span class="w"> </span>a<span class="w"> </span>different<span class="w"> </span>package<span class="w"> </span>manager.
+</span></pre></div>
+</div>
+</section>
+<section id="configuration-matrix">
+<h4>Configuration Matrix<a class="headerlink" href="#configuration-matrix" title="Link to this heading">¶</a></h4>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Language</p></th>
+<th class="head"><p>Required Tools</p></th>
+<th class="head"><p>Package Managers</p></th>
+<th class="head"><p>Frameworks</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Python</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">python3</span></code></p></td>
+<td><p>uv, poetry, pdm, pip-tools, conda, pixi</p></td>
+<td><p>Django, Flask, FastAPI</p></td>
+</tr>
+<tr class="row-odd"><td><p>Rust</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">cargo</span></code>, <code class="docutils literal notranslate"><span class="pre">rustc</span></code></p></td>
+<td><p>cargo (built-in)</p></td>
+<td><p>Axum, Actix-web, Rocket, Warp, Poem</p></td>
+</tr>
+<tr class="row-even"><td><p>Node</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">node</span></code></p></td>
+<td><p>pnpm, npm, yarn, yarn-berry, bun</p></td>
+<td><p>Fastify, Express, Koa, NestJS, Hono</p></td>
+</tr>
+<tr class="row-odd"><td><p>Go</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">go</span></code></p></td>
+<td><p>go (built-in)</p></td>
+<td><p>Gin, Echo, Fiber, Chi, Gorilla</p></td>
+</tr>
+<tr class="row-even"><td><p>Java</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">java</span></code>, <code class="docutils literal notranslate"><span class="pre">javac</span></code></p></td>
+<td><p>maven, gradle</p></td>
+<td><p>Spring Boot, Quarkus</p></td>
+</tr>
+<tr class="row-odd"><td><p>C#</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dotnet</span></code></p></td>
+<td><p>dotnet (built-in)</p></td>
+<td><p><a class="reference external" href="http://ASP.NET" rel="noreferer noopener" target="_blank">ASP.NET</a> Core</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="frontend-validator">
+<h3>Frontend Validator<a class="headerlink" href="#frontend-validator" title="Link to this heading">¶</a></h3>
+<p><strong>Location</strong>: <code class="docutils literal notranslate"><span class="pre">template/hooks/validators/frontend_validator.py</span></code></p>
+<p><strong>Purpose</strong>: Validates frontend framework selections, component library compatibility, and CSS framework requirements.</p>
+<section id="id1">
+<h4>Validation Rules<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h4>
+<ol class="arabic simple">
+<li><p><strong>Frontend Framework Selection</strong> (<code class="docutils literal notranslate"><span class="pre">validate_frontend_framework</span></code>)</p>
+<ul class="simple">
+<li><p>Ensures component library/CSS framework not selected without frontend</p></li>
+<li><p>Prevents orphaned frontend configurations</p></li>
+</ul>
+</li>
+<li><p><strong>Component Library Compatibility</strong> (<code class="docutils literal notranslate"><span class="pre">validate_component_library_compatibility</span></code>)</p>
+<ul class="simple">
+<li><p>Checks component library supports selected frontend framework</p></li>
+<li><p>Validates required CSS frameworks are configured</p></li>
+<li><p>Examples:</p>
+<ul>
+<li><p>shadcn-ui requires React + Tailwind CSS</p></li>
+<li><p>Material-UI requires React</p></li>
+<li><p>Ant Design supports React or Vue</p></li>
+<li><p>Tremor requires React + Tailwind CSS</p></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>State Management Compatibility</strong> (<code class="docutils literal notranslate"><span class="pre">validate_state_management_compatibility</span></code>)</p>
+<ul class="simple">
+<li><p>React: Zustand, Redux, MobX, Jotai, Valtio, Context API</p></li>
+<li><p>Vue: Pinia, Vuex, Harlem</p></li>
+<li><p>Prevents cross-framework state managers (e.g., Pinia with React)</p></li>
+</ul>
+</li>
+<li><p><strong>Meta-Framework Conflicts</strong> (<code class="docutils literal notranslate"><span class="pre">validate_meta_framework_compatibility</span></code>)</p>
+<ul class="simple">
+<li><p>Prevents selecting multiple conflicting meta-frameworks</p></li>
+<li><p>Examples:</p>
+<ul>
+<li><p>Next.js conflicts with: Vite, Remix, Gatsby, Astro, TanStack</p></li>
+<li><p>Nuxt conflicts with: Vite, Quasar, VitePress</p></li>
+<li><p>SvelteKit conflicts with: Vite, Elder.js</p></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id2">
+<h4>Example Errors<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Missing frontend framework</span>
+</span><span data-line="2">Component<span class="w"> </span>library<span class="w"> </span>selected<span class="w"> </span>but<span class="w"> </span>no<span class="w"> </span>frontend<span class="w"> </span>framework<span class="w"> </span>chosen.<span class="w"> </span>Select<span class="w"> </span>a<span class="w"> </span>frontend<span class="w"> </span>framework<span class="w"> </span>first.
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Component library incompatibility</span>
+</span><span data-line="5">shadcn-ui<span class="w"> </span>requires<span class="w"> </span>react<span class="w"> </span>framework,<span class="w"> </span>but<span class="w"> </span>vue<span class="w"> </span>was<span class="w"> </span>selected.<span class="w"> </span>shadcn/ui<span class="w"> </span>is<span class="w"> </span>built<span class="w"> </span>specifically<span class="w"> </span><span class="k">for</span><span class="w"> </span>React<span class="w"> </span>with<span class="w"> </span>Tailwind<span class="w"> </span>CSS
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># CSS framework mismatch</span>
+</span><span data-line="8">tremor<span class="w"> </span>requires<span class="w"> </span>tailwind<span class="w"> </span>CSS<span class="w"> </span>framework,<span class="w"> </span>but<span class="w"> </span>styled-components<span class="w"> </span>was<span class="w"> </span>selected.<span class="w"> </span>Tremor<span class="w"> </span>is<span class="w"> </span>built<span class="w"> </span><span class="k">for</span><span class="w"> </span>React<span class="w"> </span>with<span class="w"> </span>Tailwind<span class="w"> </span>CSS
+</span><span data-line="9">
+</span><span data-line="10"><span class="c1"># State management incompatibility</span>
+</span><span data-line="11">pinia<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>compatible<span class="w"> </span>with<span class="w"> </span>React.<span class="w"> </span>It<span class="err">&#39;</span>s<span class="w"> </span>designed<span class="w"> </span><span class="k">for</span><span class="w"> </span>vue.
+</span><span data-line="12">
+</span><span data-line="13"><span class="c1"># Meta-framework conflict</span>
+</span><span data-line="14">nextjs<span class="w"> </span>and<span class="w"> </span>remix<span class="w"> </span>are<span class="w"> </span>mutually<span class="w"> </span>exclusive.<span class="w"> </span>Choose<span class="w"> </span>one<span class="w"> </span>meta-framework.
+</span></pre></div>
+</div>
+</section>
+<section id="component-library-requirements">
+<h4>Component Library Requirements<a class="headerlink" href="#component-library-requirements" title="Link to this heading">¶</a></h4>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Library</p></th>
+<th class="head"><p>Framework</p></th>
+<th class="head"><p>CSS Framework</p></th>
+<th class="head"><p>Notes</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>shadcn-ui</p></td>
+<td><p>React</p></td>
+<td><p>Tailwind</p></td>
+<td><p>React + Tailwind only</p></td>
+</tr>
+<tr class="row-odd"><td><p>Material-UI</p></td>
+<td><p>React</p></td>
+<td><p>-</p></td>
+<td><p>React-specific</p></td>
+</tr>
+<tr class="row-even"><td><p>Ant Design</p></td>
+<td><p>React, Vue</p></td>
+<td><p>-</p></td>
+<td><p>Multi-framework</p></td>
+</tr>
+<tr class="row-odd"><td><p>Chakra UI</p></td>
+<td><p>React</p></td>
+<td><p>-</p></td>
+<td><p>React-specific</p></td>
+</tr>
+<tr class="row-even"><td><p>Mantine</p></td>
+<td><p>React</p></td>
+<td><p>-</p></td>
+<td><p>React-specific</p></td>
+</tr>
+<tr class="row-odd"><td><p>NextUI</p></td>
+<td><p>React</p></td>
+<td><p>-</p></td>
+<td><p>React-specific</p></td>
+</tr>
+<tr class="row-even"><td><p>Headless UI</p></td>
+<td><p>React, Vue</p></td>
+<td><p>-</p></td>
+<td><p>Multi-framework</p></td>
+</tr>
+<tr class="row-odd"><td><p>Tremor</p></td>
+<td><p>React</p></td>
+<td><p>Tailwind</p></td>
+<td><p>React + Tailwind only</p></td>
+</tr>
+<tr class="row-even"><td><p>Preline</p></td>
+<td><p>-</p></td>
+<td><p>Tailwind</p></td>
+<td><p>Tailwind components</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="build-tool-validator">
+<h3>Build Tool Validator<a class="headerlink" href="#build-tool-validator" title="Link to this heading">¶</a></h3>
+<p><strong>Location</strong>: <code class="docutils literal notranslate"><span class="pre">template/hooks/validators/build_tool_validator.py</span></code></p>
+<p><strong>Purpose</strong>: Validates build tool compatibility with frontend frameworks, backend languages, and project structure.</p>
+<section id="id3">
+<h4>Validation Rules<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h4>
+<ol class="arabic simple">
+<li><p><strong>Framework Compatibility</strong> (<code class="docutils literal notranslate"><span class="pre">_validate_framework_compatibility</span></code>)</p>
+<ul class="simple">
+<li><p>Checks build tool supports selected frontend framework</p></li>
+<li><p>Provides alternative suggestions if incompatible</p></li>
+<li><p>Example: Turbopack only supports React (Next.js)</p></li>
+</ul>
+</li>
+<li><p><strong>React Framework Compatibility</strong> (<code class="docutils literal notranslate"><span class="pre">_validate_react_framework_compatibility</span></code>)</p>
+<ul class="simple">
+<li><p>Validates React meta-framework works with build tool</p></li>
+<li><p>Next.js works with: Turbopack, Webpack</p></li>
+<li><p>Remix works with: Vite, esbuild</p></li>
+<li><p>Gatsby works with: Webpack</p></li>
+</ul>
+</li>
+<li><p><strong>Node.js Requirement</strong> (<code class="docutils literal notranslate"><span class="pre">_validate_node_requirement</span></code>)</p>
+<ul class="simple">
+<li><p>Warns if build tool requires Node.js but not selected</p></li>
+<li><p>All build tools require Node.js (Vite, Webpack, Rollup, etc.)</p></li>
+</ul>
+</li>
+<li><p><strong>TypeScript Support</strong> (<code class="docutils literal notranslate"><span class="pre">_check_typescript_support</span></code>)</p>
+<ul class="simple">
+<li><p>Warns if build tool has limited TypeScript support</p></li>
+<li><p>esbuild has limited plugin ecosystem for some frameworks</p></li>
+</ul>
+</li>
+<li><p><strong>Recommendations</strong> (<code class="docutils literal notranslate"><span class="pre">_provide_recommendations</span></code>)</p>
+<ul class="simple">
+<li><p>Monorepo projects: Vite, Rspack, Turbopack (better caching)</p></li>
+<li><p>Performance-focused: esbuild, Rspack, Turbopack</p></li>
+<li><p>Library builds: Rollup, esbuild, Vite</p></li>
+<li><p>Simple apps: Parcel, Vite</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id4">
+<h4>Example Errors<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Framework incompatibility</span>
+</span><span data-line="2">Build<span class="w"> </span>tool<span class="w"> </span><span class="s1">&#39;turbopack&#39;</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>compatible<span class="w"> </span>with<span class="w"> </span><span class="s1">&#39;vue&#39;</span><span class="w"> </span>framework.<span class="w"> </span>Compatible<span class="w"> </span>frameworks:<span class="w"> </span>react
+</span><span data-line="3">Consider<span class="w"> </span>using<span class="w"> </span>one<span class="w"> </span>of<span class="w"> </span>these<span class="w"> </span>build<span class="w"> </span>tools<span class="w"> </span>instead:<span class="w"> </span>vite,<span class="w"> </span>webpack,<span class="w"> </span>rollup
+</span><span data-line="4">
+</span><span data-line="5"><span class="c1"># React framework warning</span>
+</span><span data-line="6">Build<span class="w"> </span>tool<span class="w"> </span><span class="s1">&#39;esbuild&#39;</span><span class="w"> </span>may<span class="w"> </span>have<span class="w"> </span>limited<span class="w"> </span>support<span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="s1">&#39;gatsby&#39;</span>.<span class="w"> </span>Recommended<span class="w"> </span>tools:<span class="w"> </span>webpack
+</span><span data-line="7">
+</span><span data-line="8"><span class="c1"># Node.js requirement</span>
+</span><span data-line="9">Build<span class="w"> </span>tool<span class="w"> </span><span class="s1">&#39;vite&#39;</span><span class="w"> </span>requires<span class="w"> </span>Node.js.<span class="w"> </span>Consider<span class="w"> </span>adding<span class="w"> </span><span class="s1">&#39;node&#39;</span><span class="w"> </span>to<span class="w"> </span>backend_languages<span class="w"> </span>or<span class="w"> </span>choosing<span class="w"> </span>a<span class="w"> </span>different<span class="w"> </span>build<span class="w"> </span>tool.
+</span><span data-line="10">
+</span><span data-line="11"><span class="c1"># TypeScript support</span>
+</span><span data-line="12">Build<span class="w"> </span>tool<span class="w"> </span><span class="s1">&#39;esbuild&#39;</span><span class="w"> </span>may<span class="w"> </span>have<span class="w"> </span>limited<span class="w"> </span>TypeScript<span class="w"> </span>support.<span class="w"> </span>Consider<span class="w"> </span>using<span class="w"> </span>Vite,<span class="w"> </span>Webpack,<span class="w"> </span>or<span class="w"> </span>Rspack<span class="w"> </span><span class="k">for</span><span class="w"> </span>better<span class="w"> </span>TypeScript<span class="w"> </span>integration.
+</span><span data-line="13">
+</span><span data-line="14"><span class="c1"># Plugin ecosystem warning</span>
+</span><span data-line="15">esbuild<span class="w"> </span>has<span class="w"> </span>limited<span class="w"> </span>plugin<span class="w"> </span>support<span class="w"> </span><span class="k">for</span><span class="w"> </span>vue.<span class="w"> </span>Consider<span class="w"> </span>using<span class="w"> </span>Vite<span class="w"> </span>or<span class="w"> </span>Rollup<span class="w"> </span>instead.
+</span></pre></div>
+</div>
+</section>
+<section id="build-tool-compatibility-matrix">
+<h4>Build Tool Compatibility Matrix<a class="headerlink" href="#build-tool-compatibility-matrix" title="Link to this heading">¶</a></h4>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Build Tool</p></th>
+<th class="head"><p>Frameworks</p></th>
+<th class="head"><p>TypeScript</p></th>
+<th class="head"><p>Node Required</p></th>
+<th class="head"><p>Best For</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Vite</p></td>
+<td><p>React, Vue, Svelte, Solid</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+<td><p>Modern apps, fast HMR</p></td>
+</tr>
+<tr class="row-odd"><td><p>Webpack</p></td>
+<td><p>React, Vue, Svelte, Solid, Angular</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+<td><p>Mature ecosystem</p></td>
+</tr>
+<tr class="row-even"><td><p>esbuild</p></td>
+<td><p>React, Solid</p></td>
+<td><p>⚠️ Limited</p></td>
+<td><p>✅</p></td>
+<td><p>Speed, simple builds</p></td>
+</tr>
+<tr class="row-odd"><td><p>Rollup</p></td>
+<td><p>React, Vue, Svelte, Solid</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+<td><p>Library bundling</p></td>
+</tr>
+<tr class="row-even"><td><p>Rspack</p></td>
+<td><p>React, Vue, Svelte, Solid</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+<td><p>Webpack-compatible, fast</p></td>
+</tr>
+<tr class="row-odd"><td><p>Turbopack</p></td>
+<td><p>React (Next.js)</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+<td><p>Next.js only</p></td>
+</tr>
+<tr class="row-even"><td><p>Farm</p></td>
+<td><p>React, Vue, Svelte</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+<td><p>Rust-based bundler</p></td>
+</tr>
+<tr class="row-odd"><td><p>Parcel</p></td>
+<td><p>React, Vue, Svelte, Solid</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+<td><p>Zero-config</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="monorepo-tool-validator">
+<h3>Monorepo Tool Validator<a class="headerlink" href="#monorepo-tool-validator" title="Link to this heading">¶</a></h3>
+<p><strong>Location</strong>: <code class="docutils literal notranslate"><span class="pre">template/hooks/validators/monorepo_tool_validator.py</span></code></p>
+<p><strong>Purpose</strong>: Validates monorepo tool compatibility with repository structure, package managers, and project scale.</p>
+<section id="id5">
+<h4>Validation Rules<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h4>
+<ol class="arabic simple">
+<li><p><strong>Package Manager Compatibility</strong> (<code class="docutils literal notranslate"><span class="pre">_validate_package_manager_compatibility</span></code>)</p>
+<ul class="simple">
+<li><p>Turborepo supports: pnpm, npm, yarn, bun</p></li>
+<li><p>Nx supports: pnpm, npm, yarn, bun</p></li>
+<li><p>Lerna supports: pnpm, npm, yarn (no bun yet)</p></li>
+<li><p>Moon is language-agnostic (all package managers)</p></li>
+<li><p>Bazel is language-agnostic (doesn’t use npm)</p></li>
+</ul>
+</li>
+<li><p><strong>Repository Structure</strong> (<code class="docutils literal notranslate"><span class="pre">_validate_repository_structure</span></code>)</p>
+<ul class="simple">
+<li><p>Warns if using flat/src-layout with monorepo tool</p></li>
+<li><p>Recommends apps-packages or multi-workspace structures</p></li>
+<li><p>Single-package structures don’t benefit from monorepo tools</p></li>
+</ul>
+</li>
+<li><p><strong>Language Support</strong> (<code class="docutils literal notranslate"><span class="pre">_validate_language_support</span></code>)</p>
+<ul class="simple">
+<li><p>Turborepo: Node.js only</p></li>
+<li><p>Nx: Node.js, Python, Rust, Go</p></li>
+<li><p>Lerna: Node.js only</p></li>
+<li><p>Moon: Node.js, Python, Rust, Go (multi-language focus)</p></li>
+<li><p>Bazel: Node.js, Python, Rust, Go, Java (enterprise scale)</p></li>
+</ul>
+</li>
+<li><p><strong>Project Scale</strong> (<code class="docutils literal notranslate"><span class="pre">_check_project_scale</span></code>)</p>
+<ul class="simple">
+<li><p>Turborepo: 2-50 packages (good balance)</p></li>
+<li><p>Nx: 5+ packages (feature-rich, best for larger projects)</p></li>
+<li><p>Lerna: 3+ packages (publishing-focused)</p></li>
+<li><p>Moon: 3+ packages (multi-language)</p></li>
+<li><p>Bazel: 20+ packages (enterprise/Google scale)</p></li>
+</ul>
+</li>
+<li><p><strong>Feature Recommendations</strong> (<code class="docutils literal notranslate"><span class="pre">_provide_feature_recommendations</span></code>)</p>
+<ul class="simple">
+<li><p>Remote caching: Turborepo, Nx, Bazel</p></li>
+<li><p>Affected commands: Nx, Moon, Bazel</p></li>
+<li><p>Publishing: Lerna (conventional commits, changelogs)</p></li>
+<li><p>Multi-language: Moon, Bazel, Nx</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id6">
+<h4>Example Errors<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Package manager incompatibility</span>
+</span><span data-line="2">Monorepo<span class="w"> </span>tool<span class="w"> </span><span class="s1">&#39;lerna&#39;</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>compatible<span class="w"> </span>with<span class="w"> </span>package<span class="w"> </span>manager<span class="w"> </span><span class="s1">&#39;bun&#39;</span>.<span class="w"> </span>Compatible<span class="w"> </span>managers:<span class="w"> </span>pnpm,<span class="w"> </span>npm,<span class="w"> </span>yarn
+</span><span data-line="3">Consider<span class="w"> </span>using<span class="w"> </span>one<span class="w"> </span>of<span class="w"> </span>these<span class="w"> </span>monorepo<span class="w"> </span>tools<span class="w"> </span>instead:<span class="w"> </span>turborepo,<span class="w"> </span>nx,<span class="w"> </span>moon
+</span><span data-line="4">
+</span><span data-line="5"><span class="c1"># Structure mismatch</span>
+</span><span data-line="6">Repository<span class="w"> </span>structure<span class="w"> </span><span class="s1">&#39;flat&#39;</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>ideal<span class="w"> </span><span class="k">for</span><span class="w"> </span>monorepo<span class="w"> </span>tool<span class="w"> </span><span class="s1">&#39;turborepo&#39;</span>.<span class="w"> </span>Consider<span class="w"> </span>using<span class="w"> </span><span class="s1">&#39;apps-packages&#39;</span><span class="w"> </span>or<span class="w"> </span><span class="s1">&#39;multi-workspace&#39;</span><span class="w"> </span>structure.
+</span><span data-line="7">
+</span><span data-line="8"><span class="c1"># Language support warning</span>
+</span><span data-line="9">Monorepo<span class="w"> </span>tool<span class="w"> </span><span class="s1">&#39;turborepo&#39;</span><span class="w"> </span>is<span class="w"> </span>optimized<span class="w"> </span><span class="k">for</span><span class="w"> </span>Node.js<span class="w"> </span>but<span class="w"> </span>your<span class="w"> </span>project<span class="w"> </span>uses:<span class="w"> </span>rust,<span class="w"> </span>python.<span class="w"> </span>Consider<span class="w"> </span>using<span class="w"> </span><span class="s1">&#39;moon&#39;</span><span class="w"> </span>or<span class="w"> </span><span class="s1">&#39;bazel&#39;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>better<span class="w"> </span>multi-language<span class="w"> </span>support.
+</span><span data-line="10">
+</span><span data-line="11"><span class="c1"># Scale mismatch</span>
+</span><span data-line="12">Bazel<span class="w"> </span>is<span class="w"> </span>designed<span class="w"> </span><span class="k">for</span><span class="w"> </span>very<span class="w"> </span>large<span class="w"> </span>monorepos<span class="w"> </span><span class="o">(</span><span class="m">100</span>+<span class="w"> </span>packages<span class="o">)</span>.<span class="w"> </span>For<span class="w"> </span>smaller<span class="w"> </span>projects,<span class="w"> </span>consider<span class="w"> </span><span class="s1">&#39;turborepo&#39;</span><span class="w"> </span>or<span class="w"> </span><span class="s1">&#39;nx&#39;</span><span class="w"> </span>instead.
+</span><span data-line="13">
+</span><span data-line="14"><span class="c1"># No tool warning</span>
+</span><span data-line="15">Repository<span class="w"> </span>structure<span class="w"> </span><span class="s1">&#39;apps-packages&#39;</span><span class="w"> </span>typically<span class="w"> </span>benefits<span class="w"> </span>from<span class="w"> </span>a<span class="w"> </span>monorepo<span class="w"> </span>tool.<span class="w"> </span>Consider<span class="w"> </span>using<span class="w"> </span><span class="s1">&#39;turborepo&#39;</span><span class="w"> </span>or<span class="w"> </span><span class="s1">&#39;nx&#39;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>better<span class="w"> </span>task<span class="w"> </span>orchestration<span class="w"> </span>and<span class="w"> </span>caching.
+</span></pre></div>
+</div>
+</section>
+<section id="monorepo-tool-comparison">
+<h4>Monorepo Tool Comparison<a class="headerlink" href="#monorepo-tool-comparison" title="Link to this heading">¶</a></h4>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Tool</p></th>
+<th class="head"><p>Package Managers</p></th>
+<th class="head"><p>Languages</p></th>
+<th class="head"><p>Min Packages</p></th>
+<th class="head"><p>Features</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Turborepo</p></td>
+<td><p>pnpm, npm, yarn, bun</p></td>
+<td><p>Node.js</p></td>
+<td><p>2</p></td>
+<td><p>Caching, pipelines, remote cache</p></td>
+</tr>
+<tr class="row-odd"><td><p>Nx</p></td>
+<td><p>pnpm, npm, yarn, bun</p></td>
+<td><p>Node, Python, Rust, Go</p></td>
+<td><p>5</p></td>
+<td><p>Caching, affected, graph, generators, plugins</p></td>
+</tr>
+<tr class="row-even"><td><p>Lerna</p></td>
+<td><p>pnpm, npm, yarn</p></td>
+<td><p>Node.js</p></td>
+<td><p>3</p></td>
+<td><p>Versioning, publishing, conventional commits</p></td>
+</tr>
+<tr class="row-odd"><td><p>Moon</p></td>
+<td><p>All</p></td>
+<td><p>Node, Python, Rust, Go</p></td>
+<td><p>3</p></td>
+<td><p>Caching, affected, multi-language, toolchain</p></td>
+</tr>
+<tr class="row-even"><td><p>Bazel</p></td>
+<td><p>N/A</p></td>
+<td><p>Node, Python, Rust, Go, Java</p></td>
+<td><p>20+</p></td>
+<td><p>Caching, hermetic, remote execution, multi-language</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="tool-validator">
+<h3>Tool Validator<a class="headerlink" href="#tool-validator" title="Link to this heading">¶</a></h3>
+<p><strong>Location</strong>: <code class="docutils literal notranslate"><span class="pre">template/hooks/validators/tool_validator.py</span></code></p>
+<p><strong>Purpose</strong>: Validates development tool, package manager, build tool, monorepo tool, and IDE availability.</p>
+<section id="id7">
+<h4>Validation Rules<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h4>
+<ol class="arabic simple">
+<li><p><strong>Language Tools</strong> (<code class="docutils literal notranslate"><span class="pre">validate_language_tools</span></code>)</p>
+<ul class="simple">
+<li><p><strong>Errors</strong> if required language tools missing from PATH</p></li>
+<li><p>Python: <code class="docutils literal notranslate"><span class="pre">python3</span></code>, <code class="docutils literal notranslate"><span class="pre">pip</span></code></p></li>
+<li><p>Rust: <code class="docutils literal notranslate"><span class="pre">cargo</span></code>, <code class="docutils literal notranslate"><span class="pre">rustc</span></code></p></li>
+<li><p>Node: <code class="docutils literal notranslate"><span class="pre">node</span></code>, <code class="docutils literal notranslate"><span class="pre">npm</span></code></p></li>
+<li><p>Go: <code class="docutils literal notranslate"><span class="pre">go</span></code></p></li>
+<li><p>Java: <code class="docutils literal notranslate"><span class="pre">java</span></code>, <code class="docutils literal notranslate"><span class="pre">javac</span></code></p></li>
+<li><p>C#: <code class="docutils literal notranslate"><span class="pre">dotnet</span></code></p></li>
+</ul>
+</li>
+<li><p><strong>Package Managers</strong> (<code class="docutils literal notranslate"><span class="pre">validate_package_managers</span></code>)</p>
+<ul class="simple">
+<li><p><strong>Errors</strong> if selected package manager not in PATH</p></li>
+<li><p>Provides installation commands (e.g., <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">poetry</span></code>)</p></li>
+</ul>
+</li>
+<li><p><strong>Build Tools</strong> (<code class="docutils literal notranslate"><span class="pre">validate_build_tools</span></code>)</p>
+<ul class="simple">
+<li><p><strong>Warnings only</strong> (installed as project dependency)</p></li>
+<li><p>Checks: vite, webpack, parcel, esbuild, rollup, turbopack, rspack, farm</p></li>
+</ul>
+</li>
+<li><p><strong>Monorepo Tools</strong> (<code class="docutils literal notranslate"><span class="pre">validate_monorepo_tools</span></code>)</p>
+<ul class="simple">
+<li><p><strong>Warnings only</strong> (global install recommended)</p></li>
+<li><p>Checks: turborepo, nx, rush, lerna, moon, bazel</p></li>
+<li><p>Provides global install commands (e.g., <code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">install</span> <span class="pre">-g</span> <span class="pre">turborepo</span></code>)</p></li>
+</ul>
+</li>
+<li><p><strong>IDE Tools</strong> (<code class="docutils literal notranslate"><span class="pre">validate_ide_tools</span></code>)</p>
+<ul class="simple">
+<li><p><strong>Informational only</strong> (configs still generated)</p></li>
+<li><p>Checks: vscode, cursor, zed, neovim, emacs, sublime, nova</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="example-messages">
+<h4>Example Messages<a class="headerlink" href="#example-messages" title="Link to this heading">¶</a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Language tool error</span>
+</span><span data-line="2">Required<span class="w"> </span>tool<span class="w"> </span><span class="s1">&#39;cargo&#39;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>rust<span class="w"> </span>not<span class="w"> </span>found<span class="w"> </span><span class="k">in</span><span class="w"> </span>PATH.<span class="w"> </span>Install<span class="w"> </span>it<span class="w"> </span>before<span class="w"> </span>continuing.
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Package manager error</span>
+</span><span data-line="5">Python<span class="w"> </span>package<span class="w"> </span>manager<span class="w"> </span><span class="s1">&#39;poetry&#39;</span><span class="w"> </span><span class="o">(</span>poetry<span class="o">)</span><span class="w"> </span>not<span class="w"> </span>found.<span class="w"> </span>Install<span class="w"> </span>it<span class="w"> </span>with:<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>poetry
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Build tool warning</span>
+</span><span data-line="8">Build<span class="w"> </span>tool<span class="w"> </span><span class="s1">&#39;vite&#39;</span><span class="w"> </span><span class="o">(</span>vite<span class="o">)</span><span class="w"> </span>not<span class="w"> </span>found.<span class="w"> </span>It<span class="w"> </span>will<span class="w"> </span>be<span class="w"> </span>installed<span class="w"> </span>as<span class="w"> </span>a<span class="w"> </span>project<span class="w"> </span>dependency.
+</span><span data-line="9">
+</span><span data-line="10"><span class="c1"># Monorepo tool warning</span>
+</span><span data-line="11">Monorepo<span class="w"> </span>tool<span class="w"> </span><span class="s1">&#39;turborepo&#39;</span><span class="w"> </span><span class="o">(</span>turbo<span class="o">)</span><span class="w"> </span>not<span class="w"> </span>found.<span class="w"> </span>Install<span class="w"> </span>it<span class="w"> </span>globally:<span class="w"> </span>npm<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span>turborepo
+</span><span data-line="12">
+</span><span data-line="13"><span class="c1"># IDE informational</span>
+</span><span data-line="14">IDE<span class="w"> </span><span class="s1">&#39;cursor&#39;</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span><span class="s1">&#39;cursor&#39;</span><span class="w"> </span>not<span class="w"> </span>found<span class="w"> </span><span class="k">in</span><span class="w"> </span>PATH.<span class="w"> </span>Configuration<span class="w"> </span>files<span class="w"> </span>will<span class="w"> </span>still<span class="w"> </span>be<span class="w"> </span>generated.
+</span></pre></div>
+</div>
+</section>
+<section id="severity-levels">
+<h4>Severity Levels<a class="headerlink" href="#severity-levels" title="Link to this heading">¶</a></h4>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Validation</p></th>
+<th class="head"><p>Severity</p></th>
+<th class="head"><p>Blocks Render</p></th>
+<th class="head"><p>Purpose</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Language Tools</p></td>
+<td><p><strong>Error</strong></p></td>
+<td><p>✅ Yes</p></td>
+<td><p>Critical for compilation</p></td>
+</tr>
+<tr class="row-odd"><td><p>Package Managers</p></td>
+<td><p><strong>Error</strong></p></td>
+<td><p>✅ Yes</p></td>
+<td><p>Critical for dependencies</p></td>
+</tr>
+<tr class="row-even"><td><p>Build Tools</p></td>
+<td><p><strong>Warning</strong></p></td>
+<td><p>❌ No</p></td>
+<td><p>Installed as dependency</p></td>
+</tr>
+<tr class="row-odd"><td><p>Monorepo Tools</p></td>
+<td><p><strong>Warning</strong></p></td>
+<td><p>❌ No</p></td>
+<td><p>Global install recommended</p></td>
+</tr>
+<tr class="row-even"><td><p>IDE Tools</p></td>
+<td><p><strong>Info</strong></p></td>
+<td><p>❌ No</p></td>
+<td><p>Optional convenience</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="structure-validator">
+<h3>Structure Validator<a class="headerlink" href="#structure-validator" title="Link to this heading">¶</a></h3>
+<p><strong>Location</strong>: <code class="docutils literal notranslate"><span class="pre">template/hooks/validators/structure_validator.py</span></code></p>
+<p><strong>Purpose</strong>: Validates repository structure compatibility with project layout, languages, tools, and service count.</p>
+<section id="id8">
+<h4>Validation Rules<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h4>
+<ol class="arabic simple">
+<li><p><strong>Structure Compatibility</strong> (<code class="docutils literal notranslate"><span class="pre">validate_structure_compatibility</span></code>)</p>
+<ul class="simple">
+<li><p><strong>Errors</strong> if structure requires monorepo but single-package selected</p></li>
+<li><p>apps-packages and multi-workspace require <code class="docutils literal notranslate"><span class="pre">project_layout=monorepo</span></code></p></li>
+<li><p><strong>Errors</strong> if flat/src-layout used with monorepo layout</p></li>
+</ul>
+</li>
+<li><p><strong>Language Compatibility</strong> (<code class="docutils literal notranslate"><span class="pre">validate_structure_language_compatibility</span></code>)</p>
+<ul class="simple">
+<li><p><strong>Warnings</strong> if multiple languages with single-language structure</p></li>
+<li><p>src-layout is Python-optimized (PEP 517/518)</p></li>
+<li><p>Multi-language projects benefit from apps-packages or multi-workspace</p></li>
+</ul>
+</li>
+<li><p><strong>Tool Configuration</strong> (<code class="docutils literal notranslate"><span class="pre">validate_structure_tools</span></code>)</p>
+<ul class="simple">
+<li><p><strong>Warnings</strong> if monorepo structure without monorepo tool</p></li>
+<li><p><strong>Warnings</strong> if multi-workspace without workspace-enabled package manager (pnpm/yarn)</p></li>
+</ul>
+</li>
+<li><p><strong>Service Count</strong> (<code class="docutils literal notranslate"><span class="pre">validate_structure_service_count</span></code>)</p>
+<ul class="simple">
+<li><p>Estimates service count from configuration (CLI, API, frontend, docs)</p></li>
+<li><p><strong>Warnings</strong> if structure mismatch with scale:</p>
+<ul>
+<li><p>flat/src-layout: max 1 service</p></li>
+<li><p>apps-packages/multi-workspace: min 2 services</p></li>
+<li><p>domain-driven: min 2 domains</p></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id9">
+<h4>Example Errors<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Structure requires monorepo</span>
+</span><span data-line="2">Repository<span class="w"> </span>structure<span class="w"> </span><span class="s1">&#39;apps-packages&#39;</span><span class="w"> </span>requires<span class="w"> </span><span class="nv">project_layout</span><span class="o">=</span><span class="s1">&#39;monorepo&#39;</span>,<span class="w"> </span>but<span class="w"> </span><span class="s1">&#39;single-package&#39;</span><span class="w"> </span>was<span class="w"> </span>selected.<span class="w"> </span>Change<span class="w"> </span>project_layout<span class="w"> </span>to<span class="w"> </span><span class="s1">&#39;monorepo&#39;</span>.
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Incompatible with monorepo</span>
+</span><span data-line="5">Repository<span class="w"> </span>structure<span class="w"> </span><span class="s1">&#39;src-layout&#39;</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>recommended<span class="w"> </span><span class="k">for</span><span class="w"> </span>monorepos.<span class="w"> </span>Consider<span class="w"> </span>using<span class="w"> </span><span class="s1">&#39;apps-packages&#39;</span><span class="w"> </span>or<span class="w"> </span><span class="s1">&#39;multi-workspace&#39;</span><span class="w"> </span>instead.
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Multiple languages warning</span>
+</span><span data-line="8">Multiple<span class="w"> </span>backend<span class="w"> </span>languages<span class="w"> </span><span class="o">(</span>python,<span class="w"> </span>rust,<span class="w"> </span>node<span class="o">)</span><span class="w"> </span>selected<span class="w"> </span>with<span class="w"> </span><span class="s1">&#39;src-layout&#39;</span><span class="w"> </span>structure.<span class="w"> </span>Consider<span class="w"> </span><span class="s1">&#39;apps-packages&#39;</span><span class="w"> </span>or<span class="w"> </span><span class="s1">&#39;multi-workspace&#39;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>better<span class="w"> </span>polyglot<span class="w"> </span>project<span class="w"> </span>organization.
+</span><span data-line="9">
+</span><span data-line="10"><span class="c1"># Missing monorepo tool</span>
+</span><span data-line="11">Repository<span class="w"> </span>structure<span class="w"> </span><span class="s1">&#39;apps-packages&#39;</span><span class="w"> </span>works<span class="w"> </span>best<span class="w"> </span>with<span class="w"> </span>a<span class="w"> </span>monorepo<span class="w"> </span>tool.<span class="w"> </span>Consider<span class="w"> </span>enabling:<span class="w"> </span>turborepo,<span class="w"> </span>nx
+</span><span data-line="12">
+</span><span data-line="13"><span class="c1"># Package manager mismatch</span>
+</span><span data-line="14"><span class="s1">&#39;multi-workspace&#39;</span><span class="w"> </span>works<span class="w"> </span>best<span class="w"> </span>with:<span class="w"> </span>pnpm,<span class="w"> </span>yarn.<span class="w"> </span>You<span class="w"> </span>selected<span class="w"> </span><span class="s1">&#39;npm&#39;</span><span class="w"> </span>which<span class="w"> </span>may<span class="w"> </span>have<span class="w"> </span>limited<span class="w"> </span>workspace<span class="w"> </span>support.
+</span><span data-line="15">
+</span><span data-line="16"><span class="c1"># Scale mismatch</span>
+</span><span data-line="17">Repository<span class="w"> </span>structure<span class="w"> </span><span class="s1">&#39;apps-packages&#39;</span><span class="w"> </span>is<span class="w"> </span>designed<span class="w"> </span><span class="k">for</span><span class="w"> </span>at<span class="w"> </span>least<span class="w"> </span><span class="m">2</span><span class="w"> </span>services,<span class="w"> </span>but<span class="w"> </span>only<span class="w"> </span><span class="m">1</span><span class="w"> </span>detected.<span class="w"> </span>Consider<span class="w"> </span><span class="s1">&#39;src-layout&#39;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>simpler<span class="w"> </span>projects.
+</span><span data-line="18">
+</span><span data-line="19"><span class="c1"># Over-engineered</span>
+</span><span data-line="20">Repository<span class="w"> </span>structure<span class="w"> </span><span class="s1">&#39;flat&#39;</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>ideal<span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="m">4</span><span class="w"> </span>services.<span class="w"> </span>Consider<span class="w"> </span><span class="s1">&#39;apps-packages&#39;</span><span class="w"> </span>or<span class="w"> </span><span class="s1">&#39;multi-workspace&#39;</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>better<span class="w"> </span>organization.
+</span></pre></div>
+</div>
+</section>
+<section id="structure-requirements">
+<h4>Structure Requirements<a class="headerlink" href="#structure-requirements" title="Link to this heading">¶</a></h4>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Structure</p></th>
+<th class="head"><p>Best For</p></th>
+<th class="head"><p>Requires</p></th>
+<th class="head"><p>Min Services</p></th>
+<th class="head"><p>Recommended Tools</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>flat</p></td>
+<td><p>Small, single-purpose</p></td>
+<td><p>-</p></td>
+<td><p>Max 1</p></td>
+<td><p>-</p></td>
+</tr>
+<tr class="row-odd"><td><p>src-layout</p></td>
+<td><p>Python packages (PEP 517/518)</p></td>
+<td><p>-</p></td>
+<td><p>1</p></td>
+<td><p>Python-focused</p></td>
+</tr>
+<tr class="row-even"><td><p>apps-packages</p></td>
+<td><p>Monorepos with services + packages</p></td>
+<td><p>Monorepo layout</p></td>
+<td><p>2+</p></td>
+<td><p>Turborepo, Nx</p></td>
+</tr>
+<tr class="row-odd"><td><p>multi-workspace</p></td>
+<td><p>Large polyglot monorepos</p></td>
+<td><p>Monorepo layout</p></td>
+<td><p>2+</p></td>
+<td><p>pnpm, yarn workspaces</p></td>
+</tr>
+<tr class="row-even"><td><p>domain-driven</p></td>
+<td><p>Enterprise, domain-organized</p></td>
+<td><p>-</p></td>
+<td><p>2+ domains</p></td>
+<td><p>Nx, Bazel</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+</section>
+<section id="validator-composition-and-precedence">
+<h2>Validator Composition and Precedence<a class="headerlink" href="#validator-composition-and-precedence" title="Link to this heading">¶</a></h2>
+<section id="execution-order">
+<h3>Execution Order<a class="headerlink" href="#execution-order" title="Link to this heading">¶</a></h3>
+<p>Validators run in this sequence within the pre-generation hook:</p>
+<ol class="arabic simple">
+<li><p><strong>Tool Provisioning</strong> (pre_gen_project.py)</p>
+<ul class="simple">
+<li><p>Auto-installs uv, Node.js, pnpm via mise</p></li>
+<li><p>Logs all attempts to <code class="docutils literal notranslate"><span class="pre">.riso/toolchain_provisioning.jsonl</span></code></p></li>
+</ul>
+</li>
+<li><p><strong>SaaS Starter Validation</strong> (pre_gen_project.py)</p>
+<ul class="simple">
+<li><p>Only if <code class="docutils literal notranslate"><span class="pre">saas_starter_module=enabled</span></code></p></li>
+<li><p>Validates database/storage/hosting combinations</p></li>
+<li><p>Severity levels: error (blocks), warning (continues), info (notes)</p></li>
+</ul>
+</li>
+<li><p><strong>Domain Validators</strong> (called from quality_tool_check.py or custom scripts)</p>
+<ul class="simple">
+<li><p><strong>Language Validator</strong>: Backend languages, frameworks, package managers</p></li>
+<li><p><strong>Frontend Validator</strong>: Frontend frameworks, components, state management</p></li>
+<li><p><strong>Build Tool Validator</strong>: Build tool compatibility</p></li>
+<li><p><strong>Monorepo Tool Validator</strong>: Monorepo tool compatibility</p></li>
+<li><p><strong>Tool Validator</strong>: Tool availability checks</p></li>
+<li><p><strong>Structure Validator</strong>: Repository structure validation</p></li>
+</ul>
+</li>
+<li><p><strong>Quality Tool Provisioning</strong> (pre_gen_project.py)</p>
+<ul class="simple">
+<li><p>Python tools: ruff, ty, pylint, pytest</p></li>
+<li><p>Node tools: eslint, prettier, typescript (if needed)</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="error-aggregation">
+<h3>Error Aggregation<a class="headerlink" href="#error-aggregation" title="Link to this heading">¶</a></h3>
+<p>Each validator returns structured results:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Simple validators (language, frontend)</span>
+</span><span data-line="2"><span class="k">def</span><span class="w"> </span><span class="nf">validate</span><span class="p">(</span><span class="n">answers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</span><span data-line="3"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns list of error messages&quot;&quot;&quot;</span>
+</span><span data-line="4">    <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span data-line="5">    <span class="n">errors</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">validate_check1</span><span class="p">(</span><span class="n">answers</span><span class="p">))</span>
+</span><span data-line="6">    <span class="n">errors</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">validate_check2</span><span class="p">(</span><span class="n">answers</span><span class="p">))</span>
+</span><span data-line="7">    <span class="k">return</span> <span class="n">errors</span>
+</span><span data-line="8">
+</span><span data-line="9"><span class="c1"># Advanced validators (build_tool, monorepo_tool, structure, tool)</span>
+</span><span data-line="10"><span class="k">def</span><span class="w"> </span><span class="nf">validate</span><span class="p">(</span><span class="n">answers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+</span><span data-line="11"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns dict with severity levels&quot;&quot;&quot;</span>
+</span><span data-line="12">    <span class="k">return</span> <span class="p">{</span>
+</span><span data-line="13">        <span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">],</span>      <span class="c1"># Block render</span>
+</span><span data-line="14">        <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">],</span>    <span class="c1"># Continue with warnings</span>
+</span><span data-line="15">        <span class="s2">&quot;info&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span>         <span class="c1"># Informational only</span>
+</span><span data-line="16">    <span class="p">}</span>
+</span></pre></div>
+</div>
+</section>
+<section id="precedence-rules">
+<h3>Precedence Rules<a class="headerlink" href="#precedence-rules" title="Link to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Errors always block</strong> - Any validator returning errors halts rendering</p></li>
+<li><p><strong>Warnings are logged</strong> - Displayed but don’t block</p></li>
+<li><p><strong>Info is informational</strong> - Logged for user awareness</p></li>
+<li><p><strong>First failure wins</strong> - Validators stop at first error in sequence</p></li>
+<li><p><strong>Auto-healing attempted first</strong> - mise provisioning before manual errors</p></li>
+</ol>
+</section>
+<section id="cross-validator-dependencies">
+<h3>Cross-Validator Dependencies<a class="headerlink" href="#cross-validator-dependencies" title="Link to this heading">¶</a></h3>
+<p>Some validators depend on others’ results:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span data-line="1">Language Validator
+</span><span data-line="2">    ↓ (provides backend_languages)
+</span><span data-line="3">Frontend Validator
+</span><span data-line="4">    ↓ (provides frontend_framework)
+</span><span data-line="5">Build Tool Validator
+</span><span data-line="6">    ↓ (provides build_tool)
+</span><span data-line="7">Monorepo Tool Validator
+</span><span data-line="8">    ↓ (provides monorepo_tool)
+</span><span data-line="9">Structure Validator (uses all above)
+</span></pre></div>
+</div>
+<p>Example dependency chain:</p>
+<ol class="arabic simple">
+<li><p>Language validator ensures Python is available</p></li>
+<li><p>Frontend validator checks React is selected</p></li>
+<li><p>Build Tool validator recommends Vite for React</p></li>
+<li><p>Monorepo Tool validator checks if Turborepo compatible with pnpm</p></li>
+<li><p>Structure validator ensures apps-packages structure with 2+ services</p></li>
+</ol>
+</section>
+</section>
+<section id="error-resolution-guide">
+<h2>Error Resolution Guide<a class="headerlink" href="#error-resolution-guide" title="Link to this heading">¶</a></h2>
+<section id="common-error-scenarios">
+<h3>Common Error Scenarios<a class="headerlink" href="#common-error-scenarios" title="Link to this heading">¶</a></h3>
+<section id="scenario-1-missing-language-tool">
+<h4>Scenario 1: Missing Language Tool<a class="headerlink" href="#scenario-1-missing-language-tool" title="Link to this heading">¶</a></h4>
+<p><strong>Error:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1">Python<span class="w"> </span>requires<span class="w"> </span><span class="s1">&#39;python3&#39;</span><span class="w"> </span>but<span class="w"> </span>it<span class="err">&#39;</span>s<span class="w"> </span>not<span class="w"> </span>found<span class="w"> </span><span class="k">in</span><span class="w"> </span>PATH.<span class="w"> </span>Install<span class="w"> </span>it<span class="w"> </span>before<span class="w"> </span>continuing.
+</span></pre></div>
+</div>
+<p><strong>Resolution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># macOS (Homebrew)</span>
+</span><span data-line="2">brew<span class="w"> </span>install<span class="w"> </span>python@3.11
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Ubuntu/Debian</span>
+</span><span data-line="5">sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>python3.11<span class="w"> </span>python3-pip
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Windows (winget)</span>
+</span><span data-line="8">winget<span class="w"> </span>install<span class="w"> </span>Python.Python.3.11
+</span><span data-line="9">
+</span><span data-line="10"><span class="c1"># Verify</span>
+</span><span data-line="11">python3<span class="w"> </span>--version<span class="w">  </span><span class="c1"># Should show 3.11+</span>
+</span></pre></div>
+</div>
+</section>
+<section id="scenario-2-package-manager-missing">
+<h4>Scenario 2: Package Manager Missing<a class="headerlink" href="#scenario-2-package-manager-missing" title="Link to this heading">¶</a></h4>
+<p><strong>Error:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1">Python<span class="w"> </span>package<span class="w"> </span>manager<span class="w"> </span><span class="s1">&#39;uv&#39;</span><span class="w"> </span><span class="o">(</span>uv<span class="o">)</span><span class="w"> </span>not<span class="w"> </span>found<span class="w"> </span><span class="k">in</span><span class="w"> </span>PATH.<span class="w"> </span>Install<span class="w"> </span>it<span class="w"> </span>or<span class="w"> </span><span class="k">select</span><span class="w"> </span>a<span class="w"> </span>different<span class="w"> </span>package<span class="w"> </span>manager.
+</span></pre></div>
+</div>
+<p><strong>Resolution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Option 1: Install uv</span>
+</span><span data-line="2">curl<span class="w"> </span>-LsSf<span class="w"> </span>https://astral.sh/uv/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Option 2: Change to poetry</span>
+</span><span data-line="5"><span class="c1"># Update copier-answers.yml:</span>
+</span><span data-line="6">python_package_manager:<span class="w"> </span>poetry
+</span><span data-line="7">
+</span><span data-line="8"><span class="c1"># Install poetry</span>
+</span><span data-line="9">pip<span class="w"> </span>install<span class="w"> </span>poetry
+</span><span data-line="10">
+</span><span data-line="11"><span class="c1"># Option 3: Auto-provision with mise</span>
+</span><span data-line="12">mise<span class="w"> </span>install<span class="w"> </span>uv@0.4
+</span></pre></div>
+</div>
+</section>
+<section id="scenario-3-framework-incompatibility">
+<h4>Scenario 3: Framework Incompatibility<a class="headerlink" href="#scenario-3-framework-incompatibility" title="Link to this heading">¶</a></h4>
+<p><strong>Error:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1">shadcn-ui<span class="w"> </span>requires<span class="w"> </span>react<span class="w"> </span>framework,<span class="w"> </span>but<span class="w"> </span>vue<span class="w"> </span>was<span class="w"> </span>selected.<span class="w"> </span>shadcn/ui<span class="w"> </span>is<span class="w"> </span>built<span class="w"> </span>specifically<span class="w"> </span><span class="k">for</span><span class="w"> </span>React<span class="w"> </span>with<span class="w"> </span>Tailwind<span class="w"> </span>CSS
+</span></pre></div>
+</div>
+<p><strong>Resolution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Option 1: Change component library</span>
+</span><span data-line="2">component_library:<span class="w"> </span>ant-design<span class="w">  </span><span class="c1"># Supports both React and Vue</span>
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Option 2: Change to React</span>
+</span><span data-line="5">frontend_framework:<span class="w"> </span>react
+</span><span data-line="6">component_library:<span class="w"> </span>shadcn-ui
+</span><span data-line="7">css_framework:<span class="w"> </span>tailwind
+</span><span data-line="8">
+</span><span data-line="9"><span class="c1"># Re-run copier</span>
+</span><span data-line="10">copier<span class="w"> </span>copy<span class="w"> </span>.<span class="w"> </span>output/<span class="w"> </span>--force
+</span></pre></div>
+</div>
+</section>
+<section id="scenario-4-meta-framework-conflict">
+<h4>Scenario 4: Meta-Framework Conflict<a class="headerlink" href="#scenario-4-meta-framework-conflict" title="Link to this heading">¶</a></h4>
+<p><strong>Error:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1">nextjs<span class="w"> </span>and<span class="w"> </span>remix<span class="w"> </span>are<span class="w"> </span>mutually<span class="w"> </span>exclusive.<span class="w"> </span>Choose<span class="w"> </span>one<span class="w"> </span>meta-framework.
+</span></pre></div>
+</div>
+<p><strong>Resolution:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Option 1: Keep Next.js</span>
+</span><span data-line="2"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">react</span>
+</span><span data-line="3"><span class="nt">react_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nextjs</span>
+</span><span data-line="4"><span class="nt">build_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">turbopack</span><span class="w">  </span><span class="c1"># or webpack</span>
+</span><span data-line="5">
+</span><span data-line="6"><span class="c1"># Option 2: Switch to Remix</span>
+</span><span data-line="7"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">react</span>
+</span><span data-line="8"><span class="nt">react_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">remix</span>
+</span><span data-line="9"><span class="nt">build_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vite</span><span class="w">  </span><span class="c1"># or esbuild</span>
+</span><span data-line="10">
+</span><span data-line="11"><span class="c1"># Don&#39;t select both nextjs AND remix</span>
+</span></pre></div>
+</div>
+</section>
+<section id="scenario-5-monorepo-tool-incompatibility">
+<h4>Scenario 5: Monorepo Tool Incompatibility<a class="headerlink" href="#scenario-5-monorepo-tool-incompatibility" title="Link to this heading">¶</a></h4>
+<p><strong>Error:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1">Monorepo<span class="w"> </span>tool<span class="w"> </span><span class="s1">&#39;lerna&#39;</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>compatible<span class="w"> </span>with<span class="w"> </span>package<span class="w"> </span>manager<span class="w"> </span><span class="s1">&#39;bun&#39;</span>.<span class="w"> </span>Compatible<span class="w"> </span>managers:<span class="w"> </span>pnpm,<span class="w"> </span>npm,<span class="w"> </span>yarn
+</span></pre></div>
+</div>
+<p><strong>Resolution:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Option 1: Change package manager</span>
+</span><span data-line="2"><span class="nt">node_package_manager</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pnpm</span>
+</span><span data-line="3"><span class="nt">monorepo_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lerna</span>
+</span><span data-line="4">
+</span><span data-line="5"><span class="c1"># Option 2: Change monorepo tool</span>
+</span><span data-line="6"><span class="nt">node_package_manager</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bun</span>
+</span><span data-line="7"><span class="nt">monorepo_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">turborepo</span><span class="w">  </span><span class="c1"># Supports bun</span>
+</span><span data-line="8">
+</span><span data-line="9"><span class="c1"># Option 3: Use language-agnostic tool</span>
+</span><span data-line="10"><span class="nt">monorepo_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">moon</span><span class="w">  </span><span class="c1"># Supports all package managers</span>
+</span></pre></div>
+</div>
+</section>
+<section id="scenario-6-structure-mismatch">
+<h4>Scenario 6: Structure Mismatch<a class="headerlink" href="#scenario-6-structure-mismatch" title="Link to this heading">¶</a></h4>
+<p><strong>Error:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1">Repository<span class="w"> </span>structure<span class="w"> </span><span class="s1">&#39;apps-packages&#39;</span><span class="w"> </span>requires<span class="w"> </span><span class="nv">project_layout</span><span class="o">=</span><span class="s1">&#39;monorepo&#39;</span>,<span class="w"> </span>but<span class="w"> </span><span class="s1">&#39;single-package&#39;</span><span class="w"> </span>was<span class="w"> </span>selected.<span class="w"> </span>Change<span class="w"> </span>project_layout<span class="w"> </span>to<span class="w"> </span><span class="s1">&#39;monorepo&#39;</span>.
+</span></pre></div>
+</div>
+<p><strong>Resolution:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Option 1: Use monorepo layout</span>
+</span><span data-line="2"><span class="nt">project_layout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">monorepo</span>
+</span><span data-line="3"><span class="nt">repository_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apps-packages</span>
+</span><span data-line="4"><span class="nt">monorepo_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">turborepo</span>
+</span><span data-line="5">
+</span><span data-line="6"><span class="c1"># Option 2: Simplify structure</span>
+</span><span data-line="7"><span class="nt">project_layout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single-package</span>
+</span><span data-line="8"><span class="nt">repository_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">src-layout</span><span class="w">  </span><span class="c1"># Python-optimized</span>
+</span><span data-line="9"><span class="c1"># or</span>
+</span><span data-line="10"><span class="nt">repository_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">flat</span><span class="w">  </span><span class="c1"># Simple projects</span>
+</span></pre></div>
+</div>
+</section>
+<section id="scenario-7-saas-starter-incompatibility">
+<h4>Scenario 7: SaaS Starter Incompatibility<a class="headerlink" href="#scenario-7-saas-starter-incompatibility" title="Link to this heading">¶</a></h4>
+<p><strong>Error:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1">Cannot<span class="w"> </span>use<span class="w"> </span>Neon<span class="w"> </span>database<span class="w"> </span>with<span class="w"> </span>Supabase<span class="w"> </span>Storage.<span class="w"> </span>Choose<span class="w"> </span>either:
+</span><span data-line="2"><span class="w">  </span><span class="m">1</span>.<span class="w"> </span>Full<span class="w"> </span>Supabase<span class="w"> </span><span class="o">(</span>database<span class="w"> </span>+<span class="w"> </span>storage<span class="o">)</span>
+</span><span data-line="3"><span class="w">  </span><span class="m">2</span>.<span class="w"> </span>Neon<span class="w"> </span>database<span class="w"> </span>+<span class="w"> </span>Cloudflare<span class="w"> </span>R2<span class="w"> </span>storage
+</span></pre></div>
+</div>
+<p><strong>Resolution:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Option 1: Full Supabase</span>
+</span><span data-line="2"><span class="nt">saas_database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">supabase</span>
+</span><span data-line="3"><span class="nt">saas_storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">supabase-storage</span>
+</span><span data-line="4">
+</span><span data-line="5"><span class="c1"># Option 2: Neon + R2</span>
+</span><span data-line="6"><span class="nt">saas_database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">neon</span>
+</span><span data-line="7"><span class="nt">saas_storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">r2</span>
+</span><span data-line="8">
+</span><span data-line="9"><span class="c1"># Option 3: Supabase DB + R2 (also valid)</span>
+</span><span data-line="10"><span class="nt">saas_database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">supabase</span>
+</span><span data-line="11"><span class="nt">saas_storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">r2</span>
+</span></pre></div>
+</div>
+</section>
+</section>
+<section id="debugging-validation-failures">
+<h3>Debugging Validation Failures<a class="headerlink" href="#debugging-validation-failures" title="Link to this heading">¶</a></h3>
+<section id="review-provisioning-log">
+<h4>1. Review Provisioning Log<a class="headerlink" href="#review-provisioning-log" title="Link to this heading">¶</a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Check what tools were attempted</span>
+</span><span data-line="2">cat<span class="w"> </span>.riso/toolchain_provisioning.jsonl<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;.&#39;</span>
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Filter by status</span>
+</span><span data-line="5">cat<span class="w"> </span>.riso/toolchain_provisioning.jsonl<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;select(.status == &quot;failed&quot;)&#39;</span>
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># See retry commands</span>
+</span><span data-line="8">cat<span class="w"> </span>.riso/toolchain_provisioning.jsonl<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">&#39;.retry_command // empty&#39;</span>
+</span></pre></div>
+</div>
+</section>
+<section id="manually-verify-configuration">
+<h4>2. Manually Verify Configuration<a class="headerlink" href="#manually-verify-configuration" title="Link to this heading">¶</a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Check Copier context</span>
+</span><span data-line="2"><span class="nb">echo</span><span class="w"> </span><span class="nv">$COPIER_ANSWERS</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;.&#39;</span>
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Validate specific answer</span>
+</span><span data-line="5"><span class="nb">echo</span><span class="w"> </span><span class="nv">$COPIER_ANSWERS</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;.backend_languages&#39;</span>
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Check if tools available</span>
+</span><span data-line="8">which<span class="w"> </span>python3<span class="w"> </span>uv<span class="w"> </span>node<span class="w"> </span>pnpm<span class="w"> </span>cargo
+</span></pre></div>
+</div>
+</section>
+<section id="run-validators-standalone">
+<h4>3. Run Validators Standalone<a class="headerlink" href="#run-validators-standalone" title="Link to this heading">¶</a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># scripts/debug_validators.py</span>
+</span><span data-line="2"><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+</span><span data-line="3"><span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+</span><span data-line="4"><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+</span><span data-line="5">
+</span><span data-line="6"><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;template&quot;</span> <span class="o">/</span> <span class="s2">&quot;hooks&quot;</span><span class="p">))</span>
+</span><span data-line="7">
+</span><span data-line="8"><span class="kn">from</span><span class="w"> </span><span class="nn">validators.language_validator</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate</span> <span class="k">as</span> <span class="n">validate_language</span>
+</span><span data-line="9"><span class="kn">from</span><span class="w"> </span><span class="nn">validators.frontend_validator</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate</span> <span class="k">as</span> <span class="n">validate_frontend</span>
+</span><span data-line="10">
+</span><span data-line="11"><span class="c1"># Load answers</span>
+</span><span data-line="12"><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;copier-answers.yml&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span data-line="13">    <span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
+</span><span data-line="14">    <span class="n">answers</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span data-line="15">
+</span><span data-line="16"><span class="c1"># Test individual validators</span>
+</span><span data-line="17"><span class="n">lang_errors</span> <span class="o">=</span> <span class="n">validate_language</span><span class="p">(</span><span class="n">answers</span><span class="p">)</span>
+</span><span data-line="18"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Language errors: </span><span class="si">{</span><span class="n">lang_errors</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span data-line="19">
+</span><span data-line="20"><span class="n">frontend_errors</span> <span class="o">=</span> <span class="n">validate_frontend</span><span class="p">(</span><span class="n">answers</span><span class="p">)</span>
+</span><span data-line="21"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Frontend errors: </span><span class="si">{</span><span class="n">frontend_errors</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span></pre></div>
+</div>
+</section>
+<section id="enable-verbose-logging">
+<h4>4. Enable Verbose Logging<a class="headerlink" href="#enable-verbose-logging" title="Link to this heading">¶</a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Set debug mode</span>
+</span><span data-line="2"><span class="nb">export</span><span class="w"> </span><span class="nv">COPIER_DEBUG</span><span class="o">=</span><span class="m">1</span>
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Run with more context</span>
+</span><span data-line="5">copier<span class="w"> </span>copy<span class="w"> </span>--vcs-ref<span class="w"> </span>HEAD<span class="w"> </span>.<span class="w"> </span>output/<span class="w"> </span>-v
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Check stderr for validator output</span>
+</span><span data-line="8">copier<span class="w"> </span>copy<span class="w"> </span>.<span class="w"> </span>output/<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tee<span class="w"> </span>validation.log
+</span></pre></div>
+</div>
+</section>
+</section>
+</section>
+<section id="valid-configuration-examples">
+<h2>Valid Configuration Examples<a class="headerlink" href="#valid-configuration-examples" title="Link to this heading">¶</a></h2>
+<section id="example-1-python-fastapi-react-vite">
+<h3>Example 1: Python FastAPI + React + Vite<a class="headerlink" href="#example-1-python-fastapi-react-vite" title="Link to this heading">¶</a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Minimal Python web app</span>
+</span><span data-line="2"><span class="nt">project_name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;FastAPI</span><span class="nv"> </span><span class="s">React</span><span class="nv"> </span><span class="s">Starter&quot;</span>
+</span><span data-line="3"><span class="nt">project_layout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single-package</span>
+</span><span data-line="4"><span class="nt">repository_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">src-layout</span>
+</span><span data-line="5">
+</span><span data-line="6"><span class="nt">backend_languages</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">python</span><span class="p p-Indicator">]</span>
+</span><span data-line="7"><span class="nt">python_package_manager</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">uv</span>
+</span><span data-line="8"><span class="nt">python_api_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fastapi</span>
+</span><span data-line="9">
+</span><span data-line="10"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">react</span>
+</span><span data-line="11"><span class="nt">react_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vite</span>
+</span><span data-line="12"><span class="nt">component_library</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shadcn-ui</span>
+</span><span data-line="13"><span class="nt">css_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tailwind</span>
+</span><span data-line="14">
+</span><span data-line="15"><span class="nt">build_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vite</span>
+</span><span data-line="16"><span class="nt">quality_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">standard</span>
+</span></pre></div>
+</div>
+<p><strong>Validation Result</strong>: ✅ Valid</p>
+<ul class="simple">
+<li><p>Python + FastAPI compatible</p></li>
+<li><p>React + Vite recommended combination</p></li>
+<li><p>shadcn-ui requires React + Tailwind (satisfied)</p></li>
+<li><p>src-layout appropriate for single-package</p></li>
+</ul>
+</section>
+<section id="example-2-rust-axum-vue-nuxt">
+<h3>Example 2: Rust Axum + Vue + Nuxt<a class="headerlink" href="#example-2-rust-axum-vue-nuxt" title="Link to this heading">¶</a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Rust backend with Vue frontend</span>
+</span><span data-line="2"><span class="nt">project_name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Axum</span><span class="nv"> </span><span class="s">Nuxt</span><span class="nv"> </span><span class="s">App&quot;</span>
+</span><span data-line="3"><span class="nt">project_layout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">monorepo</span>
+</span><span data-line="4"><span class="nt">repository_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apps-packages</span>
+</span><span data-line="5">
+</span><span data-line="6"><span class="nt">backend_languages</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rust</span><span class="p p-Indicator">]</span>
+</span><span data-line="7"><span class="nt">rust_web_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">axum</span>
+</span><span data-line="8"><span class="nt">rust_async_runtime</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tokio</span>
+</span><span data-line="9">
+</span><span data-line="10"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vue</span>
+</span><span data-line="11"><span class="nt">vue_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nuxt</span>
+</span><span data-line="12"><span class="nt">component_library</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ant-design</span>
+</span><span data-line="13">
+</span><span data-line="14"><span class="nt">monorepo_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nx</span>
+</span><span data-line="15"><span class="nt">node_package_manager</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pnpm</span>
+</span></pre></div>
+</div>
+<p><strong>Validation Result</strong>: ✅ Valid</p>
+<ul class="simple">
+<li><p>Rust + Axum + Tokio (required runtime satisfied)</p></li>
+<li><p>Vue + Nuxt compatible</p></li>
+<li><p>Ant Design supports Vue</p></li>
+<li><p>Monorepo structure with Nx + pnpm</p></li>
+</ul>
+</section>
+<section id="example-3-multi-language-monorepo">
+<h3>Example 3: Multi-Language Monorepo<a class="headerlink" href="#example-3-multi-language-monorepo" title="Link to this heading">¶</a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Python + Node.js monorepo</span>
+</span><span data-line="2"><span class="nt">project_name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Full</span><span class="nv"> </span><span class="s">Stack</span><span class="nv"> </span><span class="s">Platform&quot;</span>
+</span><span data-line="3"><span class="nt">project_layout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">monorepo</span>
+</span><span data-line="4"><span class="nt">repository_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">multi-workspace</span>
+</span><span data-line="5">
+</span><span data-line="6"><span class="nt">backend_languages</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">python</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">node</span><span class="p p-Indicator">]</span>
+</span><span data-line="7"><span class="nt">python_package_manager</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">uv</span>
+</span><span data-line="8"><span class="nt">python_api_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fastapi</span>
+</span><span data-line="9">
+</span><span data-line="10"><span class="nt">node_package_manager</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pnpm</span>
+</span><span data-line="11"><span class="nt">node_api_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nestjs</span>
+</span><span data-line="12">
+</span><span data-line="13"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">react</span>
+</span><span data-line="14"><span class="nt">react_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nextjs</span>
+</span><span data-line="15">
+</span><span data-line="16"><span class="nt">monorepo_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">turborepo</span>
+</span><span data-line="17"><span class="nt">build_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">turbopack</span>
+</span></pre></div>
+</div>
+<p><strong>Validation Result</strong>: ✅ Valid</p>
+<ul class="simple">
+<li><p>Multi-language supported by multi-workspace</p></li>
+<li><p>Turborepo + pnpm compatible</p></li>
+<li><p>Next.js + Turbopack optimal</p></li>
+<li><p>Monorepo structure appropriate for 3+ services</p></li>
+</ul>
+</section>
+<section id="example-4-go-svelte-sveltekit">
+<h3>Example 4: Go + Svelte + SvelteKit<a class="headerlink" href="#example-4-go-svelte-sveltekit" title="Link to this heading">¶</a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Go backend with Svelte</span>
+</span><span data-line="2"><span class="nt">project_name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Go</span><span class="nv"> </span><span class="s">Svelte</span><span class="nv"> </span><span class="s">App&quot;</span>
+</span><span data-line="3"><span class="nt">project_layout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single-package</span>
+</span><span data-line="4"><span class="nt">repository_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">flat</span>
+</span><span data-line="5">
+</span><span data-line="6"><span class="nt">backend_languages</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">go</span><span class="p p-Indicator">]</span>
+</span><span data-line="7"><span class="nt">go_web_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gin</span>
+</span><span data-line="8">
+</span><span data-line="9"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">svelte</span>
+</span><span data-line="10"><span class="nt">svelte_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sveltekit</span>
+</span><span data-line="11">
+</span><span data-line="12"><span class="nt">build_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vite</span>
+</span><span data-line="13"><span class="nt">quality_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">strict</span>
+</span></pre></div>
+</div>
+<p><strong>Validation Result</strong>: ✅ Valid</p>
+<ul class="simple">
+<li><p>Go + Gin compatible</p></li>
+<li><p>Svelte + SvelteKit compatible</p></li>
+<li><p>Vite supports Svelte</p></li>
+<li><p>Flat structure for simple project</p></li>
+</ul>
+</section>
+</section>
+<section id="invalid-configuration-examples">
+<h2>Invalid Configuration Examples<a class="headerlink" href="#invalid-configuration-examples" title="Link to this heading">¶</a></h2>
+<section id="invalid-example-1-incompatible-component-library">
+<h3>Invalid Example 1: Incompatible Component Library<a class="headerlink" href="#invalid-example-1-incompatible-component-library" title="Link to this heading">¶</a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vue</span>
+</span><span data-line="2"><span class="nt">component_library</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shadcn-ui</span><span class="w">  </span><span class="c1"># ❌ React-only</span>
+</span><span data-line="3"><span class="nt">css_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tailwind</span>
+</span></pre></div>
+</div>
+<p><strong>Error:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1">shadcn-ui<span class="w"> </span>requires<span class="w"> </span>react<span class="w"> </span>framework,<span class="w"> </span>but<span class="w"> </span>vue<span class="w"> </span>was<span class="w"> </span>selected.
+</span><span data-line="2">shadcn/ui<span class="w"> </span>is<span class="w"> </span>built<span class="w"> </span>specifically<span class="w"> </span><span class="k">for</span><span class="w"> </span>React<span class="w"> </span>with<span class="w"> </span>Tailwind<span class="w"> </span>CSS
+</span></pre></div>
+</div>
+<p><strong>Fix:</strong> Use Ant Design (multi-framework) or switch to React</p>
+</section>
+<section id="invalid-example-2-missing-css-framework">
+<h3>Invalid Example 2: Missing CSS Framework<a class="headerlink" href="#invalid-example-2-missing-css-framework" title="Link to this heading">¶</a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">react</span>
+</span><span data-line="2"><span class="nt">component_library</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tremor</span><span class="w">  </span><span class="c1"># ❌ Requires Tailwind</span>
+</span><span data-line="3"><span class="nt">css_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">styled-components</span>
+</span></pre></div>
+</div>
+<p><strong>Error:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1">tremor<span class="w"> </span>requires<span class="w"> </span>tailwind<span class="w"> </span>CSS<span class="w"> </span>framework,<span class="w"> </span>but<span class="w"> </span>styled-components<span class="w"> </span>was<span class="w"> </span>selected.
+</span><span data-line="2">Tremor<span class="w"> </span>is<span class="w"> </span>built<span class="w"> </span><span class="k">for</span><span class="w"> </span>React<span class="w"> </span>with<span class="w"> </span>Tailwind<span class="w"> </span>CSS
+</span></pre></div>
+</div>
+<p><strong>Fix:</strong> Change to <code class="docutils literal notranslate"><span class="pre">css_framework:</span> <span class="pre">tailwind</span></code></p>
+</section>
+<section id="invalid-example-3-meta-framework-conflict">
+<h3>Invalid Example 3: Meta-Framework Conflict<a class="headerlink" href="#invalid-example-3-meta-framework-conflict" title="Link to this heading">¶</a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">frontend_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">react</span>
+</span><span data-line="2"><span class="nt">react_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nextjs</span>
+</span><span data-line="3"><span class="nt">build_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vite</span><span class="w">  </span><span class="c1"># ❌ Next.js uses webpack/turbopack</span>
+</span></pre></div>
+</div>
+<p><strong>Warning:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1">Build<span class="w"> </span>tool<span class="w"> </span><span class="s1">&#39;vite&#39;</span><span class="w"> </span>may<span class="w"> </span>have<span class="w"> </span>limited<span class="w"> </span>support<span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="s1">&#39;nextjs&#39;</span>.
+</span><span data-line="2">Recommended<span class="w"> </span>tools:<span class="w"> </span>turbopack,<span class="w"> </span>webpack
+</span></pre></div>
+</div>
+<p><strong>Fix:</strong> Use <code class="docutils literal notranslate"><span class="pre">build_tool:</span> <span class="pre">turbopack</span></code> or <code class="docutils literal notranslate"><span class="pre">build_tool:</span> <span class="pre">webpack</span></code></p>
+</section>
+<section id="invalid-example-4-monorepo-mismatch">
+<h3>Invalid Example 4: Monorepo Mismatch<a class="headerlink" href="#invalid-example-4-monorepo-mismatch" title="Link to this heading">¶</a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">project_layout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single-package</span><span class="w">  </span><span class="c1"># ❌ Conflicts with apps-packages</span>
+</span><span data-line="2"><span class="nt">repository_structure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apps-packages</span>
+</span></pre></div>
+</div>
+<p><strong>Error:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1">Repository<span class="w"> </span>structure<span class="w"> </span><span class="s1">&#39;apps-packages&#39;</span><span class="w"> </span>requires<span class="w"> </span><span class="nv">project_layout</span><span class="o">=</span><span class="s1">&#39;monorepo&#39;</span>,
+</span><span data-line="2">but<span class="w"> </span><span class="s1">&#39;single-package&#39;</span><span class="w"> </span>was<span class="w"> </span>selected.<span class="w"> </span>Change<span class="w"> </span>project_layout<span class="w"> </span>to<span class="w"> </span><span class="s1">&#39;monorepo&#39;</span>.
+</span></pre></div>
+</div>
+<p><strong>Fix:</strong> Change to <code class="docutils literal notranslate"><span class="pre">project_layout:</span> <span class="pre">monorepo</span></code></p>
+</section>
+<section id="invalid-example-5-package-manager-incompatibility">
+<h3>Invalid Example 5: Package Manager Incompatibility<a class="headerlink" href="#invalid-example-5-package-manager-incompatibility" title="Link to this heading">¶</a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">node_package_manager</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bun</span>
+</span><span data-line="2"><span class="nt">monorepo_tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lerna</span><span class="w">  </span><span class="c1"># ❌ No bun support</span>
+</span></pre></div>
+</div>
+<p><strong>Error:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1">Monorepo<span class="w"> </span>tool<span class="w"> </span><span class="s1">&#39;lerna&#39;</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>compatible<span class="w"> </span>with<span class="w"> </span>package<span class="w"> </span>manager<span class="w"> </span><span class="s1">&#39;bun&#39;</span>.
+</span><span data-line="2">Compatible<span class="w"> </span>managers:<span class="w"> </span>pnpm,<span class="w"> </span>npm,<span class="w"> </span>yarn
+</span></pre></div>
+</div>
+<p><strong>Fix:</strong> Use <code class="docutils literal notranslate"><span class="pre">monorepo_tool:</span> <span class="pre">turborepo</span></code> or <code class="docutils literal notranslate"><span class="pre">node_package_manager:</span> <span class="pre">pnpm</span></code></p>
+</section>
+<section id="invalid-example-6-wrong-async-runtime">
+<h3>Invalid Example 6: Wrong Async Runtime<a class="headerlink" href="#invalid-example-6-wrong-async-runtime" title="Link to this heading">¶</a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">backend_languages</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rust</span><span class="p p-Indicator">]</span>
+</span><span data-line="2"><span class="nt">rust_web_framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">axum</span><span class="w">  </span><span class="c1"># ❌ Requires tokio</span>
+</span><span data-line="3"><span class="nt">rust_async_runtime</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">async-std</span>
+</span></pre></div>
+</div>
+<p><strong>Error:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1">axum<span class="w"> </span>requires<span class="w"> </span>tokio<span class="w"> </span>async<span class="w"> </span>runtime,<span class="w"> </span>but<span class="w"> </span>async-std<span class="w"> </span>was<span class="w"> </span>selected
+</span></pre></div>
+</div>
+<p><strong>Fix:</strong> Change to <code class="docutils literal notranslate"><span class="pre">rust_async_runtime:</span> <span class="pre">tokio</span></code></p>
+</section>
+</section>
+<section id="extending-validators">
+<h2>Extending Validators<a class="headerlink" href="#extending-validators" title="Link to this heading">¶</a></h2>
+<section id="adding-a-new-validator">
+<h3>Adding a New Validator<a class="headerlink" href="#adding-a-new-validator" title="Link to this heading">¶</a></h3>
+<p><strong>Step 1: Create Validator Module</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># template/hooks/validators/database_validator.py</span>
+</span><span data-line="2"><span class="sd">&quot;&quot;&quot;Database validator for database compatibility checks.&quot;&quot;&quot;</span>
+</span><span data-line="3">
+</span><span data-line="4"><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span>
+</span><span data-line="5">
+</span><span data-line="6"><span class="c1"># Database requirements</span>
+</span><span data-line="7"><span class="n">DATABASE_REQUIREMENTS</span> <span class="o">=</span> <span class="p">{</span>
+</span><span data-line="8">    <span class="s2">&quot;postgresql&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span data-line="9">        <span class="s2">&quot;requires_driver&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+</span><span data-line="10">        <span class="s2">&quot;python_drivers&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;psycopg2&quot;</span><span class="p">,</span> <span class="s2">&quot;asyncpg&quot;</span><span class="p">],</span>
+</span><span data-line="11">        <span class="s2">&quot;node_drivers&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;pg&quot;</span><span class="p">,</span> <span class="s2">&quot;postgres&quot;</span><span class="p">],</span>
+</span><span data-line="12">    <span class="p">},</span>
+</span><span data-line="13">    <span class="s2">&quot;mysql&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span data-line="14">        <span class="s2">&quot;requires_driver&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+</span><span data-line="15">        <span class="s2">&quot;python_drivers&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;pymysql&quot;</span><span class="p">,</span> <span class="s2">&quot;aiomysql&quot;</span><span class="p">],</span>
+</span><span data-line="16">        <span class="s2">&quot;node_drivers&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;mysql2&quot;</span><span class="p">],</span>
+</span><span data-line="17">    <span class="p">},</span>
+</span><span data-line="18">    <span class="s2">&quot;sqlite&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span data-line="19">        <span class="s2">&quot;requires_driver&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+</span><span data-line="20">        <span class="s2">&quot;python_drivers&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;sqlite3&quot;</span><span class="p">],</span>  <span class="c1"># Built-in</span>
+</span><span data-line="21">        <span class="s2">&quot;node_drivers&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;better-sqlite3&quot;</span><span class="p">],</span>
+</span><span data-line="22">    <span class="p">},</span>
+</span><span data-line="23"><span class="p">}</span>
+</span><span data-line="24">
+</span><span data-line="25"><span class="k">def</span><span class="w"> </span><span class="nf">validate_database_drivers</span><span class="p">(</span><span class="n">answers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</span><span data-line="26"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate database drivers are configured.&quot;&quot;&quot;</span>
+</span><span data-line="27">    <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span data-line="28">    <span class="n">database</span> <span class="o">=</span> <span class="n">answers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;database&quot;</span><span class="p">)</span>
+</span><span data-line="29">    <span class="n">backend_languages</span> <span class="o">=</span> <span class="n">answers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;backend_languages&quot;</span><span class="p">,</span> <span class="p">[])</span>
+</span><span data-line="30">
+</span><span data-line="31">    <span class="k">if</span> <span class="ow">not</span> <span class="n">database</span> <span class="ow">or</span> <span class="n">database</span> <span class="o">==</span> <span class="s2">&quot;none&quot;</span><span class="p">:</span>
+</span><span data-line="32">        <span class="k">return</span> <span class="n">errors</span>
+</span><span data-line="33">
+</span><span data-line="34">    <span class="n">db_config</span> <span class="o">=</span> <span class="n">DATABASE_REQUIREMENTS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">database</span><span class="p">,</span> <span class="p">{})</span>
+</span><span data-line="35">
+</span><span data-line="36">    <span class="c1"># Check Python driver</span>
+</span><span data-line="37">    <span class="k">if</span> <span class="s2">&quot;python&quot;</span> <span class="ow">in</span> <span class="n">backend_languages</span><span class="p">:</span>
+</span><span data-line="38">        <span class="n">python_orm</span> <span class="o">=</span> <span class="n">answers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;python_orm&quot;</span><span class="p">)</span>
+</span><span data-line="39">        <span class="k">if</span> <span class="ow">not</span> <span class="n">python_orm</span> <span class="ow">and</span> <span class="n">db_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;requires_driver&quot;</span><span class="p">):</span>
+</span><span data-line="40">            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span data-line="41">                <span class="sa">f</span><span class="s2">&quot;Database &#39;</span><span class="si">{</span><span class="n">database</span><span class="si">}</span><span class="s2">&#39; requires an ORM/driver. &quot;</span>
+</span><span data-line="42">                <span class="sa">f</span><span class="s2">&quot;Select one of: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">db_config</span><span class="p">[</span><span class="s1">&#39;python_drivers&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span data-line="43">            <span class="p">)</span>
+</span><span data-line="44">
+</span><span data-line="45">    <span class="k">return</span> <span class="n">errors</span>
+</span><span data-line="46">
+</span><span data-line="47"><span class="k">def</span><span class="w"> </span><span class="nf">validate</span><span class="p">(</span><span class="n">answers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</span><span data-line="48"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Run all database validations.&quot;&quot;&quot;</span>
+</span><span data-line="49">    <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span data-line="50">    <span class="n">errors</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">validate_database_drivers</span><span class="p">(</span><span class="n">answers</span><span class="p">))</span>
+</span><span data-line="51">    <span class="k">return</span> <span class="n">errors</span>
+</span></pre></div>
+</div>
+<p><strong>Step 2: Register in <code class="docutils literal notranslate"><span class="pre">__init__.py</span></code></strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># template/hooks/validators/__init__.py</span>
+</span><span data-line="2"><span class="sd">&quot;&quot;&quot;Validators module for Riso template pre-generation checks.&quot;&quot;&quot;</span>
+</span><span data-line="3">
+</span><span data-line="4"><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+</span><span data-line="5">    <span class="s2">&quot;language_validator&quot;</span><span class="p">,</span>
+</span><span data-line="6">    <span class="s2">&quot;frontend_validator&quot;</span><span class="p">,</span>
+</span><span data-line="7">    <span class="s2">&quot;tool_validator&quot;</span><span class="p">,</span>
+</span><span data-line="8">    <span class="s2">&quot;structure_validator&quot;</span><span class="p">,</span>
+</span><span data-line="9">    <span class="s2">&quot;build_tool_validator&quot;</span><span class="p">,</span>
+</span><span data-line="10">    <span class="s2">&quot;monorepo_tool_validator&quot;</span><span class="p">,</span>
+</span><span data-line="11">    <span class="s2">&quot;database_validator&quot;</span><span class="p">,</span>  <span class="c1"># Add new validator</span>
+</span><span data-line="12"><span class="p">]</span>
+</span></pre></div>
+</div>
+<p><strong>Step 3: Integrate into Pre-Gen Hook</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># template/hooks/pre_gen_project.py</span>
+</span><span data-line="2"><span class="kn">from</span><span class="w"> </span><span class="nn">validators</span><span class="w"> </span><span class="kn">import</span> <span class="n">database_validator</span>
+</span><span data-line="3">
+</span><span data-line="4"><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+</span><span data-line="5">    <span class="n">context</span> <span class="o">=</span> <span class="n">_load_copier_context</span><span class="p">()</span>
+</span><span data-line="6">
+</span><span data-line="7">    <span class="c1"># ... existing validation ...</span>
+</span><span data-line="8">
+</span><span data-line="9">    <span class="c1"># Add database validation</span>
+</span><span data-line="10">    <span class="n">db_errors</span> <span class="o">=</span> <span class="n">database_validator</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
+</span><span data-line="11">    <span class="k">if</span> <span class="n">db_errors</span><span class="p">:</span>
+</span><span data-line="12">        <span class="k">for</span> <span class="n">error</span> <span class="ow">in</span> <span class="n">db_errors</span><span class="p">:</span>
+</span><span data-line="13">            <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Database error: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span data-line="14">        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span></pre></div>
+</div>
+</section>
+<section id="adding-custom-validation-rules">
+<h3>Adding Custom Validation Rules<a class="headerlink" href="#adding-custom-validation-rules" title="Link to this heading">¶</a></h3>
+<p><strong>Extend Existing Validator:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># template/hooks/validators/language_validator.py</span>
+</span><span data-line="2">
+</span><span data-line="3"><span class="c1"># Add new framework compatibility</span>
+</span><span data-line="4"><span class="n">FRAMEWORK_COMPATIBILITY</span> <span class="o">=</span> <span class="p">{</span>
+</span><span data-line="5">    <span class="s2">&quot;django&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span data-line="6">        <span class="s2">&quot;language&quot;</span><span class="p">:</span> <span class="s2">&quot;python&quot;</span><span class="p">,</span>
+</span><span data-line="7">        <span class="s2">&quot;incompatible_frameworks&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;vite&quot;</span><span class="p">,</span> <span class="s2">&quot;nextjs&quot;</span><span class="p">,</span> <span class="s2">&quot;remix&quot;</span><span class="p">],</span>
+</span><span data-line="8">        <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;Django has its own template system&quot;</span>
+</span><span data-line="9">    <span class="p">},</span>
+</span><span data-line="10">    <span class="c1"># Add new framework</span>
+</span><span data-line="11">    <span class="s2">&quot;litestar&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span data-line="12">        <span class="s2">&quot;language&quot;</span><span class="p">:</span> <span class="s2">&quot;python&quot;</span><span class="p">,</span>
+</span><span data-line="13">        <span class="s2">&quot;requires_async&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+</span><span data-line="14">        <span class="s2">&quot;incompatible_with&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;flask&quot;</span><span class="p">],</span>
+</span><span data-line="15">        <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;Litestar is async-first, Flask is sync-first&quot;</span>
+</span><span data-line="16">    <span class="p">},</span>
+</span><span data-line="17"><span class="p">}</span>
+</span><span data-line="18">
+</span><span data-line="19"><span class="c1"># Add new validation function</span>
+</span><span data-line="20"><span class="k">def</span><span class="w"> </span><span class="nf">validate_async_requirements</span><span class="p">(</span><span class="n">answers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</span><span data-line="21"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate async framework requirements.&quot;&quot;&quot;</span>
+</span><span data-line="22">    <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span data-line="23">    <span class="n">python_framework</span> <span class="o">=</span> <span class="n">answers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;python_api_framework&quot;</span><span class="p">)</span>
+</span><span data-line="24">
+</span><span data-line="25">    <span class="k">if</span> <span class="n">python_framework</span><span class="p">:</span>
+</span><span data-line="26">        <span class="n">framework_config</span> <span class="o">=</span> <span class="n">FRAMEWORK_COMPATIBILITY</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">python_framework</span><span class="p">,</span> <span class="p">{})</span>
+</span><span data-line="27">
+</span><span data-line="28">        <span class="k">if</span> <span class="n">framework_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;requires_async&quot;</span><span class="p">):</span>
+</span><span data-line="29">            <span class="n">python_version</span> <span class="o">=</span> <span class="n">answers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;python_version&quot;</span><span class="p">,</span> <span class="s2">&quot;3.11&quot;</span><span class="p">)</span>
+</span><span data-line="30">            <span class="k">if</span> <span class="n">python_version</span> <span class="o">&lt;</span> <span class="s2">&quot;3.11&quot;</span><span class="p">:</span>
+</span><span data-line="31">                <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span data-line="32">                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">python_framework</span><span class="si">}</span><span class="s2"> requires Python 3.11+ for optimal async support, &quot;</span>
+</span><span data-line="33">                    <span class="sa">f</span><span class="s2">&quot;but </span><span class="si">{</span><span class="n">python_version</span><span class="si">}</span><span class="s2"> was selected.&quot;</span>
+</span><span data-line="34">                <span class="p">)</span>
+</span><span data-line="35">
+</span><span data-line="36">    <span class="k">return</span> <span class="n">errors</span>
+</span><span data-line="37">
+</span><span data-line="38"><span class="c1"># Update main validate function</span>
+</span><span data-line="39"><span class="k">def</span><span class="w"> </span><span class="nf">validate</span><span class="p">(</span><span class="n">answers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</span><span data-line="40"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Run all language validations.&quot;&quot;&quot;</span>
+</span><span data-line="41">    <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span data-line="42">    <span class="n">errors</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">validate_backend_languages</span><span class="p">(</span><span class="n">answers</span><span class="p">))</span>
+</span><span data-line="43">    <span class="n">errors</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">validate_language_framework_compatibility</span><span class="p">(</span><span class="n">answers</span><span class="p">))</span>
+</span><span data-line="44">    <span class="n">errors</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">validate_package_managers</span><span class="p">(</span><span class="n">answers</span><span class="p">))</span>
+</span><span data-line="45">    <span class="n">errors</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">validate_async_requirements</span><span class="p">(</span><span class="n">answers</span><span class="p">))</span>  <span class="c1"># Add new check</span>
+</span><span data-line="46">    <span class="k">return</span> <span class="n">errors</span>
+</span></pre></div>
+</div>
+</section>
+<section id="creating-severity-aware-validators">
+<h3>Creating Severity-Aware Validators<a class="headerlink" href="#creating-severity-aware-validators" title="Link to this heading">¶</a></h3>
+<p><strong>Advanced Validator with Error/Warning/Info:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># template/hooks/validators/performance_validator.py</span>
+</span><span data-line="2"><span class="sd">&quot;&quot;&quot;Performance validator for performance-impacting configurations.&quot;&quot;&quot;</span>
+</span><span data-line="3">
+</span><span data-line="4"><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span>
+</span><span data-line="5">
+</span><span data-line="6"><span class="k">def</span><span class="w"> </span><span class="nf">validate_performance_choices</span><span class="p">(</span><span class="n">answers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+</span><span data-line="7"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate performance-related choices.&quot;&quot;&quot;</span>
+</span><span data-line="8">    <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
+</span><span data-line="9">        <span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="p">[],</span>
+</span><span data-line="10">        <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="p">[],</span>
+</span><span data-line="11">        <span class="s2">&quot;info&quot;</span><span class="p">:</span> <span class="p">[]</span>
+</span><span data-line="12">    <span class="p">}</span>
+</span><span data-line="13">
+</span><span data-line="14">    <span class="n">build_tool</span> <span class="o">=</span> <span class="n">answers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;build_tool&quot;</span><span class="p">)</span>
+</span><span data-line="15">    <span class="n">bundle_size_limit</span> <span class="o">=</span> <span class="n">answers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;bundle_size_limit&quot;</span><span class="p">)</span>
+</span><span data-line="16">
+</span><span data-line="17">    <span class="c1"># Error: No build tool for production</span>
+</span><span data-line="18">    <span class="k">if</span> <span class="n">answers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;environment&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;production&quot;</span> <span class="ow">and</span> <span class="n">build_tool</span> <span class="o">==</span> <span class="s2">&quot;none&quot;</span><span class="p">:</span>
+</span><span data-line="19">        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;errors&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span data-line="20">            <span class="s2">&quot;Production builds require a build tool for optimization. &quot;</span>
+</span><span data-line="21">            <span class="s2">&quot;Select vite, webpack, or rspack.&quot;</span>
+</span><span data-line="22">        <span class="p">)</span>
+</span><span data-line="23">
+</span><span data-line="24">    <span class="c1"># Warning: Slow build tool for large projects</span>
+</span><span data-line="25">    <span class="k">if</span> <span class="n">build_tool</span> <span class="o">==</span> <span class="s2">&quot;webpack&quot;</span> <span class="ow">and</span> <span class="n">answers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project_scale&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;large&quot;</span><span class="p">:</span>
+</span><span data-line="26">        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;warnings&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span data-line="27">            <span class="s2">&quot;Webpack may be slow for large projects. &quot;</span>
+</span><span data-line="28">            <span class="s2">&quot;Consider rspack (webpack-compatible, faster) or vite.&quot;</span>
+</span><span data-line="29">        <span class="p">)</span>
+</span><span data-line="30">
+</span><span data-line="31">    <span class="c1"># Info: Performance optimization available</span>
+</span><span data-line="32">    <span class="k">if</span> <span class="n">bundle_size_limit</span> <span class="ow">and</span> <span class="n">bundle_size_limit</span> <span class="o">&gt;</span> <span class="mi">500</span><span class="p">:</span>
+</span><span data-line="33">        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;info&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span data-line="34">            <span class="s2">&quot;Bundle size limit &gt;500KB. Consider code splitting, &quot;</span>
+</span><span data-line="35">            <span class="s2">&quot;tree shaking, and lazy loading for better performance.&quot;</span>
+</span><span data-line="36">        <span class="p">)</span>
+</span><span data-line="37">
+</span><span data-line="38">    <span class="k">return</span> <span class="n">result</span>
+</span><span data-line="39">
+</span><span data-line="40"><span class="k">def</span><span class="w"> </span><span class="nf">validate</span><span class="p">(</span><span class="n">answers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+</span><span data-line="41"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Run all performance validations.&quot;&quot;&quot;</span>
+</span><span data-line="42">    <span class="k">return</span> <span class="n">validate_performance_choices</span><span class="p">(</span><span class="n">answers</span><span class="p">)</span>
+</span></pre></div>
+</div>
+</section>
+<section id="testing-custom-validators">
+<h3>Testing Custom Validators<a class="headerlink" href="#testing-custom-validators" title="Link to this heading">¶</a></h3>
+<p><strong>Unit Test:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># tests/unit/validators/test_database_validator.py</span>
+</span><span data-line="2"><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+</span><span data-line="3"><span class="kn">from</span><span class="w"> </span><span class="nn">template.hooks.validators.database_validator</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span data-line="4">    <span class="n">validate_database_drivers</span><span class="p">,</span>
+</span><span data-line="5">    <span class="n">validate</span><span class="p">,</span>
+</span><span data-line="6"><span class="p">)</span>
+</span><span data-line="7">
+</span><span data-line="8"><span class="k">def</span><span class="w"> </span><span class="nf">test_postgresql_requires_driver</span><span class="p">():</span>
+</span><span data-line="9"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Test PostgreSQL requires driver with Python.&quot;&quot;&quot;</span>
+</span><span data-line="10">    <span class="n">answers</span> <span class="o">=</span> <span class="p">{</span>
+</span><span data-line="11">        <span class="s2">&quot;database&quot;</span><span class="p">:</span> <span class="s2">&quot;postgresql&quot;</span><span class="p">,</span>
+</span><span data-line="12">        <span class="s2">&quot;backend_languages&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">],</span>
+</span><span data-line="13">        <span class="s2">&quot;python_orm&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+</span><span data-line="14">    <span class="p">}</span>
+</span><span data-line="15">    <span class="n">errors</span> <span class="o">=</span> <span class="n">validate_database_drivers</span><span class="p">(</span><span class="n">answers</span><span class="p">)</span>
+</span><span data-line="16">    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+</span><span data-line="17">    <span class="k">assert</span> <span class="s2">&quot;requires an ORM/driver&quot;</span> <span class="ow">in</span> <span class="n">errors</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</span><span data-line="18">
+</span><span data-line="19"><span class="k">def</span><span class="w"> </span><span class="nf">test_postgresql_with_orm_valid</span><span class="p">():</span>
+</span><span data-line="20"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Test PostgreSQL with ORM is valid.&quot;&quot;&quot;</span>
+</span><span data-line="21">    <span class="n">answers</span> <span class="o">=</span> <span class="p">{</span>
+</span><span data-line="22">        <span class="s2">&quot;database&quot;</span><span class="p">:</span> <span class="s2">&quot;postgresql&quot;</span><span class="p">,</span>
+</span><span data-line="23">        <span class="s2">&quot;backend_languages&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">],</span>
+</span><span data-line="24">        <span class="s2">&quot;python_orm&quot;</span><span class="p">:</span> <span class="s2">&quot;sqlalchemy&quot;</span><span class="p">,</span>
+</span><span data-line="25">    <span class="p">}</span>
+</span><span data-line="26">    <span class="n">errors</span> <span class="o">=</span> <span class="n">validate_database_drivers</span><span class="p">(</span><span class="n">answers</span><span class="p">)</span>
+</span><span data-line="27">    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+</span><span data-line="28">
+</span><span data-line="29"><span class="k">def</span><span class="w"> </span><span class="nf">test_sqlite_no_driver_required</span><span class="p">():</span>
+</span><span data-line="30"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Test SQLite doesn&#39;t require external driver.&quot;&quot;&quot;</span>
+</span><span data-line="31">    <span class="n">answers</span> <span class="o">=</span> <span class="p">{</span>
+</span><span data-line="32">        <span class="s2">&quot;database&quot;</span><span class="p">:</span> <span class="s2">&quot;sqlite&quot;</span><span class="p">,</span>
+</span><span data-line="33">        <span class="s2">&quot;backend_languages&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">],</span>
+</span><span data-line="34">        <span class="s2">&quot;python_orm&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+</span><span data-line="35">    <span class="p">}</span>
+</span><span data-line="36">    <span class="n">errors</span> <span class="o">=</span> <span class="n">validate_database_drivers</span><span class="p">(</span><span class="n">answers</span><span class="p">)</span>
+</span><span data-line="37">    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+</span><span data-line="38">
+</span><span data-line="39"><span class="k">def</span><span class="w"> </span><span class="nf">test_validate_main_function</span><span class="p">():</span>
+</span><span data-line="40"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Test main validate function aggregates all checks.&quot;&quot;&quot;</span>
+</span><span data-line="41">    <span class="n">answers</span> <span class="o">=</span> <span class="p">{</span>
+</span><span data-line="42">        <span class="s2">&quot;database&quot;</span><span class="p">:</span> <span class="s2">&quot;mysql&quot;</span><span class="p">,</span>
+</span><span data-line="43">        <span class="s2">&quot;backend_languages&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">],</span>
+</span><span data-line="44">    <span class="p">}</span>
+</span><span data-line="45">    <span class="n">errors</span> <span class="o">=</span> <span class="n">validate</span><span class="p">(</span><span class="n">answers</span><span class="p">)</span>
+</span><span data-line="46">    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">errors</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+</span></pre></div>
+</div>
+<p><strong>Integration Test:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># tests/integration/test_validators.py</span>
+</span><span data-line="2"><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+</span><span data-line="3"><span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+</span><span data-line="4"><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+</span><span data-line="5"><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+</span><span data-line="6">
+</span><span data-line="7"><span class="k">def</span><span class="w"> </span><span class="nf">test_validator_integration</span><span class="p">():</span>
+</span><span data-line="8"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Test validators run during copier generation.&quot;&quot;&quot;</span>
+</span><span data-line="9">    <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">tmpdir</span><span class="p">:</span>
+</span><span data-line="10">        <span class="c1"># Create answers file with invalid config</span>
+</span><span data-line="11">        <span class="n">answers</span> <span class="o">=</span> <span class="p">{</span>
+</span><span data-line="12">            <span class="s2">&quot;project_name&quot;</span><span class="p">:</span> <span class="s2">&quot;Test Project&quot;</span><span class="p">,</span>
+</span><span data-line="13">            <span class="s2">&quot;backend_languages&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">],</span>
+</span><span data-line="14">            <span class="s2">&quot;python_package_manager&quot;</span><span class="p">:</span> <span class="s2">&quot;uv&quot;</span><span class="p">,</span>
+</span><span data-line="15">            <span class="s2">&quot;frontend_framework&quot;</span><span class="p">:</span> <span class="s2">&quot;react&quot;</span><span class="p">,</span>
+</span><span data-line="16">            <span class="s2">&quot;component_library&quot;</span><span class="p">:</span> <span class="s2">&quot;shadcn-ui&quot;</span><span class="p">,</span>
+</span><span data-line="17">            <span class="s2">&quot;css_framework&quot;</span><span class="p">:</span> <span class="s2">&quot;styled-components&quot;</span><span class="p">,</span>  <span class="c1"># Invalid!</span>
+</span><span data-line="18">        <span class="p">}</span>
+</span><span data-line="19">
+</span><span data-line="20">        <span class="n">answers_file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;answers.yml&quot;</span>
+</span><span data-line="21">        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">answers_file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span data-line="22">            <span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
+</span><span data-line="23">            <span class="n">yaml</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">answers</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+</span><span data-line="24">
+</span><span data-line="25">        <span class="c1"># Run copier (should fail)</span>
+</span><span data-line="26">        <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+</span><span data-line="27">            <span class="p">[</span><span class="s2">&quot;copier&quot;</span><span class="p">,</span> <span class="s2">&quot;copy&quot;</span><span class="p">,</span> <span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="n">tmpdir</span><span class="p">,</span> <span class="s2">&quot;--data-file&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">answers_file</span><span class="p">)],</span>
+</span><span data-line="28">            <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span data-line="29">            <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span data-line="30">        <span class="p">)</span>
+</span><span data-line="31">
+</span><span data-line="32">        <span class="c1"># Verify validation error</span>
+</span><span data-line="33">        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span>
+</span><span data-line="34">        <span class="k">assert</span> <span class="s2">&quot;shadcn-ui requires&quot;</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">stderr</span>
+</span><span data-line="35">        <span class="k">assert</span> <span class="s2">&quot;tailwind&quot;</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">stderr</span>
+</span></pre></div>
+</div>
+</section>
+</section>
+<section id="best-practices">
+<h2>Best Practices<a class="headerlink" href="#best-practices" title="Link to this heading">¶</a></h2>
+<section id="for-validator-authors">
+<h3>For Validator Authors<a class="headerlink" href="#for-validator-authors" title="Link to this heading">¶</a></h3>
+<ol class="arabic">
+<li><p><strong>Fail Fast with Clear Messages</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Good: Specific, actionable</span>
+</span><span data-line="2"><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span data-line="3">    <span class="s2">&quot;shadcn-ui requires React + Tailwind CSS, but Vue + styled-components &quot;</span>
+</span><span data-line="4">    <span class="s2">&quot;was selected. Change to: frontend_framework=react, css_framework=tailwind&quot;</span>
+</span><span data-line="5"><span class="p">)</span>
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Bad: Vague, no guidance</span>
+</span><span data-line="8"><span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Invalid component library configuration&quot;</span><span class="p">)</span>
+</span></pre></div>
+</div>
+</li>
+<li><p><strong>Use Severity Appropriately</strong></p>
+<ul class="simple">
+<li><p><strong>Errors</strong>: Breaks functionality, must fix (missing tools, incompatible choices)</p></li>
+<li><p><strong>Warnings</strong>: Works but suboptimal (wrong scale, performance issues)</p></li>
+<li><p><strong>Info</strong>: Optional improvements (available features, tips)</p></li>
+</ul>
+</li>
+<li><p><strong>Provide Alternatives</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="k">if</span> <span class="n">build_tool</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">compatible_tools</span><span class="p">:</span>
+</span><span data-line="2">    <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Build tool &#39;</span><span class="si">{</span><span class="n">build_tool</span><span class="si">}</span><span class="s2">&#39; incompatible with &#39;</span><span class="si">{</span><span class="n">framework</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+</span><span data-line="3">    <span class="c1"># Suggest alternatives</span>
+</span><span data-line="4">    <span class="n">alternatives</span> <span class="o">=</span> <span class="p">[</span><span class="n">tool</span> <span class="k">for</span> <span class="n">tool</span><span class="p">,</span> <span class="n">frameworks</span> <span class="ow">in</span> <span class="n">COMPATIBILITY</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+</span><span data-line="5">                   <span class="k">if</span> <span class="n">framework</span> <span class="ow">in</span> <span class="n">frameworks</span><span class="p">]</span>
+</span><span data-line="6">    <span class="k">if</span> <span class="n">alternatives</span><span class="p">:</span>
+</span><span data-line="7">        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Try: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">alternatives</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span></pre></div>
+</div>
+</li>
+<li><p><strong>Test Edge Cases</strong></p>
+<ul class="simple">
+<li><p>Empty/None values</p></li>
+<li><p>Multiple selections (arrays)</p></li>
+<li><p>Case sensitivity</p></li>
+<li><p>Default values</p></li>
+</ul>
+</li>
+<li><p><strong>Document Requirements</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Add module docstring</span>
+</span><span data-line="2"><span class="sd">&quot;&quot;&quot;Database validator for database compatibility.</span>
+</span><span data-line="3">
+</span><span data-line="4"><span class="sd">Validates:</span>
+</span><span data-line="5"><span class="sd">- Database driver availability</span>
+</span><span data-line="6"><span class="sd">- ORM compatibility with database</span>
+</span><span data-line="7"><span class="sd">- Connection pool configuration</span>
+</span><span data-line="8"><span class="sd">- Migration tool compatibility</span>
+</span><span data-line="9">
+</span><span data-line="10"><span class="sd">Example errors:</span>
+</span><span data-line="11"><span class="sd">- PostgreSQL requires driver: psycopg2 or asyncpg</span>
+</span><span data-line="12"><span class="sd">- SQLAlchemy incompatible with MongoDB (use Motor or PyMongo)</span>
+</span><span data-line="13"><span class="sd">&quot;&quot;&quot;</span>
+</span></pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="for-template-users">
+<h3>For Template Users<a class="headerlink" href="#for-template-users" title="Link to this heading">¶</a></h3>
+<ol class="arabic">
+<li><p><strong>Read Error Messages Completely</strong></p>
+<ul class="simple">
+<li><p>Errors include fix instructions</p></li>
+<li><p>Check suggested alternatives</p></li>
+<li><p>Look for installation commands</p></li>
+</ul>
+</li>
+<li><p><strong>Check Provisioning Log</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1">cat<span class="w"> </span>.riso/toolchain_provisioning.jsonl<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;.[] | select(.status == &quot;failed&quot;)&#39;</span>
+</span></pre></div>
+</div>
+</li>
+<li><p><strong>Verify Tool Availability</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Before running copier</span>
+</span><span data-line="2">which<span class="w"> </span>python3<span class="w"> </span>node<span class="w"> </span>pnpm<span class="w"> </span>uv<span class="w"> </span>cargo
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Check versions</span>
+</span><span data-line="5">python3<span class="w"> </span>--version<span class="w">  </span><span class="c1"># 3.11+</span>
+</span><span data-line="6">node<span class="w"> </span>--version<span class="w">     </span><span class="c1"># 20+</span>
+</span><span data-line="7">pnpm<span class="w"> </span>--version<span class="w">     </span><span class="c1"># 8+</span>
+</span></pre></div>
+</div>
+</li>
+<li><p><strong>Use Compatible Combinations</strong></p>
+<ul class="simple">
+<li><p>Start with documented examples</p></li>
+<li><p>Add complexity incrementally</p></li>
+<li><p>Test locally before CI</p></li>
+</ul>
+</li>
+<li><p><strong>Enable Auto-Provisioning</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Install mise for auto-provisioning</span>
+</span><span data-line="2">curl<span class="w"> </span>https://mise.run<span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Configure mise</span>
+</span><span data-line="5">mise<span class="w"> </span>install<span class="w"> </span>uv@0.4<span class="w"> </span>node@20<span class="w"> </span>pnpm@8
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Copier will auto-provision via mise</span>
+</span><span data-line="8">copier<span class="w"> </span>copy<span class="w"> </span>.<span class="w"> </span>output/
+</span></pre></div>
+</div>
+</li>
+</ol>
+</section>
+</section>
+<section id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Link to this heading">¶</a></h2>
+<p>The Riso validator system ensures:</p>
+<ul class="simple">
+<li><p><strong>Tool Availability</strong>: Required language tools, package managers, and build tools are present</p></li>
+<li><p><strong>Configuration Compatibility</strong>: Framework, library, and tool selections work together</p></li>
+<li><p><strong>Project Structure</strong>: Repository structure matches project scale and complexity</p></li>
+<li><p><strong>Auto-Healing</strong>: Single-pass provisioning attempts before manual errors</p></li>
+<li><p><strong>Actionable Guidance</strong>: Every error includes fix instructions or alternatives</p></li>
+</ul>
+<p><strong>Key Takeaways:</strong></p>
+<ol class="arabic simple">
+<li><p>Validators run during pre-generation, blocking invalid configurations</p></li>
+<li><p>Six specialized validators cover languages, frontend, build tools, monorepo, tools, and structure</p></li>
+<li><p>Severity levels (error/warning/info) control blocking behavior</p></li>
+<li><p>Errors include installation commands, alternative suggestions, and fix guidance</p></li>
+<li><p>Extensible system allows custom validators for new modules</p></li>
+<li><p>Provisioning log (<code class="docutils literal notranslate"><span class="pre">.riso/toolchain_provisioning.jsonl</span></code>) tracks all attempts</p></li>
+</ol>
+<p>For implementation details, see individual validator source files in <code class="docutils literal notranslate"><span class="pre">template/hooks/validators/</span></code>.</p>
+</section>
+</section>
+
+        </article><button class="back-to-top" type="button">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+  </svg>
+  <span>Back to top</span>
+</button><div class="navigation flex print:hidden"></div></div>
+    </div>
+  </main>
+</div>
+<footer class="sy-foot">
+  <div class="sy-foot-inner sy-container mx-auto">
+    <div class="sy-foot-reserved md:flex justify-between items-center">
+      <div class="sy-foot-copyright"><p>2025, Riso</p>
+  
+  <p>
+    Made with
+    
+    <a href="https://www.sphinx-doc.org/">Sphinx</a> and
+    
+    <a href="https://shibuya.lepture.com">Shibuya theme</a>.
+  </p>
+</div>
+      <div class="sy-foot-socials">
+<a href="https://github.com/openai/riso" aria-label="GitHub">
+  <iconify-icon icon="simple-icons:github"></iconify-icon>
+</a></div>
+    </div>
+  </div>
+</footer>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=6870ed9c"></script>
+      <script src="https://unpkg.com/twemoji@latest/dist/twemoji.min.js"></script>
+      <script src="../_static/twemoji.js?v=a4381b3f"></script>
+      <script src="../_static/js/hoverxref.js?v=85f38ef1"></script>
+      <script src="../_static/js/tooltipster.bundle.min.js?v=18bf091b"></script>
+      <script src="../_static/js/micromodal.min.js?v=04d6302d"></script>
+      <script>let toggleHintShow = 'Click to show';</script>
+      <script>let toggleHintHide = 'Click to hide';</script>
+      <script>let toggleOpenOnPrint = 'true';</script>
+      <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+      <script src="../_static/design-tabs.js?v=f930bc37"></script>
+      <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+      <script src="../_static/shibuya.js?v=cac61aee"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../_static/tabs.js?v=3030b3cb"></script>
+      <script src="../_static/js/custom.js?v=d0f0919d"></script>
+      <script src="../_static/js/tool-catalog.js?v=e9e09451"></script>
+      <script defer="defer" src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script></body>
+</html>

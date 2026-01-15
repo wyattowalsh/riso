@@ -1,0 +1,96 @@
+---
+name: "Generate Compatibility Matrix"
+type: "automation"
+category: "riso-scripts"
+description: "Generates compatibility documentation from copier.yml prompt definitions"
+icon: "tabler:apps"
+popularity: 65
+tags: ["documentation", "compatibility", "matrix", "mermaid", "prompts"]
+provided_by: "template"
+---
+
+# Generate Compatibility Matrix
+
+This script parses `copier.yml` to extract prompts, dependencies, and incompatibilities, then generates comprehensive compatibility documentation.
+
+## Purpose
+
+- Extract prompt definitions from copier.yml
+- Identify incompatible configuration combinations
+- Generate Mermaid decision tree diagrams
+- Document alternative recommendations and best practices
+
+## Location
+
+```
+scripts/generate_compatibility_matrix.py
+```
+
+## Usage
+
+### Generate Documentation
+
+```bash
+uv run python scripts/generate_compatibility_matrix.py
+```
+
+### Custom Output Path
+
+```bash
+uv run python scripts/generate_compatibility_matrix.py \
+  --output docs/my-compatibility.md
+```
+
+### With Dependency Visualization
+
+```bash
+uv run python scripts/generate_compatibility_matrix.py \
+  --visualize-deps
+```
+
+## Generated Content
+
+### Compatibility Tables
+
+- Backend language compatibility (frameworks, package managers, testing)
+- Frontend framework compatibility (meta-frameworks, state management, components)
+
+### Decision Trees (Mermaid)
+
+```mermaid
+graph TD
+    A[Start: Backend Selection] --> B{Need API?}
+    B -->|Yes| C{Performance Critical?}
+    C -->|Yes| D[Rust + Axum]
+    C -->|No| E[Python + FastAPI]
+```
+
+### Sections Generated
+
+| Section | Content |
+|---------|---------|
+| Compatibility Matrix | Language/framework compatibility tables |
+| Decision Trees | Mermaid diagrams for selection guidance |
+| Alternative Recommendations | When to consider alternatives |
+| Best Practices | Selection guidelines per category |
+| Incompatible Combinations | Unsupported configurations |
+| Prompt Dependencies | Which prompts depend on others |
+
+## Class API
+
+```python
+class CompatibilityMatrixGenerator:
+    def parse_copier_yml(self) -> None
+    def generate_matrix_table(self) -> str
+    def generate_decision_trees(self) -> list[str]
+    def generate_alternatives(self) -> str
+    def generate_best_practices(self) -> str
+    def generate_documentation(self) -> str
+    def visualize_dependencies(self) -> str
+```
+
+## Related
+
+- [Copier](copier.md) - Template configuration source
+- [Structure Validator](structure-validator.md) - Validates project layouts
+- [Tool Validator](tool-validator.md) - Validates tool combinations

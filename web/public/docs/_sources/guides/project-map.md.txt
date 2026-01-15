@@ -1,0 +1,1690 @@
+# Riso Project Map
+
+A comprehensive visual guide to the Riso template architecture.
+
+## Complete Project Structure
+
+```mermaid
+flowchart TB
+    subgraph RISO["🎯 RISO TEMPLATE"]
+        direction TB
+
+        subgraph CORE["📦 Core Configuration"]
+            PYPROJ[pyproject.toml]
+            PKGJSON[package.json]
+            MAKEFILE[Makefile]
+            PRECOMMIT[.pre-commit-config.yaml]
+        end
+
+        subgraph TEMPLATE["📁 template/ — Copier Payload"]
+            direction TB
+            COPIER[copier.yml]
+
+            subgraph FILES["files/ — Blueprint"]
+                direction LR
+                subgraph PYTHON["python/"]
+                    PY_SRC[src/]
+                    PY_TEST[tests/]
+                    PY_FRAME[frameworks/]
+                end
+                subgraph NODE["node/"]
+                    NODE_PKG[packages/]
+                    NODE_FRAME[frameworks/]
+                    NODE_APP[apps/]
+                end
+                subgraph RUST["rust/"]
+                    RUST_FRAME[frameworks/]
+                    RUST_MCP[mcp/]
+                end
+                subgraph SHARED["shared/"]
+                    SH_CLAUDE[.claude/skills/]
+                    SH_GH[.github/workflows/]
+                    SH_QUALITY[quality/]
+                    SH_SCRIPTS[scripts/]
+                end
+                subgraph FRONTEND["frontend/"]
+                    FE_REACT[react/]
+                    FE_VUE[vue/]
+                    FE_SVELTE[svelte/]
+                end
+                subgraph MONOREPO["monorepo/"]
+                    MR_TURBO[turborepo/]
+                    MR_NX[nx/]
+                    MR_LERNA[lerna/]
+                end
+            end
+
+            subgraph HOOKS["hooks/ — Lifecycle"]
+                PRE_GEN[pre_gen_project.py]
+                POST_GEN[post_gen_project.py]
+                VALIDATORS[validators/]
+            end
+
+            subgraph PROMPTS["prompts/"]
+                PROMPT_DEF[copier-answers-schema.yml]
+                PROMPT_META[prompt_metadata.json]
+            end
+        end
+
+        subgraph SCRIPTS["🔧 scripts/ — Automation"]
+            direction TB
+            RENDER[render-samples.sh]
+
+            subgraph CI["ci/"]
+                CI_MATRIX[render_matrix.py]
+                CI_QUALITY[run_quality_suite.py]
+                CI_VERIFY[verify_context_sync.py]
+                CI_VALIDATE[validate_*.py]
+            end
+
+            subgraph AUTO["automation/"]
+                AUTO_CLIENT[render_client.py]
+            end
+
+            subgraph SETUP["setup/"]
+                SETUP_LIB[lib/]
+                SETUP_PS[lib-ps/]
+            end
+        end
+
+        subgraph DOCS["📚 docs/ — Documentation"]
+            direction TB
+            CONF[conf.py]
+            INDEX[index.md]
+
+            subgraph DOC_CONTENT["Content"]
+                GUIDES[guides/]
+                TOOLS[tools/]
+                API_DOCS[api/]
+                MODULES[modules/]
+            end
+
+            subgraph STATIC["_static/"]
+                CSS[css/]
+                JS[js/]
+                IMG[img/]
+            end
+        end
+
+        subgraph TESTS["🧪 tests/ — Test Suite"]
+            direction TB
+            CONFTEST[conftest.py]
+
+            subgraph UNIT["unit/"]
+                UNIT_CI[ci/]
+                UNIT_HOOKS[hooks/]
+                UNIT_MCP[mcp/]
+            end
+
+            subgraph INTEG["integration/"]
+                INTEG_RENDER[test_full_renders.py]
+                INTEG_SETUP[test_setup_scripts.py]
+            end
+
+            FIXTURES[fixtures/]
+        end
+
+        subgraph SAMPLES["📂 samples/ — Rendered Outputs"]
+            direction LR
+            DEFAULT[default/]
+            FULLSTACK[full-stack/]
+            SAAS[saas-starter/]
+            METADATA[metadata/]
+        end
+
+        subgraph IDE["🖥️ IDE Configuration"]
+            direction LR
+            CLAUDE[.claude/]
+            CURSOR[.cursor/]
+            VSCODE[.vscode/]
+            CODEX[.codex/]
+        end
+
+        subgraph SRC["💻 src/riso/ — Source"]
+            TEMPLATE_PY[template.py]
+            TUI_PY[tui.py]
+            MCP_DIR[mcp/]
+        end
+    end
+
+    %% Connections
+    COPIER --> FILES
+    COPIER --> HOOKS
+    COPIER --> PROMPTS
+
+    RENDER --> AUTO_CLIENT
+    AUTO_CLIENT --> COPIER
+    RENDER --> SAMPLES
+
+    CI_MATRIX --> SAMPLES
+    CI_QUALITY --> TESTS
+
+    PRE_GEN --> VALIDATORS
+    POST_GEN --> SH_QUALITY
+
+    SHARED --> DEFAULT
+    SHARED --> FULLSTACK
+    SHARED --> SAAS
+
+    style RISO fill:#f0fdfa,stroke:#14b8a6,stroke-width:3px
+    style TEMPLATE fill:#ccfbf1,stroke:#14b8a6
+    style SCRIPTS fill:#fef3c7,stroke:#f59e0b
+    style DOCS fill:#dbeafe,stroke:#3b82f6
+    style TESTS fill:#fce7f3,stroke:#ec4899
+    style SAMPLES fill:#f3e8ff,stroke:#8b5cf6
+```
+
+## Template Rendering Flow
+
+```mermaid
+flowchart LR
+    subgraph INPUT["📝 Input"]
+        USER[User]
+        ANSWERS[copier-answers.yml]
+    end
+
+    subgraph COPIER["⚙️ Copier Engine"]
+        direction TB
+        PROMPTS2[Load Prompts]
+        VALIDATE[Validate Answers]
+        RENDER2[Render Templates]
+    end
+
+    subgraph HOOKS2["🔗 Hooks"]
+        direction TB
+        PRE[pre_gen_project.py]
+        POST[post_gen_project.py]
+    end
+
+    subgraph OUTPUT["📦 Output"]
+        direction TB
+        PROJECT[Rendered Project]
+        METADATA2[.riso/metadata.json]
+        SMOKE[smoke-results.json]
+    end
+
+    USER --> |copier copy| PROMPTS2
+    ANSWERS --> |--answers| VALIDATE
+    PROMPTS2 --> VALIDATE
+    VALIDATE --> PRE
+    PRE --> |✓ tools ok| RENDER2
+    RENDER2 --> POST
+    POST --> PROJECT
+    POST --> METADATA2
+    POST --> SMOKE
+
+    style INPUT fill:#e0f2fe,stroke:#0284c7
+    style COPIER fill:#ccfbf1,stroke:#14b8a6
+    style HOOKS2 fill:#fef3c7,stroke:#f59e0b
+    style OUTPUT fill:#dcfce7,stroke:#22c55e
+```
+
+## Quality & CI Pipeline
+
+```mermaid
+flowchart TB
+    subgraph DEV["👨‍💻 Development"]
+        CODE[Code Changes]
+        COMMIT[git commit]
+    end
+
+    subgraph LOCAL["🏠 Local Quality"]
+        direction TB
+        PRECOMMIT2[pre-commit hooks]
+        MAKE[make quality]
+        UV[uv run task quality]
+    end
+
+    subgraph TOOLS["🔍 Quality Tools"]
+        direction LR
+        RUFF[ruff]
+        TY[ty]
+        PYLINT[pylint]
+        PYTEST[pytest]
+        COVERAGE[coverage]
+    end
+
+    subgraph CI2["☁️ GitHub Actions"]
+        direction TB
+        QUALITY_WF[riso-quality.yml]
+        MATRIX_WF[riso-matrix.yml]
+
+        subgraph MATRIX["Matrix Testing"]
+            PY311[Python 3.11]
+            PY312[Python 3.12]
+            PY313[Python 3.13]
+        end
+    end
+
+    subgraph ARTIFACTS["📊 Artifacts"]
+        JUNIT[JUnit XML]
+        COV_REPORT[Coverage Report]
+        DURATIONS[quality-durations.json]
+    end
+
+    CODE --> COMMIT
+    COMMIT --> PRECOMMIT2
+    PRECOMMIT2 --> MAKE
+    MAKE --> TOOLS
+    UV --> TOOLS
+
+    COMMIT --> |push| QUALITY_WF
+    QUALITY_WF --> TOOLS
+    QUALITY_WF --> MATRIX_WF
+    MATRIX_WF --> PY311 & PY312 & PY313
+
+    TOOLS --> ARTIFACTS
+
+    style DEV fill:#f0fdfa,stroke:#14b8a6
+    style LOCAL fill:#fef3c7,stroke:#f59e0b
+    style TOOLS fill:#dbeafe,stroke:#3b82f6
+    style CI2 fill:#fce7f3,stroke:#ec4899
+    style ARTIFACTS fill:#f3e8ff,stroke:#8b5cf6
+```
+
+## Template Files Hierarchy
+
+```mermaid
+flowchart TB
+    subgraph TEMPLATE_FILES["template/files/"]
+        direction TB
+
+        subgraph LANG["Language Templates"]
+            direction LR
+
+            subgraph PY2["python/"]
+                PY_PYPROJ[pyproject.toml.jinja]
+                PY_SRC2[src/package/]
+                PY_TESTS2[tests/]
+                PY_DOCS[docs/]
+
+                subgraph PY_FW["frameworks/"]
+                    DJANGO[django/]
+                    FLASK[flask/]
+                end
+            end
+
+            subgraph NODE2["node/"]
+                NODE_PKG2[package.json.jinja]
+                NODE_PNPM[pnpm-workspace.yaml]
+
+                subgraph NODE_FW["frameworks/"]
+                    EXPRESS[express/]
+                    NESTJS[nestjs/]
+                    FASTIFY[fastify/]
+                    HONO[hono/]
+                end
+            end
+
+            subgraph RUST2["rust/"]
+                CARGO[Cargo.toml.jinja]
+
+                subgraph RUST_FW["frameworks/"]
+                    AXUM[axum/]
+                    ACTIX[actix/]
+                end
+            end
+        end
+
+        subgraph SHARED2["shared/ — Cross-cutting"]
+            direction TB
+
+            subgraph SH_IDE["IDE Config"]
+                SH_CLAUDE2[.claude/skills/]
+                SH_CURSOR2[.cursor/rules/]
+                SH_AMAZONQ[.amazonq/]
+            end
+
+            subgraph SH_CI["CI/CD"]
+                SH_WORKFLOWS[.github/workflows/]
+                SH_DOCKER[.docker/]
+            end
+
+            subgraph SH_QA["Quality"]
+                SH_MAKE[Makefile targets]
+                SH_TASKS[uv tasks]
+                SH_PYTEST[pytest config]
+            end
+
+            subgraph SH_AGENT["Agent Files"]
+                AGENTS_MD[AGENTS.md.jinja]
+                CLAUDE_MD[CLAUDE.md.jinja]
+                GEMINI_MD[GEMINI.md.jinja]
+            end
+        end
+
+        subgraph FE2["frontend/"]
+            REACT2[react/]
+            VUE2[vue/]
+            SVELTE2[svelte/]
+            SOLID2[solid/]
+            ANGULAR2[angular/]
+        end
+
+        subgraph MONO2["monorepo/"]
+            TURBO2[turborepo/]
+            NX2[nx/]
+            LERNA2[lerna/]
+            MOON[moon/]
+        end
+
+        subgraph LAYOUT["layouts/"]
+            FLAT[flat/]
+            SRC_LAYOUT[src-layout/]
+            DDD[domain-driven/]
+            APPS_PKG[apps-packages/]
+        end
+    end
+
+    style LANG fill:#ccfbf1,stroke:#14b8a6
+    style SHARED2 fill:#fef3c7,stroke:#f59e0b
+    style FE2 fill:#dbeafe,stroke:#3b82f6
+    style MONO2 fill:#fce7f3,stroke:#ec4899
+    style LAYOUT fill:#f3e8ff,stroke:#8b5cf6
+```
+
+## Sample Variants & Outputs
+
+```mermaid
+flowchart LR
+    subgraph VARIANTS["Sample Variants"]
+        direction TB
+
+        subgraph MINIMAL["Minimal"]
+            MIN_CLI[cli-only]
+            MIN_API[api-only]
+        end
+
+        subgraph STANDARD["Standard"]
+            STD_DEFAULT[default]
+            STD_DOCS[docs-variant]
+        end
+
+        subgraph FULL["Full-Stack"]
+            FULL_STACK[full-stack]
+            FULL_SAAS[saas-starter]
+            FULL_MONO[api-monorepo]
+        end
+    end
+
+    subgraph RENDER_PROC["Render Process"]
+        SCRIPT[render-samples.sh]
+        CLIENT[render_client.py]
+    end
+
+    subgraph OUTPUTS["Rendered Outputs"]
+        direction TB
+
+        subgraph STRUCT["Project Structure"]
+            OUT_SRC[src/]
+            OUT_TEST[tests/]
+            OUT_DOCS[docs/]
+            OUT_GH[.github/]
+        end
+
+        subgraph META["Metadata"]
+            ANSWERS2[copier-answers.yml]
+            POST_META[post_gen_metadata.json]
+            SMOKE2[smoke-results.json]
+            METRICS[baseline_metrics.json]
+        end
+    end
+
+    subgraph AGG["Aggregated Data"]
+        RENDER_MAT[render_matrix.json]
+        MOD_SUCCESS[module_success.json]
+    end
+
+    VARIANTS --> SCRIPT
+    SCRIPT --> CLIENT
+    CLIENT --> OUTPUTS
+    OUTPUTS --> AGG
+
+    style VARIANTS fill:#e0f2fe,stroke:#0284c7
+    style RENDER_PROC fill:#ccfbf1,stroke:#14b8a6
+    style OUTPUTS fill:#dcfce7,stroke:#22c55e
+    style AGG fill:#fef3c7,stroke:#f59e0b
+```
+
+## Hook Execution Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant C as Copier
+    participant Pre as pre_gen_project.py
+    participant V as validators/
+    participant T as Template Engine
+    participant Post as post_gen_project.py
+    participant O as Output Project
+
+    U->>C: copier copy . project/
+    C->>Pre: Execute pre-generation hook
+
+    rect rgb(204, 251, 241)
+        Note over Pre,V: Validation Phase
+        Pre->>V: Check Python version
+        V-->>Pre: ✓ 3.11+
+        Pre->>V: Check uv installed
+        V-->>Pre: ✓ Available
+        Pre->>V: Check Node.js (if needed)
+        V-->>Pre: ✓ 20 LTS
+        Pre->>V: Check pnpm (if needed)
+        V-->>Pre: ✓ ≥8
+    end
+
+    Pre-->>C: Validation passed
+
+    rect rgb(219, 234, 254)
+        Note over C,T: Rendering Phase
+        C->>T: Load copier.yml
+        C->>T: Process .jinja templates
+        T->>O: Write rendered files
+    end
+
+    C->>Post: Execute post-generation hook
+
+    rect rgb(254, 243, 199)
+        Note over Post,O: Setup Phase
+        Post->>O: Initialize .git
+        Post->>O: Install pre-commit hooks
+        Post->>O: Run uv sync
+        Post->>O: Run pnpm install (if Node)
+        Post->>O: Write .riso/metadata.json
+        Post->>O: Run smoke tests
+    end
+
+    Post-->>C: Setup complete
+    C-->>U: Project ready!
+```
+
+## Documentation Architecture
+
+```mermaid
+flowchart TB
+    subgraph SPHINX["Sphinx Documentation"]
+        direction TB
+        CONF2[conf.py]
+
+        subgraph CONTENT["Content Sources"]
+            direction LR
+            INDEX2[index.md]
+            GUIDES2[guides/*.md]
+            TOOLS2[tools/*.md]
+            API2[api/*.md]
+            MODULES2[modules/*.md.jinja]
+        end
+
+        subgraph STATIC2["Static Assets"]
+            direction LR
+
+            subgraph CSS2["css/"]
+                TOKENS[design-tokens.css]
+                CUSTOM[custom.css]
+                COMPONENTS[components.css]
+                MERMAID_CSS[mermaid.css]
+            end
+
+            subgraph JS2["js/"]
+                CUSTOM_JS[custom.js]
+                CATALOG_JS[tool-catalog.js]
+            end
+
+            subgraph IMG2["img/"]
+                LOGO[logo.webp]
+                FAVICON2[favicon/]
+            end
+        end
+
+        subgraph THEME["Shibuya Theme"]
+            SHIBUYA[shibuya]
+            EXTENSIONS[Extensions]
+        end
+    end
+
+    subgraph BUILD["Build Output"]
+        HTML[_build/html/]
+        SITEMAP[sitemap.xml]
+    end
+
+    subgraph SERVE["Dev Server"]
+        AUTOBUILD[sphinx-autobuild]
+        PORT[localhost:3141]
+    end
+
+    CONF2 --> CONTENT
+    CONF2 --> STATIC2
+    CONF2 --> THEME
+
+    CONTENT --> BUILD
+    STATIC2 --> BUILD
+
+    BUILD --> AUTOBUILD
+    AUTOBUILD --> PORT
+
+    style SPHINX fill:#f0fdfa,stroke:#14b8a6
+    style CONTENT fill:#dbeafe,stroke:#3b82f6
+    style STATIC2 fill:#fef3c7,stroke:#f59e0b
+    style BUILD fill:#dcfce7,stroke:#22c55e
+```
+
+## Skills & MCP Architecture
+
+```mermaid
+flowchart TB
+    subgraph SKILLS["Claude Code Skills"]
+        direction TB
+
+        subgraph AGENTS_SKILL["agents-md-manager"]
+            DETECT[detect.py]
+            ANALYZE[analyze.py]
+            SYNC[sync.py]
+            MIGRATE[migrate.py]
+        end
+
+        subgraph MCP_SKILL["mcp-installer"]
+            RESEARCH[research.py]
+            INSTALL[install.py]
+            MCP_SYNC[sync.py]
+            VALIDATE2[validate.py]
+        end
+    end
+
+    subgraph LOCATIONS["Skill Locations"]
+        direction LR
+
+        subgraph REPO[".claude/skills/"]
+            REPO_AGENTS[agents-md-manager/]
+            REPO_MCP[mcp-installer/]
+        end
+
+        subgraph TPL["template/files/shared/.claude/skills/"]
+            TPL_AGENTS[agents-md-manager/]
+            TPL_MCP[mcp-installer/]
+        end
+
+        subgraph RENDER["samples/*/render/.claude/skills/"]
+            RENDER_AGENTS[agents-md-manager/]
+            RENDER_MCP[mcp-installer/]
+        end
+    end
+
+    subgraph MCP_SRC["src/riso/mcp/"]
+        MCP_TOOLS[tools/]
+        MCP_RES[resources/]
+        MCP_PROMPTS[prompts/]
+    end
+
+    REPO --> |copier renders| TPL
+    TPL --> |render-samples.sh| RENDER
+
+    MCP_SRC --> SKILLS
+
+    style SKILLS fill:#ccfbf1,stroke:#14b8a6
+    style LOCATIONS fill:#fef3c7,stroke:#f59e0b
+    style MCP_SRC fill:#dbeafe,stroke:#3b82f6
+```
+
+---
+
+## Quick Reference
+
+| Area | Entry Point | Purpose |
+|------|-------------|---------|
+| **Template** | `template/copier.yml` | Copier configuration |
+| **Rendering** | `scripts/render-samples.sh` | Generate sample projects |
+| **Quality** | `make quality` | Run all quality checks |
+| **Docs** | `make docs` | Serve documentation |
+| **Tests** | `uv run pytest` | Run test suite |
+| **Skills** | `.claude/skills/` | AI agent capabilities |
+
+---
+
+## Conceptual Mindmap
+
+```mermaid
+mindmap
+  root((Riso Template))
+    Languages
+      Python 3.11+
+        FastAPI
+        Typer CLI
+        pytest
+      Node.js 20
+        Fastify
+        NestJS
+        Express
+      Rust
+        Axum
+        Actix
+    Frontends
+      React
+        Vite
+        Next.js
+      Vue
+        Nuxt
+      Svelte
+        SvelteKit
+      Solid
+      Angular
+    Quality
+      Linting
+        ruff
+        eslint
+        clippy
+      Type Checking
+        ty
+        typescript
+      Testing
+        pytest
+        vitest
+        cargo test
+      Coverage
+        coverage.py
+        c8
+    CI/CD
+      GitHub Actions
+        riso-quality.yml
+        riso-matrix.yml
+        riso-release.yml
+      Container
+        Docker
+        Buildx
+        Trivy
+    AI Agents
+      Claude Code
+        Skills
+        MCP Servers
+      Cursor
+        Rules
+      Amazon Q
+      GitHub Copilot
+    Documentation
+      Sphinx
+        Shibuya theme
+        Mermaid
+      Fumadocs
+      Docusaurus
+```
+
+## Template Lifecycle States
+
+```mermaid
+stateDiagram-v2
+    [*] --> Uninitialized: User runs copier copy
+
+    state "Pre-Generation" as PreGen {
+        [*] --> ValidatingTools
+        ValidatingTools --> CheckingPython: uv installed
+        CheckingPython --> CheckingNode: Python 3.11+ ✓
+        CheckingNode --> CheckingPnpm: Node 20+ ✓
+        CheckingPnpm --> ToolsValidated: pnpm 8+ ✓
+
+        ValidatingTools --> Failed: Missing uv
+        CheckingPython --> Failed: Python < 3.11
+        CheckingNode --> ToolsValidated: Node not needed
+    }
+
+    Uninitialized --> PreGen
+    PreGen --> Rendering: Validation passed
+    Failed --> [*]: Exit with error
+
+    state "Rendering" as Render {
+        [*] --> LoadingConfig
+        LoadingConfig --> ProcessingPrompts
+        ProcessingPrompts --> ResolvingAnswers
+        ResolvingAnswers --> RenderingTemplates
+        RenderingTemplates --> WritingFiles
+        WritingFiles --> [*]
+    }
+
+    Render --> PostGen: Files written
+
+    state "Post-Generation" as PostGen {
+        [*] --> InitializingGit
+        InitializingGit --> InstallingHooks
+        InstallingHooks --> SyncingDeps
+        SyncingDeps --> RunningSmoke
+        RunningSmoke --> WritingMetadata
+        WritingMetadata --> [*]
+    }
+
+    PostGen --> Ready: Setup complete
+    Ready --> Development: User starts coding
+    Development --> QualityCheck: make quality
+    QualityCheck --> Development: Issues found
+    QualityCheck --> CI: Push to remote
+    CI --> Release: All checks pass
+    Release --> [*]: Published
+
+    note right of Ready
+        Project is fully configured
+        and ready for development
+    end note
+```
+
+## User Journey: First-Time Setup
+
+```mermaid
+flowchart LR
+    subgraph INSTALL["1️⃣ Install"]
+        A1[Get uv] --> A2[copier copy]
+    end
+
+    subgraph CONFIG["2️⃣ Configure"]
+        B1[Answer prompts] --> B2[Select tracks]
+    end
+
+    subgraph GENERATE["3️⃣ Generate"]
+        C1[Validation] --> C2[Scaffolding]
+    end
+
+    subgraph VERIFY["4️⃣ Verify"]
+        D1[Run quickstart] --> D2[Quality checks]
+    end
+
+    INSTALL --> CONFIG --> GENERATE --> VERIFY
+
+    style INSTALL fill:#e0f2fe,stroke:#0284c7
+    style CONFIG fill:#ccfbf1,stroke:#14b8a6
+    style GENERATE fill:#fef3c7,stroke:#f59e0b
+    style VERIFY fill:#dcfce7,stroke:#22c55e
+```
+
+## Data Flow Architecture
+
+```mermaid
+flowchart TB
+    subgraph INPUTS["📥 Configuration Inputs"]
+        direction LR
+        USER_INPUT[User Prompts]
+        ANSWERS_FILE[copier-answers.yml]
+        ENV_VARS[Environment Variables]
+        CLI_ARGS[CLI Arguments]
+    end
+
+    subgraph COPIER_ENGINE["⚙️ Copier Processing Engine"]
+        direction TB
+
+        subgraph RESOLUTION["Answer Resolution"]
+            PROMPT_SCHEMA[copier.yml schema]
+            DEFAULTS[Default values]
+            COMPUTED[Computed fields]
+        end
+
+        subgraph JINJA["Jinja2 Templating"]
+            FILTERS[Custom filters]
+            MACROS[Template macros]
+            CONDITIONALS[Conditional blocks]
+        end
+
+        subgraph CONTEXT["Template Context"]
+            VARS[Variables]
+            HELPERS[Helper functions]
+        end
+    end
+
+    subgraph HOOKS_SYS["🔗 Hook System"]
+        direction TB
+        PRE_HOOKS[pre_gen_project.py]
+
+        subgraph VALIDATORS["Validation Layer"]
+            LANG_VAL[language_validator.py]
+            BUILD_VAL[build_tool_validator.py]
+            FE_VAL[frontend_validator.py]
+            MONO_VAL[monorepo_validator.py]
+            STRUCT_VAL[structure_validator.py]
+        end
+
+        POST_HOOKS[post_gen_project.py]
+    end
+
+    subgraph OUTPUTS["📤 Generated Artifacts"]
+        direction TB
+
+        subgraph PROJECT["Project Files"]
+            SRC_FILES[Source code]
+            TEST_FILES[Test suites]
+            CONFIG_FILES[Config files]
+            CI_FILES[CI workflows]
+        end
+
+        subgraph METADATA["Metadata"]
+            RISO_META[.riso/metadata.json]
+            COPIER_ANS[.copier-answers.yml]
+            SMOKE_RES[smoke-results.json]
+        end
+    end
+
+    INPUTS --> COPIER_ENGINE
+    COPIER_ENGINE --> HOOKS_SYS
+    HOOKS_SYS --> OUTPUTS
+
+    PRE_HOOKS --> VALIDATORS
+    VALIDATORS --> |Pass| JINJA
+    VALIDATORS --> |Fail| ABORT[Abort with error]
+
+    style INPUTS fill:#e0f2fe,stroke:#0284c7
+    style COPIER_ENGINE fill:#ccfbf1,stroke:#14b8a6
+    style HOOKS_SYS fill:#fef3c7,stroke:#f59e0b
+    style OUTPUTS fill:#dcfce7,stroke:#22c55e
+```
+
+## Module Composition
+
+```mermaid
+pie showData
+    title Template Module Distribution
+    "Python Core" : 35
+    "Node.js Track" : 20
+    "Frontend Frameworks" : 18
+    "Quality/CI" : 12
+    "Documentation" : 8
+    "AI Agent Config" : 5
+    "Rust Track" : 2
+```
+
+## Git Branching Strategy
+
+```mermaid
+gitGraph
+    commit id: "Initial commit"
+    commit id: "Core template structure"
+
+    branch feature/python-track
+    checkout feature/python-track
+    commit id: "Add Python scaffolding"
+    commit id: "Add FastAPI framework"
+    commit id: "Add pytest config"
+
+    checkout main
+    merge feature/python-track id: "Merge Python track"
+
+    branch feature/node-track
+    checkout feature/node-track
+    commit id: "Add Node.js scaffolding"
+    commit id: "Add Fastify framework"
+
+    checkout main
+    branch feature/quality-suite
+    checkout feature/quality-suite
+    commit id: "Add ruff linting"
+    commit id: "Add ty type checking"
+    commit id: "Add pre-commit hooks"
+
+    checkout main
+    merge feature/quality-suite id: "Merge quality suite"
+    merge feature/node-track id: "Merge Node track"
+
+    branch feature/ci-workflows
+    checkout feature/ci-workflows
+    commit id: "Add GitHub Actions"
+    commit id: "Add matrix testing"
+
+    checkout main
+    merge feature/ci-workflows id: "Merge CI" tag: "v1.0.0"
+
+    branch release/v1.1
+    checkout release/v1.1
+    commit id: "Add frontends"
+    commit id: "Add monorepo support"
+
+    checkout main
+    merge release/v1.1 tag: "v1.1.0"
+```
+
+## Hook System Class Diagram
+
+```mermaid
+classDiagram
+    class CopierHook {
+        <<abstract>>
+        +execute() bool
+        +validate() ValidationResult
+        #context: dict
+        #answers: dict
+    }
+
+    class PreGenHook {
+        +validate_tooling() bool
+        +check_prerequisites() list
+        +abort_if_missing(tools) void
+        -required_tools: list
+    }
+
+    class PostGenHook {
+        +initialize_git() void
+        +install_hooks() void
+        +sync_dependencies() void
+        +run_smoke_tests() SmokeResult
+        +write_metadata() void
+        -project_path: Path
+    }
+
+    class Validator {
+        <<abstract>>
+        +validate(answers) ValidationResult
+        +get_error_message() str
+        #valid_options: set
+    }
+
+    class LanguageValidator {
+        +validate(answers) ValidationResult
+        +check_python_version() bool
+        +check_node_version() bool
+        +check_rust_toolchain() bool
+    }
+
+    class BuildToolValidator {
+        +validate(answers) ValidationResult
+        +check_uv() bool
+        +check_pnpm() bool
+        +check_cargo() bool
+    }
+
+    class FrontendValidator {
+        +validate(answers) ValidationResult
+        +check_framework_compatibility() bool
+    }
+
+    class MonorepoValidator {
+        +validate(answers) ValidationResult
+        +check_tool_installed() bool
+    }
+
+    class StructureValidator {
+        +validate(answers) ValidationResult
+        +verify_layout() bool
+    }
+
+    class ValidationResult {
+        +success: bool
+        +errors: list~str~
+        +warnings: list~str~
+        +context: dict
+    }
+
+    class SmokeResult {
+        +passed: list~str~
+        +failed: list~str~
+        +skipped: list~str~
+        +duration_ms: int
+    }
+
+    CopierHook <|-- PreGenHook
+    CopierHook <|-- PostGenHook
+    Validator <|-- LanguageValidator
+    Validator <|-- BuildToolValidator
+    Validator <|-- FrontendValidator
+    Validator <|-- MonorepoValidator
+    Validator <|-- StructureValidator
+
+    PreGenHook --> Validator : uses
+    Validator --> ValidationResult : returns
+    PostGenHook --> SmokeResult : generates
+```
+
+## C4 Context Diagram
+
+```mermaid
+flowchart TB
+    subgraph boundary["System Boundary"]
+        RISO["🎯 Riso Template System<br/><i>Copier-based project scaffolding</i>"]
+    end
+
+    DEV["👨‍💻 Developer<br/><i>Creates new projects</i>"]
+    MAINTAINER["👷 Template Maintainer<br/><i>Updates template</i>"]
+
+    subgraph external["External Systems"]
+        GITHUB["☁️ GitHub<br/><i>Source control & CI/CD</i>"]
+        PYPI["📦 PyPI<br/><i>Python packages</i>"]
+        NPM["📦 npm Registry<br/><i>Node packages</i>"]
+        CARGO["📦 crates.io<br/><i>Rust packages</i>"]
+        DOCKER_HUB["🐳 Container Registry<br/><i>Docker images</i>"]
+    end
+
+    subgraph tools["Development Tools"]
+        UV["uv<br/><i>Python packaging</i>"]
+        PNPM["pnpm<br/><i>Node packaging</i>"]
+        COPIER_CLI["Copier CLI<br/><i>Template engine</i>"]
+    end
+
+    DEV --> |"copier copy"| RISO
+    DEV --> |"configures"| RISO
+    MAINTAINER --> |"updates templates"| RISO
+    MAINTAINER --> |"pushes changes"| GITHUB
+
+    RISO --> |"fetches packages"| PYPI
+    RISO --> |"fetches packages"| NPM
+    RISO --> |"fetches crates"| CARGO
+    RISO --> |"pushes images"| DOCKER_HUB
+    RISO --> |"triggers CI"| GITHUB
+
+    RISO --> |"uses"| UV
+    RISO --> |"uses"| PNPM
+    RISO --> |"powered by"| COPIER_CLI
+
+    style RISO fill:#ccfbf1,stroke:#14b8a6,stroke-width:3px
+    style DEV fill:#dbeafe,stroke:#3b82f6
+    style MAINTAINER fill:#fef3c7,stroke:#f59e0b
+    style external fill:#f5f5f5,stroke:#9ca3af
+    style tools fill:#f3e8ff,stroke:#8b5cf6
+```
+
+## CI/CD Pipeline Detail
+
+```mermaid
+flowchart TB
+    subgraph trigger["Trigger Events"]
+        PUSH[Push to main]
+        PR[Pull Request]
+        SCHEDULE[Scheduled]
+        MANUAL[Manual dispatch]
+    end
+
+    subgraph quality["Quality Gate"]
+        direction TB
+
+        subgraph lint["Linting"]
+            RUFF_LINT[ruff check]
+            RUFF_FMT[ruff format --check]
+        end
+
+        subgraph types["Type Checking"]
+            TY_CHECK[ty check]
+        end
+
+        subgraph static["Static Analysis"]
+            PYLINT_RUN[pylint]
+        end
+    end
+
+    subgraph test["Testing"]
+        direction TB
+
+        subgraph matrix["Matrix Strategy"]
+            PY311_TEST["Python 3.11<br/>pytest --cov"]
+            PY312_TEST["Python 3.12<br/>pytest --cov"]
+            PY313_TEST["Python 3.13<br/>pytest --cov"]
+        end
+
+        COVERAGE_MERGE[Merge Coverage]
+    end
+
+    subgraph artifacts["Artifact Collection"]
+        JUNIT_XML[JUnit XML Reports]
+        COV_HTML[Coverage HTML]
+        DURATION_LOG[Duration Metrics]
+    end
+
+    subgraph deploy["Deployment"]
+        direction TB
+        CONTAINER_BUILD[Build Container]
+        SECURITY_SCAN[Trivy Scan]
+        PUSH_REGISTRY[Push to Registry]
+        DEPLOY_DOCS[Deploy Docs]
+    end
+
+    subgraph gates["Quality Gates"]
+        COV_GATE{Coverage ≥ 80%?}
+        SECURITY_GATE{No Critical CVEs?}
+        BRANCH_PROTECT[Branch Protection]
+    end
+
+    trigger --> quality
+    quality --> |All pass| test
+    test --> artifacts
+
+    matrix --> COVERAGE_MERGE
+    COVERAGE_MERGE --> COV_GATE
+
+    COV_GATE --> |Yes| deploy
+    COV_GATE --> |No| FAIL_COV[❌ Coverage too low]
+
+    CONTAINER_BUILD --> SECURITY_SCAN
+    SECURITY_SCAN --> SECURITY_GATE
+    SECURITY_GATE --> |Yes| PUSH_REGISTRY
+    SECURITY_GATE --> |No| FAIL_SEC[❌ Security issues]
+
+    PUSH_REGISTRY --> DEPLOY_DOCS
+    DEPLOY_DOCS --> BRANCH_PROTECT
+
+    style trigger fill:#e0f2fe,stroke:#0284c7
+    style quality fill:#fef3c7,stroke:#f59e0b
+    style test fill:#ccfbf1,stroke:#14b8a6
+    style deploy fill:#dcfce7,stroke:#22c55e
+    style gates fill:#fce7f3,stroke:#ec4899
+```
+
+## Framework Compatibility Matrix
+
+```mermaid
+flowchart LR
+    subgraph BACKENDS["Backend Frameworks"]
+        direction TB
+
+        subgraph PY_BACK["Python"]
+            FASTAPI_F["FastAPI<br/>⭐ Primary"]
+            FLASK_F["Flask"]
+            DJANGO_F["Django"]
+        end
+
+        subgraph NODE_BACK["Node.js"]
+            FASTIFY_F["Fastify<br/>⭐ Primary"]
+            EXPRESS_F["Express"]
+            NESTJS_F["NestJS"]
+            HONO_F["Hono"]
+        end
+
+        subgraph RUST_BACK["Rust"]
+            AXUM_F["Axum<br/>⭐ Primary"]
+            ACTIX_F["Actix Web"]
+        end
+    end
+
+    subgraph FRONTENDS["Frontend Frameworks"]
+        direction TB
+
+        subgraph REACT_ECO["React Ecosystem"]
+            VITE_REACT["React + Vite<br/>⭐ Primary"]
+            NEXTJS["Next.js"]
+            REMIX_F["Remix"]
+        end
+
+        subgraph VUE_ECO["Vue Ecosystem"]
+            VITE_VUE["Vue + Vite"]
+            NUXT["Nuxt"]
+        end
+
+        subgraph SVELTE_ECO["Svelte Ecosystem"]
+            SVELTEKIT["SvelteKit"]
+            SVELTE_V["Svelte + Vite"]
+        end
+
+        subgraph OTHER_FE["Other"]
+            SOLID_F["Solid"]
+            ANGULAR_F["Angular"]
+        end
+    end
+
+    subgraph MONOREPO["Monorepo Tools"]
+        direction TB
+        TURBO["Turborepo<br/>⭐ Primary"]
+        NX_T["Nx"]
+        LERNA_T["Lerna"]
+        MOON_T["Moon"]
+    end
+
+    FASTAPI_F -.-> |"Full-Stack"| VITE_REACT
+    FASTIFY_F -.-> |"Full-Stack"| VITE_REACT
+    AXUM_F -.-> |"Full-Stack"| VITE_VUE
+
+    TURBO -.-> |"Orchestrates"| PY_BACK
+    TURBO -.-> |"Orchestrates"| NODE_BACK
+    TURBO -.-> |"Orchestrates"| FRONTENDS
+
+    style BACKENDS fill:#ccfbf1,stroke:#14b8a6
+    style FRONTENDS fill:#dbeafe,stroke:#3b82f6
+    style MONOREPO fill:#fef3c7,stroke:#f59e0b
+```
+
+## Dependency Resolution Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant C as Copier
+    participant UV as uv
+    participant PNPM as pnpm
+    participant PRE as pre-commit
+    participant PW as Playwright
+
+    U->>C: copier copy --answers answers.yml
+
+    rect rgb(204, 251, 241)
+        Note over C,UV: Python Dependencies
+        C->>UV: uv sync
+        UV->>UV: Create .venv
+        UV->>UV: Install from pyproject.toml
+        UV-->>C: Dependencies installed
+    end
+
+    alt Node.js track enabled
+        rect rgb(219, 234, 254)
+            Note over C,PNPM: Node Dependencies
+            C->>PNPM: pnpm install
+            PNPM->>PNPM: Create node_modules
+            PNPM->>PNPM: Install workspace deps
+            PNPM-->>C: Dependencies installed
+        end
+    end
+
+    rect rgb(254, 243, 199)
+        Note over C,PRE: Git Hooks
+        C->>PRE: pre-commit install
+        PRE->>PRE: Install hook scripts
+        PRE-->>C: Hooks installed
+    end
+
+    alt E2E testing enabled
+        rect rgb(252, 231, 243)
+            Note over C,PW: Browser Dependencies
+            C->>PW: playwright install
+            PW->>PW: Download browsers
+            PW-->>C: Browsers ready
+        end
+    end
+
+    C-->>U: Project ready for development!
+```
+
+## Error Handling Flow
+
+```mermaid
+flowchart TB
+    START([Template Generation Starts])
+
+    subgraph validation["Validation Phase"]
+        CHECK_UV{uv installed?}
+        CHECK_PY{Python 3.11+?}
+        CHECK_NODE{Node.js needed?}
+        CHECK_NODE_VER{Node 20+?}
+        CHECK_PNPM{pnpm 8+?}
+    end
+
+    subgraph errors["Error Handling"]
+        ERR_UV["❌ ERROR: uv not found<br/><code>curl -LsSf https://astral.sh/uv/install.sh | sh</code>"]
+        ERR_PY["❌ ERROR: Python < 3.11<br/><code>uv python install 3.11</code>"]
+        ERR_NODE["❌ ERROR: Node.js not found<br/><code>brew install node@20</code>"]
+        ERR_PNPM["❌ ERROR: pnpm not found<br/><code>npm install -g pnpm</code>"]
+    end
+
+    subgraph recovery["Recovery Actions"]
+        INSTALL_UV[Install uv]
+        INSTALL_PY[Install Python]
+        INSTALL_NODE[Install Node.js]
+        INSTALL_PNPM[Install pnpm]
+    end
+
+    RENDER([Continue Rendering])
+    ABORT([Abort Generation])
+
+    START --> CHECK_UV
+
+    CHECK_UV --> |No| ERR_UV
+    CHECK_UV --> |Yes| CHECK_PY
+
+    ERR_UV --> INSTALL_UV
+    INSTALL_UV --> |Retry| CHECK_UV
+    INSTALL_UV --> |Skip| ABORT
+
+    CHECK_PY --> |No| ERR_PY
+    CHECK_PY --> |Yes| CHECK_NODE
+
+    ERR_PY --> INSTALL_PY
+    INSTALL_PY --> |Retry| CHECK_PY
+
+    CHECK_NODE --> |No| RENDER
+    CHECK_NODE --> |Yes| CHECK_NODE_VER
+
+    CHECK_NODE_VER --> |No| ERR_NODE
+    CHECK_NODE_VER --> |Yes| CHECK_PNPM
+
+    ERR_NODE --> INSTALL_NODE
+    INSTALL_NODE --> |Retry| CHECK_NODE_VER
+
+    CHECK_PNPM --> |No| ERR_PNPM
+    CHECK_PNPM --> |Yes| RENDER
+
+    ERR_PNPM --> INSTALL_PNPM
+    INSTALL_PNPM --> |Retry| CHECK_PNPM
+
+    style validation fill:#ccfbf1,stroke:#14b8a6
+    style errors fill:#fee2e2,stroke:#ef4444
+    style recovery fill:#fef3c7,stroke:#f59e0b
+    style RENDER fill:#dcfce7,stroke:#22c55e
+    style ABORT fill:#fecaca,stroke:#dc2626
+```
+
+---
+
+## Tool Maturity Quadrant
+
+```mermaid
+quadrantChart
+    title Tool Maturity vs Priority
+    x-axis Low Priority --> High Priority
+    y-axis Experimental --> Production Ready
+    quadrant-1 Invest & Scale
+    quadrant-2 Maintain Excellence
+    quadrant-3 Evaluate & Decide
+    quadrant-4 Quick Wins
+
+    FastAPI: [0.9, 0.95]
+    ruff: [0.85, 0.9]
+    ty: [0.8, 0.75]
+    pytest: [0.9, 0.98]
+    Turborepo: [0.7, 0.85]
+    Fastify: [0.75, 0.88]
+    Axum: [0.5, 0.7]
+    SvelteKit: [0.55, 0.8]
+    Hono: [0.4, 0.65]
+    Moon: [0.3, 0.5]
+```
+
+## Project Timeline
+
+```mermaid
+timeline
+    title Riso Template Evolution
+    section Foundation
+        2024 Q1 : Core Python scaffolding
+                : uv package management
+                : Basic quality suite
+    section Expansion
+        2024 Q2 : Node.js track added
+                : Turborepo monorepo support
+                : GitHub Actions CI/CD
+    section Maturation
+        2024 Q3 : Frontend frameworks
+                : Container deployment
+                : WebSocket support
+    section Enterprise
+        2024 Q4 : Rust track
+                : MCP server integration
+                : Claude Code skills
+    section Future
+        2025 Q1 : GraphQL federation
+                : Kubernetes operators
+                : Multi-cloud deployment
+```
+
+## Requirement Diagram
+
+```mermaid
+requirementDiagram
+    requirement scaffold_project {
+        id: REQ-001
+        text: Template must scaffold working project
+        risk: low
+        verifymethod: test
+    }
+
+    requirement quality_checks {
+        id: REQ-002
+        text: Generated projects must pass quality gates
+        risk: medium
+        verifymethod: test
+    }
+
+    requirement multi_language {
+        id: REQ-003
+        text: Support Python, Node.js, and Rust
+        risk: medium
+        verifymethod: demonstration
+    }
+
+    requirement ci_integration {
+        id: REQ-004
+        text: Include GitHub Actions workflows
+        risk: low
+        verifymethod: inspection
+    }
+
+    requirement documentation {
+        id: REQ-005
+        text: Generate comprehensive documentation
+        risk: low
+        verifymethod: inspection
+    }
+
+    functionalRequirement pre_gen_validation {
+        id: FR-001
+        text: Validate tooling before generation
+        risk: low
+        verifymethod: test
+    }
+
+    functionalRequirement post_gen_setup {
+        id: FR-002
+        text: Initialize git and install hooks
+        risk: low
+        verifymethod: test
+    }
+
+    element copier_template {
+        type: module
+        docref: template/copier.yml
+    }
+
+    element pre_gen_hook {
+        type: module
+        docref: template/hooks/pre_gen_project.py
+    }
+
+    element post_gen_hook {
+        type: module
+        docref: template/hooks/post_gen_project.py
+    }
+
+    copier_template - satisfies -> scaffold_project
+    pre_gen_hook - satisfies -> pre_gen_validation
+    post_gen_hook - satisfies -> post_gen_setup
+    pre_gen_validation - derives -> multi_language
+    post_gen_setup - derives -> quality_checks
+    quality_checks - refines -> ci_integration
+```
+
+## Entity Relationship: Configuration Model
+
+```mermaid
+erDiagram
+    COPIER_ANSWERS ||--o{ LANGUAGE_CONFIG : contains
+    COPIER_ANSWERS ||--o{ QUALITY_CONFIG : contains
+    COPIER_ANSWERS ||--o{ CI_CONFIG : contains
+    COPIER_ANSWERS {
+        string project_name PK
+        string package_name
+        string version
+        string description
+        string author
+        enum project_layout
+        enum quality_profile
+    }
+
+    LANGUAGE_CONFIG ||--o{ FRAMEWORK_CHOICE : selects
+    LANGUAGE_CONFIG {
+        string language PK
+        string version
+        boolean enabled
+        string package_manager
+    }
+
+    FRAMEWORK_CHOICE {
+        string framework_id PK
+        string language FK
+        string name
+        string version
+        boolean is_primary
+    }
+
+    QUALITY_CONFIG ||--o{ QUALITY_TOOL : includes
+    QUALITY_CONFIG {
+        string profile PK
+        boolean strict_mode
+        int coverage_threshold
+    }
+
+    QUALITY_TOOL {
+        string tool_id PK
+        string profile FK
+        string name
+        string config_file
+        boolean required
+    }
+
+    CI_CONFIG ||--o{ WORKFLOW : generates
+    CI_CONFIG {
+        string ci_platform PK
+        boolean matrix_testing
+        int python_versions
+        boolean container_build
+    }
+
+    WORKFLOW {
+        string workflow_id PK
+        string ci_platform FK
+        string name
+        string trigger
+        string yaml_file
+    }
+
+    RENDERED_PROJECT ||--|| COPIER_ANSWERS : created_from
+    RENDERED_PROJECT ||--o{ GENERATED_FILE : contains
+    RENDERED_PROJECT {
+        string project_path PK
+        timestamp rendered_at
+        string template_version
+        string copier_version
+    }
+
+    GENERATED_FILE {
+        string file_path PK
+        string project_path FK
+        string template_source
+        boolean is_jinja
+        int file_size
+    }
+```
+
+## Architecture Layers
+
+```mermaid
+flowchart TB
+    subgraph USER_LAYER["👤 User Interface Layer"]
+        direction LR
+        CLI["CLI<br/>copier copy"]
+        TUI["TUI<br/>riso-tui"]
+        MCP["MCP<br/>riso-mcp"]
+    end
+
+    subgraph CORE_LAYER["⚙️ Core Processing Layer"]
+        direction LR
+        COPIER["Copier Engine"]
+        PROMPTS["Prompt Schema"]
+        HOOKS["Hook System"]
+        VALIDATORS["Validators"]
+        JINJA["Jinja2 Engine"]
+    end
+
+    subgraph TEMPLATE_LAYER["📁 Template Layer"]
+        direction LR
+        PYTHON["Python Track"]
+        NODE["Node.js Track"]
+        RUST["Rust Track"]
+        FRONTEND["Frontend"]
+        SHARED["Shared Config"]
+    end
+
+    subgraph OUTPUT_LAYER["📦 Output Layer"]
+        direction LR
+        SRC["src/"]
+        TESTS["tests/"]
+        DOCS["docs/"]
+        CI_OUT[".github/"]
+        CONFIG["Config Files"]
+    end
+
+    USER_LAYER --> CORE_LAYER
+    CORE_LAYER --> TEMPLATE_LAYER
+    TEMPLATE_LAYER --> OUTPUT_LAYER
+
+    style USER_LAYER fill:#e0f2fe,stroke:#0284c7
+    style CORE_LAYER fill:#ccfbf1,stroke:#14b8a6
+    style TEMPLATE_LAYER fill:#fef3c7,stroke:#f59e0b
+    style OUTPUT_LAYER fill:#dcfce7,stroke:#22c55e
+```
+
+## Resource Distribution
+
+```mermaid
+pie showData
+    title Template Resource Distribution
+    "Source Files" : 51
+    "Config Files" : 21
+    "Test Files" : 13
+    "CI Workflows" : 5
+    "Quality Config" : 5
+    "Static Assets" : 5
+```
+
+## Development Workflow
+
+```mermaid
+flowchart LR
+    subgraph BACKLOG["📋 Backlog"]
+        B1[GraphQL support]
+        B2[Kubernetes manifests]
+        B3[Multi-cloud templates]
+    end
+
+    subgraph IN_PROGRESS["🔄 In Progress"]
+        IP1[Rust Axum framework]
+        IP2[MCP server tools]
+    end
+
+    subgraph REVIEW["👀 Review"]
+        R1[WebSocket module]
+        R2[Container deployment]
+    end
+
+    subgraph DONE["✅ Done"]
+        D1[Python FastAPI]
+        D2[Node.js Fastify]
+        D3[Quality suite]
+        D4[GitHub Actions CI]
+    end
+
+    BACKLOG --> IN_PROGRESS
+    IN_PROGRESS --> REVIEW
+    REVIEW --> DONE
+
+    style BACKLOG fill:#fef3c7,stroke:#f59e0b
+    style IN_PROGRESS fill:#dbeafe,stroke:#3b82f6
+    style REVIEW fill:#fce7f3,stroke:#ec4899
+    style DONE fill:#dcfce7,stroke:#22c55e
+```
+
+---
+
+## Interactive Quick Reference
+
+| Category | Diagram | Purpose |
+|----------|---------|---------|
+| **Overview** | [Complete Project Structure](#complete-project-structure) | Full repository layout |
+| **Concepts** | [Conceptual Mindmap](#conceptual-mindmap) | Bird's-eye view of all technologies |
+| **Process** | [Template Rendering Flow](#template-rendering-flow) | How projects are generated |
+| **State** | [Template Lifecycle States](#template-lifecycle-states) | States during generation |
+| **UX** | [User Journey](#user-journey-first-time-setup) | Developer experience walkthrough |
+| **Data** | [Data Flow Architecture](#data-flow-architecture) | Information flow through system |
+| **Code** | [Hook System Class Diagram](#hook-system-class-diagram) | Hook implementation design |
+| **Architecture** | [C4 Context Diagram](#c4-context-diagram) | System context and boundaries |
+| **CI/CD** | [CI/CD Pipeline Detail](#cicd-pipeline-detail) | Full pipeline visualization |
+| **Compatibility** | [Framework Compatibility](#framework-compatibility-matrix) | What works with what |
+| **Dependencies** | [Dependency Resolution](#dependency-resolution-flow) | Package installation sequence |
+| **Errors** | [Error Handling Flow](#error-handling-flow) | Recovery from failures |
+| **Files** | [Template Files Hierarchy](#template-files-hierarchy) | Template directory structure |
+| **Git** | [Git Branching Strategy](#git-branching-strategy) | Branch workflow |
+| **Planning** | [Tool Maturity Quadrant](#tool-maturity-quadrant) | Tool prioritization matrix |
+| **Roadmap** | [Project Timeline](#project-timeline) | Evolution and future plans |
+| **Requirements** | [Requirement Diagram](#requirement-diagram) | Traceability matrix |
+| **Data Model** | [Entity Relationship](#entity-relationship-configuration-model) | Configuration schema |
+| **Layers** | [Architecture Layers](#architecture-layers) | Layered system view |
+| **Resources** | [Resource Distribution](#resource-distribution) | File type breakdown |
+| **Workflow** | [Development Workflow](#development-workflow) | Development status |
+
+---
+
+*Generated with Mermaid diagrams using the Riso custom theme. This page contains **21 interactive diagrams** documenting the complete Riso template architecture across multiple visualization types: flowcharts, mindmaps, state diagrams, user journeys, class diagrams, sequence diagrams, ER diagrams, pie charts, git graphs, quadrant charts, and timelines.*
