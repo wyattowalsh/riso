@@ -3,45 +3,52 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { z } from 'zod'
 
 // @ts-expect-error - JSON import works at runtime
-import matrixData from '../src/data/matrix.json'
+import matrixData from '../../samples/metadata/matrix-data.json'
 
 const server = new McpServer({
   name: 'riso-mcp',
   version: '1.0.0',
 })
 
-// Tool: Get module catalog
-server.tool('get_modules', 'List all available Riso template modules', {}, async () => {
-  const modules = matrixData.modules || []
+// Tool: Get template metadata
+server.tool('get_template_info', 'Get Riso template metadata and defaults', {}, async () => {
+  const info = {
+    metadata: matrixData.template?.metadata || {},
+    defaults: matrixData.template?.defaults || {},
+  }
   return {
-    content: [{ type: 'text', text: JSON.stringify(modules, null, 2) }],
+    content: [{ type: 'text', text: JSON.stringify(info, null, 2) }],
   }
 })
 
-// Tool: Get module details
+// Tool: Get prompt details
 server.tool(
-  'get_module',
-  'Get details for a specific module',
-  { name: z.string().describe('Module name') },
-  async ({ name }) => {
-    const modules = matrixData.modules || []
-    const module = modules.find((m: { name: string }) => m.name === name)
-    if (!module) {
-      return { content: [{ type: 'text', text: `Module "${name}" not found` }], isError: true }
+  'get_prompt',
+  'Get details for a specific prompt/configuration option',
+  { key: z.string().describe('Prompt key (e.g., "project_name", "api_tracks")') },
+  async ({ key }) => {
+    const prompts = matrixData.template?.prompts || []
+    const prompt = prompts.find((p: { key: string }) => p.key === key)
+    if (!prompt) {
+      return { content: [{ type: 'text', text: `Prompt "${key}" not found` }], isError: true }
     }
-    return { content: [{ type: 'text', text: JSON.stringify(module, null, 2) }] }
+    return { content: [{ type: 'text', text: JSON.stringify(prompt, null, 2) }] }
   }
 )
 
-// Tool: Get prompts for a step
+// Tool: List all prompts
 server.tool(
-  'get_step_prompts',
-  'Get wizard prompts for a configuration step',
-  { step: z.string().describe('Step name (e.g., "project", "api", "quality")') },
-  async ({ step }) => {
-    const prompts = matrixData.prompts || []
-    const stepPrompts = prompts.filter((p: { group?: string }) => p.group === step)
-    return { content: [{ type: 'text', text: JSON.stringify(stepPrompts, null, 2) }] }
+  'list_prompts',
+  'List all available configuration prompts',
+  {},
+  async () => {
+    const prompts = matrixData.template?.prompts || []
+    const summary = prompts.map((p: { key: string; type?: string; help?: string }) => ({
+      key: p.key,
+      type: p.type,
+      help: p.help?.split('\n')[0],
+    }))
+    return { content: [{ type: 'text', text: JSON.stringify(summary, null, 2) }] }
   }
 )
 
@@ -51,13 +58,13 @@ server.tool(
   'Validate a set of wizard answers',
   { answers: z.record(z.string(), z.unknown()).describe('Answers object to validate') },
   async ({ answers }) => {
-    const prompts = matrixData.prompts || []
+    const prompts = matrixData.template?.prompts || []
     const errors: string[] = []
 
     for (const prompt of prompts) {
-      const p = prompt as { name: string; required?: boolean }
-      if (p.required && !(p.name in answers)) {
-        errors.push(`Missing required field: ${p.name}`)
+      const p = prompt as { key: string; required?: boolean }
+      if (p.required && !(p.key in answers)) {
+        errors.push(`Missing required field: ${p.key}`)
       }
     }
 
