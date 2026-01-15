@@ -17,7 +17,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from jinja2 import BaseLoader, Environment, TemplateSyntaxError
+from jinja2 import BaseLoader, Environment, TemplateSyntaxError, Undefined
 
 
 def create_permissive_environment() -> Environment:
@@ -38,8 +38,8 @@ def create_permissive_environment() -> Environment:
         # Don't strip whitespace during parsing
         trim_blocks=False,
         lstrip_blocks=False,
-        # Keep undefined variables as-is for syntax checking
-        undefined=lambda: "",
+        # Use Undefined class (silently ignores undefined variables)
+        undefined=Undefined,
     )
     return env
 
