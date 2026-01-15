@@ -326,7 +326,7 @@ notfound_template = "page.html"
 notfound_pagename = "404"
 notfound_urls_prefix = "/"
 
-html_baseurl = "http://localhost:8000/"
+html_baseurl = os.getenv("DOCS_BASE_URL", "https://riso.build/docs/")
 sitemap_url_scheme = "{link}"
 
 linkcheck_ignore = [r"^http://localhost", r"^https://localhost"]
