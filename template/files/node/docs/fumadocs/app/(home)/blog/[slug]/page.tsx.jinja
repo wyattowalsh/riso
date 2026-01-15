@@ -7,8 +7,46 @@ import { blog } from '@/lib/source';
 import defaultMdxComponents from 'fumadocs-ui/mdx';
 import { ShareButton } from './page.client';
 
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+
 interface PageProps {
   params: Promise<{ slug: string }>;
+}
+
+// JSON-LD structured data for SEO
+function generateStructuredData(page: {
+  url: string;
+  data: {
+    title: string;
+    description?: string;
+    author: string;
+    date: Date;
+    tags?: string[];
+  };
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: page.data.title,
+    description: page.data.description,
+    author: {
+      '@type': 'Person',
+      name: page.data.author,
+    },
+    datePublished: new Date(page.data.date).toISOString(),
+    dateModified: new Date(page.data.date).toISOString(),
+    url: `${baseUrl}${page.url}`,
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': `${baseUrl}${page.url}`,
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: '{{ project_name }}',
+      url: baseUrl,
+    },
+    keywords: page.data.tags?.join(', '),
+  };
 }
 
 export default async function BlogPostPage({ params }: PageProps) {
@@ -18,61 +56,69 @@ export default async function BlogPostPage({ params }: PageProps) {
   if (!page) notFound();
   const { body: Mdx, toc } = await page.data.load();
 
+  const structuredData = generateStructuredData(page);
+
   return (
-    <article className="mx-auto w-full max-w-3xl px-4 py-8">
-      <div className="mb-8">
-        <Link
-          href="/blog"
-          className="inline-flex items-center text-sm text-fd-muted-foreground hover:text-fd-foreground mb-4"
-        >
-          ← Back to blog
-        </Link>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={% raw %}{{{% endraw %} __html: JSON.stringify(structuredData) {% raw %}}}{% endraw %}
+      />
+      <article className="mx-auto w-full max-w-3xl px-4 py-8">
+        <div className="mb-8">
+          <Link
+            href="/blog"
+            className="inline-flex items-center text-sm text-fd-muted-foreground hover:text-fd-foreground mb-4"
+          >
+            ← Back to blog
+          </Link>
 
-        <h1 className="text-3xl font-bold mb-4">{page.data.title}</h1>
-        
-        {page.data.description && (
-          <p className="text-lg text-fd-muted-foreground mb-6">
-            {page.data.description}
-          </p>
-        )}
+          <h1 className="text-3xl font-bold mb-4">{page.data.title}</h1>
+          
+          {page.data.description && (
+            <p className="text-lg text-fd-muted-foreground mb-6">
+              {page.data.description}
+            </p>
+          )}
 
-        <div className="flex flex-wrap items-center gap-4 text-sm text-fd-muted-foreground mb-6">
-          <div>
-            <span className="text-fd-foreground font-medium">{page.data.author}</span>
+          <div className="flex flex-wrap items-center gap-4 text-sm text-fd-muted-foreground mb-6">
+            <div>
+              <span className="text-fd-foreground font-medium">{page.data.author}</span>
+            </div>
+            <span>•</span>
+            <time dateTime={new Date(page.data.date).toISOString()}>
+              {new Date(page.data.date).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </time>
           </div>
-          <span>•</span>
-          <time dateTime={String(page.data.date)}>
-            {new Date(page.data.date).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </time>
+
+          {page.data.tags && page.data.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-6">
+              {page.data.tags.map((tag: string) => (
+                <span
+                  key={tag}
+                  className="rounded-full bg-fd-secondary px-3 py-1 text-xs"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <ShareButton url={page.url} />
+          </div>
         </div>
 
-        {page.data.tags && page.data.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-6">
-            {page.data.tags.map((tag: string) => (
-              <span
-                key={tag}
-                className="rounded-full bg-fd-secondary px-3 py-1 text-xs"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-
-        <div className="flex gap-2">
-          <ShareButton url={page.url} />
+        <div className="prose prose-fd min-w-0">
+          <InlineTOC items={toc} />
+          <Mdx components={defaultMdxComponents} />
         </div>
-      </div>
-
-      <div className="prose prose-fd min-w-0">
-        <InlineTOC items={toc} />
-        <Mdx components={defaultMdxComponents} />
-      </div>
-    </article>
+      </article>
+    </>
   );
 }
 
@@ -90,16 +136,43 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!page) return {};
 
+  const publishedTime = new Date(page.data.date).toISOString();
+  const canonicalUrl = `${baseUrl}${page.url}`;
+
   return {
     title: `${page.data.title} | {{ project_name }} Blog`,
     description: page.data.description,
     authors: [{ name: page.data.author }],
+    keywords: page.data.tags,
+    alternates: {
+      canonical: canonicalUrl,
+      types: {
+        'application/rss+xml': `${baseUrl}/blog/rss.xml`,
+      },
+    },
     openGraph: {
       title: page.data.title,
       description: page.data.description,
+      url: canonicalUrl,
+      siteName: '{{ project_name }}',
       type: 'article',
-      publishedTime: String(page.data.date),
+      publishedTime,
+      modifiedTime: publishedTime,
       authors: [page.data.author],
+      tags: page.data.tags,
+      locale: 'en_US',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: page.data.title,
+      description: page.data.description,
+    },
+    robots: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
     },
   };
 }

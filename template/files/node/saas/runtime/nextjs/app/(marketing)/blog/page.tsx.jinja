@@ -3,18 +3,29 @@ import type { Metadata } from 'next';
 import { getAllPosts, getAllTags } from '@/lib/blog';
 import { PostCard } from '@/components/blog/post-card';
 
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+
 export const metadata: Metadata = {
   title: 'Blog | {{ project_name }}',
   description: 'Latest news, tutorials, and updates from {{ project_name }}',
   alternates: {
+    canonical: `${baseUrl}/blog`,
     types: {
-      'application/rss+xml': [
-        {
-          title: '{{ project_name }} Blog',
-          url: '/api/blog/rss',
-        },
-      ],
+      'application/rss+xml': `${baseUrl}/api/blog/rss`,
     },
+  },
+  openGraph: {
+    title: '{{ project_name }} Blog',
+    description: 'Latest news, tutorials, and updates from {{ project_name }}',
+    url: `${baseUrl}/blog`,
+    siteName: '{{ project_name }}',
+    type: 'website',
+    locale: 'en_US',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: '{{ project_name }} Blog',
+    description: 'Latest news, tutorials, and updates from {{ project_name }}',
   },
 };
 
