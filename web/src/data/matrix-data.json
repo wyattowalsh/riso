@@ -1,0 +1,2480 @@
+{
+  "generated_at": "2026-01-15T01:26:07.695504+00:00",
+  "sources": {
+    "template": "/Users/ww/dev/projects/riso/template/copier.yml",
+    "render_matrix": "/Users/ww/dev/projects/riso/samples/metadata/render_matrix.json"
+  },
+  "template": {
+    "metadata": {
+      "name": "riso-template",
+      "version": "0.1.0",
+      "description": "Riso is a modular Copier template that defaults to a lightweight Python 3.11 stack (uv, pytest, jupyter, ruff, ty, pylint) and offers opt-in Typer CLI, FastAPI/Fastify services, fastmcp integrations, shared logic, and documentation variants powered by Fumadocs (Next.js), Sphinx Shibuya, and Docusaurus.\n",
+      "maintainers": [
+        "Riso Template Working Group"
+      ],
+      "tags": [
+        "python",
+        "typer",
+        "fastapi",
+        "fastify",
+        "uv",
+        "pnpm",
+        "fumadocs",
+        "sphinx-shibuya",
+        "docusaurus"
+      ]
+    },
+    "defaults": {
+      "project_name": "riso-example",
+      "project_slug": "{{ project_name | replace(' ', '-') | lower }}",
+      "package_name": "{{ project_slug | replace('-', '_') }}",
+      "project_layout": "single-package",
+      "quality_profile": "standard",
+      "python_versions": [
+        "3.11",
+        "3.12",
+        "3.13"
+      ],
+      "cli_module": "disabled",
+      "api_tracks": "none",
+      "graphql_api_module": "disabled",
+      "mcp_module": "disabled",
+      "mcp_language": "python",
+      "mcp_transport": "stdio",
+      "mcp_example_tools": true,
+      "websocket_module": "disabled",
+      "codegen_module": "disabled",
+      "changelog_module": "disabled",
+      "docs_site": "fumadocs",
+      "fumadocs_search_provider": "orama",
+      "fumadocs_llms_txt": "enabled",
+      "fumadocs_ai_search": "disabled",
+      "fumadocs_openapi": "enabled",
+      "fumadocs_typedoc": "disabled",
+      "fumadocs_theme": "default",
+      "fumadocs_sidebar": "default",
+      "fumadocs_i18n": "disabled",
+      "fumadocs_blog": "disabled",
+      "fumadocs_code_theme": "github",
+      "fumadocs_twoslash": "disabled",
+      "fumadocs_image_zoom": "enabled",
+      "fumadocs_banner": "disabled",
+      "fumadocs_last_updated": "enabled",
+      "fumadocs_edit_on_github": "enabled",
+      "fumadocs_feedback": "disabled",
+      "fumadocs_toc_depth": "3",
+      "fumadocs_mermaid": "disabled",
+      "fumadocs_math": "disabled",
+      "docusaurus_search_provider": "local",
+      "docusaurus_analytics": "none",
+      "docusaurus_theme": "classic",
+      "docusaurus_llms_txt": "enabled",
+      "docusaurus_i18n": "disabled",
+      "docusaurus_versioning": "disabled",
+      "docusaurus_blog": "enabled",
+      "docusaurus_faster": "enabled",
+      "docusaurus_openapi": "enabled",
+      "docusaurus_mermaid": "enabled",
+      "docusaurus_math": "disabled",
+      "docusaurus_live_codeblock": "disabled",
+      "docusaurus_show_last_update": "enabled",
+      "docusaurus_ideal_images": "enabled",
+      "docusaurus_image_zoom": "disabled",
+      "docusaurus_pwa": "disabled",
+      "docusaurus_comments": "none",
+      "docusaurus_feedback": "disabled",
+      "docusaurus_sitemap": "enabled",
+      "docusaurus_structured_data": "enabled",
+      "docusaurus_redirects": "disabled",
+      "docusaurus_announcement_bar": "disabled",
+      "docusaurus_back_to_top": "enabled",
+      "docusaurus_edit_url": "enabled",
+      "docusaurus_code_tabs": "disabled",
+      "docusaurus_changelog": "disabled",
+      "docusaurus_debug": "disabled",
+      "docusaurus_reading_time": "enabled",
+      "docusaurus_gfm": "enabled",
+      "docusaurus_emoji": "disabled",
+      "docusaurus_github_links": "disabled",
+      "docusaurus_autolink_headings": "enabled",
+      "shared_logic": "disabled",
+      "ci_platform": "github-actions",
+      "saas_starter_module": "disabled",
+      "saas_runtime": "nextjs-16",
+      "saas_hosting": "vercel",
+      "saas_database": "neon",
+      "saas_orm": "prisma",
+      "saas_auth": "clerk",
+      "saas_enterprise_bridge": "none",
+      "saas_billing": "stripe",
+      "saas_jobs": "triggerdev",
+      "saas_email": "resend",
+      "saas_analytics": "posthog",
+      "saas_ai": "openai",
+      "saas_storage": "r2",
+      "saas_cicd": "github-actions",
+      "ai_tools_module": "enabled",
+      "ai_tools_mcp_thinking": true,
+      "ai_tools_mcp_web": true,
+      "ai_tools_mcp_documents": true,
+      "ai_tools_mcp_utilities": true,
+      "ai_tools_mcp_search": false,
+      "saas_observability_sentry": true,
+      "saas_observability_datadog": true,
+      "saas_observability_otel": true,
+      "saas_observability_structured_logging": true,
+      "saas_include_fixtures": true,
+      "saas_include_factories": true,
+      "saas_test_suite_level": "standard"
+    },
+    "prompts": [
+      {
+        "key": "ai_tools_mcp_documents",
+        "type": "bool",
+        "choices": null,
+        "default": true,
+        "when": "{{ ai_tools_module == 'enabled' }}",
+        "help": "Include document processing MCP servers?\n(docling for PDF/DOCX, repomix for repo context)\n"
+      },
+      {
+        "key": "ai_tools_mcp_search",
+        "type": "bool",
+        "choices": null,
+        "default": false,
+        "when": "{{ ai_tools_module == 'enabled' }}",
+        "help": "Include search MCP servers (requires API keys)?\n(brave-search, tavily, context7 - keys via env vars)\n"
+      },
+      {
+        "key": "ai_tools_mcp_thinking",
+        "type": "bool",
+        "choices": null,
+        "default": true,
+        "when": "{{ ai_tools_module == 'enabled' }}",
+        "help": "Include thinking/reasoning MCP servers?\n(sequential-thinking, structured-thinking, cascade-thinking, etc.)\n"
+      },
+      {
+        "key": "ai_tools_mcp_utilities",
+        "type": "bool",
+        "choices": null,
+        "default": true,
+        "when": "{{ ai_tools_module == 'enabled' }}",
+        "help": "Include utility MCP servers?\n(memory persistence)\n"
+      },
+      {
+        "key": "ai_tools_mcp_web",
+        "type": "bool",
+        "choices": null,
+        "default": true,
+        "when": "{{ ai_tools_module == 'enabled' }}",
+        "help": "Include web MCP servers?\n(fetch, fetcher, playwright, deepwiki)\n"
+      },
+      {
+        "key": "ai_tools_module",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "enabled",
+        "when": null,
+        "help": "Enable AI coding tools configuration?\nGenerates config files for Claude Code, Codex CLI, GitHub Copilot CLI,\nCursor CLI, Gemini CLI, Amazon Q CLI, and OpenCode.\nAll tools share AGENTS.md as the single source of truth.\n"
+      },
+      {
+        "key": "api_tracks",
+        "type": "str",
+        "choices": [
+          "none",
+          "python",
+          "node",
+          "python+node"
+        ],
+        "default": "none",
+        "when": "{{ project_language == 'python' }}",
+        "help": "Select API tracks to scaffold"
+      },
+      {
+        "key": "changelog_module",
+        "type": "str",
+        "choices": [
+          "disabled",
+          "enabled"
+        ],
+        "default": "disabled",
+        "when": "{{ project_language == 'python' }}",
+        "help": "Enable changelog generation and release management?"
+      },
+      {
+        "key": "ci_platform",
+        "type": "str",
+        "choices": [
+          "github-actions",
+          "none"
+        ],
+        "default": "github-actions",
+        "when": null,
+        "help": "Select CI/CD platform"
+      },
+      {
+        "key": "cli_module",
+        "type": "str",
+        "choices": [
+          "disabled",
+          "enabled"
+        ],
+        "default": "disabled",
+        "when": "{{ project_language == 'python' }}",
+        "help": "Enable the Typer CLI scaffolding?"
+      },
+      {
+        "key": "codegen_module",
+        "type": "str",
+        "choices": null,
+        "default": "disabled",
+        "when": "{{ project_language == 'python' }}",
+        "help": "Enable code generation and scaffolding tools?"
+      },
+      {
+        "key": "docs_site",
+        "type": "str",
+        "choices": [
+          "fumadocs",
+          "sphinx-shibuya",
+          "docusaurus",
+          "none"
+        ],
+        "default": "fumadocs",
+        "when": "{{ project_language == 'python' }}",
+        "help": "Pick documentation variant"
+      },
+      {
+        "key": "docusaurus_analytics",
+        "type": "str",
+        "choices": [
+          "none",
+          "posthog",
+          "google",
+          "matomo"
+        ],
+        "default": "none",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Select analytics for Docusaurus:\n- none: No analytics\n- posthog: Product analytics + session replay\n- google: Google Analytics 4\n- matomo: Privacy-focused, self-hosted option\n"
+      },
+      {
+        "key": "docusaurus_announcement_bar",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable announcement bar at top of site?\nIdeal for new releases, events, or important notices.\n"
+      },
+      {
+        "key": "docusaurus_autolink_headings",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "enabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable autolinked headings?\nAdds clickable anchor links to all headings.\n"
+      },
+      {
+        "key": "docusaurus_back_to_top",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "enabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable back-to-top button?\nFloating button for quick scroll to page top.\n"
+      },
+      {
+        "key": "docusaurus_blog",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "enabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable blog functionality?\nScaffolds blog directory with example posts and RSS/Atom feeds.\n"
+      },
+      {
+        "key": "docusaurus_changelog",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable changelog integration?\nInclude CHANGELOG.md as documentation page.\n"
+      },
+      {
+        "key": "docusaurus_code_tabs",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable tabbed code blocks plugin?\nGroup code samples by language with synchronized tab selection.\n"
+      },
+      {
+        "key": "docusaurus_comments",
+        "type": "str",
+        "choices": [
+          "giscus",
+          "none"
+        ],
+        "default": "none",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable comments on documentation pages?\n- giscus: GitHub Discussions-powered comments (recommended)\n- none: No comments\n"
+      },
+      {
+        "key": "docusaurus_debug",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable debug plugin in development?\nAdds /__docusaurus/debug route for inspecting site data.\n"
+      },
+      {
+        "key": "docusaurus_edit_url",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "enabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable \"Edit this page\" links?\nLinks to source file on GitHub for community contributions.\n"
+      },
+      {
+        "key": "docusaurus_emoji",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable emoji shortcode support?\nConverts :smile: to \ud83d\ude04 and other emoji shortcodes.\n"
+      },
+      {
+        "key": "docusaurus_faster",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "enabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable Docusaurus Faster optimizations?\nUses Rspack bundler, SWC, and LightningCSS for 2-4x faster builds.\n"
+      },
+      {
+        "key": "docusaurus_feedback",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable \"Was this page helpful?\" feedback widget?\nCollects reader feedback on documentation quality.\n"
+      },
+      {
+        "key": "docusaurus_gfm",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "enabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable GitHub Flavored Markdown (GFM)?\nAdds tables, strikethrough, task lists, and autolink literals.\n"
+      },
+      {
+        "key": "docusaurus_github_links",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable GitHub reference autolinking?\nAutolinks #issues, @mentions, and commit SHAs to GitHub.\n"
+      },
+      {
+        "key": "docusaurus_i18n",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable internationalization (i18n) support?\nScaffolds locale config and translation workflow.\n"
+      },
+      {
+        "key": "docusaurus_ideal_images",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "enabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable ideal-image plugin?\nResponsive images with lazy loading and low-quality placeholders.\n"
+      },
+      {
+        "key": "docusaurus_image_zoom",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable image zoom plugin?\nMedium-style click-to-zoom for documentation images.\n"
+      },
+      {
+        "key": "docusaurus_live_codeblock",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable live code playground?\nInteractive React code blocks that users can edit and run in the browser.\n"
+      },
+      {
+        "key": "docusaurus_llms_txt",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "enabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable llms.txt plugin for AI-ready documentation?\nGenerates concatenated docs for LLM consumption and RAG pipelines.\n"
+      },
+      {
+        "key": "docusaurus_math",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable KaTeX math equation support?\nRender LaTeX math with $...$ (inline) and $$...$$ (block) syntax.\n"
+      },
+      {
+        "key": "docusaurus_mermaid",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "enabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable Mermaid diagram support?\nRender flowcharts, sequence diagrams, ERDs, Gantt charts directly in markdown.\n"
+      },
+      {
+        "key": "docusaurus_openapi",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "enabled",
+        "when": "{{ docs_site == 'docusaurus' and api_tracks in ['python', 'node', 'python+node'] }}",
+        "help": "Enable OpenAPI documentation integration?\nAuto-generates API reference from OpenAPI specs.\n"
+      },
+      {
+        "key": "docusaurus_pwa",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable Progressive Web App (PWA) support?\nOffline capability, app installation, and service worker caching.\n"
+      },
+      {
+        "key": "docusaurus_reading_time",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "enabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Show estimated reading time on docs/blog?\nDisplays \"X min read\" based on word count.\n"
+      },
+      {
+        "key": "docusaurus_redirects",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable client-side redirects plugin?\nHandle URL changes and old page preservation gracefully.\n"
+      },
+      {
+        "key": "docusaurus_search_provider",
+        "type": "str",
+        "choices": [
+          "local",
+          "algolia",
+          "typesense",
+          "none"
+        ],
+        "default": "local",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Select search provider for Docusaurus:\n- local: Offline full-text search (docusaurus-search-local)\n- algolia: Hosted DocSearch, best UX, requires API key\n- typesense: Self-hosted, privacy-focused search\n- none: No search integration\n"
+      },
+      {
+        "key": "docusaurus_show_last_update",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "enabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Show last updated time on docs?\nDisplays git-based \"Last updated\" timestamp and author on each page.\n"
+      },
+      {
+        "key": "docusaurus_sitemap",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "enabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable sitemap.xml generation?\nImproves search engine discoverability and crawling.\n"
+      },
+      {
+        "key": "docusaurus_structured_data",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "enabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable JSON-LD structured data for SEO?\nAdds schema.org Organization, WebSite, and Article markup for rich results.\n"
+      },
+      {
+        "key": "docusaurus_theme",
+        "type": "str",
+        "choices": [
+          "classic",
+          "tailwind"
+        ],
+        "default": "classic",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Select theming approach:\n- classic: Default Infima CSS framework\n- tailwind: Tailwind CSS v4 + utility-first styling\n"
+      },
+      {
+        "key": "docusaurus_versioning",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'docusaurus' }}",
+        "help": "Enable documentation versioning?\nAllows maintaining multiple doc versions (v1, v2, etc.)\n"
+      },
+      {
+        "key": "fumadocs_ai_search",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'fumadocs' and fumadocs_llms_txt == 'enabled' }}",
+        "help": "Enable AI-powered search dialog?\nScaffolds chat interface with Vercel AI SDK.\n"
+      },
+      {
+        "key": "fumadocs_banner",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'fumadocs' }}",
+        "help": "Enable announcement banner at top of docs?\n"
+      },
+      {
+        "key": "fumadocs_blog",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'fumadocs' }}",
+        "help": "Enable blog/changelog section?\nUses MDX content collection for posts.\n"
+      },
+      {
+        "key": "fumadocs_code_theme",
+        "type": "str",
+        "choices": [
+          "github",
+          "catppuccin",
+          "dracula",
+          "nord",
+          "one"
+        ],
+        "default": "github",
+        "when": "{{ docs_site == 'fumadocs' }}",
+        "help": "Select syntax highlighting theme for code blocks:\n- github: GitHub light/dark (default)\n- catppuccin: Catppuccin latte/mocha\n- dracula: Dracula theme\n- nord: Nord theme\n- one: One light/dark\n"
+      },
+      {
+        "key": "fumadocs_edit_on_github",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "enabled",
+        "when": "{{ docs_site == 'fumadocs' }}",
+        "help": "Show \"Edit on GitHub\" links on documentation pages?\n"
+      },
+      {
+        "key": "fumadocs_feedback",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'fumadocs' }}",
+        "help": "Enable \"Was this helpful?\" feedback widget on pages?\n"
+      },
+      {
+        "key": "fumadocs_i18n",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'fumadocs' }}",
+        "help": "Enable internationalization support?\n"
+      },
+      {
+        "key": "fumadocs_image_zoom",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "enabled",
+        "when": "{{ docs_site == 'fumadocs' }}",
+        "help": "Enable medium-style image zoom on click?\n"
+      },
+      {
+        "key": "fumadocs_last_updated",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "enabled",
+        "when": "{{ docs_site == 'fumadocs' }}",
+        "help": "Show \"Last updated\" timestamp from git history?\n"
+      },
+      {
+        "key": "fumadocs_llms_txt",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "enabled",
+        "when": "{{ docs_site == 'fumadocs' }}",
+        "help": "Enable llms.txt AI integration?\nGenerates AI-friendly documentation endpoints:\n- /llms.txt (summary)\n- /llms-full.txt (complete docs)\n- /*.mdx (per-page markdown)\n"
+      },
+      {
+        "key": "fumadocs_math",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'fumadocs' }}",
+        "help": "Enable KaTeX math equations in Markdown?\nSupports inline ($) and block ($$) LaTeX.\n"
+      },
+      {
+        "key": "fumadocs_mermaid",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'fumadocs' }}",
+        "help": "Enable Mermaid diagrams in Markdown?\nSupports flowcharts, sequence diagrams, ERDs, etc.\n"
+      },
+      {
+        "key": "fumadocs_openapi",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "enabled",
+        "when": "{{ docs_site == 'fumadocs' and api_tracks in ['python', 'node', 'python+node'] }}",
+        "help": "Enable OpenAPI documentation integration?\nAuto-generates interactive API reference from specs.\n"
+      },
+      {
+        "key": "fumadocs_search_provider",
+        "type": "str",
+        "choices": [
+          "orama",
+          "algolia",
+          "orama-cloud",
+          "none"
+        ],
+        "default": "orama",
+        "when": "{{ docs_site == 'fumadocs' }}",
+        "help": "Select search provider for Fumadocs:\n- orama: Built-in free search (default, self-hosted)\n- algolia: Hosted DocSearch, enterprise-grade\n- orama-cloud: Orama Cloud SDK for scaling\n- none: No search integration\n"
+      },
+      {
+        "key": "fumadocs_sidebar",
+        "type": "str",
+        "choices": [
+          "default",
+          "shadcn"
+        ],
+        "default": "default",
+        "when": "{{ docs_site == 'fumadocs' }}",
+        "help": "Select sidebar style:\n- default: Built-in Fumadocs sidebar\n- shadcn: Shadcn UI sidebar component\n"
+      },
+      {
+        "key": "fumadocs_theme",
+        "type": "str",
+        "choices": [
+          "default",
+          "ocean",
+          "purple",
+          "custom"
+        ],
+        "default": "default",
+        "when": "{{ docs_site == 'fumadocs' }}",
+        "help": "Select theming approach:\n- default: Fumadocs UI with neutral preset\n- ocean: Blue-toned ocean preset\n- purple: Purple accent preset\n- custom: Custom CSS variables (scaffold only)\n"
+      },
+      {
+        "key": "fumadocs_toc_depth",
+        "type": "str",
+        "choices": [
+          "2",
+          "3",
+          "4"
+        ],
+        "default": "3",
+        "when": "{{ docs_site == 'fumadocs' }}",
+        "help": "Table of contents heading depth (2-6):\n- 2: H2 headings only\n- 3: H2-H3 headings (default)\n- 4: H2-H4 headings\n"
+      },
+      {
+        "key": "fumadocs_twoslash",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'fumadocs' and api_tracks in ['node', 'python+node'] }}",
+        "help": "Enable Twoslash for TypeScript code blocks?\nShows inline type hints, errors, and completions.\n"
+      },
+      {
+        "key": "fumadocs_typedoc",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": "{{ docs_site == 'fumadocs' and api_tracks in ['node', 'python+node'] }}",
+        "help": "Enable TypeDoc SDK documentation?\nGenerates TypeScript API docs from source.\n"
+      },
+      {
+        "key": "graphql_api_module",
+        "type": "str",
+        "choices": [
+          "disabled",
+          "enabled"
+        ],
+        "default": "disabled",
+        "when": "{{ api_tracks in ['python', 'python+node'] }}",
+        "help": "Enable GraphQL API scaffolding (Strawberry)?"
+      },
+      {
+        "key": "include_databases",
+        "type": "str",
+        "choices": [
+          "no",
+          "yes"
+        ],
+        "default": null,
+        "when": "{{ api_tracks in ['python', 'node', 'python+node'] }}",
+        "help": "Include PostgreSQL and Redis services in docker-compose?"
+      },
+      {
+        "key": "mcp_example_tools",
+        "type": "bool",
+        "choices": null,
+        "default": true,
+        "when": "{{ mcp_module == 'enabled' }}",
+        "help": "Include example tools (echo, timestamp, fetch)?"
+      },
+      {
+        "key": "mcp_language",
+        "type": "str",
+        "choices": [
+          "python",
+          "typescript",
+          "rust"
+        ],
+        "default": "python",
+        "when": "{{ mcp_module == 'enabled' }}",
+        "help": "Select MCP server implementation language:\n- python: FastMCP v2 with Pydantic\n- typescript: FastMCP (Node.js) with Zod\n- rust: Rust SDK (rmcp)\n"
+      },
+      {
+        "key": "mcp_module",
+        "type": "str",
+        "choices": [
+          "disabled",
+          "enabled"
+        ],
+        "default": "disabled",
+        "when": null,
+        "help": "Enable fastmcp tooling module?"
+      },
+      {
+        "key": "mcp_transport",
+        "type": "str",
+        "choices": [
+          "stdio",
+          "sse",
+          "http"
+        ],
+        "default": "stdio",
+        "when": "{{ mcp_module == 'enabled' }}",
+        "help": "Select default transport protocol:\n- stdio: Standard I/O (default, best for local agents)\n- sse: Server-Sent Events (for web clients)\n- http: HTTP streaming\n"
+      },
+      {
+        "key": "project_language",
+        "type": "str",
+        "choices": [
+          "python",
+          "rust",
+          "typescript"
+        ],
+        "default": "python",
+        "when": null,
+        "help": "Select the primary project language"
+      },
+      {
+        "key": "project_layout",
+        "type": "str",
+        "choices": [
+          "single-package",
+          "monorepo"
+        ],
+        "default": "single-package",
+        "when": null,
+        "help": "Choose the repository layout"
+      },
+      {
+        "key": "project_name",
+        "type": "str",
+        "choices": null,
+        "default": "riso-example",
+        "when": null,
+        "help": "Human friendly project name"
+      },
+      {
+        "key": "quality_profile",
+        "type": "str",
+        "choices": [
+          "standard",
+          "strict"
+        ],
+        "default": "standard",
+        "when": null,
+        "help": "Select baseline quality suite profile"
+      },
+      {
+        "key": "saas_admin_dashboard",
+        "type": "bool",
+        "choices": null,
+        "default": true,
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Include admin dashboard scaffolding? Generates:\n- Admin-only routes with role-based authentication\n- User management (list, search, view details, suspend accounts)\n- Organization management (for B2B) or subscription overview (for B2C)\n- User impersonation for debugging customer issues\n- Basic metrics dashboard (signups, active users, revenue)\n"
+      },
+      {
+        "key": "saas_ai",
+        "type": "str",
+        "choices": [
+          "openai",
+          "anthropic"
+        ],
+        "default": "openai",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select AI provider:\n- OpenAI: GPT-4o/GPT-5, largest ecosystem, best for chat interfaces, function calling\n- Anthropic: Claude 4.x, longer context windows (200k+), better for document analysis\n"
+      },
+      {
+        "key": "saas_analytics",
+        "type": "str",
+        "choices": [
+          "posthog",
+          "amplitude"
+        ],
+        "default": "posthog",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select analytics platform:\n- PostHog: Product OS (analytics + feature flags + session replay), open-source option\n- Amplitude: Enterprise product analytics, sophisticated cohorts, data warehouse integrations\n"
+      },
+      {
+        "key": "saas_api_access",
+        "type": "str",
+        "choices": [
+          "public-api",
+          "internal-only"
+        ],
+        "default": "internal-only",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select API access model for your SaaS:\n- Public API: Full API key management with user-facing UI, rate limiting dashboard,\n  usage tracking, and auto-generated API documentation. Best for developer platforms.\n- Internal Only: API routes exist but for internal use only. No API key management UI.\n  Users interact via web interface only.\n"
+      },
+      {
+        "key": "saas_auth",
+        "type": "str",
+        "choices": [
+          "clerk",
+          "authjs"
+        ],
+        "default": "clerk",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select authentication provider:\n- Clerk: Hosted auth, built-in UI components, organizations, passkeys, fastest setup\n- Auth.js: Self-hosted, open-source, full control, OAuth providers, lower cost\n"
+      },
+      {
+        "key": "saas_billing",
+        "type": "str",
+        "choices": [
+          "stripe",
+          "paddle"
+        ],
+        "default": "stripe",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select billing provider:\n- Stripe: Full control, usage metering, widest ecosystem, manual tax handling\n- Paddle: Merchant of Record (MoR), automatic tax/VAT, simpler compliance, higher fees\n"
+      },
+      {
+        "key": "saas_cicd",
+        "type": "str",
+        "choices": [
+          "github-actions",
+          "cloudflare-ci"
+        ],
+        "default": "github-actions",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select CI/CD platform:\n- GitHub Actions: Native GitHub integration, marketplace actions, deploy to Vercel\n- Cloudflare CI: Integrated with Cloudflare Pages/Workers, fast edge deployments\n"
+      },
+      {
+        "key": "saas_database",
+        "type": "str",
+        "choices": [
+          "neon",
+          "supabase"
+        ],
+        "default": "neon",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select database provider:\n- Neon: Serverless Postgres, database branching, autoscale-to-zero, CI/PR databases\n- Supabase: Postgres + Auth + Storage + Edge Functions, all-in-one BaaS platform\n"
+      },
+      {
+        "key": "saas_email",
+        "type": "str",
+        "choices": [
+          "resend",
+          "postmark"
+        ],
+        "default": "resend",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select email provider:\n- Resend: React Email templates, Vercel integration, modern DX, component-based\n- Postmark: Industry-leading deliverability, mature service, template management UI\n"
+      },
+      {
+        "key": "saas_enterprise_bridge",
+        "type": "str",
+        "choices": [
+          "workos",
+          "none"
+        ],
+        "default": "none",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Add enterprise authentication bridge (SSO, SCIM, Directory Sync)?\n- WorkOS: Enterprise-ready SSO (Okta, Azure AD, Google Workspace), SCIM provisioning\n- None: Skip enterprise features for now (pure PLG)\n"
+      },
+      {
+        "key": "saas_hosting",
+        "type": "str",
+        "choices": [
+          "vercel",
+          "cloudflare"
+        ],
+        "default": "vercel",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select hosting platform:\n- Vercel: Native Next.js support, edge functions, image optimization, preview deployments\n- Cloudflare: Global edge network, Pages + Workers, lower egress costs, R2 storage\n"
+      },
+      {
+        "key": "saas_i18n",
+        "type": "bool",
+        "choices": null,
+        "default": false,
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Include internationalization (i18n) scaffolding? Generates:\n- next-intl (Next.js) or remix-i18next (Remix) configuration\n- Default English locale with placeholder translations\n- Language switcher component in navigation\n- Date, number, and currency formatting utilities\n- Translation key extraction setup\n"
+      },
+      {
+        "key": "saas_include_factories",
+        "type": "bool",
+        "choices": null,
+        "default": true,
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Include test data factories (Faker.js integration) for generating realistic test data?\n"
+      },
+      {
+        "key": "saas_include_fixtures",
+        "type": "bool",
+        "choices": null,
+        "default": true,
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Include seeded database fixtures with example users, organizations, and subscriptions?\n"
+      },
+      {
+        "key": "saas_jobs",
+        "type": "str",
+        "choices": [
+          "triggerdev",
+          "inngest"
+        ],
+        "default": "triggerdev",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select background job system:\n- Trigger.dev: Task-centric, AI-optimized, kicked off from your app, built-in retries\n- Inngest: Event-driven workflows, durable execution, complex orchestration, scheduling\n"
+      },
+      {
+        "key": "saas_notifications",
+        "type": "str",
+        "choices": [
+          "both",
+          "email-only",
+          "none"
+        ],
+        "default": "both",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select notification system scaffolding:\n- Both: Real-time in-app notification center + email notifications with preferences.\n  Includes notification bell component, WebSocket/SSE delivery, and email digests.\n- Email Only: Email notifications only. Simpler architecture, no real-time component.\n- None: No notification scaffolding. You'll implement notifications manually.\n"
+      },
+      {
+        "key": "saas_observability_datadog",
+        "type": "bool",
+        "choices": null,
+        "default": true,
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Enable Datadog for APM (Application Performance Monitoring)?"
+      },
+      {
+        "key": "saas_observability_otel",
+        "type": "bool",
+        "choices": null,
+        "default": true,
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Enable OpenTelemetry instrumentation for traces and metrics?"
+      },
+      {
+        "key": "saas_observability_sentry",
+        "type": "bool",
+        "choices": null,
+        "default": true,
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Enable Sentry for error tracking?"
+      },
+      {
+        "key": "saas_observability_structured_logging",
+        "type": "bool",
+        "choices": null,
+        "default": true,
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Enable structured JSON logging with correlation IDs?"
+      },
+      {
+        "key": "saas_onboarding",
+        "type": "str",
+        "choices": [
+          "wizard",
+          "checklist",
+          "none"
+        ],
+        "default": "wizard",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Include user onboarding flow scaffolding?\n- Wizard: Multi-step guided setup with progress indicator, data collection, and\n  completion tracking. Great for complex products requiring initial configuration.\n- Checklist: Dashboard checklist with completion tracking and contextual prompts.\n  Non-blocking, lets users explore while guiding them to key actions.\n- None: No onboarding scaffolding. Users land directly on the dashboard.\n"
+      },
+      {
+        "key": "saas_orm",
+        "type": "str",
+        "choices": [
+          "prisma",
+          "drizzle"
+        ],
+        "default": "prisma",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select ORM for database access:\n- Prisma: Best TypeScript ergonomics, schema DSL, Prisma Studio, migration workflow\n- Drizzle: Lightweight, SQL-like syntax, edge-optimized, schema-as-code in TypeScript\n"
+      },
+      {
+        "key": "saas_rbac_system",
+        "type": "str",
+        "choices": [
+          "basic-roles",
+          "custom-permissions"
+        ],
+        "default": "basic-roles",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select role-based access control (RBAC) system:\n- Basic Roles: Fixed owner/admin/member roles with hardcoded permissions. Simple,\n  predictable, covers 80% of use cases. No admin UI needed.\n- Custom Permissions: Dynamic permission system with role management UI, granular\n  access control, and permission inheritance. Best for enterprise or complex access needs.\n"
+      },
+      {
+        "key": "saas_runtime",
+        "type": "str",
+        "choices": [
+          "nextjs-16",
+          "remix-2"
+        ],
+        "default": "nextjs-16",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select runtime framework for your SaaS application:\n- Next.js 16: React 19.2, App Router, Turbopack, largest ecosystem, Vercel-first\n- Remix 2.x: Server-first routes, explicit data loading, good for complex forms\n"
+      },
+      {
+        "key": "saas_starter_module",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": null,
+        "help": "Enable SaaS Starter module? Generates production-ready SaaS application with\nauthentication, billing, database, background jobs, email, analytics, AI, storage,\nobservability, and deployment configuration. Choose your technology stack across\n14 categories with binary choices (2 options per category).\n"
+      },
+      {
+        "key": "saas_storage",
+        "type": "str",
+        "choices": [
+          "r2",
+          "supabase-storage"
+        ],
+        "default": "r2",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select file storage provider:\n- Cloudflare R2: S3-compatible, zero egress fees, global edge network\n- Supabase Storage: Integrated with Supabase platform, RLS policies, image transformations\n"
+      },
+      {
+        "key": "saas_tenancy_model",
+        "type": "str",
+        "choices": [
+          "b2b-teams",
+          "b2c-users"
+        ],
+        "default": "b2b-teams",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select tenancy model for your SaaS application:\n- B2B Teams: Organization-centric with team workspaces, seat-based billing, team invites,\n  shared resources, and organization switching. Best for collaboration tools, project\n  management, and enterprise software.\n- B2C Users: User-centric with individual accounts, personal subscriptions, no team\n  features. Best for consumer apps, personal productivity tools, and individual SaaS.\n"
+      },
+      {
+        "key": "saas_test_suite_level",
+        "type": "str",
+        "choices": [
+          "standard",
+          "comprehensive"
+        ],
+        "default": "standard",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select test suite coverage level:\n- Standard: Unit tests + integration tests for all services\n- Comprehensive: Standard + E2E tests for critical user flows (signup, billing, dashboard)\n"
+      },
+      {
+        "key": "saas_user_impersonation",
+        "type": "bool",
+        "choices": null,
+        "default": true,
+        "when": "{{ saas_starter_module == 'enabled' and saas_admin_dashboard }}",
+        "help": "Enable user impersonation for admin users? Allows admins to:\n- View the app as any user for debugging and support\n- Audit trail of all impersonation sessions\n- Clear visual indicator when impersonating\nRequires saas_admin_dashboard to be enabled.\n"
+      },
+      {
+        "key": "saas_waitlist",
+        "type": "bool",
+        "choices": null,
+        "default": false,
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Include pre-launch waitlist scaffolding? Generates:\n- Waitlist landing page with email capture\n- Invite code system with limited-use codes\n- Referral tracking (who invited whom)\n- Admin panel for managing waitlist and sending invites\nBest for validating demand before full launch.\n"
+      },
+      {
+        "key": "shared_logic",
+        "type": "str",
+        "choices": [
+          "disabled",
+          "enabled"
+        ],
+        "default": "disabled",
+        "when": null,
+        "help": "Generate shared logic package?"
+      },
+      {
+        "key": "websocket_module",
+        "type": "str",
+        "choices": [
+          "disabled",
+          "enabled"
+        ],
+        "default": "disabled",
+        "when": "{{ api_tracks in ['python', 'python+node'] }}",
+        "help": "Enable WebSocket real-time communication module?"
+      }
+    ],
+    "saas_prompts": [
+      {
+        "key": "saas_admin_dashboard",
+        "type": "bool",
+        "choices": null,
+        "default": true,
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Include admin dashboard scaffolding? Generates:\n- Admin-only routes with role-based authentication\n- User management (list, search, view details, suspend accounts)\n- Organization management (for B2B) or subscription overview (for B2C)\n- User impersonation for debugging customer issues\n- Basic metrics dashboard (signups, active users, revenue)\n"
+      },
+      {
+        "key": "saas_ai",
+        "type": "str",
+        "choices": [
+          "openai",
+          "anthropic"
+        ],
+        "default": "openai",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select AI provider:\n- OpenAI: GPT-4o/GPT-5, largest ecosystem, best for chat interfaces, function calling\n- Anthropic: Claude 4.x, longer context windows (200k+), better for document analysis\n"
+      },
+      {
+        "key": "saas_analytics",
+        "type": "str",
+        "choices": [
+          "posthog",
+          "amplitude"
+        ],
+        "default": "posthog",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select analytics platform:\n- PostHog: Product OS (analytics + feature flags + session replay), open-source option\n- Amplitude: Enterprise product analytics, sophisticated cohorts, data warehouse integrations\n"
+      },
+      {
+        "key": "saas_api_access",
+        "type": "str",
+        "choices": [
+          "public-api",
+          "internal-only"
+        ],
+        "default": "internal-only",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select API access model for your SaaS:\n- Public API: Full API key management with user-facing UI, rate limiting dashboard,\n  usage tracking, and auto-generated API documentation. Best for developer platforms.\n- Internal Only: API routes exist but for internal use only. No API key management UI.\n  Users interact via web interface only.\n"
+      },
+      {
+        "key": "saas_auth",
+        "type": "str",
+        "choices": [
+          "clerk",
+          "authjs"
+        ],
+        "default": "clerk",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select authentication provider:\n- Clerk: Hosted auth, built-in UI components, organizations, passkeys, fastest setup\n- Auth.js: Self-hosted, open-source, full control, OAuth providers, lower cost\n"
+      },
+      {
+        "key": "saas_billing",
+        "type": "str",
+        "choices": [
+          "stripe",
+          "paddle"
+        ],
+        "default": "stripe",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select billing provider:\n- Stripe: Full control, usage metering, widest ecosystem, manual tax handling\n- Paddle: Merchant of Record (MoR), automatic tax/VAT, simpler compliance, higher fees\n"
+      },
+      {
+        "key": "saas_cicd",
+        "type": "str",
+        "choices": [
+          "github-actions",
+          "cloudflare-ci"
+        ],
+        "default": "github-actions",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select CI/CD platform:\n- GitHub Actions: Native GitHub integration, marketplace actions, deploy to Vercel\n- Cloudflare CI: Integrated with Cloudflare Pages/Workers, fast edge deployments\n"
+      },
+      {
+        "key": "saas_database",
+        "type": "str",
+        "choices": [
+          "neon",
+          "supabase"
+        ],
+        "default": "neon",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select database provider:\n- Neon: Serverless Postgres, database branching, autoscale-to-zero, CI/PR databases\n- Supabase: Postgres + Auth + Storage + Edge Functions, all-in-one BaaS platform\n"
+      },
+      {
+        "key": "saas_email",
+        "type": "str",
+        "choices": [
+          "resend",
+          "postmark"
+        ],
+        "default": "resend",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select email provider:\n- Resend: React Email templates, Vercel integration, modern DX, component-based\n- Postmark: Industry-leading deliverability, mature service, template management UI\n"
+      },
+      {
+        "key": "saas_enterprise_bridge",
+        "type": "str",
+        "choices": [
+          "workos",
+          "none"
+        ],
+        "default": "none",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Add enterprise authentication bridge (SSO, SCIM, Directory Sync)?\n- WorkOS: Enterprise-ready SSO (Okta, Azure AD, Google Workspace), SCIM provisioning\n- None: Skip enterprise features for now (pure PLG)\n"
+      },
+      {
+        "key": "saas_hosting",
+        "type": "str",
+        "choices": [
+          "vercel",
+          "cloudflare"
+        ],
+        "default": "vercel",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select hosting platform:\n- Vercel: Native Next.js support, edge functions, image optimization, preview deployments\n- Cloudflare: Global edge network, Pages + Workers, lower egress costs, R2 storage\n"
+      },
+      {
+        "key": "saas_i18n",
+        "type": "bool",
+        "choices": null,
+        "default": false,
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Include internationalization (i18n) scaffolding? Generates:\n- next-intl (Next.js) or remix-i18next (Remix) configuration\n- Default English locale with placeholder translations\n- Language switcher component in navigation\n- Date, number, and currency formatting utilities\n- Translation key extraction setup\n"
+      },
+      {
+        "key": "saas_include_factories",
+        "type": "bool",
+        "choices": null,
+        "default": true,
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Include test data factories (Faker.js integration) for generating realistic test data?\n"
+      },
+      {
+        "key": "saas_include_fixtures",
+        "type": "bool",
+        "choices": null,
+        "default": true,
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Include seeded database fixtures with example users, organizations, and subscriptions?\n"
+      },
+      {
+        "key": "saas_jobs",
+        "type": "str",
+        "choices": [
+          "triggerdev",
+          "inngest"
+        ],
+        "default": "triggerdev",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select background job system:\n- Trigger.dev: Task-centric, AI-optimized, kicked off from your app, built-in retries\n- Inngest: Event-driven workflows, durable execution, complex orchestration, scheduling\n"
+      },
+      {
+        "key": "saas_notifications",
+        "type": "str",
+        "choices": [
+          "both",
+          "email-only",
+          "none"
+        ],
+        "default": "both",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select notification system scaffolding:\n- Both: Real-time in-app notification center + email notifications with preferences.\n  Includes notification bell component, WebSocket/SSE delivery, and email digests.\n- Email Only: Email notifications only. Simpler architecture, no real-time component.\n- None: No notification scaffolding. You'll implement notifications manually.\n"
+      },
+      {
+        "key": "saas_observability_datadog",
+        "type": "bool",
+        "choices": null,
+        "default": true,
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Enable Datadog for APM (Application Performance Monitoring)?"
+      },
+      {
+        "key": "saas_observability_otel",
+        "type": "bool",
+        "choices": null,
+        "default": true,
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Enable OpenTelemetry instrumentation for traces and metrics?"
+      },
+      {
+        "key": "saas_observability_sentry",
+        "type": "bool",
+        "choices": null,
+        "default": true,
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Enable Sentry for error tracking?"
+      },
+      {
+        "key": "saas_observability_structured_logging",
+        "type": "bool",
+        "choices": null,
+        "default": true,
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Enable structured JSON logging with correlation IDs?"
+      },
+      {
+        "key": "saas_onboarding",
+        "type": "str",
+        "choices": [
+          "wizard",
+          "checklist",
+          "none"
+        ],
+        "default": "wizard",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Include user onboarding flow scaffolding?\n- Wizard: Multi-step guided setup with progress indicator, data collection, and\n  completion tracking. Great for complex products requiring initial configuration.\n- Checklist: Dashboard checklist with completion tracking and contextual prompts.\n  Non-blocking, lets users explore while guiding them to key actions.\n- None: No onboarding scaffolding. Users land directly on the dashboard.\n"
+      },
+      {
+        "key": "saas_orm",
+        "type": "str",
+        "choices": [
+          "prisma",
+          "drizzle"
+        ],
+        "default": "prisma",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select ORM for database access:\n- Prisma: Best TypeScript ergonomics, schema DSL, Prisma Studio, migration workflow\n- Drizzle: Lightweight, SQL-like syntax, edge-optimized, schema-as-code in TypeScript\n"
+      },
+      {
+        "key": "saas_rbac_system",
+        "type": "str",
+        "choices": [
+          "basic-roles",
+          "custom-permissions"
+        ],
+        "default": "basic-roles",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select role-based access control (RBAC) system:\n- Basic Roles: Fixed owner/admin/member roles with hardcoded permissions. Simple,\n  predictable, covers 80% of use cases. No admin UI needed.\n- Custom Permissions: Dynamic permission system with role management UI, granular\n  access control, and permission inheritance. Best for enterprise or complex access needs.\n"
+      },
+      {
+        "key": "saas_runtime",
+        "type": "str",
+        "choices": [
+          "nextjs-16",
+          "remix-2"
+        ],
+        "default": "nextjs-16",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select runtime framework for your SaaS application:\n- Next.js 16: React 19.2, App Router, Turbopack, largest ecosystem, Vercel-first\n- Remix 2.x: Server-first routes, explicit data loading, good for complex forms\n"
+      },
+      {
+        "key": "saas_starter_module",
+        "type": "str",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "default": "disabled",
+        "when": null,
+        "help": "Enable SaaS Starter module? Generates production-ready SaaS application with\nauthentication, billing, database, background jobs, email, analytics, AI, storage,\nobservability, and deployment configuration. Choose your technology stack across\n14 categories with binary choices (2 options per category).\n"
+      },
+      {
+        "key": "saas_storage",
+        "type": "str",
+        "choices": [
+          "r2",
+          "supabase-storage"
+        ],
+        "default": "r2",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select file storage provider:\n- Cloudflare R2: S3-compatible, zero egress fees, global edge network\n- Supabase Storage: Integrated with Supabase platform, RLS policies, image transformations\n"
+      },
+      {
+        "key": "saas_tenancy_model",
+        "type": "str",
+        "choices": [
+          "b2b-teams",
+          "b2c-users"
+        ],
+        "default": "b2b-teams",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select tenancy model for your SaaS application:\n- B2B Teams: Organization-centric with team workspaces, seat-based billing, team invites,\n  shared resources, and organization switching. Best for collaboration tools, project\n  management, and enterprise software.\n- B2C Users: User-centric with individual accounts, personal subscriptions, no team\n  features. Best for consumer apps, personal productivity tools, and individual SaaS.\n"
+      },
+      {
+        "key": "saas_test_suite_level",
+        "type": "str",
+        "choices": [
+          "standard",
+          "comprehensive"
+        ],
+        "default": "standard",
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Select test suite coverage level:\n- Standard: Unit tests + integration tests for all services\n- Comprehensive: Standard + E2E tests for critical user flows (signup, billing, dashboard)\n"
+      },
+      {
+        "key": "saas_user_impersonation",
+        "type": "bool",
+        "choices": null,
+        "default": true,
+        "when": "{{ saas_starter_module == 'enabled' and saas_admin_dashboard }}",
+        "help": "Enable user impersonation for admin users? Allows admins to:\n- View the app as any user for debugging and support\n- Audit trail of all impersonation sessions\n- Clear visual indicator when impersonating\nRequires saas_admin_dashboard to be enabled.\n"
+      },
+      {
+        "key": "saas_waitlist",
+        "type": "bool",
+        "choices": null,
+        "default": false,
+        "when": "{{ saas_starter_module == 'enabled' }}",
+        "help": "Include pre-launch waitlist scaffolding? Generates:\n- Waitlist landing page with email capture\n- Invite code system with limited-use codes\n- Referral tracking (who invited whom)\n- Admin panel for managing waitlist and sending invites\nBest for validating demand before full launch.\n"
+      }
+    ]
+  },
+  "samples": {
+    "source": "/Users/ww/dev/projects/riso/samples/metadata/render_matrix.json",
+    "render_matrix": {
+      "variants": [
+        {
+          "variant": "api-monorepo",
+          "answers": "/Users/ww/dev/projects/riso/samples/api-monorepo/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/api-monorepo/render",
+          "smoke_results": {
+            "variant": "api-monorepo",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped",
+                "reason": "Module disabled in prompt answers."
+              },
+              {
+                "name": "api_python",
+                "status": "failed",
+                "command": [
+                  "uv",
+                  "run",
+                  "--group",
+                  "test",
+                  "pytest",
+                  "tests/test_api_fastapi.py"
+                ],
+                "returncode": 5,
+                "stdout": "============================= test session starts ==============================\nplatform darwin -- Python 3.13.1, pytest-8.4.2, pluggy-1.6.0\nrootdir: /Users/ww/dev/projects/riso/samples/api-monorepo/render/template/files/python\nconfigfile: pyproject.toml\ncollected 0 items / 1 skipped\n\n=========================== short test summary info ============================\nSKIPPED [1] tests/test_api_fastapi.py:12: FastAPI TestClient not installed\n============================== 1 skipped in 0.02s ==============================\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nUsing CPython 3.13.1\nCreating virtual environment at: .venv\n   Building riso-api-monorepo @ file:///Users/ww/dev/projects/riso/samples/api-monorepo/render/template/files/python\n      Built riso-api-monorepo @ file:///Users/ww/dev/projects/riso/samples/api-monorepo/render/template/files/python\nInstalled 15 packages in 42ms\n"
+              },
+              {
+                "name": "api_node",
+                "status": "passed",
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "api-node",
+                  "test"
+                ],
+                "stdout": "No projects found in \"/Users/ww/dev/projects/riso/samples/api-monorepo/render\"\n",
+                "stderr": ""
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped",
+                "reason": "Module disabled in prompt answers."
+              },
+              {
+                "name": "docs_site",
+                "status": "skipped",
+                "reason": "Documentation scaffolding skipped (`docs_site=none`)."
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              {
+                "name": "quality_make",
+                "status": "failed",
+                "command": [
+                  "make",
+                  "quality"
+                ],
+                "returncode": 2,
+                "stdout": "/Users/ww/.local/bin/uv run --group quality --group test ruff check \nAll checks passed!\n/Users/ww/.local/bin/uv run --group quality --group test mypy  src\nSuccess: no issues found in 9 source files\n/Users/ww/.local/bin/uv run --group quality --group test pylint  src/riso_api_monorepo\n\u001b[7;33m************* Module riso_api_monorepo.api.settings\u001b[0m\nsrc/riso_api_monorepo/api/settings.py:21:0: C0301: \u001b[1mLine too long (113/100)\u001b[0m (\u001b[1mline-too-long\u001b[0m)\nsrc/riso_api_monorepo/api/settings.py:26:0: C0301: \u001b[1mLine too long (107/100)\u001b[0m (\u001b[1mline-too-long\u001b[0m)\n\u001b[7;33m************* Module riso_api_monorepo.api.main\u001b[0m\nsrc/riso_api_monorepo/api/main.py:9:0: E0401: \u001b[1;31mUnable to import 'fastapi'\u001b[0m (\u001b[1;31mimport-error\u001b[0m)\nsrc/riso_api_monorepo/api/main.py:10:0: E0401: \u001b[1;31mUnable to import 'fastapi.responses'\u001b[0m (\u001b[1;31mimport-error\u001b[0m)\nsrc/riso_api_monorepo/api/main.py:80:4: W0621: \u001b[35mRedefining name 'app' from outer scope (line 91)\u001b[0m (\u001b[35mredefined-outer-name\u001b[0m)\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nInstalled 16 packages in 63ms\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nmake: *** [quality-python] Error 22\n"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "failed",
+                "command": [
+                  "uv",
+                  "run",
+                  "--group",
+                  "quality",
+                  "--group",
+                  "test",
+                  "task",
+                  "quality"
+                ],
+                "returncode": 22,
+                "stdout": "All checks passed!\nSuccess: no issues found in 9 source files\n\u001b[7;33m************* Module riso_api_monorepo.api.settings\u001b[0m\nsrc/riso_api_monorepo/api/settings.py:21:0: C0301: \u001b[1mLine too long (113/100)\u001b[0m (\u001b[1mline-too-long\u001b[0m)\nsrc/riso_api_monorepo/api/settings.py:26:0: C0301: \u001b[1mLine too long (107/100)\u001b[0m (\u001b[1mline-too-long\u001b[0m)\n\u001b[7;33m************* Module riso_api_monorepo.api.main\u001b[0m\nsrc/riso_api_monorepo/api/main.py:9:0: E0401: \u001b[1;31mUnable to import 'fastapi'\u001b[0m (\u001b[1;31mimport-error\u001b[0m)\nsrc/riso_api_monorepo/api/main.py:10:0: E0401: \u001b[1;31mUnable to import 'fastapi.responses'\u001b[0m (\u001b[1;31mimport-error\u001b[0m)\nsrc/riso_api_monorepo/api/main.py:80:4: W0621: \u001b[35mRedefining name 'app' from outer scope (line 91)\u001b[0m (\u001b[35mredefined-outer-name\u001b[0m)\n[quality] ruff completed in 0.09s\n[quality] mypy completed in 0.52s\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\n\n[quality] pylint failed with exit code 22\n"
+              }
+            ]
+          }
+        },
+        {
+          "variant": "cli-docs",
+          "answers": "/Users/ww/dev/projects/riso/samples/cli-docs/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/cli-docs/render",
+          "smoke_results": {
+            "variant": "cli-docs",
+            "results": [
+              {
+                "name": "cli",
+                "status": "failed",
+                "command": [
+                  "uv",
+                  "run",
+                  "--group",
+                  "test",
+                  "pytest",
+                  "tests/test_cli.py"
+                ],
+                "returncode": 5,
+                "stdout": "============================= test session starts ==============================\nplatform darwin -- Python 3.13.1, pytest-8.4.2, pluggy-1.6.0\nrootdir: /Users/ww/dev/projects/riso/samples/cli-docs/render/template/files/python\nconfigfile: pyproject.toml\ncollected 0 items / 1 skipped\n\n=========================== short test summary info ============================\nSKIPPED [1] tests/test_cli.py:10: Typer CLI dependencies not installed\n============================== 1 skipped in 0.01s ==============================\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nUsing CPython 3.13.1\nCreating virtual environment at: .venv\n   Building riso-cli-docs @ file:///Users/ww/dev/projects/riso/samples/cli-docs/render/template/files/python\n      Built riso-cli-docs @ file:///Users/ww/dev/projects/riso/samples/cli-docs/render/template/files/python\nInstalled 15 packages in 42ms\n"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped",
+                "reason": "Module disabled in prompt answers."
+              },
+              {
+                "name": "api_node",
+                "status": "skipped",
+                "reason": "Module disabled in prompt answers."
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped",
+                "reason": "Module disabled in prompt answers."
+              },
+              {
+                "name": "docs_site",
+                "status": "passed",
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "stdout": "No projects found in \"/Users/ww/dev/projects/riso/samples/cli-docs/render\"\n",
+                "stderr": ""
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              {
+                "name": "quality_make",
+                "status": "failed",
+                "command": [
+                  "make",
+                  "quality"
+                ],
+                "returncode": 2,
+                "stdout": "/Users/ww/.local/bin/uv run --group quality --group test ruff check \nAll checks passed!\n/Users/ww/.local/bin/uv run --group quality --group test mypy  src\nSuccess: no issues found in 9 source files\n/Users/ww/.local/bin/uv run --group quality --group test pylint  src/riso_cli_docs\n\u001b[7;33m************* Module riso_cli_docs.cli.__main__\u001b[0m\nsrc/riso_cli_docs/cli/__main__.py:9:0: E0401: \u001b[1;31mUnable to import 'typer'\u001b[0m (\u001b[1;31mimport-error\u001b[0m)\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nInstalled 16 packages in 94ms\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nmake: *** [quality-python] Error 2\n"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "failed",
+                "command": [
+                  "uv",
+                  "run",
+                  "--group",
+                  "quality",
+                  "--group",
+                  "test",
+                  "task",
+                  "quality"
+                ],
+                "returncode": 2,
+                "stdout": "All checks passed!\nSuccess: no issues found in 9 source files\n\u001b[7;33m************* Module riso_cli_docs.cli.__main__\u001b[0m\nsrc/riso_cli_docs/cli/__main__.py:9:0: E0401: \u001b[1;31mUnable to import 'typer'\u001b[0m (\u001b[1;31mimport-error\u001b[0m)\n[quality] ruff completed in 0.22s\n[quality] mypy completed in 0.51s\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\n\n[quality] pylint failed with exit code 2\n"
+              }
+            ]
+          }
+        },
+        {
+          "variant": "default",
+          "answers": "/Users/ww/dev/projects/riso/samples/default/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/default/render",
+          "smoke_results": {
+            "variant": "default",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped",
+                "reason": "Module disabled in prompt answers."
+              },
+              {
+                "name": "api_python",
+                "status": "skipped",
+                "reason": "Module disabled in prompt answers."
+              },
+              {
+                "name": "api_node",
+                "status": "skipped",
+                "reason": "Module disabled in prompt answers."
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped",
+                "reason": "Module disabled in prompt answers."
+              },
+              {
+                "name": "docs_site",
+                "status": "passed",
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "stdout": "No projects found in \"/Users/ww/dev/projects/riso/samples/default/render\"\n",
+                "stderr": ""
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped",
+                "reason": "Module disabled in prompt answers."
+              },
+              {
+                "name": "quality_make",
+                "status": "passed",
+                "command": [
+                  "make",
+                  "quality"
+                ],
+                "stdout": "/Users/ww/.local/bin/uv run --group quality --group test ruff check \nAll checks passed!\n/Users/ww/.local/bin/uv run --group quality --group test mypy  src\nSuccess: no issues found in 9 source files\n/Users/ww/.local/bin/uv run --group quality --group test pylint  src/riso_example\n/Users/ww/.local/bin/uv run --group quality --group test coverage run -m pytest -ra\n============================= test session starts ==============================\nplatform darwin -- Python 3.13.1, pytest-8.4.2, pluggy-1.6.0\nrootdir: /Users/ww/dev/projects/riso/samples/default/render/template/files/python\nconfigfile: pyproject.toml\ntestpaths: tests\ncollected 2 items / 2 skipped\n\ntests/test_quickstart.py ..                                              [100%]\n\n=========================== short test summary info ============================\nSKIPPED [1] tests/test_api_fastapi.py:10: Python API module disabled\nSKIPPED [1] tests/test_cli.py:8: CLI module disabled\n========================= 2 passed, 2 skipped in 0.04s =========================\n/Users/ww/.local/bin/uv run --group quality coverage report --rcfile coverage.cfg\nName                             Stmts   Miss   Cover   Missing\n---------------------------------------------------------------\nsrc/riso_example/__init__.py         3      1  66.67%   8\nsrc/riso_example/quickstart.py      32      3  90.62%   68-70\ntests/test_quickstart.py            24      0 100.00%\n---------------------------------------------------------------\nTOTAL                               59      4  93.22%\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nUsing CPython 3.13.1\nCreating virtual environment at: .venv\n   Building riso-example @ file:///Users/ww/dev/projects/riso/samples/default/render/template/files/python\n      Built riso-example @ file:///Users/ww/dev/projects/riso/samples/default/render/template/files/python\nInstalled 31 packages in 78ms\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\n"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "passed",
+                "command": [
+                  "uv",
+                  "run",
+                  "--group",
+                  "quality",
+                  "--group",
+                  "test",
+                  "task",
+                  "quality"
+                ],
+                "stdout": "All checks passed!\nSuccess: no issues found in 9 source files\n============================= test session starts ==============================\nplatform darwin -- Python 3.13.1, pytest-8.4.2, pluggy-1.6.0\nrootdir: /Users/ww/dev/projects/riso/samples/default/render/template/files/python\nconfigfile: pyproject.toml\ntestpaths: tests\ncollected 2 items / 2 skipped\n\ntests/test_quickstart.py ..                                              [100%]\n\n=========================== short test summary info ============================\nSKIPPED [1] tests/test_api_fastapi.py:10: Python API module disabled\nSKIPPED [1] tests/test_cli.py:8: CLI module disabled\n========================= 2 passed, 2 skipped in 0.02s =========================\nName                             Stmts   Miss   Cover   Missing\n---------------------------------------------------------------\nsrc/riso_example/__init__.py         3      1  66.67%   8\nsrc/riso_example/quickstart.py      32      3  90.62%   68-70\ntests/test_quickstart.py            24      0 100.00%\n---------------------------------------------------------------\nTOTAL                               59      4  93.22%\n[quality] ruff completed in 0.18s\n[quality] mypy completed in 0.55s\n[quality] pylint completed in 4.73s\n[quality] coverage completed in 0.33s\n[quality] coverage-report completed in 0.11s\n[quality] Durations written to /Users/ww/dev/projects/riso/samples/default/render/template/files/python/.riso/quality-durations.json\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\n"
+              }
+            ]
+          }
+        },
+        {
+          "variant": "docs-docusaurus",
+          "answers": "/Users/ww/dev/projects/riso/samples/docs-docusaurus/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/docs-docusaurus/render",
+          "smoke_results": {
+            "variant": "docs-docusaurus",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped",
+                "reason": "Module disabled in prompt answers."
+              },
+              {
+                "name": "api_python",
+                "status": "skipped",
+                "reason": "Module disabled in prompt answers."
+              },
+              {
+                "name": "api_node",
+                "status": "passed",
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "api-node",
+                  "test"
+                ],
+                "stdout": "No projects found in \"/Users/ww/dev/projects/riso/samples/docs-docusaurus/render\"\n",
+                "stderr": ""
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped",
+                "reason": "Module disabled in prompt answers."
+              },
+              {
+                "name": "docs_site",
+                "status": "passed",
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-docusaurus",
+                  "build"
+                ],
+                "stdout": "No projects found in \"/Users/ww/dev/projects/riso/samples/docs-docusaurus/render\"\n",
+                "stderr": ""
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              {
+                "name": "quality_make",
+                "status": "passed",
+                "command": [
+                  "make",
+                  "quality"
+                ],
+                "stdout": "/Users/ww/.local/bin/uv run --group quality --group test ruff check \nAll checks passed!\n/Users/ww/.local/bin/uv run --group quality --group test mypy  src\nSuccess: no issues found in 9 source files\n/Users/ww/.local/bin/uv run --group quality --group test pylint  src/riso_docs_docusaurus\n/Users/ww/.local/bin/uv run --group quality --group test coverage run -m pytest -ra\n============================= test session starts ==============================\nplatform darwin -- Python 3.13.1, pytest-8.4.2, pluggy-1.6.0\nrootdir: /Users/ww/dev/projects/riso/samples/docs-docusaurus/render/template/files/python\nconfigfile: pyproject.toml\ntestpaths: tests\ncollected 2 items / 2 skipped\n\ntests/test_quickstart.py ..                                              [100%]\n\n=========================== short test summary info ============================\nSKIPPED [1] tests/test_api_fastapi.py:10: Python API module disabled\nSKIPPED [1] tests/test_cli.py:8: CLI module disabled\n========================= 2 passed, 2 skipped in 0.04s =========================\n/Users/ww/.local/bin/uv run --group quality coverage report --rcfile coverage.cfg\nName                                     Stmts   Miss   Cover   Missing\n-----------------------------------------------------------------------\nsrc/riso_docs_docusaurus/__init__.py         3      1  66.67%   8\nsrc/riso_docs_docusaurus/quickstart.py      32      3  90.62%   68-70\ntests/test_quickstart.py                    24      0 100.00%\n-----------------------------------------------------------------------\nTOTAL                                       59      4  93.22%\npnpm --filter api-node lint\nNo projects found in \"/Users/ww/dev/projects/riso/samples/docs-docusaurus/render/template/files/python\"\npnpm --filter api-node typecheck\nNo projects found in \"/Users/ww/dev/projects/riso/samples/docs-docusaurus/render/template/files/python\"\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nUsing CPython 3.13.1\nCreating virtual environment at: .venv\n   Building riso-docs-docusaurus @ file:///Users/ww/dev/projects/riso/samples/docs-docusaurus/render/template/files/python\n      Built riso-docs-docusaurus @ file:///Users/ww/dev/projects/riso/samples/docs-docusaurus/render/template/files/python\nInstalled 31 packages in 57ms\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\n"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "passed",
+                "command": [
+                  "uv",
+                  "run",
+                  "--group",
+                  "quality",
+                  "--group",
+                  "test",
+                  "task",
+                  "quality"
+                ],
+                "stdout": "All checks passed!\nSuccess: no issues found in 9 source files\n============================= test session starts ==============================\nplatform darwin -- Python 3.13.1, pytest-8.4.2, pluggy-1.6.0\nrootdir: /Users/ww/dev/projects/riso/samples/docs-docusaurus/render/template/files/python\nconfigfile: pyproject.toml\ntestpaths: tests\ncollected 2 items / 2 skipped\n\ntests/test_quickstart.py ..                                              [100%]\n\n=========================== short test summary info ============================\nSKIPPED [1] tests/test_api_fastapi.py:10: Python API module disabled\nSKIPPED [1] tests/test_cli.py:8: CLI module disabled\n========================= 2 passed, 2 skipped in 0.03s =========================\nName                                     Stmts   Miss   Cover   Missing\n-----------------------------------------------------------------------\nsrc/riso_docs_docusaurus/__init__.py         3      1  66.67%   8\nsrc/riso_docs_docusaurus/quickstart.py      32      3  90.62%   68-70\ntests/test_quickstart.py                    24      0 100.00%\n-----------------------------------------------------------------------\nTOTAL                                       59      4  93.22%\nNo projects found in \"/Users/ww/dev/projects/riso/samples/docs-docusaurus/render/template/files/python\"\nNo projects found in \"/Users/ww/dev/projects/riso/samples/docs-docusaurus/render/template/files/python\"\n[quality] ruff completed in 0.13s\n[quality] mypy completed in 2.55s\n[quality] pylint completed in 7.01s\n[quality] coverage completed in 0.42s\n[quality] coverage-report completed in 0.17s\n[quality] pnpm-lint completed in 0.34s\n[quality] pnpm-typecheck completed in 0.25s\n[quality] Durations written to /Users/ww/dev/projects/riso/samples/docs-docusaurus/render/template/files/python/.riso/quality-durations.json\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\n"
+              }
+            ]
+          }
+        },
+        {
+          "variant": "docs-fumadocs",
+          "answers": "/Users/ww/dev/projects/riso/samples/docs-fumadocs/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/docs-fumadocs/render",
+          "smoke_results": {
+            "variant": "docs-fumadocs",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped",
+                "reason": "Module disabled in prompt answers."
+              },
+              {
+                "name": "api_python",
+                "status": "skipped",
+                "reason": "Module disabled in prompt answers."
+              },
+              {
+                "name": "api_node",
+                "status": "skipped",
+                "reason": "Module disabled in prompt answers."
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped",
+                "reason": "Module disabled in prompt answers."
+              },
+              {
+                "name": "docs_site",
+                "status": "passed",
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "stdout": "No projects found in \"/Users/ww/dev/projects/riso/samples/docs-fumadocs/render\"\n",
+                "stderr": ""
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped",
+                "reason": "Module disabled in prompt answers."
+              },
+              {
+                "name": "quality_make",
+                "status": "passed",
+                "command": [
+                  "make",
+                  "quality"
+                ],
+                "stdout": "/Users/ww/.local/bin/uv run --group quality --group test ruff check \nAll checks passed!\n/Users/ww/.local/bin/uv run --group quality --group test mypy  src\nSuccess: no issues found in 9 source files\n/Users/ww/.local/bin/uv run --group quality --group test pylint  src/riso_docs_fumadocs\n/Users/ww/.local/bin/uv run --group quality --group test coverage run -m pytest -ra\n============================= test session starts ==============================\nplatform darwin -- Python 3.13.1, pytest-8.4.2, pluggy-1.6.0\nrootdir: /Users/ww/dev/projects/riso/samples/docs-fumadocs/render/template/files/python\nconfigfile: pyproject.toml\ntestpaths: tests\ncollected 2 items / 2 skipped\n\ntests/test_quickstart.py ..                                              [100%]\n\n=========================== short test summary info ============================\nSKIPPED [1] tests/test_api_fastapi.py:10: Python API module disabled\nSKIPPED [1] tests/test_cli.py:8: CLI module disabled\n========================= 2 passed, 2 skipped in 0.04s =========================\n/Users/ww/.local/bin/uv run --group quality coverage report --rcfile coverage.cfg\nName                                   Stmts   Miss   Cover   Missing\n---------------------------------------------------------------------\nsrc/riso_docs_fumadocs/__init__.py         3      1  66.67%   8\nsrc/riso_docs_fumadocs/quickstart.py      32      3  90.62%   68-70\ntests/test_quickstart.py                  24      0 100.00%\n---------------------------------------------------------------------\nTOTAL                                     59      4  93.22%\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nUsing CPython 3.13.1\nCreating virtual environment at: .venv\n   Building riso-docs-fumadocs @ file:///Users/ww/dev/projects/riso/samples/docs-fumadocs/render/template/files/python\n      Built riso-docs-fumadocs @ file:///Users/ww/dev/projects/riso/samples/docs-fumadocs/render/template/files/python\nInstalled 31 packages in 52ms\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\n"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "passed",
+                "command": [
+                  "uv",
+                  "run",
+                  "--group",
+                  "quality",
+                  "--group",
+                  "test",
+                  "task",
+                  "quality"
+                ],
+                "stdout": "All checks passed!\nSuccess: no issues found in 9 source files\n============================= test session starts ==============================\nplatform darwin -- Python 3.13.1, pytest-8.4.2, pluggy-1.6.0\nrootdir: /Users/ww/dev/projects/riso/samples/docs-fumadocs/render/template/files/python\nconfigfile: pyproject.toml\ntestpaths: tests\ncollected 2 items / 2 skipped\n\ntests/test_quickstart.py ..                                              [100%]\n\n=========================== short test summary info ============================\nSKIPPED [1] tests/test_api_fastapi.py:10: Python API module disabled\nSKIPPED [1] tests/test_cli.py:8: CLI module disabled\n========================= 2 passed, 2 skipped in 0.02s =========================\nName                                   Stmts   Miss   Cover   Missing\n---------------------------------------------------------------------\nsrc/riso_docs_fumadocs/__init__.py         3      1  66.67%   8\nsrc/riso_docs_fumadocs/quickstart.py      32      3  90.62%   68-70\ntests/test_quickstart.py                  24      0 100.00%\n---------------------------------------------------------------------\nTOTAL                                     59      4  93.22%\n[quality] ruff completed in 0.07s\n[quality] mypy completed in 0.25s\n[quality] pylint completed in 2.55s\n[quality] coverage completed in 0.35s\n[quality] coverage-report completed in 0.16s\n[quality] Durations written to /Users/ww/dev/projects/riso/samples/docs-fumadocs/render/template/files/python/.riso/quality-durations.json\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\n"
+              }
+            ]
+          }
+        },
+        {
+          "variant": "docs-sphinx",
+          "answers": "/Users/ww/dev/projects/riso/samples/docs-sphinx/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/docs-sphinx/render",
+          "smoke_results": {
+            "variant": "docs-sphinx",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped",
+                "reason": "Module disabled in prompt answers."
+              },
+              {
+                "name": "api_python",
+                "status": "failed",
+                "command": [
+                  "uv",
+                  "run",
+                  "--group",
+                  "test",
+                  "pytest",
+                  "tests/test_api_fastapi.py"
+                ],
+                "returncode": 5,
+                "stdout": "============================= test session starts ==============================\nplatform darwin -- Python 3.13.1, pytest-8.4.2, pluggy-1.6.0\nrootdir: /Users/ww/dev/projects/riso/samples/docs-sphinx/render/template/files/python\nconfigfile: pyproject.toml\ncollected 0 items / 1 skipped\n\n=========================== short test summary info ============================\nSKIPPED [1] tests/test_api_fastapi.py:12: FastAPI TestClient not installed\n============================== 1 skipped in 0.02s ==============================\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nUsing CPython 3.13.1\nCreating virtual environment at: .venv\n   Building riso-docs-sphinx @ file:///Users/ww/dev/projects/riso/samples/docs-sphinx/render/template/files/python\n      Built riso-docs-sphinx @ file:///Users/ww/dev/projects/riso/samples/docs-sphinx/render/template/files/python\nInstalled 15 packages in 69ms\n"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped",
+                "reason": "Module disabled in prompt answers."
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped",
+                "reason": "Module disabled in prompt answers."
+              },
+              {
+                "name": "docs_site",
+                "status": "failed",
+                "command": [
+                  "uv",
+                  "run",
+                  "make",
+                  "linkcheck"
+                ],
+                "returncode": 2,
+                "stdout": "",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nUsing CPython 3.13.1\nCreating virtual environment at: .venv\nmake: *** No rule to make target `linkcheck'.  Stop.\n"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              {
+                "name": "quality_make",
+                "status": "failed",
+                "command": [
+                  "make",
+                  "quality"
+                ],
+                "returncode": 2,
+                "stdout": "/Users/ww/.local/bin/uv run --group quality --group test ruff check \nAll checks passed!\n/Users/ww/.local/bin/uv run --group quality --group test mypy  src\nSuccess: no issues found in 9 source files\n/Users/ww/.local/bin/uv run --group quality --group test pylint  src/riso_docs_sphinx\n\u001b[7;33m************* Module riso_docs_sphinx.api.settings\u001b[0m\nsrc/riso_docs_sphinx/api/settings.py:21:0: C0301: \u001b[1mLine too long (113/100)\u001b[0m (\u001b[1mline-too-long\u001b[0m)\nsrc/riso_docs_sphinx/api/settings.py:26:0: C0301: \u001b[1mLine too long (107/100)\u001b[0m (\u001b[1mline-too-long\u001b[0m)\n\u001b[7;33m************* Module riso_docs_sphinx.api.main\u001b[0m\nsrc/riso_docs_sphinx/api/main.py:9:0: E0401: \u001b[1;31mUnable to import 'fastapi'\u001b[0m (\u001b[1;31mimport-error\u001b[0m)\nsrc/riso_docs_sphinx/api/main.py:10:0: E0401: \u001b[1;31mUnable to import 'fastapi.responses'\u001b[0m (\u001b[1;31mimport-error\u001b[0m)\nsrc/riso_docs_sphinx/api/main.py:80:4: W0621: \u001b[35mRedefining name 'app' from outer scope (line 91)\u001b[0m (\u001b[35mredefined-outer-name\u001b[0m)\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nInstalled 16 packages in 99ms\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nmake: *** [quality-python] Error 22\n"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "failed",
+                "command": [
+                  "uv",
+                  "run",
+                  "--group",
+                  "quality",
+                  "--group",
+                  "test",
+                  "task",
+                  "quality"
+                ],
+                "returncode": 22,
+                "stdout": "All checks passed!\nSuccess: no issues found in 9 source files\n\u001b[7;33m************* Module riso_docs_sphinx.api.settings\u001b[0m\nsrc/riso_docs_sphinx/api/settings.py:21:0: C0301: \u001b[1mLine too long (113/100)\u001b[0m (\u001b[1mline-too-long\u001b[0m)\nsrc/riso_docs_sphinx/api/settings.py:26:0: C0301: \u001b[1mLine too long (107/100)\u001b[0m (\u001b[1mline-too-long\u001b[0m)\n\u001b[7;33m************* Module riso_docs_sphinx.api.main\u001b[0m\nsrc/riso_docs_sphinx/api/main.py:9:0: E0401: \u001b[1;31mUnable to import 'fastapi'\u001b[0m (\u001b[1;31mimport-error\u001b[0m)\nsrc/riso_docs_sphinx/api/main.py:10:0: E0401: \u001b[1;31mUnable to import 'fastapi.responses'\u001b[0m (\u001b[1;31mimport-error\u001b[0m)\nsrc/riso_docs_sphinx/api/main.py:80:4: W0621: \u001b[35mRedefining name 'app' from outer scope (line 91)\u001b[0m (\u001b[35mredefined-outer-name\u001b[0m)\n[quality] ruff completed in 0.09s\n[quality] mypy completed in 0.47s\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\n\n[quality] pylint failed with exit code 22\n"
+              }
+            ]
+          }
+        },
+        {
+          "variant": "full-stack",
+          "answers": "/Users/ww/dev/projects/riso/samples/full-stack/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/full-stack/render",
+          "smoke_results": {
+            "variant": "full-stack",
+            "results": [
+              {
+                "name": "cli",
+                "status": "failed",
+                "command": [
+                  "uv",
+                  "run",
+                  "--group",
+                  "test",
+                  "pytest",
+                  "tests/test_cli.py"
+                ],
+                "returncode": 5,
+                "stdout": "============================= test session starts ==============================\nplatform darwin -- Python 3.13.1, pytest-8.4.2, pluggy-1.6.0\nrootdir: /Users/ww/dev/projects/riso/samples/full-stack/render/template/files/python\nconfigfile: pyproject.toml\ncollected 0 items / 1 skipped\n\n=========================== short test summary info ============================\nSKIPPED [1] tests/test_cli.py:10: Typer CLI dependencies not installed\n============================== 1 skipped in 0.01s ==============================\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nUsing CPython 3.13.1\nCreating virtual environment at: .venv\n   Building riso-full-stack @ file:///Users/ww/dev/projects/riso/samples/full-stack/render/template/files/python\n      Built riso-full-stack @ file:///Users/ww/dev/projects/riso/samples/full-stack/render/template/files/python\nInstalled 15 packages in 42ms\n"
+              },
+              {
+                "name": "api_python",
+                "status": "failed",
+                "command": [
+                  "uv",
+                  "run",
+                  "--group",
+                  "test",
+                  "pytest",
+                  "tests/test_api_fastapi.py"
+                ],
+                "returncode": 5,
+                "stdout": "============================= test session starts ==============================\nplatform darwin -- Python 3.13.1, pytest-8.4.2, pluggy-1.6.0\nrootdir: /Users/ww/dev/projects/riso/samples/full-stack/render/template/files/python\nconfigfile: pyproject.toml\ncollected 0 items / 1 skipped\n\n=========================== short test summary info ============================\nSKIPPED [1] tests/test_api_fastapi.py:12: FastAPI TestClient not installed\n============================== 1 skipped in 0.01s ==============================\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\n"
+              },
+              {
+                "name": "api_node",
+                "status": "passed",
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "api-node",
+                  "test"
+                ],
+                "stdout": "No projects found in \"/Users/ww/dev/projects/riso/samples/full-stack/render\"\n",
+                "stderr": ""
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              {
+                "name": "docs_site",
+                "status": "passed",
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "stdout": "No projects found in \"/Users/ww/dev/projects/riso/samples/full-stack/render\"\n",
+                "stderr": ""
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              {
+                "name": "quality_make",
+                "status": "failed",
+                "command": [
+                  "make",
+                  "quality"
+                ],
+                "returncode": 2,
+                "stdout": "/Users/ww/.local/bin/uv run --group quality --group test ruff check --select ALL --ignore E203,E266,E501\nTC006 [*] Add quotes to type expression in `typing.cast()`\n  --> src/riso_full_stack/api/main.py:50:33\n   |\n48 | else:\n49 |     HealthCheckResult = _shared_logic.HealthCheckResult\n50 |     build_health_payload = cast(Any, _shared_logic.build_health_payload)\n   |                                 ^^^\n51 |\n52 | def _configure_app(settings: ApiSettings) -> FastAPI:\n   |\nhelp: Add quotes\n\nTC006 [*] Add quotes to type expression in `typing.cast()`\n  --> src/riso_full_stack/cli/__main__.py:42:33\n   |\n40 |     summarize_payload = _fallback_summarize_payload\n41 | else:\n42 |     build_health_payload = cast(Any, _shared_logic.build_health_payload)\n   |                                 ^^^\n43 |     summarize_payload = cast(Any, _shared_logic.summarize_payload)\n   |\nhelp: Add quotes\n\nTC006 [*] Add quotes to type expression in `typing.cast()`\n  --> src/riso_full_stack/cli/__main__.py:43:30\n   |\n41 | else:\n42 |     build_health_payload = cast(Any, _shared_logic.build_health_payload)\n43 |     summarize_payload = cast(Any, _shared_logic.summarize_payload)\n   |                              ^^^\n44 |\n45 | DRY_RUN_DEFAULT = False\n   |\nhelp: Add quotes\n\nFound 3 errors.\n[*] 3 fixable with the `--fix` option.\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nInstalled 16 packages in 47ms\nwarning: `incorrect-blank-line-before-class` (D203) and `no-blank-line-before-class` (D211) are incompatible. Ignoring `incorrect-blank-line-before-class`.\nwarning: `multi-line-summary-first-line` (D212) and `multi-line-summary-second-line` (D213) are incompatible. Ignoring `multi-line-summary-second-line`.\nmake: *** [quality-python] Error 1\n"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "failed",
+                "command": [
+                  "uv",
+                  "run",
+                  "--group",
+                  "quality",
+                  "--group",
+                  "test",
+                  "task",
+                  "quality"
+                ],
+                "returncode": 1,
+                "stdout": "TC006 [*] Add quotes to type expression in `typing.cast()`\n  --> src/riso_full_stack/api/main.py:50:33\n   |\n48 | else:\n49 |     HealthCheckResult = _shared_logic.HealthCheckResult\n50 |     build_health_payload = cast(Any, _shared_logic.build_health_payload)\n   |                                 ^^^\n51 |\n52 | def _configure_app(settings: ApiSettings) -> FastAPI:\n   |\nhelp: Add quotes\n\nTC006 [*] Add quotes to type expression in `typing.cast()`\n  --> src/riso_full_stack/cli/__main__.py:42:33\n   |\n40 |     summarize_payload = _fallback_summarize_payload\n41 | else:\n42 |     build_health_payload = cast(Any, _shared_logic.build_health_payload)\n   |                                 ^^^\n43 |     summarize_payload = cast(Any, _shared_logic.summarize_payload)\n   |\nhelp: Add quotes\n\nTC006 [*] Add quotes to type expression in `typing.cast()`\n  --> src/riso_full_stack/cli/__main__.py:43:30\n   |\n41 | else:\n42 |     build_health_payload = cast(Any, _shared_logic.build_health_payload)\n43 |     summarize_payload = cast(Any, _shared_logic.summarize_payload)\n   |                              ^^^\n44 |\n45 | DRY_RUN_DEFAULT = False\n   |\nhelp: Add quotes\n\nFound 3 errors.\n[*] 3 fixable with the `--fix` option.\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nwarning: `incorrect-blank-line-before-class` (D203) and `no-blank-line-before-class` (D211) are incompatible. Ignoring `incorrect-blank-line-before-class`.\nwarning: `multi-line-summary-first-line` (D212) and `multi-line-summary-second-line` (D213) are incompatible. Ignoring `multi-line-summary-second-line`.\n\n[quality] ruff failed with exit code 1\n"
+              }
+            ]
+          }
+        }
+      ],
+      "module_success": {
+        "recorded_at": "2025-10-30T15:30:11.161719+00:00",
+        "modules": {
+          "cli": {
+            "passed": 0,
+            "failed": 2,
+            "errored": 0,
+            "skipped": 5,
+            "success_rate": 0.0,
+            "total_recorded": 2
+          },
+          "api_python": {
+            "passed": 0,
+            "failed": 3,
+            "errored": 0,
+            "skipped": 4,
+            "success_rate": 0.0,
+            "total_recorded": 3
+          },
+          "api_node": {
+            "passed": 3,
+            "failed": 0,
+            "errored": 0,
+            "skipped": 4,
+            "success_rate": 1.0,
+            "total_recorded": 3
+          },
+          "mcp_module": {
+            "passed": 0,
+            "failed": 0,
+            "errored": 0,
+            "skipped": 7,
+            "success_rate": 0.0,
+            "total_recorded": 0
+          },
+          "docs_site": {
+            "passed": 5,
+            "failed": 1,
+            "errored": 0,
+            "skipped": 1,
+            "success_rate": 0.8333,
+            "total_recorded": 6
+          },
+          "shared_logic": {
+            "passed": 0,
+            "failed": 0,
+            "errored": 0,
+            "skipped": 7,
+            "success_rate": 0.0,
+            "total_recorded": 0
+          },
+          "quality_make": {
+            "passed": 3,
+            "failed": 4,
+            "errored": 0,
+            "skipped": 0,
+            "success_rate": 0.4286,
+            "total_recorded": 7
+          },
+          "quality_uv_task": {
+            "passed": 3,
+            "failed": 4,
+            "errored": 0,
+            "skipped": 0,
+            "success_rate": 0.4286,
+            "total_recorded": 7
+          }
+        },
+        "variants": [
+          {
+            "variant": "api-monorepo",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "failed"
+              },
+              {
+                "name": "api_node",
+                "status": "passed"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs_site",
+                "status": "skipped"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "failed"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "failed"
+              }
+            ]
+          },
+          {
+            "variant": "cli-docs",
+            "results": [
+              {
+                "name": "cli",
+                "status": "failed"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs_site",
+                "status": "passed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "failed"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "failed"
+              }
+            ]
+          },
+          {
+            "variant": "default",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs_site",
+                "status": "passed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "passed"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "passed"
+              }
+            ]
+          },
+          {
+            "variant": "docs-docusaurus",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped"
+              },
+              {
+                "name": "api_node",
+                "status": "passed"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs_site",
+                "status": "passed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "passed"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "passed"
+              }
+            ]
+          },
+          {
+            "variant": "docs-fumadocs",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs_site",
+                "status": "passed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "passed"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "passed"
+              }
+            ]
+          },
+          {
+            "variant": "docs-sphinx",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "failed"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs_site",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "failed"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "failed"
+              }
+            ]
+          },
+          {
+            "variant": "full-stack",
+            "results": [
+              {
+                "name": "cli",
+                "status": "failed"
+              },
+              {
+                "name": "api_python",
+                "status": "failed"
+              },
+              {
+                "name": "api_node",
+                "status": "passed"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs_site",
+                "status": "passed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "failed"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "failed"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
