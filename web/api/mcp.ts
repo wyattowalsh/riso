@@ -2,8 +2,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { z } from 'zod'
 
-// @ts-expect-error - JSON import works at runtime
-import matrixData from '../src/data/matrix-data.json'
+// @ts-expect-error - JSON import with assertion for Node.js ESM
+import matrixData from '../src/data/matrix-data.json' with { type: 'json' }
 
 const server = new McpServer({
   name: 'riso-mcp',

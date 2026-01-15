@@ -162,6 +162,10 @@ html_css_files = [
 html_js_files = ["js/custom.js"]
 html_favicon = "_static/img/favicon/favicon.ico"
 html_extra_path = ["_static/img/favicon/site.webmanifest"]
+
+# Base URL for the docs - defined early for use in nav_links
+html_baseurl = os.getenv("DOCS_BASE_URL", "https://riso.build/docs/")
+
 html_theme_options = {
     "light_logo": "_static/img/logo.svg",
     "dark_logo": "_static/img/logo.svg",
@@ -175,7 +179,7 @@ html_theme_options = {
     "toctree_titles_only": True,
     "toctree_includehidden": True,
     "nav_links": [
-        {"title": "🧭 Configurator", "url": "/"},
+        {"title": "🧭 Configurator", "url": html_baseurl.replace("/docs/", "/")},
         {"title": "📖 Guides", "url": "guides/index"},
         {"title": "🧰 Tools", "url": "tools/index"},
         {"title": "📚 Reference", "url": "api/index"},
@@ -326,7 +330,6 @@ notfound_template = "page.html"
 notfound_pagename = "404"
 notfound_urls_prefix = "/"
 
-html_baseurl = os.getenv("DOCS_BASE_URL", "https://riso.build/docs/")
 sitemap_url_scheme = "{link}"
 
 linkcheck_ignore = [r"^http://localhost", r"^https://localhost"]
