@@ -1,7 +1,7 @@
 # {{ project_name }} Developer Documentation
 
 Welcome to the Shibuya-powered Sphinx docs for **{{ project_name }}**. This site
-is bundled with the `docs_site=sphinx-shibuya` option and ships with the same
+is bundled with the `docs_module=enabled` with `docs_framework=sphinx-shibuya` option and ships with the same
 configuration used by the Riso maintainers.
 
 :::{admonition} Local build

@@ -1,0 +1,97 @@
+{% if api_module == 'enabled' and 'go' in api_languages %}
+package handlers
+
+import (
+{% if go_framework | default('gin') == 'gin' %}
+	"github.com/gin-gonic/gin"
+{% elif go_framework == 'fiber' %}
+	"github.com/gofiber/fiber/v2"
+{% elif go_framework == 'echo' %}
+	"github.com/labstack/echo/v4"
+{% elif go_framework == 'chi' %}
+	"encoding/json"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+{% endif %}
+)
+
+{% if go_framework | default('gin') == 'gin' %}
+// RegisterRoutes registers all HTTP routes.
+func RegisterRoutes(r *gin.Engine) {
+	// Health check routes (no auth required)
+	r.GET("/health", HealthCheck)
+	r.GET("/ready", ReadinessCheck)
+	r.GET("/live", LivenessCheck)
+
+	// API v1 routes
+	v1 := r.Group("/api/v1")
+	{
+		// Add your API routes here
+		v1.GET("/ping", func(c *gin.Context) {
+			c.JSON(200, gin.H{
+				"message": "pong",
+			})
+		})
+	}
+}
+
+{% elif go_framework == 'fiber' %}
+// RegisterRoutes registers all HTTP routes.
+func RegisterRoutes(app *fiber.App) {
+	// Health check routes (no auth required)
+	app.Get("/health", HealthCheck)
+	app.Get("/ready", ReadinessCheck)
+	app.Get("/live", LivenessCheck)
+
+	// API v1 routes
+	v1 := app.Group("/api/v1")
+	{
+		v1.Get("/ping", func(c *fiber.Ctx) error {
+			return c.JSON(fiber.Map{
+				"message": "pong",
+			})
+		})
+	}
+}
+
+{% elif go_framework == 'echo' %}
+// RegisterRoutes registers all HTTP routes.
+func RegisterRoutes(e *echo.Echo) {
+	// Health check routes (no auth required)
+	e.GET("/health", HealthCheck)
+	e.GET("/ready", ReadinessCheck)
+	e.GET("/live", LivenessCheck)
+
+	// API v1 routes
+	v1 := e.Group("/api/v1")
+	{
+		v1.GET("/ping", func(c echo.Context) error {
+			return c.JSON(200, map[string]string{
+				"message": "pong",
+			})
+		})
+	}
+}
+
+{% elif go_framework == 'chi' %}
+// RegisterRoutes registers all HTTP routes.
+func RegisterRoutes(r chi.Router) {
+	// Health check routes (no auth required)
+	r.Get("/health", HealthCheck)
+	r.Get("/ready", ReadinessCheck)
+	r.Get("/live", LivenessCheck)
+
+	// API v1 routes
+	r.Route("/api/v1", func(r chi.Router) {
+		r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]string{
+				"message": "pong",
+			})
+		})
+	})
+}
+{% endif %}
+{% endif %}

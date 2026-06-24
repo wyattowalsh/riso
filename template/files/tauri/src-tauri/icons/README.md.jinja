@@ -1,0 +1,121 @@
+{% if desktop_module == "enabled" and desktop_framework == "tauri" %}
+# Application Icons
+
+This directory contains the application icons for {{ project_name }}.
+
+## Required Icons
+
+Tauri requires the following icon files:
+
+- `32x32.png` - 32x32 PNG (Windows taskbar)
+- `128x128.png` - 128x128 PNG (macOS dock, Windows Alt+Tab)
+- `128x128@2x.png` - 256x256 PNG (Retina displays)
+- `icon.icns` - macOS icon bundle
+- `icon.ico` - Windows icon
+- `icon.png` - 512x512 PNG (source image)
+
+## Generating Icons
+
+You can automatically generate all required icons from a single 512x512 PNG source image:
+
+```bash
+cd src-tauri
+pnpm tauri icon path/to/your-icon.png
+```
+
+This will generate all required icon formats.
+
+## Icon Guidelines
+
+### Design Requirements
+
+1. **Size**: Start with a 1024x1024 or 512x512 PNG
+2. **Format**: PNG with transparent background
+3. **Shape**: Square with rounded corners optional
+4. **Padding**: Include ~10% padding from edges
+5. **Colors**: Use brand colors, ensure good contrast
+
+### Platform Considerations
+
+**macOS:**
+- Use transparent background
+- Include subtle shadows
+- Follow [macOS icon guidelines](https://developer.apple.com/design/human-interface-guidelines/app-icons)
+
+**Windows:**
+- Can use transparent or solid background
+- Include multiple sizes in .ico
+- Follow [Windows icon guidelines](https://learn.microsoft.com/en-us/windows/apps/design/style/iconography/app-icon-design)
+
+**Linux:**
+- Transparent background preferred
+- Simple, clear design
+- Follow [freedesktop.org icon theme spec](https://specifications.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html)
+
+### Testing Your Icons
+
+After generating icons:
+
+1. Build the app: `pnpm build`
+2. Check the icon in:
+   - macOS: Finder, Dock, Alt+Tab
+   - Windows: Explorer, Taskbar, Alt+Tab
+   - Linux: File manager, application launcher
+
+### Color Recommendations
+
+- Use 2-3 main colors maximum
+- Ensure icon is recognizable at 32x32
+- Test on both light and dark backgrounds
+- Avoid fine details that won't scale well
+
+## Example Icon Generation
+
+```bash
+# 1. Create your 512x512 icon (icon.png)
+# 2. Navigate to src-tauri directory
+cd src-tauri
+
+# 3. Generate all icon formats
+pnpm tauri icon icons/icon.png
+
+# 4. Icons will be generated in the icons/ directory
+```
+
+## Manual Icon Creation
+
+If you prefer to create icons manually:
+
+**macOS (.icns):**
+```bash
+# Use Image2Icon or iconutil
+mkdir icon.iconset
+sips -z 16 16     icon.png --out icon.iconset/icon_16x16.png
+sips -z 32 32     icon.png --out icon.iconset/icon_16x16@2x.png
+# ... repeat for all sizes
+iconutil -c icns icon.iconset
+```
+
+**Windows (.ico):**
+Use tools like:
+- [IcoFX](https://icofx.ro/)
+- [GIMP](https://www.gimp.org/)
+- [ImageMagick](https://imagemagick.org/)
+
+```bash
+convert icon.png -define icon:auto-resize=256,128,64,48,32,16 icon.ico
+```
+
+## Resources
+
+- [Tauri Icon Documentation](https://v2.tauri.app/develop/visual/)
+- [App Icon Generator](https://appicon.co/)
+- [Figma Icon Templates](https://www.figma.com/community/file/857303226040719718)
+- [macOS App Icon Template](https://developer.apple.com/design/resources/)
+
+## Current Icon
+
+Replace the placeholder icons in this directory with your app's custom icons.
+
+The current placeholder is a simple colored square - you should replace it with your actual app icon.
+{% endif %}

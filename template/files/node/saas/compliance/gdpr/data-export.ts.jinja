@@ -1,0 +1,329 @@
+{% if saas_infra_module == "enabled" and saas_gdpr_tools %}
+/**
+ * GDPR Data Export (Right to Data Portability)
+ *
+ * Allows users to export all their personal data in machine-readable formats.
+ * Implements Article 20 of GDPR.
+ */
+
+{% if saas_orm == "prisma" %}
+import { prisma } from '@/lib/prisma';
+{% elif saas_orm == "drizzle" %}
+import { db } from '@/lib/db';
+{% endif %}
+
+export type ExportFormat = 'json' | 'csv';
+
+export interface UserDataExport {
+  user: {
+    id: string;
+    email: string;
+    name?: string;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+  profile?: Record<string, any>;
+{% if saas_tenancy_model == "b2b-teams" %}
+  organizations: Array<{
+    id: string;
+    name: string;
+    role: string;
+    joinedAt: Date;
+  }>;
+{% endif %}
+  subscriptions?: Array<{
+    id: string;
+    plan: string;
+    status: string;
+    createdAt: Date;
+  }>;
+  consents: Array<{
+    timestamp: Date;
+    preferences: Record<string, boolean>;
+    version: string;
+  }>;
+  activities?: Array<{
+    type: string;
+    timestamp: Date;
+    metadata?: Record<string, any>;
+  }>;
+  // Add other relevant data categories
+}
+
+/**
+ * Export all user data in the specified format
+ */
+export async function exportUserData(
+  userId: string,
+  format: ExportFormat = 'json'
+): Promise<string> {
+  // Collect all user data
+  const data = await collectUserData(userId);
+
+  // Format based on requested format
+  if (format === 'csv') {
+    return convertToCSV(data);
+  }
+
+  return JSON.stringify(data, null, 2);
+}
+
+/**
+ * Collect all user data from various sources
+ */
+async function collectUserData(userId: string): Promise<UserDataExport> {
+{% if saas_orm == "prisma" %}
+  // Fetch user data
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  // Fetch profile data
+  const profile = await prisma.profile.findUnique({
+    where: { userId },
+  });
+
+{% if saas_tenancy_model == "b2b-teams" %}
+  // Fetch organization memberships
+  const organizations = await prisma.organizationMember.findMany({
+    where: { userId },
+    include: {
+      organization: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  });
+{% endif %}
+
+  // Fetch subscription data
+  const subscriptions = await prisma.subscription.findMany({
+    where: { userId },
+    select: {
+      id: true,
+      plan: true,
+      status: true,
+      createdAt: true,
+    },
+  });
+
+  // Fetch consent records
+  const consents = await prisma.consentRecord.findMany({
+    where: { userId },
+    orderBy: { timestamp: 'desc' },
+  });
+
+  // Fetch activity logs (if enabled)
+  const activities = await prisma.auditLog.findMany({
+    where: { userId },
+    orderBy: { timestamp: 'desc' },
+    take: 1000, // Limit to last 1000 activities
+  });
+
+  return {
+    user,
+    profile: profile ? JSON.parse(JSON.stringify(profile)) : undefined,
+{% if saas_tenancy_model == "b2b-teams" %}
+    organizations: organizations.map(om => ({
+      id: om.organization.id,
+      name: om.organization.name,
+      role: om.role,
+      joinedAt: om.createdAt,
+    })),
+{% endif %}
+    subscriptions: subscriptions.map(s => ({
+      id: s.id,
+      plan: s.plan,
+      status: s.status,
+      createdAt: s.createdAt,
+    })),
+    consents: consents.map(c => ({
+      timestamp: c.timestamp,
+      preferences: c.preferences as Record<string, boolean>,
+      version: c.version,
+    })),
+    activities: activities.map(a => ({
+      type: a.eventType,
+      timestamp: a.timestamp,
+      metadata: a.metadata as Record<string, any>,
+    })),
+  };
+{% elif saas_orm == "drizzle" %}
+  // TODO: Implement with Drizzle ORM
+  // Import your schema and use db.select() to fetch data
+  throw new Error('Drizzle implementation pending');
+{% endif %}
+}
+
+/**
+ * Convert user data to CSV format
+ */
+function convertToCSV(data: UserDataExport): string {
+  const rows: string[] = [];
+
+  // User information
+  rows.push('User Information');
+  rows.push('Field,Value');
+  rows.push(`ID,${data.user.id}`);
+  rows.push(`Email,${data.user.email}`);
+  rows.push(`Name,${data.user.name || 'N/A'}`);
+  rows.push(`Created At,${data.user.createdAt}`);
+  rows.push(`Updated At,${data.user.updatedAt}`);
+  rows.push('');
+
+{% if saas_tenancy_model == "b2b-teams" %}
+  // Organizations
+  if (data.organizations && data.organizations.length > 0) {
+    rows.push('Organizations');
+    rows.push('ID,Name,Role,Joined At');
+    data.organizations.forEach(org => {
+      rows.push(`${org.id},${org.name},${org.role},${org.joinedAt}`);
+    });
+    rows.push('');
+  }
+{% endif %}
+
+  // Subscriptions
+  if (data.subscriptions && data.subscriptions.length > 0) {
+    rows.push('Subscriptions');
+    rows.push('ID,Plan,Status,Created At');
+    data.subscriptions.forEach(sub => {
+      rows.push(`${sub.id},${sub.plan},${sub.status},${sub.createdAt}`);
+    });
+    rows.push('');
+  }
+
+  // Consent history
+  if (data.consents.length > 0) {
+    rows.push('Consent History');
+    rows.push('Timestamp,Essential,Analytics,Marketing,Preferences,Version');
+    data.consents.forEach(consent => {
+      const prefs = consent.preferences;
+      rows.push(
+        `${consent.timestamp},${prefs.essential},${prefs.analytics},${prefs.marketing},${prefs.preferences},${consent.version}`
+      );
+    });
+    rows.push('');
+  }
+
+  // Activities
+  if (data.activities && data.activities.length > 0) {
+    rows.push('Activity Log');
+    rows.push('Type,Timestamp,Metadata');
+    data.activities.forEach(activity => {
+      const metadata = activity.metadata ? JSON.stringify(activity.metadata) : '';
+      rows.push(`${activity.type},${activity.timestamp},"${metadata}"`);
+    });
+  }
+
+  return rows.join('\n');
+}
+
+/**
+ * Generate a downloadable data export and send via email
+ */
+export async function requestDataExport(
+  userId: string,
+  email: string,
+  format: ExportFormat = 'json'
+): Promise<void> {
+{% if saas_jobs == "triggerdev" %}
+  // Trigger background job to generate export
+  const { trigger } = await import('@/trigger');
+
+  await trigger.sendEvent({
+    name: 'gdpr.data-export',
+    payload: {
+      userId,
+      email,
+      format,
+    },
+  });
+{% elif saas_jobs == "inngest" %}
+  // Trigger Inngest function to generate export
+  const { inngest } = await import('@/inngest');
+
+  await inngest.send({
+    name: 'gdpr/data.export.requested',
+    data: {
+      userId,
+      email,
+      format,
+    },
+  });
+{% else %}
+  // Generate export synchronously (not recommended for production)
+  const exportData = await exportUserData(userId, format);
+
+  // Send via email
+  await sendExportEmail(email, exportData, format);
+{% endif %}
+}
+
+/**
+ * Send data export via email
+ */
+async function sendExportEmail(
+  email: string,
+  data: string,
+  format: ExportFormat
+): Promise<void> {
+{% if saas_email == "resend" %}
+  const { Resend } = await import('resend');
+  const resend = new Resend(process.env.RESEND_API_KEY);
+
+  await resend.emails.send({
+    from: 'privacy@{{ project_slug }}.com',
+    to: email,
+    subject: 'Your Data Export is Ready',
+    html: `
+      <h1>Your Data Export</h1>
+      <p>As requested, here is a copy of all your personal data we have on file.</p>
+      <p>This export includes your profile, activity history, consent records, and all other data associated with your account.</p>
+      <p><strong>Format:</strong> ${format.toUpperCase()}</p>
+    `,
+    attachments: [
+      {
+        filename: `data-export-${new Date().toISOString()}.${format}`,
+        content: Buffer.from(data).toString('base64'),
+      },
+    ],
+  });
+{% elif saas_email == "postmark" %}
+  const { ServerClient } = await import('postmark');
+  const client = new ServerClient(process.env.POSTMARK_API_TOKEN);
+
+  await client.sendEmail({
+    From: 'privacy@{{ project_slug }}.com',
+    To: email,
+    Subject: 'Your Data Export is Ready',
+    HtmlBody: `
+      <h1>Your Data Export</h1>
+      <p>As requested, here is a copy of all your personal data we have on file.</p>
+      <p>This export includes your profile, activity history, consent records, and all other data associated with your account.</p>
+      <p><strong>Format:</strong> ${format.toUpperCase()}</p>
+    `,
+    Attachments: [
+      {
+        Name: `data-export-${new Date().toISOString()}.${format}`,
+        Content: Buffer.from(data).toString('base64'),
+        ContentType: format === 'json' ? 'application/json' : 'text/csv',
+      },
+    ],
+  });
+{% endif %}
+}
+{% endif %}

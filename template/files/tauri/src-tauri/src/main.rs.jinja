@@ -1,0 +1,89 @@
+{% if desktop_module == "enabled" and desktop_framework == "tauri" %}
+// Prevents additional console window on Windows in release, DO NOT REMOVE!!
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+mod commands;
+{% if desktop_features is defined and 'tray_icon' in desktop_features %}
+mod tray;
+{% endif %}
+{% if desktop_features is defined and 'menu' in desktop_features %}
+mod menu;
+{% endif %}
+
+use log::{error, info};
+{% if desktop_features is defined and 'auto_updater' in desktop_features %}
+use tauri::Manager;
+{% endif %}
+
+fn main() {
+    // Initialize logging
+    env_logger::Builder::from_default_env()
+        .filter_level(log::LevelFilter::Info)
+        .init();
+
+    info!("Starting {{ project_name }}...");
+
+    let result = tauri::Builder::default()
+        {% if desktop_features is defined and 'tray_icon' in desktop_features %}
+        .plugin(tauri_plugin_shell::init())
+        .setup(|app| {
+            // Initialize system tray
+            tray::init_tray(app)?;
+            {% if desktop_features is defined and 'auto_updater' in desktop_features %}
+            // Check for updates on startup (production only)
+            #[cfg(not(debug_assertions))]
+            {
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    match commands::check_for_updates(handle).await {
+                        Ok(_) => info!("Update check completed"),
+                        Err(e) => error!("Update check failed: {}", e),
+                    }
+                });
+            }
+            {% endif %}
+            Ok(())
+        })
+        {% else %}
+        .plugin(tauri_plugin_shell::init())
+        {% if desktop_features is defined and 'auto_updater' in desktop_features %}
+        .setup(|app| {
+            // Check for updates on startup (production only)
+            #[cfg(not(debug_assertions))]
+            {
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    match commands::check_for_updates(handle).await {
+                        Ok(_) => info!("Update check completed"),
+                        Err(e) => error!("Update check failed: {}", e),
+                    }
+                });
+            }
+            Ok(())
+        })
+        {% endif %}
+        {% endif %}
+        {% if desktop_features is defined and 'notifications' in desktop_features %}
+        .plugin(tauri_plugin_notification::init())
+        {% endif %}
+        {% if desktop_features is defined and 'file_system' in desktop_features %}
+        .plugin(tauri_plugin_fs::init())
+        {% endif %}
+        .invoke_handler(tauri::generate_handler![
+            commands::greet,
+            {% if desktop_features is defined and 'system_info' in desktop_features %}
+            commands::get_system_info,
+            {% endif %}
+            {% if desktop_features is defined and 'auto_updater' in desktop_features %}
+            commands::check_for_updates_cmd,
+            commands::install_update,
+            {% endif %}
+        ])
+        .run(tauri::generate_context!());
+
+    match result {
+        Ok(_) => info!("{{ project_name }} exited successfully"),
+        Err(e) => error!("{{ project_name }} exited with error: {}", e),
+    }
+}
+{% endif %}

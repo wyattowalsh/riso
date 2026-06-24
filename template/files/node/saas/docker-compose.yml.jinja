@@ -1,4 +1,4 @@
-{% if saas_starter_module == "enabled" %}
+{% if saas_infra_module == "enabled" %}
 # {{ project_name }} - Docker Compose Configuration
 # For local development and testing
 
@@ -18,14 +18,14 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/{{ project_slug }}
-      {% if saas_auth == "clerk" %}
+      {% if saas_auth_provider == "clerk" %}
       - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
       - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
-      {% elif saas_auth == "authjs" %}
+      {% elif saas_auth_provider == "authjs" %}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - NEXTAUTH_URL=http://localhost:3000
       {% endif %}
-      {% if saas_billing == "stripe" %}
+      {% if saas_billing_provider == "stripe" %}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
       {% endif %}

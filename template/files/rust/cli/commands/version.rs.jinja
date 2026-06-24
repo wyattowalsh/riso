@@ -1,0 +1,51 @@
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+//! Version command implementation
+
+use anyhow::Result;
+use clap::Args;
+use colored::Colorize;
+use serde_json::json;
+
+#[derive(Args)]
+pub struct VersionArgs {
+    /// Output in JSON format
+    #[arg(short, long)]
+    json: bool,
+}
+
+pub async fn run(args: VersionArgs) -> Result<()> {
+    let version = env!("CARGO_PKG_VERSION");
+    let name = env!("CARGO_PKG_NAME");
+
+    if args.json {
+        let output = json!({
+            "name": name,
+            "version": version,
+            "rustc": env!("RUSTC_VERSION"),
+        });
+        println!("{}", serde_json::to_string_pretty(&output)?);
+    } else {
+        println!("{} {}", name.bright_cyan(), version.bright_green());
+        println!("Rust version: {}", env!("RUSTC_VERSION"));
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_version_default() {
+        let args = VersionArgs { json: false };
+        assert!(run(args).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_version_json() {
+        let args = VersionArgs { json: true };
+        assert!(run(args).await.is_ok());
+    }
+}
+{% endif %}

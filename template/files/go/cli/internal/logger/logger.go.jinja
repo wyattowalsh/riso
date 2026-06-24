@@ -1,0 +1,211 @@
+{% if 'go' in cli_languages or 'go' in api_languages %}
+// Package logger provides structured logging utilities using slog.
+package logger
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"log/slog"
+	"runtime"
+	"sync"
+	"time"
+)
+
+// PrettyHandler is a custom slog handler for human-readable console output.
+type PrettyHandler struct {
+	opts  *slog.HandlerOptions
+	mu    *sync.Mutex
+	out   io.Writer
+	attrs []slog.Attr
+	group string
+}
+
+// NewPrettyHandler creates a new PrettyHandler.
+func NewPrettyHandler(out io.Writer, opts *slog.HandlerOptions) *PrettyHandler {
+	if opts == nil {
+		opts = &slog.HandlerOptions{}
+	}
+	return &PrettyHandler{
+		opts: opts,
+		mu:   &sync.Mutex{},
+		out:  out,
+	}
+}
+
+// Enabled reports whether the handler handles records at the given level.
+func (h *PrettyHandler) Enabled(_ context.Context, level slog.Level) bool {
+	minLevel := slog.LevelInfo
+	if h.opts.Level != nil {
+		minLevel = h.opts.Level.Level()
+	}
+	return level >= minLevel
+}
+
+// Handle formats and writes a log record.
+func (h *PrettyHandler) Handle(_ context.Context, r slog.Record) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	// Time
+	timeStr := r.Time.Format("15:04:05.000")
+
+	// Level with color
+	levelStr := colorizeLevel(r.Level)
+
+	// Message
+	msg := r.Message
+
+	// Format: TIME LEVEL MESSAGE
+	line := fmt.Sprintf("%s %s %s", timeStr, levelStr, msg)
+
+	// Add source if requested
+	if h.opts.AddSource && r.PC != 0 {
+		fs := runtime.CallersFrames([]uintptr{r.PC})
+		f, _ := fs.Next()
+		line += fmt.Sprintf(" \033[90m%s:%d\033[0m", f.File, f.Line)
+	}
+
+	// Add attrs
+	if len(h.attrs) > 0 || r.NumAttrs() > 0 {
+		line += " "
+	}
+
+	// Add handler attrs
+	for _, attr := range h.attrs {
+		line += formatAttr(attr)
+	}
+
+	// Add record attrs
+	r.Attrs(func(a slog.Attr) bool {
+		line += formatAttr(a)
+		return true
+	})
+
+	line += "\n"
+
+	_, err := h.out.Write([]byte(line))
+	return err
+}
+
+// WithAttrs returns a new handler with the given attributes added.
+func (h *PrettyHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	newAttrs := make([]slog.Attr, len(h.attrs)+len(attrs))
+	copy(newAttrs, h.attrs)
+	copy(newAttrs[len(h.attrs):], attrs)
+
+	return &PrettyHandler{
+		opts:  h.opts,
+		mu:    h.mu,
+		out:   h.out,
+		attrs: newAttrs,
+		group: h.group,
+	}
+}
+
+// WithGroup returns a new handler with the given group name.
+func (h *PrettyHandler) WithGroup(name string) slog.Handler {
+	if name == "" {
+		return h
+	}
+
+	newGroup := name
+	if h.group != "" {
+		newGroup = h.group + "." + name
+	}
+
+	return &PrettyHandler{
+		opts:  h.opts,
+		mu:    h.mu,
+		out:   h.out,
+		attrs: h.attrs,
+		group: newGroup,
+	}
+}
+
+// colorizeLevel returns a colored level string.
+func colorizeLevel(level slog.Level) string {
+	switch {
+	case level >= slog.LevelError:
+		return "\033[31mERR\033[0m" // Red
+	case level >= slog.LevelWarn:
+		return "\033[33mWRN\033[0m" // Yellow
+	case level >= slog.LevelInfo:
+		return "\033[32mINF\033[0m" // Green
+	default:
+		return "\033[36mDBG\033[0m" // Cyan
+	}
+}
+
+// formatAttr formats a single attribute.
+func formatAttr(a slog.Attr) string {
+	if a.Equal(slog.Attr{}) {
+		return ""
+	}
+
+	key := a.Key
+	value := a.Value
+
+	switch value.Kind() {
+	case slog.KindString:
+		return fmt.Sprintf("\033[90m%s=\033[0m%q ", key, value.String())
+	case slog.KindTime:
+		return fmt.Sprintf("\033[90m%s=\033[0m%s ", key, value.Time().Format(time.RFC3339))
+	case slog.KindDuration:
+		return fmt.Sprintf("\033[90m%s=\033[0m%s ", key, value.Duration())
+	default:
+		return fmt.Sprintf("\033[90m%s=\033[0m%v ", key, value.Any())
+	}
+}
+
+// NewLogger creates a new logger with the specified level.
+func NewLogger(level slog.Level, jsonFormat bool, out io.Writer) *slog.Logger {
+	opts := &slog.HandlerOptions{
+		Level: level,
+	}
+
+	var handler slog.Handler
+	if jsonFormat {
+		handler = slog.NewJSONHandler(out, opts)
+	} else {
+		handler = NewPrettyHandler(out, opts)
+	}
+
+	return slog.New(handler)
+}
+
+// ParseLevel parses a log level string.
+func ParseLevel(s string) slog.Level {
+	switch s {
+	case "debug", "DEBUG":
+		return slog.LevelDebug
+	case "info", "INFO":
+		return slog.LevelInfo
+	case "warn", "warning", "WARN", "WARNING":
+		return slog.LevelWarn
+	case "error", "ERROR":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
+}
+
+// ContextKey type for logger context key.
+type contextKey string
+
+// LoggerKey is the context key for storing the logger.
+const LoggerKey contextKey = "logger"
+
+// FromContext retrieves the logger from context.
+func FromContext(ctx context.Context) *slog.Logger {
+	if logger, ok := ctx.Value(LoggerKey).(*slog.Logger); ok {
+		return logger
+	}
+	return slog.Default()
+}
+
+// WithContext returns a new context with the logger.
+func WithContext(ctx context.Context, logger *slog.Logger) context.Context {
+	return context.WithValue(ctx, LoggerKey, logger)
+}
+{% endif %}

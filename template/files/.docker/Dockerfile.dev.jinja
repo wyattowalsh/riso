@@ -1,0 +1,305 @@
+# syntax=docker/dockerfile:1.11
+
+# =============================================================================
+# Development Dockerfile with Hot Reload Support
+# =============================================================================
+# Optimized for local development with volume mounts and live code reloading
+#
+# Key differences from production Dockerfile:
+# - Single-stage build (no optimization needed for dev)
+# - Source code mounted as volumes (not copied)
+# - Development dependencies installed
+# - Auto-reload enabled for FastAPI/Fastify
+# - Debug tooling included (debugpy, nodemon, Chrome DevTools)
+# - Debug ports exposed for remote debugging
+#
+# Usage:
+#   docker build -f .docker/Dockerfile.dev -t {{ project_slug }}-dev:latest .
+#   docker-compose -f docker-compose.dev.yml up
+#
+# Volume mounts (defined in docker-compose.dev.yml):
+#   - ./src:/app/src:ro (Python source, read-only)
+#   - ./apps:/app/apps:ro (Node.js source, read-only)
+
+{%- if (cli_module == "enabled" and "python" in cli_languages) or (api_module == "enabled" and "python" in api_languages) or (mcp_module == "enabled" and "python" in mcp_languages) %}
+
+# =============================================================================
+# Python Development Runtime
+# =============================================================================
+FROM python:3.12-slim-bookworm AS dev-python
+
+# Metadata labels
+LABEL org.opencontainers.image.title="{{ project_name }} - Python Dev"
+LABEL org.opencontainers.image.description="Development runtime for {{ project_name }} Python services"
+
+# Install system dependencies + development tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    libpq-dev \
+    curl \
+    git \
+    vim \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv and development debugging tools
+RUN pip install --no-cache-dir \
+    uv==0.5.15 \
+    debugpy \
+    ipython \
+    ipdb
+
+# Create non-root user with UID 1000
+RUN groupadd --gid 1000 appuser && \
+    useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home appuser
+
+WORKDIR /app
+
+# Copy dependency manifests
+COPY --chown=1000:1000 pyproject.toml uv.lock ./
+{%- if project_layout == "single-package" %}
+COPY --chown=1000:1000 README.md ./
+{%- endif %}
+
+# Install ALL dependencies (including dev dependencies)
+RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
+    uv sync --frozen
+
+# NOTE: Source code mounted as volume at runtime for hot reload
+# Mount points (defined in docker-compose.dev.yml):
+#   - ./src:/app/src:ro (read-only source)
+#   - ./tests:/app/tests:ro (read-only tests)
+#   - ./pyproject.toml:/app/pyproject.toml:ro
+#   - ./uv.lock:/app/uv.lock:ro
+
+# Environment variables for development
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONFAULTHANDLER=1 \
+    LOG_LEVEL=debug
+
+USER 1000:1000
+
+{%- if api_module == "enabled" and "python" in api_languages %}
+# Expose FastAPI port + debugpy remote debugging port
+EXPOSE 8000 5678
+
+# Health check for development API
+HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=2 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()" || exit 1
+
+# Development command with auto-reload and debug support
+# To enable remote debugging: docker-compose run -p 5678:5678 api-python
+CMD ["python", "-m", "uvicorn", "{{ package_name }}.api.main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--reload", \
+     "--log-level", "debug"]
+
+{%- elif cli_module == "enabled" and "python" in cli_languages %}
+# Development command: Interactive IPython shell
+CMD ["ipython"]
+
+{%- elif mcp_module == "enabled" and "python" in mcp_languages %}
+# Development command: Run MCP server with debug logging
+CMD ["python", "-m", "{{ package_name }}.mcp", "--log-level", "debug"]
+
+{%- endif %}
+
+{%- endif %}
+
+{%- if (api_module == "enabled" and "node" in api_languages) or (mcp_module == "enabled" and "typescript" in mcp_languages) or (docs_module == "enabled" and docs_framework in ["fumadocs", "docusaurus"]) or saas_infra_module == "enabled" %}
+
+# =============================================================================
+# Node.js Development Runtime
+# =============================================================================
+FROM node:20-alpine AS dev-node
+
+# Metadata labels
+LABEL org.opencontainers.image.title="{{ project_name }} - Node.js Dev"
+LABEL org.opencontainers.image.description="Development runtime for {{ project_name }} Node.js services"
+
+# Install development tools
+RUN apk add --no-cache \
+    git \
+    curl \
+    vim \
+    bash
+
+# Install pnpm using Corepack
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Install global development tools
+RUN pnpm add -g \
+    tsx \
+    nodemon \
+    @types/node
+
+# Create non-root user with UID 1000
+RUN addgroup -g 1000 appuser && \
+    adduser -u 1000 -G appuser -s /bin/sh -D appuser
+
+WORKDIR /app
+
+# Copy dependency manifests
+COPY --chown=1000:1000 package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+{%- if project_layout == "monorepo" %}
+{%- if api_module == "enabled" and "node" in api_languages %}
+COPY --chown=1000:1000 apps/api-node/package.json ./apps/api-node/
+{%- endif %}
+{%- if docs_module == "enabled" and docs_framework == "fumadocs" %}
+COPY --chown=1000:1000 apps/docs-fumadocs/package.json ./apps/docs-fumadocs/
+{%- endif %}
+{%- if docs_module == "enabled" and docs_framework == "docusaurus" %}
+COPY --chown=1000:1000 apps/docs-docusaurus/package.json ./apps/docs-docusaurus/
+{%- endif %}
+{%- if saas_infra_module == "enabled" %}
+COPY --chown=1000:1000 apps/saas/package.json ./apps/saas/
+{%- endif %}
+{%- if shared_logic == "enabled" %}
+COPY --chown=1000:1000 apps/shared/package.json ./apps/shared/
+{%- endif %}
+{%- endif %}
+
+# Install ALL dependencies (including dev dependencies)
+RUN --mount=type=cache,target=/root/.pnpm-store,sharing=locked \
+    pnpm install --frozen-lockfile
+
+# NOTE: Source code mounted as volume at runtime for hot reload
+# Mount points (defined in docker-compose.dev.yml):
+#   - ./apps:/app/apps:ro (read-only source)
+#   - ./tsconfig.json:/app/tsconfig.json:ro
+#   - ./package.json:/app/package.json:ro
+
+# Environment variables for development
+ENV NODE_ENV=development \
+    LOG_LEVEL=debug
+
+USER 1000:1000
+
+{%- if api_module == "enabled" and "node" in api_languages %}
+# Expose Fastify port + Node.js inspector debugging port
+EXPOSE 3000 9229
+
+# Health check for development API
+HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=2 \
+    CMD curl -f http://localhost:3000/health || exit 1
+
+# Development command with auto-reload using tsx
+# To enable remote debugging: docker-compose run -p 9229:9229 api-node
+CMD ["pnpm", "--filter", "api-node", "dev"]
+
+{%- elif docs_module == "enabled" and docs_framework == "fumadocs" %}
+# Expose Next.js port + debugging port
+EXPOSE 3001 9229
+
+# Health check for development docs
+HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=2 \
+    CMD curl -f http://localhost:3001 || exit 1
+
+# Development command with Next.js hot reload
+CMD ["pnpm", "--filter", "docs-fumadocs", "dev", "--port", "3001"]
+
+{%- elif docs_module == "enabled" and docs_framework == "docusaurus" %}
+# Expose Docusaurus port
+EXPOSE 3002
+
+# Health check for development docs
+HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=2 \
+    CMD curl -f http://localhost:3002 || exit 1
+
+# Development command with Docusaurus hot reload
+CMD ["pnpm", "--filter", "docs-docusaurus", "start", "--port", "3002", "--host", "0.0.0.0"]
+
+{%- elif saas_infra_module == "enabled" %}
+# Expose Next.js port + debugging port
+EXPOSE 3000 9229
+
+# Health check for development SaaS app
+HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=2 \
+    CMD curl -f http://localhost:3000/api/health || exit 1
+
+# Development command with Next.js hot reload
+CMD ["pnpm", "--filter", "saas", "dev"]
+
+{%- endif %}
+
+{%- endif %}
+
+{%- if (cli_module == "enabled" and "rust" in cli_languages) or (api_module == "enabled" and "rust" in api_languages) or (mcp_module == "enabled" and "rust" in mcp_languages) %}
+
+# =============================================================================
+# Rust Development Runtime
+# =============================================================================
+FROM rust:1.80-slim-bookworm AS dev-rust
+
+# Metadata labels
+LABEL org.opencontainers.image.title="{{ project_name }} - Rust Dev"
+LABEL org.opencontainers.image.description="Development runtime for {{ project_name }} Rust services"
+
+# Install development tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config \
+    libssl-dev \
+    libpq-dev \
+    curl \
+    git \
+    vim \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install cargo-watch for hot reload
+RUN cargo install cargo-watch
+
+# Create non-root user with UID 1000
+RUN groupadd --gid 1000 appuser && \
+    useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home appuser
+
+WORKDIR /app
+
+# NOTE: Source code mounted as volume at runtime for hot reload
+# Mount points (defined in docker-compose.dev.yml):
+#   - ./src:/app/src:ro (read-only source)
+#   - ./Cargo.toml:/app/Cargo.toml:ro
+#   - ./Cargo.lock:/app/Cargo.lock:ro
+
+USER 1000:1000
+
+{%- if api_module == "enabled" and "rust" in api_languages %}
+# Expose Actix-web port
+EXPOSE 8080
+
+# Health check for development API
+HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=2 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Development command with auto-reload using cargo-watch
+CMD ["cargo", "watch", "-x", "run"]
+
+{%- elif cli_module == "enabled" and "rust" in cli_languages %}
+# Development command: Interactive Rust shell
+CMD ["bash"]
+
+{%- endif %}
+
+{%- endif %}
+
+{%- if api_module == "disabled" and cli_module == "disabled" and mcp_module == "disabled" and docs_module == "disabled" %}
+
+# =============================================================================
+# Minimal Development Baseline
+# =============================================================================
+FROM python:3.12-slim-bookworm AS dev-baseline
+
+LABEL org.opencontainers.image.title="{{ project_name }} - Dev Baseline"
+
+RUN groupadd --gid 1000 appuser && \
+    useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home appuser
+
+WORKDIR /app
+
+USER 1000:1000
+
+CMD ["python", "--version"]
+
+{%- endif %}

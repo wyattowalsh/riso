@@ -1,4 +1,4 @@
-{% if saas_starter_module == "enabled" and saas_orm == "prisma" %}
+{% if saas_infra_module == "enabled" and saas_orm == "prisma" %}
 // Prisma Schema for {{ project_name }}
 // 
 // Best practices implemented:
@@ -40,7 +40,7 @@ model User {
   image         String?
   
   // Authentication
-  {% if saas_auth == "authjs" %}
+  {% if saas_auth_provider == "authjs" %}
   accounts      Account[]
   sessions      Session[]
   {% endif %}
@@ -81,7 +81,7 @@ model User {
   @@map("users")
 }
 
-{% if saas_auth == "authjs" %}
+{% if saas_auth_provider == "authjs" %}
 // ============================================================================
 // Auth.js Required Models
 // ============================================================================
@@ -262,11 +262,11 @@ model Subscription {
   organizationId String?       @unique @map("organization_id")
   
   // Billing provider IDs
-  {% if saas_billing == "stripe" %}
+  {% if saas_billing_provider == "stripe" %}
   stripeCustomerId      String? @unique @map("stripe_customer_id")
   stripeSubscriptionId  String? @unique @map("stripe_subscription_id")
   stripePriceId         String? @map("stripe_price_id")
-  {% elif saas_billing == "paddle" %}
+  {% elif saas_billing_provider == "paddle" %}
   paddleCustomerId      String? @unique @map("paddle_customer_id")
   paddleSubscriptionId  String? @unique @map("paddle_subscription_id")
   paddlePriceId         String? @map("paddle_price_id")
@@ -347,9 +347,9 @@ model Invoice {
   subscriptionId String   @map("subscription_id")
   
   // Billing provider IDs
-  {% if saas_billing == "stripe" %}
+  {% if saas_billing_provider == "stripe" %}
   stripeInvoiceId String? @unique @map("stripe_invoice_id")
-  {% elif saas_billing == "paddle" %}
+  {% elif saas_billing_provider == "paddle" %}
   paddleInvoiceId String? @unique @map("paddle_invoice_id")
   {% endif %}
   

@@ -1,0 +1,514 @@
+{% if saas_infra_module == "enabled" and saas_gdpr_tools %}
+# GDPR Compliance Module
+
+Comprehensive GDPR compliance tools for {{ project_name }}, implementing all major data subject rights and privacy requirements under the General Data Protection Regulation (GDPR).
+
+## Features
+
+### 1. Cookie Consent Management
+
+- ✅ Granular cookie controls (essential, analytics, marketing, preferences)
+- ✅ Banner with customization options
+- ✅ Consent versioning and history tracking
+- ✅ Integration with {{ saas_analytics | title }} analytics
+- ✅ LocalStorage + database persistence
+
+**Usage:**
+
+```tsx
+import { CookieConsent } from '@/compliance/gdpr';
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        {children}
+        <CookieConsent />
+      </body>
+    </html>
+  );
+}
+```
+
+### 2. Data Export (Right to Data Portability)
+
+Article 20 compliance: Users can download all their personal data.
+
+**Formats:**
+- JSON (structured, machine-readable)
+- CSV (tabular, spreadsheet-compatible)
+
+**Included Data:**
+- User profile and account information
+{% if saas_tenancy_model == "b2b-teams" %}
+- Organization memberships and roles
+{% endif %}
+- Subscription history
+- Consent records
+- Activity logs (last 1000 events)
+
+**Usage:**
+
+```typescript
+import { exportUserData, requestDataExport } from '@/compliance/gdpr';
+
+// Synchronous export (small datasets)
+const jsonData = await exportUserData(userId, 'json');
+
+// Asynchronous export via email (recommended for production)
+await requestDataExport(userId, user.email, 'json');
+```
+
+**API Endpoint:**
+
+```typescript
+// app/api/gdpr/export/route.ts
+import { exportUserData } from '@/compliance/gdpr';
+import { auth } from '@/lib/auth';
+
+export async function POST(request: Request) {
+  const session = await auth();
+  if (!session) return new Response('Unauthorized', { status: 401 });
+
+  const { format } = await request.json();
+  const data = await exportUserData(session.user.id, format);
+
+  return new Response(data, {
+    headers: {
+      'Content-Type': format === 'json' ? 'application/json' : 'text/csv',
+      'Content-Disposition': `attachment; filename="data-export-${new Date().toISOString()}.${format}"`,
+    },
+  });
+}
+```
+
+### 3. Account Deletion (Right to be Forgotten)
+
+Article 17 compliance: Users can request complete deletion of their data.
+
+**Features:**
+- ✅ 30-day grace period (configurable)
+- ✅ Cancellation during grace period
+- ✅ Email notifications
+- ✅ Cascading deletion across all services
+- ✅ Option to preserve anonymized data for analytics
+
+**Usage:**
+
+```typescript
+import { deleteUserAccount, cancelDeletion } from '@/compliance/gdpr';
+
+// Request deletion
+const result = await deleteUserAccount(userId, {
+  gracePeriodDays: 30,
+  notifyUser: true,
+  preserveAnonymized: true,
+});
+
+// Cancel deletion (during grace period)
+await cancelDeletion(userId);
+```
+
+**Scheduled Cleanup Job:**
+
+```typescript
+{% if saas_jobs == "triggerdev" %}
+// jobs/gdpr-cleanup.ts
+import { job } from '@trigger.dev/sdk/v3';
+import { getUsersScheduledForDeletion, executePermanentDeletion } from '@/compliance/gdpr';
+
+export const gdprCleanupJob = job({
+  id: 'gdpr-cleanup',
+  name: 'GDPR Account Deletion Cleanup',
+  version: '1.0.0',
+  trigger: cron('0 2 * * *'), // Daily at 2 AM
+  run: async () => {
+    const users = await getUsersScheduledForDeletion();
+    for (const user of users) {
+      await executePermanentDeletion(user.id);
+    }
+  },
+});
+{% elif saas_jobs == "inngest" %}
+// inngest/functions/gdpr-cleanup.ts
+import { inngest } from '@/inngest';
+import { getUsersScheduledForDeletion, executePermanentDeletion } from '@/compliance/gdpr';
+
+export const gdprCleanup = inngest.createFunction(
+  { id: 'gdpr-cleanup' },
+  { cron: '0 2 * * *' }, // Daily at 2 AM
+  async ({ step }) => {
+    const users = await step.run('get-scheduled-deletions', async () => {
+      return await getUsersScheduledForDeletion();
+    });
+
+    for (const user of users) {
+      await step.run(`delete-${user.id}`, async () => {
+        await executePermanentDeletion(user.id);
+      });
+    }
+  }
+);
+{% endif %}
+```
+
+### 4. Audit Trail
+
+Article 30 compliance: Records of all data processing activities.
+
+**Tracked Events:**
+- Data access and modifications
+- Consent changes (granted, withdrawn, updated)
+- Data exports and deletion requests
+- Account creation and login
+- Processing activities with legal basis
+
+**Usage:**
+
+```typescript
+import {
+  logDataAccess,
+  logConsentChange,
+  getAuditTrail,
+  generateComplianceReport
+} from '@/compliance/gdpr';
+
+// Log data access
+await logDataAccess(userId, 'profile', adminId);
+
+// Log consent change
+await logConsentChange(userId, oldPrefs, newPrefs, ipAddress, userAgent);
+
+// Get user's audit trail
+const events = await getAuditTrail(userId, {
+  eventTypes: ['data.accessed', 'consent.granted'],
+  startDate: new Date('2024-01-01'),
+  limit: 100,
+});
+
+// Generate compliance report
+const report = await generateComplianceReport(
+  new Date('2024-01-01'),
+  new Date('2024-12-31')
+);
+```
+
+### 5. Privacy Policy Template
+
+Comprehensive, customizable privacy policy in MDX format.
+
+**Location:** `compliance/gdpr/privacy-policy.mdx`
+
+**Includes:**
+- Data collection practices
+- Legal bases for processing
+- Third-party service providers (auto-configured based on your stack)
+- Data subject rights
+- Cookie policy
+- International data transfers
+- Contact information
+
+**Customization:**
+
+Edit `privacy-policy.mdx` to add:
+- Your company address
+- DPO contact information
+- Additional data categories
+- Specific retention periods
+
+## Database Schema
+
+Add these tables to your database schema:
+
+### Prisma Schema
+
+```prisma
+{% if saas_orm == "prisma" %}
+// Consent records
+model ConsentRecord {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  preferences Json     // { essential: true, analytics: false, ... }
+  version     String   // Consent policy version
+  timestamp   DateTime @default(now())
+  ipAddress   String?
+  userAgent   String?
+
+  @@index([userId])
+  @@index([timestamp])
+}
+
+// Audit logs
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventType  String   // AuditEventType
+  timestamp  DateTime @default(now())
+  actor      String?  // Who performed the action
+  ipAddress  String?
+  userAgent  String?
+  resource   String?  // What was accessed/modified
+  legalBasis String?  // GDPR legal basis
+  metadata   Json?
+
+  @@index([userId])
+  @@index([eventType])
+  @@index([timestamp])
+}
+
+// Deletion audit (survives user deletion)
+model DeletionAudit {
+  id                  String   @id @default(cuid())
+  userId              String   // Original user ID
+  email               String
+  deletedAt           DateTime @default(now())
+  preservedAnonymized Boolean
+
+  @@index([userId])
+  @@index([deletedAt])
+}
+
+// Add to User model
+model User {
+  // ... existing fields
+  deletionScheduledAt  DateTime?
+  deletionRequestedAt  DateTime?
+  consentRecords       ConsentRecord[]
+  auditLogs            AuditLog[]
+}
+```
+{% elif saas_orm == "drizzle" %}
+// schema.ts
+import { pgTable, text, timestamp, jsonb, boolean } from 'drizzle-orm/pg-core';
+
+export const consentRecords = pgTable('consent_records', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  preferences: jsonb('preferences').notNull(),
+  version: text('version').notNull(),
+  timestamp: timestamp('timestamp').defaultNow().notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+});
+
+export const auditLogs = pgTable('audit_logs', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  eventType: text('event_type').notNull(),
+  timestamp: timestamp('timestamp').defaultNow().notNull(),
+  actor: text('actor'),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  resource: text('resource'),
+  legalBasis: text('legal_basis'),
+  metadata: jsonb('metadata'),
+});
+
+export const deletionAudits = pgTable('deletion_audits', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  email: text('email').notNull(),
+  deletedAt: timestamp('deleted_at').defaultNow().notNull(),
+  preservedAnonymized: boolean('preserved_anonymized').notNull(),
+});
+```
+{% endif %}
+
+### Database Migration
+
+```bash
+{% if saas_orm == "prisma" %}
+# Generate migration
+npx prisma migrate dev --name add_gdpr_tables
+
+# Apply to production
+npx prisma migrate deploy
+{% elif saas_orm == "drizzle" %}
+# Generate migration
+pnpm drizzle-kit generate
+
+# Apply migration
+pnpm drizzle-kit push
+{% endif %}
+```
+
+## API Routes
+
+Create these API endpoints:
+
+### 1. Consent Management
+
+```typescript
+// app/api/gdpr/consent/route.ts
+import { prisma } from '@/lib/prisma';
+import type { ConsentRecord } from '@/compliance/gdpr';
+
+export async function POST(request: Request) {
+  const session = await auth();
+  if (!session) return new Response('Unauthorized', { status: 401 });
+
+  const record: ConsentRecord = await request.json();
+
+  await prisma.consentRecord.create({
+    data: {
+      userId: session.user.id,
+      preferences: record.preferences,
+      version: record.version,
+      timestamp: record.timestamp,
+      ipAddress: record.ipAddress,
+      userAgent: record.userAgent,
+    },
+  });
+
+  return new Response('Consent recorded', { status: 200 });
+}
+```
+
+### 2. Data Export
+
+```typescript
+// app/api/gdpr/export/route.ts
+import { exportUserData } from '@/compliance/gdpr';
+
+export async function POST(request: Request) {
+  const session = await auth();
+  if (!session) return new Response('Unauthorized', { status: 401 });
+
+  const { format } = await request.json();
+  const data = await exportUserData(session.user.id, format);
+
+  return new Response(data, {
+    headers: {
+      'Content-Type': format === 'json' ? 'application/json' : 'text/csv',
+      'Content-Disposition': `attachment; filename="data-export.${format}"`,
+    },
+  });
+}
+```
+
+### 3. Account Deletion
+
+```typescript
+// app/api/gdpr/delete/route.ts
+import { deleteUserAccount, cancelDeletion } from '@/compliance/gdpr';
+
+export async function POST(request: Request) {
+  const session = await auth();
+  if (!session) return new Response('Unauthorized', { status: 401 });
+
+  const result = await deleteUserAccount(session.user.id);
+  return Response.json(result);
+}
+
+export async function DELETE(request: Request) {
+  const session = await auth();
+  if (!session) return new Response('Unauthorized', { status: 401 });
+
+  const result = await cancelDeletion(session.user.id);
+  return Response.json(result);
+}
+```
+
+## Privacy Settings UI
+
+Add a privacy settings page:
+
+```tsx
+// app/(dashboard)/settings/privacy/page.tsx
+'use client';
+
+import { useState } from 'react';
+import { exportUserData, deleteUserAccount } from '@/compliance/gdpr';
+
+export default function PrivacySettingsPage() {
+  const [exportFormat, setExportFormat] = useState<'json' | 'csv'>('json');
+
+  const handleExport = async () => {
+    const data = await exportUserData(session.user.id, exportFormat);
+    // Trigger download
+    const blob = new Blob([data], {
+      type: exportFormat === 'json' ? 'application/json' : 'text/csv'
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `data-export.${exportFormat}`;
+    a.click();
+  };
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure? This will delete your account in 30 days.')) return;
+    const result = await deleteUserAccount(session.user.id);
+    alert(result.message);
+  };
+
+  return (
+    <div className="space-y-6">
+      <section>
+        <h2>Export Your Data</h2>
+        <p>Download a copy of all your personal data.</p>
+        <select value={exportFormat} onChange={(e) => setExportFormat(e.target.value)}>
+          <option value="json">JSON</option>
+          <option value="csv">CSV</option>
+        </select>
+        <button onClick={handleExport}>Export Data</button>
+      </section>
+
+      <section>
+        <h2>Delete Your Account</h2>
+        <p>Permanently delete your account and all associated data.</p>
+        <button onClick={handleDelete} className="bg-red-600">
+          Delete Account
+        </button>
+      </section>
+    </div>
+  );
+}
+```
+
+## Compliance Checklist
+
+- [ ] Add consent banner to root layout
+- [ ] Create API routes for consent, export, and deletion
+- [ ] Add privacy settings page to user dashboard
+- [ ] Set up scheduled job for account cleanup
+- [ ] Configure database tables and run migrations
+- [ ] Customize privacy policy with company details
+- [ ] Test data export in both JSON and CSV formats
+- [ ] Test account deletion and grace period
+- [ ] Verify audit trail logging
+- [ ] Review third-party service DPAs
+- [ ] Train support team on GDPR rights requests
+- [ ] Document data retention policies
+- [ ] Appoint Data Protection Officer (if required)
+
+## GDPR Articles Implemented
+
+- ✅ **Article 6**: Lawfulness of processing (consent, contract, legitimate interest)
+- ✅ **Article 7**: Conditions for consent
+- ✅ **Article 13**: Information to be provided where personal data are collected
+- ✅ **Article 15**: Right of access by the data subject
+- ✅ **Article 16**: Right to rectification
+- ✅ **Article 17**: Right to erasure ("right to be forgotten")
+- ✅ **Article 18**: Right to restriction of processing
+- ✅ **Article 20**: Right to data portability
+- ✅ **Article 21**: Right to object
+- ✅ **Article 30**: Records of processing activities
+- ✅ **Article 32**: Security of processing
+
+## Resources
+
+- [GDPR Official Text](https://gdpr-info.eu/)
+- [ICO GDPR Guidance](https://ico.org.uk/for-organisations/guide-to-data-protection/guide-to-the-general-data-protection-regulation-gdpr/)
+- [NOYB Data Protection NGO](https://noyb.eu/)
+- [GDPR Enforcement Tracker](https://www.enforcementtracker.com/)
+
+## Support
+
+For GDPR compliance questions:
+- Email: privacy@{{ project_slug }}.com
+- Documentation: [Your docs URL]
+- DPO Contact: dpo@{{ project_slug }}.com
+{% endif %}

@@ -1,47 +1,89 @@
 _min_copier_version: "9.1.0"
 _template: "."
+_subdirectory: "files"
 _faq: true
 _answers_file: ".copier-answers.yml"
 
-metadata:
+_metadata:
   name: "riso-template"
-  version: "0.1.0"
+  version: "2.0.0"
   description: >
-    Riso is a modular Copier template that defaults to a lightweight Python 3.11
-    stack (uv, pytest, jupyter, ruff, ty, pylint) and offers opt-in Typer CLI,
-    FastAPI/Fastify services, fastmcp integrations, shared logic, and documentation
-    variants powered by Fumadocs (Next.js), Sphinx Shibuya, and Docusaurus.
+    Riso is a component-first, polyglot Copier template supporting Python, TypeScript,
+    Rust, and Go. Each component (CLI, API, MCP, Docs, SaaS) can be independently
+    configured with its own language choice, enabling flexible combinations like
+    Rust CLI + Python API + Fumadocs. Features modular SaaS scaffolding with
+    opt-in auth, billing, and infrastructure layers.
   maintainers:
     - "Riso Template Working Group"
   tags:
+    - polyglot
     - python
+    - typescript
+    - rust
     - typer
     - fastapi
     - fastify
+    - actix
     - uv
     - pnpm
+    - cargo
     - fumadocs
     - sphinx-shibuya
     - docusaurus
+    - saas
 
-defaults:
+_defaults:
   project_name: "riso-example"
   project_slug: "{{ project_name | replace(' ', '-') | lower }}"
   package_name: "{{ project_slug | replace('-', '_') }}"
   project_layout: "single-package"
   quality_profile: "standard"
   python_versions: ["3.11", "3.12", "3.13"]
+
+  # ========================================
+  # Component-First Module Defaults
+  # Each component has its own language selector
+  # ========================================
+
+  # CLI Module
   cli_module: "disabled"
-  api_tracks: "none"
+  cli_languages:
+    - python
+
+  # API Module
+  api_module: "disabled"
+  api_languages:
+    - python
+  api_features: []
+
+  # Go Module Configuration
+  go_framework: "gin"
+  go_version: "1.24"
+
   graphql_api_module: "disabled"
+  websocket_module: "disabled"
+
+  # MCP Module
   mcp_module: "disabled"
-  mcp_language: "python"
+  mcp_languages:
+    - python
   mcp_transport: "stdio"
   mcp_example_tools: true
-  websocket_module: "disabled"
+
+  # Docs Module
+  docs_module: "disabled"
+  docs_framework: "fumadocs"
+
+  # Desktop Module
+  desktop_module: "disabled"
+  desktop_framework: "electron-vite"
+  desktop_features: "auto_updater"
+  desktop_platforms: "mac,windows,linux"
+
+  # Shared Modules
+  shared_logic: "disabled"
   codegen_module: "disabled"
   changelog_module: "disabled"
-  docs_site: "fumadocs"
   # Fumadocs configuration defaults
   fumadocs_search_provider: "orama"
   fumadocs_llms_txt: "enabled"
@@ -100,23 +142,41 @@ defaults:
   docusaurus_emoji: "disabled"
   docusaurus_github_links: "disabled"
   docusaurus_autolink_headings: "enabled"
-  # Other defaults
-  shared_logic: "disabled"
+  # CI/CD defaults
   ci_platform: "github-actions"
-  saas_starter_module: "disabled"
+
+  # ========================================
+  # SaaS Modular Architecture Defaults
+  # Split into: infra, auth, billing, app layers
+  # ========================================
+
+  # SaaS Infrastructure Layer
+  saas_infra_module: "disabled"
   saas_runtime: "nextjs-16"
   saas_hosting: "vercel"
   saas_database: "neon"
   saas_orm: "prisma"
-  saas_auth: "clerk"
+
+  # SaaS Auth Layer (requires infra)
+  saas_auth_module: "disabled"
+  saas_auth_provider: "clerk"
   saas_enterprise_bridge: "none"
-  saas_billing: "stripe"
+
+  # SaaS Billing Layer (requires auth)
+  saas_billing_module: "disabled"
+  saas_billing_provider: "stripe"
+
+  # SaaS App Layer (requires all above)
+  saas_app_module: "disabled"
+
+  # SaaS service providers
   saas_jobs: "triggerdev"
   saas_email: "resend"
   saas_analytics: "posthog"
   saas_ai: "openai"
   saas_storage: "r2"
   saas_cicd: "github-actions"
+
   # AI Tools configuration
   ai_tools_module: "enabled"
   ai_tools_mcp_thinking: true
@@ -131,1351 +191,1853 @@ defaults:
   saas_include_fixtures: true
   saas_include_factories: true
   saas_test_suite_level: "standard"
-
-prompts:
-  project_name:
-    type: str
-    help: "Human friendly project name"
-  project_layout:
-    type: str
-    help: "Choose the repository layout"
-    choices:
-      - single-package
-      - monorepo
-  project_language:
-    type: str
-    help: "Select the primary project language"
-    default: python
-    choices:
-      - python
-      - rust
-      - typescript
-
-  quality_profile:
-    type: str
-    help: "Select baseline quality suite profile"
-    choices:
-      - standard
-      - strict
-  cli_module:
-    type: str
-    help: "Enable the Typer CLI scaffolding?"
-    choices:
-      - disabled
-      - enabled
-    when: "{{ project_language == 'python' }}"
-  api_tracks:
-    type: str
-    help: "Select API tracks to scaffold"
-    choices:
-      - none
-      - python
-      - node
-      - python+node
-    when: "{{ project_language == 'python' }}"
-  graphql_api_module:
-    type: str
-    help: "Enable GraphQL API scaffolding (Strawberry)?"
-    choices:
-      - disabled
-      - enabled
-    when: "{{ api_tracks in ['python', 'python+node'] }}"
-  mcp_module:
-    type: str
-    help: "Enable fastmcp tooling module?"
-    choices:
-      - disabled
-      - enabled
-
-  mcp_language:
-    type: str
-    help: |
-      Select MCP server implementation language:
-      - python: FastMCP v2 with Pydantic
-      - typescript: FastMCP (Node.js) with Zod
-      - rust: Rust SDK (rmcp)
-    choices:
-      - python
-      - typescript
-      - rust
-    default: python
-    when: "{{ mcp_module == 'enabled' }}"
-
-  mcp_transport:
-    type: str
-    help: |
-      Select default transport protocol:
-      - stdio: Standard I/O (default, best for local agents)
-      - sse: Server-Sent Events (for web clients)
-      - http: HTTP streaming
-    choices:
-      - stdio
-      - sse
-      - http
-    default: stdio
-    when: "{{ mcp_module == 'enabled' }}"
-
-  mcp_example_tools:
-    type: bool
-    help: "Include example tools (echo, timestamp, fetch)?"
-    default: true
-    when: "{{ mcp_module == 'enabled' }}"
-
-  websocket_module:
-    type: str
-    help: "Enable WebSocket real-time communication module?"
-    choices:
-      - disabled
-      - enabled
-    when: "{{ api_tracks in ['python', 'python+node'] }}"
-  codegen_module:
-    type: str
-    help: "Enable code generation and scaffolding tools?"
-    when: "{{ project_language == 'python' }}"
-  changelog_module:
-    type: str
-    help: "Enable changelog generation and release management?"
-    choices:
-      - disabled
-      - enabled
-    when: "{{ project_language == 'python' }}"
-  docs_site:
-    type: str
-    help: "Pick documentation variant"
-    choices:
-      - fumadocs
-      - sphinx-shibuya
-      - docusaurus
-      - none
-    when: "{{ project_language == 'python' }}"
-
-  # ========================================
-  # Fumadocs Configuration Options
-  # ========================================
-  fumadocs_search_provider:
-    type: str
-    help: |
-      Select search provider for Fumadocs:
-      - orama: Built-in free search (default, self-hosted)
-      - algolia: Hosted DocSearch, enterprise-grade
-      - orama-cloud: Orama Cloud SDK for scaling
-      - none: No search integration
-    default: orama
-    choices:
-      - orama
-      - algolia
-      - orama-cloud
-      - none
-    when: "{{ docs_site == 'fumadocs' }}"
-
-  fumadocs_llms_txt:
-    type: str
-    help: |
-      Enable llms.txt AI integration?
-      Generates AI-friendly documentation endpoints:
-      - /llms.txt (summary)
-      - /llms-full.txt (complete docs)
-      - /*.mdx (per-page markdown)
-    default: enabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'fumadocs' }}"
-
-  fumadocs_ai_search:
-    type: str
-    help: |
-      Enable AI-powered search dialog?
-      Scaffolds chat interface with Vercel AI SDK.
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'fumadocs' and fumadocs_llms_txt == 'enabled' }}"
-
-  fumadocs_openapi:
-    type: str
-    help: |
-      Enable OpenAPI documentation integration?
-      Auto-generates interactive API reference from specs.
-    default: enabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'fumadocs' and api_tracks in ['python', 'node', 'python+node'] }}"
-
-  fumadocs_typedoc:
-    type: str
-    help: |
-      Enable TypeDoc SDK documentation?
-      Generates TypeScript API docs from source.
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'fumadocs' and api_tracks in ['node', 'python+node'] }}"
-
-  fumadocs_theme:
-    type: str
-    help: |
-      Select theming approach:
-      - default: Fumadocs UI with neutral preset
-      - ocean: Blue-toned ocean preset
-      - purple: Purple accent preset
-      - custom: Custom CSS variables (scaffold only)
-    default: default
-    choices:
-      - default
-      - ocean
-      - purple
-      - custom
-    when: "{{ docs_site == 'fumadocs' }}"
-
-  fumadocs_sidebar:
-    type: str
-    help: |
-      Select sidebar style:
-      - default: Built-in Fumadocs sidebar
-      - shadcn: Shadcn UI sidebar component
-    default: default
-    choices:
-      - default
-      - shadcn
-    when: "{{ docs_site == 'fumadocs' }}"
-
-  fumadocs_i18n:
-    type: str
-    help: |
-      Enable internationalization support?
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'fumadocs' }}"
-
-  fumadocs_blog:
-    type: str
-    help: |
-      Enable blog/changelog section?
-      Uses MDX content collection for posts.
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'fumadocs' }}"
-
-  fumadocs_code_theme:
-    type: str
-    help: |
-      Select syntax highlighting theme for code blocks:
-      - github: GitHub light/dark (default)
-      - catppuccin: Catppuccin latte/mocha
-      - dracula: Dracula theme
-      - nord: Nord theme
-      - one: One light/dark
-    default: github
-    choices:
-      - github
-      - catppuccin
-      - dracula
-      - nord
-      - one
-    when: "{{ docs_site == 'fumadocs' }}"
-
-  fumadocs_twoslash:
-    type: str
-    help: |
-      Enable Twoslash for TypeScript code blocks?
-      Shows inline type hints, errors, and completions.
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'fumadocs' and api_tracks in ['node', 'python+node'] }}"
-
-  fumadocs_image_zoom:
-    type: str
-    help: |
-      Enable medium-style image zoom on click?
-    default: enabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'fumadocs' }}"
-
-  fumadocs_banner:
-    type: str
-    help: |
-      Enable announcement banner at top of docs?
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'fumadocs' }}"
-
-  fumadocs_last_updated:
-    type: str
-    help: |
-      Show "Last updated" timestamp from git history?
-    default: enabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'fumadocs' }}"
-
-  fumadocs_edit_on_github:
-    type: str
-    help: |
-      Show "Edit on GitHub" links on documentation pages?
-    default: enabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'fumadocs' }}"
-
-  fumadocs_feedback:
-    type: str
-    help: |
-      Enable "Was this helpful?" feedback widget on pages?
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'fumadocs' }}"
-
-  fumadocs_toc_depth:
-    type: str
-    help: |
-      Table of contents heading depth (2-6):
-      - 2: H2 headings only
-      - 3: H2-H3 headings (default)
-      - 4: H2-H4 headings
-    default: "3"
-    choices:
-      - "2"
-      - "3"
-      - "4"
-    when: "{{ docs_site == 'fumadocs' }}"
-
-  fumadocs_mermaid:
-    type: str
-    help: |
-      Enable Mermaid diagrams in Markdown?
-      Supports flowcharts, sequence diagrams, ERDs, etc.
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'fumadocs' }}"
-
-  fumadocs_math:
-    type: str
-    help: |
-      Enable KaTeX math equations in Markdown?
-      Supports inline ($) and block ($$) LaTeX.
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'fumadocs' }}"
-
-  # ========================================
-  # Docusaurus Configuration Options
-  # ========================================
-  docusaurus_search_provider:
-    type: str
-    help: |
-      Select search provider for Docusaurus:
-      - local: Offline full-text search (docusaurus-search-local)
-      - algolia: Hosted DocSearch, best UX, requires API key
-      - typesense: Self-hosted, privacy-focused search
-      - none: No search integration
-    default: local
-    choices:
-      - local
-      - algolia
-      - typesense
-      - none
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_analytics:
-    type: str
-    help: |
-      Select analytics for Docusaurus:
-      - none: No analytics
-      - posthog: Product analytics + session replay
-      - google: Google Analytics 4
-      - matomo: Privacy-focused, self-hosted option
-    default: none
-    choices:
-      - none
-      - posthog
-      - google
-      - matomo
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_theme:
-    type: str
-    help: |
-      Select theming approach:
-      - classic: Default Infima CSS framework
-      - tailwind: Tailwind CSS v4 + utility-first styling
-    default: classic
-    choices:
-      - classic
-      - tailwind
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_llms_txt:
-    type: str
-    help: |
-      Enable llms.txt plugin for AI-ready documentation?
-      Generates concatenated docs for LLM consumption and RAG pipelines.
-    default: enabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_i18n:
-    type: str
-    help: |
-      Enable internationalization (i18n) support?
-      Scaffolds locale config and translation workflow.
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_versioning:
-    type: str
-    help: |
-      Enable documentation versioning?
-      Allows maintaining multiple doc versions (v1, v2, etc.)
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_blog:
-    type: str
-    help: |
-      Enable blog functionality?
-      Scaffolds blog directory with example posts and RSS/Atom feeds.
-    default: enabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_faster:
-    type: str
-    help: |
-      Enable Docusaurus Faster optimizations?
-      Uses Rspack bundler, SWC, and LightningCSS for 2-4x faster builds.
-    default: enabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_openapi:
-    type: str
-    help: |
-      Enable OpenAPI documentation integration?
-      Auto-generates API reference from OpenAPI specs.
-    default: enabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' and api_tracks in ['python', 'node', 'python+node'] }}"
-
-  # ----------------------------------------
-  # Docusaurus Content Enhancements
-  # ----------------------------------------
-  docusaurus_mermaid:
-    type: str
-    help: |
-      Enable Mermaid diagram support?
-      Render flowcharts, sequence diagrams, ERDs, Gantt charts directly in markdown.
-    default: enabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_math:
-    type: str
-    help: |
-      Enable KaTeX math equation support?
-      Render LaTeX math with $...$ (inline) and $$...$$ (block) syntax.
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_live_codeblock:
-    type: str
-    help: |
-      Enable live code playground?
-      Interactive React code blocks that users can edit and run in the browser.
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  # ----------------------------------------
-  # Docusaurus Git & Metadata
-  # ----------------------------------------
-  docusaurus_show_last_update:
-    type: str
-    help: |
-      Show last updated time on docs?
-      Displays git-based "Last updated" timestamp and author on each page.
-    default: enabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  # ----------------------------------------
-  # Docusaurus Media & Assets
-  # ----------------------------------------
-  docusaurus_ideal_images:
-    type: str
-    help: |
-      Enable ideal-image plugin?
-      Responsive images with lazy loading and low-quality placeholders.
-    default: enabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_image_zoom:
-    type: str
-    help: |
-      Enable image zoom plugin?
-      Medium-style click-to-zoom for documentation images.
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  # ----------------------------------------
-  # Docusaurus PWA & Offline
-  # ----------------------------------------
-  docusaurus_pwa:
-    type: str
-    help: |
-      Enable Progressive Web App (PWA) support?
-      Offline capability, app installation, and service worker caching.
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  # ----------------------------------------
-  # Docusaurus Community & Engagement
-  # ----------------------------------------
-  docusaurus_comments:
-    type: str
-    help: |
-      Enable comments on documentation pages?
-      - giscus: GitHub Discussions-powered comments (recommended)
-      - none: No comments
-    default: none
-    choices:
-      - giscus
-      - none
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_feedback:
-    type: str
-    help: |
-      Enable "Was this page helpful?" feedback widget?
-      Collects reader feedback on documentation quality.
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  # ----------------------------------------
-  # Docusaurus SEO & Discovery
-  # ----------------------------------------
-  docusaurus_sitemap:
-    type: str
-    help: |
-      Enable sitemap.xml generation?
-      Improves search engine discoverability and crawling.
-    default: enabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_structured_data:
-    type: str
-    help: |
-      Enable JSON-LD structured data for SEO?
-      Adds schema.org Organization, WebSite, and Article markup for rich results.
-    default: enabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_redirects:
-    type: str
-    help: |
-      Enable client-side redirects plugin?
-      Handle URL changes and old page preservation gracefully.
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  # ----------------------------------------
-  # Docusaurus UI Enhancements
-  # ----------------------------------------
-  docusaurus_announcement_bar:
-    type: str
-    help: |
-      Enable announcement bar at top of site?
-      Ideal for new releases, events, or important notices.
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_back_to_top:
-    type: str
-    help: |
-      Enable back-to-top button?
-      Floating button for quick scroll to page top.
-    default: enabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_edit_url:
-    type: str
-    help: |
-      Enable "Edit this page" links?
-      Links to source file on GitHub for community contributions.
-    default: enabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_code_tabs:
-    type: str
-    help: |
-      Enable tabbed code blocks plugin?
-      Group code samples by language with synchronized tab selection.
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_changelog:
-    type: str
-    help: |
-      Enable changelog integration?
-      Include CHANGELOG.md as documentation page.
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_debug:
-    type: str
-    help: |
-      Enable debug plugin in development?
-      Adds /__docusaurus/debug route for inspecting site data.
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_reading_time:
-    type: str
-    help: |
-      Show estimated reading time on docs/blog?
-      Displays "X min read" based on word count.
-    default: enabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  # ----------------------------------------
-  # Docusaurus Remark/Rehype Plugins
-  # ----------------------------------------
-  docusaurus_gfm:
-    type: str
-    help: |
-      Enable GitHub Flavored Markdown (GFM)?
-      Adds tables, strikethrough, task lists, and autolink literals.
-    default: enabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_emoji:
-    type: str
-    help: |
-      Enable emoji shortcode support?
-      Converts :smile: to 😄 and other emoji shortcodes.
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_github_links:
-    type: str
-    help: |
-      Enable GitHub reference autolinking?
-      Autolinks #issues, @mentions, and commit SHAs to GitHub.
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  docusaurus_autolink_headings:
-    type: str
-    help: |
-      Enable autolinked headings?
-      Adds clickable anchor links to all headings.
-    default: enabled
-    choices:
-      - enabled
-      - disabled
-    when: "{{ docs_site == 'docusaurus' }}"
-
-  # ========================================
-  # AI Tools Configuration
-  # ========================================
-  ai_tools_module:
-    type: str
-    help: |
-      Enable AI coding tools configuration?
-      Generates config files for Claude Code, Codex CLI, GitHub Copilot CLI,
-      Cursor CLI, Gemini CLI, Amazon Q CLI, and OpenCode.
-      All tools share AGENTS.md as the single source of truth.
-    default: enabled
-    choices:
-      - enabled
-      - disabled
-
-  ai_tools_mcp_thinking:
-    type: bool
-    help: |
-      Include thinking/reasoning MCP servers?
-      (sequential-thinking, structured-thinking, cascade-thinking, etc.)
-    default: true
-    when: "{{ ai_tools_module == 'enabled' }}"
-
-  ai_tools_mcp_web:
-    type: bool
-    help: |
-      Include web MCP servers?
-      (fetch, fetcher, playwright, deepwiki)
-    default: true
-    when: "{{ ai_tools_module == 'enabled' }}"
-
-  ai_tools_mcp_documents:
-    type: bool
-    help: |
-      Include document processing MCP servers?
-      (docling for PDF/DOCX, repomix for repo context)
-    default: true
-    when: "{{ ai_tools_module == 'enabled' }}"
-
-  ai_tools_mcp_utilities:
-    type: bool
-    help: |
-      Include utility MCP servers?
-      (memory persistence)
-    default: true
-    when: "{{ ai_tools_module == 'enabled' }}"
-
-  ai_tools_mcp_search:
-    type: bool
-    help: |
-      Include search MCP servers (requires API keys)?
-      (brave-search, tavily, context7 - keys via env vars)
-    default: false
-    when: "{{ ai_tools_module == 'enabled' }}"
-
-  shared_logic:
-    type: str
-    help: "Generate shared logic package?"
-    choices:
-      - disabled
-      - enabled
-  include_databases:
-    type: str
-    help: "Include PostgreSQL and Redis services in docker-compose?"
-    choices:
-      - "no"
-      - "yes"
-    when: "{{ api_tracks in ['python', 'node', 'python+node'] }}"
-  ci_platform:
-    type: str
-    help: "Select CI/CD platform"
-    choices:
-      - github-actions
-      - none
-
-  # ========================================
-  # SaaS Starter Module Prompts
-  # ========================================
-  saas_starter_module:
-    type: str
-    help: |
-      Enable SaaS Starter module? Generates production-ready SaaS application with
-      authentication, billing, database, background jobs, email, analytics, AI, storage,
-      observability, and deployment configuration. Choose your technology stack across
-      14 categories with binary choices (2 options per category).
-    default: disabled
-    choices:
-      - enabled
-      - disabled
-
-  saas_runtime:
-    type: str
-    help: |
-      Select runtime framework for your SaaS application:
-      - Next.js 16: React 19.2, App Router, Turbopack, largest ecosystem, Vercel-first
-      - Remix 2.x: Server-first routes, explicit data loading, good for complex forms
-    default: nextjs-16
-    choices:
-      - nextjs-16
-      - remix-2
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_hosting:
-    type: str
-    help: |
-      Select hosting platform:
-      - Vercel: Native Next.js support, edge functions, image optimization, preview deployments
-      - Cloudflare: Global edge network, Pages + Workers, lower egress costs, R2 storage
-    default: vercel
-    choices:
-      - vercel
-      - cloudflare
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_database:
-    type: str
-    help: |
-      Select database provider:
-      - Neon: Serverless Postgres, database branching, autoscale-to-zero, CI/PR databases
-      - Supabase: Postgres + Auth + Storage + Edge Functions, all-in-one BaaS platform
-    default: neon
-    choices:
-      - neon
-      - supabase
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_orm:
-    type: str
-    help: |
-      Select ORM for database access:
-      - Prisma: Best TypeScript ergonomics, schema DSL, Prisma Studio, migration workflow
-      - Drizzle: Lightweight, SQL-like syntax, edge-optimized, schema-as-code in TypeScript
-    default: prisma
-    choices:
-      - prisma
-      - drizzle
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_auth:
-    type: str
-    help: |
-      Select authentication provider:
-      - Clerk: Hosted auth, built-in UI components, organizations, passkeys, fastest setup
-      - Auth.js: Self-hosted, open-source, full control, OAuth providers, lower cost
-    default: clerk
-    choices:
-      - clerk
-      - authjs
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_enterprise_bridge:
-    type: str
-    help: |
-      Add enterprise authentication bridge (SSO, SCIM, Directory Sync)?
-      - WorkOS: Enterprise-ready SSO (Okta, Azure AD, Google Workspace), SCIM provisioning
-      - None: Skip enterprise features for now (pure PLG)
-    default: none
-    choices:
-      - workos
-      - none
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_billing:
-    type: str
-    help: |
-      Select billing provider:
-      - Stripe: Full control, usage metering, widest ecosystem, manual tax handling
-      - Paddle: Merchant of Record (MoR), automatic tax/VAT, simpler compliance, higher fees
-      - LemonSqueezy: MoR alternative, good indie-hacker fit, simpler than Stripe
-    default: stripe
-    choices:
-      - stripe
-      - paddle
-      - lemonsqueezy
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_jobs:
-    type: str
-    help: |
-      Select background job system:
-      - Trigger.dev: Task-centric, AI-optimized, kicked off from your app, built-in retries
-      - Inngest: Event-driven workflows, durable execution, complex orchestration, scheduling
-    default: triggerdev
-    choices:
-      - triggerdev
-      - inngest
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_email:
-    type: str
-    help: |
-      Select email provider:
-      - Resend: React Email templates, Vercel integration, modern DX, component-based
-      - Postmark: Industry-leading deliverability, mature service, template management UI
-    default: resend
-    choices:
-      - resend
-      - postmark
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_analytics:
-    type: str
-    help: |
-      Select analytics platform:
-      - PostHog: Product OS (analytics + feature flags + session replay), open-source option
-      - Amplitude: Enterprise product analytics, sophisticated cohorts, data warehouse integrations
-    default: posthog
-    choices:
-      - posthog
-      - amplitude
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_ai:
-    type: str
-    help: |
-      Select AI provider:
-      - OpenAI: GPT-4o/GPT-5, largest ecosystem, best for chat interfaces, function calling
-      - Anthropic: Claude 4.x, longer context windows (200k+), better for document analysis
-    default: openai
-    choices:
-      - openai
-      - anthropic
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_storage:
-    type: str
-    help: |
-      Select file storage provider:
-      - Cloudflare R2: S3-compatible, zero egress fees, global edge network
-      - Supabase Storage: Integrated with Supabase platform, RLS policies, image transformations
-    default: r2
-    choices:
-      - r2
-      - supabase-storage
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_cicd:
-    type: str
-    help: |
-      Select CI/CD platform:
-      - GitHub Actions: Native GitHub integration, marketplace actions, deploy to Vercel
-      - Cloudflare CI: Integrated with Cloudflare Pages/Workers, fast edge deployments
-    default: github-actions
-    choices:
-      - github-actions
-      - cloudflare-ci
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_observability_sentry:
-    type: bool
-    help: Enable Sentry for error tracking?
-    default: true
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_observability_datadog:
-    type: bool
-    help: Enable Datadog for APM (Application Performance Monitoring)?
-    default: true
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_observability_otel:
-    type: bool
-    help: Enable OpenTelemetry instrumentation for traces and metrics?
-    default: true
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_observability_structured_logging:
-    type: bool
-    help: Enable structured JSON logging with correlation IDs?
-    default: true
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_include_fixtures:
-    type: bool
-    help: |
-      Include seeded database fixtures with example users, organizations, and subscriptions?
-    default: true
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_include_factories:
-    type: bool
-    help: |
-      Include test data factories (Faker.js integration) for generating realistic test data?
-    default: true
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_test_suite_level:
-    type: str
-    help: |
-      Select test suite coverage level:
-      - Standard: Unit tests + integration tests for all services
-      - Comprehensive: Standard + E2E tests for critical user flows (signup, billing, dashboard)
-    default: standard
-    choices:
-      - standard
-      - comprehensive
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  # ============================================================================
-  # Application-Level Scaffolding Options
-  # These options generate actual business logic and UI components
-  # ============================================================================
-
-  saas_tenancy_model:
-    type: str
-    help: |
-      Select tenancy model for your SaaS application:
-      - B2B Teams: Organization-centric with team workspaces, seat-based billing, team invites,
-        shared resources, and organization switching. Best for collaboration tools, project
-        management, and enterprise software.
-      - B2C Users: User-centric with individual accounts, personal subscriptions, no team
-        features. Best for consumer apps, personal productivity tools, and individual SaaS.
-    default: b2b-teams
-    choices:
-      - b2b-teams
-      - b2c-users
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_rbac_system:
-    type: str
-    help: |
-      Select role-based access control (RBAC) system:
-      - Basic Roles: Fixed owner/admin/member roles with hardcoded permissions. Simple,
-        predictable, covers 80% of use cases. No admin UI needed.
-      - Custom Permissions: Dynamic permission system with role management UI, granular
-        access control, and permission inheritance. Best for enterprise or complex access needs.
-    default: basic-roles
-    choices:
-      - basic-roles
-      - custom-permissions
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_onboarding:
-    type: str
-    help: |
-      Include user onboarding flow scaffolding?
-      - Wizard: Multi-step guided setup with progress indicator, data collection, and
-        completion tracking. Great for complex products requiring initial configuration.
-      - Checklist: Dashboard checklist with completion tracking and contextual prompts.
-        Non-blocking, lets users explore while guiding them to key actions.
-      - None: No onboarding scaffolding. Users land directly on the dashboard.
-    default: wizard
-    choices:
-      - wizard
-      - checklist
-      - none
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_admin_dashboard:
-    type: bool
-    help: |
-      Include admin dashboard scaffolding? Generates:
-      - Admin-only routes with role-based authentication
-      - User management (list, search, view details, suspend accounts)
-      - Organization management (for B2B) or subscription overview (for B2C)
-      - User impersonation for debugging customer issues
-      - Basic metrics dashboard (signups, active users, revenue)
-    default: true
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_user_impersonation:
-    type: bool
-    help: |
-      Enable user impersonation for admin users? Allows admins to:
-      - View the app as any user for debugging and support
-      - Audit trail of all impersonation sessions
-      - Clear visual indicator when impersonating
-      Requires saas_admin_dashboard to be enabled.
-    default: true
-    when: "{{ saas_starter_module == 'enabled' and saas_admin_dashboard }}"
-
-  saas_notifications:
-    type: str
-    help: |
-      Select notification system scaffolding:
-      - Both: Real-time in-app notification center + email notifications with preferences.
-        Includes notification bell component, WebSocket/SSE delivery, and email digests.
-      - Email Only: Email notifications only. Simpler architecture, no real-time component.
-      - None: No notification scaffolding. You'll implement notifications manually.
-    default: both
-    choices:
-      - both
-      - email-only
-      - none
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_waitlist:
-    type: bool
-    help: |
-      Include pre-launch waitlist scaffolding? Generates:
-      - Waitlist landing page with email capture
-      - Invite code system with limited-use codes
-      - Referral tracking (who invited whom)
-      - Admin panel for managing waitlist and sending invites
-      Best for validating demand before full launch.
-    default: false
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_i18n:
-    type: bool
-    help: |
-      Include internationalization (i18n) scaffolding? Generates:
-      - next-intl (Next.js) or remix-i18next (Remix) configuration
-      - Default English locale with placeholder translations
-      - Language switcher component in navigation
-      - Date, number, and currency formatting utilities
-      - Translation key extraction setup
-    default: false
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_api_access:
-    type: str
-    help: |
-      Select API access model for your SaaS:
-      - Public API: Full API key management with user-facing UI, rate limiting dashboard,
-        usage tracking, and auto-generated API documentation. Best for developer platforms.
-      - Internal Only: API routes exist but for internal use only. No API key management UI.
-        Users interact via web interface only.
-    default: internal-only
-    choices:
-      - public-api
-      - internal-only
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  # ============================================================================
-  # UI & Frontend Options
-  # ============================================================================
-
-  saas_ui_framework:
-    type: str
-    help: |
-      Select UI component framework:
-      - shadcn-ui: Copy-paste components built on Radix, full customization, Tailwind-native.
-        Best for: Custom designs, full control over styling.
-      - Radix Primitives: Unstyled accessible primitives, bring your own styles.
-        Best for: Design systems, maximum flexibility.
-      - Headless UI: Tailwind Labs components, simpler API, good defaults.
-        Best for: Quick prototypes, Tailwind-first teams.
-    default: shadcn-ui
-    choices:
-      - shadcn-ui
-      - radix-primitives
-      - headless-ui
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_form_library:
-    type: str
-    help: |
-      Select form handling library:
-      - React Hook Form: Performance-focused, minimal re-renders, Zod integration.
-      - Conform: Remix-native, progressive enhancement, server validation.
-      - None: Manual form handling with native React.
-    default: react-hook-form
-    choices:
-      - react-hook-form
-      - conform
-      - none
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  # ============================================================================
-  # Real-time & Communication
-  # ============================================================================
-
-  saas_realtime:
-    type: str
-    help: |
-      Select real-time communication provider:
-      - Socket.io: Self-hosted, full control, works with any backend.
-      - Pusher: Industry standard, channels/presence, easy setup, generous free tier.
-      - Ably: Enterprise-grade, message history, global edge network.
-      - Supabase Realtime: Integrated with Supabase, Postgres changes, presence.
-      - None: No real-time features (polling or SSE only).
-    default: none
-    choices:
-      - socketio
-      - pusher
-      - ably
-      - supabase-realtime
-      - none
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  # ============================================================================
-  # Marketing & Growth
-  # ============================================================================
-
-  saas_landing_page:
-    type: bool
-    help: |
-      Include marketing landing page scaffolding? Generates:
-      - Hero section with CTA
-      - Features grid
-      - Pricing table (connected to billing plans)
-      - Testimonials section
-      - FAQ accordion
-      - Footer with links
-    default: true
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_blog:
-    type: bool
-    help: |
-      Include MDX blog scaffolding? Generates:
-      - Blog listing page
-      - Individual post pages with MDX support
-      - Author profiles
-      - Categories/tags
-      - RSS feed
-      - SEO metadata
-    default: false
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_changelog_public:
-    type: bool
-    help: |
-      Include public changelog page? Generates:
-      - Changelog listing from MDX files
-      - Version badges (new, improved, fixed)
-      - Subscribe to updates
-      - RSS feed for changelog
-    default: false
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  # ============================================================================
-  # Security & Compliance
-  # ============================================================================
-
-  saas_2fa:
-    type: bool
-    help: |
-      Include two-factor authentication (2FA) scaffolding? Generates:
-      - TOTP setup flow (Google Authenticator, Authy compatible)
-      - Backup codes generation and storage
-      - 2FA enforcement settings per organization
-      - Recovery flow
-      Note: Clerk has built-in 2FA. This adds custom 2FA for Auth.js.
-    default: false
-    when: "{{ saas_starter_module == 'enabled' and saas_auth == 'authjs' }}"
-
-  saas_gdpr_tools:
-    type: bool
-    help: |
-      Include GDPR compliance tools? Generates:
-      - Data export endpoint (download all user data as JSON/ZIP)
-      - Account deletion flow with grace period
-      - Cookie consent banner
-      - Privacy preference center
-      - Data processing records
-    default: false
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  # ============================================================================
-  # Developer Experience
-  # ============================================================================
-
-  saas_api_docs:
-    type: bool
-    help: |
-      Include API documentation generation? Generates:
-      - OpenAPI 3.1 schema from route handlers
-      - Swagger UI at /api/docs
-      - TypeScript client generation script
-      - API versioning support
-    default: false
-    when: "{{ saas_starter_module == 'enabled' and saas_api_access == 'public-api' }}"
-
-  saas_rate_limiting:
-    type: str
-    help: |
-      Select rate limiting implementation:
-      - Upstash: Redis-based, serverless, sliding window, great for edge.
-      - Built-in: In-memory rate limiting (resets on deploy, single-instance only).
-      - None: No rate limiting (handle at infrastructure level).
-    default: upstash
-    choices:
-      - upstash
-      - built-in
-      - none
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-  saas_file_upload:
-    type: str
-    help: |
-      Select file upload widget:
-      - UploadThing: Type-safe uploads, built for Next.js, S3-compatible backend.
-      - React Dropzone: Flexible, bring your own backend, more control.
-      - None: Manual file input handling.
-    default: uploadthing
-    choices:
-      - uploadthing
-      - react-dropzone
-      - none
-    when: "{{ saas_starter_module == 'enabled' }}"
-
-exclude:
+  include_admin: false
+  saas_search_provider: "none"
+  saas_multi_tenancy_level: "teams"
+  saas_compliance_level: "basic"
+  saas_ai_features: "none"
+  vector_db_provider: "none"
+  embedding_provider: "openai"
+
+# ========================================
+# Project Basics
+# ========================================
+project_name:
+  type: str
+  help: "Human friendly project name"
+  default: riso-example
+
+project_layout:
+  type: str
+  help: "Choose the repository layout"
+  default: single-package
+  choices:
+    - single-package
+    - monorepo
+
+quality_profile:
+  type: str
+  help: "Select baseline quality suite profile"
+  default: standard
+  choices:
+    - standard
+    - strict
+
+python_versions:
+  type: json
+  help: "Python versions to test in CI matrix"
+  default: '["3.11", "3.12", "3.13"]'
+  when: "{{ ci_platform == 'github-actions' }}"
+
+# ========================================
+# CLI Module (Component-First)
+# ========================================
+cli_module:
+  type: str
+  help: "Enable CLI application scaffolding?"
+  default: disabled
+  choices:
+    - disabled
+    - enabled
+
+cli_languages:
+  type: str
+  multiselect: true
+  help: |
+    Select CLI implementation language(s) - multiselect supported for monorepo:
+    - python: Typer with Rich console output
+    - rust: Clap with colored output
+    - typescript: Commander.js with Chalk
+    - go: Cobra v1.10 with slog logging
+  choices:
+    - python
+    - rust
+    - typescript
+    - go
+  default:
+    - python
+  when: "{{ cli_module == 'enabled' }}"
+
+# ========================================
+# API Module (Component-First)
+# ========================================
+api_module:
+  type: str
+  help: "Enable REST/HTTP API scaffolding?"
+  default: disabled
+  choices:
+    - disabled
+    - enabled
+
+api_languages:
+  type: str
+  multiselect: true
+  help: |
+    Select API implementation language(s) - multiselect supported for monorepo:
+    - python: FastAPI with Pydantic v2
+    - node: Fastify with TypeScript
+    - rust: Actix-web with Serde
+    - go: Go with selectable framework (Gin, Fiber, Echo, Chi)
+  choices:
+    - python
+    - node
+    - rust
+    - go
+  default:
+    - python
+  when: "{{ api_module == 'enabled' }}"
+
+
+go_framework:
+  type: str
+  help: |
+    Select Go HTTP framework:
+    - gin: Gin v1.11 - Most popular, great performance, rich middleware
+    - fiber: Fiber v2.52 - Express-inspired, fastest, low memory
+    - echo: Echo v4.13 - Minimalist, great docs, built-in middleware
+    - chi: Chi v5.2 - Lightweight, stdlib-compatible, idiomatic
+  choices:
+    - gin
+    - fiber
+    - echo
+    - chi
+  default: gin
+  when: "{{ api_module == 'enabled' and 'go' in api_languages }}"
+
+go_version:
+  type: str
+  help: |
+    Select Go version (1.24 stable, 1.26 releasing Feb 2026)
+  choices:
+    - "1.24"
+    - "1.23"
+  default: "1.24"
+  when: "{{ 'go' in cli_languages or 'go' in api_languages }}"
+
+api_features:
+  type: str
+  help: |
+    Select additional API features (comma-separated):
+    - graphql: GraphQL endpoint (Strawberry/Apollo/async-graphql)
+    - websocket: WebSocket real-time communication
+    - openapi: OpenAPI documentation generation
+  choices:
+    - none
+    - graphql
+    - websocket
+    - graphql,websocket
+  default: none
+  when: "{{ api_module == 'enabled' }}"
+
+
+# ========================================
+# MCP Module (Component-First)
+# ========================================
+mcp_module:
+  type: str
+  help: "Enable MCP (Model Context Protocol) server scaffolding?"
+  default: disabled
+  choices:
+    - disabled
+    - enabled
+
+mcp_languages:
+  type: str
+  multiselect: true
+  help: |
+    Select MCP server implementation language(s) - multiselect supported for monorepo:
+    - python: FastMCP v2 with Pydantic
+    - typescript: FastMCP (Node.js) with Zod
+    - rust: Rust SDK (rmcp)
+    - go: Official MCP Go SDK with slog logging
+  choices:
+    - python
+    - typescript
+    - rust
+    - go
+  default:
+    - python
+  when: "{{ mcp_module == 'enabled' }}"
+
+mcp_transport:
+  type: str
+  help: |
+    Select default transport protocol:
+    - stdio: Standard I/O (default, best for local agents)
+    - sse: Server-Sent Events (for web clients)
+    - http: HTTP streaming
+  choices:
+    - stdio
+    - sse
+    - http
+  default: stdio
+  when: "{{ mcp_module == 'enabled' }}"
+
+mcp_example_tools:
+  type: bool
+  help: "Include example tools (echo, timestamp, fetch)?"
+  default: true
+  when: "{{ mcp_module == 'enabled' }}"
+
+# ========================================
+# Desktop Module (Component-First)
+# ========================================
+desktop_module:
+  type: str
+  help: "Enable native desktop application scaffolding?"
+  default: disabled
+  choices:
+    - disabled
+    - enabled
+
+desktop_framework:
+  type: str
+  help: |
+    Select desktop framework:
+    - electron-vite: Electron 34.x with electron-vite for optimal dev experience
+    - electron-forge: Electron Forge for alternative build setup
+    - tauri: Rust-based lightweight alternative to Electron
+  choices:
+    - electron-vite
+    - electron-forge
+    - tauri
+  default: electron-vite
+  when: "{{ desktop_module == 'enabled' }}"
+
+desktop_features:
+  type: str
+  help: |
+    Select desktop features (comma-separated):
+    - auto_updater: Auto-update via GitHub Releases
+    - tray_icon: System tray icon support
+    - custom_titlebar: Frameless window with custom title bar
+  choices:
+    - none
+    - auto_updater
+    - tray_icon
+    - custom_titlebar
+    - auto_updater,tray_icon
+    - auto_updater,custom_titlebar
+    - tray_icon,custom_titlebar
+    - auto_updater,tray_icon,custom_titlebar
+  default: auto_updater
+  when: "{{ desktop_module == 'enabled' }}"
+
+desktop_platforms:
+  type: str
+  help: |
+    Select target platforms (comma-separated):
+    - mac: macOS (x64 and ARM64)
+    - windows: Windows (x64 and ARM64)
+    - linux: Linux (AppImage, deb, rpm)
+  choices:
+    - mac
+    - windows
+    - linux
+    - mac,windows
+    - mac,linux
+    - windows,linux
+    - mac,windows,linux
+  default: mac,windows,linux
+  when: "{{ desktop_module == 'enabled' }}"
+
+# ========================================
+# Docs Module (Component-First)
+# ========================================
+docs_module:
+  type: str
+  help: "Enable documentation site scaffolding?"
+  default: disabled
+  choices:
+    - disabled
+    - enabled
+
+docs_framework:
+  type: str
+  help: |
+    Select documentation framework:
+    - fumadocs: Next.js-based, modern UI, MDX
+    - sphinx-shibuya: Python Sphinx with Shibuya theme
+    - docusaurus: React-based, versioning, blog
+    - mkdocs: Python-based, Material theme
+  choices:
+    - fumadocs
+    - sphinx-shibuya
+    - docusaurus
+    - mkdocs
+  default: fumadocs
+  when: "{{ docs_module == 'enabled' }}"
+
+# ========================================
+# Shared Modules
+# ========================================
+shared_logic:
+  type: str
+  help: "Generate shared logic package for cross-module code?"
+  default: disabled
+  choices:
+    - disabled
+    - enabled
+
+codegen_module:
+  type: str
+  help: "Enable code generation and scaffolding tools?"
+  default: disabled
+  choices:
+    - disabled
+    - enabled
+
+changelog_module:
+  type: str
+  help: "Enable changelog generation and release management?"
+  default: disabled
+  choices:
+    - disabled
+    - enabled
+
+# ========================================
+# Fumadocs Configuration Options
+# ========================================
+fumadocs_search_provider:
+  type: str
+  help: |
+    Select search provider for Fumadocs:
+    - orama: Built-in free search (default, self-hosted)
+    - algolia: Hosted DocSearch, enterprise-grade
+    - orama-cloud: Orama Cloud SDK for scaling
+    - none: No search integration
+  default: orama
+  choices:
+    - orama
+    - algolia
+    - orama-cloud
+    - none
+  when: "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+
+fumadocs_llms_txt:
+  type: str
+  help: |
+    Enable llms.txt AI integration?
+    Generates AI-friendly documentation endpoints:
+    - /llms.txt (summary)
+    - /llms-full.txt (complete docs)
+    - /*.mdx (per-page markdown)
+  default: enabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+
+fumadocs_ai_search:
+  type: str
+  help: |
+    Enable AI-powered search dialog?
+    Scaffolds chat interface with Vercel AI SDK.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' and fumadocs_llms_txt == 'enabled' }}"
+
+fumadocs_openapi:
+  type: str
+  help: |
+    Enable OpenAPI documentation integration?
+    Auto-generates interactive API reference from specs.
+  default: enabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' and api_module == 'enabled' }}"
+
+fumadocs_typedoc:
+  type: str
+  help: |
+    Enable TypeDoc SDK documentation?
+    Generates TypeScript API docs from source.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' and api_module == 'enabled' and 'node' in api_languages }}"
+
+fumadocs_theme:
+  type: str
+  help: |
+    Select theming approach:
+    - default: Fumadocs UI with neutral preset
+    - ocean: Blue-toned ocean preset
+    - purple: Purple accent preset
+    - custom: Custom CSS variables (scaffold only)
+  default: default
+  choices:
+    - default
+    - ocean
+    - purple
+    - custom
+  when: "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+
+fumadocs_sidebar:
+  type: str
+  help: |
+    Select sidebar style:
+    - default: Built-in Fumadocs sidebar
+    - shadcn: Shadcn UI sidebar component
+  default: default
+  choices:
+    - default
+    - shadcn
+  when: "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+
+fumadocs_i18n:
+  type: str
+  help: |
+    Enable internationalization support?
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+
+fumadocs_blog:
+  type: str
+  help: |
+    Enable blog/changelog section?
+    Uses MDX content collection for posts.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+
+fumadocs_code_theme:
+  type: str
+  help: |
+    Select syntax highlighting theme for code blocks:
+    - github: GitHub light/dark (default)
+    - catppuccin: Catppuccin latte/mocha
+    - dracula: Dracula theme
+    - nord: Nord theme
+    - one: One light/dark
+  default: github
+  choices:
+    - github
+    - catppuccin
+    - dracula
+    - nord
+    - one
+  when: "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+
+fumadocs_twoslash:
+  type: str
+  help: |
+    Enable Twoslash for TypeScript code blocks?
+    Shows inline type hints, errors, and completions.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' and api_module == 'enabled' and 'node' in api_languages }}"
+
+fumadocs_image_zoom:
+  type: str
+  help: |
+    Enable medium-style image zoom on click?
+  default: enabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+
+fumadocs_banner:
+  type: str
+  help: |
+    Enable announcement banner at top of docs?
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+
+fumadocs_last_updated:
+  type: str
+  help: |
+    Show "Last updated" timestamp from git history?
+  default: enabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+
+fumadocs_edit_on_github:
+  type: str
+  help: |
+    Show "Edit on GitHub" links on documentation pages?
+  default: enabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+
+fumadocs_feedback:
+  type: str
+  help: |
+    Enable "Was this helpful?" feedback widget on pages?
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+
+fumadocs_toc_depth:
+  type: str
+  help: |
+    Table of contents heading depth (2-6):
+    - 2: H2 headings only
+    - 3: H2-H3 headings (default)
+    - 4: H2-H4 headings
+  default: "3"
+  choices:
+    - "2"
+    - "3"
+    - "4"
+  when: "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+
+fumadocs_mermaid:
+  type: str
+  help: |
+    Enable Mermaid diagrams in Markdown?
+    Supports flowcharts, sequence diagrams, ERDs, etc.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+
+fumadocs_math:
+  type: str
+  help: |
+    Enable KaTeX math equations in Markdown?
+    Supports inline ($) and block ($$) LaTeX.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+
+# ========================================
+# Docusaurus Configuration Options
+# ========================================
+docusaurus_search_provider:
+  type: str
+  help: |
+    Select search provider for Docusaurus:
+    - local: Offline full-text search (docusaurus-search-local)
+    - algolia: Hosted DocSearch, best UX, requires API key
+    - typesense: Self-hosted, privacy-focused search
+    - none: No search integration
+  default: local
+  choices:
+    - local
+    - algolia
+    - typesense
+    - none
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_analytics:
+  type: str
+  help: |
+    Select analytics for Docusaurus:
+    - none: No analytics
+    - posthog: Product analytics + session replay
+    - google: Google Analytics 4
+    - matomo: Privacy-focused, self-hosted option
+  default: none
+  choices:
+    - none
+    - posthog
+    - google
+    - matomo
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_theme:
+  type: str
+  help: |
+    Select theming approach:
+    - classic: Default Infima CSS framework
+    - tailwind: Tailwind CSS v4 + utility-first styling
+  default: classic
+  choices:
+    - classic
+    - tailwind
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_llms_txt:
+  type: str
+  help: |
+    Enable llms.txt plugin for AI-ready documentation?
+    Generates concatenated docs for LLM consumption and RAG pipelines.
+  default: enabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_i18n:
+  type: str
+  help: |
+    Enable internationalization (i18n) support?
+    Scaffolds locale config and translation workflow.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_versioning:
+  type: str
+  help: |
+    Enable documentation versioning?
+    Allows maintaining multiple doc versions (v1, v2, etc.)
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_blog:
+  type: str
+  help: |
+    Enable blog functionality?
+    Scaffolds blog directory with example posts and RSS/Atom feeds.
+  default: enabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_faster:
+  type: str
+  help: |
+    Enable Docusaurus Faster optimizations?
+    Uses Rspack bundler, SWC, and LightningCSS for 2-4x faster builds.
+  default: enabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_openapi:
+  type: str
+  help: |
+    Enable OpenAPI documentation integration?
+    Auto-generates API reference from OpenAPI specs.
+  default: enabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' and api_module == 'enabled' }}"
+
+# ----------------------------------------
+# Docusaurus Content Enhancements
+# ----------------------------------------
+docusaurus_mermaid:
+  type: str
+  help: |
+    Enable Mermaid diagram support?
+    Render flowcharts, sequence diagrams, ERDs, Gantt charts directly in markdown.
+  default: enabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_math:
+  type: str
+  help: |
+    Enable KaTeX math equation support?
+    Render LaTeX math with $...$ (inline) and $$...$$ (block) syntax.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_live_codeblock:
+  type: str
+  help: |
+    Enable live code playground?
+    Interactive React code blocks that users can edit and run in the browser.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+# ----------------------------------------
+# Docusaurus Git & Metadata
+# ----------------------------------------
+docusaurus_show_last_update:
+  type: str
+  help: |
+    Show last updated time on docs?
+    Displays git-based "Last updated" timestamp and author on each page.
+  default: enabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+# ----------------------------------------
+# Docusaurus Media & Assets
+# ----------------------------------------
+docusaurus_ideal_images:
+  type: str
+  help: |
+    Enable ideal-image plugin?
+    Responsive images with lazy loading and low-quality placeholders.
+  default: enabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_image_zoom:
+  type: str
+  help: |
+    Enable image zoom plugin?
+    Medium-style click-to-zoom for documentation images.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+# ----------------------------------------
+# Docusaurus PWA & Offline
+# ----------------------------------------
+docusaurus_pwa:
+  type: str
+  help: |
+    Enable Progressive Web App (PWA) support?
+    Offline capability, app installation, and service worker caching.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+# ----------------------------------------
+# Docusaurus Community & Engagement
+# ----------------------------------------
+docusaurus_comments:
+  type: str
+  help: |
+    Enable comments on documentation pages?
+    - giscus: GitHub Discussions-powered comments (recommended)
+    - none: No comments
+  default: none
+  choices:
+    - giscus
+    - none
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_feedback:
+  type: str
+  help: |
+    Enable "Was this page helpful?" feedback widget?
+    Collects reader feedback on documentation quality.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+# ----------------------------------------
+# Docusaurus SEO & Discovery
+# ----------------------------------------
+docusaurus_sitemap:
+  type: str
+  help: |
+    Enable sitemap.xml generation?
+    Improves search engine discoverability and crawling.
+  default: enabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_structured_data:
+  type: str
+  help: |
+    Enable JSON-LD structured data for SEO?
+    Adds schema.org Organization, WebSite, and Article markup for rich results.
+  default: enabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_redirects:
+  type: str
+  help: |
+    Enable client-side redirects plugin?
+    Handle URL changes and old page preservation gracefully.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+# ----------------------------------------
+# Docusaurus UI Enhancements
+# ----------------------------------------
+docusaurus_announcement_bar:
+  type: str
+  help: |
+    Enable announcement bar at top of site?
+    Ideal for new releases, events, or important notices.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_back_to_top:
+  type: str
+  help: |
+    Enable back-to-top button?
+    Floating button for quick scroll to page top.
+  default: enabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_edit_url:
+  type: str
+  help: |
+    Enable "Edit this page" links?
+    Links to source file on GitHub for community contributions.
+  default: enabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_code_tabs:
+  type: str
+  help: |
+    Enable tabbed code blocks plugin?
+    Group code samples by language with synchronized tab selection.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_changelog:
+  type: str
+  help: |
+    Enable changelog integration?
+    Include CHANGELOG.md as documentation page.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_debug:
+  type: str
+  help: |
+    Enable debug plugin in development?
+    Adds /__docusaurus/debug route for inspecting site data.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_reading_time:
+  type: str
+  help: |
+    Show estimated reading time on docs/blog?
+    Displays "X min read" based on word count.
+  default: enabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+# ----------------------------------------
+# Docusaurus Remark/Rehype Plugins
+# ----------------------------------------
+docusaurus_gfm:
+  type: str
+  help: |
+    Enable GitHub Flavored Markdown (GFM)?
+    Adds tables, strikethrough, task lists, and autolink literals.
+  default: enabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_emoji:
+  type: str
+  help: |
+    Enable emoji shortcode support?
+    Converts :smile: to 😄 and other emoji shortcodes.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_github_links:
+  type: str
+  help: |
+    Enable GitHub reference autolinking?
+    Autolinks #issues, @mentions, and commit SHAs to GitHub.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+docusaurus_autolink_headings:
+  type: str
+  help: |
+    Enable autolinked headings?
+    Adds clickable anchor links to all headings.
+  default: enabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+
+# ========================================
+# AI Tools Configuration
+# ========================================
+ai_tools_module:
+  type: str
+  help: |
+    Enable AI coding tools configuration?
+    Generates config files for Claude Code, Codex CLI, GitHub Copilot CLI,
+    Cursor CLI, Gemini CLI, Amazon Q CLI, and OpenCode.
+    All tools share AGENTS.md as the single source of truth.
+  default: enabled
+  choices:
+    - enabled
+    - disabled
+
+ai_tools_mcp_thinking:
+  type: bool
+  help: |
+    Include thinking/reasoning MCP servers?
+    (sequential-thinking, structured-thinking, cascade-thinking, etc.)
+  default: true
+  when: "{{ ai_tools_module == 'enabled' }}"
+
+ai_tools_mcp_web:
+  type: bool
+  help: |
+    Include web MCP servers?
+    (fetch, fetcher, playwright, deepwiki)
+  default: true
+  when: "{{ ai_tools_module == 'enabled' }}"
+
+ai_tools_mcp_documents:
+  type: bool
+  help: |
+    Include document processing MCP servers?
+    (docling for PDF/DOCX, repomix for repo context)
+  default: true
+  when: "{{ ai_tools_module == 'enabled' }}"
+
+ai_tools_mcp_utilities:
+  type: bool
+  help: |
+    Include utility MCP servers?
+    (memory persistence)
+  default: true
+  when: "{{ ai_tools_module == 'enabled' }}"
+
+ai_tools_mcp_search:
+  type: bool
+  help: |
+    Include search MCP servers (requires API keys)?
+    (brave-search, tavily, context7 - keys via env vars)
+  default: false
+  when: "{{ ai_tools_module == 'enabled' }}"
+
+shared_logic:
+  type: str
+  help: "Generate shared logic package?"
+  default: disabled
+  choices:
+    - disabled
+    - enabled
+include_databases:
+  type: str
+  help: "Include PostgreSQL and Redis services in docker-compose?"
+  choices:
+    - "no"
+    - "yes"
+  default: "no"
+  when: "{{ api_module == 'enabled' }}"
+ci_platform:
+  type: str
+  help: |
+    Select CI/CD platform:
+    - github-actions: GitHub Actions with matrix builds, caching, artifacts
+    - gitlab-ci: GitLab CI with parallel.matrix, Docker-in-Docker, GitLab Pages
+    - circleci: CircleCI 2.1 with orbs, workspaces, parallelism
+    - none: Skip CI configuration
+  default: github-actions
+  choices:
+    - github-actions
+    - gitlab-ci
+    - circleci
+    - none
+
+# ========================================
+# SaaS Modular Architecture
+# Split into independent layers that can be enabled separately
+# ========================================
+
+# ----------------------------------------
+# SaaS Infrastructure Layer
+# Core infrastructure: runtime, hosting, database, ORM
+# ----------------------------------------
+saas_infra_module:
+  type: str
+  help: |
+    Enable SaaS Infrastructure layer?
+    Sets up: Next.js/Remix runtime, Vercel/Cloudflare hosting, database, ORM.
+    This is the foundation layer - required before enabling auth or billing.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+
+saas_runtime:
+  type: str
+  help: |
+    Select runtime framework:
+    - Next.js 16: React 19.2, App Router, Turbopack, largest ecosystem
+    - Remix 2.x: Server-first routes, explicit data loading, forms
+  default: nextjs-16
+  choices:
+    - nextjs-16
+    - remix-2
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_hosting:
+  type: str
+  help: |
+    Select hosting platform:
+    - Vercel: Native Next.js support, edge functions, preview deployments
+    - Cloudflare: Global edge network, Pages + Workers, lower egress
+  default: vercel
+  choices:
+    - vercel
+    - cloudflare
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_database:
+  type: str
+  help: |
+    Select database provider:
+    - Neon: Serverless Postgres, branching, autoscale-to-zero
+    - Supabase: Postgres + Auth + Storage + Edge Functions
+  default: neon
+  choices:
+    - neon
+    - supabase
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_orm:
+  type: str
+  help: |
+    Select ORM for database access:
+    - Prisma: Best TypeScript ergonomics, schema DSL, Prisma Studio
+    - Drizzle: Lightweight, SQL-like syntax, edge-optimized
+  default: prisma
+  choices:
+    - prisma
+    - drizzle
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+# ----------------------------------------
+# SaaS Auth Layer (requires infra)
+# Authentication and authorization
+# ----------------------------------------
+saas_auth_module:
+  type: str
+  help: |
+    Enable SaaS Authentication layer?
+    Requires saas_infra_module. Sets up user auth, sessions, and roles.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_auth_provider:
+  type: str
+  help: |
+    Select authentication provider:
+    - Clerk: Hosted auth, built-in UI, organizations, passkeys
+    - Auth.js: Self-hosted, open-source, full control
+    - Lucia: Type-safe sessions, any database, full control
+  default: clerk
+  choices:
+    - clerk
+    - authjs
+    - lucia
+  when: "{{ saas_auth_module == 'enabled' }}"
+
+saas_enterprise_bridge:
+  type: str
+  help: |
+    Add enterprise authentication bridge (SSO, SCIM)?
+    - WorkOS: Enterprise SSO (Okta, Azure AD), SCIM provisioning
+    - None: Skip enterprise features for now
+  default: none
+  choices:
+    - workos
+    - none
+  when: "{{ saas_auth_module == 'enabled' }}"
+
+# ----------------------------------------
+# SaaS Billing Layer (requires auth)
+# Subscriptions and payments
+# ----------------------------------------
+saas_billing_module:
+  type: str
+  help: |
+    Enable SaaS Billing layer?
+    Requires saas_auth_module. Sets up subscriptions, payments, invoices.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ saas_auth_module == 'enabled' }}"
+
+saas_billing_provider:
+  type: str
+  help: |
+    Select billing provider:
+    - Stripe: Full control, usage metering, widest ecosystem
+    - Paddle: Merchant of Record, automatic tax/VAT
+    - LemonSqueezy: MoR alternative, indie-hacker friendly
+  default: stripe
+  choices:
+    - stripe
+    - paddle
+    - lemonsqueezy
+  when: "{{ saas_billing_module == 'enabled' }}"
+
+# ----------------------------------------
+# SaaS App Layer (requires all above)
+# Application features: jobs, email, analytics, AI
+# ----------------------------------------
+saas_app_module:
+  type: str
+  help: |
+    Enable SaaS Application features?
+    Requires saas_billing_module. Adds background jobs, email, analytics, AI.
+  default: disabled
+  choices:
+    - enabled
+    - disabled
+  when: "{{ saas_billing_module == 'enabled' }}"
+
+saas_jobs:
+  type: str
+  help: |
+    Select background job system:
+    - Trigger.dev: Task-centric, AI-optimized, built-in retries
+    - Inngest: Event-driven workflows, durable execution
+  default: triggerdev
+  choices:
+    - triggerdev
+    - inngest
+  when: "{{ saas_app_module == 'enabled' }}"
+
+saas_email:
+  type: str
+  help: |
+    Select email provider:
+    - Resend: React Email templates, Vercel integration
+    - Postmark: Industry-leading deliverability
+  default: resend
+  choices:
+    - resend
+    - postmark
+  when: "{{ saas_app_module == 'enabled' }}"
+
+saas_analytics:
+  type: str
+  help: |
+    Select analytics platform:
+    - PostHog: Product OS (analytics + flags + replay)
+    - Amplitude: Enterprise analytics, cohorts
+  default: posthog
+  choices:
+    - posthog
+    - amplitude
+  when: "{{ saas_app_module == 'enabled' }}"
+
+saas_ai:
+  type: str
+  help: |
+    Select AI provider:
+    - OpenAI: GPT-4o/GPT-5, function calling
+    - Anthropic: Claude 4.x, longer context windows
+  default: openai
+  choices:
+    - openai
+    - anthropic
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_storage:
+  type: str
+  help: |
+    Select file storage provider:
+    - Cloudflare R2: S3-compatible, zero egress fees, global edge network
+    - Supabase Storage: Integrated with Supabase platform, RLS policies, image transformations
+  default: r2
+  choices:
+    - r2
+    - supabase-storage
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_cicd:
+  type: str
+  help: |
+    Select CI/CD platform:
+    - GitHub Actions: Native GitHub integration, marketplace actions, deploy to Vercel
+    - Cloudflare CI: Integrated with Cloudflare Pages/Workers, fast edge deployments
+  default: github-actions
+  choices:
+    - github-actions
+    - cloudflare-ci
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_observability_sentry:
+  type: bool
+  help: Enable Sentry for error tracking?
+  default: true
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_observability_datadog:
+  type: bool
+  help: Enable Datadog for APM (Application Performance Monitoring)?
+  default: true
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_observability_otel:
+  type: bool
+  help: Enable OpenTelemetry instrumentation for traces and metrics?
+  default: true
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_observability_structured_logging:
+  type: bool
+  help: Enable structured JSON logging with correlation IDs?
+  default: true
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_include_fixtures:
+  type: bool
+  help: |
+    Include seeded database fixtures with example users, organizations, and subscriptions?
+  default: true
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_include_factories:
+  type: bool
+  help: |
+    Include test data factories (Faker.js integration) for generating realistic test data?
+  default: true
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_test_suite_level:
+  type: str
+  help: |
+    Select test suite coverage level:
+    - Standard: Unit tests + integration tests for all services
+    - Comprehensive: Standard + E2E tests for critical user flows (signup, billing, dashboard)
+  default: standard
+  choices:
+    - standard
+    - comprehensive
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+# ============================================================================
+# Application-Level Scaffolding Options
+# These options generate actual business logic and UI components
+# ============================================================================
+
+saas_multi_tenancy_level:
+  type: str
+  help: "Multi-tenancy support level (enterprise adds tenant isolation, SAML scaffolding)"
+  default: teams
+  choices:
+    - none
+    - teams
+    - enterprise
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_tenancy_model:
+  type: str
+  help: |
+    Select tenancy model for your SaaS application:
+    - B2B Teams: Organization-centric with team workspaces, seat-based billing, team invites,
+      shared resources, and organization switching. Best for collaboration tools, project
+      management, and enterprise software.
+    - B2C Users: User-centric with individual accounts, personal subscriptions, no team
+      features. Best for consumer apps, personal productivity tools, and individual SaaS.
+  default: b2b-teams
+  choices:
+    - b2b-teams
+    - b2c-users
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_rbac_system:
+  type: str
+  help: |
+    Select role-based access control (RBAC) system:
+    - Basic Roles: Fixed owner/admin/member roles with hardcoded permissions. Simple,
+      predictable, covers 80% of use cases. No admin UI needed.
+    - Custom Permissions: Dynamic permission system with role management UI, granular
+      access control, and permission inheritance. Best for enterprise or complex access needs.
+  default: basic-roles
+  choices:
+    - basic-roles
+    - custom-permissions
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_onboarding:
+  type: str
+  help: |
+    Include user onboarding flow scaffolding?
+    - Wizard: Multi-step guided setup with progress indicator, data collection, and
+      completion tracking. Great for complex products requiring initial configuration.
+    - Checklist: Dashboard checklist with completion tracking and contextual prompts.
+      Non-blocking, lets users explore while guiding them to key actions.
+    - None: No onboarding scaffolding. Users land directly on the dashboard.
+  default: wizard
+  choices:
+    - wizard
+    - checklist
+    - none
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+include_admin:
+  type: bool
+  help: "Include admin dashboard scaffolding (user management, subscriptions, audit logs)"
+  default: false
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_admin_dashboard:
+  type: bool
+  help: |
+    Include admin dashboard scaffolding? Generates:
+    - Admin-only routes with role-based authentication
+    - User management (list, search, view details, suspend accounts)
+    - Organization management (for B2B) or subscription overview (for B2C)
+    - User impersonation for debugging customer issues
+    - Basic metrics dashboard (signups, active users, revenue)
+  default: true
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_user_impersonation:
+  type: bool
+  help: |
+    Enable user impersonation for admin users? Allows admins to:
+    - View the app as any user for debugging and support
+    - Audit trail of all impersonation sessions
+    - Clear visual indicator when impersonating
+    Requires saas_admin_dashboard to be enabled.
+  default: true
+  when: "{{ saas_app_module == 'enabled' and saas_admin_dashboard }}"
+
+saas_notifications:
+  type: str
+  help: |
+    Select notification system scaffolding:
+    - Both: Real-time in-app notification center + email notifications with preferences.
+      Includes notification bell component, WebSocket/SSE delivery, and email digests.
+    - Email Only: Email notifications only. Simpler architecture, no real-time component.
+    - None: No notification scaffolding. You'll implement notifications manually.
+  default: both
+  choices:
+    - both
+    - email-only
+    - none
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_waitlist:
+  type: bool
+  help: |
+    Include pre-launch waitlist scaffolding? Generates:
+    - Waitlist landing page with email capture
+    - Invite code system with limited-use codes
+    - Referral tracking (who invited whom)
+    - Admin panel for managing waitlist and sending invites
+    Best for validating demand before full launch.
+  default: false
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_search_provider:
+  type: str
+  help: "Search provider for content indexing"
+  default: none
+  choices:
+    - none
+    - meilisearch
+    - algolia
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_i18n:
+  type: bool
+  help: |
+    Enable internationalization support with next-intl.
+    Include internationalization (i18n) scaffolding? Generates:
+    - next-intl (Next.js) or remix-i18next (Remix) configuration
+    - Default English locale with placeholder translations
+    - Language switcher component in navigation
+    - Date, number, and currency formatting utilities
+    - Translation key extraction setup
+  default: false
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_api_access:
+  type: str
+  help: |
+    Select API access model for your SaaS:
+    - Public API: Full API key management with user-facing UI, rate limiting dashboard,
+      usage tracking, and auto-generated API documentation. Best for developer platforms.
+    - Internal Only: API routes exist but for internal use only. No API key management UI.
+      Users interact via web interface only.
+  default: internal-only
+  choices:
+    - public-api
+    - internal-only
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+# ============================================================================
+# UI & Frontend Options
+# ============================================================================
+
+saas_ui_framework:
+  type: str
+  help: |
+    Select UI component framework:
+    - shadcn-ui: Copy-paste components built on Radix, full customization, Tailwind-native.
+      Best for: Custom designs, full control over styling.
+    - Radix Primitives: Unstyled accessible primitives, bring your own styles.
+      Best for: Design systems, maximum flexibility.
+    - Headless UI: Tailwind Labs components, simpler API, good defaults.
+      Best for: Quick prototypes, Tailwind-first teams.
+  default: shadcn-ui
+  choices:
+    - shadcn-ui
+    - radix-primitives
+    - headless-ui
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_form_library:
+  type: str
+  help: |
+    Select form handling library:
+    - React Hook Form: Performance-focused, minimal re-renders, Zod integration.
+    - Conform: Remix-native, progressive enhancement, server validation.
+    - None: Manual form handling with native React.
+  default: react-hook-form
+  choices:
+    - react-hook-form
+    - conform
+    - none
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+# ============================================================================
+# Real-time & Communication
+# ============================================================================
+
+saas_realtime:
+  type: str
+  help: |
+    Select real-time communication provider:
+    - Socket.io: Self-hosted, full control, works with any backend.
+    - Pusher: Industry standard, channels/presence, easy setup, generous free tier.
+    - Ably: Enterprise-grade, message history, global edge network.
+    - Supabase Realtime: Integrated with Supabase, Postgres changes, presence.
+    - None: No real-time features (polling or SSE only).
+  default: none
+  choices:
+    - socketio
+    - pusher
+    - ably
+    - supabase-realtime
+    - none
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+# ============================================================================
+# Marketing & Growth
+# ============================================================================
+
+saas_landing_page:
+  type: bool
+  help: |
+    Include marketing landing page scaffolding? Generates:
+    - Hero section with CTA
+    - Features grid
+    - Pricing table (connected to billing plans)
+    - Testimonials section
+    - FAQ accordion
+    - Footer with links
+  default: true
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_blog:
+  type: bool
+  help: |
+    Include MDX blog scaffolding? Generates:
+    - Blog listing page
+    - Individual post pages with MDX support
+    - Author profiles
+    - Categories/tags
+    - RSS feed
+    - SEO metadata
+  default: false
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_changelog_public:
+  type: bool
+  help: |
+    Include public changelog page? Generates:
+    - Changelog listing from MDX files
+    - Version badges (new, improved, fixed)
+    - Subscribe to updates
+    - RSS feed for changelog
+  default: false
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+# ============================================================================
+# Security & Compliance
+# ============================================================================
+
+saas_2fa:
+  type: bool
+  help: |
+    Include two-factor authentication (2FA) scaffolding? Generates:
+    - TOTP setup flow (Google Authenticator, Authy compatible)
+    - Backup codes generation and storage
+    - 2FA enforcement settings per organization
+    - Recovery flow
+    Note: Clerk has built-in 2FA. This adds custom 2FA for Auth.js.
+  default: false
+  when: "{{ saas_auth_module == 'enabled' and saas_auth_provider == 'authjs' }}"
+
+saas_compliance_level:
+  type: str
+  help: "Compliance requirements level"
+  default: basic
+  choices:
+    - basic
+    - gdpr
+    - hipaa
+    - soc2
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_gdpr_tools:
+  type: bool
+  help: |
+    Include GDPR compliance tools? Generates:
+    - Data export endpoint (download all user data as JSON/ZIP)
+    - Account deletion flow with grace period
+    - Cookie consent banner
+    - Privacy preference center
+    - Data processing records
+  default: false
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+# ============================================================================
+# Developer Experience
+# ============================================================================
+
+saas_ai_features:
+  type: str
+  help: "AI integration level (full includes RAG with pgvector)"
+  default: none
+  choices:
+    - none
+    - basic
+    - rag
+    - full
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+vector_db_provider:
+  type: str
+  help: |
+    Vector database for AI/RAG features:
+    - none: No vector database (for non-RAG AI features)
+    - pinecone: Managed vector database with high performance
+    - qdrant: Open-source vector database, self-hostable
+    - weaviate: GraphQL-based vector database with rich semantics
+  default: none
+  choices:
+    - none
+    - pinecone
+    - qdrant
+    - weaviate
+  when: "{{ saas_ai_features in ['rag', 'full'] }}"
+
+embedding_provider:
+  type: str
+  help: |
+    Embedding provider for vector database:
+    - openai: OpenAI text-embedding-ada-002 or text-embedding-3
+    - cohere: Cohere embed-english-v3.0 or embed-multilingual-v3.0
+  default: openai
+  choices:
+    - openai
+    - cohere
+  when: "{{ vector_db_provider != 'none' }}"
+
+saas_api_docs:
+  type: bool
+  help: |
+    Include API documentation generation? Generates:
+    - OpenAPI 3.1 schema from route handlers
+    - Swagger UI at /api/docs
+    - TypeScript client generation script
+    - API versioning support
+  default: false
+  when: "{{ saas_app_module == 'enabled' and saas_api_access == 'public-api' }}"
+
+saas_rate_limiting:
+  type: str
+  help: |
+    Select rate limiting implementation:
+    - Upstash: Redis-based, serverless, sliding window, great for edge.
+    - Built-in: In-memory rate limiting (resets on deploy, single-instance only).
+    - None: No rate limiting (handle at infrastructure level).
+  default: upstash
+  choices:
+    - upstash
+    - built-in
+    - none
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+saas_file_upload:
+  type: str
+  help: |
+    Select file upload widget:
+    - UploadThing: Type-safe uploads, built for Next.js, S3-compatible backend.
+    - React Dropzone: Flexible, bring your own backend, more control.
+    - None: Manual file input handling.
+  default: uploadthing
+  choices:
+    - uploadthing
+    - react-dropzone
+    - none
+  when: "{{ saas_infra_module == 'enabled' }}"
+
+_exclude:
+  # Static excludes - never copy these (template-level files, not project files)
   - ".git"
-  - ".github"
   - "README.md"
   - "specs/"
   - "config/"
   - "samples/"
-  - "scripts/"
-  - "{% if project_language != 'python' %}python/{% endif %}"
-  - "{% if project_language != 'rust' %}rust/{% endif %}"
-  - "{% if project_language != 'python' %}pyproject.toml{% endif %}"
-  - "{% if project_language != 'rust' %}Cargo.toml{% endif %}"
+  - "prompts/"
+  - "hooks/"
+  - "COMPARISON_PAGE.md"
+  - ".DS_Store"
+  # Note: .github/ and scripts/ are now at template/files/ root and SHOULD be
+  # copied to generated projects (they contain workflows and setup scripts)
 
-tasks:
-  post_init:
-    - "scripts/hooks/post-init.sh {{ _copier_conf.answers_file }}"
+  # ========================================
+  # CI/CD Platform Exclusions
+  # ========================================
+
+  # GitHub Actions - exclude if not using github-actions
+  - "{% if ci_platform != 'github-actions' %}.github/workflows/{% endif %}"
+
+  # GitLab CI - exclude if not using gitlab-ci
+  - "{% if ci_platform != 'gitlab-ci' %}.gitlab/{% endif %}"
+
+  # CircleCI - exclude if not using circleci
+  - "{% if ci_platform != 'circleci' %}.circleci/{% endif %}"
+
+  # ========================================
+  # Component-Based Language Directory Exclusions
+  # ========================================
+
+  # Python directory - include if ANY Python component enabled
+  # api_languages is now a list supporting multiselect
+  - "{% if not ((cli_module == 'enabled' and 'python' in cli_languages) or (api_module == 'enabled' and 'python' in api_languages) or (mcp_module == 'enabled' and 'python' in mcp_languages) or (docs_module == 'enabled' and docs_framework == 'sphinx-shibuya')) %}python/{% endif %}"
+
+  # Rust directory - include if ANY Rust component enabled
+  - "{% if not ((cli_module == 'enabled' and 'rust' in cli_languages) or (api_module == 'enabled' and 'rust' in api_languages) or (mcp_module == 'enabled' and 'rust' in mcp_languages)) %}rust/{% endif %}"
+
+  # Node directory - include if ANY Node/TypeScript component enabled
+  - "{% if not ((api_module == 'enabled' and 'node' in api_languages) or (mcp_module == 'enabled' and 'typescript' in mcp_languages) or (docs_module == 'enabled' and docs_framework in ['fumadocs', 'docusaurus']) or saas_infra_module == 'enabled') %}node/{% endif %}"
+
+  # Go directory - include if ANY Go component enabled
+  # Go 1.24+ with Cobra CLI, Gin/Fiber/Echo/Chi API, koanf config, slog logging
+  - "{% if not ((cli_module == 'enabled' and 'go' in cli_languages) or (api_module == 'enabled' and 'go' in api_languages) or (mcp_module == 'enabled' and 'go' in mcp_languages)) %}go/{% endif %}"
+
+  # Frontend directory - include only if SaaS enabled
+  - "{% if saas_infra_module != 'enabled' %}frontend/{% endif %}"
+
+  # Electron directory - include only if desktop module enabled
+  - "{% if desktop_module != 'enabled' %}electron/{% endif %}"
+
+  # Tauri directory - include only for Tauri desktop projects
+  - "{% if not (desktop_module == 'enabled' and desktop_framework == 'tauri') %}tauri/{% endif %}"
+
+  # Shared build configs - include only when a JS-facing surface is enabled
+  - "{% if not (saas_infra_module == 'enabled' or desktop_module == 'enabled' or (docs_module == 'enabled' and docs_framework in ['fumadocs', 'docusaurus'])) %}build/{% endif %}"
+
+  # E2E testing scaffold - include only when a generated runtime needs it
+  - "{% if not (api_module == 'enabled' or saas_app_module == 'enabled' or desktop_module == 'enabled' or docs_module == 'enabled') %}testing/{% endif %}"
+
+  # ========================================
+  # Desktop Framework Exclusions
+  # ========================================
+
+  # Exclude specific desktop framework implementations
+  - "{% if not (desktop_module == 'enabled' and desktop_framework == 'electron-vite') %}electron/electron-vite/{% endif %}"
+  - "{% if not (desktop_module == 'enabled' and desktop_framework == 'electron-forge') %}electron/electron-forge/{% endif %}"
+  - "{% if not (desktop_module == 'enabled' and desktop_framework == 'tauri') %}electron/tauri/{% endif %}"
+
+  # ========================================
+  # Documentation Framework Exclusions
+  # ========================================
+
+  # Fumadocs - exclude if not using fumadocs
+  - "{% if not (docs_module == 'enabled' and docs_framework == 'fumadocs') %}node/docs/fumadocs/{% endif %}"
+
+  # Docusaurus - exclude if not using docusaurus
+  - "{% if not (docs_module == 'enabled' and docs_framework == 'docusaurus') %}node/docs/docusaurus/{% endif %}"
+
+  # Sphinx - exclude if not using sphinx-shibuya
+  - "{% if not (docs_module == 'enabled' and docs_framework == 'sphinx-shibuya') %}python/docs/{% endif %}"
+
+  # MkDocs - exclude if not using mkdocs (placeholder for future mkdocs templates)
+  - "{% if not (docs_module == 'enabled' and docs_framework == 'mkdocs') %}python/mkdocs/{% endif %}"
+
+  # ========================================
+  # Component-Specific Subdirectory Exclusions
+  # ========================================
+
+  # Python MCP - exclude if not using Python MCP
+  - "{% if not (mcp_module == 'enabled' and 'python' in mcp_languages) %}python/mcp/{% endif %}"
+
+  # Rust MCP - exclude if not using Rust MCP
+  - "{% if not (mcp_module == 'enabled' and 'rust' in mcp_languages) %}rust/mcp/{% endif %}"
+
+  # TypeScript MCP - exclude if not using TypeScript MCP
+  - "{% if not (mcp_module == 'enabled' and 'typescript' in mcp_languages) %}node/mcp/{% endif %}"
+
+  # Go MCP - exclude if not using Go MCP
+  - "{% if not (mcp_module == 'enabled' and 'go' in mcp_languages) %}go/mcp/{% endif %}"
+
+  # Go CLI - exclude if not using Go CLI
+  - "{% if not (cli_module == 'enabled' and 'go' in cli_languages) %}go/cli/{% endif %}"
+
+  # Go API - exclude if not using Go API
+  - "{% if not (api_module == 'enabled' and 'go' in api_languages) %}go/api/{% endif %}"
+
+  # Python GraphQL - exclude if not using GraphQL with Python API
+  - "{% if not (api_module == 'enabled' and 'python' in api_languages and 'graphql' in api_features) %}python/graphql_api/{% endif %}"
+  - "{% if not (api_module == 'enabled' and 'python' in api_languages and 'graphql' in api_features) %}graphql/{% endif %}"
+  - "{% if not (api_module == 'enabled' and 'python' in api_languages and 'graphql' in api_features) %}tests/graphql/{% endif %}"
+
+  # Node API - exclude if not using Node API
+  - "{% if not (api_module == 'enabled' and 'node' in api_languages) %}node/apps/api-node/{% endif %}"
+
+  # SaaS - exclude if SaaS infra not enabled
+  - "{% if saas_infra_module != 'enabled' %}node/saas/{% endif %}"
+  - "{% if saas_infra_module != 'enabled' %}saas-starter/{% endif %}"
+
+  # Optional shared module roots - exclude unless their component is enabled
+  - "{% if mcp_module != 'enabled' %}mcp/{% endif %}"
+  - "{% if shared_logic != 'enabled' %}logic/{% endif %}"
+  - "{% if not (api_module == 'enabled' or shared_logic == 'enabled') %}tests/integration/test_inter_service.py{% endif %}"
+
+  # Root Node package/workspace files - exclude when no Node-backed surface renders
+  - "{% if not ((api_module == 'enabled' and 'node' in api_languages) or (mcp_module == 'enabled' and 'typescript' in mcp_languages) or (docs_module == 'enabled' and docs_framework in ['fumadocs', 'docusaurus']) or saas_infra_module == 'enabled' or desktop_module == 'enabled' or changelog_module == 'enabled') %}package.json{% endif %}"
+  - "{% if not ((api_module == 'enabled' and 'node' in api_languages) or (mcp_module == 'enabled' and 'typescript' in mcp_languages) or (docs_module == 'enabled' and docs_framework in ['fumadocs', 'docusaurus']) or saas_infra_module == 'enabled' or desktop_module == 'enabled' or changelog_module == 'enabled') %}pnpm-workspace.yaml{% endif %}"
+  - "{% if not ((api_module == 'enabled' and 'node' in api_languages) or (mcp_module == 'enabled' and 'typescript' in mcp_languages) or (docs_module == 'enabled' and docs_framework in ['fumadocs', 'docusaurus']) or saas_infra_module == 'enabled' or desktop_module == 'enabled' or changelog_module == 'enabled') %}node/pnpm-workspace.yaml{% endif %}"
+
+  # Release files - exclude unless changelog/release automation is enabled
+  - "{% if changelog_module != 'enabled' %}.commitlintrc.yml{% endif %}"
+  - "{% if changelog_module != 'enabled' %}.releaserc.yml{% endif %}"
+  - "{% if changelog_module != 'enabled' %}.github/workflows/riso-release.yml{% endif %}"
+  - "{% if changelog_module != 'enabled' %}scripts/release/{% endif %}"
+  - "{% if changelog_module != 'enabled' %}python/release/{% endif %}"
+  - "{% if changelog_module != 'enabled' %}node/release/{% endif %}"
+
+  # Module documentation - exclude docs for disabled modules
+  - "{% if cli_module != 'enabled' %}docs/modules/cli.md{% endif %}"
+  - "{% if api_module != 'enabled' %}docs/modules/api-fastapi.md{% endif %}"
+  - "{% if api_module != 'enabled' %}docs/modules/api-node.md{% endif %}"
+  - "{% if api_module != 'enabled' %}docs/modules/api-python.md{% endif %}"
+  - "{% if not (api_module == 'enabled' and 'graphql' in api_features) %}docs/modules/graphql.md{% endif %}"
+  - "{% if not (api_module == 'enabled' and 'websocket' in api_features) %}docs/modules/websockets.md{% endif %}"
+  - "{% if mcp_module != 'enabled' %}docs/modules/mcp.md{% endif %}"
+  - "{% if shared_logic != 'enabled' %}docs/modules/shared-logic.md{% endif %}"
+  - "{% if codegen_module != 'enabled' %}docs/modules/codegen-scaffolding.md{% endif %}"
+  - "{% if changelog_module != 'enabled' %}docs/modules/changelog-release.md{% endif %}"
+  - "{% if docs_module != 'enabled' %}docs/modules/docs-site.md{% endif %}"
+  - "{% if saas_infra_module != 'enabled' %}docs/modules/saas-starter.md{% endif %}"
+
+  # ========================================
+  # SaaS Feature Exclusions
+  # ========================================
+
+  # RAG integration - exclude if not using RAG features
+  - "{% if not (saas_ai_features in ['rag', 'full'] and vector_db_provider != 'none') %}node/saas/integrations/ai/rag/{% endif %}"
+
+  # Search integration - exclude if search provider is none
+  - "{% if saas_search_provider == 'none' %}node/saas/integrations/search/{% endif %}"
+  - "{% if saas_search_provider == 'none' %}node/saas/components/search/{% endif %}"
+
+  # ========================================
+  # Root Config File Exclusions
+  # ========================================
+
+  # pyproject.toml - include if any Python component enabled
+  - "{% if not ((cli_module == 'enabled' and 'python' in cli_languages) or (api_module == 'enabled' and 'python' in api_languages) or (mcp_module == 'enabled' and 'python' in mcp_languages)) %}pyproject.toml{% endif %}"
+
+  # Cargo.toml - include if any Rust component enabled
+  - "{% if not ((cli_module == 'enabled' and 'rust' in cli_languages) or (api_module == 'enabled' and 'rust' in api_languages) or (mcp_module == 'enabled' and 'rust' in mcp_languages)) %}rust/Cargo.toml{% endif %}"
+
+_tasks:
+  - command:
+      - "{{ _copier_python }}"
+      - "-c"
+      - |
+        import pathlib
+        import runpy
+
+        src_path = pathlib.Path({{ _copier_conf.src_path | to_json }})
+        candidates = (
+            src_path / "hooks" / "post_gen_project.py",
+            src_path / "template" / "hooks" / "post_gen_project.py",
+            src_path.parent / "hooks" / "post_gen_project.py",
+        )
+        for candidate in candidates:
+            if candidate.exists():
+                runpy.run_path(str(candidate), run_name="__main__")
+                break
+        else:
+            raise SystemExit("Riso post-generation hook not found")
+    when: "{{ _copier_operation == 'copy' }}"

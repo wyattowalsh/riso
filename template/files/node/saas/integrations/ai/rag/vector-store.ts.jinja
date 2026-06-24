@@ -1,0 +1,550 @@
+{% if saas_infra_module == "enabled" and saas_ai_features == 'full' %}
+/**
+ * Vector Store with pgvector
+ *
+ * PostgreSQL vector database integration:
+ * - Store and index embeddings with pgvector
+ * - Similarity search (cosine, L2, inner product)
+ * - Metadata filtering
+ * - HNSW indexing for fast retrieval
+ * - Hybrid search (vector + keyword)
+ *
+ * @see https://github.com/pgvector/pgvector
+ */
+
+{% if saas_orm == "prisma" %}
+import { prisma } from '@/integrations/orm/prisma/client';
+{% elif saas_orm == "drizzle" %}
+import { db } from '@/integrations/orm/drizzle/client';
+import { sql } from 'drizzle-orm';
+{% endif %}
+
+import type {
+  VectorDocument,
+  VectorSearchQuery,
+  VectorSearchResult,
+  VectorFilter,
+  VectorStoreError,
+} from './types';
+
+// ============================================================================
+// Database Schema Setup
+// ============================================================================
+
+/**
+ * Required PostgreSQL setup:
+ *
+ * ```sql
+ * -- Enable pgvector extension
+ * CREATE EXTENSION IF NOT EXISTS vector;
+ *
+ * -- Create vector documents table
+ * CREATE TABLE vector_documents (
+ *   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+ *   document_id TEXT NOT NULL,
+ *   chunk_id TEXT NOT NULL,
+ *   content TEXT NOT NULL,
+ *   embedding vector(1536), -- Adjust dimensions as needed
+ *   metadata JSONB DEFAULT '{}',
+ *   user_id TEXT,
+ *   organization_id TEXT,
+ *   created_at TIMESTAMP DEFAULT NOW(),
+ *
+ *   -- Indexes for performance
+ *   CONSTRAINT unique_chunk UNIQUE (document_id, chunk_id)
+ * );
+ *
+ * -- Create HNSW index for fast similarity search
+ * CREATE INDEX ON vector_documents
+ * USING hnsw (embedding vector_cosine_ops)
+ * WITH (m = 16, ef_construction = 64);
+ *
+ * -- Metadata indexes
+ * CREATE INDEX idx_vector_docs_user ON vector_documents(user_id);
+ * CREATE INDEX idx_vector_docs_org ON vector_documents(organization_id);
+ * CREATE INDEX idx_vector_docs_metadata ON vector_documents USING gin(metadata);
+ * ```
+ */
+
+// ============================================================================
+// Store Operations
+// ============================================================================
+
+/**
+ * Store a vector document
+ *
+ * @example
+ * ```ts
+ * await storeVector({
+ *   documentId: 'doc-123',
+ *   chunkId: 'chunk-0',
+ *   content: 'Document content...',
+ *   embedding: [0.1, 0.2, ...],
+ *   metadata: { source: 'upload', title: 'My Doc' },
+ * });
+ * ```
+ */
+export async function storeVector(params: {
+  documentId: string;
+  chunkId: string;
+  content: string;
+  embedding: number[];
+  metadata?: Record<string, any>;
+  userId?: string;
+  organizationId?: string;
+}): Promise<VectorDocument> {
+  try {
+    {% if saas_orm == "prisma" %}
+    const result = await prisma.$executeRaw`
+      INSERT INTO vector_documents (
+        document_id, chunk_id, content, embedding, metadata, user_id, organization_id
+      )
+      VALUES (
+        ${params.documentId},
+        ${params.chunkId},
+        ${params.content},
+        ${params.embedding}::vector,
+        ${JSON.stringify(params.metadata || {})}::jsonb,
+        ${params.userId || null},
+        ${params.organizationId || null}
+      )
+      ON CONFLICT (document_id, chunk_id)
+      DO UPDATE SET
+        content = EXCLUDED.content,
+        embedding = EXCLUDED.embedding,
+        metadata = EXCLUDED.metadata
+      RETURNING *
+    `;
+    {% elif saas_orm == "drizzle" %}
+    const result = await db.execute(sql`
+      INSERT INTO vector_documents (
+        document_id, chunk_id, content, embedding, metadata, user_id, organization_id
+      )
+      VALUES (
+        ${params.documentId},
+        ${params.chunkId},
+        ${params.content},
+        ${params.embedding}::vector,
+        ${JSON.stringify(params.metadata || {})}::jsonb,
+        ${params.userId || null},
+        ${params.organizationId || null}
+      )
+      ON CONFLICT (document_id, chunk_id)
+      DO UPDATE SET
+        content = EXCLUDED.content,
+        embedding = EXCLUDED.embedding,
+        metadata = EXCLUDED.metadata
+      RETURNING *
+    `);
+    {% endif %}
+
+    return {
+      id: result.id,
+      documentId: params.documentId,
+      chunkId: params.chunkId,
+      content: params.content,
+      embedding: params.embedding,
+      metadata: params.metadata || {},
+      createdAt: new Date(),
+    };
+  } catch (error) {
+    throw new VectorStoreError(
+      `Failed to store vector: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error, documentId: params.documentId, chunkId: params.chunkId }
+    );
+  }
+}
+
+/**
+ * Store multiple vectors in batch
+ */
+export async function storeVectorsBatch(
+  vectors: Array<{
+    documentId: string;
+    chunkId: string;
+    content: string;
+    embedding: number[];
+    metadata?: Record<string, any>;
+    userId?: string;
+    organizationId?: string;
+  }>
+): Promise<number> {
+  try {
+    const values = vectors.map((v) => ({
+      documentId: v.documentId,
+      chunkId: v.chunkId,
+      content: v.content,
+      embedding: v.embedding,
+      metadata: v.metadata || {},
+      userId: v.userId,
+      organizationId: v.organizationId,
+    }));
+
+    {% if saas_orm == "prisma" %}
+    const result = await prisma.$executeRaw`
+      INSERT INTO vector_documents (
+        document_id, chunk_id, content, embedding, metadata, user_id, organization_id
+      )
+      SELECT * FROM json_populate_recordset(NULL::vector_documents, ${JSON.stringify(values)}::json)
+      ON CONFLICT (document_id, chunk_id) DO NOTHING
+    `;
+    {% elif saas_orm == "drizzle" %}
+    const result = await db.execute(sql`
+      INSERT INTO vector_documents (
+        document_id, chunk_id, content, embedding, metadata, user_id, organization_id
+      )
+      SELECT * FROM json_populate_recordset(NULL::vector_documents, ${JSON.stringify(values)}::json)
+      ON CONFLICT (document_id, chunk_id) DO NOTHING
+    `);
+    {% endif %}
+
+    return result.count || vectors.length;
+  } catch (error) {
+    throw new VectorStoreError(
+      `Failed to store vectors batch: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error, count: vectors.length }
+    );
+  }
+}
+
+// ============================================================================
+// Search Operations
+// ============================================================================
+
+/**
+ * Search for similar vectors
+ *
+ * @example
+ * ```ts
+ * const results = await searchVectors({
+ *   embedding: queryEmbedding,
+ *   limit: 10,
+ *   threshold: 0.7,
+ *   filter: { userId: 'user-123' },
+ * });
+ * ```
+ */
+export async function searchVectors(
+  query: VectorSearchQuery
+): Promise<VectorSearchResult[]> {
+  try {
+    const limit = query.limit || 10;
+    const threshold = query.threshold || 0.0;
+    const filter = query.filter || {};
+
+    // Build WHERE clause for metadata filtering
+    const whereConditions: string[] = [];
+    const params: any[] = [query.embedding, limit];
+
+    if (filter.userId) {
+      whereConditions.push(`user_id = $${params.length + 1}`);
+      params.push(filter.userId);
+    }
+
+    if (filter.organizationId) {
+      whereConditions.push(`organization_id = $${params.length + 1}`);
+      params.push(filter.organizationId);
+    }
+
+    if (filter.tags && filter.tags.length > 0) {
+      whereConditions.push(`metadata @> $${params.length + 1}::jsonb`);
+      params.push(JSON.stringify({ tags: filter.tags }));
+    }
+
+    if (filter.dateRange?.start) {
+      whereConditions.push(`created_at >= $${params.length + 1}`);
+      params.push(filter.dateRange.start);
+    }
+
+    if (filter.dateRange?.end) {
+      whereConditions.push(`created_at <= $${params.length + 1}`);
+      params.push(filter.dateRange.end);
+    }
+
+    const whereClause =
+      whereConditions.length > 0
+        ? `WHERE ${whereConditions.join(' AND ')}`
+        : '';
+
+    {% if saas_orm == "prisma" %}
+    const results = await prisma.$queryRaw<VectorSearchResult[]>`
+      SELECT
+        id,
+        document_id as "documentId",
+        chunk_id as "chunkId",
+        content,
+        metadata,
+        1 - (embedding <=> $1::vector) as similarity
+      FROM vector_documents
+      ${whereClause}
+      AND 1 - (embedding <=> $1::vector) >= ${threshold}
+      ORDER BY embedding <=> $1::vector
+      LIMIT $2
+    `;
+    {% elif saas_orm == "drizzle" %}
+    const results = await db.execute<VectorSearchResult>(sql`
+      SELECT
+        id,
+        document_id as "documentId",
+        chunk_id as "chunkId",
+        content,
+        metadata,
+        1 - (embedding <=> ${query.embedding}::vector) as similarity
+      FROM vector_documents
+      ${sql.raw(whereClause)}
+      AND 1 - (embedding <=> ${query.embedding}::vector) >= ${threshold}
+      ORDER BY embedding <=> ${query.embedding}::vector
+      LIMIT ${limit}
+    `);
+    {% endif %}
+
+    return results.map((row) => ({
+      id: row.id,
+      documentId: row.documentId,
+      chunkId: row.chunkId,
+      content: row.content,
+      similarity: row.similarity,
+      metadata: row.metadata,
+      score: row.similarity,
+    }));
+  } catch (error) {
+    throw new VectorStoreError(
+      `Failed to search vectors: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error, query }
+    );
+  }
+}
+
+/**
+ * Hybrid search: vector similarity + keyword search
+ */
+export async function hybridSearch(params: {
+  embedding: number[];
+  keywords?: string[];
+  limit?: number;
+  threshold?: number;
+  filter?: VectorFilter;
+  vectorWeight?: number; // 0-1, default 0.7
+}): Promise<VectorSearchResult[]> {
+  const vectorWeight = params.vectorWeight ?? 0.7;
+  const keywordWeight = 1 - vectorWeight;
+
+  try {
+    const limit = params.limit || 10;
+    const threshold = params.threshold || 0.0;
+    const filter = params.filter || {};
+    const keywords = params.keywords || [];
+
+    const whereConditions: string[] = [];
+    const queryParams: any[] = [params.embedding, limit];
+
+    if (filter.userId) {
+      whereConditions.push(`user_id = $${queryParams.length + 1}`);
+      queryParams.push(filter.userId);
+    }
+
+    if (filter.organizationId) {
+      whereConditions.push(`organization_id = $${queryParams.length + 1}`);
+      queryParams.push(filter.organizationId);
+    }
+
+    // Add full-text search for keywords
+    if (keywords.length > 0) {
+      const tsQuery = keywords.join(' & ');
+      whereConditions.push(
+        `to_tsvector('english', content) @@ to_tsquery('english', $${queryParams.length + 1})`
+      );
+      queryParams.push(tsQuery);
+    }
+
+    const whereClause =
+      whereConditions.length > 0
+        ? `WHERE ${whereConditions.join(' AND ')}`
+        : '';
+
+    {% if saas_orm == "prisma" %}
+    const results = await prisma.$queryRaw<VectorSearchResult[]>`
+      SELECT
+        id,
+        document_id as "documentId",
+        chunk_id as "chunkId",
+        content,
+        metadata,
+        1 - (embedding <=> $1::vector) as vector_similarity,
+        ${keywords.length > 0 ? sql`ts_rank(to_tsvector('english', content), to_tsquery('english', ${keywords.join(' & ')}))` : 0} as keyword_score,
+        (${vectorWeight} * (1 - (embedding <=> $1::vector)) + ${keywordWeight} * ${keywords.length > 0 ? sql`ts_rank(to_tsvector('english', content), to_tsquery('english', ${keywords.join(' & ')}))` : 0}) as combined_score
+      FROM vector_documents
+      ${whereClause}
+      ORDER BY combined_score DESC
+      LIMIT $2
+    `;
+    {% elif saas_orm == "drizzle" %}
+    const results = await db.execute<VectorSearchResult>(sql`
+      SELECT
+        id,
+        document_id as "documentId",
+        chunk_id as "chunkId",
+        content,
+        metadata,
+        1 - (embedding <=> ${params.embedding}::vector) as vector_similarity,
+        ${keywords.length > 0 ? sql`ts_rank(to_tsvector('english', content), to_tsquery('english', ${keywords.join(' & ')}))` : 0} as keyword_score,
+        (${vectorWeight} * (1 - (embedding <=> ${params.embedding}::vector)) + ${keywordWeight} * ${keywords.length > 0 ? sql`ts_rank(to_tsvector('english', content), to_tsquery('english', ${keywords.join(' & ')}))` : 0}) as combined_score
+      FROM vector_documents
+      ${sql.raw(whereClause)}
+      ORDER BY combined_score DESC
+      LIMIT ${limit}
+    `);
+    {% endif %}
+
+    return results.map((row) => ({
+      id: row.id,
+      documentId: row.documentId,
+      chunkId: row.chunkId,
+      content: row.content,
+      similarity: row.vector_similarity,
+      metadata: row.metadata,
+      score: row.combined_score,
+    }));
+  } catch (error) {
+    throw new VectorStoreError(
+      `Failed to perform hybrid search: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error, params }
+    );
+  }
+}
+
+// ============================================================================
+// Delete Operations
+// ============================================================================
+
+/**
+ * Delete vectors by document ID
+ */
+export async function deleteVectorsByDocument(
+  documentId: string
+): Promise<number> {
+  try {
+    {% if saas_orm == "prisma" %}
+    const result = await prisma.$executeRaw`
+      DELETE FROM vector_documents WHERE document_id = ${documentId}
+    `;
+    {% elif saas_orm == "drizzle" %}
+    const result = await db.execute(sql`
+      DELETE FROM vector_documents WHERE document_id = ${documentId}
+    `);
+    {% endif %}
+
+    return result.count || 0;
+  } catch (error) {
+    throw new VectorStoreError(
+      `Failed to delete vectors: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error, documentId }
+    );
+  }
+}
+
+/**
+ * Delete vectors by filter
+ */
+export async function deleteVectorsByFilter(
+  filter: VectorFilter
+): Promise<number> {
+  try {
+    const whereConditions: string[] = [];
+
+    if (filter.userId) {
+      whereConditions.push(`user_id = '${filter.userId}'`);
+    }
+
+    if (filter.organizationId) {
+      whereConditions.push(`organization_id = '${filter.organizationId}'`);
+    }
+
+    if (whereConditions.length === 0) {
+      throw new Error('At least one filter condition is required');
+    }
+
+    const whereClause = whereConditions.join(' AND ');
+
+    {% if saas_orm == "prisma" %}
+    const result = await prisma.$executeRaw`
+      DELETE FROM vector_documents WHERE ${sql.raw(whereClause)}
+    `;
+    {% elif saas_orm == "drizzle" %}
+    const result = await db.execute(sql`
+      DELETE FROM vector_documents WHERE ${sql.raw(whereClause)}
+    `);
+    {% endif %}
+
+    return result.count || 0;
+  } catch (error) {
+    throw new VectorStoreError(
+      `Failed to delete vectors by filter: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error, filter }
+    );
+  }
+}
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Get document count
+ */
+export async function getVectorCount(filter?: VectorFilter): Promise<number> {
+  try {
+    const whereConditions: string[] = [];
+
+    if (filter?.userId) {
+      whereConditions.push(`user_id = '${filter.userId}'`);
+    }
+
+    if (filter?.organizationId) {
+      whereConditions.push(`organization_id = '${filter.organizationId}'`);
+    }
+
+    const whereClause =
+      whereConditions.length > 0
+        ? `WHERE ${whereConditions.join(' AND ')}`
+        : '';
+
+    {% if saas_orm == "prisma" %}
+    const result = await prisma.$queryRaw<[{ count: bigint }]>`
+      SELECT COUNT(*) as count FROM vector_documents ${sql.raw(whereClause)}
+    `;
+    return Number(result[0].count);
+    {% elif saas_orm == "drizzle" %}
+    const result = await db.execute<{ count: number }>(sql`
+      SELECT COUNT(*) as count FROM vector_documents ${sql.raw(whereClause)}
+    `);
+    return result[0].count;
+    {% endif %}
+  } catch (error) {
+    throw new VectorStoreError(
+      `Failed to get vector count: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error, filter }
+    );
+  }
+}
+
+// ============================================================================
+// Error Class
+// ============================================================================
+
+class VectorStoreError extends Error {
+  constructor(
+    message: string,
+    public details?: any
+  ) {
+    super(message);
+    this.name = 'VectorStoreError';
+  }
+}
+
+// ============================================================================
+// Exports
+// ============================================================================
+
+export type { VectorDocument, VectorSearchQuery, VectorSearchResult };
+{% endif %}

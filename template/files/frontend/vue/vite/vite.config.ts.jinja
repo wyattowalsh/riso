@@ -1,0 +1,28 @@
+{% if frontend_framework == 'vue' and vue_framework == 'vite' %}
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import path from 'path'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [vue()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  server: {
+    port: 3000,
+    proxy: {
+      '/api': {
+        target: {% if 'python' in backend_languages and python_api_framework == 'fastapi' %}'http://localhost:8000'{% elif 'node' in backend_languages and node_api_framework == 'fastify' %}'http://localhost:3001'{% else %}'http://localhost:8000'{% endif %},
+        changeOrigin: true,
+      },
+    },
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+  },
+})
+{% endif %}

@@ -1,0 +1,40 @@
+{%- if mcp_module == 'enabled' and 'go' in mcp_languages -%}
+package mcp
+
+import (
+	"os"
+	"strconv"
+)
+
+// DefaultConfig returns the default configuration.
+func DefaultConfig() Config {
+	return Config{
+		Name:      "{{ package_name }}-mcp",
+		Version:   "1.0.0",
+		Transport: getEnvOrDefault("{{ package_name | upper | replace('-', '_') }}_MCP_TRANSPORT", "{{ mcp_transport }}"),
+		Host:      getEnvOrDefault("{{ package_name | upper | replace('-', '_') }}_MCP_HOST", "127.0.0.1"),
+		Port:      getEnvIntOrDefault("{{ package_name | upper | replace('-', '_') }}_MCP_PORT", 3000),
+	}
+}
+
+// LoadConfigFromEnv loads configuration from environment variables.
+func LoadConfigFromEnv() Config {
+	return DefaultConfig()
+}
+
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+func getEnvIntOrDefault(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if intValue, err := strconv.Atoi(value); err == nil {
+			return intValue
+		}
+	}
+	return defaultValue
+}
+{%- endif %}

@@ -1,4 +1,4 @@
-{%- if docs_site == 'docusaurus' -%}
+{%- if docs_module == 'enabled' and docs_framework == 'docusaurus' -%}
 import { themes as prismThemes } from 'prism-react-renderer';
 import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
@@ -206,7 +206,7 @@ const config: Config = {
       },
     ],
 {%- endif %}
-{%- if docusaurus_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
+{%- if docusaurus_openapi == 'enabled' and api_module == 'enabled' and api_languages %}
     [
       'docusaurus-plugin-openapi-docs',
       {
@@ -319,7 +319,7 @@ const config: Config = {
 {%- endif %}
   ].filter(Boolean),
 
-{%- if docusaurus_mermaid == 'enabled' or docusaurus_live_codeblock == 'enabled' or (docusaurus_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node']) %}
+{%- if docusaurus_mermaid == 'enabled' or docusaurus_live_codeblock == 'enabled' or (docusaurus_openapi == 'enabled' and api_module == 'enabled' and api_languages) %}
 
   themes: [
 {%- if docusaurus_mermaid == 'enabled' %}
@@ -328,7 +328,7 @@ const config: Config = {
 {%- if docusaurus_live_codeblock == 'enabled' %}
     '@docusaurus/theme-live-codeblock',
 {%- endif %}
-{%- if docusaurus_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
+{%- if docusaurus_openapi == 'enabled' and api_module == 'enabled' and api_languages %}
     'docusaurus-theme-openapi-docs',
 {%- endif %}
   ],
@@ -363,7 +363,7 @@ const config: Config = {
           position: 'left',
           label: 'Docs',
         },
-{%- if docusaurus_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
+{%- if docusaurus_openapi == 'enabled' and api_module == 'enabled' and api_languages %}
         {
           type: 'docSidebar',
           sidebarId: 'api',
@@ -514,6 +514,6 @@ const config: Config = {
 
 export default config;
 {%- else -%}
-// Docusaurus configuration placeholder - docs_site != 'docusaurus'
+// Docusaurus configuration placeholder - docs_framework != 'docusaurus'
 export default {};
 {%- endif -%}

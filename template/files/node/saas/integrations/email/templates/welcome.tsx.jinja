@@ -1,0 +1,175 @@
+{% if saas_infra_module == "enabled" and saas_email != 'none' %}
+/**
+ * Welcome Email Template
+ *
+ * Sent to new users after successful account creation.
+ * Provides a warm greeting and guides them to get started.
+ *
+ * @see https://react.email
+ */
+
+import {
+  Body,
+  Button,
+  Container,
+  Head,
+  Heading,
+  Hr,
+  Html,
+  Link,
+  Preview,
+  Section,
+  Text,
+} from '@react-email/components';
+
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+const appName = '{{ project_name }}';
+
+const styles = {
+  main: {
+    backgroundColor: '#f6f9fc',
+    fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
+  },
+  container: {
+    backgroundColor: '#ffffff',
+    margin: '0 auto',
+    padding: '20px 0 48px',
+    marginBottom: '64px',
+    maxWidth: '600px',
+  },
+  heading: {
+    fontSize: '32px',
+    lineHeight: '1.3',
+    fontWeight: '700',
+    color: '#484848',
+    margin: '24px 0 16px',
+  },
+  subheading: {
+    fontSize: '24px',
+    lineHeight: '1.3',
+    fontWeight: '600',
+    color: '#484848',
+    margin: '20px 0 12px',
+  },
+  paragraph: {
+    fontSize: '16px',
+    lineHeight: '26px',
+    color: '#484848',
+    margin: '12px 0',
+  },
+  button: {
+    backgroundColor: '#5469d4',
+    borderRadius: '4px',
+    color: '#fff',
+    fontSize: '16px',
+    fontWeight: '600',
+    textDecoration: 'none',
+    textAlign: 'center' as const,
+    display: 'block',
+    padding: '12px 24px',
+    width: '100%',
+    maxWidth: '200px',
+    margin: '0 auto',
+  },
+  section: {
+    margin: '32px 0',
+  },
+  hr: {
+    borderColor: '#e6ebf1',
+    margin: '20px 0',
+  },
+  footer: {
+    color: '#8898aa',
+    fontSize: '12px',
+    lineHeight: '16px',
+    margin: '8px 0',
+  },
+  link: {
+    color: '#5469d4',
+    textDecoration: 'underline',
+  },
+};
+
+export interface WelcomeEmailProps {
+  userName: string;
+  userEmail: string;
+  dashboardUrl?: string;
+}
+
+export function WelcomeEmail({
+  userName,
+  userEmail,
+  dashboardUrl = `${baseUrl}/dashboard`,
+}: WelcomeEmailProps) {
+  return (
+    <Html>
+      <Head />
+      <Preview>Welcome to {appName}!</Preview>
+      <Body style={styles.main}>
+        <Container style={styles.container}>
+          <Heading style={styles.heading}>Welcome to {appName}!</Heading>
+
+          <Text style={styles.paragraph}>Hi {userName},</Text>
+
+          <Text style={styles.paragraph}>
+            Thanks for signing up for {appName}. We're thrilled to have you on board!
+          </Text>
+
+          <Text style={styles.paragraph}>
+            Your account has been successfully created with the email address:{' '}
+            <strong>{userEmail}</strong>
+          </Text>
+
+          <Section style={styles.section}>
+            <Button style={styles.button} href={dashboardUrl}>
+              Go to Dashboard
+            </Button>
+          </Section>
+
+          <Heading style={styles.subheading}>Get Started</Heading>
+
+          <Text style={styles.paragraph}>
+            Here are a few things you can do right now:
+          </Text>
+
+          <Text style={styles.paragraph}>
+            1. <strong>Complete your profile</strong> - Add your photo and update your information<br />
+            2. <strong>Explore features</strong> - Check out the dashboard to see what's available<br />
+            3. <strong>Read the docs</strong> - Visit our{' '}
+            <Link href={`${baseUrl}/docs`} style={styles.link}>
+              documentation
+            </Link>
+            {' '}for guides and tutorials
+          </Text>
+
+          <Text style={styles.paragraph}>
+            If you have any questions or need help getting started, don't hesitate to reach out.
+            We're here to help!
+          </Text>
+
+          <Text style={styles.paragraph}>
+            Best regards,
+            <br />
+            The {appName} Team
+          </Text>
+
+          <Hr style={styles.hr} />
+
+          <Text style={styles.footer}>
+            © {new Date().getFullYear()} {appName}. All rights reserved.
+          </Text>
+          <Text style={styles.footer}>
+            <Link href={`${baseUrl}/unsubscribe`} style={styles.link}>
+              Unsubscribe
+            </Link>
+            {' '} | {' '}
+            <Link href={`${baseUrl}/privacy`} style={styles.link}>
+              Privacy Policy
+            </Link>
+          </Text>
+        </Container>
+      </Body>
+    </Html>
+  );
+}
+{% endif %}

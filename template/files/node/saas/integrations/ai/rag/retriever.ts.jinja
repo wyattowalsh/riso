@@ -1,0 +1,495 @@
+{% if saas_infra_module == "enabled" and saas_ai_features == 'full' %}
+/**
+ * Retrieval Service
+ *
+ * High-level retrieval operations:
+ * - Query-based retrieval with semantic search
+ * - Context assembly for LLM prompts
+ * - Reranking for improved relevance
+ * - Multi-query expansion
+ * - Hybrid search strategies
+ *
+ * @see https://www.anthropic.com/research/retrieval-augmented-generation
+ */
+
+import { generateEmbedding } from './embeddings';
+import { searchVectors, hybridSearch } from './vector-store';
+import type {
+  RetrievalQuery,
+  RetrievalResult,
+  RetrievedChunk,
+  RerankOptions,
+  RetrievalError,
+} from './types';
+
+// ============================================================================
+// Main Retrieval Functions
+// ============================================================================
+
+/**
+ * Retrieve relevant document chunks for a query
+ *
+ * @example
+ * ```ts
+ * const result = await retrieve({
+ *   query: 'How do I implement authentication?',
+ *   limit: 5,
+ *   threshold: 0.7,
+ *   rerank: true,
+ * });
+ *
+ * console.log(result.context); // Formatted context for LLM
+ * console.log(result.chunks);  // Individual chunks with scores
+ * ```
+ */
+export async function retrieve(
+  query: RetrievalQuery
+): Promise<RetrievalResult> {
+  try {
+    // Generate embedding for the query
+    const embedding = await generateEmbedding(query.query);
+
+    // Search for similar vectors
+    const results = await searchVectors({
+      embedding,
+      limit: query.limit || 10,
+      threshold: query.threshold || 0.7,
+      filter: query.filter,
+    });
+
+    // Convert to retrieved chunks
+    let chunks: RetrievedChunk[] = results.map((result) => ({
+      id: result.id,
+      content: result.content,
+      similarity: result.similarity,
+      score: result.similarity,
+      metadata: result.metadata,
+      documentId: result.documentId,
+      chunkIndex: parseInt(result.chunkId.split('-').pop() || '0'),
+    }));
+
+    // Rerank if requested
+    if (query.rerank && chunks.length > 0) {
+      chunks = await rerankChunks(query.query, chunks);
+    }
+
+    // Assemble context
+    const context = assembleContext(chunks);
+
+    return {
+      chunks,
+      context,
+      totalResults: chunks.length,
+      query: query.query,
+    };
+  } catch (error) {
+    throw new RetrievalError(
+      `Failed to retrieve documents: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error, query }
+    );
+  }
+}
+
+/**
+ * Retrieve with hybrid search (vector + keyword)
+ *
+ * @example
+ * ```ts
+ * const result = await retrieveHybrid({
+ *   query: 'authentication implementation guide',
+ *   keywords: ['auth', 'login', 'security'],
+ *   limit: 5,
+ * });
+ * ```
+ */
+export async function retrieveHybrid(params: {
+  query: string;
+  keywords?: string[];
+  limit?: number;
+  threshold?: number;
+  filter?: any;
+  vectorWeight?: number;
+}): Promise<RetrievalResult> {
+  try {
+    // Generate embedding for the query
+    const embedding = await generateEmbedding(params.query);
+
+    // Extract keywords from query if not provided
+    const keywords = params.keywords || extractKeywords(params.query);
+
+    // Hybrid search
+    const results = await hybridSearch({
+      embedding,
+      keywords,
+      limit: params.limit || 10,
+      threshold: params.threshold || 0.0,
+      filter: params.filter,
+      vectorWeight: params.vectorWeight,
+    });
+
+    const chunks: RetrievedChunk[] = results.map((result) => ({
+      id: result.id,
+      content: result.content,
+      similarity: result.similarity,
+      score: result.score,
+      metadata: result.metadata,
+      documentId: result.documentId,
+      chunkIndex: parseInt(result.chunkId.split('-').pop() || '0'),
+    }));
+
+    const context = assembleContext(chunks);
+
+    return {
+      chunks,
+      context,
+      totalResults: chunks.length,
+      query: params.query,
+    };
+  } catch (error) {
+    throw new RetrievalError(
+      `Failed to perform hybrid retrieval: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error, params }
+    );
+  }
+}
+
+/**
+ * Multi-query retrieval
+ * Generates multiple query variations for better coverage
+ */
+export async function retrieveMultiQuery(params: {
+  query: string;
+  queryVariations?: string[];
+  limit?: number;
+  threshold?: number;
+  filter?: any;
+}): Promise<RetrievalResult> {
+  try {
+    // Generate query variations if not provided
+    const variations = params.queryVariations || [
+      params.query,
+      // Add simple variations
+      `${params.query} guide`,
+      `${params.query} tutorial`,
+      `how to ${params.query}`,
+    ];
+
+    // Retrieve for each variation
+    const allChunks: RetrievedChunk[] = [];
+    const seenIds = new Set<string>();
+
+    for (const variation of variations) {
+      const result = await retrieve({
+        query: variation,
+        limit: params.limit || 5,
+        threshold: params.threshold || 0.7,
+        filter: params.filter,
+        rerank: false,
+      });
+
+      // Deduplicate chunks
+      for (const chunk of result.chunks) {
+        if (!seenIds.has(chunk.id)) {
+          seenIds.add(chunk.id);
+          allChunks.push(chunk);
+        }
+      }
+    }
+
+    // Sort by score and limit
+    const sortedChunks = allChunks
+      .sort((a, b) => b.score - a.score)
+      .slice(0, params.limit || 10);
+
+    const context = assembleContext(sortedChunks);
+
+    return {
+      chunks: sortedChunks,
+      context,
+      totalResults: sortedChunks.length,
+      query: params.query,
+    };
+  } catch (error) {
+    throw new RetrievalError(
+      `Failed to perform multi-query retrieval: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error, params }
+    );
+  }
+}
+
+// ============================================================================
+// Context Assembly
+// ============================================================================
+
+/**
+ * Assemble retrieved chunks into a formatted context string
+ * Optimized for LLM consumption
+ */
+export function assembleContext(
+  chunks: RetrievedChunk[],
+  options?: {
+    maxLength?: number;
+    includeMetadata?: boolean;
+    template?: 'xml' | 'markdown' | 'json';
+  }
+): string {
+  const maxLength = options?.maxLength || 16000;
+  const includeMetadata = options?.includeMetadata ?? true;
+  const template = options?.template || 'xml';
+
+  let context = '';
+  let currentLength = 0;
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    let chunkText = '';
+
+    switch (template) {
+      case 'xml':
+        chunkText = formatChunkXML(chunk, i, includeMetadata);
+        break;
+      case 'markdown':
+        chunkText = formatChunkMarkdown(chunk, i, includeMetadata);
+        break;
+      case 'json':
+        chunkText = JSON.stringify(
+          {
+            index: i,
+            content: chunk.content,
+            score: chunk.score,
+            metadata: includeMetadata ? chunk.metadata : undefined,
+          },
+          null,
+          2
+        );
+        break;
+    }
+
+    if (currentLength + chunkText.length > maxLength) {
+      break;
+    }
+
+    context += chunkText + '\n\n';
+    currentLength += chunkText.length;
+  }
+
+  return context.trim();
+}
+
+function formatChunkXML(
+  chunk: RetrievedChunk,
+  index: number,
+  includeMetadata: boolean
+): string {
+  let xml = `<document index="${index}" score="${chunk.score.toFixed(3)}"`;
+
+  if (includeMetadata && chunk.metadata.title) {
+    xml += ` title="${chunk.metadata.title}"`;
+  }
+
+  if (includeMetadata && chunk.metadata.source) {
+    xml += ` source="${chunk.metadata.source}"`;
+  }
+
+  xml += '>\n';
+  xml += chunk.content;
+  xml += '\n</document>';
+
+  return xml;
+}
+
+function formatChunkMarkdown(
+  chunk: RetrievedChunk,
+  index: number,
+  includeMetadata: boolean
+): string {
+  let md = `## Document ${index + 1}`;
+
+  if (includeMetadata && chunk.metadata.title) {
+    md += ` - ${chunk.metadata.title}`;
+  }
+
+  md += ` (score: ${chunk.score.toFixed(3)})\n\n`;
+  md += chunk.content;
+
+  if (includeMetadata && chunk.metadata.source) {
+    md += `\n\n*Source: ${chunk.metadata.source}*`;
+  }
+
+  return md;
+}
+
+// ============================================================================
+// Reranking
+// ============================================================================
+
+/**
+ * Rerank chunks using cross-encoder model
+ * Improves relevance by considering query-document interaction
+ */
+async function rerankChunks(
+  query: string,
+  chunks: RetrievedChunk[],
+  options?: RerankOptions
+): Promise<RetrievedChunk[]> {
+  try {
+    // Simple reranking based on keyword overlap
+    // In production, use a dedicated reranking model like Cohere Rerank
+    const rankedChunks = chunks.map((chunk) => {
+      const relevanceScore = calculateRelevanceScore(query, chunk.content);
+      return {
+        ...chunk,
+        score: (chunk.score * 0.7 + relevanceScore * 0.3), // Combine scores
+      };
+    });
+
+    // Sort by new score
+    rankedChunks.sort((a, b) => b.score - a.score);
+
+    // Return top K
+    const topK = options?.topK || chunks.length;
+    return rankedChunks.slice(0, topK);
+  } catch (error) {
+    console.error('Reranking failed, returning original order:', error);
+    return chunks;
+  }
+}
+
+/**
+ * Calculate simple relevance score based on keyword overlap
+ */
+function calculateRelevanceScore(query: string, content: string): number {
+  const queryTokens = tokenize(query.toLowerCase());
+  const contentTokens = tokenize(content.toLowerCase());
+
+  // Count matching tokens
+  let matches = 0;
+  for (const token of queryTokens) {
+    if (contentTokens.includes(token)) {
+      matches++;
+    }
+  }
+
+  return matches / queryTokens.length;
+}
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Extract keywords from query
+ */
+function extractKeywords(query: string): string[] {
+  // Remove common stop words
+  const stopWords = new Set([
+    'a',
+    'an',
+    'and',
+    'are',
+    'as',
+    'at',
+    'be',
+    'by',
+    'for',
+    'from',
+    'has',
+    'he',
+    'in',
+    'is',
+    'it',
+    'its',
+    'of',
+    'on',
+    'that',
+    'the',
+    'to',
+    'was',
+    'will',
+    'with',
+  ]);
+
+  const tokens = tokenize(query.toLowerCase());
+  return tokens.filter((token) => !stopWords.has(token) && token.length > 2);
+}
+
+/**
+ * Simple tokenization
+ */
+function tokenize(text: string): string[] {
+  return text.match(/\b\w+\b/g) || [];
+}
+
+/**
+ * Deduplicate chunks by content similarity
+ */
+export function deduplicateChunks(
+  chunks: RetrievedChunk[],
+  similarityThreshold = 0.95
+): RetrievedChunk[] {
+  const deduplicated: RetrievedChunk[] = [];
+  const seenContent = new Set<string>();
+
+  for (const chunk of chunks) {
+    // Simple deduplication by exact match
+    const normalized = chunk.content.toLowerCase().trim();
+
+    if (!seenContent.has(normalized)) {
+      seenContent.add(normalized);
+      deduplicated.push(chunk);
+    }
+  }
+
+  return deduplicated;
+}
+
+/**
+ * Group chunks by document
+ */
+export function groupChunksByDocument(
+  chunks: RetrievedChunk[]
+): Map<string, RetrievedChunk[]> {
+  const grouped = new Map<string, RetrievedChunk[]>();
+
+  for (const chunk of chunks) {
+    const existing = grouped.get(chunk.documentId) || [];
+    existing.push(chunk);
+    grouped.set(chunk.documentId, existing);
+  }
+
+  // Sort chunks within each document
+  for (const [docId, docChunks] of grouped) {
+    grouped.set(
+      docId,
+      docChunks.sort((a, b) => a.chunkIndex - b.chunkIndex)
+    );
+  }
+
+  return grouped;
+}
+
+// ============================================================================
+// Error Class
+// ============================================================================
+
+class RetrievalError extends Error {
+  constructor(
+    message: string,
+    public details?: any
+  ) {
+    super(message);
+    this.name = 'RetrievalError';
+  }
+}
+
+// ============================================================================
+// Exports
+// ============================================================================
+
+export {
+  assembleContext,
+  extractKeywords,
+  deduplicateChunks,
+  groupChunksByDocument,
+};
+{% endif %}

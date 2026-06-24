@@ -1,0 +1,452 @@
+{% if saas_infra_module == "enabled" %}
+/**
+ * Observability Utilities
+ *
+ * Helper functions for correlation IDs, context propagation, and common patterns.
+ */
+
+import type { CorrelationContext } from './types';
+
+// ============================================================================
+// Correlation ID Management
+// ============================================================================
+
+/**
+ * Generate a correlation ID for request tracking
+ *
+ * @example
+ * ```ts
+ * const correlationId = generateCorrelationId();
+ * // Returns: "req_1234567890_abcdef"
+ * ```
+ */
+export function generateCorrelationId(prefix = 'req'): string {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 8);
+  return `${prefix}_${timestamp}_${random}`;
+}
+
+/**
+ * Extract correlation ID from request headers
+ *
+ * Supports multiple header formats:
+ * - x-correlation-id
+ * - x-request-id
+ * - x-trace-id
+ *
+ * @example
+ * ```ts
+ * const correlationId = extractCorrelationId(request.headers);
+ * ```
+ */
+export function extractCorrelationId(headers: Headers): string {
+  return (
+    headers.get('x-correlation-id') ||
+    headers.get('x-request-id') ||
+    headers.get('x-trace-id') ||
+    generateCorrelationId()
+  );
+}
+
+/**
+ * Inject correlation ID into HTTP headers
+ *
+ * @example
+ * ```ts
+ * const headers = new Headers();
+ * injectCorrelationHeaders(headers, 'req_123_abc');
+ * fetch('/api/endpoint', { headers });
+ * ```
+ */
+export function injectCorrelationHeaders(
+  headers: Headers,
+  correlationId: string
+): Headers {
+  headers.set('x-correlation-id', correlationId);
+  headers.set('x-request-id', correlationId);
+  return headers;
+}
+
+// ============================================================================
+// Context Builders
+// ============================================================================
+
+/**
+ * Build correlation context from request
+ *
+ * @example
+ * ```ts
+ * const context = buildCorrelationContext(request, {
+ *   userId: 'user123',
+ *   sessionId: 'session456',
+ * });
+ * ```
+ */
+export function buildCorrelationContext(
+  request: Request,
+  additionalContext?: {
+    userId?: string;
+    sessionId?: string;
+    {% if saas_tenancy_model == 'b2b-teams' %}
+    organizationId?: string;
+    {% endif %}
+  }
+): CorrelationContext {
+  const correlationId = extractCorrelationId(request.headers);
+
+  return {
+    correlationId,
+    requestId: correlationId,
+    timestamp: new Date().toISOString(),
+    ...additionalContext,
+  };
+}
+
+/**
+ * Extract request metadata for logging/tracing
+ *
+ * @example
+ * ```ts
+ * const metadata = extractRequestMetadata(request);
+ * logger.info({ msg: 'Request received', ...metadata });
+ * ```
+ */
+export function extractRequestMetadata(request: Request): {
+  method: string;
+  path: string;
+  query: Record<string, string>;
+  ip?: string;
+  userAgent?: string;
+} {
+  const url = new URL(request.url);
+  const query: Record<string, string> = {};
+
+  url.searchParams.forEach((value, key) => {
+    query[key] = value;
+  });
+
+  return {
+    method: request.method,
+    path: url.pathname,
+    query,
+    ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+    userAgent: request.headers.get('user-agent') || undefined,
+  };
+}
+
+// ============================================================================
+// Sanitization
+// ============================================================================
+
+/**
+ * Sanitize URL by removing sensitive query parameters
+ *
+ * @example
+ * ```ts
+ * const safeUrl = sanitizeUrl('https://api.example.com/users?token=secret&id=123');
+ * // Returns: "https://api.example.com/users?id=123"
+ * ```
+ */
+export function sanitizeUrl(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    const sensitiveParams = [
+      'token',
+      'api_key',
+      'apiKey',
+      'api-key',
+      'password',
+      'secret',
+      'auth',
+      'authorization',
+      'access_token',
+      'refresh_token',
+    ];
+
+    sensitiveParams.forEach((param) => {
+      urlObj.searchParams.delete(param);
+    });
+
+    return urlObj.toString();
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Sanitize headers by removing sensitive values
+ *
+ * @example
+ * ```ts
+ * const safeHeaders = sanitizeHeaders(request.headers);
+ * ```
+ */
+export function sanitizeHeaders(headers: Headers): Record<string, string> {
+  const safeHeaders: Record<string, string> = {};
+  const sensitiveHeaders = [
+    'authorization',
+    'cookie',
+    'x-api-key',
+    'x-auth-token',
+  ];
+
+  headers.forEach((value, key) => {
+    if (sensitiveHeaders.includes(key.toLowerCase())) {
+      safeHeaders[key] = '[REDACTED]';
+    } else {
+      safeHeaders[key] = value;
+    }
+  });
+
+  return safeHeaders;
+}
+
+// ============================================================================
+// Error Formatting
+// ============================================================================
+
+/**
+ * Format error for observability
+ *
+ * Extracts useful information from Error objects for logging/tracking.
+ *
+ * @example
+ * ```ts
+ * try {
+ *   throw new Error('Something failed');
+ * } catch (error) {
+ *   const formatted = formatError(error);
+ *   logger.error({ msg: 'Error occurred', ...formatted });
+ * }
+ * ```
+ */
+export function formatError(error: Error | unknown): {
+  name: string;
+  message: string;
+  stack?: string;
+  cause?: unknown;
+  code?: string;
+} {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      cause: error.cause,
+      code: (error as any).code,
+    };
+  }
+
+  return {
+    name: 'Unknown',
+    message: String(error),
+  };
+}
+
+/**
+ * Check if error is retryable
+ *
+ * @example
+ * ```ts
+ * if (isRetryableError(error)) {
+ *   await retry(() => operation());
+ * }
+ * ```
+ */
+export function isRetryableError(error: Error | unknown): boolean {
+  if (error instanceof Error) {
+    const retryableErrors = [
+      'ECONNRESET',
+      'ETIMEDOUT',
+      'ENOTFOUND',
+      'ENETUNREACH',
+      'EAI_AGAIN',
+    ];
+
+    const code = (error as any).code;
+    if (code && retryableErrors.includes(code)) {
+      return true;
+    }
+
+    // Check for HTTP status codes
+    const statusCode = (error as any).statusCode || (error as any).status;
+    if (statusCode) {
+      // 5xx server errors and 429 (rate limit) are retryable
+      return statusCode >= 500 || statusCode === 429;
+    }
+  }
+
+  return false;
+}
+
+// ============================================================================
+// Performance Utilities
+// ============================================================================
+
+/**
+ * Create a simple timer for performance tracking
+ *
+ * @example
+ * ```ts
+ * const timer = createTimer();
+ * await doWork();
+ * const elapsed = timer.elapsed();
+ * console.log(`Work took ${elapsed}ms`);
+ * ```
+ */
+export function createTimer() {
+  const start = performance.now();
+
+  return {
+    elapsed: (): number => Math.round(performance.now() - start),
+    elapsedSeconds: (): number => Math.round((performance.now() - start) / 1000),
+  };
+}
+
+/**
+ * Format duration in human-readable format
+ *
+ * @example
+ * ```ts
+ * formatDuration(1234); // "1.23s"
+ * formatDuration(123456); // "2m 3s"
+ * ```
+ */
+export function formatDuration(ms: number): string {
+  if (ms < 1000) {
+    return `${ms.toFixed(0)}ms`;
+  }
+
+  if (ms < 60000) {
+    return `${(ms / 1000).toFixed(2)}s`;
+  }
+
+  const minutes = Math.floor(ms / 60000);
+  const seconds = Math.floor((ms % 60000) / 1000);
+  return `${minutes}m ${seconds}s`;
+}
+
+// ============================================================================
+// Fingerprinting
+// ============================================================================
+
+/**
+ * Generate error fingerprint for grouping similar errors
+ *
+ * @example
+ * ```ts
+ * const fingerprint = generateErrorFingerprint(error, {
+ *   endpoint: '/api/users',
+ *   operation: 'fetch',
+ * });
+ * // Used by Sentry/error tracking to group similar errors
+ * ```
+ */
+export function generateErrorFingerprint(
+  error: Error | unknown,
+  context?: Record<string, string>
+): string[] {
+  const fingerprint: string[] = [];
+
+  if (error instanceof Error) {
+    fingerprint.push(error.name);
+    fingerprint.push(error.message.split('\n')[0]); // First line only
+
+    const code = (error as any).code;
+    if (code) {
+      fingerprint.push(code);
+    }
+  } else {
+    fingerprint.push('Unknown');
+    fingerprint.push(String(error));
+  }
+
+  if (context) {
+    Object.entries(context).forEach(([key, value]) => {
+      fingerprint.push(`${key}:${value}`);
+    });
+  }
+
+  return fingerprint;
+}
+
+// ============================================================================
+// Rate Limiting Helpers
+// ============================================================================
+
+/**
+ * Simple in-memory rate limiter for observability events
+ *
+ * Prevents overwhelming observability systems with duplicate events.
+ *
+ * @example
+ * ```ts
+ * const limiter = createRateLimiter(10, 60000); // 10 events per minute
+ * if (limiter.tryAcquire('error:database')) {
+ *   captureError(error);
+ * }
+ * ```
+ */
+export function createRateLimiter(maxEvents: number, windowMs: number) {
+  const buckets = new Map<string, { count: number; resetAt: number }>();
+
+  return {
+    tryAcquire(key: string): boolean {
+      const now = Date.now();
+      const bucket = buckets.get(key);
+
+      if (!bucket || now > bucket.resetAt) {
+        buckets.set(key, { count: 1, resetAt: now + windowMs });
+        return true;
+      }
+
+      if (bucket.count < maxEvents) {
+        bucket.count++;
+        return true;
+      }
+
+      return false;
+    },
+
+    reset(key?: string): void {
+      if (key) {
+        buckets.delete(key);
+      } else {
+        buckets.clear();
+      }
+    },
+  };
+}
+
+// ============================================================================
+// Type Guards
+// ============================================================================
+
+/**
+ * Check if running in browser environment
+ */
+export function isBrowser(): boolean {
+  return typeof window !== 'undefined' && typeof document !== 'undefined';
+}
+
+/**
+ * Check if running in Node.js environment
+ */
+export function isNode(): boolean {
+  return typeof process !== 'undefined' && process.versions?.node !== undefined;
+}
+
+/**
+ * Check if running in production
+ */
+export function isProduction(): boolean {
+  return process.env.NODE_ENV === 'production';
+}
+
+/**
+ * Check if running in development
+ */
+export function isDevelopment(): boolean {
+  return process.env.NODE_ENV === 'development';
+}
+{% endif %}

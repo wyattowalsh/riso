@@ -29,7 +29,7 @@ run_module_smoke_tests() {
   local log_path
   log_path="$(dirname "${answers_file}")/smoke-results.json"
 
-  python3 - "$variant" "$answers_file" "$destination" "$log_path" <<'PY'
+  uv run python - "$variant" "$answers_file" "$destination" "$log_path" <<'PY'
 import json
 import subprocess
 import sys
@@ -37,49 +37,77 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+import yaml
+
 variant, answers_path, destination, log_path = sys.argv[1:5]
 answers_file = Path(answers_path)
 destination_path = Path(destination)
 
 
-def load_answers(path: Path) -> dict[str, str]:
-    data: dict[str, str] = {}
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if ":" not in line:
-            continue
-        key, value = line.split(":", 1)
-        data[key.strip()] = value.strip()
-    return data
+def load_answers(path: Path) -> dict[str, object]:
+    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 
 
-def collect_modules(config: dict[str, str]) -> list[dict[str, object]]:
-    api_tracks = config.get("api_tracks", "").lower()
-    docs_site = config.get("docs_site", "").lower()
+def as_enabled(value: object) -> bool:
+    return str(value or "disabled").lower() == "enabled"
+
+
+def as_list(value: object) -> list[str]:
+    if isinstance(value, list):
+        return [str(item).lower() for item in value]
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return []
+        return [item.strip().lower() for item in stripped.split(",") if item.strip()]
+    return []
+
+
+def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
+    api_enabled = as_enabled(config.get("api_module"))
+    api_languages = set(as_list(config.get("api_languages")))
+    docs_enabled = as_enabled(config.get("docs_module"))
+    docs_framework = str(config.get("docs_framework", "none")).lower()
+    python_cwd = destination_path / "python"
+    node_cwd = destination_path / "node"
+    python_project_ready = (python_cwd / "pyproject.toml").exists()
+    node_install_ready = (node_cwd / "node_modules").exists()
 
     docs_command: list[str] | None
+    docs_cwd: Path | None = None
     docs_reason = "Documentation module disabled."
-    if docs_site == "fumadocs":
-        docs_command = ["pnpm", "--filter", "docs-fumadocs", "build"]
-        docs_reason = "Fumadocs build command configured."
-    elif docs_site == "sphinx-shibuya":
-        docs_command = ["uv", "run", "make", "linkcheck"]
-        docs_reason = "Sphinx Shibuya link check configured."
-    elif docs_site == "docusaurus":
-        docs_command = ["pnpm", "--filter", "docs-docusaurus", "build"]
-        docs_reason = "Docusaurus build command configured."
+    if docs_enabled and docs_framework == "fumadocs":
+        docs_cwd = node_cwd
+        if (node_cwd / "docs" / "fumadocs" / "package.json").exists() and node_install_ready:
+            docs_command = ["pnpm", "--filter", "docs-fumadocs", "build"]
+            docs_reason = "Fumadocs build command configured."
+        else:
+            docs_command = None
+            docs_reason = "Fumadocs scaffold rendered; run pnpm install before build smoke."
+    elif docs_enabled and docs_framework == "sphinx-shibuya":
+        docs_cwd = python_cwd
+        if python_project_ready and (python_cwd / "docs").exists():
+            docs_command = ["uv", "run", "make", "linkcheck"]
+            docs_reason = "Sphinx Shibuya link check configured."
+        else:
+            docs_command = None
+            docs_reason = "Sphinx scaffold not present for this rendered variant."
+    elif docs_enabled and docs_framework == "docusaurus":
+        docs_cwd = node_cwd
+        if (node_cwd / "docs" / "docusaurus" / "package.json").exists() and node_install_ready:
+            docs_command = ["pnpm", "--filter", "docs-docusaurus", "build"]
+            docs_reason = "Docusaurus build command configured."
+        else:
+            docs_command = None
+            docs_reason = "Docusaurus scaffold rendered; run pnpm install before build smoke."
     else:
         docs_command = None
-        docs_reason = "Documentation scaffolding skipped (`docs_site=none`)."
-
-    python_cwd = destination_path / "template" / "files" / "python"
+        docs_reason = "Documentation scaffolding skipped (`docs_module=disabled`)."
 
     modules: list[dict[str, object]] = [
         {
             "name": "cli",
-            "enabled": config.get("cli_module", "").lower() == "enabled",
+            "enabled": as_enabled(config.get("cli_module")) and python_project_ready,
             "command": [
                 "uv",
                 "run",
@@ -89,10 +117,11 @@ def collect_modules(config: dict[str, str]) -> list[dict[str, object]]:
                 "tests/test_cli.py",
             ],
             "cwd": str(python_cwd),
+            "skip_reason": "CLI module disabled or Python project not rendered.",
         },
         {
             "name": "api_python",
-            "enabled": api_tracks in {"python", "python+node"},
+            "enabled": api_enabled and "python" in api_languages and python_project_ready,
             "command": [
                 "uv",
                 "run",
@@ -102,11 +131,14 @@ def collect_modules(config: dict[str, str]) -> list[dict[str, object]]:
                 "tests/test_api_fastapi.py",
             ],
             "cwd": str(python_cwd),
+            "skip_reason": "Python API disabled or Python project not rendered.",
         },
         {
             "name": "api_node",
-            "enabled": api_tracks in {"node", "python+node"},
+            "enabled": api_enabled and "node" in api_languages and node_install_ready,
             "command": ["pnpm", "--filter", "api-node", "test"],
+            "cwd": str(node_cwd),
+            "skip_reason": "Node API disabled or pnpm dependencies not installed.",
         },
         {
             "name": "mcp_module",
@@ -115,9 +147,10 @@ def collect_modules(config: dict[str, str]) -> list[dict[str, object]]:
             "skip_reason": "MCP smoke tests pending implementation.",
         },
         {
-            "name": "docs_site",
-            "enabled": docs_site != "none",
+            "name": "docs",
+            "enabled": docs_enabled,
             "command": docs_command,
+            "cwd": str(docs_cwd) if docs_cwd else None,
             "skip_reason": docs_reason,
         },
         {
@@ -131,13 +164,14 @@ def collect_modules(config: dict[str, str]) -> list[dict[str, object]]:
         [
             {
                 "name": "quality_make",
-                "enabled": True,
+                "enabled": python_project_ready and (python_cwd / "Makefile").exists(),
                 "command": ["make", "quality"],
                 "cwd": str(python_cwd),
+                "skip_reason": "Python quality scaffold not rendered for this variant.",
             },
             {
                 "name": "quality_uv_task",
-                "enabled": True,
+                "enabled": python_project_ready,
                 "command": [
                     "uv",
                     "run",
@@ -149,6 +183,7 @@ def collect_modules(config: dict[str, str]) -> list[dict[str, object]]:
                     "quality",
                 ],
                 "cwd": str(python_cwd),
+                "skip_reason": "Python quality scaffold not rendered for this variant.",
             },
         ]
     )
@@ -197,7 +232,7 @@ for module in modules:
     if not module.get("enabled"):
         results_dict[module_name] = {
             "status": "skipped",
-            "reason": "Module disabled in prompt answers.",
+            "reason": module.get("skip_reason", "Module disabled in prompt answers."),
         }
         continue
     command = module.get("command")
@@ -236,26 +271,21 @@ write_render_metadata() {
   local destination="$3"
   local duration="$4"
 
-  python3 - "$variant" "$answers_file" "$destination" "$duration" <<'PY'
+  uv run python - "$variant" "$answers_file" "$destination" "$duration" <<'PY'
 import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+import yaml
 
 variant, answers_path, destination, duration_seconds = sys.argv[1:5]
 answers_file = Path(answers_path)
 variant_dir = answers_file.parent
 
 
-def load_answers(path: Path) -> dict[str, str]:
-    data: dict[str, str] = {}
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or ":" not in line:
-            continue
-        key, value = line.split(":", 1)
-        data[key.strip()] = value.strip()
-    return data
+def load_answers(path: Path) -> dict[str, object]:
+    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 
 
 def write_json(path: Path, payload: dict) -> None:
@@ -263,6 +293,8 @@ def write_json(path: Path, payload: dict) -> None:
 
 
 answers = load_answers(answers_file)
+docs_enabled = str(answers.get("docs_module", "disabled")).lower() == "enabled"
+docs_framework = str(answers.get("docs_framework", "none")).lower()
 duration = float(duration_seconds)
 completed_at = datetime.now(tz=timezone.utc).isoformat()
 
@@ -275,15 +307,18 @@ metadata = {
     "project_layout": answers.get("project_layout", "single-package"),
     "modules": {
         "cli_module": answers.get("cli_module", "disabled"),
-        "api_tracks": answers.get("api_tracks", "none"),
+        "api_module": answers.get("api_module", "disabled"),
+        "api_languages": answers.get("api_languages", []),
         "mcp_module": answers.get("mcp_module", "disabled"),
-        "docs_site": answers.get("docs_site", "starter-guide"),
+        "mcp_languages": answers.get("mcp_languages", []),
+        "docs_module": answers.get("docs_module", "disabled"),
+        "docs_framework": docs_framework if docs_enabled else "none",
         "shared_logic": answers.get("shared_logic", "disabled"),
     },
 }
 
 doc_publish = {
-    "site": answers.get("docs_site", "starter-guide"),
+    "framework": docs_framework if docs_enabled else "none",
     "status": "pending",
     "recorded_at": completed_at,
 }
@@ -307,9 +342,11 @@ render_variant() {
   mkdir -p "$(dirname "${destination}")"
   validate_copier_cmd || exit 1
   ${COPIER_CMD} copy \
+    --trust \
+    --vcs-ref=HEAD \
     --data-file "${answers_file}" \
     --force \
-    "${REPO_ROOT}" \
+    "${REPO_ROOT}/template" \
     "${destination}"
   if ! run_module_smoke_tests "${variant}" "${answers_file}" "${destination}"; then
     log "Smoke tests encountered issues for variant '${variant}' (continuing)."
@@ -324,9 +361,9 @@ render_default() {
   render_variant "default" "${SAMPLES_DIR}/default/copier-answers.yml" "${SAMPLES_DIR}/default/render"
   if [[ "${validate_containers}" == "true" ]]; then
     log "Validating containers for default sample..."
-    python3 "${REPO_ROOT}/scripts/ci/validate_dockerfiles.py" "${SAMPLES_DIR}/default/render"
+    uv run python "${REPO_ROOT}/scripts/ci/validate_dockerfiles.py" "${SAMPLES_DIR}/default/render"
   fi
-  "${REPO_ROOT}/scripts/ci/run_baseline_quickstart.py"
+  uv run python "${REPO_ROOT}/scripts/ci/run_baseline_quickstart.py"
 }
 
 usage() {
@@ -390,7 +427,7 @@ main() {
 
   if [[ "${validate_containers}" == "true" ]]; then
     log "Validating containers for variant '${variant}'..."
-    python3 "${REPO_ROOT}/scripts/ci/validate_dockerfiles.py" "${SAMPLES_DIR}/${variant}/render"
+    uv run python "${REPO_ROOT}/scripts/ci/validate_dockerfiles.py" "${SAMPLES_DIR}/${variant}/render"
   fi
 }
 

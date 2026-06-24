@@ -1,0 +1,70 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {%- if mcp_module == 'enabled' and 'python' in mcp_languages -%}
+    {
+      "name": "Python: MCP Server (Stdio)",
+      "type": "python",
+      "request": "launch",
+      "module": "{{ package_name }}.mcp",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+       "name": "Python: MCP Server (SSE)",
+       "type": "python",
+       "request": "launch",
+       "module": "{{ package_name }}.mcp",
+       "args": ["--transport", "sse", "--port", "3000"],
+       "console": "integratedTerminal",
+       "justMyCode": true
+    },
+    {%- endif -%}
+    {%- if mcp_module == 'enabled' and 'rust' in mcp_languages -%}
+    {
+        "name": "Rust: MCP Server (Debug)",
+        "type": "lldb",
+        "request": "launch",
+        "cargo": {
+            "args": ["build", "--bin={{ package_name }}-mcp", "--package={{ package_name }}-mcp"],
+            "filter": {
+                "name": "{{ package_name }}-mcp",
+                "kind": "bin"
+            }
+        },
+        "args": [],
+        "cwd": "${workspaceFolder}"
+    },
+    {
+        "name": "Rust: MCP Server (SSE)",
+        "type": "lldb",
+        "request": "launch",
+        "cargo": {
+            "args": ["build", "--bin={{ package_name }}-mcp", "--package={{ package_name }}-mcp"],
+            "filter": {
+                "name": "{{ package_name }}-mcp",
+                "kind": "bin"
+            }
+        },
+        "args": ["--transport", "sse", "--port", "3000"],
+        "cwd": "${workspaceFolder}"
+    }
+    {%- endif -%}
+    {%- if project_language == 'rust' -%}
+    {
+        "name": "Rust: CLI Run (Debug)",
+        "type": "lldb",
+        "request": "launch",
+        "cargo": {
+            "args": ["build", "--bin={{ package_name }}", "--package={{ package_name }}"],
+            "filter": {
+                "name": "{{ package_name }}",
+                "kind": "bin"
+            }
+        },
+        "args": [],
+        "cwd": "${workspaceFolder}"
+    }
+    {%- endif -%}
+  ]
+}

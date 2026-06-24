@@ -1,0 +1,278 @@
+{% if saas_infra_module == "enabled" and saas_ai_features == 'full' %}
+/**
+ * Vector Database Integration
+ *
+ * Unified interface for multiple vector database providers.
+ * Choose the provider that fits your needs:
+ *
+ * - **Pinecone**: Serverless, cloud-native, auto-scaling
+ * - **Qdrant**: Open-source, self-hosted or cloud, high-performance
+ * - **Weaviate**: GraphQL-based, schema-driven, hybrid search
+ *
+ * All implementations follow the IVectorStore interface for easy switching.
+ *
+ * @example
+ * ```ts
+ * import { createVectorStore } from '@/integrations/ai/vectordb';
+ *
+ * const store = createVectorStore({
+ *   indexName: 'my-documents',
+ *   dimension: 1536,
+ * });
+ *
+ * await store.upsert([
+ *   { id: '1', content: 'First doc' },
+ *   { id: '2', content: 'Second doc' },
+ * ]);
+ *
+ * const results = await store.searchByText('query text', { topK: 5 });
+ * ```
+ */
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export type {
+  IVectorStore,
+  VectorDocument,
+  VectorSearchResult,
+  VectorSearchOptions,
+  VectorStoreConfig,
+  PineconeConfig,
+  QdrantConfig,
+  WeaviateConfig,
+  VectorProvider,
+  VectorMetadata,
+  VectorStoreError,
+  EmbeddingError,
+  ConnectionError,
+  ValidationError,
+} from './types';
+
+// ============================================================================
+// Embeddings
+// ============================================================================
+
+export {
+  generateEmbedding,
+  generateEmbeddings,
+  getEmbeddingConfig,
+  validateEmbedding,
+  cosineSimilarity,
+  normalizeVector,
+  EMBEDDING_CONFIGS,
+  type EmbeddingConfig,
+} from './embeddings';
+
+// ============================================================================
+// Provider Implementations
+// ============================================================================
+
+{% if vector_db_provider == 'pinecone' %}
+export { PineconeStore, createVectorStore } from './pinecone';
+{% elif vector_db_provider == 'qdrant' %}
+export { QdrantStore, createVectorStore } from './qdrant';
+{% elif vector_db_provider == 'weaviate' %}
+export { WeaviateStore, createVectorStore } from './weaviate';
+{% endif %}
+
+// ============================================================================
+// Default Export
+// ============================================================================
+
+{% if vector_db_provider == 'pinecone' %}
+export { createVectorStore as default } from './pinecone';
+{% elif vector_db_provider == 'qdrant' %}
+export { createVectorStore as default } from './qdrant';
+{% elif vector_db_provider == 'weaviate' %}
+export { createVectorStore as default } from './weaviate';
+{% endif %}
+
+// ============================================================================
+// Usage Examples
+// ============================================================================
+
+/**
+ * Example 1: Basic Document Storage and Search
+ *
+ * ```typescript
+ * import { createVectorStore } from '@/integrations/ai/vectordb';
+ *
+ * // Initialize vector store
+ * const store = createVectorStore({
+ *   indexName: 'knowledge-base',
+ *   dimension: 1536, // OpenAI text-embedding-3-small
+ * });
+ *
+ * // Store documents (embeddings generated automatically)
+ * await store.upsert([
+ *   {
+ *     id: 'doc-1',
+ *     content: 'Guide to building with Next.js and React',
+ *     metadata: {
+ *       category: 'tutorial',
+ *       author: 'Jane Doe',
+ *       tags: ['nextjs', 'react'],
+ *     },
+ *   },
+ *   {
+ *     id: 'doc-2',
+ *     content: 'Authentication best practices with Clerk',
+ *     metadata: {
+ *       category: 'security',
+ *       author: 'John Smith',
+ *     },
+ *   },
+ * ]);
+ *
+ * // Search by text
+ * const results = await store.searchByText('Next.js tutorial', {
+ *   topK: 5,
+ *   threshold: 0.7,
+ * });
+ *
+ * results.forEach((result) => {
+ *   console.log(`${result.content} (score: ${result.score})`);
+ * });
+ * ```
+ */
+
+/**
+ * Example 2: Advanced Search with Filters
+ *
+ * ```typescript
+ * import { createVectorStore } from '@/integrations/ai/vectordb';
+ *
+ * const store = createVectorStore({
+ *   indexName: 'products',
+ *   dimension: 1536,
+ * });
+ *
+ * // Search with metadata filters
+ * const results = await store.searchByText('laptop computer', {
+ *   topK: 10,
+ *   threshold: 0.75,
+ *   filter: {
+ *     category: 'electronics',
+ *     inStock: true,
+ *   },
+ * });
+ *
+ * // Search by pre-computed embedding
+ * const embedding = await generateEmbedding('gaming laptop');
+ * const gamingResults = await store.search(embedding, {
+ *   topK: 5,
+ *   filter: { category: 'gaming' },
+ * });
+ * ```
+ */
+
+/**
+ * Example 3: Batch Operations
+ *
+ * ```typescript
+ * import { createVectorStore, generateEmbeddings } from '@/integrations/ai/vectordb';
+ *
+ * const store = createVectorStore({
+ *   indexName: 'articles',
+ *   dimension: 1536,
+ * });
+ *
+ * // Pre-compute embeddings for batch insert
+ * const articles = [
+ *   { id: 'a1', content: 'Article 1 content...' },
+ *   { id: 'a2', content: 'Article 2 content...' },
+ *   { id: 'a3', content: 'Article 3 content...' },
+ * ];
+ *
+ * const texts = articles.map((a) => a.content);
+ * const embeddings = await generateEmbeddings(texts);
+ *
+ * const documents = articles.map((article, i) => ({
+ *   ...article,
+ *   embedding: embeddings[i],
+ * }));
+ *
+ * await store.upsert(documents);
+ *
+ * console.log(`Stored ${documents.length} articles`);
+ * ```
+ */
+
+/**
+ * Example 4: Multi-Tenant Architecture
+ *
+ * ```typescript
+ * import { createVectorStore } from '@/integrations/ai/vectordb';
+ *
+ * const store = createVectorStore({
+ *   indexName: 'multi-tenant-docs',
+ *   dimension: 1536,
+ *   {% if vector_db_provider == 'pinecone' %}
+ *   namespace: 'tenant-abc123', // Pinecone namespace for isolation
+ *   {% endif %}
+ * });
+ *
+ * // Store with tenant metadata
+ * await store.upsert([
+ *   {
+ *     id: 'doc-1',
+ *     content: 'Tenant-specific document',
+ *     metadata: {
+ *       organizationId: 'org-123',
+ *       userId: 'user-456',
+ *       visibility: 'private',
+ *     },
+ *   },
+ * ]);
+ *
+ * // Search within tenant
+ * const results = await store.searchByText('query', {
+ *   topK: 10,
+ *   filter: {
+ *     organizationId: 'org-123',
+ *     visibility: 'private',
+ *   },
+ * });
+ * ```
+ */
+
+/**
+ * Example 5: Document Lifecycle Management
+ *
+ * ```typescript
+ * import { createVectorStore } from '@/integrations/ai/vectordb';
+ *
+ * const store = createVectorStore({
+ *   indexName: 'documents',
+ *   dimension: 1536,
+ * });
+ *
+ * // Get document by ID
+ * const doc = await store.get('doc-123');
+ * if (doc) {
+ *   console.log('Found:', doc.content);
+ * }
+ *
+ * // Get multiple documents
+ * const docs = await store.getMany(['doc-1', 'doc-2', 'doc-3']);
+ * console.log(`Retrieved ${docs.length} documents`);
+ *
+ * // Delete by ID
+ * await store.delete(['doc-old-1', 'doc-old-2']);
+ *
+ * // Delete by filter (e.g., cleanup old documents)
+ * const deleted = await store.deleteByFilter({
+ *   status: 'archived',
+ *   createdBefore: '2024-01-01',
+ * });
+ * console.log(`Deleted ${deleted} archived documents`);
+ *
+ * // Count documents
+ * const total = await store.count();
+ * const active = await store.count({ status: 'active' });
+ * console.log(`${active} active out of ${total} total documents`);
+ * ```
+ */
+{% endif %}

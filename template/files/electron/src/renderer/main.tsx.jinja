@@ -1,0 +1,35 @@
+{% if desktop_module == "enabled" and desktop_framework == "electron-vite" %}
+/**
+ * Renderer Entry Point
+ *
+ * This is the entry point for the React renderer process.
+ */
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './styles/index.css';
+
+// Get the root element
+const rootElement = document.getElementById('root');
+
+if (!rootElement) {
+  throw new Error('Failed to find root element');
+}
+
+// Create React root and render app
+const root = ReactDOM.createRoot(rootElement);
+
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+// Log renderer loaded (in development only)
+if (import.meta.env.DEV) {
+  console.log('{{ project_name }} renderer loaded');
+  console.log('Electron APIs available:', !!window.electron);
+  console.log('Custom APIs available:', !!window.api);
+}
+{% endif %}

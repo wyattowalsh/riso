@@ -1,0 +1,191 @@
+{% if desktop_module == "enabled" and desktop_framework == "tauri" %}
+//! Tauri Command Handlers
+//!
+//! This module contains all the command handlers that can be invoked from the frontend.
+//! Each command is exposed via the #[tauri::command] macro.
+//!
+//! Security Notes:
+//! - All commands should validate their inputs
+//! - Sensitive operations should check permissions
+//! - Never trust data from the frontend
+
+use log::{debug, error, info, warn};
+use serde::{Deserialize, Serialize};
+use tauri::command;
+{% if desktop_features is defined and 'auto_updater' in desktop_features %}
+use tauri::{AppHandle, Manager};
+{% endif %}
+{% if desktop_features is defined and 'system_info' in desktop_features %}
+use sysinfo::System;
+{% endif %}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ApiResponse<T> {
+    pub success: bool,
+    pub data: Option<T>,
+    pub error: Option<String>,
+}
+
+impl<T> ApiResponse<T> {
+    pub fn success(data: T) -> Self {
+        Self {
+            success: true,
+            data: Some(data),
+            error: None,
+        }
+    }
+
+    pub fn error(message: impl Into<String>) -> Self {
+        Self {
+            success: false,
+            data: None,
+            error: Some(message.into()),
+        }
+    }
+}
+
+/// Greet command
+///
+/// Example of a simple command that takes a parameter and returns a string.
+#[command]
+pub fn greet(name: &str) -> String {
+    info!("Greeting: {}", name);
+    format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+{% if desktop_features is defined and 'system_info' in desktop_features %}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SystemInfo {
+    pub os: String,
+    pub os_version: String,
+    pub arch: String,
+    pub hostname: String,
+    pub cpu_count: usize,
+    pub total_memory: u64,
+    pub available_memory: u64,
+}
+
+/// Get system information
+///
+/// Returns information about the current system.
+#[command]
+pub fn get_system_info() -> ApiResponse<SystemInfo> {
+    debug!("Getting system info");
+
+    let mut sys = System::new_all();
+    sys.refresh_all();
+
+    let info = SystemInfo {
+        os: std::env::consts::OS.to_string(),
+        os_version: System::long_os_version().unwrap_or_else(|| "Unknown".to_string()),
+        arch: std::env::consts::ARCH.to_string(),
+        hostname: System::host_name().unwrap_or_else(|| "Unknown".to_string()),
+        cpu_count: sys.cpus().len(),
+        total_memory: sys.total_memory(),
+        available_memory: sys.available_memory(),
+    };
+
+    ApiResponse::success(info)
+}
+{% endif %}
+
+{% if desktop_features is defined and 'auto_updater' in desktop_features %}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateInfo {
+    pub available: bool,
+    pub version: Option<String>,
+    pub current_version: String,
+    pub date: Option<String>,
+    pub body: Option<String>,
+}
+
+/// Check for application updates
+///
+/// This is called from the frontend to manually check for updates.
+#[command]
+pub async fn check_for_updates_cmd(app: AppHandle) -> Result<UpdateInfo, String> {
+    check_for_updates(app).await
+}
+
+/// Internal function to check for updates
+pub async fn check_for_updates(app: AppHandle) -> Result<UpdateInfo, String> {
+    info!("Checking for updates...");
+
+    let current_version = app.package_info().version.to_string();
+
+    match app.updater() {
+        Ok(updater) => match updater.check().await {
+            Ok(Some(update)) => {
+                info!("Update available: {}", update.version);
+                Ok(UpdateInfo {
+                    available: true,
+                    version: Some(update.version.clone()),
+                    current_version,
+                    date: update.date.clone(),
+                    body: update.body.clone(),
+                })
+            }
+            Ok(None) => {
+                info!("No updates available");
+                Ok(UpdateInfo {
+                    available: false,
+                    version: None,
+                    current_version,
+                    date: None,
+                    body: None,
+                })
+            }
+            Err(e) => {
+                error!("Update check error: {}", e);
+                Err(format!("Failed to check for updates: {}", e))
+            }
+        },
+        Err(e) => {
+            error!("Updater initialization error: {}", e);
+            Err(format!("Failed to initialize updater: {}", e))
+        }
+    }
+}
+
+/// Install a pending update
+///
+/// Downloads and installs an available update, then restarts the application.
+#[command]
+pub async fn install_update(app: AppHandle) -> Result<(), String> {
+    info!("Installing update...");
+
+    match app.updater() {
+        Ok(updater) => match updater.check().await {
+            Ok(Some(update)) => {
+                info!("Downloading update: {}", update.version);
+
+                // Download the update
+                match update.download_and_install(|_, _| {}, || {}).await {
+                    Ok(_) => {
+                        info!("Update installed successfully, restarting...");
+                        // Restart the application
+                        app.restart();
+                    }
+                    Err(e) => {
+                        error!("Failed to download/install update: {}", e);
+                        Err(format!("Failed to install update: {}", e))
+                    }
+                }
+            }
+            Ok(None) => {
+                warn!("No update available to install");
+                Err("No update available".to_string())
+            }
+            Err(e) => {
+                error!("Update check failed: {}", e);
+                Err(format!("Failed to check for updates: {}", e))
+            }
+        },
+        Err(e) => {
+            error!("Updater initialization error: {}", e);
+            Err(format!("Failed to initialize updater: {}", e))
+        }
+    }
+}
+{% endif %}
+{% endif %}

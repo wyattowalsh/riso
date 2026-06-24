@@ -1,0 +1,326 @@
+{% if saas_compliance == 'hipaa' -%}
+# HIPAA Compliance Module
+
+This module provides utilities and patterns for building HIPAA-compliant applications that handle Protected Health Information (PHI).
+
+## Overview
+
+The Health Insurance Portability and Accountability Act (HIPAA) establishes national standards for the protection of individually identifiable health information. This module helps you implement the technical safeguards required by the HIPAA Security Rule.
+
+## Components
+
+### 1. PHI Handling (`phi-handling.ts`)
+
+Utilities for identifying, handling, and protecting PHI data:
+
+```typescript
+import { PHI_FIELD_TYPES, redactPHI, validatePHIAccess, logPHIAccess } from './phi-handling';
+
+// Redact PHI from logs
+const safeData = redactPHI(userData, ['ssn', 'dateOfBirth']);
+
+// Validate access before allowing PHI disclosure
+const { authorized } = await validatePHIAccess(userId, { patientId, dataType: PHI_FIELD_TYPES.MRN }, 'treatment');
+
+// Log PHI access for audit trail
+await logPHIAccess({
+  containsPHI: true,
+  phiFields: [PHI_FIELD_TYPES.NAME, PHI_FIELD_TYPES.MRN],
+  purpose: 'treatment',
+  accessedBy: userId,
+  accessedAt: new Date(),
+});
+```
+
+### 2. Encryption (`encryption.ts`)
+
+NIST-recommended encryption for PHI at rest and in transit:
+
+```typescript
+import { encryptPHI, decryptPHI, generateEncryptionKey } from './encryption';
+
+// Generate encryption key (store securely in environment variables or key management service)
+const encryptionKey = generateEncryptionKey();
+
+// Encrypt PHI data before storage
+const encrypted = encryptPHI(sensitiveData, encryptionKey);
+
+// Decrypt when needed
+const decrypted = decryptPHI(encrypted, encryptionKey);
+```
+
+**Features:**
+- AES-256-GCM encryption (authenticated encryption)
+- Secure key generation and derivation
+- Password-based encryption for user-specific keys
+- Secure hashing for sensitive data comparison
+
+### 3. Access Control & Audit Logging (`access-control.ts`)
+
+Complete audit trail implementation for HIPAA compliance:
+
+```typescript
+import { createAuditLog, AccessEventType, AccessOutcome, detectSuspiciousAccess } from './access-control';
+
+// Log every PHI access
+await createAuditLog({
+  userId: 'user_123',
+  patientId: 'patient_456',
+  eventType: AccessEventType.READ,
+  outcome: AccessOutcome.SUCCESS,
+  resourceType: 'MedicalRecord',
+  resourceId: 'record_789',
+  phiAccessed: ['name', 'dateOfBirth', 'diagnosis'],
+  purpose: 'treatment',
+  ipAddress: req.ip,
+  userAgent: req.headers['user-agent'],
+});
+
+// Detect suspicious access patterns
+const { suspicious, alerts } = await detectSuspiciousAccess(userId);
+if (suspicious) {
+  console.warn('Suspicious activity detected:', alerts);
+}
+```
+
+### 4. Business Associate Agreement Template (`baa-template.md`)
+
+Reference template for Business Associate Agreements (BAAs) required when working with covered entities.
+
+**Note:** This is a template only. Have your legal counsel review and customize before execution.
+
+## HIPAA Requirements Checklist
+
+### Administrative Safeguards
+
+- [ ] **Security Management Process**: Risk analysis and management completed
+- [ ] **Workforce Security**: Authorization procedures implemented
+- [ ] **Information Access Management**: Access authorization and establishment
+- [ ] **Security Awareness and Training**: Training program established
+- [ ] **Security Incident Procedures**: Incident response plan documented
+- [ ] **Contingency Plan**: Disaster recovery and backup procedures
+- [ ] **Business Associate Contracts**: BAAs signed with all vendors
+
+### Physical Safeguards
+
+- [ ] **Facility Access Controls**: Physical access restrictions
+- [ ] **Workstation Use**: Policies for workstation security
+- [ ] **Workstation Security**: Physical safeguards implemented
+- [ ] **Device and Media Controls**: Disposal and media re-use procedures
+
+### Technical Safeguards
+
+- [x] **Access Control**: Unique user identification (implemented in this module)
+- [x] **Audit Controls**: Audit trail for PHI access (implemented in this module)
+- [x] **Integrity**: Protection against improper alteration
+- [x] **Person or Entity Authentication**: User authentication before PHI access
+- [x] **Transmission Security**: Encryption for PHI in transit
+
+## Implementation Guide
+
+### Step 1: Environment Setup
+
+Store your encryption key securely:
+
+```bash
+# Generate a key
+export HIPAA_ENCRYPTION_KEY=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64'))")
+
+# Add to your .env file
+echo "HIPAA_ENCRYPTION_KEY=$HIPAA_ENCRYPTION_KEY" >> .env
+```
+
+### Step 2: Database Schema
+
+Ensure PHI fields are encrypted at rest:
+
+```typescript
+// Example Prisma schema
+model MedicalRecord {
+  id          String   @id @default(cuid())
+  patientId   String
+
+  // Encrypted PHI fields
+  diagnoses   String   // Encrypted JSON
+  treatments  String   // Encrypted JSON
+  medications String   // Encrypted JSON
+
+  // Audit fields
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedBy   String?
+  updatedAt   DateTime @updatedAt
+
+  @@index([patientId])
+}
+```
+
+### Step 3: API Endpoints
+
+Protect all PHI endpoints with audit logging:
+
+```typescript
+import { auditPHIAccess, AccessEventType, AccessOutcome } from '@/compliance/hipaa';
+
+export async function GET(req: Request) {
+  const { userId, patientId } = await authenticate(req);
+
+  // Create audit logger
+  const logAccess = auditPHIAccess(
+    userId,
+    patientId,
+    AccessEventType.READ,
+    'MedicalRecord',
+    recordId,
+    'treatment'
+  );
+
+  try {
+    // Validate access
+    const { authorized, reason } = await validatePHIAccess(userId, { patientId, dataType: 'medicalRecordNumber' }, 'treatment');
+
+    if (!authorized) {
+      await logAccess(AccessOutcome.DENIED, [], {
+        denialReason: reason,
+        ipAddress: req.headers.get('x-forwarded-for') || 'unknown'
+      });
+      return new Response('Access denied', { status: 403 });
+    }
+
+    // Fetch and decrypt data
+    const record = await db.medicalRecord.findUnique({ where: { id: recordId } });
+    const decryptedData = decryptPHI(JSON.parse(record.diagnoses), process.env.HIPAA_ENCRYPTION_KEY!);
+
+    // Log successful access
+    await logAccess(AccessOutcome.SUCCESS, ['name', 'diagnosis', 'treatment'], {
+      ipAddress: req.headers.get('x-forwarded-for') || 'unknown',
+      userAgent: req.headers.get('user-agent') || undefined,
+    });
+
+    return Response.json(decryptedData);
+  } catch (error) {
+    await logAccess(AccessOutcome.FAILURE, [], {
+      denialReason: error.message,
+      ipAddress: req.headers.get('x-forwarded-for') || 'unknown'
+    });
+    throw error;
+  }
+}
+```
+
+### Step 4: Minimum Necessary Standard
+
+Apply the minimum necessary standard when disclosing PHI:
+
+```typescript
+import { applyMinimumNecessary, PHI_FIELD_TYPES } from '@/compliance/hipaa';
+
+// User requests access to patient data for billing
+const requestedFields = [
+  PHI_FIELD_TYPES.NAME,
+  PHI_FIELD_TYPES.DIAGNOSIS,
+  PHI_FIELD_TYPES.TREATMENT,
+  PHI_FIELD_TYPES.ACCOUNT_NUMBER,
+];
+
+const allowedFields = applyMinimumNecessary(requestedFields, 'billing');
+// Returns only: [NAME, ACCOUNT_NUMBER]
+```
+
+## Security Best Practices
+
+### 1. Encryption at Rest
+- Use AES-256-GCM for all PHI storage
+- Store encryption keys in a key management service (AWS KMS, Azure Key Vault, Google Cloud KMS)
+- Rotate encryption keys annually
+
+### 2. Encryption in Transit
+- Use TLS 1.3 or higher for all API communications
+- Implement certificate pinning for mobile applications
+- Use VPN for internal network access
+
+### 3. Access Controls
+- Implement role-based access control (RBAC)
+- Enforce multi-factor authentication (MFA) for all users
+- Use automatic session timeout (15 minutes of inactivity)
+- Implement password complexity requirements
+
+### 4. Audit Logging
+- Log all PHI access (successful and failed)
+- Store audit logs for at least 6 years (HIPAA requirement)
+- Use immutable storage for audit logs
+- Monitor for suspicious access patterns
+
+### 5. Breach Notification
+- Detect breaches within 60 days
+- Notify affected individuals within 60 days of discovery
+- Notify HHS (Department of Health and Human Services)
+- Notify media if breach affects 500+ individuals
+
+## Compliance Monitoring
+
+### Regular Security Assessments
+
+Schedule regular security assessments:
+
+```typescript
+import { generateComplianceReport } from '@/compliance/hipaa';
+
+// Generate monthly compliance report
+const report = await generateComplianceReport(
+  new Date('2025-01-01'),
+  new Date('2025-01-31')
+);
+
+console.log('Total PHI accesses:', report.summary.totalAccesses);
+console.log('Failed attempts:', report.summary.failedAttempts);
+console.log('Suspicious activity:', report.suspiciousActivity);
+```
+
+### Continuous Monitoring
+
+Implement continuous monitoring for:
+- Unusual access patterns (e.g., accessing many records in short time)
+- Failed authentication attempts
+- After-hours access
+- Access from unusual locations
+- Bulk data exports
+
+## Incident Response
+
+If a breach occurs:
+
+1. **Contain the breach** immediately
+2. **Assess the scope**: What PHI was accessed/disclosed?
+3. **Document everything**: Timeline, affected individuals, corrective actions
+4. **Notify affected parties** within 60 days
+5. **Report to HHS** via their breach portal
+6. **Implement corrective measures** to prevent future breaches
+
+## Training Requirements
+
+All workforce members must receive HIPAA training:
+- Initial training upon hire
+- Annual refresher training
+- Training after any policy changes
+- Document all training completion
+
+## Resources
+
+- [HHS HIPAA Homepage](https://www.hhs.gov/hipaa)
+- [HIPAA Security Rule](https://www.hhs.gov/hipaa/for-professionals/security)
+- [Breach Notification Rule](https://www.hhs.gov/hipaa/for-professionals/breach-notification)
+- [OCR Guidance](https://www.hhs.gov/hipaa/for-professionals/security/guidance)
+
+## Support
+
+For questions about HIPAA compliance implementation, consult with:
+- Your organization's Privacy Officer
+- Legal counsel specializing in healthcare law
+- HIPAA compliance consultants
+- Security auditors with healthcare experience
+
+---
+
+**Disclaimer:** This module provides technical tools for HIPAA compliance but does not constitute legal advice. Consult with qualified legal counsel to ensure full compliance with HIPAA regulations for your specific use case.
+{% endif -%}

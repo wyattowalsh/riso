@@ -1,0 +1,67 @@
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+//! Hello command implementation
+
+use anyhow::Result;
+use clap::Args;
+use colored::Colorize;
+use tracing::info;
+
+#[derive(Args)]
+pub struct HelloArgs {
+    /// Name to greet
+    #[arg(default_value = "World")]
+    name: String,
+
+    /// Number of times to greet
+    #[arg(short, long, default_value = "1")]
+    count: u32,
+
+    /// Use uppercase
+    #[arg(short, long)]
+    uppercase: bool,
+}
+
+pub async fn run(args: HelloArgs) -> Result<()> {
+    let mut greeting = format!("Hello, {}!", args.name);
+
+    if args.uppercase {
+        greeting = greeting.to_uppercase();
+    }
+
+    for i in 1..=args.count {
+        if args.count > 1 {
+            println!("[{}/{}] {}", i, args.count, greeting.green());
+        } else {
+            println!("{}", greeting.green());
+        }
+    }
+
+    info!("Hello command completed successfully");
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_hello_default() {
+        let args = HelloArgs {
+            name: "Test".to_string(),
+            count: 1,
+            uppercase: false,
+        };
+        assert!(run(args).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_hello_uppercase() {
+        let args = HelloArgs {
+            name: "test".to_string(),
+            count: 1,
+            uppercase: true,
+        };
+        assert!(run(args).await.is_ok());
+    }
+}
+{% endif %}

@@ -1,0 +1,102 @@
+{% if saas_infra_module == "enabled" %}
+/**
+ * Observability Module
+ *
+ * Centralized exports for logging, tracing, metrics, and error tracking.
+ *
+ * @module observability
+ */
+
+{% if saas_observability_structured_logging %}
+// Logger
+export {
+  logger,
+  createLogger,
+  createRequestLogger,
+  logError,
+  logWarning,
+  logInfo,
+  logDebug,
+  startTimer,
+  logHttpRequest,
+  {% if saas_admin_dashboard or saas_rbac_system != 'basic-roles' %}
+  logAudit,
+  {% endif %}
+  type Logger,
+} from './logger';
+{% endif %}
+
+{% if saas_observability_otel %}
+// Tracing
+export {
+  initializeTracing,
+  createSpan,
+  recordException,
+  setTraceAttributes,
+  getActiveSpan,
+  withSpan,
+  type SpanAttributes,
+  type SpanOptions,
+} from './tracing';
+
+// Metrics
+export {
+  initializeMetrics,
+  recordCounter,
+  recordHistogram,
+  recordGauge,
+  createCounter,
+  createHistogram,
+  createGauge,
+  // Business metrics helpers
+  recordSignup,
+  recordLogin,
+  recordPayment,
+  recordApiRequest,
+  recordApiError,
+  type MetricOptions,
+} from './metrics';
+{% endif %}
+
+{% if saas_observability_sentry %}
+// Error Tracking
+export {
+  initializeSentry,
+  captureError,
+  captureMessage,
+  setUserContext,
+  setContext,
+  addBreadcrumb,
+  ErrorBoundary,
+  withErrorBoundary,
+  type ErrorBoundaryProps,
+  type SentryContext,
+} from './error-tracking';
+{% endif %}
+
+// Performance
+export {
+  measurePerformance,
+  trackWebVitals,
+  getWebVitals,
+  reportPerformanceMetrics,
+  createPerformanceObserver,
+  type PerformanceMetrics,
+  type WebVitalsMetric,
+} from './performance';
+
+// Types
+export type {
+  ObservabilityConfig,
+  CorrelationContext,
+  RequestContext,
+  TraceContext,
+} from './types';
+
+// Utilities
+export {
+  generateCorrelationId,
+  extractCorrelationId,
+  injectCorrelationHeaders,
+} from './utils';
+{% endif %}

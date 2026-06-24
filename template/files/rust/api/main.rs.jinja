@@ -1,0 +1,67 @@
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+//! {{ project_name }} API Server
+//!
+//! A high-performance REST API built with Actix-web and Tokio.
+
+use actix_web::{middleware, web, App, HttpServer};
+use tracing::info;
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+
+mod config;
+mod handlers;
+mod models;
+mod routes;
+
+use config::Config;
+
+fn init_logging() {
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+
+    tracing_subscriber::registry()
+        .with(fmt::layer())
+        .with(filter)
+        .init();
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    init_logging();
+
+    let config = Config::from_env();
+    let bind_addr = format!("{}:{}", config.host, config.port);
+
+    info!("Starting {} API server on {}", "{{ project_name }}", bind_addr);
+    info!("Environment: {}", config.environment);
+    info!("CORS enabled: {}", config.cors_enabled);
+
+    HttpServer::new(move || {
+        let mut app = App::new()
+            .app_data(web::Data::new(config.clone()))
+            .wrap(middleware::Logger::default())
+            .wrap(middleware::Compress::default());
+
+        // Add CORS if enabled
+        if config.cors_enabled {
+            app = app.wrap(
+                actix_cors::Cors::default()
+                    .allow_any_origin()
+                    .allow_any_method()
+                    .allow_any_header()
+                    .max_age(3600),
+            );
+        }
+
+        app.configure(routes::configure)
+    })
+    .bind(&bind_addr)?
+    .run()
+    .await
+}
+{% else %}
+// API module is disabled
+// Re-render the template with `api_module=enabled` and `api_languages=[rust]` to scaffold the Rust API.
+fn main() {
+    eprintln!("API module is disabled for this render.");
+    std::process::exit(1);
+}
+{% endif %}

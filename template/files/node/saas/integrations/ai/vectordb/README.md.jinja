@@ -1,0 +1,560 @@
+{% if saas_infra_module == "enabled" and saas_ai_features == 'full' %}
+# Vector Database Integration
+
+Production-ready vector database integration for semantic search, RAG, and AI applications.
+
+## Features
+
+- **Unified Interface**: Switch between providers with minimal code changes
+- **Auto Embeddings**: Automatic embedding generation using OpenAI/Cohere
+- **Multi-Provider**: Pinecone, Qdrant, and Weaviate implementations
+- **Type-Safe**: Full TypeScript support with detailed types
+- **Metadata Filtering**: Rich filtering capabilities for multi-tenant apps
+- **Batch Operations**: Efficient bulk insert and delete operations
+- **Error Handling**: Comprehensive error types and handling
+
+## Supported Providers
+
+### Pinecone
+**Best for**: Serverless, production-scale applications
+
+- ✅ Fully managed, serverless
+- ✅ Auto-scaling
+- ✅ Namespace isolation for multi-tenancy
+- ✅ Sparse-dense hybrid search
+- ✅ Global availability
+
+{% if vector_db_provider == 'pinecone' %}
+### Setup
+
+```bash
+# Install dependencies
+{% if saas_package_manager == 'pnpm' %}pnpm add @pinecone-database/pinecone{% elif saas_package_manager == 'yarn' %}yarn add @pinecone-database/pinecone{% else %}npm install @pinecone-database/pinecone{% endif %}
+
+# Environment variables
+PINECONE_API_KEY=your_api_key
+```
+
+### Usage
+
+```typescript
+import { createVectorStore } from '@/integrations/ai/vectordb';
+
+const store = createVectorStore({
+  indexName: 'my-index',
+  dimension: 1536,
+  namespace: 'production', // Optional: for multi-tenancy
+});
+```
+{% endif %}
+
+### Qdrant
+**Best for**: Self-hosted, high-performance applications
+
+- ✅ Open-source
+- ✅ Self-hosted or cloud
+- ✅ Rich filtering with payload
+- ✅ Quantization for efficiency
+- ✅ Clustering and sharding
+
+{% if vector_db_provider == 'qdrant' %}
+### Setup
+
+```bash
+# Install dependencies
+{% if saas_package_manager == 'pnpm' %}pnpm add @qdrant/js-client-rest{% elif saas_package_manager == 'yarn' %}yarn add @qdrant/js-client-rest{% else %}npm install @qdrant/js-client-rest{% endif %}
+
+# Environment variables
+QDRANT_URL=http://localhost:6333  # or cloud URL
+QDRANT_API_KEY=your_api_key        # for cloud
+```
+
+### Usage
+
+```typescript
+import { createVectorStore } from '@/integrations/ai/vectordb';
+
+const store = createVectorStore({
+  indexName: 'my-collection',
+  dimension: 1536,
+  url: 'http://localhost:6333', // Optional: defaults to env var
+});
+```
+
+### Docker Setup (Self-Hosted)
+
+```bash
+docker run -p 6333:6333 qdrant/qdrant
+```
+{% endif %}
+
+### Weaviate
+**Best for**: Schema-based, GraphQL-driven applications
+
+- ✅ GraphQL API
+- ✅ Schema-based modeling
+- ✅ Built-in vectorizers
+- ✅ Hybrid search
+- ✅ Multi-modal support
+
+{% if vector_db_provider == 'weaviate' %}
+### Setup
+
+```bash
+# Install dependencies
+{% if saas_package_manager == 'pnpm' %}pnpm add weaviate-ts-client{% elif saas_package_manager == 'yarn' %}yarn add weaviate-ts-client{% else %}npm install weaviate-ts-client{% endif %}
+
+# Environment variables
+WEAVIATE_URL=http://localhost:8080  # or cloud URL
+WEAVIATE_API_KEY=your_api_key        # for cloud
+```
+
+### Usage
+
+```typescript
+import { createVectorStore } from '@/integrations/ai/vectordb';
+
+const store = createVectorStore({
+  indexName: 'MyDocuments',
+  dimension: 1536,
+  className: 'Document', // Weaviate class name
+  url: 'http://localhost:8080',
+});
+```
+
+### Docker Setup (Self-Hosted)
+
+```bash
+docker run -p 8080:8080 semitechnologies/weaviate:latest
+```
+{% endif %}
+
+## Quick Start
+
+### 1. Store Documents
+
+```typescript
+import { createVectorStore } from '@/integrations/ai/vectordb';
+
+const store = createVectorStore({
+  indexName: 'knowledge-base',
+  dimension: 1536,
+});
+
+// Embeddings are generated automatically
+await store.upsert([
+  {
+    id: 'doc-1',
+    content: 'Next.js is a React framework for production',
+    metadata: {
+      category: 'framework',
+      tags: ['nextjs', 'react'],
+    },
+  },
+  {
+    id: 'doc-2',
+    content: 'TypeScript provides static typing for JavaScript',
+    metadata: {
+      category: 'language',
+      tags: ['typescript', 'javascript'],
+    },
+  },
+]);
+```
+
+### 2. Search Documents
+
+```typescript
+// Simple text search
+const results = await store.searchByText('React framework', {
+  topK: 5,
+  threshold: 0.7,
+});
+
+results.forEach((result) => {
+  console.log(`${result.content} (${result.score.toFixed(3)})`);
+});
+```
+
+### 3. Filter by Metadata
+
+```typescript
+// Search with filters
+const filtered = await store.searchByText('framework', {
+  topK: 10,
+  filter: {
+    category: 'framework',
+    tags: ['react'],
+  },
+});
+```
+
+### 4. Manage Documents
+
+```typescript
+// Get document
+const doc = await store.get('doc-1');
+console.log(doc?.content);
+
+// Get multiple
+const docs = await store.getMany(['doc-1', 'doc-2']);
+
+// Delete by ID
+await store.delete(['doc-old-1', 'doc-old-2']);
+
+// Delete by filter
+await store.deleteByFilter({ status: 'archived' });
+
+// Count documents
+const total = await store.count();
+const active = await store.count({ status: 'active' });
+```
+
+## Advanced Usage
+
+### Pre-Computed Embeddings
+
+For better performance, pre-compute embeddings in batches:
+
+```typescript
+import { generateEmbeddings } from '@/integrations/ai/vectordb';
+
+const documents = [
+  { id: '1', content: 'Doc 1...' },
+  { id: '2', content: 'Doc 2...' },
+  { id: '3', content: 'Doc 3...' },
+];
+
+// Batch generate embeddings
+const texts = documents.map((d) => d.content);
+const embeddings = await generateEmbeddings(texts);
+
+// Store with embeddings
+await store.upsert(
+  documents.map((doc, i) => ({
+    ...doc,
+    embedding: embeddings[i],
+  }))
+);
+```
+
+### Multi-Tenant Architecture
+
+Isolate data by organization:
+
+```typescript
+{% if vector_db_provider == 'pinecone' %}
+// Use namespaces for tenant isolation
+const orgStore = createVectorStore({
+  indexName: 'shared-index',
+  dimension: 1536,
+  namespace: `org-${organizationId}`,
+});
+{% else %}
+// Use metadata filters for tenant isolation
+const orgDocs = await store.searchByText('query', {
+  filter: {
+    organizationId: 'org-123',
+    userId: 'user-456',
+  },
+});
+{% endif %}
+
+// Store with tenant metadata
+await store.upsert([
+  {
+    id: 'doc-1',
+    content: 'Document content',
+    metadata: {
+      organizationId: 'org-123',
+      userId: 'user-456',
+      visibility: 'private',
+    },
+  },
+]);
+```
+
+### Integration with RAG
+
+Combine with the RAG module for complete AI workflows:
+
+```typescript
+import { createVectorStore } from '@/integrations/ai/vectordb';
+import { chunkDocument } from '@/integrations/ai/rag';
+
+// 1. Chunk document
+const chunks = await chunkDocument({
+  documentId: 'guide-123',
+  content: longDocumentContent,
+  options: {
+    strategy: { type: 'recursive', size: 1000, overlap: 200 },
+  },
+});
+
+// 2. Store chunks in vector DB
+await store.upsert(
+  chunks.chunks.map((chunk) => ({
+    id: chunk.id,
+    content: chunk.content,
+    metadata: {
+      documentId: chunk.documentId,
+      chunkIndex: chunk.chunkIndex,
+      ...chunk.metadata,
+    },
+  }))
+);
+
+// 3. Retrieve for RAG
+const relevant = await store.searchByText(userQuery, {
+  topK: 5,
+  threshold: 0.7,
+});
+
+// 4. Use in LLM prompt
+const context = relevant.map((r) => r.content).join('\n\n');
+```
+
+### Similarity Metrics
+
+Choose the right metric for your use case:
+
+```typescript
+const store = createVectorStore({
+  indexName: 'my-index',
+  dimension: 1536,
+  metric: 'cosine', // 'cosine' | 'euclidean' | 'dot_product'
+});
+```
+
+- **Cosine**: Best for text similarity (default)
+- **Euclidean**: Best for numerical data
+- **Dot Product**: Best for pre-normalized vectors
+
+## Environment Variables
+
+```bash
+# Embedding Provider (OpenAI or Cohere)
+{% if saas_ai == 'openai' or embedding_provider == 'openai' %}
+OPENAI_API_KEY=sk-...
+{% elif saas_ai == 'cohere' or embedding_provider == 'cohere' %}
+COHERE_API_KEY=...
+{% endif %}
+
+# Vector Database
+{% if vector_db_provider == 'pinecone' %}
+PINECONE_API_KEY=...
+{% elif vector_db_provider == 'qdrant' %}
+QDRANT_URL=http://localhost:6333
+QDRANT_API_KEY=...  # Cloud only
+{% elif vector_db_provider == 'weaviate' %}
+WEAVIATE_URL=http://localhost:8080
+WEAVIATE_API_KEY=...  # Cloud only
+{% endif %}
+```
+
+## API Reference
+
+### IVectorStore Interface
+
+All implementations provide:
+
+```typescript
+interface IVectorStore {
+  // Insert or update documents
+  upsert(documents: VectorDocument[]): Promise<void>;
+
+  // Search by embedding vector
+  search(query: number[], options?: VectorSearchOptions): Promise<VectorSearchResult[]>;
+
+  // Search by text (auto-generates embedding)
+  searchByText(text: string, options?: VectorSearchOptions): Promise<VectorSearchResult[]>;
+
+  // Delete by IDs
+  delete(ids: string[]): Promise<void>;
+
+  // Delete by metadata filter
+  deleteByFilter(filter: Record<string, unknown>): Promise<number>;
+
+  // Get single document
+  get(id: string): Promise<VectorDocument | null>;
+
+  // Get multiple documents
+  getMany(ids: string[]): Promise<VectorDocument[]>;
+
+  // Count documents
+  count(filter?: Record<string, unknown>): Promise<number>;
+}
+```
+
+### Types
+
+```typescript
+interface VectorDocument {
+  id: string;
+  content: string;
+  embedding?: number[];
+  metadata?: Record<string, unknown>;
+}
+
+interface VectorSearchResult {
+  id: string;
+  content: string;
+  score: number;
+  metadata?: Record<string, unknown>;
+}
+
+interface VectorSearchOptions {
+  topK?: number;           // Default: 10
+  threshold?: number;      // Default: 0.0 (0-1 range)
+  filter?: Record<string, unknown>;
+  includeVectors?: boolean; // Default: false
+}
+```
+
+## Performance Tips
+
+### Batch Operations
+
+```typescript
+// ❌ Slow: Individual upserts
+for (const doc of documents) {
+  await store.upsert([doc]);
+}
+
+// ✅ Fast: Batch upsert
+await store.upsert(documents);
+```
+
+### Pre-Compute Embeddings
+
+```typescript
+// ❌ Slower: Generate embeddings one-by-one
+for (const doc of docs) {
+  await store.upsert([{ ...doc }]); // Generates embedding per doc
+}
+
+// ✅ Faster: Batch generate embeddings
+const embeddings = await generateEmbeddings(docs.map((d) => d.content));
+await store.upsert(docs.map((doc, i) => ({ ...doc, embedding: embeddings[i] })));
+```
+
+### Use Appropriate topK
+
+```typescript
+// Only retrieve what you need
+const results = await store.searchByText(query, {
+  topK: 5, // Don't fetch 100 if you only need 5
+});
+```
+
+## Error Handling
+
+```typescript
+import { VectorStoreError, ConnectionError } from '@/integrations/ai/vectordb';
+
+try {
+  await store.upsert(documents);
+} catch (error) {
+  if (error instanceof ConnectionError) {
+    console.error('Database connection failed:', error.message);
+  } else if (error instanceof VectorStoreError) {
+    console.error('Vector store error:', error.code, error.details);
+  } else {
+    console.error('Unexpected error:', error);
+  }
+}
+```
+
+## Best Practices
+
+1. **Use Metadata Filters**: Add rich metadata for better filtering
+2. **Chunk Strategically**: Use appropriate chunk sizes (500-1500 chars)
+3. **Set Thresholds**: Filter low-quality results with similarity threshold
+4. **Batch Operations**: Process documents in batches for efficiency
+5. **Monitor Costs**: Track embedding API usage and vector DB operations
+6. **Multi-Tenancy**: Use namespaces (Pinecone) or metadata filters (others)
+
+## Troubleshooting
+
+### Connection Issues
+
+```typescript
+// Check connection
+try {
+  const count = await store.count();
+  console.log('Connected! Documents:', count);
+} catch (error) {
+  console.error('Connection failed:', error);
+}
+```
+
+### Embedding Dimension Mismatch
+
+```typescript
+// Ensure dimension matches your embedding model
+const config = getEmbeddingConfig();
+console.log('Embedding dimensions:', config.dimensions);
+
+// Create store with matching dimension
+const store = createVectorStore({
+  indexName: 'my-index',
+  dimension: config.dimensions, // Must match!
+});
+```
+
+### No Results Found
+
+```typescript
+// Lower threshold if getting no results
+const results = await store.searchByText(query, {
+  topK: 10,
+  threshold: 0.5, // Try lowering from 0.7 to 0.5
+});
+
+// Check document count
+const total = await store.count();
+console.log('Total documents:', total);
+```
+
+## Migration Guide
+
+### From pgvector to Pinecone/Qdrant/Weaviate
+
+```typescript
+// 1. Export from pgvector
+import { searchVectors } from '@/integrations/ai/rag/vector-store';
+const oldDocs = await searchVectors({ embedding: dummyVector, limit: 10000 });
+
+// 2. Import to new provider
+import { createVectorStore } from '@/integrations/ai/vectordb';
+const newStore = createVectorStore({ indexName: 'migrated', dimension: 1536 });
+
+await newStore.upsert(
+  oldDocs.map((doc) => ({
+    id: doc.id,
+    content: doc.content,
+    embedding: doc.embedding,
+    metadata: doc.metadata,
+  }))
+);
+```
+
+## Resources
+
+{% if vector_db_provider == 'pinecone' %}
+- [Pinecone Documentation](https://docs.pinecone.io/)
+- [Pinecone Quickstart](https://docs.pinecone.io/docs/quickstart)
+{% elif vector_db_provider == 'qdrant' %}
+- [Qdrant Documentation](https://qdrant.tech/documentation/)
+- [Qdrant Quickstart](https://qdrant.tech/documentation/quick-start/)
+{% elif vector_db_provider == 'weaviate' %}
+- [Weaviate Documentation](https://weaviate.io/developers/weaviate)
+- [Weaviate Quickstart](https://weaviate.io/developers/weaviate/quickstart)
+{% endif %}
+- [OpenAI Embeddings](https://platform.openai.com/docs/guides/embeddings)
+- [Cohere Embeddings](https://docs.cohere.com/docs/embeddings)
+
+## License
+
+Generated by Riso template. See main project LICENSE.
+{% endif %}

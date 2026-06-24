@@ -1,0 +1,770 @@
+{% if saas_infra_module == "enabled" %}
+#!/usr/bin/env node
+import * as readline from 'readline';
+import * as fs from 'fs';
+import * as path from 'path';
+import { execSync } from 'child_process';
+
+interface EnvConfig {
+  [key: string]: string | undefined;
+}
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
+
+const projectRoot = process.cwd();
+const envLocalPath = path.join(projectRoot, '.env.local');
+const envExamplePath = path.join(projectRoot, '.env.example');
+
+let envConfig: EnvConfig = {};
+
+// Color codes for terminal output
+const colors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  red: '\x1b[31m',
+};
+
+function log(message: string, color: keyof typeof colors = 'reset') {
+  console.log(`${colors[color]}${message}${colors.reset}`);
+}
+
+function logSuccess(message: string) {
+  log(`✓ ${message}`, 'green');
+}
+
+function logError(message: string) {
+  log(`✗ ${message}`, 'red');
+}
+
+function logInfo(message: string) {
+  log(`ℹ ${message}`, 'blue');
+}
+
+function logWarning(message: string) {
+  log(`⚠ ${message}`, 'yellow');
+}
+
+function question(prompt: string): Promise<string> {
+  return new Promise((resolve) => {
+    rl.question(`${colors.bright}${prompt}${colors.reset} `, (answer) => {
+      resolve(answer.trim());
+    });
+  });
+}
+
+async function checkNodeVersion(): Promise<boolean> {
+  try {
+    const nodeVersion = process.version;
+    const majorVersion = parseInt(nodeVersion.split('.')[0].substring(1), 10);
+
+    if (majorVersion < 20) {
+      logError(`Node.js version must be >= 20 (you have ${nodeVersion})`);
+      return false;
+    }
+
+    logSuccess(`Node.js version ${nodeVersion} is compatible`);
+    return true;
+  } catch (error) {
+    logError('Failed to check Node.js version');
+    return false;
+  }
+}
+
+async function checkPnpmVersion(): Promise<boolean> {
+  try {
+    const pnpmVersion = execSync('pnpm --version', { encoding: 'utf-8' }).trim();
+    const majorVersion = parseInt(pnpmVersion.split('.')[0], 10);
+
+    if (majorVersion < 9) {
+      logError(`pnpm version must be >= 9 (you have ${pnpmVersion})`);
+      return false;
+    }
+
+    logSuccess(`pnpm version ${pnpmVersion} is compatible`);
+    return true;
+  } catch (error) {
+    logError('pnpm is not installed or not in PATH');
+    return false;
+  }
+}
+
+async function checkEnvFile(): Promise<void> {
+  if (fs.existsSync(envLocalPath)) {
+    logSuccess('.env.local already exists');
+    const contents = fs.readFileSync(envLocalPath, 'utf-8');
+    envConfig = parseEnvFile(contents);
+    return;
+  }
+
+  logWarning('.env.local not found');
+
+  if (!fs.existsSync(envExamplePath)) {
+    logError('.env.example not found');
+    return;
+  }
+
+  const createEnv = await question(
+    'Would you like to create .env.local from .env.example? (yes/no)'
+  );
+
+  if (createEnv.toLowerCase() === 'yes' || createEnv.toLowerCase() === 'y') {
+    const exampleContents = fs.readFileSync(envExamplePath, 'utf-8');
+    fs.copyFileSync(envExamplePath, envLocalPath);
+    logSuccess('Created .env.local from .env.example');
+    envConfig = parseEnvFile(exampleContents);
+  }
+}
+
+function parseEnvFile(contents: string): EnvConfig {
+  const config: EnvConfig = {};
+  const lines = contents.split('\n');
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Skip comments and empty lines
+    if (!trimmed || trimmed.startsWith('#')) {
+      continue;
+    }
+
+    const [key, ...valueParts] = trimmed.split('=');
+    if (key) {
+      config[key.trim()] = valueParts.join('=').trim();
+    }
+  }
+
+  return config;
+}
+
+function updateEnvFile(key: string, value: string): void {
+  let contents = '';
+
+  if (fs.existsSync(envLocalPath)) {
+    contents = fs.readFileSync(envLocalPath, 'utf-8');
+  }
+
+  const lines = contents.split('\n');
+  let found = false;
+
+  const updatedLines = lines.map((line) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith(`${key}=`)) {
+      found = true;
+      return `${key}="${value}"`;
+    }
+    return line;
+  });
+
+  if (!found && value) {
+    updatedLines.push(`${key}="${value}"`);
+  }
+
+  fs.writeFileSync(envLocalPath, updatedLines.join('\n'), 'utf-8');
+  envConfig[key] = value;
+}
+
+async function promptForEnvVar(
+  key: string,
+  description: string,
+  required: boolean = true,
+  defaultValue?: string
+): Promise<string> {
+  const existing = envConfig[key];
+  if (existing) {
+    logInfo(`${key} is already set`);
+    return existing;
+  }
+
+  const suffix = required ? ' (required)' : ' (optional)';
+  const prompt = defaultValue ? ` [${defaultValue}]` : '';
+  const answer = await question(`${description}${suffix}${prompt}:`);
+
+  if (!answer && !required && defaultValue) {
+    return defaultValue;
+  }
+
+  if (!answer && required) {
+    logWarning(`${key} is required. Please provide a value.`);
+    return promptForEnvVar(key, description, required, defaultValue);
+  }
+
+  return answer;
+}
+
+async function promptForRequiredEnvVars(): Promise<void> {
+  log('\n--- Required Environment Variables ---\n', 'bright');
+
+  // Database
+  const databaseUrl = await promptForEnvVar(
+    'DATABASE_URL',
+    'Database connection string (postgresql://...)',
+    true,
+    envConfig['DATABASE_URL']
+  );
+  if (databaseUrl) {
+    updateEnvFile('DATABASE_URL', databaseUrl);
+  }
+
+  // Application URL
+  const appUrl = await promptForEnvVar(
+    'NEXT_PUBLIC_APP_URL',
+    'Application URL',
+    false,
+    'http://localhost:3000'
+  );
+  if (appUrl) {
+    updateEnvFile('NEXT_PUBLIC_APP_URL', appUrl);
+  }
+
+  log('\n--- Auth Provider Configuration ---\n', 'bright');
+
+  {% if saas_auth_provider == "clerk" %}
+  // Clerk
+  const clerkPublishable = await promptForEnvVar(
+    'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY',
+    'Clerk Publishable Key (from https://dashboard.clerk.com)',
+    true,
+    envConfig['NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY']
+  );
+  if (clerkPublishable) {
+    updateEnvFile('NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY', clerkPublishable);
+  }
+
+  const clerkSecret = await promptForEnvVar(
+    'CLERK_SECRET_KEY',
+    'Clerk Secret Key',
+    true,
+    envConfig['CLERK_SECRET_KEY']
+  );
+  if (clerkSecret) {
+    updateEnvFile('CLERK_SECRET_KEY', clerkSecret);
+  }
+
+  const clerkWebhook = await promptForEnvVar(
+    'CLERK_WEBHOOK_SECRET',
+    'Clerk Webhook Secret (optional)',
+    false,
+    envConfig['CLERK_WEBHOOK_SECRET']
+  );
+  if (clerkWebhook) {
+    updateEnvFile('CLERK_WEBHOOK_SECRET', clerkWebhook);
+  }
+  {% elif saas_auth_provider == "authjs" %}
+  // Auth.js
+  const nextAuthSecret = await promptForEnvVar(
+    'NEXTAUTH_SECRET',
+    'NextAuth Secret (generate with: openssl rand -base64 32)',
+    true,
+    envConfig['NEXTAUTH_SECRET']
+  );
+  if (nextAuthSecret) {
+    updateEnvFile('NEXTAUTH_SECRET', nextAuthSecret);
+  }
+
+  const nextAuthUrl = await promptForEnvVar(
+    'NEXTAUTH_URL',
+    'NextAuth URL',
+    false,
+    'http://localhost:3000'
+  );
+  if (nextAuthUrl) {
+    updateEnvFile('NEXTAUTH_URL', nextAuthUrl);
+  }
+
+  const googleClientId = await promptForEnvVar(
+    'GOOGLE_CLIENT_ID',
+    'Google OAuth Client ID (optional)',
+    false,
+    envConfig['GOOGLE_CLIENT_ID']
+  );
+  if (googleClientId) {
+    updateEnvFile('GOOGLE_CLIENT_ID', googleClientId);
+  }
+
+  const googleClientSecret = await promptForEnvVar(
+    'GOOGLE_CLIENT_SECRET',
+    'Google OAuth Client Secret (optional)',
+    false,
+    envConfig['GOOGLE_CLIENT_SECRET']
+  );
+  if (googleClientSecret) {
+    updateEnvFile('GOOGLE_CLIENT_SECRET', googleClientSecret);
+  }
+
+  const githubClientId = await promptForEnvVar(
+    'GITHUB_CLIENT_ID',
+    'GitHub OAuth Client ID (optional)',
+    false,
+    envConfig['GITHUB_CLIENT_ID']
+  );
+  if (githubClientId) {
+    updateEnvFile('GITHUB_CLIENT_ID', githubClientId);
+  }
+
+  const githubClientSecret = await promptForEnvVar(
+    'GITHUB_CLIENT_SECRET',
+    'GitHub OAuth Client Secret (optional)',
+    false,
+    envConfig['GITHUB_CLIENT_SECRET']
+  );
+  if (githubClientSecret) {
+    updateEnvFile('GITHUB_CLIENT_SECRET', githubClientSecret);
+  }
+  {% endif %}
+
+  {% if saas_enterprise_bridge == "workos" %}
+  log('\n--- Enterprise SSO Configuration ---\n', 'bright');
+
+  // WorkOS
+  const workosApiKey = await promptForEnvVar(
+    'WORKOS_API_KEY',
+    'WorkOS API Key (optional, from https://dashboard.workos.com)',
+    false,
+    envConfig['WORKOS_API_KEY']
+  );
+  if (workosApiKey) {
+    updateEnvFile('WORKOS_API_KEY', workosApiKey);
+  }
+
+  const workosClientId = await promptForEnvVar(
+    'WORKOS_CLIENT_ID',
+    'WorkOS Client ID (optional)',
+    false,
+    envConfig['WORKOS_CLIENT_ID']
+  );
+  if (workosClientId) {
+    updateEnvFile('WORKOS_CLIENT_ID', workosClientId);
+  }
+
+  const workosWebhook = await promptForEnvVar(
+    'WORKOS_WEBHOOK_SECRET',
+    'WorkOS Webhook Secret (optional)',
+    false,
+    envConfig['WORKOS_WEBHOOK_SECRET']
+  );
+  if (workosWebhook) {
+    updateEnvFile('WORKOS_WEBHOOK_SECRET', workosWebhook);
+  }
+  {% endif %}
+
+  {% if saas_billing_provider == "stripe" %}
+  log('\n--- Billing Configuration ---\n', 'bright');
+
+  // Stripe
+  const stripeSecret = await promptForEnvVar(
+    'STRIPE_SECRET_KEY',
+    'Stripe Secret Key (from https://dashboard.stripe.com/apikeys)',
+    true,
+    envConfig['STRIPE_SECRET_KEY']
+  );
+  if (stripeSecret) {
+    updateEnvFile('STRIPE_SECRET_KEY', stripeSecret);
+  }
+
+  const stripeWebhook = await promptForEnvVar(
+    'STRIPE_WEBHOOK_SECRET',
+    'Stripe Webhook Secret (from https://dashboard.stripe.com/webhooks)',
+    true,
+    envConfig['STRIPE_WEBHOOK_SECRET']
+  );
+  if (stripeWebhook) {
+    updateEnvFile('STRIPE_WEBHOOK_SECRET', stripeWebhook);
+  }
+  {% elif saas_billing_provider == "paddle" %}
+  log('\n--- Billing Configuration ---\n', 'bright');
+
+  // Paddle
+  const paddleApiKey = await promptForEnvVar(
+    'PADDLE_API_KEY',
+    'Paddle API Key (from https://vendors.paddle.com/authentication)',
+    true,
+    envConfig['PADDLE_API_KEY']
+  );
+  if (paddleApiKey) {
+    updateEnvFile('PADDLE_API_KEY', paddleApiKey);
+  }
+
+  const paddleWebhook = await promptForEnvVar(
+    'PADDLE_WEBHOOK_SECRET',
+    'Paddle Webhook Secret',
+    true,
+    envConfig['PADDLE_WEBHOOK_SECRET']
+  );
+  if (paddleWebhook) {
+    updateEnvFile('PADDLE_WEBHOOK_SECRET', paddleWebhook);
+  }
+
+  const paddleVendorId = await promptForEnvVar(
+    'PADDLE_VENDOR_ID',
+    'Paddle Vendor ID',
+    true,
+    envConfig['PADDLE_VENDOR_ID']
+  );
+  if (paddleVendorId) {
+    updateEnvFile('PADDLE_VENDOR_ID', paddleVendorId);
+  }
+  {% endif %}
+
+  {% if saas_jobs == "triggerdev" %}
+  log('\n--- Background Jobs Configuration ---\n', 'bright');
+
+  // Trigger.dev
+  const triggerApiKey = await promptForEnvVar(
+    'TRIGGER_API_KEY',
+    'Trigger.dev API Key (optional, from https://cloud.trigger.dev)',
+    false,
+    envConfig['TRIGGER_API_KEY']
+  );
+  if (triggerApiKey) {
+    updateEnvFile('TRIGGER_API_KEY', triggerApiKey);
+  }
+  {% elif saas_jobs == "inngest" %}
+  log('\n--- Background Jobs Configuration ---\n', 'bright');
+
+  // Inngest
+  const inngestSigningKey = await promptForEnvVar(
+    'INNGEST_SIGNING_KEY',
+    'Inngest Signing Key (optional, from https://app.inngest.com)',
+    false,
+    envConfig['INNGEST_SIGNING_KEY']
+  );
+  if (inngestSigningKey) {
+    updateEnvFile('INNGEST_SIGNING_KEY', inngestSigningKey);
+  }
+
+  const inngestEventKey = await promptForEnvVar(
+    'INNGEST_EVENT_KEY',
+    'Inngest Event Key (optional)',
+    false,
+    envConfig['INNGEST_EVENT_KEY']
+  );
+  if (inngestEventKey) {
+    updateEnvFile('INNGEST_EVENT_KEY', inngestEventKey);
+  }
+  {% endif %}
+
+  {% if saas_email == "resend" %}
+  log('\n--- Email Configuration ---\n', 'bright');
+
+  // Resend
+  const resendApiKey = await promptForEnvVar(
+    'RESEND_API_KEY',
+    'Resend API Key (optional, from https://resend.com/api-keys)',
+    false,
+    envConfig['RESEND_API_KEY']
+  );
+  if (resendApiKey) {
+    updateEnvFile('RESEND_API_KEY', resendApiKey);
+  }
+  {% elif saas_email == "postmark" %}
+  log('\n--- Email Configuration ---\n', 'bright');
+
+  // Postmark
+  const postmarkApiKey = await promptForEnvVar(
+    'POSTMARK_API_KEY',
+    'Postmark Server Token (optional, from https://account.postmarkapp.com/servers)',
+    false,
+    envConfig['POSTMARK_API_KEY']
+  );
+  if (postmarkApiKey) {
+    updateEnvFile('POSTMARK_API_KEY', postmarkApiKey);
+  }
+  {% endif %}
+
+  {% if saas_analytics == "posthog" %}
+  log('\n--- Analytics Configuration ---\n', 'bright');
+
+  // PostHog
+  const posthogKey = await promptForEnvVar(
+    'NEXT_PUBLIC_POSTHOG_KEY',
+    'PostHog API Key (optional, from https://app.posthog.com/project/settings)',
+    false,
+    envConfig['NEXT_PUBLIC_POSTHOG_KEY']
+  );
+  if (posthogKey) {
+    updateEnvFile('NEXT_PUBLIC_POSTHOG_KEY', posthogKey);
+  }
+  {% elif saas_analytics == "amplitude" %}
+  log('\n--- Analytics Configuration ---\n', 'bright');
+
+  // Amplitude
+  const amplitudeKey = await promptForEnvVar(
+    'NEXT_PUBLIC_AMPLITUDE_API_KEY',
+    'Amplitude API Key (optional, from https://analytics.amplitude.com/settings/projects)',
+    false,
+    envConfig['NEXT_PUBLIC_AMPLITUDE_API_KEY']
+  );
+  if (amplitudeKey) {
+    updateEnvFile('NEXT_PUBLIC_AMPLITUDE_API_KEY', amplitudeKey);
+  }
+  {% endif %}
+
+  {% if saas_ai == "openai" %}
+  log('\n--- AI Configuration ---\n', 'bright');
+
+  // OpenAI
+  const openaiApiKey = await promptForEnvVar(
+    'OPENAI_API_KEY',
+    'OpenAI API Key (optional, from https://platform.openai.com/api-keys)',
+    false,
+    envConfig['OPENAI_API_KEY']
+  );
+  if (openaiApiKey) {
+    updateEnvFile('OPENAI_API_KEY', openaiApiKey);
+  }
+  {% elif saas_ai == "anthropic" %}
+  log('\n--- AI Configuration ---\n', 'bright');
+
+  // Anthropic
+  const anthropicApiKey = await promptForEnvVar(
+    'ANTHROPIC_API_KEY',
+    'Anthropic API Key (optional, from https://console.anthropic.com/settings/keys)',
+    false,
+    envConfig['ANTHROPIC_API_KEY']
+  );
+  if (anthropicApiKey) {
+    updateEnvFile('ANTHROPIC_API_KEY', anthropicApiKey);
+  }
+  {% endif %}
+
+  {% if saas_storage == "r2" %}
+  log('\n--- Storage Configuration ---\n', 'bright');
+
+  // Cloudflare R2
+  const r2AccountId = await promptForEnvVar(
+    'R2_ACCOUNT_ID',
+    'Cloudflare R2 Account ID (optional)',
+    false,
+    envConfig['R2_ACCOUNT_ID']
+  );
+  if (r2AccountId) {
+    updateEnvFile('R2_ACCOUNT_ID', r2AccountId);
+  }
+
+  const r2AccessKey = await promptForEnvVar(
+    'R2_ACCESS_KEY_ID',
+    'Cloudflare R2 Access Key ID (optional)',
+    false,
+    envConfig['R2_ACCESS_KEY_ID']
+  );
+  if (r2AccessKey) {
+    updateEnvFile('R2_ACCESS_KEY_ID', r2AccessKey);
+  }
+
+  const r2SecretKey = await promptForEnvVar(
+    'R2_SECRET_ACCESS_KEY',
+    'Cloudflare R2 Secret Access Key (optional)',
+    false,
+    envConfig['R2_SECRET_ACCESS_KEY']
+  );
+  if (r2SecretKey) {
+    updateEnvFile('R2_SECRET_ACCESS_KEY', r2SecretKey);
+  }
+
+  const r2BucketName = await promptForEnvVar(
+    'R2_BUCKET_NAME',
+    'Cloudflare R2 Bucket Name (optional)',
+    false,
+    envConfig['R2_BUCKET_NAME']
+  );
+  if (r2BucketName) {
+    updateEnvFile('R2_BUCKET_NAME', r2BucketName);
+  }
+  {% endif %}
+
+  {% if saas_database == "supabase" or saas_storage == "supabase-storage" %}
+  log('\n--- Supabase Configuration ---\n', 'bright');
+
+  // Supabase
+  const supabaseUrl = await promptForEnvVar(
+    'NEXT_PUBLIC_SUPABASE_URL',
+    'Supabase Project URL (optional, from https://app.supabase.com/project/_/settings/api)',
+    false,
+    envConfig['NEXT_PUBLIC_SUPABASE_URL']
+  );
+  if (supabaseUrl) {
+    updateEnvFile('NEXT_PUBLIC_SUPABASE_URL', supabaseUrl);
+  }
+
+  const supabaseAnonKey = await promptForEnvVar(
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    'Supabase Anon Key (optional)',
+    false,
+    envConfig['NEXT_PUBLIC_SUPABASE_ANON_KEY']
+  );
+  if (supabaseAnonKey) {
+    updateEnvFile('NEXT_PUBLIC_SUPABASE_ANON_KEY', supabaseAnonKey);
+  }
+
+  const supabaseServiceRole = await promptForEnvVar(
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'Supabase Service Role Key (optional)',
+    false,
+    envConfig['SUPABASE_SERVICE_ROLE_KEY']
+  );
+  if (supabaseServiceRole) {
+    updateEnvFile('SUPABASE_SERVICE_ROLE_KEY', supabaseServiceRole);
+  }
+  {% endif %}
+
+  {% if saas_observability_sentry %}
+  log('\n--- Observability Configuration ---\n', 'bright');
+
+  // Sentry
+  const sentryDsn = await promptForEnvVar(
+    'SENTRY_DSN',
+    'Sentry DSN (optional, from https://sentry.io/settings/projects/)',
+    false,
+    envConfig['SENTRY_DSN']
+  );
+  if (sentryDsn) {
+    updateEnvFile('SENTRY_DSN', sentryDsn);
+  }
+  {% endif %}
+
+  {% if saas_observability_datadog %}
+  // Datadog
+  const ddApiKey = await promptForEnvVar(
+    'DD_API_KEY',
+    'Datadog API Key (optional, from https://app.datadoghq.com/organization-settings/api-keys)',
+    false,
+    envConfig['DD_API_KEY']
+  );
+  if (ddApiKey) {
+    updateEnvFile('DD_API_KEY', ddApiKey);
+  }
+
+  const ddSite = await promptForEnvVar(
+    'DD_SITE',
+    'Datadog Site (optional)',
+    false,
+    'datadoghq.com'
+  );
+  if (ddSite) {
+    updateEnvFile('DD_SITE', ddSite);
+  }
+  {% endif %}
+}
+
+async function checkNodeModules(): Promise<void> {
+  log('\n--- Checking Dependencies ---\n', 'bright');
+
+  const nodeModulesPath = path.join(projectRoot, 'node_modules');
+
+  if (!fs.existsSync(nodeModulesPath)) {
+    logWarning('node_modules not found');
+    const installDeps = await question(
+      'Would you like to run "pnpm install"? (yes/no)'
+    );
+
+    if (
+      installDeps.toLowerCase() === 'yes' ||
+      installDeps.toLowerCase() === 'y'
+    ) {
+      try {
+        logInfo('Installing dependencies...');
+        execSync('pnpm install', { stdio: 'inherit', cwd: projectRoot });
+        logSuccess('Dependencies installed');
+      } catch (error) {
+        logError('Failed to install dependencies');
+      }
+    }
+  } else {
+    logSuccess('node_modules found');
+  }
+}
+
+async function checkDatabase(): Promise<void> {
+  log('\n--- Database Setup ---\n', 'bright');
+
+  const runGenerate = await question(
+    'Would you like to run "pnpm db:generate"? (yes/no)'
+  );
+
+  if (
+    runGenerate.toLowerCase() === 'yes' ||
+    runGenerate.toLowerCase() === 'y'
+  ) {
+    try {
+      logInfo('Generating database client...');
+      execSync('pnpm db:generate', { stdio: 'inherit', cwd: projectRoot });
+      logSuccess('Database client generated');
+    } catch (error) {
+      logError('Failed to generate database client');
+    }
+  }
+
+  const runPush = await question(
+    'Would you like to run "pnpm db:push"? (yes/no)'
+  );
+
+  if (runPush.toLowerCase() === 'yes' || runPush.toLowerCase() === 'y') {
+    try {
+      logInfo('Pushing database schema...');
+      execSync('pnpm db:push', { stdio: 'inherit', cwd: projectRoot });
+      logSuccess('Database schema pushed');
+    } catch (error) {
+      logError('Failed to push database schema');
+    }
+  }
+}
+
+async function main() {
+  log('\n╔════════════════════════════════════════════════════════╗', 'bright');
+  log('║      {{ project_name }} - Setup Wizard                 ║', 'bright');
+  log('╚════════════════════════════════════════════════════════╝\n', 'bright');
+
+  // Check versions
+  log('--- Checking Prerequisites ---\n', 'bright');
+  const nodeOk = await checkNodeVersion();
+  const pnpmOk = await checkPnpmVersion();
+
+  if (!nodeOk || !pnpmOk) {
+    logError(
+      'Please install the required versions and try again.'
+    );
+    rl.close();
+    process.exit(1);
+  }
+
+  // Check and create .env.local
+  await checkEnvFile();
+
+  // Prompt for environment variables
+  await promptForRequiredEnvVars();
+
+  // Check dependencies
+  await checkNodeModules();
+
+  // Database setup
+  await checkDatabase();
+
+  // Success message
+  log('\n╔════════════════════════════════════════════════════════╗', 'green');
+  log('║                  Setup Complete! 🎉                   ║', 'green');
+  log('╚════════════════════════════════════════════════════════╝\n', 'green');
+
+  logSuccess('.env.local has been configured');
+  logSuccess('All prerequisites have been checked');
+
+  log('\n--- Next Steps ---\n', 'bright');
+  log('1. Review your .env.local file for any placeholder values', 'bright');
+  log('2. Run "pnpm dev" to start the development server', 'bright');
+  log('3. Open http://localhost:3000 in your browser', 'bright');
+  log('4. Check out the documentation at {{ project_name }}/docs', 'bright');
+
+  rl.close();
+}
+
+main().catch((error) => {
+  logError(`Setup wizard error: ${error.message}`);
+  rl.close();
+  process.exit(1);
+});
+{% endif %}

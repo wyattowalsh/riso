@@ -1,0 +1,427 @@
+{% if desktop_module == "enabled" and desktop_framework == "tauri" %}
+# {{ project_name }} - Architecture
+
+This document describes the architecture and design decisions for {{ project_name }}.
+
+## Overview
+
+{{ project_name }} is built using the Tauri v2 framework, which combines:
+
+- **Frontend**: React + TypeScript running in a WebView
+- **Backend**: Rust providing system access and business logic
+- **IPC**: JSON-based communication between frontend and backend
+
+```
+┌─────────────────────────────────────────┐
+│           Frontend (WebView)             │
+│   React + TypeScript + Tailwind CSS     │
+│                                          │
+│  ┌────────────────────────────────────┐ │
+│  │         React Components            │ │
+│  │  - UI rendering                     │ │
+│  │  - State management (Zustand)      │ │
+│  │  - User interactions                │ │
+│  └────────────────────────────────────┘ │
+└──────────────┬──────────────────────────┘
+               │ IPC (invoke)
+               ▼
+┌─────────────────────────────────────────┐
+│          Tauri Core (Rust)               │
+│                                          │
+│  ┌────────────────────────────────────┐ │
+│  │        Command Handlers             │ │
+│  │  - Business logic                   │ │
+│  │  - System operations                │ │
+│  │  - File I/O                         │ │
+│  │  - Network requests                 │ │
+│  └────────────────────────────────────┘ │
+│                                          │
+│  ┌────────────────────────────────────┐ │
+│  │      Window Management              │ │
+│  │  - Window lifecycle                 │ │
+│  │  - {% if 'tray_icon' in desktop_features | default([]) %}System tray                     {% endif %}│ │
+│  │  - {% if 'menu' in desktop_features | default([]) %}Application menu                {% endif %}│ │
+│  └────────────────────────────────────┘ │
+└─────────────────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────┐
+│         Operating System                 │
+│    ({% if 'mac' in desktop_platforms | default(['mac', 'windows', 'linux']) %}macOS{% endif %}{% if 'mac' in desktop_platforms | default(['mac', 'windows', 'linux']) and ('windows' in desktop_platforms | default(['mac', 'windows', 'linux']) or 'linux' in desktop_platforms | default(['mac', 'windows', 'linux'])) %} / {% endif %}{% if 'windows' in desktop_platforms | default(['mac', 'windows', 'linux']) %}Windows{% endif %}{% if 'windows' in desktop_platforms | default(['mac', 'windows', 'linux']) and 'linux' in desktop_platforms | default(['mac', 'windows', 'linux']) %} / {% endif %}{% if 'linux' in desktop_platforms | default(['mac', 'windows', 'linux']) %}Linux{% endif %})                    │
+└─────────────────────────────────────────┘
+```
+
+## Security Architecture
+
+### Tauri v2 Capabilities System
+
+Tauri v2 uses a capabilities-based permission system:
+
+```rust
+// src-tauri/capabilities/default.json
+{
+  "identifier": "default",
+  "windows": ["main"],
+  "permissions": [
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    // ... explicitly granted permissions
+  ]
+}
+```
+
+**Key Principles:**
+
+1. **Least Privilege**: Only grant necessary permissions
+2. **Explicit Grants**: All permissions must be explicitly listed
+3. **Scope-Based**: Permissions can be scoped to specific windows/contexts
+4. **Deny by Default**: Everything is denied unless explicitly allowed
+
+### IPC Communication
+
+Frontend to Backend communication is secure by design:
+
+```typescript
+// Frontend: src/App.tsx
+import { invoke } from '@tauri-apps/api/core';
+
+const result = await invoke<string>('greet', { name: 'World' });
+```
+
+```rust
+// Backend: src-tauri/src/commands.rs
+#[command]
+pub fn greet(name: &str) -> String {
+    // Input validation happens here
+    format!("Hello, {}!", name)
+}
+```
+
+**Security Features:**
+
+- Type-safe communication via Serde serialization
+- Input validation in Rust before processing
+- No direct access to Node.js or system APIs from frontend
+- CSP headers prevent XSS attacks
+
+## Component Architecture
+
+### Frontend Components
+
+```
+src/
+├── App.tsx                 # Root component
+├── main.tsx               # Application entry
+├── styles.css             # Global styles
+└── components/
+    {% if 'custom_titlebar' in desktop_features | default([]) %}├── TitleBar.tsx       # Window controls
+    {% endif %}{% if 'auto_updater' in desktop_features | default([]) %}└── UpdateChecker.tsx  # Update management
+    {% endif %}
+```
+
+**Design Patterns:**
+
+- **Functional Components**: React hooks for state and effects
+- **Type Safety**: Full TypeScript coverage with strict mode
+- **Composition**: Small, reusable components
+- **State Management**: Zustand for global state (lightweight)
+
+### Backend Structure
+
+```
+src-tauri/src/
+├── main.rs         # Application setup and initialization
+├── lib.rs          # Public library interface
+├── commands.rs     # IPC command handlers
+{% if 'tray_icon' in desktop_features | default([]) %}├── tray.rs         # System tray management
+{% endif %}{% if 'menu' in desktop_features | default([]) %}└── menu.rs         # Application menu
+{% endif %}
+```
+
+**Design Patterns:**
+
+- **Command Pattern**: Each IPC handler is a discrete command
+- **Result Types**: Rust's `Result<T, E>` for error handling
+- **Separation of Concerns**: Business logic separate from UI
+- **Logging**: Structured logging with `log` crate
+
+## Data Flow
+
+### Command Invocation Flow
+
+```
+1. User Action
+   │
+   ▼
+2. React Event Handler
+   │
+   ▼
+3. invoke('command_name', { args })
+   │
+   ▼
+4. Tauri IPC Layer (serialization)
+   │
+   ▼
+5. Rust Command Handler
+   │
+   ├─► Input Validation
+   │
+   ├─► Business Logic
+   │
+   └─► Return Result
+       │
+       ▼
+6. Tauri IPC Layer (deserialization)
+   │
+   ▼
+7. Frontend Promise Resolution
+   │
+   ▼
+8. UI Update
+```
+
+{% if 'auto_updater' in desktop_features | default([]) %}
+### Update Flow
+
+```
+1. App Startup
+   │
+   ▼
+2. Check for Updates (background)
+   │
+   ├─► Query Update Server
+   │
+   ├─► Compare Versions
+   │
+   └─► Download if Available
+       │
+       ▼
+3. Notify User
+   │
+   ▼
+4. User Confirms
+   │
+   ▼
+5. Install Update
+   │
+   ▼
+6. Restart Application
+```
+{% endif %}
+
+## State Management
+
+### Frontend State
+
+- **Local State**: `useState` for component-specific state
+- **Global State**: Zustand store for app-wide state
+- **Server State**: Direct IPC calls (no caching layer by default)
+
+```typescript
+// Example Zustand store
+import { create } from 'zustand';
+
+interface AppState {
+  theme: 'light' | 'dark';
+  setTheme: (theme: 'light' | 'dark') => void;
+}
+
+export const useStore = create<AppState>((set) => ({
+  theme: 'dark',
+  setTheme: (theme) => set({ theme }),
+}));
+```
+
+### Backend State
+
+- **Application State**: Managed in `main.rs` via `AppHandle`
+- **Window State**: Tracked by Tauri's window manager
+- **Persistent State**: Could use `serde` + file I/O or database
+
+## Build System
+
+### Development Build
+
+```bash
+pnpm dev
+```
+
+**Process:**
+
+1. Vite starts development server (port 5173)
+2. Tauri CLI watches Rust code for changes
+3. Hot reload enabled for frontend
+4. Incremental compilation for Rust
+
+### Production Build
+
+```bash
+pnpm build
+```
+
+**Process:**
+
+1. Frontend built with Vite (optimized)
+2. Rust compiled in release mode
+3. Binary bundled with frontend assets
+4. Platform-specific installer created
+
+**Optimizations:**
+
+- Tree shaking (removes unused code)
+- Minification (reduces file size)
+- LTO (Link-Time Optimization) for Rust
+- Code splitting for frontend
+
+## Performance Considerations
+
+### Binary Size
+
+| Framework | Typical Size |
+|-----------|-------------|
+| Tauri     | 3-10 MB     |
+| Electron  | 100+ MB     |
+
+**Why Tauri is Smaller:**
+
+- Uses system WebView (no bundled Chromium)
+- Rust produces compact binaries
+- Only includes used code (tree shaking)
+
+### Memory Usage
+
+| Framework | Typical Usage |
+|-----------|--------------|
+| Tauri     | 20-50 MB     |
+| Electron  | 200+ MB      |
+
+**Why Tauri Uses Less:**
+
+- Single process model
+- No V8 engine bundled
+- Efficient Rust memory management
+
+### Startup Time
+
+- **Cold Start**: < 500ms
+- **Hot Start**: < 100ms
+
+**Factors:**
+
+- Small binary size
+- Minimal initialization overhead
+- System WebView pre-loaded by OS
+
+## Testing Strategy
+
+### Frontend Tests
+
+```bash
+pnpm test
+```
+
+- Unit tests with Vitest
+- Component tests with React Testing Library
+- Type checking with TypeScript
+
+### Backend Tests
+
+```bash
+cd src-tauri
+cargo test
+```
+
+- Unit tests with Rust's built-in test framework
+- Integration tests in `tests/` directory
+- Benchmark tests with Criterion (optional)
+
+## Deployment
+
+### Distribution
+
+**macOS:**
+- `.dmg` - Disk image
+- `.app` - Application bundle
+- Code signing required for distribution
+
+**Windows:**
+- `.msi` - Windows Installer
+- `.exe` - Portable executable
+- Code signing recommended
+
+**Linux:**
+- `.deb` - Debian package
+- `.AppImage` - Universal binary
+- `.rpm` - Red Hat package (via cargo-generate-rpm)
+
+{% if 'auto_updater' in desktop_features | default([]) %}
+### Auto-Update Distribution
+
+1. GitHub Releases (built-in support)
+2. Custom update server (any HTTP server)
+3. CDN distribution (CloudFront, Cloudflare, etc.)
+
+**Requirements:**
+
+- HTTPS endpoint
+- JSON manifest
+- Signed binaries
+{% endif %}
+
+## Monitoring and Logging
+
+### Frontend Logging
+
+```typescript
+console.log('Info message');
+console.error('Error message');
+```
+
+### Backend Logging
+
+```rust
+use log::{info, warn, error, debug};
+
+info!("Application started");
+error!("Failed to process: {}", err);
+```
+
+**Log Levels:**
+
+- `error` - Critical errors
+- `warn` - Warnings
+- `info` - General info
+- `debug` - Debug details
+- `trace` - Verbose tracing
+
+## Future Considerations
+
+### Scalability
+
+- Add Redux/Zustand for complex state
+- Implement request caching layer
+- Use web workers for heavy computations
+- Add database layer (SQLite via Tauri plugin)
+
+### Features
+
+- Add more Tauri plugins (filesystem, dialog, notification)
+- Implement deep linking
+- Add crash reporting
+- Add analytics
+
+### Performance
+
+- Lazy load components
+- Virtualize long lists
+- Optimize asset loading
+- Profile and optimize hot paths
+
+## Resources
+
+- [Tauri v2 Architecture](https://v2.tauri.app/concept/architecture/)
+- [Security Best Practices](https://v2.tauri.app/security/)
+- [Performance Guide](https://v2.tauri.app/develop/performance/)
+- [Rust Book](https://doc.rust-lang.org/book/)
+- [React Docs](https://react.dev/)
+{% endif %}

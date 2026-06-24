@@ -1,0 +1,239 @@
+{% if saas_infra_module == "enabled" and saas_runtime == "nextjs-16" %}
+# Comparison Page
+
+This directory contains the feature comparison page for your SaaS application.
+
+## Overview
+
+The comparison page highlights how your application (built with Riso) compares to competitors like ShipFast, Supastarter, and Makerkit.
+
+## File Structure
+
+```
+comparison/
+├── page.tsx.jinja      # Main comparison page component
+├── layout.tsx.jinja    # Page layout with SEO metadata
+└── README.md.jinja     # This file
+```
+
+## Features
+
+### Comparison Table
+Shows side-by-side feature comparison including:
+- Pricing
+- Frameworks and runtime support
+- Authentication providers
+- Payment providers
+- ORM options
+- Multi-tenancy support
+- AI integration capabilities
+- Self-hosting support
+- Template system
+- Compliance tools
+
+### Unique Advantages
+Highlights 6 key differentiators:
+1. Copier-based modularity
+2. Python + Node.js dual support
+3. Enterprise compliance built-in
+4. MCP server scaffolding
+5. Self-hosting first-class support
+6. Open source community
+
+### Project Configuration Display
+Shows your current project's technology stack:
+- Runtime: Next.js 16
+- Hosting: {{ saas_hosting }}
+- Database: {{ saas_database }}
+- ORM: {{ saas_orm }}
+- Authentication: {{ saas_auth_provider }}
+- Payments: {{ saas_billing_provider }}
+- Email: {{ saas_email }}
+- Analytics: {{ saas_analytics }}
+- AI Provider: {{ saas_ai }}
+{%- if saas_tenancy_model %}
+- Tenancy Model: {{ saas_tenancy_model }}
+{%- endif %}
+{%- if saas_rbac_system %}
+- RBAC System: {{ saas_rbac_system }}
+{%- endif %}
+
+### FAQ Section
+Common questions about Riso and why it's better than alternatives.
+
+## URL
+
+The comparison page is available at:
+```
+/comparison
+```
+
+## Customization
+
+To customize the comparison page:
+
+1. **Update competitor data** - Edit the `competitors` object in `page.tsx.jinja`
+2. **Add/remove features** - Modify the `featureCategories` array
+3. **Change styling** - Update Tailwind classes for colors, spacing, etc.
+4. **Edit content** - Update FAQ questions, advantages text, or any copy
+
+### Adding a New Competitor
+
+```typescript
+// In the competitors object:
+newcompetitor: {
+  name: 'New Competitor',
+  price: '$X99',
+  priceNote: 'One-time purchase',
+  frameworks: ['Framework1', 'Framework2'],
+  auth: ['Auth1', 'Auth2'],
+  payments: ['Payment1'],
+  orms: ['ORM1'],
+  multiTenancy: true|false,
+  ai: true|false,
+  selfHosting: true|false,
+  selfHostingNote: 'Note about self-hosting',
+  templateSystem: 'Clone-based',
+  compliance: true|false,
+}
+
+// Add to the table headers:
+// Add a new <th> element in the comparison table
+```
+
+### Editing Features
+
+```typescript
+// Add to featureCategories:
+featureCategories = [
+  // ... existing categories
+  { name: 'New Feature', key: 'newFeature' },
+]
+
+// Add property to all competitors objects:
+// newFeature: true|false,
+// newFeatureNote: 'Optional note',
+```
+
+## Styling
+
+The page uses Tailwind CSS with a professional color scheme:
+- **Primary**: Blue (blue-600)
+- **Success**: Green (green-600)
+- **Background**: Slate (slate-50, slate-100)
+- **Text**: Slate (slate-900, slate-600)
+
+### Responsive Behavior
+
+- **Mobile**: Single column layout
+- **Tablet**: 2 columns for advantage cards
+- **Desktop**: Full grid layout with 3-4 columns
+
+## Integration with Navigation
+
+To add the comparison page to your main navigation, update your header component:
+
+```typescript
+<Link href="/comparison" className="...">
+  Compare Plans
+</Link>
+```
+
+## Analytics
+
+Track engagement with the comparison page by:
+
+1. Adding event tracking to CTAs:
+```typescript
+onClick={() => {
+  // Track event
+  analytics.track('comparison_cta_clicked', {
+    destination: '/docs'
+  });
+}}
+```
+
+2. Adding scroll depth tracking:
+```typescript
+useEffect(() => {
+  const handleScroll = () => {
+    const scrollPercent = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
+    if (scrollPercent > 50) {
+      analytics.track('comparison_page_scrolled');
+    }
+  };
+  window.addEventListener('scroll', handleScroll);
+  return () => window.removeEventListener('scroll', handleScroll);
+}, []);
+```
+
+## SEO
+
+The page includes:
+- Meta title and description
+- Open Graph tags for social sharing
+- Proper heading hierarchy (h1, h2, h3)
+- Semantic HTML structure
+- Keywords for search engines
+
+Update the `layout.tsx.jinja` file to customize SEO:
+
+```typescript
+export const metadata: Metadata = {
+  title: 'Your Title',
+  description: 'Your description',
+  keywords: ['keyword1', 'keyword2', ...],
+};
+```
+
+## Dependencies
+
+The page uses:
+- **lucide-react**: Icon library (CheckCircle2, Circle, ArrowRight)
+- **Next.js Link**: Client-side navigation
+- **Tailwind CSS**: Styling
+
+These are already included in your project.
+
+## Testing
+
+To test the comparison page:
+
+1. Run your development server:
+```bash
+npm run dev
+```
+
+2. Visit:
+```
+http://localhost:3000/comparison
+```
+
+3. Test on different screen sizes:
+   - Mobile (320px)
+   - Tablet (768px)
+   - Desktop (1024px+)
+
+4. Verify links work:
+   - Internal links (/docs, /dashboard)
+   - External links (GitHub, Discord)
+
+## Performance
+
+The page is optimized for:
+- **Fast loading**: Minimal CSS-in-JS
+- **Accessibility**: Semantic HTML, proper contrast
+- **SEO**: Proper metadata and structured content
+- **Mobile**: Responsive design, touch-friendly buttons
+
+## Support
+
+For questions about the comparison page:
+1. Check the [Riso documentation](/docs)
+2. Ask in [GitHub Discussions](https://github.com/riso-io/riso/discussions)
+3. Join the [Discord community](https://discord.gg/riso)
+
+---
+
+Generated with Riso SaaS Starter
+{% endif %}

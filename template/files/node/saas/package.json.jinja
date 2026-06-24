@@ -1,4 +1,4 @@
-{% if saas_starter_module == "enabled" %}
+{% if saas_infra_module == "enabled" %}
 {
   "name": "{{ project_slug }}",
   "version": "0.1.0",
@@ -14,7 +14,8 @@
     "dev": "{% if saas_runtime == 'nextjs-16' %}next dev --turbo{% else %}remix dev{% endif %}",
     "build": "{% if saas_runtime == 'nextjs-16' %}next build{% else %}remix build{% endif %}",
     "start": "{% if saas_runtime == 'nextjs-16' %}next start{% else %}remix-serve build/index.js{% endif %}",
-    
+    "setup": "tsx scripts/setup-wizard.ts",
+
     {# Database #}
     "db:generate": "{% if saas_orm == 'prisma' %}prisma generate{% else %}drizzle-kit generate{% endif %}",
     "db:push": "{% if saas_orm == 'prisma' %}prisma db push{% else %}drizzle-kit push{% endif %}",
@@ -85,7 +86,7 @@
     {% endif %}
     
     {# Authentication #}
-    {% if saas_auth == 'clerk' %}
+    {% if saas_auth_provider == 'clerk' %}
     "@clerk/{% if saas_runtime == 'nextjs-16' %}nextjs{% else %}remix{% endif %}": "^5.5.0",
     {% else %}
     "next-auth": "5.0.0-beta.22",
@@ -98,11 +99,11 @@
     {% endif %}
     
     {# Billing #}
-    {% if saas_billing == 'stripe' %}
+    {% if saas_billing_provider == 'stripe' %}
     "stripe": "^16.12.0",
-    {% elif saas_billing == 'paddle' %}
+    {% elif saas_billing_provider == 'paddle' %}
     "@paddle/paddle-node-sdk": "^1.7.0",
-    {% elif saas_billing == 'lemonsqueezy' %}
+    {% elif saas_billing_provider == 'lemonsqueezy' %}
     "@lemonsqueezy/lemonsqueezy.js": "^3.2.0",
     {% endif %}
     
@@ -170,7 +171,7 @@
     "tailwind-merge": "^2.5.2",
     
     {# Webhook Verification #}
-    {% if saas_auth == 'clerk' %}
+    {% if saas_auth_provider == 'clerk' %}
     "svix": "^1.33.0",
     {% endif %}
     
@@ -264,7 +265,7 @@
     {% endif %}
     
     {# 2FA (Auth.js only) #}
-    {% if saas_2fa and saas_auth == 'authjs' %}
+    {% if saas_2fa and saas_auth_provider == 'authjs' %}
     "otpauth": "^9.3.1",
     "qrcode": "^1.5.4",
     {% endif %}
@@ -356,7 +357,7 @@
     {% if saas_gdpr_tools %}
     "@types/archiver": "^6.0.2",
     {% endif %}
-    {% if saas_2fa and saas_auth == 'authjs' %}
+    {% if saas_2fa and saas_auth_provider == 'authjs' %}
     "@types/qrcode": "^1.5.5",
     {% endif %}
     {% if saas_api_docs %}

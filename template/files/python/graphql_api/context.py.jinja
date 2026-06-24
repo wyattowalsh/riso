@@ -4,7 +4,7 @@ from typing import Optional
 from dataclasses import dataclass
 
 from fastapi import Request
-{% if api_tracks in ['python', 'python+node'] %}
+{% if api_module == 'enabled' and 'python' in api_languages %}
 from sqlalchemy.ext.asyncio import AsyncSession
 {% endif %}
 
@@ -26,7 +26,7 @@ class GraphQLContext:
     
     request: Request
     current_user: Optional[dict] = None
-    {% if api_tracks in ['python', 'python+node'] %}
+    {% if api_module == 'enabled' and 'python' in api_languages %}
     db: Optional[AsyncSession] = None
     {% endif %}
     dataloaders: Optional[DataLoaderContainer] = None
@@ -35,7 +35,7 @@ class GraphQLContext:
 
 async def get_graphql_context(
     request: Request,
-    {% if api_tracks in ['python', 'python+node'] %}
+    {% if api_module == 'enabled' and 'python' in api_languages %}
     db: Optional[AsyncSession] = None,
     {% endif %}
 ) -> GraphQLContext:
@@ -66,7 +66,7 @@ async def get_graphql_context(
     
     # Create per-request DataLoaders
     dataloaders = DataLoaderContainer(
-        {% if api_tracks in ['python', 'python+node'] %}
+        {% if api_module == 'enabled' and 'python' in api_languages %}
         db=db
         {% endif %}
     )
@@ -82,7 +82,7 @@ async def get_graphql_context(
     return GraphQLContext(
         request=request,
         current_user=current_user,
-        {% if api_tracks in ['python', 'python+node'] %}
+        {% if api_module == 'enabled' and 'python' in api_languages %}
         db=db,
         {% endif %}
         dataloaders=dataloaders,

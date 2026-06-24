@@ -1,0 +1,105 @@
+{% if 'go' in cli_languages or 'go' in api_languages %}
+# {{ project_name }} Makefile
+# Go {{ go_version | default('1.24') }} project
+
+.PHONY: all build test lint fmt clean run help
+
+# Build variables
+BINARY_NAME={{ project_slug }}
+{% if api_module == 'enabled' and 'go' in api_languages %}
+API_BINARY_NAME={{ project_slug }}-api
+{% endif %}
+VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+BUILD_TIME=$(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
+COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+LDFLAGS=-ldflags "-s -w -X main.Version=$(VERSION) -X main.BuildTime=$(BUILD_TIME) -X main.Commit=$(COMMIT)"
+
+# Go tools
+GO=go
+GOLANGCI_LINT=golangci-lint
+
+all: lint test build ## Run lint, test, and build
+
+build: ## Build all binaries
+{% if cli_module == 'enabled' and 'go' in cli_languages %}
+	$(GO) build $(LDFLAGS) -o bin/$(BINARY_NAME) ./cli
+{% endif %}
+{% if api_module == 'enabled' and 'go' in api_languages %}
+	$(GO) build $(LDFLAGS) -o bin/$(API_BINARY_NAME) ./api
+{% endif %}
+
+{% if cli_module == 'enabled' and 'go' in cli_languages %}
+build-cli: ## Build CLI binary
+	$(GO) build $(LDFLAGS) -o bin/$(BINARY_NAME) ./cli
+
+run-cli: ## Run CLI
+	$(GO) run ./cli $(ARGS)
+{% endif %}
+
+{% if api_module == 'enabled' and 'go' in api_languages %}
+build-api: ## Build API binary
+	$(GO) build $(LDFLAGS) -o bin/$(API_BINARY_NAME) ./api
+
+run-api: ## Run API server
+	$(GO) run ./api
+
+run-api-dev: ## Run API server with hot reload (requires air)
+	air -c .air.toml
+{% endif %}
+
+test: ## Run tests
+	$(GO) test -v -race -coverprofile=coverage.out ./...
+
+test-short: ## Run short tests only
+	$(GO) test -short -v ./...
+
+coverage: test ## Generate coverage report
+	$(GO) tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+
+lint: ## Run golangci-lint
+	$(GOLANGCI_LINT) run --timeout=5m
+
+lint-fix: ## Run golangci-lint with auto-fix
+	$(GOLANGCI_LINT) run --fix --timeout=5m
+
+fmt: ## Format code
+	$(GO) fmt ./...
+	gofumpt -l -w .
+
+vet: ## Run go vet
+	$(GO) vet ./...
+
+mod-tidy: ## Tidy go modules
+	$(GO) mod tidy
+
+mod-verify: ## Verify go modules
+	$(GO) mod verify
+
+mod-download: ## Download go modules
+	$(GO) mod download
+
+clean: ## Clean build artifacts
+	rm -rf bin/
+	rm -f coverage.out coverage.html
+
+install-tools: ## Install development tools
+	$(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0
+	$(GO) install mvdan.cc/gofumpt@latest
+{% if api_module == 'enabled' and 'go' in api_languages %}
+	$(GO) install github.com/air-verse/air@latest
+{% endif %}
+
+docker-build: ## Build Docker image
+	docker build -t {{ project_slug }}:$(VERSION) .
+
+docker-run: ## Run Docker container
+{% if api_module == 'enabled' and 'go' in api_languages %}
+	docker run -p 8080:8080 {{ project_slug }}:$(VERSION)
+{% else %}
+	docker run {{ project_slug }}:$(VERSION)
+{% endif %}
+
+help: ## Show this help
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+{% endif %}

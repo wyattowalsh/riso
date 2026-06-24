@@ -5,7 +5,7 @@ Use this checklist when rolling out new modules or refreshing existing ones.
 ## Planning
 
 - Confirm prompts in `template/prompts/options.yml.jinja` reflect new choices.
-- Update `template/files/shared/module_catalog.json.jinja` with the feature,
+- Update `template/files/module_catalog.json.jinja` with the feature,
   including compatibility rules and dependency groups.
 - Capture acceptance criteria in `specs/` so rendered projects inherit the same
   governance signals.
@@ -16,8 +16,8 @@ Use this checklist when rolling out new modules or refreshing existing ones.
 - Keep quality groups (`test`, `quality`, `cli`, `api_python`, `mcp`) lean and
   reproducible across Python versions 3.11–3.13.
 - When adding docs assets, mirror changes in both the root Sphinx site and the
-  `docs_site=sphinx-shibuya` template payload.
-- Keep `.github/context/` synchronized with `template/files/shared/.github/context/`
+  `docs_module=enabled` with `docs_framework=sphinx-shibuya` template payload.
+- Keep `.github/context/` synchronized with `template/files/.github/context/`
   by running `uv run python scripts/ci/verify_context_sync.py` before commits.
 - Extend tests alongside features: target ≥90% unit coverage, add deterministic
   integration tests for new services, and document any exclusions inline.

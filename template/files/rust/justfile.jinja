@@ -1,17 +1,41 @@
-{% if project_language == 'rust' %}
+{% if project_language == 'rust' or 'rust' in cli_languages or 'rust' in api_languages %}
 set shell := ["zsh", "-c"]
 
 # Build the project
 build:
     cargo build
 
-# Run the project
-run:
-    cargo run
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+# Run the CLI
+run-cli *ARGS:
+    cargo run --bin {{ package_name }} -- {{ARGS}}
+
+# Build CLI for release
+build-cli:
+    cargo build --release --bin {{ package_name }}
+{% endif %}
+
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+# Run the API server
+run-api:
+    cargo run --bin {{ package_name }}-api
+
+# Build API for release
+build-api:
+    cargo build --release --bin {{ package_name }}-api
+
+# Run API with environment variables
+run-api-dev:
+    RUST_LOG=debug HOST=127.0.0.1 PORT=8080 cargo run --bin {{ package_name }}-api
+{% endif %}
 
 # Run tests
 test:
     cargo test
+
+# Run tests with output
+test-verbose:
+    cargo test -- --nocapture
 
 # Check code quality (fmt + clippy + test)
 quality: fmt-check clippy test
@@ -28,7 +52,27 @@ fmt-check:
 clippy:
     cargo clippy -- -D warnings
 
+# Run clippy with all features
+clippy-all:
+    cargo clippy --all-features -- -D warnings
+
 # Build for release
 release:
     cargo build --release
+
+# Clean build artifacts
+clean:
+    cargo clean
+
+# Update dependencies
+update:
+    cargo update
+
+# Check for outdated dependencies
+outdated:
+    cargo outdated
+
+# Security audit
+audit:
+    cargo audit
 {% endif %}

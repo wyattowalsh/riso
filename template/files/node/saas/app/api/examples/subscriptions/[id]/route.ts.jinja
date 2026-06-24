@@ -1,4 +1,4 @@
-{% if saas_starter_module == "enabled" and saas_runtime == "nextjs-16" %}
+{% if saas_infra_module == "enabled" and saas_runtime == "nextjs-16" %}
 /**
  * Subscription Management API
  * 
@@ -22,7 +22,7 @@ import { eq } from 'drizzle-orm';
 import { validateBody } from '@/lib/utils/validation';
 import { success, error, notFound } from '@/lib/utils/response';
 import { withErrorHandler } from '@/lib/middleware/error-handler';
-{% if saas_billing == "stripe" %}
+{% if saas_billing_provider == "stripe" %}
 import { stripe, cancelSubscription } from '@/lib/integrations/billing/stripe/client';
 {% endif %}
 import { monitorQuery } from '@/lib/performance/monitor';
@@ -76,7 +76,7 @@ export async function GET(
     }
     
     // Get additional data from billing provider
-    {% if saas_billing == "stripe" %}
+    {% if saas_billing_provider == "stripe" %}
     let providerData = null;
     if (subscription.stripeSubscriptionId) {
       try {
@@ -95,7 +95,7 @@ export async function GET(
     
     return success({
       ...subscription,
-      {% if saas_billing == "stripe" %}
+      {% if saas_billing_provider == "stripe" %}
       providerData,
       {% endif %}
     });
@@ -153,7 +153,7 @@ export async function PATCH(
     }
     
     // Update in billing provider
-    {% if saas_billing == "stripe" %}
+    {% if saas_billing_provider == "stripe" %}
     if (subscription.stripeSubscriptionId) {
       const updates: any = {};
       
@@ -238,7 +238,7 @@ export async function DELETE(
     }
     
     // Cancel in billing provider
-    {% if saas_billing == "stripe" %}
+    {% if saas_billing_provider == "stripe" %}
     if (subscription.stripeSubscriptionId) {
       await cancelSubscription(subscription.stripeSubscriptionId);
     }

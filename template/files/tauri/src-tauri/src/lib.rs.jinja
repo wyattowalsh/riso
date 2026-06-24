@@ -1,0 +1,17 @@
+{% if desktop_module == "enabled" and desktop_framework == "tauri" %}
+//! {{ project_name }} - Tauri Application Library
+//!
+//! This library provides the core functionality for the {{ project_name }} desktop application.
+//! It is used by both the main binary and tests.
+
+pub mod commands;
+{% if desktop_features is defined and 'tray_icon' in desktop_features %}
+pub mod tray;
+{% endif %}
+{% if desktop_features is defined and 'menu' in desktop_features %}
+pub mod menu;
+{% endif %}
+
+// Re-export commonly used items
+pub use commands::*;
+{% endif %}

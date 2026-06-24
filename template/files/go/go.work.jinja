@@ -1,0 +1,12 @@
+{% if project_layout == 'monorepo' and ('go' in cli_languages or 'go' in api_languages) %}
+go {{ go_version | default('1.24') }}
+
+use (
+{% if cli_module == 'enabled' and 'go' in cli_languages %}
+	./cli
+{% endif %}
+{% if api_module == 'enabled' and 'go' in api_languages %}
+	./api
+{% endif %}
+)
+{% endif %}

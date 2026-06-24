@@ -1,0 +1,481 @@
+{%- if saas_infra_module == "enabled" %}
+#!/usr/bin/env tsx
+/**
+ * Security Audit Script
+ *
+ * Performs comprehensive security checks on the SaaS application:
+ * - Vulnerability scanning (pnpm audit)
+ * - Environment variable leak detection
+ * - Security headers configuration verification
+ * - Rate limiting verification
+ * - HTTPS enforcement checks
+ * - Overall security score
+ */
+
+import { execSync } from "child_process";
+import * as fs from "fs";
+import * as path from "path";
+
+// ANSI color codes
+const colors = {
+  reset: "\x1b[0m",
+  green: "\x1b[32m",
+  red: "\x1b[31m",
+  yellow: "\x1b[33m",
+  blue: "\x1b[34m",
+  gray: "\x1b[90m",
+};
+
+const symbols = {
+  check: "✓",
+  cross: "✗",
+  warning: "⚠",
+  info: "ℹ",
+};
+
+interface CheckResult {
+  name: string;
+  passed: boolean;
+  message: string;
+  severity: "critical" | "high" | "medium" | "low";
+  details?: string[];
+}
+
+const results: CheckResult[] = [];
+let criticalIssuesFound = false;
+
+function log(message: string, color: string = colors.reset): void {
+  console.log(`${color}${message}${colors.reset}`);
+}
+
+function logSection(title: string): void {
+  console.log("\n");
+  log(
+    `${"─".repeat(70)}`,
+    colors.gray
+  );
+  log(title, colors.blue);
+  log(`${"─".repeat(70)}`, colors.gray);
+}
+
+function logCheck(result: CheckResult): void {
+  const symbol = result.passed ? symbols.check : symbols.cross;
+  const color = result.passed ? colors.green : colors.red;
+
+  log(
+    `${color}${symbol} ${result.name}${colors.reset}`
+  );
+
+  if (result.message) {
+    log(`  ${result.message}`, colors.gray);
+  }
+
+  if (result.details && result.details.length > 0) {
+    result.details.forEach(detail => {
+      log(`  • ${detail}`, colors.gray);
+    });
+  }
+}
+
+/**
+ * Check 1: Vulnerability Scanning with pnpm audit
+ */
+async function checkVulnerabilities(): Promise<void> {
+  logSection("1. VULNERABILITY SCANNING");
+
+  try {
+    log("Running pnpm audit...", colors.gray);
+    execSync("pnpm audit --prod", { stdio: "pipe", encoding: "utf-8" });
+
+    results.push({
+      name: "NPM/PNPM Audit",
+      passed: true,
+      message: "No vulnerabilities detected in production dependencies",
+      severity: "critical",
+    });
+    logCheck(results[results.length - 1]);
+  } catch (error) {
+    const output = error instanceof Error ? error.message : String(error);
+    const hasVulnerabilities = output.includes("found") || output.includes("vulnerability");
+
+    results.push({
+      name: "NPM/PNPM Audit",
+      passed: false,
+      message: "Vulnerabilities detected. Run 'pnpm audit' for details",
+      severity: "critical",
+      details: hasVulnerabilities ? ["Review and patch dependencies"] : undefined,
+    });
+    logCheck(results[results.length - 1]);
+    criticalIssuesFound = true;
+  }
+}
+
+/**
+ * Check 2: Detect Leaked Environment Variables
+ */
+async function checkLeakedSecrets(): Promise<void> {
+  logSection("2. ENVIRONMENT VARIABLE LEAK DETECTION");
+
+  const secretPatterns = [
+    { pattern: /api[_-]?key\s*[=:]\s*['\"]?[a-zA-Z0-9_-]{20,}['\"]?/gi, name: "API Key" },
+    { pattern: /secret\s*[=:]\s*['\"]?[a-zA-Z0-9_-]{20,}['\"]?/gi, name: "Secret" },
+    { pattern: /password\s*[=:]\s*['\"]?[a-zA-Z0-9!@#$%^&*_-]{8,}['\"]?/gi, name: "Password" },
+    { pattern: /database[_-]?url\s*[=:]\s*['\"]?.*['\"]?/gi, name: "Database URL" },
+    { pattern: /private[_-]?key\s*[=:]\s*['\"]?.*['\"]?/gi, name: "Private Key" },
+    { pattern: /auth[_-]?token\s*[=:]\s*['\"]?[a-zA-Z0-9_-]{20,}['\"]?/gi, name: "Auth Token" },
+    { pattern: /stripe[_-]?key\s*[=:]\s*[a-zA-Z0-9_-]{20,}/gi, name: "Stripe Key" },
+  ];
+
+  const filesToCheck = [
+    "package.json",
+    "next.config.js",
+    "next.config.ts",
+    "remix.config.js",
+    "tsconfig.json",
+    "vercel.json",
+    ".env.example",
+    ".env.production",
+  ];
+
+  const leakedSecrets: string[] = [];
+
+  for (const file of filesToCheck) {
+    if (!fs.existsSync(file)) continue;
+
+    const content = fs.readFileSync(file, "utf-8");
+
+    for (const { pattern, name } of secretPatterns) {
+      const matches = content.match(pattern);
+      if (matches) {
+        // Exclude .env.example as it intentionally contains placeholders
+        if (file === ".env.example") continue;
+
+        leakedSecrets.push(`${name} found in ${file}`);
+      }
+    }
+  }
+
+  if (leakedSecrets.length === 0) {
+    results.push({
+      name: "Leaked Secrets Detection",
+      passed: true,
+      message: "No exposed secrets detected in committed files",
+      severity: "critical",
+    });
+    logCheck(results[results.length - 1]);
+  } else {
+    results.push({
+      name: "Leaked Secrets Detection",
+      passed: false,
+      message: "Potential secrets detected in committed files",
+      severity: "critical",
+      details: leakedSecrets,
+    });
+    logCheck(results[results.length - 1]);
+    criticalIssuesFound = true;
+  }
+}
+
+/**
+ * Check 3: Security Headers Configuration
+ */
+async function checkSecurityHeaders(): Promise<void> {
+  logSection("3. SECURITY HEADERS VERIFICATION");
+
+  const configFiles = [
+    { path: "next.config.ts", type: "next" },
+    { path: "next.config.js", type: "next" },
+    { path: "middleware.ts", type: "middleware" },
+    { path: "middleware.js", type: "middleware" },
+  ];
+
+  let foundConfig = false;
+  const issues: string[] = [];
+  const details: string[] = [];
+
+  for (const { path: filePath, type } of configFiles) {
+    if (!fs.existsSync(filePath)) continue;
+
+    foundConfig = true;
+    const content = fs.readFileSync(filePath, "utf-8");
+
+    // Check for security headers in Next.js config
+    if (type === "next") {
+      const hasHeaders = content.includes("headers");
+      const hasContentSecurityPolicy = content.includes("Content-Security-Policy");
+      const hasXFrameOptions = content.includes("X-Frame-Options");
+      const hasXContentTypeOptions = content.includes("X-Content-Type-Options");
+      const hasStrictTransportSecurity = content.includes("Strict-Transport-Security");
+      const hasXXSSProtection = content.includes("X-XSS-Protection");
+
+      if (!hasHeaders) {
+        issues.push("Next.js headers configuration not found");
+      } else {
+        const headers: string[] = [];
+        if (hasContentSecurityPolicy) headers.push("CSP");
+        if (hasXFrameOptions) headers.push("X-Frame-Options");
+        if (hasXContentTypeOptions) headers.push("X-Content-Type-Options");
+        if (hasStrictTransportSecurity) headers.push("HSTS");
+        if (hasXXSSProtection) headers.push("X-XSS-Protection");
+
+        if (headers.length >= 4) {
+          details.push(`Found security headers in ${filePath}: ${headers.join(", ")}`);
+        } else {
+          issues.push(`Missing some security headers (found: ${headers.join(", ")})`);
+        }
+      }
+    }
+
+    // Check for security middleware
+    if (type === "middleware") {
+      const hasSecurityHeaders = content.includes("headers") || content.includes("X-");
+      if (hasSecurityHeaders) {
+        details.push(`Security middleware configured in ${filePath}`);
+      } else {
+        issues.push("Middleware file exists but security headers not configured");
+      }
+    }
+  }
+
+  const passed = foundConfig && issues.length === 0;
+
+  results.push({
+    name: "Security Headers Configuration",
+    passed,
+    message: passed
+      ? "Security headers properly configured"
+      : "Security headers configuration needs review",
+    severity: "high",
+    details: details.length > 0 || issues.length > 0
+      ? [...details, ...issues]
+      : undefined,
+  });
+  logCheck(results[results.length - 1]);
+}
+
+/**
+ * Check 4: Rate Limiting Configuration
+ */
+async function checkRateLimiting(): Promise<void> {
+  logSection("4. RATE LIMITING VERIFICATION");
+
+  const rateLimitFiles = [
+    { path: "lib/rate-limit.ts", type: "utility" },
+    { path: "lib/rate-limiter.ts", type: "utility" },
+    { path: "api/middleware/rate-limit.ts", type: "middleware" },
+    { path: "app/api/auth/rate-limit.ts", type: "auth" },
+  ];
+
+  let foundRateLimiting = false;
+  const details: string[] = [];
+
+  for (const { path: filePath, type } of rateLimitFiles) {
+    if (fs.existsSync(filePath)) {
+      foundRateLimiting = true;
+      const content = fs.readFileSync(filePath, "utf-8");
+
+      const hasUpstash = content.includes("@upstash");
+      const hasRateLimitLogic = content.includes("limit") || content.includes("window");
+
+      if (hasUpstash) {
+        details.push(`Upstash rate limiting configured in ${filePath}`);
+      } else if (hasRateLimitLogic) {
+        details.push(`Custom rate limiting found in ${filePath}`);
+      }
+    }
+  }
+
+  if (foundRateLimiting) {
+    results.push({
+      name: "Rate Limiting on Auth Endpoints",
+      passed: true,
+      message: "Rate limiting configuration detected",
+      severity: "high",
+      details,
+    });
+  } else {
+    results.push({
+      name: "Rate Limiting on Auth Endpoints",
+      passed: false,
+      message: "No rate limiting configuration found",
+      severity: "high",
+      details: [
+        "Consider implementing rate limiting for auth endpoints",
+        "Use @upstash/ratelimit for scalable rate limiting",
+      ],
+    });
+  }
+
+  logCheck(results[results.length - 1]);
+}
+
+/**
+ * Check 5: HTTPS Enforcement in Production
+ */
+async function checkHttpsEnforcement(): Promise<void> {
+  logSection("5. HTTPS ENFORCEMENT VERIFICATION");
+
+  const configFiles = [
+    { path: "next.config.ts", type: "next" },
+    { path: "next.config.js", type: "next" },
+    { path: "middleware.ts", type: "middleware" },
+    { path: "vercel.json", type: "vercel" },
+    { path: ".env.example", type: "env" },
+  ];
+
+  const details: string[] = [];
+  let foundHttpsConfig = false;
+
+  for (const { path: filePath, type } of configFiles) {
+    if (!fs.existsSync(filePath)) continue;
+
+    const content = fs.readFileSync(filePath, "utf-8");
+
+    // Check for HTTPS redirects and enforcement
+    const hasRedirectHttps = content.includes("https://") || content.includes("protocol");
+    const hasStrictTransport = content.includes("Strict-Transport-Security");
+    const hasEnforceHttps = content.match(/https|ssl|tls|secure/gi)?.length ?? 0 > 0;
+
+    if (type === "next" && hasStrictTransport) {
+      foundHttpsConfig = true;
+      details.push(`HTTPS/HSTS enforcement found in ${filePath}`);
+    } else if (type === "middleware" && hasEnforceHttps) {
+      foundHttpsConfig = true;
+      details.push(`HTTPS enforcement logic found in ${filePath}`);
+    } else if (type === "vercel" && hasRedirectHttps) {
+      foundHttpsConfig = true;
+      details.push(`HTTPS redirect rules found in ${filePath}`);
+    }
+  }
+
+  if (foundHttpsConfig) {
+    results.push({
+      name: "HTTPS Enforcement in Production",
+      passed: true,
+      message: "HTTPS enforcement configured",
+      severity: "high",
+      details,
+    });
+  } else {
+    results.push({
+      name: "HTTPS Enforcement in Production",
+      passed: false,
+      message: "No explicit HTTPS enforcement found",
+      severity: "high",
+      details: [
+        "Add HTTPS redirect in middleware or next.config",
+        "Configure Strict-Transport-Security header",
+        "Ensure all external URLs use HTTPS",
+      ],
+    });
+  }
+
+  logCheck(results[results.length - 1]);
+}
+
+/**
+ * Calculate security score
+ */
+function calculateScore(): number {
+  if (results.length === 0) return 0;
+
+  const criticalChecks = results.filter(r => r.severity === "critical");
+  const highChecks = results.filter(r => r.severity === "high");
+
+  const criticalPassed = criticalChecks.filter(r => r.passed).length;
+  const highPassed = highChecks.filter(r => r.passed).length;
+
+  const criticalScore = (criticalPassed / Math.max(criticalChecks.length, 1)) * 60;
+  const highScore = (highPassed / Math.max(highChecks.length, 1)) * 40;
+
+  return Math.round(criticalScore + highScore);
+}
+
+/**
+ * Generate final report
+ */
+function generateReport(): void {
+  logSection("SECURITY AUDIT SUMMARY");
+
+  const score = calculateScore();
+  const passed = results.filter(r => r.passed).length;
+  const total = results.length;
+
+  let scoreColor = colors.red;
+  if (score >= 80) scoreColor = colors.green;
+  else if (score >= 60) scoreColor = colors.yellow;
+
+  log(`Overall Security Score: ${scoreColor}${score}/100${colors.reset}`);
+  log(`Passed Checks: ${passed}/${total}`);
+
+  const criticalFailed = results.filter(r => r.severity === "critical" && !r.passed);
+  if (criticalFailed.length > 0) {
+    log(`\n${colors.red}${symbols.cross} CRITICAL ISSUES:${colors.reset}`);
+    criticalFailed.forEach(r => {
+      log(`  • ${r.name}: ${r.message}`, colors.red);
+    });
+  }
+
+  const highFailed = results.filter(r => r.severity === "high" && !r.passed);
+  if (highFailed.length > 0) {
+    log(`\n${colors.yellow}${symbols.warning} HIGH PRIORITY ISSUES:${colors.reset}`);
+    highFailed.forEach(r => {
+      log(`  • ${r.name}: ${r.message}`, colors.yellow);
+    });
+  }
+
+  if (criticalFailed.length === 0 && highFailed.length === 0) {
+    log(`\n${colors.green}✓ All security checks passed!${colors.reset}`);
+  }
+
+  logSection("RECOMMENDATIONS");
+
+  if (criticalIssuesFound) {
+    log(`${colors.red}1. Address all CRITICAL issues before deployment${colors.reset}`);
+  }
+
+  log("2. Run this audit regularly (e.g., before each deployment)");
+  log("3. Keep dependencies updated: pnpm update");
+  log("4. Enable Dependabot for automated dependency updates");
+  log("5. Review security headers configuration");
+  log("6. Implement rate limiting on all auth endpoints");
+  log("7. Enable HTTPS everywhere and use security headers");
+
+  log("\n");
+}
+
+/**
+ * Main execution
+ */
+async function main(): Promise<void> {
+  log(`\n${"═".repeat(70)}`, colors.blue);
+  log("SECURITY AUDIT - {{ project_name }}", colors.blue);
+  log(`${"═".repeat(70)}`, colors.blue);
+  log(`Timestamp: ${new Date().toISOString()}`, colors.gray);
+
+  try {
+    await checkVulnerabilities();
+    await checkLeakedSecrets();
+    await checkSecurityHeaders();
+    await checkRateLimiting();
+    await checkHttpsEnforcement();
+
+    generateReport();
+
+    // Exit with non-zero code if critical issues found
+    if (criticalIssuesFound) {
+      process.exit(1);
+    }
+  } catch (error) {
+    log(`\n${colors.red}Audit execution failed:${colors.reset}`);
+    log(error instanceof Error ? error.message : String(error), colors.red);
+    process.exit(2);
+  }
+}
+
+main().catch(error => {
+  log(`\n${colors.red}Fatal error:${colors.reset}`);
+  log(error instanceof Error ? error.message : String(error), colors.red);
+  process.exit(2);
+});
+{%- endif %}

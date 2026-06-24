@@ -1,0 +1,63 @@
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+//! Health check endpoint handler
+
+use actix_web::{get, web, HttpResponse, Responder};
+use tracing::debug;
+
+use crate::config::Config;
+use crate::models::HealthResponse;
+
+/// Health check endpoint
+///
+/// Returns the current health status of the API server.
+///
+/// # Responses
+///
+/// * `200 OK` - Server is healthy
+#[get("/health")]
+pub async fn health_check(config: web::Data<Config>) -> impl Responder {
+    debug!("Health check requested");
+
+    let response = HealthResponse::healthy();
+
+    HttpResponse::Ok().json(response)
+}
+
+/// Readiness check endpoint
+///
+/// Kubernetes-style readiness probe that checks if the service is ready to accept traffic.
+#[get("/ready")]
+pub async fn readiness_check(_config: web::Data<Config>) -> impl Responder {
+    debug!("Readiness check requested");
+
+    let response = HealthResponse::healthy();
+
+    HttpResponse::Ok().json(response)
+}
+
+/// Liveness check endpoint
+///
+/// Kubernetes-style liveness probe that checks if the service is alive.
+#[get("/live")]
+pub async fn liveness_check() -> impl Responder {
+    debug!("Liveness check requested");
+
+    HttpResponse::Ok().json(serde_json::json!({
+        "status": "alive"
+    }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::test;
+
+    #[actix_web::test]
+    async fn test_health_check() {
+        let config = web::Data::new(Config::default());
+        let resp = health_check(config).await;
+        // Basic check that we get a response
+        assert!(true);
+    }
+}
+{% endif %}

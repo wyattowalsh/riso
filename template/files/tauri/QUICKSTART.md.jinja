@@ -1,0 +1,172 @@
+{% if desktop_module == "enabled" and desktop_framework == "tauri" %}
+# {{ project_name }} - Quick Start Guide
+
+Get up and running with {{ project_name }} in minutes.
+
+## Prerequisites Check
+
+Run this script to verify all requirements:
+
+```bash
+# Check Node.js
+node --version  # Should be 20.0.0 or higher
+
+# Check pnpm
+pnpm --version  # Install: npm install -g pnpm
+
+# Check Rust
+rustc --version  # Install: https://rustup.rs/
+cargo --version
+
+# Check Tauri CLI
+pnpm tauri --version
+```
+
+## Installation
+
+```bash
+# 1. Install dependencies
+pnpm install
+
+# 2. Start development server
+pnpm dev
+```
+
+That's it! The application should open automatically.
+
+## First Steps
+
+### 1. Test the Greeting
+
+- Type your name in the input field
+- Click "Greet from Rust!"
+- You should see a greeting message from the Rust backend
+
+### 2. Explore the Code
+
+**Frontend (React + TypeScript):**
+- `src/App.tsx` - Main UI component
+- `src/main.tsx` - Application entry point
+- `src/styles.css` - Global styles
+
+**Backend (Rust):**
+- `src-tauri/src/commands.rs` - IPC command handlers
+- `src-tauri/src/main.rs` - Application setup
+- `src-tauri/tauri.conf.json` - Configuration
+
+### 3. Add Your First Command
+
+**Step 1**: Define the command in `src-tauri/src/commands.rs`:
+
+```rust
+#[command]
+pub fn calculate_sum(a: i32, b: i32) -> i32 {
+    a + b
+}
+```
+
+**Step 2**: Register it in `src-tauri/src/main.rs`:
+
+```rust
+.invoke_handler(tauri::generate_handler![
+    commands::greet,
+    commands::calculate_sum,  // Add this line
+])
+```
+
+**Step 3**: Call it from the frontend in `src/App.tsx`:
+
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+const result = await invoke<number>('calculate_sum', { a: 5, b: 3 });
+console.log(result); // 8
+```
+
+## Building for Production
+
+```bash
+# Build for your current platform
+pnpm build
+
+# Output will be in: src-tauri/target/release/bundle/
+```
+
+## Common Tasks
+
+### Update Dependencies
+
+```bash
+# Update Node.js dependencies
+pnpm update
+
+# Update Rust dependencies
+cd src-tauri
+cargo update
+```
+
+### Run Tests
+
+```bash
+# Frontend tests
+pnpm test
+
+# Rust tests
+cd src-tauri
+cargo test
+```
+
+### Format Code
+
+```bash
+# Format TypeScript
+pnpm format
+
+# Format Rust
+cd src-tauri
+cargo fmt
+```
+
+## Troubleshooting
+
+### Issue: "Command not found: tauri"
+
+```bash
+pnpm install @tauri-apps/cli --save-dev
+```
+
+### Issue: "WebView2 not installed" (Windows)
+
+Download from: https://developer.microsoft.com/en-us/microsoft-edge/webview2/
+
+### Issue: Build fails on Linux
+
+```bash
+# Install required system libraries
+sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev
+```
+
+## Next Steps
+
+1. Read the [README.md](README.md) for detailed documentation
+2. Check out the [Tauri v2 Guide](https://v2.tauri.app/start/)
+3. Explore the [API Reference](https://v2.tauri.app/reference/javascript/api/)
+4. Join the [Tauri Discord](https://discord.gg/tauri)
+
+## Project Structure Quick Reference
+
+```
+{{ project_slug }}/
+├── src/                    # Frontend (React)
+│   ├── App.tsx            # Main component
+│   └── main.tsx           # Entry point
+├── src-tauri/             # Backend (Rust)
+│   ├── src/
+│   │   ├── main.rs       # App setup
+│   │   └── commands.rs   # IPC handlers
+│   └── tauri.conf.json   # Configuration
+└── package.json           # Node dependencies
+```
+
+Happy coding!
+{% endif %}

@@ -1,0 +1,67 @@
+{% if saas_infra_module == "enabled" and saas_gdpr_tools %}
+/**
+ * GDPR Compliance Types
+ */
+
+/**
+ * Cookie categories as defined by GDPR
+ */
+export type CookieCategory = 'essential' | 'analytics' | 'marketing' | 'preferences';
+
+/**
+ * User's consent preferences for different cookie categories
+ */
+export interface ConsentPreferences {
+  essential: boolean;      // Always true, cannot be disabled
+  analytics: boolean;      // Google Analytics, PostHog, etc.
+  marketing: boolean;      // Ad pixels, remarketing tags
+  preferences: boolean;    // UI preferences, language settings
+}
+
+/**
+ * Stored consent record with metadata
+ */
+export interface ConsentRecord {
+  userId: string;
+  preferences: ConsentPreferences;
+  timestamp: Date;
+  ipAddress?: string;
+  userAgent?: string;
+  version: string;          // Consent policy version
+}
+
+/**
+ * Data subject rights request types
+ */
+export type DataSubjectRequestType =
+  | 'access'           // Right to access
+  | 'portability'      // Right to data portability
+  | 'rectification'    // Right to rectification
+  | 'erasure'          // Right to be forgotten
+  | 'restriction'      // Right to restriction of processing
+  | 'objection';       // Right to object
+
+/**
+ * Data processing record for audit trail
+ */
+export interface DataProcessingRecord {
+  id: string;
+  userId: string;
+  purpose: string;
+  legalBasis: 'consent' | 'contract' | 'legal_obligation' | 'legitimate_interest';
+  dataCategories: string[];
+  recipients?: string[];
+  retentionPeriod?: string;
+  timestamp: Date;
+}
+
+/**
+ * Privacy policy section configuration
+ */
+export interface PrivacyPolicySection {
+  id: string;
+  title: string;
+  content: string;
+  lastUpdated: Date;
+}
+{% endif %}

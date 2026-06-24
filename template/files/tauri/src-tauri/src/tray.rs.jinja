@@ -1,0 +1,87 @@
+{% if desktop_module == "enabled" and desktop_framework == "tauri" and desktop_features is defined and 'tray_icon' in desktop_features %}
+//! System Tray Icon Management
+//!
+//! This module handles the system tray icon and its menu.
+
+use log::{error, info};
+use tauri::{
+    menu::{Menu, MenuEvent, MenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    App, Manager, Result,
+};
+
+/// Initialize the system tray icon
+pub fn init_tray(app: &App) -> Result<()> {
+    info!("Initializing system tray");
+
+    // Create the tray menu
+    let show_item = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
+    let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+
+    let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
+
+    // Build the tray icon
+    let _tray = TrayIconBuilder::new()
+        .icon(app.default_window_icon().unwrap().clone())
+        .menu(&menu)
+        .menu_on_left_click(false)
+        .on_menu_event(|app, event| handle_menu_event(app, event))
+        .on_tray_icon_event(|tray, event| handle_tray_event(tray, event))
+        .build(app)?;
+
+    Ok(())
+}
+
+/// Handle tray menu events
+fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
+    match event.id.as_ref() {
+        "show" => {
+            info!("Tray menu: Show window");
+            if let Some(window) = app.get_webview_window("main") {
+                if let Err(e) = window.show() {
+                    error!("Failed to show window: {}", e);
+                }
+                if let Err(e) = window.set_focus() {
+                    error!("Failed to focus window: {}", e);
+                }
+            }
+        }
+        "quit" => {
+            info!("Tray menu: Quit application");
+            app.exit(0);
+        }
+        id => {
+            info!("Unknown tray menu item: {}", id);
+        }
+    }
+}
+
+/// Handle tray icon events (clicks)
+fn handle_tray_event(tray: &tauri::tray::TrayIcon, event: TrayIconEvent) {
+    match event {
+        TrayIconEvent::Click {
+            button: MouseButton::Left,
+            button_state: MouseButtonState::Up,
+            ..
+        } => {
+            info!("Tray icon left-clicked");
+            let app = tray.app_handle();
+            if let Some(window) = app.get_webview_window("main") {
+                if let Err(e) = window.show() {
+                    error!("Failed to show window: {}", e);
+                }
+                if let Err(e) = window.set_focus() {
+                    error!("Failed to focus window: {}", e);
+                }
+            }
+        }
+        TrayIconEvent::Enter { .. } => {
+            // Mouse entered tray icon area
+        }
+        TrayIconEvent::Leave { .. } => {
+            // Mouse left tray icon area
+        }
+        _ => {}
+    }
+}
+{% endif %}

@@ -1,0 +1,431 @@
+{% if saas_infra_module == "enabled" and saas_gdpr_tools %}
+/**
+ * GDPR Audit Trail
+ *
+ * Tracks all access to personal data and consent changes for compliance.
+ * Implements Article 30 (Records of Processing Activities) requirements.
+ */
+
+{% if saas_orm == "prisma" %}
+import { prisma } from '@/lib/prisma';
+{% elif saas_orm == "drizzle" %}
+import { db } from '@/lib/db';
+{% endif %}
+
+export type AuditEventType =
+  | 'data.accessed'          // PII was accessed/viewed
+  | 'data.modified'          // PII was updated
+  | 'data.exported'          // User requested data export
+  | 'data.deleted'           // User requested deletion
+  | 'consent.granted'        // User granted consent
+  | 'consent.withdrawn'      // User withdrew consent
+  | 'consent.updated'        // User updated consent preferences
+  | 'account.created'        // Account creation
+  | 'account.login'          // User logged in
+  | 'account.deleted'        // Account deletion completed
+  | 'processing.started'     // Data processing started
+  | 'processing.completed';  // Data processing completed
+
+export interface AuditEvent {
+  id: string;
+  userId: string;
+  eventType: AuditEventType;
+  timestamp: Date;
+  actor?: string;            // Who performed the action (userId, system, admin)
+  ipAddress?: string;
+  userAgent?: string;
+  resource?: string;         // What data was accessed/modified
+  legalBasis?: string;       // Legal basis for processing
+  metadata?: Record<string, any>;
+}
+
+/**
+ * Log data access event
+ */
+export async function logDataAccess(
+  userId: string,
+  resource: string,
+  actor?: string,
+  metadata?: Record<string, any>
+): Promise<void> {
+{% if saas_orm == "prisma" %}
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      eventType: 'data.accessed',
+      timestamp: new Date(),
+      actor: actor || userId,
+      resource,
+      metadata: metadata || {},
+    },
+  });
+{% elif saas_orm == "drizzle" %}
+  // TODO: Implement with Drizzle ORM
+{% endif %}
+}
+
+/**
+ * Log data modification event
+ */
+export async function logDataModification(
+  userId: string,
+  resource: string,
+  changes: Record<string, any>,
+  actor?: string
+): Promise<void> {
+{% if saas_orm == "prisma" %}
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      eventType: 'data.modified',
+      timestamp: new Date(),
+      actor: actor || userId,
+      resource,
+      metadata: {
+        changes,
+      },
+    },
+  });
+{% elif saas_orm == "drizzle" %}
+  // TODO: Implement with Drizzle ORM
+{% endif %}
+}
+
+/**
+ * Log consent change event
+ */
+export async function logConsentChange(
+  userId: string,
+  previousPreferences: Record<string, boolean>,
+  newPreferences: Record<string, boolean>,
+  ipAddress?: string,
+  userAgent?: string
+): Promise<void> {
+{% if saas_orm == "prisma" %}
+  // Determine what changed
+  const changes: Record<string, { from: boolean; to: boolean }> = {};
+  for (const [key, value] of Object.entries(newPreferences)) {
+    if (previousPreferences[key] !== value) {
+      changes[key] = {
+        from: previousPreferences[key],
+        to: value,
+      };
+    }
+  }
+
+  // Determine event type
+  const granted = Object.values(newPreferences).some(v => v === true);
+  const withdrawn = Object.values(newPreferences).every(v => v === false);
+  const eventType = withdrawn ? 'consent.withdrawn' : granted ? 'consent.granted' : 'consent.updated';
+
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      eventType,
+      timestamp: new Date(),
+      ipAddress,
+      userAgent,
+      metadata: {
+        previousPreferences,
+        newPreferences,
+        changes,
+      },
+    },
+  });
+{% elif saas_orm == "drizzle" %}
+  // TODO: Implement with Drizzle ORM
+{% endif %}
+}
+
+/**
+ * Log data export event
+ */
+export async function logDataExport(
+  userId: string,
+  format: string,
+  ipAddress?: string
+): Promise<void> {
+{% if saas_orm == "prisma" %}
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      eventType: 'data.exported',
+      timestamp: new Date(),
+      ipAddress,
+      metadata: {
+        format,
+      },
+    },
+  });
+{% elif saas_orm == "drizzle" %}
+  // TODO: Implement with Drizzle ORM
+{% endif %}
+}
+
+/**
+ * Log data deletion request
+ */
+export async function logDeletionRequest(
+  userId: string,
+  scheduledFor: Date,
+  ipAddress?: string
+): Promise<void> {
+{% if saas_orm == "prisma" %}
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      eventType: 'data.deleted',
+      timestamp: new Date(),
+      ipAddress,
+      metadata: {
+        scheduledFor: scheduledFor.toISOString(),
+      },
+    },
+  });
+{% elif saas_orm == "drizzle" %}
+  // TODO: Implement with Drizzle ORM
+{% endif %}
+}
+
+/**
+ * Log data processing activity
+ */
+export async function logProcessingActivity(
+  userId: string,
+  purpose: string,
+  legalBasis: 'consent' | 'contract' | 'legal_obligation' | 'legitimate_interest',
+  dataCategories: string[],
+  started: boolean = true,
+  metadata?: Record<string, any>
+): Promise<void> {
+{% if saas_orm == "prisma" %}
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      eventType: started ? 'processing.started' : 'processing.completed',
+      timestamp: new Date(),
+      legalBasis,
+      metadata: {
+        purpose,
+        dataCategories,
+        ...metadata,
+      },
+    },
+  });
+{% elif saas_orm == "drizzle" %}
+  // TODO: Implement with Drizzle ORM
+{% endif %}
+}
+
+/**
+ * Get audit trail for a specific user
+ */
+export async function getAuditTrail(
+  userId: string,
+  options?: {
+    eventTypes?: AuditEventType[];
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+    offset?: number;
+  }
+): Promise<AuditEvent[]> {
+{% if saas_orm == "prisma" %}
+  const { eventTypes, startDate, endDate, limit = 100, offset = 0 } = options || {};
+
+  const where: any = { userId };
+
+  if (eventTypes && eventTypes.length > 0) {
+    where.eventType = { in: eventTypes };
+  }
+
+  if (startDate || endDate) {
+    where.timestamp = {};
+    if (startDate) where.timestamp.gte = startDate;
+    if (endDate) where.timestamp.lte = endDate;
+  }
+
+  const logs = await prisma.auditLog.findMany({
+    where,
+    orderBy: { timestamp: 'desc' },
+    take: limit,
+    skip: offset,
+  });
+
+  return logs.map(log => ({
+    id: log.id,
+    userId: log.userId,
+    eventType: log.eventType as AuditEventType,
+    timestamp: log.timestamp,
+    actor: log.actor || undefined,
+    ipAddress: log.ipAddress || undefined,
+    userAgent: log.userAgent || undefined,
+    resource: log.resource || undefined,
+    legalBasis: log.legalBasis || undefined,
+    metadata: log.metadata as Record<string, any> || undefined,
+  }));
+{% elif saas_orm == "drizzle" %}
+  // TODO: Implement with Drizzle ORM
+  return [];
+{% endif %}
+}
+
+/**
+ * Get processing activities summary for compliance reporting
+ */
+export async function getProcessingActivitiesReport(
+  startDate: Date,
+  endDate: Date
+): Promise<Array<{
+  purpose: string;
+  legalBasis: string;
+  dataCategories: string[];
+  count: number;
+}>> {
+{% if saas_orm == "prisma" %}
+  const activities = await prisma.auditLog.findMany({
+    where: {
+      eventType: { in: ['processing.started', 'processing.completed'] },
+      timestamp: {
+        gte: startDate,
+        lte: endDate,
+      },
+    },
+    select: {
+      legalBasis: true,
+      metadata: true,
+    },
+  });
+
+  // Group by purpose and legal basis
+  const grouped = new Map<string, {
+    purpose: string;
+    legalBasis: string;
+    dataCategories: Set<string>;
+    count: number;
+  }>();
+
+  for (const activity of activities) {
+    const metadata = activity.metadata as any;
+    const key = `${metadata.purpose}-${activity.legalBasis}`;
+
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        purpose: metadata.purpose,
+        legalBasis: activity.legalBasis || 'unknown',
+        dataCategories: new Set(metadata.dataCategories || []),
+        count: 0,
+      });
+    }
+
+    const entry = grouped.get(key)!;
+    entry.count++;
+    if (metadata.dataCategories) {
+      metadata.dataCategories.forEach((cat: string) => entry.dataCategories.add(cat));
+    }
+  }
+
+  return Array.from(grouped.values()).map(entry => ({
+    purpose: entry.purpose,
+    legalBasis: entry.legalBasis,
+    dataCategories: Array.from(entry.dataCategories),
+    count: entry.count,
+  }));
+{% elif saas_orm == "drizzle" %}
+  // TODO: Implement with Drizzle ORM
+  return [];
+{% endif %}
+}
+
+/**
+ * Get consent history for a user
+ */
+export async function getConsentHistory(
+  userId: string,
+  limit: number = 50
+): Promise<Array<{
+  timestamp: Date;
+  preferences: Record<string, boolean>;
+  version: string;
+  ipAddress?: string;
+}>> {
+{% if saas_orm == "prisma" %}
+  const records = await prisma.consentRecord.findMany({
+    where: { userId },
+    orderBy: { timestamp: 'desc' },
+    take: limit,
+  });
+
+  return records.map(record => ({
+    timestamp: record.timestamp,
+    preferences: record.preferences as Record<string, boolean>,
+    version: record.version,
+    ipAddress: record.ipAddress || undefined,
+  }));
+{% elif saas_orm == "drizzle" %}
+  // TODO: Implement with Drizzle ORM
+  return [];
+{% endif %}
+}
+
+/**
+ * Generate GDPR compliance report
+ */
+export async function generateComplianceReport(
+  startDate: Date,
+  endDate: Date
+): Promise<{
+  totalUsers: number;
+  activeConsents: number;
+  dataExports: number;
+  deletionRequests: number;
+  processingActivities: Array<any>;
+}> {
+{% if saas_orm == "prisma" %}
+  const [
+    totalUsers,
+    activeConsents,
+    dataExports,
+    deletionRequests,
+  ] = await Promise.all([
+    prisma.user.count(),
+    prisma.consentRecord.count({
+      where: {
+        timestamp: { gte: startDate, lte: endDate },
+      },
+    }),
+    prisma.auditLog.count({
+      where: {
+        eventType: 'data.exported',
+        timestamp: { gte: startDate, lte: endDate },
+      },
+    }),
+    prisma.auditLog.count({
+      where: {
+        eventType: 'data.deleted',
+        timestamp: { gte: startDate, lte: endDate },
+      },
+    }),
+  ]);
+
+  const processingActivities = await getProcessingActivitiesReport(startDate, endDate);
+
+  return {
+    totalUsers,
+    activeConsents,
+    dataExports,
+    deletionRequests,
+    processingActivities,
+  };
+{% elif saas_orm == "drizzle" %}
+  // TODO: Implement with Drizzle ORM
+  return {
+    totalUsers: 0,
+    activeConsents: 0,
+    dataExports: 0,
+    deletionRequests: 0,
+    processingActivities: [],
+  };
+{% endif %}
+}
+{% endif %}

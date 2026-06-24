@@ -1,0 +1,382 @@
+{% if desktop_module == "enabled" and desktop_framework == "tauri" %}
+# {{ project_name }}
+
+{{ project_description | default('A cross-platform desktop application built with Tauri v2.') }}
+
+## Tech Stack
+
+- **Runtime**: [Tauri v2](https://v2.tauri.app/) - Rust-powered desktop framework
+- **Frontend**: [React 18.3](https://react.dev/) + [TypeScript 5.7](https://www.typescriptlang.org/)
+- **Build Tool**: [Vite 6.x](https://vite.dev/) - Lightning-fast development
+- **Styling**: [Tailwind CSS 3.x](https://tailwindcss.com/) - Utility-first CSS
+- **Backend**: [Rust 1.77.2+](https://www.rust-lang.org/) - Safe, fast, concurrent
+
+## Features
+
+- Security-first architecture with Tauri v2 capabilities system
+- TypeScript throughout with strict mode
+- Rust backend for high-performance operations
+{% if 'auto_updater' in desktop_features | default([]) %}
+- Auto-updater with seamless updates
+{% endif %}
+{% if 'custom_titlebar' in desktop_features | default([]) %}
+- Custom title bar with native-like controls
+{% endif %}
+{% if 'tray_icon' in desktop_features | default([]) %}
+- System tray icon support
+{% endif %}
+{% if 'system_info' in desktop_features | default([]) %}
+- System information display
+{% endif %}
+- Dark theme with gradient design
+- Cross-platform builds ({% if 'mac' in desktop_platforms | default(['mac', 'windows', 'linux']) %}macOS{% endif %}{% if 'mac' in desktop_platforms | default(['mac', 'windows', 'linux']) and ('windows' in desktop_platforms | default(['mac', 'windows', 'linux']) or 'linux' in desktop_platforms | default(['mac', 'windows', 'linux'])) %}, {% endif %}{% if 'windows' in desktop_platforms | default(['mac', 'windows', 'linux']) %}Windows{% endif %}{% if 'windows' in desktop_platforms | default(['mac', 'windows', 'linux']) and 'linux' in desktop_platforms | default(['mac', 'windows', 'linux']) %}, {% endif %}{% if 'linux' in desktop_platforms | default(['mac', 'windows', 'linux']) %}Linux{% endif %})
+
+## Getting Started
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) 20+
+- [Rust](https://www.rust-lang.org/tools/install) 1.77.2+
+- [pnpm](https://pnpm.io/) (recommended) or npm
+
+#### Platform-Specific Requirements
+
+{% if 'mac' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+**macOS:**
+```bash
+xcode-select --install
+```
+{% endif %}
+
+{% if 'windows' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+**Windows:**
+- [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+- [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (pre-installed on Windows 11)
+{% endif %}
+
+{% if 'linux' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+**Linux:**
+```bash
+# Debian/Ubuntu
+sudo apt update
+sudo apt install libwebkit2gtk-4.1-dev \
+  build-essential \
+  curl \
+  wget \
+  file \
+  libssl-dev \
+  libayatana-appindicator3-dev \
+  librsvg2-dev
+
+# Fedora
+sudo dnf install webkit2gtk4.1-devel \
+  openssl-devel \
+  curl \
+  wget \
+  file \
+  libappindicator-gtk3-devel \
+  librsvg2-devel
+
+# Arch
+sudo pacman -Syu
+sudo pacman -S webkit2gtk-4.1 \
+  base-devel \
+  curl \
+  wget \
+  file \
+  openssl \
+  appmenu-gtk-module \
+  libappindicator-gtk3 \
+  librsvg
+```
+{% endif %}
+
+### Installation
+
+```bash
+# Install dependencies
+pnpm install
+
+# Start development
+pnpm dev
+```
+
+### Development
+
+```bash
+# Start with hot-reload (frontend + Tauri)
+pnpm dev
+
+# Start only frontend (for UI work)
+pnpm dev:frontend
+
+# Type check
+pnpm typecheck
+
+# Lint
+pnpm lint
+
+# Format code
+pnpm format
+
+# Run tests
+pnpm test
+```
+
+### Building
+
+```bash
+# Build for current platform
+pnpm build
+
+{% if 'mac' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+# Build for macOS (on macOS)
+pnpm tauri build
+{% endif %}
+
+{% if 'windows' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+# Build for Windows (on Windows)
+pnpm tauri build
+{% endif %}
+
+{% if 'linux' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+# Build for Linux (on Linux)
+pnpm tauri build --target x86_64-unknown-linux-gnu
+{% endif %}
+```
+
+Built applications will be in the `src-tauri/target/release/bundle/` directory.
+
+## Project Structure
+
+```
+{{ project_slug }}/
+├── src/                       # Frontend (React + TypeScript)
+│   ├── App.tsx               # Root component
+│   ├── main.tsx              # Entry point
+│   ├── styles.css            # Global styles
+│   └── components/           # React components
+│       {% if 'custom_titlebar' in desktop_features | default([]) %}├── TitleBar.tsx         # Custom window controls
+│       {% endif %}{% if 'auto_updater' in desktop_features | default([]) %}└── UpdateChecker.tsx    # Update management
+│       {% endif %}
+├── src-tauri/                # Rust backend
+│   ├── src/
+│   │   ├── main.rs           # Application entry
+│   │   ├── lib.rs            # Library exports
+│   │   ├── commands.rs       # Tauri commands (IPC)
+│   │   {% if 'tray_icon' in desktop_features | default([]) %}├── tray.rs            # System tray
+│   │   {% endif %}{% if 'menu' in desktop_features | default([]) %}└── menu.rs            # Application menu
+│   │   {% endif %}
+│   ├── capabilities/         # Permission definitions
+│   │   └── default.json      # Default capabilities
+│   ├── Cargo.toml            # Rust dependencies
+│   ├── tauri.conf.json       # Tauri configuration
+│   └── build.rs              # Build script
+├── package.json              # Node dependencies
+├── vite.config.ts            # Vite configuration
+├── tsconfig.json             # TypeScript config
+└── tailwind.config.js        # Tailwind config
+```
+
+## Security
+
+This application follows Tauri v2 security best practices:
+
+1. **Capabilities System**: Fine-grained permission control
+2. **IPC Security**: All commands are explicitly declared
+3. **CSP Headers**: Content Security Policy enforced
+4. **No Node Integration**: Rust handles system operations
+5. **Input Validation**: All IPC inputs validated in Rust
+6. **Sandboxing**: Renderer process isolated from system APIs
+
+### Adding Commands
+
+When adding new Tauri commands:
+
+1. Define the command in `src-tauri/src/commands.rs`:
+
+```rust
+#[command]
+pub fn my_command(arg: String) -> Result<String, String> {
+    // Validate input
+    if arg.is_empty() {
+        return Err("Invalid input".to_string());
+    }
+
+    // Process and return
+    Ok(format!("Processed: {}", arg))
+}
+```
+
+2. Register it in `src-tauri/src/main.rs`:
+
+```rust
+.invoke_handler(tauri::generate_handler![
+    commands::my_command,
+    // ... other commands
+])
+```
+
+3. Update capabilities in `src-tauri/capabilities/default.json` if needed.
+
+4. Call from frontend:
+
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+const result = await invoke<string>('my_command', { arg: 'value' });
+```
+
+## Application Icons
+
+Place your app icons in `src-tauri/icons/`:
+
+- `icon.png` - 512x512 PNG (source)
+- `32x32.png` - 32x32 PNG
+- `128x128.png` - 128x128 PNG
+- `128x128@2x.png` - 256x256 PNG
+- `icon.icns` - macOS icon
+- `icon.ico` - Windows icon
+
+Generate icons from a 512x512 PNG:
+
+```bash
+cd src-tauri
+pnpm tauri icon path/to/icon.png
+```
+
+{% if 'auto_updater' in desktop_features | default([]) %}
+## Auto-Updates
+
+The application checks for updates automatically.
+
+### Publishing a Release
+
+1. Update version in:
+   - `package.json`
+   - `src-tauri/Cargo.toml`
+   - `src-tauri/tauri.conf.json`
+
+2. Generate update signature:
+
+```bash
+# Generate keypair (once)
+pnpm tauri signer generate -w ~/.tauri/myapp.key
+
+# Sign the release bundle
+pnpm tauri signer sign path/to/bundle
+```
+
+3. Create a GitHub Release with:
+   - Version tag (e.g., `v1.0.0`)
+   - Release bundles
+   - `latest.json` manifest
+
+### Update Manifest Format
+
+```json
+{
+  "version": "1.0.0",
+  "date": "2024-01-20T12:00:00Z",
+  "platforms": {
+    "darwin-x86_64": {
+      "url": "https://github.com/user/repo/releases/download/v1.0.0/app.app.tar.gz",
+      "signature": "signature_here"
+    },
+    "linux-x86_64": {
+      "url": "https://github.com/user/repo/releases/download/v1.0.0/app.AppImage.tar.gz",
+      "signature": "signature_here"
+    },
+    "windows-x86_64": {
+      "url": "https://github.com/user/repo/releases/download/v1.0.0/app.msi.zip",
+      "signature": "signature_here"
+    }
+  }
+}
+```
+{% endif %}
+
+## Code Signing
+
+### macOS
+
+```bash
+# Set environment variables
+export APPLE_CERTIFICATE="path/to/cert.p12"
+export APPLE_CERTIFICATE_PASSWORD="your-password"
+export APPLE_ID="your@email.com"
+export APPLE_PASSWORD="app-specific-password"
+export APPLE_TEAM_ID="TEAM_ID"
+
+# Build with signing
+pnpm tauri build
+```
+
+### Windows
+
+```bash
+# Set environment variables
+export WINDOWS_CERTIFICATE="path/to/cert.pfx"
+export WINDOWS_CERTIFICATE_PASSWORD="your-password"
+
+# Build with signing
+pnpm tauri build
+```
+
+## Troubleshooting
+
+### Build Errors
+
+```bash
+# Clean build cache
+rm -rf src-tauri/target
+rm -rf node_modules/.vite
+
+# Reinstall dependencies
+pnpm install
+
+# Update Rust
+rustup update stable
+```
+
+### Development Issues
+
+```bash
+# Clear Rust cache
+cargo clean
+
+# Rebuild from scratch
+rm -rf src-tauri/target
+pnpm dev
+```
+
+### WebView Issues
+
+{% if 'linux' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+**Linux**: Ensure WebKitGTK is installed and up to date.
+{% endif %}
+
+{% if 'windows' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+**Windows**: Update WebView2 Runtime from Microsoft.
+{% endif %}
+
+## Performance
+
+Tauri v2 delivers exceptional performance:
+
+- **Binary Size**: 3-10 MB (vs 100+ MB for Electron)
+- **Memory Usage**: 20-50 MB (vs 200+ MB for Electron)
+- **Startup Time**: < 500ms
+- **Build Time**: Fast incremental builds with Rust
+
+## Resources
+
+- [Tauri Documentation](https://v2.tauri.app/)
+- [Tauri API Reference](https://v2.tauri.app/reference/javascript/api/)
+- [Rust Book](https://doc.rust-lang.org/book/)
+- [React Documentation](https://react.dev/)
+
+## License
+
+MIT
+{% endif %}

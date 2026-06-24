@@ -1,0 +1,262 @@
+{% if saas_compliance == 'hipaa' -%}
+/**
+ * HIPAA Access Control and Audit Logging
+ *
+ * Implements access control logging and monitoring required by HIPAA
+ * Security Rule (45 CFR § 164.308(a)(1)(ii)(D))
+ */
+
+/**
+ * Access event types for HIPAA audit trail
+ */
+export enum AccessEventType {
+  READ = 'READ',
+  CREATE = 'CREATE',
+  UPDATE = 'UPDATE',
+  DELETE = 'DELETE',
+  EXPORT = 'EXPORT',
+  PRINT = 'PRINT',
+  SHARE = 'SHARE',
+}
+
+/**
+ * Access outcome for audit logging
+ */
+export enum AccessOutcome {
+  SUCCESS = 'SUCCESS',
+  FAILURE = 'FAILURE',
+  DENIED = 'DENIED',
+}
+
+/**
+ * HIPAA audit log entry structure
+ */
+export interface HIPAAAuditLog {
+  id: string;
+  timestamp: Date;
+  userId: string;
+  userName?: string;
+  userRole?: string;
+  patientId?: string;
+  eventType: AccessEventType;
+  outcome: AccessOutcome;
+  resourceType: string;
+  resourceId: string;
+  phiAccessed: string[]; // List of PHI fields accessed
+  purpose: string;
+  ipAddress: string;
+  userAgent?: string;
+  sessionId?: string;
+  denialReason?: string;
+  dataModified?: boolean;
+  exportFormat?: string;
+  recipientUserId?: string; // For SHARE events
+}
+
+/**
+ * Creates a HIPAA-compliant audit log entry
+ *
+ * @param entry - Audit log entry data
+ * @returns Formatted audit log
+ */
+export async function createAuditLog(entry: Omit<HIPAAAuditLog, 'id' | 'timestamp'>): Promise<HIPAAAuditLog> {
+  const auditLog: HIPAAAuditLog = {
+    id: generateAuditId(),
+    timestamp: new Date(),
+    ...entry,
+  };
+
+  // Store audit log in immutable storage
+  await storeAuditLog(auditLog);
+
+  return auditLog;
+}
+
+/**
+ * Stores audit log in compliance-grade storage
+ * Audit logs must be retained for 6 years under HIPAA
+ *
+ * @param log - Audit log entry
+ */
+async function storeAuditLog(log: HIPAAAuditLog): Promise<void> {
+  // Implement storage to immutable audit database
+  // Requirements:
+  // - Cannot be modified or deleted
+  // - Retained for at least 6 years
+  // - Encrypted at rest
+  // - Access restricted to audit/compliance team
+
+  console.log('[HIPAA AUDIT LOG]', JSON.stringify(log, null, 2));
+
+  // TODO: Implement actual storage (e.g., append-only database, WORM storage)
+}
+
+/**
+ * Generates unique audit log ID
+ */
+function generateAuditId(): string {
+  return `audit_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+}
+
+/**
+ * Middleware for automatic PHI access logging
+ *
+ * @param userId - User accessing PHI
+ * @param patientId - Patient whose PHI is being accessed
+ * @param eventType - Type of access event
+ * @param resourceType - Type of resource (e.g., 'MedicalRecord', 'LabResult')
+ * @param resourceId - Specific resource ID
+ * @param purpose - Purpose of access
+ * @returns Audit log function
+ */
+export function auditPHIAccess(
+  userId: string,
+  patientId: string,
+  eventType: AccessEventType,
+  resourceType: string,
+  resourceId: string,
+  purpose: string
+) {
+  return async (
+    outcome: AccessOutcome,
+    phiAccessed: string[],
+    metadata?: {
+      ipAddress?: string;
+      userAgent?: string;
+      sessionId?: string;
+      denialReason?: string;
+      dataModified?: boolean;
+    }
+  ) => {
+    await createAuditLog({
+      userId,
+      patientId,
+      eventType,
+      outcome,
+      resourceType,
+      resourceId,
+      phiAccessed,
+      purpose,
+      ipAddress: metadata?.ipAddress || 'unknown',
+      userAgent: metadata?.userAgent,
+      sessionId: metadata?.sessionId,
+      denialReason: metadata?.denialReason,
+      dataModified: metadata?.dataModified,
+    });
+  };
+}
+
+/**
+ * Queries audit logs for compliance reporting
+ *
+ * @param filters - Filter criteria
+ * @returns Matching audit logs
+ */
+export async function queryAuditLogs(filters: {
+  userId?: string;
+  patientId?: string;
+  eventType?: AccessEventType;
+  startDate?: Date;
+  endDate?: Date;
+  outcome?: AccessOutcome;
+}): Promise<HIPAAAuditLog[]> {
+  // Implement audit log query logic
+  // This should support:
+  // - User activity reports
+  // - Patient access reports
+  // - Failed access attempts
+  // - Unusual activity detection
+
+  // Placeholder implementation
+  return [];
+}
+
+/**
+ * Detects suspicious access patterns
+ *
+ * @param userId - User to analyze
+ * @param timeWindow - Time window for analysis (in hours)
+ * @returns Suspicious activity alerts
+ */
+export async function detectSuspiciousAccess(
+  userId: string,
+  timeWindow: number = 24
+): Promise<{
+  suspicious: boolean;
+  alerts: string[];
+}> {
+  const endDate = new Date();
+  const startDate = new Date(endDate.getTime() - timeWindow * 60 * 60 * 1000);
+
+  const logs = await queryAuditLogs({ userId, startDate, endDate });
+
+  const alerts: string[] = [];
+
+  // Check for suspicious patterns
+  const failedAttempts = logs.filter(log => log.outcome === AccessOutcome.FAILURE);
+  if (failedAttempts.length > 5) {
+    alerts.push(`Multiple failed access attempts: ${failedAttempts.length}`);
+  }
+
+  const uniquePatients = new Set(logs.map(log => log.patientId).filter(Boolean));
+  if (uniquePatients.size > 50) {
+    alerts.push(`Accessed unusually high number of patient records: ${uniquePatients.size}`);
+  }
+
+  const afterHoursAccess = logs.filter(log => {
+    const hour = log.timestamp.getHours();
+    return hour < 6 || hour > 22;
+  });
+  if (afterHoursAccess.length > 10) {
+    alerts.push(`Multiple after-hours access attempts: ${afterHoursAccess.length}`);
+  }
+
+  const bulkExports = logs.filter(log => log.eventType === AccessEventType.EXPORT);
+  if (bulkExports.length > 3) {
+    alerts.push(`Multiple data exports detected: ${bulkExports.length}`);
+  }
+
+  return {
+    suspicious: alerts.length > 0,
+    alerts,
+  };
+}
+
+/**
+ * Generates HIPAA compliance report
+ *
+ * @param startDate - Report start date
+ * @param endDate - Report end date
+ * @returns Compliance report
+ */
+export async function generateComplianceReport(startDate: Date, endDate: Date) {
+  const logs = await queryAuditLogs({ startDate, endDate });
+
+  return {
+    period: {
+      start: startDate,
+      end: endDate,
+    },
+    summary: {
+      totalAccesses: logs.length,
+      uniqueUsers: new Set(logs.map(log => log.userId)).size,
+      uniquePatients: new Set(logs.map(log => log.patientId).filter(Boolean)).size,
+      failedAttempts: logs.filter(log => log.outcome === AccessOutcome.FAILURE).length,
+      deniedAttempts: logs.filter(log => log.outcome === AccessOutcome.DENIED).length,
+    },
+    byEventType: {
+      reads: logs.filter(log => log.eventType === AccessEventType.READ).length,
+      creates: logs.filter(log => log.eventType === AccessEventType.CREATE).length,
+      updates: logs.filter(log => log.eventType === AccessEventType.UPDATE).length,
+      deletes: logs.filter(log => log.eventType === AccessEventType.DELETE).length,
+      exports: logs.filter(log => log.eventType === AccessEventType.EXPORT).length,
+      prints: logs.filter(log => log.eventType === AccessEventType.PRINT).length,
+      shares: logs.filter(log => log.eventType === AccessEventType.SHARE).length,
+    },
+    suspiciousActivity: {
+      usersWithAlerts: 0, // Implement actual detection
+      alerts: [], // Implement actual alerts
+    },
+  };
+}
+{% endif -%}

@@ -1,0 +1,114 @@
+{%- if mcp_module == 'enabled' and 'go' in mcp_languages -%}
+package mcp
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/modelcontextprotocol/go-sdk/server"
+)
+
+// ToolRegistration provides helper functions for registering MCP tools.
+// Uses Go generics for type-safe tool registration following the official SDK patterns.
+
+// RegisterTool is a type-safe helper for registering MCP tools.
+// It wraps the SDK's tool registration with proper typing.
+//
+// Example usage:
+//
+//	type EchoInput struct {
+//	    Message string `json:"message"`
+//	}
+//
+//	type EchoOutput struct {
+//	    Result string `json:"result"`
+//	}
+//
+//	RegisterTool(srv, logger, "echo", "Echo back a message", func(ctx context.Context, input EchoInput) (EchoOutput, error) {
+//	    return EchoOutput{Result: input.Message}, nil
+//	})
+func RegisterTool[I, O any](
+	srv *server.Server,
+	logger *slog.Logger,
+	name string,
+	description string,
+	handler func(ctx context.Context, input I) (O, error),
+) {
+	tool := mcp.Tool{
+		Name:        name,
+		Description: description,
+		InputSchema: mcp.GenerateSchema[I](),
+	}
+
+	srv.RegisterTool(tool, func(ctx context.Context, params map[string]any) (any, error) {
+		// Parse input
+		input, err := mcp.ParseInput[I](params)
+		if err != nil {
+			logger.Error("failed to parse tool input",
+				"tool", name,
+				"error", err,
+			)
+			return nil, fmt.Errorf("invalid input: %w", err)
+		}
+
+		// Execute handler
+		logger.Debug("executing tool", "tool", name)
+		result, err := handler(ctx, input)
+		if err != nil {
+			logger.Error("tool execution failed",
+				"tool", name,
+				"error", err,
+			)
+			return nil, err
+		}
+
+		logger.Debug("tool executed successfully", "tool", name)
+		return result, nil
+	})
+}
+
+// RegisterSimpleTool registers a tool with a simple string input/output.
+// Useful for basic tools that don't need complex schemas.
+func RegisterSimpleTool(
+	srv *server.Server,
+	logger *slog.Logger,
+	name string,
+	description string,
+	handler func(ctx context.Context, input string) (string, error),
+) {
+	type SimpleInput struct {
+		Input string `json:"input" description:"Input value"`
+	}
+	type SimpleOutput struct {
+		Output string `json:"output" description:"Output value"`
+	}
+
+	RegisterTool(srv, logger, name, description, func(ctx context.Context, in SimpleInput) (SimpleOutput, error) {
+		result, err := handler(ctx, in.Input)
+		if err != nil {
+			return SimpleOutput{}, err
+		}
+		return SimpleOutput{Output: result}, nil
+	})
+}
+
+// ToolError represents an error that occurred during tool execution.
+type ToolError struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+func (e *ToolError) Error() string {
+	return fmt.Sprintf("%s: %s", e.Code, e.Message)
+}
+
+// NewToolError creates a new tool error.
+func NewToolError(code, message string) *ToolError {
+	return &ToolError{
+		Code:    code,
+		Message: message,
+	}
+}
+{%- endif %}

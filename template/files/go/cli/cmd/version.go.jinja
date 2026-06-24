@@ -1,0 +1,64 @@
+{% if cli_module == 'enabled' and 'go' in cli_languages %}
+package cmd
+
+import (
+	"encoding/json"
+	"fmt"
+	"runtime"
+
+	"github.com/spf13/cobra"
+)
+
+var (
+	versionJSON bool
+
+	versionCmd = &cobra.Command{
+		Use:   "version",
+		Short: "Print version information",
+		Long:  `Display version, build time, commit hash, and Go runtime information.`,
+		RunE:  runVersion,
+	}
+)
+
+func init() {
+	versionCmd.Flags().BoolVar(&versionJSON, "json", false, "output version info as JSON")
+}
+
+// VersionInfo holds version information.
+type VersionInfo struct {
+	Name      string `json:"name"`
+	Version   string `json:"version"`
+	BuildTime string `json:"build_time"`
+	Commit    string `json:"commit"`
+	GoVersion string `json:"go_version"`
+	OS        string `json:"os"`
+	Arch      string `json:"arch"`
+}
+
+func runVersion(cmd *cobra.Command, args []string) error {
+	info := VersionInfo{
+		Name:      "{{ project_slug }}",
+		Version:   version,
+		BuildTime: buildTime,
+		Commit:    commit,
+		GoVersion: runtime.Version(),
+		OS:        runtime.GOOS,
+		Arch:      runtime.GOARCH,
+	}
+
+	if versionJSON {
+		enc := json.NewEncoder(cmd.OutOrStdout())
+		enc.SetIndent("", "  ")
+		return enc.Encode(info)
+	}
+
+	fmt.Fprintf(cmd.OutOrStdout(), "{{ project_name }}\n")
+	fmt.Fprintf(cmd.OutOrStdout(), "  Version:    %s\n", info.Version)
+	fmt.Fprintf(cmd.OutOrStdout(), "  Built:      %s\n", info.BuildTime)
+	fmt.Fprintf(cmd.OutOrStdout(), "  Commit:     %s\n", info.Commit)
+	fmt.Fprintf(cmd.OutOrStdout(), "  Go version: %s\n", info.GoVersion)
+	fmt.Fprintf(cmd.OutOrStdout(), "  OS/Arch:    %s/%s\n", info.OS, info.Arch)
+
+	return nil
+}
+{% endif %}

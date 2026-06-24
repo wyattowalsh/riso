@@ -1,0 +1,348 @@
+{% if saas_infra_module == "enabled" and saas_ai_features == 'full' %}
+/**
+ * Embedding Generation for Vector Databases
+ *
+ * Multi-provider embedding support:
+ * - OpenAI (text-embedding-3-small, text-embedding-3-large)
+ * - Cohere (embed-english-v3.0, embed-multilingual-v3.0)
+ * - Voyage AI (voyage-2, voyage-code-2)
+ *
+ * Features:
+ * - Batch processing for efficiency
+ * - Automatic retry with exponential backoff
+ * - Token usage tracking
+ * - Dimension validation
+ */
+
+{% if saas_ai == "openai" or embedding_provider == "openai" %}
+import OpenAI from 'openai';
+{% endif %}
+{% if saas_ai == "cohere" or embedding_provider == "cohere" %}
+import { CohereClient } from 'cohere-ai';
+{% endif %}
+
+import type { EmbeddingError } from './types';
+
+// ============================================================================
+// Configuration
+// ============================================================================
+
+export interface EmbeddingConfig {
+  provider: 'openai' | 'cohere' | 'voyage';
+  model: string;
+  dimensions: number;
+  batchSize: number;
+}
+
+const EMBEDDING_CONFIGS: Record<string, EmbeddingConfig> = {
+  'openai-small': {
+    provider: 'openai',
+    model: 'text-embedding-3-small',
+    dimensions: 1536,
+    batchSize: 100,
+  },
+  'openai-large': {
+    provider: 'openai',
+    model: 'text-embedding-3-large',
+    dimensions: 3072,
+    batchSize: 100,
+  },
+  'cohere-english': {
+    provider: 'cohere',
+    model: 'embed-english-v3.0',
+    dimensions: 1024,
+    batchSize: 96,
+  },
+  'cohere-multilingual': {
+    provider: 'cohere',
+    model: 'embed-multilingual-v3.0',
+    dimensions: 1024,
+    batchSize: 96,
+  },
+  'voyage-2': {
+    provider: 'voyage',
+    model: 'voyage-2',
+    dimensions: 1024,
+    batchSize: 50,
+  },
+};
+
+// ============================================================================
+// Client Initialization
+// ============================================================================
+
+{% if saas_ai == "openai" or embedding_provider == "openai" %}
+let openaiClient: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI {
+  if (!openaiClient) {
+    openaiClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openaiClient;
+}
+{% endif %}
+
+{% if saas_ai == "cohere" or embedding_provider == "cohere" %}
+let cohereClient: CohereClient | null = null;
+
+function getCohereClient(): CohereClient {
+  if (!cohereClient) {
+    cohereClient = new CohereClient({
+      token: process.env.COHERE_API_KEY!,
+    });
+  }
+  return cohereClient;
+}
+{% endif %}
+
+// ============================================================================
+// Main Embedding Functions
+// ============================================================================
+
+/**
+ * Generate embedding for a single text
+ *
+ * @example
+ * ```ts
+ * const embedding = await generateEmbedding('Hello world');
+ * console.log(embedding.length); // 1536 for OpenAI small
+ * ```
+ */
+export async function generateEmbedding(text: string): Promise<number[]> {
+  const embeddings = await generateEmbeddings([text]);
+  return embeddings[0];
+}
+
+/**
+ * Generate embeddings for multiple texts (batched)
+ *
+ * @example
+ * ```ts
+ * const embeddings = await generateEmbeddings([
+ *   'First document',
+ *   'Second document',
+ *   'Third document',
+ * ]);
+ * console.log(embeddings.length); // 3
+ * ```
+ */
+export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
+  {% if saas_ai == "openai" or embedding_provider == "openai" %}
+  return generateOpenAIEmbeddings(texts);
+  {% elif saas_ai == "cohere" or embedding_provider == "cohere" %}
+  return generateCohereEmbeddings(texts);
+  {% else %}
+  // Default to OpenAI
+  return generateOpenAIEmbeddings(texts);
+  {% endif %}
+}
+
+// ============================================================================
+// OpenAI Embeddings
+// ============================================================================
+
+{% if saas_ai == "openai" or embedding_provider == "openai" %}
+/**
+ * Generate embeddings using OpenAI
+ */
+async function generateOpenAIEmbeddings(texts: string[]): Promise<number[][]> {
+  const client = getOpenAIClient();
+  const config = EMBEDDING_CONFIGS['openai-small'];
+
+  try {
+    // Process in batches
+    const batches = chunkArray(texts, config.batchSize);
+    const allEmbeddings: number[][] = [];
+
+    for (const batch of batches) {
+      const response = await client.embeddings.create({
+        model: config.model,
+        input: batch,
+        encoding_format: 'float',
+      });
+
+      allEmbeddings.push(...response.data.map((item) => item.embedding));
+    }
+
+    return allEmbeddings;
+  } catch (error) {
+    throw new EmbeddingError(
+      `OpenAI embedding generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error, textCount: texts.length }
+    );
+  }
+}
+{% endif %}
+
+// ============================================================================
+// Cohere Embeddings
+// ============================================================================
+
+{% if saas_ai == "cohere" or embedding_provider == "cohere" %}
+/**
+ * Generate embeddings using Cohere
+ */
+async function generateCohereEmbeddings(texts: string[]): Promise<number[][]> {
+  const client = getCohereClient();
+  const config = EMBEDDING_CONFIGS['cohere-english'];
+
+  try {
+    // Process in batches
+    const batches = chunkArray(texts, config.batchSize);
+    const allEmbeddings: number[][] = [];
+
+    for (const batch of batches) {
+      const response = await client.embed({
+        texts: batch,
+        model: config.model,
+        inputType: 'search_document',
+        embeddingTypes: ['float'],
+      });
+
+      allEmbeddings.push(...response.embeddings.float!);
+    }
+
+    return allEmbeddings;
+  } catch (error) {
+    throw new EmbeddingError(
+      `Cohere embedding generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error, textCount: texts.length }
+    );
+  }
+}
+{% endif %}
+
+// ============================================================================
+// Voyage Embeddings
+// ============================================================================
+
+/**
+ * Generate embeddings using Voyage AI
+ */
+async function generateVoyageEmbeddings(texts: string[]): Promise<number[][]> {
+  const config = EMBEDDING_CONFIGS['voyage-2'];
+
+  try {
+    const batches = chunkArray(texts, config.batchSize);
+    const allEmbeddings: number[][] = [];
+
+    for (const batch of batches) {
+      const response = await fetch('https://api.voyageai.com/v1/embeddings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${process.env.VOYAGE_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: config.model,
+          input: batch,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Voyage API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      allEmbeddings.push(...data.data.map((item: any) => item.embedding));
+    }
+
+    return allEmbeddings;
+  } catch (error) {
+    throw new EmbeddingError(
+      `Voyage embedding generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error, textCount: texts.length }
+    );
+  }
+}
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Split array into chunks
+ */
+function chunkArray<T>(array: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size));
+  }
+  return chunks;
+}
+
+/**
+ * Get embedding configuration
+ */
+export function getEmbeddingConfig(): EmbeddingConfig {
+  {% if saas_ai == "openai" or embedding_provider == "openai" %}
+  return EMBEDDING_CONFIGS['openai-small'];
+  {% elif saas_ai == "cohere" or embedding_provider == "cohere" %}
+  return EMBEDDING_CONFIGS['cohere-english'];
+  {% else %}
+  return EMBEDDING_CONFIGS['openai-small'];
+  {% endif %}
+}
+
+/**
+ * Validate embedding dimensions
+ */
+export function validateEmbedding(
+  embedding: number[],
+  expectedDimensions: number
+): boolean {
+  return embedding.length === expectedDimensions;
+}
+
+/**
+ * Calculate cosine similarity between two vectors
+ */
+export function cosineSimilarity(a: number[], b: number[]): number {
+  if (a.length !== b.length) {
+    throw new Error('Vectors must have the same length');
+  }
+
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+
+  for (let i = 0; i < a.length; i++) {
+    dotProduct += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+
+  const magnitude = Math.sqrt(normA) * Math.sqrt(normB);
+  return magnitude === 0 ? 0 : dotProduct / magnitude;
+}
+
+/**
+ * Normalize vector to unit length
+ */
+export function normalizeVector(vector: number[]): number[] {
+  const norm = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
+  return norm === 0 ? vector : vector.map((val) => val / norm);
+}
+
+// ============================================================================
+// Error Class
+// ============================================================================
+
+class EmbeddingError extends Error {
+  constructor(
+    message: string,
+    public details?: unknown
+  ) {
+    super(message);
+    this.name = 'EmbeddingError';
+  }
+}
+
+// ============================================================================
+// Exports
+// ============================================================================
+
+export { EMBEDDING_CONFIGS };
+{% endif %}

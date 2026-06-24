@@ -1,0 +1,208 @@
+{% if saas_compliance == 'hipaa' -%}
+/**
+ * HIPAA Encryption Utilities
+ *
+ * Provides encryption helpers for PHI at rest and in transit.
+ * Implements NIST-recommended encryption standards for HIPAA compliance.
+ */
+
+import crypto from 'crypto';
+
+/**
+ * Encryption configuration for PHI data
+ */
+export const ENCRYPTION_CONFIG = {
+  // Algorithm: AES-256-GCM (NIST recommended)
+  algorithm: 'aes-256-gcm' as const,
+  keyLength: 32, // 256 bits
+  ivLength: 16, // 128 bits
+  saltLength: 64,
+  tagLength: 16,
+  iterations: 100000, // PBKDF2 iterations
+};
+
+/**
+ * Encrypted data structure
+ */
+export interface EncryptedData {
+  ciphertext: string;
+  iv: string;
+  tag: string;
+  version: string;
+}
+
+/**
+ * Encrypts PHI data using AES-256-GCM
+ *
+ * @param plaintext - The data to encrypt
+ * @param encryptionKey - Base64 encoded 256-bit encryption key
+ * @returns Encrypted data object
+ */
+export function encryptPHI(plaintext: string, encryptionKey: string): EncryptedData {
+  // Convert base64 key to buffer
+  const key = Buffer.from(encryptionKey, 'base64');
+
+  if (key.length !== ENCRYPTION_CONFIG.keyLength) {
+    throw new Error(`Encryption key must be ${ENCRYPTION_CONFIG.keyLength} bytes`);
+  }
+
+  // Generate random IV
+  const iv = crypto.randomBytes(ENCRYPTION_CONFIG.ivLength);
+
+  // Create cipher
+  const cipher = crypto.createCipheriv(ENCRYPTION_CONFIG.algorithm, key, iv);
+
+  // Encrypt data
+  let ciphertext = cipher.update(plaintext, 'utf8', 'base64');
+  ciphertext += cipher.final('base64');
+
+  // Get authentication tag
+  const tag = cipher.getAuthTag();
+
+  return {
+    ciphertext,
+    iv: iv.toString('base64'),
+    tag: tag.toString('base64'),
+    version: '1',
+  };
+}
+
+/**
+ * Decrypts PHI data encrypted with AES-256-GCM
+ *
+ * @param encrypted - The encrypted data object
+ * @param encryptionKey - Base64 encoded 256-bit decryption key
+ * @returns Decrypted plaintext
+ */
+export function decryptPHI(encrypted: EncryptedData, encryptionKey: string): string {
+  // Convert base64 key to buffer
+  const key = Buffer.from(encryptionKey, 'base64');
+
+  if (key.length !== ENCRYPTION_CONFIG.keyLength) {
+    throw new Error(`Decryption key must be ${ENCRYPTION_CONFIG.keyLength} bytes`);
+  }
+
+  // Convert encrypted data from base64
+  const iv = Buffer.from(encrypted.iv, 'base64');
+  const tag = Buffer.from(encrypted.tag, 'base64');
+
+  // Create decipher
+  const decipher = crypto.createDecipheriv(ENCRYPTION_CONFIG.algorithm, key, iv);
+  decipher.setAuthTag(tag);
+
+  // Decrypt data
+  let plaintext = decipher.update(encrypted.ciphertext, 'base64', 'utf8');
+  plaintext += decipher.final('utf8');
+
+  return plaintext;
+}
+
+/**
+ * Generates a cryptographically secure encryption key
+ *
+ * @returns Base64 encoded 256-bit key
+ */
+export function generateEncryptionKey(): string {
+  return crypto.randomBytes(ENCRYPTION_CONFIG.keyLength).toString('base64');
+}
+
+/**
+ * Derives an encryption key from a password using PBKDF2
+ * Useful for user-specific encryption keys
+ *
+ * @param password - User password
+ * @param salt - Salt for key derivation (should be stored with encrypted data)
+ * @returns Base64 encoded derived key
+ */
+export function deriveKeyFromPassword(password: string, salt?: string): { key: string; salt: string } {
+  const saltBuffer = salt ? Buffer.from(salt, 'base64') : crypto.randomBytes(ENCRYPTION_CONFIG.saltLength);
+
+  const key = crypto.pbkdf2Sync(
+    password,
+    saltBuffer,
+    ENCRYPTION_CONFIG.iterations,
+    ENCRYPTION_CONFIG.keyLength,
+    'sha512'
+  );
+
+  return {
+    key: key.toString('base64'),
+    salt: saltBuffer.toString('base64'),
+  };
+}
+
+/**
+ * Hashes sensitive data for comparison without storing plaintext
+ * Useful for SSN verification, etc.
+ *
+ * @param data - The data to hash
+ * @param salt - Optional salt (generated if not provided)
+ * @returns Hash and salt
+ */
+export function hashSensitiveData(data: string, salt?: string): { hash: string; salt: string } {
+  const saltBuffer = salt ? Buffer.from(salt, 'base64') : crypto.randomBytes(ENCRYPTION_CONFIG.saltLength);
+
+  const hash = crypto.pbkdf2Sync(
+    data,
+    saltBuffer,
+    ENCRYPTION_CONFIG.iterations,
+    ENCRYPTION_CONFIG.keyLength,
+    'sha512'
+  );
+
+  return {
+    hash: hash.toString('base64'),
+    salt: saltBuffer.toString('base64'),
+  };
+}
+
+/**
+ * Verifies hashed sensitive data
+ *
+ * @param data - The data to verify
+ * @param hash - The stored hash
+ * @param salt - The salt used for hashing
+ * @returns True if data matches hash
+ */
+export function verifySensitiveData(data: string, hash: string, salt: string): boolean {
+  const { hash: computedHash } = hashSensitiveData(data, salt);
+  return crypto.timingSafeEqual(Buffer.from(hash, 'base64'), Buffer.from(computedHash, 'base64'));
+}
+
+/**
+ * Securely wipes data from memory
+ * Important when handling PHI in memory
+ *
+ * @param buffer - Buffer to wipe
+ */
+export function secureWipe(buffer: Buffer): void {
+  crypto.randomFillSync(buffer);
+  buffer.fill(0);
+}
+
+/**
+ * Validates encryption key strength
+ *
+ * @param key - Base64 encoded key
+ * @returns Validation result
+ */
+export function validateEncryptionKey(key: string): { valid: boolean; error?: string } {
+  try {
+    const buffer = Buffer.from(key, 'base64');
+
+    if (buffer.length !== ENCRYPTION_CONFIG.keyLength) {
+      return {
+        valid: false,
+        error: `Key must be ${ENCRYPTION_CONFIG.keyLength} bytes (${ENCRYPTION_CONFIG.keyLength * 8} bits)`,
+      };
+    }
+
+    return { valid: true };
+  } catch (error) {
+    return {
+      valid: false,
+      error: 'Invalid base64 encoding',
+    };
+  }
+}
+{% endif -%}

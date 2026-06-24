@@ -1,34 +1,72 @@
-{% if project_language == 'rust' %}
+{% if project_language == 'rust' or 'rust' in cli_languages or 'rust' in api_languages %}
 [package]
 name = "{{ package_name }}"
 version = "0.1.0"
 edition = "2021"
-description = "{{ project_name }}"
+description = "{{ project_description }}"
 authors = ["{{ author_name|default('Riso Maintainer', true) }}"]
 license = "MIT"
 rust-version = "1.81"
 
+{% if project_layout == 'monorepo' %}
 [workspace]
 members = [
-    {%- if mcp_module == 'enabled' and mcp_language == 'rust' -%}"mcp"{%- endif -%}
+    {%- if mcp_module == 'enabled' and 'rust' in mcp_languages -%}"mcp",{%- endif -%}
+    {%- if cli_module == 'enabled' and 'rust' in cli_languages -%}"cli",{%- endif -%}
+    {%- if api_module == 'enabled' and 'rust' in api_languages -%}"api",{%- endif -%}
 ]
 resolver = "2"
+{% endif %}
 
 [dependencies]
+# Core dependencies
 tokio = { version = "1.40", features = ["full"] }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-clap = { version = "4.5", features = ["derive", "env"] }
 anyhow = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+# CLI dependencies
+clap = { version = "4.5", features = ["derive", "env"] }
+colored = "2.1"
+{% endif %}
+
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+# API dependencies
+actix-web = "4.9"
+actix-cors = "0.7"
+chrono = { version = "0.4", features = ["serde"] }
+{% endif %}
+
 [dev-dependencies]
 tokio-test = "0.4"
 pretty_assertions = "1.4"
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+actix-web-test = "4.9"
+{% endif %}
+
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+[[bin]]
+name = "{{ package_name }}"
+path = "cli/main.rs"
+{% endif %}
+
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+[[bin]]
+name = "{{ package_name }}-api"
+path = "api/main.rs"
+{% endif %}
 
 [profile.release]
 strip = true
 lto = true
 codegen-units = 1
+
+# Optimize for size in release builds
+[profile.release.package."*"]
+opt-level = "z"
 {% endif %}

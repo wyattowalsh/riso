@@ -1,0 +1,27 @@
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+//! CLI command definitions and routing
+
+use anyhow::Result;
+use clap::Subcommand;
+
+pub mod hello;
+pub mod version;
+
+#[derive(Subcommand)]
+pub enum Commands {
+    /// Say hello to someone
+    Hello(hello::HelloArgs),
+
+    /// Display version information
+    Version(version::VersionArgs),
+}
+
+impl Commands {
+    pub async fn execute(self) -> Result<()> {
+        match self {
+            Commands::Hello(args) => hello::run(args).await,
+            Commands::Version(args) => version::run(args).await,
+        }
+    }
+}
+{% endif %}

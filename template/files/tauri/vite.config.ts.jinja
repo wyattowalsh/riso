@@ -1,0 +1,50 @@
+{% if desktop_module == "enabled" and desktop_framework == "tauri" %}
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+
+const host = process.env.TAURI_DEV_HOST;
+
+export default defineConfig({
+  plugins: [react()],
+
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+
+  // Vite options tailored for Tauri development
+  clearScreen: false,
+
+  // Enable source maps in development
+  build: {
+    sourcemap: process.env.NODE_ENV === 'development',
+    target: 'esnext',
+    minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
+    // Tauri supports es2021
+    cssCodeSplit: true,
+  },
+
+  // Development server
+  server: {
+    port: 5173,
+    strictPort: true,
+    host: host || false,
+    hmr: host
+      ? {
+          protocol: 'ws',
+          host,
+          port: 5183,
+        }
+      : undefined,
+    watch: {
+      // Tell vite to ignore watching `src-tauri`
+      ignored: ['**/src-tauri/**'],
+    },
+  },
+
+  // Environment variables
+  envPrefix: ['VITE_', 'TAURI_'],
+});
+{% endif %}

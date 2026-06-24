@@ -1,0 +1,267 @@
+{% if desktop_module == "enabled" and desktop_framework == "electron-vite" %}
+/**
+ * IPC Handlers Module
+ *
+ * Registers all IPC (Inter-Process Communication) handlers.
+ * These handlers are called from the renderer process via the preload script.
+ *
+ * Security Notes:
+ * - All handlers should validate and sanitize inputs
+ * - Avoid exposing sensitive Node.js APIs
+ * - Use invoke/handle pattern for async operations
+ * - Use on/send pattern for one-way messages
+ */
+
+import { ipcMain, app, dialog, shell, BrowserWindow, nativeTheme } from 'electron';
+import { is } from '@electron-toolkit/utils';
+import log from 'electron-log/main';
+import Store from 'electron-store';
+
+// Type-safe store for persistent data
+interface StoreSchema {
+  windowBounds: {
+    width: number;
+    height: number;
+    x?: number;
+    y?: number;
+  };
+  theme: 'system' | 'light' | 'dark';
+  firstLaunch: boolean;
+  recentFiles: string[];
+}
+
+const store = new Store<StoreSchema>({
+  defaults: {
+    windowBounds: { width: 1200, height: 800 },
+    theme: 'system',
+    firstLaunch: true,
+    recentFiles: [],
+  },
+});
+
+/**
+ * IPC Channel names - keep in sync with preload script
+ */
+export const IPC_CHANNELS = {
+  // App info
+  GET_VERSION: 'get-version',
+  GET_APP_INFO: 'get-app-info',
+  GET_PLATFORM: 'get-platform',
+
+  // Theme
+  GET_THEME: 'get-theme',
+  SET_THEME: 'set-theme',
+  THEME_CHANGED: 'theme-changed',
+
+  // Window management
+  MINIMIZE_WINDOW: 'minimize-window',
+  MAXIMIZE_WINDOW: 'maximize-window',
+  CLOSE_WINDOW: 'close-window',
+  IS_MAXIMIZED: 'is-maximized',
+
+  // Dialogs
+  SHOW_OPEN_DIALOG: 'show-open-dialog',
+  SHOW_SAVE_DIALOG: 'show-save-dialog',
+  SHOW_MESSAGE_BOX: 'show-message-box',
+
+  // Shell
+  OPEN_EXTERNAL: 'open-external',
+  SHOW_ITEM_IN_FOLDER: 'show-item-in-folder',
+
+  // Store
+  STORE_GET: 'store-get',
+  STORE_SET: 'store-set',
+  STORE_DELETE: 'store-delete',
+} as const;
+
+/**
+ * Register all IPC handlers
+ */
+export function registerIpcHandlers(): void {
+  log.info('Registering IPC handlers...');
+
+  // ============================================
+  // App Information Handlers
+  // ============================================
+
+  ipcMain.handle(IPC_CHANNELS.GET_VERSION, () => {
+    return app.getVersion();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.GET_APP_INFO, () => {
+    return {
+      name: app.getName(),
+      version: app.getVersion(),
+      electron: process.versions.electron,
+      chrome: process.versions.chrome,
+      node: process.versions.node,
+      platform: process.platform,
+      arch: process.arch,
+      isDev: is.dev,
+    };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.GET_PLATFORM, () => {
+    return process.platform;
+  });
+
+  // ============================================
+  // Theme Handlers
+  // ============================================
+
+  ipcMain.handle(IPC_CHANNELS.GET_THEME, () => {
+    return {
+      source: store.get('theme'),
+      shouldUseDarkColors: nativeTheme.shouldUseDarkColors,
+    };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SET_THEME, (_, theme: 'system' | 'light' | 'dark') => {
+    store.set('theme', theme);
+    nativeTheme.themeSource = theme;
+
+    // Notify all windows of theme change
+    BrowserWindow.getAllWindows().forEach((window) => {
+      window.webContents.send(IPC_CHANNELS.THEME_CHANGED, {
+        source: theme,
+        shouldUseDarkColors: nativeTheme.shouldUseDarkColors,
+      });
+    });
+
+    return { success: true };
+  });
+
+  // Listen for system theme changes
+  nativeTheme.on('updated', () => {
+    const theme = {
+      source: store.get('theme'),
+      shouldUseDarkColors: nativeTheme.shouldUseDarkColors,
+    };
+    BrowserWindow.getAllWindows().forEach((window) => {
+      window.webContents.send(IPC_CHANNELS.THEME_CHANGED, theme);
+    });
+  });
+
+  // ============================================
+  // Window Management Handlers
+  // ============================================
+
+  ipcMain.handle(IPC_CHANNELS.MINIMIZE_WINDOW, (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    window?.minimize();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.MAXIMIZE_WINDOW, (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (window) {
+      if (window.isMaximized()) {
+        window.unmaximize();
+      } else {
+        window.maximize();
+      }
+      return window.isMaximized();
+    }
+    return false;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CLOSE_WINDOW, (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    window?.close();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.IS_MAXIMIZED, (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    return window?.isMaximized() ?? false;
+  });
+
+  // ============================================
+  // Dialog Handlers
+  // ============================================
+
+  ipcMain.handle(
+    IPC_CHANNELS.SHOW_OPEN_DIALOG,
+    async (event, options: Electron.OpenDialogOptions) => {
+      const window = BrowserWindow.fromWebContents(event.sender);
+      if (!window) return { canceled: true, filePaths: [] };
+
+      return dialog.showOpenDialog(window, {
+        ...options,
+        // Ensure safe defaults
+        properties: options.properties ?? ['openFile'],
+      });
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.SHOW_SAVE_DIALOG,
+    async (event, options: Electron.SaveDialogOptions) => {
+      const window = BrowserWindow.fromWebContents(event.sender);
+      if (!window) return { canceled: true };
+
+      return dialog.showSaveDialog(window, options);
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.SHOW_MESSAGE_BOX,
+    async (event, options: Electron.MessageBoxOptions) => {
+      const window = BrowserWindow.fromWebContents(event.sender);
+      if (!window) return { response: 0 };
+
+      return dialog.showMessageBox(window, options);
+    }
+  );
+
+  // ============================================
+  // Shell Handlers
+  // ============================================
+
+  ipcMain.handle(IPC_CHANNELS.OPEN_EXTERNAL, async (_, url: string) => {
+    // Security: Only allow http(s) URLs
+    if (!url.startsWith('https://') && !url.startsWith('http://')) {
+      log.warn(`Blocked non-http(s) URL: ${url}`);
+      return { success: false, error: 'Only HTTP(S) URLs are allowed' };
+    }
+
+    try {
+      await shell.openExternal(url);
+      return { success: true };
+    } catch (error) {
+      log.error('Failed to open external URL:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SHOW_ITEM_IN_FOLDER, (_, path: string) => {
+    shell.showItemInFolder(path);
+    return { success: true };
+  });
+
+  // ============================================
+  // Store Handlers
+  // ============================================
+
+  ipcMain.handle(IPC_CHANNELS.STORE_GET, (_, key: keyof StoreSchema) => {
+    return store.get(key);
+  });
+
+  ipcMain.handle(
+    IPC_CHANNELS.STORE_SET,
+    <K extends keyof StoreSchema>(
+      _: Electron.IpcMainInvokeEvent,
+      key: K,
+      value: StoreSchema[K]
+    ) => {
+      store.set(key, value);
+      return { success: true };
+    }
+  );
+
+  ipcMain.handle(IPC_CHANNELS.STORE_DELETE, (_, key: keyof StoreSchema) => {
+    store.delete(key);
+    return { success: true };
+  });
+
+  log.info('IPC handlers registered');
+}
+{% endif %}

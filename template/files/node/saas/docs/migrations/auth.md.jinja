@@ -1,0 +1,1351 @@
+{% if saas_infra_module == "enabled" %}
+# {{ project_name }} - Authentication Provider Migration Guide
+
+This guide helps you migrate between authentication providers (Auth.js, Clerk, and Better Auth) in your SaaS application. Each provider has different strengths, and you may need to switch based on evolving requirements.
+
+---
+
+## When to Migrate Authentication Providers
+
+**Migrate FROM Clerk TO Auth.js if:**
+- You need full control over authentication logic
+- You want to reduce monthly costs (Auth.js is self-hosted and free)
+- You prefer managing your own infrastructure
+- You need custom authentication flows not supported by Clerk
+- You want to avoid vendor lock-in
+
+**Migrate FROM Auth.js TO Clerk if:**
+- You want to reduce engineering overhead
+- You need enterprise features (SSO, SAML, organizations)
+- You prefer a managed solution with high uptime SLA
+- You need built-in UI components and pre-built components
+- You want organization-first multi-tenancy out-of-the-box
+
+**Migrate TO Better Auth if:**
+- You want a lightweight, modern alternative to Auth.js
+- You prefer TypeScript-first authentication
+- You need flexible, customizable backends
+- You want better edge-runtime compatibility
+
+---
+
+## Provider Comparison Table
+
+| Feature | Auth.js | Clerk | Better Auth |
+|---------|---------|-------|------------|
+| **Cost** | Free (self-hosted) | $25-100+/mo | Free (self-hosted) |
+| **Setup Complexity** | Medium | Low | Medium |
+| **Multi-Tenancy** | Custom implementation | Built-in Organizations | Custom implementation |
+| **OAuth Providers** | 15+ | 10+ | 10+ |
+| **Passwordless** | No | Yes (passkeys) | Yes |
+| **SSO/SAML** | No | Yes (Enterprise) | No |
+| **UI Components** | None | React components | None |
+| **Session Storage** | Database or JWT | JWT (hosted) | Database or JWT |
+| **Self-Hosted** | Yes | No | Yes |
+| **Database Adapters** | Prisma, Drizzle | Only internal | Prisma, Drizzle |
+| **Edge Runtime Support** | Partial | Yes | Yes |
+| **Learning Curve** | Steep | Shallow | Medium |
+| **Community Size** | Large | Large | Growing |
+
+---
+
+## Part 1: Clerk → Auth.js Migration
+
+### Step 1: Install Auth.js Dependencies
+
+```bash
+# Remove Clerk
+pnpm remove @clerk/nextjs @clerk/backend
+
+# Add Auth.js
+pnpm add next-auth@5 @auth/prisma-adapter @auth/drizzle-adapter
+```
+
+{% if saas_orm == "prisma" %}
+Update `prisma/schema.prisma` to include Auth.js tables:
+
+```prisma
+// Add these models for Auth.js
+model Account {
+  id            String  @id @default(cuid())
+  userId        String
+  type          String
+  provider      String
+  providerAccountId String
+  refresh_token String?  @db.Text
+  access_token  String?  @db.Text
+  expires_at    Int?
+  token_type    String?
+  scope         String?
+  id_token      String?  @db.Text
+  session_state String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+```
+
+Then migrate:
+```bash
+pnpm exec prisma migrate dev --name add_authjs_tables
+pnpm exec prisma generate
+```
+{% elif saas_orm == "drizzle" %}
+Update your Drizzle schema to include Auth.js tables:
+
+```typescript
+// db/schema.ts
+import { pgTable, text, integer, timestamp, primaryKey } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
+
+export const accounts = pgTable(
+  'account',
+  {
+    userId: text('userId')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    type: text('type').$type<'oauth' | 'credentials'>().notNull(),
+    provider: text('provider').notNull(),
+    providerAccountId: text('providerAccountId').notNull(),
+    refresh_token: text('refresh_token'),
+    access_token: text('access_token'),
+    expires_at: integer('expires_at'),
+    token_type: text('token_type'),
+    scope: text('scope'),
+    id_token: text('id_token'),
+    session_state: text('session_state'),
+  },
+  (account) => ({
+    compoundKey: primaryKey({
+      columns: [account.provider, account.providerAccountId],
+    }),
+  })
+);
+
+export const sessions = pgTable('session', {
+  sessionToken: text('sessionToken').primaryKey(),
+  userId: text('userId')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  expires: timestamp('expires', { mode: 'date' }).notNull(),
+});
+
+export const verificationTokens = pgTable(
+  'verificationToken',
+  {
+    identifier: text('identifier').notNull(),
+    token: text('token').notNull(),
+    expires: timestamp('expires', { mode: 'date' }).notNull(),
+  },
+  (vt) => ({
+    compoundKey: primaryKey({ columns: [vt.identifier, vt.token] }),
+  })
+);
+```
+
+Then create migration:
+```bash
+pnpm run db:generate
+pnpm run db:migrate
+```
+{% endif %}
+
+### Step 2: Create Auth.js Configuration
+
+Create `/lib/auth/authjs/auth.config.ts`:
+
+```typescript
+import NextAuth from 'next-auth';
+import type { NextAuthConfig } from 'next-auth';
+import Google from 'next-auth/providers/google';
+import GitHub from 'next-auth/providers/github';
+{% if saas_orm == "prisma" %}
+import { PrismaAdapter } from '@auth/prisma-adapter';
+import { prisma } from '@/lib/database/client';
+{% elif saas_orm == "drizzle" %}
+import { DrizzleAdapter } from '@auth/drizzle-adapter';
+import { db } from '@/lib/database/client';
+{% endif %}
+
+export const authConfig: NextAuthConfig = {
+  {% if saas_orm == "prisma" %}
+  adapter: PrismaAdapter(prisma),
+  {% elif saas_orm == "drizzle" %}
+  adapter: DrizzleAdapter(db),
+  {% endif %}
+
+  providers: [
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+    GitHub({
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+    }),
+  ],
+
+  pages: {
+    signIn: '/sign-in',
+    error: '/auth/error',
+  },
+
+  callbacks: {
+    async session({ session, user }) {
+      if (session.user) {
+        session.user.id = user.id;
+      }
+      return session;
+    },
+  },
+};
+
+export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);
+
+export async function getSession() {
+  return await auth();
+}
+```
+
+### Step 3: Set Up Route Handlers
+
+Create `/app/api/auth/[...nextauth]/route.ts`:
+
+```typescript
+import { handlers } from '@/lib/auth/authjs/auth.config';
+
+export const { GET, POST } = handlers;
+```
+
+Create middleware at `/middleware.ts`:
+
+```typescript
+import { auth } from '@/lib/auth/authjs/auth.config';
+import { NextResponse } from 'next/server';
+
+const publicRoutes = ['/sign-in', '/sign-up', '/'];
+
+export async function middleware(request: Request) {
+  const pathname = new URL(request.url).pathname;
+
+  if (publicRoutes.includes(pathname)) {
+    return NextResponse.next();
+  }
+
+  const session = await auth();
+
+  if (!session?.user) {
+    return NextResponse.redirect(new URL('/sign-in', request.url));
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+};
+```
+
+### Step 4: Replace Clerk Components in Layouts
+
+**Before (Clerk):**
+```typescript
+// app/layout.tsx
+import { ClerkProvider } from '@clerk/nextjs';
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <ClerkProvider>
+      <html>
+        <body>{children}</body>
+      </html>
+    </ClerkProvider>
+  );
+}
+```
+
+**After (Auth.js):**
+```typescript
+// app/layout.tsx
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+### Step 5: Update Session Access in Components
+
+**Before (Clerk):**
+```typescript
+// components/dashboard.tsx
+import { useAuth, useUser } from '@clerk/nextjs';
+
+export function Dashboard() {
+  const { userId } = useAuth();
+  const { user } = useUser();
+
+  return <div>Hello {user?.firstName}</div>;
+}
+```
+
+**After (Auth.js):**
+```typescript
+// components/dashboard.tsx
+'use client';
+
+import { useSession } from 'next-auth/react';
+
+export function Dashboard() {
+  const { data: session } = useSession();
+
+  return <div>Hello {session?.user?.name}</div>;
+}
+```
+
+For Server Components:
+```typescript
+// app/dashboard/page.tsx
+import { auth } from '@/lib/auth/authjs/auth.config';
+import { redirect } from 'next/navigation';
+
+export default async function DashboardPage() {
+  const session = await auth();
+
+  if (!session?.user) {
+    redirect('/sign-in');
+  }
+
+  return <div>Hello {session.user.name}</div>;
+}
+```
+
+### Step 6: Update API Route Protection
+
+**Before (Clerk):**
+```typescript
+// app/api/profile/route.ts
+import { auth } from '@clerk/nextjs';
+
+export async function GET() {
+  const { userId } = auth();
+
+  if (!userId) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  return Response.json({ userId });
+}
+```
+
+**After (Auth.js):**
+```typescript
+// app/api/profile/route.ts
+import { auth } from '@/lib/auth/authjs/auth.config';
+
+export async function GET(request: Request) {
+  const session = await auth();
+
+  if (!session?.user) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  return Response.json({ userId: session.user.id });
+}
+```
+
+### Step 7: Migrate User Data
+
+Export user data from Clerk:
+
+```typescript
+// scripts/export-clerk-users.ts
+import { clerkClient } from '@clerk/nextjs/server';
+{% if saas_orm == "prisma" %}
+import { prisma } from '@/lib/database/client';
+{% elif saas_orm == "drizzle" %}
+import { db } from '@/lib/database/client';
+import { users } from '@/db/schema';
+{% endif %}
+
+async function migrateUsers() {
+  const clerkUsers = await clerkClient.users.getUserList({
+    limit: 1000,
+  });
+
+  for (const clerkUser of clerkUsers) {
+    const email = clerkUser.emailAddresses[0]?.emailAddress;
+
+    if (!email) continue;
+
+    {% if saas_orm == "prisma" %}
+    await prisma.user.upsert({
+      where: { email },
+      update: {
+        name: clerkUser.fullName,
+        image: clerkUser.profileImageUrl,
+        externalId: clerkUser.id,
+      },
+      create: {
+        email,
+        name: clerkUser.fullName,
+        image: clerkUser.profileImageUrl,
+        externalId: clerkUser.id,
+        emailVerified: new Date(),
+      },
+    });
+    {% elif saas_orm == "drizzle" %}
+    await db.insert(users).values({
+      email,
+      name: clerkUser.fullName,
+      image: clerkUser.profileImageUrl,
+      externalId: clerkUser.id,
+      emailVerified: new Date(),
+    }).onConflictDoUpdate({
+      target: [users.email],
+      set: {
+        name: clerkUser.fullName,
+        image: clerkUser.profileImageUrl,
+        externalId: clerkUser.id,
+      },
+    });
+    {% endif %}
+  }
+}
+
+// Run: npx ts-node scripts/export-clerk-users.ts
+```
+
+### Step 8: Update Environment Variables
+
+Create `.env.local`:
+
+```bash
+# Remove Clerk
+# CLERK_SECRET_KEY=...
+# NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=...
+# CLERK_WEBHOOK_SECRET=...
+
+# Add Auth.js
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-secret-here
+
+# OAuth Providers
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GITHUB_CLIENT_ID=...
+GITHUB_CLIENT_SECRET=...
+```
+
+Generate a secure secret:
+```bash
+openssl rand -base64 33
+```
+
+### Step 9: Update Webhook Handlers
+
+**Before (Clerk Webhooks):**
+```typescript
+// app/api/webhooks/clerk/route.ts
+import { Webhook } from 'svix';
+
+export async function POST(req: Request) {
+  const payload = await req.text();
+  const headers = {
+    'svix-id': req.headers.get('svix-id')!,
+    'svix-timestamp': req.headers.get('svix-timestamp')!,
+    'svix-signature': req.headers.get('svix-signature')!,
+  };
+
+  const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
+  const event = wh.verify(payload, headers);
+
+  // Handle events
+}
+```
+
+**After (Auth.js - No Webhooks Needed):**
+
+Auth.js uses database sessions, so you don't need webhooks. User data is stored directly in your database through the adapter. However, you can still listen to Auth.js events:
+
+```typescript
+// lib/auth/authjs/events.ts
+import { auth } from './auth.config';
+
+// Hook into Auth.js events in your callbacks
+// See auth.config.ts callbacks section
+```
+
+---
+
+## Part 2: Auth.js → Clerk Migration
+
+### Step 1: Install Clerk Dependencies
+
+```bash
+# Remove Auth.js
+pnpm remove next-auth @auth/prisma-adapter @auth/drizzle-adapter
+
+# Add Clerk
+pnpm add @clerk/nextjs @clerk/backend
+```
+
+### Step 2: Remove Auth.js Database Tables
+
+{% if saas_orm == "prisma" %}
+```bash
+# Remove Auth.js models from schema.prisma
+# Delete: Account, Session, VerificationToken models
+
+pnpm exec prisma migrate dev --name remove_authjs_tables
+```
+{% elif saas_orm == "drizzle" %}
+```bash
+# Remove Auth.js tables from schema
+# Delete: accounts, sessions, verificationTokens tables
+
+pnpm run db:generate
+pnpm run db:migrate
+```
+{% endif %}
+
+### Step 3: Set Up Clerk in Your App
+
+Create environment variables:
+
+```bash
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+CLERK_WEBHOOK_SECRET=whsec_...
+```
+
+Update root layout:
+
+```typescript
+// app/layout.tsx
+import { ClerkProvider } from '@clerk/nextjs';
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <ClerkProvider>
+      <html>
+        <body>{children}</body>
+      </html>
+    </ClerkProvider>
+  );
+}
+```
+
+### Step 4: Create Clerk Middleware
+
+Create `/middleware.ts`:
+
+```typescript
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+
+const isProtectedRoute = createRouteMatcher([
+  '/dashboard(.*)',
+  '/api/protected(.*)',
+]);
+
+export default clerkMiddleware((auth, request) => {
+  if (isProtectedRoute(request)) {
+    auth().protect();
+  }
+});
+
+export const config = {
+  matcher: ['/((?!.*\\..*|_next).*)', '/', '/(api|trpc)(.*)'],
+};
+```
+
+### Step 5: Replace Auth.js Components
+
+**Before (Auth.js):**
+```typescript
+// components/dashboard.tsx
+'use client';
+
+import { useSession } from 'next-auth/react';
+
+export function Dashboard() {
+  const { data: session } = useSession();
+
+  return <div>Hello {session?.user?.name}</div>;
+}
+```
+
+**After (Clerk):**
+```typescript
+// components/dashboard.tsx
+'use client';
+
+import { useAuth, useUser } from '@clerk/nextjs';
+
+export function Dashboard() {
+  const { userId } = useAuth();
+  const { user } = useUser();
+
+  return <div>Hello {user?.firstName}</div>;
+}
+```
+
+For Server Components:
+```typescript
+// app/dashboard/page.tsx
+import { auth } from '@clerk/nextjs';
+import { redirect } from 'next/navigation';
+
+export default async function DashboardPage() {
+  const { userId } = auth();
+
+  if (!userId) {
+    redirect('/sign-in');
+  }
+
+  return <div>Protected content</div>;
+}
+```
+
+### Step 6: Update API Route Protection
+
+**Before (Auth.js):**
+```typescript
+// app/api/profile/route.ts
+import { auth } from '@/lib/auth/authjs/auth.config';
+
+export async function GET(request: Request) {
+  const session = await auth();
+
+  if (!session?.user) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  return Response.json({ userId: session.user.id });
+}
+```
+
+**After (Clerk):**
+```typescript
+// app/api/profile/route.ts
+import { auth } from '@clerk/nextjs';
+
+export async function GET() {
+  const { userId } = auth();
+
+  if (!userId) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  return Response.json({ userId });
+}
+```
+
+### Step 7: Sync User Data from Clerk
+
+Create a sync script:
+
+```typescript
+// scripts/sync-clerk-users.ts
+import { clerkClient } from '@clerk/nextjs/server';
+{% if saas_orm == "prisma" %}
+import { prisma } from '@/lib/database/client';
+{% elif saas_orm == "drizzle" %}
+import { db } from '@/lib/database/client';
+import { users } from '@/db/schema';
+{% endif %}
+
+async function syncUsers() {
+  const clerkUsers = await clerkClient.users.getUserList({ limit: 1000 });
+
+  for (const clerkUser of clerkUsers) {
+    const email = clerkUser.emailAddresses[0]?.emailAddress;
+
+    if (!email) continue;
+
+    {% if saas_orm == "prisma" %}
+    await prisma.user.upsert({
+      where: { email },
+      update: {
+        name: clerkUser.fullName,
+        image: clerkUser.profileImageUrl,
+        externalClerkId: clerkUser.id,
+      },
+      create: {
+        email,
+        name: clerkUser.fullName,
+        image: clerkUser.profileImageUrl,
+        externalClerkId: clerkUser.id,
+        emailVerified: new Date(),
+      },
+    });
+    {% elif saas_orm == "drizzle" %}
+    await db.insert(users).values({
+      email,
+      name: clerkUser.fullName,
+      image: clerkUser.profileImageUrl,
+      externalClerkId: clerkUser.id,
+      emailVerified: new Date(),
+    }).onConflictDoUpdate({
+      target: [users.email],
+      set: {
+        name: clerkUser.fullName,
+        image: clerkUser.profileImageUrl,
+        externalClerkId: clerkUser.id,
+      },
+    });
+    {% endif %}
+  }
+}
+```
+
+### Step 8: Set Up Clerk Webhooks
+
+Clerk webhooks sync user changes to your database.
+
+1. Go to Clerk Dashboard → Webhooks
+2. Create endpoint: `https://yourapp.com/api/webhooks/clerk`
+3. Subscribe to: `user.created`, `user.updated`, `user.deleted`
+
+Create `/app/api/webhooks/clerk/route.ts`:
+
+```typescript
+import { Webhook } from 'svix';
+import { headers } from 'next/headers';
+{% if saas_orm == "prisma" %}
+import { prisma } from '@/lib/database/client';
+{% elif saas_orm == "drizzle" %}
+import { db } from '@/lib/database/client';
+import { users } from '@/db/schema';
+{% endif %}
+
+export async function POST(req: Request) {
+  const payload = await req.text();
+  const headersList = await headers();
+
+  const svixHeaders = {
+    'svix-id': headersList.get('svix-id')!,
+    'svix-timestamp': headersList.get('svix-timestamp')!,
+    'svix-signature': headersList.get('svix-signature')!,
+  };
+
+  const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
+  const event = wh.verify(payload, svixHeaders);
+
+  const eventData = event.data as any;
+
+  switch (event.type) {
+    case 'user.created':
+    case 'user.updated': {
+      const email = eventData.email_addresses[0]?.email_address;
+
+      if (email) {
+        {% if saas_orm == "prisma" %}
+        await prisma.user.upsert({
+          where: { email },
+          update: {
+            name: eventData.first_name + ' ' + eventData.last_name,
+            image: eventData.profile_image_url,
+            externalClerkId: eventData.id,
+          },
+          create: {
+            email,
+            name: eventData.first_name + ' ' + eventData.last_name,
+            image: eventData.profile_image_url,
+            externalClerkId: eventData.id,
+            emailVerified: new Date(),
+          },
+        });
+        {% elif saas_orm == "drizzle" %}
+        await db.insert(users).values({
+          email,
+          name: eventData.first_name + ' ' + eventData.last_name,
+          image: eventData.profile_image_url,
+          externalClerkId: eventData.id,
+          emailVerified: new Date(),
+        }).onConflictDoUpdate({
+          target: [users.email],
+          set: {
+            name: eventData.first_name + ' ' + eventData.last_name,
+            image: eventData.profile_image_url,
+            externalClerkId: eventData.id,
+          },
+        });
+        {% endif %}
+      }
+      break;
+    }
+
+    case 'user.deleted': {
+      const clerkId = eventData.id;
+      {% if saas_orm == "prisma" %}
+      await prisma.user.deleteMany({
+        where: { externalClerkId: clerkId },
+      });
+      {% elif saas_orm == "drizzle" %}
+      await db.delete(users).where(
+        eq(users.externalClerkId, clerkId)
+      );
+      {% endif %}
+      break;
+    }
+  }
+
+  return Response.json({ success: true });
+}
+```
+
+---
+
+## Part 3: Auth.js → Better Auth Migration
+
+### Step 1: Install Better Auth
+
+```bash
+# Remove Auth.js
+pnpm remove next-auth @auth/prisma-adapter @auth/drizzle-adapter
+
+# Add Better Auth
+pnpm add better-auth
+```
+
+### Step 2: Set Up Better Auth
+
+Create `/lib/auth/better-auth.config.ts`:
+
+```typescript
+import { betterAuth } from "better-auth";
+{% if saas_orm == "prisma" %}
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+{% elif saas_orm == "drizzle" %}
+import { db } from "@/lib/database/client";
+{% endif %}
+
+export const auth = betterAuth({
+  database: {% if saas_orm == "prisma" %}{
+    db: prisma,
+    type: "prisma",
+  }{% elif saas_orm == "drizzle" %}{
+    db: db,
+    type: "drizzle",
+  }{% endif %},
+
+  secret: process.env.BETTER_AUTH_SECRET,
+
+  emailAndPassword: {
+    enabled: true,
+  },
+
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    },
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    },
+  },
+
+  trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL!],
+});
+
+export type Session = typeof auth.$Infer.Session;
+```
+
+### Step 3: Create API Routes
+
+Create `/app/api/auth/[...all]/route.ts`:
+
+```typescript
+import { auth } from "@/lib/auth/better-auth.config";
+
+export const { POST, GET } = auth.toNextJsHandler();
+```
+
+### Step 4: Update Environment Variables
+
+```bash
+BETTER_AUTH_SECRET=your-secret-here
+BETTER_AUTH_URL=http://localhost:3000
+
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GITHUB_CLIENT_ID=...
+GITHUB_CLIENT_SECRET=...
+```
+
+### Step 5: Replace Components
+
+Use `better-auth` client hooks:
+
+```typescript
+'use client';
+
+import { useSession, signOut } from "@/lib/auth/client";
+
+export function Dashboard() {
+  const { data: session, isPending } = useSession();
+
+  if (isPending) return <div>Loading...</div>;
+
+  return (
+    <div>
+      <p>Hello {session?.user.name}</p>
+      <button onClick={() => signOut()}>Sign Out</button>
+    </div>
+  );
+}
+```
+
+---
+
+## Code Examples by Provider
+
+### Protected API Route
+
+**Auth.js:**
+```typescript
+import { auth } from '@/lib/auth/authjs/auth.config';
+
+export async function GET() {
+  const session = await auth();
+  if (!session?.user) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  return Response.json({ userId: session.user.id });
+}
+```
+
+**Clerk:**
+```typescript
+import { auth } from '@clerk/nextjs';
+
+export async function GET() {
+  const { userId } = auth();
+  if (!userId) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  return Response.json({ userId });
+}
+```
+
+**Better Auth:**
+```typescript
+import { auth } from '@/lib/auth/better-auth.config';
+import { headers } from 'next/headers';
+
+export async function GET() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session?.user) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  return Response.json({ userId: session.user.id });
+}
+```
+
+### Client-Side Auth Check
+
+**Auth.js:**
+```typescript
+'use client';
+
+import { useSession } from 'next-auth/react';
+
+export function AuthCheck() {
+  const { data: session, status } = useSession();
+
+  if (status === 'loading') return <div>Loading...</div>;
+  if (status === 'unauthenticated') return <div>Not signed in</div>;
+
+  return <div>Welcome {session?.user?.email}</div>;
+}
+```
+
+**Clerk:**
+```typescript
+'use client';
+
+import { useAuth, SignOutButton } from '@clerk/nextjs';
+
+export function AuthCheck() {
+  const { isSignedIn, userId } = useAuth();
+
+  if (!isSignedIn) return <div>Not signed in</div>;
+
+  return (
+    <div>
+      Welcome {userId}
+      <SignOutButton />
+    </div>
+  );
+}
+```
+
+**Better Auth:**
+```typescript
+'use client';
+
+import { useSession, signOut } from '@/lib/auth/client';
+
+export function AuthCheck() {
+  const { data: session, isPending } = useSession();
+
+  if (isPending) return <div>Loading...</div>;
+  if (!session) return <div>Not signed in</div>;
+
+  return (
+    <div>
+      Welcome {session.user.email}
+      <button onClick={() => signOut()}>Sign out</button>
+    </div>
+  );
+}
+```
+
+### Server Component Protection
+
+**Auth.js:**
+```typescript
+import { auth } from '@/lib/auth/authjs/auth.config';
+import { redirect } from 'next/navigation';
+
+export default async function ProtectedPage() {
+  const session = await auth();
+
+  if (!session?.user) {
+    redirect('/sign-in');
+  }
+
+  return <div>Protected content</div>;
+}
+```
+
+**Clerk:**
+```typescript
+import { auth } from '@clerk/nextjs';
+import { redirect } from 'next/navigation';
+
+export default async function ProtectedPage() {
+  const { userId } = auth();
+
+  if (!userId) {
+    redirect('/sign-in');
+  }
+
+  return <div>Protected content</div>;
+}
+```
+
+**Better Auth:**
+```typescript
+import { auth } from '@/lib/auth/better-auth.config';
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+
+export default async function ProtectedPage() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session?.user) {
+    redirect('/sign-in');
+  }
+
+  return <div>Protected content</div>;
+}
+```
+
+---
+
+## User Data Migration
+
+### Export from Source Provider
+
+**Export from Clerk:**
+```typescript
+import { clerkClient } from '@clerk/nextjs/server';
+import * as fs from 'fs';
+
+async function exportClerkUsers() {
+  const users = await clerkClient.users.getUserList({ limit: 1000 });
+
+  const exported = users.map(user => ({
+    clerkId: user.id,
+    email: user.emailAddresses[0]?.emailAddress,
+    name: user.fullName,
+    image: user.profileImageUrl,
+    createdAt: user.createdAt,
+  }));
+
+  fs.writeFileSync('clerk-users.json', JSON.stringify(exported, null, 2));
+  console.log(`Exported ${exported.length} users`);
+}
+```
+
+**Export from Auth.js:**
+```typescript
+{% if saas_orm == "prisma" %}
+import { prisma } from '@/lib/database/client';
+import * as fs from 'fs';
+
+async function exportAuthJsUsers() {
+  const users = await prisma.user.findMany({
+    include: { accounts: true },
+  });
+
+  fs.writeFileSync('authjs-users.json', JSON.stringify(users, null, 2));
+  console.log(`Exported ${users.length} users`);
+}
+{% endif %}
+```
+
+### Import to Target Provider
+
+**Import to Clerk:**
+```typescript
+import { clerkClient } from '@clerk/nextjs/server';
+import * as fs from 'fs';
+
+interface ExportedUser {
+  email: string;
+  name?: string;
+  image?: string;
+}
+
+async function importUsersToClerk() {
+  const users: ExportedUser[] = JSON.parse(
+    fs.readFileSync('users.json', 'utf-8')
+  );
+
+  for (const user of users) {
+    try {
+      await clerkClient.users.createUser({
+        emailAddress: [user.email],
+        firstName: user.name?.split(' ')[0],
+        lastName: user.name?.split(' ')[1],
+        profileImageUrl: user.image,
+        skipPasswordRequirement: true,
+      });
+    } catch (error) {
+      console.error(`Failed to import ${user.email}:`, error);
+    }
+  }
+}
+```
+
+**Import to Auth.js:**
+```typescript
+{% if saas_orm == "prisma" %}
+import { prisma } from '@/lib/database/client';
+import * as fs from 'fs';
+
+async function importUsersToAuthJs() {
+  const users = JSON.parse(fs.readFileSync('users.json', 'utf-8'));
+
+  for (const user of users) {
+    await prisma.user.create({
+      data: {
+        email: user.email,
+        name: user.name,
+        image: user.image,
+        emailVerified: new Date(),
+      },
+    });
+  }
+}
+{% endif %}
+```
+
+### Handle Password Hashes
+
+Never transfer password hashes between providers. Instead:
+
+1. **Invalidate old passwords** - Users must reset passwords on new provider
+2. **Send password reset emails** - Clerk/Auth.js can do this automatically
+3. **Require email verification** - Confirm ownership before granting access
+
+```typescript
+// After importing users, trigger password resets
+async function sendPasswordResets(users: User[]) {
+  for (const user of users) {
+    // Auth.js: Send custom reset email
+    // Clerk: Use Clerk Dashboard to send reset invitations
+    // Better Auth: Use built-in reset flow
+  }
+}
+```
+
+---
+
+## Testing Your Migration
+
+### Pre-Migration Checklist
+
+- [ ] Backup production database
+- [ ] Export all user data
+- [ ] Test migration scripts in staging environment
+- [ ] Verify environment variables are set
+- [ ] Ensure new provider infrastructure is ready
+
+### Testing Auth Flows
+
+```typescript
+// tests/auth-migration.spec.ts
+import { test, expect } from '@playwright/test';
+
+test('Can sign up with OAuth', async ({ page }) => {
+  await page.goto('/sign-up');
+  await page.click('button:has-text("Sign up with Google")');
+  // OAuth provider login flow
+  await page.waitForURL('/dashboard');
+  expect(await page.locator('text=Dashboard').isVisible()).toBeTruthy();
+});
+
+test('Session persists after refresh', async ({ page }) => {
+  await page.goto('/dashboard');
+  // Should redirect to sign-in if not authenticated
+  const url = page.url();
+  expect(url).toContain('sign-in');
+});
+
+test('Protected API route requires auth', async ({ request }) => {
+  const response = await request.get('/api/profile');
+  expect(response.status()).toBe(401);
+});
+
+test('Signed in users can access protected routes', async ({ page }) => {
+  // After signing in
+  await page.goto('/dashboard');
+  expect(page.url()).toContain('dashboard');
+});
+```
+
+### Verification Steps
+
+1. **Sign up flow** - Create new account
+2. **OAuth providers** - Test Google and GitHub login
+3. **Session persistence** - Refresh page and verify session survives
+4. **Protected routes** - Verify redirect to sign-in when logged out
+5. **API authentication** - Test protected endpoints
+6. **User data** - Verify user information appears correctly
+7. **Sign out flow** - Test logout and session clearing
+
+---
+
+## Rollback Plan
+
+If migration fails:
+
+### Quick Rollback (Before Production)
+```bash
+# In staging, revert to previous provider
+git revert <commit>
+pnpm install  # Restores old dependencies
+pnpm run dev
+```
+
+### Production Rollback
+```bash
+# 1. Keep both providers running during migration
+# 2. Monitor error rates and user reports
+# 3. If critical issues:
+#    a. Switch traffic to old provider
+#    b. Revert environment variables
+#    c. Restore database backup if needed
+#    d. Notify affected users
+```
+
+---
+
+## Troubleshooting
+
+### "Session is undefined"
+- **Auth.js**: Ensure `auth()` is called in Server Component/Route
+- **Clerk**: Ensure ClerkProvider wraps your app
+- **Better Auth**: Ensure headers are passed to `getSession()`
+
+### "OAuth provider returns error"
+- Verify client ID and secret in environment variables
+- Check redirect URI matches provider settings
+- Ensure `NEXTAUTH_URL` or `CLERK_WEBHOOK_SECRET` is correct
+
+### "User data not syncing"
+- Check webhook endpoint is publicly accessible
+- Verify webhook signature verification
+- Review logs in provider dashboard
+- Manually trigger webhook in provider dashboard
+
+### "Database migration failed"
+{% if saas_orm == "prisma" %}
+- Run `pnpm exec prisma migrate resolve`
+- Check database permissions
+- Ensure connection string is correct
+{% elif saas_orm == "drizzle" %}
+- Run `pnpm run db:migrate` with verbose logging
+- Check database schema matches drizzle schema
+- Verify migration files were generated
+{% endif %}
+
+### "Middleware not protecting routes"
+- Ensure middleware.ts is in project root
+- Check matcher pattern includes your protected routes
+- Verify condition logic is correct
+- Clear Next.js cache: `rm -rf .next`
+
+---
+
+## Resources
+
+- **Auth.js Documentation**: https://authjs.dev
+- **Clerk Documentation**: https://clerk.com/docs
+- **Better Auth Documentation**: https://www.betterauth.dev
+- **Next.js Authentication**: https://nextjs.org/docs/app/building-your-application/authentication
+- **OAuth 2.0 Providers**: https://authjs.dev/concepts/oauth
+
+For migration-specific questions, check the provider's migration guides:
+- Clerk Migration Guide: https://clerk.com/docs/migrations
+- Auth.js Best Practices: https://authjs.dev/getting-started
+{% endif %}

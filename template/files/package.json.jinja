@@ -1,0 +1,77 @@
+{% if api_module == 'enabled' and 'node' in api_languages or docs_module == "enabled" and docs_framework in ["fumadocs", "docusaurus"] or mcp_module == "enabled" and "node" in mcp_languages or saas_infra_module == "enabled" or desktop_module == "enabled" or changelog_module == "enabled" -%}
+{
+  "name": "{{ project_slug }}",
+  "version": "0.1.0",
+  "description": "{{ project_name }}",
+  "private": true,
+{% if project_layout == "monorepo" %}
+  "workspaces": [
+{% if api_module == 'enabled' and 'node' in api_languages %}
+    "node/apps/api-node",
+{% endif %}
+{% if docs_module == "enabled" and docs_framework == "fumadocs" %}
+    "node/docs/fumadocs",
+{% endif %}
+{% if docs_module == "enabled" and docs_framework == "docusaurus" %}
+    "node/docs/docusaurus",
+{% endif %}
+    "node/packages/*"
+  ],
+{% endif %}
+  "scripts": {
+{% if changelog_module == "enabled" %}
+    "setup-hooks": "uv run python scripts/release/install-hooks.py",
+    "commit": "git-cz",
+    "release": "semantic-release",
+    "release:dry-run": "semantic-release --dry-run",
+{% endif %}
+{% if api_module == 'enabled' and 'node' in api_languages %}
+    "dev": "pnpm --filter api-node run dev",
+    "build": "pnpm --filter api-node run build",
+    "test": "pnpm --filter api-node run test",
+{% endif %}
+{% if docs_module == "enabled" and docs_framework == "fumadocs" %}
+    "docs:dev": "pnpm --filter docs-fumadocs run dev",
+    "docs:build": "pnpm --filter docs-fumadocs run build",
+{% endif %}
+    "format": "prettier --write \"**/*.{js,ts,json,md}\"",
+    "lint": "eslint --fix \"**/*.{js,ts}\""
+  },
+  "devDependencies": {
+{% if changelog_module == "enabled" %}
+    "@commitlint/cli": "^20.3.1",
+    "@commitlint/config-conventional": "^20.3.1",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/exec": "^7.1.0",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^12.0.2",
+    "@semantic-release/npm": "^13.1.3",
+    "@semantic-release/release-notes-generator": "^14.1.0",
+    "commitizen": "^4.3.1",
+    "cz-conventional-changelog": "^3.3.0",
+    "semantic-release": "^25.0.2",
+{% endif %}
+{% if api_module == 'enabled' and 'node' in api_languages %}
+    "@types/node": "^25.0.8",
+    "eslint": "^9.39.2",
+    "prettier": "^3.7.4",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.17",
+{% endif %}
+    "husky": "^9.1.7"
+  },
+{% if changelog_module == "enabled" %}
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
+  },
+{% endif %}
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.0"
+}
+{% endif %}

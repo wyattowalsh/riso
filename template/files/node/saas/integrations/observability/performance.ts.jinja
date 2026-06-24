@@ -1,0 +1,559 @@
+{% if saas_infra_module == "enabled" %}
+/**
+ * Performance Monitoring
+ *
+ * Track and report Core Web Vitals and custom performance metrics.
+ * Features:
+ * - Core Web Vitals (LCP, FID, CLS, FCP, TTFB, INP)
+ * - Custom performance marks and measures
+ * - Navigation timing metrics
+ * - Resource timing analysis
+ * - Automatic reporting to analytics/observability platforms
+ *
+ * @see https://web.dev/vitals/
+ */
+
+{% if saas_observability_structured_logging %}
+import { logger } from './logger';
+{% endif %}
+{% if saas_observability_otel %}
+import { recordHistogram } from './metrics';
+{% endif %}
+{% if saas_observability_sentry %}
+import { addBreadcrumb } from './error-tracking';
+{% endif %}
+import type { PerformanceMetrics, WebVitalsMetric } from './types';
+
+// ============================================================================
+// Web Vitals Configuration
+// ============================================================================
+
+const WEB_VITALS_THRESHOLDS = {
+  // Largest Contentful Paint (LCP)
+  LCP: {
+    good: 2500,
+    needsImprovement: 4000,
+  },
+  // First Input Delay (FID)
+  FID: {
+    good: 100,
+    needsImprovement: 300,
+  },
+  // Cumulative Layout Shift (CLS)
+  CLS: {
+    good: 0.1,
+    needsImprovement: 0.25,
+  },
+  // First Contentful Paint (FCP)
+  FCP: {
+    good: 1800,
+    needsImprovement: 3000,
+  },
+  // Time to First Byte (TTFB)
+  TTFB: {
+    good: 800,
+    needsImprovement: 1800,
+  },
+  // Interaction to Next Paint (INP)
+  INP: {
+    good: 200,
+    needsImprovement: 500,
+  },
+} as const;
+
+// ============================================================================
+// Web Vitals Tracking
+// ============================================================================
+
+type VitalName = keyof typeof WEB_VITALS_THRESHOLDS;
+
+/**
+ * Get rating for a web vital metric
+ */
+function getVitalRating(
+  name: VitalName,
+  value: number
+): 'good' | 'needs-improvement' | 'poor' {
+  const threshold = WEB_VITALS_THRESHOLDS[name];
+  if (value <= threshold.good) return 'good';
+  if (value <= threshold.needsImprovement) return 'needs-improvement';
+  return 'poor';
+}
+
+/**
+ * Track Core Web Vitals using the web-vitals library
+ *
+ * Call this once in your client-side entry point (_app.tsx or layout.tsx)
+ *
+ * @example
+ * ```tsx
+ * // app/layout.tsx
+ * 'use client';
+ *
+ * import { trackWebVitals } from '@/lib/observability';
+ * import { useEffect } from 'react';
+ *
+ * export default function RootLayout({ children }) {
+ *   useEffect(() => {
+ *     trackWebVitals((metric) => {
+ *       console.log(metric);
+ *       // Send to analytics
+ *     });
+ *   }, []);
+ *
+ *   return <html><body>{children}</body></html>;
+ * }
+ * ```
+ */
+export function trackWebVitals(
+  onMetric?: (metric: WebVitalsMetric) => void
+): void {
+  if (typeof window === 'undefined') return;
+
+  // Dynamically import web-vitals to avoid SSR issues
+  import('web-vitals').then(({ onCLS, onFID, onFCP, onLCP, onTTFB, onINP }) => {
+    const handleMetric = (metric: WebVitalsMetric) => {
+      const rating = getVitalRating(metric.name, metric.value);
+      const enrichedMetric: WebVitalsMetric = {
+        ...metric,
+        rating,
+      };
+
+      // Log to console in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[Web Vitals] ${metric.name}:`, {
+          value: metric.value,
+          rating,
+          id: metric.id,
+        });
+      }
+
+      // Send to observability platforms
+      reportWebVital(enrichedMetric);
+
+      // Custom callback
+      if (onMetric) {
+        onMetric(enrichedMetric);
+      }
+    };
+
+    onCLS(handleMetric);
+    onFID(handleMetric);
+    onFCP(handleMetric);
+    onLCP(handleMetric);
+    onTTFB(handleMetric);
+    onINP(handleMetric);
+  });
+}
+
+/**
+ * Report a web vital metric to observability platforms
+ */
+function reportWebVital(metric: WebVitalsMetric): void {
+  {% if saas_observability_otel %}
+  // Send to OpenTelemetry
+  recordHistogram(`web.vitals.${metric.name.toLowerCase()}`, metric.value, {
+    rating: metric.rating,
+    navigationType: metric.navigationType || 'unknown',
+  });
+  {% endif %}
+
+  {% if saas_observability_sentry %}
+  // Add breadcrumb to Sentry
+  addBreadcrumb({
+    category: 'web-vitals',
+    message: `${metric.name}: ${metric.value.toFixed(2)}`,
+    level: metric.rating === 'poor' ? 'warning' : 'info',
+    data: {
+      name: metric.name,
+      value: metric.value,
+      rating: metric.rating,
+      id: metric.id,
+    },
+  });
+  {% endif %}
+
+  // Send to analytics (Google Analytics, Plausible, etc.)
+  if (typeof window !== 'undefined' && (window as any).gtag) {
+    (window as any).gtag('event', metric.name, {
+      value: Math.round(metric.name === 'CLS' ? metric.value * 1000 : metric.value),
+      metric_id: metric.id,
+      metric_value: metric.value,
+      metric_delta: metric.delta,
+      metric_rating: metric.rating,
+    });
+  }
+}
+
+// ============================================================================
+// Custom Performance Measurement
+// ============================================================================
+
+/**
+ * Measure performance of a function
+ *
+ * @example
+ * ```ts
+ * const result = await measurePerformance('fetch-users', async () => {
+ *   return fetch('/api/users');
+ * });
+ * // Logs: "fetch-users took 145ms"
+ * ```
+ */
+export async function measurePerformance<T>(
+  name: string,
+  fn: () => Promise<T>
+): Promise<T> {
+  const start = performance.now();
+
+  try {
+    const result = await fn();
+    const duration = performance.now() - start;
+
+    {% if saas_observability_structured_logging %}
+    logger.debug({
+      msg: 'Performance measurement',
+      operation: name,
+      duration: Math.round(duration),
+    });
+    {% endif %}
+
+    {% if saas_observability_otel %}
+    recordHistogram('performance.operation.duration', duration, {
+      operation: name,
+    });
+    {% endif %}
+
+    return result;
+  } catch (error) {
+    const duration = performance.now() - start;
+
+    {% if saas_observability_structured_logging %}
+    logger.error({
+      msg: 'Performance measurement (failed)',
+      operation: name,
+      duration: Math.round(duration),
+      error,
+    });
+    {% endif %}
+
+    throw error;
+  }
+}
+
+/**
+ * Create a performance mark
+ *
+ * @example
+ * ```ts
+ * performanceMark('checkout-start');
+ * // ... do work
+ * performanceMark('checkout-end');
+ * performanceMeasure('checkout-flow', 'checkout-start', 'checkout-end');
+ * ```
+ */
+export function performanceMark(name: string): void {
+  if (typeof performance !== 'undefined' && performance.mark) {
+    performance.mark(name);
+  }
+}
+
+/**
+ * Measure between two performance marks
+ */
+export function performanceMeasure(
+  name: string,
+  startMark: string,
+  endMark: string
+): number | null {
+  if (typeof performance === 'undefined' || !performance.measure) {
+    return null;
+  }
+
+  try {
+    performance.measure(name, startMark, endMark);
+    const measure = performance.getEntriesByName(name, 'measure')[0];
+
+    if (measure) {
+      const duration = measure.duration;
+
+      {% if saas_observability_structured_logging %}
+      logger.debug({
+        msg: 'Performance measure',
+        measure: name,
+        duration: Math.round(duration),
+      });
+      {% endif %}
+
+      {% if saas_observability_otel %}
+      recordHistogram('performance.measure.duration', duration, {
+        measure: name,
+      });
+      {% endif %}
+
+      return duration;
+    }
+  } catch (error) {
+    {% if saas_observability_structured_logging %}
+    logger.warn({
+      msg: 'Failed to measure performance',
+      name,
+      error,
+    });
+    {% endif %}
+  }
+
+  return null;
+}
+
+// ============================================================================
+// Navigation Timing
+// ============================================================================
+
+/**
+ * Get navigation timing metrics
+ *
+ * @example
+ * ```ts
+ * // In useEffect or after page load
+ * const timing = getNavigationTiming();
+ * console.log('Page load time:', timing.pageLoadTime);
+ * ```
+ */
+export function getNavigationTiming(): PerformanceMetrics | null {
+  if (
+    typeof window === 'undefined' ||
+    !window.performance ||
+    !window.performance.timing
+  ) {
+    return null;
+  }
+
+  const timing = window.performance.timing;
+  const navigationStart = timing.navigationStart;
+
+  return {
+    // Navigation timing
+    pageLoadTime: timing.loadEventEnd - navigationStart,
+    domContentLoaded: timing.domContentLoadedEventEnd - navigationStart,
+    domInteractive: timing.domInteractive - navigationStart,
+
+    // Resource timing
+    firstByte: timing.responseStart - navigationStart,
+    dnsLookup: timing.domainLookupEnd - timing.domainLookupStart,
+    tcpConnection: timing.connectEnd - timing.connectStart,
+    tlsHandshake:
+      timing.secureConnectionStart > 0
+        ? timing.connectEnd - timing.secureConnectionStart
+        : 0,
+  };
+}
+
+/**
+ * Get resource timing for a specific resource
+ *
+ * @example
+ * ```ts
+ * const resources = getResourceTiming('script');
+ * console.log('Scripts loaded:', resources.length);
+ * ```
+ */
+export function getResourceTiming(
+  type?: 'script' | 'css' | 'img' | 'fetch' | 'xmlhttprequest'
+): PerformanceResourceTiming[] {
+  if (typeof window === 'undefined' || !window.performance) {
+    return [];
+  }
+
+  const entries = window.performance.getEntriesByType(
+    'resource'
+  ) as PerformanceResourceTiming[];
+
+  if (!type) return entries;
+
+  return entries.filter((entry) => {
+    if (type === 'script') return entry.initiatorType === 'script';
+    if (type === 'css') return entry.initiatorType === 'link';
+    if (type === 'img') return entry.initiatorType === 'img';
+    if (type === 'fetch') return entry.initiatorType === 'fetch';
+    if (type === 'xmlhttprequest') return entry.initiatorType === 'xmlhttprequest';
+    return false;
+  });
+}
+
+// ============================================================================
+// Web Vitals Retrieval
+// ============================================================================
+
+/**
+ * Get current web vitals values
+ *
+ * @example
+ * ```ts
+ * const vitals = await getWebVitals();
+ * console.log('LCP:', vitals.lcp);
+ * ```
+ */
+export async function getWebVitals(): Promise<Partial<Record<VitalName, number>>> {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+
+  const vitals: Partial<Record<VitalName, number>> = {};
+
+  try {
+    const { onCLS, onFID, onFCP, onLCP, onTTFB, onINP } = await import('web-vitals');
+
+    return new Promise((resolve) => {
+      let collected = 0;
+      const total = 6;
+
+      const checkComplete = () => {
+        collected++;
+        if (collected === total) {
+          resolve(vitals);
+        }
+      };
+
+      onCLS((metric) => {
+        vitals.CLS = metric.value;
+        checkComplete();
+      });
+      onFID((metric) => {
+        vitals.FID = metric.value;
+        checkComplete();
+      });
+      onFCP((metric) => {
+        vitals.FCP = metric.value;
+        checkComplete();
+      });
+      onLCP((metric) => {
+        vitals.LCP = metric.value;
+        checkComplete();
+      });
+      onTTFB((metric) => {
+        vitals.TTFB = metric.value;
+        checkComplete();
+      });
+      onINP((metric) => {
+        vitals.INP = metric.value;
+        checkComplete();
+      });
+
+      // Timeout after 5 seconds
+      setTimeout(() => resolve(vitals), 5000);
+    });
+  } catch (error) {
+    {% if saas_observability_structured_logging %}
+    logger.error({ msg: 'Failed to get web vitals', error });
+    {% endif %}
+    return {};
+  }
+}
+
+// ============================================================================
+// Performance Reporting
+// ============================================================================
+
+/**
+ * Report all performance metrics to observability platforms
+ *
+ * Call this after page load to send comprehensive performance data.
+ *
+ * @example
+ * ```tsx
+ * useEffect(() => {
+ *   if (typeof window !== 'undefined') {
+ *     window.addEventListener('load', () => {
+ *       setTimeout(() => reportPerformanceMetrics(), 0);
+ *     });
+ *   }
+ * }, []);
+ * ```
+ */
+export function reportPerformanceMetrics(): void {
+  if (typeof window === 'undefined') return;
+
+  // Get navigation timing
+  const timing = getNavigationTiming();
+  if (timing) {
+    {% if saas_observability_otel %}
+    Object.entries(timing).forEach(([key, value]) => {
+      if (typeof value === 'number') {
+        recordHistogram(`performance.navigation.${key}`, value);
+      }
+    });
+    {% endif %}
+
+    {% if saas_observability_structured_logging %}
+    logger.info({
+      msg: 'Navigation timing',
+      ...timing,
+    });
+    {% endif %}
+  }
+
+  // Get resource timing summary
+  const resources = getResourceTiming();
+  const resourceSummary = {
+    total: resources.length,
+    scripts: getResourceTiming('script').length,
+    stylesheets: getResourceTiming('css').length,
+    images: getResourceTiming('img').length,
+    xhr: getResourceTiming('fetch').length + getResourceTiming('xmlhttprequest').length,
+  };
+
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: 'Resource timing summary',
+    ...resourceSummary,
+  });
+  {% endif %}
+}
+
+// ============================================================================
+// Performance Observer
+// ============================================================================
+
+/**
+ * Create a performance observer for specific entry types
+ *
+ * @example
+ * ```ts
+ * createPerformanceObserver(['navigation', 'resource'], (entries) => {
+ *   entries.forEach(entry => console.log(entry));
+ * });
+ * ```
+ */
+export function createPerformanceObserver(
+  entryTypes: string[],
+  callback: (entries: PerformanceEntry[]) => void
+): PerformanceObserver | null {
+  if (
+    typeof window === 'undefined' ||
+    !window.PerformanceObserver
+  ) {
+    return null;
+  }
+
+  try {
+    const observer = new PerformanceObserver((list) => {
+      callback(list.getEntries());
+    });
+
+    observer.observe({ entryTypes });
+    return observer;
+  } catch (error) {
+    {% if saas_observability_structured_logging %}
+    logger.error({ msg: 'Failed to create performance observer', error });
+    {% endif %}
+    return null;
+  }
+}
+
+// ============================================================================
+// Type Exports
+// ============================================================================
+
+export type { PerformanceMetrics, WebVitalsMetric };
+{% endif %}

@@ -1,0 +1,106 @@
+{% if cli_module == 'enabled' and 'go' in cli_languages and api_module == 'enabled' and 'go' in api_languages %}
+package cmd
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"time"
+
+	"github.com/spf13/cobra"
+
+	"{{ project_slug }}/cli/internal/config"
+	"{{ project_slug }}/api/internal/server"
+)
+
+var (
+	servePort int
+	serveHost string
+
+	serveCmd = &cobra.Command{
+		Use:   "serve",
+		Short: "Start the HTTP API server",
+		Long: `Start the {{ project_name }} HTTP API server.
+
+The server provides a REST API for interacting with {{ project_name }}.
+Configuration can be provided via flags, environment variables, or config file.`,
+		Example: `  # Start server on default port
+  {{ project_slug }} serve
+
+  # Start server on custom port
+  {{ project_slug }} serve --port 3000
+
+  # Start server with custom host binding
+  {{ project_slug }} serve --host 127.0.0.1 --port 8080`,
+		RunE: runServe,
+	}
+)
+
+func init() {
+	serveCmd.Flags().IntVarP(&servePort, "port", "p", 8080, "port to listen on")
+	serveCmd.Flags().StringVar(&serveHost, "host", "0.0.0.0", "host to bind to")
+}
+
+func runServe(cmd *cobra.Command, args []string) error {
+	ctx := cmd.Context()
+
+	// Get config from context
+	cfg, ok := ctx.Value(config.ContextKey).(*config.Config)
+	if !ok || cfg == nil {
+		cfg = config.Default()
+	}
+
+	// Override with flags if provided
+	if cmd.Flags().Changed("port") {
+		cfg.Server.Port = servePort
+	}
+	if cmd.Flags().Changed("host") {
+		cfg.Server.Host = serveHost
+	}
+
+	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
+
+	slog.Info("Starting API server",
+		"address", addr,
+		"environment", cfg.Environment,
+	)
+
+	// Create and configure the server
+	srv, err := server.New(cfg)
+	if err != nil {
+		return fmt.Errorf("failed to create server: %w", err)
+	}
+
+	// Start server in goroutine
+	errCh := make(chan error, 1)
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errCh <- err
+		}
+	}()
+
+	slog.Info("Server started successfully", "address", addr)
+
+	// Wait for context cancellation or error
+	select {
+	case <-ctx.Done():
+		slog.Info("Shutting down server...")
+
+		// Create shutdown context with timeout
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			slog.Error("Server shutdown error", "error", err)
+			return fmt.Errorf("server shutdown error: %w", err)
+		}
+
+		slog.Info("Server stopped gracefully")
+		return nil
+
+	case err := <-errCh:
+		return fmt.Errorf("server error: %w", err)
+	}
+}
+{% endif %}

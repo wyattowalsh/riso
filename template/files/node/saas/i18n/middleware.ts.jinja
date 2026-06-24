@@ -1,0 +1,79 @@
+{% if saas_infra_module == "enabled" and saas_i18n %}
+/**
+ * Internationalization Middleware
+ *
+ * Handles locale detection and routing for Next.js applications.
+ * This middleware runs on every request to ensure proper locale handling.
+ *
+ * Features:
+ * - Detects locale from URL, cookies, or Accept-Language header
+ * - Redirects to locale-prefixed URLs
+ * - Sets locale cookie for persistence
+ * - Handles locale switching
+ *
+ * @see https://next-intl-docs.vercel.app/docs/routing/middleware
+ */
+
+import createMiddleware from 'next-intl/middleware';
+import { locales, defaultLocale, localePrefix } from './config';
+
+/**
+ * Create i18n middleware with configuration
+ */
+export const i18nMiddleware = createMiddleware({
+  // Supported locales
+  locales,
+
+  // Default locale (used as fallback)
+  defaultLocale,
+
+  // Locale prefix strategy
+  localePrefix,
+
+  // Locale detection from:
+  // 1. URL path segment (/en/about)
+  // 2. Cookie (NEXT_LOCALE)
+  // 3. Accept-Language header
+  localeDetection: true,
+});
+
+/**
+ * Matcher configuration for Next.js middleware
+ * Specifies which routes should be processed by the i18n middleware
+ *
+ * This matcher:
+ * - Includes all routes except those starting with _next, api, static files
+ * - Includes root path (/)
+ * - Includes paths with locale prefix (e.g., /en, /es)
+ */
+export const config = {
+  matcher: [
+    // Match all pathnames except for
+    // - … if they start with `/api`, `/_next` or `/_vercel`
+    // - … the ones containing a dot (e.g. `favicon.ico`)
+    '/((?!api|_next|_vercel|.*\\..*).*)',
+    // However, match all pathnames within `/api`, except for the ones
+    // starting with `/api/webhooks` (no locale needed for webhooks)
+    '/(api(?!/webhooks).*)',
+  ],
+};
+
+/**
+ * Alternative matcher for apps that need more control
+ * Uncomment and customize if you need different matching logic
+ */
+// export const config = {
+//   matcher: [
+//     // Enable a redirect to a matching locale at the root
+//     '/',
+//
+//     // Set a cookie to remember the previous locale for
+//     // all requests that have a locale prefix
+//     '/(en|es)/:path*',
+//
+//     // Enable redirects that add missing locales
+//     // (e.g. `/pathnames` -> `/en/pathnames`)
+//     '/((?!_next|_vercel|api|favicon.ico|.*\\..*).*)'
+//   ]
+// };
+{% endif %}

@@ -1,0 +1,30 @@
+{% if 'go' in cli_languages or 'go' in api_languages %}
+module {{ project_slug }}
+
+go {{ go_version | default('1.24') }}
+
+require (
+{% if cli_module == 'enabled' and 'go' in cli_languages %}
+	github.com/spf13/cobra v1.10.1
+{% endif %}
+{% if api_module == 'enabled' and 'go' in api_languages %}
+{% if go_framework | default('gin') == 'gin' %}
+	github.com/gin-gonic/gin v1.11.0
+{% elif go_framework == 'fiber' %}
+	github.com/gofiber/fiber/v2 v2.52.6
+{% elif go_framework == 'echo' %}
+	github.com/labstack/echo/v4 v4.13.3
+{% elif go_framework == 'chi' %}
+	github.com/go-chi/chi/v5 v5.2.1
+	github.com/go-chi/cors v1.2.1
+{% endif %}
+{% endif %}
+	github.com/knadh/koanf/v2 v2.1.2
+	github.com/knadh/koanf/providers/env v1.0.0
+	github.com/knadh/koanf/providers/file v1.1.2
+	github.com/knadh/koanf/parsers/yaml v0.1.0
+{% if api_module == 'enabled' and 'go' in api_languages %}
+	github.com/rs/cors v1.11.1
+{% endif %}
+)
+{% endif %}

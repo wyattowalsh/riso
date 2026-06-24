@@ -1,0 +1,295 @@
+# =============================================================================
+# Docker Build Context Exclusions for {{ project_name }}
+# =============================================================================
+# This file tells Docker which files/directories to exclude from the build
+# context, reducing image size and build time.
+#
+# Pattern syntax:
+#   - Use # for comments
+#   - Use * for wildcard matching
+#   - Use ** for recursive directory matching
+#   - Use ! to negate exclusions (force include)
+
+# =============================================================================
+# Version Control & Git
+# =============================================================================
+.git/
+.gitignore
+.gitattributes
+.github/
+.gitlab-ci.yml
+.gitmodules
+
+# =============================================================================
+# Python Artifacts
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
+
+# Python testing & coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.pytype/
+
+# Python linting & type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+.pylint.d/
+pyrightconfig.json
+
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+.uv/
+.conda/
+
+# Python IDE
+.python-version
+.pdm.toml
+.pdm-python
+
+# =============================================================================
+# Node.js Artifacts
+# =============================================================================
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+.yarn-cache/
+
+# Node.js logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Node.js build outputs
+.next/
+.nuxt/
+.cache/
+.parcel-cache/
+.turbo/
+dist/
+out/
+build/
+
+# Node.js testing
+coverage/
+.nyc_output/
+
+# =============================================================================
+# Rust Artifacts
+# =============================================================================
+target/
+Cargo.lock
+**/*.rs.bk
+*.pdb
+
+# =============================================================================
+# Environment & Configuration
+# =============================================================================
+.env
+.env.*
+!.env.example
+!.env.sample
+*.local
+
+# Secrets and credentials
+.secrets/
+secrets/
+*.pem
+*.key
+*.cert
+*.crt
+credentials.json
+service-account.json
+
+# =============================================================================
+# Development Tools & IDE
+# =============================================================================
+# VSCode
+.vscode/
+*.code-workspace
+
+# JetBrains IDEs (IntelliJ, PyCharm, WebStorm)
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Vim
+*.swp
+*.swo
+*~
+.vim/
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# =============================================================================
+# Documentation
+# =============================================================================
+docs/_build/
+docs/.doctrees/
+site/
+.docusaurus/
+.fumadocs/
+
+# Sphinx
+_build/
+_static/
+_templates/
+
+# MkDocs
+site/
+
+# =============================================================================
+# Docker & Container Artifacts
+# =============================================================================
+docker-compose.override.yml
+docker-compose.dev.yml
+*.dockerfile.dev
+.dockerignore
+
+# Don't include other Docker images in build context
+*.tar
+*.tar.gz
+*.tgz
+
+# =============================================================================
+# CI/CD
+# =============================================================================
+.circleci/
+.travis.yml
+azure-pipelines.yml
+.gitlab/
+.drone.yml
+.jenkins/
+.buildkite/
+
+# =============================================================================
+# Testing & Quality
+# =============================================================================
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage/
+htmlcov/
+test-results/
+junit.xml
+*.cover
+.hypothesis/
+
+# =============================================================================
+# Logs & Databases
+# =============================================================================
+*.log
+logs/
+*.sqlite
+*.sqlite3
+*.db
+
+# =============================================================================
+# OS-Specific Files
+# =============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+.Trash-*/
+
+# =============================================================================
+# Temporary Files
+# =============================================================================
+*.tmp
+*.temp
+tmp/
+temp/
+.cache/
+
+# =============================================================================
+# Jupyter Notebooks
+# =============================================================================
+.ipynb_checkpoints/
+*.ipynb
+
+# =============================================================================
+# Riso Template Artifacts
+# =============================================================================
+# Don't copy template development files into projects
+.riso/
+samples/
+specs/
+prompts/
+hooks/
+.copier-answers.yml
+copier.yml
+
+# =============================================================================
+# Project-Specific Exclusions
+# =============================================================================
+{%- if docs_module == "enabled" %}
+# Documentation source files (not needed in container)
+docs/
+README.md
+CHANGELOG.md
+CONTRIBUTING.md
+{%- endif %}
+
+{%- if api_module == "enabled" or saas_infra_module == "enabled" %}
+# API documentation (generated, not source)
+openapi.json
+openapi.yaml
+swagger.json
+{%- endif %}
+
+# Scripts not needed in production
+scripts/
+.scripts/
+
+# Development databases
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Backup files
+*.bak
+*.backup
+*.old

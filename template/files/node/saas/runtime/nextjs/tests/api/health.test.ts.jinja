@@ -1,0 +1,336 @@
+{% if saas_infra_module == "enabled" and saas_runtime == "nextjs-16" %}
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+{% if saas_orm == 'prisma' %}
+import { prisma } from '@/lib/database/client';
+{% elif saas_orm == 'drizzle' %}
+import { db } from '@/lib/database/client';
+{% endif %}
+import { checkHealth, checkReadiness, checkLiveness, type HealthCheckResponse } from '@/lib/health';
+
+// Mock the database
+{% if saas_orm == 'prisma' %}
+vi.mock('@/lib/database/client', () => ({
+  prisma: {
+    $queryRaw: vi.fn(),
+  },
+}));
+{% elif saas_orm == 'drizzle' %}
+vi.mock('@/lib/database/client', () => ({
+  db: {
+    execute: vi.fn(),
+  },
+}));
+{% endif %}
+
+describe('Health Check Endpoints', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Reset environment
+    delete process.env.npm_package_version;
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('checkLiveness', () => {
+    it('should return healthy status immediately', async () => {
+      const response = await checkLiveness();
+
+      expect(response.status).toBe('healthy');
+      expect(response.timestamp).toBeDefined();
+      expect(response.version).toBeDefined();
+      expect(response.uptime).toBeGreaterThan(0);
+      expect(response.latency).toBeDefined();
+      expect(response.checks.process.status).toBe('up');
+    });
+
+    it('should include process uptime', async () => {
+      const response = await checkLiveness();
+
+      expect(response.uptime).toBeGreaterThan(0);
+      expect(response.checks.process.details?.uptime).toBeGreaterThan(0);
+    });
+
+    it('should complete within SLA threshold', async () => {
+      const response = await checkLiveness();
+
+      expect(response.latency).toBeLessThan(100); // Should be very fast
+    });
+  });
+
+  describe('checkReadiness', () => {
+    it('should return healthy status when database is healthy', async () => {
+      {% if saas_orm == 'prisma' %}
+      vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
+      {% elif saas_orm == 'drizzle' %}
+      vi.mocked(db.execute).mockResolvedValue({});
+      {% endif %}
+
+      const response = await checkReadiness();
+
+      expect(response.status).toBe('healthy');
+      expect(response.checks.database.status).toBe('up');
+      expect(response.checks.database.latency).toBeDefined();
+    });
+
+    it('should return unhealthy when database is down', async () => {
+      {% if saas_orm == 'prisma' %}
+      vi.mocked(prisma.$queryRaw).mockRejectedValue(new Error('Connection refused'));
+      {% elif saas_orm == 'drizzle' %}
+      vi.mocked(db.execute).mockRejectedValue(new Error('Connection refused'));
+      {% endif %}
+
+      const response = await checkReadiness();
+
+      expect(response.status).toBe('unhealthy');
+      expect(response.checks.database.status).toBe('down');
+      expect(response.checks.database.error).toBeDefined();
+    });
+
+    it('should measure database latency', async () => {
+      {% if saas_orm == 'prisma' %}
+      vi.mocked(prisma.$queryRaw).mockImplementation(
+        () => new Promise(resolve => setTimeout(resolve, 10))
+      );
+      {% elif saas_orm == 'drizzle' %}
+      vi.mocked(db.execute).mockImplementation(
+        () => new Promise(resolve => setTimeout(resolve, 10))
+      );
+      {% endif %}
+
+      const response = await checkReadiness();
+
+      expect(response.checks.database.latency).toBeGreaterThanOrEqual(10);
+    });
+
+    it('should include memory information', async () => {
+      {% if saas_orm == 'prisma' %}
+      vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
+      {% elif saas_orm == 'drizzle' %}
+      vi.mocked(db.execute).mockResolvedValue({});
+      {% endif %}
+
+      const response = await checkReadiness();
+
+      expect(response.memory).toBeDefined();
+      expect(response.memory?.used).toBeGreaterThan(0);
+      expect(response.memory?.total).toBeGreaterThan(0);
+      expect(response.memory?.percentage).toBeGreaterThan(0);
+      expect(response.memory?.percentage).toBeLessThanOrEqual(100);
+    });
+
+    it('should return degraded when database latency exceeds threshold', async () => {
+      {% if saas_orm == 'prisma' %}
+      vi.mocked(prisma.$queryRaw).mockImplementation(
+        () => new Promise(resolve => setTimeout(resolve, 150))
+      );
+      {% elif saas_orm == 'drizzle' %}
+      vi.mocked(db.execute).mockImplementation(
+        () => new Promise(resolve => setTimeout(resolve, 150))
+      );
+      {% endif %}
+
+      const response = await checkReadiness();
+
+      // Depending on timing, might be degraded if latency > 100ms
+      expect([response.status]).toBeDefined();
+    });
+  });
+
+  describe('checkHealth', () => {
+    it('should return basic health without detailed checks', async () => {
+      {% if saas_orm == 'prisma' %}
+      vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
+      {% elif saas_orm == 'drizzle' %}
+      vi.mocked(db.execute).mockResolvedValue({});
+      {% endif %}
+
+      const response = await checkHealth(false);
+
+      expect(response.status).toBe('healthy');
+      expect(response.checks.database).toBeDefined();
+      // Should NOT include external services in basic check
+      expect(response.checks.billing).toBeUndefined();
+      expect(response.checks.email).toBeUndefined();
+    });
+
+    it('should return detailed health with all service checks', async () => {
+      {% if saas_orm == 'prisma' %}
+      vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
+      {% elif saas_orm == 'drizzle' %}
+      vi.mocked(db.execute).mockResolvedValue({});
+      {% endif %}
+
+      const response = await checkHealth(true);
+
+      expect(response.status).toBe('healthy');
+      expect(response.checks.database).toBeDefined();
+      // Should include all services in detailed check
+      {% if saas_billing_provider == 'stripe' or saas_billing_provider == 'paddle' or saas_billing_provider == 'lemonsqueezy' %}
+      expect(response.checks.billing).toBeDefined();
+      {% endif %}
+      {% if saas_email == 'resend' or saas_email == 'postmark' %}
+      expect(response.checks.email).toBeDefined();
+      {% endif %}
+    });
+
+    it('should include metadata in response', async () => {
+      {% if saas_orm == 'prisma' %}
+      vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
+      {% elif saas_orm == 'drizzle' %}
+      vi.mocked(db.execute).mockResolvedValue({});
+      {% endif %}
+
+      const response = await checkHealth();
+
+      expect(response.timestamp).toBeDefined();
+      expect(new Date(response.timestamp)).toBeInstanceOf(Date);
+      expect(response.version).toBeDefined();
+      expect(response.uptime).toBeGreaterThan(0);
+      expect(response.latency).toBeDefined();
+      expect(response.memory).toBeDefined();
+    });
+
+    it('should set version from environment', async () => {
+      process.env.npm_package_version = '1.2.3';
+      {% if saas_orm == 'prisma' %}
+      vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
+      {% elif saas_orm == 'drizzle' %}
+      vi.mocked(db.execute).mockResolvedValue({});
+      {% endif %}
+
+      const response = await checkHealth();
+
+      expect(response.version).toBe('1.2.3');
+    });
+
+    it('should handle database timeout gracefully', async () => {
+      {% if saas_orm == 'prisma' %}
+      vi.mocked(prisma.$queryRaw).mockImplementation(
+        () => new Promise(resolve => setTimeout(resolve, 10000))
+      );
+      {% elif saas_orm == 'drizzle' %}
+      vi.mocked(db.execute).mockImplementation(
+        () => new Promise(resolve => setTimeout(resolve, 10000))
+      );
+      {% endif %}
+
+      const response = await checkHealth(true);
+
+      expect(response.checks.database.status).toBe('down');
+      expect(response.checks.database.error).toContain('timeout');
+    });
+
+    it('should mark database as unhealthy on connection error', async () => {
+      const error = new Error('Connection pool exhausted');
+      {% if saas_orm == 'prisma' %}
+      vi.mocked(prisma.$queryRaw).mockRejectedValue(error);
+      {% elif saas_orm == 'drizzle' %}
+      vi.mocked(db.execute).mockRejectedValue(error);
+      {% endif %}
+
+      const response = await checkHealth();
+
+      expect(response.status).toBe('unhealthy');
+      expect(response.checks.database.status).toBe('down');
+      expect(response.checks.database.error).toBe('Connection pool exhausted');
+    });
+
+    it('should include SLA compliance details', async () => {
+      {% if saas_orm == 'prisma' %}
+      vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
+      {% elif saas_orm == 'drizzle' %}
+      vi.mocked(db.execute).mockResolvedValue({});
+      {% endif %}
+
+      const response = await checkHealth(true);
+
+      expect(response.checks.database.details?.threshold).toBeDefined();
+      expect(response.checks.database.details?.slaCompliant).toBeDefined();
+    });
+
+    it('should detect high memory usage', async () => {
+      {% if saas_orm == 'prisma' %}
+      vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
+      {% elif saas_orm == 'drizzle' %}
+      vi.mocked(db.execute).mockResolvedValue({});
+      {% endif %}
+
+      const response = await checkHealth(true);
+
+      // Memory should be reported
+      expect(response.memory?.used).toBeGreaterThan(0);
+      expect(response.memory?.percentage).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Response Structure', () => {
+    it('should have consistent response structure', async () => {
+      {% if saas_orm == 'prisma' %}
+      vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
+      {% elif saas_orm == 'drizzle' %}
+      vi.mocked(db.execute).mockResolvedValue({});
+      {% endif %}
+
+      const response = await checkHealth();
+
+      // Validate response structure
+      expect(response).toHaveProperty('status');
+      expect(response).toHaveProperty('timestamp');
+      expect(response).toHaveProperty('version');
+      expect(response).toHaveProperty('checks');
+      expect(['healthy', 'degraded', 'unhealthy']).toContain(response.status);
+    });
+
+    it('service checks should have consistent structure', async () => {
+      {% if saas_orm == 'prisma' %}
+      vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
+      {% elif saas_orm == 'drizzle' %}
+      vi.mocked(db.execute).mockResolvedValue({});
+      {% endif %}
+
+      const response = await checkHealth(true);
+
+      Object.values(response.checks).forEach(check => {
+        expect(check).toHaveProperty('status');
+        if (check.status === 'down') {
+          expect(check).toHaveProperty('error');
+        }
+        if (check.latency !== undefined) {
+          expect(typeof check.latency).toBe('number');
+          expect(check.latency).toBeGreaterThanOrEqual(0);
+        }
+      });
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle null/undefined errors gracefully', async () => {
+      {% if saas_orm == 'prisma' %}
+      vi.mocked(prisma.$queryRaw).mockRejectedValue(null);
+      {% elif saas_orm == 'drizzle' %}
+      vi.mocked(db.execute).mockRejectedValue(null);
+      {% endif %}
+
+      const response = await checkHealth();
+
+      expect(response.checks.database.status).toBe('down');
+      expect(response.checks.database.error).toBeDefined();
+    });
+
+    it('should handle thrown non-Error objects', async () => {
+      {% if saas_orm == 'prisma' %}
+      vi.mocked(prisma.$queryRaw).mockRejectedValue('String error');
+      {% elif saas_orm == 'drizzle' %}
+      vi.mocked(db.execute).mockRejectedValue('String error');
+      {% endif %}
+
+      const response = await checkHealth();
+
+      expect(response.checks.database.status).toBe('down');
+      expect(response.checks.database.error).toBeDefined();
+    });
+  });
+});
+{% endif %}

@@ -1,0 +1,520 @@
+{% if saas_infra_module == "enabled" and saas_observability_sentry %}
+/**
+ * Sentry Error Tracking
+ *
+ * Production-ready error tracking and monitoring with Sentry.
+ * Features:
+ * - Automatic error capture and reporting
+ * - User context and custom tags
+ * - Breadcrumb trail for debugging
+ * - React Error Boundary component
+ * - Source map support for debugging minified code
+ *
+ * @see https://docs.sentry.io
+ */
+
+import * as Sentry from '@sentry/nextjs';
+{% if saas_observability_structured_logging %}
+import { logger } from './logger';
+{% endif %}
+import type { SentryContext, ErrorBoundaryProps } from './types';
+
+// ============================================================================
+// Configuration
+// ============================================================================
+
+const SENTRY_CONFIG = {
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  environment: process.env.NODE_ENV || 'development',
+  release: process.env.NEXT_PUBLIC_APP_VERSION || process.env.npm_package_version,
+  tracesSampleRate: parseFloat(process.env.SENTRY_TRACES_SAMPLE_RATE || '1.0'),
+  profilesSampleRate: parseFloat(process.env.SENTRY_PROFILES_SAMPLE_RATE || '1.0'),
+  replaysSessionSampleRate: parseFloat(process.env.SENTRY_REPLAYS_SESSION_SAMPLE_RATE || '0.1'),
+  replaysOnErrorSampleRate: parseFloat(process.env.SENTRY_REPLAYS_ERROR_SAMPLE_RATE || '1.0'),
+} as const;
+
+// ============================================================================
+// Initialization
+// ============================================================================
+
+/**
+ * Initialize Sentry error tracking
+ *
+ * Call this in your instrumentation.ts or _app.tsx
+ *
+ * @example
+ * ```ts
+ * // instrumentation.ts (Next.js 13+)
+ * import { initializeSentry } from './observability/error-tracking';
+ * initializeSentry();
+ * ```
+ */
+export function initializeSentry(): void {
+  if (!SENTRY_CONFIG.dsn) {
+    {% if saas_observability_structured_logging %}
+    logger.warn('Sentry DSN not configured, skipping initialization');
+    {% endif %}
+    return;
+  }
+
+  try {
+    Sentry.init({
+      dsn: SENTRY_CONFIG.dsn,
+      environment: SENTRY_CONFIG.environment,
+      release: SENTRY_CONFIG.release,
+
+      // Performance Monitoring
+      tracesSampleRate: SENTRY_CONFIG.tracesSampleRate,
+
+      // Profiling (requires tracing to be enabled)
+      profilesSampleRate: SENTRY_CONFIG.profilesSampleRate,
+
+      // Session Replay
+      replaysSessionSampleRate: SENTRY_CONFIG.replaysSessionSampleRate,
+      replaysOnErrorSampleRate: SENTRY_CONFIG.replaysOnErrorSampleRate,
+
+      // Integration configuration
+      integrations: [
+        Sentry.replayIntegration({
+          maskAllText: false,
+          blockAllMedia: false,
+        }),
+        {% if saas_observability_otel %}
+        // OpenTelemetry integration for unified observability
+        Sentry.prismaIntegration(),
+        {% endif %}
+      ],
+
+      // Before send hook for data scrubbing
+      beforeSend(event, hint) {
+        // Filter out noise
+        if (event.exception) {
+          const error = hint.originalException;
+
+          // Don't send development errors
+          if (SENTRY_CONFIG.environment === 'development') {
+            return null;
+          }
+
+          // Filter known non-critical errors
+          const ignoredErrors = [
+            'ResizeObserver loop limit exceeded',
+            'Non-Error promise rejection captured',
+            'Network request failed', // Often user connectivity issues
+          ];
+
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          if (ignoredErrors.some(ignored => errorMessage.includes(ignored))) {
+            return null;
+          }
+        }
+
+        // Scrub sensitive data from URLs
+        if (event.request?.url) {
+          const url = new URL(event.request.url);
+          // Remove query parameters that might contain tokens
+          url.searchParams.delete('token');
+          url.searchParams.delete('api_key');
+          url.searchParams.delete('apiKey');
+          event.request.url = url.toString();
+        }
+
+        return event;
+      },
+
+      // Ignore specific URLs
+      ignoreErrors: [
+        // Browser extensions
+        'top.GLOBALS',
+        'chrome-extension://',
+        'moz-extension://',
+      ],
+
+      denyUrls: [
+        // Browser extensions
+        /extensions\//i,
+        /^chrome:\/\//i,
+        /^moz-extension:\/\//i,
+      ],
+
+      {% if saas_hosting == 'vercel' %}
+      // Vercel-specific context
+      beforeSendTransaction(event) {
+        if (event.contexts) {
+          event.contexts.vercel = {
+            region: process.env.VERCEL_REGION,
+            deployment_id: process.env.VERCEL_DEPLOYMENT_ID,
+          };
+        }
+        return event;
+      },
+      {% endif %}
+    });
+
+    {% if saas_observability_structured_logging %}
+    logger.info({
+      msg: 'Sentry initialized',
+      environment: SENTRY_CONFIG.environment,
+      release: SENTRY_CONFIG.release,
+    });
+    {% endif %}
+  } catch (error) {
+    {% if saas_observability_structured_logging %}
+    logger.error({ msg: 'Failed to initialize Sentry', error });
+    {% endif %}
+  }
+}
+
+// ============================================================================
+// Error Capture
+// ============================================================================
+
+/**
+ * Manually capture an error with context
+ *
+ * @example
+ * ```ts
+ * try {
+ *   await processPayment(data);
+ * } catch (error) {
+ *   captureError(error, {
+ *     tags: { feature: 'billing' },
+ *     extra: { paymentId: data.id },
+ *     level: 'error',
+ *   });
+ *   throw error;
+ * }
+ * ```
+ */
+export function captureError(
+  error: Error | unknown,
+  context?: {
+    tags?: Record<string, string>;
+    extra?: Record<string, unknown>;
+    level?: 'fatal' | 'error' | 'warning' | 'info' | 'debug';
+    fingerprint?: string[];
+  }
+): string {
+  const eventId = Sentry.captureException(error, {
+    level: context?.level || 'error',
+    tags: context?.tags,
+    extra: context?.extra,
+    fingerprint: context?.fingerprint,
+  });
+
+  {% if saas_observability_structured_logging %}
+  logger.error({
+    msg: 'Error captured by Sentry',
+    sentryEventId: eventId,
+    error: error instanceof Error ? error.message : String(error),
+  });
+  {% endif %}
+
+  return eventId;
+}
+
+/**
+ * Capture a message (non-error event)
+ *
+ * @example
+ * ```ts
+ * captureMessage('Payment processing started', {
+ *   level: 'info',
+ *   tags: { feature: 'billing' },
+ * });
+ * ```
+ */
+export function captureMessage(
+  message: string,
+  context?: {
+    level?: 'fatal' | 'error' | 'warning' | 'info' | 'debug';
+    tags?: Record<string, string>;
+    extra?: Record<string, unknown>;
+  }
+): string {
+  return Sentry.captureMessage(message, {
+    level: context?.level || 'info',
+    tags: context?.tags,
+    extra: context?.extra,
+  });
+}
+
+// ============================================================================
+// Context Management
+// ============================================================================
+
+/**
+ * Set user context for error tracking
+ *
+ * Call this after user authentication.
+ *
+ * @example
+ * ```ts
+ * // After successful login
+ * setUserContext({
+ *   id: user.id,
+ *   email: user.email,
+ *   username: user.name,
+ * });
+ * ```
+ */
+export function setUserContext(user: {
+  id: string;
+  email?: string;
+  username?: string;
+  {% if saas_tenancy_model == 'b2b-teams' %}
+  organizationId?: string;
+  {% endif %}
+}): void {
+  Sentry.setUser({
+    id: user.id,
+    email: user.email,
+    username: user.username,
+  });
+
+  {% if saas_tenancy_model == 'b2b-teams' %}
+  if (user.organizationId) {
+    Sentry.setTag('organizationId', user.organizationId);
+  }
+  {% endif %}
+}
+
+/**
+ * Clear user context (e.g., on logout)
+ *
+ * @example
+ * ```ts
+ * // On logout
+ * clearUserContext();
+ * ```
+ */
+export function clearUserContext(): void {
+  Sentry.setUser(null);
+}
+
+/**
+ * Set custom context for debugging
+ *
+ * @example
+ * ```ts
+ * setContext('payment', {
+ *   provider: 'stripe',
+ *   amount: 9.99,
+ *   currency: 'USD',
+ * });
+ * ```
+ */
+export function setContext(key: string, context: Record<string, unknown>): void {
+  Sentry.setContext(key, context);
+}
+
+/**
+ * Set tags for filtering/grouping errors
+ *
+ * @example
+ * ```ts
+ * Sentry.setTag('feature', 'billing');
+ * Sentry.setTag('plan', 'pro');
+ * ```
+ */
+export const setTag = Sentry.setTag;
+
+/**
+ * Set multiple tags at once
+ *
+ * @example
+ * ```ts
+ * Sentry.setTags({
+ *   feature: 'billing',
+ *   plan: 'pro',
+ *   provider: 'stripe',
+ * });
+ * ```
+ */
+export const setTags = Sentry.setTags;
+
+// ============================================================================
+// Breadcrumbs
+// ============================================================================
+
+/**
+ * Add a breadcrumb to the error trail
+ *
+ * Breadcrumbs help you understand what led to an error.
+ *
+ * @example
+ * ```ts
+ * addBreadcrumb({
+ *   category: 'navigation',
+ *   message: 'User navigated to payment page',
+ *   level: 'info',
+ * });
+ * ```
+ */
+export function addBreadcrumb(breadcrumb: {
+  message?: string;
+  category?: string;
+  level?: 'fatal' | 'error' | 'warning' | 'info' | 'debug';
+  data?: Record<string, unknown>;
+  type?: string;
+}): void {
+  Sentry.addBreadcrumb(breadcrumb);
+}
+
+// ============================================================================
+// React Error Boundary
+// ============================================================================
+
+/**
+ * Error Boundary Component
+ *
+ * Wrap your React components to catch and report rendering errors.
+ *
+ * @example
+ * ```tsx
+ * // app/layout.tsx
+ * import { ErrorBoundary } from '@/lib/observability';
+ *
+ * export default function RootLayout({ children }) {
+ *   return (
+ *     <html>
+ *       <body>
+ *         <ErrorBoundary fallback={<ErrorFallback />}>
+ *           {children}
+ *         </ErrorBoundary>
+ *       </body>
+ *     </html>
+ *   );
+ * }
+ * ```
+ */
+export const ErrorBoundary = Sentry.ErrorBoundary;
+
+/**
+ * Higher-order component to wrap components with error boundary
+ *
+ * @example
+ * ```tsx
+ * const SafeComponent = withErrorBoundary(MyComponent, {
+ *   fallback: <div>Something went wrong</div>,
+ * });
+ * ```
+ */
+export const withErrorBoundary = Sentry.withErrorBoundary;
+
+// ============================================================================
+// Performance Monitoring
+// ============================================================================
+
+/**
+ * Start a new transaction for performance monitoring
+ *
+ * @example
+ * ```ts
+ * const transaction = startTransaction('checkout-flow', 'task');
+ * try {
+ *   await processCheckout();
+ *   transaction.setStatus('ok');
+ * } catch (error) {
+ *   transaction.setStatus('internal_error');
+ *   throw error;
+ * } finally {
+ *   transaction.finish();
+ * }
+ * ```
+ */
+export const startTransaction = Sentry.startTransaction;
+
+/**
+ * Start a new span within the current transaction
+ *
+ * @example
+ * ```ts
+ * const span = startSpan({ op: 'db.query', description: 'Fetch users' });
+ * try {
+ *   const users = await db.users.findMany();
+ *   return users;
+ * } finally {
+ *   span?.finish();
+ * }
+ * ```
+ */
+export const startSpan = Sentry.startSpan;
+
+// ============================================================================
+// API Route Wrappers
+// ============================================================================
+
+/**
+ * Wrap Next.js API routes with Sentry error tracking
+ *
+ * @example
+ * ```ts
+ * // app/api/users/route.ts
+ * export const GET = withSentry(async (request) => {
+ *   const users = await db.users.findMany();
+ *   return Response.json(users);
+ * });
+ * ```
+ */
+export function withSentry<T extends (...args: any[]) => Promise<Response>>(
+  handler: T
+): T {
+  return (async (...args: any[]) => {
+    try {
+      return await handler(...args);
+    } catch (error) {
+      captureError(error, {
+        tags: {
+          handler: handler.name || 'anonymous',
+        },
+      });
+      throw error;
+    }
+  }) as T;
+}
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Check if Sentry is enabled
+ */
+export function isSentryEnabled(): boolean {
+  return Boolean(SENTRY_CONFIG.dsn);
+}
+
+/**
+ * Get the current Sentry hub
+ */
+export const getCurrentHub = Sentry.getCurrentHub;
+
+/**
+ * Flush pending events to Sentry
+ * Useful before serverless function termination
+ *
+ * @example
+ * ```ts
+ * await flush(2000); // Wait up to 2 seconds
+ * ```
+ */
+export async function flush(timeout?: number): Promise<boolean> {
+  return Sentry.flush(timeout);
+}
+
+// ============================================================================
+// Type Exports
+// ============================================================================
+
+export type { ErrorBoundaryProps, SentryContext };
+
+// Re-export commonly used Sentry types
+export type {
+  SeverityLevel,
+  User,
+  Breadcrumb,
+  Event,
+  EventHint,
+} from '@sentry/nextjs';
+{% endif %}

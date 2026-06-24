@@ -1,0 +1,434 @@
+{% if saas_infra_module == "enabled" and saas_search == 'algolia' %}
+/**
+ * Algolia Search Types
+ *
+ * Type definitions for Algolia search results and configurations
+ */
+
+// ============================================================================
+// Search Result Types
+// ============================================================================
+
+/**
+ * Base search hit with highlighting
+ */
+export interface BaseSearchHit {
+  objectID: string;
+  _highlightResult?: {
+    [key: string]: {
+      value: string;
+      matchLevel: 'none' | 'partial' | 'full';
+      matchedWords: string[];
+      fullyHighlighted?: boolean;
+    };
+  };
+  _snippetResult?: {
+    [key: string]: {
+      value: string;
+      matchLevel: 'none' | 'partial' | 'full';
+    };
+  };
+  _rankingInfo?: {
+    nbTypos: number;
+    firstMatchedWord: number;
+    proximityDistance?: number;
+    userScore: number;
+    geoDistance?: number;
+    geoPrecision?: number;
+    nbExactWords: number;
+    words: number;
+    filters: number;
+  };
+  _distinctSeqID?: number;
+  _geoloc?: {
+    lat: number;
+    lng: number;
+  };
+}
+
+/**
+ * Search response structure
+ */
+export interface SearchResponse<T = any> {
+  hits: Array<T & BaseSearchHit>;
+  page: number;
+  nbHits: number;
+  nbPages: number;
+  hitsPerPage: number;
+  processingTimeMS: number;
+  exhaustiveNbHits: boolean;
+  query: string;
+  params: string;
+  facets?: Record<string, Record<string, number>>;
+  facets_stats?: Record<string, {
+    min: number;
+    max: number;
+    avg: number;
+    sum: number;
+  }>;
+  queryID?: string;
+}
+
+/**
+ * Multi-index search response
+ */
+export interface MultiSearchResponse<T = any> {
+  results: Array<SearchResponse<T>>;
+}
+
+// ============================================================================
+// Index Configuration Types
+// ============================================================================
+
+/**
+ * Index settings
+ */
+export interface IndexSettings {
+  searchableAttributes?: string[];
+  attributesForFaceting?: string[];
+  unretrievableAttributes?: string[];
+  attributesToRetrieve?: string[];
+  ranking?: string[];
+  customRanking?: string[];
+  replicas?: string[];
+  maxValuesPerFacet?: number;
+  attributesToHighlight?: string[];
+  attributesToSnippet?: string[];
+  highlightPreTag?: string;
+  highlightPostTag?: string;
+  snippetEllipsisText?: string;
+  restrictHighlightAndSnippetArrays?: boolean;
+  hitsPerPage?: number;
+  minWordSizefor1Typo?: number;
+  minWordSizefor2Typos?: number;
+  typoTolerance?: boolean | 'min' | 'strict';
+  allowTyposOnNumericTokens?: boolean;
+  ignorePlurals?: boolean | string[];
+  disableTypoToleranceOnAttributes?: string[];
+  separatorsToIndex?: string;
+  queryType?: 'prefixAll' | 'prefixLast' | 'prefixNone';
+  removeWordsIfNoResults?: 'none' | 'lastWords' | 'firstWords' | 'allOptional';
+  advancedSyntax?: boolean;
+  optionalWords?: string[];
+  removeStopWords?: boolean | string[];
+  disablePrefixOnAttributes?: string[];
+  disableExactOnAttributes?: string[];
+  exactOnSingleWordQuery?: 'attribute' | 'none' | 'word';
+  alternativesAsExact?: Array<'ignorePlurals' | 'singleWordSynonym' | 'multiWordsSynonym'>;
+  numericAttributesForFiltering?: string[];
+  allowCompressionOfIntegerArray?: boolean;
+  attributeForDistinct?: string;
+  distinct?: number | boolean;
+  replaceSynonymsInHighlight?: boolean;
+  minProximity?: number;
+  responseFields?: string[];
+  maxFacetHits?: number;
+  camelCaseAttributes?: string[];
+  decompoundedAttributes?: Record<string, string[]>;
+  keepDiacriticsOnCharacters?: string;
+  queryLanguages?: string[];
+  indexLanguages?: string[];
+  customNormalization?: Record<string, Record<string, string>>;
+  enableRules?: boolean;
+  enablePersonalization?: boolean;
+  userData?: any;
+}
+
+// ============================================================================
+// Domain-Specific Hit Types
+// ============================================================================
+
+/**
+ * Product search hit
+ */
+export interface ProductHit extends BaseSearchHit {
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  brand?: string;
+  image?: string;
+  rating?: number;
+  reviewCount?: number;
+  inStock?: boolean;
+  sku?: string;
+  tags?: string[];
+  popularity?: number;
+}
+
+/**
+ * Blog post search hit
+ */
+export interface BlogPostHit extends BaseSearchHit {
+  title: string;
+  excerpt: string;
+  content?: string;
+  author: string;
+  publishedAt: string;
+  tags: string[];
+  category: string;
+  slug: string;
+  readTime?: number;
+  coverImage?: string;
+}
+
+/**
+ * Documentation search hit
+ */
+export interface DocumentationHit extends BaseSearchHit {
+  title: string;
+  content: string;
+  section: string;
+  path: string;
+  hierarchy: {
+    lvl0?: string;
+    lvl1?: string;
+    lvl2?: string;
+    lvl3?: string;
+    lvl4?: string;
+    lvl5?: string;
+  };
+  anchor?: string;
+  url: string;
+}
+
+/**
+ * User search hit
+ */
+export interface UserHit extends BaseSearchHit {
+  name: string;
+  email: string;
+  avatar?: string;
+  bio?: string;
+  role: string;
+  company?: string;
+  location?: string;
+  skills?: string[];
+}
+
+// ============================================================================
+// Search Parameters
+// ============================================================================
+
+/**
+ * Common search parameters
+ */
+export interface SearchParams {
+  query: string;
+  filters?: string;
+  facetFilters?: string | string[] | string[][];
+  optionalFilters?: string | string[] | string[][];
+  numericFilters?: string | string[] | string[][];
+  tagFilters?: string | string[] | string[][];
+  sumOrFiltersScores?: boolean;
+  facets?: string[];
+  maxValuesPerFacet?: number;
+  facetingAfterDistinct?: boolean;
+  page?: number;
+  hitsPerPage?: number;
+  offset?: number;
+  length?: number;
+  attributesToRetrieve?: string[];
+  attributesToHighlight?: string[];
+  attributesToSnippet?: string[];
+  highlightPreTag?: string;
+  highlightPostTag?: string;
+  snippetEllipsisText?: string;
+  restrictHighlightAndSnippetArrays?: boolean;
+  getRankingInfo?: boolean;
+  clickAnalytics?: boolean;
+  analytics?: boolean;
+  analyticsTags?: string[];
+  synonyms?: boolean;
+  replaceSynonymsInHighlight?: boolean;
+  minProximity?: number;
+  responseFields?: string[];
+  maxFacetHits?: number;
+  percentileComputation?: boolean;
+  queryType?: 'prefixAll' | 'prefixLast' | 'prefixNone';
+  removeWordsIfNoResults?: 'none' | 'lastWords' | 'firstWords' | 'allOptional';
+  advancedSyntax?: boolean;
+  optionalWords?: string | string[];
+  removeStopWords?: boolean | string[];
+  disableExactOnAttributes?: string[];
+  exactOnSingleWordQuery?: 'attribute' | 'none' | 'word';
+  alternativesAsExact?: Array<'ignorePlurals' | 'singleWordSynonym' | 'multiWordsSynonym'>;
+  enableRules?: boolean;
+  ruleContexts?: string[];
+  personalizationImpact?: number;
+  userToken?: string;
+  enablePersonalization?: boolean;
+  restrictSearchableAttributes?: string[];
+  sortFacetValuesBy?: 'count' | 'alpha';
+  typoTolerance?: boolean | 'min' | 'strict';
+  minWordSizefor1Typo?: number;
+  minWordSizefor2Typos?: number;
+  allowTyposOnNumericTokens?: boolean;
+  ignorePlurals?: boolean | string[];
+  disableTypoToleranceOnAttributes?: string[];
+  aroundLatLng?: string;
+  aroundLatLngViaIP?: boolean;
+  aroundRadius?: number | 'all';
+  aroundPrecision?: number;
+  minimumAroundRadius?: number;
+  insideBoundingBox?: number[][];
+  insidePolygon?: number[][];
+  naturalLanguages?: string[];
+  attributeForDistinct?: string;
+  distinct?: number | boolean;
+  decompoundQuery?: boolean;
+}
+
+// ============================================================================
+// Autocomplete Types
+// ============================================================================
+
+/**
+ * Autocomplete item
+ */
+export interface AutocompleteItem<T = any> {
+  label: string;
+  value: string;
+  data: T;
+}
+
+/**
+ * Autocomplete source
+ */
+export interface AutocompleteSource<T = any> {
+  sourceId: string;
+  getItems: (params: { query: string }) => Promise<AutocompleteItem<T>[]>;
+  templates?: {
+    item?: (params: { item: AutocompleteItem<T> }) => string;
+    header?: () => string;
+    footer?: () => string;
+    noResults?: () => string;
+  };
+}
+
+// ============================================================================
+// Facet Types
+// ============================================================================
+
+/**
+ * Facet value
+ */
+export interface FacetValue {
+  value: string;
+  count: number;
+  highlighted?: string;
+}
+
+/**
+ * Facet refinement
+ */
+export interface FacetRefinement {
+  attribute: string;
+  value: string;
+  type: 'facet' | 'exclude' | 'numeric' | 'hierarchical';
+}
+
+// ============================================================================
+// Geo Search Types
+// ============================================================================
+
+/**
+ * Geo location
+ */
+export interface GeoLocation {
+  lat: number;
+  lng: number;
+}
+
+/**
+ * Bounding box
+ */
+export interface BoundingBox {
+  northEast: GeoLocation;
+  southWest: GeoLocation;
+}
+
+// ============================================================================
+// Synonym Types
+// ============================================================================
+
+/**
+ * Synonym definition
+ */
+export interface Synonym {
+  objectID: string;
+  type: 'synonym' | 'oneWaySynonym' | 'altCorrection1' | 'altCorrection2' | 'placeholder';
+  synonyms: string[];
+  input?: string;
+  word?: string;
+  corrections?: string[];
+  placeholder?: string;
+}
+
+// ============================================================================
+// Rule Types
+// ============================================================================
+
+/**
+ * Query rule
+ */
+export interface QueryRule {
+  objectID: string;
+  conditions: Array<{
+    pattern: string;
+    anchoring: 'is' | 'startsWith' | 'endsWith' | 'contains';
+    context?: string;
+    alternatives?: boolean;
+  }>;
+  consequence: {
+    params?: SearchParams;
+    promote?: Array<{
+      objectID: string;
+      position: number;
+    }>;
+    hide?: Array<{
+      objectID: string;
+    }>;
+    userData?: any;
+  };
+  description?: string;
+  enabled?: boolean;
+  validity?: Array<{
+    from: number;
+    until: number;
+  }>;
+}
+
+// ============================================================================
+// Analytics Types
+// ============================================================================
+
+/**
+ * Click event
+ */
+export interface ClickEvent {
+  eventName: 'click' | 'view' | 'conversion';
+  indexName: string;
+  objectIDs: string[];
+  positions?: number[];
+  queryID?: string;
+  timestamp?: number;
+  userToken?: string;
+}
+
+/**
+ * Search analytics
+ */
+export interface SearchAnalytics {
+  searches: number;
+  hits: number;
+  clickThroughRate: number;
+  conversionRate: number;
+  avgClickPosition: number;
+  noResultsRate: number;
+  popularSearches: Array<{
+    query: string;
+    count: number;
+  }>;
+}
+{% endif %}

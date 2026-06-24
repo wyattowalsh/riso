@@ -1,0 +1,686 @@
+{% if saas_infra_module == "enabled" and saas_runtime == "nextjs-16" -%}
+/**
+ * E2E Authentication Tests
+ *
+ * Comprehensive authentication flow tests covering:
+ * - User signup (new account registration)
+ * - User signin (existing account login)
+ * - User signout (logout and session clearing)
+ * - Password reset flow (request and confirmation)
+ * - OAuth provider flows (with CI skip)
+ * - Protected route access (unauthenticated redirect)
+ * - Session persistence (staying logged in after refresh)
+ *
+ * Playwright best practices:
+ * - Page object models for maintainability
+ * - Proper test isolation and cleanup
+ * - Descriptive assertions and error messages
+ * - Conditional providers (Clerk vs Auth.js)
+ *
+ * @see https://playwright.dev/docs/auth
+ * @see https://playwright.dev/docs/pom
+ */
+
+import { test, expect, Page, APIRequestContext } from '@playwright/test';
+
+/**
+ * Base URL for the application
+ */
+const BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:3000';
+
+/**
+ * Test users and credentials
+ */
+const TEST_USER = {
+  email: `test-${Date.now()}@example.com`,
+  password: 'Test@Password123!',
+  name: 'Test User',
+};
+
+const EXISTING_USER = {
+  email: process.env.TEST_USER_EMAIL || 'existing@example.com',
+  password: process.env.TEST_USER_PASSWORD || 'ExistingPassword123!',
+};
+
+// ============================================================================
+// Page Object Models
+// ============================================================================
+
+/**
+ * Signup Page Object
+ * Encapsulates signup form interactions and assertions
+ */
+class SignupPage {
+  constructor(private page: Page) {}
+
+  async navigate() {
+    await this.page.goto(`${BASE_URL}/sign-up`, { waitUntil: 'networkidle' });
+  }
+
+  {% if saas_auth_provider == 'clerk' -%}
+  async fillForm(email: string, password: string, name: string) {
+    // Clerk uses their hosted signup component
+    // Wait for the iframe to load
+    const frame = this.page.frameLocator('[data-clerk-signin-url]').first();
+
+    // Fill email field
+    await frame.locator('input[type="email"]').fill(email);
+
+    // Fill password field
+    await frame.locator('input[type="password"]').fill(password);
+
+    // Fill name field if present
+    const nameInput = frame.locator('input[placeholder*="Name"]');
+    if (await nameInput.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await nameInput.fill(name);
+    }
+  }
+
+  async submit() {
+    const frame = this.page.frameLocator('[data-clerk-signin-url]').first();
+    await frame.locator('button[type="submit"]').click();
+  }
+
+  async waitForSuccess() {
+    // Redirect to dashboard after successful signup
+    await this.page.waitForURL(`${BASE_URL}/dashboard`, { timeout: 30000 });
+  }
+  {% elif saas_auth_provider == 'authjs' -%}
+  async fillForm(email: string, password: string, name: string) {
+    // Auth.js custom signup form
+    await this.page.locator('input[type="text"][placeholder*="Name"]').fill(name);
+    await this.page.locator('input[type="email"]').fill(email);
+    await this.page.locator('input[type="password"][name="password"]').fill(password);
+  }
+
+  async submit() {
+    await this.page.locator('button[type="submit"]:has-text("Sign Up")').click();
+  }
+
+  async waitForSuccess() {
+    // Redirect to dashboard after successful signup
+    await this.page.waitForURL(`${BASE_URL}/dashboard`, { timeout: 30000 });
+  }
+  {% endif -%}
+
+  async expectError(message: string) {
+    const errorMessage = this.page.locator('[role="alert"]');
+    await expect(errorMessage).toContainText(message);
+  }
+
+  async expectFormField(fieldName: string) {
+    const field = this.page.locator(`input[placeholder*="${fieldName}"], input[name*="${fieldName.toLowerCase()}"]`);
+    await expect(field).toBeVisible();
+  }
+}
+
+/**
+ * Signin Page Object
+ * Encapsulates signin form interactions
+ */
+class SigninPage {
+  constructor(private page: Page) {}
+
+  async navigate() {
+    await this.page.goto(`${BASE_URL}/sign-in`, { waitUntil: 'networkidle' });
+  }
+
+  {% if saas_auth_provider == 'clerk' -%}
+  async fillForm(email: string, password: string) {
+    // Clerk uses their hosted signin component
+    const frame = this.page.frameLocator('[data-clerk-signin-url]').first();
+
+    await frame.locator('input[type="email"]').fill(email);
+    await frame.locator('input[type="password"]').fill(password);
+  }
+
+  async submit() {
+    const frame = this.page.frameLocator('[data-clerk-signin-url]').first();
+    await frame.locator('button[type="submit"]').click();
+  }
+
+  async waitForSuccess() {
+    // Redirect to dashboard after successful signin
+    await this.page.waitForURL(`${BASE_URL}/dashboard`, { timeout: 30000 });
+  }
+
+  async getErrorMessage() {
+    const frame = this.page.frameLocator('[data-clerk-signin-url]').first();
+    const error = frame.locator('[role="alert"]');
+    return await error.innerText().catch(() => '');
+  }
+  {% elif saas_auth_provider == 'authjs' -%}
+  async fillForm(email: string, password: string) {
+    // Auth.js custom signin form
+    await this.page.locator('input[type="email"]').fill(email);
+    await this.page.locator('input[type="password"]').fill(password);
+  }
+
+  async submit() {
+    await this.page.locator('button[type="submit"]:has-text("Sign In")').click();
+  }
+
+  async waitForSuccess() {
+    // Redirect to dashboard after successful signin
+    await this.page.waitForURL(`${BASE_URL}/dashboard`, { timeout: 30000 });
+  }
+
+  async getErrorMessage() {
+    const error = this.page.locator('[role="alert"]');
+    return await error.innerText().catch(() => '');
+  }
+  {% endif -%}
+}
+
+/**
+ * Dashboard Page Object
+ * Encapsulates dashboard interactions
+ */
+class DashboardPage {
+  constructor(private page: Page) {}
+
+  async navigate() {
+    await this.page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
+  }
+
+  async expectToBeOnDashboard() {
+    await expect(this.page).toHaveURL(/\/dashboard/);
+  }
+
+  {% if saas_auth_provider == 'clerk' -%}
+  async expectUserGreeting(name: string) {
+    // Look for user greeting or profile information
+    const userMenu = this.page.locator('[data-testid="user-menu"], [class*="user"][class*="button"]').first();
+    await expect(userMenu).toBeVisible({ timeout: 10000 });
+  }
+  {% elif saas_auth_provider == 'authjs' -%}
+  async expectUserGreeting(name: string) {
+    // Look for user greeting or profile information
+    const greeting = this.page.locator(`text="${name}", text="Welcome"`).first();
+    await expect(greeting).toBeVisible({ timeout: 10000 });
+  }
+  {% endif -%}
+
+  async findSignoutButton() {
+    {% if saas_auth_provider == 'clerk' -%}
+    // Clerk user menu -> sign out
+    return this.page.locator('[data-testid="user-menu-sign-out"], button[role="menuitem"]:has-text("Sign out")').first();
+    {% elif saas_auth_provider == 'authjs' -%}
+    // Auth.js sign out button
+    return this.page.locator('button:has-text("Sign Out")').first();
+    {% endif -%}
+  }
+
+  async signOut() {
+    const signoutButton = await this.findSignoutButton();
+    await signoutButton.click();
+  }
+}
+
+/**
+ * Protected Route Page Object
+ */
+class ProtectedRoutePage {
+  constructor(private page: Page) {}
+
+  async navigateTo(path: string) {
+    await this.page.goto(`${BASE_URL}${path}`);
+  }
+
+  async expectRedirectToSignin() {
+    // Should redirect to signin page
+    await this.page.waitForURL(/\/(sign-in|auth\/signin)/, { timeout: 10000 });
+  }
+}
+
+/**
+ * Password Reset Page Object
+ */
+class PasswordResetPage {
+  constructor(private page: Page) {}
+
+  async navigate() {
+    await this.page.goto(`${BASE_URL}/forgot-password`, { waitUntil: 'networkidle' });
+  }
+
+  {% if saas_auth_provider == 'clerk' -%}
+  async requestReset(email: string) {
+    const frame = this.page.frameLocator('[data-clerk-signin-url]').first();
+
+    // Click "Forgot password?"
+    await frame.locator('button:has-text("Forgot"), a:has-text("Forgot")').click();
+
+    // Fill email
+    await frame.locator('input[type="email"]').fill(email);
+
+    // Submit
+    await frame.locator('button[type="submit"]').click();
+  }
+
+  async expectVerificationCodePrompt() {
+    const frame = this.page.frameLocator('[data-clerk-signin-url]').first();
+    // Wait for code input field
+    await expect(frame.locator('input[placeholder*="code"], input[placeholder*="Code"]')).toBeVisible({ timeout: 10000 });
+  }
+  {% elif saas_auth_provider == 'authjs' -%}
+  async requestReset(email: string) {
+    // Fill email and submit
+    await this.page.locator('input[type="email"]').fill(email);
+    await this.page.locator('button[type="submit"]:has-text("Send Reset")').click();
+  }
+
+  async expectResetEmailSent() {
+    // Look for success message
+    const message = this.page.locator('text=/Check.*email/');
+    await expect(message).toBeVisible({ timeout: 10000 });
+  }
+  {% endif -%}
+}
+
+// ============================================================================
+// Test Suite
+// ============================================================================
+
+test.describe('Authentication Flows', () => {
+  test.beforeEach(async ({ page }) => {
+    // Navigate to homepage before each test
+    await page.goto(BASE_URL, { waitUntil: 'networkidle' });
+  });
+
+  // ========================================================================
+  // Signup Flow Tests
+  // ========================================================================
+
+  test('should complete signup flow with new credentials', async ({ page }) => {
+    const signupPage = new SignupPage(page);
+    const dashboardPage = new DashboardPage(page);
+
+    // Navigate to signup
+    await signupPage.navigate();
+
+    // Fill signup form
+    await signupPage.fillForm(TEST_USER.email, TEST_USER.password, TEST_USER.name);
+
+    // Submit form
+    await signupPage.submit();
+
+    // Verify redirect to dashboard
+    await signupPage.waitForSuccess();
+    await dashboardPage.expectToBeOnDashboard();
+  });
+
+  test('should reject signup with invalid email', async ({ page }) => {
+    const signupPage = new SignupPage(page);
+
+    await signupPage.navigate();
+
+    // Try with invalid email
+    await signupPage.fillForm('invalid-email', TEST_USER.password, TEST_USER.name);
+    await signupPage.submit();
+
+    // Expect error
+    await signupPage.expectError('email');
+  });
+
+  test('should reject signup with weak password', async ({ page }) => {
+    const signupPage = new SignupPage(page);
+
+    await signupPage.navigate();
+
+    // Try with weak password
+    await signupPage.fillForm(TEST_USER.email, '123', TEST_USER.name);
+    await signupPage.submit();
+
+    // Expect error about password strength
+    await signupPage.expectError('password');
+  });
+
+  {% if saas_auth_provider == 'clerk' -%}
+  test('should reject signup with existing email', async ({ page }) => {
+    const signupPage = new SignupPage(page);
+
+    await signupPage.navigate();
+
+    // Try with existing email
+    await signupPage.fillForm(EXISTING_USER.email, TEST_USER.password, TEST_USER.name);
+    await signupPage.submit();
+
+    // Expect error about email already existing
+    await signupPage.expectError('already exists');
+  });
+  {% endif -%}
+
+  // ========================================================================
+  // Signin Flow Tests
+  // ========================================================================
+
+  test('should complete signin flow with valid credentials', async ({ page }) => {
+    const signinPage = new SigninPage(page);
+    const dashboardPage = new DashboardPage(page);
+
+    await signinPage.navigate();
+
+    // Fill form with existing credentials
+    await signinPage.fillForm(EXISTING_USER.email, EXISTING_USER.password);
+
+    // Submit
+    await signinPage.submit();
+
+    // Verify redirect to dashboard
+    await signinPage.waitForSuccess();
+    await dashboardPage.expectToBeOnDashboard();
+  });
+
+  test('should reject signin with wrong password', async ({ page }) => {
+    const signinPage = new SigninPage(page);
+
+    await signinPage.navigate();
+
+    // Fill with correct email but wrong password
+    await signinPage.fillForm(EXISTING_USER.email, 'WrongPassword123!');
+
+    // Submit
+    await signinPage.submit();
+
+    // Expect error
+    const errorMessage = await signinPage.getErrorMessage();
+    expect(errorMessage.toLowerCase()).toContain('password');
+  });
+
+  test('should reject signin with non-existent email', async ({ page }) => {
+    const signinPage = new SigninPage(page);
+
+    await signinPage.navigate();
+
+    // Fill with non-existent email
+    await signinPage.fillForm('nonexistent@example.com', TEST_USER.password);
+
+    // Submit
+    await signinPage.submit();
+
+    // Expect error
+    const errorMessage = await signinPage.getErrorMessage();
+    expect(errorMessage.toLowerCase()).toMatch(/not found|does not exist|invalid/);
+  });
+
+  // ========================================================================
+  // Signout Flow Tests
+  // ========================================================================
+
+  test('should complete signout flow', async ({ page }) => {
+    const signinPage = new SigninPage(page);
+    const dashboardPage = new DashboardPage(page);
+
+    // First signin
+    await signinPage.navigate();
+    await signinPage.fillForm(EXISTING_USER.email, EXISTING_USER.password);
+    await signinPage.submit();
+    await signinPage.waitForSuccess();
+
+    // Now signout
+    await dashboardPage.signOut();
+
+    // Should redirect to home or signin page
+    await page.waitForURL(`${BASE_URL}/(|sign-in|auth/signin)`, { timeout: 10000 });
+  });
+
+  test('should clear session on signout', async ({ page, context }) => {
+    const signinPage = new SigninPage(page);
+
+    // Signin first
+    await signinPage.navigate();
+    await signinPage.fillForm(EXISTING_USER.email, EXISTING_USER.password);
+    await signinPage.submit();
+    await signinPage.waitForSuccess();
+
+    // Get auth cookies
+    const cookies = await context.cookies();
+    const authCookie = cookies.find(c => c.name.includes('session') || c.name.includes('auth'));
+    expect(authCookie).toBeDefined();
+
+    // Signout
+    const dashboardPage = new DashboardPage(page);
+    await dashboardPage.signOut();
+
+    // Wait for redirect
+    await page.waitForURL(/sign-in|auth\/signin/, { timeout: 10000 });
+
+    // Get cookies after signout
+    const cookiesAfter = await context.cookies();
+    const authCookieAfter = cookiesAfter.find(c => c.name.includes('session') || c.name.includes('auth'));
+
+    // Auth cookie should be cleared or invalid
+    if (authCookieAfter) {
+      // May still exist but should be invalid/expired
+      expect(authCookieAfter.value).not.toBe(authCookie?.value);
+    }
+  });
+
+  // ========================================================================
+  // Password Reset Flow Tests
+  // ========================================================================
+
+  test('should complete password reset request', async ({ page }) => {
+    const resetPage = new PasswordResetPage(page);
+
+    await resetPage.navigate();
+
+    // Request reset for existing email
+    await resetPage.requestReset(EXISTING_USER.email);
+
+    {% if saas_auth_provider == 'clerk' -%}
+    // Clerk prompts for verification code
+    await resetPage.expectVerificationCodePrompt();
+    {% elif saas_auth_provider == 'authjs' -%}
+    // Auth.js shows email sent message
+    await resetPage.expectResetEmailSent();
+    {% endif -%}
+  });
+
+  test('should handle password reset for non-existent email', async ({ page }) => {
+    const resetPage = new PasswordResetPage(page);
+
+    await resetPage.navigate();
+
+    // Request reset for non-existent email
+    await resetPage.requestReset('nonexistent@example.com');
+
+    {% if saas_auth_provider == 'clerk' -%}
+    // Clerk may show error
+    const errorLocator = page.frameLocator('[data-clerk-signin-url]').first().locator('[role="alert"]');
+    const isVisible = await errorLocator.isVisible({ timeout: 5000 }).catch(() => false);
+    if (isVisible) {
+      const errorText = await errorLocator.innerText();
+      expect(errorText).toBeTruthy();
+    }
+    {% elif saas_auth_provider == 'authjs' -%}
+    // Auth.js typically shows success message for security (prevent email enumeration)
+    await resetPage.expectResetEmailSent();
+    {% endif -%}
+  });
+
+  // ========================================================================
+  // OAuth Flow Tests (Skip in CI)
+  // ========================================================================
+
+  test.skip(process.env.CI !== undefined, 'OAuth flow', async ({ page }) => {
+    const signinPage = new SigninPage(page);
+
+    await signinPage.navigate();
+
+    {% if saas_auth_provider == 'clerk' -%}
+    // Click OAuth provider button (Google or GitHub)
+    const oauthButton = page.locator('button:has-text("Google"), button:has-text("GitHub")').first();
+    await expect(oauthButton).toBeVisible();
+
+    // Note: Full OAuth flow requires manual intervention or mock server
+    // This just verifies the button is present and clickable
+    await expect(oauthButton).toBeEnabled();
+    {% elif saas_auth_provider == 'authjs' -%}
+    // Click OAuth provider button
+    const googleButton = page.locator('button:has-text("Google"), a:has-text("Google")');
+    await expect(googleButton).toBeVisible();
+
+    // Verify button is clickable
+    await expect(googleButton).toBeEnabled();
+    {% endif -%}
+  });
+
+  // ========================================================================
+  // Protected Route Access Tests
+  // ========================================================================
+
+  test('should redirect unauthenticated user from protected route', async ({ page }) => {
+    const protectedPage = new ProtectedRoutePage(page);
+
+    // Try to access protected route without authentication
+    await protectedPage.navigateTo('/dashboard');
+
+    // Should redirect to signin
+    await protectedPage.expectRedirectToSignin();
+  });
+
+  test('should redirect unauthenticated user from settings', async ({ page }) => {
+    const protectedPage = new ProtectedRoutePage(page);
+
+    // Try to access settings without authentication
+    await protectedPage.navigateTo('/settings');
+
+    // Should redirect to signin
+    await protectedPage.expectRedirectToSignin();
+  });
+
+  test('should allow authenticated user to access protected routes', async ({ page }) => {
+    const signinPage = new SigninPage(page);
+    const dashboardPage = new DashboardPage(page);
+
+    // First signin
+    await signinPage.navigate();
+    await signinPage.fillForm(EXISTING_USER.email, EXISTING_USER.password);
+    await signinPage.submit();
+    await signinPage.waitForSuccess();
+
+    // Now navigate to settings (another protected route)
+    await page.goto(`${BASE_URL}/settings`);
+
+    // Should stay on protected page
+    await expect(page).toHaveURL(/\/settings/);
+  });
+
+  // ========================================================================
+  // Session Persistence Tests
+  // ========================================================================
+
+  test('should persist session after page refresh', async ({ page }) => {
+    const signinPage = new SigninPage(page);
+    const dashboardPage = new DashboardPage(page);
+
+    // Signin
+    await signinPage.navigate();
+    await signinPage.fillForm(EXISTING_USER.email, EXISTING_USER.password);
+    await signinPage.submit();
+    await signinPage.waitForSuccess();
+
+    // Verify on dashboard
+    await dashboardPage.expectToBeOnDashboard();
+
+    // Refresh page
+    await page.reload();
+
+    // Should still be on dashboard (session persisted)
+    await dashboardPage.expectToBeOnDashboard();
+  });
+
+  test('should persist session across page navigation', async ({ page }) => {
+    const signinPage = new SigninPage(page);
+    const dashboardPage = new DashboardPage(page);
+
+    // Signin
+    await signinPage.navigate();
+    await signinPage.fillForm(EXISTING_USER.email, EXISTING_USER.password);
+    await signinPage.submit();
+    await signinPage.waitForSuccess();
+
+    // Navigate to different page
+    await page.goto(`${BASE_URL}/settings`);
+
+    // Should still be authenticated
+    await expect(page).toHaveURL(/\/settings/);
+
+    // Navigate back to dashboard
+    await dashboardPage.navigate();
+
+    // Should still be on dashboard
+    await dashboardPage.expectToBeOnDashboard();
+  });
+
+  test('should clear session when cookies are deleted', async ({ page, context }) => {
+    const signinPage = new SigninPage(page);
+    const protectedPage = new ProtectedRoutePage(page);
+
+    // Signin
+    await signinPage.navigate();
+    await signinPage.fillForm(EXISTING_USER.email, EXISTING_USER.password);
+    await signinPage.submit();
+    await signinPage.waitForSuccess();
+
+    // Clear all cookies
+    await context.clearCookies();
+
+    // Try to access protected route
+    await protectedPage.navigateTo('/dashboard');
+
+    // Should redirect to signin
+    await protectedPage.expectRedirectToSignin();
+  });
+});
+
+// ============================================================================
+// Authentication State Tests
+// ============================================================================
+
+test.describe('Authentication State Management', () => {
+  test('should set auth headers in API requests after signin', async ({ page, context }) => {
+    const signinPage = new SigninPage(page);
+
+    // Signin first
+    await signinPage.navigate();
+    await signinPage.fillForm(EXISTING_USER.email, EXISTING_USER.password);
+    await signinPage.submit();
+    await signinPage.waitForSuccess();
+
+    // Make API request
+    const cookies = await context.cookies();
+    const authCookie = cookies.find(c => c.name.includes('session') || c.name.includes('auth'));
+
+    // Verify auth cookie exists
+    expect(authCookie).toBeDefined();
+    expect(authCookie?.httpOnly).toBe(true);
+  });
+
+  test('should have valid token structure', async ({ page, context }) => {
+    const signinPage = new SigninPage(page);
+
+    await signinPage.navigate();
+    await signinPage.fillForm(EXISTING_USER.email, EXISTING_USER.password);
+    await signinPage.submit();
+    await signinPage.waitForSuccess();
+
+    const cookies = await context.cookies();
+    const sessionCookie = cookies.find(c => c.name.includes('session') || c.name.includes('auth'));
+
+    expect(sessionCookie?.value).toBeTruthy();
+    expect(sessionCookie?.value.length).toBeGreaterThan(10);
+  });
+});
+
+{% else -%}
+import { test } from '@playwright/test';
+
+test.skip('E2E authentication tests skipped', () => {
+  // The SaaS Starter module with Next.js 16 runtime is required for these tests.
+  // These tests are only enabled when:
+  // - saas_infra_module == "enabled"
+  // - saas_runtime == "nextjs-16"
+});
+{% endif -%}

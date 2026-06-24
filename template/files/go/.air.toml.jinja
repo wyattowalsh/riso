@@ -1,0 +1,56 @@
+{% if api_module == 'enabled' and 'go' in api_languages %}
+# Air configuration for hot reload
+# https://github.com/air-verse/air
+
+root = "."
+tmp_dir = "tmp"
+
+[build]
+# Binary output name
+{% if cli_module == 'enabled' and 'go' in cli_languages %}
+cmd = "go build -o ./tmp/{{ project_slug }}-api ./api"
+bin = "./tmp/{{ project_slug }}-api"
+{% else %}
+cmd = "go build -o ./tmp/main ./api"
+bin = "./tmp/main"
+{% endif %}
+
+# Watch these directories for changes
+include_dir = ["api", "cli/internal"]
+include_ext = ["go", "yaml", "yml"]
+
+# Exclude directories
+exclude_dir = ["tmp", "vendor", "node_modules", ".git"]
+exclude_file = []
+exclude_regex = ["_test\\.go$"]
+exclude_unchanged = true
+
+# Build delay after file change (milliseconds)
+delay = 1000
+
+# Stop running old binary before building
+stop_on_error = true
+
+# Send interrupt signal before killing
+send_interrupt = true
+
+# Delay after sending interrupt (milliseconds)
+kill_delay = 500
+
+# Log build output
+log = "air.log"
+
+[log]
+time = true
+main_only = false
+
+[color]
+main = "magenta"
+watcher = "cyan"
+build = "yellow"
+runner = "green"
+
+[misc]
+# Delete tmp directory on exit
+clean_on_exit = true
+{% endif %}

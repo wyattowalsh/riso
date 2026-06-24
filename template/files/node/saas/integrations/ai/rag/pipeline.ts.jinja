@@ -1,0 +1,478 @@
+{% if saas_infra_module == "enabled" and saas_ai_features == 'full' %}
+/**
+ * RAG Pipeline Orchestration
+ *
+ * Complete RAG workflow:
+ * 1. Document ingestion (chunk, embed, store)
+ * 2. Query processing (retrieve, rerank, assemble context)
+ * 3. Generation (LLM completion with context)
+ * 4. Response streaming
+ * 5. Token tracking and billing
+ *
+ * @see https://www.anthropic.com/research/retrieval-augmented-generation
+ */
+
+{% if saas_ai == "openai" %}
+import { generateMessage, streamMessage } from '@/integrations/ai/openai/client';
+{% elif saas_ai == "anthropic" %}
+import { generateMessage, streamMessage } from '@/integrations/ai/anthropic/client';
+{% endif %}
+
+import { chunkDocument } from './chunker';
+import { generateEmbeddings } from './embeddings';
+import { storeVectorsBatch } from './vector-store';
+import { retrieve, assembleContext } from './retriever';
+import { trackTokenUsage } from '@/lib/ai/token-tracking';
+import type {
+  RAGRequest,
+  RAGResponse,
+  RAGStreamChunk,
+  RAGPipelineConfig,
+  IngestionRequest,
+  IngestionResult,
+  BatchIngestionRequest,
+  BatchIngestionResult,
+  TokenUsage,
+  RAGError,
+} from './types';
+
+// ============================================================================
+// Configuration
+// ============================================================================
+
+const DEFAULT_CONFIG: RAGPipelineConfig = {
+  embedding: {
+    {% if saas_ai == "openai" %}
+    provider: 'openai',
+    model: 'text-embedding-3-small',
+    {% elif saas_ai == "anthropic" %}
+    provider: 'anthropic',
+    model: 'voyage-2',
+    {% endif %}
+    dimensions: 1536,
+    maxTokens: 8191,
+    batchSize: 100,
+  },
+  chunking: {
+    strategy: {
+      type: 'recursive',
+      size: 1000,
+      overlap: 200,
+    },
+    maxTokens: 8000,
+    minChunkSize: 100,
+    preserveStructure: true,
+  },
+  retrieval: {
+    limit: 10,
+    threshold: 0.7,
+    rerank: true,
+  },
+  generation: {
+    {% if saas_ai == "openai" %}
+    model: 'gpt-4-turbo-preview',
+    {% elif saas_ai == "anthropic" %}
+    model: 'claude-3-5-sonnet-20241022',
+    {% endif %}
+    temperature: 0.7,
+    maxTokens: 4096,
+  },
+};
+
+// ============================================================================
+// Document Ingestion
+// ============================================================================
+
+/**
+ * Ingest a document into the RAG system
+ *
+ * @example
+ * ```ts
+ * const result = await ingestDocument({
+ *   content: 'Long document content...',
+ *   metadata: {
+ *     source: 'upload',
+ *     title: 'Documentation',
+ *     userId: 'user-123',
+ *   },
+ * });
+ *
+ * console.log(`Ingested ${result.chunks} chunks`);
+ * ```
+ */
+export async function ingestDocument(
+  request: IngestionRequest
+): Promise<IngestionResult> {
+  try {
+    const documentId = `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // Step 1: Chunk the document
+    const chunkResult = await chunkDocument({
+      documentId,
+      content: request.content,
+      options: request.options?.chunking,
+    });
+
+    // Step 2: Generate embeddings for all chunks
+    const chunkTexts = chunkResult.chunks.map((chunk) => chunk.content);
+    const embeddingResult = await generateEmbeddings({
+      texts: chunkTexts,
+      model: request.options?.embedding?.model,
+      batchSize: request.options?.embedding?.batchSize,
+    });
+
+    // Step 3: Store vectors in database
+    const vectors = chunkResult.chunks.map((chunk, i) => ({
+      documentId,
+      chunkId: chunk.id,
+      content: chunk.content,
+      embedding: embeddingResult.embeddings[i].vector,
+      metadata: {
+        ...request.metadata,
+        ...chunk.metadata,
+      },
+      userId: request.metadata.userId,
+      organizationId: request.metadata.organizationId,
+    }));
+
+    await storeVectorsBatch(vectors);
+
+    // Track token usage
+    const usage: TokenUsage = {
+      inputTokens: embeddingResult.usage.totalTokens,
+      outputTokens: 0,
+      totalTokens: embeddingResult.usage.totalTokens,
+      embeddingTokens: embeddingResult.usage.totalTokens,
+      model: request.options?.embedding?.model || DEFAULT_CONFIG.embedding.model,
+    };
+
+    if (request.metadata.userId) {
+      await trackTokenUsage({
+        userId: request.metadata.userId,
+        organizationId: request.metadata.organizationId,
+        operation: 'embedding',
+        usage,
+        timestamp: new Date(),
+      });
+    }
+
+    return {
+      documentId,
+      chunks: chunkResult.chunks.length,
+      vectors: vectors.length,
+      usage,
+      metadata: request.metadata,
+    };
+  } catch (error) {
+    throw new RAGError(
+      'INGESTION_ERROR',
+      `Failed to ingest document: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error, request }
+    );
+  }
+}
+
+/**
+ * Ingest multiple documents in batch
+ */
+export async function ingestDocumentsBatch(
+  request: BatchIngestionRequest
+): Promise<BatchIngestionResult> {
+  const results: IngestionResult[] = [];
+  const errors: Array<{ index: number; error: string }> = [];
+
+  // Process documents
+  if (request.parallel) {
+    // Parallel processing
+    const promises = request.documents.map((doc, index) =>
+      ingestDocument(doc)
+        .then((result) => ({ index, result }))
+        .catch((error) => ({ index, error }))
+    );
+
+    const settled = await Promise.allSettled(promises);
+
+    for (const outcome of settled) {
+      if (outcome.status === 'fulfilled' && 'result' in outcome.value) {
+        results.push(outcome.value.result);
+      } else if (outcome.status === 'fulfilled' && 'error' in outcome.value) {
+        errors.push({
+          index: outcome.value.index,
+          error: outcome.value.error.message,
+        });
+      }
+    }
+  } else {
+    // Sequential processing
+    for (let i = 0; i < request.documents.length; i++) {
+      try {
+        const result = await ingestDocument(request.documents[i]);
+        results.push(result);
+      } catch (error) {
+        errors.push({
+          index: i,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+  }
+
+  // Aggregate usage
+  const totalUsage: TokenUsage = results.reduce(
+    (acc, result) => ({
+      inputTokens: acc.inputTokens + result.usage.inputTokens,
+      outputTokens: acc.outputTokens + result.usage.outputTokens,
+      totalTokens: acc.totalTokens + result.usage.totalTokens,
+      embeddingTokens:
+        (acc.embeddingTokens || 0) + (result.usage.embeddingTokens || 0),
+      model: result.usage.model,
+    }),
+    {
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
+      embeddingTokens: 0,
+      model: DEFAULT_CONFIG.embedding.model,
+    }
+  );
+
+  return {
+    results,
+    totalDocuments: results.length,
+    totalChunks: results.reduce((sum, r) => sum + r.chunks, 0),
+    totalVectors: results.reduce((sum, r) => sum + r.vectors, 0),
+    totalUsage,
+    errors: errors.length > 0 ? errors : undefined,
+  };
+}
+
+// ============================================================================
+// Query and Generation
+// ============================================================================
+
+/**
+ * Execute RAG query: retrieve context and generate response
+ *
+ * @example
+ * ```ts
+ * const response = await queryRAG({
+ *   query: 'How do I implement authentication?',
+ *   userId: 'user-123',
+ *   conversationId: 'conv-456',
+ * });
+ *
+ * console.log(response.answer);
+ * console.log(response.sources);
+ * ```
+ */
+export async function queryRAG(request: RAGRequest): Promise<RAGResponse> {
+  try {
+    const config = { ...DEFAULT_CONFIG, ...request.options };
+
+    // Step 1: Retrieve relevant context
+    const retrieval = await retrieve({
+      query: request.query,
+      limit: config.retrieval.limit,
+      threshold: config.retrieval.threshold,
+      filter: request.filter,
+      rerank: config.retrieval.rerank,
+    });
+
+    // Step 2: Assemble context
+    const context = assembleContext(retrieval.chunks, {
+      maxLength: 16000,
+      includeMetadata: true,
+      template: 'xml',
+    });
+
+    // Step 3: Generate response with LLM
+    const systemPrompt = `You are a helpful assistant. Use the following context documents to answer the user's question accurately and comprehensively.
+
+If the answer cannot be found in the context, say so clearly. Always cite which documents you used.
+
+<context>
+${context}
+</context>`;
+
+    const generation = await generateMessage({
+      system: systemPrompt,
+      messages: [{ role: 'user', content: request.query }],
+      model: config.generation.model,
+      temperature: config.generation.temperature,
+      maxTokens: config.generation.maxTokens,
+    });
+
+    // Step 4: Track token usage
+    const usage: TokenUsage = {
+      inputTokens: generation.usage.input_tokens,
+      outputTokens: generation.usage.output_tokens,
+      totalTokens:
+        generation.usage.input_tokens + generation.usage.output_tokens,
+      model: config.generation.model,
+    };
+
+    if (request.userId) {
+      await trackTokenUsage({
+        userId: request.userId,
+        organizationId: request.organizationId,
+        conversationId: request.conversationId,
+        operation: 'generation',
+        usage,
+        timestamp: new Date(),
+      });
+    }
+
+    // Step 5: Create response
+    const conversationId =
+      request.conversationId || `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    return {
+      answer: generation.content,
+      sources: retrieval.chunks,
+      conversationId,
+      messageId,
+      usage,
+      metadata: {
+        retrievedChunks: retrieval.chunks.length,
+        model: config.generation.model,
+      },
+    };
+  } catch (error) {
+    throw new RAGError(
+      'QUERY_ERROR',
+      `Failed to process RAG query: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error, request }
+    );
+  }
+}
+
+/**
+ * Stream RAG response for real-time UX
+ *
+ * @example
+ * ```ts
+ * for await (const chunk of streamRAG({ query: 'How does it work?', userId })) {
+ *   if (chunk.type === 'content') {
+ *     process.stdout.write(chunk.content);
+ *   }
+ * }
+ * ```
+ */
+export async function* streamRAG(
+  request: RAGRequest
+): AsyncIterableIterator<RAGStreamChunk> {
+  try {
+    const config = { ...DEFAULT_CONFIG, ...request.options };
+
+    // Step 1: Retrieve context
+    const retrieval = await retrieve({
+      query: request.query,
+      limit: config.retrieval.limit,
+      threshold: config.retrieval.threshold,
+      filter: request.filter,
+      rerank: config.retrieval.rerank,
+    });
+
+    // Yield sources first
+    yield {
+      type: 'sources',
+      sources: retrieval.chunks,
+    };
+
+    // Step 2: Assemble context
+    const context = assembleContext(retrieval.chunks, {
+      maxLength: 16000,
+      includeMetadata: true,
+      template: 'xml',
+    });
+
+    const systemPrompt = `You are a helpful assistant. Use the following context documents to answer the user's question accurately and comprehensively.
+
+If the answer cannot be found in the context, say so clearly. Always cite which documents you used.
+
+<context>
+${context}
+</context>`;
+
+    // Step 3: Stream generation
+    let inputTokens = 0;
+    let outputTokens = 0;
+
+    for await (const chunk of streamMessage({
+      system: systemPrompt,
+      messages: [{ role: 'user', content: request.query }],
+      model: config.generation.model,
+      temperature: config.generation.temperature,
+      maxTokens: config.generation.maxTokens,
+    })) {
+      if (chunk.type === 'text') {
+        yield {
+          type: 'content',
+          content: chunk.content,
+        };
+        outputTokens += chunk.content.length / 4; // Rough estimate
+      }
+
+      if (chunk.type === 'stop') {
+        // Final metadata
+        const usage: TokenUsage = {
+          inputTokens: Math.ceil(inputTokens),
+          outputTokens: Math.ceil(outputTokens),
+          totalTokens: Math.ceil(inputTokens + outputTokens),
+          model: config.generation.model,
+        };
+
+        if (request.userId) {
+          await trackTokenUsage({
+            userId: request.userId,
+            organizationId: request.organizationId,
+            conversationId: request.conversationId,
+            operation: 'generation',
+            usage,
+            timestamp: new Date(),
+          });
+        }
+
+        yield {
+          type: 'metadata',
+          metadata: {
+            usage,
+            retrievedChunks: retrieval.chunks.length,
+          },
+        };
+      }
+    }
+
+    yield { type: 'done' };
+  } catch (error) {
+    throw new RAGError(
+      'STREAM_ERROR',
+      `Failed to stream RAG response: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error, request }
+    );
+  }
+}
+
+// ============================================================================
+// Error Classes
+// ============================================================================
+
+class RAGError extends Error {
+  constructor(
+    public code: string,
+    message: string,
+    public details?: any
+  ) {
+    super(message);
+    this.name = 'RAGError';
+  }
+}
+
+// ============================================================================
+// Exports
+// ============================================================================
+
+export { DEFAULT_CONFIG };
+export type { RAGPipelineConfig };
+{% endif %}
