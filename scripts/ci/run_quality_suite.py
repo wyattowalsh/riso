@@ -1,11 +1,18 @@
 import subprocess
 import sys
+from pathlib import Path
 
-# Support both package import (from project root) and direct import (tests)
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 try:
-    from scripts.lib.logger import logger, configure_logging
+    from scripts.lib.logger import configure_logging, logger
 except ModuleNotFoundError:
-    from logger import logger, configure_logging  # type: ignore[import-not-found]
+    scripts_dir = REPO_ROOT / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from lib.logger import configure_logging, logger
 
 
 def run_command(command, cwd=None):

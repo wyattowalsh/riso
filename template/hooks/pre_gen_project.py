@@ -25,15 +25,24 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - during template linting
 
     def ensure_python_quality_tools():
-        return []  # type: ignore
+        return []
 
-    ToolCheck = None  # type: ignore
+    ToolCheck = None  # type: ignore[assignment]
 
 # Valid configuration values
 VALID_DOCS_SITES = {"fumadocs", "sphinx-shibuya", "docusaurus", "none"}
 VALID_CI_PLATFORMS = {"github-actions", "none"}
 VALID_PROJECT_LAYOUTS = {"single-package", "monorepo"}
 VALID_QUALITY_PROFILES = {"standard", "strict"}
+REMOVED_ANSWER_KEYS = {
+    "api_tracks": "Use api_module plus api_languages.",
+    "api_language": "Use api_languages.",
+    "docs_site": "Use docs_module plus docs_framework.",
+    "mcp_language": "Use mcp_languages.",
+    "saas_starter_module": "Use saas_infra_module.",
+    "saas_auth": "Use saas_auth_module plus saas_auth_provider.",
+    "saas_billing": "Use saas_billing_module plus saas_billing_provider.",
+}
 
 
 class ProvisionResult(dict):
@@ -71,7 +80,7 @@ def _load_from_env(
     """Load a configuration value from copier environment variables.
 
     Args:
-        key: The configuration key to look for (e.g., 'docs_site')
+        key: The configuration key to look for (e.g., 'docs_framework')
         valid_values: Optional set of allowed values for validation
         default: Default value if key not found or invalid
 
@@ -99,9 +108,15 @@ def _load_from_env(
     return default
 
 
-def _load_docs_site(default: str = "fumadocs") -> str:
+def _load_docs_framework(context: dict | None = None, default: str = "fumadocs") -> str:
     """Best-effort retrieval of the selected documentation variant."""
-    return _load_from_env("docs_site", VALID_DOCS_SITES, default)
+    active_context = context or _load_copier_context()
+    if active_context.get("docs_module") == "disabled":
+        return "none"
+    value = active_context.get("docs_framework")
+    if isinstance(value, str) and value in VALID_DOCS_SITES:
+        return value
+    return _load_from_env("docs_framework", VALID_DOCS_SITES, default)
 
 
 def _load_ci_platform(default: str = "github-actions") -> str:
@@ -129,9 +144,21 @@ def _load_copier_context() -> dict:
     return {}
 
 
+def _validate_removed_answer_keys(context: dict) -> bool:
+    """Reject removed answer keys instead of silently translating them."""
+    removed = sorted(key for key in REMOVED_ANSWER_KEYS if key in context)
+    if not removed:
+        return True
+
+    sys.stderr.write("Removed Copier answer keys are no longer supported:\n")
+    for key in removed:
+        sys.stderr.write(f"- {key}: {REMOVED_ANSWER_KEYS[key]}\n")
+    return False
+
+
 def _validate_saas_starter(context: dict) -> list[dict]:
     """Validate SaaS Starter module configuration."""
-    if context.get("saas_starter_module") != "enabled":
+    if context.get("saas_infra_module") != "enabled":
         return []
 
     issues = []
@@ -183,6 +210,12 @@ def _validate_saas_starter(context: dict) -> list[dict]:
         context.get(f"saas_{key}")
         for key in ["runtime", "hosting", "database", "orm", "auth", "storage", "cicd"]
     ]
+    selected_values.extend(
+        [
+            context.get("saas_auth_provider"),
+            context.get("saas_billing_provider"),
+        ]
+    )
 
     # Check error-level incompatibilities
     for rule in error_incompatibilities:
@@ -337,7 +370,7 @@ def _validate_saas_starter(context: dict) -> list[dict]:
         )
 
     # 2FA with Clerk - info (Clerk has built-in 2FA)
-    if context.get("saas_2fa") and context.get("saas_auth") == "clerk":
+    if context.get("saas_2fa") and context.get("saas_auth_provider") == "clerk":
         issues.append(
             {
                 "severity": "info",
@@ -491,7 +524,7 @@ def _validate_and_report_saas_starter(context: dict) -> bool:
     Returns:
         True if validation passed (no errors), False otherwise
     """
-    if context.get("saas_starter_module") != "enabled":
+    if context.get("saas_infra_module") != "enabled":
         return True
 
     sys.stderr.write("\n🔍 Validating SaaS Starter configuration...\n")
@@ -553,12 +586,12 @@ def _report_failures_and_exit(failures: list[ProvisionResult]) -> None:
 
 
 def _build_tool_matrix(
-    docs_site: str, context: dict
+    docs_framework: str, context: dict
 ) -> list[tuple[str, str, str | None]]:
     """Build the matrix of required tools with versions.
 
     Args:
-        docs_site: The documentation site type (sphinx, fumadocs, etc.)
+        docs_framework: The documentation framework type (sphinx, fumadocs, etc.)
         context: The Copier context dictionary
 
     Returns:
@@ -568,7 +601,7 @@ def _build_tool_matrix(
         ("uv", "0.4", "uv@0.4"),
     ]
 
-    if docs_site != "none" or context.get("saas_starter_module") == "enabled":
+    if docs_framework != "none" or context.get("saas_infra_module") == "enabled":
         tool_matrix.extend(
             [
                 ("node", "20", "node@20"),
@@ -580,15 +613,18 @@ def _build_tool_matrix(
 
 
 def main() -> None:
-    docs_site = _load_docs_site()
-    ci_platform = _load_ci_platform()
     context = _load_copier_context()
+    if not _validate_removed_answer_keys(context):
+        sys.exit(1)
+
+    docs_framework = _load_docs_framework(context)
+    ci_platform = _load_ci_platform()
 
     # Validate SaaS Starter configuration if enabled
     if not _validate_and_report_saas_starter(context):
         sys.exit(1)
 
-    tool_matrix = _build_tool_matrix(docs_site, context)
+    tool_matrix = _build_tool_matrix(docs_framework, context)
 
     # Check and log actionlint availability
     _check_and_log_actionlint(ci_platform)

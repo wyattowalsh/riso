@@ -9,8 +9,8 @@ pytestmark = pytest.mark.usefixtures("hooks_path")
 
 
 @pytest.mark.unit
-class TestLoadDocsSite:
-    """Tests for _load_docs_site function."""
+class TestLoadDocsFramework:
+    """Tests for _load_docs_framework function."""
 
     def test_default_value_when_no_env(self, monkeypatch):
         """Should return default when no env vars set."""
@@ -18,9 +18,9 @@ class TestLoadDocsSite:
         monkeypatch.delenv("COPIER_JINJA2_CONTEXT", raising=False)
         monkeypatch.delenv("COPIER_RENDER_CONTEXT", raising=False)
 
-        from pre_gen_project import _load_docs_site
+        from pre_gen_project import _load_docs_framework
 
-        result = _load_docs_site()
+        result = _load_docs_framework()
         assert result == "fumadocs"
 
     def test_custom_default(self, monkeypatch):
@@ -29,45 +29,49 @@ class TestLoadDocsSite:
         monkeypatch.delenv("COPIER_JINJA2_CONTEXT", raising=False)
         monkeypatch.delenv("COPIER_RENDER_CONTEXT", raising=False)
 
-        from pre_gen_project import _load_docs_site
+        from pre_gen_project import _load_docs_framework
 
-        result = _load_docs_site(default="sphinx-shibuya")
+        result = _load_docs_framework(default="sphinx-shibuya")
         assert result == "sphinx-shibuya"
 
     def test_loads_valid_value_from_env(self, monkeypatch):
-        """Should load valid docs_site from COPIER_ANSWERS."""
-        monkeypatch.setenv("COPIER_ANSWERS", json.dumps({"docs_site": "docusaurus"}))
+        """Should load valid docs_framework from COPIER_ANSWERS."""
+        monkeypatch.setenv(
+            "COPIER_ANSWERS", json.dumps({"docs_framework": "docusaurus"})
+        )
 
-        from pre_gen_project import _load_docs_site
+        from pre_gen_project import _load_docs_framework
 
-        result = _load_docs_site()
+        result = _load_docs_framework()
         assert result == "docusaurus"
 
     def test_rejects_invalid_value(self, monkeypatch):
-        """Should reject invalid docs_site and return default."""
-        monkeypatch.setenv("COPIER_ANSWERS", json.dumps({"docs_site": "invalid-site"}))
+        """Should reject invalid docs_framework and return default."""
+        monkeypatch.setenv(
+            "COPIER_ANSWERS", json.dumps({"docs_framework": "invalid-site"})
+        )
 
-        from pre_gen_project import _load_docs_site
+        from pre_gen_project import _load_docs_framework
 
-        result = _load_docs_site()
+        result = _load_docs_framework()
         assert result == "fumadocs"
 
     def test_handles_invalid_json(self, monkeypatch):
         """Should handle invalid JSON gracefully."""
         monkeypatch.setenv("COPIER_ANSWERS", "not valid json")
 
-        from pre_gen_project import _load_docs_site
+        from pre_gen_project import _load_docs_framework
 
-        result = _load_docs_site()
+        result = _load_docs_framework()
         assert result == "fumadocs"
 
     def test_handles_non_dict_json(self, monkeypatch):
         """Should handle non-dict JSON gracefully."""
         monkeypatch.setenv("COPIER_ANSWERS", json.dumps(["list", "not", "dict"]))
 
-        from pre_gen_project import _load_docs_site
+        from pre_gen_project import _load_docs_framework
 
-        result = _load_docs_site()
+        result = _load_docs_framework()
         assert result == "fumadocs"
 
 
@@ -106,6 +110,29 @@ class TestLoadCiPlatform:
 
 
 @pytest.mark.unit
+class TestValidateRemovedAnswerKeys:
+    """Tests for removed answer key rejection."""
+
+    def test_allows_canonical_keys(self):
+        """Should allow canonical component-first answer keys."""
+        from pre_gen_project import _validate_removed_answer_keys
+
+        context = {"api_module": "enabled", "api_languages": ["python"]}
+        assert _validate_removed_answer_keys(context) is True
+
+    def test_rejects_removed_keys(self, capsys):
+        """Should reject removed answer keys with replacement guidance."""
+        from pre_gen_project import _validate_removed_answer_keys
+
+        result = _validate_removed_answer_keys({"docs_site": "fumadocs"})
+
+        assert result is False
+        captured = capsys.readouterr()
+        assert "docs_site" in captured.err
+        assert "docs_module" in captured.err
+
+
+@pytest.mark.unit
 class TestValidateSaasStarter:
     """Tests for SaaS starter validation."""
 
@@ -113,7 +140,7 @@ class TestValidateSaasStarter:
         """Disabled SaaS module returns no issues."""
         from pre_gen_project import _validate_saas_starter
 
-        context = {"saas_starter_module": "disabled"}
+        context = {"saas_infra_module": "disabled"}
         issues = _validate_saas_starter(context)
         assert issues == []
 
@@ -122,7 +149,7 @@ class TestValidateSaasStarter:
         from pre_gen_project import _validate_saas_starter
 
         context = {
-            "saas_starter_module": "enabled",
+            "saas_infra_module": "enabled",
             "saas_database": "neon",
             "saas_storage": "supabase-storage",
         }
@@ -136,7 +163,7 @@ class TestValidateSaasStarter:
         from pre_gen_project import _validate_saas_starter
 
         context = {
-            "saas_starter_module": "enabled",
+            "saas_infra_module": "enabled",
             "saas_hosting": "cloudflare",
             "saas_orm": "prisma",
         }
@@ -150,7 +177,7 @@ class TestValidateSaasStarter:
         from pre_gen_project import _validate_saas_starter
 
         context = {
-            "saas_starter_module": "enabled",
+            "saas_infra_module": "enabled",
             "saas_database": "neon",
             "saas_storage": "r2",
             "saas_hosting": "vercel",
@@ -203,7 +230,7 @@ class TestValidateAndReportSaasStarter:
         """Test returns True when SaaS starter is not enabled."""
         from pre_gen_project import _validate_and_report_saas_starter
 
-        context = {"saas_starter_module": "disabled"}
+        context = {"saas_infra_module": "disabled"}
         result = _validate_and_report_saas_starter(context)
         assert result is True
         # Should not write validation messages
@@ -217,7 +244,7 @@ class TestValidateAndReportSaasStarter:
         from pre_gen_project import _validate_and_report_saas_starter
 
         context = {
-            "saas_starter_module": "enabled",
+            "saas_infra_module": "enabled",
             "saas_database": "neon",
             "saas_storage": "r2",
         }
@@ -233,7 +260,7 @@ class TestValidateAndReportSaasStarter:
         from pre_gen_project import _validate_and_report_saas_starter
 
         context = {
-            "saas_starter_module": "enabled",
+            "saas_infra_module": "enabled",
             "saas_database": "neon",
             "saas_storage": "supabase-storage",
         }
@@ -249,7 +276,7 @@ class TestValidateAndReportSaasStarter:
         from pre_gen_project import _validate_and_report_saas_starter
 
         context = {
-            "saas_starter_module": "enabled",
+            "saas_infra_module": "enabled",
             "saas_hosting": "cloudflare",
             "saas_orm": "prisma",
         }
@@ -266,9 +293,9 @@ class TestValidateAndReportSaasStarter:
         from pre_gen_project import _validate_and_report_saas_starter
 
         context = {
-            "saas_starter_module": "enabled",
+            "saas_infra_module": "enabled",
             "saas_database": "supabase",
-            "saas_auth": "clerk",
+            "saas_auth_provider": "clerk",
         }
         result = _validate_and_report_saas_starter(context)
         assert result is True
@@ -290,8 +317,8 @@ class TestBuildToolMatrix:
         assert any(tool[0] == "uv" for tool in result)
         assert result[0] == ("uv", "0.4", "uv@0.4")
 
-    def test_includes_node_for_docs_site(self):
-        """Test that node/pnpm are included when docs_site is not 'none'."""
+    def test_includes_node_for_docs_framework(self):
+        """Test that node/pnpm are included when docs framework is not 'none'."""
         from pre_gen_project import _build_tool_matrix
 
         result = _build_tool_matrix("fumadocs", {})
@@ -300,10 +327,10 @@ class TestBuildToolMatrix:
         assert "pnpm" in tool_names
 
     def test_includes_node_for_saas_enabled(self):
-        """Test that node/pnpm are included when saas_starter is enabled."""
+        """Test that node/pnpm are included when SaaS infra is enabled."""
         from pre_gen_project import _build_tool_matrix
 
-        result = _build_tool_matrix("none", {"saas_starter_module": "enabled"})
+        result = _build_tool_matrix("none", {"saas_infra_module": "enabled"})
         tool_names = [tool[0] for tool in result]
         assert "node" in tool_names
         assert "pnpm" in tool_names
@@ -312,7 +339,7 @@ class TestBuildToolMatrix:
         """Test that node/pnpm are excluded when not needed."""
         from pre_gen_project import _build_tool_matrix
 
-        result = _build_tool_matrix("none", {"saas_starter_module": "disabled"})
+        result = _build_tool_matrix("none", {"saas_infra_module": "disabled"})
         tool_names = [tool[0] for tool in result]
         assert "node" not in tool_names
         assert "pnpm" not in tool_names
@@ -625,28 +652,31 @@ class TestReportFailuresAndExit:
 
 
 @pytest.mark.unit
-class TestParametrizedDocsSiteValidation:
-    """Parametrized tests for docs site validation."""
+class TestParametrizedDocsFrameworkValidation:
+    """Parametrized tests for docs framework validation."""
 
     @pytest.mark.parametrize(
         "env_value,expected",
         [
-            ('{"docs_site": "fumadocs"}', "fumadocs"),
-            ('{"docs_site": "docusaurus"}', "docusaurus"),
-            ('{"docs_site": "sphinx-shibuya"}', "sphinx-shibuya"),
-            ('{"docs_site": "none"}', "none"),
+            ('{"docs_framework": "fumadocs"}', "fumadocs"),
+            ('{"docs_framework": "docusaurus"}', "docusaurus"),
+            ('{"docs_framework": "sphinx-shibuya"}', "sphinx-shibuya"),
+            ('{"docs_framework": "none"}', "none"),
             (
-                '{"docs_site": "mkdocs-material"}',
+                '{"docs_framework": "mkdocs-material"}',
                 "fumadocs",
             ),  # Invalid, falls back to default
             (
-                '{"docs_site": "vitepress"}',
+                '{"docs_framework": "vitepress"}',
                 "fumadocs",
             ),  # Invalid, falls back to default
-            ('{"docs_site": "invalid-site"}', "fumadocs"),  # Falls back to default
+            (
+                '{"docs_framework": "invalid-site"}',
+                "fumadocs",
+            ),  # Falls back to default
             ("not valid json", "fumadocs"),  # Falls back to default
             ('["list", "not", "dict"]', "fumadocs"),  # Falls back to default
-            ("{}", "fumadocs"),  # Missing docs_site key
+            ("{}", "fumadocs"),  # Missing docs_framework key
         ],
         ids=[
             "valid_fumadocs",
@@ -661,17 +691,17 @@ class TestParametrizedDocsSiteValidation:
             "missing_key",
         ],
     )
-    def test_load_docs_site_parametrized(
+    def test_load_docs_framework_parametrized(
         self, env_value: str, expected: str, monkeypatch
     ):
-        """Test various docs_site values from environment."""
+        """Test various docs_framework values from environment."""
         monkeypatch.delenv("COPIER_JINJA2_CONTEXT", raising=False)
         monkeypatch.delenv("COPIER_RENDER_CONTEXT", raising=False)
         monkeypatch.setenv("COPIER_ANSWERS", env_value)
 
-        from pre_gen_project import _load_docs_site
+        from pre_gen_project import _load_docs_framework
 
-        result = _load_docs_site()
+        result = _load_docs_framework()
         assert result == expected
 
 
@@ -716,7 +746,7 @@ class TestParametrizedSaasValidation:
             # Valid configurations with warnings
             (
                 {
-                    "saas_starter_module": "enabled",
+                    "saas_infra_module": "enabled",
                     "saas_database": "neon",
                     "saas_storage": "r2",
                     "saas_hosting": "vercel",
@@ -727,7 +757,7 @@ class TestParametrizedSaasValidation:
             ),
             (
                 {
-                    "saas_starter_module": "enabled",
+                    "saas_infra_module": "enabled",
                     "saas_database": "supabase",
                     "saas_storage": "supabase-storage",
                     "saas_hosting": "vercel",
@@ -738,7 +768,7 @@ class TestParametrizedSaasValidation:
             ),
             (
                 {
-                    "saas_starter_module": "enabled",
+                    "saas_infra_module": "enabled",
                     "saas_database": "neon",
                     "saas_storage": "r2",
                     "saas_hosting": "cloudflare",
@@ -749,7 +779,7 @@ class TestParametrizedSaasValidation:
             # Error cases
             (
                 {
-                    "saas_starter_module": "enabled",
+                    "saas_infra_module": "enabled",
                     "saas_database": "neon",
                     "saas_storage": "supabase-storage",
                 },
@@ -759,7 +789,7 @@ class TestParametrizedSaasValidation:
             # Warning cases
             (
                 {
-                    "saas_starter_module": "enabled",
+                    "saas_infra_module": "enabled",
                     "saas_hosting": "cloudflare",
                     "saas_orm": "prisma",
                 },
@@ -767,7 +797,7 @@ class TestParametrizedSaasValidation:
                 1,  # Cloudflare + Prisma warning
             ),
             # Disabled - no validation
-            ({"saas_starter_module": "disabled"}, 0, 0),
+            ({"saas_infra_module": "disabled"}, 0, 0),
         ],
         ids=[
             "vercel_r2_warning",
@@ -800,19 +830,19 @@ class TestParametrizedToolMatrix:
     """Parametrized tests for tool matrix building."""
 
     @pytest.mark.parametrize(
-        "docs_site,context,expected_tools",
+        "docs_framework,context,expected_tools",
         [
-            ("none", {"saas_starter_module": "disabled"}, ["uv"]),
-            ("fumadocs", {"saas_starter_module": "disabled"}, ["uv", "node", "pnpm"]),
-            ("docusaurus", {"saas_starter_module": "disabled"}, ["uv", "node", "pnpm"]),
+            ("none", {"saas_infra_module": "disabled"}, ["uv"]),
+            ("fumadocs", {"saas_infra_module": "disabled"}, ["uv", "node", "pnpm"]),
+            ("docusaurus", {"saas_infra_module": "disabled"}, ["uv", "node", "pnpm"]),
             (
                 "sphinx-shibuya",
-                {"saas_starter_module": "disabled"},
+                {"saas_infra_module": "disabled"},
                 ["uv", "node", "pnpm"],
             ),
-            ("none", {"saas_starter_module": "enabled"}, ["uv", "node", "pnpm"]),
-            ("fumadocs", {"saas_starter_module": "enabled"}, ["uv", "node", "pnpm"]),
-            ("docusaurus", {"saas_starter_module": "enabled"}, ["uv", "node", "pnpm"]),
+            ("none", {"saas_infra_module": "enabled"}, ["uv", "node", "pnpm"]),
+            ("fumadocs", {"saas_infra_module": "enabled"}, ["uv", "node", "pnpm"]),
+            ("docusaurus", {"saas_infra_module": "enabled"}, ["uv", "node", "pnpm"]),
             ("sphinx-shibuya", {}, ["uv", "node", "pnpm"]),
         ],
         ids=[
@@ -827,12 +857,12 @@ class TestParametrizedToolMatrix:
         ],
     )
     def test_tool_matrix_parametrized(
-        self, docs_site: str, context: dict[str, Any], expected_tools: list[str]
+        self, docs_framework: str, context: dict[str, Any], expected_tools: list[str]
     ):
         """Test tool matrix generation for different configurations."""
         from pre_gen_project import _build_tool_matrix
 
-        result = _build_tool_matrix(docs_site, context)
+        result = _build_tool_matrix(docs_framework, context)
         tool_names = [tool[0] for tool in result]
 
         assert tool_names == expected_tools
@@ -971,13 +1001,13 @@ class TestParametrizedValidateAndReport:
         "context,expected_return,expected_output",
         [
             (
-                {"saas_starter_module": "disabled"},
+                {"saas_infra_module": "disabled"},
                 True,
                 None,  # No validation output
             ),
             (
                 {
-                    "saas_starter_module": "enabled",
+                    "saas_infra_module": "enabled",
                     "saas_database": "neon",
                     "saas_storage": "r2",
                 },
@@ -986,7 +1016,7 @@ class TestParametrizedValidateAndReport:
             ),
             (
                 {
-                    "saas_starter_module": "enabled",
+                    "saas_infra_module": "enabled",
                     "saas_database": "neon",
                     "saas_storage": "supabase-storage",
                 },
@@ -995,7 +1025,7 @@ class TestParametrizedValidateAndReport:
             ),
             (
                 {
-                    "saas_starter_module": "enabled",
+                    "saas_infra_module": "enabled",
                     "saas_hosting": "cloudflare",
                     "saas_orm": "prisma",
                 },

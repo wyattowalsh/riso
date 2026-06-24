@@ -73,8 +73,8 @@ def sample_python_context():
         "python_version": "3.11",
         "use_docker": True,
         "ci_platform": "github-actions",
-        "docs_site": "sphinx-shibuya",
-        "saas_starter_module": "disabled",
+        "docs_framework": "sphinx-shibuya",
+        "saas_infra_module": "disabled",
     }
 
 
@@ -91,8 +91,8 @@ def sample_node_context():
         "node_version": "20",
         "use_docker": True,
         "ci_platform": "github-actions",
-        "docs_site": "fumadocs",
-        "saas_starter_module": "disabled",
+        "docs_framework": "fumadocs",
+        "saas_infra_module": "disabled",
     }
 
 
@@ -109,13 +109,13 @@ def sample_saas_context():
         "python_version": "3.11",
         "use_docker": True,
         "ci_platform": "github-actions",
-        "docs_site": "fumadocs",
-        "saas_starter_module": "enabled",
+        "docs_framework": "fumadocs",
+        "saas_infra_module": "enabled",
         "saas_database": "neon",
         "saas_storage": "r2",
         "saas_hosting": "vercel",
         "saas_orm": "prisma",
-        "saas_auth": "clerk",
+        "saas_auth_provider": "clerk",
     }
 
 
@@ -133,7 +133,7 @@ def mock_copier_answers(monkeypatch):
 
     Example:
         def test_something(mock_copier_answers):
-            mock_copier_answers({'docs_site': 'fumadocs'})
+            mock_copier_answers({'docs_framework': 'fumadocs'})
             # Now COPIER_ANSWERS env var is set
     """
 

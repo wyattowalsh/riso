@@ -11,16 +11,46 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
-# Support both package import (from project root) and direct import (tests)
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+
+class WorkflowError(TypedDict, total=False):
+    """One parsed actionlint issue."""
+
+    line: int
+    column: int
+    message: str
+    kind: str
+
+
+class WorkflowResult(TypedDict):
+    """Validation result for one workflow file."""
+
+    workflow: str
+    status: str
+    errors: list[WorkflowError]
+    warnings: list[WorkflowError]
+
+
 try:
-    from scripts.lib.logger import logger, configure_logging
+    from scripts.lib.logger import configure_logging, logger
 except ModuleNotFoundError:
-    from logger import logger, configure_logging  # type: ignore[import-not-found]
+    scripts_dir = REPO_ROOT / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from lib.logger import configure_logging, logger
 
 
-def validate_workflow(workflow_path: Path) -> dict[str, Any]:
+def _int_value(value: Any) -> int:
+    """Return integer values from parsed actionlint JSON fields."""
+    return value if isinstance(value, int) else 0
+
+
+def validate_workflow(workflow_path: Path) -> WorkflowResult:
     """
     Validate a single workflow file using actionlint.
 
@@ -30,7 +60,7 @@ def validate_workflow(workflow_path: Path) -> dict[str, Any]:
     Returns:
         Validation result dictionary with status and errors
     """
-    result = {
+    result: WorkflowResult = {
         "workflow": str(workflow_path),
         "status": "pending",
         "errors": [],
@@ -55,14 +85,17 @@ def validate_workflow(workflow_path: Path) -> dict[str, Any]:
                     continue
                 try:
                     error = json.loads(line)
-                    result["errors"].append(
-                        {
-                            "line": error.get("line", 0),
-                            "column": error.get("column", 0),
-                            "message": error.get("message", "Unknown error"),
-                            "kind": error.get("kind", "error"),
-                        }
-                    )
+                    if isinstance(error, dict):
+                        result["errors"].append(
+                            {
+                                "line": _int_value(error.get("line", 0)),
+                                "column": _int_value(error.get("column", 0)),
+                                "message": str(error.get("message", "Unknown error")),
+                                "kind": str(error.get("kind", "error")),
+                            }
+                        )
+                    else:
+                        result["errors"].append({"message": line})
                 except json.JSONDecodeError:
                     # Fallback for non-JSON output
                     result["errors"].append({"message": line})
@@ -163,7 +196,11 @@ def main() -> int:
         description="Validate GitHub Actions workflow files"
     )
     parser.add_argument(
-        "workflows_dir", type=Path, help="Directory containing workflow files"
+        "workflows_dir",
+        nargs="?",
+        type=Path,
+        default=REPO_ROOT / ".github" / "workflows",
+        help="Directory containing workflow files",
     )
     parser.add_argument("--json", action="store_true", help="Output results as JSON")
 

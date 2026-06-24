@@ -64,8 +64,8 @@ class TestSampleConfiguration:
         """Get the samples directory."""
         return Path(__file__).parents[2] / "samples"
 
-    def test_api_python_sample_has_correct_tracks(self, samples_dir):
-        """API Python sample should have python api_tracks."""
+    def test_api_python_sample_has_correct_languages(self, samples_dir):
+        """API Python sample should enable the Python API language."""
         import yaml
 
         answers_file = samples_dir / "api-python" / "copier-answers.yml"
@@ -73,7 +73,8 @@ class TestSampleConfiguration:
             pytest.skip("api-python sample not found")
 
         data = yaml.safe_load(answers_file.read_text())
-        assert data.get("api_tracks") == "python"
+        assert data.get("api_module") == "enabled"
+        assert "python" in data.get("api_languages", [])
 
     def test_full_stack_sample_has_strict_quality(self, samples_dir):
         """Full stack sample should use strict quality profile."""
@@ -124,7 +125,8 @@ class TestTemplateFiles:
         data = yaml.safe_load(content)
 
         assert isinstance(data, dict)
-        assert "prompts" in data or "defaults" in data
+        # Copier uses underscore prefix for internal keys
+        assert "_defaults" in data or "project_name" in data
 
     def test_hooks_exist(self, template_dir):
         """Template hooks should exist."""

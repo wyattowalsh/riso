@@ -16,11 +16,17 @@ import sys
 from pathlib import Path
 from typing import TypedDict
 
-# Support both package import (from project root) and direct import (tests)
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 try:
-    from scripts.lib.logger import logger, configure_logging
+    from scripts.lib.logger import configure_logging, logger
 except ModuleNotFoundError:
-    from logger import logger, configure_logging  # type: ignore[import-not-found]
+    scripts_dir = REPO_ROOT / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from lib.logger import configure_logging, logger
 
 try:  # pragma: no cover - import behaviour depends on invocation style
     from record_module_success import ModuleSuccessRecorder
@@ -48,13 +54,12 @@ class VariantResult(TypedDict):
 class RenderSummary(TypedDict, total=False):
     """Complete render matrix summary with all variant results."""
 
-    variants: list[dict[str, object]]
+    variants: list[VariantResult]
     module_success: dict[str, object]
     quality_runs: list[dict[str, object]]
     quality_retention_days: int
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
 SAMPLES_DIR = REPO_ROOT / "samples"
 RENDER_SCRIPT = REPO_ROOT / "scripts" / "render-samples.sh"
 METADATA_DIR = REPO_ROOT / "samples" / "metadata"
@@ -143,12 +148,24 @@ def render_variant(variant: str, answers_file: Path) -> VariantResult:
                     f"Warning: Failed to parse YAML from {answers_file}: {e}\n"
                 )
 
-        api_tracks = answers_data.get("api_tracks", "none")
-        docs_site = answers_data.get("docs_site", "none")
+        api_module = str(answers_data.get("api_module", "disabled")).lower()
+        raw_api_languages = answers_data.get("api_languages", [])
+        if isinstance(raw_api_languages, list):
+            api_languages = {str(item).lower() for item in raw_api_languages}
+        elif isinstance(raw_api_languages, str):
+            api_languages = {
+                item.strip().lower()
+                for item in raw_api_languages.split(",")
+                if item.strip()
+            }
+        else:
+            api_languages = set()
+        docs_module = str(answers_data.get("docs_module", "disabled")).lower()
+        docs_framework = str(answers_data.get("docs_framework", "none")).lower()
 
         # Container support enabled for API or docs projects
-        has_containers = (
-            api_tracks in ["python", "node", "python+node"] or docs_site == "fumadocs"
+        has_containers = (api_module == "enabled" and bool(api_languages)) or (
+            docs_module == "enabled" and docs_framework == "fumadocs"
         )
 
         if has_containers:
@@ -215,7 +232,7 @@ def main() -> None:
             if results:
                 recorder.update_from_results(
                     variant_entry.get("variant", "unknown"),
-                    results.get("results", []),  # type: ignore[arg-type]
+                    results.get("results", []),
                 )
         module_metrics = recorder.write(METADATA_DIR / "module_success.json")
         summary["module_success"] = module_metrics

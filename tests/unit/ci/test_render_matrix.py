@@ -276,7 +276,12 @@ class TestIntegration:
 
         # Create copier answers
         answers_file = variant_dir / "copier-answers.yml"
-        answers_file.write_text("project_name: Test Project\napi_tracks: python\n")
+        answers_file.write_text(
+            "project_name: Test Project\n"
+            "api_module: enabled\n"
+            "api_languages:\n"
+            "  - python\n"
+        )
 
         # Create smoke results
         smoke_file = variant_dir / "smoke-results.json"
@@ -329,7 +334,7 @@ class TestRenderVariant:
         render_dir.mkdir()
 
         answers_file = variant_dir / "copier-answers.yml"
-        answers_file.write_text("project_name: Test\napi_tracks: none\n")
+        answers_file.write_text("project_name: Test\napi_module: disabled\n")
 
         # Mock subprocess.run to avoid actually running render script
         with (
@@ -351,7 +356,7 @@ class TestRenderVariant:
             mock_run.assert_called_once()
 
     def test_render_variant_with_containers(self, temp_dir, monkeypatch):
-        """Should check container files when api_tracks is set."""
+        """Should check container files when API languages are set."""
         from unittest.mock import patch, MagicMock
         import render_matrix
 
@@ -363,7 +368,9 @@ class TestRenderVariant:
         docker_dir.mkdir(parents=True)
 
         answers_file = variant_dir / "copier-answers.yml"
-        answers_file.write_text("project_name: API\napi_tracks: python\n")
+        answers_file.write_text(
+            "project_name: API\napi_module: enabled\napi_languages:\n  - python\n"
+        )
 
         # Create container files
         (docker_dir / "Dockerfile").write_text("FROM python:3.11")
@@ -399,7 +406,9 @@ class TestRenderVariant:
         render_dir.mkdir()
 
         answers_file = variant_dir / "copier-answers.yml"
-        answers_file.write_text("project_name: API\napi_tracks: python\n")
+        answers_file.write_text(
+            "project_name: API\napi_module: enabled\napi_languages:\n  - python\n"
+        )
 
         with (
             patch("subprocess.run") as mock_run,

@@ -6,8 +6,9 @@ and integration with quality tools.
 """
 
 import json
-import pytest
 from datetime import datetime
+
+import pytest
 
 
 pytestmark = pytest.mark.usefixtures("hooks_path")
@@ -121,7 +122,7 @@ class TestLoadAnswers:
             """
             project_name: test-project
             cli_module: enabled
-            docs_site: fumadocs
+            docs_framework: fumadocs
             """,
             encoding="utf-8",
         )
@@ -129,10 +130,10 @@ class TestLoadAnswers:
         result = load_answers(tmp_path)
         assert result["project_name"] == "test-project"
         assert result["cli_module"] == "enabled"
-        assert result["docs_site"] == "fumadocs"
+        assert result["docs_framework"] == "fumadocs"
 
-    def test_converts_values_to_strings(self, tmp_path):
-        """Should convert all values to strings."""
+    def test_preserves_yaml_value_types(self, tmp_path):
+        """Should preserve non-string YAML values for list answers."""
         from post_gen_project import load_answers
 
         answers_file = tmp_path / ".copier-answers.yml"
@@ -146,9 +147,16 @@ class TestLoadAnswers:
         )
 
         result = load_answers(tmp_path)
-        assert result["version"] == "1.0"
-        assert result["port"] == "8000"
-        assert result["enabled"] == "True"
+        assert result["version"] == 1.0
+        assert result["port"] == 8000
+        assert result["enabled"] is True
+
+    def test_validate_removed_answer_keys_rejects_legacy_keys(self):
+        """Should fail fast when removed answer keys are present."""
+        from post_gen_project import validate_removed_answer_keys
+
+        with pytest.raises(SystemExit):
+            validate_removed_answer_keys({"api_tracks": "python"})
 
     def test_filters_none_values(self, tmp_path):
         """Should filter out None values from answers."""
@@ -214,6 +222,27 @@ class TestLoadAnswers:
 
 
 @pytest.mark.unit
+class TestCleanupEmptyScaffoldDirs:
+    """Tests for empty scaffold directory cleanup."""
+
+    def test_removes_known_empty_scaffold_dirs(self, tmp_path):
+        """Should remove known empty directories left by Copier excludes."""
+        from post_gen_project import cleanup_empty_scaffold_dirs
+
+        empty_dir = tmp_path / "graphql"
+        empty_dir.mkdir()
+        populated_dir = tmp_path / "mcp"
+        populated_dir.mkdir()
+        (populated_dir / "tooling.py").write_text("# keep\n", encoding="utf-8")
+
+        removed = cleanup_empty_scaffold_dirs(tmp_path)
+
+        assert "graphql" in removed
+        assert not empty_dir.exists()
+        assert populated_dir.exists()
+
+
+@pytest.mark.unit
 class TestLayoutGuidance:
     """Tests for layout_guidance function."""
 
@@ -258,7 +287,7 @@ class TestDocsGuidance:
         """Should return fumadocs-specific guidance."""
         from post_gen_project import docs_guidance
 
-        answers = {"docs_site": "fumadocs"}
+        answers = {"docs_module": "enabled", "docs_framework": "fumadocs"}
         result = docs_guidance(answers)
 
         assert len(result) == 2
@@ -269,7 +298,7 @@ class TestDocsGuidance:
         """Should return Sphinx-specific guidance."""
         from post_gen_project import docs_guidance
 
-        answers = {"docs_site": "sphinx-shibuya"}
+        answers = {"docs_module": "enabled", "docs_framework": "sphinx-shibuya"}
         result = docs_guidance(answers)
 
         assert len(result) == 2
@@ -280,38 +309,48 @@ class TestDocsGuidance:
         """Should return Docusaurus-specific guidance."""
         from post_gen_project import docs_guidance
 
-        answers = {"docs_site": "docusaurus"}
+        answers = {"docs_module": "enabled", "docs_framework": "docusaurus"}
         result = docs_guidance(answers)
 
         assert len(result) == 2
         assert any("docs-docusaurus start" in item for item in result)
         assert any("docs-docusaurus build" in item for item in result)
 
-    def test_none_docs_site(self):
+    def test_docs_module_disabled(self):
         """Should return guidance for skipped documentation."""
         from post_gen_project import docs_guidance
 
-        answers = {"docs_site": "none"}
+        answers = {"docs_module": "disabled"}
         result = docs_guidance(answers)
 
         assert len(result) == 1
         assert "skipped" in result[0]
 
-    def test_missing_docs_site_key(self):
-        """Should default to fumadocs when key is missing."""
+    def test_missing_docs_module_key(self):
+        """Should skip docs when no docs module is enabled."""
         from post_gen_project import docs_guidance
 
         answers = {}
         result = docs_guidance(answers)
 
-        assert len(result) == 2
-        assert any("fumadocs" in item for item in result)
+        assert len(result) == 1
+        assert "skipped" in result[0]
 
-    def test_case_insensitive_matching(self):
-        """Should handle case-insensitive docs_site values."""
+    def test_component_first_docs_module(self):
+        """Should derive docs guidance from component-first answers."""
         from post_gen_project import docs_guidance
 
-        answers = {"docs_site": "FUMADOCS"}
+        answers = {"docs_module": "enabled", "docs_framework": "fumadocs"}
+        result = docs_guidance(answers)
+
+        assert len(result) == 2
+        assert any("docs-fumadocs dev" in item for item in result)
+
+    def test_case_insensitive_matching(self):
+        """Should handle case-insensitive docs framework values."""
+        from post_gen_project import docs_guidance
+
+        answers = {"docs_module": "ENABLED", "docs_framework": "FUMADOCS"}
         result = docs_guidance(answers)
 
         assert len(result) == 2
@@ -332,31 +371,40 @@ class TestOptionalModuleGuidance:
         assert any("Typer CLI" in item for item in result)
         assert any("cli --help" in item for item in result)
 
-    def test_python_api_track(self):
+    def test_python_api_languages(self):
         """Should include FastAPI guidance for Python API."""
         from post_gen_project import optional_module_guidance
 
-        answers = {"api_tracks": "python"}
+        answers = {"api_module": "enabled", "api_languages": ["python"]}
         result = optional_module_guidance(answers)
 
         assert any("FastAPI" in item for item in result)
         assert any("uvicorn" in item for item in result)
 
-    def test_node_api_track(self):
+    def test_component_first_python_api(self):
+        """Should derive API guidance from component-first answers."""
+        from post_gen_project import optional_module_guidance
+
+        answers = {"api_module": "enabled", "api_languages": ["python"]}
+        result = optional_module_guidance(answers)
+
+        assert any("FastAPI" in item for item in result)
+
+    def test_node_api_languages(self):
         """Should include Fastify guidance for Node API."""
         from post_gen_project import optional_module_guidance
 
-        answers = {"api_tracks": "node"}
+        answers = {"api_module": "enabled", "api_languages": ["node"]}
         result = optional_module_guidance(answers)
 
         assert any("Fastify" in item for item in result)
         assert any("api-node" in item for item in result)
 
-    def test_dual_api_tracks(self):
+    def test_dual_api_languages(self):
         """Should include both API guidance for dual tracks."""
         from post_gen_project import optional_module_guidance
 
-        answers = {"api_tracks": "python+node"}
+        answers = {"api_module": "enabled", "api_languages": ["python", "node"]}
         result = optional_module_guidance(answers)
 
         fastapi_items = [item for item in result if "FastAPI" in item]
@@ -381,7 +429,8 @@ class TestOptionalModuleGuidance:
 
         answers = {
             "cli_module": "enabled",
-            "api_tracks": "python",
+            "api_module": "enabled",
+            "api_languages": ["python"],
             "mcp_module": "enabled",
         }
         result = optional_module_guidance(answers)
@@ -452,7 +501,7 @@ class TestRenderGuidance:
         """Should include documentation guidance."""
         from post_gen_project import render_guidance
 
-        answers = {"docs_site": "fumadocs"}
+        answers = {"docs_module": "enabled", "docs_framework": "fumadocs"}
         result = render_guidance("test_pkg", answers)
 
         assert "fumadocs" in result
@@ -463,7 +512,8 @@ class TestRenderGuidance:
 
         answers = {
             "cli_module": "enabled",
-            "api_tracks": "python",
+            "api_module": "enabled",
+            "api_languages": ["python"],
         }
         result = render_guidance("test_pkg", answers)
 
@@ -476,9 +526,11 @@ class TestRenderGuidance:
 
         answers = {
             "project_layout": "monorepo",
-            "docs_site": "fumadocs",
+            "docs_module": "enabled",
+            "docs_framework": "fumadocs",
             "cli_module": "enabled",
-            "api_tracks": "python+node",
+            "api_module": "enabled",
+            "api_languages": ["python", "node"],
             "mcp_module": "enabled",
         }
         result = render_guidance("full_project", answers)
@@ -628,9 +680,13 @@ class TestMain:
         answers_file.write_text(
             """
             cli_module: enabled
-            api_tracks: python+node
+            api_module: enabled
+            api_languages:
+              - python
+              - node
             mcp_module: enabled
-            docs_site: fumadocs
+            docs_module: enabled
+            docs_framework: fumadocs
             shared_logic: enabled
             """,
             encoding="utf-8",
@@ -653,10 +709,14 @@ class TestMain:
 
         modules = content["modules"]
         assert modules["cli_module"] == "enabled"
-        assert modules["api_tracks"] == "python+node"
+        assert modules["api_module"] == "enabled"
+        assert modules["api_languages"] == ["python", "node"]
         assert modules["mcp_module"] == "enabled"
-        assert modules["docs_site"] == "fumadocs"
+        assert modules["docs_module"] == "enabled"
+        assert modules["docs_framework"] == "fumadocs"
         assert modules["shared_logic"] == "enabled"
+        assert "api_tracks" not in modules
+        assert "docs_site" not in modules
 
     def test_uses_package_name_from_directory(self, tmp_path, monkeypatch):
         """Should derive package name from directory name."""
@@ -716,9 +776,11 @@ class TestEdgeCases:
 
         answers = {
             "project_layout": "monorepo",
-            "docs_site": "fumadocs",
+            "docs_module": "enabled",
+            "docs_framework": "fumadocs",
             "cli_module": "enabled",
-            "api_tracks": "python+node",
+            "api_module": "enabled",
+            "api_languages": ["python", "node"],
             "mcp_module": "enabled",
         }
         result = render_guidance("test_package", answers)

@@ -21,15 +21,29 @@ import argparse
 import sys
 from pathlib import Path
 
-# Import shared validation utilities
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from lib.validation import (
-    load_yaml_file,
-    validate_path_exists,
-    validate_required_fields,
-    print_error_list,
-)
-from lib.logger import logger, configure_logging
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+try:
+    from scripts.lib.logger import configure_logging, logger
+    from scripts.lib.validation import (
+        load_yaml_file,
+        print_error_list,
+        validate_path_exists,
+        validate_required_fields,
+    )
+except ModuleNotFoundError:
+    scripts_dir = REPO_ROOT / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from lib.logger import configure_logging, logger
+    from lib.validation import (
+        load_yaml_file,
+        print_error_list,
+        validate_path_exists,
+        validate_required_fields,
+    )
 
 try:
     import yaml  # noqa: F401 - imported to verify availability
@@ -60,6 +74,9 @@ def validate_commitlint_config(config_path: Path) -> tuple[bool, list[str]]:
         return False, errors
 
     config = result["data"]
+    if config is None:
+        errors.append(".commitlintrc.yml: Empty or invalid configuration")
+        return False, errors
 
     # Validate required fields using shared utility
     field_errors = validate_required_fields(
@@ -100,6 +117,9 @@ def validate_semantic_release_config(config_path: Path) -> tuple[bool, list[str]
         return False, errors
 
     config = result["data"]
+    if config is None:
+        errors.append(".releaserc.yml: Empty or invalid configuration")
+        return False, errors
 
     # Validate required fields using shared utility
     field_errors = validate_required_fields(
@@ -152,6 +172,9 @@ def validate_release_workflow(workflow_path: Path) -> tuple[bool, list[str]]:
         return False, errors
 
     workflow = result["data"]
+    if workflow is None:
+        errors.append("riso-release.yml: Empty or invalid configuration")
+        return False, errors
 
     # Validate required fields using shared utility
     field_errors = validate_required_fields(

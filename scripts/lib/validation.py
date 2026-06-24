@@ -21,11 +21,11 @@ import sys
 from pathlib import Path
 from typing import Any, TypedDict
 
-# Support both direct import (tests) and package import (scripts)
+# Support both package import and direct test imports.
 try:
-    from scripts.lib.logger import logger
-except ModuleNotFoundError:
-    from logger import logger  # type: ignore[import-not-found]
+    from .logger import logger
+except ImportError:
+    from logger import logger
 
 try:
     import yaml

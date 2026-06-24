@@ -1,7 +1,7 @@
 """Tests for pre-commit configuration generation.
 
 These tests verify that the pre-commit configuration is correctly generated
-based on the template options (quality profile, api_tracks, etc.).
+based on the template options (quality profile, API languages, etc.).
 """
 
 from __future__ import annotations
@@ -19,7 +19,6 @@ def template_config_path() -> Path:
         Path(__file__).parents[1]
         / "template"
         / "files"
-        / "shared"
         / "quality"
         / ".pre-commit-config.yaml.jinja"
     )
@@ -171,11 +170,11 @@ class TestTemplatePrecommitConfig:
         assert "pylint" in content, "Should reference pylint hook"
 
     def test_template_has_node_conditionals(self, template_config_path: Path) -> None:
-        """Verify template has api_tracks conditionals for Node.js."""
+        """Verify template has canonical API language conditionals for Node.js."""
         content = template_config_path.read_text(encoding="utf-8")
 
         # Check for Node.js conditionals
-        assert "api_tracks" in content, "Should have api_tracks conditional"
+        assert "api_languages" in content, "Should have API language conditional"
         assert "prettier" in content, "Should reference prettier hook"
         assert "eslint" in content, "Should reference eslint hook"
 
@@ -292,7 +291,6 @@ class TestMakefileIntegration:
             Path(__file__).parents[1]
             / "template"
             / "files"
-            / "shared"
             / "quality"
             / "makefile.quality.jinja"
         )
