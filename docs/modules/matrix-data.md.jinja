@@ -61,11 +61,11 @@ from pathlib import Path
 matrix = json.loads(Path("samples/metadata/matrix-data.json").read_text())
 
 # Get all available choices for a prompt
-api_tracks = next(
+api_languages = next(
     p for p in matrix["template"]["prompts"]
-    if p["key"] == "api_tracks"
+    if p["key"] == "api_languages"
 )
-print(api_tracks["choices"])  # ['none', 'python', 'node', 'both']
+print(api_languages["choices"])  # ['none', 'python', 'node', 'both']
 
 # Get all SaaS-related prompts
 saas_prompts = matrix["template"]["saas_prompts"]
@@ -134,7 +134,7 @@ The `matrix-data.json` structure:
     },
     "prompts": [
       {
-        "key": "api_tracks",
+        "key": "api_languages",
         "type": "str",
         "choices": ["none", "python", "node", "both"],
         "default": "none",
@@ -145,7 +145,7 @@ The `matrix-data.json` structure:
     ],
     "saas_prompts": [
       {
-        "key": "saas_auth",
+        "key": "saas_auth_provider",
         "type": "str",
         "choices": ["clerk", "authjs", "none"],
         "default": "clerk",
@@ -195,7 +195,7 @@ from pathlib import Path
 matrix = json.loads(Path("samples/metadata/matrix-data.json").read_text())
 
 # Get all choices for key options
-key_options = ["api_tracks", "docs_site", "cli_module"]
+key_options = ["api_languages", "docs_framework", "cli_module"]
 for key in key_options:
     prompt = next(p for p in matrix["template"]["prompts"] if p["key"] == key)
     if prompt["choices"]:

@@ -34,7 +34,8 @@ When generating a project with Copier:
 
 ```yaml
 mcp_module: enabled
-mcp_language: python  # python, typescript, or rust
+mcp_languages:
+  - python  # python, typescript, or rust
 mcp_transport: stdio  # stdio, sse, or http
 mcp_example_tools: true
 ```

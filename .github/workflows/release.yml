@@ -23,6 +23,7 @@ permissions:
   issues: write
   pull-requests: write
   packages: write
+  id-token: write
 
 jobs:
   # Run quality checks first
@@ -41,17 +42,19 @@ jobs:
         uses: astral-sh/setup-uv@v5
 
       - name: Install dependencies
-        run: uv sync --group dev --group test
+        run: uv sync --group dev --group test --group docs --group mcp
 
       - name: Run tests
         run: uv run pytest tests -x -q --tb=short --override-ini="addopts="
 
       - name: Run type check
-        run: uv run ty check --extra-search-path scripts --extra-search-path template scripts template/hooks
-        continue-on-error: true  # TODO: Fix 44 type issues and remove this
+        run: uv run ty check --extra-search-path scripts --extra-search-path template scripts template/hooks src
 
       - name: Run linting
-        run: uv run ruff check scripts template/hooks tests
+        run: uv run ruff check scripts template/hooks tests src
+
+      - name: Build documentation
+        run: uv run sphinx-build -W -b html docs docs/_build
 
   # Semantic release
   release:
@@ -74,6 +77,8 @@ jobs:
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
 
       - name: Install Node dependencies
         run: pnpm install --frozen-lockfile
@@ -87,12 +92,27 @@ jobs:
         uses: astral-sh/setup-uv@v5
 
       - name: Install Python dependencies
-        run: uv sync --group dev
+        run: uv sync --group dev --group test --group mcp
 
       - name: Build distribution
+        run: uv build --no-sources
+
+      - name: Check distribution metadata
+        run: uv run --with twine twine check dist/*
+
+      - name: Smoke test wheel install
         run: |
-          uv build
-        continue-on-error: true  # May not have build config yet
+          WHEEL="$(find dist -maxdepth 1 -name '*.whl' -print -quit)"
+          test -n "$WHEEL"
+          uv run --isolated --with "$WHEEL" python - <<'PY'
+          from riso.mcp.server import mcp
+
+          print(f"Server: {mcp.name}")
+          PY
+          uv run --isolated --with "$WHEEL" riso-mcp --help
+
+      - name: Rehearse PyPI Trusted Publishing
+        run: uv publish --dry-run --trusted-publishing automatic dist/*
 
       - name: Verify commit signatures
         run: |

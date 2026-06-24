@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://riso.build/schemas/release-readiness/release-gates.schema.json",
+  "title": "Riso Release Gate Evidence",
+  "type": "object",
+  "required": ["gate_id", "owner", "command", "blocking", "status"],
+  "additionalProperties": false,
+  "properties": {
+    "gate_id": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9]+-[0-9]{3}$"
+    },
+    "owner": {
+      "type": "string",
+      "enum": ["template", "hooks", "samples", "mcp", "web", "docs", "ci", "security", "coordinator"]
+    },
+    "command": {
+      "type": "string",
+      "minLength": 1
+    },
+    "blocking": {
+      "type": "boolean"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pass", "fail", "blocked", "skipped"]
+    },
+    "evidence": {
+      "type": "string"
+    },
+    "next_action": {
+      "type": "string"
+    }
+  }
+}
+

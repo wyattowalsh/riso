@@ -19,7 +19,7 @@
    - Matrix tests execute across all Python versions
    - Artifacts upload with 90-day retention
    - Cache hit rates reach 70%+ after initial runs
-7. **Node.js projects** – if `api_tracks` includes `node`, the `node-quality` job will automatically run ESLint, TypeScript checks, and Vitest tests in parallel with Python checks.
+7. **Node.js projects** – if `api_module=enabled` and `api_languages` includes `node`, the `node-quality` job will automatically run ESLint, TypeScript checks, and Vitest tests in parallel with Python checks.
 
 ### Workflow Migration Checklist
 
@@ -39,14 +39,14 @@
    - `.github/workflows/quality-matrix.yml`
 2. **Install Taskipy support** – run `uv sync --group quality --group test` to ensure `task` CLI is available.
 3. **Select a profile** – update your `copier-answers.yml` (or template prompts) with `quality_profile=standard` or `strict`.
-4. **Node projects** – if `api_tracks` includes `node`, run `corepack pnpm install` once so the quality suite can execute ESLint/TypeScript checks.
+4. **Node projects** – if `api_module=enabled` and `api_languages` includes `node`, run `corepack pnpm install` once so the quality suite can execute ESLint/TypeScript checks.
 5. **Governance evidence** – ensure CI runs the new `quality-matrix` workflow and archives artifacts for 90 days. Update `.riso/post_gen_metadata.json` to keep `quality.tool_install_attempts` entries when backfilling metadata.
 
 ## Troubleshooting
 
 - `make quality` fails because `uv` is missing → run `pip install uv` and re-run the command.
 - `uv run task quality` fails with `task` not found → rerun `uv sync --group quality --group test`.
-- Node checks skipped unexpectedly → confirm `api_tracks` includes `node` and `QUALITY_PROFILE` is not set to override your prompt.
+- Node checks skipped unexpectedly → confirm `api_module=enabled` and `api_languages` includes `node` and `QUALITY_PROFILE` is not set to override your prompt.
 
 ## Adopting Container & Deployment
 

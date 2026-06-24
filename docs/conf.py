@@ -230,6 +230,19 @@ autodoc_class_signature = "separated"
 autodoc_member_order = "bysource"
 autodoc_preserve_defaults = True
 autodoc_warningiserror = False
+autodoc_mock_imports = [
+    "pydantic_settings",
+    "fastmcp",
+    "copier",
+    "plumbum",
+    "questionary",
+    "yaml",
+    "jinja2",
+]
+
+# Set up environment to prevent module-level execution during autodoc import
+import os as _conf_os
+_conf_os.environ.setdefault("SPHINX_BUILD", "1")
 
 
 autosummary_generate = True
@@ -280,7 +293,6 @@ intersphinx_mapping = {
     "click": ("https://click.palletsprojects.com/en/8.1.x", None),
     "pydantic": ("https://docs.pydantic.dev/latest", None),
     "fastapi": ("https://fastapi.tiangolo.com", None),
-    "uvicorn": ("https://www.uvicorn.org", None),
 }
 
 copybutton_prompt_text = r">>> |\.\.\. |\$ "

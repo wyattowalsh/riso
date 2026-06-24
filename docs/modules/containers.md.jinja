@@ -64,7 +64,7 @@ docker-compose down -v
 
 The generated `Dockerfile` uses multi-stage builds for optimal image size:
 
-{%- if api_tracks | lower in ["python", "python+node"] %}
+{%- if api_module == "enabled" and "python" in api_languages %}
 
 #### Python Stages
 
@@ -96,7 +96,7 @@ CMD ["python", "-m", "uvicorn", "{{ package_name }}.api.main:app", "--host", "0.
 ```
 {%- endif %}
 
-{%- if api_tracks | lower in ["node", "python+node"] %}
+{%- if api_module == "enabled" and "node" in api_languages %}
 
 #### Node.js Stages
 
@@ -146,19 +146,19 @@ CMD ["node", "apps/api-node/dist/main.js"]
 
 ## docker-compose Configuration
 
-{%- if api_tracks | lower in ["python", "node", "python+node"] %}
+{%- if api_module == "enabled" and api_languages %}
 
 ### Service Architecture
 
 Generated `docker-compose.yml` includes:
 
-{%- if api_tracks | lower in ["python", "python+node"] %}
+{%- if api_module == "enabled" and "python" in api_languages %}
 - **api-python**: FastAPI service on port 8000
 {%- endif %}
-{%- if api_tracks | lower in ["node", "python+node"] %}
+{%- if api_module == "enabled" and "node" in api_languages %}
 - **api-node**: Fastify service on port 3000
 {%- endif %}
-{%- if docs_site == "fumadocs" %}
+{%- if docs_module == "enabled" and docs_framework == "fumadocs" %}
 - **docs-fumadocs**: Next.js docs on port 3001
 {%- endif %}
 {%- if include_databases == "yes" %}
