@@ -93,7 +93,7 @@ session_id = result["session_id"]
 # Complete each step
 wizard_step(session_id, {"project_name": "my-app", "project_layout": "single-package", "project_language": "python"})
 wizard_step(session_id, {"quality_profile": "strict", "python_versions": ["3.11", "3.12"]})
-wizard_step(session_id, {"cli_module": "enabled", "api_tracks": "python"})
+wizard_step(session_id, {"cli_module": "enabled", "api_languages": "python"})
 
 # Generate the project
 wizard_generate(session_id)
@@ -106,24 +106,24 @@ wizard_generate(session_id, force=True)
 
 The server exposes the following resources:
 
-| URI                                                      | Description                        |
-| -------------------------------------------------------- | ---------------------------------- |
-| `riso://template/copier.yml`                             | Main template configuration        |
-| `riso://template/files/python/pyproject.toml.jinja`      | Python pyproject template          |
-| `riso://template/files/shared/module_catalog.json.jinja` | Module catalog template            |
-| `riso://template/hooks/pre_gen_project.py`               | Pre-generation hook                |
-| `riso://template/hooks/post_gen_project.py`              | Post-generation hook               |
-| `riso://template/structure`                              | Template file tree (depth-limited) |
-| `riso://samples`                                         | List of sample variants            |
-| `riso://samples/default/answers`                         | Default sample answers             |
-| `riso://samples/full-stack/answers`                      | Full-stack sample answers          |
-| `riso://samples/monorepo/answers`                        | Monorepo sample answers            |
-| `riso://samples/metadata/render_matrix.json`             | Render matrix metadata             |
-| `riso://samples/metadata/module_success.json`            | Module success rates               |
-| `riso://catalog/modules`                                 | Full module catalog (markdown)     |
-| `riso://catalog/modules.json`                            | Full module catalog (JSON)         |
-| `riso://catalog/prompts`                                 | Prompt catalog (markdown)          |
-| `riso://catalog/dependencies`                            | Dependency map                     |
+| URI                                                 | Description                        |
+| --------------------------------------------------- | ---------------------------------- |
+| `riso://template/copier.yml`                        | Main template configuration        |
+| `riso://template/files/python/pyproject.toml.jinja` | Python pyproject template          |
+| `riso://template/files/module_catalog.json.jinja`   | Module catalog template            |
+| `riso://template/hooks/pre_gen_project.py`          | Pre-generation hook                |
+| `riso://template/hooks/post_gen_project.py`         | Post-generation hook               |
+| `riso://template/structure`                         | Template file tree (depth-limited) |
+| `riso://samples`                                    | List of sample variants            |
+| `riso://samples/default/answers`                    | Default sample answers             |
+| `riso://samples/full-stack/answers`                 | Full-stack sample answers          |
+| `riso://samples/monorepo/answers`                   | Monorepo sample answers            |
+| `riso://samples/metadata/render_matrix.json`        | Render matrix metadata             |
+| `riso://samples/metadata/module_success.json`       | Module success rates               |
+| `riso://catalog/modules`                            | Full module catalog (markdown)     |
+| `riso://catalog/modules.json`                       | Full module catalog (JSON)         |
+| `riso://catalog/prompts`                            | Prompt catalog (markdown)          |
+| `riso://catalog/dependencies`                       | Dependency map                     |
 
 ## Prompts
 

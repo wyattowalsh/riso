@@ -21,11 +21,10 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install uv
-          uv sync
+        run: uv sync
       - name: Run quality suite
         run: uv run python scripts/ci/run_quality_suite.py
 
@@ -61,6 +60,8 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
 
       - name: Install system dependencies
         run: |
@@ -68,10 +69,7 @@ jobs:
           sudo apt-get install -y make
 
       - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install uv
-          uv sync
+        run: uv sync
 
       - name: Render default sample for testing
         run: |
@@ -140,11 +138,11 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install uv
-          uv sync --group mcp
+        run: uv sync --group mcp
 
       - name: Run MCP unit tests
         run: |
@@ -165,14 +163,48 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install pip-audit
-        run: pip install pip-audit
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync --group dev
 
       - name: Run pip-audit
+        run: uv run pip-audit --strict --vulnerability-service osv
+
+  docs-build:
+    name: Documentation Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync --group docs
+
+      - name: Build documentation
         run: |
-          # Audit the project dependencies
-          pip-audit --strict --vulnerability-service osv || echo "::warning::Security vulnerabilities found"
+          uv run sphinx-build -W -b html docs docs/_build
+
+      - name: Check documentation links (advisory)
+        run: |
+          uv run sphinx-build -W -b linkcheck docs docs/_build/linkcheck
         continue-on-error: true
+
+      - name: Upload documentation
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: documentation
+          path: docs/_build/html
+          retention-days: 30
 
   validate-samples:
     name: Validate Sample Renders
@@ -182,7 +214,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [default, api-python, full-stack]
+        # Comprehensive sample coverage including base templates and SaaS variants
+        # - 3 base templates: default, api-python, full-stack
+        # - 4 SaaS starters: vercel-starter, enterprise-ready, b2c-consumer-app, prelaunch-waitlist
+        # - 1 docs template: cli-docs
+        variant:
+          - default
+          - api-python
+          - full-stack
+          - saas-starter/vercel-starter
+          - saas-starter/enterprise-ready
+          - cli-docs
+          - saas-starter/b2c-consumer-app
+          - saas-starter/prelaunch-waitlist
     steps:
       - uses: actions/checkout@v6
 
@@ -191,22 +235,82 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y make
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install uv
-          uv sync
+        run: uv sync
 
       - name: Render sample - ${{ matrix.variant }}
         run: |
           ./scripts/render-samples.sh \
             --variant ${{ matrix.variant }} \
             --answers samples/${{ matrix.variant }}/copier-answers.yml
+
+      - name: Verify smoke test results
+        run: |
+          if [ -f "samples/${{ matrix.variant }}/smoke-results.json" ]; then
+            echo "Smoke test results found for ${{ matrix.variant }}"
+            uv run python -m json.tool samples/${{ matrix.variant }}/smoke-results.json
+
+            # Check for failures in smoke tests
+            FAILURES=$(uv run python -c "
+            import json, sys
+            data = json.load(open(sys.argv[1], encoding='utf-8'))
+            failures = [m for m in data.get('modules', []) if m.get('status') == 'FAIL']
+            print(len(failures))
+            " samples/${{ matrix.variant }}/smoke-results.json)
+
+            if [ "$FAILURES" -gt 0 ]; then
+              echo "Error: $FAILURES smoke test(s) failed for ${{ matrix.variant }}"
+              exit 1
+            fi
+
+            echo "All smoke tests passed for ${{ matrix.variant }}"
+          else
+            echo "Warning: No smoke test results found for ${{ matrix.variant }}"
+          fi
+
+      - name: Generate job summary
+        if: always()
+        run: |
+          echo "## Sample Validation: ${{ matrix.variant }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -f "samples/${{ matrix.variant }}/smoke-results.json" ]; then
+            uv run python - "samples/${{ matrix.variant }}/smoke-results.json" "$GITHUB_STEP_SUMMARY" <<'PY'
+          import json, sys
+          from pathlib import Path
+
+          results_file = Path(sys.argv[1])
+          summary_file = Path(sys.argv[2])
+
+          data = json.load(results_file.open())
+          modules = data.get("modules", [])
+
+          with summary_file.open("a") as f:
+              f.write("### Module Smoke Test Results\n\n")
+              f.write("| Module | Status | Duration |\n")
+              f.write("|--------|--------|----------|\n")
+
+              for module in modules:
+                  name = module.get("name", "Unknown")
+                  status = module.get("status", "UNKNOWN")
+                  duration = module.get("duration_seconds", 0)
+
+                  status_emoji = "✅" if status == "PASS" else "⏭️" if status == "SKIP" else "❌"
+                  f.write(f"| {name} | {status_emoji} {status} | {duration:.2f}s |\n")
+
+              f.write("\n")
+          PY
+          else
+            echo "No smoke test results available" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Upload render logs on failure
         if: failure()
@@ -220,3 +324,46 @@ jobs:
             samples/${{ matrix.variant }}/render/.riso/quality-durations.json
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Upload successful render artifacts
+        if: success()
+        uses: actions/upload-artifact@v6
+        with:
+          name: render-success-${{ matrix.variant }}
+          path: |
+            samples/${{ matrix.variant }}/smoke-results.json
+            samples/${{ matrix.variant }}/metadata.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  web-tests:
+    name: Web UI Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Install dependencies
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+      - name: Run tests
+        working-directory: web
+        run: pnpm test:run
+      - name: Lint
+        working-directory: web
+        run: pnpm lint
+      - name: Build
+        working-directory: web
+        run: pnpm build
+      - name: Install Playwright browser
+        working-directory: web
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Run E2E tests
+        working-directory: web
+        run: pnpm exec playwright test --project=chromium

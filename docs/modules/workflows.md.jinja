@@ -28,7 +28,7 @@ Runs on every pull request and push to `main`:
 - ✅ MCP module validation
 {% endif %}
 
-{% if 'node' in api_tracks %}
+{% if api_module == 'enabled' and 'node' in api_languages %}
 **Node.js Quality Job** (runs in parallel with Python):
 - ESLint linting
 - TypeScript type checking
@@ -106,7 +106,7 @@ restore-keys: |
   {% raw %}${{ runner.os }}-{% endraw %}
 ```
 
-{% if 'node' in api_tracks %}
+{% if api_module == 'enabled' and 'node' in api_languages %}
 **Node.js dependencies:**
 ```yaml
 key: {% raw %}${{ runner.os }}-node-${{ hashFiles('**/pnpm-lock.yaml') }}{% endraw %}
@@ -128,7 +128,7 @@ All artifacts are retained for **90 days** and include:
 - `test-results-py3.11-{run_id}` - JUnit XML, coverage HTML, `.coverage` file
 - `quality-logs-py3.11-{run_id}` - Ruff, mypy, pylint output, quality durations JSON
 
-{% if 'node' in api_tracks %}
+{% if api_module == 'enabled' and 'node' in api_languages %}
 **Node.js artifacts:**
 - `node-test-results-{run_id}` - Vitest coverage reports
 {% endif %}
@@ -285,7 +285,7 @@ To require workflows before merging:
 3. Check "Require status checks to pass before merging"
 4. Search and select:
    - `Python Quality Checks`
-{% if 'node' in api_tracks %}
+{% if api_module == 'enabled' and 'node' in api_languages %}
    - `Node.js Quality Checks`
 {% endif %}
    - `Python 3.11 Quality` (from matrix workflow)

@@ -25,12 +25,12 @@ definition so environments without `make` stay aligned.
 ## Optional Modules
 
 - Enable `cli_module=enabled` to scaffold a Typer CLI with Vitest smoke tests.
-- Enable `api_tracks=python` or `api_tracks=node` for FastAPI or Fastify services.
+- Enable `api_module=enabled` with `api_languages=[python]` or `api_module=enabled` with `api_languages=[node]` for FastAPI or Fastify services.
 - Enable `mcp_module=enabled` for FastMCP tooling.
 
 Refer to `docs/modules/prompt-reference.md` for compatibility details.
 
-{% if api_tracks | lower in ['python', 'node', 'python+node'] or docs_site | lower == 'fumadocs' %}
+{% if (api_module == 'enabled' and api_languages) or (docs_module == 'enabled' and docs_framework == 'fumadocs') %}
 ## Container Quickstart
 
 Your project includes production-ready Docker support with multi-stage builds, security hardening, and health checks.
@@ -72,13 +72,13 @@ docker-compose up -d
 docker-compose logs -f api-python
 
 # Health check all services
-{% if api_tracks | lower in ['python', 'python+node'] %}
+{% if api_module == 'enabled' and 'python' in api_languages %}
 curl http://localhost:8000/health  # Python API
 {% endif %}
-{% if api_tracks | lower in ['node', 'python+node'] %}
+{% if api_module == 'enabled' and 'node' in api_languages %}
 curl http://localhost:3000/health  # Node.js API
 {% endif %}
-{% if docs_site | lower == 'fumadocs' %}
+{% if docs_module == 'enabled' and docs_framework == 'fumadocs' %}
 curl http://localhost:3001          # Fumadocs site
 {% endif %}
 
@@ -129,7 +129,7 @@ After pushing your first commit or opening a pull request:
 The following checks must pass before PR merge:
 
 - **Quality Checks** (`riso-quality.yml`) - Linting, type checking, testing
-{% if 'node' in api_tracks %}
+{% if api_module == 'enabled' and 'node' in api_languages %}
 - **Node.js Quality** (`riso-quality.yml`) - ESLint, TypeScript, Vitest tests
 {% endif %}
 
@@ -176,7 +176,7 @@ To enforce quality checks before merging, configure branch protection rules:
    {% endfor %}
    - `matrix-summary` (overall matrix status - blocks merge if any version fails)
    {% endif %}
-   {% if 'node' in api_tracks %}
+   {% if api_module == 'enabled' and 'node' in api_languages %}
    - `node-quality` (Node.js quality checks)
    {% endif %}
 6. Optional: Enable **Require branches to be up to date before merging** for stricter validation
@@ -209,7 +209,7 @@ gh api repos/{owner}/{repo}/branches/main/protection \
   {% endfor %}
   --field required_status_checks[contexts][]=matrix-summary \
   {% endif %}
-  {% if 'node' in api_tracks %}
+  {% if api_module == 'enabled' and 'node' in api_languages %}
   --field required_status_checks[contexts][]=node-quality \
   {% endif %}
   --field enforce_admins=true
@@ -275,7 +275,7 @@ Cache miss - no matching cache key found
 
 See `docs/modules/workflows.md` for advanced cache debugging.
 
-{% if api_tracks | lower in ['python', 'node', 'python+node'] or docs_site | lower == 'fumadocs' %}
+{% if (api_module == 'enabled' and api_languages) or (docs_module == 'enabled' and docs_framework == 'fumadocs') %}
 ### Container Debugging
 
 **Build Failures:**

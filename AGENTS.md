@@ -297,7 +297,7 @@ riso/
 
 - `template/hooks/` – Validation and initialization logic (security-critical)
 - `scripts/ci/` – CI automation scripts
-- `.github/context/` – Must stay in sync with `template/files/shared/.github/context/`
+- `.github/context/` – Must stay in sync with `template/files/.github/context/`
 - `scripts/render-samples.sh` – Primary automation entry point
 - `template/copier.yml` – Copier template definition
 - `pyproject.toml` – Project metadata and dependencies
@@ -331,7 +331,7 @@ make quality
 
 - Dependency caching with 70%+ hit rate target (uv.lock and pnpm-lock.yaml hashing)
 - Retry logic with exponential backoff (3 attempts)
-- Conditional Node.js job when `api_tracks` includes `node`
+- Conditional Node.js job when `api_module=enabled` and `api_languages` includes `node`
 - Profile-based timeouts (10min standard, 20min strict)
 - Cache hit/miss logging for debugging
 
@@ -394,8 +394,8 @@ describe('Health endpoint', () => {
 
 Quality suite implementation:
 
-- `template/files/shared/quality/makefile.quality.jinja` – Makefile targets
-- `template/files/shared/quality/uv_tasks/quality.py.jinja` – uv task definitions
+- `template/files/quality/makefile.quality.jinja` – Makefile targets
+- `template/files/quality/uv_tasks/quality.py.jinja` – uv task definitions
 - `scripts/ci/check_quality_parity.py` – ensures Makefile and uv tasks stay synchronized
 - `scripts/ci/run_quality_suite.py` – CI orchestration script
 
@@ -567,12 +567,12 @@ QUALITY_PROFILE=standard uv run task quality
   uv run python -m ${PACKAGE}.cli --help
   uv run pytest tests/test_cli.py
   ```
-- `api_tracks` includes `python`
+- `api_module=enabled` and `api_languages` includes `python`
   ```bash
   uv run pytest tests/test_api_fastapi.py
   uv run uvicorn ${PACKAGE}.api.main:app --host 0.0.0.0 --port 8000
   ```
-- `api_tracks` includes `node`
+- `api_module=enabled` and `api_languages` includes `node`
   ```bash
   pnpm install
   pnpm --filter api-node test
@@ -582,7 +582,7 @@ QUALITY_PROFILE=standard uv run task quality
   ```bash
   uv run python -c "from shared.mcp import tooling; print(tooling.list_tools())"
   ```
-- `docs_site=fumadocs`
+- `docs_module=enabled` with `docs_framework=fumadocs`
   ```bash
   pnpm install
   pnpm --filter docs-fumadocs build
@@ -604,7 +604,7 @@ QUALITY_PROFILE=standard uv run task quality
 
 - Quickstart playbook: `docs/quickstart.md.jinja`
 - Automation: `scripts/render-samples.sh`, `scripts/hooks/post-init.sh`
-- Module catalog: `template/files/shared/module_catalog.json.jinja`
+- Module catalog: `template/files/module_catalog.json.jinja`
 
 ## Git Workflow & Commits
 
@@ -683,7 +683,7 @@ test(hooks): add validation edge cases
 - Primary maintainer docs live in `docs/` (Shibuya Sphinx). Build locally with `uv sync --group docs` + `uv run sphinx-build docs docs/_build`.
 - Keep the template copy at `template/files/python/docs/` in lockstep; changes to navigation or config must be mirrored.
 - Doc dependencies are defined in the `docs` dependency group inside `template/files/python/pyproject.toml.jinja`.
-- For rendered projects with `docs_site=sphinx-shibuya`, CI runs `uv run sphinx-build docs dist/docs`.
+- For rendered projects with `docs_module=enabled` with `docs_framework=sphinx-shibuya`, CI runs `uv run sphinx-build docs dist/docs`.
 
 ### Claude Code Skills
 
@@ -726,7 +726,9 @@ uv run python -m scripts.sync --from claude-code --to all --cwd .claude/skills/m
 uv run python -m scripts.validate --interface claude-code --cwd .claude/skills/mcp-installer
 ```
 
-Rendered projects inherit these skills via `template/files/shared/.claude/skills/`.
+Rendered projects should inherit these skills via `template/files/.claude/skills/`
+when that payload is present; restore that template payload before release if
+skill propagation remains part of the contract.
 
 <!-- MANUAL ADDITIONS END -->
 
@@ -768,7 +770,7 @@ Rendered projects inherit these skills via `template/files/shared/.claude/skills
 
 ## Recent Changes
 
-- 015-claude-code-skills: Added AI agent skills for Claude Code at project and template levels—`agents-md-manager` (AGENTS.md SSOT with detection, analysis, platform sync, migration) and `mcp-installer` (universal MCP server research, installation, cross-interface sync, validation). Skills located in `.claude/skills/` and propagate to rendered projects via `template/files/shared/.claude/skills/`.
+- 015-claude-code-skills: Added AI agent skills for Claude Code at project and template levels—`agents-md-manager` (AGENTS.md SSOT with detection, analysis, platform sync, migration) and `mcp-installer` (universal MCP server research, installation, cross-interface sync, validation). Skills located in `.claude/skills/`; rendered-project propagation requires a matching template payload under `template/files/.claude/skills/`.
 - 014-changelog-release-management: Added automated changelog generation and release management with conventional commit enforcement via Git hooks (commitlint ≥18.0.0), semantic versioning automation (semantic-release ≥23.0.0), human-readable changelog generation with categorized changes (💥/✨/🐛 sections), GitHub Release creation, breaking change detection with migration guide templates, multi-registry publishing (PyPI via twine, npm via @semantic-release/npm, Docker Hub), monorepo support with independent package versioning, pre-release versions (alpha, beta, rc), release completion \<10min, comprehensive logging with correlation IDs, GitHub Actions workflow (riso-release.yml), credential management via GitHub Secrets with annual rotation, comprehensive docs (changelog-release.md, quickstart, upgrade guide)
 - 008-websockets-scaffold: Added WebSocket real-time communication module with connection lifecycle management, heartbeat/ping-pong mechanism (30s interval, 60s timeout), room-based broadcasting with \<100ms latency (p95), FastAPI authentication integration, rate limiting (100 msg/60s window, configurable), backpressure handling with bounded queues, structured error responses, pytest fixtures, support for 10K+ concurrent connections with \<10MB/1K conn memory overhead, comprehensive docs (websockets.md, quickstart, upgrade guide)
 - 005-container-deployment: Added Docker/docker-compose support with multi-stage Dockerfiles (Python 3.11-slim-bookworm, Node 20-alpine), docker-compose orchestration (API/docs/databases), GitHub Actions workflows (riso-container-build.yml with hadolint/Trivy, riso-container-publish.yml with semantic versioning), container validation (render_matrix.py, record_module_success.py), health endpoints (FastAPI/Fastify /health), security hardening (UID 1000:1000, HEALTHCHECK, SBOM/provenance), registry support (ghcr.io OIDC, Docker Hub, AWS ECR), comprehensive documentation (containers.md, context guide, upgrade guide)

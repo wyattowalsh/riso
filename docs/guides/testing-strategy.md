@@ -68,7 +68,7 @@ uv run coverage xml
 - Ensure dependency groups in `pyproject.toml` resolve on Python 3.11, 3.12, and
   3.13; misaligned deps often surface as coverage drops.
 - Keep Node tracks (Fastify, docs-fumadocs) green by running `pnpm --filter` test
-  targets when the `api_tracks` or docs options are enabled.
+  targets when the `api_languages` or docs options are enabled.
 
 ## Reporting and triage
 

@@ -97,7 +97,7 @@ uv run pytest -m unit
 uv run pytest -m "not slow"
 ```
 
-See [TESTING.md](TESTING.md) for full documentation.
+See [Testing Strategy](docs/guides/testing-strategy.md) for full documentation.
 
 ## Documentation
 
