@@ -10,11 +10,10 @@ export function DocsCallout() {
             Documentation Hub
           </span>
           <h3 className="mt-4 text-2xl font-semibold text-gray-900 dark:text-white">
-            Everything about Riso, in one beautiful /docs home.
+            Module guides, API references, and migration paths.
           </h3>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-300 max-w-2xl">
-            The Sphinx-powered maintainer docs live at <code>/docs/</code> and link back here. Keep the
-            configurator close, and jump into deep guides when you need them.
+            Covers each module (CLI, API, MCP, Docs, SaaS), template customization, CI/CD setup, and upgrading.
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">

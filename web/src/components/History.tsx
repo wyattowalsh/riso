@@ -56,11 +56,15 @@ function HistoryItem({
   onDelete: () => void
 }) {
   const config = item.config
+  const formatLangs = (langs: string[] | undefined): string => {
+    if (!langs || langs.length === 0) return 'python'
+    return langs.join(', ')
+  }
   const summary = [
     config.project_layout,
-    config.api_tracks !== 'none' ? `API: ${config.api_tracks}` : null,
-    config.docs_site !== 'none' ? config.docs_site : null,
-    config.saas_starter_module === 'enabled' ? 'SaaS' : null,
+    config.api_module === 'enabled' ? `API (${formatLangs(config.api_languages)})` : null,
+    config.docs_module === 'enabled' ? config.docs_framework : null,
+    config.saas_infra_module === 'enabled' ? 'SaaS' : null,
   ].filter(Boolean).join(' • ')
 
   const timestamp = new Date(item.timestamp).toLocaleDateString(undefined, {
