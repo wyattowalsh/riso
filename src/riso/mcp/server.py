@@ -6,11 +6,13 @@ with support for stdio, SSE, and HTTP streaming transports.
 
 from __future__ import annotations
 
-import sys
+import logging
+import os
 
 from fastmcp import FastMCP
 
 from .config import ServerConfig, load_config
+from .logging import log_event, setup_logging
 from .session import SessionManager
 
 __version__ = "1.0.0"
@@ -35,10 +37,41 @@ def create_server(config: ServerConfig | None = None) -> tuple[FastMCP, SessionM
         ),
     )
 
+    # Initialize persistence backend
+    store = None
+    if server_config.wizard.persistence_backend != "memory":
+        from .persistence import JSONFileStore, SQLiteStore
+
+        persistence_path = server_config.wizard.persistence_path
+        if server_config.wizard.persistence_backend == "json":
+            store = JSONFileStore(base_path=persistence_path)
+        elif server_config.wizard.persistence_backend == "sqlite":
+            if persistence_path is not None:
+                db_path = persistence_path / "sessions.db"
+            else:
+                db_path = None
+            store = SQLiteStore(db_path=db_path)
+
     session_manager = SessionManager(
         ttl_minutes=server_config.wizard.session_ttl_minutes,
         max_sessions=server_config.wizard.max_sessions,
+        rate_config=server_config.wizard.rate_limit,
+        auto_cleanup_interval=server_config.wizard.auto_cleanup_interval,
+        store=store,
     )
+
+    # Load persisted sessions if available
+    if store is not None:
+        loaded = session_manager.load_persisted_sessions()
+        logger = logging.getLogger("riso.mcp.server")
+        if loaded > 0:
+            log_event(
+                logger,
+                "persisted_sessions_restored",
+                level="info",
+                count=loaded,
+                backend=server_config.wizard.persistence_backend,
+            )
 
     from .tools import register_tools
     from .resources import register_resources
@@ -51,34 +84,36 @@ def create_server(config: ServerConfig | None = None) -> tuple[FastMCP, SessionM
     return mcp, session_manager
 
 
-def _setup_logging(config: ServerConfig) -> None:
-    """Configure logging for MCP server."""
-    try:
-        from loguru import logger
+def _setup_logging(config: ServerConfig) -> logging.Logger:
+    """Configure logging for MCP server.
 
-        logger.remove()
-        logger.add(
-            sys.stderr,
-            format="<green>{time:HH:mm:ss}</green> | <cyan>MCP</cyan> | <level>{level: <8}</level> | <level>{message}</level>",
-            level=config.log_level,
-            colorize=True,
-        )
-    except ImportError:
-        import logging
-
-        logging.basicConfig(
-            level=getattr(logging, config.log_level, logging.INFO),
-            format="%(asctime)s | MCP | %(levelname)-8s | %(message)s",
-        )
+    Returns
+    -------
+    logging.Logger
+        Configured logger instance
+    """
+    return setup_logging(
+        level=config.log_level,
+        json_output=config.json_logs,
+        server_name=SERVER_NAME,
+    )
 
 
 # Create server instance on import for entry points/tests.
-_CONFIG = load_config()
-mcp, session_manager = create_server(_CONFIG)
+# Skip initialization during Sphinx autodoc build to avoid import errors.
+if not os.environ.get("SPHINX_BUILD"):
+    _CONFIG = load_config()
+    mcp, session_manager = create_server(_CONFIG)
 
-# ASGI app for HTTP deployments (Vercel, Railway, etc.)
-# Usage: uvicorn riso.mcp.server:app --host 0.0.0.0 --port 8000
-app = mcp.http_app()
+    # ASGI app for HTTP deployments (Vercel, Railway, etc.)
+    # Usage: uvicorn riso.mcp.server:app --host 0.0.0.0 --port 8000
+    app = mcp.http_app()
+else:
+    # Provide stub values for documentation build
+    _CONFIG = None
+    mcp = None
+    session_manager = None
+    app = None
 
 
 def run_server(
@@ -99,32 +134,48 @@ def run_server(
     """
     server_config = load_config()
 
-    _setup_logging(server_config)
+    logger = _setup_logging(server_config)
 
     actual_transport = transport or server_config.transport
     actual_host = host or server_config.host
     actual_port = port or server_config.port
+    runtime_mcp, _runtime_session_manager = create_server(server_config)
+
+    # Log server startup event
+    log_event(
+        logger,
+        "server_started",
+        level="info",
+        server=SERVER_NAME,
+        version=__version__,
+        transport=actual_transport,
+        host=actual_host if actual_transport != "stdio" else None,
+        port=actual_port if actual_transport != "stdio" else None,
+        log_format="json" if server_config.json_logs else "human",
+    )
 
     try:
-        from loguru import logger
-
-        logger.info(
-            f"Starting {SERVER_NAME} v{__version__} with {actual_transport} transport"
+        if actual_transport == "stdio":
+            runtime_mcp.run()
+        elif actual_transport == "sse":
+            runtime_mcp.run(transport="sse", host=actual_host, port=actual_port)
+        elif actual_transport == "http":
+            runtime_mcp.run(
+                transport="streamable-http", host=actual_host, port=actual_port
+            )
+        else:
+            raise ValueError(f"Unknown transport: {actual_transport}")
+    except KeyboardInterrupt:
+        log_event(logger, "server_stopped", level="info", reason="user_interrupt")
+    except Exception as exc:
+        log_event(
+            logger,
+            "error_occurred",
+            level="error",
+            error_type=type(exc).__name__,
+            error_message=str(exc),
         )
-    except ImportError:
-        print(
-            f"Starting {SERVER_NAME} v{__version__} with {actual_transport} transport",
-            file=sys.stderr,
-        )
-
-    if actual_transport == "stdio":
-        mcp.run()
-    elif actual_transport == "sse":
-        mcp.run(transport="sse", host=actual_host, port=actual_port)
-    elif actual_transport == "http":
-        mcp.run(transport="streamable-http", host=actual_host, port=actual_port)
-    else:
-        raise ValueError(f"Unknown transport: {actual_transport}")
+        raise
 
 
 def main() -> None:

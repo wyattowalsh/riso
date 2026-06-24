@@ -108,8 +108,10 @@ def sample_copier_answers() -> dict:
         "quality_profile": "standard",
         "python_versions": ["3.11", "3.12", "3.13"],
         "cli_module": "disabled",
-        "api_tracks": "none",
-        "docs_site": "fumadocs",
+        "api_module": "disabled",
+        "api_languages": [],
+        "docs_module": "enabled",
+        "docs_framework": "fumadocs",
     }
 
 
@@ -242,5 +244,6 @@ def sample_copier_context():
         "python_version": "3.11",
         "use_docker": True,
         "ci_platform": "github",
-        "docs_site": "sphinx",
+        "docs_module": "enabled",
+        "docs_framework": "sphinx-shibuya",
     }

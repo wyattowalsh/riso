@@ -24,6 +24,17 @@ class TimeoutConfig(BaseModel):
     )
 
 
+class RateLimitConfig(BaseModel):
+    """Rate limiting settings for session creation."""
+
+    max_sessions_per_minute: int = Field(
+        default=10, ge=1, le=100, description="Max sessions per minute"
+    )
+    max_sessions_per_hour: int = Field(
+        default=50, ge=1, le=500, description="Max sessions per hour"
+    )
+
+
 class WizardConfig(BaseModel):
     """Interactive wizard settings."""
 
@@ -36,6 +47,25 @@ class WizardConfig(BaseModel):
     auto_cleanup_interval: int = Field(
         default=300, ge=60, le=3600, description="Cleanup interval in seconds"
     )
+    rate_limit: RateLimitConfig = Field(
+        default_factory=RateLimitConfig, description="Rate limiting configuration"
+    )
+    persistence_backend: Literal["memory", "json", "sqlite"] = Field(
+        default="memory", description="Session persistence backend"
+    )
+    persistence_path: Path | None = Field(
+        default=None,
+        description="Path for persistence files (defaults to ~/.riso/sessions)",
+    )
+
+    @field_validator("persistence_path", mode="before")
+    @classmethod
+    def resolve_persistence_path(cls, v: str | Path | None) -> Path | None:
+        """Resolve and validate persistence path."""
+        if v is None:
+            return None
+        path = Path(v).expanduser().resolve()
+        return path
 
 
 class ServerConfig(BaseSettings):
@@ -54,6 +84,9 @@ class ServerConfig(BaseSettings):
     name: str = Field(default="riso-mcp", description="Server name")
     version: str = Field(default="1.0.0", description="Server version")
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = Field(default="INFO")
+    json_logs: bool = Field(
+        default=True, description="Use structured JSON logging format"
+    )
 
     # Paths
     template_path: Path = Field(

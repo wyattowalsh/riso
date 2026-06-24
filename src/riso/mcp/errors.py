@@ -29,6 +29,7 @@ class MCPErrorCode(IntEnum):
     PATH_NOT_FOUND = -32006
     PERMISSION_DENIED = -32007
     OPERATION_TIMEOUT = -32008
+    TOO_MANY_REQUESTS = -32009
 
 
 @dataclass
@@ -127,4 +128,51 @@ class PermissionDeniedError(MCPError):
             message=f"Permission denied for {operation}: {reason}",
             code=MCPErrorCode.PERMISSION_DENIED,
             data={"operation": operation, "reason": reason},
+        )
+
+
+class TooManyRequestsError(MCPError):
+    """Raised when rate limit is exceeded."""
+
+    def __init__(self, message: str, retry_after: int | None = None) -> None:
+        data = {"retry_after": retry_after} if retry_after else None
+        super().__init__(
+            message=message,
+            code=MCPErrorCode.TOO_MANY_REQUESTS,
+            data=data,
+        )
+
+
+class OperationTimeoutError(MCPError):
+    """Raised when an operation exceeds its timeout."""
+
+    def __init__(
+        self,
+        operation: str,
+        timeout_seconds: int,
+        details: str | None = None,
+    ) -> None:
+        message = f"Operation '{operation}' timed out after {timeout_seconds}s"
+        if details:
+            message = f"{message}: {details}"
+
+        super().__init__(
+            message=message,
+            code=MCPErrorCode.OPERATION_TIMEOUT,
+            data={
+                "operation": operation,
+                "timeout_seconds": timeout_seconds,
+                "details": details,
+            },
+        )
+
+
+class OperationCancelled(MCPError):
+    """Raised when an operation is cancelled by user request."""
+
+    def __init__(self, reason: str = "Operation cancelled") -> None:
+        super().__init__(
+            message=reason,
+            code=MCPErrorCode.INTERNAL_ERROR,
+            data={"reason": reason},
         )

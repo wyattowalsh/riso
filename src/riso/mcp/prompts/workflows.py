@@ -198,10 +198,12 @@ answers = {
     "project_layout": "monorepo",
     "quality_profile": "strict",
     "cli_module": "enabled",
-    "api_tracks": "python+node",
+    "api_module": "enabled",
+    "api_languages": ["python", "node"],
     "mcp_module": "enabled",
     "websocket_module": "enabled",
-    "docs_site": "fumadocs",
+    "docs_module": "enabled",
+    "docs_framework": "fumadocs",
     "shared_logic": "enabled",
     "ci_platform": "github-actions",
     "include_databases": "yes",
@@ -362,7 +364,7 @@ Create a Model Context Protocol server in {language.capitalize()}.
 answers = {{
     "project_name": "my-mcp-server",
     "mcp_module": "enabled",
-    "mcp_language": "{language}",
+    "mcp_languages": ["{language}"],
     "mcp_transport": "stdio",  # or "sse", "http"
     "mcp_example_tools": True,
 }}

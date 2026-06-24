@@ -56,9 +56,11 @@ def register_sample_resources(mcp: FastMCP) -> None:
                 answers = variant["answers"]
                 project_name = answers.get("project_name", "unknown")
                 layout = answers.get("project_layout", "single-package")
-                api = answers.get("api_tracks", "none")
+                api_enabled = answers.get("api_module", "disabled")
+                api_languages = ", ".join(answers.get("api_languages", []) or [])
+                api = api_languages if api_enabled == "enabled" else "none"
                 lines.append(f"Project: {project_name} ({layout})")
-                lines.append(f"API Tracks: {api}")
+                lines.append(f"API Languages: {api}")
 
             lines.append("")
 

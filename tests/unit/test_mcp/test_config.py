@@ -118,6 +118,7 @@ class TestMCPErrors:
         error = ValidationFailedError(["field1 is required", "field2 invalid"])
         assert "2 error(s)" in str(error)
         assert error.code == MCPErrorCode.VALIDATION_FAILED
+        assert error.data is not None
         assert error.data["errors"] == ["field1 is required", "field2 invalid"]
 
     def test_template_not_found_error(self):
@@ -127,6 +128,7 @@ class TestMCPErrors:
         error = TemplateNotFoundError("/path/to/template")
         assert "Template not found" in str(error)
         assert error.code == MCPErrorCode.TEMPLATE_NOT_FOUND
+        assert error.data is not None
         assert error.data["path"] == "/path/to/template"
 
     def test_session_not_found_error(self):
@@ -136,6 +138,7 @@ class TestMCPErrors:
         error = SessionNotFoundError("abc123")
         assert "Session not found" in str(error)
         assert error.code == MCPErrorCode.SESSION_NOT_FOUND
+        assert error.data is not None
         assert error.data["session_id"] == "abc123"
 
     def test_session_expired_error(self):
@@ -145,6 +148,7 @@ class TestMCPErrors:
         error = SessionExpiredError("abc123")
         assert "Session expired" in str(error)
         assert error.code == MCPErrorCode.SESSION_EXPIRED
+        assert error.data is not None
         assert error.data["session_id"] == "abc123"
 
     def test_copier_operation_error(self):
@@ -154,6 +158,7 @@ class TestMCPErrors:
         error = CopierOperationError("copy", "destination not found")
         assert "Copier copy failed" in str(error)
         assert error.code == MCPErrorCode.COPIER_ERROR
+        assert error.data is not None
         assert error.data["operation"] == "copy"
 
 
