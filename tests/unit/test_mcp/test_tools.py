@@ -11,6 +11,8 @@ import pytest
 pytest.importorskip("fastmcp")
 pytest.importorskip("pydantic_settings")
 
+from riso.mcp.errors import ValidationFailedError
+
 
 @pytest.fixture
 def temp_output_dir():
@@ -96,6 +98,25 @@ class TestCopierAPITools:
 
         tool_names = [t.name for t in mcp._tool_manager._tools.values()]
         assert "copier_recopy" in tool_names
+
+    def test_validate_template_answers_rejects_removed_answer_keys(self):
+        """Removed answer keys are hard errors, not compatibility aliases."""
+        from riso.mcp.tools.copier_api import register_copier_tools
+        from fastmcp import FastMCP
+
+        mcp = FastMCP("test")
+        register_copier_tools(mcp)
+
+        validate_template_answers = None
+        for tool in mcp._tool_manager._tools.values():
+            if tool.name == "validate_template_answers":
+                validate_template_answers = tool.fn
+                break
+
+        assert validate_template_answers is not None
+        with pytest.raises(ValidationFailedError) as exc_info:
+            validate_template_answers({"docs_site": "fumadocs"})
+        assert "docs_site" in exc_info.value.data["errors"][0]
 
 
 class TestWizardTools:

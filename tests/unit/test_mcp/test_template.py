@@ -19,8 +19,9 @@ def test_load_copier_config_contains_defaults():
     from riso.template import load_copier_config, get_template_path
 
     config = load_copier_config(get_template_path())
-    assert "defaults" in config
-    assert "prompts" in config
+    assert "_defaults" in config  # Copier uses underscore prefix for internal keys
+    # Check for some expected prompt keys (not "_prompts" since prompts are inlined)
+    assert "project_name" in config
 
 
 def test_get_defaults_computes_slug_and_package():

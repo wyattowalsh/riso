@@ -46,6 +46,8 @@ dev = [
     "pyyaml>=6.0",
     "copier>=9.1.0",
     "pre-commit>=4.5.1",
+    "pytest-xdist>=3.8.0",
+    "pytest-randomly>=4.0.1",
 ]
 test = [
     "pytest>=7.0",
@@ -180,6 +182,32 @@ exclude_lines = [
     "raise NotImplementedError",               # Exclude abstract method placeholders
                                                # These are meant to be overridden by subclasses
 ]
+
+[tool.ty]
+# Add scripts directory to search paths for type checking
+environment.extra-paths = ["scripts"]
+
+# Ignore unresolved imports for script modules that use dynamic imports
+[[tool.ty.overrides]]
+include = [
+    "scripts/**/*.py",
+    "tests/**/*.py",
+    "template/**/*.py"
+]
+rules.unresolved-import = "ignore"
+
+# Ignore type errors in tests (mostly Path-to-str conversions and Mock assignments)
+[[tool.ty.overrides]]
+include = ["tests/**/*.py"]
+rules.invalid-argument-type = "ignore"
+rules.invalid-assignment = "ignore"
+rules.not-subscriptable = "ignore"
+rules.call-non-callable = "ignore"
+
+# Ignore all errors in vulture whitelist file (not meant for type checking)
+[[tool.ty.overrides]]
+include = ["vulture_whitelist.py"]
+rules.unresolved-reference = "ignore"
 
 [build-system]
 requires = ["hatchling"]

@@ -14,9 +14,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from ..answer_validation import reject_removed_answer_keys
 from ..config import get_config
 from ..errors import (
     CopierOperationError,
+    OperationTimeoutError,
     SessionNotFoundError,
     ValidationFailedError,
 )
@@ -172,6 +174,7 @@ def register_wizard_tools(mcp: FastMCP, session_manager: SessionManager) -> None
         from riso.template import get_prompts, get_template_path, validate_answers
 
         session = session_manager.get_session(session_id)
+        reject_removed_answer_keys(answers)
 
         # Store answers
         session.set_answers(answers)
@@ -391,6 +394,7 @@ def register_wizard_tools(mcp: FastMCP, session_manager: SessionManager) -> None
         )
 
         session = session_manager.get_session(session_id)
+        reject_removed_answer_keys(session.answers)
 
         # Validate before generation
         template_path = config.template_path
@@ -429,6 +433,8 @@ def register_wizard_tools(mcp: FastMCP, session_manager: SessionManager) -> None
                 force=force,
                 timeout=config.timeouts.copier_copy,
             )
+        except OperationTimeoutError:
+            raise  # Re-raise timeout errors with proper error code
         except Exception as exc:
             raise CopierOperationError("copy", str(exc)) from exc
 

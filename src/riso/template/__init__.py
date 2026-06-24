@@ -13,6 +13,8 @@ from typing import Any
 import json
 import ast
 
+from riso.mcp.errors import OperationTimeoutError
+
 
 @dataclass
 class OperationResult:
@@ -85,9 +87,50 @@ def load_copier_config(template_path: Path | None = None) -> dict[str, Any]:
 
 
 def get_prompts(template_path: Path | None = None) -> dict[str, Any]:
-    """Return prompt definitions from copier.yml."""
+    """Return prompt definitions from copier.yml.
+
+    Supports both legacy format (prompts: section) and standard copier format
+    (questions at top level).
+    """
     config = load_copier_config(template_path)
-    return config.get("prompts", {}) or {}
+
+    # Try legacy format first
+    if "prompts" in config:
+        return config.get("prompts", {}) or {}
+
+    # Standard copier format: questions are top-level keys
+    # Filter out special keys and metadata sections
+    special_keys = {
+        "_min_copier_version",
+        "_template",
+        "_faq",
+        "_answers_file",
+        "_metadata",
+        "_defaults",
+        "_tasks",
+        "_jinja_extensions",
+        "_envops",
+        "_subdirectory",
+        "_exclude",
+        "_skip_if_exists",
+        "exclude",
+        "tasks",
+        "defaults",
+        "metadata",
+        "prompts",
+    }
+
+    prompts = {}
+    for key, value in config.items():
+        if key.startswith("_") or key in special_keys:
+            continue
+        # Questions are dicts with type, help, choices, etc.
+        if isinstance(value, dict) and any(
+            k in value for k in ("type", "help", "choices", "default", "when")
+        ):
+            prompts[key] = value
+
+    return prompts
 
 
 def _has_template_expr(value: Any) -> bool:
@@ -110,12 +153,17 @@ def get_defaults(
 
     Template defaults are merged with prompt-level defaults, and
     derived names are computed from project_name when available.
+
+    Supports both legacy format (defaults: section) and standard copier format
+    (_defaults: with underscore prefix).
     """
     config = load_copier_config(template_path)
-    defaults = dict(config.get("defaults", {}) or {})
+    # Support both legacy (defaults:) and standard (_defaults:) format
+    defaults = dict(config.get("defaults", config.get("_defaults", {})) or {})
 
     # Merge prompt defaults if not already set.
-    for key, prompt in (config.get("prompts", {}) or {}).items():
+    prompts = get_prompts(template_path)
+    for key, prompt in prompts.items():
         if key in defaults:
             continue
         if isinstance(prompt, dict) and "default" in prompt:
@@ -140,6 +188,45 @@ def get_defaults(
     return defaults
 
 
+def _extract_prompts_from_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Extract prompts from a config dict (supports both formats)."""
+    # Try legacy format first
+    if "prompts" in config:
+        return config.get("prompts", {}) or {}
+
+    # Standard copier format: questions are top-level keys
+    special_keys = {
+        "_min_copier_version",
+        "_template",
+        "_faq",
+        "_answers_file",
+        "_metadata",
+        "_defaults",
+        "_tasks",
+        "_jinja_extensions",
+        "_envops",
+        "_subdirectory",
+        "_exclude",
+        "_skip_if_exists",
+        "exclude",
+        "tasks",
+        "defaults",
+        "metadata",
+        "prompts",
+    }
+
+    prompts = {}
+    for key, value in config.items():
+        if key.startswith("_") or key in special_keys:
+            continue
+        if isinstance(value, dict) and any(
+            k in value for k in ("type", "help", "choices", "default", "when")
+        ):
+            prompts[key] = value
+
+    return prompts
+
+
 def merge_answers_with_defaults(
     *,
     project_name: str,
@@ -150,9 +237,11 @@ def merge_answers_with_defaults(
 
     Ensures derived fields are populated consistently.
     """
-    defaults = dict(config.get("defaults", {}) or {})
+    # Support both legacy (defaults:) and standard (_defaults:) format
+    defaults = dict(config.get("defaults", config.get("_defaults", {})) or {})
 
-    for key, prompt in (config.get("prompts", {}) or {}).items():
+    prompts = _extract_prompts_from_config(config)
+    for key, prompt in prompts.items():
         if key in defaults:
             continue
         if isinstance(prompt, dict) and "default" in prompt:
@@ -272,8 +361,7 @@ def validate_answers(
 
     Unknown keys are ignored but reported as warnings.
     """
-    config = load_copier_config(template_path)
-    prompts = config.get("prompts", {}) or {}
+    prompts = get_prompts(template_path)
     defaults = get_defaults(template_path)
 
     context = {**defaults, **answers}
@@ -412,14 +500,21 @@ def _run_with_timeout(func: Any, timeout: int | None, *args: Any, **kwargs: Any)
     if timeout is None:
         return func(*args, **kwargs)
 
-    from concurrent.futures import ThreadPoolExecutor, TimeoutError
+    from concurrent.futures import (
+        ThreadPoolExecutor,
+        TimeoutError as FutureTimeoutError,
+    )
 
     with ThreadPoolExecutor(max_workers=1) as executor:
         future = executor.submit(func, *args, **kwargs)
         try:
             return future.result(timeout=timeout)
-        except TimeoutError as exc:
-            raise TimeoutError(f"Operation timed out after {timeout}s") from exc
+        except FutureTimeoutError as exc:
+            raise OperationTimeoutError(
+                operation=func.__name__,
+                timeout_seconds=timeout,
+                details=f"Operation exceeded {timeout}s timeout",
+            ) from exc
 
 
 def run_generator(
