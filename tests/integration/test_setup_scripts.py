@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -110,7 +111,7 @@ class TestSetupBash:
             [str(SETUP_SH), "--help"],
             capture_output=True,
             text=True,
-            env={"DEBUG": "1", **subprocess.os.environ},
+            env={"DEBUG": "1", **os.environ},
         )
         # Just check it runs without error
         assert result.returncode == 0
@@ -284,7 +285,7 @@ class TestSetupScriptIntegration:
             [str(SETUP_SH), "--help"],
             capture_output=True,
             text=True,
-            env={"NO_COLOR": "1", **subprocess.os.environ},
+            env={"NO_COLOR": "1", **os.environ},
         )
         assert result.returncode == 0
         # Output should not contain ANSI escape codes
@@ -296,7 +297,7 @@ class TestSetupScriptIntegration:
             [str(SETUP_SH), "--help"],
             capture_output=True,
             text=True,
-            env={"VERBOSE": "1", **subprocess.os.environ},
+            env={"VERBOSE": "1", **os.environ},
         )
         assert result.returncode == 0
 

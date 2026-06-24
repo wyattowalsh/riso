@@ -13,7 +13,7 @@ from pathlib import Path
 try:
     from scripts.lib.logger import logger, configure_logging
 except ModuleNotFoundError:
-    from logger import logger, configure_logging  # type: ignore[import-not-found]
+    from logger import logger, configure_logging
 
 
 def check_actionlint_available() -> bool:

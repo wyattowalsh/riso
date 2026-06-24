@@ -55,7 +55,8 @@ def copier_answers():
         "python_version": "3.11",
         "use_docker": False,
         "ci_platform": "github",
-        "docs_site": "none",
+        "docs_module": "disabled",
+        "docs_framework": "none",
     }
 
 

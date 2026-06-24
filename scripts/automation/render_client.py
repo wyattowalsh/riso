@@ -231,7 +231,7 @@ class RenderClient:
         )
 
         try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:  # type: ignore[arg-type]
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 body = response.read().decode("utf-8").strip()
                 if not body:
                     return None

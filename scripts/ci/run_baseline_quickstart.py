@@ -4,21 +4,32 @@
 from __future__ import annotations
 
 import json
+import sys
 import time
 from pathlib import Path
 
-# Support both package import (from project root) and direct import (tests)
-try:
-    from scripts.lib.logger import logger, configure_logging
-except ModuleNotFoundError:
-    from logger import logger, configure_logging  # type: ignore[import-not-found]
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+try:
+    from scripts.lib.logger import configure_logging, logger
+except ModuleNotFoundError:
+    scripts_dir = REPO_ROOT / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from lib.logger import configure_logging, logger
+
 EVIDENCE_DIR = REPO_ROOT / "samples" / "default"
 RESULT_FILE = EVIDENCE_DIR / "baseline_quickstart_metrics.json"
 
 
 def run() -> dict[str, object]:
+    """Run baseline quickstart validation.
+
+    Returns:
+        Dictionary with validation status and metrics.
+    """
     start = time.perf_counter()
     package = "<package>"
     answers_file = EVIDENCE_DIR / "copier-answers.yml"

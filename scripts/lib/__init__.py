@@ -1,10 +1,10 @@
 """Shared utilities for Riso CI scripts."""
 
-# Support both package import (from project root) and direct import (tests)
+# Support both package import and direct test imports.
 try:
-    from scripts.lib.logger import configure_logging, get_logger, logger
-except ModuleNotFoundError:
-    from logger import configure_logging, get_logger, logger  # type: ignore[import-not-found]
+    from .logger import configure_logging, get_logger, logger
+except ImportError:
+    from logger import configure_logging, get_logger, logger
 
 __version__ = "0.1.0"
 

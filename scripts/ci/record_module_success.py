@@ -95,9 +95,7 @@ class ContainerMetrics:
     files_missing: int = 0
     not_applicable: int = 0
     success_rate: float = 0.0
-    note: str = (
-        "Container metrics tracked from rendered samples with api_tracks or docs_site"
-    )
+    note: str = "Container metrics tracked from rendered samples with api_languages or docs_framework"
 
     def to_dict(self) -> dict[str, float | int | str]:
         """Convert container metrics to dictionary format.
@@ -131,7 +129,7 @@ class ModuleSuccessRecorder:
             status: Status of the result (passed, failed, error, skipped)
             variant: Variant name for tracking
         """
-        results = [{"name": module_name, "status": status}]
+        results: list[ModuleResult] = [{"name": module_name, "status": status}]
         self.update_from_results(variant, results)
 
     def update_workflow_validation(self, status: str) -> None:

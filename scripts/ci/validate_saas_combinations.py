@@ -13,13 +13,51 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Literal
+from typing import Callable, Literal, TypedDict
 
-# Support both package import (from project root) and direct import (tests)
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 try:
-    from scripts.lib.logger import logger, configure_logging
+    from scripts.lib.logger import configure_logging, logger
 except ModuleNotFoundError:
-    from logger import logger, configure_logging  # type: ignore[import-not-found]
+    scripts_dir = REPO_ROOT / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from lib.logger import configure_logging, logger
+
+Severity = Literal["error", "warning", "info"]
+RuleLevel = Literal["errors", "warnings", "info"]
+ValidationStatus = Literal["passed", "passed_with_warnings", "failed"]
+Combination = dict[str, str]
+
+
+class CombinationRule(TypedDict):
+    """Validation rule matched against exact key/value combinations."""
+
+    name: str
+    combination: Combination
+    message: str
+
+
+class ConditionalRule(TypedDict):
+    """Validation rule evaluated with a predicate."""
+
+    name: str
+    condition: Callable[[Combination], bool]
+    message: str
+    severity: Severity
+
+
+class CombinationResult(TypedDict):
+    """Result emitted for one validated technology combination."""
+
+    combination: Combination
+    name: str
+    status: ValidationStatus
+    issues: list[dict[str, str]]
+
 
 # Define all valid technology combinations
 TECHNOLOGY_MATRIX = {
@@ -38,7 +76,7 @@ TECHNOLOGY_MATRIX = {
 }
 
 # Validation rules based on template/hooks/pre_gen_project.py
-VALIDATION_RULES = {
+VALIDATION_RULES: dict[RuleLevel, list[CombinationRule]] = {
     "errors": [
         {
             "name": "neon_supabase_storage_incompatible",
@@ -80,7 +118,7 @@ VALIDATION_RULES = {
 }
 
 # Required combinations
-REQUIRED_RULES = [
+REQUIRED_RULES: list[ConditionalRule] = [
     {
         "name": "billing_requires_auth",
         "condition": lambda combo: combo.get("billing") and not combo.get("auth"),
@@ -90,7 +128,7 @@ REQUIRED_RULES = [
 ]
 
 # Recommendations
-RECOMMENDATION_RULES = [
+RECOMMENDATION_RULES: list[ConditionalRule] = [
     {
         "name": "database_should_have_orm",
         "condition": lambda combo: combo.get("database") and not combo.get("orm"),
@@ -98,8 +136,6 @@ RECOMMENDATION_RULES = [
         "severity": "warning",
     },
 ]
-
-Severity = Literal["error", "warning", "info"]
 
 
 class ValidationIssue:
@@ -110,7 +146,7 @@ class ValidationIssue:
         self.name = name
         self.message = message
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, str]:
         return {
             "severity": self.severity,
             "name": self.name,
@@ -118,7 +154,7 @@ class ValidationIssue:
         }
 
 
-def validate_combination_rules(combo: dict) -> list[ValidationIssue]:
+def validate_combination_rules(combo: Combination) -> list[ValidationIssue]:
     """Validate a combination against all defined rules.
 
     Args:
@@ -131,18 +167,27 @@ def validate_combination_rules(combo: dict) -> list[ValidationIssue]:
 
     # Check error-level incompatibilities
     for rule in VALIDATION_RULES["errors"]:
-        if all(combo.get(key) == value for key, value in rule["combination"].items()):
-            issues.append(ValidationIssue("error", rule["name"], rule["message"]))
+        combination = rule["combination"]
+        if all(combo.get(key) == value for key, value in combination.items()):
+            issues.append(
+                ValidationIssue("error", str(rule["name"]), str(rule["message"]))
+            )
 
     # Check warning-level incompatibilities
     for rule in VALIDATION_RULES["warnings"]:
-        if all(combo.get(key) == value for key, value in rule["combination"].items()):
-            issues.append(ValidationIssue("warning", rule["name"], rule["message"]))
+        combination_warn = rule["combination"]
+        if all(combo.get(key) == value for key, value in combination_warn.items()):
+            issues.append(
+                ValidationIssue("warning", str(rule["name"]), str(rule["message"]))
+            )
 
     # Check info-level notices
     for rule in VALIDATION_RULES["info"]:
-        if all(combo.get(key) == value for key, value in rule["combination"].items()):
-            issues.append(ValidationIssue("info", rule["name"], rule["message"]))
+        combination_info = rule["combination"]
+        if all(combo.get(key) == value for key, value in combination_info.items()):
+            issues.append(
+                ValidationIssue("info", str(rule["name"]), str(rule["message"]))
+            )
 
     # Check required combinations
     for rule in REQUIRED_RULES:
@@ -161,7 +206,7 @@ def validate_combination_rules(combo: dict) -> list[ValidationIssue]:
     return issues
 
 
-def is_combination_valid(combo: dict) -> bool:
+def is_combination_valid(combo: Combination) -> bool:
     """Check if a technology combination is valid (no error-level issues).
 
     Args:
@@ -174,7 +219,7 @@ def is_combination_valid(combo: dict) -> bool:
     return not any(issue.severity == "error" for issue in issues)
 
 
-def generate_all_combinations() -> list[dict]:
+def generate_all_combinations() -> list[Combination]:
     """Generate all valid technology combinations."""
     combinations = []
 
@@ -239,8 +284,8 @@ def generate_all_combinations() -> list[dict]:
 
 
 def validate_combination(
-    combo: dict, output_dir: Path, json_output: bool = False
-) -> dict:
+    combo: Combination, output_dir: Path, json_output: bool = False
+) -> CombinationResult:
     """Validate a single technology combination.
 
     Args:
@@ -258,7 +303,7 @@ def validate_combination(
     if not json_output:
         logger.info(f"\nValidating combination: {combo_name}")
 
-    result = {
+    result: CombinationResult = {
         "combination": combo,
         "name": combo_name,
         "status": "passed",
@@ -352,7 +397,7 @@ def main() -> int:
         logger.info(f"\nTesting {len(combinations)} technology combinations")
 
     # Validate each combination
-    results = []
+    results: list[CombinationResult] = []
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
     for combo in combinations:

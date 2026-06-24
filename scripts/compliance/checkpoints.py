@@ -84,12 +84,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     metadata = load_metadata(args.metadata)
 
+    checkpoint_metadata = dict(metadata or {})
     payload = {
         "principle": args.principle,
         "status": args.status,
         "evidence": args.evidence,
         "recorded_at": datetime.now(tz=timezone.utc).isoformat(),
-        "metadata": metadata or {},
+        "metadata": checkpoint_metadata,
     }
 
     if args.dry_run:
@@ -105,7 +106,7 @@ def main(argv: list[str] | None = None) -> int:
             principle=args.principle,
             status=args.status,
             evidence=args.evidence,
-            metadata=payload["metadata"],
+            metadata=checkpoint_metadata,
         )
     except APIError as exc:
         sys.stderr.write(f"[compliance] Failed to record checkpoint: {exc}\n")

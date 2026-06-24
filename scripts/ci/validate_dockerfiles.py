@@ -27,11 +27,17 @@ import sys
 from pathlib import Path
 from typing import Any, TypedDict
 
-# Support both package import (from project root) and direct import (tests)
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 try:
     from scripts.lib.logger import configure_logging, logger
 except ModuleNotFoundError:
-    from logger import configure_logging, logger  # type: ignore[import-not-found]
+    scripts_dir = REPO_ROOT / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from lib.logger import configure_logging, logger
 
 
 class ValidationResult(TypedDict):
@@ -131,9 +137,9 @@ def validate_dockerfile(dockerfile_path: Path) -> ValidationResult:
         )
 
     except json.JSONDecodeError as e:
-        raise RuntimeError(f"Failed to parse hadolint JSON output: {e}")
+        raise RuntimeError(f"Failed to parse hadolint JSON output: {e}") from e
     except subprocess.SubprocessError as e:
-        raise RuntimeError(f"hadolint execution failed: {e}")
+        raise RuntimeError(f"hadolint execution failed: {e}") from e
 
 
 def print_validation_summary(results: list[ValidationResult]) -> None:
@@ -185,12 +191,14 @@ def main() -> int:
     """
     configure_logging()
 
+    # Validate arguments
     if len(sys.argv) != 2:
         logger.error("Usage: python validate_dockerfiles.py <directory>")
         return 2
 
     directory = Path(sys.argv[1])
 
+    # Validate directory
     if not directory.exists():
         logger.error(f"Directory not found: {directory}")
         return 2
@@ -221,13 +229,19 @@ def main() -> int:
 
     # Validate each Dockerfile
     results: list[ValidationResult] = []
+    validation_error_occurred = False
+
     for dockerfile in dockerfiles:
         try:
             result = validate_dockerfile(dockerfile)
             results.append(result)
-        except Exception as e:
+        except (RuntimeError, json.JSONDecodeError, subprocess.SubprocessError) as e:
             logger.error(f"Error validating {dockerfile}: {e}")
-            return 2
+            validation_error_occurred = True
+            break
+
+    if validation_error_occurred:
+        return 2
 
     # Print summary
     print_validation_summary(results)
@@ -245,10 +259,7 @@ def main() -> int:
     logger.info(f"JSON report written to: {json_file}")
 
     # Return exit code based on validation results
-    if all(r["passed"] for r in results):
-        return 0
-    else:
-        return 1
+    return 0 if all(r["passed"] for r in results) else 1
 
 
 if __name__ == "__main__":
