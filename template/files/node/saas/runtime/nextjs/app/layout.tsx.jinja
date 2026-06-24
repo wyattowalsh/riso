@@ -1,10 +1,10 @@
-{% if saas_starter_module == "enabled" and saas_runtime == "nextjs-16" %}
+{% if saas_infra_module == "enabled" and saas_runtime == "nextjs-16" %}
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-{% if saas_auth == 'clerk' %}
+{% if saas_auth_provider == 'clerk' %}
 import { ClerkProvider } from '@clerk/nextjs';
-{% elif saas_auth == 'authjs' %}
+{% elif saas_auth_provider == 'authjs' %}
 import { SessionProvider } from 'next-auth/react';
 {% endif %}
 {% if saas_analytics == 'posthog' %}
@@ -26,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    {% if saas_auth == 'clerk' %}
+    {% if saas_auth_provider == 'clerk' %}
     <ClerkProvider>
       <html lang="en">
         <body className={inter.className}>
@@ -44,7 +44,7 @@ export default function RootLayout({
         </body>
       </html>
     </ClerkProvider>
-    {% elif saas_auth == 'authjs' %}
+    {% elif saas_auth_provider == 'authjs' %}
     <html lang="en">
       <body className={inter.className}>
         <SessionProvider>

@@ -1,0 +1,190 @@
+{% if 'go' in cli_languages or 'go' in api_languages %}
+# {{ project_name }}
+
+{{ project_description | default('A Go application scaffolded with Riso template.') }}
+
+## Requirements
+
+- Go {{ go_version | default('1.24') }}+
+- [golangci-lint v2.8+](https://golangci-lint.run/) for linting
+{% if api_module == 'enabled' and 'go' in api_languages %}
+- [air](https://github.com/air-verse/air) for hot reload (optional)
+{% endif %}
+
+## Quick Start
+
+```bash
+# Install development tools
+make install-tools
+
+# Download dependencies
+go mod download
+
+{% if cli_module == 'enabled' and 'go' in cli_languages %}
+# Run CLI
+make run-cli ARGS="--help"
+make run-cli ARGS="version"
+{% endif %}
+
+{% if api_module == 'enabled' and 'go' in api_languages %}
+# Run API server
+make run-api
+
+# Run API with hot reload
+make run-api-dev
+{% endif %}
+```
+
+## Development
+
+### Build
+
+```bash
+# Build all binaries
+make build
+{% if cli_module == 'enabled' and 'go' in cli_languages %}
+
+# Build CLI only
+make build-cli
+{% endif %}
+{% if api_module == 'enabled' and 'go' in api_languages %}
+
+# Build API only
+make build-api
+{% endif %}
+```
+
+### Test
+
+```bash
+# Run all tests
+make test
+
+# Run tests with verbose output
+make test-verbose
+
+# Generate coverage report
+make coverage
+```
+
+### Lint
+
+```bash
+# Run linter
+make lint
+
+# Run linter with auto-fix
+make lint-fix
+```
+
+### Format
+
+```bash
+# Format code
+make fmt
+```
+
+## Project Structure
+
+```
+.
+{% if cli_module == 'enabled' and 'go' in cli_languages %}
+├── cli/
+│   ├── main.go              # CLI entry point
+│   ├── cmd/
+│   │   ├── root.go          # Root command with global flags
+│   │   ├── version.go       # Version command
+{% if api_module == 'enabled' and 'go' in api_languages %}
+│   │   └── serve.go         # Serve command (starts API)
+{% endif %}
+│   └── internal/
+│       ├── config/          # Configuration management (koanf)
+│       └── logger/          # Structured logging (slog)
+{% endif %}
+{% if api_module == 'enabled' and 'go' in api_languages %}
+├── api/
+│   ├── main.go              # API entry point
+│   └── internal/
+│       ├── handlers/        # HTTP request handlers
+│       ├── middleware/      # HTTP middleware (logging, CORS, recovery)
+│       └── server/          # HTTP server setup
+{% endif %}
+├── go.mod                   # Go module definition
+├── go.sum                   # Dependency checksums
+├── Makefile                 # Build automation
+├── .golangci.yml            # Linter configuration
+├── Dockerfile               # Container build
+{% if api_module == 'enabled' and 'go' in api_languages %}
+├── .air.toml                # Hot reload configuration
+{% endif %}
+└── README.md                # This file
+```
+
+## Configuration
+
+Configuration is loaded from multiple sources (highest priority first):
+
+1. Environment variables (prefix: `{{ project_slug | upper | replace('-', '_') }}_`)
+2. Config file (`~/.{{ project_slug }}.yaml` or `./config.yaml`)
+3. Default values
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `{{ project_slug | upper | replace('-', '_') }}_ENVIRONMENT` | Environment (development, staging, production) | `development` |
+| `{{ project_slug | upper | replace('-', '_') }}_LOG_LEVEL` | Log level (debug, info, warn, error) | `info` |
+| `{{ project_slug | upper | replace('-', '_') }}_SERVER_HOST` | Server bind host | `0.0.0.0` |
+| `{{ project_slug | upper | replace('-', '_') }}_SERVER_PORT` | Server port | `8080` |
+{% if api_module == 'enabled' and 'go' in api_languages %}
+| `{{ project_slug | upper | replace('-', '_') }}_API_CORS_ENABLED` | Enable CORS | `true` |
+{% endif %}
+
+### Config File Example
+
+```yaml
+environment: development
+log_level: info
+
+server:
+  host: 0.0.0.0
+  port: 8080
+  read_timeout: 30
+  write_timeout: 30
+  shutdown_timeout: 30
+{% if api_module == 'enabled' and 'go' in api_languages %}
+
+api:
+  cors_enabled: true
+  cors_allow_origins:
+    - "*"
+  rate_limit_enabled: true
+  rate_limit_rps: 100
+{% endif %}
+```
+
+{% if api_module == 'enabled' and 'go' in api_languages %}
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Health check |
+| GET | `/ready` | Kubernetes readiness probe |
+| GET | `/live` | Kubernetes liveness probe |
+| GET | `/api/v1/ping` | Ping endpoint |
+
+{% endif %}
+## Docker
+
+```bash
+# Build image
+make docker-build
+
+# Run container
+make docker-run
+```
+
+## License
+
+MIT
+{% endif %}

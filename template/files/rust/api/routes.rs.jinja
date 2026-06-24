@@ -1,0 +1,18 @@
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+//! Route configuration
+
+use actix_web::web;
+
+use crate::handlers;
+
+/// Configure all API routes
+pub fn configure(cfg: &mut web::ServiceConfig) {
+    cfg
+        // Health check routes
+        .service(handlers::health::health_check)
+        .service(handlers::health::readiness_check)
+        .service(handlers::health::liveness_check)
+        // API routes
+        .service(handlers::hello::hello);
+}
+{% endif %}

@@ -1,0 +1,694 @@
+{% if saas_infra_module == "enabled" and saas_search == "meilisearch" %}
+/**
+ * Meilisearch React Hooks
+ *
+ * Client-side search hooks with:
+ * - Automatic debouncing
+ * - Loading states
+ * - Error handling
+ * - Type safety
+ * - Cache management
+ *
+ * @see https://www.meilisearch.com/docs
+ */
+
+'use client';
+
+import { useState, useEffect, useCallback, useRef } from 'react';
+import type {
+  SearchParams,
+  SearchHit,
+  UseSearchOptions,
+  UseSearchReturn,
+  SearchState,
+} from './types';
+
+// ============================================================================
+// useSearch Hook
+// ============================================================================
+
+/**
+ * React hook for real-time search with debouncing
+ *
+ * @example
+ * ```tsx
+ * function ProductSearch() {
+ *   const {
+ *     results,
+ *     isLoading,
+ *     error,
+ *     search,
+ *     totalHits,
+ *   } = useSearch({
+ *     indexName: 'products',
+ *     debounceMs: 300,
+ *     filter: 'inStock = true',
+ *     limit: 20,
+ *   });
+ *
+ *   return (
+ *     <div>
+ *       <input
+ *         type="search"
+ *         onChange={(e) => search(e.target.value)}
+ *         placeholder="Search products..."
+ *       />
+ *       {isLoading && <p>Loading...</p>}
+ *       {error && <p>Error: {error.message}</p>}
+ *       <div>
+ *         <p>Found {totalHits} results</p>
+ *         {results.map((product) => (
+ *           <ProductCard key={product.id} product={product} />
+ *         ))}
+ *       </div>
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export function useSearch<T = Record<string, any>>(
+  options: UseSearchOptions
+): UseSearchReturn<T> {
+  const {
+    indexName,
+    debounceMs = 300,
+    searchOnMount = false,
+    initialQuery = '',
+    ...searchParams
+  } = options;
+
+  const [state, setState] = useState<SearchState<T>>({
+    results: [],
+    totalHits: 0,
+    isLoading: false,
+    error: null,
+    processingTimeMs: 0,
+    facets: undefined,
+  });
+
+  const [query, setQuery] = useState(initialQuery);
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const abortController = useRef<AbortController | null>(null);
+
+  // Perform search
+  const performSearch = useCallback(
+    async (searchQuery: string) => {
+      // Cancel previous request
+      if (abortController.current) {
+        abortController.current.abort();
+      }
+
+      // Don't search empty queries unless explicitly allowed
+      if (!searchQuery.trim() && !searchOnMount) {
+        setState((prev) => ({
+          ...prev,
+          results: [],
+          totalHits: 0,
+          isLoading: false,
+        }));
+        return;
+      }
+
+      setState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+      try {
+        abortController.current = new AbortController();
+
+        const response = await fetch('/api/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            indexName,
+            query: searchQuery,
+            ...searchParams,
+          }),
+          signal: abortController.current.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Search failed: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        setState({
+          results: data.hits || [],
+          totalHits: data.estimatedTotalHits || 0,
+          isLoading: false,
+          error: null,
+          processingTimeMs: data.processingTimeMs || 0,
+          facets: data.facetDistribution,
+        });
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          setState((prev) => ({
+            ...prev,
+            isLoading: false,
+            error: error as Error,
+          }));
+        }
+      }
+    },
+    [indexName, searchParams, searchOnMount]
+  );
+
+  // Debounced search function
+  const search = useCallback(
+    (searchQuery: string) => {
+      setQuery(searchQuery);
+
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+
+      debounceTimer.current = setTimeout(() => {
+        performSearch(searchQuery);
+      }, debounceMs);
+    },
+    [debounceMs, performSearch]
+  );
+
+  // Clear results
+  const clear = useCallback(() => {
+    setQuery('');
+    setState({
+      results: [],
+      totalHits: 0,
+      isLoading: false,
+      error: null,
+      processingTimeMs: 0,
+      facets: undefined,
+    });
+
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+
+    if (abortController.current) {
+      abortController.current.abort();
+    }
+  }, []);
+
+  // Refetch with current query
+  const refetch = useCallback(() => {
+    return performSearch(query);
+  }, [query, performSearch]);
+
+  // Search on mount if enabled
+  useEffect(() => {
+    if (searchOnMount && initialQuery) {
+      performSearch(initialQuery);
+    }
+
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+      if (abortController.current) {
+        abortController.current.abort();
+      }
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return {
+    ...state,
+    search,
+    clear,
+    refetch,
+  };
+}
+
+// ============================================================================
+// useSearchResults Hook
+// ============================================================================
+
+/**
+ * React hook for paginated search results
+ *
+ * @example
+ * ```tsx
+ * function SearchResults() {
+ *   const {
+ *     results,
+ *     isLoading,
+ *     totalHits,
+ *     page,
+ *     totalPages,
+ *     nextPage,
+ *     prevPage,
+ *     goToPage,
+ *   } = useSearchResults({
+ *     indexName: 'articles',
+ *     query: 'react',
+ *     limit: 10,
+ *   });
+ *
+ *   return (
+ *     <div>
+ *       {results.map((article) => (
+ *         <ArticleCard key={article.id} article={article} />
+ *       ))}
+ *       <Pagination
+ *         page={page}
+ *         totalPages={totalPages}
+ *         onNext={nextPage}
+ *         onPrev={prevPage}
+ *         onGoTo={goToPage}
+ *       />
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export function useSearchResults<T = Record<string, any>>(options: {
+  indexName: string;
+  query: string;
+  limit?: number;
+  searchParams?: Omit<SearchParams, 'query' | 'offset' | 'limit'>;
+}) {
+  const { indexName, query, limit = 20, searchParams } = options;
+
+  const [state, setState] = useState<{
+    results: SearchHit<T>[];
+    totalHits: number;
+    isLoading: boolean;
+    error: Error | null;
+    page: number;
+    facets?: Record<string, Record<string, number>>;
+  }>({
+    results: [],
+    totalHits: 0,
+    isLoading: false,
+    error: null,
+    page: 1,
+    facets: undefined,
+  });
+
+  const abortController = useRef<AbortController | null>(null);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(state.totalHits / limit);
+  const offset = (state.page - 1) * limit;
+
+  // Fetch results
+  const fetchResults = useCallback(
+    async (page: number) => {
+      if (abortController.current) {
+        abortController.current.abort();
+      }
+
+      setState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+      try {
+        abortController.current = new AbortController();
+
+        const response = await fetch('/api/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            indexName,
+            query,
+            offset: (page - 1) * limit,
+            limit,
+            ...searchParams,
+          }),
+          signal: abortController.current.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Search failed: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        setState({
+          results: data.hits || [],
+          totalHits: data.estimatedTotalHits || 0,
+          isLoading: false,
+          error: null,
+          page,
+          facets: data.facetDistribution,
+        });
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          setState((prev) => ({
+            ...prev,
+            isLoading: false,
+            error: error as Error,
+          }));
+        }
+      }
+    },
+    [indexName, query, limit, searchParams]
+  );
+
+  // Pagination controls
+  const nextPage = useCallback(() => {
+    if (state.page < totalPages) {
+      fetchResults(state.page + 1);
+    }
+  }, [state.page, totalPages, fetchResults]);
+
+  const prevPage = useCallback(() => {
+    if (state.page > 1) {
+      fetchResults(state.page - 1);
+    }
+  }, [state.page, fetchResults]);
+
+  const goToPage = useCallback(
+    (page: number) => {
+      if (page >= 1 && page <= totalPages) {
+        fetchResults(page);
+      }
+    },
+    [totalPages, fetchResults]
+  );
+
+  // Fetch on mount and when query changes
+  useEffect(() => {
+    if (query) {
+      fetchResults(1);
+    }
+
+    return () => {
+      if (abortController.current) {
+        abortController.current.abort();
+      }
+    };
+  }, [query, fetchResults]);
+
+  return {
+    ...state,
+    totalPages,
+    offset,
+    limit,
+    nextPage,
+    prevPage,
+    goToPage,
+    hasNextPage: state.page < totalPages,
+    hasPrevPage: state.page > 1,
+  };
+}
+
+// ============================================================================
+// useInstantSearch Hook
+// ============================================================================
+
+/**
+ * React hook for instant search (autocomplete/suggestions)
+ *
+ * @example
+ * ```tsx
+ * function SearchAutocomplete() {
+ *   const { suggestions, isLoading, search } = useInstantSearch({
+ *     indexName: 'products',
+ *     limit: 5,
+ *   });
+ *
+ *   return (
+ *     <div>
+ *       <input
+ *         type="search"
+ *         onChange={(e) => search(e.target.value)}
+ *         placeholder="Search..."
+ *       />
+ *       {suggestions.length > 0 && (
+ *         <ul>
+ *           {suggestions.map((item) => (
+ *             <li key={item.id}>{item._formatted?.title}</li>
+ *           ))}
+ *         </ul>
+ *       )}
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export function useInstantSearch<T = Record<string, any>>(options: {
+  indexName: string;
+  limit?: number;
+  debounceMs?: number;
+  attributesToHighlight?: string[];
+}) {
+  const { indexName, limit = 5, debounceMs = 200, attributesToHighlight } = options;
+
+  const [suggestions, setSuggestions] = useState<SearchHit<T>[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const abortController = useRef<AbortController | null>(null);
+
+  const search = useCallback(
+    (query: string) => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+
+      if (!query.trim()) {
+        setSuggestions([]);
+        return;
+      }
+
+      debounceTimer.current = setTimeout(async () => {
+        if (abortController.current) {
+          abortController.current.abort();
+        }
+
+        setIsLoading(true);
+
+        try {
+          abortController.current = new AbortController();
+
+          const response = await fetch('/api/search', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              indexName,
+              query,
+              limit,
+              attributesToHighlight: attributesToHighlight || ['*'],
+              cropLength: 50,
+            }),
+            signal: abortController.current.signal,
+          });
+
+          if (!response.ok) {
+            throw new Error(`Search failed: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+          setSuggestions(data.hits || []);
+        } catch (error: any) {
+          if (error.name !== 'AbortError') {
+            console.error('Instant search error:', error);
+            setSuggestions([]);
+          }
+        } finally {
+          setIsLoading(false);
+        }
+      }, debounceMs);
+    },
+    [indexName, limit, debounceMs, attributesToHighlight]
+  );
+
+  const clear = useCallback(() => {
+    setSuggestions([]);
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    if (abortController.current) {
+      abortController.current.abort();
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+      if (abortController.current) {
+        abortController.current.abort();
+      }
+    };
+  }, []);
+
+  return {
+    suggestions,
+    isLoading,
+    search,
+    clear,
+  };
+}
+
+// ============================================================================
+// useFacets Hook
+// ============================================================================
+
+/**
+ * React hook for faceted search
+ *
+ * @example
+ * ```tsx
+ * function FacetedSearch() {
+ *   const {
+ *     results,
+ *     facets,
+ *     selectedFacets,
+ *     toggleFacet,
+ *     clearFacets,
+ *   } = useFacets({
+ *     indexName: 'products',
+ *     query: 'laptop',
+ *     facetAttributes: ['category', 'brand', 'price_range'],
+ *   });
+ *
+ *   return (
+ *     <div className="flex">
+ *       <aside>
+ *         {Object.entries(facets).map(([facetName, values]) => (
+ *           <FacetList
+ *             key={facetName}
+ *             facet={facetName}
+ *             values={values}
+ *             selected={selectedFacets[facetName] || []}
+ *             onToggle={(value) => toggleFacet(facetName, value)}
+ *           />
+ *         ))}
+ *       </aside>
+ *       <main>
+ *         {results.map((product) => (
+ *           <ProductCard key={product.id} product={product} />
+ *         ))}
+ *       </main>
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export function useFacets<T = Record<string, any>>(options: {
+  indexName: string;
+  query: string;
+  facetAttributes: string[];
+  limit?: number;
+}) {
+  const { indexName, query, facetAttributes, limit = 20 } = options;
+
+  const [selectedFacets, setSelectedFacets] = useState<Record<string, string[]>>({});
+  const [state, setState] = useState<{
+    results: SearchHit<T>[];
+    facets: Record<string, Record<string, number>>;
+    totalHits: number;
+    isLoading: boolean;
+    error: Error | null;
+  }>({
+    results: [],
+    facets: {},
+    totalHits: 0,
+    isLoading: false,
+    error: null,
+  });
+
+  // Build filter string from selected facets
+  const buildFilter = useCallback(() => {
+    const filters = Object.entries(selectedFacets)
+      .filter(([, values]) => values.length > 0)
+      .map(([facet, values]) => {
+        if (values.length === 1) {
+          return `${facet} = "${values[0]}"`;
+        }
+        return `(${values.map((v) => `${facet} = "${v}"`).join(' OR ')})`;
+      });
+
+    return filters.length > 0 ? filters.join(' AND ') : undefined;
+  }, [selectedFacets]);
+
+  // Fetch results with facets
+  const fetchResults = useCallback(async () => {
+    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+    try {
+      const response = await fetch('/api/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          indexName,
+          query,
+          filter: buildFilter(),
+          facets: facetAttributes,
+          limit,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Search failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      setState({
+        results: data.hits || [],
+        facets: data.facetDistribution || {},
+        totalHits: data.estimatedTotalHits || 0,
+        isLoading: false,
+        error: null,
+      });
+    } catch (error: any) {
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: error as Error,
+      }));
+    }
+  }, [indexName, query, buildFilter, facetAttributes, limit]);
+
+  // Toggle facet value
+  const toggleFacet = useCallback((facet: string, value: string) => {
+    setSelectedFacets((prev) => {
+      const current = prev[facet] || [];
+      const isSelected = current.includes(value);
+
+      return {
+        ...prev,
+        [facet]: isSelected
+          ? current.filter((v) => v !== value)
+          : [...current, value],
+      };
+    });
+  }, []);
+
+  // Clear all facets
+  const clearFacets = useCallback(() => {
+    setSelectedFacets({});
+  }, []);
+
+  // Clear specific facet
+  const clearFacet = useCallback((facet: string) => {
+    setSelectedFacets((prev) => {
+      const { [facet]: _, ...rest } = prev;
+      return rest;
+    });
+  }, []);
+
+  // Fetch results when query or facets change
+  useEffect(() => {
+    if (query) {
+      fetchResults();
+    }
+  }, [query, selectedFacets, fetchResults]);
+
+  return {
+    ...state,
+    selectedFacets,
+    toggleFacet,
+    clearFacets,
+    clearFacet,
+  };
+}
+{% endif %}

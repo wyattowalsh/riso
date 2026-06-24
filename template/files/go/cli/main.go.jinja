@@ -1,0 +1,40 @@
+{% if cli_module == 'enabled' and 'go' in cli_languages %}
+// Package main provides the entry point for the {{ project_name }} CLI.
+package main
+
+import (
+	"os"
+
+	"{{ project_slug }}/cli/cmd"
+)
+
+// Build-time variables (set via ldflags).
+var (
+	Version   = "dev"
+	BuildTime = "unknown"
+	Commit    = "unknown"
+)
+
+func main() {
+	// Pass build info to the root command
+	cmd.SetBuildInfo(Version, BuildTime, Commit)
+
+	if err := cmd.Execute(); err != nil {
+		os.Exit(1)
+	}
+}
+{% else %}
+// CLI module is disabled.
+// Re-render the template with cli_module=enabled and cli_language=go to scaffold the Go CLI.
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	fmt.Fprintln(os.Stderr, "CLI module is disabled for this render.")
+	os.Exit(1)
+}
+{% endif %}

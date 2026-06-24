@@ -1,4 +1,4 @@
-{% if saas_starter_module == "enabled" %}
+{% if saas_infra_module == "enabled" %}
 /**
  * Authentication Helper Functions
  * 
@@ -6,7 +6,7 @@
  * Provides a consistent interface regardless of Clerk or Auth.js selection.
  */
 
-{% if saas_auth == "clerk" %}
+{% if saas_auth_provider == "clerk" %}
 import { auth, currentUser } from '@clerk/nextjs';
 import { clerkClient } from '@clerk/nextjs';
 
@@ -40,7 +40,7 @@ export async function requireUserId() {
   return userId;
 }
 
-{% elif saas_auth == "authjs" %}
+{% elif saas_auth_provider == "authjs" %}
 import { auth } from '@/lib/auth/authjs/auth.config';
 
 export async function getSession() {
@@ -78,7 +78,7 @@ export async function requireUserId() {
 // Unified Organization Helpers (Clerk only)
 // ============================================================================
 
-{% if saas_auth == "clerk" %}
+{% if saas_auth_provider == "clerk" %}
 /**
  * Get current organization ID
  */
@@ -125,10 +125,10 @@ export async function hasRole(role: 'admin' | 'org:member') {
  * Returns boolean, doesn't throw
  */
 export async function isAuthenticated() {
-  {% if saas_auth == "clerk" %}
+  {% if saas_auth_provider == "clerk" %}
   const { userId } = auth();
   return !!userId;
-  {% elif saas_auth == "authjs" %}
+  {% elif saas_auth_provider == "authjs" %}
   const session = await auth();
   return !!session?.user;
   {% endif %}
@@ -139,10 +139,10 @@ export async function isAuthenticated() {
  * Convenience method for common use case
  */
 export async function getUserEmail() {
-  {% if saas_auth == "clerk" %}
+  {% if saas_auth_provider == "clerk" %}
   const user = await currentUser();
   return user?.emailAddresses[0]?.emailAddress ?? null;
-  {% elif saas_auth == "authjs" %}
+  {% elif saas_auth_provider == "authjs" %}
   const session = await auth();
   return session?.user?.email ?? null;
   {% endif %}
@@ -153,12 +153,12 @@ export async function getUserEmail() {
  * Falls back to email if name not set
  */
 export async function getUserDisplayName() {
-  {% if saas_auth == "clerk" %}
+  {% if saas_auth_provider == "clerk" %}
   const user = await currentUser();
   return user?.firstName 
     ? `${user.firstName} ${user.lastName || ''}`.trim()
     : user?.emailAddresses[0]?.emailAddress ?? 'User';
-  {% elif saas_auth == "authjs" %}
+  {% elif saas_auth_provider == "authjs" %}
   const session = await auth();
   return session?.user?.name ?? session?.user?.email ?? 'User';
   {% endif %}

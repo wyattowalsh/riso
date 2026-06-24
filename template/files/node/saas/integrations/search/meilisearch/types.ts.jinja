@@ -1,0 +1,364 @@
+{% if saas_infra_module == "enabled" and saas_search == "meilisearch" %}
+/**
+ * Meilisearch Type Definitions
+ *
+ * Type-safe interfaces for Meilisearch integration
+ */
+
+// ============================================================================
+// Search Types
+// ============================================================================
+
+/**
+ * Search query parameters
+ */
+export interface SearchParams {
+  /** Search query string */
+  query: string;
+  /** Filter expression (e.g., "category = 'books' AND price < 30") */
+  filter?: string | string[];
+  /** Attributes to search in */
+  attributesToSearchOn?: string[];
+  /** Attributes to retrieve in results */
+  attributesToRetrieve?: string[];
+  /** Attributes to highlight in results */
+  attributesToHighlight?: string[];
+  /** Attributes to crop in results */
+  attributesToCrop?: string[];
+  /** Crop length for snippets */
+  cropLength?: number;
+  /** Crop marker (default: "...") */
+  cropMarker?: string;
+  /** Highlight pre-tag (default: "<em>") */
+  highlightPreTag?: string;
+  /** Highlight post-tag (default: "</em>") */
+  highlightPostTag?: string;
+  /** Facets to compute */
+  facets?: string[];
+  /** Offset for pagination */
+  offset?: number;
+  /** Limit results per page */
+  limit?: number;
+  /** Sort order (e.g., ["price:asc", "rating:desc"]) */
+  sort?: string[];
+  /** Show matches position */
+  showMatchesPosition?: boolean;
+  /** Matching strategy */
+  matchingStrategy?: 'last' | 'all';
+}
+
+/**
+ * Search result structure
+ */
+export interface SearchResult<T = Record<string, any>> {
+  /** Matching documents */
+  hits: SearchHit<T>[];
+  /** Total number of results */
+  estimatedTotalHits: number;
+  /** Search query */
+  query: string;
+  /** Processing time in milliseconds */
+  processingTimeMs: number;
+  /** Results offset */
+  offset: number;
+  /** Results limit */
+  limit: number;
+  /** Facet distribution (if requested) */
+  facetDistribution?: Record<string, Record<string, number>>;
+  /** Facet stats (if requested) */
+  facetStats?: Record<string, FacetStats>;
+}
+
+/**
+ * Individual search hit
+ */
+export interface SearchHit<T = Record<string, any>> {
+  /** Document data */
+  [key: string]: any;
+  /** Formatted/highlighted fields */
+  _formatted?: Partial<T>;
+  /** Match positions */
+  _matchesPosition?: MatchPosition;
+}
+
+/**
+ * Match position information
+ */
+export interface MatchPosition {
+  [attribute: string]: Array<{
+    start: number;
+    length: number;
+  }>;
+}
+
+/**
+ * Facet statistics
+ */
+export interface FacetStats {
+  min: number;
+  max: number;
+}
+
+// ============================================================================
+// Index Management Types
+// ============================================================================
+
+/**
+ * Index configuration
+ */
+export interface IndexConfig {
+  /** Primary key field */
+  primaryKey?: string;
+  /** Searchable attributes */
+  searchableAttributes?: string[];
+  /** Displayed attributes */
+  displayedAttributes?: string[];
+  /** Filterable attributes */
+  filterableAttributes?: string[];
+  /** Sortable attributes */
+  sortableAttributes?: string[];
+  /** Ranking rules */
+  rankingRules?: RankingRule[];
+  /** Stop words */
+  stopWords?: string[];
+  /** Synonyms */
+  synonyms?: Record<string, string[]>;
+  /** Distinct attribute */
+  distinctAttribute?: string;
+  /** Typo tolerance */
+  typoTolerance?: TypoToleranceConfig;
+  /** Faceting */
+  faceting?: FacetingConfig;
+  /** Pagination */
+  pagination?: PaginationConfig;
+}
+
+/**
+ * Ranking rules for search relevance
+ */
+export type RankingRule =
+  | 'words'
+  | 'typo'
+  | 'proximity'
+  | 'attribute'
+  | 'sort'
+  | 'exactness'
+  | string; // Custom rules like "asc(price)"
+
+/**
+ * Typo tolerance configuration
+ */
+export interface TypoToleranceConfig {
+  enabled?: boolean;
+  minWordSizeForTypos?: {
+    oneTypo?: number;
+    twoTypos?: number;
+  };
+  disableOnWords?: string[];
+  disableOnAttributes?: string[];
+}
+
+/**
+ * Faceting configuration
+ */
+export interface FacetingConfig {
+  maxValuesPerFacet?: number;
+  sortFacetValuesBy?: Record<string, 'alpha' | 'count'>;
+}
+
+/**
+ * Pagination configuration
+ */
+export interface PaginationConfig {
+  maxTotalHits?: number;
+}
+
+// ============================================================================
+// Document Types
+// ============================================================================
+
+/**
+ * Base document interface
+ * Extend this for your specific document types
+ */
+export interface BaseDocument {
+  /** Unique identifier */
+  id: string;
+  /** Creation timestamp */
+  createdAt?: string;
+  /** Update timestamp */
+  updatedAt?: string;
+}
+
+/**
+ * Document with metadata
+ */
+export interface DocumentWithMetadata<T> {
+  /** Document data */
+  document: T;
+  /** Index name */
+  index: string;
+  /** Document UID */
+  uid: string;
+}
+
+// ============================================================================
+// Task Types
+// ============================================================================
+
+/**
+ * Meilisearch task status
+ */
+export type TaskStatus =
+  | 'enqueued'
+  | 'processing'
+  | 'succeeded'
+  | 'failed'
+  | 'canceled';
+
+/**
+ * Task information
+ */
+export interface Task {
+  /** Task UID */
+  uid: number;
+  /** Index UID */
+  indexUid: string;
+  /** Task status */
+  status: TaskStatus;
+  /** Task type */
+  type: string;
+  /** Details */
+  details?: Record<string, any>;
+  /** Error (if failed) */
+  error?: {
+    message: string;
+    code: string;
+    type: string;
+    link: string;
+  };
+  /** Duration in milliseconds */
+  duration?: number;
+  /** Enqueued at timestamp */
+  enqueuedAt: string;
+  /** Started at timestamp */
+  startedAt?: string;
+  /** Finished at timestamp */
+  finishedAt?: string;
+}
+
+// ============================================================================
+// Index Stats Types
+// ============================================================================
+
+/**
+ * Index statistics
+ */
+export interface IndexStats {
+  /** Number of documents */
+  numberOfDocuments: number;
+  /** Is indexing */
+  isIndexing: boolean;
+  /** Field distribution */
+  fieldDistribution: Record<string, number>;
+}
+
+// ============================================================================
+// Multi-Search Types
+// ============================================================================
+
+/**
+ * Multi-search query
+ */
+export interface MultiSearchQuery {
+  /** Index name */
+  indexUid: string;
+  /** Search parameters */
+  params: SearchParams;
+}
+
+/**
+ * Multi-search result
+ */
+export interface MultiSearchResult<T = Record<string, any>> {
+  /** Results from each index */
+  results: SearchResult<T>[];
+}
+
+// ============================================================================
+// Error Types
+// ============================================================================
+
+/**
+ * Meilisearch error
+ */
+export interface MeilisearchErrorResponse {
+  message: string;
+  code: string;
+  type: string;
+  link: string;
+}
+
+/**
+ * Custom error class
+ */
+export class MeilisearchError extends Error {
+  constructor(
+    message: string,
+    public code?: string,
+    public type?: string,
+    public link?: string
+  ) {
+    super(message);
+    this.name = 'MeilisearchError';
+  }
+}
+
+// ============================================================================
+// Hook Types
+// ============================================================================
+
+/**
+ * Search hook state
+ */
+export interface SearchState<T = Record<string, any>> {
+  /** Search results */
+  results: SearchHit<T>[];
+  /** Total number of hits */
+  totalHits: number;
+  /** Loading state */
+  isLoading: boolean;
+  /** Error state */
+  error: Error | null;
+  /** Processing time */
+  processingTimeMs: number;
+  /** Facet distribution */
+  facets?: Record<string, Record<string, number>>;
+}
+
+/**
+ * Search hook options
+ */
+export interface UseSearchOptions extends Omit<SearchParams, 'query'> {
+  /** Index name */
+  indexName: string;
+  /** Debounce delay in milliseconds */
+  debounceMs?: number;
+  /** Enable search on mount */
+  searchOnMount?: boolean;
+  /** Initial query */
+  initialQuery?: string;
+}
+
+/**
+ * Search hook return value
+ */
+export interface UseSearchReturn<T = Record<string, any>> extends SearchState<T> {
+  /** Search function */
+  search: (query: string) => Promise<void>;
+  /** Clear results */
+  clear: () => void;
+  /** Refetch with current query */
+  refetch: () => Promise<void>;
+}
+{% endif %}

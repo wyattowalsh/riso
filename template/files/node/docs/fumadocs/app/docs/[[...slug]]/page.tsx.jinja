@@ -1,4 +1,4 @@
-{%- if docs_site == 'fumadocs' -%}
+{%- if docs_module == 'enabled' and docs_framework == 'fumadocs' -%}
 import { source } from '@/lib/source';
 import { DocsPage, DocsBody, DocsTitle, DocsDescription } from 'fumadocs-ui/page';
 import { notFound } from 'next/navigation';
@@ -9,7 +9,7 @@ import { PageActions } from '@/components/page-actions';
 {%- if fumadocs_feedback == 'enabled' %}
 import { FeedbackWidget } from '@/components/feedback';
 {%- endif %}
-{%- if fumadocs_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
+{%- if fumadocs_openapi == 'enabled' and api_module == 'enabled' and api_languages %}
 import { createOpenAPI } from 'fumadocs-openapi/server';
 
 const openapi = createOpenAPI();
@@ -30,18 +30,18 @@ export default async function Page({ params }: PageProps) {
     <DocsPage
       toc={page.data.toc}
       full={page.data.full}
-      tableOfContent={{ style: 'clerk' }}
-      tableOfContentPopover={{ style: 'clerk' }}
+      tableOfContent={%- raw -%}{{ style: 'clerk' }}{%- endraw -%}
+      tableOfContentPopover={%- raw -%}{{ style: 'clerk' }}{%- endraw -%}
 {%- if fumadocs_last_updated == 'enabled' %}
       lastUpdate={page.data.lastModified}
 {%- endif %}
 {%- if fumadocs_edit_on_github == 'enabled' %}
-      editOnGithub={{
+      editOnGithub={{ '{{' }}
         owner: '{{ project_slug }}',
         repo: '{{ project_slug }}',
         sha: 'main',
         path: `content/docs/${page.file.path}`,
-      }}
+      {{ '}}' }}
 {%- endif %}
     >
 {%- if fumadocs_llms_txt == 'enabled' %}
@@ -53,12 +53,12 @@ export default async function Page({ params }: PageProps) {
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
       <DocsBody>
-        <MDX components={{
+        <MDX components={{ '{{' }}
           ...defaultMdxComponents,
-{%- if fumadocs_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
+{%- if fumadocs_openapi == 'enabled' and api_module == 'enabled' and api_languages %}
           APIPage: openapi.APIPage,
 {%- endif %}
-        }} />
+        {{ '}}' }} />
 {%- if fumadocs_feedback == 'enabled' %}
         <FeedbackWidget pageUrl={page.url} />
 {%- endif %}

@@ -1,0 +1,283 @@
+{% if saas_infra_module == "enabled" %}
+/**
+ * Observability Type Definitions
+ *
+ * Shared types across observability modules.
+ */
+
+// ============================================================================
+// Configuration Types
+// ============================================================================
+
+export interface ObservabilityConfig {
+  serviceName: string;
+  environment: string;
+  version?: string;
+
+  {% if saas_observability_otel %}
+  // OpenTelemetry
+  otel?: {
+    enabled: boolean;
+    endpoint?: string;
+    sampleRate?: number;
+    exportInterval?: number;
+  };
+  {% endif %}
+
+  {% if saas_observability_sentry %}
+  // Sentry
+  sentry?: {
+    enabled: boolean;
+    dsn: string;
+    environment: string;
+    sampleRate?: number;
+    tracesSampleRate?: number;
+    release?: string;
+  };
+  {% endif %}
+
+  {% if saas_observability_datadog %}
+  // Datadog
+  datadog?: {
+    enabled: boolean;
+    apiKey: string;
+    site?: string;
+    service: string;
+  };
+  {% endif %}
+
+  // Logging
+  logging?: {
+    level: 'debug' | 'info' | 'warn' | 'error';
+    pretty: boolean;
+    redactedFields?: string[];
+  };
+}
+
+// ============================================================================
+// Context Types
+// ============================================================================
+
+export interface CorrelationContext {
+  correlationId: string;
+  requestId?: string;
+  sessionId?: string;
+  userId?: string;
+  {% if saas_tenancy_model == 'b2b-teams' %}
+  organizationId?: string;
+  {% endif %}
+  timestamp: string;
+}
+
+export interface RequestContext extends CorrelationContext {
+  method: string;
+  path: string;
+  query?: Record<string, string>;
+  ip?: string;
+  userAgent?: string;
+  headers?: Record<string, string>;
+}
+
+export interface TraceContext {
+  traceId: string;
+  spanId: string;
+  parentSpanId?: string;
+  traceFlags: number;
+  isRemote?: boolean;
+}
+
+// ============================================================================
+// Metric Types
+// ============================================================================
+
+export interface MetricAttributes {
+  [key: string]: string | number | boolean;
+}
+
+export interface MetricValue {
+  value: number;
+  unit?: string;
+  timestamp?: number;
+  attributes?: MetricAttributes;
+}
+
+// ============================================================================
+// Performance Types
+// ============================================================================
+
+export interface PerformanceMetrics {
+  // Navigation timing
+  pageLoadTime?: number;
+  domContentLoaded?: number;
+  domInteractive?: number;
+
+  // Resource timing
+  firstByte?: number;
+  dnsLookup?: number;
+  tcpConnection?: number;
+  tlsHandshake?: number;
+
+  // Web Vitals
+  lcp?: number; // Largest Contentful Paint
+  fid?: number; // First Input Delay
+  cls?: number; // Cumulative Layout Shift
+  fcp?: number; // First Contentful Paint
+  ttfb?: number; // Time to First Byte
+  inp?: number; // Interaction to Next Paint
+
+  // Custom metrics
+  customMetrics?: Record<string, number>;
+}
+
+export interface WebVitalsMetric {
+  name: 'LCP' | 'FID' | 'CLS' | 'FCP' | 'TTFB' | 'INP';
+  value: number;
+  rating: 'good' | 'needs-improvement' | 'poor';
+  delta: number;
+  id: string;
+  navigationType?: 'navigate' | 'reload' | 'back-forward' | 'prerender';
+}
+
+// ============================================================================
+// Error Types
+// ============================================================================
+
+export interface ErrorContext {
+  errorId?: string;
+  errorType?: string;
+  errorMessage: string;
+  errorStack?: string;
+  userId?: string;
+  {% if saas_tenancy_model == 'b2b-teams' %}
+  organizationId?: string;
+  {% endif %}
+  url?: string;
+  userAgent?: string;
+  timestamp: string;
+  severity?: 'fatal' | 'error' | 'warning' | 'info' | 'debug';
+  fingerprint?: string[];
+  tags?: Record<string, string>;
+  extra?: Record<string, unknown>;
+}
+
+export interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+  errorInfo?: {
+    componentStack?: string;
+  };
+}
+
+// ============================================================================
+// Span Types
+// ============================================================================
+
+export interface SpanAttributes {
+  [key: string]: string | number | boolean | string[] | number[] | boolean[];
+}
+
+export interface SpanOptions {
+  attributes?: SpanAttributes;
+  kind?: 'internal' | 'server' | 'client' | 'producer' | 'consumer';
+  links?: SpanLink[];
+}
+
+export interface SpanLink {
+  traceId: string;
+  spanId: string;
+  attributes?: SpanAttributes;
+}
+
+// ============================================================================
+// Audit Types
+// ============================================================================
+
+{% if saas_admin_dashboard or saas_rbac_system != 'basic-roles' %}
+export interface AuditEvent {
+  action: string;
+  actor: {
+    userId: string;
+    email?: string;
+    {% if saas_tenancy_model == 'b2b-teams' %}
+    organizationId?: string;
+    {% endif %}
+  };
+  resource?: {
+    type: string;
+    id: string;
+    name?: string;
+  };
+  metadata?: Record<string, unknown>;
+  timestamp: string;
+  ip?: string;
+  userAgent?: string;
+  outcome: 'success' | 'failure';
+  reason?: string;
+}
+{% endif %}
+
+// ============================================================================
+// Business Metric Types
+// ============================================================================
+
+export interface SignupMetric {
+  userId: string;
+  email: string;
+  provider: 'email' | 'google' | 'github' | 'microsoft';
+  {% if saas_tenancy_model == 'b2b-teams' %}
+  organizationId?: string;
+  {% endif %}
+  timestamp: string;
+}
+
+export interface LoginMetric {
+  userId: string;
+  provider: 'email' | 'google' | 'github' | 'microsoft';
+  success: boolean;
+  timestamp: string;
+}
+
+{% if saas_billing_system != 'none' %}
+export interface PaymentMetric {
+  userId: string;
+  {% if saas_tenancy_model == 'b2b-teams' %}
+  organizationId?: string;
+  {% endif %}
+  amount: number;
+  currency: string;
+  planId: string;
+  provider: 'stripe' | 'paddle' | 'lemonsqueezy';
+  status: 'succeeded' | 'failed' | 'pending';
+  timestamp: string;
+}
+{% endif %}
+
+export interface ApiMetric {
+  endpoint: string;
+  method: string;
+  statusCode: number;
+  duration: number;
+  userId?: string;
+  {% if saas_tenancy_model == 'b2b-teams' %}
+  organizationId?: string;
+  {% endif %}
+  timestamp: string;
+}
+
+// ============================================================================
+// Utility Types
+// ============================================================================
+
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
+
+export type SeverityLevel = 'fatal' | 'error' | 'warning' | 'info' | 'debug';
+
+export interface Breadcrumb {
+  type?: string;
+  category?: string;
+  message?: string;
+  data?: Record<string, unknown>;
+  level?: SeverityLevel;
+  timestamp?: number;
+}
+{% endif %}

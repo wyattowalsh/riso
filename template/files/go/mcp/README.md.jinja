@@ -1,0 +1,249 @@
+{%- if mcp_module == 'enabled' and 'go' in mcp_languages -%}
+# {{ project_name }} MCP Server
+
+Go implementation of the Model Context Protocol (MCP) server using the official Go SDK.
+
+## Features
+
+- **Language**: Go 1.22+
+- **Transport**: {{ mcp_transport | upper }} (support for stdio, sse, http)
+- **SDK**: Official MCP Go SDK (`github.com/modelcontextprotocol/go-sdk`)
+- **Logging**: Structured logging with `slog` to stderr
+
+## Quick Start
+
+### Build
+
+```bash
+go build -o {{ package_name }}-mcp ./cmd/server
+```
+
+### Run
+
+#### Stdio Mode (Default)
+
+Suitable for local integration with Claude Desktop or generic MCP clients.
+
+```bash
+./{{ package_name }}-mcp --transport stdio
+```
+
+Or simply:
+
+```bash
+./{{ package_name }}-mcp
+```
+
+#### SSE Mode
+
+Server-Sent Events for streaming updates to web clients.
+
+```bash
+./{{ package_name }}-mcp --transport sse --host 127.0.0.1 --port 3000
+```
+
+#### HTTP Mode
+
+Standard JSON-RPC over HTTP streaming.
+
+```bash
+./{{ package_name }}-mcp --transport http --host 127.0.0.1 --port 3000
+```
+
+## Command Line Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--transport`, `-t` | `{{ mcp_transport }}` | Transport type: stdio, sse, http |
+| `--host` | `127.0.0.1` | Host for HTTP/SSE transports |
+| `--port` | `3000` | Port for HTTP/SSE transports |
+| `--log-level` | `info` | Log level: debug, info, warn, error |
+
+## Claude Desktop Configuration
+
+Add to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "{{ package_name }}": {
+      "command": "/path/to/{{ package_name }}-mcp",
+      "args": ["--transport", "stdio"]
+    }
+  }
+}
+```
+
+## Available Tools
+
+{%- if mcp_example_tools %}
+
+### Echo Tools
+
+- **echo**: Echo back the provided message
+- **echo_reverse**: Echo the message in reverse
+- **echo_uppercase**: Echo the message in uppercase
+
+### Timestamp Tools
+
+- **get_current_time**: Get current time in various formats (iso, unix, rfc2822, human)
+- **parse_timestamp**: Parse a timestamp string into components
+- **time_difference**: Calculate difference between two timestamps
+
+### HTTP Tools
+
+- **http_fetch**: Fetch content from a URL with custom headers and methods
+
+## Available Resources
+
+- **system://info**: Get system information (OS, architecture, Go version)
+- **system://env**: Get non-sensitive environment variables
+
+{%- else %}
+
+No example tools included. Add your own tools in `internal/tools/`.
+
+{%- endif %}
+
+## Adding Custom Tools
+
+1. Create a new file in `internal/tools/`:
+
+```go
+package tools
+
+import (
+    "context"
+    "log/slog"
+
+    "github.com/modelcontextprotocol/go-sdk/mcp"
+    "github.com/modelcontextprotocol/go-sdk/server"
+)
+
+// MyToolInput represents the input schema.
+type MyToolInput struct {
+    Name string `json:"name" description:"User's name"`
+}
+
+// MyToolOutput represents the output schema.
+type MyToolOutput struct {
+    Greeting string `json:"greeting"`
+}
+
+func RegisterMyTools(srv *server.Server, logger *slog.Logger) {
+    srv.RegisterTool(
+        mcp.Tool{
+            Name:        "greet",
+            Description: "Greet a user by name",
+            InputSchema: mcp.GenerateSchema[MyToolInput](),
+        },
+        func(ctx context.Context, params map[string]any) (any, error) {
+            input, err := mcp.ParseInput[MyToolInput](params)
+            if err != nil {
+                return nil, err
+            }
+            return MyToolOutput{
+                Greeting: "Hello, " + input.Name + "!",
+            }, nil
+        },
+    )
+}
+```
+
+2. Register in `internal/mcp/server.go`:
+
+```go
+func (s *Server) registerTools() {
+    tools.RegisterMyTools(s.mcp, s.logger)
+}
+```
+
+## Adding Custom Resources
+
+1. Create a new file in `internal/resources/`:
+
+```go
+package resources
+
+import (
+    "context"
+    "encoding/json"
+    "log/slog"
+
+    "github.com/modelcontextprotocol/go-sdk/mcp"
+    "github.com/modelcontextprotocol/go-sdk/server"
+)
+
+func RegisterConfigResource(srv *server.Server, logger *slog.Logger) {
+    resource := mcp.Resource{
+        URI:         "config://app",
+        Name:        "Application Config",
+        Description: "Get application configuration",
+        MimeType:    "application/json",
+    }
+
+    srv.RegisterResource(resource, func(ctx context.Context) (mcp.ResourceContent, error) {
+        config := map[string]any{
+            "version": "1.0.0",
+            "env":     "development",
+        }
+        data, _ := json.MarshalIndent(config, "", "  ")
+        return mcp.ResourceContent{
+            URI:      "config://app",
+            MimeType: "application/json",
+            Text:     string(data),
+        }, nil
+    })
+}
+```
+
+## Development
+
+### Run Tests
+
+```bash
+go test ./...
+```
+
+### Format Code
+
+```bash
+gofmt -w .
+```
+
+### Lint
+
+```bash
+go vet ./...
+```
+
+## Architecture
+
+```
+{{ project_slug }}/
+├── cmd/
+│   └── server/
+│       └── main.go          # Entry point
+├── internal/
+│   ├── mcp/
+│   │   ├── server.go        # Server setup and configuration
+│   │   ├── tools.go         # Tool registration helpers
+│   │   └── resources.go     # Resource registration helpers
+│   ├── tools/
+│   │   ├── echo.go          # Echo tools
+│   │   ├── timestamp.go     # Timestamp tools
+│   │   └── http_fetch.go    # HTTP fetch tool
+│   └── resources/
+│       └── system.go        # System resources
+├── go.mod
+└── README.md
+```
+
+## MCP Protocol Version
+
+This server implements MCP specification version **2025-11-25**.
+
+## License
+
+MIT
+{%- endif %}

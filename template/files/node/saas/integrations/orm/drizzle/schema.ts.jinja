@@ -1,4 +1,4 @@
-{% if saas_starter_module == "enabled" and saas_orm == "drizzle" %}
+{% if saas_infra_module == "enabled" and saas_orm == "drizzle" %}
 /**
  * Drizzle Schema for {{ project_name }}
  * 
@@ -65,7 +65,7 @@ export const users = pgTable('users', {
   createdAtIdx: index('users_created_at_idx').on(table.createdAt),
 }));
 
-{% if saas_auth == "authjs" %}
+{% if saas_auth_provider == "authjs" %}
 // ============================================================================
 // Auth.js Required Tables
 // ============================================================================
@@ -208,11 +208,11 @@ export const subscriptions = pgTable('subscriptions', {
   organizationId: text('organization_id').unique().references(() => organizations.id, { onDelete: 'cascade' }),
   
   // Billing provider IDs
-  {% if saas_billing == "stripe" %}
+  {% if saas_billing_provider == "stripe" %}
   stripeCustomerId: text('stripe_customer_id').unique(),
   stripeSubscriptionId: text('stripe_subscription_id').unique(),
   stripePriceId: text('stripe_price_id'),
-  {% elif saas_billing == "paddle" %}
+  {% elif saas_billing_provider == "paddle" %}
   paddleCustomerId: text('paddle_customer_id').unique(),
   paddleSubscriptionId: text('paddle_subscription_id').unique(),
   paddlePriceId: text('paddle_price_id'),
@@ -279,9 +279,9 @@ export const invoices = pgTable('invoices', {
   subscriptionId: text('subscription_id').notNull().references(() => subscriptions.id, { onDelete: 'cascade' }),
   
   // Billing provider IDs
-  {% if saas_billing == "stripe" %}
+  {% if saas_billing_provider == "stripe" %}
   stripeInvoiceId: text('stripe_invoice_id').unique(),
-  {% elif saas_billing == "paddle" %}
+  {% elif saas_billing_provider == "paddle" %}
   paddleInvoiceId: text('paddle_invoice_id').unique(),
   {% endif %}
   
@@ -510,7 +510,7 @@ export const featureFlags = pgTable('feature_flags', {
 // ============================================================================
 
 export const usersRelations = relations(users, ({ many, one }) => ({
-  {% if saas_auth == "authjs" %}
+  {% if saas_auth_provider == "authjs" %}
   accounts: many(accounts),
   sessions: many(sessions),
   {% endif %}

@@ -1,0 +1,21 @@
+{% if frontend_framework == 'svelte' and svelte_framework == 'sveltekit' %}
+<script lang="ts">
+  import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query'
+  import '../app.css'
+
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 1000 * 60 * 5, // 5 minutes
+        gcTime: 1000 * 60 * 30, // 30 minutes
+        retry: 1,
+        refetchOnWindowFocus: false,
+      },
+    },
+  })
+</script>
+
+<QueryClientProvider client={queryClient}>
+  <slot />
+</QueryClientProvider>
+{% endif %}

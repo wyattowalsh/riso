@@ -1,0 +1,368 @@
+{% if saas_infra_module == "enabled" and saas_ai_features == 'full' %}
+/**
+ * RAG System Types
+ *
+ * Type definitions for Retrieval-Augmented Generation:
+ * - Document processing and chunking
+ * - Embeddings and vector operations
+ * - Retrieval and ranking
+ * - Conversation management
+ */
+
+// ============================================================================
+// Document Types
+// ============================================================================
+
+export interface Document {
+  id: string;
+  content: string;
+  metadata: DocumentMetadata;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface DocumentMetadata {
+  source: string;
+  sourceType: 'file' | 'url' | 'text' | 'api';
+  title?: string;
+  author?: string;
+  tags?: string[];
+  userId?: string;
+  organizationId?: string;
+  [key: string]: any;
+}
+
+export interface DocumentChunk {
+  id: string;
+  documentId: string;
+  content: string;
+  chunkIndex: number;
+  startOffset: number;
+  endOffset: number;
+  metadata: ChunkMetadata;
+}
+
+export interface ChunkMetadata {
+  tokens: number;
+  heading?: string;
+  section?: string;
+  [key: string]: any;
+}
+
+// ============================================================================
+// Embedding Types
+// ============================================================================
+
+export interface Embedding {
+  vector: number[];
+  model: string;
+  dimensions: number;
+}
+
+export interface EmbeddingRequest {
+  texts: string[];
+  model?: string;
+  batchSize?: number;
+}
+
+export interface EmbeddingResponse {
+  embeddings: Embedding[];
+  usage: {
+    totalTokens: number;
+  };
+}
+
+export type EmbeddingProvider = 'openai' | 'anthropic' | 'cohere';
+
+export interface EmbeddingConfig {
+  provider: EmbeddingProvider;
+  model: string;
+  dimensions: number;
+  maxTokens: number;
+  batchSize: number;
+}
+
+// ============================================================================
+// Vector Store Types
+// ============================================================================
+
+export interface VectorDocument {
+  id: string;
+  documentId: string;
+  chunkId: string;
+  content: string;
+  embedding: number[];
+  metadata: Record<string, any>;
+  createdAt: Date;
+}
+
+export interface VectorSearchQuery {
+  embedding: number[];
+  limit?: number;
+  threshold?: number;
+  filter?: VectorFilter;
+}
+
+export interface VectorFilter {
+  userId?: string;
+  organizationId?: string;
+  tags?: string[];
+  sourceType?: string;
+  dateRange?: {
+    start?: Date;
+    end?: Date;
+  };
+  [key: string]: any;
+}
+
+export interface VectorSearchResult {
+  id: string;
+  documentId: string;
+  chunkId: string;
+  content: string;
+  similarity: number;
+  metadata: Record<string, any>;
+  score?: number;
+}
+
+// ============================================================================
+// Retrieval Types
+// ============================================================================
+
+export interface RetrievalQuery {
+  query: string;
+  limit?: number;
+  threshold?: number;
+  filter?: VectorFilter;
+  rerank?: boolean;
+}
+
+export interface RetrievalResult {
+  chunks: RetrievedChunk[];
+  context: string;
+  totalResults: number;
+  query: string;
+}
+
+export interface RetrievedChunk {
+  id: string;
+  content: string;
+  similarity: number;
+  score: number;
+  metadata: Record<string, any>;
+  documentId: string;
+  chunkIndex: number;
+}
+
+export interface RerankOptions {
+  model?: string;
+  topK?: number;
+}
+
+// ============================================================================
+// Chunking Types
+// ============================================================================
+
+export interface ChunkingStrategy {
+  type: 'fixed' | 'semantic' | 'recursive' | 'paragraph';
+  size: number;
+  overlap: number;
+}
+
+export interface ChunkingOptions {
+  strategy?: ChunkingStrategy;
+  maxTokens?: number;
+  minChunkSize?: number;
+  preserveStructure?: boolean;
+  customSplitters?: RegExp[];
+}
+
+export interface ChunkingResult {
+  chunks: DocumentChunk[];
+  totalChunks: number;
+  averageChunkSize: number;
+}
+
+// ============================================================================
+// RAG Pipeline Types
+// ============================================================================
+
+export interface RAGPipelineConfig {
+  embedding: EmbeddingConfig;
+  chunking: ChunkingOptions;
+  retrieval: {
+    limit: number;
+    threshold: number;
+    rerank: boolean;
+  };
+  generation: {
+    model: string;
+    temperature: number;
+    maxTokens: number;
+  };
+}
+
+export interface RAGRequest {
+  query: string;
+  conversationId?: string;
+  userId?: string;
+  organizationId?: string;
+  filter?: VectorFilter;
+  options?: Partial<RAGPipelineConfig>;
+}
+
+export interface RAGResponse {
+  answer: string;
+  sources: RetrievedChunk[];
+  conversationId: string;
+  messageId: string;
+  usage: TokenUsage;
+  metadata?: Record<string, any>;
+}
+
+export interface RAGStreamChunk {
+  type: 'content' | 'sources' | 'metadata' | 'done';
+  content?: string;
+  sources?: RetrievedChunk[];
+  metadata?: Record<string, any>;
+}
+
+// ============================================================================
+// Conversation Types
+// ============================================================================
+
+export interface Conversation {
+  id: string;
+  userId: string;
+  organizationId?: string;
+  title?: string;
+  messages: ConversationMessage[];
+  metadata?: Record<string, any>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ConversationMessage {
+  id: string;
+  conversationId: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  sources?: RetrievedChunk[];
+  usage?: TokenUsage;
+  metadata?: Record<string, any>;
+  createdAt: Date;
+}
+
+// ============================================================================
+// Token Usage Types
+// ============================================================================
+
+export interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  embeddingTokens?: number;
+  cost?: number;
+  model: string;
+}
+
+export interface TokenTrackingEvent {
+  userId: string;
+  organizationId?: string;
+  conversationId?: string;
+  messageId?: string;
+  operation: 'embedding' | 'generation' | 'rerank';
+  usage: TokenUsage;
+  timestamp: Date;
+}
+
+// ============================================================================
+// Ingestion Types
+// ============================================================================
+
+export interface IngestionRequest {
+  content: string;
+  metadata: DocumentMetadata;
+  options?: {
+    chunking?: ChunkingOptions;
+    embedding?: Partial<EmbeddingConfig>;
+  };
+}
+
+export interface IngestionResult {
+  documentId: string;
+  chunks: number;
+  vectors: number;
+  usage: TokenUsage;
+  metadata: DocumentMetadata;
+}
+
+export interface BatchIngestionRequest {
+  documents: IngestionRequest[];
+  parallel?: boolean;
+}
+
+export interface BatchIngestionResult {
+  results: IngestionResult[];
+  totalDocuments: number;
+  totalChunks: number;
+  totalVectors: number;
+  totalUsage: TokenUsage;
+  errors?: Array<{ index: number; error: string }>;
+}
+
+// ============================================================================
+// Error Types
+// ============================================================================
+
+export class RAGError extends Error {
+  constructor(
+    message: string,
+    public code: string,
+    public details?: any
+  ) {
+    super(message);
+    this.name = 'RAGError';
+  }
+}
+
+export class EmbeddingError extends RAGError {
+  constructor(message: string, details?: any) {
+    super(message, 'EMBEDDING_ERROR', details);
+    this.name = 'EmbeddingError';
+  }
+}
+
+export class VectorStoreError extends RAGError {
+  constructor(message: string, details?: any) {
+    super(message, 'VECTOR_STORE_ERROR', details);
+    this.name = 'VectorStoreError';
+  }
+}
+
+export class RetrievalError extends RAGError {
+  constructor(message: string, details?: any) {
+    super(message, 'RETRIEVAL_ERROR', details);
+    this.name = 'RetrievalError';
+  }
+}
+
+// ============================================================================
+// Utility Types
+// ============================================================================
+
+export type AsyncGenerator<T> = AsyncIterableIterator<T>;
+
+export interface PaginationOptions {
+  limit: number;
+  offset: number;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+}
+{% endif %}

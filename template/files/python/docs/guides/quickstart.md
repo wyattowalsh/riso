@@ -34,7 +34,7 @@ uv sync --group docs
 uv run sphinx-build docs docs/_build
 ```
 
-For projects rendered with `docs_site=sphinx-shibuya`, the CI workflow runs the
+For projects rendered with `docs_module=enabled` with `docs_framework=sphinx-shibuya`, the CI workflow runs the
 same command (`uv run sphinx-build docs dist/docs`).
 
 ## Smoke-test optional modules

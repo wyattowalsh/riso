@@ -1,0 +1,460 @@
+{% if saas_infra_module == "enabled" and saas_search == 'algolia' %}
+/**
+ * Algolia Search Client
+ *
+ * Modern search patterns for 2025:
+ * - InstantSearch for real-time results
+ * - Autocomplete for search-as-you-type
+ * - AI-powered search ranking
+ * - Multi-index federated search
+ * - Personalization and analytics
+ * - Voice search support
+ *
+ * @see https://www.algolia.com/doc/
+ */
+
+import algoliasearch from 'algoliasearch';
+import type { SearchClient } from 'algoliasearch';
+import { env } from '@/lib/env';
+
+// ============================================================================
+// Client Initialization
+// ============================================================================
+
+/**
+ * Search client (read-only)
+ * Use this for frontend search operations
+ */
+export const searchClient: SearchClient = algoliasearch(
+  env.NEXT_PUBLIC_ALGOLIA_APP_ID,
+  env.NEXT_PUBLIC_ALGOLIA_SEARCH_KEY
+);
+
+/**
+ * Admin client (write operations)
+ * Use this for indexing and management (server-side only)
+ *
+ * SECURITY: Never expose admin API key to frontend
+ */
+export const adminClient: SearchClient = algoliasearch(
+  env.NEXT_PUBLIC_ALGOLIA_APP_ID,
+  env.ALGOLIA_ADMIN_KEY
+);
+
+// ============================================================================
+// Index Configuration
+// ============================================================================
+
+export const SEARCH_INDICES = {
+  PRODUCTS: 'products',
+  BLOG_POSTS: 'blog_posts',
+  DOCUMENTATION: 'documentation',
+  USERS: 'users',
+} as const;
+
+export type SearchIndex = typeof SEARCH_INDICES[keyof typeof SEARCH_INDICES];
+
+/**
+ * Get search index
+ *
+ * @example
+ * ```ts
+ * const index = getSearchIndex('products');
+ * const results = await index.search('laptop');
+ * ```
+ */
+export function getSearchIndex(indexName: SearchIndex) {
+  return searchClient.initIndex(indexName);
+}
+
+/**
+ * Get admin index (for write operations)
+ */
+export function getAdminIndex(indexName: SearchIndex) {
+  return adminClient.initIndex(indexName);
+}
+
+// ============================================================================
+// Search Operations
+// ============================================================================
+
+/**
+ * Search across single index
+ *
+ * @example
+ * ```ts
+ * const results = await search({
+ *   indexName: 'products',
+ *   query: 'laptop',
+ *   filters: 'category:electronics',
+ *   hitsPerPage: 20,
+ * });
+ * ```
+ */
+export async function search<T = any>(params: {
+  indexName: SearchIndex;
+  query: string;
+  filters?: string;
+  facets?: string[];
+  hitsPerPage?: number;
+  page?: number;
+  attributesToRetrieve?: string[];
+  attributesToHighlight?: string[];
+  highlightPreTag?: string;
+  highlightPostTag?: string;
+  aroundLatLng?: string;
+  aroundRadius?: number;
+  getRankingInfo?: boolean;
+}) {
+  const index = getSearchIndex(params.indexName);
+
+  return await index.search<T>(params.query, {
+    filters: params.filters,
+    facets: params.facets,
+    hitsPerPage: params.hitsPerPage || 20,
+    page: params.page || 0,
+    attributesToRetrieve: params.attributesToRetrieve,
+    attributesToHighlight: params.attributesToHighlight,
+    highlightPreTag: params.highlightPreTag || '<mark>',
+    highlightPostTag: params.highlightPostTag || '</mark>',
+    aroundLatLng: params.aroundLatLng,
+    aroundRadius: params.aroundRadius,
+    getRankingInfo: params.getRankingInfo,
+  });
+}
+
+/**
+ * Multi-index search (federated search)
+ * Search across multiple indices simultaneously
+ *
+ * @example
+ * ```ts
+ * const results = await multiSearch([
+ *   { indexName: 'products', query: 'laptop', hitsPerPage: 3 },
+ *   { indexName: 'blog_posts', query: 'laptop', hitsPerPage: 3 },
+ * ]);
+ * ```
+ */
+export async function multiSearch<T = any>(
+  queries: Array<{
+    indexName: SearchIndex;
+    query: string;
+    filters?: string;
+    hitsPerPage?: number;
+    page?: number;
+  }>
+) {
+  return await searchClient.multipleQueries<T>(
+    queries.map((q) => ({
+      indexName: q.indexName,
+      query: q.query,
+      params: {
+        filters: q.filters,
+        hitsPerPage: q.hitsPerPage || 5,
+        page: q.page || 0,
+      },
+    }))
+  );
+}
+
+/**
+ * Get object by ID
+ */
+export async function getObject<T = any>(params: {
+  indexName: SearchIndex;
+  objectID: string;
+}) {
+  const index = getSearchIndex(params.indexName);
+  return await index.getObject<T>(params.objectID);
+}
+
+/**
+ * Get multiple objects by IDs
+ */
+export async function getObjects<T = any>(params: {
+  indexName: SearchIndex;
+  objectIDs: string[];
+}) {
+  const index = getSearchIndex(params.indexName);
+  return await index.getObjects<T>(params.objectIDs);
+}
+
+// ============================================================================
+// Indexing Operations (Server-Side Only)
+// ============================================================================
+
+/**
+ * Save single object to index
+ *
+ * @example
+ * ```ts
+ * await saveObject({
+ *   indexName: 'products',
+ *   object: {
+ *     objectID: 'prod_123',
+ *     name: 'MacBook Pro',
+ *     price: 2499,
+ *     category: 'electronics',
+ *   },
+ * });
+ * ```
+ */
+export async function saveObject(params: {
+  indexName: SearchIndex;
+  object: Record<string, any>;
+}) {
+  const index = getAdminIndex(params.indexName);
+  return await index.saveObject(params.object);
+}
+
+/**
+ * Save multiple objects to index
+ * Batched for efficiency
+ *
+ * @example
+ * ```ts
+ * await saveObjects({
+ *   indexName: 'products',
+ *   objects: [
+ *     { objectID: '1', name: 'Product 1' },
+ *     { objectID: '2', name: 'Product 2' },
+ *   ],
+ * });
+ * ```
+ */
+export async function saveObjects(params: {
+  indexName: SearchIndex;
+  objects: Record<string, any>[];
+}) {
+  const index = getAdminIndex(params.indexName);
+  return await index.saveObjects(params.objects);
+}
+
+/**
+ * Partially update object
+ * Only updates specified attributes
+ */
+export async function partialUpdateObject(params: {
+  indexName: SearchIndex;
+  objectID: string;
+  attributes: Record<string, any>;
+  createIfNotExists?: boolean;
+}) {
+  const index = getAdminIndex(params.indexName);
+  return await index.partialUpdateObject(
+    {
+      objectID: params.objectID,
+      ...params.attributes,
+    },
+    {
+      createIfNotExists: params.createIfNotExists !== false,
+    }
+  );
+}
+
+/**
+ * Delete object from index
+ */
+export async function deleteObject(params: {
+  indexName: SearchIndex;
+  objectID: string;
+}) {
+  const index = getAdminIndex(params.indexName);
+  return await index.deleteObject(params.objectID);
+}
+
+/**
+ * Delete multiple objects from index
+ */
+export async function deleteObjects(params: {
+  indexName: SearchIndex;
+  objectIDs: string[];
+}) {
+  const index = getAdminIndex(params.indexName);
+  return await index.deleteObjects(params.objectIDs);
+}
+
+/**
+ * Clear all objects from index
+ * USE WITH CAUTION
+ */
+export async function clearIndex(indexName: SearchIndex) {
+  const index = getAdminIndex(indexName);
+  return await index.clearObjects();
+}
+
+// ============================================================================
+// Index Settings
+// ============================================================================
+
+/**
+ * Configure index settings
+ *
+ * @example
+ * ```ts
+ * await configureIndex({
+ *   indexName: 'products',
+ *   settings: {
+ *     searchableAttributes: ['name', 'description', 'category'],
+ *     attributesForFaceting: ['category', 'brand', 'price'],
+ *     customRanking: ['desc(popularity)', 'asc(price)'],
+ *     ranking: [
+ *       'typo',
+ *       'geo',
+ *       'words',
+ *       'filters',
+ *       'proximity',
+ *       'attribute',
+ *       'exact',
+ *       'custom',
+ *     ],
+ *   },
+ * });
+ * ```
+ */
+export async function configureIndex(params: {
+  indexName: SearchIndex;
+  settings: {
+    searchableAttributes?: string[];
+    attributesForFaceting?: string[];
+    customRanking?: string[];
+    ranking?: string[];
+    attributesToHighlight?: string[];
+    attributesToSnippet?: string[];
+    hitsPerPage?: number;
+    minWordSizefor1Typo?: number;
+    minWordSizefor2Typos?: number;
+    typoTolerance?: boolean | 'min' | 'strict';
+    allowTyposOnNumericTokens?: boolean;
+    ignorePlurals?: boolean | string[];
+    removeStopWords?: boolean | string[];
+    queryLanguages?: string[];
+  };
+}) {
+  const index = getAdminIndex(params.indexName);
+  return await index.setSettings(params.settings);
+}
+
+/**
+ * Get index settings
+ */
+export async function getIndexSettings(indexName: SearchIndex) {
+  const index = getAdminIndex(indexName);
+  return await index.getSettings();
+}
+
+// ============================================================================
+// Synonyms Management
+// ============================================================================
+
+/**
+ * Save synonym
+ *
+ * @example
+ * ```ts
+ * await saveSynonym({
+ *   indexName: 'products',
+ *   objectID: 'laptop-synonym',
+ *   synonyms: ['laptop', 'notebook', 'macbook'],
+ * });
+ * ```
+ */
+export async function saveSynonym(params: {
+  indexName: SearchIndex;
+  objectID: string;
+  synonyms: string[];
+  type?: 'synonym' | 'oneWaySynonym' | 'altCorrection1' | 'altCorrection2' | 'placeholder';
+}) {
+  const index = getAdminIndex(params.indexName);
+  return await index.saveSynonym({
+    objectID: params.objectID,
+    type: params.type || 'synonym',
+    synonyms: params.synonyms,
+  });
+}
+
+/**
+ * Delete synonym
+ */
+export async function deleteSynonym(params: {
+  indexName: SearchIndex;
+  objectID: string;
+}) {
+  const index = getAdminIndex(params.indexName);
+  return await index.deleteSynonym(params.objectID);
+}
+
+// ============================================================================
+// Analytics
+// ============================================================================
+
+/**
+ * Track click event
+ * Improves search relevance through user behavior
+ *
+ * @example
+ * ```ts
+ * await trackClick({
+ *   indexName: 'products',
+ *   objectID: 'prod_123',
+ *   position: 1,
+ *   queryID: 'query_abc',
+ * });
+ * ```
+ */
+export async function trackClick(params: {
+  indexName: SearchIndex;
+  objectID: string;
+  position: number;
+  queryID: string;
+}) {
+  // Note: This requires Algolia Insights library
+  // Implementation depends on frontend integration
+  console.log('Track click:', params);
+}
+
+/**
+ * Track conversion
+ * Track when users complete desired actions
+ */
+export async function trackConversion(params: {
+  indexName: SearchIndex;
+  objectID: string;
+  queryID: string;
+}) {
+  // Note: This requires Algolia Insights library
+  console.log('Track conversion:', params);
+}
+
+// ============================================================================
+// Error Handling
+// ============================================================================
+
+export class AlgoliaError extends Error {
+  constructor(
+    message: string,
+    public code?: string,
+    public statusCode?: number
+  ) {
+    super(message);
+    this.name = 'AlgoliaError';
+  }
+}
+
+/**
+ * Handle Algolia API errors
+ */
+export function handleAlgoliaError(error: unknown): never {
+  if (error instanceof Error) {
+    throw new AlgoliaError(error.message);
+  }
+
+  throw error;
+}
+
+// ============================================================================
+// Type Exports
+// ============================================================================
+
+export type { SearchClient };
+{% endif %}

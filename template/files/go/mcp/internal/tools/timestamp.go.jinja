@@ -1,0 +1,225 @@
+{%- if mcp_module == 'enabled' and 'go' in mcp_languages and mcp_example_tools -%}
+package tools
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"strconv"
+	"time"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/modelcontextprotocol/go-sdk/server"
+)
+
+// GetCurrentTimeInput represents the input for get_current_time.
+type GetCurrentTimeInput struct {
+	Format       string `json:"format,omitempty" description:"Output format: iso, unix, rfc2822, or human (default: iso)"`
+	TimezoneName string `json:"timezone_name,omitempty" description:"Timezone name (only UTC supported currently, default: UTC)"`
+}
+
+// GetCurrentTimeOutput represents the output from get_current_time.
+type GetCurrentTimeOutput struct {
+	Timestamp  string            `json:"timestamp" description:"The formatted timestamp"`
+	Format     string            `json:"format" description:"The format used"`
+	Timezone   string            `json:"timezone" description:"The timezone used"`
+	AllFormats map[string]string `json:"all_formats" description:"Timestamp in all available formats"`
+}
+
+// ParseTimestampInput represents the input for parse_timestamp.
+type ParseTimestampInput struct {
+	Timestamp   string `json:"timestamp" description:"The timestamp string to parse"`
+	InputFormat string `json:"input_format,omitempty" description:"Format of the input: iso, unix (default: iso)"`
+}
+
+// ParseTimestampOutput represents the output from parse_timestamp.
+type ParseTimestampOutput struct {
+	Success bool   `json:"success" description:"Whether parsing was successful"`
+	Year    int    `json:"year,omitempty" description:"Year component"`
+	Month   int    `json:"month,omitempty" description:"Month component (1-12)"`
+	Day     int    `json:"day,omitempty" description:"Day component (1-31)"`
+	Hour    int    `json:"hour,omitempty" description:"Hour component (0-23)"`
+	Minute  int    `json:"minute,omitempty" description:"Minute component (0-59)"`
+	Second  int    `json:"second,omitempty" description:"Second component (0-59)"`
+	Weekday string `json:"weekday,omitempty" description:"Day of the week"`
+	ISO     string `json:"iso,omitempty" description:"ISO format representation"`
+	Error   string `json:"error,omitempty" description:"Error message if parsing failed"`
+}
+
+// TimeDifferenceInput represents the input for time_difference.
+type TimeDifferenceInput struct {
+	Start string `json:"start" description:"Start timestamp (ISO format)"`
+	End   string `json:"end,omitempty" description:"End timestamp (ISO format), defaults to now"`
+}
+
+// TimeDifferenceOutput represents the output from time_difference.
+type TimeDifferenceOutput struct {
+	Success bool   `json:"success" description:"Whether calculation was successful"`
+	Seconds int64  `json:"seconds,omitempty" description:"Total seconds difference"`
+	Minutes int64  `json:"minutes,omitempty" description:"Total minutes difference"`
+	Hours   int64  `json:"hours,omitempty" description:"Total hours difference"`
+	Days    int64  `json:"days,omitempty" description:"Total days difference"`
+	Human   string `json:"human,omitempty" description:"Human-readable duration"`
+	Error   string `json:"error,omitempty" description:"Error message if calculation failed"`
+}
+
+// RegisterTimestampTools registers all timestamp-related tools with the MCP server.
+func RegisterTimestampTools(srv *server.Server, logger *slog.Logger) {
+	// get_current_time - Get the current time in various formats
+	srv.RegisterTool(
+		mcp.Tool{
+			Name:        "get_current_time",
+			Description: "Get the current time in various formats. Returns the current date and time with formatting options.",
+			InputSchema: mcp.GenerateSchema[GetCurrentTimeInput](),
+		},
+		func(ctx context.Context, params map[string]any) (any, error) {
+			input, err := mcp.ParseInput[GetCurrentTimeInput](params)
+			if err != nil {
+				logger.Error("failed to parse get_current_time input", "error", err)
+				return nil, err
+			}
+
+			// Defaults
+			if input.Format == "" {
+				input.Format = "iso"
+			}
+			if input.TimezoneName == "" {
+				input.TimezoneName = "UTC"
+			}
+
+			now := time.Now().UTC()
+
+			formats := map[string]string{
+				"iso":     now.Format(time.RFC3339),
+				"unix":    strconv.FormatInt(now.Unix(), 10),
+				"rfc2822": now.Format(time.RFC1123Z),
+				"human":   now.Format("January 02, 2006 at 03:04 PM UTC"),
+			}
+
+			timestamp := formats[input.Format]
+			if timestamp == "" {
+				timestamp = formats["iso"]
+			}
+
+			logger.Debug("executing get_current_time tool", "format", input.Format)
+			return GetCurrentTimeOutput{
+				Timestamp:  timestamp,
+				Format:     input.Format,
+				Timezone:   input.TimezoneName,
+				AllFormats: formats,
+			}, nil
+		},
+	)
+
+	// parse_timestamp - Parse a timestamp string into components
+	srv.RegisterTool(
+		mcp.Tool{
+			Name:        "parse_timestamp",
+			Description: "Parse a timestamp string into components. Converts a timestamp string into structured date/time components.",
+			InputSchema: mcp.GenerateSchema[ParseTimestampInput](),
+		},
+		func(ctx context.Context, params map[string]any) (any, error) {
+			input, err := mcp.ParseInput[ParseTimestampInput](params)
+			if err != nil {
+				logger.Error("failed to parse parse_timestamp input", "error", err)
+				return nil, err
+			}
+
+			if input.InputFormat == "" {
+				input.InputFormat = "iso"
+			}
+
+			var t time.Time
+			switch input.InputFormat {
+			case "unix":
+				unix, err := strconv.ParseInt(input.Timestamp, 10, 64)
+				if err != nil {
+					return ParseTimestampOutput{
+						Success: false,
+						Error:   fmt.Sprintf("invalid unix timestamp: %v", err),
+					}, nil
+				}
+				t = time.Unix(unix, 0).UTC()
+			default:
+				var err error
+				t, err = time.Parse(time.RFC3339, input.Timestamp)
+				if err != nil {
+					// Try alternative ISO format
+					t, err = time.Parse("2006-01-02T15:04:05Z", input.Timestamp)
+					if err != nil {
+						return ParseTimestampOutput{
+							Success: false,
+							Error:   fmt.Sprintf("failed to parse timestamp: %v", err),
+						}, nil
+					}
+				}
+			}
+
+			logger.Debug("executing parse_timestamp tool", "input", input.Timestamp)
+			return ParseTimestampOutput{
+				Success: true,
+				Year:    t.Year(),
+				Month:   int(t.Month()),
+				Day:     t.Day(),
+				Hour:    t.Hour(),
+				Minute:  t.Minute(),
+				Second:  t.Second(),
+				Weekday: t.Weekday().String(),
+				ISO:     t.Format(time.RFC3339),
+			}, nil
+		},
+	)
+
+	// time_difference - Calculate the difference between two timestamps
+	srv.RegisterTool(
+		mcp.Tool{
+			Name:        "time_difference",
+			Description: "Calculate the difference between two timestamps. If end is not provided, calculates difference from start to now.",
+			InputSchema: mcp.GenerateSchema[TimeDifferenceInput](),
+		},
+		func(ctx context.Context, params map[string]any) (any, error) {
+			input, err := mcp.ParseInput[TimeDifferenceInput](params)
+			if err != nil {
+				logger.Error("failed to parse time_difference input", "error", err)
+				return nil, err
+			}
+
+			startTime, err := time.Parse(time.RFC3339, input.Start)
+			if err != nil {
+				return TimeDifferenceOutput{
+					Success: false,
+					Error:   fmt.Sprintf("failed to parse start time: %v", err),
+				}, nil
+			}
+
+			var endTime time.Time
+			if input.End != "" {
+				endTime, err = time.Parse(time.RFC3339, input.End)
+				if err != nil {
+					return TimeDifferenceOutput{
+						Success: false,
+						Error:   fmt.Sprintf("failed to parse end time: %v", err),
+					}, nil
+				}
+			} else {
+				endTime = time.Now().UTC()
+			}
+
+			delta := endTime.Sub(startTime)
+			totalSeconds := int64(delta.Seconds())
+
+			logger.Debug("executing time_difference tool", "start", input.Start, "end", input.End)
+			return TimeDifferenceOutput{
+				Success: true,
+				Seconds: totalSeconds,
+				Minutes: totalSeconds / 60,
+				Hours:   totalSeconds / 3600,
+				Days:    totalSeconds / 86400,
+				Human:   delta.String(),
+			}, nil
+		},
+	)
+
+	logger.Debug("registered timestamp tools")
+}
+{%- endif %}

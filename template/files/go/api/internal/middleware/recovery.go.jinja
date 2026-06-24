@@ -1,0 +1,137 @@
+{% if api_module == 'enabled' and 'go' in api_languages %}
+package middleware
+
+import (
+	"fmt"
+	"log/slog"
+	"net/http"
+	"runtime/debug"
+{% if go_framework | default('gin') == 'gin' %}
+	"github.com/gin-gonic/gin"
+{% elif go_framework == 'fiber' %}
+	"github.com/gofiber/fiber/v2"
+{% elif go_framework == 'echo' %}
+	"github.com/labstack/echo/v4"
+{% endif %}
+)
+
+// ErrorResponse represents an error response.
+type ErrorResponse struct {
+	Error   string `json:"error"`
+	Message string `json:"message"`
+	Code    int    `json:"code"`
+}
+
+{% if go_framework | default('gin') == 'gin' %}
+// Recovery returns a Gin middleware that recovers from panics.
+func Recovery() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		defer func() {
+			if r := recover(); r != nil {
+				// Log the panic with stack trace
+				stack := string(debug.Stack())
+				slog.Error("Panic recovered",
+					"error", fmt.Sprintf("%v", r),
+					"stack", stack,
+					"path", c.Request.URL.Path,
+					"method", c.Request.Method,
+				)
+
+				// Return 500 error
+				c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorResponse{
+					Error:   "internal_server_error",
+					Message: "An unexpected error occurred",
+					Code:    http.StatusInternalServerError,
+				})
+			}
+		}()
+
+		c.Next()
+	}
+}
+
+{% elif go_framework == 'fiber' %}
+// Recovery returns a Fiber middleware that recovers from panics.
+func Recovery() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		defer func() {
+			if r := recover(); r != nil {
+				// Log the panic with stack trace
+				stack := string(debug.Stack())
+				slog.Error("Panic recovered",
+					"error", fmt.Sprintf("%v", r),
+					"stack", stack,
+					"path", c.Path(),
+					"method", c.Method(),
+				)
+
+				// Return 500 error
+				c.Status(http.StatusInternalServerError).JSON(ErrorResponse{
+					Error:   "internal_server_error",
+					Message: "An unexpected error occurred",
+					Code:    http.StatusInternalServerError,
+				})
+			}
+		}()
+
+		return c.Next()
+	}
+}
+
+{% elif go_framework == 'echo' %}
+// Recovery returns an Echo middleware that recovers from panics.
+func Recovery() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			defer func() {
+				if r := recover(); r != nil {
+					// Log the panic with stack trace
+					stack := string(debug.Stack())
+					slog.Error("Panic recovered",
+						"error", fmt.Sprintf("%v", r),
+						"stack", stack,
+						"path", c.Request().URL.Path,
+						"method", c.Request().Method,
+					)
+
+					// Return 500 error
+					c.JSON(http.StatusInternalServerError, ErrorResponse{
+						Error:   "internal_server_error",
+						Message: "An unexpected error occurred",
+						Code:    http.StatusInternalServerError,
+					})
+				}
+			}()
+
+			return next(c)
+		}
+	}
+}
+
+{% elif go_framework == 'chi' %}
+// Recovery returns a Chi middleware that recovers from panics.
+func Recovery(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				// Log the panic with stack trace
+				stack := string(debug.Stack())
+				slog.Error("Panic recovered",
+					"error", fmt.Sprintf("%v", rec),
+					"stack", stack,
+					"path", r.URL.Path,
+					"method", r.Method,
+				)
+
+				// Return 500 error
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				fmt.Fprintf(w, `{"error":"internal_server_error","message":"An unexpected error occurred","code":500}`)
+			}
+		}()
+
+		next.ServeHTTP(w, r)
+	})
+}
+{% endif %}
+{% endif %}

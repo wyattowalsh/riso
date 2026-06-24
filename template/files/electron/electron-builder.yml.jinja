@@ -1,0 +1,132 @@
+{% if desktop_module == "enabled" and desktop_framework == "electron-vite" %}
+appId: com.{{ github_username | default('example') }}.{{ project_slug | replace('-', '') }}
+productName: {{ project_name }}
+copyright: Copyright {{ '%Y' | strftime }} {{ author_name | default(project_name) }}
+
+directories:
+  buildResources: resources
+  output: dist
+
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.*'
+  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!{tailwind.config.js,postcss.config.js}'
+  - '!{.env,.env.*,.gitignore}'
+  - '!node_modules/*/{CHANGELOG.md,README.md,readme.md,changelog.md}'
+  - '!node_modules/*/{test,__tests__,tests,powered-test,example,examples}'
+  - '!node_modules/.cache'
+
+asarUnpack:
+  - resources/**
+
+# Auto-update configuration
+{% if 'auto_updater' in desktop_features %}
+publish:
+  provider: github
+  owner: {{ github_username | default('your-username') }}
+  repo: {{ project_slug }}
+  releaseType: release
+{% endif %}
+
+# macOS configuration
+{% if 'mac' in desktop_platforms %}
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+    - target: zip
+      arch:
+        - x64
+        - arm64
+  category: public.app-category.developer-tools
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: resources/entitlements.mac.plist
+  entitlementsInherit: resources/entitlements.mac.plist
+  icon: resources/icon.icns
+  artifactName: ${name}-${version}-${os}-${arch}.${ext}
+
+dmg:
+  sign: false
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+
+notarize: false
+{% endif %}
+
+# Windows configuration
+{% if 'windows' in desktop_platforms %}
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+        - arm64
+    - target: portable
+      arch:
+        - x64
+  icon: resources/icon.ico
+  artifactName: ${name}-${version}-${os}-${arch}.${ext}
+  publisherName: {{ author_name | default(project_name) }}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: {{ project_name }}
+  runAfterFinish: true
+  installerIcon: resources/icon.ico
+  uninstallerIcon: resources/icon.ico
+  installerHeaderIcon: resources/icon.ico
+  artifactName: ${name}-${version}-setup.${ext}
+
+portable:
+  artifactName: ${name}-${version}-portable.${ext}
+{% endif %}
+
+# Linux configuration
+{% if 'linux' in desktop_platforms %}
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+        - arm64
+    - target: deb
+      arch:
+        - x64
+        - arm64
+    - target: rpm
+      arch:
+        - x64
+  category: Development
+  maintainer: {{ author_email | default('contact@example.com') }}
+  icon: resources/icon.png
+  artifactName: ${name}-${version}-${os}-${arch}.${ext}
+  synopsis: {{ project_name }} desktop application
+  description: {{ project_description | default('A cross-platform desktop application') }}
+
+appImage:
+  license: LICENSE
+
+deb:
+  priority: optional
+  compression: xz
+
+rpm:
+  compression: xz
+{% endif %}
+{% endif %}

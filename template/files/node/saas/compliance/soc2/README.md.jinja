@@ -1,0 +1,639 @@
+{% if saas_compliance == 'soc2' -%}
+# SOC 2 Compliance Module
+
+This module provides utilities, templates, and guidance for achieving SOC 2 Type II compliance, demonstrating your commitment to security, availability, and confidentiality.
+
+## Overview
+
+SOC 2 (System and Organization Controls 2) is a voluntary compliance standard developed by the American Institute of CPAs (AICPA) for service organizations. It demonstrates that your organization has appropriate controls in place to protect customer data.
+
+### SOC 2 Type I vs Type II
+
+- **Type I**: Controls are appropriately designed at a specific point in time
+- **Type II**: Controls are operating effectively over a period of time (minimum 3 months, typically 12 months)
+
+**Most customers require Type II** as it demonstrates ongoing commitment to security.
+
+## Trust Services Criteria
+
+SOC 2 is based on five Trust Services Criteria (TSC):
+
+### Security (CC) - Required
+Common Criteria related to the security of the system. Covers:
+- Access controls
+- Network security
+- System monitoring
+- Change management
+- Risk assessment
+
+### Availability (A1) - Optional
+System is available for operation and use as committed. Covers:
+- System uptime
+- Incident response
+- Disaster recovery
+- Backup procedures
+
+### Processing Integrity (PI1) - Optional
+System processing is complete, valid, accurate, timely, and authorized. Covers:
+- Data validation
+- Error handling
+- Quality assurance
+- Processing accuracy
+
+### Confidentiality (C1) - Optional
+Information designated as confidential is protected. Covers:
+- Data classification
+- Encryption
+- Access restrictions
+- Confidential data disposal
+
+### Privacy (P1) - Optional
+Personal information is collected, used, retained, disclosed, and disposed of properly. Covers:
+- Privacy notice
+- Consent management
+- Data retention
+- Data subject rights
+
+## Components
+
+### 1. Access Control & Audit Logging (`access-audit.ts`)
+
+Comprehensive audit logging implementation for SOC 2 compliance:
+
+```typescript
+import {
+  logAuthenticationEvent,
+  logDataAccess,
+  logPermissionChange,
+  SOC2EventType,
+  generateComplianceReport
+} from './access-audit';
+
+// Log authentication events
+await logAuthenticationEvent(
+  SOC2EventType.USER_LOGIN,
+  userId,
+  {
+    ipAddress: req.ip,
+    userAgent: req.headers['user-agent'],
+    mfaUsed: true
+  }
+);
+
+// Log data access
+await logDataAccess(
+  SOC2EventType.DATA_READ,
+  userId,
+  { type: 'CustomerRecord', id: customerId, name: 'John Doe' },
+  {
+    ipAddress: req.ip,
+    sessionId: sessionId
+  }
+);
+
+// Log permission changes
+await logPermissionChange(
+  SOC2EventType.ROLE_ASSIGNED,
+  adminUserId,
+  targetUserId,
+  {
+    role: 'admin',
+    ipAddress: req.ip
+  }
+);
+```
+
+**Key Features:**
+- Comprehensive event logging
+- Tamper-evident audit trails
+- Automated anomaly detection
+- Compliance reporting
+
+### 2. Security Checklist (`security-checklist.md`)
+
+Complete checklist covering all Trust Services Criteria:
+- Common Criteria (CC1-CC9)
+- Availability criteria (if applicable)
+- Processing Integrity criteria (if applicable)
+- Confidentiality criteria (if applicable)
+- Privacy criteria (if applicable)
+
+Use this checklist to:
+- Prepare for your SOC 2 audit
+- Track control implementation
+- Assign control owners
+- Monitor compliance status
+
+### 3. Penetration Testing Guide (`penetration-test-guide.md`)
+
+Comprehensive guide for penetration testing, a key SOC 2 requirement:
+
+**Covers:**
+- Testing types and frequency
+- Vendor selection
+- Testing phases
+- Remediation procedures
+- Integration with audit
+- Cost expectations
+
+**Annual Requirements:**
+- External penetration test
+- Web application security assessment
+- Vulnerability scanning
+- Remediation of findings
+
+### 4. Incident Response Plan (`incident-response.md`)
+
+Template for documenting your incident response procedures:
+
+**Includes:**
+- Incident severity classification
+- Response team roles and responsibilities
+- Detection and analysis procedures
+- Containment strategies
+- Eradication and recovery steps
+- Post-incident review process
+- Communication templates
+- Breach notification requirements
+
+## SOC 2 Implementation Roadmap
+
+### Phase 1: Preparation (Months 1-3)
+
+#### Month 1: Planning and Scoping
+- [ ] Define SOC 2 scope (which systems, which TSC)
+- [ ] Engage SOC 2 auditor (get recommendations)
+- [ ] Establish compliance project team
+- [ ] Review current security posture
+- [ ] Identify gaps against SOC 2 requirements
+
+#### Month 2: Policy Documentation
+- [ ] Document all security policies
+- [ ] Create information security policy
+- [ ] Create access control policy
+- [ ] Create change management policy
+- [ ] Create incident response plan
+- [ ] Create business continuity plan
+- [ ] Create vendor management policy
+- [ ] Create data classification policy
+
+#### Month 3: Control Implementation
+- [ ] Implement missing security controls
+- [ ] Configure audit logging (use this module)
+- [ ] Set up access controls (RBAC, MFA)
+- [ ] Implement monitoring and alerting
+- [ ] Configure encryption (at rest and in transit)
+- [ ] Set up backup and disaster recovery
+- [ ] Implement vulnerability management
+
+### Phase 2: Readiness Assessment (Month 4)
+
+- [ ] Conduct internal audit (or pre-audit with auditor)
+- [ ] Identify remaining gaps
+- [ ] Remediate critical findings
+- [ ] Test incident response plan
+- [ ] Test disaster recovery plan
+- [ ] Train staff on policies and procedures
+- [ ] Begin collecting evidence
+
+### Phase 3: Observation Period (Months 5-7)
+
+**Type II requires minimum 3 months of continuous control operation**
+
+- [ ] Operate controls consistently
+- [ ] Collect audit evidence automatically
+- [ ] Perform quarterly access reviews
+- [ ] Conduct security awareness training
+- [ ] Perform vulnerability scans
+- [ ] Review and update policies
+- [ ] Monitor for security incidents
+- [ ] Document all control activities
+
+**Evidence to Collect:**
+- Access logs (automatically via this module)
+- Change tickets and approvals
+- Training completion records
+- Vulnerability scan reports
+- Penetration test reports
+- Backup verification logs
+- Incident records (if any)
+- Vendor assessments
+
+### Phase 4: Audit Fieldwork (Months 8-9)
+
+- [ ] Provide evidence to auditor
+- [ ] Respond to auditor requests (Information Requests)
+- [ ] Conduct management interviews
+- [ ] Facilitate system walkthroughs
+- [ ] Provide control testing samples
+- [ ] Address auditor questions promptly
+- [ ] Review draft report
+- [ ] Provide management responses (if needed)
+
+### Phase 5: Report and Maintenance (Month 10+)
+
+- [ ] Receive final SOC 2 report
+- [ ] Share report with customers (under NDA)
+- [ ] Address any exceptions or findings
+- [ ] Plan for annual re-attestation
+- [ ] Maintain continuous compliance
+- [ ] Monitor control effectiveness
+- [ ] Update policies as needed
+
+## Key Controls Implementation
+
+### 1. Access Control
+
+**Requirements:**
+- Unique user IDs for all users
+- Strong password policy (complexity, length, expiration)
+- Multi-factor authentication (MFA)
+- Role-based access control (RBAC)
+- Quarterly access reviews
+- Immediate termination of access upon employee exit
+
+**Implementation:**
+```typescript
+// Example: Enforce MFA at authentication
+export async function authenticateUser(credentials: Credentials) {
+  const user = await validateCredentials(credentials);
+
+  if (!user.mfaEnabled) {
+    throw new Error('MFA is required for all users');
+  }
+
+  const mfaValid = await validateMFA(user.id, credentials.mfaToken);
+  if (!mfaValid) {
+    await logAuthenticationEvent(
+      SOC2EventType.LOGIN_FAILED,
+      user.id,
+      {
+        ipAddress: credentials.ipAddress,
+        failureReason: 'Invalid MFA token'
+      }
+    );
+    throw new Error('Invalid MFA token');
+  }
+
+  await logAuthenticationEvent(
+    SOC2EventType.USER_LOGIN,
+    user.id,
+    {
+      ipAddress: credentials.ipAddress,
+      mfaUsed: true
+    }
+  );
+
+  return generateSession(user);
+}
+```
+
+### 2. Audit Logging
+
+**Requirements:**
+- Log all security-relevant events
+- Logs protected from modification
+- Logs retained for at least 1 year
+- Regular log review
+- Automated alerting for critical events
+
+**Implementation:**
+This module provides comprehensive audit logging. Simply integrate it into your authentication and data access flows.
+
+### 3. Encryption
+
+**Requirements:**
+- Encryption at rest for sensitive data
+- Encryption in transit (TLS 1.2+)
+- Secure key management
+- Regular key rotation
+
+**Implementation:**
+```typescript
+// Example: Enforce TLS and HSTS
+export function securityMiddleware() {
+  return [
+    // Force HTTPS
+    (req, res, next) => {
+      if (!req.secure && process.env.NODE_ENV === 'production') {
+        return res.redirect(`https://${req.headers.host}${req.url}`);
+      }
+      next();
+    },
+    // Set security headers
+    (req, res, next) => {
+      res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('X-Frame-Options', 'DENY');
+      res.setHeader('X-XSS-Protection', '1; mode=block');
+      next();
+    }
+  ];
+}
+```
+
+### 4. Change Management
+
+**Requirements:**
+- Documented change management process
+- Change approval workflow
+- Testing before production deployment
+- Rollback procedures
+- Emergency change procedures
+
+**Implementation:**
+```yaml
+# Example: GitHub Actions approval workflow
+name: Production Deploy
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      # Requires approval from designated reviewers
+    steps:
+      - uses: actions/checkout@v2
+      - name: Deploy to production
+        run: |
+          # Log change in audit system
+          curl -X POST $AUDIT_API/changes \
+            -H "Authorization: Bearer $AUDIT_TOKEN" \
+            -d '{"change_id":"${{ github.run_id }}","approver":"${{ github.actor }}"}'
+          # Deploy
+          ./deploy.sh
+```
+
+### 5. Incident Response
+
+**Requirements:**
+- Documented incident response plan
+- Incident response team identified
+- Regular testing (annually)
+- Incident logging and tracking
+- Post-incident reviews
+
+**Implementation:**
+Use the incident response plan template (`incident-response.md`) and customize for your organization.
+
+### 6. Vendor Management
+
+**Requirements:**
+- Vendor risk assessment process
+- Vendor security requirements
+- Annual vendor reviews
+- Vendor contracts with security terms
+- Monitoring vendor security posture
+
+**Implementation:**
+```typescript
+// Example: Vendor risk assessment tracking
+export interface VendorAssessment {
+  vendorName: string;
+  services: string[];
+  dataAccess: 'none' | 'limited' | 'full';
+  lastAssessment: Date;
+  nextAssessment: Date;
+  soc2Report: boolean;
+  soc2ReportDate?: Date;
+  riskRating: 'low' | 'medium' | 'high';
+  findings: string[];
+  status: 'approved' | 'under_review' | 'rejected';
+}
+```
+
+## Evidence Collection
+
+SOC 2 auditors require evidence of control operation. Automate evidence collection where possible:
+
+### Automated Evidence
+
+**Use this module to collect:**
+- Authentication logs
+- Data access logs
+- Permission change logs
+- Security events
+- Compliance reports
+
+**Additional automated evidence:**
+- GitHub Actions workflow runs (change management)
+- Dependabot alerts (vulnerability management)
+- CloudWatch logs (system monitoring)
+- Backup verification logs
+- Vulnerability scan results
+
+### Manual Evidence
+
+**Maintain these documents:**
+- Policies and procedures (with approval dates)
+- Training records
+- Access review spreadsheets
+- Vendor assessments
+- Penetration test reports
+- Incident response test results
+- Board meeting minutes (discussing security)
+- Employee background checks (for relevant roles)
+
+## Compliance Reporting
+
+Generate compliance reports for auditors:
+
+```typescript
+import { generateComplianceReport } from '@/compliance/soc2';
+
+// Generate quarterly report for audit
+const report = await generateComplianceReport(
+  new Date('2025-01-01'),
+  new Date('2025-03-31')
+);
+
+console.log('Total Events:', report.summary.totalEvents);
+console.log('Unique Users:', report.summary.uniqueUsers);
+console.log('Failed Logins:', report.authentication.failedLogins);
+console.log('MFA Usage Rate:', report.authentication.mfaUsageRate);
+console.log('Access Denied:', report.accessControl.accessDenied);
+console.log('Data Exports:', report.accessControl.dataExports);
+```
+
+## Auditor Interactions
+
+### What Auditors Will Request
+
+1. **Policies and Procedures**
+   - All security policies
+   - Approval signatures and dates
+   - Evidence of policy communication
+
+2. **System Documentation**
+   - System architecture diagrams
+   - Data flow diagrams
+   - Network diagrams
+   - List of critical systems
+
+3. **Access Controls**
+   - User access matrix
+   - Access review records
+   - Termination procedures
+   - MFA configuration
+
+4. **Audit Logs**
+   - Sample of access logs
+   - Evidence logs cannot be modified
+   - Log retention proof
+   - Log review evidence
+
+5. **Change Management**
+   - Sample change tickets
+   - Approval workflows
+   - Testing evidence
+   - Rollback procedures
+
+6. **Incident Response**
+   - Incident response plan
+   - Testing records
+   - Actual incidents (if any)
+   - Post-incident reviews
+
+7. **Vendor Management**
+   - Vendor list
+   - Vendor assessments
+   - Vendor contracts
+   - Vendor SOC 2 reports
+
+8. **Training**
+   - Training materials
+   - Training completion records
+   - Training attendance
+
+9. **Monitoring**
+   - Monitoring configuration
+   - Alerting thresholds
+   - Alert response evidence
+
+10. **Testing**
+    - Penetration test reports
+    - Vulnerability scan results
+    - Remediation evidence
+
+### Interview Topics
+
+Auditors will interview:
+- Executive leadership (commitment to security)
+- IT/Security team (technical controls)
+- HR (employee onboarding/offboarding)
+- Relevant business functions
+
+**Be prepared to discuss:**
+- How you implement each control
+- How you monitor control effectiveness
+- How you handle exceptions
+- How you've improved since last audit
+
+## Cost Expectations
+
+**Audit Costs:**
+- Type I: $8,000 - $25,000
+- Type II: $15,000 - $50,000+
+
+**Factors affecting cost:**
+- Organization size
+- System complexity
+- Number of TSC categories
+- Remediation needed
+- Auditor reputation
+
+**Additional Costs:**
+- Penetration testing: $10,000 - $30,000
+- Compliance tools: $5,000 - $50,000/year
+- Staff time: Significant (hundreds of hours)
+- Consultant (optional): $150 - $400/hour
+
+## Compliance Tools
+
+Consider these tools to help with SOC 2 compliance:
+
+### Automated Compliance Platforms
+- **Vanta**: Automated evidence collection, continuous monitoring
+- **Drata**: SOC 2 automation, compliance tracking
+- **Secureframe**: Compliance automation, evidence management
+- **Tugboat Logic**: GRC platform with SOC 2 focus
+
+### Security Tools
+- **AWS CloudTrail**: Audit logging for AWS
+- **Datadog**: Log aggregation and monitoring
+- **Splunk**: Security information and event management (SIEM)
+- **1Password**: Password management with audit logs
+
+### Benefits:**
+- Automated evidence collection
+- Continuous monitoring
+- Gap analysis
+- Vendor integrations
+- Audit readiness dashboards
+
+**Costs:** $1,000 - $4,000/month depending on company size
+
+## Common Pitfalls to Avoid
+
+1. **Starting too late**: SOC 2 Type II requires 3+ months
+2. **Poor documentation**: Policies must be written and approved
+3. **Inconsistent control operation**: Controls must work continuously
+4. **Missing evidence**: Automate collection where possible
+5. **Scope too broad**: Start with core systems
+6. **No testing**: Test incident response and DR plans
+7. **Weak access controls**: Implement MFA and RBAC
+8. **Incomplete vendor management**: Assess all vendors with data access
+9. **Inadequate monitoring**: Implement comprehensive logging
+10. **Treating it as one-time**: SOC 2 is continuous
+
+## Timeline to Compliance
+
+**Realistic Timeline:**
+- **Small startup (< 20 employees)**: 4-6 months
+- **Mid-size company (20-100 employees)**: 6-9 months
+- **Large company (100+ employees)**: 9-12 months
+
+**Type II requires:**
+- 3 months minimum observation period
+- 6-12 months recommended for mature control operation
+
+## Benefits of SOC 2 Compliance
+
+1. **Customer Trust**: Required by many enterprise customers
+2. **Competitive Advantage**: Win more deals
+3. **Risk Reduction**: Identify and fix security gaps
+4. **Insurance**: May lower cyber insurance premiums
+5. **Security Culture**: Builds security-first mindset
+6. **Process Maturity**: Improves operational processes
+7. **Due Diligence**: Smoother M&A process
+
+## Resources
+
+### AICPA Resources
+- [Trust Services Criteria](https://www.aicpa.org/interestareas/frc/assuranceadvisoryservices/trustdataintegrity.html)
+- [SOC 2 Reporting](https://www.aicpa.org/interestareas/frc/assuranceadvisoryservices/socforserviceorganizations.html)
+
+### Learning Resources
+- [SOC 2 Academy](https://soc2.academy/)
+- [Vanta SOC 2 Guide](https://www.vanta.com/products/soc-2)
+- [Laika SOC 2 Guide](https://www.laikacloud.com/blog/soc2-compliance-guide)
+
+### Finding an Auditor
+- [AICPA Auditor Directory](https://www.aicpa.org/forthepublic/findacpa.html)
+- Ask for recommendations from similar companies
+- Ensure auditor has relevant experience
+
+## Support
+
+For questions about SOC 2 implementation:
+- Consult with your SOC 2 auditor
+- Engage a compliance consultant
+- Use compliance automation tools
+- Join the SOC 2 Compliance community
+
+---
+
+**Disclaimer**: This module provides tools and templates for SOC 2 compliance but does not guarantee compliance. Engage qualified auditors and consultants for professional guidance specific to your organization.
+{% endif -%}

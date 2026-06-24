@@ -1,0 +1,392 @@
+{% if project_language == 'rust' or 'rust' in cli_languages or 'rust' in api_languages %}
+# {{ project_name }} - Quick Start Guide
+
+Get up and running with {{ project_name }} in 5 minutes.
+
+## Prerequisites
+
+- Rust 1.81+ ([Install Rust](https://rustup.rs/))
+{% if cli_module == 'enabled' and 'rust' in cli_languages or api_module == 'enabled' and 'rust' in api_languages %}
+- Just ([Install Just](https://github.com/casey/just)) - Optional but recommended
+{% endif %}
+
+## Quick Installation
+
+```bash
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Install Just (optional)
+cargo install just
+```
+
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+## CLI Quick Start
+
+### Build and Run
+
+```bash
+# Build
+cargo build
+
+# Run with Just
+just run-cli --help
+
+# Or run directly with cargo
+cargo run --bin {{ package_name }} -- --help
+```
+
+### Basic Commands
+
+```bash
+# Say hello
+just run-cli hello World
+
+# With options
+just run-cli hello "Rust Developer" --count 3 --uppercase
+
+# Check version
+just run-cli version
+
+# Get JSON output
+just run-cli version --json
+```
+
+### Example Session
+
+```bash
+$ just run-cli hello
+Hello, World!
+
+$ just run-cli hello "Rustacean" --count 2
+[1/2] Hello, Rustacean!
+[2/2] Hello, Rustacean!
+
+$ just run-cli version
+{{ package_name }} 0.1.0
+Rust version: rustc 1.81.0
+```
+{% endif %}
+
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+## API Quick Start
+
+### Configuration
+
+Create a `.env` file (optional):
+```bash
+cp .env.example .env
+```
+
+Edit `.env` to customize:
+```bash
+HOST=127.0.0.1
+PORT=8080
+ENVIRONMENT=development
+RUST_LOG=debug
+```
+
+### Start the Server
+
+```bash
+# Development mode (with debug logging)
+just run-api-dev
+
+# Or standard mode
+just run-api
+
+# Or with cargo
+cargo run --bin {{ package_name }}-api
+```
+
+### Test the API
+
+Open a new terminal and try these endpoints:
+
+```bash
+# Health check
+curl http://localhost:8080/health
+
+# Liveness probe
+curl http://localhost:8080/live
+
+# Readiness probe
+curl http://localhost:8080/ready
+
+# Hello endpoint
+curl http://localhost:8080/api/v1/hello
+
+# Hello with name
+curl "http://localhost:8080/api/v1/hello?name=Rust"
+```
+
+### Expected Responses
+
+**Health Check** (`/health`):
+```json
+{
+  "status": "healthy",
+  "version": "0.1.0",
+  "uptime": 0
+}
+```
+
+**Hello Endpoint** (`/api/v1/hello?name=Rust`):
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Hello, Rust!",
+    "timestamp": "2024-01-17T12:00:00Z"
+  }
+}
+```
+{% endif %}
+
+## Development Workflow
+
+### 1. Make Changes
+
+Edit source files in:
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+- `cli/` - CLI application
+{% endif %}
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+- `api/` - API server
+{% endif %}
+
+### 2. Format Code
+
+```bash
+just fmt
+```
+
+### 3. Run Tests
+
+```bash
+just test
+```
+
+### 4. Check Quality
+
+```bash
+just quality
+```
+
+This runs:
+- Format check
+- Clippy linter
+- All tests
+
+### 5. Run Locally
+
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+```bash
+just run-cli [ARGS]
+```
+{% endif %}
+
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+```bash
+just run-api-dev
+```
+{% endif %}
+
+## Production Build
+
+```bash
+# Build optimized release binaries
+just release
+
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+# CLI binary location
+./target/release/{{ package_name }}
+{% endif %}
+
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+# API binary location
+./target/release/{{ package_name }}-api
+{% endif %}
+```
+
+Release builds are optimized for:
+- ⚡ Performance (LTO enabled)
+- 📦 Size (stripped symbols, optimized)
+- 🔒 Security (production-ready)
+
+## Common Tasks
+
+### Update Dependencies
+
+```bash
+just update
+```
+
+### Check for Outdated Dependencies
+
+```bash
+just outdated
+```
+
+### Security Audit
+
+```bash
+just audit
+```
+
+### Clean Build Artifacts
+
+```bash
+just clean
+```
+
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+## Adding a New CLI Command
+
+1. Create `cli/commands/mycommand.rs`:
+
+```rust
+use anyhow::Result;
+use clap::Args;
+
+#[derive(Args)]
+pub struct MyCommandArgs {
+    /// Your argument
+    input: String,
+}
+
+pub async fn run(args: MyCommandArgs) -> Result<()> {
+    println!("Input: {}", args.input);
+    Ok(())
+}
+```
+
+2. Update `cli/commands/mod.rs`:
+
+```rust
+pub mod mycommand;
+
+#[derive(Subcommand)]
+pub enum Commands {
+    // ... existing commands
+    MyCommand(mycommand::MyCommandArgs),
+}
+
+impl Commands {
+    pub async fn execute(self) -> Result<()> {
+        match self {
+            // ... existing matches
+            Commands::MyCommand(args) => mycommand::run(args).await,
+        }
+    }
+}
+```
+
+3. Test it:
+
+```bash
+just run-cli mycommand "test input"
+```
+{% endif %}
+
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+## Adding a New API Endpoint
+
+1. Create `api/handlers/myhandler.rs`:
+
+```rust
+use actix_web::{get, HttpResponse, Responder};
+use serde::Serialize;
+
+#[derive(Serialize)]
+pub struct MyResponse {
+    message: String,
+}
+
+#[get("/api/v1/myendpoint")]
+pub async fn my_handler() -> impl Responder {
+    let response = MyResponse {
+        message: "Hello from my endpoint!".to_string(),
+    };
+    HttpResponse::Ok().json(response)
+}
+```
+
+2. Update `api/handlers/mod.rs`:
+
+```rust
+pub mod myhandler;
+pub use myhandler::my_handler;
+```
+
+3. Update `api/routes.rs`:
+
+```rust
+pub fn configure(cfg: &mut web::ServiceConfig) {
+    cfg
+        .service(handlers::health::health_check)
+        .service(handlers::my_handler); // Add here
+}
+```
+
+4. Test it:
+
+```bash
+curl http://localhost:8080/api/v1/myendpoint
+```
+{% endif %}
+
+## Troubleshooting
+
+### Build Errors
+
+```bash
+# Clean and rebuild
+just clean
+cargo build
+```
+
+### Test Failures
+
+```bash
+# Run tests with output
+just test-verbose
+```
+
+### Dependency Issues
+
+```bash
+# Update Cargo.lock
+just update
+
+# Check for conflicts
+cargo tree
+```
+
+## Next Steps
+
+- Read [README.md](README.md) for complete documentation
+- Check [ARCHITECTURE.md](ARCHITECTURE.md) for design details
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+- Explore `cli/commands/` for command examples
+{% endif %}
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+- Explore `api/handlers/` for endpoint examples
+{% endif %}
+- Run `just quality` before committing
+
+## Getting Help
+
+- [Rust Documentation](https://doc.rust-lang.org/)
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+- [Clap Documentation](https://docs.rs/clap)
+{% endif %}
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+- [Actix-web Documentation](https://actix.rs)
+{% endif %}
+- [Rust Community](https://www.rust-lang.org/community)
+
+---
+
+Happy coding! 🦀
+{% endif %}

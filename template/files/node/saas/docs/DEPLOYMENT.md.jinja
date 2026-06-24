@@ -1,4 +1,4 @@
-{% if saas_starter_module == "enabled" %}
+{% if saas_infra_module == "enabled" %}
 # {{ project_name }} - Deployment Guide
 
 This guide covers deploying your SaaS application to production.
@@ -52,8 +52,8 @@ This guide covers deploying your SaaS application to production.
    ```bash
    # Set each secret
    wrangler secret put DATABASE_URL
-   wrangler secret put{% if saas_auth == "clerk" %} CLERK_SECRET_KEY{% else %} NEXTAUTH_SECRET{% endif %}
-   wrangler secret put{% if saas_billing == "stripe" %} STRIPE_SECRET_KEY{% else %} PADDLE_API_KEY{% endif %}
+   wrangler secret put{% if saas_auth_provider == "clerk" %} CLERK_SECRET_KEY{% else %} NEXTAUTH_SECRET{% endif %}
+   wrangler secret put{% if saas_billing_provider == "stripe" %} STRIPE_SECRET_KEY{% else %} PADDLE_API_KEY{% endif %}
    # ... add all secrets
    ```
 
@@ -99,17 +99,17 @@ cat wrangler.toml
 
 **Required Variables**:
 - `DATABASE_URL` - {% if saas_database == "neon" %}Neon{% else %}Supabase{% endif %} connection string
-{% if saas_auth == "clerk" %}
+{% if saas_auth_provider == "clerk" %}
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Clerk public key
 - `CLERK_SECRET_KEY` - Clerk secret key
-{% elif saas_auth == "authjs" %}
+{% elif saas_auth_provider == "authjs" %}
 - `NEXTAUTH_SECRET` - Auth.js secret (min 32 chars)
 - `NEXTAUTH_URL` - Your app URL
 {% endif %}
-{% if saas_billing == "stripe" %}
+{% if saas_billing_provider == "stripe" %}
 - `STRIPE_SECRET_KEY` - Stripe secret key
 - `STRIPE_WEBHOOK_SECRET` - Stripe webhook signing secret
-{% elif saas_billing == "paddle" %}
+{% elif saas_billing_provider == "paddle" %}
 - `PADDLE_API_KEY` - Paddle API key
 - `PADDLE_WEBHOOK_SECRET` - Paddle webhook secret
 {% endif %}
@@ -223,19 +223,19 @@ Verify `next.config.js` has security headers:
 
 ## Webhook Configuration
 
-### {% if saas_billing == "stripe" %}Stripe{% elif saas_billing == "paddle" %}Paddle{% endif %} Webhooks
+### {% if saas_billing_provider == "stripe" %}Stripe{% elif saas_billing_provider == "paddle" %}Paddle{% endif %} Webhooks
 
 1. **Get Webhook URL**
    ```
    {% if saas_hosting == "vercel" %}
-   https://your-app.vercel.app/api/webhooks/{% if saas_billing == "stripe" %}stripe{% else %}paddle{% endif %}
+   https://your-app.vercel.app/api/webhooks/{% if saas_billing_provider == "stripe" %}stripe{% else %}paddle{% endif %}
    {% elif saas_hosting == "cloudflare" %}
-   https://your-app.pages.dev/api/webhooks/{% if saas_billing == "stripe" %}stripe{% else %}paddle{% endif %}
+   https://your-app.pages.dev/api/webhooks/{% if saas_billing_provider == "stripe" %}stripe{% else %}paddle{% endif %}
    {% endif %}
    ```
 
 2. **Configure in Dashboard**
-   {% if saas_billing == "stripe" %}
+   {% if saas_billing_provider == "stripe" %}
    - Go to [Stripe Dashboard](https://dashboard.stripe.com/webhooks)
    - Add endpoint with URL above
    - Select events:
@@ -244,7 +244,7 @@ Verify `next.config.js` has security headers:
      - `invoice.payment_failed`
      - `customer.subscription.updated`
      - `customer.subscription.deleted`
-   {% elif saas_billing == "paddle" %}
+   {% elif saas_billing_provider == "paddle" %}
    - Go to [Paddle Dashboard](https://vendors.paddle.com/webhooks)
    - Add webhook URL
    - Configure notification settings
@@ -253,9 +253,9 @@ Verify `next.config.js` has security headers:
 3. **Copy Webhook Secret**
    - Copy the signing secret
    - Add to environment variables:
-     - `{% if saas_billing == "stripe" %}STRIPE_WEBHOOK_SECRET{% else %}PADDLE_WEBHOOK_SECRET{% endif %}`
+     - `{% if saas_billing_provider == "stripe" %}STRIPE_WEBHOOK_SECRET{% else %}PADDLE_WEBHOOK_SECRET{% endif %}`
 
-{% if saas_auth == "clerk" %}
+{% if saas_auth_provider == "clerk" %}
 ### Clerk Webhooks
 
 1. **Webhook URL**

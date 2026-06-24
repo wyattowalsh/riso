@@ -1,0 +1,112 @@
+{% if api_module == 'enabled' and 'go' in api_languages %}
+// Package main provides the entry point for the {{ project_name }} API server.
+package main
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"{{ project_slug }}/api/internal/server"
+	"{{ project_slug }}/cli/internal/config"
+	"{{ project_slug }}/cli/internal/logger"
+)
+
+// Build-time variables (set via ldflags).
+var (
+	Version   = "dev"
+	BuildTime = "unknown"
+	Commit    = "unknown"
+)
+
+func main() {
+	// Initialize logging
+	logLevel := slog.LevelInfo
+	if os.Getenv("DEBUG") == "true" || os.Getenv("LOG_LEVEL") == "debug" {
+		logLevel = slog.LevelDebug
+	}
+
+	jsonLog := os.Getenv("LOG_FORMAT") == "json"
+	log := logger.NewLogger(logLevel, jsonLog, os.Stderr)
+	slog.SetDefault(log)
+
+	log.Info("Starting {{ project_name }} API server",
+		"version", Version,
+		"commit", Commit,
+		"build_time", BuildTime,
+	)
+
+	// Load configuration
+	cfg, err := config.Load("")
+	if err != nil {
+		log.Warn("Failed to load config, using defaults", "error", err)
+		cfg = config.Default()
+	}
+
+	// Validate configuration
+	if err := cfg.Validate(); err != nil {
+		log.Error("Invalid configuration", "error", err)
+		os.Exit(1)
+	}
+
+	// Create server
+	srv, err := server.New(cfg)
+	if err != nil {
+		log.Error("Failed to create server", "error", err)
+		os.Exit(1)
+	}
+
+	// Start server in goroutine
+	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
+	errCh := make(chan error, 1)
+
+	go func() {
+		log.Info("Server listening", "address", addr)
+		if err := srv.ListenAndServe(); err != nil {
+			errCh <- err
+		}
+	}()
+
+	// Set up signal handling
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	// Wait for signal or error
+	select {
+	case sig := <-sigCh:
+		log.Info("Received signal, initiating graceful shutdown", "signal", sig)
+	case err := <-errCh:
+		log.Error("Server error", "error", err)
+		os.Exit(1)
+	}
+
+	// Graceful shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.Server.ShutdownTimeout)*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Error("Shutdown error", "error", err)
+		os.Exit(1)
+	}
+
+	log.Info("Server stopped gracefully")
+}
+{% else %}
+// API module is disabled.
+// Re-render the template with api_module=enabled and api_languages=[go] to scaffold the Go API.
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	fmt.Fprintln(os.Stderr, "API module is disabled for this render.")
+	os.Exit(1)
+}
+{% endif %}

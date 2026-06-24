@@ -1,0 +1,662 @@
+{% if saas_compliance == 'soc2' -%}
+# Incident Response Plan Template
+
+A documented incident response plan is required for SOC 2 compliance. This template provides a framework for detecting, responding to, and recovering from security incidents.
+
+## Purpose
+
+This Incident Response Plan establishes procedures for:
+- Detecting security incidents
+- Responding to and containing incidents
+- Recovering from incidents
+- Learning from incidents to improve security
+
+## Scope
+
+This plan applies to all security incidents affecting:
+- {{ project_name }} production systems
+- Customer data
+- Internal systems and networks
+- Third-party services critical to operations
+
+---
+
+## Incident Response Team
+
+### Core Team Members
+
+| Role | Name | Contact | Backup |
+|------|------|---------|--------|
+| **Incident Commander** | [Name] | [Email/Phone] | [Name] |
+| **Security Lead** | [Name] | [Email/Phone] | [Name] |
+| **Engineering Lead** | [Name] | [Email/Phone] | [Name] |
+| **Legal Counsel** | [Name] | [Email/Phone] | [Name] |
+| **Communications Lead** | [Name] | [Email/Phone] | [Name] |
+| **Customer Success Lead** | [Name] | [Email/Phone] | [Name] |
+
+### Responsibilities
+
+**Incident Commander**
+- Overall incident management
+- Decision-making authority
+- Resource allocation
+- Executive communication
+
+**Security Lead**
+- Technical security analysis
+- Threat assessment
+- Forensic investigation
+- Security tool coordination
+
+**Engineering Lead**
+- System restoration
+- Technical implementation
+- Infrastructure coordination
+- Post-incident technical improvements
+
+**Legal Counsel**
+- Legal implications assessment
+- Breach notification requirements
+- Regulatory compliance
+- External communication approval
+
+**Communications Lead**
+- Internal communications
+- Customer communications
+- Media relations (if needed)
+- Status updates
+
+**Customer Success Lead**
+- Customer impact assessment
+- Customer support coordination
+- Customer communication
+- Relationship management
+
+---
+
+## Incident Severity Classification
+
+### Severity 1 (Critical)
+
+**Definition**: Significant impact to availability, integrity, or confidentiality of production systems or customer data.
+
+**Examples**:
+- Data breach with confirmed customer data exposure
+- Complete system outage affecting all customers
+- Ransomware infection
+- Compromise of production infrastructure
+
+**Response Time**: Immediate (15 minutes)
+**Team**: Full incident response team
+**Notification**: Executive leadership, legal counsel, affected customers
+**Updates**: Every 30 minutes
+
+### Severity 2 (High)
+
+**Definition**: Moderate impact to systems or potential data exposure requiring immediate attention.
+
+**Examples**:
+- Suspected data breach requiring investigation
+- Partial system outage affecting multiple customers
+- Successful intrusion attempt
+- Critical vulnerability actively exploited
+
+**Response Time**: 1 hour
+**Team**: Core incident response team
+**Notification**: Management, legal counsel
+**Updates**: Every 2 hours
+
+### Severity 3 (Medium)
+
+**Definition**: Limited impact to systems or potential security issue requiring prompt attention.
+
+**Examples**:
+- Failed intrusion attempt
+- Non-critical system compromise
+- Security control failure
+- Suspicious activity detected
+
+**Response Time**: 4 hours
+**Team**: Security and engineering leads
+**Notification**: Management
+**Updates**: Daily
+
+### Severity 4 (Low)
+
+**Definition**: Minimal impact security event requiring standard procedures.
+
+**Examples**:
+- Policy violation
+- Minor security misconfigurations
+- Unsuccessful attacks with no impact
+- Security concerns reported by users
+
+**Response Time**: Next business day
+**Team**: Security lead
+**Notification**: Security team
+**Updates**: As needed
+
+---
+
+## Incident Response Phases
+
+## Phase 1: Detection and Analysis
+
+### Detection Sources
+
+- [ ] Security monitoring alerts (SIEM, IDS/IPS)
+- [ ] Log analysis and anomaly detection
+- [ ] User reports
+- [ ] Third-party notifications (vendors, researchers)
+- [ ] Vulnerability scans
+- [ ] Threat intelligence feeds
+- [ ] Customer reports
+
+### Initial Analysis Checklist
+
+- [ ] Confirm incident is real (not false positive)
+- [ ] Determine incident severity
+- [ ] Identify affected systems and data
+- [ ] Assess immediate risks
+- [ ] Document initial findings
+- [ ] Activate incident response team
+- [ ] Begin incident timeline
+
+### Detection Response Actions
+
+```typescript
+// Example: Automated alert routing
+export async function handleSecurityAlert(alert: SecurityAlert) {
+  // 1. Log the alert
+  await logSecurityEvent({
+    eventType: SOC2EventType.SECURITY_ALERT,
+    severity: mapAlertSeverity(alert.severity),
+    action: 'Security alert received',
+    outcome: 'success',
+    ipAddress: alert.sourceIp,
+    metadata: alert,
+  });
+
+  // 2. Assess severity
+  const severity = assessIncidentSeverity(alert);
+
+  // 3. Notify appropriate team members
+  if (severity === 'CRITICAL' || severity === 'HIGH') {
+    await notifyIncidentTeam(severity, alert);
+  }
+
+  // 4. Create incident ticket
+  const incident = await createIncidentTicket({
+    severity,
+    description: alert.description,
+    affectedSystems: alert.affectedSystems,
+  });
+
+  return incident;
+}
+```
+
+---
+
+## Phase 2: Containment
+
+### Short-term Containment
+
+**Objective**: Limit immediate damage while preserving evidence.
+
+**Actions**:
+- [ ] Isolate affected systems (network segmentation)
+- [ ] Block malicious IP addresses at firewall
+- [ ] Disable compromised user accounts
+- [ ] Revoke compromised API keys/tokens
+- [ ] Take memory dumps and disk images (for forensics)
+- [ ] Change passwords for affected accounts
+- [ ] Document all containment actions
+
+**Example Containment Script**:
+```bash
+#!/bin/bash
+# Emergency containment script
+
+# 1. Block malicious IP at firewall
+echo "Blocking IP: $MALICIOUS_IP"
+aws ec2 authorize-security-group-egress \
+  --group-id $SG_ID \
+  --ip-permissions IpProtocol=-1,FromPort=-1,ToPort=-1,IpRanges=[{CidrIp=$MALICIOUS_IP/32}]
+
+# 2. Disable compromised user
+echo "Disabling user: $COMPROMISED_USER"
+aws iam delete-login-profile --user-name $COMPROMISED_USER
+
+# 3. Revoke sessions
+echo "Revoking all sessions for user"
+aws iam delete-access-key --user-name $COMPROMISED_USER --access-key-id $ACCESS_KEY
+
+# 4. Rotate API keys
+echo "Rotating API keys"
+./scripts/rotate-api-keys.sh
+
+# 5. Enable enhanced logging
+echo "Enabling detailed logging"
+aws cloudtrail update-trail --name main --include-global-service-events
+```
+
+### Long-term Containment
+
+**Objective**: Implement sustainable containment while planning recovery.
+
+**Actions**:
+- [ ] Apply security patches
+- [ ] Implement additional monitoring
+- [ ] Deploy temporary security controls
+- [ ] Backup affected systems
+- [ ] Document system state
+- [ ] Plan recovery approach
+
+---
+
+## Phase 3: Eradication
+
+### Eradication Checklist
+
+- [ ] Identify root cause of incident
+- [ ] Remove malware or backdoors
+- [ ] Close exploited vulnerabilities
+- [ ] Patch all affected systems
+- [ ] Update security controls
+- [ ] Validate eradication success
+- [ ] Document all eradication actions
+
+### Eradication Validation
+
+Before proceeding to recovery:
+- [ ] Confirm threat is removed (scan for malware)
+- [ ] Verify no persistence mechanisms remain
+- [ ] Validate security controls are effective
+- [ ] Review logs for additional suspicious activity
+- [ ] Third-party validation if needed (forensics firm)
+
+---
+
+## Phase 4: Recovery
+
+### Recovery Checklist
+
+- [ ] Restore systems from clean backups (if needed)
+- [ ] Rebuild compromised systems
+- [ ] Apply all security patches
+- [ ] Restore data from backups
+- [ ] Validate system integrity
+- [ ] Reset all credentials (passwords, keys, tokens)
+- [ ] Gradually restore services
+- [ ] Monitor systems closely for 48-72 hours
+- [ ] Document recovery process
+
+### Recovery Validation
+
+- [ ] All systems functioning normally
+- [ ] No suspicious activity detected
+- [ ] Security controls operational
+- [ ] Monitoring enhanced
+- [ ] Backups verified
+- [ ] Performance normal
+
+### Phased Recovery Plan
+
+**Phase 1: Internal Systems** (Hour 0-4)
+- Restore internal tools
+- Verify security controls
+- Limited user access
+
+**Phase 2: Non-Critical Services** (Hour 4-12)
+- Restore non-essential features
+- Monitor for issues
+- Expand access gradually
+
+**Phase 3: Full Production** (Hour 12-24)
+- Restore all services
+- Resume normal operations
+- Continuous monitoring
+
+---
+
+## Phase 5: Post-Incident Activity
+
+### Post-Incident Review
+
+**Schedule**: Within 5 business days of incident closure
+
+**Attendees**: Full incident response team + relevant stakeholders
+
+**Agenda**:
+1. Incident timeline review
+2. Response effectiveness evaluation
+3. Root cause analysis
+4. Lessons learned
+5. Action items for improvement
+
+### Post-Incident Review Template
+
+**Incident Summary**:
+- Incident ID: [ID]
+- Date/Time Detected: [Timestamp]
+- Date/Time Resolved: [Timestamp]
+- Severity: [Level]
+- Impact: [Description]
+
+**Timeline**:
+| Time | Event | Action Taken |
+|------|-------|--------------|
+| [HH:MM] | Incident detected | Alert triggered |
+| [HH:MM] | Team notified | Incident commander activated |
+| [HH:MM] | Containment started | Systems isolated |
+| [HH:MM] | Eradication completed | Threat removed |
+| [HH:MM] | Recovery initiated | Systems restored |
+| [HH:MM] | Incident closed | Normal operations resumed |
+
+**What Went Well**:
+- [Positive aspect 1]
+- [Positive aspect 2]
+- [Positive aspect 3]
+
+**What Could Be Improved**:
+- [Improvement area 1]
+- [Improvement area 2]
+- [Improvement area 3]
+
+**Root Cause**:
+[Detailed root cause analysis]
+
+**Action Items**:
+| Action | Owner | Due Date | Status |
+|--------|-------|----------|--------|
+| [Action 1] | [Name] | [Date] | [Status] |
+| [Action 2] | [Name] | [Date] | [Status] |
+
+**Metrics**:
+- Time to detection: [Duration]
+- Time to containment: [Duration]
+- Time to eradication: [Duration]
+- Time to recovery: [Duration]
+- Total incident duration: [Duration]
+
+---
+
+## Communication Templates
+
+### Internal Communication Template
+
+**Subject**: [SEVERITY LEVEL] Security Incident - [Brief Description]
+
+**To**: [Incident Response Team / All Staff]
+
+**Status**: [Ongoing / Contained / Resolved]
+
+**Summary**:
+We are responding to a [severity level] security incident involving [brief description]. The incident was detected at [time] and our incident response team is actively working to contain and resolve the issue.
+
+**Current Status**:
+- Detection: ✓ Complete
+- Containment: [In Progress / Complete]
+- Eradication: [Not Started / In Progress / Complete]
+- Recovery: [Not Started / In Progress / Complete]
+
+**Impact**:
+- Affected systems: [List]
+- Customer impact: [None / Limited / Significant]
+- Data impact: [None / Potential / Confirmed]
+
+**Actions Taken**:
+- [Action 1]
+- [Action 2]
+- [Action 3]
+
+**Next Steps**:
+- [Next step 1]
+- [Next step 2]
+- [Next step 3]
+
+**Next Update**: [Time]
+
+For questions, contact: [Incident Commander Name/Email]
+
+---
+
+### Customer Communication Template
+
+**For Data Breach Incidents**:
+
+**Subject**: Important Security Notice - {{ project_name }}
+
+**Dear [Customer Name],**
+
+We are writing to inform you of a security incident that may have affected your account.
+
+**What Happened**:
+On [date], we detected [description of incident]. We immediately activated our incident response procedures and have taken steps to contain and resolve the issue.
+
+**What Information Was Involved**:
+[Specific data types: names, email addresses, etc.]
+[What was NOT affected]
+
+**What We Are Doing**:
+- [Action 1]
+- [Action 2]
+- [Action 3]
+
+**What You Should Do**:
+- [Recommended action 1]
+- [Recommended action 2]
+- [Recommended action 3]
+
+**Support**:
+We understand you may have questions. Please contact our security team at [security@email.com] or call [phone number].
+
+We sincerely apologize for this incident and are committed to protecting your information.
+
+Sincerely,
+[Name]
+[Title]
+{{ project_name }}
+
+---
+
+## Breach Notification Requirements
+
+### Notification Timelines
+
+**SOC 2 Obligations**:
+- Notify auditors during active audit
+- Document incident for next audit
+- Update security policies if needed
+
+**GDPR (if applicable)**:
+- Notify supervisory authority within 72 hours
+- Notify affected individuals without undue delay
+- Document breach regardless of notification requirement
+
+**State Laws (if applicable, e.g., California)**:
+- Notify affected individuals without unreasonable delay
+- Notify California Attorney General if 500+ residents affected
+- Specific requirements vary by state
+
+**Contractual Obligations**:
+- Review customer contracts for notification requirements
+- Review vendor contracts for notification requirements
+- Notify business partners as required
+
+---
+
+## Incident Response Metrics
+
+Track and report these metrics for SOC 2:
+
+### Detection Metrics
+- Mean Time to Detect (MTTD)
+- Detection source breakdown
+- False positive rate
+
+### Response Metrics
+- Mean Time to Respond (MTTR)
+- Mean Time to Contain (MTTC)
+- Mean Time to Recover (MTTR)
+- Incident severity distribution
+
+### Impact Metrics
+- Number of incidents by severity
+- Systems affected
+- Customers impacted
+- Data records exposed
+- Downtime duration
+
+### Process Metrics
+- Incident response plan adherence
+- Post-incident reviews completed
+- Action items completion rate
+- Training completion rate
+
+---
+
+## Training and Testing
+
+### Annual Training Requirements
+
+**All Employees**:
+- [ ] Security awareness training
+- [ ] Incident reporting procedures
+- [ ] Phishing awareness
+
+**Incident Response Team**:
+- [ ] Incident response procedures
+- [ ] Communication protocols
+- [ ] Tool training
+- [ ] Legal and compliance requirements
+
+**IT and Security Staff**:
+- [ ] Technical response procedures
+- [ ] Forensics basics
+- [ ] Tool-specific training
+
+### Testing Schedule
+
+**Tabletop Exercises**: Quarterly
+- Scenario-based discussion
+- No systems affected
+- Test decision-making and communication
+
+**Simulations**: Semi-annually
+- Technical simulation
+- Test actual procedures
+- Limited scope
+
+**Full-scale Test**: Annually
+- Complete incident simulation
+- All team members
+- All systems
+- External participants (e.g., PR firm)
+
+### Test Scenarios
+
+1. **Ransomware Attack**
+2. **Data Breach via Phishing**
+3. **DDoS Attack**
+4. **Insider Threat**
+5. **Third-party Breach**
+6. **AWS Account Compromise**
+7. **Database Injection Attack**
+
+---
+
+## Tools and Resources
+
+### Incident Response Tools
+
+**Detection and Monitoring**:
+- SIEM platform: [Tool name]
+- Log aggregation: [Tool name]
+- Intrusion detection: [Tool name]
+- Endpoint detection: [Tool name]
+
+**Communication**:
+- Incident channel: [Slack channel / Teams / etc.]
+- Emergency conference line: [Phone/Zoom]
+- Status page: [URL]
+
+**Documentation**:
+- Incident tracking: [Jira / Linear / etc.]
+- Documentation: [Confluence / Notion / etc.]
+
+**Forensics**:
+- Disk imaging: [Tool]
+- Memory analysis: [Tool]
+- Network forensics: [Tool]
+
+### External Resources
+
+**Forensics Firms**:
+- Primary: [Firm name, contact]
+- Secondary: [Firm name, contact]
+
+**Legal Counsel**:
+- Primary: [Firm name, contact]
+- Cybersecurity specialist: [Name, contact]
+
+**PR Firm** (if needed):
+- Firm: [Name, contact]
+
+**Cyber Insurance**:
+- Provider: [Name]
+- Policy number: [Number]
+- Claims contact: [Phone/email]
+
+---
+
+## Appendices
+
+### Appendix A: Contact Lists
+
+[Maintain up-to-date contact information]
+
+### Appendix B: System Inventory
+
+[Critical systems and dependencies]
+
+### Appendix C: Data Flow Diagrams
+
+[Where data resides and flows]
+
+### Appendix D: Incident Log Template
+
+[Detailed incident tracking template]
+
+### Appendix E: Legal and Regulatory Requirements
+
+[Specific requirements for your jurisdiction]
+
+---
+
+## Document Control
+
+**Document Owner**: [Name, Title]
+**Last Reviewed**: [Date]
+**Review Frequency**: Annual or after major incident
+**Next Review**: [Date]
+**Version**: 1.0
+
+**Change Log**:
+| Date | Version | Changes | Author |
+|------|---------|---------|--------|
+| [Date] | 1.0 | Initial creation | [Name] |
+
+---
+
+## Plan Activation
+
+**To activate this plan, contact the Incident Commander immediately:**
+
+**Primary**: [Name] - [Phone] - [Email]
+**Backup**: [Name] - [Phone] - [Email]
+
+**24/7 Security Hotline**: [Phone number]
+**Security Email**: security@{{ project_name }}.com
+{% endif -%}

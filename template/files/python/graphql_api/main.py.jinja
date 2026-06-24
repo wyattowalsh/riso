@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI, Request
 from strawberry.fastapi import GraphQLRouter
-{% if api_tracks in ['python', 'python+node'] %}
+{% if api_module == 'enabled' and 'python' in api_languages %}
 from sqlalchemy.ext.asyncio import AsyncSession
 {% endif %}
 
@@ -20,7 +20,7 @@ app = FastAPI(
 
 async def get_context(
     request: Request,
-    {% if api_tracks in ['python', 'python+node'] %}
+    {% if api_module == 'enabled' and 'python' in api_languages %}
     # db: AsyncSession = Depends(get_db_session),  # EXTENSION POINT: Implement get_db_session dependency
     {% endif %}
 ) -> GraphQLContext:
@@ -36,7 +36,7 @@ async def get_context(
     """
     return await get_graphql_context(
         request=request,
-        {% if api_tracks in ['python', 'python+node'] %}
+        {% if api_module == 'enabled' and 'python' in api_languages %}
         # db=db,  # EXTENSION POINT: Pass database session when get_db_session is implemented
         {% endif %}
     )

@@ -1,0 +1,217 @@
+{% if desktop_module == "enabled" and desktop_framework == "electron-vite" %}
+# {{ project_name }}
+
+{{ project_description | default('A cross-platform desktop application built with Electron.') }}
+
+## Tech Stack
+
+- **Runtime**: [Electron 34.x](https://www.electronjs.org/) - Cross-platform desktop apps
+- **Build Tool**: [electron-vite 5.x](https://electron-vite.org/) - Lightning-fast development
+- **UI Framework**: [React 18.3](https://react.dev/) - Component-based UI
+- **State Management**: [Zustand](https://zustand-demo.pmnd.rs/) - Lightweight state
+- **Styling**: [Tailwind CSS 3.x](https://tailwindcss.com/) - Utility-first CSS
+- **Language**: TypeScript (strict mode)
+- **Packaging**: [electron-builder 26.x](https://www.electron.build/) - Distribution builds
+
+## Features
+
+- Security-first architecture with contextBridge
+- TypeScript throughout with strict mode
+{% if 'auto_updater' in desktop_features %}
+- Auto-updater with GitHub Releases integration
+{% endif %}
+{% if 'custom_titlebar' in desktop_features %}
+- Custom title bar with native-like controls
+{% endif %}
+{% if 'tray_icon' in desktop_features %}
+- System tray icon support
+{% endif %}
+- Dark/light/system theme support
+- Persistent settings with electron-store
+- Cross-platform builds ({% if 'mac' in desktop_platforms %}macOS{% endif %}{% if 'mac' in desktop_platforms and ('windows' in desktop_platforms or 'linux' in desktop_platforms) %}, {% endif %}{% if 'windows' in desktop_platforms %}Windows{% endif %}{% if 'windows' in desktop_platforms and 'linux' in desktop_platforms %}, {% endif %}{% if 'linux' in desktop_platforms %}Linux{% endif %})
+
+## Getting Started
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) 20+
+- [pnpm](https://pnpm.io/) (recommended) or npm
+
+### Installation
+
+```bash
+# Install dependencies
+pnpm install
+
+# Start development
+pnpm dev
+```
+
+### Development
+
+```bash
+# Start with hot-reload
+pnpm dev
+
+# Type check
+pnpm typecheck
+
+# Lint
+pnpm lint
+
+# Format code
+pnpm format
+```
+
+### Building
+
+```bash
+# Build for current platform
+pnpm build
+
+{% if 'mac' in desktop_platforms %}
+# Build for macOS
+pnpm build:mac
+{% endif %}
+
+{% if 'windows' in desktop_platforms %}
+# Build for Windows
+pnpm build:win
+{% endif %}
+
+{% if 'linux' in desktop_platforms %}
+# Build for Linux
+pnpm build:linux
+{% endif %}
+
+# Build for all platforms
+pnpm build:all
+```
+
+Built applications will be in the `dist/` directory.
+
+## Project Structure
+
+```
+{{ project_slug }}/
+├── src/
+│   ├── main/                 # Main process (Node.js)
+│   │   ├── index.ts         # Entry point
+│   │   ├── window.ts        # Window management
+│   │   ├── menu.ts          # Application menu
+│   │   ├── ipc.ts           # IPC handlers
+│   │   └── updater.ts       # Auto-updater
+│   ├── preload/             # Preload scripts
+│   │   └── index.ts         # Context bridge API
+│   └── renderer/            # Renderer process (React)
+│       ├── App.tsx          # Root component
+│       ├── main.tsx         # Entry point
+│       ├── store.ts         # Zustand store
+│       ├── components/      # React components
+│       └── styles/          # CSS files
+├── resources/               # Build resources
+│   ├── icon.png            # App icon (512x512)
+│   └── entitlements.mac.plist
+├── electron.vite.config.ts  # Vite configuration
+├── electron-builder.yml     # Build configuration
+└── package.json
+```
+
+## Security
+
+This application follows Electron security best practices:
+
+1. **Context Isolation**: The renderer process runs in an isolated context
+2. **No Node Integration**: Node.js APIs are not directly available in the renderer
+3. **Sandboxing**: The renderer process runs in a sandbox
+4. **Preload Scripts**: Only specific, safe APIs are exposed via contextBridge
+5. **CSP**: Content Security Policy headers are enforced
+6. **Input Validation**: All IPC inputs are validated in the main process
+
+### API Exposure Pattern
+
+```typescript
+// preload/index.ts - SAFE pattern
+contextBridge.exposeInMainWorld('api', {
+  // Only expose specific, safe methods
+  getVersion: () => ipcRenderer.invoke('get-version'),
+  // Never expose ipcRenderer directly!
+});
+```
+
+## Resources
+
+### App Icons
+
+Place your app icons in the `resources/` directory:
+
+- `icon.png` - 512x512 PNG for all platforms
+- `icon.icns` - macOS icon (generate from PNG)
+- `icon.ico` - Windows icon (generate from PNG)
+
+You can generate icons from a 512x512 PNG using:
+- [electron-icon-builder](https://www.npmjs.com/package/electron-icon-builder)
+- [icongen](https://github.com/nickcis/icon-gen)
+
+{% if 'auto_updater' in desktop_features %}
+## Auto-Updates
+
+The application automatically checks for updates from GitHub Releases.
+
+### Publishing a Release
+
+1. Update version in `package.json`
+2. Commit and push changes
+3. Create a GitHub Release with the version tag (e.g., `v1.0.0`)
+4. The built artifacts will be uploaded automatically
+
+### Update Flow
+
+1. App checks for updates on startup and every 4 hours
+2. If available, update downloads in the background
+3. User is prompted to restart to apply the update
+{% endif %}
+
+## Troubleshooting
+
+### Build Errors
+
+```bash
+# Clear build cache
+rm -rf out dist node_modules/.vite
+
+# Reinstall dependencies
+pnpm install
+
+# Rebuild native modules
+pnpm postinstall
+```
+
+### macOS Code Signing
+
+For distribution, you'll need an Apple Developer certificate:
+
+```bash
+# Set environment variables
+export CSC_LINK="path/to/certificate.p12"
+export CSC_KEY_PASSWORD="your-password"
+
+# Build with signing
+pnpm build:mac
+```
+
+### Windows Code Signing
+
+```bash
+# Set environment variables
+export WIN_CSC_LINK="path/to/certificate.pfx"
+export WIN_CSC_KEY_PASSWORD="your-password"
+
+# Build with signing
+pnpm build:win
+```
+
+## License
+
+MIT
+{% endif %}

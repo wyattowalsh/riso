@@ -1,0 +1,202 @@
+{% if 'go' in cli_languages or 'go' in api_languages %}
+# golangci-lint v2.8 configuration
+# https://golangci-lint.run/usage/configuration/
+
+version: "2"
+
+run:
+  timeout: 5m
+  go: "{{ go_version | default('1.24') }}"
+  modules-download-mode: readonly
+  allow-parallel-runners: true
+
+output:
+  formats:
+    text:
+      path: stdout
+      print-issued-lines: true
+      print-linter-name: true
+      colors: true
+
+linters:
+  enable:
+    # Default linters
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    # Additional recommended linters
+    - bodyclose
+    - contextcheck
+    - copyloopvar
+    - dogsled
+    - dupl
+    - durationcheck
+    - errname
+    - errorlint
+    - exhaustive
+    - exportloopref
+    - forbidigo
+    - forcetypeassert
+    - gocheckcompilerdirectives
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
+    - gofmt
+    - gofumpt
+    - goimports
+    - gomodguard
+    - goprintffuncname
+    - gosec
+    - intrange
+    - loggercheck
+    - makezero
+    - mirror
+    - misspell
+    - nakedret
+    - nestif
+    - nilerr
+    - nilnil
+    - noctx
+    - nolintlint
+    - perfsprint
+    - prealloc
+    - predeclared
+    - promlinter
+    - reassign
+    - revive
+    - rowserrcheck
+    - sloglint
+    - sqlclosecheck
+    - stylecheck
+    - tenv
+    - testableexamples
+    - testifylint
+    - thelper
+    - tparallel
+    - unconvert
+    - unparam
+    - usestdlibvars
+    - wastedassign
+    - whitespace
+
+  settings:
+    dupl:
+      threshold: 150
+
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+
+    errorlint:
+      errorf: true
+      asserts: true
+      comparison: true
+
+    exhaustive:
+      check-generated: false
+      default-signifies-exhaustive: true
+
+    gocyclo:
+      min-complexity: 15
+
+    gofmt:
+      simplify: true
+
+    gofumpt:
+      extra-rules: true
+
+    goimports:
+      local-prefixes: {{ project_slug }}
+
+    govet:
+      enable-all: true
+      disable:
+        - shadow
+        - fieldalignment
+
+    misspell:
+      locale: US
+
+    nakedret:
+      max-func-lines: 30
+
+    nestif:
+      min-complexity: 4
+
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+
+    prealloc:
+      simple: true
+      for-loops: true
+
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: exported
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: var-declaration
+        - name: var-naming
+
+    sloglint:
+      no-mixed-args: true
+      kv-only: true
+      attr-only: false
+      context: all
+      static-msg: true
+      no-raw-keys: true
+      key-naming-case: snake
+      args-on-sep-lines: true
+
+    staticcheck:
+      checks:
+        - all
+
+    stylecheck:
+      checks:
+        - all
+        - -ST1000  # Package comments
+        - -ST1003  # Naming conventions (too strict)
+
+issues:
+  max-issues-per-linter: 50
+  max-same-issues: 3
+  exclude-dirs:
+    - vendor
+    - third_party
+  exclude-files:
+    - ".*_test\\.go$"
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - dupl
+        - errcheck
+        - gosec
+        - forcetypeassert
+    - path: test/
+      linters:
+        - dupl
+        - errcheck
+        - gosec
+    - linters:
+        - gocritic
+      text: "unnecessaryDefer"
+{% endif %}

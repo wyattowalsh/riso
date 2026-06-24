@@ -1,4 +1,4 @@
-{%- if docs_site == 'docusaurus' -%}
+{%- if docs_module == 'enabled' and docs_framework == 'docusaurus' -%}
 ---
 sidebar_position: 2
 title: Quickstart
@@ -15,7 +15,7 @@ Before you begin, ensure you have:
 
 - **Node.js** 20+ ([download](https://nodejs.org/))
 - **pnpm** 8+ (`npm install -g pnpm`)
-{%- if api_tracks in ['python', 'python+node'] %}
+{%- if api_module == 'enabled' and 'python' in api_languages %}
 - **Python** 3.11+ with **uv** ([install uv](https://docs.astral.sh/uv/getting-started/installation/))
 {%- endif %}
 
@@ -33,7 +33,7 @@ cd {{ project_slug }}
 ```bash
 # Install Node.js dependencies
 pnpm install
-{%- if api_tracks in ['python', 'python+node'] %}
+{%- if api_module == 'enabled' and 'python' in api_languages %}
 
 # Install Python dependencies
 uv sync
@@ -54,18 +54,18 @@ uv run {{ package_name }} --help
 
 {%- endif %}
 
-{%- if api_tracks in ['python', 'python+node'] %}
+{%- if api_module == 'enabled' and 'python' in api_languages %}
 
 ### API Server
 
 Start the development server:
 
 ```bash
-{%- if api_tracks in ['python', 'python+node'] %}
+{%- if api_module == 'enabled' and 'python' in api_languages %}
 # Python (FastAPI)
 uv run uvicorn {{ package_name }}.api:app --reload
 {%- endif %}
-{%- if api_tracks in ['node', 'python+node'] %}
+{%- if api_module == 'enabled' and 'node' in api_languages %}
 
 # Node.js (Fastify)
 pnpm --filter api-node dev
@@ -104,10 +104,10 @@ After building, you'll find AI-ready documentation at:
 │   ├── docs/               # Markdown documentation
 │   ├── blog/               # Blog posts
 │   └── src/                # Custom React components
-{%- if api_tracks in ['python', 'python+node'] %}
+{%- if api_module == 'enabled' and 'python' in api_languages %}
 ├── src/{{ package_name }}/  # Python package source
 {%- endif %}
-{%- if api_tracks in ['node', 'python+node'] %}
+{%- if api_module == 'enabled' and 'node' in api_languages %}
 ├── apps/api-node/          # Node.js API
 {%- endif %}
 ├── pyproject.toml          # Python project config
@@ -120,7 +120,7 @@ After building, you'll find AI-ready documentation at:
 {%- if cli_module == 'enabled' %}
 - 🖥️ Explore the [CLI Documentation](/docs/modules/cli)
 {%- endif %}
-{%- if api_tracks != 'none' %}
+{%- if api_module == 'enabled' and api_languages %}
 - 🔌 Check out the [API Reference](/docs/api-reference)
 {%- endif %}
 - 🤝 Learn how to [contribute](https://github.com/{{ project_slug }}/{{ project_slug }}/blob/main/CONTRIBUTING.md)

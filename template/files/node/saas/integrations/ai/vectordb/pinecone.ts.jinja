@@ -1,0 +1,448 @@
+{% if saas_infra_module == "enabled" and saas_ai_features == 'full' and vector_db_provider == 'pinecone' %}
+/**
+ * Pinecone Vector Store Implementation
+ *
+ * Cloud-native serverless vector database:
+ * - Serverless architecture (auto-scaling)
+ * - Pod-based deployment options
+ * - Namespaces for multi-tenancy
+ * - Metadata filtering
+ * - Sparse-dense hybrid search
+ *
+ * @see https://docs.pinecone.io/
+ */
+
+import { Pinecone, type Index } from '@pinecone-database/pinecone';
+import { generateEmbedding, generateEmbeddings } from './embeddings';
+import type {
+  IVectorStore,
+  VectorDocument,
+  VectorSearchResult,
+  VectorSearchOptions,
+  PineconeConfig,
+  VectorStoreError,
+  ConnectionError,
+} from './types';
+
+// ============================================================================
+// Pinecone Vector Store
+// ============================================================================
+
+export class PineconeStore implements IVectorStore {
+  private client: Pinecone;
+  private index: Index;
+  private config: PineconeConfig;
+
+  constructor(config: PineconeConfig) {
+    this.config = {
+      namespace: 'default',
+      metric: 'cosine',
+      ...config,
+    };
+
+    try {
+      this.client = new Pinecone({
+        apiKey: this.config.apiKey || process.env.PINECONE_API_KEY!,
+      });
+
+      this.index = this.client.index(this.config.indexName);
+    } catch (error) {
+      throw new ConnectionError(
+        `Failed to initialize Pinecone: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { error, config: this.config }
+      );
+    }
+  }
+
+  // ============================================================================
+  // Upsert Operations
+  // ============================================================================
+
+  /**
+   * Upsert documents with automatic embedding generation
+   *
+   * @example
+   * ```ts
+   * await store.upsert([
+   *   {
+   *     id: 'doc-1',
+   *     content: 'First document content',
+   *     metadata: { category: 'tech', userId: '123' },
+   *   },
+   *   {
+   *     id: 'doc-2',
+   *     content: 'Second document content',
+   *     embedding: precomputedEmbedding,
+   *     metadata: { category: 'science' },
+   *   },
+   * ]);
+   * ```
+   */
+  async upsert(documents: VectorDocument[]): Promise<void> {
+    try {
+      // Separate documents with and without embeddings
+      const docsNeedingEmbeddings = documents.filter((doc) => !doc.embedding);
+      const docsWithEmbeddings = documents.filter((doc) => doc.embedding);
+
+      // Generate embeddings for documents that need them
+      let newEmbeddings: number[][] = [];
+      if (docsNeedingEmbeddings.length > 0) {
+        const texts = docsNeedingEmbeddings.map((doc) => doc.content);
+        newEmbeddings = await generateEmbeddings(texts);
+      }
+
+      // Combine all documents with embeddings
+      const vectors = [
+        ...docsNeedingEmbeddings.map((doc, i) => ({
+          id: doc.id,
+          values: newEmbeddings[i],
+          metadata: {
+            content: doc.content,
+            ...doc.metadata,
+          },
+        })),
+        ...docsWithEmbeddings.map((doc) => ({
+          id: doc.id,
+          values: doc.embedding!,
+          metadata: {
+            content: doc.content,
+            ...doc.metadata,
+          },
+        })),
+      ];
+
+      // Upsert in batches (Pinecone limit: 100 vectors per request)
+      const batchSize = 100;
+      for (let i = 0; i < vectors.length; i += batchSize) {
+        const batch = vectors.slice(i, i + batchSize);
+        await this.index.namespace(this.config.namespace!).upsert(batch);
+      }
+    } catch (error) {
+      throw new VectorStoreError(
+        `Failed to upsert documents: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'UPSERT_ERROR',
+        { error, documentCount: documents.length }
+      );
+    }
+  }
+
+  // ============================================================================
+  // Search Operations
+  // ============================================================================
+
+  /**
+   * Search by vector similarity
+   *
+   * @example
+   * ```ts
+   * const results = await store.search(queryEmbedding, {
+   *   topK: 10,
+   *   threshold: 0.7,
+   *   filter: { category: 'tech', userId: '123' },
+   * });
+   * ```
+   */
+  async search(
+    query: number[],
+    options: VectorSearchOptions = {}
+  ): Promise<VectorSearchResult[]> {
+    const {
+      topK = 10,
+      threshold = 0.0,
+      filter,
+      includeVectors = false,
+    } = options;
+
+    try {
+      const queryRequest: any = {
+        vector: query,
+        topK,
+        includeMetadata: true,
+        includeValues: includeVectors,
+      };
+
+      // Add metadata filter if provided
+      if (filter && Object.keys(filter).length > 0) {
+        queryRequest.filter = filter;
+      }
+
+      const response = await this.index.namespace(this.config.namespace!).query(queryRequest);
+
+      // Filter by threshold and map to VectorSearchResult
+      return (response.matches || [])
+        .filter((match) => (match.score || 0) >= threshold)
+        .map((match) => ({
+          id: match.id,
+          content: (match.metadata?.content as string) || '',
+          score: match.score || 0,
+          metadata: match.metadata,
+        }));
+    } catch (error) {
+      throw new VectorStoreError(
+        `Search failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'SEARCH_ERROR',
+        { error, options }
+      );
+    }
+  }
+
+  /**
+   * Search by text (generates embedding automatically)
+   *
+   * @example
+   * ```ts
+   * const results = await store.searchByText('machine learning tutorials', {
+   *   topK: 5,
+   *   filter: { category: 'tech' },
+   * });
+   * ```
+   */
+  async searchByText(
+    text: string,
+    options: VectorSearchOptions = {}
+  ): Promise<VectorSearchResult[]> {
+    const embedding = await generateEmbedding(text);
+    return this.search(embedding, options);
+  }
+
+  // ============================================================================
+  // Delete Operations
+  // ============================================================================
+
+  /**
+   * Delete documents by IDs
+   *
+   * @example
+   * ```ts
+   * await store.delete(['doc-1', 'doc-2', 'doc-3']);
+   * ```
+   */
+  async delete(ids: string[]): Promise<void> {
+    try {
+      await this.index.namespace(this.config.namespace!).deleteMany(ids);
+    } catch (error) {
+      throw new VectorStoreError(
+        `Delete failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'DELETE_ERROR',
+        { error, ids }
+      );
+    }
+  }
+
+  /**
+   * Delete all documents matching a filter
+   *
+   * @example
+   * ```ts
+   * const deleted = await store.deleteByFilter({ category: 'outdated' });
+   * console.log(`Deleted ${deleted} documents`);
+   * ```
+   */
+  async deleteByFilter(filter: Record<string, unknown>): Promise<number> {
+    try {
+      // Pinecone doesn't return count for deleteMany with filter
+      // We fetch IDs first, then delete
+      const matches = await this.index.namespace(this.config.namespace!).query({
+        vector: new Array(this.config.dimension).fill(0), // Dummy vector
+        topK: 10000, // Max limit
+        filter,
+        includeMetadata: false,
+      });
+
+      const ids = (matches.matches || []).map((m) => m.id);
+      if (ids.length > 0) {
+        await this.delete(ids);
+      }
+
+      return ids.length;
+    } catch (error) {
+      throw new VectorStoreError(
+        `Delete by filter failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'DELETE_FILTER_ERROR',
+        { error, filter }
+      );
+    }
+  }
+
+  // ============================================================================
+  // Retrieval Operations
+  // ============================================================================
+
+  /**
+   * Get document by ID
+   *
+   * @example
+   * ```ts
+   * const doc = await store.get('doc-1');
+   * if (doc) {
+   *   console.log(doc.content);
+   * }
+   * ```
+   */
+  async get(id: string): Promise<VectorDocument | null> {
+    try {
+      const response = await this.index.namespace(this.config.namespace!).fetch([id]);
+      const record = response.records[id];
+
+      if (!record) {
+        return null;
+      }
+
+      return {
+        id,
+        content: (record.metadata?.content as string) || '',
+        embedding: record.values,
+        metadata: record.metadata,
+      };
+    } catch (error) {
+      throw new VectorStoreError(
+        `Get document failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'GET_ERROR',
+        { error, id }
+      );
+    }
+  }
+
+  /**
+   * Get multiple documents by IDs
+   *
+   * @example
+   * ```ts
+   * const docs = await store.getMany(['doc-1', 'doc-2', 'doc-3']);
+   * console.log(`Retrieved ${docs.length} documents`);
+   * ```
+   */
+  async getMany(ids: string[]): Promise<VectorDocument[]> {
+    try {
+      const response = await this.index.namespace(this.config.namespace!).fetch(ids);
+      const documents: VectorDocument[] = [];
+
+      for (const id of ids) {
+        const record = response.records[id];
+        if (record) {
+          documents.push({
+            id,
+            content: (record.metadata?.content as string) || '',
+            embedding: record.values,
+            metadata: record.metadata,
+          });
+        }
+      }
+
+      return documents;
+    } catch (error) {
+      throw new VectorStoreError(
+        `Get many documents failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'GET_MANY_ERROR',
+        { error, ids }
+      );
+    }
+  }
+
+  // ============================================================================
+  // Utility Operations
+  // ============================================================================
+
+  /**
+   * Count documents in the index
+   *
+   * @example
+   * ```ts
+   * const total = await store.count();
+   * const techDocs = await store.count({ category: 'tech' });
+   * ```
+   */
+  async count(filter?: Record<string, unknown>): Promise<number> {
+    try {
+      const stats = await this.index.describeIndexStats();
+
+      if (!filter) {
+        // Return total count for the namespace
+        const namespaceStats = stats.namespaces?.[this.config.namespace!];
+        return namespaceStats?.vectorCount || 0;
+      }
+
+      // For filtered count, we need to query (Pinecone doesn't have direct count with filter)
+      const matches = await this.index.namespace(this.config.namespace!).query({
+        vector: new Array(this.config.dimension).fill(0),
+        topK: 10000,
+        filter,
+        includeMetadata: false,
+      });
+
+      return matches.matches?.length || 0;
+    } catch (error) {
+      throw new VectorStoreError(
+        `Count failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'COUNT_ERROR',
+        { error, filter }
+      );
+    }
+  }
+
+  /**
+   * Delete all documents in the namespace
+   * USE WITH CAUTION - This cannot be undone!
+   */
+  async deleteAll(): Promise<void> {
+    try {
+      await this.index.namespace(this.config.namespace!).deleteAll();
+    } catch (error) {
+      throw new VectorStoreError(
+        `Delete all failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'DELETE_ALL_ERROR',
+        { error }
+      );
+    }
+  }
+}
+
+// ============================================================================
+// Factory Function
+// ============================================================================
+
+/**
+ * Create a Pinecone vector store instance
+ *
+ * @example
+ * ```ts
+ * const store = createVectorStore({
+ *   indexName: 'my-index',
+ *   dimension: 1536,
+ *   namespace: 'production',
+ * });
+ * ```
+ */
+export function createVectorStore(config: PineconeConfig): IVectorStore {
+  return new PineconeStore(config);
+}
+
+// ============================================================================
+// Error Classes
+// ============================================================================
+
+class VectorStoreError extends Error {
+  constructor(
+    message: string,
+    public code?: string,
+    public details?: unknown
+  ) {
+    super(message);
+    this.name = 'VectorStoreError';
+  }
+}
+
+class ConnectionError extends Error {
+  constructor(message: string, public details?: unknown) {
+    super(message);
+    this.name = 'ConnectionError';
+  }
+}
+
+// ============================================================================
+// Exports
+// ============================================================================
+
+export { PineconeStore };
+export type { PineconeConfig };
+{% endif %}

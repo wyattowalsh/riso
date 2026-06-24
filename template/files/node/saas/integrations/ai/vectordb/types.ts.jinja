@@ -1,0 +1,253 @@
+{% if saas_infra_module == "enabled" and saas_ai_features == 'full' %}
+/**
+ * Vector Database Types and Interfaces
+ *
+ * Unified interface for multiple vector database providers:
+ * - Pinecone (cloud-native, serverless)
+ * - Qdrant (open-source, self-hosted or cloud)
+ * - Weaviate (schema-based, hybrid search)
+ *
+ * All implementations adhere to IVectorStore for provider portability.
+ */
+
+// ============================================================================
+// Core Document Types
+// ============================================================================
+
+export interface VectorDocument {
+  /** Unique identifier for the document */
+  id: string;
+  /** Text content of the document */
+  content: string;
+  /** Pre-computed embedding vector (optional, will be generated if not provided) */
+  embedding?: number[];
+  /** Metadata for filtering and enrichment */
+  metadata?: Record<string, unknown>;
+}
+
+// ============================================================================
+// Search Types
+// ============================================================================
+
+export interface VectorSearchResult {
+  /** Document ID */
+  id: string;
+  /** Document content */
+  content: string;
+  /** Similarity score (0-1, higher is more similar) */
+  score: number;
+  /** Associated metadata */
+  metadata?: Record<string, unknown>;
+}
+
+export interface VectorSearchOptions {
+  /** Number of results to return */
+  topK?: number;
+  /** Minimum similarity score threshold (0-1) */
+  threshold?: number;
+  /** Metadata filters */
+  filter?: Record<string, unknown>;
+  /** Include embedding vectors in results */
+  includeVectors?: boolean;
+}
+
+// ============================================================================
+// Vector Store Interface
+// ============================================================================
+
+/**
+ * Unified interface for vector database operations
+ * All vector store implementations must implement this interface
+ */
+export interface IVectorStore {
+  /**
+   * Upsert (insert or update) documents with embeddings
+   *
+   * @param documents - Documents to upsert (embeddings generated if not provided)
+   * @returns Promise that resolves when operation completes
+   */
+  upsert(documents: VectorDocument[]): Promise<void>;
+
+  /**
+   * Search by vector similarity
+   *
+   * @param query - Query embedding vector
+   * @param options - Search configuration options
+   * @returns Array of matching documents with similarity scores
+   */
+  search(query: number[], options?: VectorSearchOptions): Promise<VectorSearchResult[]>;
+
+  /**
+   * Search by text (generates embedding automatically)
+   *
+   * @param text - Query text
+   * @param options - Search configuration options
+   * @returns Array of matching documents with similarity scores
+   */
+  searchByText(text: string, options?: VectorSearchOptions): Promise<VectorSearchResult[]>;
+
+  /**
+   * Delete documents by ID
+   *
+   * @param ids - Array of document IDs to delete
+   * @returns Promise that resolves when operation completes
+   */
+  delete(ids: string[]): Promise<void>;
+
+  /**
+   * Delete all documents matching a filter
+   *
+   * @param filter - Metadata filter for deletion
+   * @returns Number of documents deleted
+   */
+  deleteByFilter(filter: Record<string, unknown>): Promise<number>;
+
+  /**
+   * Get document by ID
+   *
+   * @param id - Document ID
+   * @returns Document if found, null otherwise
+   */
+  get(id: string): Promise<VectorDocument | null>;
+
+  /**
+   * Get multiple documents by IDs
+   *
+   * @param ids - Array of document IDs
+   * @returns Array of found documents
+   */
+  getMany(ids: string[]): Promise<VectorDocument[]>;
+
+  /**
+   * Count documents in the store
+   *
+   * @param filter - Optional metadata filter
+   * @returns Total document count
+   */
+  count(filter?: Record<string, unknown>): Promise<number>;
+}
+
+// ============================================================================
+// Configuration Types
+// ============================================================================
+
+export interface VectorStoreConfig {
+  /** API key for the vector database service */
+  apiKey?: string;
+  /** Environment/region for cloud providers */
+  environment?: string;
+  /** Index/collection name */
+  indexName: string;
+  /** Embedding dimension (e.g., 1536 for OpenAI text-embedding-3-small) */
+  dimension: number;
+  /** Distance metric (cosine, euclidean, dot_product) */
+  metric?: 'cosine' | 'euclidean' | 'dot_product';
+  /** Namespace for multi-tenancy (Pinecone-specific) */
+  namespace?: string;
+  /** Cloud region (provider-specific) */
+  cloud?: string;
+}
+
+// ============================================================================
+// Provider-Specific Configs
+// ============================================================================
+
+export interface PineconeConfig extends VectorStoreConfig {
+  /** Pinecone cloud provider (aws, gcp, azure) */
+  cloud?: 'aws' | 'gcp' | 'azure';
+  /** Pinecone cloud region */
+  region?: string;
+  /** Pod type (s1, p1, p2) */
+  podType?: 's1' | 'p1' | 'p2';
+}
+
+export interface QdrantConfig extends VectorStoreConfig {
+  /** Qdrant server URL (for self-hosted) */
+  url?: string;
+  /** gRPC port (optional, for high performance) */
+  grpcPort?: number;
+  /** Use HTTPS */
+  https?: boolean;
+}
+
+export interface WeaviateConfig extends VectorStoreConfig {
+  /** Weaviate server URL */
+  url?: string;
+  /** Class name (Weaviate's equivalent to collection) */
+  className?: string;
+  /** Vectorizer module */
+  vectorizer?: 'none' | 'text2vec-openai' | 'text2vec-cohere' | 'text2vec-huggingface';
+}
+
+// ============================================================================
+// Batch Operations
+// ============================================================================
+
+export interface BatchUpsertResult {
+  /** Number of documents successfully upserted */
+  success: number;
+  /** Number of documents that failed */
+  failed: number;
+  /** Error details for failed documents */
+  errors?: Array<{ id: string; error: string }>;
+}
+
+// ============================================================================
+// Error Types
+// ============================================================================
+
+export class VectorStoreError extends Error {
+  constructor(
+    message: string,
+    public code?: string,
+    public details?: unknown
+  ) {
+    super(message);
+    this.name = 'VectorStoreError';
+  }
+}
+
+export class EmbeddingError extends VectorStoreError {
+  constructor(message: string, details?: unknown) {
+    super(message, 'EMBEDDING_ERROR', details);
+    this.name = 'EmbeddingError';
+  }
+}
+
+export class ConnectionError extends VectorStoreError {
+  constructor(message: string, details?: unknown) {
+    super(message, 'CONNECTION_ERROR', details);
+    this.name = 'ConnectionError';
+  }
+}
+
+export class ValidationError extends VectorStoreError {
+  constructor(message: string, details?: unknown) {
+    super(message, 'VALIDATION_ERROR', details);
+    this.name = 'ValidationError';
+  }
+}
+
+// ============================================================================
+// Utility Types
+// ============================================================================
+
+export type VectorProvider = 'pinecone' | 'qdrant' | 'weaviate' | 'pgvector';
+
+export interface VectorMetadata {
+  /** User ID for access control */
+  userId?: string;
+  /** Organization ID for multi-tenancy */
+  organizationId?: string;
+  /** Source of the document */
+  source?: string;
+  /** Document type/category */
+  type?: string;
+  /** Tags for categorization */
+  tags?: string[];
+  /** Timestamp */
+  timestamp?: Date | string;
+  /** Custom fields */
+  [key: string]: unknown;
+}
+{% endif %}

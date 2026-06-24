@@ -1,4 +1,4 @@
-{% if saas_starter_module == "enabled" %}
+{% if saas_infra_module == "enabled" %}
 # {{ project_name }} - Architecture Overview
 
 ## Technology Stack
@@ -15,9 +15,9 @@
 - **Connection**: {% if saas_database == "neon" and saas_orm == "prisma" %}HTTP (Neon adapter for edge compatibility){% elif saas_database == "neon" %}HTTP (neon-http for Drizzle){% else %}Connection pooling{% endif %}
 
 ### Authentication
-- **Provider**: {% if saas_auth == "clerk" %}Clerk (Hosted, UI components, organization-first){% else %}Auth.js/NextAuth v5 (Self-hosted, database sessions){% endif %}
-- **Session Strategy**: {% if saas_auth == "clerk" %}JWT with Clerk{% else %}Database sessions{% endif %}
-- **Multi-tenancy**: {% if saas_auth == "clerk" %}Clerk Organizations{% else %}Custom organization model{% endif %}
+- **Provider**: {% if saas_auth_provider == "clerk" %}Clerk (Hosted, UI components, organization-first){% else %}Auth.js/NextAuth v5 (Self-hosted, database sessions){% endif %}
+- **Session Strategy**: {% if saas_auth_provider == "clerk" %}JWT with Clerk{% else %}Database sessions{% endif %}
+- **Multi-tenancy**: {% if saas_auth_provider == "clerk" %}Clerk Organizations{% else %}Custom organization model{% endif %}
 
 {% if saas_enterprise_bridge == "workos" %}
 ### Enterprise Integration
@@ -26,10 +26,10 @@
 {% endif %}
 
 ### Billing
-- **Provider**: {% if saas_billing == "stripe" %}Stripe Billing 2025{% else %}Paddle (Merchant of Record){% endif %}
+- **Provider**: {% if saas_billing_provider == "stripe" %}Stripe Billing 2025{% else %}Paddle (Merchant of Record){% endif %}
 - **Features**: Subscriptions, usage-based metering, invoicing
 - **Payment Methods**: Cards, ACH, bank transfers
-{% if saas_billing == "stripe" %}
+{% if saas_billing_provider == "stripe" %}
 - **Self-Service**: Stripe Customer Portal
 {% endif %}
 
@@ -113,7 +113,7 @@ User Request
     ?
 {% if saas_runtime == "nextjs-16" %}Next.js Middleware{% else %}Remix Loader{% endif %}
     ?
-Authentication Check ({% if saas_auth == "clerk" %}Clerk{% else %}Auth.js{% endif %})
+Authentication Check ({% if saas_auth_provider == "clerk" %}Clerk{% else %}Auth.js{% endif %})
     ?
 API Route / Server Component
     ?
@@ -135,7 +135,7 @@ Subscription, API Keys, Resources
 ```
 
 **Access Control**:
-{% if saas_auth == "clerk" %}
+{% if saas_auth_provider == "clerk" %}
 - Clerk handles organization membership and roles
 - Check `auth().orgId` for organization context
 - Use `has()` helper for permission checks
@@ -166,7 +166,7 @@ Multiple Steps:
 ## Security Architecture
 
 ### Authentication Flow
-{% if saas_auth == "clerk" %}
+{% if saas_auth_provider == "clerk" %}
 1. User signs in via Clerk UI components
 2. Clerk issues JWT token
 3. Middleware validates token on each request

@@ -13,9 +13,9 @@ ifeq ($(QUALITY_PROFILE),strict)
 	PYLINT_FLAGS := --errors-only
 endif
 
-.PHONY: quality quality-python coverage-report format lint {% if api_tracks in ['node', 'python+node'] %}quality-node lint-node{% endif %}
+.PHONY: quality quality-python coverage-report format lint {% if api_module == 'enabled' and 'node' in api_languages %}quality-node lint-node{% endif %}
 
-quality: quality-python{% if api_tracks in ['node', 'python+node'] %} quality-node{% endif %}
+quality: quality-python{% if api_module == 'enabled' and 'node' in api_languages %} quality-node{% endif %}
 
 quality-python:
 	$(UV) run --group quality --group test ruff check $(RUFF_FLAGS)
@@ -34,7 +34,7 @@ lint:
 	$(UV) run --group quality --group test ruff check $(RUFF_FLAGS)
 	$(UV) run --group quality --group test pylint $(PYLINT_FLAGS) $(PACKAGE_NAME) tests
 
-{% if api_tracks in ['node', 'python+node'] %}
+{% if api_module == 'enabled' and 'node' in api_languages %}
 quality-node:
 	@command -v pnpm >/dev/null 2>&1 || { echo "pnpm is required for Node quality checks"; exit 1; }
 	pnpm --filter api-node lint

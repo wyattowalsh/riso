@@ -1,0 +1,631 @@
+{% if saas_infra_module == "enabled" and saas_observability_otel %}
+/**
+ * OpenTelemetry Metrics
+ *
+ * Custom metrics collection for business events and performance monitoring.
+ * Features:
+ * - Counters for event tracking (signups, logins, payments)
+ * - Histograms for latency and duration measurements
+ * - Gauges for point-in-time measurements
+ * - Automatic metric aggregation and export
+ *
+ * @see https://opentelemetry.io/docs/specs/otel/metrics/
+ */
+
+import { metrics, type Counter, type Histogram, type Gauge } from '@opentelemetry/api';
+import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
+import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
+import { Resource } from '@opentelemetry/resources';
+import {
+  ATTR_SERVICE_NAME,
+  ATTR_SERVICE_VERSION,
+  ATTR_DEPLOYMENT_ENVIRONMENT,
+} from '@opentelemetry/semantic-conventions';
+{% if saas_observability_structured_logging %}
+import { logger } from './logger';
+{% endif %}
+import type { MetricAttributes, MetricOptions } from './types';
+
+// ============================================================================
+// Configuration
+// ============================================================================
+
+const METRICS_CONFIG = {
+  serviceName: process.env.OTEL_SERVICE_NAME || '{{ project_slug }}',
+  serviceVersion: process.env.npm_package_version || '1.0.0',
+  environment: process.env.NODE_ENV || 'development',
+  endpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/metrics',
+  exportInterval: parseInt(process.env.OTEL_METRIC_EXPORT_INTERVAL || '60000', 10), // 60s
+} as const;
+
+// ============================================================================
+// Meter Provider Initialization
+// ============================================================================
+
+let meterProvider: MeterProvider | null = null;
+let meter: ReturnType<typeof metrics.getMeter> | null = null;
+
+/**
+ * Initialize OpenTelemetry metrics collection
+ *
+ * Call this once at application startup.
+ *
+ * @example
+ * ```ts
+ * // instrumentation.ts
+ * import { initializeMetrics } from './observability/metrics';
+ * initializeMetrics();
+ * ```
+ */
+export function initializeMetrics(): void {
+  if (meterProvider) {
+    {% if saas_observability_structured_logging %}
+    logger.warn('OpenTelemetry metrics already initialized');
+    {% endif %}
+    return;
+  }
+
+  try {
+    const resource = new Resource({
+      [ATTR_SERVICE_NAME]: METRICS_CONFIG.serviceName,
+      [ATTR_SERVICE_VERSION]: METRICS_CONFIG.serviceVersion,
+      [ATTR_DEPLOYMENT_ENVIRONMENT]: METRICS_CONFIG.environment,
+    });
+
+    const metricExporter = new OTLPMetricExporter({
+      url: METRICS_CONFIG.endpoint,
+      headers: {},
+    });
+
+    const metricReader = new PeriodicExportingMetricReader({
+      exporter: metricExporter,
+      exportIntervalMillis: METRICS_CONFIG.exportInterval,
+    });
+
+    meterProvider = new MeterProvider({
+      resource,
+      readers: [metricReader],
+    });
+
+    metrics.setGlobalMeterProvider(meterProvider);
+    meter = metrics.getMeter(METRICS_CONFIG.serviceName, METRICS_CONFIG.serviceVersion);
+
+    {% if saas_observability_structured_logging %}
+    logger.info({
+      msg: 'OpenTelemetry metrics initialized',
+      service: METRICS_CONFIG.serviceName,
+      endpoint: METRICS_CONFIG.endpoint,
+      exportInterval: METRICS_CONFIG.exportInterval,
+    });
+    {% endif %}
+
+    // Graceful shutdown
+    process.on('SIGTERM', async () => {
+      try {
+        await meterProvider?.shutdown();
+        {% if saas_observability_structured_logging %}
+        logger.info('OpenTelemetry metrics shut down successfully');
+        {% endif %}
+      } catch (error) {
+        {% if saas_observability_structured_logging %}
+        logger.error({ msg: 'Error shutting down OpenTelemetry metrics', error });
+        {% endif %}
+      }
+    });
+  } catch (error) {
+    {% if saas_observability_structured_logging %}
+    logger.error({ msg: 'Failed to initialize OpenTelemetry metrics', error });
+    {% endif %}
+  }
+}
+
+// ============================================================================
+// Metric Instruments
+// ============================================================================
+
+const metricCache = new Map<string, Counter | Histogram | Gauge>();
+
+/**
+ * Create or get a cached counter
+ */
+export function createCounter(name: string, description?: string): Counter {
+  const cacheKey = `counter:${name}`;
+  if (metricCache.has(cacheKey)) {
+    return metricCache.get(cacheKey) as Counter;
+  }
+
+  if (!meter) {
+    throw new Error('Metrics not initialized. Call initializeMetrics() first.');
+  }
+
+  const counter = meter.createCounter(name, {
+    description,
+    unit: '1',
+  });
+
+  metricCache.set(cacheKey, counter);
+  return counter;
+}
+
+/**
+ * Create or get a cached histogram
+ */
+export function createHistogram(name: string, description?: string, unit = 'ms'): Histogram {
+  const cacheKey = `histogram:${name}`;
+  if (metricCache.has(cacheKey)) {
+    return metricCache.get(cacheKey) as Histogram;
+  }
+
+  if (!meter) {
+    throw new Error('Metrics not initialized. Call initializeMetrics() first.');
+  }
+
+  const histogram = meter.createHistogram(name, {
+    description,
+    unit,
+  });
+
+  metricCache.set(cacheKey, histogram);
+  return histogram;
+}
+
+/**
+ * Create or get a cached gauge
+ */
+export function createGauge(name: string, description?: string): Gauge {
+  const cacheKey = `gauge:${name}`;
+  if (metricCache.has(cacheKey)) {
+    return metricCache.get(cacheKey) as Gauge;
+  }
+
+  if (!meter) {
+    throw new Error('Metrics not initialized. Call initializeMetrics() first.');
+  }
+
+  const gauge = meter.createGauge(name, {
+    description,
+  });
+
+  metricCache.set(cacheKey, gauge);
+  return gauge;
+}
+
+// ============================================================================
+// Generic Metric Recording
+// ============================================================================
+
+/**
+ * Record a counter increment
+ *
+ * @example
+ * ```ts
+ * recordCounter('user.signup', 1, {
+ *   provider: 'google',
+ *   plan: 'free',
+ * });
+ * ```
+ */
+export function recordCounter(
+  name: string,
+  value: number = 1,
+  attributes?: MetricAttributes
+): void {
+  try {
+    const counter = createCounter(name);
+    counter.add(value, attributes);
+  } catch (error) {
+    {% if saas_observability_structured_logging %}
+    logger.error({ msg: 'Failed to record counter', name, error });
+    {% endif %}
+  }
+}
+
+/**
+ * Record a histogram value (for latency, duration, size measurements)
+ *
+ * @example
+ * ```ts
+ * recordHistogram('api.request.duration', 145, {
+ *   endpoint: '/api/users',
+ *   method: 'GET',
+ *   status: '200',
+ * });
+ * ```
+ */
+export function recordHistogram(
+  name: string,
+  value: number,
+  attributes?: MetricAttributes
+): void {
+  try {
+    const histogram = createHistogram(name);
+    histogram.record(value, attributes);
+  } catch (error) {
+    {% if saas_observability_structured_logging %}
+    logger.error({ msg: 'Failed to record histogram', name, error });
+    {% endif %}
+  }
+}
+
+/**
+ * Record a gauge value (for point-in-time measurements)
+ *
+ * @example
+ * ```ts
+ * recordGauge('system.memory.usage', 8589934592, {
+ *   type: 'heap',
+ * });
+ * ```
+ */
+export function recordGauge(
+  name: string,
+  value: number,
+  attributes?: MetricAttributes
+): void {
+  try {
+    const gauge = createGauge(name);
+    gauge.record(value, attributes);
+  } catch (error) {
+    {% if saas_observability_structured_logging %}
+    logger.error({ msg: 'Failed to record gauge', name, error });
+    {% endif %}
+  }
+}
+
+// ============================================================================
+// Business Metrics Helpers
+// ============================================================================
+
+/**
+ * Record a user signup event
+ *
+ * @example
+ * ```ts
+ * recordSignup({
+ *   userId: 'user123',
+ *   provider: 'google',
+ *   plan: 'free',
+ * });
+ * ```
+ */
+export function recordSignup(attributes: {
+  userId: string;
+  provider: 'email' | 'google' | 'github' | 'microsoft';
+  {% if saas_tenancy_model == 'b2b-teams' %}
+  organizationId?: string;
+  {% endif %}
+  {% if saas_billing_system != 'none' %}
+  plan?: string;
+  {% endif %}
+}): void {
+  recordCounter('user.signup', 1, {
+    provider: attributes.provider,
+    {% if saas_billing_system != 'none' %}
+    ...(attributes.plan && { plan: attributes.plan }),
+    {% endif %}
+  });
+
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: 'User signup recorded',
+    userId: attributes.userId,
+    provider: attributes.provider,
+  });
+  {% endif %}
+}
+
+/**
+ * Record a user login event
+ *
+ * @example
+ * ```ts
+ * recordLogin({
+ *   userId: 'user123',
+ *   provider: 'email',
+ *   success: true,
+ * });
+ * ```
+ */
+export function recordLogin(attributes: {
+  userId: string;
+  provider: 'email' | 'google' | 'github' | 'microsoft';
+  success: boolean;
+}): void {
+  recordCounter('user.login', 1, {
+    provider: attributes.provider,
+    success: attributes.success.toString(),
+  });
+
+  if (!attributes.success) {
+    recordCounter('user.login.failed', 1, {
+      provider: attributes.provider,
+    });
+  }
+}
+
+{% if saas_billing_system != 'none' %}
+/**
+ * Record a payment event
+ *
+ * @example
+ * ```ts
+ * recordPayment({
+ *   userId: 'user123',
+ *   amount: 9.99,
+ *   currency: 'USD',
+ *   planId: 'pro',
+ *   status: 'succeeded',
+ * });
+ * ```
+ */
+export function recordPayment(attributes: {
+  userId: string;
+  {% if saas_tenancy_model == 'b2b-teams' %}
+  organizationId?: string;
+  {% endif %}
+  amount: number;
+  currency: string;
+  planId: string;
+  status: 'succeeded' | 'failed' | 'pending';
+}): void {
+  recordCounter('payment.processed', 1, {
+    planId: attributes.planId,
+    currency: attributes.currency,
+    status: attributes.status,
+  });
+
+  if (attributes.status === 'succeeded') {
+    recordHistogram('payment.amount', attributes.amount, {
+      planId: attributes.planId,
+      currency: attributes.currency,
+    });
+
+    recordCounter('revenue.total', attributes.amount, {
+      currency: attributes.currency,
+    });
+  }
+
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: 'Payment recorded',
+    userId: attributes.userId,
+    amount: attributes.amount,
+    currency: attributes.currency,
+    status: attributes.status,
+  });
+  {% endif %}
+}
+{% endif %}
+
+/**
+ * Record an API request
+ *
+ * Typically called from middleware to track all API calls.
+ *
+ * @example
+ * ```ts
+ * recordApiRequest({
+ *   endpoint: '/api/users',
+ *   method: 'GET',
+ *   statusCode: 200,
+ *   duration: 145,
+ *   userId: 'user123',
+ * });
+ * ```
+ */
+export function recordApiRequest(attributes: {
+  endpoint: string;
+  method: string;
+  statusCode: number;
+  duration: number;
+  userId?: string;
+  {% if saas_tenancy_model == 'b2b-teams' %}
+  organizationId?: string;
+  {% endif %}
+}): void {
+  // Request count
+  recordCounter('api.request', 1, {
+    endpoint: attributes.endpoint,
+    method: attributes.method,
+    status: attributes.statusCode.toString(),
+  });
+
+  // Request duration
+  recordHistogram('api.request.duration', attributes.duration, {
+    endpoint: attributes.endpoint,
+    method: attributes.method,
+  });
+
+  // Error tracking
+  if (attributes.statusCode >= 400) {
+    recordCounter('api.request.error', 1, {
+      endpoint: attributes.endpoint,
+      method: attributes.method,
+      status: attributes.statusCode.toString(),
+    });
+  }
+}
+
+/**
+ * Record an API error
+ *
+ * @example
+ * ```ts
+ * recordApiError({
+ *   endpoint: '/api/users',
+ *   method: 'GET',
+ *   errorType: 'DatabaseError',
+ *   statusCode: 500,
+ * });
+ * ```
+ */
+export function recordApiError(attributes: {
+  endpoint: string;
+  method: string;
+  errorType: string;
+  statusCode: number;
+}): void {
+  recordCounter('api.error', 1, {
+    endpoint: attributes.endpoint,
+    method: attributes.method,
+    errorType: attributes.errorType,
+    status: attributes.statusCode.toString(),
+  });
+}
+
+// ============================================================================
+// Database Metrics
+// ============================================================================
+
+/**
+ * Record a database query
+ *
+ * @example
+ * ```ts
+ * const timer = performance.now();
+ * const results = await db.query('SELECT * FROM users');
+ * recordDatabaseQuery({
+ *   operation: 'SELECT',
+ *   table: 'users',
+ *   duration: performance.now() - timer,
+ *   rowCount: results.length,
+ * });
+ * ```
+ */
+export function recordDatabaseQuery(attributes: {
+  operation: string;
+  table: string;
+  duration: number;
+  rowCount?: number;
+  error?: boolean;
+}): void {
+  recordHistogram('db.query.duration', attributes.duration, {
+    operation: attributes.operation,
+    table: attributes.table,
+  });
+
+  recordCounter('db.query', 1, {
+    operation: attributes.operation,
+    table: attributes.table,
+    ...(attributes.error && { error: 'true' }),
+  });
+
+  if (attributes.rowCount !== undefined) {
+    recordHistogram('db.query.rows', attributes.rowCount, {
+      operation: attributes.operation,
+      table: attributes.table,
+    });
+  }
+}
+
+// ============================================================================
+// Cache Metrics
+// ============================================================================
+
+/**
+ * Record cache hit/miss
+ *
+ * @example
+ * ```ts
+ * recordCacheOperation('redis', 'get', 'user:123', true);
+ * ```
+ */
+export function recordCacheOperation(
+  cacheType: string,
+  operation: 'get' | 'set' | 'delete',
+  key: string,
+  hit?: boolean
+): void {
+  recordCounter('cache.operation', 1, {
+    type: cacheType,
+    operation,
+    ...(hit !== undefined && { hit: hit.toString() }),
+  });
+}
+
+// ============================================================================
+// Custom Business Metrics
+// ============================================================================
+
+{% if saas_tenancy_model == 'b2b-teams' %}
+/**
+ * Record team/organization creation
+ */
+export function recordOrganizationCreated(attributes: {
+  organizationId: string;
+  userId: string;
+  {% if saas_billing_system != 'none' %}
+  plan?: string;
+  {% endif %}
+}): void {
+  recordCounter('organization.created', 1, {
+    {% if saas_billing_system != 'none' %}
+    ...(attributes.plan && { plan: attributes.plan }),
+    {% endif %}
+  });
+}
+
+/**
+ * Record team member invitation
+ */
+export function recordMemberInvited(attributes: {
+  organizationId: string;
+  invitedBy: string;
+  role: string;
+}): void {
+  recordCounter('member.invited', 1, {
+    role: attributes.role,
+  });
+}
+{% endif %}
+
+/**
+ * Record feature usage
+ *
+ * @example
+ * ```ts
+ * recordFeatureUsage('dashboard', 'export-data', 'user123');
+ * ```
+ */
+export function recordFeatureUsage(
+  feature: string,
+  action: string,
+  userId: string
+): void {
+  recordCounter('feature.usage', 1, {
+    feature,
+    action,
+  });
+}
+
+// ============================================================================
+// System Metrics
+// ============================================================================
+
+/**
+ * Record system resource usage
+ * Call this periodically (e.g., every minute) to track resource consumption
+ */
+export function recordSystemMetrics(): void {
+  if (typeof process !== 'undefined' && process.memoryUsage) {
+    const memory = process.memoryUsage();
+
+    recordGauge('system.memory.heap.used', memory.heapUsed);
+    recordGauge('system.memory.heap.total', memory.heapTotal);
+    recordGauge('system.memory.rss', memory.rss);
+    recordGauge('system.memory.external', memory.external);
+  }
+
+  if (typeof process !== 'undefined' && process.cpuUsage) {
+    const cpu = process.cpuUsage();
+    recordGauge('system.cpu.user', cpu.user);
+    recordGauge('system.cpu.system', cpu.system);
+  }
+}
+
+// ============================================================================
+// Type Exports
+// ============================================================================
+
+export type { MetricAttributes, MetricOptions };
+{% endif %}

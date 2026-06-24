@@ -1,0 +1,101 @@
+{%- if mcp_module == 'enabled' and 'go' in mcp_languages -%}
+// {{ project_name }} MCP Server
+//
+// Entry point for the Model Context Protocol server.
+// Uses the official MCP Go SDK (github.com/modelcontextprotocol/go-sdk).
+
+package main
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"{{ project_slug }}/internal/mcp"
+)
+
+const (
+	version    = "1.0.0"
+	serverName = "{{ package_name }}-mcp"
+)
+
+func main() {
+	// Configure flags
+	transport := flag.String("transport", "{{ mcp_transport }}", "Transport type: stdio, sse, http")
+	host := flag.String("host", "127.0.0.1", "Host for HTTP/SSE transports")
+	port := flag.Int("port", 3000, "Port for HTTP/SSE transports")
+	logLevel := flag.String("log-level", "info", "Log level: debug, info, warn, error")
+	flag.Parse()
+
+	// Setup structured logging to stderr (stdout is reserved for MCP protocol)
+	level := parseLogLevel(*logLevel)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: level,
+	}))
+	slog.SetDefault(logger)
+
+	// Create server configuration
+	cfg := mcp.Config{
+		Name:      serverName,
+		Version:   version,
+		Transport: *transport,
+		Host:      *host,
+		Port:      *port,
+		Logger:    logger,
+	}
+
+	// Create and initialize server
+	srv, err := mcp.NewServer(cfg)
+	if err != nil {
+		logger.Error("failed to create MCP server", "error", err)
+		os.Exit(1)
+	}
+
+	// Setup graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-sigCh
+		logger.Info("received shutdown signal", "signal", sig)
+		cancel()
+	}()
+
+	// Log startup
+	logger.Info("starting MCP server",
+		"name", serverName,
+		"version", version,
+		"transport", *transport,
+	)
+
+	// Run server
+	if err := srv.Run(ctx); err != nil && err != context.Canceled {
+		logger.Error("server error", "error", err)
+		os.Exit(1)
+	}
+
+	logger.Info("server stopped gracefully")
+}
+
+func parseLogLevel(level string) slog.Level {
+	switch level {
+	case "debug":
+		return slog.LevelDebug
+	case "info":
+		return slog.LevelInfo
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
+}
+{%- endif %}

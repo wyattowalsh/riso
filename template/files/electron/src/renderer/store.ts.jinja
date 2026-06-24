@@ -1,0 +1,187 @@
+{% if desktop_module == "enabled" and desktop_framework == "electron-vite" %}
+/**
+ * Application State Store
+ *
+ * Uses Zustand for lightweight, scalable state management.
+ * No boilerplate, TypeScript-first, React hooks-based API.
+ */
+
+import { create } from 'zustand';
+import { devtools, persist } from 'zustand/middleware';
+
+/**
+ * Application information from main process
+ */
+interface AppInfo {
+  name: string;
+  version: string;
+  electron: string;
+  chrome: string;
+  node: string;
+  platform: string;
+  arch: string;
+  isDev: boolean;
+}
+
+/**
+ * Application state interface
+ */
+interface AppState {
+  // App info
+  appInfo: AppInfo | null;
+  setAppInfo: (info: AppInfo) => void;
+
+  // Theme
+  theme: 'system' | 'light' | 'dark';
+  setTheme: (theme: 'system' | 'light' | 'dark') => void;
+
+  // Settings modal
+  settingsOpen: boolean;
+  openSettings: () => void;
+  closeSettings: () => void;
+
+  // Demo counter
+  counter: number;
+  incrementCounter: () => void;
+  decrementCounter: () => void;
+  resetCounter: () => void;
+
+  {% if 'auto_updater' in desktop_features %}
+  // Update state
+  updateAvailable: boolean;
+  updateVersion: string | null;
+  updateProgress: number;
+  setUpdateAvailable: (available: boolean, version?: string) => void;
+  setUpdateProgress: (progress: number) => void;
+  {% endif %}
+
+  // Sidebar
+  sidebarOpen: boolean;
+  toggleSidebar: () => void;
+  setSidebarOpen: (open: boolean) => void;
+
+  // Recent files
+  recentFiles: string[];
+  addRecentFile: (path: string) => void;
+  clearRecentFiles: () => void;
+}
+
+/**
+ * Create the application store
+ */
+export const useAppStore = create<AppState>()(
+  devtools(
+    persist(
+      (set) => ({
+        // App info
+        appInfo: null,
+        setAppInfo: (info) => set({ appInfo: info }),
+
+        // Theme
+        theme: 'system',
+        setTheme: (theme) => set({ theme }),
+
+        // Settings modal
+        settingsOpen: false,
+        openSettings: () => set({ settingsOpen: true }),
+        closeSettings: () => set({ settingsOpen: false }),
+
+        // Demo counter
+        counter: 0,
+        incrementCounter: () => set((state) => ({ counter: state.counter + 1 })),
+        decrementCounter: () => set((state) => ({ counter: state.counter - 1 })),
+        resetCounter: () => set({ counter: 0 }),
+
+        {% if 'auto_updater' in desktop_features %}
+        // Update state
+        updateAvailable: false,
+        updateVersion: null,
+        updateProgress: 0,
+        setUpdateAvailable: (available, version) =>
+          set({ updateAvailable: available, updateVersion: version || null }),
+        setUpdateProgress: (progress) => set({ updateProgress: progress }),
+        {% endif %}
+
+        // Sidebar
+        sidebarOpen: true,
+        toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+        setSidebarOpen: (open) => set({ sidebarOpen: open }),
+
+        // Recent files
+        recentFiles: [],
+        addRecentFile: (path) =>
+          set((state) => ({
+            recentFiles: [
+              path,
+              ...state.recentFiles.filter((f) => f !== path),
+            ].slice(0, 10),
+          })),
+        clearRecentFiles: () => set({ recentFiles: [] }),
+      }),
+      {
+        name: '{{ project_slug }}-storage',
+        partialize: (state) => ({
+          // Only persist these fields
+          theme: state.theme,
+          sidebarOpen: state.sidebarOpen,
+          recentFiles: state.recentFiles,
+        }),
+      }
+    ),
+    { name: '{{ project_name }} Store' }
+  )
+);
+
+/**
+ * Helper hook for accessing theme
+ */
+export const useTheme = (): {
+  theme: AppState['theme'];
+  setTheme: AppState['setTheme'];
+  isDark: boolean;
+} => {
+  const theme = useAppStore((state) => state.theme);
+  const setTheme = useAppStore((state) => state.setTheme);
+
+  // Check if dark mode should be used
+  const isDark =
+    theme === 'dark' ||
+    (theme === 'system' &&
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  return { theme, setTheme, isDark };
+};
+
+/**
+ * Helper hook for sidebar state
+ */
+export const useSidebar = (): {
+  isOpen: boolean;
+  toggle: () => void;
+  setOpen: (open: boolean) => void;
+} => {
+  const isOpen = useAppStore((state) => state.sidebarOpen);
+  const toggle = useAppStore((state) => state.toggleSidebar);
+  const setOpen = useAppStore((state) => state.setSidebarOpen);
+
+  return { isOpen, toggle, setOpen };
+};
+
+{% if 'auto_updater' in desktop_features %}
+/**
+ * Helper hook for update state
+ */
+export const useUpdateState = (): {
+  available: boolean;
+  version: string | null;
+  progress: number;
+} => {
+  const available = useAppStore((state) => state.updateAvailable);
+  const version = useAppStore((state) => state.updateVersion);
+  const progress = useAppStore((state) => state.updateProgress);
+
+  return { available, version, progress };
+};
+{% endif %}
+{% endif %}

@@ -1,0 +1,35 @@
+{% if 'go' in cli_languages or 'go' in api_languages %}
+# {{ project_name }} Configuration
+# Copy this file to config.yaml or ~/.{{ project_slug }}.yaml
+
+# Environment: development, staging, production
+environment: development
+
+# Log level: debug, info, warn, error
+log_level: info
+
+# Server configuration
+server:
+  host: 0.0.0.0
+  port: 8080
+  read_timeout: 30    # seconds
+  write_timeout: 30   # seconds
+  shutdown_timeout: 30 # seconds
+
+{% if api_module == 'enabled' and 'go' in api_languages %}
+# API configuration
+api:
+  # Enable CORS (Cross-Origin Resource Sharing)
+  cors_enabled: true
+
+  # Allowed origins for CORS (use specific domains in production)
+  cors_allow_origins:
+    - "*"
+
+  # Enable rate limiting
+  rate_limit_enabled: true
+
+  # Requests per second limit
+  rate_limit_rps: 100
+{% endif %}
+{% endif %}

@@ -1,0 +1,87 @@
+{% if 'go' in cli_languages or 'go' in api_languages %}
+# syntax=docker/dockerfile:1
+
+# ============================================
+# Build stage
+# ============================================
+FROM golang:{{ go_version | default('1.24') }}-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates tzdata
+
+# Set working directory
+WORKDIR /build
+
+# Copy go mod files first for better caching
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
+
+# Copy source code
+COPY . .
+
+# Build arguments
+ARG VERSION=dev
+ARG BUILD_TIME
+ARG COMMIT
+
+# Build the application
+{% if cli_module == 'enabled' and 'go' in cli_languages and api_module == 'enabled' and 'go' in api_languages %}
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.Commit=${COMMIT}" \
+    -o /bin/{{ project_slug }} ./cli
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.Commit=${COMMIT}" \
+    -o /bin/{{ project_slug }}-api ./api
+{% elif api_module == 'enabled' and 'go' in api_languages %}
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.Commit=${COMMIT}" \
+    -o /bin/{{ project_slug }}-api ./api
+{% elif cli_module == 'enabled' and 'go' in cli_languages %}
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.Commit=${COMMIT}" \
+    -o /bin/{{ project_slug }} ./cli
+{% endif %}
+
+# ============================================
+# Runtime stage
+# ============================================
+FROM alpine:3.21 AS runtime
+
+# Add non-root user
+RUN addgroup -g 1000 app && \
+    adduser -u 1000 -G app -s /bin/sh -D app
+
+# Install runtime dependencies
+RUN apk add --no-cache ca-certificates tzdata
+
+# Set working directory
+WORKDIR /app
+
+# Copy binaries from builder
+{% if cli_module == 'enabled' and 'go' in cli_languages %}
+COPY --from=builder /bin/{{ project_slug }} /usr/local/bin/{{ project_slug }}
+{% endif %}
+{% if api_module == 'enabled' and 'go' in api_languages %}
+COPY --from=builder /bin/{{ project_slug }}-api /usr/local/bin/{{ project_slug }}-api
+{% endif %}
+
+# Use non-root user
+USER app
+
+{% if api_module == 'enabled' and 'go' in api_languages %}
+# Expose API port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+
+# Default command runs the API
+CMD ["{{ project_slug }}-api"]
+{% elif cli_module == 'enabled' and 'go' in cli_languages %}
+# Default command runs the CLI
+ENTRYPOINT ["{{ project_slug }}"]
+CMD ["--help"]
+{% endif %}
+{% endif %}

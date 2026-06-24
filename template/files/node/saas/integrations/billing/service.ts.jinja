@@ -1,4 +1,4 @@
-{% if saas_starter_module == "enabled" %}
+{% if saas_infra_module == "enabled" %}
 /**
  * Unified Billing Service
  * 
@@ -11,9 +11,9 @@
  * - Add business logic around billing
  */
 
-{% if saas_billing == "stripe" %}
+{% if saas_billing_provider == "stripe" %}
 import * as stripe from './stripe/client';
-{% elif saas_billing == "paddle" %}
+{% elif saas_billing_provider == "paddle" %}
 import * as paddle from './paddle/client';
 {% endif %}
 
@@ -26,9 +26,9 @@ export async function createCustomer(params: {
   name?: string;
   metadata?: Record<string, string>;
 }) {
-  {% if saas_billing == "stripe" %}
+  {% if saas_billing_provider == "stripe" %}
   return await stripe.upsertCustomer(params);
-  {% elif saas_billing == "paddle" %}
+  {% elif saas_billing_provider == "paddle" %}
   return await paddle.createCustomer({
     email: params.email,
     name: params.name,
@@ -49,9 +49,9 @@ export async function startSubscription(params: {
   cancelUrl: string;
   trialDays?: number;
 }) {
-  {% if saas_billing == "stripe" %}
+  {% if saas_billing_provider == "stripe" %}
   return await stripe.createCheckoutSession(params);
-  {% elif saas_billing == "paddle" %}
+  {% elif saas_billing_provider == "paddle" %}
   return await paddle.createCheckout({
     priceId: params.priceId,
     customerId: params.customerId,
@@ -65,9 +65,9 @@ export async function cancelSubscription(
   subscriptionId: string,
   immediately = false
 ) {
-  {% if saas_billing == "stripe" %}
+  {% if saas_billing_provider == "stripe" %}
   return await stripe.cancelSubscription(subscriptionId, immediately);
-  {% elif saas_billing == "paddle" %}
+  {% elif saas_billing_provider == "paddle" %}
   return await paddle.cancelSubscription(subscriptionId, immediately);
   {% endif %}
 }
@@ -77,9 +77,9 @@ export async function updateSubscription(params: {
   priceId?: string;
   quantity?: number;
 }) {
-  {% if saas_billing == "stripe" %}
+  {% if saas_billing_provider == "stripe" %}
   return await stripe.updateSubscription(params);
-  {% elif saas_billing == "paddle" %}
+  {% elif saas_billing_provider == "paddle" %}
   return await paddle.updateSubscription(params);
   {% endif %}
 }
@@ -88,7 +88,7 @@ export async function updateSubscription(params: {
 // Usage-Based Billing (Metering)
 // ============================================================================
 
-{% if saas_billing == "stripe" %}
+{% if saas_billing_provider == "stripe" %}
 /**
  * Report usage for metered billing
  * Only available with Stripe
@@ -114,9 +114,9 @@ export async function createPortalSession(params: {
   customerId: string;
   returnUrl: string;
 }) {
-  {% if saas_billing == "stripe" %}
+  {% if saas_billing_provider == "stripe" %}
   return await stripe.createPortalSession(params);
-  {% elif saas_billing == "paddle" %}
+  {% elif saas_billing_provider == "paddle" %}
   // Paddle doesn't have a separate portal - use update payment method URL
   const subscription = await paddle.getSubscription(params.customerId);
   return { url: subscription.managementUrls?.updatePaymentMethod };
@@ -128,9 +128,9 @@ export async function createPortalSession(params: {
 // ============================================================================
 
 export async function processWebhook(payload: string, signature: string) {
-  {% if saas_billing == "stripe" %}
+  {% if saas_billing_provider == "stripe" %}
   return await stripe.processWebhook(payload, signature);
-  {% elif saas_billing == "paddle" %}
+  {% elif saas_billing_provider == "paddle" %}
   const isValid = await paddle.verifyWebhookSignature(payload, signature);
   if (!isValid) {
     throw new Error('Invalid webhook signature');
@@ -147,14 +147,14 @@ export async function processWebhook(payload: string, signature: string) {
 // Type Exports
 // ============================================================================
 
-{% if saas_billing == "stripe" %}
+{% if saas_billing_provider == "stripe" %}
 export type {
   StripeCustomer,
   StripeSubscription,
   StripeInvoice,
   StripePrice,
 } from './stripe/client';
-{% elif saas_billing == "paddle" %}
+{% elif saas_billing_provider == "paddle" %}
 export type { Paddle } from './paddle/client';
 {% endif %}
 {% endif %}

@@ -1,0 +1,229 @@
+{% if api_module == 'enabled' and 'go' in api_languages %}
+// Package middleware provides HTTP middleware for the API server.
+package middleware
+
+import (
+	"log/slog"
+	"time"
+{% if go_framework | default('gin') == 'gin' %}
+	"github.com/gin-gonic/gin"
+{% elif go_framework == 'fiber' %}
+	"github.com/gofiber/fiber/v2"
+{% elif go_framework == 'echo' %}
+	"github.com/labstack/echo/v4"
+{% elif go_framework == 'chi' %}
+	"net/http"
+{% endif %}
+)
+
+{% if go_framework | default('gin') == 'gin' %}
+// Logger returns a Gin middleware that logs HTTP requests using slog.
+func Logger() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		path := c.Request.URL.Path
+		query := c.Request.URL.RawQuery
+
+		// Process request
+		c.Next()
+
+		// Log after request is processed
+		latency := time.Since(start)
+		status := c.Writer.Status()
+		clientIP := c.ClientIP()
+		method := c.Request.Method
+		userAgent := c.Request.UserAgent()
+
+		attrs := []any{
+			"status", status,
+			"method", method,
+			"path", path,
+			"latency", latency.String(),
+			"latency_ms", latency.Milliseconds(),
+			"client_ip", clientIP,
+			"user_agent", userAgent,
+		}
+
+		if query != "" {
+			attrs = append(attrs, "query", query)
+		}
+
+		if len(c.Errors) > 0 {
+			attrs = append(attrs, "errors", c.Errors.String())
+		}
+
+		// Log level based on status code
+		switch {
+		case status >= 500:
+			slog.Error("HTTP request", attrs...)
+		case status >= 400:
+			slog.Warn("HTTP request", attrs...)
+		default:
+			slog.Info("HTTP request", attrs...)
+		}
+	}
+}
+
+{% elif go_framework == 'fiber' %}
+// Logger returns a Fiber middleware that logs HTTP requests using slog.
+func Logger() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		start := time.Now()
+		path := c.Path()
+		query := string(c.Request().URI().QueryString())
+
+		// Process request
+		err := c.Next()
+
+		// Log after request is processed
+		latency := time.Since(start)
+		status := c.Response().StatusCode()
+		clientIP := c.IP()
+		method := c.Method()
+		userAgent := c.Get("User-Agent")
+
+		attrs := []any{
+			"status", status,
+			"method", method,
+			"path", path,
+			"latency", latency.String(),
+			"latency_ms", latency.Milliseconds(),
+			"client_ip", clientIP,
+			"user_agent", userAgent,
+		}
+
+		if query != "" {
+			attrs = append(attrs, "query", query)
+		}
+
+		if err != nil {
+			attrs = append(attrs, "error", err.Error())
+		}
+
+		// Log level based on status code
+		switch {
+		case status >= 500:
+			slog.Error("HTTP request", attrs...)
+		case status >= 400:
+			slog.Warn("HTTP request", attrs...)
+		default:
+			slog.Info("HTTP request", attrs...)
+		}
+
+		return err
+	}
+}
+
+{% elif go_framework == 'echo' %}
+// Logger returns an Echo middleware that logs HTTP requests using slog.
+func Logger() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			start := time.Now()
+			req := c.Request()
+			path := req.URL.Path
+			query := req.URL.RawQuery
+
+			// Process request
+			err := next(c)
+
+			// Log after request is processed
+			latency := time.Since(start)
+			res := c.Response()
+			status := res.Status
+			clientIP := c.RealIP()
+			method := req.Method
+			userAgent := req.UserAgent()
+
+			attrs := []any{
+				"status", status,
+				"method", method,
+				"path", path,
+				"latency", latency.String(),
+				"latency_ms", latency.Milliseconds(),
+				"client_ip", clientIP,
+				"user_agent", userAgent,
+			}
+
+			if query != "" {
+				attrs = append(attrs, "query", query)
+			}
+
+			if err != nil {
+				attrs = append(attrs, "error", err.Error())
+			}
+
+			// Log level based on status code
+			switch {
+			case status >= 500:
+				slog.Error("HTTP request", attrs...)
+			case status >= 400:
+				slog.Warn("HTTP request", attrs...)
+			default:
+				slog.Info("HTTP request", attrs...)
+			}
+
+			return err
+		}
+	}
+}
+
+{% elif go_framework == 'chi' %}
+// responseWriter wraps http.ResponseWriter to capture status code.
+type responseWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.status = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
+// Logger returns a Chi middleware that logs HTTP requests using slog.
+func Logger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		path := r.URL.Path
+		query := r.URL.RawQuery
+
+		// Wrap response writer to capture status
+		wrapped := &responseWriter{ResponseWriter: w, status: http.StatusOK}
+
+		// Process request
+		next.ServeHTTP(wrapped, r)
+
+		// Log after request is processed
+		latency := time.Since(start)
+		status := wrapped.status
+		clientIP := r.RemoteAddr
+		method := r.Method
+		userAgent := r.UserAgent()
+
+		attrs := []any{
+			"status", status,
+			"method", method,
+			"path", path,
+			"latency", latency.String(),
+			"latency_ms", latency.Milliseconds(),
+			"client_ip", clientIP,
+			"user_agent", userAgent,
+		}
+
+		if query != "" {
+			attrs = append(attrs, "query", query)
+		}
+
+		// Log level based on status code
+		switch {
+		case status >= 500:
+			slog.Error("HTTP request", attrs...)
+		case status >= 400:
+			slog.Warn("HTTP request", attrs...)
+		default:
+			slog.Info("HTTP request", attrs...)
+		}
+	})
+}
+{% endif %}
+{% endif %}

@@ -1,0 +1,517 @@
+{% if saas_infra_module == "enabled" and saas_ai_features == 'full' %}
+/**
+ * Document Chunking Service
+ *
+ * Multiple chunking strategies for optimal retrieval:
+ * - Fixed-size chunking with overlap
+ * - Semantic chunking (paragraph/sentence boundaries)
+ * - Recursive chunking for hierarchical content
+ * - Token-aware chunking
+ *
+ * @see https://python.langchain.com/docs/modules/data_connection/document_transformers/
+ */
+
+import type {
+  DocumentChunk,
+  ChunkingOptions,
+  ChunkingResult,
+  ChunkingStrategy,
+  ChunkMetadata,
+} from './types';
+import { estimateTokenCount } from './embeddings';
+
+// ============================================================================
+// Configuration
+// ============================================================================
+
+const DEFAULT_CHUNKING_OPTIONS: ChunkingOptions = {
+  strategy: {
+    type: 'recursive',
+    size: 1000,
+    overlap: 200,
+  },
+  maxTokens: 8000,
+  minChunkSize: 100,
+  preserveStructure: true,
+};
+
+// ============================================================================
+// Main Chunking Function
+// ============================================================================
+
+/**
+ * Chunk a document using the specified strategy
+ *
+ * @example
+ * ```ts
+ * const result = await chunkDocument({
+ *   documentId: 'doc-123',
+ *   content: 'Long document content...',
+ *   options: {
+ *     strategy: { type: 'semantic', size: 1000, overlap: 200 },
+ *   },
+ * });
+ * ```
+ */
+export async function chunkDocument(params: {
+  documentId: string;
+  content: string;
+  options?: ChunkingOptions;
+}): Promise<ChunkingResult> {
+  const options = { ...DEFAULT_CHUNKING_OPTIONS, ...params.options };
+  const strategy = options.strategy!;
+
+  let chunks: DocumentChunk[];
+
+  switch (strategy.type) {
+    case 'fixed':
+      chunks = chunkFixed(params.documentId, params.content, strategy);
+      break;
+    case 'semantic':
+      chunks = chunkSemantic(params.documentId, params.content, strategy);
+      break;
+    case 'recursive':
+      chunks = chunkRecursive(params.documentId, params.content, strategy);
+      break;
+    case 'paragraph':
+      chunks = chunkByParagraph(params.documentId, params.content, strategy);
+      break;
+    default:
+      throw new Error(`Unknown chunking strategy: ${strategy.type}`);
+  }
+
+  // Filter out chunks that are too small
+  const minSize = options.minChunkSize || 0;
+  const filteredChunks = chunks.filter(
+    (chunk) => chunk.content.length >= minSize
+  );
+
+  // Calculate average chunk size
+  const avgSize =
+    filteredChunks.reduce((sum, chunk) => sum + chunk.content.length, 0) /
+    filteredChunks.length;
+
+  return {
+    chunks: filteredChunks,
+    totalChunks: filteredChunks.length,
+    averageChunkSize: Math.round(avgSize),
+  };
+}
+
+// ============================================================================
+// Fixed-Size Chunking
+// ============================================================================
+
+/**
+ * Split text into fixed-size chunks with overlap
+ * Simple and predictable, good for uniform content
+ */
+function chunkFixed(
+  documentId: string,
+  content: string,
+  strategy: ChunkingStrategy
+): DocumentChunk[] {
+  const { size, overlap } = strategy;
+  const chunks: DocumentChunk[] = [];
+  let index = 0;
+
+  for (let i = 0; i < content.length; i += size - overlap) {
+    const start = i;
+    const end = Math.min(i + size, content.length);
+    const chunkContent = content.slice(start, end).trim();
+
+    if (chunkContent.length > 0) {
+      chunks.push(createChunk(documentId, chunkContent, index, start, end));
+      index++;
+    }
+  }
+
+  return chunks;
+}
+
+// ============================================================================
+// Semantic Chunking
+// ============================================================================
+
+/**
+ * Split text at semantic boundaries (sentences/paragraphs)
+ * Better preserves meaning and context
+ */
+function chunkSemantic(
+  documentId: string,
+  content: string,
+  strategy: ChunkingStrategy
+): DocumentChunk[] {
+  const { size, overlap } = strategy;
+  const chunks: DocumentChunk[] = [];
+
+  // Split into sentences
+  const sentences = content.match(/[^.!?]+[.!?]+/g) || [content];
+  let currentChunk = '';
+  let currentStart = 0;
+  let index = 0;
+
+  for (let i = 0; i < sentences.length; i++) {
+    const sentence = sentences[i].trim();
+    const testChunk = currentChunk + ' ' + sentence;
+
+    if (testChunk.length > size && currentChunk.length > 0) {
+      // Save current chunk
+      const end = currentStart + currentChunk.length;
+      chunks.push(
+        createChunk(documentId, currentChunk.trim(), index, currentStart, end)
+      );
+      index++;
+
+      // Start new chunk with overlap
+      const overlapText = getOverlapText(currentChunk, overlap);
+      currentChunk = overlapText + ' ' + sentence;
+      currentStart = end - overlapText.length;
+    } else {
+      currentChunk = testChunk;
+    }
+  }
+
+  // Add final chunk
+  if (currentChunk.trim().length > 0) {
+    const end = currentStart + currentChunk.length;
+    chunks.push(
+      createChunk(documentId, currentChunk.trim(), index, currentStart, end)
+    );
+  }
+
+  return chunks;
+}
+
+// ============================================================================
+// Recursive Chunking
+// ============================================================================
+
+/**
+ * Recursively split text using multiple separators
+ * Best for structured documents (markdown, code, etc.)
+ */
+function chunkRecursive(
+  documentId: string,
+  content: string,
+  strategy: ChunkingStrategy
+): DocumentChunk[] {
+  const { size, overlap } = strategy;
+  const separators = [
+    '\n\n\n', // Multiple blank lines
+    '\n\n', // Paragraph breaks
+    '\n', // Line breaks
+    '. ', // Sentences
+    ' ', // Words
+    '', // Characters (last resort)
+  ];
+
+  return recursiveSplit(
+    documentId,
+    content,
+    separators,
+    size,
+    overlap,
+    0,
+    0
+  );
+}
+
+function recursiveSplit(
+  documentId: string,
+  text: string,
+  separators: string[],
+  chunkSize: number,
+  overlap: number,
+  startOffset: number,
+  chunkIndex: number
+): DocumentChunk[] {
+  if (text.length <= chunkSize) {
+    // Base case: text fits in one chunk
+    return [
+      createChunk(
+        documentId,
+        text,
+        chunkIndex,
+        startOffset,
+        startOffset + text.length
+      ),
+    ];
+  }
+
+  if (separators.length === 0) {
+    // No more separators, force split
+    return chunkFixed(documentId, text, {
+      type: 'fixed',
+      size: chunkSize,
+      overlap,
+    });
+  }
+
+  const [separator, ...restSeparators] = separators;
+  const splits = text.split(separator);
+  const chunks: DocumentChunk[] = [];
+  let currentChunk = '';
+  let currentStart = startOffset;
+  let index = chunkIndex;
+
+  for (const split of splits) {
+    const testChunk = currentChunk
+      ? currentChunk + separator + split
+      : split;
+
+    if (testChunk.length > chunkSize && currentChunk.length > 0) {
+      // Process current chunk recursively if still too large
+      if (currentChunk.length > chunkSize) {
+        const subChunks = recursiveSplit(
+          documentId,
+          currentChunk,
+          restSeparators,
+          chunkSize,
+          overlap,
+          currentStart,
+          index
+        );
+        chunks.push(...subChunks);
+        index += subChunks.length;
+      } else {
+        const end = currentStart + currentChunk.length;
+        chunks.push(
+          createChunk(documentId, currentChunk, index, currentStart, end)
+        );
+        index++;
+      }
+
+      // Start new chunk with overlap
+      const overlapText = getOverlapText(currentChunk, overlap);
+      currentChunk = overlapText + separator + split;
+      currentStart += currentChunk.length - overlapText.length - separator.length - split.length;
+    } else {
+      currentChunk = testChunk;
+    }
+  }
+
+  // Add final chunk
+  if (currentChunk.length > 0) {
+    if (currentChunk.length > chunkSize) {
+      const subChunks = recursiveSplit(
+        documentId,
+        currentChunk,
+        restSeparators,
+        chunkSize,
+        overlap,
+        currentStart,
+        index
+      );
+      chunks.push(...subChunks);
+    } else {
+      const end = currentStart + currentChunk.length;
+      chunks.push(
+        createChunk(documentId, currentChunk, index, currentStart, end)
+      );
+    }
+  }
+
+  return chunks;
+}
+
+// ============================================================================
+// Paragraph Chunking
+// ============================================================================
+
+/**
+ * Split text by paragraphs
+ * Good for naturally structured content
+ */
+function chunkByParagraph(
+  documentId: string,
+  content: string,
+  strategy: ChunkingStrategy
+): DocumentChunk[] {
+  const { size, overlap } = strategy;
+  const paragraphs = content.split(/\n\n+/);
+  const chunks: DocumentChunk[] = [];
+  let currentChunk = '';
+  let currentStart = 0;
+  let index = 0;
+
+  for (const paragraph of paragraphs) {
+    const testChunk = currentChunk
+      ? currentChunk + '\n\n' + paragraph
+      : paragraph;
+
+    if (testChunk.length > size && currentChunk.length > 0) {
+      // Save current chunk
+      const end = currentStart + currentChunk.length;
+      chunks.push(
+        createChunk(documentId, currentChunk.trim(), index, currentStart, end)
+      );
+      index++;
+
+      // Start new chunk
+      const overlapText = getOverlapText(currentChunk, overlap);
+      currentChunk = overlapText + '\n\n' + paragraph;
+      currentStart = end - overlapText.length;
+    } else {
+      currentChunk = testChunk;
+    }
+  }
+
+  // Add final chunk
+  if (currentChunk.trim().length > 0) {
+    const end = currentStart + currentChunk.length;
+    chunks.push(
+      createChunk(documentId, currentChunk.trim(), index, currentStart, end)
+    );
+  }
+
+  return chunks;
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Create a document chunk with metadata
+ */
+function createChunk(
+  documentId: string,
+  content: string,
+  chunkIndex: number,
+  startOffset: number,
+  endOffset: number
+): DocumentChunk {
+  const id = `${documentId}-chunk-${chunkIndex}`;
+  const tokens = estimateTokenCount(content);
+
+  // Extract heading if present
+  const headingMatch = content.match(/^#+\s+(.+)$/m);
+  const heading = headingMatch ? headingMatch[1] : undefined;
+
+  const metadata: ChunkMetadata = {
+    tokens,
+    heading,
+  };
+
+  return {
+    id,
+    documentId,
+    content,
+    chunkIndex,
+    startOffset,
+    endOffset,
+    metadata,
+  };
+}
+
+/**
+ * Get overlap text from the end of a chunk
+ */
+function getOverlapText(text: string, overlapSize: number): string {
+  if (text.length <= overlapSize) {
+    return text;
+  }
+
+  // Try to break at word boundary
+  const overlapText = text.slice(-overlapSize);
+  const firstSpace = overlapText.indexOf(' ');
+
+  if (firstSpace > 0) {
+    return overlapText.slice(firstSpace + 1);
+  }
+
+  return overlapText;
+}
+
+/**
+ * Split text by token count
+ * Useful for respecting model token limits
+ */
+export function chunkByTokens(
+  text: string,
+  maxTokens: number,
+  overlap = 0
+): string[] {
+  const chunks: string[] = [];
+  const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+
+  let currentChunk = '';
+  let currentTokens = 0;
+
+  for (const sentence of sentences) {
+    const sentenceTokens = estimateTokenCount(sentence);
+
+    if (currentTokens + sentenceTokens > maxTokens && currentChunk.length > 0) {
+      chunks.push(currentChunk.trim());
+
+      // Start new chunk with overlap
+      if (overlap > 0) {
+        const words = currentChunk.split(' ');
+        const overlapWords = words.slice(-overlap);
+        currentChunk = overlapWords.join(' ') + ' ' + sentence;
+        currentTokens = estimateTokenCount(currentChunk);
+      } else {
+        currentChunk = sentence;
+        currentTokens = sentenceTokens;
+      }
+    } else {
+      currentChunk += ' ' + sentence;
+      currentTokens += sentenceTokens;
+    }
+  }
+
+  if (currentChunk.trim().length > 0) {
+    chunks.push(currentChunk.trim());
+  }
+
+  return chunks;
+}
+
+/**
+ * Merge small chunks together
+ */
+export function mergeSmallChunks(
+  chunks: DocumentChunk[],
+  minSize: number
+): DocumentChunk[] {
+  const merged: DocumentChunk[] = [];
+  let currentChunk: DocumentChunk | null = null;
+
+  for (const chunk of chunks) {
+    if (!currentChunk) {
+      currentChunk = chunk;
+      continue;
+    }
+
+    if (currentChunk.content.length < minSize) {
+      // Merge with current
+      currentChunk = {
+        ...currentChunk,
+        content: currentChunk.content + '\n\n' + chunk.content,
+        endOffset: chunk.endOffset,
+        metadata: {
+          ...currentChunk.metadata,
+          tokens:
+            currentChunk.metadata.tokens + chunk.metadata.tokens,
+        },
+      };
+    } else {
+      merged.push(currentChunk);
+      currentChunk = chunk;
+    }
+  }
+
+  if (currentChunk) {
+    merged.push(currentChunk);
+  }
+
+  return merged;
+}
+
+// ============================================================================
+// Exports
+// ============================================================================
+
+export { DEFAULT_CHUNKING_OPTIONS };
+{% endif %}

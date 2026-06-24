@@ -1,0 +1,44 @@
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+//! Health check models
+
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum HealthStatus {
+    Healthy,
+    Degraded,
+    Unhealthy,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HealthResponse {
+    pub status: HealthStatus,
+    pub version: String,
+    pub uptime: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub checks: Option<HashMap<String, HealthStatus>>,
+}
+
+impl HealthResponse {
+    pub fn healthy() -> Self {
+        Self {
+            status: HealthStatus::Healthy,
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            uptime: 0, // TODO: Implement actual uptime tracking
+            checks: None,
+        }
+    }
+
+    pub fn with_checks(mut self, checks: HashMap<String, HealthStatus>) -> Self {
+        self.checks = Some(checks);
+        self
+    }
+
+    pub fn with_uptime(mut self, uptime: u64) -> Self {
+        self.uptime = uptime;
+        self
+    }
+}
+{% endif %}

@@ -1,0 +1,1149 @@
+{% if saas_infra_module == "enabled" %}
+# ORM Migration Guide
+
+Switching between ORMs after project generation? This guide walks you through migrating from **Prisma** to **Drizzle** or vice versa.
+
+## Table of Contents
+
+1. [When to Migrate](#when-to-migrate)
+2. [Prerequisites](#prerequisites)
+3. [Prisma → Drizzle Migration](#prisma--drizzle-migration)
+4. [Drizzle → Prisma Migration](#drizzle--prisma-migration)
+5. [Schema Conversion Examples](#schema-conversion-examples)
+6. [Testing After Migration](#testing-after-migration)
+
+---
+
+## When to Migrate
+
+### Consider Prisma if you prefer:
+- Declarative schema in `.prisma` format (readable DSL)
+- Built-in migrations with automatic generation
+- Advanced features like full-text search, JSON protocol
+- Easier onboarding for SQL-unfamiliar developers
+- Strong ecosystem and community support
+- Built-in CLI tools (Prisma Studio, seeding)
+
+### Consider Drizzle if you prefer:
+- TypeScript-first approach (schema defined in TypeScript)
+- Lighter bundle size (especially important for edge runtimes)
+- Better performance and edge runtime compatibility
+- Simpler, less abstraction-heavy API
+- Raw SQL when needed without friction
+- PreparedStatements for repeated queries
+
+### Migration Triggers
+- **Framework change**: Switching from Remix to Next.js (Drizzle may be lighter)
+- **Edge deployment**: Moving to Cloudflare Workers or Vercel Edge Functions
+- **Bundle size concerns**: Reducing client/server bundle footprint
+- **Developer preference**: Team familiarity with TypeScript vs SQL
+- **Performance requirements**: Ultra-low latency requirements
+
+---
+
+## Prerequisites
+
+### Before You Start
+
+1. **Backup your database**
+   ```bash
+   # For Neon
+   pg_dump "$DATABASE_URL" > backup-$(date +%Y%m%d-%H%M%S).sql
+
+   # For Supabase
+   pg_dump "$DATABASE_URL" > backup-$(date +%Y%m%d-%H%M%S).sql
+   ```
+
+2. **Backup your codebase**
+   ```bash
+   git add .
+   git commit -m "chore: backup before ORM migration"
+   ```
+
+3. **Review your schema**
+   - Document all tables, relationships, indexes, and enums
+   - Check for Prisma-specific features (e.g., `@db.Text`, JSON fields)
+   - Identify custom migrations or raw SQL
+
+4. **Check for ORM-specific code**
+   ```bash
+   # Search for Prisma-specific patterns
+   grep -r "prisma\|@prisma" src --include="*.ts" --include="*.tsx"
+
+   # Search for Drizzle-specific patterns
+   grep -r "drizzle\|sql\(\`" src --include="*.ts" --include="*.tsx"
+   ```
+
+---
+
+## Prisma → Drizzle Migration
+
+### Step 1: Update Dependencies
+
+Remove Prisma, add Drizzle:
+
+```bash
+# Remove Prisma
+pnpm remove @prisma/client prisma
+
+# Add Drizzle and dependencies
+pnpm add drizzle-orm drizzle-kit @paralleldrive/cuid2
+
+# Optional: if using Neon
+pnpm add @neondatabase/serverless
+
+# Optional: if using Supabase with postgres connection pooling
+pnpm add postgres
+```
+
+Update `package.json` scripts:
+
+```json
+{
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:migrate": "drizzle-kit migrate",
+    "db:drop": "drizzle-kit drop",
+    "db:seed": "tsx db/seed.ts"
+  }
+}
+```
+
+Remove from `.gitignore` if present:
+```
+prisma/dev.db
+.env.local
+```
+
+### Step 2: Convert Your Schema
+
+#### Directory Structure
+
+Change from:
+```
+project/
+  prisma/
+    schema.prisma
+    migrations/
+    seed.ts
+```
+
+To:
+```
+project/
+  db/
+    schema.ts
+    migrations/
+    seed.ts
+```
+
+#### Schema File Location
+
+1. Create `db/schema.ts` (TypeScript file instead of `.prisma`)
+2. Delete `prisma/schema.prisma`
+3. Create `drizzle.config.ts` in project root:
+
+```typescript
+import type { Config } from 'drizzle-kit';
+import { env } from '@/lib/env';
+
+export default {
+  schema: './db/schema.ts',
+  out: './db/migrations',
+  driver: 'postgresql',
+  dbCredentials: {
+    connectionString: env.DATABASE_URL,
+  },
+  verbose: true,
+  strict: true,
+} satisfies Config;
+```
+
+#### Schema Conversion: User Model Example
+
+**Before (Prisma):**
+```prisma
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime? @map("email_verified")
+  name          String?
+  image         String?
+  metadata      Json?     @default("{}")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([email])
+  @@index([createdAt])
+  @@map("users")
+}
+```
+
+**After (Drizzle):**
+```typescript
+import { pgTable, text, timestamp, json, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { createId } from '@paralleldrive/cuid2';
+
+const timestamps = {
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull().$onUpdate(() => new Date()),
+};
+
+export const users = pgTable('users', {
+  id: text('id').$defaultFn(() => createId()).primaryKey(),
+  email: text('email').unique().notNull(),
+  emailVerified: timestamp('email_verified', { mode: 'date' }),
+  name: text('name'),
+  image: text('image'),
+  metadata: json('metadata').$type<Record<string, unknown>>().default({}),
+  ...timestamps,
+}, (table) => ({
+  emailIdx: uniqueIndex('users_email_idx').on(table.email),
+  createdAtIdx: index('users_created_at_idx').on(table.createdAt),
+}));
+```
+
+**Key Differences:**
+- IDs: `@default(cuid())` → `.$defaultFn(() => createId())`
+- Timestamps: Prisma `@updatedAt` → Drizzle `.$onUpdate(() => new Date())`
+- Indexes: Prisma `@@index()` → Drizzle `(table) => ({})`  callback pattern
+- JSON: Prisma `Json?` → Drizzle `json().$type<T>()`
+- Mapped names: `@map()` → column name parameter
+
+### Step 3: Update Database Client
+
+Update `lib/database/index.ts` or similar:
+
+**Before (Prisma):**
+```typescript
+import { PrismaClient } from '@prisma/client';
+
+let prisma: PrismaClient;
+
+if (process.env.NODE_ENV === 'production') {
+  prisma = new PrismaClient();
+} else {
+  let globalForPrisma = global as typeof globalThis & {
+    prisma: PrismaClient;
+  };
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = new PrismaClient();
+  }
+  prisma = globalForPrisma.prisma;
+}
+
+export { prisma as db };
+```
+
+**After (Drizzle with Neon):**
+```typescript
+import { drizzle } from 'drizzle-orm/neon-http';
+import { neon } from '@neondatabase/serverless';
+import * as schema from '@/db/schema';
+import { env } from '@/lib/env';
+
+const sql = neon(env.DATABASE_URL);
+export const db = drizzle(sql, { schema });
+```
+
+**After (Drizzle with standard Postgres):**
+```typescript
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+import * as schema from '@/db/schema';
+import { env } from '@/lib/env';
+
+const client = postgres(env.DATABASE_URL);
+export const db = drizzle(client, { schema });
+```
+
+### Step 4: Update All ORM Imports
+
+**Find all Prisma imports:**
+```bash
+grep -r "import.*prisma\|from '@prisma" src lib integrations --include="*.ts" --include="*.tsx"
+```
+
+**Replace patterns:**
+
+| Prisma | Drizzle |
+|--------|---------|
+| `import { prisma } from '@/lib/db'` | `import { db } from '@/lib/db'` |
+| `prisma.user.findUnique()` | `db.query.users.findFirst()` |
+| `prisma.user.create()` | `db.insert(users).values()` |
+| `prisma.user.update()` | `db.update(users).set().where()` |
+| `prisma.user.delete()` | `db.delete(users).where()` |
+
+### Step 5: Update Query Code
+
+**Prisma pattern:**
+```typescript
+// Read
+const user = await prisma.user.findUnique({
+  where: { email },
+  include: { subscriptions: true }
+});
+
+// Create
+const newUser = await prisma.user.create({
+  data: {
+    email,
+    name,
+    subscriptions: {
+      create: [{ plan: 'pro' }]
+    }
+  }
+});
+
+// Update
+const updated = await prisma.user.update({
+  where: { id },
+  data: { name }
+});
+
+// Delete
+await prisma.user.delete({ where: { id } });
+```
+
+**Drizzle pattern:**
+```typescript
+import { eq } from 'drizzle-orm';
+
+// Read
+const user = await db.query.users.findFirst({
+  where: eq(users.email, email),
+  with: { subscriptions: true }
+});
+
+// Create
+const newUser = await db.insert(users).values({
+  email,
+  name
+}).returning();
+
+// Update
+const updated = await db.update(users)
+  .set({ name })
+  .where(eq(users.id, id))
+  .returning();
+
+// Delete
+await db.delete(users).where(eq(users.id, id));
+```
+
+### Step 6: Migrate Existing Data
+
+**Generate the initial migration:**
+```bash
+pnpm run db:generate
+# Creates: db/migrations/0001_initial.sql
+```
+
+**Deploy migration to production database:**
+```bash
+pnpm run db:push
+# Or for manual control:
+pnpm run db:migrate
+```
+
+**Verify no schema changes needed:**
+```bash
+pnpm run db:studio
+# Opens Drizzle Studio at localhost:3005
+```
+
+### Step 7: Update Seed File
+
+If you have a `prisma/seed.ts`:
+
+**Before:**
+```typescript
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  const user = await prisma.user.create({
+    data: { email: 'test@example.com' }
+  });
+  console.log('Seeded:', user);
+}
+
+main()
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());
+```
+
+**After:**
+```typescript
+import { db } from '@/lib/db';
+import { users } from '@/db/schema';
+
+async function main() {
+  const user = await db.insert(users).values({
+    email: 'test@example.com'
+  }).returning();
+  console.log('Seeded:', user);
+}
+
+main()
+  .catch(console.error)
+  .finally(() => process.exit(0));
+```
+
+### Step 8: Update Tests
+
+Update any test files that mock the ORM:
+
+**Before (Prisma):**
+```typescript
+import { vi } from 'vitest';
+import * as PrismaModule from '@prisma/client';
+
+vi.mock('@prisma/client', () => ({
+  PrismaClient: vi.fn(() => ({
+    user: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+    }
+  }))
+}));
+```
+
+**After (Drizzle):**
+```typescript
+import { vi } from 'vitest';
+
+vi.mock('@/lib/db', () => ({
+  db: {
+    query: {
+      users: {
+        findFirst: vi.fn(),
+      }
+    },
+    insert: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+  }
+}));
+```
+
+### Step 9: Common Gotchas When Migrating from Prisma
+
+1. **Transactions**: Drizzle uses a different transaction API
+   ```typescript
+   // Prisma
+   await prisma.$transaction([
+     prisma.user.create({ data: { ... } }),
+     prisma.subscription.create({ data: { ... } })
+   ]);
+
+   // Drizzle
+   await db.transaction(async (tx) => {
+     await tx.insert(users).values({ ... });
+     await tx.insert(subscriptions).values({ ... });
+   });
+   ```
+
+2. **Relations**: Drizzle relations require explicit `with:` syntax
+   ```typescript
+   // Prisma - automatic with `include`
+   const user = await prisma.user.findUnique({
+     where: { id },
+     include: { subscriptions: true }
+   });
+
+   // Drizzle - requires defining relations in schema
+   export const usersRelations = relations(users, ({ many }) => ({
+     subscriptions: many(subscriptions),
+   }));
+
+   const user = await db.query.users.findFirst({
+     where: eq(users.id, id),
+     with: { subscriptions: true }
+   });
+   ```
+
+3. **Raw Queries**: Raw SQL access differs
+   ```typescript
+   // Prisma
+   const result = await prisma.$queryRaw`SELECT * FROM users WHERE id = ${id}`;
+
+   // Drizzle
+   import { sql } from 'drizzle-orm';
+   const result = await db.execute(
+     sql`SELECT * FROM users WHERE id = ${id}`
+   );
+   ```
+
+4. **Generated Types**: TypeScript types now come from Drizzle relations
+   ```typescript
+   // Prisma
+   import type { User, Subscription } from '@prisma/client';
+
+   // Drizzle
+   import type { users, subscriptions } from '@/db/schema';
+   type User = typeof users.$inferSelect;
+   type Subscription = typeof subscriptions.$inferSelect;
+   ```
+
+---
+
+## Drizzle → Prisma Migration
+
+### Step 1: Update Dependencies
+
+Remove Drizzle, add Prisma:
+
+```bash
+# Remove Drizzle
+pnpm remove drizzle-orm drizzle-kit @paralleldrive/cuid2
+
+# Add Prisma
+pnpm add @prisma/client prisma
+```
+
+Update `package.json` scripts:
+
+```json
+{
+  "scripts": {
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:reset": "prisma migrate reset",
+    "db:seed": "tsx prisma/seed.ts"
+  }
+}
+```
+
+### Step 2: Convert Schema to Prisma Format
+
+#### Directory Structure
+
+Change from:
+```
+project/
+  db/
+    schema.ts
+    migrations/
+  drizzle.config.ts
+```
+
+To:
+```
+project/
+  prisma/
+    schema.prisma
+    migrations/
+    seed.ts
+```
+
+#### Schema Conversion: User Model Example
+
+**Before (Drizzle):**
+```typescript
+import { pgTable, text, timestamp, json, index } from 'drizzle-orm/pg-core';
+import { createId } from '@paralleldrive/cuid2';
+
+export const users = pgTable('users', {
+  id: text('id').$defaultFn(() => createId()).primaryKey(),
+  email: text('email').unique().notNull(),
+  emailVerified: timestamp('email_verified', { mode: 'date' }),
+  name: text('name'),
+  image: text('image'),
+  metadata: json('metadata').$type<Record<string, unknown>>().default({}),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+}, (table) => ({
+  emailIdx: index('users_email_idx').on(table.email),
+  createdAtIdx: index('users_created_at_idx').on(table.createdAt),
+}));
+```
+
+**After (Prisma):**
+```prisma
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime? @map("email_verified")
+  name          String?
+  image         String?
+  metadata      Json?     @default("{}")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([email])
+  @@index([createdAt])
+  @@map("users")
+}
+```
+
+**Key Differences:**
+- TypeScript function `.$defaultFn(() => createId())` → Prisma DSL `@default(cuid())`
+- `.$onUpdate(() => new Date())` → `@updatedAt`
+- Index definitions move to `@@index()` block
+- Types explicit in TSDoc comments or Prisma comments
+- Relations defined with `@relation()` instead of Drizzle's separate relations file
+
+#### Relation Example: User with Subscriptions
+
+**Before (Drizzle):**
+```typescript
+export const users = pgTable('users', { ... });
+export const subscriptions = pgTable('subscriptions', {
+  id: text('id').$defaultFn(() => createId()).primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  // ...
+});
+
+export const usersRelations = relations(users, ({ many }) => ({
+  subscriptions: many(subscriptions),
+}));
+
+export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
+  user: one(users, {
+    fields: [subscriptions.userId],
+    references: [users.id],
+  }),
+}));
+```
+
+**After (Prisma):**
+```prisma
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  subscriptions   Subscription[]
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Subscription {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("subscriptions")
+}
+```
+
+### Step 3: Initialize Prisma and Generate Migration
+
+```bash
+# Create prisma/schema.prisma with your converted schema
+# Then:
+
+pnpm prisma migrate dev --name initial
+```
+
+This will:
+1. Create the migration file in `prisma/migrations/`
+2. Run the migration on your development database
+3. Generate the Prisma client
+
+### Step 4: Update Database Client
+
+Update `lib/database/index.ts` or similar:
+
+**Before (Drizzle):**
+```typescript
+import { drizzle } from 'drizzle-orm/neon-http';
+import { neon } from '@neondatabase/serverless';
+import * as schema from '@/db/schema';
+
+const sql = neon(env.DATABASE_URL);
+export const db = drizzle(sql, { schema });
+```
+
+**After (Prisma):**
+```typescript
+import { PrismaClient } from '@prisma/client';
+
+let prisma: PrismaClient;
+
+if (process.env.NODE_ENV === 'production') {
+  prisma = new PrismaClient();
+} else {
+  let globalForPrisma = global as typeof globalThis & {
+    prisma: PrismaClient;
+  };
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = new PrismaClient();
+  }
+  prisma = globalForPrisma.prisma;
+}
+
+export { prisma as db };
+```
+
+### Step 5: Update All ORM Imports and Queries
+
+**Find all Drizzle imports:**
+```bash
+grep -r "import.*drizzle\|from 'drizzle\|from '@/db" src lib integrations --include="*.ts" --include="*.tsx"
+```
+
+**Replace patterns:**
+
+| Drizzle | Prisma |
+|---------|--------|
+| `import { db } from '@/lib/db'` | `import { db } from '@/lib/db'` (same export name helps!) |
+| `db.query.users.findFirst()` | `db.user.findUnique()` / `db.user.findFirst()` |
+| `db.insert(users).values()` | `db.user.create()` |
+| `db.update(users).set().where()` | `db.user.update()` |
+| `db.delete(users).where()` | `db.user.delete()` |
+
+**Drizzle pattern:**
+```typescript
+import { db } from '@/lib/db';
+import { eq } from 'drizzle-orm';
+import { users } from '@/db/schema';
+
+const user = await db.query.users.findFirst({
+  where: eq(users.id, id),
+  with: { subscriptions: true }
+});
+
+const newUser = await db.insert(users).values({ email }).returning();
+
+const updated = await db.update(users)
+  .set({ name })
+  .where(eq(users.id, id))
+  .returning();
+```
+
+**Prisma pattern:**
+```typescript
+import { db } from '@/lib/db';
+
+const user = await db.user.findUnique({
+  where: { id },
+  include: { subscriptions: true }
+});
+
+const newUser = await db.user.create({
+  data: { email }
+});
+
+const updated = await db.user.update({
+  where: { id },
+  data: { name }
+});
+```
+
+### Step 6: Update Tests
+
+Update any test files that mock the ORM:
+
+**Before (Drizzle):**
+```typescript
+vi.mock('@/lib/db', () => ({
+  db: {
+    query: { users: { findFirst: vi.fn() } },
+    insert: vi.fn(),
+  }
+}));
+```
+
+**After (Prisma):**
+```typescript
+vi.mock('@prisma/client', () => ({
+  PrismaClient: vi.fn(() => ({
+    user: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+    }
+  }))
+}));
+```
+
+### Step 7: Update Seed File
+
+If you have a `db/seed.ts`:
+
+**Before (Drizzle):**
+```typescript
+import { db } from '@/lib/db';
+import { users } from '@/db/schema';
+
+async function main() {
+  const user = await db.insert(users).values({
+    email: 'test@example.com'
+  }).returning();
+}
+
+main().catch(console.error);
+```
+
+**After (Prisma):**
+```typescript
+import { db } from '@/lib/db';
+
+async function main() {
+  const user = await db.user.create({
+    data: { email: 'test@example.com' }
+  });
+}
+
+main()
+  .catch(console.error)
+  .finally(() => db.$disconnect());
+```
+
+### Step 8: Clean Up
+
+Remove Drizzle-specific files:
+
+```bash
+rm -rf db/migrations drizzle.config.ts
+```
+
+Update `.gitignore`:
+```
+# Add if not present
+.env
+.env.local
+prisma/dev.db
+```
+
+### Step 9: Common Gotchas When Migrating from Drizzle
+
+1. **Enum conversion**: Drizzle's `pgEnum` → Prisma's `enum` keyword
+   ```prisma
+   enum Role {
+     OWNER
+     ADMIN
+     MEMBER
+   }
+
+   model User {
+     id   String @id @default(cuid())
+     role Role
+   }
+   ```
+
+2. **JSON Type Changes**: Prisma `Json` is less strictly typed
+   ```prisma
+   model User {
+     metadata Json? @default("{}")
+   }
+
+   // Use type-safe casting in code:
+   type UserMetadata = { preferences: Record<string, string> };
+   const meta = user.metadata as UserMetadata;
+   ```
+
+3. **Generated Type Imports**: Import from `@prisma/client`
+   ```typescript
+   // Before (Drizzle)
+   import type { users } from '@/db/schema';
+   type User = typeof users.$inferSelect;
+
+   // After (Prisma)
+   import type { User } from '@prisma/client';
+   ```
+
+4. **Connection Pooling**: Prisma handles this automatically
+   - No need for `postgres.js` or manual connection management
+   - Configure in `.env`: `DATABASE_URL` (Prisma will manage pooling)
+
+5. **Transactions**: Different API structure
+   ```typescript
+   // Drizzle
+   await db.transaction(async (tx) => { ... });
+
+   // Prisma
+   await db.$transaction(async (tx) => { ... });
+   ```
+
+---
+
+## Schema Conversion Examples
+
+### Enum Handling
+
+**Drizzle:**
+```typescript
+export const roleEnum = pgEnum('role', ['owner', 'admin', 'member']);
+
+export const users = pgTable('users', {
+  role: roleEnum('role').default('member'),
+});
+```
+
+**Prisma:**
+```prisma
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model User {
+  id   String @id @default(cuid())
+  role Role   @default(MEMBER)
+}
+```
+
+### JSON with Type Safety
+
+**Drizzle:**
+```typescript
+export const users = pgTable('users', {
+  metadata: json('metadata')
+    .$type<{ theme: 'light' | 'dark'; notifications: boolean }>()
+    .default({})
+});
+```
+
+**Prisma:**
+```prisma
+model User {
+  metadata Json? @default("{}")
+}
+
+// In TypeScript:
+type UserMetadata = { theme: 'light' | 'dark'; notifications: boolean };
+```
+
+### Complex Relations
+
+**Drizzle:**
+```typescript
+export const users = pgTable('users', { id: text('id').primaryKey(), ... });
+export const organizations = pgTable('organizations', { id: text('id').primaryKey(), ... });
+export const memberships = pgTable('organization_memberships', {
+  userId: text('user_id').references(() => users.id),
+  organizationId: text('organization_id').references(() => organizations.id),
+});
+
+export const usersRelations = relations(users, ({ many }) => ({
+  memberships: many(memberships),
+}));
+export const organizationsRelations = relations(organizations, ({ many }) => ({
+  memberships: many(memberships),
+}));
+export const membershipsRelations = relations(memberships, ({ one }) => ({
+  user: one(users),
+  organization: one(organizations),
+}));
+```
+
+**Prisma:**
+```prisma
+model User {
+  id          String   @id @default(cuid())
+  memberships OrganizationMembership[]
+}
+
+model Organization {
+  id          String   @id @default(cuid())
+  memberships OrganizationMembership[]
+}
+
+model OrganizationMembership {
+  userId         String
+  organizationId String
+  user           User         @relation(fields: [userId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@id([userId, organizationId])
+}
+```
+
+---
+
+## Testing After Migration
+
+### Step 1: Verify Database Schema
+
+```bash
+# If using Prisma
+pnpm prisma studio
+
+# If using Drizzle
+pnpm run db:studio
+```
+
+Check that:
+- All tables exist
+- All columns are present with correct types
+- All indexes are created
+- Foreign key constraints are correct
+
+### Step 2: Run Database Migrations Test
+
+```bash
+# Create a fresh database to verify migration
+DATABASE_URL="postgresql://user:pass@localhost/test_db" pnpm prisma migrate deploy
+
+# Or for Drizzle
+DATABASE_URL="postgresql://user:pass@localhost/test_db" pnpm run db:migrate
+```
+
+### Step 3: Update and Run Tests
+
+```bash
+# Unit tests
+pnpm run test:unit
+
+# Integration tests (these hit the database)
+pnpm run test:integration
+
+# All tests
+pnpm run test
+```
+
+If tests fail, check:
+- Database credentials in `.env.test` or test setup
+- Mock ORM calls match the new ORM API
+- Query builders use new syntax
+- Type imports are from correct source
+
+### Step 4: Test Common Operations
+
+Create `test-migration.ts` in your scripts folder:
+
+```typescript
+import { db } from '@/lib/db';
+import { users, subscriptions } from '@/db/schema'; // Or Prisma import
+
+export async function testMigration() {
+  try {
+    // Test CREATE
+    const user = await db.user.create({ // Or: db.insert(users).values(...)
+      data: { email: `test-${Date.now()}@example.com` }
+    });
+    console.log('✓ CREATE:', user.id);
+
+    // Test READ
+    const found = await db.user.findUnique({
+      where: { id: user.id }
+    });
+    console.log('✓ READ:', found?.email);
+
+    // Test UPDATE
+    const updated = await db.user.update({
+      where: { id: user.id },
+      data: { name: 'Test User' }
+    });
+    console.log('✓ UPDATE:', updated.name);
+
+    // Test DELETE
+    await db.user.delete({ where: { id: user.id } });
+    console.log('✓ DELETE: Success');
+
+    // Test RELATIONS
+    const withRelations = await db.user.findUnique({
+      where: { id: user.id },
+      include: { subscriptions: true }
+    });
+    console.log('✓ RELATIONS:', withRelations?.subscriptions.length);
+
+    console.log('\n✓ All tests passed!');
+  } catch (error) {
+    console.error('✗ Migration test failed:', error);
+    process.exit(1);
+  }
+}
+
+testMigration();
+```
+
+Run it:
+```bash
+pnpm tsx scripts/test-migration.ts
+```
+
+### Step 5: Load Testing (if applicable)
+
+```bash
+# Test with concurrent queries
+pnpm tsx scripts/load-test.ts
+
+# Monitor with:
+# - Drizzle Studio (if using Drizzle)
+# - Prisma Studio (if using Prisma)
+# - Database monitoring dashboard
+```
+
+### Step 6: Production Deployment Checklist
+
+- [ ] Database backup created
+- [ ] Schema migration tested on staging
+- [ ] All imports updated and linting passes
+- [ ] Tests pass (unit, integration, e2e)
+- [ ] Zero-downtime deployment configured
+- [ ] Rollback plan documented
+- [ ] Monitoring alerts configured
+- [ ] Team notified of changes
+- [ ] Environment variables updated in production
+- [ ] Build completes without errors
+
+### Step 7: Post-Migration Verification
+
+After deploying to production:
+
+1. **Check application logs** for any ORM errors
+2. **Verify data integrity** with a quick query
+   ```typescript
+   const userCount = await db.user.count(); // Or db.select().from(users)
+   console.log('Total users:', userCount);
+   ```
+3. **Monitor performance** metrics
+4. **Test key user flows** (signup, subscription, etc.)
+5. **Enable rollback monitoring** for 24 hours
+6. **Collect team feedback** on ORM usage
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue: "Cannot find module '@/db/schema'"**
+- Solution: Ensure `db/schema.ts` exists and path alias is configured in `tsconfig.json`
+
+**Issue: "Prisma schema validation error"**
+- Solution: Check for syntax errors in `.prisma` file, run `pnpm prisma validate`
+
+**Issue: "Type 'User' not found"**
+- Prisma: Import from `@prisma/client`
+- Drizzle: Use `typeof users.$inferSelect`
+
+**Issue: "Database migration failed"**
+- Solution: Check environment variables, verify database is accessible
+- Roll back: `pnpm prisma migrate resolve --rolled-back migration_name`
+
+**Issue: "Transaction failed"**
+- Solution: Ensure transaction syntax matches your ORM
+- Add error logging to see the actual error
+
+### Getting Help
+
+- Prisma Docs: https://www.prisma.io/docs/
+- Drizzle Docs: https://orm.drizzle.team/
+- GitHub Issues: File issues in respective repos
+- Community: Prisma Discord, Drizzle Discord
+
+---
+
+## Additional Resources
+
+- **Prisma Schema Reference**: https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference
+- **Drizzle TypeScript Syntax**: https://orm.drizzle.team/docs/sql-schema-declaration
+- **Data Migration Tools**: `prisma db push`, `drizzle-kit migrate`
+- **Performance Tuning**: Index strategies, query optimization
+- **Edge Runtime Compatibility**: Drizzle for Cloudflare/Vercel Edge, Prisma for traditional runtimes
+
+{% endif %}

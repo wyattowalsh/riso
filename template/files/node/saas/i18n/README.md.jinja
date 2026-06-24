@@ -1,0 +1,439 @@
+{% if saas_infra_module == "enabled" and saas_i18n %}
+# Internationalization (i18n) Module
+
+Complete internationalization solution for {{ project_name }} using [next-intl](https://next-intl-docs.vercel.app/).
+
+## Features
+
+- 🌍 Multi-language support with type safety
+- 🔄 Automatic locale detection (URL, cookie, Accept-Language header)
+- 🎯 URL-based locale routing (`/en/...`, `/es/...`)
+- 📅 Date and number formatting utilities
+- 🎨 RTL (right-to-left) language support preparation
+- 🔧 TypeScript integration for type-safe translations
+- 🚀 Server and client component support
+
+## Quick Start
+
+### 1. Basic Usage in Components
+
+#### Client Components
+
+```tsx
+'use client';
+
+import { useTranslations } from '@/i18n';
+
+export function WelcomeMessage() {
+  const t = useTranslations('common');
+
+  return (
+    <div>
+      <h1>{t('welcome')}</h1>
+      <p>{t('hello', { name: 'John' })}</p>
+    </div>
+  );
+}
+```
+
+#### Server Components
+
+```tsx
+import { getTranslations } from '@/i18n';
+
+export default async function Page() {
+  const t = await getTranslations('common');
+
+  return (
+    <div>
+      <h1>{t('welcome')}</h1>
+      <p>{t('loading')}</p>
+    </div>
+  );
+}
+```
+
+### 2. Get Current Locale
+
+#### Client Component
+
+```tsx
+'use client';
+
+import { useLocale } from '@/i18n';
+
+export function LocaleDisplay() {
+  const locale = useLocale();
+  return <div>Current locale: {locale}</div>;
+}
+```
+
+#### Server Component
+
+```tsx
+import { getLocale } from '@/i18n';
+
+export default async function Page() {
+  const locale = await getLocale();
+  return <div>Current locale: {locale}</div>;
+}
+```
+
+### 3. Language Switcher
+
+```tsx
+'use client';
+
+import { useRouter, usePathname } from 'next/navigation';
+import { useLocale } from '@/i18n';
+import { locales, localeLabels } from '@/i18n/config';
+
+export function LanguageSwitcher() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const currentLocale = useLocale();
+
+  const switchLocale = (newLocale: string) => {
+    // Replace locale in pathname
+    const segments = pathname.split('/');
+    segments[1] = newLocale;
+    router.push(segments.join('/'));
+  };
+
+  return (
+    <select
+      value={currentLocale}
+      onChange={(e) => switchLocale(e.target.value)}
+    >
+      {locales.map((locale) => (
+        <option key={locale} value={locale}>
+          {localeLabels[locale]}
+        </option>
+      ))}
+    </select>
+  );
+}
+```
+
+## Project Structure
+
+```
+i18n/
+├── index.ts              # Main exports
+├── config.ts             # Locale configuration
+├── types.ts              # TypeScript type definitions
+├── middleware.ts         # Next.js middleware for routing
+├── messages/
+│   ├── en.json          # English translations
+│   └── es.json          # Spanish translations
+└── README.md            # This file
+```
+
+## Configuration
+
+### Adding a New Locale
+
+1. Update `i18n/config.ts`:
+
+```typescript
+export const locales = ['en', 'es', 'fr'] as const;
+
+export const localeLabels: Record<Locale, string> = {
+  en: 'English',
+  es: 'Español',
+  fr: 'Français',
+};
+
+export const localeMetadata: Record<Locale, LocaleMetadata> = {
+  // ... existing locales
+  fr: {
+    dir: 'ltr',
+    name: 'French',
+    territory: 'FR',
+  },
+};
+```
+
+2. Create message file `i18n/messages/fr.json`:
+
+```json
+{
+  "common": {
+    "welcome": "Bienvenue",
+    "hello": "Bonjour, {name}",
+    // ... other translations
+  }
+}
+```
+
+### Changing Default Locale
+
+Edit `i18n/config.ts`:
+
+```typescript
+export const defaultLocale: Locale = 'es'; // Change from 'en'
+```
+
+### Locale Prefix Strategy
+
+Choose how locales appear in URLs by editing `i18n/config.ts`:
+
+```typescript
+// Always show locale: /en/about, /es/about
+export const localePrefix = 'always' as const;
+
+// Only show non-default: /about, /es/about
+export const localePrefix = 'as-needed' as const;
+
+// Never show in URL (cookie/header only)
+export const localePrefix = 'never' as const;
+```
+
+## Translation Organization
+
+Organize translations into logical namespaces:
+
+```json
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "navigation": {
+    "home": "Home",
+    "about": "About"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signOut": "Sign out"
+  }
+}
+```
+
+Access namespaced translations:
+
+```tsx
+const t = useTranslations('navigation');
+console.log(t('home')); // "Home"
+```
+
+## Advanced Features
+
+### Date Formatting
+
+```tsx
+import { useLocale } from '@/i18n';
+
+export function DateDisplay() {
+  const locale = useLocale();
+  const date = new Date();
+
+  return (
+    <div>
+      {new Intl.DateTimeFormat(locale, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }).format(date)}
+    </div>
+  );
+}
+```
+
+### Number Formatting
+
+```tsx
+import { useLocale } from '@/i18n';
+
+export function PriceDisplay({ amount }: { amount: number }) {
+  const locale = useLocale();
+
+  return (
+    <div>
+      {new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency: 'USD'
+      }).format(amount)}
+    </div>
+  );
+}
+```
+
+### Pluralization
+
+```json
+{
+  "items": {
+    "zero": "No items",
+    "one": "One item",
+    "other": "{count} items"
+  }
+}
+```
+
+```tsx
+const t = useTranslations('common');
+t('items', { count: 0 }); // "No items"
+t('items', { count: 1 }); // "One item"
+t('items', { count: 5 }); // "5 items"
+```
+
+### Rich Text Formatting
+
+```json
+{
+  "welcome": "Welcome to <bold>{name}</bold>!"
+}
+```
+
+```tsx
+const t = useTranslations('common');
+
+<p>
+  {t.rich('welcome', {
+    name: 'Acme',
+    bold: (chunks) => <strong>{chunks}</strong>
+  })}
+</p>
+```
+
+## Middleware Integration
+
+The i18n middleware is automatically configured in `middleware.ts`. To customize:
+
+```typescript
+import { i18nMiddleware, config as i18nConfig } from '@/i18n/middleware';
+import { NextRequest, NextResponse } from 'next/server';
+
+export function middleware(request: NextRequest) {
+  // Run i18n middleware first
+  const i18nResponse = i18nMiddleware(request);
+
+  // Add custom logic
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    // Custom admin logic
+  }
+
+  return i18nResponse;
+}
+
+export const config = i18nConfig;
+```
+
+## RTL Language Support
+
+For RTL (right-to-left) languages like Arabic or Hebrew:
+
+1. Update locale metadata in `i18n/config.ts`:
+
+```typescript
+export const localeMetadata: Record<Locale, LocaleMetadata> = {
+  ar: {
+    dir: 'rtl',
+    name: 'Arabic',
+    territory: 'SA',
+  },
+};
+```
+
+2. Apply direction in your layout:
+
+```tsx
+import { getLocale } from '@/i18n';
+import { localeMetadata } from '@/i18n/config';
+
+export default async function Layout({ children }: { children: React.ReactNode }) {
+  const locale = await getLocale();
+  const direction = localeMetadata[locale].dir;
+
+  return (
+    <html lang={locale} dir={direction}>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+## Type Safety
+
+Get full TypeScript support for your translations:
+
+```typescript
+import type { TranslationKey, Locale } from '@/i18n/types';
+
+function translate(key: TranslationKey, locale: Locale) {
+  // Type-safe translation logic
+}
+```
+
+## Testing
+
+Test translations in your components:
+
+```tsx
+import { NextIntlClientProvider } from 'next-intl';
+import { render } from '@testing-library/react';
+
+const messages = {
+  common: {
+    welcome: 'Welcome'
+  }
+};
+
+test('renders welcome message', () => {
+  const { getByText } = render(
+    <NextIntlClientProvider locale="en" messages={messages}>
+      <YourComponent />
+    </NextIntlClientProvider>
+  );
+
+  expect(getByText('Welcome')).toBeInTheDocument();
+});
+```
+
+## Best Practices
+
+1. **Namespace Your Translations**: Group related translations together
+2. **Use Interpolation**: Avoid concatenating translated strings
+3. **Provide Context**: Use descriptive keys that convey meaning
+4. **Keep Messages Simple**: Break complex messages into smaller parts
+5. **Test All Locales**: Ensure translations work across all supported languages
+6. **Use Default Values**: Provide fallbacks for missing translations
+7. **Document Interpolation Variables**: Comment expected variables in JSON
+
+## Troubleshooting
+
+### Translations Not Loading
+
+Check that:
+- Message files exist in `i18n/messages/{locale}.json`
+- Locale is in the `locales` array in `i18n/config.ts`
+- Middleware is properly configured
+
+### Locale Not Detected
+
+Ensure:
+- Middleware is running (check `middleware.ts`)
+- URL includes locale prefix if using 'always' strategy
+- Browser sends Accept-Language header
+
+### Type Errors
+
+Run type checking:
+```bash
+pnpm typecheck
+```
+
+## Resources
+
+- [next-intl Documentation](https://next-intl-docs.vercel.app/)
+- [Next.js Internationalization](https://nextjs.org/docs/app/building-your-application/routing/internationalization)
+- [Internationalization Best Practices](https://www.w3.org/International/techniques/developing-specs)
+- [CLDR Language Data](https://cldr.unicode.org/)
+
+## Support
+
+For issues specific to this implementation, check the [project documentation](../docs/TROUBLESHOOTING.md).
+
+For next-intl issues, visit the [next-intl GitHub repository](https://github.com/amannn/next-intl).
+{% endif %}

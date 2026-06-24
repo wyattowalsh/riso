@@ -1,0 +1,455 @@
+{% if saas_compliance == 'soc2' -%}
+/**
+ * SOC 2 Access Control and Audit Logging
+ *
+ * Implements comprehensive audit logging for SOC 2 Type II compliance,
+ * demonstrating continuous monitoring and control effectiveness.
+ */
+
+/**
+ * Access control event types for SOC 2 audit
+ */
+export enum SOC2EventType {
+  // User access events
+  USER_LOGIN = 'USER_LOGIN',
+  USER_LOGOUT = 'USER_LOGOUT',
+  LOGIN_FAILED = 'LOGIN_FAILED',
+  PASSWORD_CHANGED = 'PASSWORD_CHANGED',
+  MFA_ENABLED = 'MFA_ENABLED',
+  MFA_DISABLED = 'MFA_DISABLED',
+
+  // Data access events
+  DATA_READ = 'DATA_READ',
+  DATA_CREATE = 'DATA_CREATE',
+  DATA_UPDATE = 'DATA_UPDATE',
+  DATA_DELETE = 'DATA_DELETE',
+  DATA_EXPORT = 'DATA_EXPORT',
+
+  // Permission changes
+  ROLE_ASSIGNED = 'ROLE_ASSIGNED',
+  ROLE_REVOKED = 'ROLE_REVOKED',
+  PERMISSION_GRANTED = 'PERMISSION_GRANTED',
+  PERMISSION_REVOKED = 'PERMISSION_REVOKED',
+
+  // Security events
+  ACCESS_DENIED = 'ACCESS_DENIED',
+  SUSPICIOUS_ACTIVITY = 'SUSPICIOUS_ACTIVITY',
+  SECURITY_ALERT = 'SECURITY_ALERT',
+
+  // System changes
+  CONFIG_CHANGED = 'CONFIG_CHANGED',
+  SYSTEM_SETTING_CHANGED = 'SYSTEM_SETTING_CHANGED',
+
+  // Administrative actions
+  USER_CREATED = 'USER_CREATED',
+  USER_DELETED = 'USER_DELETED',
+  USER_SUSPENDED = 'USER_SUSPENDED',
+  USER_REACTIVATED = 'USER_REACTIVATED',
+}
+
+/**
+ * Severity levels for audit events
+ */
+export enum AuditSeverity {
+  INFO = 'INFO',
+  WARNING = 'WARNING',
+  ERROR = 'ERROR',
+  CRITICAL = 'CRITICAL',
+}
+
+/**
+ * SOC 2 audit log entry
+ */
+export interface SOC2AuditLog {
+  id: string;
+  timestamp: Date;
+  eventType: SOC2EventType;
+  severity: AuditSeverity;
+
+  // Actor information
+  userId?: string;
+  userName?: string;
+  userEmail?: string;
+  userRole?: string;
+  impersonatedBy?: string; // For admin impersonation
+
+  // Resource information
+  resourceType?: string;
+  resourceId?: string;
+  resourceName?: string;
+
+  // Access context
+  ipAddress: string;
+  userAgent?: string;
+  sessionId?: string;
+  requestId?: string;
+
+  // Action details
+  action: string;
+  outcome: 'success' | 'failure' | 'denied';
+  errorMessage?: string;
+
+  // Metadata
+  metadata?: Record<string, any>;
+  changedFields?: string[]; // Fields modified in update operations
+  previousValues?: Record<string, any>; // Previous values for audit trail
+  newValues?: Record<string, any>; // New values for audit trail
+}
+
+/**
+ * Creates a SOC 2-compliant audit log entry
+ *
+ * @param entry - Audit log entry data
+ * @returns Formatted audit log
+ */
+export async function createAuditLog(entry: Omit<SOC2AuditLog, 'id' | 'timestamp'>): Promise<SOC2AuditLog> {
+  const auditLog: SOC2AuditLog = {
+    id: generateAuditId(),
+    timestamp: new Date(),
+    ...entry,
+  };
+
+  // Store audit log
+  await storeAuditLog(auditLog);
+
+  // Trigger alerts for critical events
+  if (entry.severity === AuditSeverity.CRITICAL) {
+    await alertSecurityTeam(auditLog);
+  }
+
+  return auditLog;
+}
+
+/**
+ * Stores audit log in tamper-evident storage
+ *
+ * @param log - Audit log entry
+ */
+async function storeAuditLog(log: SOC2AuditLog): Promise<void> {
+  // SOC 2 requirements for audit logs:
+  // - Immutable and tamper-evident
+  // - Retained for at least 1 year (longer for Type II)
+  // - Protected from unauthorized access
+  // - Available for auditor review
+
+  console.log('[SOC2 AUDIT LOG]', JSON.stringify(log, null, 2));
+
+  // TODO: Implement actual storage
+  // Recommended: Use append-only database or log aggregation service
+  // Examples: CloudWatch Logs, Datadog, Splunk, Sumo Logic
+}
+
+/**
+ * Generates unique audit log ID
+ */
+function generateAuditId(): string {
+  return `soc2_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+}
+
+/**
+ * Alerts security team for critical events
+ *
+ * @param log - Audit log entry
+ */
+async function alertSecurityTeam(log: SOC2AuditLog): Promise<void> {
+  // Implement alerting logic
+  // Examples: PagerDuty, Slack, email, SMS
+  console.warn('[SECURITY ALERT]', log);
+}
+
+/**
+ * Helper function for logging user authentication events
+ */
+export async function logAuthenticationEvent(
+  eventType: SOC2EventType.USER_LOGIN | SOC2EventType.USER_LOGOUT | SOC2EventType.LOGIN_FAILED,
+  userId: string,
+  metadata: {
+    ipAddress: string;
+    userAgent?: string;
+    sessionId?: string;
+    mfaUsed?: boolean;
+    failureReason?: string;
+  }
+): Promise<void> {
+  const severity = eventType === SOC2EventType.LOGIN_FAILED ? AuditSeverity.WARNING : AuditSeverity.INFO;
+
+  await createAuditLog({
+    eventType,
+    severity,
+    userId,
+    action: eventType.toLowerCase().replace(/_/g, ' '),
+    outcome: eventType === SOC2EventType.LOGIN_FAILED ? 'failure' : 'success',
+    ipAddress: metadata.ipAddress,
+    userAgent: metadata.userAgent,
+    sessionId: metadata.sessionId,
+    errorMessage: metadata.failureReason,
+    metadata: {
+      mfaUsed: metadata.mfaUsed,
+    },
+  });
+}
+
+/**
+ * Helper function for logging data access events
+ */
+export async function logDataAccess(
+  eventType: SOC2EventType.DATA_READ | SOC2EventType.DATA_CREATE | SOC2EventType.DATA_UPDATE | SOC2EventType.DATA_DELETE,
+  userId: string,
+  resource: {
+    type: string;
+    id: string;
+    name?: string;
+  },
+  metadata: {
+    ipAddress: string;
+    userAgent?: string;
+    sessionId?: string;
+    changedFields?: string[];
+    previousValues?: Record<string, any>;
+    newValues?: Record<string, any>;
+  }
+): Promise<void> {
+  await createAuditLog({
+    eventType,
+    severity: eventType === SOC2EventType.DATA_DELETE ? AuditSeverity.WARNING : AuditSeverity.INFO,
+    userId,
+    resourceType: resource.type,
+    resourceId: resource.id,
+    resourceName: resource.name,
+    action: `${eventType.split('_')[1].toLowerCase()} ${resource.type}`,
+    outcome: 'success',
+    ipAddress: metadata.ipAddress,
+    userAgent: metadata.userAgent,
+    sessionId: metadata.sessionId,
+    changedFields: metadata.changedFields,
+    previousValues: metadata.previousValues,
+    newValues: metadata.newValues,
+  });
+}
+
+/**
+ * Helper function for logging permission changes
+ */
+export async function logPermissionChange(
+  eventType: SOC2EventType.ROLE_ASSIGNED | SOC2EventType.ROLE_REVOKED | SOC2EventType.PERMISSION_GRANTED | SOC2EventType.PERMISSION_REVOKED,
+  adminUserId: string,
+  targetUserId: string,
+  details: {
+    role?: string;
+    permission?: string;
+    ipAddress: string;
+  }
+): Promise<void> {
+  await createAuditLog({
+    eventType,
+    severity: AuditSeverity.WARNING, // Permission changes are always notable
+    userId: adminUserId,
+    action: `${eventType.toLowerCase().replace(/_/g, ' ')} for user ${targetUserId}`,
+    outcome: 'success',
+    ipAddress: details.ipAddress,
+    metadata: {
+      targetUserId,
+      role: details.role,
+      permission: details.permission,
+    },
+  });
+}
+
+/**
+ * Helper function for logging security events
+ */
+export async function logSecurityEvent(
+  eventType: SOC2EventType.ACCESS_DENIED | SOC2EventType.SUSPICIOUS_ACTIVITY | SOC2EventType.SECURITY_ALERT,
+  details: {
+    userId?: string;
+    action: string;
+    reason: string;
+    ipAddress: string;
+    severity?: AuditSeverity;
+    metadata?: Record<string, any>;
+  }
+): Promise<void> {
+  await createAuditLog({
+    eventType,
+    severity: details.severity || AuditSeverity.ERROR,
+    userId: details.userId,
+    action: details.action,
+    outcome: 'denied',
+    errorMessage: details.reason,
+    ipAddress: details.ipAddress,
+    metadata: details.metadata,
+  });
+}
+
+/**
+ * Queries audit logs for compliance reporting
+ *
+ * @param filters - Filter criteria
+ * @returns Matching audit logs
+ */
+export async function queryAuditLogs(filters: {
+  userId?: string;
+  eventType?: SOC2EventType;
+  startDate?: Date;
+  endDate?: Date;
+  severity?: AuditSeverity;
+  outcome?: 'success' | 'failure' | 'denied';
+  resourceType?: string;
+  resourceId?: string;
+  limit?: number;
+}): Promise<SOC2AuditLog[]> {
+  // Implement audit log query logic
+  // This should support various compliance reporting needs
+
+  // Placeholder implementation
+  return [];
+}
+
+/**
+ * Generates SOC 2 compliance report
+ *
+ * @param startDate - Report start date
+ * @param endDate - Report end date
+ * @returns Compliance report
+ */
+export async function generateComplianceReport(startDate: Date, endDate: Date) {
+  const logs = await queryAuditLogs({ startDate, endDate });
+
+  // Calculate key metrics for SOC 2 compliance
+  const authenticationEvents = logs.filter(log =>
+    [SOC2EventType.USER_LOGIN, SOC2EventType.USER_LOGOUT, SOC2EventType.LOGIN_FAILED].includes(log.eventType)
+  );
+
+  const failedLogins = logs.filter(log => log.eventType === SOC2EventType.LOGIN_FAILED);
+  const accessDenied = logs.filter(log => log.eventType === SOC2EventType.ACCESS_DENIED);
+  const permissionChanges = logs.filter(log =>
+    [SOC2EventType.ROLE_ASSIGNED, SOC2EventType.ROLE_REVOKED, SOC2EventType.PERMISSION_GRANTED, SOC2EventType.PERMISSION_REVOKED].includes(
+      log.eventType
+    )
+  );
+
+  return {
+    period: {
+      start: startDate,
+      end: endDate,
+    },
+    summary: {
+      totalEvents: logs.length,
+      uniqueUsers: new Set(logs.map(log => log.userId).filter(Boolean)).size,
+      criticalEvents: logs.filter(log => log.severity === AuditSeverity.CRITICAL).length,
+      errorEvents: logs.filter(log => log.severity === AuditSeverity.ERROR).length,
+      warningEvents: logs.filter(log => log.severity === AuditSeverity.WARNING).length,
+    },
+    authentication: {
+      totalLogins: authenticationEvents.filter(log => log.eventType === SOC2EventType.USER_LOGIN).length,
+      failedLogins: failedLogins.length,
+      mfaUsageRate:
+        authenticationEvents.filter(log => log.metadata?.mfaUsed).length /
+        (authenticationEvents.length || 1),
+    },
+    accessControl: {
+      accessDenied: accessDenied.length,
+      permissionChanges: permissionChanges.length,
+      dataExports: logs.filter(log => log.eventType === SOC2EventType.DATA_EXPORT).length,
+    },
+    dataActivity: {
+      reads: logs.filter(log => log.eventType === SOC2EventType.DATA_READ).length,
+      creates: logs.filter(log => log.eventType === SOC2EventType.DATA_CREATE).length,
+      updates: logs.filter(log => log.eventType === SOC2EventType.DATA_UPDATE).length,
+      deletes: logs.filter(log => log.eventType === SOC2EventType.DATA_DELETE).length,
+    },
+    security: {
+      suspiciousActivity: logs.filter(log => log.eventType === SOC2EventType.SUSPICIOUS_ACTIVITY).length,
+      securityAlerts: logs.filter(log => log.eventType === SOC2EventType.SECURITY_ALERT).length,
+    },
+  };
+}
+
+/**
+ * Detects anomalous behavior patterns for SOC 2 continuous monitoring
+ *
+ * @param userId - User to analyze
+ * @param timeWindow - Time window in hours
+ * @returns Anomaly detection results
+ */
+export async function detectAnomalies(
+  userId: string,
+  timeWindow: number = 24
+): Promise<{
+  anomalies: Array<{
+    type: string;
+    severity: AuditSeverity;
+    description: string;
+    count: number;
+  }>;
+}> {
+  const endDate = new Date();
+  const startDate = new Date(endDate.getTime() - timeWindow * 60 * 60 * 1000);
+
+  const logs = await queryAuditLogs({ userId, startDate, endDate });
+
+  const anomalies: Array<{ type: string; severity: AuditSeverity; description: string; count: number }> = [];
+
+  // Check for failed login attempts
+  const failedLogins = logs.filter(log => log.eventType === SOC2EventType.LOGIN_FAILED);
+  if (failedLogins.length >= 5) {
+    anomalies.push({
+      type: 'multiple_failed_logins',
+      severity: AuditSeverity.WARNING,
+      description: `${failedLogins.length} failed login attempts`,
+      count: failedLogins.length,
+    });
+  }
+
+  // Check for unusual access patterns
+  const uniqueIPs = new Set(logs.map(log => log.ipAddress));
+  if (uniqueIPs.size >= 5) {
+    anomalies.push({
+      type: 'multiple_ip_addresses',
+      severity: AuditSeverity.WARNING,
+      description: `Access from ${uniqueIPs.size} different IP addresses`,
+      count: uniqueIPs.size,
+    });
+  }
+
+  // Check for data exports
+  const exports = logs.filter(log => log.eventType === SOC2EventType.DATA_EXPORT);
+  if (exports.length >= 3) {
+    anomalies.push({
+      type: 'multiple_exports',
+      severity: AuditSeverity.ERROR,
+      description: `${exports.length} data exports in ${timeWindow} hours`,
+      count: exports.length,
+    });
+  }
+
+  // Check for permission escalation
+  const permissionChanges = logs.filter(log =>
+    [SOC2EventType.ROLE_ASSIGNED, SOC2EventType.PERMISSION_GRANTED].includes(log.eventType)
+  );
+  if (permissionChanges.length >= 2) {
+    anomalies.push({
+      type: 'permission_escalation',
+      severity: AuditSeverity.ERROR,
+      description: `${permissionChanges.length} permission changes`,
+      count: permissionChanges.length,
+    });
+  }
+
+  // Check for after-hours activity (outside 6 AM - 10 PM)
+  const afterHours = logs.filter(log => {
+    const hour = log.timestamp.getHours();
+    return hour < 6 || hour > 22;
+  });
+  if (afterHours.length >= 10) {
+    anomalies.push({
+      type: 'after_hours_activity',
+      severity: AuditSeverity.WARNING,
+      description: `${afterHours.length} events outside business hours`,
+      count: afterHours.length,
+    });
+  }
+
+  return { anomalies };
+}
+{% endif -%}

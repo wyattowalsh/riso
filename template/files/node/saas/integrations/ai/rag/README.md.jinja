@@ -1,0 +1,515 @@
+{% if saas_infra_module == "enabled" and saas_ai_features == 'full' %}
+# RAG (Retrieval-Augmented Generation) Module
+
+Complete RAG system for building AI applications with document knowledge base.
+
+## Overview
+
+This RAG implementation provides:
+
+- **Document Ingestion**: Intelligent chunking and embedding generation
+- **Vector Storage**: PostgreSQL with pgvector extension
+- **Semantic Search**: Cosine similarity and hybrid search
+- **Context Retrieval**: Multi-query and reranking strategies
+- **LLM Generation**: Context-aware responses with streaming
+- **Token Tracking**: Built-in usage metering for billing
+
+## Architecture
+
+```
+┌─────────────┐
+│  Documents  │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐     ┌──────────────┐
+│   Chunker   │────▶│  Embeddings  │
+└─────────────┘     └──────┬───────┘
+                           │
+                           ▼
+                    ┌──────────────┐
+                    │ Vector Store │
+                    │  (pgvector)  │
+                    └──────┬───────┘
+                           │
+       ┌───────────────────┼───────────────────┐
+       │                   │                   │
+       ▼                   ▼                   ▼
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Retrieval │     │   Reranking │     │   Context   │
+└──────┬──────┘     └──────┬──────┘     └──────┬──────┘
+       │                   │                   │
+       └───────────────────┴───────────────────┘
+                           │
+                           ▼
+                    ┌──────────────┐
+                    │ LLM Generate │
+                    └──────┬───────┘
+                           │
+                           ▼
+                    ┌──────────────┐
+                    │   Response   │
+                    └──────────────┘
+```
+
+## Setup
+
+### 1. Database Setup
+
+Enable pgvector and create the required tables:
+
+```sql
+-- Enable pgvector extension
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Create vector documents table
+CREATE TABLE vector_documents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  document_id TEXT NOT NULL,
+  chunk_id TEXT NOT NULL,
+  content TEXT NOT NULL,
+  embedding vector(1536), -- Adjust dimensions for your model
+  metadata JSONB DEFAULT '{}',
+  user_id TEXT,
+  organization_id TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+
+  CONSTRAINT unique_chunk UNIQUE (document_id, chunk_id)
+);
+
+-- Create HNSW index for fast similarity search
+CREATE INDEX ON vector_documents
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);
+
+-- Metadata indexes
+CREATE INDEX idx_vector_docs_user ON vector_documents(user_id);
+CREATE INDEX idx_vector_docs_org ON vector_documents(organization_id);
+CREATE INDEX idx_vector_docs_metadata ON vector_documents USING gin(metadata);
+
+-- Full-text search index (for hybrid search)
+CREATE INDEX idx_vector_docs_fts ON vector_documents
+USING gin(to_tsvector('english', content));
+```
+
+### 2. Environment Variables
+
+Add to your `.env`:
+
+```bash
+# AI Provider (OpenAI or Anthropic)
+{% if saas_ai == "openai" %}
+OPENAI_API_KEY=sk-...
+{% elif saas_ai == "anthropic" %}
+ANTHROPIC_API_KEY=sk-ant-...
+# Optional: Voyage AI for embeddings
+VOYAGE_API_KEY=pa-...
+{% endif %}
+
+# Database (already configured)
+DATABASE_URL=postgresql://...
+```
+
+## Usage
+
+### Document Ingestion
+
+```typescript
+import { ingestDocument } from '@/integrations/ai/rag';
+
+// Single document
+const result = await ingestDocument({
+  content: 'Your document content here...',
+  metadata: {
+    source: 'docs/guide.md',
+    sourceType: 'file',
+    title: 'User Guide',
+    author: 'John Doe',
+    tags: ['guide', 'tutorial'],
+    userId: 'user-123',
+    organizationId: 'org-456',
+  },
+  options: {
+    chunking: {
+      strategy: { type: 'recursive', size: 1000, overlap: 200 },
+      minChunkSize: 100,
+    },
+  },
+});
+
+console.log(`Ingested ${result.chunks} chunks`);
+console.log(`Token usage: ${result.usage.totalTokens}`);
+```
+
+### Batch Ingestion
+
+```typescript
+import { ingestDocumentsBatch } from '@/integrations/ai/rag';
+
+const documents = [
+  { content: '...', metadata: { source: 'doc1.txt', sourceType: 'file' } },
+  { content: '...', metadata: { source: 'doc2.txt', sourceType: 'file' } },
+];
+
+const result = await ingestDocumentsBatch({
+  documents,
+  parallel: true, // Process in parallel
+});
+
+console.log(`Processed ${result.totalDocuments} documents`);
+console.log(`Total chunks: ${result.totalChunks}`);
+```
+
+### Query with RAG
+
+```typescript
+import { queryRAG } from '@/integrations/ai/rag';
+
+const response = await queryRAG({
+  query: 'How do I implement authentication?',
+  userId: 'user-123',
+  conversationId: 'conv-456', // Optional: for conversation history
+  filter: {
+    // Optional: filter by metadata
+    organizationId: 'org-456',
+    tags: ['auth', 'security'],
+  },
+});
+
+console.log('Answer:', response.answer);
+console.log('Sources:', response.sources);
+console.log('Usage:', response.usage);
+```
+
+### Streaming Responses
+
+```typescript
+import { streamRAG } from '@/integrations/ai/rag';
+
+for await (const chunk of streamRAG({
+  query: 'Explain the payment flow',
+  userId: 'user-123',
+})) {
+  switch (chunk.type) {
+    case 'sources':
+      // Show retrieved documents
+      console.log('Sources:', chunk.sources.length);
+      break;
+
+    case 'content':
+      // Stream text to UI
+      process.stdout.write(chunk.content);
+      break;
+
+    case 'metadata':
+      // Final usage stats
+      console.log('\nTokens:', chunk.metadata.usage.totalTokens);
+      break;
+
+    case 'done':
+      console.log('\nDone!');
+      break;
+  }
+}
+```
+
+### Advanced Retrieval
+
+```typescript
+import { retrieveHybrid, retrieveMultiQuery } from '@/integrations/ai/rag';
+
+// Hybrid search (vector + keyword)
+const hybrid = await retrieveHybrid({
+  query: 'authentication security',
+  keywords: ['auth', 'oauth', '2fa', 'security'],
+  vectorWeight: 0.7, // 70% vector, 30% keyword
+  limit: 10,
+});
+
+// Multi-query retrieval
+const multiQuery = await retrieveMultiQuery({
+  query: 'user authentication',
+  queryVariations: [
+    'user authentication',
+    'how to authenticate users',
+    'login implementation',
+    'auth setup guide',
+  ],
+  limit: 5,
+});
+```
+
+## Configuration
+
+### Chunking Strategies
+
+```typescript
+// Fixed-size chunks
+{
+  strategy: { type: 'fixed', size: 1000, overlap: 200 }
+}
+
+// Semantic chunking (sentence boundaries)
+{
+  strategy: { type: 'semantic', size: 1000, overlap: 200 }
+}
+
+// Recursive chunking (best for structured content)
+{
+  strategy: { type: 'recursive', size: 1000, overlap: 200 }
+}
+
+// Paragraph-based chunking
+{
+  strategy: { type: 'paragraph', size: 1000, overlap: 200 }
+}
+```
+
+### Embedding Models
+
+{% if saas_ai == "openai" %}
+**OpenAI** (default):
+- `text-embedding-3-small` - 1536 dimensions, fast and cheap
+- `text-embedding-3-large` - 3072 dimensions, highest quality
+- `text-embedding-ada-002` - 1536 dimensions, legacy
+{% elif saas_ai == "anthropic" %}
+**Anthropic/Voyage** (default):
+- `voyage-2` - 1024 dimensions, optimized for retrieval
+- `voyage-large-2` - 1536 dimensions, highest quality
+{% endif %}
+
+### Generation Models
+
+{% if saas_ai == "openai" %}
+**OpenAI** (default):
+- `gpt-4-turbo-preview` - Most capable
+- `gpt-4` - High quality
+- `gpt-3.5-turbo` - Fast and cost-effective
+{% elif saas_ai == "anthropic" %}
+**Anthropic** (default):
+- `claude-3-5-sonnet-20241022` - Best balance
+- `claude-3-opus-20240229` - Highest quality
+- `claude-3-haiku-20240307` - Fastest and cheapest
+{% endif %}
+
+## Best Practices
+
+### 1. Chunk Size
+
+- **Small chunks (500-800 tokens)**: Better precision, more retrieval calls
+- **Medium chunks (1000-1500 tokens)**: Good balance (recommended)
+- **Large chunks (2000-3000 tokens)**: More context, but less precise
+
+### 2. Overlap
+
+- Use 10-20% overlap to maintain context between chunks
+- Higher overlap for structured documents (code, technical docs)
+- Lower overlap for narrative content
+
+### 3. Retrieval
+
+- Start with 5-10 chunks for most queries
+- Use reranking for better relevance
+- Apply metadata filters to scope results
+
+### 4. Context Window
+
+- Stay under model's context limit
+- Leave room for the query and response
+- Typical allocation:
+  - Context: 50-70% of limit
+  - Query + system: 10-20%
+  - Response: 20-30%
+
+### 5. Token Tracking
+
+All operations are automatically tracked for billing:
+
+```typescript
+import { getTokenUsage } from '@/lib/ai/token-tracking';
+
+const usage = await getTokenUsage({
+  userId: 'user-123',
+  startDate: new Date('2025-01-01'),
+  endDate: new Date('2025-01-31'),
+});
+
+console.log('Total tokens:', usage.totalTokens);
+console.log('Estimated cost:', usage.estimatedCost);
+```
+
+## API Reference
+
+### High-Level Functions
+
+- `ingestDocument(request)` - Ingest a single document
+- `ingestDocumentsBatch(request)` - Batch ingest multiple documents
+- `queryRAG(request)` - Query with RAG (sync)
+- `streamRAG(request)` - Query with RAG (streaming)
+
+### Low-Level Functions
+
+- `chunkDocument(params)` - Chunk a document
+- `generateEmbeddings(request)` - Generate embeddings
+- `storeVectorsBatch(vectors)` - Store vectors in database
+- `searchVectors(query)` - Vector similarity search
+- `hybridSearch(params)` - Hybrid vector + keyword search
+- `retrieve(query)` - High-level retrieval with reranking
+- `assembleContext(chunks)` - Format chunks for LLM
+
+## Error Handling
+
+```typescript
+import { RAGError } from '@/integrations/ai/rag';
+
+try {
+  const response = await queryRAG({ query: 'test', userId: 'user-123' });
+} catch (error) {
+  if (error instanceof RAGError) {
+    console.error('RAG Error:', error.code, error.message);
+    console.error('Details:', error.details);
+  } else {
+    console.error('Unexpected error:', error);
+  }
+}
+```
+
+Error codes:
+- `INGESTION_ERROR` - Document ingestion failed
+- `QUERY_ERROR` - Query processing failed
+- `STREAM_ERROR` - Streaming failed
+- `EMBEDDING_ERROR` - Embedding generation failed
+- `VECTOR_STORE_ERROR` - Database operation failed
+- `RETRIEVAL_ERROR` - Retrieval failed
+
+## Performance Optimization
+
+### 1. Indexing
+
+Use HNSW index for fast similarity search:
+
+```sql
+CREATE INDEX ON vector_documents
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);
+```
+
+Adjust parameters:
+- `m`: Max connections per layer (higher = more accurate, slower builds)
+- `ef_construction`: Build time accuracy (higher = more accurate, slower builds)
+
+### 2. Batch Operations
+
+Always use batch operations for multiple documents:
+
+```typescript
+// Good
+await ingestDocumentsBatch({ documents, parallel: true });
+
+// Bad
+for (const doc of documents) {
+  await ingestDocument(doc); // Sequential, slow
+}
+```
+
+### 3. Caching
+
+Consider caching frequent queries:
+
+```typescript
+import { Redis } from '@/lib/redis';
+
+const cacheKey = `rag:${queryHash}`;
+const cached = await Redis.get(cacheKey);
+
+if (cached) {
+  return JSON.parse(cached);
+}
+
+const response = await queryRAG({ query, userId });
+await Redis.set(cacheKey, JSON.stringify(response), 'EX', 3600);
+```
+
+## Monitoring
+
+Track key metrics:
+
+```typescript
+import { trackEvent } from '@/integrations/analytics';
+
+await trackEvent({
+  event: 'rag_query',
+  properties: {
+    userId,
+    query,
+    chunksRetrieved: response.sources.length,
+    tokensUsed: response.usage.totalTokens,
+    latencyMs: Date.now() - startTime,
+  },
+});
+```
+
+## Testing
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import { ingestDocument, queryRAG } from '@/integrations/ai/rag';
+
+describe('RAG', () => {
+  it('should ingest and query documents', async () => {
+    // Ingest test document
+    const ingestion = await ingestDocument({
+      content: 'Test content about authentication',
+      metadata: {
+        source: 'test',
+        sourceType: 'text',
+        userId: 'test-user',
+      },
+    });
+
+    expect(ingestion.chunks).toBeGreaterThan(0);
+
+    // Query
+    const response = await queryRAG({
+      query: 'tell me about authentication',
+      userId: 'test-user',
+    });
+
+    expect(response.answer).toBeTruthy();
+    expect(response.sources.length).toBeGreaterThan(0);
+  });
+});
+```
+
+## Troubleshooting
+
+### pgvector not available
+
+```bash
+# Install pgvector extension
+brew install pgvector  # macOS
+# OR
+apt-get install postgresql-15-pgvector  # Linux
+```
+
+### Low retrieval quality
+
+1. Check chunk size (try 1000-1500 tokens)
+2. Increase overlap (200-300 tokens)
+3. Enable reranking
+4. Use hybrid search for specific keywords
+
+### High token costs
+
+1. Use smaller embedding models
+2. Reduce chunk count retrieved
+3. Implement caching for common queries
+4. Use cheaper generation models for simple queries
+
+## Resources
+
+- [pgvector Documentation](https://github.com/pgvector/pgvector)
+- [Anthropic RAG Guide](https://www.anthropic.com/research/retrieval-augmented-generation)
+- [OpenAI Embeddings Guide](https://platform.openai.com/docs/guides/embeddings)
+- [LangChain Text Splitters](https://python.langchain.com/docs/modules/data_connection/document_transformers/)
+{% endif %}

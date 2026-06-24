@@ -1,0 +1,359 @@
+{% if project_language == 'rust' or 'rust' in cli_languages or 'rust' in api_languages %}
+# Rust Template Architecture
+
+This document describes the architecture and design decisions for the Rust templates in the Riso project.
+
+## Overview
+
+The Rust templates provide complete, production-ready implementations for:
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+- **CLI Application**: Command-line interface built with Clap
+{% endif %}
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+- **REST API Server**: HTTP API built with Actix-web
+{% endif %}
+
+## Technology Stack
+
+### Core Dependencies
+
+- **Runtime**: Tokio 1.40+ (async runtime)
+- **Error Handling**: anyhow (ergonomic error handling)
+- **Serialization**: Serde + serde_json
+- **Logging**: tracing + tracing-subscriber
+
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+### CLI Dependencies
+
+- **Clap 4.5**: Command-line argument parsing with derive macros
+- **colored 2.1**: Terminal color output
+
+### CLI Architecture
+
+The CLI follows a modular command pattern:
+
+```
+cli/
+├── main.rs              # Entry point, argument parsing, logging init
+└── commands/
+    ├── mod.rs          # Command enum and routing
+    ├── hello.rs        # Example command implementation
+    └── version.rs      # Version information command
+```
+
+#### Design Patterns
+
+1. **Command Pattern**: Each command is a separate module with its own `Args` struct and `run()` function
+2. **Async-First**: All commands are async to support future I/O operations
+3. **Testable**: Each command module includes unit tests
+4. **Extensible**: New commands are added by:
+   - Creating a new module in `commands/`
+   - Adding the variant to `Commands` enum
+   - Implementing the `run()` function
+
+#### Example: Adding a New Command
+
+```rust
+// commands/mycommand.rs
+use anyhow::Result;
+use clap::Args;
+
+#[derive(Args)]
+pub struct MyCommandArgs {
+    /// Your argument
+    #[arg(short, long)]
+    input: String,
+}
+
+pub async fn run(args: MyCommandArgs) -> Result<()> {
+    // Implementation
+    Ok(())
+}
+```
+
+Then update `commands/mod.rs`:
+
+```rust
+mod mycommand;
+
+#[derive(Subcommand)]
+pub enum Commands {
+    // ...
+    MyCommand(mycommand::MyCommandArgs),
+}
+
+impl Commands {
+    pub async fn execute(self) -> Result<()> {
+        match self {
+            // ...
+            Commands::MyCommand(args) => mycommand::run(args).await,
+        }
+    }
+}
+```
+{% endif %}
+
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+### API Dependencies
+
+- **Actix-web 4.9**: High-performance web framework
+- **Actix-cors 0.7**: CORS middleware
+- **chrono 0.4**: Date and time handling
+
+### API Architecture
+
+The API follows a layered architecture:
+
+```
+api/
+├── main.rs              # Entry point, server setup
+├── config.rs            # Configuration management
+├── routes.rs            # Route registration
+├── handlers/            # Request handlers
+│   ├── mod.rs
+│   ├── health.rs       # Health check endpoints
+│   └── hello.rs        # Example endpoint
+└── models/              # Data models
+    ├── mod.rs
+    ├── health.rs       # Health check models
+    └── response.rs     # Generic response types
+```
+
+#### Design Patterns
+
+1. **Layered Architecture**: Separation of concerns (handlers, models, routes)
+2. **Configuration as Code**: Environment-based configuration
+3. **Health Checks**: Kubernetes-style probes (liveness, readiness)
+4. **Type-Safe Responses**: Serde-based serialization
+5. **Middleware Stack**: CORS, logging, compression
+
+#### Health Check Endpoints
+
+- `/health`: Comprehensive health check with version info
+- `/live`: Liveness probe (is the server running?)
+- `/ready`: Readiness probe (is the server ready for traffic?)
+
+#### Example: Adding a New Endpoint
+
+```rust
+// handlers/myhandler.rs
+use actix_web::{get, web, HttpResponse, Responder};
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize)]
+pub struct MyQuery {
+    param: String,
+}
+
+#[derive(Serialize)]
+pub struct MyResponse {
+    result: String,
+}
+
+#[get("/api/v1/myendpoint")]
+pub async fn my_handler(query: web::Query<MyQuery>) -> impl Responder {
+    let response = MyResponse {
+        result: query.param.clone(),
+    };
+    HttpResponse::Ok().json(response)
+}
+```
+
+Then update `routes.rs`:
+
+```rust
+use crate::handlers;
+
+pub fn configure(cfg: &mut web::ServiceConfig) {
+    cfg
+        .service(handlers::health::health_check)
+        .service(handlers::myhandler::my_handler); // Add here
+}
+```
+
+#### Configuration Management
+
+The API uses environment variables for configuration:
+
+- `HOST`: Server bind address (default: `0.0.0.0`)
+- `PORT`: Server port (default: `8080`)
+- `ENVIRONMENT`: Runtime environment (`development`, `production`)
+- `CORS_ENABLED`: Enable/disable CORS
+- `LOG_LEVEL`: Logging verbosity
+
+See `.env.example` for all available options.
+
+#### Middleware Pipeline
+
+Request flow:
+1. **Logger Middleware**: Request logging
+2. **CORS Middleware**: Cross-origin handling (if enabled)
+3. **Compress Middleware**: Response compression
+4. **Router**: Route matching
+5. **Handler**: Business logic
+6. **Response**: JSON serialization
+{% endif %}
+
+## Build Configuration
+
+### Cargo.toml Structure
+
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+The CLI binary is configured as:
+```toml
+[[bin]]
+name = "{{ package_name }}"
+path = "cli/main.rs"
+```
+{% endif %}
+
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+The API binary is configured as:
+```toml
+[[bin]]
+name = "{{ package_name }}-api"
+path = "api/main.rs"
+```
+{% endif %}
+
+### Release Optimizations
+
+Release builds use aggressive optimizations:
+
+- **LTO (Link-Time Optimization)**: Whole-program optimization
+- **Strip**: Remove debug symbols
+- **Single Codegen Unit**: Better optimization at cost of compile time
+- **Size Optimization**: `-Oz` for smaller binaries
+
+```toml
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+
+[profile.release.package."*"]
+opt-level = "z"
+```
+
+## Testing Strategy
+
+### Unit Tests
+
+Each module includes inline unit tests:
+- Command logic tests in CLI modules
+- Handler tests in API modules
+- Model serialization tests
+
+### Integration Tests
+
+Located in `tests/`:
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+- `cli_integration_test.rs`: End-to-end CLI testing
+{% endif %}
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+- `api_integration_test.rs`: HTTP endpoint testing
+{% endif %}
+
+### Running Tests
+
+```bash
+# All tests
+cargo test
+
+# Specific test
+cargo test test_hello
+
+# With output
+cargo test -- --nocapture
+
+# Integration tests only
+cargo test --test '*'
+```
+
+## Code Quality
+
+### Formatting
+
+Standard Rust formatting with `rustfmt`:
+```bash
+cargo fmt
+```
+
+Configuration in `rustfmt.toml`.
+
+### Linting
+
+Clippy with strict warnings:
+```bash
+cargo clippy -- -D warnings
+```
+
+### Security
+
+Regular dependency audits:
+```bash
+cargo audit
+```
+
+## Development Workflow
+
+1. **Feature Development**
+   - Create new module in appropriate directory
+   - Implement with unit tests
+   - Update route/command registration
+   - Add integration tests
+
+2. **Quality Checks**
+   ```bash
+   just quality  # Runs fmt-check, clippy, test
+   ```
+
+3. **Local Testing**
+   {% if cli_module == 'enabled' and 'rust' in cli_languages %}
+   ```bash
+   just run-cli --help
+   ```
+   {% endif %}
+   {% if api_module == 'enabled' and 'rust' in api_languages %}
+   ```bash
+   just run-api-dev
+   ```
+   {% endif %}
+
+4. **Release Build**
+   ```bash
+   just release
+   ```
+
+## Future Enhancements
+
+Potential additions:
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+- [ ] Database integration (SQLx, Diesel)
+- [ ] Authentication middleware (JWT, OAuth)
+- [ ] Rate limiting
+- [ ] Request validation
+- [ ] OpenAPI/Swagger documentation
+- [ ] Metrics endpoint (Prometheus)
+{% endif %}
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+- [ ] Configuration file support (TOML, YAML)
+- [ ] Progress bars for long operations
+- [ ] Interactive prompts
+- [ ] Shell completion scripts
+- [ ] Man page generation
+{% endif %}
+
+## References
+
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+- [Clap Documentation](https://docs.rs/clap)
+- [Tokio Guide](https://tokio.rs/tokio/tutorial)
+{% endif %}
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+- [Actix-web Documentation](https://actix.rs)
+- [Serde Guide](https://serde.rs)
+{% endif %}
+- [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/)
+- [The Rust Book](https://doc.rust-lang.org/book/)
+{% endif %}

@@ -1,0 +1,472 @@
+{% if saas_infra_module == "enabled" and saas_admin_dashboard and saas_billing_module == 'enabled' %}
+'use client';
+
+import { useState, useMemo } from 'react';
+import Link from 'next/link';
+{% if saas_ui_framework == 'shadcn-ui' %}
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+{% endif %}
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface SubscriptionRow {
+  id: string;
+  customerId: string;
+  customerName: string;
+  customerEmail: string;
+  planId: string;
+  planName: string;
+  status: 'active' | 'canceled' | 'past_due' | 'paused';
+  amount: number;
+  currency: string;
+  startDate: Date;
+  nextBillingDate: Date | null;
+  canceledAt: Date | null;
+  {% if saas_billing_provider == 'stripe' %}
+  stripeSubscriptionId?: string;
+  stripeCustomerId?: string;
+  {% endif %}
+  {% if saas_billing_provider == 'paddle' %}
+  paddleSubscriptionId?: string;
+  paddleCustomerId?: string;
+  {% endif %}
+  {% if saas_billing_provider == 'lemonsqueezy' %}
+  lemonSqueezySubscriptionId?: string;
+  lemonSqueezyCustomerId?: string;
+  {% endif %}
+  metadata?: Record<string, any>;
+}
+
+interface Plan {
+  id: string;
+  name: string;
+}
+
+interface ClientProps {
+  subscriptions: SubscriptionRow[];
+  plans: Plan[];
+}
+
+// ============================================================================
+// Status Badge Component
+// ============================================================================
+
+function StatusBadge({ status }: { status: string }) {
+  const statusConfig = {
+    active: {
+      label: 'Active',
+      className: 'bg-green-100 text-green-800 hover:bg-green-100',
+    },
+    canceled: {
+      label: 'Canceled',
+      className: 'bg-gray-100 text-gray-800 hover:bg-gray-100',
+    },
+    past_due: {
+      label: 'Past Due',
+      className: 'bg-red-100 text-red-800 hover:bg-red-100',
+    },
+    paused: {
+      label: 'Paused',
+      className: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100',
+    },
+  };
+
+  const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.active;
+
+  return <Badge className={config.className}>{config.label}</Badge>;
+}
+
+// ============================================================================
+// Actions Menu Component
+// ============================================================================
+
+function SubscriptionActions({ subscription }: { subscription: SubscriptionRow }) {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleCancel = async () => {
+    if (!confirm(`Cancel subscription for ${subscription.customerName}?`)) return;
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/admin/subscriptions/${subscription.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to cancel subscription');
+      }
+
+      // Reload page to see updated data
+      window.location.reload();
+    } catch (error) {
+      console.error('Error canceling subscription:', error);
+      alert('Failed to cancel subscription');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="h-8 w-8 p-0">
+          <span className="sr-only">Open menu</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="1" />
+            <circle cx="12" cy="5" r="1" />
+            <circle cx="12" cy="19" r="1" />
+          </svg>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem asChild>
+          <Link href={`/admin/subscriptions/${subscription.id}`}>
+            View Details
+          </Link>
+        </DropdownMenuItem>
+
+        {% if saas_billing_provider == 'stripe' %}
+        {subscription.stripeSubscriptionId && (
+          <DropdownMenuItem asChild>
+            <a
+              href={`https://dashboard.stripe.com/subscriptions/${subscription.stripeSubscriptionId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View in Stripe
+            </a>
+          </DropdownMenuItem>
+        )}
+        {% endif %}
+
+        {% if saas_billing_provider == 'paddle' %}
+        {subscription.paddleSubscriptionId && (
+          <DropdownMenuItem asChild>
+            <a
+              href={`https://vendors.paddle.com/subscriptions/${subscription.paddleSubscriptionId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View in Paddle
+            </a>
+          </DropdownMenuItem>
+        )}
+        {% endif %}
+
+        {% if saas_billing_provider == 'lemonsqueezy' %}
+        {subscription.lemonSqueezySubscriptionId && (
+          <DropdownMenuItem asChild>
+            <a
+              href={`https://app.lemonsqueezy.com/subscriptions/${subscription.lemonSqueezySubscriptionId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View in LemonSqueezy
+            </a>
+          </DropdownMenuItem>
+        )}
+        {% endif %}
+
+        <DropdownMenuItem asChild>
+          <Link href={`/admin/customers/${subscription.customerId}`}>
+            View Customer
+          </Link>
+        </DropdownMenuItem>
+
+        {subscription.status === 'active' && (
+          <>
+            <DropdownMenuItem asChild>
+              <button
+                onClick={() => {
+                  // Navigate to change plan page
+                  window.location.href = `/admin/subscriptions/${subscription.id}/change-plan`;
+                }}
+              >
+                Change Plan
+              </button>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              onClick={handleCancel}
+              disabled={isLoading}
+              className="text-red-600"
+            >
+              Cancel Subscription
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+// ============================================================================
+// Subscriptions Client Component
+// ============================================================================
+
+export default function SubscriptionsClient({
+  subscriptions,
+  plans,
+}: ClientProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'date' | 'amount' | 'name'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Filter and sort subscriptions
+  const filteredSubscriptions = useMemo(() => {
+    let filtered = [...subscriptions];
+
+    // Search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (sub) =>
+          sub.customerName.toLowerCase().includes(term) ||
+          sub.customerEmail.toLowerCase().includes(term) ||
+          sub.planName.toLowerCase().includes(term)
+      );
+    }
+
+    // Plan filter
+    if (selectedPlan !== 'all') {
+      filtered = filtered.filter((sub) => sub.planId === selectedPlan);
+    }
+
+    // Status filter
+    if (selectedStatus !== 'all') {
+      filtered = filtered.filter((sub) => sub.status === selectedStatus);
+    }
+
+    // Sorting
+    filtered.sort((a, b) => {
+      let compareValue = 0;
+
+      if (sortBy === 'date') {
+        compareValue = new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
+      } else if (sortBy === 'amount') {
+        compareValue = a.amount - b.amount;
+      } else if (sortBy === 'name') {
+        compareValue = a.customerName.localeCompare(b.customerName);
+      }
+
+      return sortOrder === 'asc' ? compareValue : -compareValue;
+    });
+
+    return filtered;
+  }, [subscriptions, searchTerm, selectedPlan, selectedStatus, sortBy, sortOrder]);
+
+  return (
+    <div className="space-y-4">
+      {/* Filters */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:gap-2">
+        <div className="flex-1">
+          <Input
+            placeholder="Search by customer name or email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="h-10"
+          />
+        </div>
+
+        <div className="w-full md:w-48">
+          <Select value={selectedPlan} onValueChange={setSelectedPlan}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filter by plan" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Plans</SelectItem>
+              {plans.map((plan) => (
+                <SelectItem key={plan.id} value={plan.id}>
+                  {plan.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="w-full md:w-48">
+          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="past_due">Past Due</SelectItem>
+              <SelectItem value="paused">Paused</SelectItem>
+              <SelectItem value="canceled">Canceled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Results count */}
+      <div className="text-sm text-muted-foreground">
+        Showing {filteredSubscriptions.length} of {subscriptions.length} subscriptions
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="cursor-pointer" onClick={() => setSortBy('name')}>
+                Customer {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead>Plan</TableHead>
+              <TableHead className="cursor-pointer" onClick={() => setSortBy('amount')}>
+                Amount {sortBy === 'amount' && (sortOrder === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="cursor-pointer" onClick={() => setSortBy('date')}>
+                Started {sortBy === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead>Next Billing</TableHead>
+              {% if saas_billing_provider == 'stripe' %}
+              <TableHead>Stripe ID</TableHead>
+              {% endif %}
+              {% if saas_billing_provider == 'paddle' %}
+              <TableHead>Paddle ID</TableHead>
+              {% endif %}
+              {% if saas_billing_provider == 'lemonsqueezy' %}
+              <TableHead>LS ID</TableHead>
+              {% endif %}
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredSubscriptions.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                  No subscriptions found
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredSubscriptions.map((subscription) => (
+                <TableRow key={subscription.id}>
+                  <TableCell>
+                    <div>
+                      <p className="font-medium">{subscription.customerName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {subscription.customerEmail}
+                      </p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm font-medium">{subscription.planName}</span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-medium">
+                      {subscription.currency} ${(subscription.amount / 100).toFixed(2)}
+                    </span>
+                    <span className="text-sm text-muted-foreground">/month</span>
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge status={subscription.status} />
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm">
+                      {new Date(subscription.startDate).toLocaleDateString()}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm">
+                      {subscription.nextBillingDate
+                        ? new Date(subscription.nextBillingDate).toLocaleDateString()
+                        : '-'}
+                    </span>
+                  </TableCell>
+                  {% if saas_billing_provider == 'stripe' %}
+                  <TableCell>
+                    <code className="text-xs">
+                      {subscription.stripeSubscriptionId
+                        ? subscription.stripeSubscriptionId.substring(0, 12) + '...'
+                        : '-'}
+                    </code>
+                  </TableCell>
+                  {% endif %}
+                  {% if saas_billing_provider == 'paddle' %}
+                  <TableCell>
+                    <code className="text-xs">
+                      {subscription.paddleSubscriptionId
+                        ? subscription.paddleSubscriptionId.substring(0, 12) + '...'
+                        : '-'}
+                    </code>
+                  </TableCell>
+                  {% endif %}
+                  {% if saas_billing_provider == 'lemonsqueezy' %}
+                  <TableCell>
+                    <code className="text-xs">
+                      {subscription.lemonSqueezySubscriptionId
+                        ? subscription.lemonSqueezySubscriptionId.substring(0, 12) + '...'
+                        : '-'}
+                    </code>
+                  </TableCell>
+                  {% endif %}
+                  <TableCell className="text-right">
+                    <SubscriptionActions subscription={subscription} />
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Footer info */}
+      <div className="flex items-center justify-between border-t pt-4 text-sm text-muted-foreground">
+        <div>
+          Total Active MRR:{' '}
+          <span className="font-semibold">
+            ${(
+              filteredSubscriptions
+                .filter((s) => s.status === 'active')
+                .reduce((sum, s) => sum + s.amount, 0) / 100
+            ).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        </div>
+        <div>
+          {filteredSubscriptions.filter((s) => s.status === 'active').length} active subscriptions
+        </div>
+      </div>
+    </div>
+  );
+}
+{% endif %}

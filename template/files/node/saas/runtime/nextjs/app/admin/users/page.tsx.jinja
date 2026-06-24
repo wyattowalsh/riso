@@ -1,0 +1,565 @@
+{% if saas_infra_module == "enabled" and saas_admin_dashboard %}
+/**
+ * Admin Users Management Page
+ *
+ * Provides a comprehensive user management interface for administrators:
+ * - View all users with searchable/filterable data table
+ * - User status management (active, suspended, deleted)
+ * - Perform administrative actions (view details, disable/enable, delete)
+ * - Pagination for large user lists
+ * - Role-based authentication required
+ *
+ * Features:
+ * - Real-time user data display with server-side state
+ * - Client-side search and filtering
+ * - Confirmation dialogs for destructive actions
+ * - Responsive design for mobile and desktop
+ */
+
+{% if saas_runtime == 'nextjs-16' %}
+import { Suspense } from 'react';
+import Link from 'next/link';
+import { DashboardLayout, PageHeader } from '@/components/layouts/dashboard';
+{% endif %}
+{% if saas_ui_framework == 'shadcn-ui' %}
+import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+{% endif %}
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  {% if saas_auth_provider == 'clerk' %}
+  clerkId: string;
+  {% endif %}
+  {% if saas_auth_provider == 'authjs' %}
+  emailVerified: boolean | null;
+  {% endif %}
+  status: 'active' | 'suspended' | 'deleted';
+  createdAt: string;
+  lastLogin?: string | null;
+  {% if saas_tenancy_model == 'b2b-teams' %}
+  organizationId?: string;
+  role: 'owner' | 'admin' | 'member';
+  {% endif %}
+}
+
+interface PaginationMeta {
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+interface UsersResponse {
+  users: User[];
+  pagination: PaginationMeta;
+}
+
+// ============================================================================
+// Client Component: Users Table with Actions
+// ============================================================================
+
+'use client';
+
+import * as React from 'react';
+{% if saas_ui_framework == 'shadcn-ui' %}
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
+{% endif %}
+
+interface UsersTableProps {
+  initialUsers: User[];
+  initialPagination: PaginationMeta;
+}
+
+function UsersTable({ initialUsers, initialPagination }: UsersTableProps) {
+  const [users, setUsers] = React.useState<User[]>(initialUsers);
+  const [pagination, setPagination] = React.useState(initialPagination);
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  // Dialog states
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [userToDelete, setUserToDelete] = React.useState<User | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = React.useState(false);
+  const [selectedUser, setSelectedUser] = React.useState<User | null>(null);
+  const [actionInProgress, setActionInProgress] = React.useState(false);
+
+  // Filter users based on search query
+  const filteredUsers = React.useMemo(() => {
+    if (!searchQuery.trim()) return users;
+
+    const query = searchQuery.toLowerCase();
+    return users.filter(user =>
+      user.name.toLowerCase().includes(query) ||
+      user.email.toLowerCase().includes(query)
+    );
+  }, [users, searchQuery]);
+
+  // Handle user status change
+  const handleToggleStatus = async (userId: string, currentStatus: string) => {
+    setActionInProgress(true);
+    try {
+      const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update user status');
+
+      const updatedUser = await response.json();
+      setUsers(prev =>
+        prev.map(u => (u.id === userId ? { ...u, status: updatedUser.status } : u))
+      );
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      alert('Failed to update user status');
+    } finally {
+      setActionInProgress(false);
+    }
+  };
+
+  // Handle user deletion with confirmation
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    setActionInProgress(true);
+    try {
+      const response = await fetch(`/api/admin/users/${userToDelete.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete user');
+
+      setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      alert('Failed to delete user');
+    } finally {
+      setActionInProgress(false);
+    }
+  };
+
+  // Handle pagination
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    // In a real app, you'd refetch data here
+  };
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  // Get status badge color
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'bg-green-100 text-green-800';
+      case 'suspended':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'deleted':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Search Input */}
+      <div className="flex gap-4">
+        <div className="flex-1">
+          <Input
+            placeholder="Search by name or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            disabled={isLoading}
+            className="max-w-md"
+          />
+        </div>
+      </div>
+
+      {/* Users Table */}
+      {% if saas_ui_framework == 'shadcn-ui' %}
+      <div className="rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              {% if saas_auth_provider == 'authjs' %}
+              <TableHead>Email Verified</TableHead>
+              {% endif %}
+              {% if saas_tenancy_model == 'b2b-teams' %}
+              <TableHead>Role</TableHead>
+              {% endif %}
+              <TableHead>Status</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredUsers.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={{ '{' }}{% if saas_auth_provider == 'authjs' %}8{% elif saas_tenancy_model == 'b2b-teams' %}7{% else %}6{% endif %}{{ '}' }} className="text-center py-8 text-muted-foreground">
+                  {searchQuery ? 'No users found matching your search.' : 'No users found.'}
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredUsers.map(user => (
+                <TableRow key={user.id}>
+                  <TableCell className="font-medium">{user.name}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  {% if saas_auth_provider == 'authjs' %}
+                  <TableCell>
+                    {user.emailVerified ? (
+                      <Badge variant="outline" className="bg-green-50">Verified</Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-yellow-50">Unverified</Badge>
+                    )}
+                  </TableCell>
+                  {% endif %}
+                  {% if saas_tenancy_model == 'b2b-teams' %}
+                  <TableCell>
+                    <Badge variant="secondary" className="capitalize">{user.role}</Badge>
+                  </TableCell>
+                  {% endif %}
+                  <TableCell>
+                    <Badge className={getStatusColor(user.status)}>
+                      {user.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {formatDate(user.createdAt)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <svg
+                            className="h-4 w-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+                            />
+                          </svg>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setDetailsDialogOpen(true);
+                          }}
+                        >
+                          View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            handleToggleStatus(user.id, user.status)
+                          }
+                          disabled={actionInProgress}
+                        >
+                          {user.status === 'active' ? 'Suspend' : 'Reactivate'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setUserToDelete(user);
+                            setDeleteDialogOpen(true);
+                          }}
+                          className="text-red-600"
+                          disabled={actionInProgress}
+                        >
+                          Delete User
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      {% endif %}
+
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Page {currentPage} of {pagination.totalPages} ({pagination.total} total users)
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1 || isLoading}
+              onClick={() => handlePageChange(currentPage - 1)}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage >= pagination.totalPages || isLoading}
+              onClick={() => handlePageChange(currentPage + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* User Details Dialog */}
+      <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>User Details</DialogTitle>
+          </DialogHeader>
+          {selectedUser && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Name</label>
+                  <p className="text-sm font-medium">{selectedUser.name}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Email</label>
+                  <p className="text-sm font-medium">{selectedUser.email}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Status</label>
+                  <p className="text-sm font-medium capitalize">{selectedUser.status}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Created</label>
+                  <p className="text-sm font-medium">{formatDate(selectedUser.createdAt)}</p>
+                </div>
+                {% if saas_auth_provider == 'clerk' %}
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Clerk ID</label>
+                  <p className="text-sm font-mono text-muted-foreground break-all">{selectedUser.clerkId}</p>
+                </div>
+                {% endif %}
+                {% if saas_auth_provider == 'authjs' %}
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Email Verified</label>
+                  <p className="text-sm font-medium">{selectedUser.emailVerified ? 'Yes' : 'No'}</p>
+                </div>
+                {% endif %}
+                {% if saas_tenancy_model == 'b2b-teams' %}
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Role</label>
+                  <p className="text-sm font-medium capitalize">{selectedUser.role}</p>
+                </div>
+                {% endif %}
+                {selectedUser.lastLogin && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Last Login</label>
+                    <p className="text-sm font-medium">
+                      {new Date(selectedUser.lastLogin).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailsDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {userToDelete?.name}? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={actionInProgress}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteUser}
+              disabled={actionInProgress}
+            >
+              {actionInProgress ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ============================================================================
+// Server Component: Page
+// ============================================================================
+
+async function getUsersData(page: number = 1): Promise<UsersResponse> {
+  // This is a placeholder. In a real implementation, you would:
+  // 1. Verify admin authentication
+  // 2. Fetch users from your database
+  // 3. Apply pagination
+
+  return {
+    users: [
+      {
+        id: '1',
+        name: 'Alice Johnson',
+        email: 'alice@example.com',
+        {% if saas_auth_provider == 'clerk' %}
+        clerkId: 'user_1234567890',
+        {% endif %}
+        {% if saas_auth_provider == 'authjs' %}
+        emailVerified: new Date('2024-01-15'),
+        {% endif %}
+        status: 'active',
+        createdAt: '2024-01-15T10:30:00Z',
+        lastLogin: '2024-01-14T14:20:00Z',
+        {% if saas_tenancy_model == 'b2b-teams' %}
+        role: 'admin',
+        {% endif %}
+      },
+      {
+        id: '2',
+        name: 'Bob Smith',
+        email: 'bob@example.com',
+        {% if saas_auth_provider == 'clerk' %}
+        clerkId: 'user_0987654321',
+        {% endif %}
+        {% if saas_auth_provider == 'authjs' %}
+        emailVerified: new Date('2024-01-10'),
+        {% endif %}
+        status: 'active',
+        createdAt: '2024-01-10T08:15:00Z',
+        lastLogin: '2024-01-12T09:45:00Z',
+        {% if saas_tenancy_model == 'b2b-teams' %}
+        role: 'member',
+        {% endif %}
+      },
+      {
+        id: '3',
+        name: 'Carol Davis',
+        email: 'carol@example.com',
+        {% if saas_auth_provider == 'clerk' %}
+        clerkId: 'user_1122334455',
+        {% endif %}
+        {% if saas_auth_provider == 'authjs' %}
+        emailVerified: null,
+        {% endif %}
+        status: 'suspended',
+        createdAt: '2024-01-05T16:45:00Z',
+        lastLogin: null,
+        {% if saas_tenancy_model == 'b2b-teams' %}
+        role: 'member',
+        {% endif %}
+      },
+    ],
+    pagination: {
+      total: 3,
+      page: 1,
+      pageSize: 10,
+      totalPages: 1,
+    },
+  };
+}
+
+export default async function AdminUsersPage() {
+  try {
+    const { users, pagination } = await getUsersData();
+
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <PageHeader
+            title="User Management"
+            description="View and manage all users in your application. You can search, filter, and perform administrative actions."
+          />
+
+          <Suspense fallback={<div>Loading users...</div>}>
+            <UsersTable
+              initialUsers={users}
+              initialPagination={pagination}
+            />
+          </Suspense>
+        </div>
+      </DashboardLayout>
+    );
+  } catch (error) {
+    console.error('Error loading users:', error);
+
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <PageHeader
+            title="User Management"
+            description="View and manage all users in your application."
+          />
+
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+            <h3 className="font-semibold text-red-900">Error Loading Users</h3>
+            <p className="text-sm text-red-700">
+              An error occurred while loading the user list. Please try again later or contact support.
+            </p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+}
+{% endif %}

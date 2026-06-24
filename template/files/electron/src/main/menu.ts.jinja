@@ -1,0 +1,225 @@
+{% if desktop_module == "enabled" and desktop_framework == "electron-vite" %}
+/**
+ * Application Menu Module
+ *
+ * Defines the application menu for different platforms.
+ * macOS has a different menu structure than Windows/Linux.
+ */
+
+import {
+  app,
+  Menu,
+  MenuItemConstructorOptions,
+  BrowserWindow,
+  shell,
+} from 'electron';
+import { is } from '@electron-toolkit/utils';
+
+/**
+ * Set up the application menu
+ */
+export function setupMenu(mainWindow: BrowserWindow): void {
+  const isMac = process.platform === 'darwin';
+
+  const template: MenuItemConstructorOptions[] = [
+    // App Menu (macOS only)
+    ...(isMac
+      ? [
+          {
+            label: app.name,
+            submenu: [
+              { role: 'about' as const },
+              { type: 'separator' as const },
+              {
+                label: 'Preferences...',
+                accelerator: 'CmdOrCtrl+,',
+                click: (): void => {
+                  mainWindow.webContents.send('open-settings');
+                },
+              },
+              { type: 'separator' as const },
+              { role: 'services' as const },
+              { type: 'separator' as const },
+              { role: 'hide' as const },
+              { role: 'hideOthers' as const },
+              { role: 'unhide' as const },
+              { type: 'separator' as const },
+              { role: 'quit' as const },
+            ],
+          },
+        ]
+      : []),
+
+    // File Menu
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'New Window',
+          accelerator: 'CmdOrCtrl+N',
+          click: async (): Promise<void> => {
+            const { createMainWindow } = await import('./window');
+            await createMainWindow({ id: `window-${Date.now()}` });
+          },
+        },
+        { type: 'separator' },
+        ...(isMac
+          ? [{ role: 'close' as const }]
+          : [
+              {
+                label: 'Settings',
+                accelerator: 'CmdOrCtrl+,',
+                click: (): void => {
+                  mainWindow.webContents.send('open-settings');
+                },
+              },
+              { type: 'separator' as const },
+              { role: 'quit' as const },
+            ]),
+      ],
+    },
+
+    // Edit Menu
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        ...(isMac
+          ? [
+              { role: 'pasteAndMatchStyle' as const },
+              { role: 'delete' as const },
+              { role: 'selectAll' as const },
+              { type: 'separator' as const },
+              {
+                label: 'Speech',
+                submenu: [
+                  { role: 'startSpeaking' as const },
+                  { role: 'stopSpeaking' as const },
+                ],
+              },
+            ]
+          : [
+              { role: 'delete' as const },
+              { type: 'separator' as const },
+              { role: 'selectAll' as const },
+            ]),
+      ],
+    },
+
+    // View Menu
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        ...(is.dev ? [{ role: 'toggleDevTools' as const }] : []),
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+      ],
+    },
+
+    // Window Menu
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'zoom' },
+        ...(isMac
+          ? [
+              { type: 'separator' as const },
+              { role: 'front' as const },
+              { type: 'separator' as const },
+              { role: 'window' as const },
+            ]
+          : [{ role: 'close' as const }]),
+      ],
+    },
+
+    // Help Menu
+    {
+      role: 'help',
+      submenu: [
+        {
+          label: 'Documentation',
+          click: async (): Promise<void> => {
+            await shell.openExternal(
+              'https://github.com/{{ github_username | default("your-username") }}/{{ project_slug }}#readme'
+            );
+          },
+        },
+        {
+          label: 'Report Issue',
+          click: async (): Promise<void> => {
+            await shell.openExternal(
+              'https://github.com/{{ github_username | default("your-username") }}/{{ project_slug }}/issues'
+            );
+          },
+        },
+        { type: 'separator' },
+        {
+          label: 'View License',
+          click: async (): Promise<void> => {
+            await shell.openExternal(
+              'https://github.com/{{ github_username | default("your-username") }}/{{ project_slug }}/blob/main/LICENSE'
+            );
+          },
+        },
+        { type: 'separator' },
+        {% if 'auto_updater' in desktop_features %}
+        {
+          label: 'Check for Updates...',
+          click: (): void => {
+            mainWindow.webContents.send('check-for-updates');
+          },
+        },
+        {% endif %}
+        {
+          label: `About {{ project_name }}`,
+          click: (): void => {
+            mainWindow.webContents.send('show-about');
+          },
+        },
+      ],
+    },
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
+
+/**
+ * Create a context menu for the renderer
+ */
+export function createContextMenu(params: {
+  hasSelection: boolean;
+  isEditable: boolean;
+}): Menu {
+  const template: MenuItemConstructorOptions[] = [];
+
+  if (params.isEditable) {
+    template.push(
+      { role: 'undo' },
+      { role: 'redo' },
+      { type: 'separator' },
+      { role: 'cut' },
+      { role: 'copy' },
+      { role: 'paste' },
+      { type: 'separator' },
+      { role: 'selectAll' }
+    );
+  } else if (params.hasSelection) {
+    template.push({ role: 'copy' });
+  }
+
+  return Menu.buildFromTemplate(template);
+}
+{% endif %}

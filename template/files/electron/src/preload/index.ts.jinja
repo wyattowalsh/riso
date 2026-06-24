@@ -1,0 +1,250 @@
+{% if desktop_module == "enabled" and desktop_framework == "electron-vite" %}
+/**
+ * Preload Script
+ *
+ * This script runs in an isolated context before the renderer process loads.
+ * It's the ONLY way to safely expose Node.js/Electron APIs to the renderer.
+ *
+ * Security Best Practices:
+ * - NEVER expose ipcRenderer directly
+ * - Only expose specific, safe APIs through contextBridge
+ * - Validate and sanitize all inputs in main process handlers
+ * - Use invoke/handle pattern for async operations
+ */
+
+import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
+import { electronAPI } from '@electron-toolkit/preload';
+
+/**
+ * Type definitions for the exposed API
+ */
+export interface ElectronAPI {
+  // App information
+  getVersion: () => Promise<string>;
+  getAppInfo: () => Promise<{
+    name: string;
+    version: string;
+    electron: string;
+    chrome: string;
+    node: string;
+    platform: string;
+    arch: string;
+    isDev: boolean;
+  }>;
+  getPlatform: () => Promise<NodeJS.Platform>;
+
+  // Theme
+  getTheme: () => Promise<{
+    source: 'system' | 'light' | 'dark';
+    shouldUseDarkColors: boolean;
+  }>;
+  setTheme: (theme: 'system' | 'light' | 'dark') => Promise<{ success: boolean }>;
+  onThemeChanged: (
+    callback: (theme: { source: string; shouldUseDarkColors: boolean }) => void
+  ) => () => void;
+
+  // Window management
+  minimizeWindow: () => Promise<void>;
+  maximizeWindow: () => Promise<boolean>;
+  closeWindow: () => Promise<void>;
+  isMaximized: () => Promise<boolean>;
+
+  // Dialogs
+  showOpenDialog: (
+    options: Electron.OpenDialogOptions
+  ) => Promise<Electron.OpenDialogReturnValue>;
+  showSaveDialog: (
+    options: Electron.SaveDialogOptions
+  ) => Promise<Electron.SaveDialogReturnValue>;
+  showMessageBox: (
+    options: Electron.MessageBoxOptions
+  ) => Promise<Electron.MessageBoxReturnValue>;
+
+  // Shell
+  openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
+  showItemInFolder: (path: string) => Promise<{ success: boolean }>;
+
+  // Store
+  storeGet: <T>(key: string) => Promise<T>;
+  storeSet: <T>(key: string, value: T) => Promise<{ success: boolean }>;
+  storeDelete: (key: string) => Promise<{ success: boolean }>;
+
+  // Event listeners
+  onOpenSettings: (callback: () => void) => () => void;
+  onShowAbout: (callback: () => void) => () => void;
+  {% if 'auto_updater' in desktop_features %}
+  onCheckForUpdates: (callback: () => void) => () => void;
+  onUpdateAvailable: (
+    callback: (info: { version: string; releaseDate: string }) => void
+  ) => () => void;
+  onUpdateProgress: (
+    callback: (progress: { percent: number; bytesPerSecond: number }) => void
+  ) => () => void;
+  onUpdateDownloaded: (
+    callback: (info: { version: string }) => void
+  ) => () => void;
+  onUpdateError: (callback: (error: { message: string }) => void) => () => void;
+  checkForUpdates: () => Promise<{ success: boolean; updateInfo?: unknown }>;
+  quitAndInstall: () => Promise<void>;
+  {% endif %}
+}
+
+/**
+ * IPC Channel names - must match main process handlers
+ */
+const IPC_CHANNELS = {
+  // App info
+  GET_VERSION: 'get-version',
+  GET_APP_INFO: 'get-app-info',
+  GET_PLATFORM: 'get-platform',
+
+  // Theme
+  GET_THEME: 'get-theme',
+  SET_THEME: 'set-theme',
+  THEME_CHANGED: 'theme-changed',
+
+  // Window management
+  MINIMIZE_WINDOW: 'minimize-window',
+  MAXIMIZE_WINDOW: 'maximize-window',
+  CLOSE_WINDOW: 'close-window',
+  IS_MAXIMIZED: 'is-maximized',
+
+  // Dialogs
+  SHOW_OPEN_DIALOG: 'show-open-dialog',
+  SHOW_SAVE_DIALOG: 'show-save-dialog',
+  SHOW_MESSAGE_BOX: 'show-message-box',
+
+  // Shell
+  OPEN_EXTERNAL: 'open-external',
+  SHOW_ITEM_IN_FOLDER: 'show-item-in-folder',
+
+  // Store
+  STORE_GET: 'store-get',
+  STORE_SET: 'store-set',
+  STORE_DELETE: 'store-delete',
+
+  // Menu events
+  OPEN_SETTINGS: 'open-settings',
+  SHOW_ABOUT: 'show-about',
+
+  {% if 'auto_updater' in desktop_features %}
+  // Updates
+  CHECK_FOR_UPDATES: 'check-for-updates',
+  UPDATE_AVAILABLE: 'update-available',
+  UPDATE_NOT_AVAILABLE: 'update-not-available',
+  UPDATE_DOWNLOADED: 'update-downloaded',
+  UPDATE_PROGRESS: 'update-progress',
+  UPDATE_ERROR: 'update-error',
+  QUIT_AND_INSTALL: 'quit-and-install',
+  {% endif %}
+} as const;
+
+/**
+ * Helper to create an event listener with cleanup
+ */
+function createEventListener<T>(
+  channel: string,
+  callback: (data: T) => void
+): () => void {
+  const handler = (_event: IpcRendererEvent, data: T): void => {
+    callback(data);
+  };
+  ipcRenderer.on(channel, handler);
+
+  // Return cleanup function
+  return () => {
+    ipcRenderer.removeListener(channel, handler);
+  };
+}
+
+/**
+ * Custom APIs exposed to the renderer process
+ */
+const api: ElectronAPI = {
+  // App information
+  getVersion: () => ipcRenderer.invoke(IPC_CHANNELS.GET_VERSION),
+  getAppInfo: () => ipcRenderer.invoke(IPC_CHANNELS.GET_APP_INFO),
+  getPlatform: () => ipcRenderer.invoke(IPC_CHANNELS.GET_PLATFORM),
+
+  // Theme
+  getTheme: () => ipcRenderer.invoke(IPC_CHANNELS.GET_THEME),
+  setTheme: (theme) => ipcRenderer.invoke(IPC_CHANNELS.SET_THEME, theme),
+  onThemeChanged: (callback) =>
+    createEventListener(IPC_CHANNELS.THEME_CHANGED, callback),
+
+  // Window management
+  minimizeWindow: () => ipcRenderer.invoke(IPC_CHANNELS.MINIMIZE_WINDOW),
+  maximizeWindow: () => ipcRenderer.invoke(IPC_CHANNELS.MAXIMIZE_WINDOW),
+  closeWindow: () => ipcRenderer.invoke(IPC_CHANNELS.CLOSE_WINDOW),
+  isMaximized: () => ipcRenderer.invoke(IPC_CHANNELS.IS_MAXIMIZED),
+
+  // Dialogs
+  showOpenDialog: (options) =>
+    ipcRenderer.invoke(IPC_CHANNELS.SHOW_OPEN_DIALOG, options),
+  showSaveDialog: (options) =>
+    ipcRenderer.invoke(IPC_CHANNELS.SHOW_SAVE_DIALOG, options),
+  showMessageBox: (options) =>
+    ipcRenderer.invoke(IPC_CHANNELS.SHOW_MESSAGE_BOX, options),
+
+  // Shell
+  openExternal: (url) => ipcRenderer.invoke(IPC_CHANNELS.OPEN_EXTERNAL, url),
+  showItemInFolder: (path) =>
+    ipcRenderer.invoke(IPC_CHANNELS.SHOW_ITEM_IN_FOLDER, path),
+
+  // Store
+  storeGet: (key) => ipcRenderer.invoke(IPC_CHANNELS.STORE_GET, key),
+  storeSet: (key, value) =>
+    ipcRenderer.invoke(IPC_CHANNELS.STORE_SET, key, value),
+  storeDelete: (key) => ipcRenderer.invoke(IPC_CHANNELS.STORE_DELETE, key),
+
+  // Menu event listeners
+  onOpenSettings: (callback) =>
+    createEventListener(IPC_CHANNELS.OPEN_SETTINGS, callback),
+  onShowAbout: (callback) =>
+    createEventListener(IPC_CHANNELS.SHOW_ABOUT, callback),
+
+  {% if 'auto_updater' in desktop_features %}
+  // Update listeners
+  onCheckForUpdates: (callback) =>
+    createEventListener(IPC_CHANNELS.CHECK_FOR_UPDATES, callback),
+  onUpdateAvailable: (callback) =>
+    createEventListener(IPC_CHANNELS.UPDATE_AVAILABLE, callback),
+  onUpdateProgress: (callback) =>
+    createEventListener(IPC_CHANNELS.UPDATE_PROGRESS, callback),
+  onUpdateDownloaded: (callback) =>
+    createEventListener(IPC_CHANNELS.UPDATE_DOWNLOADED, callback),
+  onUpdateError: (callback) =>
+    createEventListener(IPC_CHANNELS.UPDATE_ERROR, callback),
+  checkForUpdates: () => ipcRenderer.invoke(IPC_CHANNELS.CHECK_FOR_UPDATES),
+  quitAndInstall: () => ipcRenderer.invoke(IPC_CHANNELS.QUIT_AND_INSTALL),
+  {% endif %}
+};
+
+// Use `contextBridge` APIs to expose Electron APIs to renderer
+// only if context isolation is enabled, otherwise just add to the DOM global
+if (process.contextIsolated) {
+  try {
+    // Expose electron-toolkit API
+    contextBridge.exposeInMainWorld('electron', electronAPI);
+    // Expose our custom API
+    contextBridge.exposeInMainWorld('api', api);
+  } catch (error) {
+    console.error('Failed to expose APIs:', error);
+  }
+} else {
+  // @ts-expect-error - fallback for non-isolated context (development only)
+  window.electron = electronAPI;
+  // @ts-expect-error
+  window.api = api;
+}
+
+/**
+ * Type declaration for the exposed API in renderer
+ */
+declare global {
+  interface Window {
+    electron: typeof electronAPI;
+    api: ElectronAPI;
+  }
+}
+{% endif %}

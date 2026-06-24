@@ -1,0 +1,702 @@
+{% if saas_infra_module == "enabled" %}
+# Observability Module
+
+Comprehensive observability solution for {{ project_name }} with logging, tracing, metrics, error tracking, and performance monitoring.
+
+## Features
+
+{% if saas_observability_structured_logging %}
+- **Structured Logging**: JSON logging with pino, correlation IDs, and automatic context enrichment
+{% endif %}
+{% if saas_observability_otel %}
+- **Distributed Tracing**: OpenTelemetry instrumentation for end-to-end request tracing
+- **Custom Metrics**: Business metrics (signups, payments, API usage) and performance metrics
+{% endif %}
+{% if saas_observability_sentry %}
+- **Error Tracking**: Sentry integration with breadcrumbs, user context, and source maps
+{% endif %}
+- **Performance Monitoring**: Core Web Vitals (LCP, FID, CLS) and custom performance measurements
+- **Request Correlation**: Track requests across services with correlation IDs
+
+## Quick Start
+
+### 1. Installation
+
+```bash
+npm install --save \
+{% if saas_observability_structured_logging %}
+  pino pino-pretty \
+{% endif %}
+{% if saas_observability_otel %}
+  @opentelemetry/api \
+  @opentelemetry/sdk-node \
+  @opentelemetry/auto-instrumentations-node \
+  @opentelemetry/exporter-trace-otlp-http \
+  @opentelemetry/exporter-metrics-otlp-http \
+  @opentelemetry/sdk-metrics \
+  @opentelemetry/resources \
+  @opentelemetry/semantic-conventions \
+{% endif %}
+{% if saas_observability_sentry %}
+  @sentry/nextjs \
+{% endif %}
+  web-vitals
+```
+
+### 2. Environment Variables
+
+Create a `.env.local` file:
+
+```bash
+# Logging
+LOG_LEVEL=info  # debug, info, warn, error
+
+{% if saas_observability_otel %}
+# OpenTelemetry
+OTEL_SERVICE_NAME={{ project_slug }}
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+OTEL_SAMPLE_RATE=1.0
+OTEL_METRIC_EXPORT_INTERVAL=60000
+{% endif %}
+
+{% if saas_observability_sentry %}
+# Sentry
+NEXT_PUBLIC_SENTRY_DSN=https://your-dsn@sentry.io/project-id
+SENTRY_TRACES_SAMPLE_RATE=1.0
+SENTRY_PROFILES_SAMPLE_RATE=1.0
+SENTRY_REPLAYS_SESSION_SAMPLE_RATE=0.1
+SENTRY_REPLAYS_ERROR_SAMPLE_RATE=1.0
+{% endif %}
+```
+
+### 3. Initialize Observability
+
+Create `instrumentation.ts` in your project root:
+
+```typescript
+// instrumentation.ts
+export async function register() {
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    {% if saas_observability_otel %}
+    // Initialize OpenTelemetry first (auto-instrumentation)
+    const { initializeTracing } = await import('./lib/observability/tracing');
+    const { initializeMetrics } = await import('./lib/observability/metrics');
+
+    initializeTracing();
+    initializeMetrics();
+    {% endif %}
+
+    {% if saas_observability_sentry %}
+    // Initialize Sentry
+    const { initializeSentry } = await import('./lib/observability/error-tracking');
+    initializeSentry();
+    {% endif %}
+  }
+
+  {% if saas_observability_sentry %}
+  if (process.env.NEXT_RUNTIME === 'edge') {
+    // Edge runtime Sentry initialization
+    const { initializeSentry } = await import('./lib/observability/error-tracking');
+    initializeSentry();
+  }
+  {% endif %}
+}
+```
+
+Enable instrumentation in `next.config.js`:
+
+```javascript
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  experimental: {
+    instrumentationHook: true,
+  },
+  // ... other config
+};
+
+module.exports = nextConfig;
+```
+
+### 4. Track Web Vitals (Client-Side)
+
+In your root layout (`app/layout.tsx`):
+
+```typescript
+'use client';
+
+import { useEffect } from 'react';
+import { trackWebVitals } from '@/lib/observability';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    trackWebVitals((metric) => {
+      // Automatically sent to configured observability platforms
+      console.log(metric);
+    });
+  }, []);
+
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+## Usage Examples
+
+{% if saas_observability_structured_logging %}
+### Logging
+
+```typescript
+import { logger, createLogger, logError } from '@/lib/observability';
+
+// Basic logging
+logger.info('User logged in');
+logger.warn({ msg: 'Rate limit approaching', remaining: 5 });
+
+// Child logger with context
+const paymentLogger = createLogger({ module: 'billing' });
+paymentLogger.info({ msg: 'Processing payment', amount: 9.99 });
+
+// Error logging
+try {
+  await processPayment(data);
+} catch (error) {
+  logError('Payment failed', error, { userId: user.id });
+}
+
+// Performance timing
+import { startTimer } from '@/lib/observability';
+
+const timer = startTimer('database-query');
+const users = await db.users.findMany();
+timer.done({ rowCount: users.length });
+```
+{% endif %}
+
+{% if saas_observability_otel %}
+### Tracing
+
+```typescript
+import { withSpan, createSpan, traceHandler } from '@/lib/observability/tracing';
+
+// Automatic API route tracing
+export const GET = traceHandler('GET /api/users', async (request) => {
+  const users = await db.users.findMany();
+  return Response.json(users);
+});
+
+// Manual span creation
+const result = await withSpan('process-checkout', async (span) => {
+  span.setAttributes({
+    'checkout.items': cartItems.length,
+    'checkout.total': total,
+  });
+
+  return await processCheckout(cart);
+});
+
+// Database tracing
+import { traceDatabase } from '@/lib/observability/tracing';
+
+const users = await traceDatabase(
+  'users.findMany',
+  { operation: 'SELECT', table: 'users' },
+  () => db.users.findMany()
+);
+
+// External API tracing
+import { traceExternalApi } from '@/lib/observability/tracing';
+
+const intent = await traceExternalApi(
+  'stripe.createPaymentIntent',
+  {
+    service: 'stripe',
+    operation: 'POST /v1/payment_intents',
+  },
+  () => stripe.paymentIntents.create({ amount: 9900, currency: 'usd' })
+);
+```
+
+### Metrics
+
+```typescript
+import {
+  recordSignup,
+  recordPayment,
+  recordApiRequest,
+  recordCounter,
+  recordHistogram,
+} from '@/lib/observability/metrics';
+
+// Business metrics
+recordSignup({
+  userId: user.id,
+  provider: 'google',
+  {% if saas_billing_system != 'none' %}
+  plan: 'free',
+  {% endif %}
+});
+
+{% if saas_billing_system != 'none' %}
+recordPayment({
+  userId: user.id,
+  amount: 9.99,
+  currency: 'USD',
+  planId: 'pro',
+  status: 'succeeded',
+});
+{% endif %}
+
+// API metrics (typically in middleware)
+recordApiRequest({
+  endpoint: '/api/users',
+  method: 'GET',
+  statusCode: 200,
+  duration: 145,
+  userId: user?.id,
+});
+
+// Custom metrics
+recordCounter('feature.usage', 1, {
+  feature: 'export',
+  format: 'csv',
+});
+
+recordHistogram('search.latency', 234, {
+  index: 'products',
+  results: 50,
+});
+```
+{% endif %}
+
+{% if saas_observability_sentry %}
+### Error Tracking
+
+```typescript
+import {
+  captureError,
+  setUserContext,
+  addBreadcrumb,
+  ErrorBoundary,
+} from '@/lib/observability/error-tracking';
+
+// Set user context after login
+setUserContext({
+  id: user.id,
+  email: user.email,
+  username: user.name,
+  {% if saas_tenancy_model == 'b2b-teams' %}
+  organizationId: user.organizationId,
+  {% endif %}
+});
+
+// Add breadcrumbs for debugging
+addBreadcrumb({
+  category: 'navigation',
+  message: 'User navigated to checkout',
+  level: 'info',
+});
+
+// Capture errors with context
+try {
+  await processPayment(data);
+} catch (error) {
+  captureError(error, {
+    tags: { feature: 'billing', provider: 'stripe' },
+    extra: { paymentId: data.id, amount: data.amount },
+    level: 'error',
+  });
+  throw error;
+}
+
+// React Error Boundary
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return (
+    <ErrorBoundary fallback={<ErrorFallback />}>
+      {children}
+    </ErrorBoundary>
+  );
+}
+```
+{% endif %}
+
+### Performance Monitoring
+
+```typescript
+import {
+  measurePerformance,
+  performanceMark,
+  performanceMeasure,
+  getNavigationTiming,
+} from '@/lib/observability/performance';
+
+// Measure async operations
+const result = await measurePerformance('fetch-products', async () => {
+  return fetch('/api/products');
+});
+
+// Performance marks and measures
+performanceMark('checkout-start');
+// ... do work
+performanceMark('checkout-end');
+const duration = performanceMeasure('checkout-flow', 'checkout-start', 'checkout-end');
+
+// Get navigation timing
+useEffect(() => {
+  const timing = getNavigationTiming();
+  if (timing) {
+    console.log('Page load:', timing.pageLoadTime);
+  }
+}, []);
+```
+
+## Middleware Integration
+
+Add observability to your middleware:
+
+```typescript
+// middleware.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { extractCorrelationId, buildCorrelationContext } from '@/lib/observability/utils';
+{% if saas_observability_otel %}
+import { recordApiRequest } from '@/lib/observability/metrics';
+{% endif %}
+{% if saas_observability_structured_logging %}
+import { createRequestLogger } from '@/lib/observability';
+{% endif %}
+
+export function middleware(request: NextRequest) {
+  const start = performance.now();
+  const correlationId = extractCorrelationId(request.headers);
+
+  {% if saas_observability_structured_logging %}
+  // Create request-scoped logger
+  const logger = createRequestLogger(request);
+  logger.info('Request started');
+  {% endif %}
+
+  // Continue to next middleware/handler
+  const response = NextResponse.next();
+
+  // Add correlation ID to response headers
+  response.headers.set('x-correlation-id', correlationId);
+
+  {% if saas_observability_otel %}
+  // Record metrics
+  const duration = performance.now() - start;
+  recordApiRequest({
+    endpoint: new URL(request.url).pathname,
+    method: request.method,
+    statusCode: response.status,
+    duration,
+  });
+  {% endif %}
+
+  return response;
+}
+
+export const config = {
+  matcher: [
+    '/api/:path*',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
+  ],
+};
+```
+
+## API Route Example
+
+Complete example with all observability features:
+
+```typescript
+// app/api/users/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+{% if saas_observability_otel %}
+import { withSpan } from '@/lib/observability/tracing';
+import { recordApiRequest } from '@/lib/observability/metrics';
+{% endif %}
+{% if saas_observability_sentry %}
+import { captureError } from '@/lib/observability/error-tracking';
+{% endif %}
+{% if saas_observability_structured_logging %}
+import { createRequestLogger } from '@/lib/observability';
+{% endif %}
+import { extractCorrelationId } from '@/lib/observability/utils';
+
+export async function GET(request: NextRequest) {
+  const start = performance.now();
+  const correlationId = extractCorrelationId(request.headers);
+
+  {% if saas_observability_structured_logging %}
+  const logger = createRequestLogger(request);
+  logger.info('Fetching users');
+  {% endif %}
+
+  try {
+    {% if saas_observability_otel %}
+    const users = await withSpan('db.users.findMany', async (span) => {
+      span.setAttributes({
+        'db.operation': 'SELECT',
+        'db.table': 'users',
+      });
+
+      const result = await db.users.findMany();
+      span.setAttribute('db.result.count', result.length);
+      return result;
+    });
+    {% else %}
+    const users = await db.users.findMany();
+    {% endif %}
+
+    {% if saas_observability_otel %}
+    recordApiRequest({
+      endpoint: '/api/users',
+      method: 'GET',
+      statusCode: 200,
+      duration: performance.now() - start,
+    });
+    {% endif %}
+
+    return NextResponse.json(users);
+  } catch (error) {
+    {% if saas_observability_structured_logging %}
+    logger.error({ msg: 'Failed to fetch users', error });
+    {% endif %}
+
+    {% if saas_observability_sentry %}
+    captureError(error, {
+      tags: { endpoint: '/api/users', method: 'GET' },
+      level: 'error',
+    });
+    {% endif %}
+
+    {% if saas_observability_otel %}
+    recordApiRequest({
+      endpoint: '/api/users',
+      method: 'GET',
+      statusCode: 500,
+      duration: performance.now() - start,
+    });
+    {% endif %}
+
+    return NextResponse.json(
+      { error: 'Failed to fetch users' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+## Configuration
+
+{% if saas_observability_otel %}
+### OpenTelemetry Backends
+
+The module works with any OpenTelemetry-compatible backend:
+
+- **Jaeger**: `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318`
+- **Honeycomb**: `OTEL_EXPORTER_OTLP_ENDPOINT=https://api.honeycomb.io`
+- **Grafana Tempo**: `OTEL_EXPORTER_OTLP_ENDPOINT=https://tempo.example.com:4318`
+- **AWS X-Ray**: Use OTLP exporter with AWS X-Ray endpoint
+- **Google Cloud Trace**: Use OTLP exporter with GCP endpoint
+
+### Sample Rates
+
+Adjust sampling for production:
+
+```bash
+# Trace 10% of requests (reduce overhead)
+OTEL_SAMPLE_RATE=0.1
+
+# Export metrics every 5 minutes
+OTEL_METRIC_EXPORT_INTERVAL=300000
+```
+{% endif %}
+
+{% if saas_observability_sentry %}
+### Sentry Configuration
+
+```bash
+# Required
+NEXT_PUBLIC_SENTRY_DSN=https://xxx@sentry.io/yyy
+
+# Performance monitoring (1.0 = 100% of transactions)
+SENTRY_TRACES_SAMPLE_RATE=1.0
+
+# Profiling (requires traces enabled)
+SENTRY_PROFILES_SAMPLE_RATE=1.0
+
+# Session Replay
+SENTRY_REPLAYS_SESSION_SAMPLE_RATE=0.1  # 10% of sessions
+SENTRY_REPLAYS_ERROR_SAMPLE_RATE=1.0    # 100% of errors
+```
+
+### Source Maps
+
+Add to `sentry.client.config.ts` and `sentry.server.config.ts`:
+
+```typescript
+import * as Sentry from '@sentry/nextjs';
+
+Sentry.init({
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  // Automatically upload source maps during build
+  enableAutoSessionTracking: true,
+  debug: false,
+});
+```
+{% endif %}
+
+## Best Practices
+
+### 1. Correlation IDs
+
+Always propagate correlation IDs across service boundaries:
+
+```typescript
+import { extractCorrelationId, injectCorrelationHeaders } from '@/lib/observability/utils';
+
+// In your API client
+const correlationId = extractCorrelationId(request.headers);
+const headers = new Headers();
+injectCorrelationHeaders(headers, correlationId);
+
+fetch('/api/external-service', { headers });
+```
+
+### 2. Context Enrichment
+
+Add relevant context to logs, traces, and errors:
+
+```typescript
+{% if saas_observability_structured_logging %}
+const logger = createLogger({
+  module: 'billing',
+  userId: user.id,
+  {% if saas_tenancy_model == 'b2b-teams' %}
+  organizationId: user.organizationId,
+  {% endif %}
+});
+{% endif %}
+
+{% if saas_observability_otel %}
+span.setAttributes({
+  'user.id': user.id,
+  'payment.amount': amount,
+  'payment.currency': currency,
+});
+{% endif %}
+
+{% if saas_observability_sentry %}
+setContext('payment', {
+  amount,
+  currency,
+  provider: 'stripe',
+});
+{% endif %}
+```
+
+### 3. Sampling
+
+Use sampling in production to reduce costs:
+
+- **Traces**: Sample 10-20% of requests
+- **Metrics**: Always collect (low overhead)
+- **Logs**: Use appropriate log levels (info/warn/error in prod)
+- **Replays**: Sample 10% of sessions, 100% of errors
+
+### 4. Error Grouping
+
+Use fingerprints for better error grouping:
+
+```typescript
+{% if saas_observability_sentry %}
+captureError(error, {
+  fingerprint: ['{{ "{{" }} error.name }}', 'billing', 'stripe'],
+  tags: { provider: 'stripe' },
+});
+{% endif %}
+```
+
+### 5. Performance Budget
+
+Monitor key metrics:
+
+- **LCP**: < 2.5s (good)
+- **FID**: < 100ms (good)
+- **CLS**: < 0.1 (good)
+- **API latency**: < 200ms (P95)
+- **Database queries**: < 100ms (P95)
+
+## Troubleshooting
+
+### OpenTelemetry Not Sending Data
+
+1. Check endpoint: `curl http://localhost:4318/v1/traces`
+2. Verify initialization in `instrumentation.ts`
+3. Check console for errors
+4. Increase sample rate: `OTEL_SAMPLE_RATE=1.0`
+
+### Sentry Not Capturing Errors
+
+1. Verify DSN: `echo $NEXT_PUBLIC_SENTRY_DSN`
+2. Check initialization
+3. Test manually: `captureMessage('Test message')`
+4. Review `beforeSend` filter logic
+
+### High Memory Usage
+
+1. Reduce sample rates
+2. Increase metric export interval
+3. Disable resource instrumentation
+4. Review log level (avoid debug in prod)
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Application Layer                        │
+│  (API Routes, Server Components, Client Components)         │
+└───────────────────┬─────────────────────────────────────────┘
+                    │
+┌───────────────────▼─────────────────────────────────────────┐
+│                  Observability Module                        │
+│  ┌────────────┬─────────────┬──────────────┬─────────────┐ │
+│  │  Logging   │   Tracing   │   Metrics    │   Errors    │ │
+│  │  (Pino)    │   (OTEL)    │   (OTEL)     │  (Sentry)   │ │
+│  └────────────┴─────────────┴──────────────┴─────────────┘ │
+└───────────────────┬─────────────────────────────────────────┘
+                    │
+┌───────────────────▼─────────────────────────────────────────┐
+│              Observability Backends                          │
+│  ┌────────────┬─────────────┬──────────────┬─────────────┐ │
+│  │   Stdout   │   Jaeger    │  Prometheus  │   Sentry    │ │
+│  │   (Dev)    │  Honeycomb  │   Grafana    │   (Prod)    │ │
+│  └────────────┴─────────────┴──────────────┴─────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Learn More
+
+{% if saas_observability_structured_logging %}
+- [Pino Documentation](https://getpino.io)
+{% endif %}
+{% if saas_observability_otel %}
+- [OpenTelemetry Documentation](https://opentelemetry.io/docs/)
+- [OpenTelemetry JavaScript](https://github.com/open-telemetry/opentelemetry-js)
+{% endif %}
+{% if saas_observability_sentry %}
+- [Sentry Next.js Integration](https://docs.sentry.io/platforms/javascript/guides/nextjs/)
+{% endif %}
+- [Web Vitals](https://web.dev/vitals/)
+- [Core Web Vitals](https://web.dev/articles/vitals)
+
+## Support
+
+For issues or questions:
+
+1. Check the [troubleshooting guide](#troubleshooting)
+2. Review backend-specific documentation
+3. Open an issue in the project repository
+{% endif %}

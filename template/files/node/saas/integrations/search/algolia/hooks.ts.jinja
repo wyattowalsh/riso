@@ -1,0 +1,591 @@
+{% if saas_infra_module == "enabled" and saas_search == 'algolia' %}
+/**
+ * Algolia React Hooks
+ *
+ * React hooks for InstantSearch and Autocomplete
+ * - useInstantSearch: Full search UI components
+ * - useAutocomplete: Search-as-you-type
+ * - useSearchBox: Search input
+ * - useHits: Display results
+ * - usePagination: Pagination controls
+ *
+ * @see https://www.algolia.com/doc/guides/building-search-ui/what-is-instantsearch/react/
+ */
+
+'use client';
+
+import { useState, useEffect, useCallback, useRef } from 'react';
+import type {
+  SearchResponse,
+  SearchParams,
+  ProductHit,
+  BlogPostHit,
+  DocumentationHit,
+  BaseSearchHit,
+} from './types';
+import { searchClient, search, multiSearch } from './client';
+import type { SearchIndex } from './client';
+
+// ============================================================================
+// InstantSearch Hook
+// ============================================================================
+
+export interface UseInstantSearchOptions {
+  indexName: SearchIndex;
+  searchParams?: SearchParams;
+  initialQuery?: string;
+}
+
+export interface UseInstantSearchResult<T = any> {
+  query: string;
+  setQuery: (query: string) => void;
+  results: SearchResponse<T> | null;
+  hits: Array<T & BaseSearchHit>;
+  isSearching: boolean;
+  error: Error | null;
+  pagination: {
+    page: number;
+    nbPages: number;
+    nbHits: number;
+    hitsPerPage: number;
+    goToPage: (page: number) => void;
+    nextPage: () => void;
+    previousPage: () => void;
+  };
+  facets: Record<string, Record<string, number>> | undefined;
+  refine: (attribute: string, value: string) => void;
+  clearRefinements: () => void;
+  refresh: () => void;
+}
+
+/**
+ * Hook for InstantSearch functionality
+ *
+ * @example
+ * ```tsx
+ * function ProductSearch() {
+ *   const { query, setQuery, hits, isSearching, pagination } = useInstantSearch<ProductHit>({
+ *     indexName: 'products',
+ *     searchParams: {
+ *       hitsPerPage: 20,
+ *       facets: ['category', 'brand'],
+ *     },
+ *   });
+ *
+ *   return (
+ *     <div>
+ *       <input
+ *         value={query}
+ *         onChange={(e) => setQuery(e.target.value)}
+ *         placeholder="Search products..."
+ *       />
+ *       {isSearching && <div>Searching...</div>}
+ *       <div>
+ *         {hits.map((hit) => (
+ *           <div key={hit.objectID}>{hit.name}</div>
+ *         ))}
+ *       </div>
+ *       <button onClick={pagination.previousPage}>Previous</button>
+ *       <button onClick={pagination.nextPage}>Next</button>
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export function useInstantSearch<T = any>(
+  options: UseInstantSearchOptions
+): UseInstantSearchResult<T> {
+  const { indexName, searchParams = {}, initialQuery = '' } = options;
+
+  const [query, setQuery] = useState(initialQuery);
+  const [results, setResults] = useState<SearchResponse<T> | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [page, setPage] = useState(0);
+  const [filters, setFilters] = useState<string[]>([]);
+
+  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+
+  const performSearch = useCallback(async () => {
+    setIsSearching(true);
+    setError(null);
+
+    try {
+      const response = await search<T>({
+        indexName,
+        query,
+        ...searchParams,
+        page,
+        filters: filters.length > 0 ? filters.join(' AND ') : undefined,
+      });
+
+      setResults(response);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Search failed'));
+    } finally {
+      setIsSearching(false);
+    }
+  }, [indexName, query, page, filters, searchParams]);
+
+  // Debounced search
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      performSearch();
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [performSearch]);
+
+  const refine = useCallback((attribute: string, value: string) => {
+    setFilters((prev) => [...prev, `${attribute}:${value}`]);
+    setPage(0); // Reset to first page on refinement
+  }, []);
+
+  const clearRefinements = useCallback(() => {
+    setFilters([]);
+    setPage(0);
+  }, []);
+
+  const goToPage = useCallback((newPage: number) => {
+    setPage(newPage);
+  }, []);
+
+  const nextPage = useCallback(() => {
+    if (results && page < results.nbPages - 1) {
+      setPage((p) => p + 1);
+    }
+  }, [results, page]);
+
+  const previousPage = useCallback(() => {
+    if (page > 0) {
+      setPage((p) => p - 1);
+    }
+  }, [page]);
+
+  return {
+    query,
+    setQuery,
+    results,
+    hits: results?.hits || [],
+    isSearching,
+    error,
+    pagination: {
+      page,
+      nbPages: results?.nbPages || 0,
+      nbHits: results?.nbHits || 0,
+      hitsPerPage: results?.hitsPerPage || 0,
+      goToPage,
+      nextPage,
+      previousPage,
+    },
+    facets: results?.facets,
+    refine,
+    clearRefinements,
+    refresh: performSearch,
+  };
+}
+
+// ============================================================================
+// Autocomplete Hook
+// ============================================================================
+
+export interface UseAutocompleteOptions<T = any> {
+  indexName: SearchIndex;
+  hitsPerPage?: number;
+  onSelect?: (item: T & BaseSearchHit) => void;
+  debounceMs?: number;
+}
+
+export interface UseAutocompleteResult<T = any> {
+  query: string;
+  setQuery: (query: string) => void;
+  suggestions: Array<T & BaseSearchHit>;
+  isLoading: boolean;
+  error: Error | null;
+  selectedIndex: number;
+  setSelectedIndex: (index: number) => void;
+  selectItem: (item: T & BaseSearchHit) => void;
+  clearSuggestions: () => void;
+}
+
+/**
+ * Hook for autocomplete/search-as-you-type
+ *
+ * @example
+ * ```tsx
+ * function SearchAutocomplete() {
+ *   const {
+ *     query,
+ *     setQuery,
+ *     suggestions,
+ *     isLoading,
+ *     selectItem,
+ *   } = useAutocomplete<ProductHit>({
+ *     indexName: 'products',
+ *     hitsPerPage: 5,
+ *     onSelect: (product) => {
+ *       router.push(`/products/${product.objectID}`);
+ *     },
+ *   });
+ *
+ *   return (
+ *     <div>
+ *       <input
+ *         value={query}
+ *         onChange={(e) => setQuery(e.target.value)}
+ *         placeholder="Search..."
+ *       />
+ *       {isLoading && <div>Loading...</div>}
+ *       <ul>
+ *         {suggestions.map((item) => (
+ *           <li key={item.objectID} onClick={() => selectItem(item)}>
+ *             {item.name}
+ *           </li>
+ *         ))}
+ *       </ul>
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export function useAutocomplete<T = any>(
+  options: UseAutocompleteOptions<T>
+): UseAutocompleteResult<T> {
+  const {
+    indexName,
+    hitsPerPage = 5,
+    onSelect,
+    debounceMs = 200,
+  } = options;
+
+  const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<Array<T & BaseSearchHit>>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+
+  const timeoutRef = useRef<NodeJS.Timeout>();
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setSuggestions([]);
+      return;
+    }
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = setTimeout(async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await search<T>({
+          indexName,
+          query,
+          hitsPerPage,
+        });
+
+        setSuggestions(response.hits);
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('Search failed'));
+        setSuggestions([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }, debounceMs);
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [query, indexName, hitsPerPage, debounceMs]);
+
+  const selectItem = useCallback(
+    (item: T & BaseSearchHit) => {
+      onSelect?.(item);
+      setQuery('');
+      setSuggestions([]);
+      setSelectedIndex(-1);
+    },
+    [onSelect]
+  );
+
+  const clearSuggestions = useCallback(() => {
+    setSuggestions([]);
+    setSelectedIndex(-1);
+  }, []);
+
+  return {
+    query,
+    setQuery,
+    suggestions,
+    isLoading,
+    error,
+    selectedIndex,
+    setSelectedIndex,
+    selectItem,
+    clearSuggestions,
+  };
+}
+
+// ============================================================================
+// Multi-Index Search Hook
+// ============================================================================
+
+export interface UseMultiSearchOptions {
+  queries: Array<{
+    indexName: SearchIndex;
+    hitsPerPage?: number;
+  }>;
+  searchQuery: string;
+}
+
+export interface UseMultiSearchResult {
+  query: string;
+  setQuery: (query: string) => void;
+  results: Array<SearchResponse<any>> | null;
+  isSearching: boolean;
+  error: Error | null;
+}
+
+/**
+ * Hook for federated/multi-index search
+ *
+ * @example
+ * ```tsx
+ * function FederatedSearch() {
+ *   const { query, setQuery, results, isSearching } = useMultiSearch({
+ *     queries: [
+ *       { indexName: 'products', hitsPerPage: 3 },
+ *       { indexName: 'blog_posts', hitsPerPage: 3 },
+ *       { indexName: 'documentation', hitsPerPage: 3 },
+ *     ],
+ *     searchQuery: '',
+ *   });
+ *
+ *   return (
+ *     <div>
+ *       <input
+ *         value={query}
+ *         onChange={(e) => setQuery(e.target.value)}
+ *         placeholder="Search everything..."
+ *       />
+ *       {results?.map((result, index) => (
+ *         <section key={index}>
+ *           <h3>{result.query}</h3>
+ *           {result.hits.map((hit) => (
+ *             <div key={hit.objectID}>{hit.title || hit.name}</div>
+ *           ))}
+ *         </section>
+ *       ))}
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export function useMultiSearch(
+  options: UseMultiSearchOptions
+): UseMultiSearchResult {
+  const { queries, searchQuery: initialQuery = '' } = options;
+
+  const [query, setQuery] = useState(initialQuery);
+  const [results, setResults] = useState<Array<SearchResponse<any>> | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const timeoutRef = useRef<NodeJS.Timeout>();
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults(null);
+      return;
+    }
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = setTimeout(async () => {
+      setIsSearching(true);
+      setError(null);
+
+      try {
+        const response = await multiSearch(
+          queries.map((q) => ({
+            indexName: q.indexName,
+            query,
+            hitsPerPage: q.hitsPerPage || 5,
+          }))
+        );
+
+        setResults(response.results);
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('Multi-search failed'));
+        setResults(null);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [query, queries]);
+
+  return {
+    query,
+    setQuery,
+    results,
+    isSearching,
+    error,
+  };
+}
+
+// ============================================================================
+// Search State Hook
+// ============================================================================
+
+export interface SearchState {
+  query: string;
+  page: number;
+  refinements: Record<string, string[]>;
+  sortBy: string | null;
+}
+
+export interface UseSearchStateResult {
+  state: SearchState;
+  setQuery: (query: string) => void;
+  setPage: (page: number) => void;
+  addRefinement: (attribute: string, value: string) => void;
+  removeRefinement: (attribute: string, value: string) => void;
+  clearRefinements: (attribute?: string) => void;
+  setSortBy: (sortBy: string | null) => void;
+  reset: () => void;
+}
+
+/**
+ * Hook for managing search UI state
+ */
+export function useSearchState(
+  initialState?: Partial<SearchState>
+): UseSearchStateResult {
+  const [state, setState] = useState<SearchState>({
+    query: initialState?.query || '',
+    page: initialState?.page || 0,
+    refinements: initialState?.refinements || {},
+    sortBy: initialState?.sortBy || null,
+  });
+
+  const setQuery = useCallback((query: string) => {
+    setState((prev) => ({ ...prev, query, page: 0 }));
+  }, []);
+
+  const setPage = useCallback((page: number) => {
+    setState((prev) => ({ ...prev, page }));
+  }, []);
+
+  const addRefinement = useCallback((attribute: string, value: string) => {
+    setState((prev) => ({
+      ...prev,
+      refinements: {
+        ...prev.refinements,
+        [attribute]: [...(prev.refinements[attribute] || []), value],
+      },
+      page: 0,
+    }));
+  }, []);
+
+  const removeRefinement = useCallback((attribute: string, value: string) => {
+    setState((prev) => ({
+      ...prev,
+      refinements: {
+        ...prev.refinements,
+        [attribute]: (prev.refinements[attribute] || []).filter((v) => v !== value),
+      },
+      page: 0,
+    }));
+  }, []);
+
+  const clearRefinements = useCallback((attribute?: string) => {
+    setState((prev) => ({
+      ...prev,
+      refinements: attribute
+        ? { ...prev.refinements, [attribute]: [] }
+        : {},
+      page: 0,
+    }));
+  }, []);
+
+  const setSortBy = useCallback((sortBy: string | null) => {
+    setState((prev) => ({ ...prev, sortBy, page: 0 }));
+  }, []);
+
+  const reset = useCallback(() => {
+    setState({
+      query: '',
+      page: 0,
+      refinements: {},
+      sortBy: null,
+    });
+  }, []);
+
+  return {
+    state,
+    setQuery,
+    setPage,
+    addRefinement,
+    removeRefinement,
+    clearRefinements,
+    setSortBy,
+    reset,
+  };
+}
+
+// ============================================================================
+// Highlighting Helper
+// ============================================================================
+
+/**
+ * Extract highlighted text from search hit
+ */
+export function getHighlightedText(
+  hit: BaseSearchHit,
+  attribute: string
+): string {
+  return hit._highlightResult?.[attribute]?.value || '';
+}
+
+/**
+ * Check if attribute has a match
+ */
+export function hasMatch(
+  hit: BaseSearchHit,
+  attribute: string
+): boolean {
+  const result = hit._highlightResult?.[attribute];
+  return result?.matchLevel !== 'none';
+}
+
+/**
+ * Get snippet text
+ */
+export function getSnippetText(
+  hit: BaseSearchHit,
+  attribute: string
+): string {
+  return hit._snippetResult?.[attribute]?.value || '';
+}
+{% endif %}

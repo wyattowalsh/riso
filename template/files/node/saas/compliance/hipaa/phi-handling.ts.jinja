@@ -1,0 +1,180 @@
+{% if saas_compliance == 'hipaa' -%}
+/**
+ * PHI (Protected Health Information) Handling Utilities
+ *
+ * Provides patterns and utilities for identifying and handling PHI data
+ * in compliance with HIPAA regulations.
+ */
+
+/**
+ * PHI data fields that require special handling under HIPAA
+ */
+export const PHI_FIELD_TYPES = {
+  // Demographic identifiers
+  NAME: 'name',
+  ADDRESS: 'address',
+  DATE_OF_BIRTH: 'dateOfBirth',
+  PHONE: 'phone',
+  EMAIL: 'email',
+  SSN: 'ssn',
+  MRN: 'medicalRecordNumber',
+
+  // Medical identifiers
+  HEALTH_PLAN_ID: 'healthPlanId',
+  ACCOUNT_NUMBER: 'accountNumber',
+  CERTIFICATE_NUMBER: 'certificateNumber',
+  DEVICE_IDENTIFIER: 'deviceIdentifier',
+  BIOMETRIC_DATA: 'biometricData',
+
+  // Clinical data
+  DIAGNOSIS: 'diagnosis',
+  TREATMENT: 'treatment',
+  PRESCRIPTION: 'prescription',
+  LAB_RESULT: 'labResult',
+  MEDICAL_HISTORY: 'medicalHistory',
+
+  // Images and documents
+  PHOTO: 'photo',
+  MEDICAL_IMAGE: 'medicalImage',
+  VOICE_RECORDING: 'voiceRecording',
+} as const;
+
+export type PHIFieldType = typeof PHI_FIELD_TYPES[keyof typeof PHI_FIELD_TYPES];
+
+/**
+ * Marks a data object as containing PHI for audit trail purposes
+ */
+export interface PHIMetadata {
+  containsPHI: true;
+  phiFields: PHIFieldType[];
+  purpose: string;
+  accessedBy: string;
+  accessedAt: Date;
+  retentionPeriod?: number; // in days
+}
+
+/**
+ * Redacts PHI fields from an object for logging or display
+ *
+ * @param data - The data object to redact
+ * @param fieldsToRedact - Array of field names to redact
+ * @returns A new object with specified fields redacted
+ */
+export function redactPHI<T extends Record<string, any>>(
+  data: T,
+  fieldsToRedact: (keyof T)[]
+): T {
+  const redacted = { ...data };
+
+  for (const field of fieldsToRedact) {
+    if (field in redacted) {
+      redacted[field] = '[REDACTED]' as any;
+    }
+  }
+
+  return redacted;
+}
+
+/**
+ * Validates that PHI access has proper authorization
+ *
+ * @param userId - The user requesting access
+ * @param phiData - The PHI data being accessed
+ * @param purpose - The purpose of access (treatment, payment, operations)
+ * @returns Authorization result
+ */
+export async function validatePHIAccess(
+  userId: string,
+  phiData: { patientId: string; dataType: PHIFieldType },
+  purpose: 'treatment' | 'payment' | 'operations' | 'research' | 'other'
+): Promise<{ authorized: boolean; reason?: string }> {
+  // Implement your authorization logic here
+  // This should check:
+  // 1. User has valid credentials
+  // 2. User has legitimate relationship to patient
+  // 3. Access purpose is appropriate
+  // 4. Patient consent exists if required
+
+  // Placeholder implementation
+  const authorized = true; // Replace with actual authorization check
+
+  return { authorized };
+}
+
+/**
+ * Logs PHI access for audit trail compliance
+ *
+ * @param metadata - PHI access metadata
+ */
+export async function logPHIAccess(metadata: PHIMetadata): Promise<void> {
+  // Implement audit logging here
+  // This should log to a secure, immutable audit trail:
+  // - Who accessed the PHI
+  // - When it was accessed
+  // - What PHI fields were accessed
+  // - The purpose of access
+  // - Result of the access (success/failure)
+
+  console.log('[HIPAA AUDIT]', {
+    timestamp: metadata.accessedAt.toISOString(),
+    user: metadata.accessedBy,
+    fields: metadata.phiFields,
+    purpose: metadata.purpose,
+  });
+}
+
+/**
+ * Minimum Necessary Standard - limits PHI disclosure to minimum needed
+ *
+ * @param requestedFields - Fields requested by user
+ * @param purpose - Purpose of the request
+ * @returns Filtered list of fields that meet minimum necessary standard
+ */
+export function applyMinimumNecessary(
+  requestedFields: PHIFieldType[],
+  purpose: string
+): PHIFieldType[] {
+  // Implement minimum necessary logic based on purpose
+  // For example, billing may only need name and account number,
+  // not full medical history
+
+  const purposeFieldMap: Record<string, PHIFieldType[]> = {
+    billing: [PHI_FIELD_TYPES.NAME, PHI_FIELD_TYPES.ACCOUNT_NUMBER, PHI_FIELD_TYPES.HEALTH_PLAN_ID],
+    scheduling: [PHI_FIELD_TYPES.NAME, PHI_FIELD_TYPES.PHONE, PHI_FIELD_TYPES.DATE_OF_BIRTH],
+    treatment: requestedFields, // Treatment typically needs all requested fields
+  };
+
+  const allowedFields = purposeFieldMap[purpose.toLowerCase()] || [];
+  return requestedFields.filter(field => allowedFields.includes(field));
+}
+
+/**
+ * De-identifies PHI data by removing direct identifiers
+ * Useful for creating de-identified datasets for research
+ *
+ * @param data - Data containing PHI
+ * @returns De-identified version of the data
+ */
+export function deIdentifyPHI<T extends Record<string, any>>(data: T): Partial<T> {
+  const directIdentifiers = [
+    PHI_FIELD_TYPES.NAME,
+    PHI_FIELD_TYPES.ADDRESS,
+    PHI_FIELD_TYPES.SSN,
+    PHI_FIELD_TYPES.MRN,
+    PHI_FIELD_TYPES.PHONE,
+    PHI_FIELD_TYPES.EMAIL,
+    PHI_FIELD_TYPES.PHOTO,
+    PHI_FIELD_TYPES.BIOMETRIC_DATA,
+  ];
+
+  const deidentified = { ...data };
+
+  for (const field of Object.keys(deidentified)) {
+    if (directIdentifiers.includes(field as PHIFieldType)) {
+      delete deidentified[field];
+    }
+  }
+
+  return deidentified;
+}
+{% endif -%}

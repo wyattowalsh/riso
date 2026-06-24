@@ -1,4 +1,4 @@
-{%- if docs_site == 'fumadocs' -%}
+{%- if docs_module == 'enabled' and docs_framework == 'fumadocs' -%}
 ---
 title: Modules
 description: Overview of {{ project_name }} modules
@@ -19,7 +19,7 @@ The command-line interface for {{ project_name }}.
 - [CLI Reference](/docs/modules/cli)
 {%- endif %}
 
-{%- if api_tracks in ['python', 'python+node'] %}
+{%- if api_module == 'enabled' and 'python' in api_languages %}
 
 ### Python API
 
@@ -28,7 +28,7 @@ RESTful API built with FastAPI.
 - [Python API Reference](/docs/modules/api-python)
 {%- endif %}
 
-{%- if api_tracks in ['node', 'python+node'] %}
+{%- if api_module == 'enabled' and 'node' in api_languages %}
 
 ### Node.js API
 
@@ -64,7 +64,7 @@ Model Context Protocol tools and resources.
 - [MCP Reference](/docs/modules/mcp)
 {%- endif %}
 
-{%- if cli_module == 'disabled' and api_tracks == 'none' and mcp_module == 'disabled' %}
+{%- if cli_module == 'disabled' and (api_module != 'enabled' or not api_languages) and mcp_module == 'disabled' %}
 
 No optional modules are currently enabled. You can enable modules by regenerating the project with different options.
 {%- endif %}

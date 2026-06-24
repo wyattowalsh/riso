@@ -1,0 +1,91 @@
+{%- if mcp_module == 'enabled' and 'go' in mcp_languages and mcp_example_tools -%}
+// Package tools provides MCP tool implementations.
+package tools
+
+import (
+	"context"
+	"log/slog"
+	"strings"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/modelcontextprotocol/go-sdk/server"
+)
+
+// EchoInput represents the input for echo tools.
+type EchoInput struct {
+	Message string `json:"message" description:"The message to echo back"`
+}
+
+// EchoOutput represents the output from echo tools.
+type EchoOutput struct {
+	Message string `json:"message" description:"The echoed message"`
+}
+
+// RegisterEchoTools registers all echo-related tools with the MCP server.
+func RegisterEchoTools(srv *server.Server, logger *slog.Logger) {
+	// echo - Echo back the provided message
+	srv.RegisterTool(
+		mcp.Tool{
+			Name:        "echo",
+			Description: "Echo back the provided message. A simple tool that returns the input message unchanged. Useful for testing MCP connectivity.",
+			InputSchema: mcp.GenerateSchema[EchoInput](),
+		},
+		func(ctx context.Context, params map[string]any) (any, error) {
+			input, err := mcp.ParseInput[EchoInput](params)
+			if err != nil {
+				logger.Error("failed to parse echo input", "error", err)
+				return nil, err
+			}
+
+			logger.Debug("executing echo tool", "message_length", len(input.Message))
+			return EchoOutput{Message: input.Message}, nil
+		},
+	)
+
+	// echo_reverse - Echo the message in reverse
+	srv.RegisterTool(
+		mcp.Tool{
+			Name:        "echo_reverse",
+			Description: "Echo the message in reverse. Returns the input message with characters reversed.",
+			InputSchema: mcp.GenerateSchema[EchoInput](),
+		},
+		func(ctx context.Context, params map[string]any) (any, error) {
+			input, err := mcp.ParseInput[EchoInput](params)
+			if err != nil {
+				logger.Error("failed to parse echo_reverse input", "error", err)
+				return nil, err
+			}
+
+			// Reverse the string (UTF-8 safe)
+			runes := []rune(input.Message)
+			for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+				runes[i], runes[j] = runes[j], runes[i]
+			}
+
+			logger.Debug("executing echo_reverse tool", "message_length", len(input.Message))
+			return EchoOutput{Message: string(runes)}, nil
+		},
+	)
+
+	// echo_uppercase - Echo the message in uppercase
+	srv.RegisterTool(
+		mcp.Tool{
+			Name:        "echo_uppercase",
+			Description: "Echo the message in uppercase. Returns the input message converted to uppercase.",
+			InputSchema: mcp.GenerateSchema[EchoInput](),
+		},
+		func(ctx context.Context, params map[string]any) (any, error) {
+			input, err := mcp.ParseInput[EchoInput](params)
+			if err != nil {
+				logger.Error("failed to parse echo_uppercase input", "error", err)
+				return nil, err
+			}
+
+			logger.Debug("executing echo_uppercase tool", "message_length", len(input.Message))
+			return EchoOutput{Message: strings.ToUpper(input.Message)}, nil
+		},
+	)
+
+	logger.Debug("registered echo tools")
+}
+{%- endif %}

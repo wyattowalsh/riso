@@ -1,0 +1,297 @@
+{% if saas_infra_module == "enabled" and saas_ai_features == 'full' %}
+/**
+ * RAG (Retrieval-Augmented Generation) Module
+ *
+ * Complete RAG system for building AI applications with document knowledge:
+ *
+ * Features:
+ * - Document ingestion with intelligent chunking
+ * - Multi-provider embeddings (OpenAI, Anthropic)
+ * - Vector storage with pgvector
+ * - Semantic and hybrid search
+ * - Context-aware LLM generation
+ * - Streaming responses
+ * - Token tracking for billing
+ *
+ * Quick Start:
+ * ```ts
+ * // 1. Ingest documents
+ * await ingestDocument({
+ *   content: 'Your document content...',
+ *   metadata: { source: 'upload', title: 'Guide' },
+ * });
+ *
+ * // 2. Query with RAG
+ * const response = await queryRAG({
+ *   query: 'How do I get started?',
+ *   userId: 'user-123',
+ * });
+ *
+ * console.log(response.answer);
+ * console.log(response.sources);
+ * ```
+ *
+ * @module integrations/ai/rag
+ */
+
+// ============================================================================
+// Pipeline Functions (High-level)
+// ============================================================================
+
+export {
+  ingestDocument,
+  ingestDocumentsBatch,
+  queryRAG,
+  streamRAG,
+  DEFAULT_CONFIG,
+} from './pipeline';
+
+// ============================================================================
+// Embeddings
+// ============================================================================
+
+export {
+  generateEmbeddings,
+  generateEmbedding,
+  getEmbeddingConfig,
+  cosineSimilarity,
+  normalizeVector,
+  estimateTokenCount,
+  validateEmbedding,
+  DEFAULT_CONFIGS as EMBEDDING_CONFIGS,
+} from './embeddings';
+
+// ============================================================================
+// Vector Store
+// ============================================================================
+
+export {
+  storeVector,
+  storeVectorsBatch,
+  searchVectors,
+  hybridSearch,
+  deleteVectorsByDocument,
+  deleteVectorsByFilter,
+  getVectorCount,
+} from './vector-store';
+
+// ============================================================================
+// Retrieval
+// ============================================================================
+
+export {
+  retrieve,
+  retrieveHybrid,
+  retrieveMultiQuery,
+  assembleContext,
+  extractKeywords,
+  deduplicateChunks,
+  groupChunksByDocument,
+} from './retriever';
+
+// ============================================================================
+// Chunking
+// ============================================================================
+
+export {
+  chunkDocument,
+  chunkByTokens,
+  mergeSmallChunks,
+  DEFAULT_CHUNKING_OPTIONS,
+} from './chunker';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export type {
+  // Documents
+  Document,
+  DocumentMetadata,
+  DocumentChunk,
+  ChunkMetadata,
+  // Embeddings
+  Embedding,
+  EmbeddingRequest,
+  EmbeddingResponse,
+  EmbeddingProvider,
+  EmbeddingConfig,
+  // Vector Store
+  VectorDocument,
+  VectorSearchQuery,
+  VectorSearchResult,
+  VectorFilter,
+  // Retrieval
+  RetrievalQuery,
+  RetrievalResult,
+  RetrievedChunk,
+  RerankOptions,
+  // Chunking
+  ChunkingStrategy,
+  ChunkingOptions,
+  ChunkingResult,
+  // Pipeline
+  RAGPipelineConfig,
+  RAGRequest,
+  RAGResponse,
+  RAGStreamChunk,
+  // Ingestion
+  IngestionRequest,
+  IngestionResult,
+  BatchIngestionRequest,
+  BatchIngestionResult,
+  // Conversation
+  Conversation,
+  ConversationMessage,
+  // Token Usage
+  TokenUsage,
+  TokenTrackingEvent,
+  // Errors
+  RAGError,
+  EmbeddingError,
+  VectorStoreError,
+  RetrievalError,
+} from './types';
+
+// ============================================================================
+// Usage Examples
+// ============================================================================
+
+/**
+ * Example 1: Simple Document Ingestion and Query
+ *
+ * ```typescript
+ * import { ingestDocument, queryRAG } from '@/integrations/ai/rag';
+ *
+ * // Ingest a document
+ * const ingestion = await ingestDocument({
+ *   content: `
+ *     # Product Documentation
+ *
+ *     Our product helps you build amazing applications.
+ *     It includes features like authentication, payments, and more.
+ *   `,
+ *   metadata: {
+ *     source: 'docs',
+ *     sourceType: 'text',
+ *     title: 'Product Docs',
+ *     userId: 'user-123',
+ *   },
+ * });
+ *
+ * console.log(`Ingested ${ingestion.chunks} chunks`);
+ *
+ * // Query with RAG
+ * const response = await queryRAG({
+ *   query: 'What features does the product include?',
+ *   userId: 'user-123',
+ * });
+ *
+ * console.log('Answer:', response.answer);
+ * console.log('Sources:', response.sources.length);
+ * console.log('Token usage:', response.usage);
+ * ```
+ */
+
+/**
+ * Example 2: Streaming RAG Response
+ *
+ * ```typescript
+ * import { streamRAG } from '@/integrations/ai/rag';
+ *
+ * // Stream response for real-time UX
+ * for await (const chunk of streamRAG({
+ *   query: 'Explain authentication implementation',
+ *   userId: 'user-123',
+ *   conversationId: 'conv-456',
+ * })) {
+ *   switch (chunk.type) {
+ *     case 'sources':
+ *       console.log('Retrieved sources:', chunk.sources);
+ *       break;
+ *     case 'content':
+ *       process.stdout.write(chunk.content);
+ *       break;
+ *     case 'metadata':
+ *       console.log('\nUsage:', chunk.metadata);
+ *       break;
+ *     case 'done':
+ *       console.log('\nComplete!');
+ *       break;
+ *   }
+ * }
+ * ```
+ */
+
+/**
+ * Example 3: Batch Document Ingestion
+ *
+ * ```typescript
+ * import { ingestDocumentsBatch } from '@/integrations/ai/rag';
+ *
+ * const documents = [
+ *   {
+ *     content: 'Document 1 content...',
+ *     metadata: { source: 'file1.txt', sourceType: 'file' as const },
+ *   },
+ *   {
+ *     content: 'Document 2 content...',
+ *     metadata: { source: 'file2.txt', sourceType: 'file' as const },
+ *   },
+ * ];
+ *
+ * const result = await ingestDocumentsBatch({
+ *   documents,
+ *   parallel: true, // Process in parallel for speed
+ * });
+ *
+ * console.log(`Ingested ${result.totalDocuments} documents`);
+ * console.log(`Total chunks: ${result.totalChunks}`);
+ * console.log(`Total token usage: ${result.totalUsage.totalTokens}`);
+ * ```
+ */
+
+/**
+ * Example 4: Hybrid Search (Vector + Keyword)
+ *
+ * ```typescript
+ * import { retrieveHybrid } from '@/integrations/ai/rag';
+ *
+ * const result = await retrieveHybrid({
+ *   query: 'authentication security best practices',
+ *   keywords: ['auth', 'security', 'oauth', '2fa'],
+ *   limit: 5,
+ *   vectorWeight: 0.7, // 70% vector, 30% keyword
+ * });
+ *
+ * for (const chunk of result.chunks) {
+ *   console.log('Score:', chunk.score);
+ *   console.log('Content:', chunk.content.substring(0, 100) + '...');
+ * }
+ * ```
+ */
+
+/**
+ * Example 5: Custom Chunking Strategy
+ *
+ * ```typescript
+ * import { ingestDocument } from '@/integrations/ai/rag';
+ *
+ * const result = await ingestDocument({
+ *   content: longDocument,
+ *   metadata: { source: 'guide.md', sourceType: 'file' as const },
+ *   options: {
+ *     chunking: {
+ *       strategy: {
+ *         type: 'semantic', // Use semantic boundaries
+ *         size: 1500,       // Larger chunks
+ *         overlap: 300,     // More overlap for context
+ *       },
+ *       minChunkSize: 200,
+ *       preserveStructure: true,
+ *     },
+ *   },
+ * });
+ * ```
+ */
+{% endif %}

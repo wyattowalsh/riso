@@ -1,0 +1,138 @@
+{% if desktop_module == "enabled" and desktop_framework == "electron-vite" and 'tray_icon' in desktop_features %}
+/**
+ * System Tray Module
+ *
+ * Creates and manages a system tray icon with a context menu.
+ * Allows the app to run in the background and be quickly accessed.
+ */
+
+import { app, BrowserWindow, Menu, Tray, nativeImage } from 'electron';
+import { join } from 'path';
+import { is } from '@electron-toolkit/utils';
+import log from 'electron-log/main';
+
+let tray: Tray | null = null;
+
+/**
+ * Set up the system tray icon
+ */
+export function setupTrayIcon(mainWindow: BrowserWindow): void {
+  // Create tray icon from resources
+  const iconPath = is.dev
+    ? join(__dirname, '../../resources/icon.png')
+    : join(process.resourcesPath, 'icon.png');
+
+  // Create a smaller image for the tray
+  let icon = nativeImage.createFromPath(iconPath);
+
+  // Resize for tray (16x16 on macOS, 16x16 or 32x32 on Windows/Linux)
+  if (process.platform === 'darwin') {
+    icon = icon.resize({ width: 16, height: 16 });
+    // Mark as template for macOS dark mode support
+    icon.setTemplateImage(true);
+  } else {
+    icon = icon.resize({ width: 32, height: 32 });
+  }
+
+  tray = new Tray(icon);
+
+  // Set tooltip
+  tray.setToolTip('{{ project_name }}');
+
+  // Create context menu
+  const contextMenu = createTrayContextMenu(mainWindow);
+  tray.setContextMenu(contextMenu);
+
+  // Click behavior
+  tray.on('click', () => {
+    if (mainWindow.isVisible()) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      mainWindow.focus();
+    } else {
+      mainWindow.show();
+    }
+  });
+
+  // Double-click behavior (Windows)
+  tray.on('double-click', () => {
+    mainWindow.show();
+    mainWindow.focus();
+  });
+
+  log.info('System tray icon created');
+}
+
+/**
+ * Create the tray context menu
+ */
+function createTrayContextMenu(mainWindow: BrowserWindow): Menu {
+  return Menu.buildFromTemplate([
+    {
+      label: 'Show {{ project_name }}',
+      click: (): void => {
+        mainWindow.show();
+        mainWindow.focus();
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Start Minimized',
+      type: 'checkbox',
+      checked: false,
+      click: (menuItem): void => {
+        // Save preference to electron-store
+        // TODO: Integrate with store
+        log.info('Start minimized:', menuItem.checked);
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Quit',
+      accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
+      click: (): void => {
+        app.quit();
+      },
+    },
+  ]);
+}
+
+/**
+ * Update the tray tooltip
+ */
+export function updateTrayTooltip(tooltip: string): void {
+  if (tray) {
+    tray.setToolTip(tooltip);
+  }
+}
+
+/**
+ * Update the tray icon
+ */
+export function updateTrayIcon(iconPath: string): void {
+  if (tray) {
+    let icon = nativeImage.createFromPath(iconPath);
+
+    if (process.platform === 'darwin') {
+      icon = icon.resize({ width: 16, height: 16 });
+      icon.setTemplateImage(true);
+    } else {
+      icon = icon.resize({ width: 32, height: 32 });
+    }
+
+    tray.setImage(icon);
+  }
+}
+
+/**
+ * Destroy the tray icon
+ */
+export function destroyTray(): void {
+  if (tray) {
+    tray.destroy();
+    tray = null;
+    log.info('System tray icon destroyed');
+  }
+}
+{% endif %}

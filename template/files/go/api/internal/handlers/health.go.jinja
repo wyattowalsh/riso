@@ -1,0 +1,173 @@
+{% if api_module == 'enabled' and 'go' in api_languages %}
+// Package handlers provides HTTP request handlers.
+package handlers
+
+import (
+	"net/http"
+	"runtime"
+	"time"
+{% if go_framework | default('gin') == 'gin' %}
+	"github.com/gin-gonic/gin"
+{% elif go_framework == 'fiber' %}
+	"github.com/gofiber/fiber/v2"
+{% elif go_framework == 'echo' %}
+	"github.com/labstack/echo/v4"
+{% elif go_framework == 'chi' %}
+	"encoding/json"
+{% endif %}
+)
+
+// HealthResponse represents the health check response.
+type HealthResponse struct {
+	Status    string `json:"status"`
+	Timestamp string `json:"timestamp"`
+	Version   string `json:"version,omitempty"`
+}
+
+// ReadinessResponse represents the readiness check response.
+type ReadinessResponse struct {
+	Status  string            `json:"status"`
+	Checks  map[string]string `json:"checks,omitempty"`
+	Message string            `json:"message,omitempty"`
+}
+
+// LivenessResponse represents the liveness check response.
+type LivenessResponse struct {
+	Status    string `json:"status"`
+	Uptime    string `json:"uptime,omitempty"`
+	GoVersion string `json:"go_version,omitempty"`
+}
+
+var startTime = time.Now()
+
+{% if go_framework | default('gin') == 'gin' %}
+// HealthCheck handles GET /health requests.
+// Returns the current health status of the API server.
+func HealthCheck(c *gin.Context) {
+	c.JSON(http.StatusOK, HealthResponse{
+		Status:    "healthy",
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	})
+}
+
+// ReadinessCheck handles GET /ready requests.
+// Kubernetes-style readiness probe that checks if the service is ready to accept traffic.
+func ReadinessCheck(c *gin.Context) {
+	// Add actual readiness checks here (database connections, external services, etc.)
+	checks := map[string]string{
+		"server": "ok",
+	}
+
+	c.JSON(http.StatusOK, ReadinessResponse{
+		Status: "ready",
+		Checks: checks,
+	})
+}
+
+// LivenessCheck handles GET /live requests.
+// Kubernetes-style liveness probe that checks if the service is alive.
+func LivenessCheck(c *gin.Context) {
+	c.JSON(http.StatusOK, LivenessResponse{
+		Status:    "alive",
+		Uptime:    time.Since(startTime).String(),
+		GoVersion: runtime.Version(),
+	})
+}
+
+{% elif go_framework == 'fiber' %}
+// HealthCheck handles GET /health requests.
+func HealthCheck(c *fiber.Ctx) error {
+	return c.JSON(HealthResponse{
+		Status:    "healthy",
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	})
+}
+
+// ReadinessCheck handles GET /ready requests.
+func ReadinessCheck(c *fiber.Ctx) error {
+	checks := map[string]string{
+		"server": "ok",
+	}
+
+	return c.JSON(ReadinessResponse{
+		Status: "ready",
+		Checks: checks,
+	})
+}
+
+// LivenessCheck handles GET /live requests.
+func LivenessCheck(c *fiber.Ctx) error {
+	return c.JSON(LivenessResponse{
+		Status:    "alive",
+		Uptime:    time.Since(startTime).String(),
+		GoVersion: runtime.Version(),
+	})
+}
+
+{% elif go_framework == 'echo' %}
+// HealthCheck handles GET /health requests.
+func HealthCheck(c echo.Context) error {
+	return c.JSON(http.StatusOK, HealthResponse{
+		Status:    "healthy",
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	})
+}
+
+// ReadinessCheck handles GET /ready requests.
+func ReadinessCheck(c echo.Context) error {
+	checks := map[string]string{
+		"server": "ok",
+	}
+
+	return c.JSON(http.StatusOK, ReadinessResponse{
+		Status: "ready",
+		Checks: checks,
+	})
+}
+
+// LivenessCheck handles GET /live requests.
+func LivenessCheck(c echo.Context) error {
+	return c.JSON(http.StatusOK, LivenessResponse{
+		Status:    "alive",
+		Uptime:    time.Since(startTime).String(),
+		GoVersion: runtime.Version(),
+	})
+}
+
+{% elif go_framework == 'chi' %}
+// HealthCheck handles GET /health requests.
+func HealthCheck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(HealthResponse{
+		Status:    "healthy",
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	})
+}
+
+// ReadinessCheck handles GET /ready requests.
+func ReadinessCheck(w http.ResponseWriter, r *http.Request) {
+	checks := map[string]string{
+		"server": "ok",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(ReadinessResponse{
+		Status: "ready",
+		Checks: checks,
+	})
+}
+
+// LivenessCheck handles GET /live requests.
+func LivenessCheck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(LivenessResponse{
+		Status:    "alive",
+		Uptime:    time.Since(startTime).String(),
+		GoVersion: runtime.Version(),
+	})
+}
+{% endif %}
+{% endif %}

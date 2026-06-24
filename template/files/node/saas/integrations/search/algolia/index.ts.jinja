@@ -1,0 +1,128 @@
+{% if saas_infra_module == "enabled" and saas_search == 'algolia' %}
+/**
+ * Algolia Search Integration
+ *
+ * Modern search solution for 2025
+ *
+ * @example
+ * ```ts
+ * // Client-side search
+ * import { useInstantSearch } from '@/integrations/search/algolia';
+ *
+ * function ProductSearch() {
+ *   const { query, setQuery, hits, isSearching } = useInstantSearch({
+ *     indexName: 'products',
+ *   });
+ *
+ *   return (
+ *     <div>
+ *       <input value={query} onChange={(e) => setQuery(e.target.value)} />
+ *       {hits.map((hit) => (
+ *         <div key={hit.objectID}>{hit.name}</div>
+ *       ))}
+ *     </div>
+ *   );
+ * }
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Server-side indexing
+ * import { saveObject, saveObjects } from '@/integrations/search/algolia';
+ *
+ * // Index single object
+ * await saveObject({
+ *   indexName: 'products',
+ *   object: {
+ *     objectID: 'prod_123',
+ *     name: 'MacBook Pro',
+ *     price: 2499,
+ *   },
+ * });
+ *
+ * // Batch index multiple objects
+ * await saveObjects({
+ *   indexName: 'products',
+ *   objects: products,
+ * });
+ * ```
+ */
+
+// Client exports
+export {
+  searchClient,
+  adminClient,
+  SEARCH_INDICES,
+  getSearchIndex,
+  getAdminIndex,
+  search,
+  multiSearch,
+  getObject,
+  getObjects,
+  AlgoliaError,
+  handleAlgoliaError,
+} from './client';
+
+// Server-side operations
+export {
+  saveObject,
+  saveObjects,
+  partialUpdateObject,
+  deleteObject,
+  deleteObjects,
+  clearIndex,
+  configureIndex,
+  getIndexSettings,
+  saveSynonym,
+  deleteSynonym,
+  trackClick,
+  trackConversion,
+} from './client';
+
+// Type exports
+export type { SearchClient, SearchIndex } from './client';
+
+export type {
+  BaseSearchHit,
+  SearchResponse,
+  MultiSearchResponse,
+  IndexSettings,
+  ProductHit,
+  BlogPostHit,
+  DocumentationHit,
+  UserHit,
+  SearchParams,
+  AutocompleteItem,
+  AutocompleteSource,
+  FacetValue,
+  FacetRefinement,
+  GeoLocation,
+  BoundingBox,
+  Synonym,
+  QueryRule,
+  ClickEvent,
+  SearchAnalytics,
+} from './types';
+
+// React hooks
+export {
+  useInstantSearch,
+  useAutocomplete,
+  useMultiSearch,
+  useSearchState,
+  getHighlightedText,
+  hasMatch,
+  getSnippetText,
+} from './hooks';
+
+export type {
+  UseInstantSearchOptions,
+  UseInstantSearchResult,
+  UseAutocompleteOptions,
+  UseAutocompleteResult,
+  UseMultiSearchOptions,
+  UseMultiSearchResult,
+  SearchState,
+  UseSearchStateResult,
+} from './hooks';
+{% endif %}

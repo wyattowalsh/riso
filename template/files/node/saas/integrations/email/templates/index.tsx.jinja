@@ -1,17 +1,19 @@
-{% if saas_starter_module == "enabled" %}
+{% if saas_infra_module == "enabled" and saas_email != 'none' %}
 /**
  * Transactional Email Templates
- * 
+ *
  * Pre-built email templates for common SaaS scenarios.
  * Uses React Email for type-safe, component-based emails.
- * 
+ *
  * Templates included:
  * - Welcome email (new user signup)
  * - Team invitation
  * - Password reset
  * - Payment failed
  * - Subscription updated
- * 
+ * - Invoice/receipt
+ * - Subscription change notification
+ *
  * @see https://react.email
  */
 
@@ -29,6 +31,29 @@ import {
   Section,
   Text,
 } from '@react-email/components';
+
+// Re-export welcome email template
+export { WelcomeEmail, type WelcomeEmailProps } from './welcome';
+
+// Re-export password reset email template
+{% if saas_auth_provider == 'authjs' %}
+export { PasswordResetEmail, type PasswordResetEmailProps } from './password-reset';
+{% endif %}
+
+// Re-export team invite email template
+{% if saas_tenancy_model == 'b2b-teams' %}
+export { TeamInviteEmail, type TeamInviteEmailProps } from './team-invite';
+{% endif %}
+
+// Re-export invoice email template
+{% if saas_billing_module == 'enabled' %}
+export { InvoiceEmail, type InvoiceEmailProps } from './invoice';
+{% endif %}
+
+// Re-export subscription change email template
+{% if saas_billing_module == 'enabled' %}
+export { SubscriptionChangeEmail, type SubscriptionChangeEmailProps } from './subscription-change';
+{% endif %}
 
 // ============================================================================
 // Shared Styles & Components
@@ -104,138 +129,24 @@ export function EmailLayout({ preview, children }: EmailLayoutProps) {
 }
 
 // ============================================================================
-// Welcome Email
-// ============================================================================
-
-export interface WelcomeEmailProps {
-  userName: string;
-  userEmail: string;
-}
-
-export function WelcomeEmail({ userName, userEmail }: WelcomeEmailProps) {
-  return (
-    <EmailLayout preview={`Welcome to ${appName}!`}>
-      <Heading style={styles.heading}>Welcome to {appName}!</Heading>
-      <Text style={styles.paragraph}>Hi {userName},</Text>
-      <Text style={styles.paragraph}>
-        Thanks for signing up for {appName}. We're excited to have you on board!
-      </Text>
-      <Text style={styles.paragraph}>
-        Your account has been created with the email address: <strong>{userEmail}</strong>
-      </Text>
-      <Section style={% raw %}{{ textAlign: 'center', margin: '32px 0' }}{% endraw %}>
-        <Button style={styles.button} href={`${baseUrl}/dashboard`}>
-          Go to Dashboard
-        </Button>
-      </Section>
-      <Text style={styles.paragraph}>
-        If you have any questions, just reply to this email—we're always happy to help.
-      </Text>
-      <Text style={styles.paragraph}>
-        Best,
-        <br />
-        The {appName} Team
-      </Text>
-    </EmailLayout>
-  );
-}
-
-// ============================================================================
 // Team Invitation Email
 // ============================================================================
-
-{% if saas_tenancy_model == 'b2b-teams' %}
-export interface TeamInviteEmailProps {
-  inviterName: string;
-  teamName: string;
-  inviteLink: string;
-  expiresIn?: string;
-}
-
-export function TeamInviteEmail({
-  inviterName,
-  teamName,
-  inviteLink,
-  expiresIn = '7 days',
-}: TeamInviteEmailProps) {
-  return (
-    <EmailLayout preview={`${inviterName} invited you to join ${teamName}`}>
-      <Heading style={styles.heading}>You're invited to join {teamName}</Heading>
-      <Text style={styles.paragraph}>
-        <strong>{inviterName}</strong> has invited you to join their team on {appName}.
-      </Text>
-      <Text style={styles.paragraph}>
-        Click the button below to accept the invitation and join the team.
-      </Text>
-      <Section style={% raw %}{{ textAlign: 'center', margin: '32px 0' }}{% endraw %}>
-        <Button style={styles.button} href={inviteLink}>
-          Accept Invitation
-        </Button>
-      </Section>
-      <Text style={styles.paragraph}>
-        This invitation will expire in {expiresIn}. If you weren't expecting this
-        invitation, you can safely ignore this email.
-      </Text>
-      <Hr style={styles.hr} />
-      <Text style={styles.footer}>
-        If the button doesn't work, copy and paste this link into your browser:
-        <br />
-        <Link href={inviteLink}>{inviteLink}</Link>
-      </Text>
-    </EmailLayout>
-  );
-}
-{% endif %}
+//
+// Implemented in: ./team-invite.tsx.jinja
+// Exported above via re-export
 
 // ============================================================================
 // Password Reset Email
 // ============================================================================
-
-{% if saas_auth == 'authjs' %}
-export interface PasswordResetEmailProps {
-  userName: string;
-  resetLink: string;
-  expiresIn?: string;
-}
-
-export function PasswordResetEmail({
-  userName,
-  resetLink,
-  expiresIn = '1 hour',
-}: PasswordResetEmailProps) {
-  return (
-    <EmailLayout preview={`Reset your ${appName} password`}>
-      <Heading style={styles.heading}>Reset your password</Heading>
-      <Text style={styles.paragraph}>Hi {userName},</Text>
-      <Text style={styles.paragraph}>
-        We received a request to reset your password. Click the button below to
-        choose a new password.
-      </Text>
-      <Section style={% raw %}{{ textAlign: 'center', margin: '32px 0' }}{% endraw %}>
-        <Button style={styles.button} href={resetLink}>
-          Reset Password
-        </Button>
-      </Section>
-      <Text style={styles.paragraph}>
-        This link will expire in {expiresIn}. If you didn't request a password
-        reset, you can safely ignore this email.
-      </Text>
-      <Hr style={styles.hr} />
-      <Text style={styles.footer}>
-        If the button doesn't work, copy and paste this link into your browser:
-        <br />
-        <Link href={resetLink}>{resetLink}</Link>
-      </Text>
-    </EmailLayout>
-  );
-}
-{% endif %}
+//
+// Implemented in: ./password-reset.tsx.jinja
+// Exported above via re-export
 
 // ============================================================================
 // Payment Failed Email
 // ============================================================================
 
-{% if saas_billing != 'none' %}
+{% if saas_billing_module == 'enabled' %}
 export interface PaymentFailedEmailProps {
   userName: string;
   amount: string;
@@ -283,65 +194,11 @@ export function PaymentFailedEmail({
 }
 
 // ============================================================================
-// Subscription Updated Email
+// Subscription Change Email
 // ============================================================================
-
-export interface SubscriptionUpdatedEmailProps {
-  userName: string;
-  planName: string;
-  changeType: 'upgraded' | 'downgraded' | 'canceled' | 'renewed';
-  effectiveDate: string;
-  billingPortalLink: string;
-}
-
-export function SubscriptionUpdatedEmail({
-  userName,
-  planName,
-  changeType,
-  effectiveDate,
-  billingPortalLink,
-}: SubscriptionUpdatedEmailProps) {
-  const messages = {
-    upgraded: `You've upgraded to the ${planName} plan`,
-    downgraded: `You've downgraded to the ${planName} plan`,
-    canceled: `Your subscription has been canceled`,
-    renewed: `Your ${planName} subscription has been renewed`,
-  };
-
-  return (
-    <EmailLayout preview={messages[changeType]}>
-      <Heading style={styles.heading}>{messages[changeType]}</Heading>
-      <Text style={styles.paragraph}>Hi {userName},</Text>
-      <Text style={styles.paragraph}>
-        {changeType === 'canceled' ? (
-          <>
-            Your subscription has been canceled and will end on{' '}
-            <strong>{effectiveDate}</strong>. You'll continue to have access
-            until then.
-          </>
-        ) : changeType === 'renewed' ? (
-          <>
-            Your {planName} subscription has been successfully renewed. Your
-            next billing date is <strong>{effectiveDate}</strong>.
-          </>
-        ) : (
-          <>
-            Your plan change to <strong>{planName}</strong> is now active as of{' '}
-            <strong>{effectiveDate}</strong>.
-          </>
-        )}
-      </Text>
-      <Section style={% raw %}{{ textAlign: 'center', margin: '32px 0' }}{% endraw %}>
-        <Button style={styles.button} href={billingPortalLink}>
-          View Billing Details
-        </Button>
-      </Section>
-      <Text style={styles.paragraph}>
-        Thank you for being a {appName} customer!
-      </Text>
-    </EmailLayout>
-  );
-}
+//
+// Implemented in: ./subscription-change.tsx.jinja
+// Exported above via re-export
 {% endif %}
 
 // ============================================================================

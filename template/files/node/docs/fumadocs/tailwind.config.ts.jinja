@@ -1,7 +1,7 @@
-{%- if docs_site == 'fumadocs' -%}
+{%- if docs_module == 'enabled' and docs_framework == 'fumadocs' -%}
 import type { Config } from 'tailwindcss';
 import { createPreset } from 'fumadocs-ui/tailwind-plugin';
-{%- if fumadocs_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
+{%- if fumadocs_openapi == 'enabled' and api_module == 'enabled' and api_languages %}
 import { createOpenAPIPreset } from 'fumadocs-openapi/tailwind-plugin';
 {%- endif %}
 
@@ -12,7 +12,7 @@ const config: Config = {
     './app/**/*.{ts,tsx}',
     './content/**/*.mdx',
     './node_modules/fumadocs-ui/dist/**/*.js',
-{%- if fumadocs_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
+{%- if fumadocs_openapi == 'enabled' and api_module == 'enabled' and api_languages %}
     './node_modules/fumadocs-openapi/dist/**/*.js',
 {%- endif %}
   ],
@@ -26,7 +26,7 @@ const config: Config = {
 {%- else %}
     createPreset({ preset: 'neutral' }),
 {%- endif %}
-{%- if fumadocs_openapi == 'enabled' and api_tracks in ['python', 'node', 'python+node'] %}
+{%- if fumadocs_openapi == 'enabled' and api_module == 'enabled' and api_languages %}
     createOpenAPIPreset(),
 {%- endif %}
   ],

@@ -1,0 +1,59 @@
+{% if saas_infra_module == "enabled" and saas_i18n %}
+/**
+ * Internationalization Type Definitions
+ *
+ * Type-safe translations with TypeScript.
+ * Import these types throughout your application for type safety.
+ */
+
+import type { locales } from './config';
+
+/**
+ * Supported locale type
+ * Automatically derived from the locales configuration
+ */
+export type Locale = (typeof locales)[number];
+
+/**
+ * Translation keys type
+ * This will be automatically inferred from your message files
+ * Use this for type-safe translation keys
+ */
+export type TranslationKey = string;
+
+/**
+ * Locale direction for RTL support
+ */
+export type LocaleDirection = 'ltr' | 'rtl';
+
+/**
+ * Translation namespace
+ * Organize translations into logical groups
+ */
+export type TranslationNamespace =
+  | 'common'
+  | 'navigation'
+  | 'auth'
+  | 'dashboard'
+  | 'settings'
+  | 'errors'
+  | 'validation';
+
+/**
+ * Locale metadata interface
+ */
+export interface LocaleMetadata {
+  dir: LocaleDirection;
+  name: string;
+  territory: string;
+}
+
+/**
+ * Locale configuration interface
+ */
+export interface LocaleConfig {
+  locale: Locale;
+  label: string;
+  metadata: LocaleMetadata;
+}
+{% endif %}

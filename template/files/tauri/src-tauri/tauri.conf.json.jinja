@@ -1,0 +1,124 @@
+{% if desktop_module == "enabled" and desktop_framework == "tauri" %}
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "{{ project_name }}",
+  "version": "0.1.0",
+  "identifier": "{{ bundle_identifier | default('com.' ~ project_slug | replace('-', '')) }}",
+  "build": {
+    "beforeDevCommand": "pnpm dev:frontend",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "pnpm build:frontend",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "{{ project_name }}",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": {% if desktop_features is defined and 'custom_titlebar' in desktop_features %}false{% else %}true{% endif %},
+        "transparent": {% if desktop_features is defined and 'transparent_window' in desktop_features %}true{% else %}false{% endif %},
+        "center": true,
+        "visible": true,
+        "hiddenTitle": {% if desktop_features is defined and 'custom_titlebar' in desktop_features %}true{% else %}false{% endif %}
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ipc: http://localhost:* ws://localhost:*",
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "$RESOURCE/**"
+        ]
+      }
+    }{% if desktop_features is defined and 'tray_icon' in desktop_features %},
+    "trayIcon": {
+      "id": "main-tray",
+      "iconPath": "icons/icon.png",
+      "iconAsTemplate": true,
+      "menuOnLeftClick": false,
+      "tooltip": "{{ project_name }}"
+    }{% endif %}{% if desktop_features is defined and 'deep_linking' in desktop_features %},
+    "macOSPrivateApi": true{% endif %}
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "DeveloperTool",
+    "copyright": "Copyright (c) {{ author_name | default('Your Name') }}",
+    "publisher": "{{ author_name | default('Your Name') }}",
+    {% if 'mac' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+    "macOS": {
+      "minimumSystemVersion": "10.15",
+      "entitlements": null,
+      "exceptionDomain": "",
+      "frameworks": [],
+      "providerShortName": null,
+      "signingIdentity": null{% if desktop_features is defined and 'deep_linking' in desktop_features %},
+      "infoString": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLName": "{{ project_slug }}",
+            "CFBundleURLSchemes": ["{{ project_slug }}"]
+          }
+        ]
+      }{% endif %}
+    },
+    {% endif %}
+    {% if 'windows' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "",
+      "wix": null,
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "installMode": "currentUser",
+        "languages": ["en-US"],
+        "displayLanguageSelector": false
+      }{% if desktop_features is defined and 'deep_linking' in desktop_features %},
+      "webviewInstallMode": {
+        "type": "offlineInstaller"
+      }{% endif %}
+    },
+    {% endif %}
+    {% if 'linux' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+    "linux": {
+      "deb": {
+        "depends": []
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    },
+    {% endif %}
+    "resources": [],
+    "externalBin": [],
+    "shortDescription": "{{ project_description | default(project_name) }}",
+    "longDescription": "{{ project_description | default(project_name ~ ' - A cross-platform desktop application built with Tauri') }}"
+  }{% if desktop_features is defined and 'auto_updater' in desktop_features %},
+  "plugins": {
+    "updater": {
+      "pubkey": "YOUR_PUBLIC_KEY_HERE",
+      "endpoints": [
+        "https://releases.{{ project_slug }}.app/{{ '{{' }}target{{ '}}' }}-{{ '{{' }}arch{{ '}}' }}/{{ '{{' }}current_version{{ '}}' }}"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }{% endif %}
+}
+{% endif %}

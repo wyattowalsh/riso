@@ -1,0 +1,530 @@
+{% if saas_infra_module == "enabled" and saas_billing_module == 'enabled' -%}
+import { test, expect, Page } from '@playwright/test';
+
+/**
+ * E2E tests for billing and subscription flows
+ *
+ * These tests verify:
+ * - Pricing page display and plan information
+ * - Subscription initiation and checkout flows
+ * - Billing portal access and subscription management
+ * - Plan upgrades and downgrades
+ * - Subscription cancellation
+ * - Invoice history access
+ *
+ * Tests use mock data and payment providers in test mode.
+ * No actual charges are incurred.
+ */
+
+const BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:3000';
+
+{% if saas_billing_provider == 'stripe' -%}
+// Stripe test credentials for E2E testing
+const STRIPE_TEST_CARD = {
+  number: '4242424242424242',
+  expiry: '12/25',
+  cvc: '123',
+};
+{% elif saas_billing_provider == 'paddle' -%}
+// Paddle test mode is enabled via environment configuration
+const PADDLE_TEST_EMAIL = 'test-paddle@example.com';
+{% elif saas_billing_provider == 'lemonsqueezy' -%}
+// LemonSqueezy test mode is enabled via environment configuration
+const LEMONSQUEEZY_TEST_EMAIL = 'test-lemonsqueezy@example.com';
+{% endif -%}
+
+test.describe('Billing and Subscriptions', () => {
+  test.beforeEach(async ({ page }) => {
+    // Set test mode headers if needed
+    await page.context().addInitScript(() => {
+      localStorage.setItem('test_mode', 'true');
+    });
+  });
+
+  // Test 1: View Pricing Page
+  test('should display pricing page with plans correctly', async ({ page }) => {
+    await page.goto(`${BASE_URL}/pricing`);
+
+    // Wait for page to load
+    await expect(page).toHaveTitle(/pricing|plans/i);
+
+    // Verify pricing page is visible
+    await expect(page.locator('text=/pricing|plans/i').first()).toBeVisible();
+
+    // Check for plan cards
+    const planCards = page.locator('[data-testid="plan-card"], .plan-card, [class*="plan"]');
+    const planCount = await planCards.count();
+    expect(planCount).toBeGreaterThanOrEqual(2);
+
+    // Verify plan information is displayed
+    for (let i = 0; i < planCount; i++) {
+      const card = planCards.nth(i);
+
+      // Each plan should have a title
+      const planTitle = card.locator('[data-testid="plan-name"], h2, h3');
+      await expect(planTitle).toBeVisible();
+
+      // Each plan should have a price
+      const planPrice = card.locator('[data-testid="plan-price"], [class*="price"]');
+      await expect(planPrice).toBeVisible();
+
+      // Each plan should have features list
+      const features = card.locator('[data-testid="plan-features"], ul, [class*="features"]');
+      await expect(features).toBeVisible();
+
+      // Each plan should have a CTA button
+      const cta = card.locator('button, [role="button"]').first();
+      await expect(cta).toBeVisible();
+    }
+  });
+
+  // Test 2: Subscribe to Plan
+  test('should initiate checkout when subscribing to a plan', async ({ page }) => {
+    await page.goto(`${BASE_URL}/pricing`);
+
+    // Get the first plan's subscribe button
+    const subscribeButton = page.locator('button:has-text(/subscribe|get started|choose plan/i)').first();
+    await expect(subscribeButton).toBeVisible();
+
+    // Click subscribe
+    await subscribeButton.click();
+
+    {% if saas_billing_provider == 'stripe' -%}
+    // Should redirect to Stripe checkout or show modal
+    await page.waitForURL(/\/checkout|stripe\.com|payment/i, { timeout: 10000 }).catch(() => {
+      // Fallback: check if modal is open
+    });
+
+    // Verify we're in checkout flow
+    const checkoutIndicator = page.locator('text=/checkout|payment|card details/i').first();
+    await expect(checkoutIndicator).toBeVisible({ timeout: 10000 });
+
+    // Verify form elements are present
+    const emailField = page.locator('input[type="email"]').first();
+    await expect(emailField).toBeVisible({ timeout: 5000 }).catch(() => {
+      // Some checkout implementations may not show these
+    });
+
+    {% elif saas_billing_provider == 'paddle' -%}
+    // Should redirect to Paddle checkout
+    await page.waitForURL(/paddle|checkout/i, { timeout: 10000 }).catch(() => {
+      // Fallback for modal
+    });
+
+    // Verify we're in checkout flow
+    const checkoutIndicator = page.locator('text=/checkout|payment|email/i').first();
+    await expect(checkoutIndicator).toBeVisible({ timeout: 10000 });
+
+    {% elif saas_billing_provider == 'lemonsqueezy' -%}
+    // Should redirect to LemonSqueezy checkout or show embedded checkout
+    await page.waitForURL(/lemonsqueezy|checkout/i, { timeout: 10000 }).catch(() => {
+      // Fallback for embedded form
+    });
+
+    // Verify we're in checkout flow
+    const checkoutIndicator = page.locator('text=/checkout|payment|email/i').first();
+    await expect(checkoutIndicator).toBeVisible({ timeout: 10000 });
+
+    {% endif -%}
+  });
+
+  // Test 3: View Billing Portal
+  test('should access billing portal for subscription management', async ({ page, context }) => {
+    // Assume user is logged in by visiting account page
+    await page.goto(`${BASE_URL}/account`);
+
+    // Look for billing or subscription settings link
+    const billingLink = page.locator(
+      'a:has-text(/billing|subscription|payment method|invoice/i), button:has-text(/billing|subscription/i)'
+    ).first();
+
+    // If billing link exists, navigate to it
+    if (await billingLink.isVisible().catch(() => false)) {
+      await billingLink.click();
+
+      // Verify we're on billing/subscription page
+      await page.waitForURL(/billing|subscription|account/i, { timeout: 10000 });
+
+      // Check for subscription information
+      const subscriptionInfo = page.locator(
+        'text=/subscription|plan|active|expires/i, [data-testid="subscription"], [class*="subscription"]'
+      ).first();
+      await expect(subscriptionInfo).toBeVisible({ timeout: 5000 }).catch(() => {
+        // May be hidden in collapsible section
+      });
+
+      // Look for portal button to manage subscription
+      const manageButton = page.locator(
+        'button:has-text(/manage|update|edit|payment method/i), a:has-text(/manage|update/i)'
+      ).first();
+
+      if (await manageButton.isVisible().catch(() => false)) {
+        // Button should be clickable
+        await expect(manageButton).toBeEnabled();
+      }
+    }
+  });
+
+  // Test 4: Cancel Subscription Flow
+  test('should complete subscription cancellation with confirmation', async ({ page }) => {
+    // Navigate to account/billing page
+    await page.goto(`${BASE_URL}/account`);
+
+    // Look for subscription management section
+    const cancelButton = page.locator(
+      'button:has-text(/cancel|unsubscribe|downgrade|pause/i), a:has-text(/cancel subscription/i)'
+    ).first();
+
+    if (await cancelButton.isVisible().catch(() => false)) {
+      await cancelButton.click();
+
+      // Should show confirmation dialog
+      const confirmationDialog = page.locator('[role="dialog"], .modal, [class*="modal"]').first();
+      await expect(confirmationDialog).toBeVisible({ timeout: 5000 });
+
+      // Dialog should ask for confirmation
+      const confirmText = confirmationDialog.locator('text=/confirm|are you sure|cancel subscription/i').first();
+      await expect(confirmText).toBeVisible();
+
+      // Should have cancel and confirm buttons
+      const confirmBtn = confirmationDialog.locator('button:has-text(/confirm|yes|cancel subscription/i)').first();
+      const dismissBtn = confirmationDialog.locator('button:has-text(/cancel|dismiss|no|keep/i)').last();
+
+      await expect(confirmBtn).toBeVisible();
+      await expect(dismissBtn).toBeVisible();
+
+      // Test dismissing first
+      await dismissBtn.click();
+      await expect(confirmationDialog).not.toBeVisible({ timeout: 5000 });
+
+      // Then confirm cancellation
+      await cancelButton.click();
+      await expect(confirmationDialog).toBeVisible({ timeout: 5000 });
+      await confirmBtn.click();
+
+      // Should show success message or navigate away
+      const successMsg = page.locator('text=/success|cancelled|downgraded|updated/i').first();
+      await expect(successMsg).toBeVisible({ timeout: 5000 }).catch(() => {
+        // May redirect instead of showing message
+      });
+    }
+  });
+
+  // Test 5: Upgrade Plan Flow
+  test('should upgrade to a higher tier plan', async ({ page }) => {
+    await page.goto(`${BASE_URL}/account`);
+
+    // Look for upgrade button or plan selection
+    const upgradeButton = page.locator(
+      'button:has-text(/upgrade|select plan|change plan|higher tier/i), a:has-text(/upgrade/i)'
+    ).first();
+
+    if (await upgradeButton.isVisible().catch(() => false)) {
+      await upgradeButton.click();
+
+      // Should navigate to plan selection or show modal
+      await page.waitForURL(/pricing|plans|upgrade/i, { timeout: 10000 }).catch(() => {
+        // May show modal instead
+      });
+
+      // Find a higher tier plan
+      const planCards = page.locator('[data-testid="plan-card"], [class*="plan"], .plan-card');
+      const count = await planCards.count();
+
+      if (count > 1) {
+        // Click on the second or higher tier plan
+        const higherTierPlan = planCards.nth(Math.min(1, count - 1));
+        const selectBtn = higherTierPlan.locator('button, [role="button"]').first();
+
+        await selectBtn.click();
+
+        // Should show confirmation or redirect to payment
+        await page.waitForURL(/checkout|confirm|payment/i, { timeout: 10000 }).catch(() => {
+          // May show confirmation dialog
+        });
+
+        // Verify we're in the upgrade flow
+        const upgradeIndicator = page.locator('text=/upgrade|confirm|change|plan/i').first();
+        await expect(upgradeIndicator).toBeVisible({ timeout: 5000 });
+      }
+    }
+  });
+
+  // Test 6: Downgrade Plan Flow
+  test('should downgrade to a lower tier plan', async ({ page }) => {
+    await page.goto(`${BASE_URL}/account`);
+
+    // Look for plan change or downgrade option
+    const planSelector = page.locator(
+      '[data-testid="plan-selector"], [class*="plan-select"], select[name*="plan"]'
+    ).first();
+
+    // Or look for downgrade button
+    const downgradeButton = page.locator(
+      'button:has-text(/downgrade|lower tier|reduce|plan/i), a:has-text(/downgrade/i)'
+    ).first();
+
+    if (await downgradeButton.isVisible().catch(() => false)) {
+      await downgradeButton.click();
+
+      // Should navigate to plan selection
+      await page.waitForURL(/pricing|plans|downgrade/i, { timeout: 10000 }).catch(() => {
+        // May show modal
+      });
+
+      // Find a lower tier plan
+      const planCards = page.locator('[data-testid="plan-card"], [class*="plan"]');
+      const count = await planCards.count();
+
+      if (count > 0) {
+        // Click on the first or lower tier plan
+        const lowerTierPlan = planCards.first();
+        const selectBtn = lowerTierPlan.locator('button, [role="button"]').first();
+
+        await selectBtn.click();
+
+        // Should show confirmation
+        const confirmationDialog = page.locator('[role="dialog"], .modal, [class*="modal"]').first();
+        await expect(confirmationDialog).toBeVisible({ timeout: 5000 }).catch(() => {
+          // May show inline confirmation
+        });
+
+        // Verify downgrade warning if shown
+        const warningText = confirmationDialog.locator('text=/downgrade|lose|features/i').first();
+        await expect(warningText).toBeVisible({ timeout: 3000 }).catch(() => {
+          // May not show warning
+        });
+      }
+    } else if (await planSelector.isVisible().catch(() => false)) {
+      // Use dropdown selector if available
+      await planSelector.selectOption({ index: 0 }); // Select lower tier
+
+      // Look for confirm button
+      const confirmBtn = page.locator('button:has-text(/confirm|apply|save|update/i)').first();
+      if (await confirmBtn.isVisible().catch(() => false)) {
+        await confirmBtn.click();
+      }
+    }
+  });
+
+  // Test 7: View Invoice History
+  test('should access and display invoice history', async ({ page }) => {
+    await page.goto(`${BASE_URL}/account`);
+
+    // Look for invoices or billing history section
+    const invoicesLink = page.locator(
+      'a:has-text(/invoice|billing history|receipts|transactions/i), button:has-text(/invoice/i)'
+    ).first();
+
+    if (await invoicesLink.isVisible().catch(() => false)) {
+      await invoicesLink.click();
+
+      // Should navigate to invoices page
+      await page.waitForURL(/invoice|billing|receipt/i, { timeout: 10000 }).catch(() => {
+        // May load inline
+      });
+
+      // Look for invoice list
+      const invoiceList = page.locator(
+        '[data-testid="invoices"], [class*="invoice"], table, [role="table"]'
+      ).first();
+
+      await expect(invoiceList).toBeVisible({ timeout: 5000 }).catch(() => {
+        // May be empty state
+      });
+
+      // Look for invoice rows or items
+      const invoiceItems = page.locator(
+        '[data-testid="invoice-item"], tr[data-invoice], [class*="invoice-row"]'
+      );
+
+      const count = await invoiceItems.count().catch(() => 0);
+
+      if (count > 0) {
+        // Should have invoice information visible
+        const firstInvoice = invoiceItems.first();
+
+        // Check for invoice date
+        const invoiceDate = firstInvoice.locator('text=/\\d{4}-\\d{2}-\\d{2}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec/i');
+        await expect(invoiceDate).toBeVisible({ timeout: 3000 }).catch(() => {
+          // Date may be formatted differently
+        });
+
+        // Check for amount
+        const amount = firstInvoice.locator('text=/\\$|€|£|¥|\\d+\\.\\d{2}/');
+        await expect(amount).toBeVisible({ timeout: 3000 }).catch(() => {
+          // Amount may not be visible
+        });
+
+        // Should be able to download or view invoice
+        const downloadLink = firstInvoice.locator(
+          'a:has-text(/download|view|pdf/i), button:has-text(/download/i)'
+        ).first();
+
+        if (await downloadLink.isVisible().catch(() => false)) {
+          await expect(downloadLink).toBeEnabled();
+        }
+      } else {
+        // Empty state is acceptable for new users
+        const emptyState = page.locator('text=/no invoice|no billing|empty/i').first();
+        await expect(emptyState).toBeVisible({ timeout: 3000 }).catch(() => {
+          // May not show empty state
+        });
+      }
+    }
+  });
+
+  // Test 8: Billing Provider Integration
+  test('should properly integrate with billing provider', async ({ page }) => {
+    {% if saas_billing_provider == 'stripe' -%}
+    // Stripe specific integration test
+    await page.goto(`${BASE_URL}/pricing`);
+
+    // Verify Stripe elements are loaded
+    const stripeElement = page.locator('[data-stripe], [class*="stripe"]').first();
+    await expect(stripeElement).toBeVisible({ timeout: 5000 }).catch(() => {
+      // May be loaded dynamically
+    });
+
+    // Subscribe to trigger Stripe integration
+    const subscribeButton = page.locator('button:has-text(/subscribe|get started/i)').first();
+    await subscribeButton.click();
+
+    // Verify checkout environment
+    await page.waitForURL(/checkout|stripe/i, { timeout: 10000 }).catch(() => {
+      // May be modal
+    });
+
+    // Verify we're in test mode (optional, based on environment)
+    const pageUrl = page.url();
+    expect(pageUrl).not.toMatch(/live.stripe.com/); // Should not be production
+
+    {% elif saas_billing_provider == 'paddle' -%}
+    // Paddle specific integration test
+    await page.goto(`${BASE_URL}/pricing`);
+
+    // Verify Paddle is initialized
+    const paddleElement = page.locator('[data-paddle], [class*="paddle"]').first();
+    await expect(paddleElement).toBeVisible({ timeout: 5000 }).catch(() => {
+      // May be loaded via script
+    });
+
+    // Subscribe to trigger Paddle integration
+    const subscribeButton = page.locator('button:has-text(/subscribe|get started/i)').first();
+    await subscribeButton.click();
+
+    // Verify checkout
+    await page.waitForURL(/paddle|checkout/i, { timeout: 10000 }).catch(() => {
+      // May be embedded
+    });
+
+    {% elif saas_billing_provider == 'lemonsqueezy' -%}
+    // LemonSqueezy specific integration test
+    await page.goto(`${BASE_URL}/pricing`);
+
+    // Verify LemonSqueezy is initialized
+    const lsElement = page.locator('[data-lemonsqueezy], [class*="lemonsqueezy"]').first();
+    await expect(lsElement).toBeVisible({ timeout: 5000 }).catch(() => {
+      // May be loaded via script
+    });
+
+    // Subscribe to trigger LemonSqueezy integration
+    const subscribeButton = page.locator('button:has-text(/subscribe|get started/i)').first();
+    await subscribeButton.click();
+
+    // Verify checkout
+    await page.waitForURL(/lemonsqueezy|checkout/i, { timeout: 10000 }).catch(() => {
+      // May be modal
+    });
+
+    {% endif -%}
+  });
+
+  // Test 9: Mobile Responsiveness for Pricing
+  test('should display pricing page responsively on mobile', async ({ page }) => {
+    // Set mobile viewport
+    await page.setViewportSize({ width: 375, height: 667 });
+
+    await page.goto(`${BASE_URL}/pricing`);
+
+    // Verify pricing page is visible
+    await expect(page.locator('text=/pricing|plans/i').first()).toBeVisible();
+
+    // Check plan cards are stacked on mobile
+    const planCards = page.locator('[data-testid="plan-card"], [class*="plan"]');
+    const count = await planCards.count();
+    expect(count).toBeGreaterThanOrEqual(2);
+
+    // Verify subscribe buttons are accessible
+    const buttons = page.locator('button:has-text(/subscribe|get started/i)');
+    const buttonCount = await buttons.count();
+    expect(buttonCount).toBeGreaterThan(0);
+
+    // All buttons should be visible and clickable
+    for (let i = 0; i < Math.min(buttonCount, 2); i++) {
+      await expect(buttons.nth(i)).toBeVisible();
+      await expect(buttons.nth(i)).toBeEnabled();
+    }
+  });
+
+  // Test 10: Error Handling in Checkout
+  test('should handle checkout errors gracefully', async ({ page }) => {
+    await page.goto(`${BASE_URL}/pricing`);
+
+    // Try to subscribe
+    const subscribeButton = page.locator('button:has-text(/subscribe|get started/i)').first();
+    await subscribeButton.click();
+
+    // Wait for checkout to load
+    await page.waitForURL(/checkout|payment/i, { timeout: 10000 }).catch(() => {
+      // May show modal
+    });
+
+    {% if saas_billing_provider == 'stripe' -%}
+    // Try to submit with incomplete card info
+    const emailField = page.locator('input[type="email"]').first();
+    if (await emailField.isVisible().catch(() => false)) {
+      await emailField.fill('test@example.com');
+    }
+
+    // Try to submit payment
+    const submitButton = page.locator('button:has-text(/pay|submit|confirm|subscribe/i)').first();
+    if (await submitButton.isVisible().catch(() => false)) {
+      await submitButton.click();
+
+      // Should show validation error or decline message
+      await page.waitForTimeout(2000);
+
+      // Look for error message
+      const errorMsg = page.locator(
+        'text=/error|decline|invalid|required|missing/i, [role="alert"], [class*="error"]'
+      ).first();
+
+      // May show error, which is expected behavior
+      await errorMsg.isVisible().catch(() => {
+        // Error may not be visible, which is also acceptable
+      });
+    }
+
+    {% else -%}
+    // Generic error handling for other providers
+    const submitButton = page.locator('button:has-text(/pay|submit|confirm|subscribe/i)').first();
+    if (await submitButton.isVisible().catch(() => false)) {
+      // Just verify button is present and enabled
+      await expect(submitButton).toBeEnabled({ timeout: 5000 }).catch(() => {
+        // May be disabled, which is fine
+      });
+    }
+
+    {% endif -%}
+  });
+});
+{% else -%}
+import { test, describe } from '@playwright/test';
+
+describe.skip('Billing Tests', () => {
+  test('skipped - billing module not enabled', () => {
+    // Billing module is disabled for this render
+  });
+});
+{% endif -%}

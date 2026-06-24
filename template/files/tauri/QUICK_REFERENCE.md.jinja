@@ -1,0 +1,375 @@
+{% if desktop_module == "enabled" and desktop_framework == "tauri" %}
+# {{ project_name }} - Quick Reference
+
+One-page reference for common tasks and patterns.
+
+## Project Commands
+
+```bash
+# Development
+pnpm dev              # Start dev server (hot reload)
+pnpm dev:frontend     # Frontend only
+
+# Building
+pnpm build            # Production build
+pnpm build:frontend   # Build frontend only
+pnpm preview          # Preview production build
+
+# Quality
+pnpm typecheck        # TypeScript type check
+pnpm lint             # ESLint check
+pnpm lint:fix         # Auto-fix lint issues
+pnpm format           # Format code
+pnpm format:check     # Check formatting
+
+# Testing
+pnpm test             # Run tests
+pnpm test:watch       # Watch mode
+pnpm test:coverage    # Coverage report
+```
+
+## Rust Commands
+
+```bash
+cd src-tauri
+
+# Development
+cargo run             # Run app
+cargo build           # Debug build
+cargo build --release # Release build
+
+# Quality
+cargo fmt             # Format code
+cargo clippy          # Lint code
+cargo test            # Run tests
+cargo check           # Fast compile check
+
+# Tauri specific
+pnpm tauri dev        # Same as `pnpm dev`
+pnpm tauri build      # Build release
+pnpm tauri icon       # Generate icons
+```
+
+## Adding a Command
+
+**1. Define in `src-tauri/src/commands.rs`:**
+
+```rust
+#[command]
+pub fn my_command(arg: String) -> Result<String, String> {
+    if arg.is_empty() {
+        return Err("Argument required".to_string());
+    }
+    Ok(format!("Processed: {}", arg))
+}
+```
+
+**2. Register in `src-tauri/src/main.rs`:**
+
+```rust
+.invoke_handler(tauri::generate_handler![
+    commands::greet,
+    commands::my_command,  // Add here
+])
+```
+
+**3. Call from frontend:**
+
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+const result = await invoke<string>('my_command', { arg: 'value' });
+```
+
+## Project Structure
+
+```
+{{ project_slug }}/
+├── src/              # React frontend
+│   ├── App.tsx       # Main component
+│   ├── main.tsx      # Entry point
+│   └── components/   # UI components
+├── src-tauri/        # Rust backend
+│   ├── src/
+│   │   ├── main.rs   # App setup
+│   │   └── commands.rs  # IPC handlers
+│   └── tauri.conf.json  # Configuration
+└── package.json      # Dependencies
+```
+
+## Common Patterns
+
+### Async Command
+
+```rust
+#[command]
+pub async fn fetch_data(url: String) -> Result<String, String> {
+    // Async operations here
+    Ok("data".to_string())
+}
+```
+
+### State Management
+
+```rust
+use tauri::State;
+
+struct AppState {
+    count: Arc<Mutex<i32>>,
+}
+
+#[command]
+fn increment(state: State<AppState>) -> i32 {
+    let mut count = state.count.lock().unwrap();
+    *count += 1;
+    *count
+}
+```
+
+### Window Management
+
+```typescript
+import { getCurrentWindow } from '@tauri-apps/api/window';
+
+const appWindow = getCurrentWindow();
+
+// Minimize
+await appWindow.minimize();
+
+// Maximize
+await appWindow.toggleMaximize();
+
+// Close
+await appWindow.close();
+
+// Hide
+await appWindow.hide();
+
+// Show
+await appWindow.show();
+```
+
+### Events
+
+```rust
+use tauri::Manager;
+
+#[command]
+pub fn send_event(app: AppHandle) {
+    app.emit("my-event", "payload").unwrap();
+}
+```
+
+```typescript
+import { listen } from '@tauri-apps/api/event';
+
+const unlisten = await listen('my-event', (event) => {
+    console.log('Received:', event.payload);
+});
+
+// Later: unlisten();
+```
+
+{% if 'notifications' in desktop_features | default([]) %}
+### Notifications
+
+```typescript
+import { isPermissionGranted, requestPermission, sendNotification } from '@tauri-apps/plugin-notification';
+
+let permissionGranted = await isPermissionGranted();
+if (!permissionGranted) {
+    const permission = await requestPermission();
+    permissionGranted = permission === 'granted';
+}
+
+if (permissionGranted) {
+    sendNotification({ title: 'Hello', body: 'Message' });
+}
+```
+{% endif %}
+
+{% if 'file_system' in desktop_features | default([]) %}
+### File System
+
+```typescript
+import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
+
+// Read
+const contents = await readTextFile('file.txt');
+
+// Write
+await writeTextFile('file.txt', 'content');
+```
+{% endif %}
+
+## Debugging
+
+### Frontend (Chrome DevTools)
+
+Development mode automatically opens DevTools.
+
+**Shortcuts:**
+- `F12` - Toggle DevTools
+- `Cmd/Ctrl + R` - Reload
+- `Cmd/Ctrl + Shift + I` - Inspect element
+
+### Rust (VS Code)
+
+**Using launch.json:**
+
+1. Set breakpoints in Rust code
+2. Press `F5`
+3. Select "Tauri Development Debug"
+
+**Using logs:**
+
+```rust
+use log::{debug, info, warn, error};
+
+info!("Application started");
+error!("Failed: {}", error);
+```
+
+View in terminal where `pnpm dev` is running.
+
+## Environment Variables
+
+**`.env` (create from `.env.example`):**
+
+```bash
+# Development
+TAURI_DEV_HOST=localhost
+
+# Build
+TAURI_PRIVATE_KEY=path/to/key
+TAURI_KEY_PASSWORD=password
+
+{% if 'mac' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+# macOS Code Signing
+APPLE_CERTIFICATE=path/to/cert.p12
+APPLE_CERTIFICATE_PASSWORD=password
+APPLE_ID=your@email.com
+APPLE_PASSWORD=app-specific-password
+APPLE_TEAM_ID=TEAM_ID
+{% endif %}
+
+{% if 'windows' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+# Windows Code Signing
+WINDOWS_CERTIFICATE=path/to/cert.pfx
+WINDOWS_CERTIFICATE_PASSWORD=password
+{% endif %}
+```
+
+## Tauri Configuration
+
+**`src-tauri/tauri.conf.json`:**
+
+```json
+{
+  "productName": "{{ project_name }}",
+  "version": "0.1.0",
+  "identifier": "{{ bundle_identifier | default('com.' ~ project_slug | replace('-', '')) }}",
+  "build": {
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../dist"
+  }
+}
+```
+
+## Permissions
+
+**`src-tauri/capabilities/default.json`:**
+
+Add permissions as needed:
+
+```json
+{
+  "permissions": [
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:path:allow-resolve-exe"
+  ]
+}
+```
+
+## Building for Production
+
+```bash
+# Current platform
+pnpm build
+
+{% if 'mac' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+# macOS
+pnpm tauri build --target universal-apple-darwin
+{% endif %}
+
+{% if 'windows' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+# Windows
+pnpm tauri build --target x86_64-pc-windows-msvc
+{% endif %}
+
+{% if 'linux' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+# Linux
+pnpm tauri build --target x86_64-unknown-linux-gnu
+{% endif %}
+```
+
+**Output:** `src-tauri/target/release/bundle/`
+
+## Troubleshooting
+
+### Build fails
+
+```bash
+# Clean and rebuild
+rm -rf src-tauri/target node_modules/.vite
+pnpm install
+pnpm dev
+```
+
+### Rust errors
+
+```bash
+cd src-tauri
+cargo clean
+cargo build
+```
+
+### WebView errors
+
+- **macOS**: Update macOS
+- **Windows**: Install [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)
+- **Linux**: `sudo apt install webkit2gtk-4.1`
+
+## Performance Tips
+
+1. **Use `cargo build --release`** for production
+2. **Enable LTO** in Cargo.toml (already configured)
+3. **Minimize bundle size** with tree shaking
+4. **Lazy load** large components
+5. **Use memoization** for expensive computations
+
+## Security Checklist
+
+- [ ] Validate all command inputs
+- [ ] Use Result types for error handling
+- [ ] Never expose sensitive APIs
+- [ ] Keep dependencies updated
+- [ ] Test with CSP enabled
+- [ ] Review permissions regularly
+
+## Resources
+
+- [Tauri Docs](https://v2.tauri.app/)
+- [API Reference](https://v2.tauri.app/reference/javascript/api/)
+- [Discord](https://discord.gg/tauri)
+- [GitHub](https://github.com/tauri-apps/tauri)
+
+## Version Info
+
+- Tauri: 2.x
+- Rust: 1.77.2+
+- Node.js: 20.x+
+- React: 18.3.x
+- TypeScript: 5.7.x
+{% endif %}

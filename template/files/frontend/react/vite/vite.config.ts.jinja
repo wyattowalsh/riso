@@ -1,0 +1,28 @@
+{% if frontend_framework == 'react' and react_framework == 'vite' %}
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import path from 'path'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  server: {
+    port: 3000,
+    proxy: {
+      '/api': {
+        target: {% if 'python' in backend_languages and python_api_framework == 'fastapi' %}'http://localhost:8000'{% elif 'node' in backend_languages and node_api_framework == 'fastify' %}'http://localhost:3001'{% else %}'http://localhost:8000'{% endif %},
+        changeOrigin: true,
+      },
+    },
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+  },
+})
+{% endif %}

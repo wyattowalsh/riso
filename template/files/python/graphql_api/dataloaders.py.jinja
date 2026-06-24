@@ -4,7 +4,7 @@ from typing import List, Optional
 from dataclasses import dataclass
 
 from aiodataloader import DataLoader
-{% if api_tracks in ['python', 'python+node'] %}
+{% if api_module == 'enabled' and 'python' in api_languages %}
 from sqlalchemy.ext.asyncio import AsyncSession
 {% endif %}
 
@@ -28,12 +28,12 @@ class UserDataLoader(DataLoader):
     
     def __init__(
         self,
-        {% if api_tracks in ['python', 'python+node'] %}
+        {% if api_module == 'enabled' and 'python' in api_languages %}
         db: Optional[AsyncSession] = None,
         {% endif %}
     ):
         super().__init__(batch_load_fn=self.batch_load_users)
-        {% if api_tracks in ['python', 'python+node'] %}
+        {% if api_module == 'enabled' and 'python' in api_languages %}
         self.db = db
         {% endif %}
     
@@ -50,7 +50,7 @@ class UserDataLoader(DataLoader):
         Returns:
             List of Users in the same order as user_ids (None for not found)
         """
-        {% if api_tracks in ['python', 'python+node'] %}
+        {% if api_module == 'enabled' and 'python' in api_languages %}
         # Real implementation would query database:
         # result = await self.db.execute(
         #     select(UserModel).where(UserModel.id.in_(user_ids))
@@ -79,12 +79,12 @@ class PostsByAuthorDataLoader(DataLoader):
     
     def __init__(
         self,
-        {% if api_tracks in ['python', 'python+node'] %}
+        {% if api_module == 'enabled' and 'python' in api_languages %}
         db: Optional[AsyncSession] = None,
         {% endif %}
     ):
         super().__init__(batch_load_fn=self.batch_load_posts_by_author)
-        {% if api_tracks in ['python', 'python+node'] %}
+        {% if api_module == 'enabled' and 'python' in api_languages %}
         self.db = db
         {% endif %}
     
@@ -101,7 +101,7 @@ class PostsByAuthorDataLoader(DataLoader):
         Returns:
             List of post lists, one list per author_id (empty list if no posts)
         """
-        {% if api_tracks in ['python', 'python+node'] %}
+        {% if api_module == 'enabled' and 'python' in api_languages %}
         # Real implementation would query database:
         # result = await self.db.execute(
         #     select(PostModel).where(PostModel.author_id.in_(author_ids))
@@ -137,19 +137,19 @@ class DataLoaderContainer:
     batching and caching. DataLoaders should never be shared across requests.
     """
     
-    {% if api_tracks in ['python', 'python+node'] %}
+    {% if api_module == 'enabled' and 'python' in api_languages %}
     db: Optional[AsyncSession] = None
     {% endif %}
     
     def __post_init__(self):
         """Initialize DataLoader instances."""
         self.user_loader = UserDataLoader(
-            {% if api_tracks in ['python', 'python+node'] %}
+            {% if api_module == 'enabled' and 'python' in api_languages %}
             db=self.db
             {% endif %}
         )
         self.posts_by_author_loader = PostsByAuthorDataLoader(
-            {% if api_tracks in ['python', 'python+node'] %}
+            {% if api_module == 'enabled' and 'python' in api_languages %}
             db=self.db
             {% endif %}
         )

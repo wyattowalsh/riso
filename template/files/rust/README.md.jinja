@@ -1,35 +1,202 @@
-{% if project_language == 'rust' %}
+{% if project_language == 'rust' or 'rust' in cli_languages or 'rust' in api_languages %}
 # {{ project_name }}
 
-{{ description }}
+{{ project_description }}
 
 ## Features
 
 - **Language**: Rust 1.81+
 - **Runtime**: Tokio (async)
-- **CLI**: Clap
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+- **CLI**: Clap with colored output
+{% endif %}
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+- **API**: Actix-web with async handlers
+{% endif %}
 - **Tooling**: Just, Cargo
 
 ## Getting Started
 
 ### Prerequisites
 
-- [Rust](https://rustup.rs/)
-- [Just](https://github.com/casey/just)
+- [Rust](https://rustup.rs/) 1.81+
+- [Just](https://github.com/casey/just) (optional, for convenience)
 
-### Commands
+### Installation
 
 ```bash
-just build    # Build the project
-just run      # Run the CLI
-just quality  # Run all checks
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Install Just (optional)
+cargo install just
 ```
 
-## Structure
+## Commands
 
-- `src/`: Source code
-- `tests/`: Integration tests
-{%- if mcp_module == 'enabled' and mcp_language == 'rust' %}
-- `mcp/`: MCP Server crate
-{%- endif %}
+### Build
+
+```bash
+just build              # Build all components
+cargo build            # Alternative using cargo directly
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+just build-cli         # Build CLI only
+{% endif %}
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+just build-api         # Build API server only
+{% endif %}
+```
+
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+### CLI Usage
+
+```bash
+# Run the CLI
+just run-cli hello World
+
+# Or directly with cargo
+cargo run --bin {{ package_name }} -- hello World
+
+# Get help
+just run-cli --help
+
+# Check version
+just run-cli version
+```
+
+#### Available Commands
+
+- `hello` - Say hello to someone
+- `version` - Display version information
+{% endif %}
+
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+### API Server
+
+```bash
+# Run in development mode
+just run-api-dev
+
+# Or start normally
+just run-api
+
+# Or with cargo
+cargo run --bin {{ package_name }}-api
+```
+
+#### Environment Variables
+
+- `HOST` - Server host (default: `0.0.0.0`)
+- `PORT` - Server port (default: `8080`)
+- `ENVIRONMENT` - Environment mode (`development`, `production`)
+- `CORS_ENABLED` - Enable CORS (default: `true`)
+- `LOG_LEVEL` - Logging level (default: `info`)
+
+#### API Endpoints
+
+- `GET /health` - Health check endpoint
+- `GET /ready` - Readiness probe
+- `GET /live` - Liveness probe
+- `GET /api/v1/hello?name=NAME` - Hello endpoint
+{% endif %}
+
+### Testing
+
+```bash
+just test              # Run all tests
+just test-verbose      # Run tests with output
+cargo test             # Alternative using cargo
+```
+
+### Quality Checks
+
+```bash
+just quality           # Run all quality checks (fmt + clippy + test)
+just fmt               # Format code
+just fmt-check         # Check formatting without changes
+just clippy            # Run clippy linter
+just clippy-all        # Run clippy with all features
+```
+
+### Maintenance
+
+```bash
+just clean             # Clean build artifacts
+just update            # Update dependencies
+just outdated          # Check for outdated dependencies
+just audit             # Run security audit
+```
+
+## Project Structure
+
+```
+.
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+├── cli/                        # CLI application
+│   ├── main.rs                # CLI entry point
+│   └── commands/              # CLI commands
+│       ├── mod.rs            # Command routing
+│       ├── hello.rs          # Hello command
+│       └── version.rs        # Version command
+{% endif %}
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+├── api/                        # API server
+│   ├── main.rs                # API entry point
+│   ├── config.rs              # Configuration management
+│   ├── routes.rs              # Route configuration
+│   ├── handlers/              # Request handlers
+│   │   ├── mod.rs
+│   │   ├── health.rs         # Health check handlers
+│   │   └── hello.rs          # Hello endpoint
+│   └── models/                # Data models
+│       ├── mod.rs
+│       ├── health.rs         # Health models
+│       └── response.rs       # Response models
+{% endif %}
+├── tests/                      # Integration tests
+│   {% if cli_module == 'enabled' and 'rust' in cli_languages %}├── cli_integration_test.rs  # CLI tests
+│   {% endif %}{% if api_module == 'enabled' and 'rust' in api_languages %}└── api_integration_test.rs  # API tests
+{% endif %}
+├── Cargo.toml                 # Rust dependencies
+├── justfile                   # Just commands
+└── README.md                  # This file
+```
+
+{% if mcp_module == 'enabled' and 'rust' in mcp_languages %}
+### MCP Server
+
+This project includes a Model Context Protocol (MCP) server in the `mcp/` directory.
+See `mcp/README.md` for details.
+{% endif %}
+
+## Development
+
+### Code Style
+
+This project follows Rust standard conventions:
+- Use `cargo fmt` to format code
+- Use `cargo clippy` to catch common mistakes
+- Write tests for new functionality
+
+### Release Builds
+
+```bash
+just release           # Build optimized release binaries
+{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+# CLI binary will be at: target/release/{{ package_name }}
+{% endif %}
+{% if api_module == 'enabled' and 'rust' in api_languages %}
+# API binary will be at: target/release/{{ package_name }}-api
+{% endif %}
+```
+
+Release builds are optimized for size and performance with:
+- LTO (Link-Time Optimization)
+- Stripped symbols
+- Single codegen unit
+- Size optimization
+
+## License
+
+MIT
 {% endif %}

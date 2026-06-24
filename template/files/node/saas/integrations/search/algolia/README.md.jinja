@@ -1,0 +1,541 @@
+{% if saas_infra_module == "enabled" and saas_search == 'algolia' %}
+# Algolia Search Integration
+
+Modern search integration for {{ project_name }} using Algolia's powerful search infrastructure.
+
+## Features
+
+- **InstantSearch**: Real-time search results as you type
+- **Autocomplete**: Search-as-you-type with suggestions
+- **Multi-Index Search**: Search across multiple data sources simultaneously
+- **Faceted Search**: Filter results by categories, tags, and attributes
+- **Geo Search**: Location-based search results
+- **AI-Powered Ranking**: Intelligent result ordering
+- **Analytics**: Track searches, clicks, and conversions
+- **Typo Tolerance**: Handles misspellings automatically
+- **Synonyms**: Custom synonym management
+- **React Hooks**: Modern hooks-based API
+
+## Setup
+
+### 1. Environment Variables
+
+Add these to your `.env.local`:
+
+```bash
+# Algolia Configuration
+NEXT_PUBLIC_ALGOLIA_APP_ID=your_app_id
+NEXT_PUBLIC_ALGOLIA_SEARCH_KEY=your_search_key
+ALGOLIA_ADMIN_KEY=your_admin_key  # Server-side only, never expose to frontend
+```
+
+Get your API keys from: https://www.algolia.com/account/api-keys/all
+
+### 2. Install Dependencies
+
+The required dependencies are already included in `package.json`:
+
+```json
+{
+  "dependencies": {
+    "algoliasearch": "^5.0.0"
+  }
+}
+```
+
+### 3. Configure Indices
+
+Update `client.ts` to add your custom indices:
+
+```typescript
+export const SEARCH_INDICES = {
+  PRODUCTS: 'products',
+  BLOG_POSTS: 'blog_posts',
+  DOCUMENTATION: 'documentation',
+  // Add your custom indices here
+} as const;
+```
+
+## Usage
+
+### Client-Side Search
+
+#### Basic Search
+
+```tsx
+import { useInstantSearch } from '@/integrations/search/algolia';
+
+function ProductSearch() {
+  const { query, setQuery, hits, isSearching, pagination } = useInstantSearch({
+    indexName: 'products',
+    searchParams: {
+      hitsPerPage: 20,
+      facets: ['category', 'brand'],
+    },
+  });
+
+  return (
+    <div>
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search products..."
+        className="w-full px-4 py-2 border rounded"
+      />
+
+      {isSearching && <div>Searching...</div>}
+
+      <div className="grid grid-cols-3 gap-4 mt-4">
+        {hits.map((hit) => (
+          <div key={hit.objectID} className="border p-4 rounded">
+            <h3>{hit.name}</h3>
+            <p>${hit.price}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-2 mt-4">
+        <button
+          onClick={pagination.previousPage}
+          disabled={pagination.page === 0}
+        >
+          Previous
+        </button>
+        <span>
+          Page {pagination.page + 1} of {pagination.nbPages}
+        </span>
+        <button
+          onClick={pagination.nextPage}
+          disabled={pagination.page >= pagination.nbPages - 1}
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+#### Autocomplete
+
+```tsx
+import { useAutocomplete } from '@/integrations/search/algolia';
+
+function SearchAutocomplete() {
+  const { query, setQuery, suggestions, isLoading, selectItem } = useAutocomplete({
+    indexName: 'products',
+    hitsPerPage: 5,
+    onSelect: (product) => {
+      router.push(`/products/${product.objectID}`);
+    },
+  });
+
+  return (
+    <div className="relative">
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search..."
+        className="w-full px-4 py-2 border rounded"
+      />
+
+      {isLoading && <div className="absolute mt-1">Loading...</div>}
+
+      {suggestions.length > 0 && (
+        <ul className="absolute w-full bg-white border rounded mt-1 shadow-lg">
+          {suggestions.map((item) => (
+            <li
+              key={item.objectID}
+              onClick={() => selectItem(item)}
+              className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+            >
+              {item.name}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+```
+
+#### Multi-Index Search (Federated Search)
+
+```tsx
+import { useMultiSearch } from '@/integrations/search/algolia';
+
+function FederatedSearch() {
+  const { query, setQuery, results, isSearching } = useMultiSearch({
+    queries: [
+      { indexName: 'products', hitsPerPage: 3 },
+      { indexName: 'blog_posts', hitsPerPage: 3 },
+      { indexName: 'documentation', hitsPerPage: 3 },
+    ],
+    searchQuery: '',
+  });
+
+  return (
+    <div>
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search everything..."
+      />
+
+      {results?.map((result, index) => (
+        <section key={index} className="mb-8">
+          <h2 className="text-xl font-bold mb-4">
+            {result.hits[0]?.__indexName}
+          </h2>
+          <div className="space-y-2">
+            {result.hits.map((hit) => (
+              <div key={hit.objectID}>{hit.title || hit.name}</div>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+```
+
+### Server-Side Indexing
+
+#### Index Single Object
+
+```typescript
+import { saveObject } from '@/integrations/search/algolia';
+
+// Index a product
+await saveObject({
+  indexName: 'products',
+  object: {
+    objectID: 'prod_123',
+    name: 'MacBook Pro 16"',
+    description: 'Powerful laptop for professionals',
+    price: 2499,
+    category: 'electronics',
+    brand: 'Apple',
+    inStock: true,
+    rating: 4.8,
+    reviewCount: 1234,
+  },
+});
+```
+
+#### Batch Index Multiple Objects
+
+```typescript
+import { saveObjects } from '@/integrations/search/algolia';
+
+// Index multiple products
+const products = await db.products.findMany();
+
+await saveObjects({
+  indexName: 'products',
+  objects: products.map((product) => ({
+    objectID: product.id,
+    name: product.name,
+    description: product.description,
+    price: product.price,
+    category: product.category,
+    brand: product.brand,
+    inStock: product.inStock,
+    rating: product.rating,
+    reviewCount: product.reviewCount,
+  })),
+});
+```
+
+#### Update Object
+
+```typescript
+import { partialUpdateObject } from '@/integrations/search/algolia';
+
+// Update only specific fields
+await partialUpdateObject({
+  indexName: 'products',
+  objectID: 'prod_123',
+  attributes: {
+    price: 2299, // Updated price
+    inStock: false,
+  },
+});
+```
+
+#### Delete Object
+
+```typescript
+import { deleteObject } from '@/integrations/search/algolia';
+
+await deleteObject({
+  indexName: 'products',
+  objectID: 'prod_123',
+});
+```
+
+### Configure Index Settings
+
+```typescript
+import { configureIndex } from '@/integrations/search/algolia';
+
+await configureIndex({
+  indexName: 'products',
+  settings: {
+    // Searchable attributes (in order of importance)
+    searchableAttributes: [
+      'name',
+      'brand',
+      'category',
+      'description',
+    ],
+
+    // Attributes for faceting (filtering)
+    attributesForFaceting: [
+      'category',
+      'brand',
+      'filterOnly(inStock)',
+      'searchable(tags)',
+    ],
+
+    // Custom ranking (tie-breaker)
+    customRanking: [
+      'desc(popularity)',
+      'desc(rating)',
+      'asc(price)',
+    ],
+
+    // Highlighting
+    attributesToHighlight: ['name', 'description'],
+
+    // Snippeting
+    attributesToSnippet: ['description:20'],
+
+    // Typo tolerance
+    typoTolerance: true,
+    minWordSizefor1Typo: 4,
+    minWordSizefor2Typos: 8,
+
+    // Results per page
+    hitsPerPage: 20,
+
+    // Remove stop words
+    removeStopWords: ['en'],
+
+    // Query languages
+    queryLanguages: ['en'],
+  },
+});
+```
+
+### Manage Synonyms
+
+```typescript
+import { saveSynonym } from '@/integrations/search/algolia';
+
+// Add synonyms
+await saveSynonym({
+  indexName: 'products',
+  objectID: 'laptop-synonym',
+  synonyms: ['laptop', 'notebook', 'macbook', 'computer'],
+  type: 'synonym',
+});
+
+// One-way synonym (iPhone -> mobile phone, but not vice versa)
+await saveSynonym({
+  indexName: 'products',
+  objectID: 'iphone-synonym',
+  synonyms: ['iPhone', 'mobile phone'],
+  type: 'oneWaySynonym',
+});
+```
+
+## Advanced Features
+
+### Geo Search
+
+```typescript
+import { search } from '@/integrations/search/algolia';
+
+// Search near a location
+const results = await search({
+  indexName: 'stores',
+  query: 'coffee',
+  aroundLatLng: '37.7749,-122.4194', // San Francisco coordinates
+  aroundRadius: 5000, // 5km radius
+});
+```
+
+### Filtering
+
+```typescript
+// Numeric filters
+const results = await search({
+  indexName: 'products',
+  query: 'laptop',
+  filters: 'price >= 1000 AND price <= 2000',
+});
+
+// Facet filters
+const results = await search({
+  indexName: 'products',
+  query: 'laptop',
+  filters: 'category:electronics AND brand:Apple',
+});
+
+// Multiple filters with OR
+const results = await search({
+  indexName: 'products',
+  query: 'laptop',
+  filters: '(brand:Apple OR brand:Dell) AND category:electronics',
+});
+```
+
+### Highlighting
+
+```tsx
+import { getHighlightedText } from '@/integrations/search/algolia';
+
+function SearchResult({ hit }) {
+  const highlightedName = getHighlightedText(hit, 'name');
+
+  return (
+    <div>
+      <h3 dangerouslySetInnerHTML={{ '{{' }} __html: highlightedName {{ '}}' }} />
+    </div>
+  );
+}
+```
+
+## API Routes
+
+### Search API Endpoint
+
+```typescript
+// app/api/search/route.ts
+import { search } from '@/integrations/search/algolia';
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const query = searchParams.get('q') || '';
+  const indexName = searchParams.get('index') || 'products';
+
+  try {
+    const results = await search({
+      indexName: indexName as any,
+      query,
+      hitsPerPage: 20,
+    });
+
+    return Response.json(results);
+  } catch (error) {
+    return Response.json(
+      { error: 'Search failed' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+### Indexing Webhook
+
+```typescript
+// app/api/webhooks/index/route.ts
+import { saveObject, deleteObject } from '@/integrations/search/algolia';
+
+export async function POST(request: Request) {
+  const { action, data } = await request.json();
+
+  try {
+    if (action === 'create' || action === 'update') {
+      await saveObject({
+        indexName: 'products',
+        object: {
+          objectID: data.id,
+          ...data,
+        },
+      });
+    } else if (action === 'delete') {
+      await deleteObject({
+        indexName: 'products',
+        objectID: data.id,
+      });
+    }
+
+    return Response.json({ success: true });
+  } catch (error) {
+    return Response.json(
+      { error: 'Indexing failed' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+## Best Practices
+
+### 1. Security
+
+- **Never expose admin API key to frontend**
+- Use search-only API key for client-side operations
+- Implement API rate limiting
+- Validate and sanitize user input
+
+### 2. Performance
+
+- Use `attributesToRetrieve` to limit returned data
+- Implement pagination instead of loading all results
+- Use batch operations for bulk indexing
+- Cache frequently accessed data
+
+### 3. Search Quality
+
+- Configure custom ranking based on your metrics
+- Add synonyms for common search terms
+- Use typo tolerance settings appropriate for your content
+- Test with real user queries
+
+### 4. Indexing Strategy
+
+- Index data in real-time for critical updates
+- Use batch indexing for bulk operations
+- Schedule regular full re-indexing
+- Monitor index size and optimize if needed
+
+## Troubleshooting
+
+### No results found
+
+1. Check if objects are properly indexed
+2. Verify searchable attributes are configured
+3. Test with simpler queries
+4. Check typo tolerance settings
+
+### Slow search performance
+
+1. Reduce `attributesToRetrieve`
+2. Optimize index settings
+3. Use CDN-backed search
+4. Implement query caching
+
+### Indexing failures
+
+1. Check API key permissions
+2. Verify object structure
+3. Check for rate limits
+4. Review error logs
+
+## Resources
+
+- [Algolia Documentation](https://www.algolia.com/doc/)
+- [InstantSearch Widgets](https://www.algolia.com/doc/guides/building-search-ui/what-is-instantsearch/react/)
+- [Search Best Practices](https://www.algolia.com/doc/guides/building-search-ui/best-practices/)
+- [Index Settings Reference](https://www.algolia.com/doc/api-reference/settings-api-parameters/)
+
+## Support
+
+For issues or questions:
+- [Algolia Community](https://discourse.algolia.com/)
+- [GitHub Issues](https://github.com/algolia/algoliasearch-client-javascript/issues)
+- [Stack Overflow](https://stackoverflow.com/questions/tagged/algolia)
+{% endif %}

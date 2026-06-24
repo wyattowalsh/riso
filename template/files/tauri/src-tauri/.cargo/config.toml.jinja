@@ -1,0 +1,27 @@
+{% if desktop_module == "enabled" and desktop_framework == "tauri" %}
+[build]
+# Incremental builds for faster development
+incremental = true
+
+{% if 'linux' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+# Linux-specific optimizations
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+{% endif %}
+
+{% if 'mac' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+# macOS-specific optimizations
+[target.x86_64-apple-darwin]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+{% endif %}
+
+{% if 'windows' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+# Windows-specific optimizations
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "link-arg=/DEBUG:NONE"]
+{% endif %}
+{% endif %}

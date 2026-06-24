@@ -1,0 +1,132 @@
+{%- if mcp_module == 'enabled' and 'go' in mcp_languages -%}
+// Package mcp provides the MCP server implementation.
+//
+// Uses the official MCP Go SDK for protocol handling.
+package mcp
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/modelcontextprotocol/go-sdk/server"
+
+	"{{ project_slug }}/internal/resources"
+	"{{ project_slug }}/internal/tools"
+)
+
+// Config holds server configuration.
+type Config struct {
+	Name      string
+	Version   string
+	Transport string
+	Host      string
+	Port      int
+	Logger    *slog.Logger
+}
+
+// Server wraps the MCP server with project-specific functionality.
+type Server struct {
+	config Config
+	mcp    *server.Server
+	logger *slog.Logger
+}
+
+// NewServer creates a new MCP server instance.
+func NewServer(cfg Config) (*Server, error) {
+	if cfg.Logger == nil {
+		cfg.Logger = slog.Default()
+	}
+
+	// Create server options
+	opts := server.Options{
+		Name:    cfg.Name,
+		Version: cfg.Version,
+		Instructions: `{{ project_name }} MCP Server - Provides tools and resources for {{ project_name }} operations.
+
+Available capabilities:
+- Tools: Core functionality exposed as MCP tools
+- Resources: Data and configuration access`,
+	}
+
+	// Create the MCP server instance
+	srv := server.New(opts)
+
+	s := &Server{
+		config: cfg,
+		mcp:    srv,
+		logger: cfg.Logger,
+	}
+
+	// Register all capabilities
+	s.registerTools()
+	s.registerResources()
+
+	return s, nil
+}
+
+// registerTools registers all MCP tools with the server.
+func (s *Server) registerTools() {
+{%- if mcp_example_tools %}
+	// Register example tools
+	tools.RegisterEchoTools(s.mcp, s.logger)
+	tools.RegisterTimestampTools(s.mcp, s.logger)
+	tools.RegisterHTTPTools(s.mcp, s.logger)
+{%- else %}
+	// Add your tool registrations here
+	_ = s.mcp
+{%- endif %}
+}
+
+// registerResources registers all MCP resources with the server.
+func (s *Server) registerResources() {
+{%- if mcp_example_tools %}
+	// Register example resources
+	resources.RegisterSystemResources(s.mcp, s.logger)
+{%- else %}
+	// Add your resource registrations here
+	_ = s.mcp
+{%- endif %}
+}
+
+// Run starts the MCP server with the configured transport.
+func (s *Server) Run(ctx context.Context) error {
+	switch s.config.Transport {
+	case "stdio":
+		return s.runStdio(ctx)
+	case "sse":
+		return s.runSSE(ctx)
+	case "http":
+		return s.runHTTP(ctx)
+	default:
+		return fmt.Errorf("unknown transport: %s", s.config.Transport)
+	}
+}
+
+// runStdio runs the server using stdio transport.
+func (s *Server) runStdio(ctx context.Context) error {
+	s.logger.Info("running MCP server with stdio transport")
+
+	transport := server.NewStdioTransport()
+	return s.mcp.Run(ctx, transport)
+}
+
+// runSSE runs the server using Server-Sent Events transport.
+func (s *Server) runSSE(ctx context.Context) error {
+	addr := fmt.Sprintf("%s:%d", s.config.Host, s.config.Port)
+	s.logger.Info("running MCP server with SSE transport", "address", addr)
+
+	transport := server.NewSSETransport(addr)
+	return s.mcp.Run(ctx, transport)
+}
+
+// runHTTP runs the server using HTTP streaming transport.
+func (s *Server) runHTTP(ctx context.Context) error {
+	addr := fmt.Sprintf("%s:%d", s.config.Host, s.config.Port)
+	s.logger.Info("running MCP server with HTTP transport", "address", addr)
+
+	transport := server.NewHTTPTransport(addr)
+	return s.mcp.Run(ctx, transport)
+}
+{%- endif %}

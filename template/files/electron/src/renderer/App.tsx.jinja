@@ -1,0 +1,209 @@
+{% if desktop_module == "enabled" and desktop_framework == "electron-vite" %}
+/**
+ * Main Application Component
+ *
+ * Root React component for the desktop application.
+ */
+
+import { useEffect } from 'react';
+import { useAppStore } from './store';
+{% if 'custom_titlebar' in desktop_features %}
+import TitleBar from './components/TitleBar';
+{% endif %}
+
+function App(): JSX.Element {
+  const {
+    appInfo,
+    theme,
+    setAppInfo,
+    setTheme,
+    incrementCounter,
+    counter,
+  } = useAppStore();
+
+  // Initialize app info and theme
+  useEffect(() => {
+    const init = async (): Promise<void> => {
+      // Get app info
+      const info = await window.api.getAppInfo();
+      setAppInfo(info);
+
+      // Get current theme
+      const themeInfo = await window.api.getTheme();
+      setTheme(themeInfo.source);
+
+      // Update document class for dark mode
+      document.documentElement.classList.toggle(
+        'dark',
+        themeInfo.shouldUseDarkColors
+      );
+    };
+
+    init();
+
+    // Listen for theme changes
+    const unsubscribe = window.api.onThemeChanged((themeInfo) => {
+      setTheme(themeInfo.source);
+      document.documentElement.classList.toggle(
+        'dark',
+        themeInfo.shouldUseDarkColors
+      );
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [setAppInfo, setTheme]);
+
+  // Handle settings event from menu
+  useEffect(() => {
+    const unsubscribe = window.api.onOpenSettings(() => {
+      console.log('Open settings requested');
+      // TODO: Navigate to settings page or open settings modal
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  // Handle about event from menu
+  useEffect(() => {
+    const unsubscribe = window.api.onShowAbout(() => {
+      window.api.showMessageBox({
+        type: 'info',
+        title: 'About {{ project_name }}',
+        message: '{{ project_name }}',
+        detail: `Version: ${appInfo?.version || 'unknown'}\nElectron: ${appInfo?.electron || 'unknown'}\nChrome: ${appInfo?.chrome || 'unknown'}\nNode: ${appInfo?.node || 'unknown'}`,
+        buttons: ['OK'],
+      });
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [appInfo]);
+
+  const handleThemeToggle = async (): Promise<void> => {
+    const newTheme = theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark';
+    await window.api.setTheme(newTheme);
+  };
+
+  const handleOpenExternal = async (): Promise<void> => {
+    await window.api.openExternal(
+      'https://github.com/{{ github_username | default("your-username") }}/{{ project_slug }}'
+    );
+  };
+
+  return (
+    <div className="flex flex-col h-screen">
+      {% if 'custom_titlebar' in desktop_features %}
+      {/* Custom Title Bar */}
+      <TitleBar />
+      {% endif %}
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-auto">
+        <div className="container mx-auto px-6 py-8 max-w-4xl">
+          {/* Header */}
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+              {{ project_name }}
+            </h1>
+            <p className="text-lg text-slate-600 dark:text-slate-400">
+              Native desktop application built with Electron + React
+            </p>
+            {appInfo && (
+              <p className="text-sm text-slate-500 dark:text-slate-500 mt-2">
+                v{appInfo.version} | Electron {appInfo.electron} | {appInfo.platform}
+              </p>
+            )}
+          </div>
+
+          {/* Demo Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {/* Counter Demo */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-200 dark:border-slate-700">
+              <h2 className="text-xl font-semibold mb-4">State Management</h2>
+              <p className="text-slate-600 dark:text-slate-400 mb-4">
+                Using Zustand for simple, scalable state management.
+              </p>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={incrementCounter}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  Count: {counter}
+                </button>
+              </div>
+            </div>
+
+            {/* Theme Toggle */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-200 dark:border-slate-700">
+              <h2 className="text-xl font-semibold mb-4">Theme</h2>
+              <p className="text-slate-600 dark:text-slate-400 mb-4">
+                Current theme: <span className="font-mono">{theme}</span>
+              </p>
+              <button
+                onClick={handleThemeToggle}
+                className="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded-lg font-medium transition-colors"
+              >
+                Toggle Theme
+              </button>
+            </div>
+
+            {/* IPC Demo */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-200 dark:border-slate-700">
+              <h2 className="text-xl font-semibold mb-4">IPC Communication</h2>
+              <p className="text-slate-600 dark:text-slate-400 mb-4">
+                Securely communicate with the main process.
+              </p>
+              <button
+                onClick={async () => {
+                  const result = await window.api.showMessageBox({
+                    type: 'info',
+                    title: 'IPC Demo',
+                    message: 'This dialog was opened via IPC!',
+                    buttons: ['OK'],
+                  });
+                  console.log('Dialog result:', result);
+                }}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+              >
+                Show Dialog
+              </button>
+            </div>
+
+            {/* External Links */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-200 dark:border-slate-700">
+              <h2 className="text-xl font-semibold mb-4">External Links</h2>
+              <p className="text-slate-600 dark:text-slate-400 mb-4">
+                Open links safely in the default browser.
+              </p>
+              <button
+                onClick={handleOpenExternal}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
+              >
+                Open GitHub
+              </button>
+            </div>
+          </div>
+
+          {/* Footer Info */}
+          <div className="text-center text-sm text-slate-500 dark:text-slate-500">
+            <p>
+              Edit{' '}
+              <code className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-blue-600 dark:text-blue-400">
+                src/renderer/App.tsx
+              </code>{' '}
+              and save to see changes
+            </p>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export default App;
+{% endif %}

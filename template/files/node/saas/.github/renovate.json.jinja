@@ -1,0 +1,758 @@
+{% if saas_infra_module == "enabled" %}
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits"
+  ],
+  "labels": [
+    "dependencies",
+    "renovate"
+  ],
+  "assignees": [
+    "@codeowners"
+  ],
+  "reviewers": [
+    "team:codeowners"
+  ],
+  "commitMessagePrefix": "chore(deps):",
+  "semanticCommits": "enabled",
+  "schedule": [
+    "after 10pm on saturday"
+  ],
+  "prConcurrentLimit": 5,
+  "prCreationLimit": 5,
+  "branchConcurrentLimit": 10,
+  "constraints": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageRules": [
+    {
+      "description": "Auto-merge minor and patch updates if tests pass",
+      "matchDatasources": [
+        "npm"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash",
+      "ignoreTests": false,
+      "labels": [
+        "dependencies",
+        "renovate",
+        "automerge-minor-patch"
+      ]
+    },
+    {
+      "description": "Require manual approval for major updates",
+      "matchDatasources": [
+        "npm"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "breaking-change"
+      ],
+      "assignees": [
+        "@codeowners"
+      ],
+      "reviewers": [
+        "team:codeowners"
+      ]
+    },
+    {
+      "description": "High priority for security updates",
+      "matchDatasources": [
+        "npm"
+      ],
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "matchDependencyPatterns": [
+        "^.*$"
+      ],
+      "vulnerabilityAlerts": true,
+      "priority": 99,
+      "schedule": [
+        "at any time"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "security"
+      ]
+    },
+    {
+      "description": "Group dev dependencies together",
+      "matchDepTypes": [
+        "devDependencies"
+      ],
+      "groupName": "dev dependencies",
+      "priority": -10,
+      "labels": [
+        "dependencies",
+        "renovate",
+        "dev"
+      ]
+    },
+    {
+      "description": "Group node version pins",
+      "matchDatasources": [
+        "node"
+      ],
+      "matchUpdateTypes": [
+        "major",
+        "minor"
+      ],
+      "enabled": true,
+      "labels": [
+        "dependencies",
+        "renovate",
+        "runtime"
+      ]
+    },
+    {
+      "description": "Lock pnpm version in package.json engines",
+      "matchPackagePatterns": [
+        "^pnpm$"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "Group React ecosystem updates",
+      "matchPackagePatterns": [
+        "^react$",
+        "^react-dom$",
+        "^@types/react",
+        "^@types/react-dom$"
+      ],
+      "groupName": "react",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "schedule": [
+        "after 10pm on saturday"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "react"
+      ]
+    },
+    {
+      "description": "Separate React major updates",
+      "matchPackagePatterns": [
+        "^react$",
+        "^react-dom$"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "groupName": "react-major",
+      "labels": [
+        "dependencies",
+        "renovate",
+        "react",
+        "breaking-change"
+      ]
+    },
+    {
+      "description": "Group Next.js framework and related packages",
+      "matchPackagePatterns": [
+        "^next$",
+        "^@next/",
+        "^@nextjs/"
+      ],
+      "groupName": "next.js",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "framework"
+      ]
+    },
+    {
+      "description": "Separate Next.js major updates",
+      "matchPackagePatterns": [
+        "^next$"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "groupName": "next.js-major",
+      "labels": [
+        "dependencies",
+        "renovate",
+        "framework",
+        "breaking-change"
+      ]
+    },
+    {
+      "description": "Group Remix framework and related packages",
+      "matchPackagePatterns": [
+        "^@remix-run/",
+        "^remix$"
+      ],
+      "groupName": "remix",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "framework"
+      ]
+    },
+    {
+      "description": "Separate Remix major updates",
+      "matchPackagePatterns": [
+        "^@remix-run/"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "groupName": "remix-major",
+      "labels": [
+        "dependencies",
+        "renovate",
+        "framework",
+        "breaking-change"
+      ]
+    },
+    {
+      "description": "Group auth packages",
+      "matchPackagePatterns": [
+        "^next-auth$",
+        "^@auth/",
+        "^@clerk/",
+        "^svix$"
+      ],
+      "groupName": "authentication",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "auth"
+      ]
+    },
+    {
+      "description": "Separate auth major updates",
+      "matchPackagePatterns": [
+        "^next-auth$",
+        "^@auth/",
+        "^@clerk/"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "groupName": "authentication-major",
+      "labels": [
+        "dependencies",
+        "renovate",
+        "auth",
+        "breaking-change"
+      ]
+    },
+    {
+      "description": "Group database/ORM packages",
+      "matchPackagePatterns": [
+        "^@prisma/",
+        "^prisma$",
+        "^drizzle-orm$",
+        "^drizzle-kit$",
+        "^@supabase/",
+        "^@neondatabase/"
+      ],
+      "groupName": "database",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "database"
+      ]
+    },
+    {
+      "description": "Separate database major updates",
+      "matchPackagePatterns": [
+        "^@prisma/",
+        "^prisma$",
+        "^drizzle-orm$",
+        "^drizzle-kit$"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "groupName": "database-major",
+      "labels": [
+        "dependencies",
+        "renovate",
+        "database",
+        "breaking-change"
+      ]
+    },
+    {
+      "description": "Group Radix UI components",
+      "matchPackagePatterns": [
+        "^@radix-ui/",
+        "^class-variance-authority$",
+        "^clsx$",
+        "^tailwind-merge$"
+      ],
+      "groupName": "ui-components",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "ui"
+      ]
+    },
+    {
+      "description": "Separate Radix UI major updates",
+      "matchPackagePatterns": [
+        "^@radix-ui/"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "groupName": "ui-components-major",
+      "labels": [
+        "dependencies",
+        "renovate",
+        "ui",
+        "breaking-change"
+      ]
+    },
+    {
+      "description": "Group form libraries",
+      "matchPackagePatterns": [
+        "^react-hook-form$",
+        "^@hookform/",
+        "^@conform-to/"
+      ],
+      "groupName": "form-libraries",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "forms"
+      ]
+    },
+    {
+      "description": "Group testing frameworks",
+      "matchPackagePatterns": [
+        "^vitest$",
+        "^@vitest/",
+        "^@playwright/test$",
+        "^@testing-library/"
+      ],
+      "groupName": "testing",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "schedule": [
+        "after 10pm on saturday"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "testing",
+        "dev"
+      ]
+    },
+    {
+      "description": "Separate testing major updates",
+      "matchPackagePatterns": [
+        "^vitest$",
+        "^@playwright/test$"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "groupName": "testing-major",
+      "labels": [
+        "dependencies",
+        "renovate",
+        "testing",
+        "dev",
+        "breaking-change"
+      ]
+    },
+    {
+      "description": "Group linting and formatting tools",
+      "matchPackagePatterns": [
+        "^eslint",
+        "^prettier",
+        "^@typescript-eslint/"
+      ],
+      "groupName": "linting",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "schedule": [
+        "after 10pm on saturday"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "tooling",
+        "dev"
+      ]
+    },
+    {
+      "description": "Group styling dependencies",
+      "matchPackagePatterns": [
+        "^tailwindcss$",
+        "^postcss$",
+        "^autoprefixer$"
+      ],
+      "groupName": "styling",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "styling"
+      ]
+    },
+    {
+      "description": "Group build tools",
+      "matchPackagePatterns": [
+        "^typescript$",
+        "^tsx$",
+        "^vite$",
+        "^dotenv-cli$"
+      ],
+      "groupName": "build-tools",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "schedule": [
+        "after 10pm on saturday"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "build",
+        "dev"
+      ]
+    },
+    {
+      "description": "Group billing provider updates",
+      "matchPackagePatterns": [
+        "^stripe$",
+        "^@paddle/",
+        "^@lemonsqueezy/"
+      ],
+      "groupName": "billing",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "billing"
+      ]
+    },
+    {
+      "description": "Require approval for billing major updates",
+      "matchPackagePatterns": [
+        "^stripe$",
+        "^@paddle/",
+        "^@lemonsqueezy/"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "groupName": "billing-major",
+      "labels": [
+        "dependencies",
+        "renovate",
+        "billing",
+        "breaking-change"
+      ]
+    },
+    {
+      "description": "Group background job updates",
+      "matchPackagePatterns": [
+        "^@trigger.dev/",
+        "^inngest$"
+      ],
+      "groupName": "background-jobs",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "jobs"
+      ]
+    },
+    {
+      "description": "Group email service updates",
+      "matchPackagePatterns": [
+        "^resend$",
+        "^postmark$",
+        "^@react-email/"
+      ],
+      "groupName": "email",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "email"
+      ]
+    },
+    {
+      "description": "Group observability updates",
+      "matchPackagePatterns": [
+        "^@sentry/",
+        "^dd-trace$",
+        "^posthog",
+        "^@amplitude/",
+        "^@opentelemetry/"
+      ],
+      "groupName": "observability",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "observability"
+      ]
+    },
+    {
+      "description": "Group AWS SDK updates",
+      "matchPackagePatterns": [
+        "^@aws-sdk/"
+      ],
+      "groupName": "aws-sdk",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "cloud"
+      ]
+    },
+    {
+      "description": "Group real-time updates",
+      "matchPackagePatterns": [
+        "^socket.io",
+        "^pusher",
+        "^ably$",
+        "^@upstash/"
+      ],
+      "groupName": "realtime",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "realtime"
+      ]
+    },
+    {
+      "description": "Group file upload updates",
+      "matchPackagePatterns": [
+        "^uploadthing$",
+        "^@uploadthing/",
+        "^react-dropzone$"
+      ],
+      "groupName": "file-upload",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "uploads"
+      ]
+    },
+    {
+      "description": "Group i18n dependencies",
+      "matchPackagePatterns": [
+        "^i18next",
+        "^remix-i18next$",
+        "^next-intl$"
+      ],
+      "groupName": "i18n",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "i18n"
+      ]
+    },
+    {
+      "description": "Group MDX and markdown dependencies",
+      "matchPackagePatterns": [
+        "^@next/mdx$",
+        "^@mdx-js/",
+        "^next-mdx-remote$",
+        "^gray-matter$",
+        "^remark-",
+        "^rehype-"
+      ],
+      "groupName": "mdx",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "content"
+      ]
+    },
+    {
+      "description": "Group AI provider updates",
+      "matchPackagePatterns": [
+        "^openai$",
+        "^@anthropic-ai/"
+      ],
+      "groupName": "ai-providers",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "ai"
+      ]
+    },
+    {
+      "description": "Group validation and utility libraries",
+      "matchPackagePatterns": [
+        "^zod$",
+        "^@t3-oss/env-nextjs$",
+        "^nanoid$",
+        "^@faker-js/"
+      ],
+      "groupName": "utilities",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "utils"
+      ]
+    },
+    {
+      "description": "Group enterprise integration updates",
+      "matchPackagePatterns": [
+        "^@workos-inc/"
+      ],
+      "groupName": "enterprise",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "enterprise"
+      ]
+    },
+    {
+      "description": "Group type definition updates",
+      "matchPackagePatterns": [
+        "^@types/"
+      ],
+      "groupName": "type-definitions",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "schedule": [
+        "after 10pm on saturday"
+      ],
+      "labels": [
+        "dependencies",
+        "renovate",
+        "types",
+        "dev"
+      ]
+    }
+  ],
+  "prBodyColumns": [
+    "package",
+    "type",
+    "update",
+    "change"
+  ],
+  "prBodyDefinitions": {
+    "Sourcegraph": "[`{{ '{{{' }}sourceURL{{ '}}}' }}`]({{ '{{{' }}sourceURL{{ '}}}' }})"
+  },
+  "vulnerabilityAlerts": {
+    "labels": [
+      "dependencies",
+      "renovate",
+      "security"
+    ],
+    "assignees": [
+      "@codeowners"
+    ]
+  },
+  "gitAuthor": "renovate[bot] <renovate@renovatebot.com>",
+  "ignorePresets": [
+    ":ignoreModulesAndTests"
+  ],
+  "suppressNotifications": [
+    "prIgnoreNotification"
+  ],
+  "postUpdateOptions": [
+    "npmDedupe",
+    "pnpmDedupe"
+  ],
+  "rangeStrategy": "auto",
+  "internalChecksFilter": "strict"
+}
+{% endif %}

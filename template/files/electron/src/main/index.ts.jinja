@@ -1,0 +1,139 @@
+{% if desktop_module == "enabled" and desktop_framework == "electron-vite" %}
+/**
+ * Main Process Entry Point
+ *
+ * This is the entry point for the Electron main process.
+ * It handles application lifecycle, window management, and IPC communication.
+ *
+ * Security Best Practices Applied:
+ * - contextIsolation: true (enforced)
+ * - nodeIntegration: false (enforced)
+ * - sandbox: true (enforced)
+ * - Only specific APIs exposed via preload script
+ */
+
+import { app, BrowserWindow, ipcMain } from 'electron';
+import { electronApp, optimizer, is } from '@electron-toolkit/utils';
+import { createMainWindow } from './window';
+import { setupMenu } from './menu';
+import { registerIpcHandlers } from './ipc';
+{% if 'auto_updater' in desktop_features %}
+import { setupAutoUpdater } from './updater';
+{% endif %}
+{% if 'tray_icon' in desktop_features %}
+import { setupTrayIcon } from './tray';
+{% endif %}
+import log from 'electron-log/main';
+
+// Initialize electron-log for main process
+log.initialize({ preload: true });
+log.info('{{ project_name }} starting...');
+
+// Keep a global reference of the window object to prevent garbage collection
+let mainWindow: BrowserWindow | null = null;
+
+/**
+ * Application initialization
+ */
+async function init(): Promise<void> {
+  // Set up application user model ID for Windows
+  electronApp.setAppUserModelId('com.{{ github_username | default("example") }}.{{ project_slug | replace("-", "") }}');
+
+  // Register IPC handlers before creating windows
+  registerIpcHandlers();
+
+  // Create the main window
+  mainWindow = await createMainWindow();
+
+  // Set up application menu
+  setupMenu(mainWindow);
+
+  {% if 'auto_updater' in desktop_features %}
+  // Set up auto-updater (production only)
+  if (!is.dev) {
+    setupAutoUpdater(mainWindow);
+  }
+  {% endif %}
+
+  {% if 'tray_icon' in desktop_features %}
+  // Set up system tray icon
+  setupTrayIcon(mainWindow);
+  {% endif %}
+
+  log.info('{{ project_name }} initialized successfully');
+}
+
+/**
+ * Handle application ready event
+ */
+app.whenReady().then(async () => {
+  // Default open or close DevTools by F12 in development
+  // and ignore CommandOrControl + R in production
+  app.on('browser-window-created', (_, window) => {
+    optimizer.watchWindowShortcuts(window);
+  });
+
+  await init();
+
+  // macOS: Re-create window when dock icon is clicked and no windows are open
+  app.on('activate', async () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      mainWindow = await createMainWindow();
+    }
+  });
+});
+
+/**
+ * Handle window-all-closed event
+ * Quit the app on all platforms except macOS
+ */
+app.on('window-all-closed', () => {
+  // On macOS, apps typically stay active until explicitly quit
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+  mainWindow = null;
+});
+
+/**
+ * Handle before-quit event
+ */
+app.on('before-quit', () => {
+  log.info('{{ project_name }} shutting down...');
+});
+
+/**
+ * Security: Prevent new window creation from renderer
+ * All window creation should be handled in the main process
+ */
+app.on('web-contents-created', (_, contents) => {
+  contents.setWindowOpenHandler(({ url }) => {
+    log.warn(`Blocked new window request: ${url}`);
+    // Open external links in the default browser instead
+    if (url.startsWith('https://') || url.startsWith('http://')) {
+      const { shell } = require('electron');
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+
+  // Prevent navigation to external URLs
+  contents.on('will-navigate', (event, url) => {
+    const parsedUrl = new URL(url);
+    // Allow navigation only to the app's own pages
+    if (parsedUrl.protocol !== 'file:' && !is.dev) {
+      log.warn(`Blocked navigation to: ${url}`);
+      event.preventDefault();
+    }
+  });
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  log.error('Uncaught exception:', error);
+});
+
+process.on('unhandledRejection', (reason) => {
+  log.error('Unhandled rejection:', reason);
+});
+{% endif %}

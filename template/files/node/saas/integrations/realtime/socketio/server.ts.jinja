@@ -1,4 +1,4 @@
-{% if saas_starter_module == "enabled" and saas_realtime == "socketio" %}
+{% if saas_infra_module == "enabled" and saas_realtime == "socketio" %}
 /**
  * Socket.io Server Setup
  * 
@@ -204,7 +204,7 @@ export function getIO(): AppSocketServer | null {
  * Replace with your actual auth verification
  */
 async function verifySocketToken(token: string): Promise<{ id: string; teamId?: string } | null> {
-  {% if saas_auth == 'clerk' %}
+  {% if saas_auth_provider == 'clerk' %}
   // Clerk verification
   try {
     const { verifyToken } = await import('@clerk/backend');
@@ -220,7 +220,7 @@ async function verifySocketToken(token: string): Promise<{ id: string; teamId?: 
   } catch {
     return null;
   }
-  {% elif saas_auth == 'authjs' %}
+  {% elif saas_auth_provider == 'authjs' %}
   // Auth.js verification
   try {
     const { decode } = await import('next-auth/jwt');

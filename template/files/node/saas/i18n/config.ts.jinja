@@ -1,0 +1,104 @@
+{% if saas_infra_module == "enabled" and saas_i18n %}
+/**
+ * Internationalization Configuration
+ *
+ * Configure supported locales, default locale, and locale detection strategy.
+ * This configuration is used by the i18n middleware and throughout the app.
+ */
+
+import { getRequestConfig } from 'next-intl/server';
+import { notFound } from 'next/navigation';
+import type { Locale } from './types';
+
+/**
+ * Supported locales
+ * Add new locales here and create corresponding message files
+ */
+export const locales = ['en', 'es'] as const;
+
+/**
+ * Default locale for the application
+ * Used as fallback when no locale is detected
+ */
+export const defaultLocale: Locale = 'en';
+
+/**
+ * Locale prefix strategy
+ * - 'always': Always show locale in URL (e.g., /en/about, /es/about)
+ * - 'as-needed': Only show non-default locales (e.g., /about, /es/about)
+ * - 'never': Never show locale in URL (use cookies/headers only)
+ */
+export const localePrefix = 'always' as const;
+
+/**
+ * Locale labels for language switcher UI
+ */
+export const localeLabels: Record<Locale, string> = {
+  en: 'English',
+  es: 'Español',
+};
+
+/**
+ * Locale metadata for SEO and accessibility
+ */
+export const localeMetadata: Record<Locale, {
+  dir: 'ltr' | 'rtl';
+  name: string;
+  territory: string;
+}> = {
+  en: {
+    dir: 'ltr',
+    name: 'English',
+    territory: 'US',
+  },
+  es: {
+    dir: 'ltr',
+    name: 'Spanish',
+    territory: 'ES',
+  },
+};
+
+/**
+ * Next-intl request configuration
+ * Loads messages for the current locale
+ */
+export default getRequestConfig(async ({ locale }) => {
+  // Validate that the incoming locale parameter is valid
+  if (!locales.includes(locale as Locale)) {
+    notFound();
+  }
+
+  return {
+    messages: (await import(`./messages/${locale}.json`)).default,
+    // Enable formatting for dates, numbers, etc.
+    timeZone: 'UTC',
+    now: new Date(),
+  };
+});
+
+/**
+ * Get locale from pathname
+ * Extracts locale from URL path segments
+ *
+ * @example
+ * getLocaleFromPathname('/en/about') // returns 'en'
+ * getLocaleFromPathname('/es/productos') // returns 'es'
+ */
+export function getLocaleFromPathname(pathname: string): Locale | undefined {
+  const segments = pathname.split('/').filter(Boolean);
+  const firstSegment = segments[0];
+
+  if (locales.includes(firstSegment as Locale)) {
+    return firstSegment as Locale;
+  }
+
+  return undefined;
+}
+
+/**
+ * Check if locale is valid
+ */
+export function isValidLocale(locale: string): locale is Locale {
+  return locales.includes(locale as Locale);
+}
+{% endif %}

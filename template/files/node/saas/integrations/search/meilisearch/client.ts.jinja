@@ -1,0 +1,638 @@
+{% if saas_infra_module == "enabled" and saas_search == "meilisearch" %}
+/**
+ * Meilisearch Client
+ *
+ * Modern search patterns:
+ * - Lightning-fast search (<50ms typical)
+ * - Typo tolerance
+ * - Faceted search
+ * - Geo search
+ * - Multi-tenancy
+ * - Real-time indexing
+ *
+ * @see https://www.meilisearch.com/docs
+ */
+
+import { MeiliSearch, Index } from 'meilisearch';
+{% if saas_observability_structured_logging %}
+import { logger } from '@/lib/observability/logger';
+{% endif %}
+import type {
+  SearchParams,
+  SearchResult,
+  IndexConfig,
+  Task,
+  IndexStats,
+  MultiSearchQuery,
+  MultiSearchResult,
+  MeilisearchError,
+} from './types';
+
+// ============================================================================
+// Client Initialization
+// ============================================================================
+
+/**
+ * Meilisearch client singleton
+ * Initialized with environment variables
+ */
+export const meilisearch = new MeiliSearch({
+  host: process.env.NEXT_PUBLIC_MEILISEARCH_URL || 'http://127.0.0.1:7700',
+  apiKey: process.env.MEILISEARCH_API_KEY,
+  requestConfig: {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  },
+});
+
+/**
+ * Get index by name
+ * Creates index if it doesn't exist
+ */
+export async function getIndex<T = Record<string, any>>(
+  indexName: string,
+  primaryKey?: string
+): Promise<Index<T>> {
+  try {
+    const index = meilisearch.index<T>(indexName);
+    await index.fetchInfo();
+    return index;
+  } catch (error: any) {
+    if (error.code === 'index_not_found') {
+      {% if saas_observability_structured_logging %}
+      logger.info({
+        msg: 'Creating new Meilisearch index',
+        indexName,
+        primaryKey,
+      });
+      {% endif %}
+      const task = await meilisearch.createIndex(indexName, { primaryKey });
+      await meilisearch.waitForTask(task.taskUid);
+      return meilisearch.index<T>(indexName);
+    }
+    throw error;
+  }
+}
+
+// ============================================================================
+// Search Operations
+// ============================================================================
+
+/**
+ * Search documents in an index
+ *
+ * @example
+ * ```ts
+ * const results = await search('products', 'laptop', {
+ *   filter: 'price < 1000 AND category = "electronics"',
+ *   limit: 20,
+ *   attributesToHighlight: ['title', 'description'],
+ *   sort: ['price:asc'],
+ * });
+ * ```
+ */
+export async function search<T = Record<string, any>>(
+  indexName: string,
+  query: string,
+  params?: SearchParams
+): Promise<SearchResult<T>> {
+  const index = await getIndex<T>(indexName);
+
+  {% if saas_observability_structured_logging %}
+  const startTime = Date.now();
+  {% endif %}
+
+  const result = await index.search(query, {
+    filter: params?.filter,
+    attributesToSearchOn: params?.attributesToSearchOn,
+    attributesToRetrieve: params?.attributesToRetrieve,
+    attributesToHighlight: params?.attributesToHighlight,
+    attributesToCrop: params?.attributesToCrop,
+    cropLength: params?.cropLength ?? 200,
+    cropMarker: params?.cropMarker ?? '...',
+    highlightPreTag: params?.highlightPreTag ?? '<mark>',
+    highlightPostTag: params?.highlightPostTag ?? '</mark>',
+    facets: params?.facets,
+    offset: params?.offset ?? 0,
+    limit: params?.limit ?? 20,
+    sort: params?.sort,
+    showMatchesPosition: params?.showMatchesPosition ?? false,
+    matchingStrategy: params?.matchingStrategy,
+  });
+
+  {% if saas_observability_structured_logging %}
+  logger.debug({
+    msg: 'Search executed',
+    indexName,
+    query,
+    hits: result.hits.length,
+    totalHits: result.estimatedTotalHits,
+    durationMs: Date.now() - startTime,
+  });
+  {% endif %}
+
+  return result as SearchResult<T>;
+}
+
+/**
+ * Multi-index search
+ * Search across multiple indexes simultaneously
+ *
+ * @example
+ * ```ts
+ * const results = await multiSearch([
+ *   { indexUid: 'products', params: { query: 'laptop' } },
+ *   { indexUid: 'articles', params: { query: 'laptop', limit: 5 } },
+ * ]);
+ * ```
+ */
+export async function multiSearch<T = Record<string, any>>(
+  queries: MultiSearchQuery[]
+): Promise<MultiSearchResult<T>> {
+  const results = await meilisearch.multiSearch({
+    queries: queries.map((q) => ({
+      indexUid: q.indexUid,
+      q: q.params.query,
+      ...q.params,
+    })),
+  });
+
+  return results as MultiSearchResult<T>;
+}
+
+/**
+ * Search with autocomplete/instant results
+ * Optimized for quick responses
+ */
+export async function instantSearch<T = Record<string, any>>(
+  indexName: string,
+  query: string,
+  limit: number = 10
+): Promise<SearchResult<T>> {
+  return search<T>(indexName, query, {
+    limit,
+    attributesToHighlight: ['*'],
+    attributesToCrop: ['*'],
+    cropLength: 100,
+  });
+}
+
+// ============================================================================
+// Document Management
+// ============================================================================
+
+/**
+ * Add or replace documents
+ *
+ * @example
+ * ```ts
+ * await addDocuments('products', [
+ *   { id: '1', title: 'Laptop', price: 999 },
+ *   { id: '2', title: 'Mouse', price: 29 },
+ * ]);
+ * ```
+ */
+export async function addDocuments<T = Record<string, any>>(
+  indexName: string,
+  documents: T[],
+  primaryKey?: string
+): Promise<Task> {
+  const index = await getIndex<T>(indexName, primaryKey);
+  const task = await index.addDocuments(documents, { primaryKey });
+
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: 'Documents added to index',
+    indexName,
+    documentCount: documents.length,
+    taskUid: task.taskUid,
+  });
+  {% endif %}
+
+  return task;
+}
+
+/**
+ * Update documents
+ * Merges with existing documents
+ */
+export async function updateDocuments<T = Record<string, any>>(
+  indexName: string,
+  documents: Partial<T>[],
+  primaryKey?: string
+): Promise<Task> {
+  const index = await getIndex<T>(indexName, primaryKey);
+  const task = await index.updateDocuments(documents, { primaryKey });
+
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: 'Documents updated in index',
+    indexName,
+    documentCount: documents.length,
+    taskUid: task.taskUid,
+  });
+  {% endif %}
+
+  return task;
+}
+
+/**
+ * Get document by ID
+ */
+export async function getDocument<T = Record<string, any>>(
+  indexName: string,
+  documentId: string
+): Promise<T> {
+  const index = await getIndex<T>(indexName);
+  return await index.getDocument(documentId);
+}
+
+/**
+ * Get multiple documents
+ */
+export async function getDocuments<T = Record<string, any>>(
+  indexName: string,
+  options?: {
+    offset?: number;
+    limit?: number;
+    fields?: string[];
+  }
+): Promise<{ results: T[]; offset: number; limit: number; total: number }> {
+  const index = await getIndex<T>(indexName);
+  return await index.getDocuments({
+    offset: options?.offset,
+    limit: options?.limit,
+    fields: options?.fields,
+  });
+}
+
+/**
+ * Delete document by ID
+ */
+export async function deleteDocument(
+  indexName: string,
+  documentId: string
+): Promise<Task> {
+  const index = await getIndex(indexName);
+  const task = await index.deleteDocument(documentId);
+
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: 'Document deleted from index',
+    indexName,
+    documentId,
+    taskUid: task.taskUid,
+  });
+  {% endif %}
+
+  return task;
+}
+
+/**
+ * Delete multiple documents by IDs
+ */
+export async function deleteDocuments(
+  indexName: string,
+  documentIds: string[]
+): Promise<Task> {
+  const index = await getIndex(indexName);
+  const task = await index.deleteDocuments(documentIds);
+
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: 'Documents deleted from index',
+    indexName,
+    documentCount: documentIds.length,
+    taskUid: task.taskUid,
+  });
+  {% endif %}
+
+  return task;
+}
+
+/**
+ * Delete documents by filter
+ *
+ * @example
+ * ```ts
+ * await deleteDocumentsByFilter('products', 'category = "outdated"');
+ * ```
+ */
+export async function deleteDocumentsByFilter(
+  indexName: string,
+  filter: string
+): Promise<Task> {
+  const index = await getIndex(indexName);
+  const task = await index.deleteDocuments({ filter });
+
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: 'Documents deleted by filter',
+    indexName,
+    filter,
+    taskUid: task.taskUid,
+  });
+  {% endif %}
+
+  return task;
+}
+
+/**
+ * Delete all documents in an index
+ */
+export async function deleteAllDocuments(indexName: string): Promise<Task> {
+  const index = await getIndex(indexName);
+  const task = await index.deleteAllDocuments();
+
+  {% if saas_observability_structured_logging %}
+  logger.warn({
+    msg: 'All documents deleted from index',
+    indexName,
+    taskUid: task.taskUid,
+  });
+  {% endif %}
+
+  return task;
+}
+
+// ============================================================================
+// Index Configuration
+// ============================================================================
+
+/**
+ * Configure index settings
+ *
+ * @example
+ * ```ts
+ * await configureIndex('products', {
+ *   searchableAttributes: ['title', 'description', 'tags'],
+ *   filterableAttributes: ['category', 'price', 'inStock'],
+ *   sortableAttributes: ['price', 'rating', 'createdAt'],
+ *   rankingRules: ['words', 'typo', 'proximity', 'attribute', 'sort', 'exactness'],
+ *   stopWords: ['the', 'a', 'an'],
+ *   synonyms: {
+ *     laptop: ['computer', 'notebook'],
+ *     phone: ['mobile', 'smartphone'],
+ *   },
+ * });
+ * ```
+ */
+export async function configureIndex(
+  indexName: string,
+  config: IndexConfig
+): Promise<Task> {
+  const index = await getIndex(indexName, config.primaryKey);
+
+  // Update settings
+  const task = await index.updateSettings({
+    searchableAttributes: config.searchableAttributes,
+    displayedAttributes: config.displayedAttributes,
+    filterableAttributes: config.filterableAttributes,
+    sortableAttributes: config.sortableAttributes,
+    rankingRules: config.rankingRules,
+    stopWords: config.stopWords,
+    synonyms: config.synonyms,
+    distinctAttribute: config.distinctAttribute,
+    typoTolerance: config.typoTolerance,
+    faceting: config.faceting,
+    pagination: config.pagination,
+  });
+
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: 'Index settings updated',
+    indexName,
+    taskUid: task.taskUid,
+  });
+  {% endif %}
+
+  return task;
+}
+
+/**
+ * Get index settings
+ */
+export async function getIndexSettings(indexName: string): Promise<any> {
+  const index = await getIndex(indexName);
+  return await index.getSettings();
+}
+
+/**
+ * Reset index settings to defaults
+ */
+export async function resetIndexSettings(indexName: string): Promise<Task> {
+  const index = await getIndex(indexName);
+  return await index.resetSettings();
+}
+
+// ============================================================================
+// Index Management
+// ============================================================================
+
+/**
+ * Create a new index
+ */
+export async function createIndex(
+  indexName: string,
+  primaryKey?: string
+): Promise<Task> {
+  const task = await meilisearch.createIndex(indexName, { primaryKey });
+
+  {% if saas_observability_structured_logging %}
+  logger.info({
+    msg: 'Index created',
+    indexName,
+    primaryKey,
+    taskUid: task.taskUid,
+  });
+  {% endif %}
+
+  return task;
+}
+
+/**
+ * Delete an index
+ */
+export async function deleteIndex(indexName: string): Promise<Task> {
+  const index = await getIndex(indexName);
+  const task = await index.delete();
+
+  {% if saas_observability_structured_logging %}
+  logger.warn({
+    msg: 'Index deleted',
+    indexName,
+    taskUid: task.taskUid,
+  });
+  {% endif %}
+
+  return task;
+}
+
+/**
+ * List all indexes
+ */
+export async function listIndexes(): Promise<any[]> {
+  const result = await meilisearch.getIndexes();
+  return result.results;
+}
+
+/**
+ * Get index statistics
+ */
+export async function getIndexStats(indexName: string): Promise<IndexStats> {
+  const index = await getIndex(indexName);
+  return await index.getStats();
+}
+
+// ============================================================================
+// Task Management
+// ============================================================================
+
+/**
+ * Wait for a task to complete
+ *
+ * @example
+ * ```ts
+ * const task = await addDocuments('products', documents);
+ * await waitForTask(task.taskUid);
+ * console.log('Documents indexed!');
+ * ```
+ */
+export async function waitForTask(
+  taskUid: number,
+  options?: {
+    timeOutMs?: number;
+    intervalMs?: number;
+  }
+): Promise<Task> {
+  return await meilisearch.waitForTask(taskUid, {
+    timeOutMs: options?.timeOutMs ?? 60000, // 60 seconds default
+    intervalMs: options?.intervalMs ?? 50,
+  });
+}
+
+/**
+ * Get task by UID
+ */
+export async function getTask(taskUid: number): Promise<Task> {
+  return await meilisearch.getTask(taskUid);
+}
+
+/**
+ * Get all tasks
+ */
+export async function getTasks(options?: {
+  limit?: number;
+  from?: number;
+  status?: string[];
+}): Promise<{ results: Task[]; limit: number; from: number; next: number | null }> {
+  return await meilisearch.getTasks({
+    limit: options?.limit,
+    from: options?.from,
+    statuses: options?.status,
+  });
+}
+
+// ============================================================================
+// Health Check
+// ============================================================================
+
+/**
+ * Check if Meilisearch is healthy
+ */
+export async function healthCheck(): Promise<{ status: 'available' | 'unavailable' }> {
+  try {
+    const health = await meilisearch.health();
+    return { status: health.status };
+  } catch (error) {
+    return { status: 'unavailable' };
+  }
+}
+
+/**
+ * Get Meilisearch version
+ */
+export async function getVersion(): Promise<{ commitSha: string; commitDate: string; pkgVersion: string }> {
+  return await meilisearch.getVersion();
+}
+
+// ============================================================================
+// Error Handling
+// ============================================================================
+
+/**
+ * Handle Meilisearch errors
+ */
+export function handleMeilisearchError(error: any): never {
+  {% if saas_observability_structured_logging %}
+  logger.error({
+    msg: 'Meilisearch error',
+    error: error.message,
+    code: error.code,
+    type: error.type,
+  });
+  {% endif %}
+
+  throw new MeilisearchError(
+    error.message || 'Meilisearch operation failed',
+    error.code,
+    error.type,
+    error.link
+  );
+}
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Generate filters from object
+ *
+ * @example
+ * ```ts
+ * const filter = generateFilters({
+ *   category: 'electronics',
+ *   'price<': 1000,
+ *   inStock: true,
+ * });
+ * // Returns: "category = 'electronics' AND price < 1000 AND inStock = true"
+ * ```
+ */
+export function generateFilters(filters: Record<string, any>): string {
+  return Object.entries(filters)
+    .map(([key, value]) => {
+      // Handle operators in key (e.g., 'price<')
+      const match = key.match(/^([a-zA-Z_][a-zA-Z0-9_]*)([<>=!]+)?$/);
+      if (!match) return null;
+
+      const [, field, operator = '='] = match;
+
+      if (typeof value === 'string') {
+        return `${field} ${operator} "${value}"`;
+      }
+      return `${field} ${operator} ${value}`;
+    })
+    .filter(Boolean)
+    .join(' AND ');
+}
+
+/**
+ * Build sort array from object
+ *
+ * @example
+ * ```ts
+ * const sort = buildSort({ price: 'asc', rating: 'desc' });
+ * // Returns: ['price:asc', 'rating:desc']
+ * ```
+ */
+export function buildSort(sort: Record<string, 'asc' | 'desc'>): string[] {
+  return Object.entries(sort).map(([field, order]) => `${field}:${order}`);
+}
+
+// ============================================================================
+// Type Exports
+// ============================================================================
+
+export type { MeiliSearch, Index };
+{% endif %}

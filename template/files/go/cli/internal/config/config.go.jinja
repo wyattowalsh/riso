@@ -1,0 +1,205 @@
+{% if 'go' in cli_languages or 'go' in api_languages %}
+// Package config provides configuration management using koanf v2.
+package config
+
+import (
+	"fmt"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/env"
+	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/v2"
+)
+
+// ContextKey is the context key for storing config.
+type contextKey string
+
+// ContextKey for storing config in context.
+const ContextKey contextKey = "config"
+
+// Config holds the application configuration.
+type Config struct {
+	// Environment is the deployment environment (development, staging, production).
+	Environment string `koanf:"environment"`
+
+	// LogLevel is the logging level (debug, info, warn, error).
+	LogLevel string `koanf:"log_level"`
+
+	// Server configuration
+	Server ServerConfig `koanf:"server"`
+
+{% if api_module == 'enabled' and 'go' in api_languages %}
+	// API configuration
+	API APIConfig `koanf:"api"`
+{% endif %}
+}
+
+// ServerConfig holds HTTP server configuration.
+type ServerConfig struct {
+	Host            string `koanf:"host"`
+	Port            int    `koanf:"port"`
+	ReadTimeout     int    `koanf:"read_timeout"`
+	WriteTimeout    int    `koanf:"write_timeout"`
+	ShutdownTimeout int    `koanf:"shutdown_timeout"`
+}
+
+{% if api_module == 'enabled' and 'go' in api_languages %}
+// APIConfig holds API-specific configuration.
+type APIConfig struct {
+	CORSEnabled      bool     `koanf:"cors_enabled"`
+	CORSAllowOrigins []string `koanf:"cors_allow_origins"`
+	RateLimitEnabled bool     `koanf:"rate_limit_enabled"`
+	RateLimitRPS     int      `koanf:"rate_limit_rps"`
+}
+{% endif %}
+
+// Default returns the default configuration.
+func Default() *Config {
+	return &Config{
+		Environment: "development",
+		LogLevel:    "info",
+		Server: ServerConfig{
+			Host:            "0.0.0.0",
+			Port:            8080,
+			ReadTimeout:     30,
+			WriteTimeout:    30,
+			ShutdownTimeout: 30,
+		},
+{% if api_module == 'enabled' and 'go' in api_languages %}
+		API: APIConfig{
+			CORSEnabled:      true,
+			CORSAllowOrigins: []string{"*"},
+			RateLimitEnabled: true,
+			RateLimitRPS:     100,
+		},
+{% endif %}
+	}
+}
+
+// Load loads configuration from file and environment variables.
+// Configuration priority (highest to lowest):
+// 1. Environment variables ({{ project_slug | upper | replace('-', '_') }}_*)
+// 2. Config file (if provided)
+// 3. Default values
+func Load(configFile string) (*Config, error) {
+	k := koanf.New(".")
+
+	// Load defaults
+	cfg := Default()
+
+	// Try to load config file
+	if configFile != "" {
+		if err := loadConfigFile(k, configFile); err != nil {
+			return nil, fmt.Errorf("failed to load config file %s: %w", configFile, err)
+		}
+	} else {
+		// Try default config locations
+		defaultPaths := getDefaultConfigPaths()
+		for _, path := range defaultPaths {
+			if _, err := os.Stat(path); err == nil {
+				if err := loadConfigFile(k, path); err != nil {
+					slog.Debug("Failed to load config file", "path", path, "error", err)
+					continue
+				}
+				slog.Debug("Loaded config file", "path", path)
+				break
+			}
+		}
+	}
+
+	// Load environment variables
+	// Prefix: {{ project_slug | upper | replace('-', '_') }}_
+	// Example: {{ project_slug | upper | replace('-', '_') }}_SERVER_PORT=3000
+	err := k.Load(env.Provider("{{ project_slug | upper | replace('-', '_') }}_", ".", func(s string) string {
+		return strings.Replace(
+			strings.ToLower(strings.TrimPrefix(s, "{{ project_slug | upper | replace('-', '_') }}_")),
+			"_",
+			".",
+			-1,
+		)
+	}), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load environment variables: %w", err)
+	}
+
+	// Unmarshal into config struct
+	if err := k.Unmarshal("", cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	return cfg, nil
+}
+
+// loadConfigFile loads a YAML configuration file.
+func loadConfigFile(k *koanf.Koanf, path string) error {
+	return k.Load(file.Provider(path), yaml.Parser())
+}
+
+// getDefaultConfigPaths returns the default configuration file paths to try.
+func getDefaultConfigPaths() []string {
+	paths := []string{
+		".{{ project_slug }}.yaml",
+		".{{ project_slug }}.yml",
+		"config.yaml",
+		"config.yml",
+	}
+
+	// Add home directory paths
+	if home, err := os.UserHomeDir(); err == nil {
+		paths = append(paths,
+			filepath.Join(home, ".{{ project_slug }}.yaml"),
+			filepath.Join(home, ".{{ project_slug }}.yml"),
+			filepath.Join(home, ".config", "{{ project_slug }}", "config.yaml"),
+		)
+	}
+
+	// Add XDG config path
+	if xdgConfig := os.Getenv("XDG_CONFIG_HOME"); xdgConfig != "" {
+		paths = append(paths, filepath.Join(xdgConfig, "{{ project_slug }}", "config.yaml"))
+	}
+
+	return paths
+}
+
+// Validate validates the configuration.
+func (c *Config) Validate() error {
+	if c.Server.Port < 1 || c.Server.Port > 65535 {
+		return fmt.Errorf("invalid server port: %d", c.Server.Port)
+	}
+
+	validEnvs := map[string]bool{
+		"development": true,
+		"staging":     true,
+		"production":  true,
+	}
+	if !validEnvs[c.Environment] {
+		return fmt.Errorf("invalid environment: %s", c.Environment)
+	}
+
+	validLogLevels := map[string]bool{
+		"debug": true,
+		"info":  true,
+		"warn":  true,
+		"error": true,
+	}
+	if !validLogLevels[c.LogLevel] {
+		return fmt.Errorf("invalid log level: %s", c.LogLevel)
+	}
+
+	return nil
+}
+
+// IsProduction returns true if running in production environment.
+func (c *Config) IsProduction() bool {
+	return c.Environment == "production"
+}
+
+// IsDevelopment returns true if running in development environment.
+func (c *Config) IsDevelopment() bool {
+	return c.Environment == "development"
+}
+{% endif %}

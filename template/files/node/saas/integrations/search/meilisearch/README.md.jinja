@@ -1,0 +1,679 @@
+{% if saas_infra_module == "enabled" and saas_search == "meilisearch" %}
+# Meilisearch Integration
+
+Lightning-fast, typo-tolerant search integration for {{ project_name }}.
+
+## Overview
+
+This integration provides a complete Meilisearch implementation with:
+
+- **Lightning Fast**: Sub-50ms search response times
+- **Typo Tolerance**: Automatic spelling correction
+- **Faceted Search**: Filter by categories, tags, and custom attributes
+- **Highlighting**: Search term highlighting in results
+- **React Hooks**: Ready-to-use hooks for client-side search
+- **Type Safety**: Full TypeScript support
+- **Real-time Indexing**: Instant document updates
+- **Multi-Index Search**: Search across multiple indexes simultaneously
+
+## Installation
+
+1. Install Meilisearch server:
+
+```bash
+# Docker (recommended)
+docker run -d \
+  --name meilisearch \
+  -p 7700:7700 \
+  -e MEILI_MASTER_KEY="your-master-key" \
+  -v $(pwd)/meili_data:/meili_data \
+  getmeili/meilisearch:latest
+
+# Or via Homebrew (macOS)
+brew install meilisearch
+brew services start meilisearch
+
+# Or download binary
+curl -L https://install.meilisearch.com | sh
+./meilisearch --master-key="your-master-key"
+```
+
+2. Add environment variables:
+
+```env
+# .env.local
+NEXT_PUBLIC_MEILISEARCH_URL=http://127.0.0.1:7700
+MEILISEARCH_API_KEY=your-master-key
+```
+
+3. Install the Meilisearch client:
+
+```bash
+pnpm add meilisearch
+```
+
+## Quick Start
+
+### 1. Index Your Data
+
+```typescript
+import { addDocuments, configureIndex } from '@/integrations/search/meilisearch';
+
+// Define your document structure
+interface Product {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  price: number;
+  inStock: boolean;
+  tags: string[];
+}
+
+// Configure the index
+await configureIndex('products', {
+  searchableAttributes: ['title', 'description', 'tags'],
+  filterableAttributes: ['category', 'price', 'inStock'],
+  sortableAttributes: ['price', 'createdAt'],
+  rankingRules: [
+    'words',
+    'typo',
+    'proximity',
+    'attribute',
+    'sort',
+    'exactness',
+  ],
+});
+
+// Add documents
+const products: Product[] = [
+  {
+    id: '1',
+    title: 'Wireless Laptop',
+    description: 'High-performance laptop for developers',
+    category: 'electronics',
+    price: 999,
+    inStock: true,
+    tags: ['laptop', 'computer', 'tech'],
+  },
+  // ... more products
+];
+
+const task = await addDocuments('products', products);
+await waitForTask(task.taskUid);
+```
+
+### 2. Search (Server-Side)
+
+```typescript
+import { search } from '@/integrations/search/meilisearch';
+
+// Basic search
+const results = await search('products', 'laptop');
+
+// Advanced search with filters and sorting
+const results = await search('products', 'laptop', {
+  filter: 'price < 1000 AND inStock = true',
+  sort: ['price:asc'],
+  limit: 20,
+  attributesToHighlight: ['title', 'description'],
+});
+
+console.log(`Found ${results.estimatedTotalHits} results`);
+results.hits.forEach((product) => {
+  console.log(product._formatted?.title); // Highlighted title
+});
+```
+
+### 3. Search (Client-Side with React)
+
+```tsx
+'use client';
+
+import { useSearch } from '@/integrations/search/meilisearch';
+
+export function ProductSearch() {
+  const {
+    results,
+    isLoading,
+    error,
+    totalHits,
+    search,
+  } = useSearch({
+    indexName: 'products',
+    debounceMs: 300,
+    filter: 'inStock = true',
+    limit: 20,
+    attributesToHighlight: ['title', 'description'],
+  });
+
+  return (
+    <div>
+      <input
+        type="search"
+        onChange={(e) => search(e.target.value)}
+        placeholder="Search products..."
+        className="w-full px-4 py-2 border rounded-lg"
+      />
+
+      {isLoading && (
+        <div className="mt-4">Loading...</div>
+      )}
+
+      {error && (
+        <div className="mt-4 text-red-600">
+          Error: {error.message}
+        </div>
+      )}
+
+      {!isLoading && results.length > 0 && (
+        <div className="mt-4">
+          <p className="text-gray-600">
+            Found {totalHits} results
+          </p>
+          <div className="grid gap-4 mt-4">
+            {results.map((product) => (
+              <div key={product.id} className="p-4 border rounded-lg">
+                <h3
+                  dangerouslySetInnerHTML={{ '{{' }}
+                    __html: product._formatted?.title || product.title,
+                  {{ '}}' }}
+                />
+                <p
+                  className="text-gray-600"
+                  dangerouslySetInnerHTML={{ '{{' }}
+                    __html: product._formatted?.description || product.description,
+                  {{ '}}' }}
+                />
+                <p className="text-lg font-bold mt-2">
+                  ${product.price}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+## Advanced Usage
+
+### Faceted Search
+
+```tsx
+import { useFacets } from '@/integrations/search/meilisearch';
+
+export function FacetedProductSearch() {
+  const {
+    results,
+    facets,
+    selectedFacets,
+    toggleFacet,
+    clearFacets,
+    isLoading,
+  } = useFacets({
+    indexName: 'products',
+    query: 'laptop',
+    facetAttributes: ['category', 'brand', 'price_range'],
+  });
+
+  return (
+    <div className="flex gap-6">
+      {/* Sidebar with facets */}
+      <aside className="w-64">
+        <h3>Filters</h3>
+        {Object.entries(facets).map(([facetName, values]) => (
+          <div key={facetName} className="mt-4">
+            <h4 className="font-semibold capitalize">{facetName}</h4>
+            <ul className="mt-2 space-y-2">
+              {Object.entries(values).map(([value, count]) => (
+                <li key={value}>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedFacets[facetName]?.includes(value)}
+                      onChange={() => toggleFacet(facetName, value)}
+                    />
+                    <span>{value}</span>
+                    <span className="text-gray-500">({count})</span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+        <button
+          onClick={clearFacets}
+          className="mt-4 text-sm text-blue-600"
+        >
+          Clear all filters
+        </button>
+      </aside>
+
+      {/* Results */}
+      <main className="flex-1">
+        {isLoading ? (
+          <div>Loading...</div>
+        ) : (
+          <div className="grid gap-4">
+            {results.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+```
+
+### Instant Search / Autocomplete
+
+```tsx
+import { useInstantSearch } from '@/integrations/search/meilisearch';
+
+export function SearchAutocomplete() {
+  const { suggestions, isLoading, search, clear } = useInstantSearch({
+    indexName: 'products',
+    limit: 5,
+    debounceMs: 200,
+  });
+
+  return (
+    <div className="relative">
+      <input
+        type="search"
+        onChange={(e) => search(e.target.value)}
+        placeholder="Search..."
+        className="w-full px-4 py-2 border rounded-lg"
+      />
+
+      {suggestions.length > 0 && (
+        <ul className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
+          {suggestions.map((item) => (
+            <li
+              key={item.id}
+              className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+            >
+              <div
+                dangerouslySetInnerHTML={{ '{{' }}
+                  __html: item._formatted?.title || item.title,
+                {{ '}}' }}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+```
+
+### Paginated Search
+
+```tsx
+import { useSearchResults } from '@/integrations/search/meilisearch';
+
+export function PaginatedSearch() {
+  const {
+    results,
+    isLoading,
+    page,
+    totalPages,
+    hasNextPage,
+    hasPrevPage,
+    nextPage,
+    prevPage,
+    goToPage,
+  } = useSearchResults({
+    indexName: 'articles',
+    query: 'react',
+    limit: 10,
+  });
+
+  return (
+    <div>
+      <div className="grid gap-4">
+        {results.map((article) => (
+          <ArticleCard key={article.id} article={article} />
+        ))}
+      </div>
+
+      <div className="flex gap-2 mt-6 justify-center">
+        <button
+          onClick={prevPage}
+          disabled={!hasPrevPage}
+          className="px-4 py-2 border rounded disabled:opacity-50"
+        >
+          Previous
+        </button>
+        <span className="px-4 py-2">
+          Page {page} of {totalPages}
+        </span>
+        <button
+          onClick={nextPage}
+          disabled={!hasNextPage}
+          className="px-4 py-2 border rounded disabled:opacity-50"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+### Multi-Index Search
+
+```typescript
+import { multiSearch } from '@/integrations/search/meilisearch';
+
+// Search across multiple indexes
+const results = await multiSearch([
+  {
+    indexUid: 'products',
+    params: {
+      query: 'laptop',
+      limit: 5,
+    },
+  },
+  {
+    indexUid: 'articles',
+    params: {
+      query: 'laptop',
+      limit: 3,
+    },
+  },
+  {
+    indexUid: 'support_docs',
+    params: {
+      query: 'laptop',
+      limit: 2,
+    },
+  },
+]);
+
+// Access results by index
+const productResults = results.results[0];
+const articleResults = results.results[1];
+const docsResults = results.results[2];
+```
+
+## API Routes
+
+Create an API route to handle search requests:
+
+```typescript
+// app/api/search/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { search } from '@/integrations/search/meilisearch';
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { indexName, query, ...params } = body;
+
+    if (!indexName || !query) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    const results = await search(indexName, query, params);
+
+    return NextResponse.json(results);
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
+  }
+}
+```
+
+## Document Management
+
+### Adding Documents
+
+```typescript
+import { addDocuments, waitForTask } from '@/integrations/search/meilisearch';
+
+// Add new documents
+const task = await addDocuments('products', newProducts);
+await waitForTask(task.taskUid);
+```
+
+### Updating Documents
+
+```typescript
+import { updateDocuments, waitForTask } from '@/integrations/search/meilisearch';
+
+// Update existing documents (partial updates)
+const task = await updateDocuments('products', [
+  { id: '1', price: 899 },
+  { id: '2', inStock: false },
+]);
+await waitForTask(task.taskUid);
+```
+
+### Deleting Documents
+
+```typescript
+import { deleteDocument, deleteDocuments, deleteDocumentsByFilter } from '@/integrations/search/meilisearch';
+
+// Delete single document
+await deleteDocument('products', '1');
+
+// Delete multiple documents
+await deleteDocuments('products', ['1', '2', '3']);
+
+// Delete by filter
+await deleteDocumentsByFilter('products', 'category = "outdated"');
+```
+
+## Filtering
+
+Meilisearch supports powerful filter expressions:
+
+```typescript
+// Equality
+filter: 'category = "electronics"'
+
+// Comparison
+filter: 'price < 1000'
+filter: 'rating >= 4.5'
+
+// Multiple conditions (AND)
+filter: 'category = "electronics" AND price < 1000 AND inStock = true'
+
+// Multiple conditions (OR)
+filter: 'category = "electronics" OR category = "computers"'
+
+// Complex expressions
+filter: '(category = "electronics" OR category = "computers") AND price < 1000'
+
+// Arrays (IN)
+filter: 'tags IN ["featured", "new-arrival"]'
+
+// Date ranges
+filter: 'createdAt > 1640995200 AND createdAt < 1672531199'
+```
+
+You can also use the helper function:
+
+```typescript
+import { generateFilters } from '@/integrations/search/meilisearch';
+
+const filter = generateFilters({
+  category: 'electronics',
+  'price<': 1000,
+  inStock: true,
+});
+// Returns: "category = 'electronics' AND price < 1000 AND inStock = true"
+```
+
+## Sorting
+
+```typescript
+import { search, buildSort } from '@/integrations/search/meilisearch';
+
+// Single sort
+const results = await search('products', 'laptop', {
+  sort: ['price:asc'],
+});
+
+// Multiple sort criteria
+const results = await search('products', 'laptop', {
+  sort: ['inStock:desc', 'price:asc'],
+});
+
+// Using helper function
+const sortArray = buildSort({ price: 'asc', rating: 'desc' });
+```
+
+## Index Configuration
+
+### Searchable Attributes
+
+Define which fields are searchable:
+
+```typescript
+await configureIndex('products', {
+  searchableAttributes: ['title', 'description', 'tags', 'category'],
+});
+```
+
+### Filterable Attributes
+
+Define which fields can be used in filters:
+
+```typescript
+await configureIndex('products', {
+  filterableAttributes: ['category', 'price', 'inStock', 'brand', 'tags'],
+});
+```
+
+### Sortable Attributes
+
+Define which fields can be used for sorting:
+
+```typescript
+await configureIndex('products', {
+  sortableAttributes: ['price', 'rating', 'createdAt', 'title'],
+});
+```
+
+### Stop Words
+
+Remove common words from search:
+
+```typescript
+await configureIndex('products', {
+  stopWords: ['the', 'a', 'an', 'and', 'or', 'but'],
+});
+```
+
+### Synonyms
+
+Define word synonyms:
+
+```typescript
+await configureIndex('products', {
+  synonyms: {
+    laptop: ['computer', 'notebook'],
+    phone: ['mobile', 'smartphone', 'cell'],
+    tv: ['television', 'telly'],
+  },
+});
+```
+
+### Typo Tolerance
+
+Configure typo tolerance:
+
+```typescript
+await configureIndex('products', {
+  typoTolerance: {
+    enabled: true,
+    minWordSizeForTypos: {
+      oneTypo: 5,
+      twoTypos: 9,
+    },
+    disableOnWords: ['brand', 'model'],
+    disableOnAttributes: ['category'],
+  },
+});
+```
+
+## Best Practices
+
+1. **Index Configuration**: Configure your index settings before adding documents
+2. **Primary Key**: Always specify a primary key for your documents
+3. **Debouncing**: Use debouncing for search inputs (300ms recommended)
+4. **Attribute Selection**: Only retrieve/highlight attributes you need
+5. **Pagination**: Use pagination for large result sets
+6. **Task Management**: Wait for indexing tasks to complete before querying
+7. **Error Handling**: Always handle errors gracefully
+8. **Type Safety**: Define TypeScript interfaces for your documents
+
+## Performance Tips
+
+1. **Limit Results**: Use `limit` to control result set size
+2. **Attribute Selection**: Use `attributesToRetrieve` to limit returned fields
+3. **Crop Length**: Keep `cropLength` reasonable (100-200 characters)
+4. **Index Size**: Keep indexes under 10M documents for best performance
+5. **Batch Operations**: Add documents in batches of 1000-10000
+6. **Caching**: Consider caching common queries
+7. **CDN**: Host Meilisearch behind a CDN for global performance
+
+## Troubleshooting
+
+### Connection Issues
+
+```typescript
+import { healthCheck } from '@/integrations/search/meilisearch';
+
+const health = await healthCheck();
+if (health.status === 'unavailable') {
+  console.error('Meilisearch is not available');
+}
+```
+
+### Task Status
+
+```typescript
+import { getTask } from '@/integrations/search/meilisearch';
+
+const task = await getTask(taskUid);
+console.log(`Task status: ${task.status}`);
+if (task.error) {
+  console.error(`Task error: ${task.error.message}`);
+}
+```
+
+### Index Stats
+
+```typescript
+import { getIndexStats } from '@/integrations/search/meilisearch';
+
+const stats = await getIndexStats('products');
+console.log(`Documents: ${stats.numberOfDocuments}`);
+console.log(`Is indexing: ${stats.isIndexing}`);
+```
+
+## Resources
+
+- [Meilisearch Documentation](https://www.meilisearch.com/docs)
+- [Meilisearch Cloud](https://www.meilisearch.com/cloud)
+- [Search API Reference](https://www.meilisearch.com/docs/reference/api/search)
+- [Index Settings](https://www.meilisearch.com/docs/learn/configuration/settings)
+- [Filtering Guide](https://www.meilisearch.com/docs/learn/filtering_and_sorting/filtering)
+- [Performance Tuning](https://www.meilisearch.com/docs/learn/fine_tuning_results/search)
+
+## License
+
+This integration is part of {{ project_name }} and follows the same license.
+{% endif %}

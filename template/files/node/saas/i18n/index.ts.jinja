@@ -1,0 +1,53 @@
+{% if saas_infra_module == "enabled" and saas_i18n %}
+/**
+ * Internationalization (i18n) Module
+ *
+ * Centralized exports for internationalization functionality.
+ * Built on next-intl for type-safe translations and locale management.
+ *
+ * Features:
+ * - Type-safe translation hooks
+ * - Automatic locale detection
+ * - URL-based routing (/en/..., /es/...)
+ * - Date/number formatting
+ * - RTL support preparation
+ *
+ * @see https://next-intl-docs.vercel.app/
+ */
+
+export { locales, defaultLocale, localePrefix } from './config';
+export type { Locale } from './types';
+
+// Re-export common hooks and utilities from next-intl
+export { useTranslations, useLocale, useMessages } from 'next-intl';
+
+/**
+ * Get translation function for server components
+ *
+ * @example
+ * ```ts
+ * import { getTranslations } from '@/i18n';
+ *
+ * export default async function Page() {
+ *   const t = await getTranslations('common');
+ *   return <h1>{t('welcome')}</h1>;
+ * }
+ * ```
+ */
+export { getTranslations } from 'next-intl/server';
+
+/**
+ * Get locale from request in server components
+ *
+ * @example
+ * ```ts
+ * import { getLocale } from '@/i18n';
+ *
+ * export default async function Page() {
+ *   const locale = await getLocale();
+ *   return <div>Current locale: {locale}</div>;
+ * }
+ * ```
+ */
+export { getLocale } from 'next-intl/server';
+{% endif %}

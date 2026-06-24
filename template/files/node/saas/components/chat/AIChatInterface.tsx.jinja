@@ -1,0 +1,360 @@
+{% if saas_infra_module == "enabled" and saas_ai_features == 'full' %}
+'use client';
+
+/**
+ * AI Chat Interface Component
+ *
+ * Full-featured chat UI with RAG integration:
+ * - Real-time streaming responses
+ * - Source citations with expandable details
+ * - Conversation history
+ * - Token usage display
+ * - Loading states and error handling
+ * - Accessible keyboard navigation
+ *
+ * @example
+ * ```tsx
+ * <AIChatInterface
+ *   userId="user-123"
+ *   organizationId="org-456"
+ *   conversationId="conv-789"
+ *   filter={{ '{{' }} tags: ['docs', 'guides'] {{ '}}' }}
+ * />
+ * ```
+ */
+
+import { useState, useRef, useEffect } from 'react';
+import { streamRAG } from '@/integrations/ai/rag';
+import type { RetrievedChunk, TokenUsage } from '@/integrations/ai/rag/types';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  sources?: RetrievedChunk[];
+  usage?: TokenUsage;
+  timestamp: Date;
+}
+
+interface AIChatInterfaceProps {
+  userId: string;
+  organizationId?: string;
+  conversationId?: string;
+  filter?: any;
+  placeholder?: string;
+  maxHeight?: string;
+  showTokenUsage?: boolean;
+  onMessageSent?: (message: Message) => void;
+}
+
+// ============================================================================
+// Component
+// ============================================================================
+
+export function AIChatInterface({
+  userId,
+  organizationId,
+  conversationId,
+  filter,
+  placeholder = 'Ask a question...',
+  maxHeight = '600px',
+  showTokenUsage = true,
+  onMessageSent,
+}: AIChatInterfaceProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [expandedSources, setExpandedSources] = useState<Set<string>>(
+    new Set()
+  );
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Handle message submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      id: `msg-${Date.now()}`,
+      role: 'user',
+      content: input.trim(),
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Create assistant message placeholder
+      const assistantMessageId = `msg-${Date.now()}-assistant`;
+      const assistantMessage: Message = {
+        id: assistantMessageId,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+
+      let sources: RetrievedChunk[] = [];
+      let usage: TokenUsage | undefined;
+
+      // Stream RAG response
+      for await (const chunk of streamRAG({
+        query: userMessage.content,
+        userId,
+        organizationId,
+        conversationId,
+        filter,
+      })) {
+        if (chunk.type === 'sources') {
+          sources = chunk.sources || [];
+        } else if (chunk.type === 'content') {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMessageId
+                ? { ...msg, content: msg.content + chunk.content }
+                : msg
+            )
+          );
+        } else if (chunk.type === 'metadata') {
+          usage = chunk.metadata?.usage;
+        }
+      }
+
+      // Update message with sources and usage
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantMessageId
+            ? { ...msg, sources, usage }
+            : msg
+        )
+      );
+
+      // Notify parent
+      onMessageSent?.({
+        ...assistantMessage,
+        sources,
+        usage,
+      });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to get response'
+      );
+      console.error('Chat error:', err);
+    } finally {
+      setIsLoading(false);
+      inputRef.current?.focus();
+    }
+  };
+
+  // Toggle source expansion
+  const toggleSource = (messageId: string) => {
+    setExpandedSources((prev) => {
+      const next = new Set(prev);
+      if (next.has(messageId)) {
+        next.delete(messageId);
+      } else {
+        next.add(messageId);
+      }
+      return next;
+    });
+  };
+
+  return (
+    <div className="flex flex-col h-full border rounded-lg bg-white dark:bg-gray-900">
+      {/* Messages */}
+      <div
+        className="flex-1 overflow-y-auto p-4 space-y-4"
+        style={{ '{{' }} maxHeight {{ '}}' }}
+      >
+        {messages.length === 0 && (
+          <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+            <div className="text-center">
+              <svg
+                className="mx-auto h-12 w-12 mb-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                />
+              </svg>
+              <p className="text-sm">Start a conversation</p>
+            </div>
+          </div>
+        )}
+
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            <div
+              className={`max-w-[80%] rounded-lg p-3 ${
+                message.role === 'user'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+              }`}
+            >
+              {/* Message content */}
+              <div className="whitespace-pre-wrap">{message.content}</div>
+
+              {/* Sources */}
+              {message.sources && message.sources.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-gray-300 dark:border-gray-600">
+                  <button
+                    onClick={() => toggleSource(message.id)}
+                    className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+                  >
+                    <svg
+                      className={`h-4 w-4 mr-1 transition-transform ${expandedSources.has(message.id) ? 'rotate-90' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                    {message.sources.length} source
+                    {message.sources.length > 1 ? 's' : ''}
+                  </button>
+
+                  {expandedSources.has(message.id) && (
+                    <div className="mt-2 space-y-2">
+                      {message.sources.map((source, idx) => (
+                        <div
+                          key={source.id}
+                          className="text-xs p-2 bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"
+                        >
+                          <div className="font-medium mb-1">
+                            Source {idx + 1}
+                            {source.metadata.title &&
+                              `: ${source.metadata.title}`}
+                            <span className="ml-2 text-gray-500">
+                              (score: {source.score.toFixed(2)})
+                            </span>
+                          </div>
+                          <div className="text-gray-600 dark:text-gray-400 line-clamp-3">
+                            {source.content}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Token usage */}
+              {showTokenUsage && message.usage && (
+                <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  {message.usage.totalTokens.toLocaleString()} tokens
+                  {message.usage.cost &&
+                    ` • $${message.usage.cost.toFixed(4)}`}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {/* Loading indicator */}
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
+              <div className="flex space-x-2">
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                <div
+                  className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                  style={{ '{{' }} animationDelay: '0.1s' {{ '}}' }}
+                />
+                <div
+                  className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                  style={{ '{{' }} animationDelay: '0.2s' {{ '}}' }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-600 dark:text-red-400">
+            {error}
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input form */}
+      <form
+        onSubmit={handleSubmit}
+        className="border-t p-4 bg-gray-50 dark:bg-gray-800"
+      >
+        <div className="flex space-x-2">
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
+            placeholder={placeholder}
+            rows={1}
+            className="flex-1 px-4 py-2 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
+            disabled={isLoading}
+          />
+          <button
+            type="submit"
+            disabled={!input.trim() || isLoading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+              />
+            </svg>
+          </button>
+        </div>
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          Press Enter to send, Shift+Enter for new line
+        </p>
+      </form>
+    </div>
+  );
+}
+{% endif %}

@@ -1,0 +1,520 @@
+{% if saas_infra_module == "enabled" and saas_i18n %}
+'use client';
+
+/**
+ * Language Switcher Component
+ *
+ * Provides a dropdown menu for switching between available languages.
+ * Integrates with:
+ * - next-intl (Next.js 16+): Uses useLocale() and useRouter()
+ * - remix-i18next (Remix 2): Uses useTranslation() and navigation
+ *
+ * Features:
+ * - Shows current language with native script names
+ * - Persists language selection to cookie
+ * - Updates URL with new locale
+ * - Displays flag indicators or language codes
+ * - Supports RTL language detection
+ * - Accessible with proper ARIA labels
+ *
+ * Usage:
+ * ```tsx
+ * import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+ *
+ * export default function Header() {
+ *   return <LanguageSwitcher />;
+ * }
+ * ```
+ */
+
+import * as React from 'react';
+{% if saas_runtime == 'nextjs-16' %}
+import { useLocale, usePathname, useRouter } from 'next-intl/client';
+import { useTransition } from 'react';
+{% elif saas_runtime == 'remix-2' %}
+import { useTranslation } from 'react-i18next';
+import { useNavigate, useLocation } from '@remix-run/react';
+{% endif %}
+
+{% if saas_ui_framework == 'shadcn-ui' %}
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+{% endif %}
+
+// ============================================================================
+// Types & Constants
+// ============================================================================
+
+/**
+ * Language configuration with native names and RTL support
+ */
+interface Language {
+  code: string;
+  name: string; // English name
+  nativeName: string; // Native language name
+  flag: string; // Flag emoji or icon
+  dir: 'ltr' | 'rtl'; // Text direction
+}
+
+/**
+ * Supported languages - customize based on your application
+ * Add or remove languages as needed for your SaaS
+ */
+const SUPPORTED_LANGUAGES: Language[] = [
+  {
+    code: 'en',
+    name: 'English',
+    nativeName: 'English',
+    flag: '🇺🇸',
+    dir: 'ltr',
+  },
+  {
+    code: 'es',
+    name: 'Spanish',
+    nativeName: 'Español',
+    flag: '🇪🇸',
+    dir: 'ltr',
+  },
+  {
+    code: 'fr',
+    name: 'French',
+    nativeName: 'Français',
+    flag: '🇫🇷',
+    dir: 'ltr',
+  },
+  {
+    code: 'de',
+    name: 'German',
+    nativeName: 'Deutsch',
+    flag: '🇩🇪',
+    dir: 'ltr',
+  },
+  {
+    code: 'it',
+    name: 'Italian',
+    nativeName: 'Italiano',
+    flag: '🇮🇹',
+    dir: 'ltr',
+  },
+  {
+    code: 'pt',
+    name: 'Portuguese',
+    nativeName: 'Português',
+    flag: '🇵🇹',
+    dir: 'ltr',
+  },
+  {
+    code: 'ja',
+    name: 'Japanese',
+    nativeName: '日本語',
+    flag: '🇯🇵',
+    dir: 'ltr',
+  },
+  {
+    code: 'zh',
+    name: 'Chinese',
+    nativeName: '中文',
+    flag: '🇨🇳',
+    dir: 'ltr',
+  },
+  {
+    code: 'ar',
+    name: 'Arabic',
+    nativeName: 'العربية',
+    flag: '🇸🇦',
+    dir: 'rtl',
+  },
+];
+
+/**
+ * Cookie configuration for persisting language selection
+ */
+const LANGUAGE_COOKIE = 'NEXT_LOCALE';
+const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 year in seconds
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Get language object by code
+ */
+function getLanguageByCode(code: string): Language | undefined {
+  return SUPPORTED_LANGUAGES.find((lang) => lang.code === code);
+}
+
+/**
+ * Set language cookie
+ */
+function setLanguageCookie(locale: string): void {
+  if (typeof document === 'undefined') return;
+
+  const date = new Date();
+  date.setTime(date.getTime() + COOKIE_MAX_AGE * 1000);
+  const expires = `expires=${date.toUTCString()}`;
+
+  document.cookie = `${LANGUAGE_COOKIE}=${locale}; ${expires}; path=/`;
+}
+
+/**
+ * Replace locale in pathname
+ */
+function replaceLocaleInPathname(pathname: string, oldLocale: string, newLocale: string): string {
+  const segments = pathname.split('/').filter(Boolean);
+
+  if (segments[0] === oldLocale) {
+    segments[0] = newLocale;
+  } else {
+    segments.unshift(newLocale);
+  }
+
+  return `/${segments.join('/')}`;
+}
+
+// ============================================================================
+// Next.js Language Switcher
+// ============================================================================
+
+{% if saas_runtime == 'nextjs-16' %}
+function NextJSLanguageSwitcher() {
+  const locale = useLocale();
+  const pathname = usePathname();
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  const currentLanguage = getLanguageByCode(locale);
+
+  if (!currentLanguage) {
+    return null;
+  }
+
+  const handleLanguageChange = (newLocale: string) => {
+    startTransition(() => {
+      // Persist to cookie
+      setLanguageCookie(newLocale);
+
+      // Navigate to new locale
+      // next-intl handles locale replacement automatically in the pathname
+      router.push(pathname, { locale: newLocale });
+    });
+  };
+
+  return (
+    {% if saas_ui_framework == 'shadcn-ui' %}
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={isPending}
+          className="w-full justify-between sm:w-auto"
+          aria-label={`Current language: ${currentLanguage.nativeName}`}
+        >
+          <span className="mr-2">{currentLanguage.flag}</span>
+          <span className="hidden sm:inline">{currentLanguage.nativeName}</span>
+          <svg
+            className={`ml-2 h-4 w-4 transition-transform ${isPending ? 'animate-spin' : ''}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 14l-7 7m0 0l-7-7m7 7V3"
+            />
+          </svg>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuLabel>Select Language</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {SUPPORTED_LANGUAGES.map((language) => (
+          <DropdownMenuItem
+            key={language.code}
+            onClick={() => handleLanguageChange(language.code)}
+            className={`cursor-pointer ${locale === language.code ? 'bg-accent' : ''}`}
+            disabled={isPending}
+          >
+            <span className="mr-2">{language.flag}</span>
+            <div className="flex flex-1 flex-col">
+              <span className="text-sm font-medium">{language.nativeName}</span>
+              <span className="text-xs text-muted-foreground">{language.name}</span>
+            </div>
+            {locale === language.code && (
+              <svg
+                className="ml-2 h-4 w-4"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            )}
+          </DropdownMenuItem>
+        ))}
+
+        {/* RTL Languages Section */}
+        {SUPPORTED_LANGUAGES.some((lang) => lang.dir === 'rtl') && (
+          <>
+            <DropdownMenuSeparator />
+            <div className="px-2 py-1.5 text-xs text-muted-foreground">
+              Right-to-Left Languages
+            </div>
+            {SUPPORTED_LANGUAGES.filter((lang) => lang.dir === 'rtl').map(
+              (language) => (
+                <DropdownMenuItem
+                  key={language.code}
+                  onClick={() => handleLanguageChange(language.code)}
+                  className={`cursor-pointer ${locale === language.code ? 'bg-accent' : ''}`}
+                  disabled={isPending}
+                  dir="rtl"
+                >
+                  <span className="mr-2">{language.flag}</span>
+                  <div className="flex flex-1 flex-col">
+                    <span className="text-sm font-medium">{language.nativeName}</span>
+                    <span className="text-xs text-muted-foreground">{language.name}</span>
+                  </div>
+                  {locale === language.code && (
+                    <svg
+                      className="ml-2 h-4 w-4"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  )}
+                </DropdownMenuItem>
+              )
+            )}
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+    {% else %}
+    {/* Fallback UI without shadcn/ui */}
+    <div className="relative inline-block">
+      <button
+        onClick={() => {
+          const locale = currentLanguage?.code || 'en';
+          handleLanguageChange(locale === 'en' ? 'es' : 'en');
+        }}
+        disabled={isPending}
+        className="flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-sm font-medium hover:bg-gray-200 disabled:opacity-50"
+        aria-label={`Current language: ${currentLanguage?.nativeName}`}
+      >
+        <span>{currentLanguage?.flag}</span>
+        <span className="hidden sm:inline">{currentLanguage?.nativeName}</span>
+      </button>
+    </div>
+    {% endif %}
+  );
+}
+
+{% elif saas_runtime == 'remix-2' %}
+// ============================================================================
+// Remix Language Switcher
+// ============================================================================
+
+function RemixLanguageSwitcher() {
+  const { i18n } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isPending, startTransition] = React.useTransition();
+
+  const currentLanguage = getLanguageByCode(i18n.language);
+
+  if (!currentLanguage) {
+    return null;
+  }
+
+  const handleLanguageChange = (newLocale: string) => {
+    startTransition(() => {
+      // Persist to cookie
+      setLanguageCookie(newLocale);
+
+      // Change i18n language
+      i18n.changeLanguage(newLocale);
+
+      // Navigate with new locale in URL
+      const newPathname = replaceLocaleInPathname(
+        location.pathname,
+        i18n.language,
+        newLocale
+      );
+
+      navigate(newPathname + location.search);
+    });
+  };
+
+  return (
+    {% if saas_ui_framework == 'shadcn-ui' %}
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={isPending}
+          className="w-full justify-between sm:w-auto"
+          aria-label={`Current language: ${currentLanguage.nativeName}`}
+        >
+          <span className="mr-2">{currentLanguage.flag}</span>
+          <span className="hidden sm:inline">{currentLanguage.nativeName}</span>
+          <svg
+            className={`ml-2 h-4 w-4 transition-transform ${isPending ? 'animate-spin' : ''}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 14l-7 7m0 0l-7-7m7 7V3"
+            />
+          </svg>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuLabel>Select Language</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {SUPPORTED_LANGUAGES.map((language) => (
+          <DropdownMenuItem
+            key={language.code}
+            onClick={() => handleLanguageChange(language.code)}
+            className={`cursor-pointer ${i18n.language === language.code ? 'bg-accent' : ''}`}
+            disabled={isPending}
+          >
+            <span className="mr-2">{language.flag}</span>
+            <div className="flex flex-1 flex-col">
+              <span className="text-sm font-medium">{language.nativeName}</span>
+              <span className="text-xs text-muted-foreground">{language.name}</span>
+            </div>
+            {i18n.language === language.code && (
+              <svg
+                className="ml-2 h-4 w-4"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            )}
+          </DropdownMenuItem>
+        ))}
+
+        {/* RTL Languages Section */}
+        {SUPPORTED_LANGUAGES.some((lang) => lang.dir === 'rtl') && (
+          <>
+            <DropdownMenuSeparator />
+            <div className="px-2 py-1.5 text-xs text-muted-foreground">
+              Right-to-Left Languages
+            </div>
+            {SUPPORTED_LANGUAGES.filter((lang) => lang.dir === 'rtl').map(
+              (language) => (
+                <DropdownMenuItem
+                  key={language.code}
+                  onClick={() => handleLanguageChange(language.code)}
+                  className={`cursor-pointer ${i18n.language === language.code ? 'bg-accent' : ''}`}
+                  disabled={isPending}
+                  dir="rtl"
+                >
+                  <span className="mr-2">{language.flag}</span>
+                  <div className="flex flex-1 flex-col">
+                    <span className="text-sm font-medium">{language.nativeName}</span>
+                    <span className="text-xs text-muted-foreground">{language.name}</span>
+                  </div>
+                  {i18n.language === language.code && (
+                    <svg
+                      className="ml-2 h-4 w-4"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  )}
+                </DropdownMenuItem>
+              )
+            )}
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+    {% else %}
+    {/* Fallback UI without shadcn/ui */}
+    <div className="relative inline-block">
+      <button
+        onClick={() => {
+          const newLocale = i18n.language === 'en' ? 'es' : 'en';
+          handleLanguageChange(newLocale);
+        }}
+        disabled={isPending}
+        className="flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-sm font-medium hover:bg-gray-200 disabled:opacity-50"
+        aria-label={`Current language: ${currentLanguage?.nativeName}`}
+      >
+        <span>{currentLanguage?.flag}</span>
+        <span className="hidden sm:inline">{currentLanguage?.nativeName}</span>
+      </button>
+    </div>
+    {% endif %}
+  );
+}
+
+{% endif %}
+
+// ============================================================================
+// Export Component
+// ============================================================================
+
+/**
+ * Language Switcher Component
+ *
+ * A dropdown component for switching between supported languages.
+ * Automatically detects the runtime and uses the appropriate hooks.
+ *
+ * @example
+ * ```tsx
+ * import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+ *
+ * export default function Header() {
+ *   return (
+ *     <div className="flex items-center gap-4">
+ *       <nav>{/* navigation items */}</nav>
+ *       <LanguageSwitcher />
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export function LanguageSwitcher() {
+  {% if saas_runtime == 'nextjs-16' %}
+  return <NextJSLanguageSwitcher />;
+  {% elif saas_runtime == 'remix-2' %}
+  return <RemixLanguageSwitcher />;
+  {% endif %}
+}
+
+export default LanguageSwitcher;
+{% endif %}

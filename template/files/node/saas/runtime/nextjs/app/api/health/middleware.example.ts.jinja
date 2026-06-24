@@ -1,0 +1,246 @@
+{% if saas_infra_module == "enabled" and saas_runtime == "nextjs-16" %}
+/**
+ * Example: Health Check Monitoring Middleware
+ *
+ * This file demonstrates how to integrate health checking into your application.
+ * Copy and adapt as needed for your monitoring setup.
+ */
+
+import { NextResponse, type NextRequest } from 'next/server';
+import { healthCheckCache, healthCheckHistory, formatHealthLog, generateHealthReport } from '@/lib/health-utils';
+import { checkHealth } from '@/lib/health';
+
+/**
+ * Example 1: Logging middleware that tracks health checks
+ *
+ * Add to your middleware.ts:
+ * ```typescript
+ * export const config = {
+ *   matcher: ['/api/health/:path*'],
+ * };
+ *
+ * export async function middleware(request: NextRequest) {
+ *   const health = await checkHealth();
+ *   console.log(formatHealthLog(health));
+ *   return NextResponse.next();
+ * }
+ * ```
+ */
+export async function healthLoggingMiddleware(request: NextRequest): Promise<NextResponse> {
+  const startTime = Date.now();
+
+  // Execute the actual health check
+  const health = await checkHealth();
+
+  // Log the result
+  const duration = Date.now() - startTime;
+  console.log(`[HEALTH] ${formatHealthLog(health)} (${duration}ms)`);
+
+  return NextResponse.next();
+}
+
+/**
+ * Example 2: Circuit breaker pattern using health checks
+ *
+ * Usage in your route handlers:
+ * ```typescript
+ * if (await isCircuitOpen()) {
+ *   return new Response('Service unavailable', { status: 503 });
+ * }
+ * ```
+ */
+const circuitBreakerState = {
+  isOpen: false,
+  openedAt: 0,
+  resetTimeout: 60000, // 1 minute
+};
+
+export async function isCircuitOpen(): Promise<boolean> {
+  const health = await checkHealth(true);
+
+  if (health.status === 'unhealthy') {
+    circuitBreakerState.isOpen = true;
+    circuitBreakerState.openedAt = Date.now();
+  } else if (
+    circuitBreakerState.isOpen &&
+    Date.now() - circuitBreakerState.openedAt > circuitBreakerState.resetTimeout
+  ) {
+    // Reset circuit if health has recovered
+    circuitBreakerState.isOpen = false;
+  }
+
+  return circuitBreakerState.isOpen;
+}
+
+/**
+ * Example 3: Health-based request prioritization
+ *
+ * Lower priority for degraded systems
+ */
+export function getRequestPriority(health: Awaited<ReturnType<typeof checkHealth>>): 'high' | 'normal' | 'low' {
+  if (health.status === 'healthy') return 'high';
+  if (health.status === 'degraded') return 'normal';
+  return 'low';
+}
+
+/**
+ * Example 4: Dashboard data endpoint
+ *
+ * Add route handler at /api/monitoring/dashboard:
+ * ```typescript
+ * import { generateHealthReport } from '@/lib/health-utils';
+ *
+ * export async function GET() {
+ *   const report = generateHealthReport(3600000); // Last hour
+ *   return NextResponse.json(report);
+ * }
+ * ```
+ */
+export function dashboardEndpoint() {
+  return generateHealthReport(3600000); // Last hour statistics
+}
+
+/**
+ * Example 5: Sentry integration for error tracking
+ *
+ * Add to your health check route:
+ * ```typescript
+ * import * as Sentry from "@sentry/nextjs";
+ *
+ * try {
+ *   const health = await checkHealth(true);
+ *
+ *   if (health.status === 'unhealthy') {
+ *     Sentry.captureMessage('Health check: application unhealthy', 'error');
+ *   } else if (health.status === 'degraded') {
+ *     Sentry.captureMessage('Health check: application degraded', 'warning');
+ *   }
+ * } catch (error) {
+ *   Sentry.captureException(error);
+ * }
+ * ```
+ */
+
+/**
+ * Example 6: Datadog APM integration
+ *
+ * Add to your health check:
+ * ```typescript
+ * const tracer = require('dd-trace').init();
+ *
+ * const span = tracer.startSpan('health_check');
+ * span.setTag('check.database', health.checks.database.status);
+ * span.setTag('check.cache', health.checks.cache?.status);
+ * span.setTag('memory.usage', health.memory?.percentage);
+ * span.finish();
+ * ```
+ */
+
+/**
+ * Example 7: Custom metrics export
+ *
+ * Usage:
+ * ```typescript
+ * import { collectHealthMetrics } from './middleware.example';
+ *
+ * const metrics = await collectHealthMetrics();
+ * // Send to your metrics backend (Prometheus, CloudWatch, etc)
+ * ```
+ */
+export async function collectHealthMetrics(): Promise<{
+  timestamp: number;
+  uptime: number;
+  memory: { used: number; total: number; percentage: number };
+  database: { latency: number; healthy: boolean };
+  services: Record<string, string>;
+}> {
+  const health = await checkHealth(true);
+
+  return {
+    timestamp: Date.now(),
+    uptime: health.uptime || 0,
+    memory: health.memory || { used: 0, total: 0, percentage: 0 },
+    database: {
+      latency: health.checks.database?.latency || 0,
+      healthy: health.checks.database?.status === 'up',
+    },
+    services: Object.fromEntries(Object.entries(health.checks).map(([k, v]) => [k, v.status])),
+  };
+}
+
+/**
+ * Example 8: Kubernetes probe handler
+ *
+ * For use in Kubernetes health check configuration
+ */
+export function kubernetesProbeHandler(probeType: 'liveness' | 'readiness' | 'startup') {
+  switch (probeType) {
+    case 'liveness':
+      return {
+        url: '/api/health/live',
+        initialDelaySeconds: 10,
+        periodSeconds: 10,
+      };
+    case 'readiness':
+      return {
+        url: '/api/health/ready',
+        initialDelaySeconds: 5,
+        periodSeconds: 5,
+      };
+    case 'startup':
+      return {
+        url: '/api/health',
+        initialDelaySeconds: 0,
+        periodSeconds: 1,
+        failureThreshold: 30, // 30 seconds to start
+      };
+  }
+}
+
+/**
+ * Example 9: Load balancer integration
+ *
+ * For use with AWS ELB, nginx, etc.
+ *
+ * nginx example:
+ * ```nginx
+ * upstream backend {
+ *   server app1:3000;
+ *   server app2:3000;
+ *   server app3:3000;
+ * }
+ *
+ * server {
+ *   location / {
+ *     proxy_pass http://backend;
+ *   }
+ *
+ *   location /health {
+ *     proxy_pass http://backend/api/health;
+ *   }
+ * }
+ * ```
+ */
+
+/**
+ * Example 10: Graceful shutdown using health checks
+ *
+ * Add to your server shutdown handler:
+ * ```typescript
+ * process.on('SIGTERM', async () => {
+ *   console.log('SIGTERM received, shutting down gracefully...');
+ *
+ *   // Drain connections (stop accepting new requests)
+ *   circuitBreakerState.isOpen = true;
+ *
+ *   // Wait for in-flight requests to complete (max 30s)
+ *   await new Promise(resolve => setTimeout(resolve, 30000));
+ *
+ *   // Close database connections
+ *   await prisma.$disconnect();
+ *
+ *   process.exit(0);
+ * });
+ * ```
+ */
+{% endif %}
