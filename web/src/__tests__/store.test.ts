@@ -10,10 +10,12 @@ describe('Riso Store', () => {
         project_layout: 'single-package',
         quality_profile: 'standard',
         cli_module: 'disabled',
-        api_tracks: 'none',
-        docs_site: 'fumadocs',
+        api_module: 'disabled',
+        api_languages: ['python'],
+        docs_module: 'enabled',
+        docs_framework: 'fumadocs',
         ai_tools_module: 'enabled',
-        saas_starter_module: 'disabled',
+        saas_infra_module: 'disabled',
       },
       history: [],
       currentStep: 0,
@@ -33,11 +35,12 @@ describe('Riso Store', () => {
       const { updateConfig } = useRisoStore.getState()
 
       updateConfig({ project_name: 'my-app' })
-      updateConfig({ api_tracks: 'python' })
+      updateConfig({ api_module: 'enabled', api_languages: ['python'] })
 
       const { config } = useRisoStore.getState()
       expect(config.project_name).toBe('my-app')
-      expect(config.api_tracks).toBe('python')
+      expect(config.api_module).toBe('enabled')
+      expect(config.api_languages).toEqual(['python'])
     })
   })
 
@@ -45,12 +48,12 @@ describe('Riso Store', () => {
     it('resets config to defaults', () => {
       const { updateConfig, resetConfig } = useRisoStore.getState()
 
-      updateConfig({ project_name: 'my-app', api_tracks: 'python+node' })
+      updateConfig({ project_name: 'my-app', api_module: 'enabled', api_languages: ['node'] })
       resetConfig()
 
       const { config } = useRisoStore.getState()
       expect(config.project_name).toBe('')
-      expect(config.api_tracks).toBe('none')
+      expect(config.api_module).toBe('disabled')
     })
 
     it('resets step to 0', () => {
@@ -73,6 +76,16 @@ describe('Riso Store', () => {
     })
   })
 
+  describe('setCurrentStep', () => {
+    it('is an alias for setStep', () => {
+      const { setCurrentStep } = useRisoStore.getState()
+
+      setCurrentStep(4)
+
+      expect(useRisoStore.getState().currentStep).toBe(4)
+    })
+  })
+
   describe('history', () => {
     it('saves configuration to history', () => {
       const { updateConfig, saveToHistory } = useRisoStore.getState()
@@ -89,7 +102,7 @@ describe('Riso Store', () => {
     it('loads configuration from history', () => {
       const { updateConfig, saveToHistory, loadFromHistory, resetConfig } = useRisoStore.getState()
 
-      updateConfig({ project_name: 'historic-project', api_tracks: 'python' })
+      updateConfig({ project_name: 'historic-project', api_module: 'enabled', api_languages: ['python'] })
       saveToHistory('Historic Config')
 
       const historyId = useRisoStore.getState().history[0].id
@@ -99,7 +112,7 @@ describe('Riso Store', () => {
 
       loadFromHistory(historyId)
       expect(useRisoStore.getState().config.project_name).toBe('historic-project')
-      expect(useRisoStore.getState().config.api_tracks).toBe('python')
+      expect(useRisoStore.getState().config.api_module).toBe('enabled')
     })
 
     it('deletes configuration from history', () => {

@@ -2,25 +2,39 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { matrixDefaults } from './matrixData'
 
-// Configuration interface aligned with template/copier.yml
+// Configuration interface aligned with template/copier.yml v2.0 (component-first)
 export interface RisoConfig {
   // Project basics
   project_name: string
   project_layout: 'single-package' | 'monorepo'
   quality_profile: 'standard' | 'strict'
 
-  // Modules
+  // ========================================
+  // Component-First Modules
+  // Each component has its own language selector
+  // ========================================
+
+  // CLI Module
   cli_module: 'disabled' | 'enabled'
-  api_tracks: 'none' | 'python' | 'node' | 'python+node'
-  graphql_api_module: 'disabled' | 'enabled'
+  cli_languages: ('python' | 'rust' | 'go' | 'typescript')[]
+
+  // API Module
+  api_module: 'disabled' | 'enabled'
+  api_languages: ('python' | 'node' | 'rust' | 'go')[]
+  api_features: 'none' | 'graphql' | 'websocket' | 'graphql,websocket'
+
+  // MCP Module
   mcp_module: 'disabled' | 'enabled'
-  websocket_module: 'disabled' | 'enabled'
+  mcp_languages: ('python' | 'typescript' | 'rust' | 'go')[]
+
+  // Documentation Module
+  docs_module: 'disabled' | 'enabled'
+  docs_framework: 'fumadocs' | 'sphinx-shibuya' | 'docusaurus' | 'mkdocs'
+
+  // Shared/Utility Modules
   codegen_module: 'disabled' | 'enabled'
   changelog_module: 'disabled' | 'enabled'
   shared_logic: 'disabled' | 'enabled'
-
-  // Documentation
-  docs_site: 'fumadocs' | 'sphinx-shibuya' | 'docusaurus' | 'none'
 
   // Fumadocs options
   fumadocs_search_provider: 'orama' | 'algolia' | 'orama-cloud' | 'none'
@@ -79,7 +93,6 @@ export interface RisoConfig {
 
   // Infrastructure
   ci_platform: 'github-actions' | 'none'
-  include_databases: 'yes' | 'no'
 
   // AI Tools
   ai_tools_module: 'enabled' | 'disabled'
@@ -89,25 +102,43 @@ export interface RisoConfig {
   ai_tools_mcp_utilities: boolean
   ai_tools_mcp_search: boolean
 
-  // SaaS Starter
-  saas_starter_module: 'enabled' | 'disabled'
+  // ========================================
+  // SaaS Modular Architecture
+  // Layered: infra → auth → billing → app
+  // ========================================
+
+  // SaaS Infrastructure Layer (base)
+  saas_infra_module: 'enabled' | 'disabled'
   saas_runtime: 'nextjs-16' | 'remix-2'
   saas_hosting: 'vercel' | 'cloudflare'
   saas_database: 'neon' | 'supabase'
   saas_orm: 'prisma' | 'drizzle'
-  saas_auth: 'clerk' | 'authjs'
+  saas_cicd: 'github-actions' | 'cloudflare-ci'
+
+  // SaaS Auth Layer (requires infra)
+  saas_auth_module: 'enabled' | 'disabled'
+  saas_auth_provider: 'clerk' | 'authjs' | 'lucia'
   saas_enterprise_bridge: 'workos' | 'none'
-  saas_billing: 'stripe' | 'paddle'
+
+  // SaaS Billing Layer (requires auth)
+  saas_billing_module: 'enabled' | 'disabled'
+  saas_billing_provider: 'stripe' | 'paddle' | 'lemonsqueezy'
+
+  // SaaS App Layer (requires billing)
+  saas_app_module: 'enabled' | 'disabled'
   saas_jobs: 'triggerdev' | 'inngest'
   saas_email: 'resend' | 'postmark'
   saas_analytics: 'posthog' | 'amplitude'
   saas_ai: 'openai' | 'anthropic'
   saas_storage: 'r2' | 'supabase-storage'
-  saas_cicd: 'github-actions' | 'cloudflare-ci'
+
+  // SaaS Observability
   saas_observability_sentry: boolean
   saas_observability_datadog: boolean
   saas_observability_otel: boolean
   saas_observability_structured_logging: boolean
+
+  // SaaS Testing
   saas_include_fixtures: boolean
   saas_include_factories: boolean
   saas_test_suite_level: 'standard' | 'comprehensive'
@@ -120,15 +151,21 @@ export interface ConfigHistory {
   timestamp: Date
 }
 
-interface RisoStore {
+export interface RisoStore {
   config: Partial<RisoConfig>
   history: ConfigHistory[]
   currentStep: number
+  highlightedField: string | null
+  isDrawerOpen: boolean
 
   // Actions
   updateConfig: (config: Partial<RisoConfig>) => void
   resetConfig: () => void
   setStep: (step: number) => void
+  setCurrentStep: (step: number) => void // Alias for setStep
+  setHighlightedField: (field: string | null) => void
+  setDrawerOpen: (isOpen: boolean) => void
+  toggleDrawer: () => void
   saveToHistory: (name: string) => void
   loadFromHistory: (id: string) => void
   deleteFromHistory: (id: string) => void
@@ -148,18 +185,31 @@ const defaultConfig: Partial<RisoConfig> = {
   project_layout: fromMatrix('project_layout', 'single-package'),
   quality_profile: fromMatrix('quality_profile', 'standard'),
 
-  // Modules
+  // ========================================
+  // Component-First Module Defaults
+  // ========================================
+
+  // CLI Module
   cli_module: fromMatrix('cli_module', 'disabled'),
-  api_tracks: fromMatrix('api_tracks', 'none'),
-  graphql_api_module: fromMatrix('graphql_api_module', 'disabled'),
+  cli_languages: fromMatrix('cli_languages', ['python']),
+
+  // API Module
+  api_module: fromMatrix('api_module', 'disabled'),
+  api_languages: fromMatrix('api_languages', ['python']),
+  api_features: fromMatrix('api_features', 'none'),
+
+  // MCP Module
   mcp_module: fromMatrix('mcp_module', 'disabled'),
-  websocket_module: fromMatrix('websocket_module', 'disabled'),
+  mcp_languages: fromMatrix('mcp_languages', ['python']),
+
+  // Documentation Module
+  docs_module: fromMatrix('docs_module', 'disabled'),
+  docs_framework: fromMatrix('docs_framework', 'fumadocs'),
+
+  // Shared Modules
   codegen_module: fromMatrix('codegen_module', 'disabled'),
   changelog_module: fromMatrix('changelog_module', 'disabled'),
   shared_logic: fromMatrix('shared_logic', 'disabled'),
-
-  // Documentation
-  docs_site: fromMatrix('docs_site', 'fumadocs'),
 
   // Fumadocs defaults
   fumadocs_search_provider: fromMatrix('fumadocs_search_provider', 'orama'),
@@ -227,25 +277,42 @@ const defaultConfig: Partial<RisoConfig> = {
   ai_tools_mcp_utilities: fromMatrix('ai_tools_mcp_utilities', true),
   ai_tools_mcp_search: fromMatrix('ai_tools_mcp_search', false),
 
-  // SaaS Starter
-  saas_starter_module: fromMatrix('saas_starter_module', 'disabled'),
+  // ========================================
+  // SaaS Modular Architecture Defaults
+  // ========================================
+
+  // SaaS Infrastructure Layer
+  saas_infra_module: fromMatrix('saas_infra_module', 'disabled'),
   saas_runtime: fromMatrix('saas_runtime', 'nextjs-16'),
   saas_hosting: fromMatrix('saas_hosting', 'vercel'),
   saas_database: fromMatrix('saas_database', 'neon'),
   saas_orm: fromMatrix('saas_orm', 'prisma'),
-  saas_auth: fromMatrix('saas_auth', 'clerk'),
+  saas_cicd: fromMatrix('saas_cicd', 'github-actions'),
+
+  // SaaS Auth Layer
+  saas_auth_module: fromMatrix('saas_auth_module', 'disabled'),
+  saas_auth_provider: fromMatrix('saas_auth_provider', 'clerk'),
   saas_enterprise_bridge: fromMatrix('saas_enterprise_bridge', 'none'),
-  saas_billing: fromMatrix('saas_billing', 'stripe'),
+
+  // SaaS Billing Layer
+  saas_billing_module: fromMatrix('saas_billing_module', 'disabled'),
+  saas_billing_provider: fromMatrix('saas_billing_provider', 'stripe'),
+
+  // SaaS App Layer
+  saas_app_module: fromMatrix('saas_app_module', 'disabled'),
   saas_jobs: fromMatrix('saas_jobs', 'triggerdev'),
   saas_email: fromMatrix('saas_email', 'resend'),
   saas_analytics: fromMatrix('saas_analytics', 'posthog'),
   saas_ai: fromMatrix('saas_ai', 'openai'),
   saas_storage: fromMatrix('saas_storage', 'r2'),
-  saas_cicd: fromMatrix('saas_cicd', 'github-actions'),
+
+  // SaaS Observability
   saas_observability_sentry: fromMatrix('saas_observability_sentry', true),
   saas_observability_datadog: fromMatrix('saas_observability_datadog', true),
   saas_observability_otel: fromMatrix('saas_observability_otel', true),
   saas_observability_structured_logging: fromMatrix('saas_observability_structured_logging', true),
+
+  // SaaS Testing
   saas_include_fixtures: fromMatrix('saas_include_fixtures', true),
   saas_include_factories: fromMatrix('saas_include_factories', true),
   saas_test_suite_level: fromMatrix('saas_test_suite_level', 'standard'),
@@ -257,6 +324,8 @@ export const useRisoStore = create<RisoStore>()(
       config: defaultConfig,
       history: [],
       currentStep: 0,
+      highlightedField: null,
+      isDrawerOpen: false,
 
       updateConfig: (config) =>
         set((state) => ({
@@ -271,6 +340,18 @@ export const useRisoStore = create<RisoStore>()(
 
       setStep: (step) =>
         set({ currentStep: step }),
+
+      setCurrentStep: (step) =>
+        set({ currentStep: step }),
+
+      setHighlightedField: (field) =>
+        set({ highlightedField: field }),
+
+      setDrawerOpen: (isOpen) =>
+        set({ isDrawerOpen: isOpen }),
+
+      toggleDrawer: () =>
+        set((state) => ({ isDrawerOpen: !state.isDrawerOpen })),
 
       saveToHistory: (name) =>
         set((state) => ({
@@ -300,6 +381,13 @@ export const useRisoStore = create<RisoStore>()(
     {
       name: 'riso-config-storage',
       storage: createJSONStorage(() => localStorage),
+      // Don't persist UI state like drawer open/closed
+      partialize: (state) => ({
+        config: state.config,
+        history: state.history,
+        currentStep: state.currentStep,
+        highlightedField: state.highlightedField,
+      }),
     }
   )
 )
