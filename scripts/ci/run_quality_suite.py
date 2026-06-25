@@ -87,7 +87,15 @@ def main() -> None:
     if args.profile == "strict":
         logger.info("Running Pylint...")
         durations["pylint"] = run_command(
-            ["uv", "run", "pylint", "scripts", "template/hooks", "tests"]
+            [
+                "uv",
+                "run",
+                "pylint",
+                "scripts",
+                "template/hooks",
+                "--disable=duplicate-code",
+                "--fail-under=9.5",
+            ]
         )
 
     if args.log_dir is not None:

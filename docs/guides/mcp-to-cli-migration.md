@@ -6,7 +6,7 @@ The maintainer `riso-mcp` server has been removed in v1.2.0. Use the `riso` CLI 
 
 Delete `riso-mcp` from your MCP client config (e.g. Claude Desktop `mcp.json`, Cursor MCP settings):
 
-```json
+```text
 {
   "mcpServers": {
     "riso": { ... }

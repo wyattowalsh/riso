@@ -44,3 +44,11 @@ Command-line scripts and automation utilities.
 The maintainer `riso-mcp` server was removed in v1.2.0. See
 {doc}`../guides/mcp-to-cli-migration` for migration guidance.
 ```
+
+:::{toctree}
+:maxdepth: 1
+:hidden:
+
+Scripts <scripts>
+Template Utilities <template/index>
+:::
