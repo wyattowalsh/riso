@@ -103,12 +103,17 @@ def test_global_version_flag() -> None:
 
 def test_main_handles_cli_error() -> None:
     """main() maps CLIError to process exit code."""
+    import sys
     from unittest.mock import patch
 
-    from {{ package_name }}.cli.__main__ import app, main  # noqa: PLC0415
+    from {{ package_name }}.cli.__main__ import main  # noqa: PLC0415
     from {{ package_name }}.cli.core import CLIError
 
-    with patch.object(app, "__call__", side_effect=CLIError("test failure", exit_code=7)):
-        with pytest.raises(SystemExit) as exc_info:
-            main()
-        assert exc_info.value.code == 7
+    with patch.object(sys, "argv", ["{{ project_slug }}"]):
+        with patch(
+            "{{ package_name }}.cli.__main__.app",
+            side_effect=CLIError("test failure", exit_code=7),
+        ):
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+            assert exc_info.value.code == 7

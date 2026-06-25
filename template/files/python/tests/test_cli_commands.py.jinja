@@ -262,12 +262,17 @@ class TestKeyboardInterrupt:
 
     def test_main_exits_130_on_keyboard_interrupt(self) -> None:
         """main() exits with code 130 on KeyboardInterrupt."""
+        import sys
         from unittest.mock import patch
 
-        from {{ package_name }}.cli.__main__ import app, main
+        from {{ package_name }}.cli.__main__ import main
 
-        with patch.object(app, "__call__", side_effect=KeyboardInterrupt):
-            with pytest.raises(SystemExit) as exc_info:
-                main()
-            assert exc_info.value.code == 130
+        with patch.object(sys, "argv", ["{{ project_slug }}"]):
+            with patch(
+                "{{ package_name }}.cli.__main__.app",
+                side_effect=KeyboardInterrupt,
+            ):
+                with pytest.raises(SystemExit) as exc_info:
+                    main()
+                assert exc_info.value.code == 130
 {%- endif %}
