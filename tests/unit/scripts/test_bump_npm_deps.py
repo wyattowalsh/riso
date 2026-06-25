@@ -47,8 +47,23 @@ def test_bump_script_imports_surfaces() -> None:
         "No package versions to upgrade",
     ],
 )
-def test_ncu_up_to_date_detection(output: str, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_ncu_up_to_date_detection(
+    output: str, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     module = _load_bump_module()
+    sample_dir = tmp_path / "samples" / "default"
+    sample_dir.mkdir(parents=True)
+    (sample_dir / "copier-answers.yml").write_text("project_name: test\n", encoding="utf-8")
+    render_dir = sample_dir / "render"
+    render_dir.mkdir(parents=True)
+    (render_dir / "package.json").write_text(
+        '{"name":"test","dependencies":{"lodash":"1.0.0"}}',
+        encoding="utf-8",
+    )
+    template_jinja = tmp_path / "template" / "files" / "package.json.jinja"
+    template_jinja.parent.mkdir(parents=True, exist_ok=True)
+    template_jinja.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(module, "REPO_ROOT", tmp_path)
 
     class _Surface:
         name = "test"
