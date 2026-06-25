@@ -1,15 +1,18 @@
 {%- if docs_module == 'enabled' and docs_framework == 'fumadocs' and fumadocs_sidebar == 'shadcn' -%}
 'use client';
 
-import { source } from '@/lib/source';
+import type { Root } from 'fumadocs-core/page-tree';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
-export function Sidebar() {
+interface SidebarProps {
+  tree: Root;
+}
+
+export function Sidebar({ tree }: SidebarProps) {
   const pathname = usePathname();
-  const tree = source.pageTree;
 
   return (
     <nav className="flex flex-col gap-1 p-4">
@@ -19,7 +22,7 @@ export function Sidebar() {
 }
 
 interface SidebarTreeProps {
-  nodes: typeof source.pageTree.children;
+  nodes: Root['children'];
   pathname: string;
   level?: number;
 }
@@ -78,8 +81,8 @@ function SidebarTree({ nodes, pathname, level = 0 }: SidebarTreeProps) {
 }
 
 interface SidebarFolderProps {
-  name: string;
-  children: typeof source.pageTree.children;
+  name: ReactNode;
+  children: Root['children'];
   pathname: string;
   level: number;
   defaultOpen?: boolean;

@@ -52,8 +52,10 @@ lint-node:
 
 hooks: ## Install pre-commit hooks
 	$(UV) run --group quality pre-commit install --install-hooks
-{% if quality_profile == 'strict' %}
+{% if changelog_module == 'enabled' or quality_profile == 'strict' %}
 	$(UV) run --group quality pre-commit install --hook-type commit-msg
+{% endif %}
+{% if quality_profile == 'strict' %}
 	$(UV) run --group quality pre-commit install --hook-type pre-push
 {% endif %}
 

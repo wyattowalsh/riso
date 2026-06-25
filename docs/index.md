@@ -130,10 +130,10 @@ Changelog <changelog>
     <div class="feature-icon">
       <iconify-icon icon="tabler:plug-connected"></iconify-icon>
     </div>
-    <h3 class="feature-title">MCP Integration</h3>
+    <h3 class="feature-title">Agent-Native CLI</h3>
     <p class="feature-description">
-      Built-in <a href="tools/riso-mcp-server.html">MCP server</a> exposes Copier templating as AI-accessible tools.
-      Generate MCP scaffolds in Python, TypeScript, or Rust.
+      The <a href="tools/riso-cli.html">Riso CLI</a> exposes Copier templating with stable <code>--json</code> output.
+      Pair with the <code>riso-scaffold</code> agent skill for AI-assisted project generation.
     </p>
   </div>
 </div>
@@ -265,9 +265,9 @@ and in CI to prevent regressions.
     <iconify-icon icon="tabler:test-pipe"></iconify-icon>
     Testing Strategy
   </a>
-  <a href="tools/riso-mcp-server.html" class="quick-link">
-    <iconify-icon icon="tabler:plug-connected"></iconify-icon>
-    MCP Server
+  <a href="tools/riso-cli.html" class="quick-link">
+    <iconify-icon icon="tabler:terminal-2"></iconify-icon>
+    Riso CLI
   </a>
   <a href="guides/matrix-data.html" class="quick-link">
     <iconify-icon icon="tabler:layout-grid"></iconify-icon>

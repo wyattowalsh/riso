@@ -18,6 +18,26 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
 
+@pytest.fixture(autouse=True)
+def _reset_api_state() -> Generator[None, None, None]:
+    """Isolate in-memory example data and cached config between tests."""
+    from {{ package_name }}.api.config import get_config
+
+    try:
+        from {{ package_name }}.api.routes import examples
+    except ImportError:
+        examples = None
+
+    if examples is not None and hasattr(examples, "_examples_db"):
+        examples._examples_db.clear()
+
+    get_config.cache_clear()
+    yield
+    if examples is not None and hasattr(examples, "_examples_db"):
+        examples._examples_db.clear()
+    get_config.cache_clear()
+
+
 @pytest.fixture
 def client() -> Generator[TestClient, None, None]:
     """Create a FastAPI test client.

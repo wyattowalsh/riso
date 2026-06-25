@@ -9,6 +9,7 @@ Provides consistent formatting for tables, JSON, YAML, and plain text output.
 from __future__ import annotations
 
 import json
+import os
 from enum import Enum
 from typing import Any, Sequence
 
@@ -28,6 +29,15 @@ class OutputFormat(str, Enum):
     TEXT = "text"
 
 
+def _default_console() -> Console:
+    """Create a console respecting NO_COLOR and dumb terminals."""
+    no_color = (
+        os.environ.get("NO_COLOR") is not None
+        or os.environ.get("TERM", "").lower() == "dumb"
+    )
+    return Console(no_color=no_color)
+
+
 class OutputFormatter:
     """Formats output data in multiple formats with Rich styling."""
     
@@ -37,7 +47,7 @@ class OutputFormatter:
         Args:
             console: Rich console instance (creates default if None)
         """
-        self.console = console or Console()
+        self.console = console or _default_console()
     
     def format(
         self,

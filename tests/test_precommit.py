@@ -19,7 +19,6 @@ def template_config_path() -> Path:
         Path(__file__).parents[1]
         / "template"
         / "files"
-        / "quality"
         / ".pre-commit-config.yaml.jinja"
     )
 
@@ -62,16 +61,19 @@ class TestRootPrecommitConfig:
         actionlint_repos = [r for r in repos if "actionlint" in str(r.get("repo", ""))]
         assert len(actionlint_repos) > 0, "Should have actionlint pre-commit repo"
 
-    def test_root_config_has_conventional_commits(self, root_config_path: Path) -> None:
-        """Verify root config includes conventional commit validation."""
+    def test_root_config_has_commitlint_hook(self, root_config_path: Path) -> None:
+        """Verify root config includes commit-msg validation."""
         content = root_config_path.read_text(encoding="utf-8")
         config = yaml.safe_load(content)
         repos = config.get("repos", [])
 
-        conventional_repos = [
-            r for r in repos if "conventional" in str(r.get("repo", ""))
-        ]
-        assert len(conventional_repos) > 0, "Should have conventional-pre-commit repo"
+        local_repos = [r for r in repos if r.get("repo") == "local"]
+        commit_hook_ids = []
+        for repo in local_repos:
+            for hook in repo.get("hooks", []):
+                if hook.get("stages") == ["commit-msg"]:
+                    commit_hook_ids.append(hook.get("id"))
+        assert "commitlint" in commit_hook_ids, "Should have commitlint commit-msg hook"
 
     def test_root_config_has_local_hooks(self, root_config_path: Path) -> None:
         """Verify root config includes local hooks (ty, pylint, etc.)."""
@@ -198,9 +200,10 @@ class TestTemplatePrecommitConfig:
 
         # Check for changelog conditionals
         assert "changelog_module" in content, "Should have changelog_module conditional"
-        assert "conventional-pre-commit" in content, (
-            "Should reference conventional commits"
-        )
+        assert "commitlint" in content, "Should reference commitlint hook"
+        assert (
+            "changelog_module == 'enabled' or quality_profile == 'strict'" in content
+        ), "Should install commit-msg for changelog or strict profiles"
 
     def test_template_has_prepush_hooks(self, template_config_path: Path) -> None:
         """Verify template includes pre-push hooks for strict profile."""
@@ -210,6 +213,11 @@ class TestTemplatePrecommitConfig:
         assert "pre-push" in content, "Should have pre-push stage hooks"
         assert "pytest-prepush" in content, "Should have pytest pre-push hook"
         assert "pip-audit" in content, "Should have pip-audit hook"
+
+    def test_template_config_at_repo_root(self, template_config_path: Path) -> None:
+        """Verify template pre-commit config lives at repo root, not quality/."""
+        assert template_config_path.name == ".pre-commit-config.yaml.jinja"
+        assert "quality" not in template_config_path.parts[-2:]
 
     def test_template_has_ci_section(self, template_config_path: Path) -> None:
         """Verify template has CI configuration section."""
@@ -280,6 +288,11 @@ class TestMakefileIntegration:
     """Tests for Makefile pre-commit targets."""
 
     @pytest.fixture
+    def root_makefile_jinja_path(self) -> Path:
+        """Return path to the template root Makefile."""
+        return Path(__file__).parents[1] / "template" / "files" / "Makefile.jinja"
+
+    @pytest.fixture
     def makefile_path(self) -> Path:
         """Return path to the root Makefile."""
         return Path(__file__).parents[1] / "Makefile"
@@ -322,3 +335,32 @@ class TestMakefileIntegration:
         assert "hooks:" in content, "Template should have hooks target"
         assert "hooks-run:" in content, "Template should have hooks-run target"
         assert "hooks-update:" in content, "Template should have hooks-update target"
+
+    def test_template_root_makefile_delegates_to_quality(
+        self, root_makefile_jinja_path: Path
+    ) -> None:
+        """Verify root Makefile delegates hook targets to quality/makefile.quality."""
+        content = root_makefile_jinja_path.read_text(encoding="utf-8")
+        assert "quality/makefile.quality" in content
+        assert "hooks" in content
+
+    def test_template_python_makefile_delegates_to_quality(self) -> None:
+        """Verify python/Makefile delegates to quality/makefile.quality."""
+        python_makefile = (
+            Path(__file__).parents[1]
+            / "template"
+            / "files"
+            / "python"
+            / "Makefile.jinja"
+        )
+        content = python_makefile.read_text(encoding="utf-8")
+        assert "../quality/makefile.quality" in content
+        assert "hooks" in content
+
+    def test_template_makefile_installs_commit_msg_for_changelog(
+        self, template_makefile_path: Path
+    ) -> None:
+        """Verify makefile installs commit-msg when changelog is enabled."""
+        content = template_makefile_path.read_text(encoding="utf-8")
+        assert "changelog_module == 'enabled' or quality_profile == 'strict'" in content
+        assert "--hook-type commit-msg" in content

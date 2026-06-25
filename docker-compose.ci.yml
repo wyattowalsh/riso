@@ -1,0 +1,36 @@
+# =============================================================================
+# Docker Compose CI Override for Changelog Python
+# =============================================================================
+# This file provides optimizations for CI/CD environments (GitHub Actions)
+#
+# Key optimizations:
+# - Disables volume mounts (uses baked-in code from image)
+# - Reduces healthcheck intervals for faster startup
+# - Uses tmpfs for database storage (ephemeral, faster I/O)
+# - BuildKit cache integration for GitHub Actions
+# - Optimized for ephemeral runner environments
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d
+#   docker compose -f docker-compose.yml -f docker-compose.ci.yml down
+#
+# Environment: GitHub Actions runners, GitLab CI, or any ephemeral CI environment
+
+services:
+
+  api-python:
+    build:
+      cache_from:
+        - type=gha  # GitHub Actions cache
+      cache_to:
+        - type=gha,mode=max
+    volumes: []  # Disable volume mounts - use image code
+    healthcheck:
+      interval: 5s   # Faster healthchecks in CI
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+# =============================================================================
+# CI-specific volume overrides (disable all persistent volumes)
+# =============================================================================

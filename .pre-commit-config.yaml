@@ -10,7 +10,7 @@ repos:
   # Python Code Quality
   # ============================================
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.11
+    rev: v0.15.19
     hooks:
       - id: ruff
         name: ruff lint
@@ -27,7 +27,7 @@ repos:
         entry: uv run ty check src/riso scripts template/hooks
         language: system
         types: [python]
-        files: ^(scripts|template/hooks)/.*\.py$
+        files: ^(scripts|template/hooks|src/riso)/.*\.py$
         pass_filenames: false
 
       - id: pylint
@@ -42,7 +42,7 @@ repos:
   # Dead Code Detection
   # ============================================
   - repo: https://github.com/jendrikseipp/vulture
-    rev: v2.14
+    rev: v2.16
     hooks:
       - id: vulture
         name: vulture dead code
@@ -84,7 +84,7 @@ repos:
   # Spell Checking
   # ============================================
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.1
+    rev: v2.4.2
     hooks:
       - id: codespell
         name: codespell
@@ -104,7 +104,7 @@ repos:
   # GitHub Actions Workflow Validation
   # ============================================
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.10
+    rev: v1.7.12
     hooks:
       - id: actionlint
         name: actionlint
@@ -112,7 +112,7 @@ repos:
 
   # JSON Schema validation for common config files
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.36.0
+    rev: 0.37.3
     hooks:
       - id: check-github-workflows
         name: validate github workflows
@@ -124,7 +124,7 @@ repos:
   # Markdown Formatting
   # ============================================
   - repo: https://github.com/executablebooks/mdformat
-    rev: 0.7.21
+    rev: 1.0.0
     hooks:
       - id: mdformat
         name: mdformat
@@ -199,26 +199,6 @@ repos:
         language: system
         stages: [commit-msg]
         always_run: true
-
-  # Fallback: conventional-pre-commit (Python-based, no Node required)
-  - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v4.3.0
-    hooks:
-      - id: conventional-pre-commit
-        name: conventional commits (fallback)
-        stages: [commit-msg]
-        args:
-          - feat
-          - fix
-          - docs
-          - chore
-          - refactor
-          - test
-          - perf
-          - ci
-          - build
-          - revert
-          - style
 
   # ============================================
   # Pre-push: Full Test Suite

@@ -40,7 +40,7 @@ class ConfigManager:
     def __init__(
         self,
         config_file: str | Path | None = None,
-        env_prefix: str = "",
+        env_prefix: str = "{{ package_name | upper }}_",
         defaults: dict[str, Any] | None = None,
     ):
         """Initialize configuration manager.
@@ -76,17 +76,29 @@ class ConfigManager:
         
         return None
     
-    def load(self, app_name: str | None = None) -> None:
+    def load(
+        self,
+        app_name: str | None = None,
+        *,
+        force: bool = False,
+        strict: bool = False,
+    ) -> None:
         """Load configuration from file.
         
         Args:
             app_name: Application name for auto-detecting config file
+            force: Reload even if configuration was already loaded
+            strict: Raise ConfigError on invalid TOML instead of degrading to defaults
             
         Raises:
-            ConfigError: If config file has invalid syntax
+            ConfigError: If config file has invalid syntax (strict mode only)
         """
-        if self._loaded:
+        if self._loaded and not force:
             return
+
+        if force:
+            self._config_data = {}
+            self._loaded = False
         
         # Auto-detect config file if not specified
         if self.config_file is None:
@@ -107,9 +119,14 @@ class ConfigManager:
                     self._config_data = tomllib.load(f)
                 logger.info(f"Loaded configuration from {self.config_file}")
             except Exception as e:
-                raise ConfigError(
-                    f"Failed to parse config file {self.config_file}: {e}"
-                ) from e
+                if strict:
+                    raise ConfigError(
+                        f"Failed to parse config file {self.config_file}: {e}"
+                    ) from e
+                logger.warning(
+                    f"Invalid TOML in {self.config_file}, using defaults: {e}"
+                )
+                self._config_data = {}
         
         self._loaded = True
     
@@ -203,6 +220,8 @@ class ConfigManager:
             raise ConfigError(
                 "TOML writing not available. Install 'tomli-w' package"
             ) from None
+        except PermissionError as e:
+            raise ConfigError(f"Permission denied saving config to {target}") from e
         except Exception as e:
             raise ConfigError(f"Failed to save config to {target}: {e}") from e
     
@@ -312,8 +331,10 @@ class ConfigManager:
                 return float(value)
             return int(value)
         except ValueError:
-            pass
-        
-        # String
+            logger.warning(
+                f"Environment value '{value}' is not numeric; using raw string"
+            )
+
+        # String fallback
         return value
 {%- endif %}

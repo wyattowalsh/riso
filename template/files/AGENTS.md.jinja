@@ -1,0 +1,278 @@
+{#- AI agent instructions for rendered {{ project_name }} projects. Human docs: README.md -#}
+{%- set _python = (cli_module == 'enabled' and 'python' in cli_languages) or (api_module == 'enabled' and 'python' in api_languages) or (mcp_module == 'enabled' and 'python' in mcp_languages) or (docs_module == 'enabled' and docs_framework == 'sphinx-shibuya') -%}
+{%- set _node = (api_module == 'enabled' and 'node' in api_languages) or (mcp_module == 'enabled' and 'typescript' in mcp_languages) or (docs_module == 'enabled' and docs_framework in ['fumadocs', 'docusaurus']) or saas_infra_module == 'enabled' or desktop_module == 'enabled' or changelog_module == 'enabled' -%}
+# AGENTS.md
+
+> AI coding agent instructions for **{{ project_name }}**. Human docs: [README.md](./README.md)
+
+## Project Overview
+
+<!-- agents-md:auto -->
+
+Copier-rendered application scaffold (**{{ project_layout }}**).
+
+- **Project**: {{ project_name }}
+- **Package**: `{{ package_name }}`
+- **Layout**: {{ project_layout }}
+- **Quality profile**: {{ quality_profile }}
+{% if _python %}- **Python**: 3.11+ via [uv](https://docs.astral.sh/uv/){% endif %}
+{% if _node %}- **Node.js**: 20 LTS via [pnpm](https://pnpm.io/){% endif %}
+- **CI platform**: {{ ci_platform }}
+
+**Enabled modules:** {% if cli_module == 'enabled' %}CLI{% endif %}{% if api_module == 'enabled' %} API ({{ api_languages | join(', ') }}){% endif %}{% if mcp_module == 'enabled' %} MCP{% endif %}{% if docs_module == 'enabled' %} Docs ({{ docs_framework }}){% endif %}{% if shared_logic == 'enabled' %} Shared logic{% endif %}{% if changelog_module == 'enabled' %} Changelog/release{% endif %}{% if saas_infra_module == 'enabled' %} SaaS{% endif %}{% if cli_module != 'enabled' and api_module != 'enabled' and mcp_module != 'enabled' and docs_module != 'enabled' and shared_logic != 'enabled' and changelog_module != 'enabled' and saas_infra_module != 'enabled' %}baseline only{% endif %}
+
+## Quick Reference
+
+<!-- agents-md:auto -->
+
+| Task | Command |
+| ---- | ------- |
+{% if _python %}
+| Install deps | `uv sync` |
+| Install test deps | `uv sync --group test` |
+| Install quality deps | `uv sync --group quality --group test` |
+| Run tests | `uv run pytest` |
+| Lint (ruff) | `uv run ruff check .` |
+| Format (ruff) | `uv run ruff format .` |
+| Type check (ty) | `uv run ty check {{ package_name }}` |
+| Quality suite | `make quality` or `QUALITY_PROFILE={{ quality_profile }} uv run task quality` |
+| Install hooks | `make hooks` |
+| Pre-commit (all) | `make hooks-run` or `uv run pre-commit run --all-files` |
+{% endif %}
+{% if _node %}
+| Install workspace | `pnpm install` |
+{% if docs_module == 'enabled' and docs_framework == 'fumadocs' %}| Docs dev | `pnpm --filter docs-fumadocs dev` |
+| Docs build | `pnpm --filter docs-fumadocs build` |
+{% endif %}
+{% if docs_module == 'enabled' and docs_framework == 'docusaurus' %}| Docs dev | `pnpm --filter docs-docusaurus start` |
+| Docs build | `pnpm --filter docs-docusaurus build` |
+{% endif %}
+{% if api_module == 'enabled' and 'node' in api_languages %}| API dev | `pnpm --filter api-node run dev` |
+| API test | `pnpm --filter api-node test` |
+{% endif %}
+{% endif %}
+{% if cli_module == 'enabled' and 'python' in cli_languages %}
+| CLI help | `uv run python -m {{ package_name }}.cli --help` |
+{% endif %}
+{% if api_module == 'enabled' and 'python' in api_languages %}
+| API dev | `uv run uvicorn {{ package_name }}.api.main:app --reload` |
+{% endif %}
+{% if mcp_module == 'enabled' and 'python' in mcp_languages %}
+| List MCP tools | `uv run python -c "from shared.mcp import tooling; print(tooling.list_tools())"` |
+{% endif %}
+{% if docs_module == 'enabled' and docs_framework == 'sphinx-shibuya' %}
+| Build docs | `uv run sphinx-build docs dist/docs` |
+{% endif %}
+{% if changelog_module == 'enabled' %}
+| Release dry-run | `pnpm run release:dry-run` or `semantic-release --dry-run` |
+{% endif %}
+
+## Setup Commands
+
+<!-- agents-md:auto -->
+
+```bash
+{% if _python %}uv sync
+make hooks
+uv run python -m {{ package_name }}.quickstart
+{% endif %}
+{% if _node %}pnpm install
+{% if changelog_module == 'enabled' %}pnpm run setup-hooks
+{% endif %}
+{% endif %}
+```
+
+Read [docs/modules/prompt-reference.md](docs/modules/prompt-reference.md) for Copier prompt context and dependency groups.
+
+{% if ai_tools_module == 'enabled' %}
+Review [docs/ai-tools.md](docs/ai-tools.md) for MCP and multi-agent harness configuration.
+{% endif %}
+
+## Testing Instructions
+
+<!-- agents-md:auto -->
+
+{% if _python %}- **Framework**: pytest (see `pyproject.toml` `[tool.pytest.ini_options]`)
+- **Paths**: `tests/`
+
+```bash
+uv run pytest
+uv run pytest tests/ -k "test_name"
+uv run pytest --cov
+```
+{% endif %}
+{% if api_module == 'enabled' and 'node' in api_languages %}
+```bash
+pnpm --filter api-node test
+```
+{% endif %}
+{% if quality_profile == 'strict' %}- Target ≥90% coverage on changed Python code; document exclusions inline.
+{% endif %}
+
+## Code Quality
+
+<!-- agents-md:auto -->
+
+{% if _python %}Canonical quality lane: `python/tasks/quality.py` (ruff → ty → pylint → coverage).
+
+```bash
+make quality
+# or, when make is unavailable
+QUALITY_PROFILE={{ quality_profile }} uv run task quality
+```
+
+Profile **{{ quality_profile }}**{% if quality_profile == 'strict' %} enables stricter ruff/ty/pylint and commit-msg + pre-push hooks{% elif changelog_module == 'enabled' %} installs commit-msg hooks via `make hooks`{% endif %}.
+{% endif %}
+
+## Pre-commit Hooks
+
+{% if _python %}
+Install from project root (delegates to `quality/makefile.quality`):
+
+```bash
+make hooks
+make hooks-run
+make hooks-update
+```
+{% endif %}
+
+## CI/CD Context
+
+<!-- agents-md:auto -->
+
+{% if ci_platform == 'github-actions' %}- **Platform**: GitHub Actions (`.github/workflows/`)
+- Run `make quality` or `uv run task quality` locally before pushing.
+{% elif ci_platform == 'gitlab-ci' %}- **Platform**: GitLab CI (`.gitlab/.gitlab-ci.yml`)
+{% elif ci_platform == 'circleci' %}- **Platform**: CircleCI (`.circleci/config.yml`)
+{% endif %}
+
+## Repository Map
+
+```
+{{ project_slug }}/
+{% if project_layout == 'monorepo' %}├── apps/
+├── packages/
+{% else %}├── src/{{ package_name }}/
+├── tests/
+{% endif %}
+{% if docs_module == 'enabled' %}├── node/docs/          # {{ docs_framework }} site
+{% endif %}
+├── docs/modules/       # Module reference (link-out)
+{% if ai_tools_module == 'enabled' %}├── AGENTS.md           # This file (SSOT)
+├── docs/ai-tools.md    # MCP + agent harness matrix
+{% endif %}
+└── .copier-answers.yml # Render configuration (read-only reference)
+```
+
+## Module Guides
+
+Link out — do not duplicate full module docs here.
+
+{% if cli_module == 'enabled' %}- [CLI](docs/modules/cli.md)
+{% endif %}
+{% if api_module == 'enabled' and 'python' in api_languages %}- [Python API](docs/modules/api-python.md)
+{% endif %}
+{% if api_module == 'enabled' and 'node' in api_languages %}- [Node API](docs/modules/api-node.md)
+{% endif %}
+{% if mcp_module == 'enabled' %}- [MCP](docs/modules/mcp.md)
+{% endif %}
+{% if docs_module == 'enabled' %}- [Docs site](docs/modules/docs-site.md)
+{% endif %}
+{% if shared_logic == 'enabled' %}- [Shared logic](docs/modules/shared-logic.md)
+{% endif %}
+{% if changelog_module == 'enabled' %}- [Changelog & release](docs/modules/changelog-release.md)
+{% endif %}
+{% if saas_infra_module == 'enabled' %}- [SaaS starter](docs/modules/saas-starter.md)
+{% endif %}
+- [Prompt reference](docs/modules/prompt-reference.md)
+
+## Build and Test Parity
+
+- Local: commands in **Quick Reference** above.
+- CI: quality workflows mirror `make quality` / `uv run task quality` when Python is enabled.
+- Regenerate or update via `copier update` — do not hand-edit generated scaffolds without syncing template answers.
+
+## Code Style
+
+<!-- agents-md:auto -->
+
+{% if _python %}- **Python**: 3.11+, 4-space indent, 88-char lines (ruff).
+- **CRITICAL**: Use `uv run` for all Python commands — never bare `python` or `pytest`.
+{% endif %}
+{% if _node %}- **TypeScript/JavaScript**: 2-space indent (Prettier/ESLint where configured).
+{% endif %}
+
+## Security
+
+- Never commit secrets; use `.env` files (gitignored) and `${ENV_VAR}` in MCP configs.
+- Never manually edit `uv.lock` or `pnpm-lock.yaml` — use package managers.
+- Ask before modifying CI workflows or Copier prompt defaults.
+
+## Git Workflow
+
+{% if changelog_module == 'enabled' %}Use [Conventional Commits](https://www.conventionalcommits.org/); commit-msg hooks enforce format when `quality_profile=strict`.
+{% else %}Use clear, descriptive commit messages; enable changelog module for semantic-release automation.
+{% endif %}
+
+## Boundaries
+
+<!-- agents-md:auto -->
+
+### Always Do
+
+{% if _python %}- Use `uv run` for Python commands
+- Run quality checks before committing (`make quality` or `uv run task quality`)
+{% endif %}
+- Update tests when changing behavior
+- Keep docs module pages and AGENTS quick reference in sync when adding commands
+
+### Ask First
+
+- Adding dependencies to `pyproject.toml` or root `package.json`
+- Modifying CI workflows or Copier answers
+- Changing pre/post generation hooks in a template fork
+
+### Never Touch
+
+- `.env*` secrets
+- Lock files (regenerate via uv/pnpm)
+- `.copier-answers.yml` without understanding render impact
+
+### Avoid
+
+- Duplicating module docs inside AGENTS.md — link to `docs/modules/`
+- Documenting commands for disabled modules
+- Hand-editing Copier output then forgetting to update `.copier-answers.yml`
+
+## Active Technologies
+
+<!-- agents-md:auto -->
+
+{% if _python %}- Python 3.11+ (uv), ruff, ty, pylint, pytest, coverage, taskipy
+{% endif %}
+{% if _node %}- Node.js 20 LTS, pnpm
+{% endif %}
+{% if docs_module == 'enabled' and docs_framework == 'fumadocs' %}- Fumadocs / Next.js docs site
+{% endif %}
+{% if docs_module == 'enabled' and docs_framework == 'sphinx-shibuya' %}- Sphinx + Shibuya docs site
+{% endif %}
+{% if api_module == 'enabled' and 'python' in api_languages %}- FastAPI, uvicorn
+{% endif %}
+{% if mcp_module == 'enabled' %}- FastMCP
+{% endif %}
+{% if ai_tools_module == 'enabled' %}- AI harness: Claude Code, Codex, Cursor, Gemini, Copilot, OpenCode, Warp (see docs/ai-tools.md)
+{% endif %}
+
+## Recent Changes
+
+- **AI tools module**: Optional MCP + bridge files when `ai_tools_module=enabled`; AGENTS.md is always the instruction SSOT.
+- **Component-first layout**: Enable CLI, API, MCP, docs, and SaaS modules independently via Copier answers.
+- **Quality profiles**: `standard` vs `strict` control ruff/ty/pylint strictness and hook stages.
+
+## References
+
+- [Prompt reference](docs/modules/prompt-reference.md)
+{% if docs_module == 'enabled' and docs_framework == 'sphinx-shibuya' %}- [Quickstart](docs/guides/quickstart.md)
+{% endif %}
+{% if ai_tools_module == 'enabled' %}- [AI tools & MCP](docs/ai-tools.md)
+{% endif %}

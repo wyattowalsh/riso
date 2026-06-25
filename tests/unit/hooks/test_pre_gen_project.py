@@ -198,7 +198,7 @@ class TestProvisionResult:
 
         result = ProvisionResult(
             tool_name="uv",
-            version_requested="0.4",
+            version_requested="0.4.30",
             status="installed",
         )
         assert result["tool_name"] == "uv"
@@ -315,7 +315,7 @@ class TestBuildToolMatrix:
 
         result = _build_tool_matrix("none", {})
         assert any(tool[0] == "uv" for tool in result)
-        assert result[0] == ("uv", "0.4", "uv@0.4")
+        assert result[0] == ("uv", "0.4.30", "uv@0.4.30")
 
     def test_includes_node_for_docs_framework(self):
         """Test that node/pnpm are included when docs framework is not 'none'."""
@@ -351,8 +351,8 @@ class TestBuildToolMatrix:
         result = _build_tool_matrix("fumadocs", {})
         # Check uv version
         uv_entry = [tool for tool in result if tool[0] == "uv"][0]
-        assert uv_entry[1] == "0.4"
-        assert uv_entry[2] == "uv@0.4"
+        assert uv_entry[1] == "0.4.30"
+        assert uv_entry[2] == "uv@0.4.30"
         # Check node version
         node_entry = [tool for tool in result if tool[0] == "node"][0]
         assert node_entry[1] == "20"
@@ -433,7 +433,7 @@ class TestInstallRequiredTools:
 
         monkeypatch.chdir(tmp_path)
 
-        tool_matrix = [("uv", "0.4", "uv@0.4")]
+        tool_matrix = [("uv", "0.4.30", "uv@0.4.30")]
 
         with patch("shutil.which", return_value="/usr/bin/uv"):
             failures = _install_required_tools(tool_matrix)
@@ -466,7 +466,7 @@ class TestInstallRequiredTools:
         monkeypatch.chdir(tmp_path)
 
         tool_matrix = [
-            ("uv", "0.4", "uv@0.4"),
+            ("uv", "0.4.30", "uv@0.4.30"),
             ("node", "20", "node@20"),
         ]
 
@@ -563,11 +563,11 @@ class TestReportFailuresAndExit:
         failures = [
             ProvisionResult(
                 tool_name="uv",
-                version_requested="0.4",
+                version_requested="0.4.30",
                 status="failed",
                 stderr="Error installing",
                 next_steps="Install manually",
-                retry_command="mise install uv@0.4",
+                retry_command="mise install uv@0.4.30",
             )
         ]
 
@@ -586,7 +586,7 @@ class TestReportFailuresAndExit:
         )
         # Check for tool details
         assert "uv" in captured.err
-        assert "0.4" in captured.err
+        assert "0.4.30" in captured.err
 
     def test_reports_all_failure_details(self, capsys):
         """Test that all failure details are reported."""
@@ -620,7 +620,7 @@ class TestReportFailuresAndExit:
         failures = [
             ProvisionResult(
                 tool_name="uv",
-                version_requested="0.4",
+                version_requested="0.4.30",
                 status="failed",
             ),
             ProvisionResult(
@@ -641,7 +641,7 @@ class TestReportFailuresAndExit:
         # Verify we have multiple failure entries
         assert (
             output.count("failed") >= 2
-            or output.count("0.4") >= 1
+            or output.count("0.4.30") >= 1
             and output.count("20") >= 1
         )
 
@@ -868,8 +868,8 @@ class TestParametrizedToolMatrix:
         assert tool_names == expected_tools
         # Verify uv always has correct version
         uv_entry = [tool for tool in result if tool[0] == "uv"][0]
-        assert uv_entry[1] == "0.4"
-        assert uv_entry[2] == "uv@0.4"
+        assert uv_entry[1] == "0.4.30"
+        assert uv_entry[2] == "uv@0.4.30"
 
 
 @pytest.mark.unit
@@ -882,7 +882,7 @@ class TestParametrizedProvisionResult:
             (
                 {
                     "tool_name": "uv",
-                    "version_requested": "0.4",
+                    "version_requested": "0.4.30",
                     "status": "installed",
                 },
                 {"tool_name": "uv", "status": "installed"},
@@ -899,7 +899,7 @@ class TestParametrizedProvisionResult:
             (
                 {
                     "tool_name": "pnpm",
-                    "version_requested": "9",
+                    "version_requested": "9.15.0",
                     "status": "already_present",
                 },
                 {"tool_name": "pnpm", "status": "already_present"},
@@ -1056,3 +1056,39 @@ class TestParametrizedValidateAndReport:
         if expected_output:
             captured = capsys.readouterr()
             assert expected_output in captured.err
+
+
+@pytest.mark.unit
+class TestNormalizeApiFeatureModules:
+    """Tests for api_features → module flag normalization."""
+
+    def test_websocket_from_api_features(self):
+        from pre_gen_project import normalize_api_feature_modules
+
+        result = normalize_api_feature_modules(
+            {
+                "api_features": "websocket",
+                "websocket_module": "disabled",
+                "graphql_api_module": "disabled",
+            }
+        )
+        assert result["websocket_module"] == "enabled"
+        assert result["graphql_api_module"] == "disabled"
+
+    def test_graphql_and_websocket_combined(self):
+        from pre_gen_project import normalize_api_feature_modules
+
+        result = normalize_api_feature_modules({"api_features": "graphql,websocket"})
+        assert result["graphql_api_module"] == "enabled"
+        assert result["websocket_module"] == "enabled"
+
+    def test_explicit_module_enabled_wins(self):
+        from pre_gen_project import normalize_api_feature_modules
+
+        result = normalize_api_feature_modules(
+            {
+                "api_features": "none",
+                "websocket_module": "enabled",
+            }
+        )
+        assert result["websocket_module"] == "enabled"

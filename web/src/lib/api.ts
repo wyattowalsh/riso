@@ -1,5 +1,6 @@
 import { QueryClient } from '@tanstack/react-query'
 import { parse, stringify } from 'yaml'
+import { formatRemovedAnswerKeyErrors } from './removedAnswerKeys'
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -103,12 +104,18 @@ export const api = {
 
   importConfig: (yaml: string): Record<string, unknown> => {
     try {
-      // Filter out comment lines for parsing
       const parsed = parse(yaml)
       if (typeof parsed !== 'object' || parsed === null) {
         throw new Error('Invalid configuration format')
       }
-      return parsed as Record<string, unknown>
+      const config = parsed as Record<string, unknown>
+      const removedKeyErrors = formatRemovedAnswerKeyErrors(config)
+      if (removedKeyErrors.length > 0) {
+        throw new Error(
+          `Removed Copier answer keys are no longer supported:\n${removedKeyErrors.map((line) => `- ${line}`).join('\n')}`,
+        )
+      }
+      return config
     } catch (error) {
       throw new Error(`Failed to parse YAML: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }

@@ -1,0 +1,29 @@
+{%- if api_module != 'enabled' or 'python' not in api_languages %}
+"""Request ID middleware disabled for this render."""
+{%- else %}
+"""Request ID middleware for trace propagation."""
+
+from __future__ import annotations
+
+import uuid
+
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
+
+
+class RequestIDMiddleware(BaseHTTPMiddleware):
+    """Attach a stable request ID to each request/response."""
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+        request.state.request_id = request_id
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        return response
+
+
+def configure_request_id(app) -> None:
+    """Register request ID middleware on the application."""
+    app.add_middleware(RequestIDMiddleware)
+{%- endif %}

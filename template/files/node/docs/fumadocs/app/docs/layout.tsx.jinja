@@ -1,6 +1,7 @@
 {%- if docs_module == 'enabled' and docs_framework == 'fumadocs' -%}
 import { source } from '@/lib/source';
 import { DocsLayout } from 'fumadocs-ui/layouts/docs';
+import type { LinkItemType } from 'fumadocs-ui/layouts/shared';
 import type { ReactNode } from 'react';
 {%- if fumadocs_sidebar == 'shadcn' %}
 import { Sidebar } from '@/components/sidebar';
@@ -20,6 +21,7 @@ const baseOptions = {
     {
       text: 'Blog',
       url: '/blog',
+      active: 'url',
     },
 {%- endif %}
     {
@@ -27,7 +29,7 @@ const baseOptions = {
       url: 'https://github.com/{{ project_slug }}/{{ project_slug }}',
       external: true,
     },
-  ],
+  ] satisfies LinkItemType[],
 };
 
 export default function Layout({ children }: { children: ReactNode }) {
@@ -37,7 +39,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       {...baseOptions}
 {%- if fumadocs_sidebar == 'shadcn' %}
       sidebar={{ '{{' }}
-        component: <Sidebar />,
+        component: <Sidebar tree={source.pageTree} />,
       {{ '}}' }}
 {%- endif %}
     >

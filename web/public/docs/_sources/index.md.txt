@@ -83,6 +83,10 @@ uv sync && make quality
 Guides \<guides/index>
 Tools \<tools/index>
 API Reference \<api/index>
+MCP Logging <mcp-logging>
+Logging Quick Reference <logging-quick-reference>
+SaaS Starter Research Prompts \<research/saas-starter-research-prompts>
+SaaS Starter Synthesis Report \<research/saas-starter-synthesis-report>
 Changelog <changelog>
 :::
 
@@ -159,7 +163,7 @@ Changelog <changelog>
     <div class="callout-content">
       <div class="callout-title">Quality Tooling</div>
       <div class="callout-text">
-        The Python quality lane lives in <code>template/files/shared/quality/</code> with
+        The Python quality lane lives in <code>template/files/quality/</code> with
         Makefile + uv tasks and CI orchestration scripts.
       </div>
     </div>

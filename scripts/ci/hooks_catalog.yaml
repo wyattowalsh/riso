@@ -1,0 +1,26 @@
+# Canonical pre-commit hook catalog for Riso (maintainer + template).
+# Future: generate .pre-commit-config.yaml from this manifest.
+
+profiles:
+  standard:
+    stages: [pre-commit]
+  strict:
+    stages: [pre-commit, commit-msg, pre-push]
+
+hooks:
+  - id: ruff
+    stage: pre-commit
+    profiles: [standard, strict]
+    ci_skip_template_standard: false
+  - id: ty-check
+    stage: pre-commit
+    profiles: [strict]
+    ci_skip_template_standard: true
+  - id: commitlint
+    stage: commit-msg
+    profiles: [changelog, strict]
+    install_when: changelog_module or strict
+  - id: pytest-prepush
+    stage: pre-push
+    profiles: [strict]
+    ci_skip_template_standard: true

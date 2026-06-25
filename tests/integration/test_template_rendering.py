@@ -134,3 +134,16 @@ class TestTemplateFiles:
         assert hooks_dir.exists()
         assert (hooks_dir / "pre_gen_project.py").exists()
         assert (hooks_dir / "post_gen_project.py").exists()
+
+    def test_no_legacy_root_pyproject_stub(self, template_dir):
+        """Legacy root pyproject.toml stub must not ship in template/files."""
+        legacy_stub = template_dir / "files" / "pyproject.toml"
+        assert not legacy_stub.exists(), (
+            "Remove template/files/pyproject.toml; use python/pyproject.toml.jinja"
+        )
+
+    def test_python_pyproject_has_no_autodoc2(self, template_dir):
+        """Docs group must not pin unavailable autodoc2 (use sphinx.ext.autodoc)."""
+        pyproject = template_dir / "files" / "python" / "pyproject.toml.jinja"
+        content = pyproject.read_text(encoding="utf-8")
+        assert "autodoc2" not in content

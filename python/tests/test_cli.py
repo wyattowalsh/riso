@@ -1,0 +1,70 @@
+"""CLI quality smoke tests."""
+
+import pytest
+
+CLI_DISABLED = False
+
+if CLI_DISABLED:
+    pytest.skip("CLI module disabled", allow_module_level=True)
+
+typer_testing = pytest.importorskip(
+    "typer.testing",
+    reason="Typer CLI dependencies not installed",
+)
+CliRunner = typer_testing.CliRunner
+
+
+def test_cli_help_lists_commands() -> None:
+    """CLI help should list all available commands."""
+    from changelog_python.cli.__main__ import app  # noqa: PLC0415
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["--help"])
+
+    assert result.exit_code == 0
+    assert "quickstart" in result.stdout.lower()
+    assert "version" in result.stdout.lower()
+    assert "init" in result.stdout.lower()
+
+
+def test_multi_command_structure() -> None:
+    """Validate multi-command CLI structure."""
+    from changelog_python.cli.__main__ import discover_commands  # noqa: PLC0415
+
+    commands = discover_commands()
+    
+    # Should have multiple commands
+    assert len(commands) >= 3
+    
+    # Each command should have metadata
+    for cmd_func, metadata in commands:
+        assert callable(cmd_func)
+        assert "name" in metadata
+        assert "help" in metadata
+
+
+def test_command_discovery_mechanism() -> None:
+    """Test that commands are discovered from commands/ directory."""
+    from changelog_python.cli.__main__ import app  # noqa: PLC0415
+
+    runner = CliRunner()
+    
+    # Test that discovered commands work
+    result_quickstart = runner.invoke(app, ["quickstart", "--help"])
+    result_version = runner.invoke(app, ["version", "--help"])
+    result_init = runner.invoke(app, ["init", "--help"])
+    
+    assert result_quickstart.exit_code == 0
+    assert result_version.exit_code == 0
+    assert result_init.exit_code == 0
+
+
+def test_quickstart_command_runs() -> None:
+    """Quickstart command executes successfully."""
+    from changelog_python.cli.__main__ import app  # noqa: PLC0415
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["quickstart"])
+
+    assert result.exit_code == 0
+    assert "welcome" in result.stdout.lower() or "hello" in result.stdout.lower()

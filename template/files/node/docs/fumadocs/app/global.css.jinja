@@ -1,8 +1,21 @@
 {%- if docs_module == 'enabled' and docs_framework == 'fumadocs' -%}
 @import 'tailwindcss';
-@import 'fumadocs-ui/css/{% if fumadocs_theme == 'ocean' %}ocean{% elif fumadocs_theme == 'purple' %}purple{% else %}neutral{% endif %}.css';
+@source '../app/**/*.{ts,tsx}';
+@source '../components/**/*.{ts,tsx}';
+@source '../content/**/*.mdx';
+{%- if fumadocs_theme == 'shadcn' %}
+@import './shadcn-theme.css';
+@import 'fumadocs-ui/css/shadcn.css';
+{%- elif fumadocs_theme == 'ocean' %}
+@import 'fumadocs-ui/css/ocean.css';
+{%- elif fumadocs_theme == 'purple' %}
+@import 'fumadocs-ui/css/purple.css';
+{%- else %}
+@import 'fumadocs-ui/css/neutral.css';
+{%- endif %}
+@import 'fumadocs-ui/css/preset.css';
 {%- if fumadocs_openapi == 'enabled' and api_module == 'enabled' and api_languages %}
-@import 'fumadocs-openapi/css/index.css';
+@import 'fumadocs-openapi/css/preset.css';
 {%- endif %}
 
 {%- if fumadocs_theme == 'custom' %}

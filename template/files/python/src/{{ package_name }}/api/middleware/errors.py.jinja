@@ -41,7 +41,7 @@ def configure_error_handlers(app: FastAPI) -> None:
         Returns:
             JSONResponse with error details
         """
-        request_id = str(uuid.uuid4())
+        request_id = getattr(request.state, "request_id", None) or str(uuid.uuid4())
         return JSONResponse(
             status_code=exc.status_code,
             content={
@@ -62,7 +62,7 @@ def configure_error_handlers(app: FastAPI) -> None:
         Returns:
             JSONResponse with validation error details
         """
-        request_id = str(uuid.uuid4())
+        request_id = getattr(request.state, "request_id", None) or str(uuid.uuid4())
         errors = []
         for error in exc.errors():
             errors.append({
@@ -91,7 +91,7 @@ def configure_error_handlers(app: FastAPI) -> None:
         Returns:
             JSONResponse with generic error message (no stack trace in production)
         """
-        request_id = str(uuid.uuid4())
+        request_id = getattr(request.state, "request_id", None) or str(uuid.uuid4())
         # In production, don't expose internal error details
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

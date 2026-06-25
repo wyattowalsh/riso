@@ -8,7 +8,7 @@ This module contains Pydantic models for API request validation.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class ExampleCreateRequest(BaseModel):
@@ -123,4 +123,13 @@ class ExampleUpdateRequest(BaseModel):
             if not 1 <= len(tag) <= 50:
                 raise ValueError(f"Tag '{tag}' must be 1-50 characters")
         return v
+
+    @model_validator(mode="after")
+    def at_least_one_field(self) -> ExampleUpdateRequest:
+        if not any(
+            value is not None
+            for value in (self.name, self.value, self.description, self.tags)
+        ):
+            raise ValueError("At least one field must be provided")
+        return self
 {%- endif %}

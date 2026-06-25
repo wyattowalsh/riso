@@ -151,6 +151,13 @@ def validate_semantic_release_config(config_path: Path) -> tuple[bool, list[str]
     return len(errors) == 0, errors
 
 
+def _normalize_workflow_yaml(workflow: dict) -> dict:
+    """Normalize YAML 1.1 quirks (`on:` parsed as boolean True)."""
+    if True in workflow and "on" not in workflow:
+        return {**workflow, "on": workflow[True]}
+    return workflow
+
+
 def validate_release_workflow(workflow_path: Path) -> tuple[bool, list[str]]:
     """Validate riso-release.yml workflow.
 
@@ -175,6 +182,8 @@ def validate_release_workflow(workflow_path: Path) -> tuple[bool, list[str]]:
     if workflow is None:
         errors.append("riso-release.yml: Empty or invalid configuration")
         return False, errors
+
+    workflow = _normalize_workflow_yaml(workflow)
 
     # Validate required fields using shared utility
     field_errors = validate_required_fields(

@@ -243,6 +243,31 @@ class TestCleanupEmptyScaffoldDirs:
 
 
 @pytest.mark.unit
+class TestCleanupEmptyRenderedFiles:
+    """Tests for zero-byte conditional template stub cleanup."""
+
+    def test_removes_empty_rendered_files(self, tmp_path):
+        """Should delete zero-byte stubs but keep populated docs and .gitkeep."""
+        from post_gen_project import cleanup_empty_rendered_files
+
+        docs_dir = tmp_path / "node" / "docs" / "fumadocs" / "content" / "docs"
+        docs_dir.mkdir(parents=True)
+        (docs_dir / "stub.mdx").write_text("", encoding="utf-8")
+        (docs_dir / "real.mdx").write_text(
+            "---\ntitle: Real\n---\n\n# Real\n", encoding="utf-8"
+        )
+        (tmp_path / "static" / "img").mkdir(parents=True)
+        (tmp_path / "static" / "img" / ".gitkeep").write_text("", encoding="utf-8")
+
+        removed = cleanup_empty_rendered_files(tmp_path)
+
+        assert "node/docs/fumadocs/content/docs/stub.mdx" in removed
+        assert not (docs_dir / "stub.mdx").exists()
+        assert (docs_dir / "real.mdx").exists()
+        assert (tmp_path / "static" / "img" / ".gitkeep").exists()
+
+
+@pytest.mark.unit
 class TestLayoutGuidance:
     """Tests for layout_guidance function."""
 
@@ -477,6 +502,7 @@ class TestRenderGuidance:
         assert "uv venv" in result
         assert "uv sync" in result
         assert "test_package.quickstart" in result
+        assert "AGENTS.md" in result
 
     def test_formats_package_name(self):
         """Should properly format package name in guidance."""
@@ -519,6 +545,16 @@ class TestRenderGuidance:
 
         assert "CLI" in result
         assert "FastAPI" in result
+
+    def test_includes_ai_tools_guidance_when_enabled(self):
+        """Should mention AGENTS and ai-tools when ai_tools_module is enabled."""
+        from post_gen_project import render_guidance
+
+        answers = {"ai_tools_module": "enabled"}
+        result = render_guidance("test_pkg", answers)
+
+        assert "AGENTS.md" in result
+        assert "ai-tools.md" in result
 
     def test_comprehensive_guidance_rendering(self):
         """Should render comprehensive guidance with all features."""
@@ -809,3 +845,85 @@ class TestEdgeCases:
 
         # Should be parseable as datetime
         datetime.fromisoformat(content["rendered_at"].rstrip("Z"))
+
+
+@pytest.mark.unit
+class TestCleanupLegacyRootPyproject:
+    """Tests for cleanup_legacy_root_pyproject."""
+
+    def test_removes_legacy_stub_when_python_pyproject_exists(self, tmp_path):
+        from post_gen_project import cleanup_legacy_root_pyproject
+
+        (tmp_path / "python").mkdir()
+        (tmp_path / "python" / "pyproject.toml").write_text(
+            "[project]\nname = 'demo'\n", encoding="utf-8"
+        )
+        (tmp_path / "pyproject.toml").write_text(
+            "[tool.uv.tasks]\nquality = 'mypy'\n", encoding="utf-8"
+        )
+
+        removed = cleanup_legacy_root_pyproject(tmp_path)
+
+        assert removed == ["pyproject.toml"]
+        assert not (tmp_path / "pyproject.toml").exists()
+
+    def test_keeps_valid_root_pyproject(self, tmp_path):
+        from post_gen_project import cleanup_legacy_root_pyproject
+
+        (tmp_path / "python").mkdir()
+        (tmp_path / "python" / "pyproject.toml").write_text(
+            "[project]\nname = 'demo'\n", encoding="utf-8"
+        )
+        (tmp_path / "pyproject.toml").write_text(
+            "[project]\nname = 'root'\n", encoding="utf-8"
+        )
+
+        removed = cleanup_legacy_root_pyproject(tmp_path)
+
+        assert removed == []
+        assert (tmp_path / "pyproject.toml").exists()
+
+
+@pytest.mark.unit
+class TestPreCommitSetupGuidance:
+    """Tests for pre_commit_setup_guidance metadata."""
+
+    def test_standard_changelog_includes_commit_msg(self, tmp_path, monkeypatch):
+        """changelog_module=enabled on standard profile should list commit-msg hooks."""
+        monkeypatch.chdir(tmp_path)
+
+        answers_file = tmp_path / ".copier-answers.yml"
+        answers_file.write_text(
+            "quality_profile: standard\nchangelog_module: enabled\n",
+            encoding="utf-8",
+        )
+
+        from post_gen_project import main
+
+        main()
+
+        metadata_file = tmp_path / ".riso" / "post_gen_metadata.json"
+        content = json.loads(metadata_file.read_text(encoding="utf-8"))
+
+        assert content["pre_commit"]["hooks"] == ["pre-commit", "commit-msg"]
+        assert content["pre_commit"]["install_command"] == "make hooks"
+
+    def test_strict_includes_pre_push(self, tmp_path, monkeypatch):
+        """strict profile should list pre-push hooks."""
+        monkeypatch.chdir(tmp_path)
+
+        answers_file = tmp_path / ".copier-answers.yml"
+        answers_file.write_text("quality_profile: strict\n", encoding="utf-8")
+
+        from post_gen_project import main
+
+        main()
+
+        metadata_file = tmp_path / ".riso" / "post_gen_metadata.json"
+        content = json.loads(metadata_file.read_text(encoding="utf-8"))
+
+        assert content["pre_commit"]["hooks"] == [
+            "pre-commit",
+            "commit-msg",
+            "pre-push",
+        ]

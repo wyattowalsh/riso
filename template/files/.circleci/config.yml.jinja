@@ -135,10 +135,8 @@ jobs:
             uv run ruff format --check .
       {% if quality_profile == 'strict' -%}
       - run:
-          name: Run mypy type checker
-          command: |
-            export PATH="$HOME/.cargo/bin:$PATH"
-            uv run mypy .
+          name: Run ty type checker
+          command: uv run ty check
       - run:
           name: Run Pylint static analysis
           command: |
@@ -177,7 +175,7 @@ jobs:
           name: Test CLI module
           command: |
             export PATH="$HOME/.cargo/bin:$PATH"
-            uv run pytest tests/test_cli.py -v
+            uv run pytest tests/test_cli*.py -v
   {% endif -%}
 
   {% if mcp_module == 'enabled' and 'python' in mcp_languages -%}

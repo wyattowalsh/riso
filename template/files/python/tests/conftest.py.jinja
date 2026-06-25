@@ -1,0 +1,14 @@
+"""Shared pytest fixtures for rendered Python projects."""
+
+from __future__ import annotations
+
+import pytest
+
+{% if cli_module | lower == "enabled" %}
+@pytest.fixture(autouse=True)
+def _ensure_cli_commands_registered() -> None:
+    """Ensure Typer commands are registered before CLI tests run."""
+    from {{ package_name }}.cli.__main__ import register_commands  # noqa: PLC0415
+
+    register_commands()
+{% endif %}

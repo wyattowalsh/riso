@@ -34,6 +34,40 @@ VALID_DOCS_SITES = {"fumadocs", "sphinx-shibuya", "docusaurus", "none"}
 VALID_CI_PLATFORMS = {"github-actions", "none"}
 VALID_PROJECT_LAYOUTS = {"single-package", "monorepo"}
 VALID_QUALITY_PROFILES = {"standard", "strict"}
+
+
+def _api_features_enabled(raw: object, feature: str) -> bool:
+    """Return True when *feature* is selected in api_features."""
+    if raw is None:
+        return False
+    if isinstance(raw, str):
+        return feature in raw
+    if isinstance(raw, (list, tuple, set)):
+        return feature in raw
+    return False
+
+
+def normalize_api_feature_modules(context: dict) -> dict[str, str]:
+    """Derive graphql/websocket module flags from api_features.
+
+    Explicit ``graphql_api_module`` / ``websocket_module`` answers win when set
+    to ``enabled``; otherwise ``api_features`` drives the derived state.
+    """
+    api_features = context.get("api_features")
+    graphql = context.get("graphql_api_module", "disabled")
+    websocket = context.get("websocket_module", "disabled")
+
+    if graphql != "enabled" and _api_features_enabled(api_features, "graphql"):
+        graphql = "enabled"
+    if websocket != "enabled" and _api_features_enabled(api_features, "websocket"):
+        websocket = "enabled"
+
+    return {
+        "graphql_api_module": graphql,
+        "websocket_module": websocket,
+    }
+
+
 REMOVED_ANSWER_KEYS = {
     "api_tracks": "Use api_module plus api_languages.",
     "api_language": "Use api_languages.",
@@ -598,14 +632,14 @@ def _build_tool_matrix(
         List of (tool_name, version, mise_spec) tuples
     """
     tool_matrix: list[tuple[str, str, str | None]] = [
-        ("uv", "0.4", "uv@0.4"),
+        ("uv", "0.4.30", "uv@0.4.30"),
     ]
 
     if docs_framework != "none" or context.get("saas_infra_module") == "enabled":
         tool_matrix.extend(
             [
                 ("node", "20", "node@20"),
-                ("pnpm", "9", "pnpm@9"),
+                ("pnpm", "9.15.0", "pnpm@9.15.0"),
             ]
         )
 

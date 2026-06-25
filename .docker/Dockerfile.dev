@@ -1,0 +1,92 @@
+# syntax=docker/dockerfile:1.11
+
+# =============================================================================
+# Development Dockerfile with Hot Reload Support
+# =============================================================================
+# Optimized for local development with volume mounts and live code reloading
+#
+# Key differences from production Dockerfile:
+# - Single-stage build (no optimization needed for dev)
+# - Source code mounted as volumes (not copied)
+# - Development dependencies installed
+# - Auto-reload enabled for FastAPI/Fastify
+# - Debug tooling included (debugpy, nodemon, Chrome DevTools)
+# - Debug ports exposed for remote debugging
+#
+# Usage:
+#   docker build -f .docker/Dockerfile.dev -t changelog-python-dev:latest .
+#   docker-compose -f docker-compose.dev.yml up
+#
+# Volume mounts (defined in docker-compose.dev.yml):
+#   - ./src:/app/src:ro (Python source, read-only)
+#   - ./apps:/app/apps:ro (Node.js source, read-only)
+
+# =============================================================================
+# Python Development Runtime
+# =============================================================================
+FROM python:3.12-slim-bookworm AS dev-python
+
+# Metadata labels
+LABEL org.opencontainers.image.title="Changelog Python - Python Dev"
+LABEL org.opencontainers.image.description="Development runtime for Changelog Python Python services"
+
+# Install system dependencies + development tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    libpq-dev \
+    curl \
+    git \
+    vim \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv and development debugging tools
+RUN pip install --no-cache-dir \
+    uv==0.5.15 \
+    debugpy \
+    ipython \
+    ipdb
+
+# Create non-root user with UID 1000
+RUN groupadd --gid 1000 appuser && \
+    useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home appuser
+
+WORKDIR /app
+
+# Copy dependency manifests
+COPY --chown=1000:1000 pyproject.toml uv.lock ./
+COPY --chown=1000:1000 README.md ./
+
+# Install ALL dependencies (including dev dependencies)
+RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
+    uv sync --frozen
+
+# NOTE: Source code mounted as volume at runtime for hot reload
+# Mount points (defined in docker-compose.dev.yml):
+#   - ./src:/app/src:ro (read-only source)
+#   - ./tests:/app/tests:ro (read-only tests)
+#   - ./pyproject.toml:/app/pyproject.toml:ro
+#   - ./uv.lock:/app/uv.lock:ro
+
+# Environment variables for development
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONFAULTHANDLER=1 \
+    LOG_LEVEL=debug
+
+USER 1000:1000
+# Expose FastAPI port + debugpy remote debugging port
+EXPOSE 8000 5678
+
+# Health check for development API
+HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=2 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()" || exit 1
+
+# Development command with auto-reload and debug support
+# To enable remote debugging: docker-compose run -p 5678:5678 api-python
+CMD ["python", "-m", "uvicorn", "changelog_python.api.main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--reload", \
+     "--log-level", "debug"]

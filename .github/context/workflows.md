@@ -8,7 +8,7 @@ The template provides two core workflows:
 
 1. **riso-quality.yml** – Main quality validation workflow
 
-   - Python quality checks (ruff, mypy, pylint, pytest)
+   - Python quality checks (ruff, ty, pylint, pytest)
    - Optional Node.js quality checks (ESLint, TypeScript, Vitest)
    - Conditional CLI and MCP module tests
    - Retry logic with exponential backoff
@@ -55,7 +55,7 @@ custom-checks:
 
   steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Run custom checks
       run: |
@@ -131,7 +131,7 @@ env:
 python-quality:
   env:
     PYTEST_ARGS: "-vv --tb=short"
-    MYPY_CACHE_DIR: ".mypy_cache"
+    TY_CACHE_DIR: ".ty_cache"
 ```
 
 **Step-level environment:**

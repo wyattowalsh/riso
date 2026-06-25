@@ -22,9 +22,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v6
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --group dev
       - name: Run quality suite
         run: uv run python scripts/ci/run_quality_suite.py
 
@@ -61,7 +61,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v6
 
       - name: Install system dependencies
         run: |
@@ -69,7 +69,7 @@ jobs:
           sudo apt-get install -y make
 
       - name: Install Python dependencies
-        run: uv sync
+        run: uv sync --group dev
 
       - name: Render default sample for testing
         run: |
@@ -118,39 +118,101 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install actionlint
-        run: |
-          bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
-          echo "$PWD" >> "$GITHUB_PATH"
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
 
-      - name: Run actionlint
-        run: |
-          ./actionlint -color .github/workflows/*.yml
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
 
-  mcp-tests:
-    name: MCP Server Tests
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Validate maintainer workflows
+        run: uv run python scripts/ci/validate_workflows.py
+
+  verify-context-sync:
+    name: Verify Context Sync
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Verify template context parity
+        run: uv run python scripts/ci/verify_context_sync.py
+
+  validate-agents-ecosystem:
+    name: Validate AGENTS Ecosystem
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Validate template artifacts
+        run: |
+          uv run python scripts/ci/validate_agents_ecosystem.py
+          uv run python scripts/ci/check_quality_parity.py
+          uv run pre-commit validate-config
+
+      - name: Render AGENTS validation samples
+        run: |
+          ./scripts/render-samples.sh --variant default
+          ./scripts/render-samples.sh --variant ai-tools-off --answers samples/ai-tools-off/copier-answers.yml
+
+      - name: Validate rendered AGENTS trees
+        run: |
+          uv run python scripts/ci/validate_agents_ecosystem.py \
+            --render-enabled samples/default/render \
+            --render-disabled samples/ai-tools-off/render
+          uv run python scripts/ci/agent_smoke_agents_md.py samples/default/render --json
+          uv run python scripts/ci/agent_smoke_agents_md.py samples/ai-tools-off/render --json
+
+  cli-tests:
+    name: Riso CLI Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v6
 
       - name: Install dependencies
-        run: uv sync --group mcp
+        run: uv sync --group dev
 
-      - name: Run MCP unit tests
+      - name: Run CLI unit tests
         run: |
-          uv run pytest tests/unit/test_mcp/ -v --tb=short
+          uv run pytest tests/unit/test_cli/ -v --tb=short
 
-      - name: Verify MCP server imports
+      - name: Verify CLI entry point
         run: |
-          uv run python -c "from riso.mcp.server import mcp; print(f'Server: {mcp.name}')"
+          uv run riso --help
+          uv run riso doctor --json
 
   security-scan:
     name: Security Scan
@@ -164,7 +226,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v6
 
       - name: Install dependencies
         run: uv sync --group dev
@@ -184,7 +246,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v6
 
       - name: Install dependencies
         run: uv sync --group docs
@@ -236,7 +298,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v6
 
       - name: Install system dependencies
         run: |
@@ -244,13 +306,16 @@ jobs:
           sudo apt-get install -y make
 
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --group dev
 
       - name: Render sample - ${{ matrix.variant }}
         run: |
           ./scripts/render-samples.sh \
             --variant ${{ matrix.variant }} \
             --answers samples/${{ matrix.variant }}/copier-answers.yml
+
+      - name: Validate pre-commit render layout
+        run: uv run python scripts/ci/render_precommit_configs.py --variants ${{ matrix.variant }}
 
       - name: Verify smoke test results
         run: |
@@ -340,11 +405,11 @@ jobs:
     name: Web UI Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "20"
           cache: "pnpm"

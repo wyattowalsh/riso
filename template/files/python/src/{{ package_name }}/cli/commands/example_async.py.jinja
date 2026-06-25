@@ -1,0 +1,26 @@
+{%- if cli_module | lower != "enabled" %}
+# CLI module disabled - this file is not generated
+{%- else %}
+"""Example async command demonstrating @command() async support."""
+
+from __future__ import annotations
+
+import asyncio
+
+import typer
+
+from {{ package_name }}.cli.core import command
+from {{ package_name }}.cli.core.formatter import OutputFormatter
+
+formatter = OutputFormatter()
+
+
+@command(name="async-demo", help="Demonstrate async command execution")
+async def async_demo_command(
+    delay_ms: int = typer.Option(0, "--delay", help="Simulated delay in milliseconds"),
+) -> None:
+    """Run a short async operation and report completion."""
+    if delay_ms > 0:
+        await asyncio.sleep(delay_ms / 1000)
+    formatter.print_success("Async command completed")
+{%- endif %}

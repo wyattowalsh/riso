@@ -64,9 +64,10 @@ export function DocsConfig() {
 
   const fumadocsThemeOptions = buildChoiceOptions({
     key: 'fumadocs_theme',
-    fallbackChoices: ['default', 'ocean', 'purple', 'custom'],
+    fallbackChoices: ['default', 'shadcn', 'ocean', 'purple', 'custom'],
     labels: {
       default: 'Default',
+      shadcn: 'Shadcn UI',
       ocean: 'Ocean',
       purple: 'Purple',
       custom: 'Custom',

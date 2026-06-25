@@ -48,33 +48,6 @@ def temp_dir() -> Generator[Path, None, None]:
         yield Path(tmpdir)
 
 
-# MCP-specific fixtures
-@pytest.fixture
-def mcp_server():
-    """Provide the MCP server instance for testing."""
-    from riso.mcp.server import mcp
-
-    return mcp
-
-
-@pytest.fixture
-def session_manager():
-    """Provide a fresh session manager for testing."""
-    from riso.mcp.session import SessionManager
-
-    return SessionManager(ttl_minutes=60)
-
-
-@pytest.fixture
-def sample_prompts():
-    """Sample prompts for wizard testing."""
-    return [
-        {"name": "project_name", "type": "str", "help": "Project name"},
-        {"name": "package_name", "type": "str", "help": "Package name"},
-        {"name": "cli_module", "type": "str", "choices": ["enabled", "disabled"]},
-    ]
-
-
 @pytest.fixture
 def caplog(caplog):
     """Enhance caplog to capture loguru logs.

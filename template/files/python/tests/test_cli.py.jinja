@@ -68,3 +68,47 @@ def test_quickstart_command_runs() -> None:
 
     assert result.exit_code == 0
     assert "welcome" in result.stdout.lower() or "hello" in result.stdout.lower()
+
+
+def test_cli_help_golden_snapshot() -> None:
+    """Golden --help snapshot lists core commands and groups."""
+    from {{ package_name }}.cli.__main__ import app  # noqa: PLC0415
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["--help"])
+
+    assert result.exit_code == 0
+    help_text = result.stdout.lower()
+    for expected in (
+        "quickstart",
+        "version",
+        "init",
+        "config",
+        "plugin",
+        "list",
+    ):
+        assert expected in help_text
+
+
+def test_global_version_flag() -> None:
+    """Global --version prints version and exits."""
+    from {{ package_name }}.cli.__main__ import app  # noqa: PLC0415
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["--version"])
+
+    assert result.exit_code == 0
+    assert result.stdout.strip()
+
+
+def test_main_handles_cli_error() -> None:
+    """main() maps CLIError to process exit code."""
+    from unittest.mock import patch
+
+    from {{ package_name }}.cli.__main__ import app, main  # noqa: PLC0415
+    from {{ package_name }}.cli.core import CLIError
+
+    with patch.object(app, "__call__", side_effect=CLIError("test failure", exit_code=7)):
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+        assert exc_info.value.code == 7

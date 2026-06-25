@@ -18,6 +18,7 @@ concurrency:
 permissions:
   contents: read
   packages: write  # Required for ghcr.io publishing
+  id-token: write  # OIDC for ghcr.io trusted publishing
 
 jobs:
   publish-ghcr:
@@ -34,7 +35,7 @@ jobs:
 {%- endif %}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # Required for git describe
 
@@ -56,21 +57,21 @@ jobs:
           
           if [[ -z "$TAG" ]]; then
             echo "No semantic version tag found, using 'latest' only"
-            echo "tags=ghcr.io/{% raw %}${{ github.repository_owner }}{% endraw %}/{% raw %}${{ matrix.target.image }}{% endraw %}:latest" >> $GITHUB_OUTPUT
+            echo "tags=ghcr.io/{% raw %}${{ github.repository_owner }}{% endraw %}/{% raw %}${{ matrix.target.image }}{% endraw %}:latest" >> "$GITHUB_OUTPUT"
             echo "::warning::No semantic version tag found. Consider tagging with 'v1.0.0' format."
           else
             # Validate semver format
             if [[ ! "$TAG" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
               echo "Invalid semver tag format: $TAG"
-              echo "tags=ghcr.io/{% raw %}${{ github.repository_owner }}{% endraw %}/{% raw %}${{ matrix.target.image }}{% endraw %}:latest" >> $GITHUB_OUTPUT
+              echo "tags=ghcr.io/{% raw %}${{ github.repository_owner }}{% endraw %}/{% raw %}${{ matrix.target.image }}{% endraw %}:latest" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             
             # Extract version components
             VERSION="${TAG#v}"  # Remove 'v' prefix
-            MAJOR=$(echo $VERSION | cut -d. -f1)
-            MINOR=$(echo $VERSION | cut -d. -f2)
-            PATCH=$(echo $VERSION | cut -d. -f3)
+            MAJOR=$(echo "$VERSION" | cut -d. -f1)
+            MINOR=$(echo "$VERSION" | cut -d. -f2)
+            PATCH=$(echo "$VERSION" | cut -d. -f3)
             
             # Generate multiple tags
             TAGS="ghcr.io/{% raw %}${{ github.repository_owner }}{% endraw %}/{% raw %}${{ matrix.target.image }}{% endraw %}:latest"
@@ -79,12 +80,12 @@ jobs:
             TAGS="$TAGS,ghcr.io/{% raw %}${{ github.repository_owner }}{% endraw %}/{% raw %}${{ matrix.target.image }}{% endraw %}:v${MAJOR}"
             TAGS="$TAGS,ghcr.io/{% raw %}${{ github.repository_owner }}{% endraw %}/{% raw %}${{ matrix.target.image }}{% endraw %}:{% raw %}${{ github.sha }}{% endraw %}"
             
-            echo "tags=$TAGS" >> $GITHUB_OUTPUT
+            echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
             echo "Generated tags: $TAGS"
           fi
 
       - name: Cache Docker layers
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: /tmp/.buildx-cache
           key: {% raw %}${{ runner.os }}-buildx-${{ matrix.target.name }}-${{ hashFiles('**/uv.lock', '**/pnpm-lock.yaml') }}{% endraw %}
@@ -114,7 +115,7 @@ jobs:
           exit-code: '1'  # Fail if vulnerabilities found
 
       - name: Upload scan results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: trivy-scan-{% raw %}${{ matrix.target.name }}{% endraw %}
@@ -138,7 +139,7 @@ jobs:
   # {%- endif %}
   #   steps:
   #     - name: Checkout code
-  #       uses: actions/checkout@v4
+  #       uses: actions/checkout@v6
   #
   #     - name: Set up Docker Buildx
   #       uses: docker/setup-buildx-action@v3
@@ -168,9 +169,11 @@ jobs:
     steps:
       - name: Publish summary
         run: |
-          echo "## Container Publish Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✓ Images built and scanned" >> $GITHUB_STEP_SUMMARY
-          echo "✓ Published to ghcr.io" >> $GITHUB_STEP_SUMMARY
-          echo "✓ Semantic version tags generated" >> $GITHUB_STEP_SUMMARY
-          echo "✓ SBOM and provenance attached" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Container Publish Summary"
+            echo ""
+            echo "✓ Images built and scanned"
+            echo "✓ Published to ghcr.io"
+            echo "✓ Semantic version tags generated"
+            echo "✓ SBOM and provenance attached"
+          } >> "$GITHUB_STEP_SUMMARY"

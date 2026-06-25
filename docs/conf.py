@@ -6,11 +6,15 @@ import sys
 import warnings
 from datetime import date
 from pathlib import Path
-from typing import Iterable
 
-# Suppress deprecation warnings from third-party extensions (hoverxref uses deprecated Sphinx 9.0 APIs)
-warnings.filterwarnings("ignore", message=".*RemovedInSphinx90Warning.*")
-warnings.filterwarnings("ignore", category=DeprecationWarning, module="hoverxref")
+# Third-party Sphinx extensions may emit deprecation warnings on Sphinx 9+.
+warnings.filterwarnings("ignore", message=".*RemovedInSphinx10Warning.*")
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    module="sphinx_autodoc_typehints",
+)
+from typing import Iterable
 
 import yaml
 
@@ -89,6 +93,12 @@ copyright = f"{date.today().year}, Riso"
 version = os.getenv("RISO_VERSION", "0.1.0")
 release = version
 
+suppress_warnings = [
+    "app.add_directive",
+    "sphinx_autodoc_typehints.forward_reference",
+    "sphinx_autodoc_typehints.guarded_import",
+]
+
 extensions = [
     # Core
     "sphinx.ext.autodoc",
@@ -110,7 +120,6 @@ extensions = [
     # Diagrams
     "sphinxcontrib.mermaid",
     # API quality
-    "sphinx.ext.autodoc",
     "sphinx_autodoc_typehints",
     "autoclasstoc",
     # CLI docs
@@ -120,8 +129,6 @@ extensions = [
     "sphinxcontrib.httpdomain",
     # Repo metadata
     "sphinx_git",
-    # Hover references
-    "hoverxref.extension",
     # SEO + 404
     "sphinx_sitemap",
     "notfound.extension",
@@ -232,7 +239,7 @@ autodoc_preserve_defaults = True
 autodoc_warningiserror = False
 autodoc_mock_imports = [
     "pydantic_settings",
-    "fastmcp",
+    "typer",
     "copier",
     "plumbum",
     "questionary",
@@ -350,20 +357,6 @@ extlinks = {
     "issue": (f"https://github.com/{ORG_SLUG}/{PROJECT_SLUG}/issues/%s", "issue %s"),
     "pr": (f"https://github.com/{ORG_SLUG}/{PROJECT_SLUG}/pull/%s", "PR %s"),
 }
-
-hoverxref_auto_ref = True
-hoverxref_domains = ["py"]
-hoverxref_roles = ["option", "doc"]
-hoverxref_role_types = {
-    "mod": "modal",
-    "class": "tooltip",
-    "func": "tooltip",
-    "meth": "tooltip",
-    "attr": "tooltip",
-    "exc": "tooltip",
-    "obj": "tooltip",
-}
-
 
 (TOOLS_METADATA, TOOL_ITEMS_METADATA) = load_tools_frontmatter()
 html_context = {

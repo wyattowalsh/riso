@@ -36,15 +36,15 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       
       - name: Set up Python {% raw %}${{ matrix.python-version }}{% endraw %}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: {% raw %}${{ matrix.python-version }}{% endraw %}
       
       - name: Cache dependencies (version-specific)
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cache/uv
@@ -55,16 +55,14 @@ jobs:
             {% raw %}${{ runner.os }}-{% endraw %}
       
       - name: Set up uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v6
         with:
           version: "latest"
           enable-cache: true
           cache-dependency-glob: "**/uv.lock"
       
       - name: Install dependencies with uv
-        run: |
-          export PATH="$HOME/.cargo/bin:$PATH"
-          uv sync
+        run: uv sync
       
       - name: Run pytest with retry logic
         uses: nick-fields/retry@v3
@@ -73,30 +71,22 @@ jobs:
           max_attempts: 3
           retry_wait_seconds: 30
           exponential_backoff: true
-          command: |
-            export PATH="$HOME/.cargo/bin:$PATH"
-            uv run pytest --tb=short --junit-xml=test-results.xml --cov --cov-report=xml
+          command: uv run pytest --tb=short --junit-xml=test-results.xml --cov --cov-report=xml
       
-      - name: Run type checking (mypy)
-        run: |
-          export PATH="$HOME/.cargo/bin:$PATH"
-          uv run mypy .
+      - name: Run type checking (ty)
+        run: uv run ty check
       
       - name: Run linting (ruff)
-        run: |
-          export PATH="$HOME/.cargo/bin:$PATH"
-          uv run ruff check .
+        run: uv run ruff check .
 {% if quality_profile == 'strict' %}
       
       - name: Run static analysis (pylint) - strict profile only
-        run: |
-          export PATH="$HOME/.cargo/bin:$PATH"
-          uv run pylint src/
+        run: uv run pylint src/
 {% endif %}
       
       - name: Upload test results and coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: matrix-results-py{% raw %}${{ matrix.python-version }}{% endraw %}-{% raw %}${{ github.run_id }}{% endraw %}
           path: |

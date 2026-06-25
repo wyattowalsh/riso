@@ -15,13 +15,13 @@ Rendered projects inherit this configuration so `autodoc` can scan packages in
 ::::{grid} 2
 :gutter: 3
 
-:::{grid-item-card} MCP Server
-:link: mcp/index
+:::{grid-item-card} Riso CLI
+:link: ../tools/riso-cli
 :link-type: doc
 
-Model Context Protocol server for AI-accessible project scaffolding.
+Agent-native Typer CLI for template introspection, validation, and Copier operations.
 
-Tools, resources, session management, and configuration.
+Use `uv run riso --help` for the command reference.
 :::
 
 :::{grid-item-card} Template Utilities
@@ -40,21 +40,7 @@ Command-line scripts and automation utilities.
 
 ::::
 
-## Authoring Tips
-
-- Keep docstrings NumPy- or Google-style; napoleon is configured for both.
-- Prefer explicit `__all__` exports in packages you want surfaced in the index.
-- If modules are intentionally excluded (tests, experimental branches), add
-  context in the docstring or module comments to clarify why.
-- Cross-link functions and CLI entrypoints using the default `:py:func:` role so
-  hoverxref tooltips stay rich.
-- Type hints are automatically rendered via `sphinx-autodoc-typehints`.
-
-```{toctree}
-:hidden:
-:maxdepth: 2
-
-mcp/index
-template/index
-scripts
+```{note}
+The maintainer `riso-mcp` server was removed in v1.2.0. See
+{doc}`../guides/mcp-to-cli-migration` for migration guidance.
 ```

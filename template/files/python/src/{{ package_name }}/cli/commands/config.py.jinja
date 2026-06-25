@@ -9,12 +9,18 @@ from pathlib import Path
 
 import typer
 
-from {{ package_name }}.cli.core import ConfigManager, command
+from {{ package_name }}.cli.core import ConfigError, ConfigManager
 from {{ package_name }}.cli.core.formatter import OutputFormatter
 
 # Initialize components
 formatter = OutputFormatter()
-config_manager = ConfigManager()
+
+
+def _config_manager(config_file: str, *, strict: bool = False) -> ConfigManager:
+    """Build a ConfigManager for the requested file path."""
+    manager = ConfigManager(config_file=Path(config_file))
+    manager.load(force=True, strict=strict)
+    return manager
 
 # Create config sub-app
 config_app = typer.Typer(name="config", help="Manage application configuration")
@@ -34,17 +40,19 @@ def config_set(
         config_file: Path to configuration file
     """
     try:
-        config_manager.config_file = Path(config_file)
-        config_manager.load()
-        config_manager.set(key, value)
-        config_manager.save()
+        manager = _config_manager(config_file)
+        manager.set(key, value)
+        manager.save()
         
         formatter.print_success(f"Set {key} = {value}")
         formatter.print_info(f"Saved to {config_file}")
     
+    except ConfigError as e:
+        formatter.print_error(str(e))
+        raise typer.Exit(code=e.exit_code) from e
     except Exception as e:
         formatter.print_error(f"Failed to set configuration: {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
 
 @config_app.command(name="get")
@@ -61,10 +69,9 @@ def config_get(
         show_source: Whether to show value source
     """
     try:
-        config_manager.config_file = Path(config_file)
-        config_manager.load()
-        
-        value = config_manager.get(key)
+        manager = _config_manager(config_file)
+
+        value = manager.get(key)
         
         if value is None:
             formatter.print_warning(f"Configuration key '{key}' not found")
@@ -73,12 +80,12 @@ def config_get(
         if show_source:
             # Determine source
             import os
-            env_key = f"{config_manager.env_prefix}{key.upper().replace('.', '_')}"
+            env_key = f"{manager.env_prefix}{key.upper().replace('.', '_')}"
             if os.environ.get(env_key) is not None:
                 source = f"environment ({env_key})"
-            elif config_manager._get_nested_key(key, config_manager._config_data) is not None:
+            elif manager._get_nested_key(key, manager._config_data) is not None:
                 source = f"file ({config_file})"
-            elif config_manager._get_nested_key(key, config_manager.defaults) is not None:
+            elif manager._get_nested_key(key, manager.defaults) is not None:
                 source = "default"
             else:
                 source = "unknown"
@@ -87,9 +94,12 @@ def config_get(
         else:
             formatter.print(f"{value}")
     
+    except ConfigError as e:
+        formatter.print_error(str(e))
+        raise typer.Exit(code=e.exit_code) from e
     except Exception as e:
         formatter.print_error(f"Failed to get configuration: {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
 
 @config_app.command(name="list")
@@ -104,10 +114,9 @@ def config_list(
         format: Output format
     """
     try:
-        config_manager.config_file = Path(config_file)
-        config_manager.load()
-        
-        all_config = config_manager.list_all()
+        manager = _config_manager(config_file)
+
+        all_config = manager.list_all()
         
         if not all_config:
             formatter.print_warning("No configuration found")
@@ -121,9 +130,12 @@ def config_list(
         
         formatter.format(config_data, format=format, title="Configuration")
     
+    except ConfigError as e:
+        formatter.print_error(str(e))
+        raise typer.Exit(code=e.exit_code) from e
     except Exception as e:
         formatter.print_error(f"Failed to list configuration: {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
 
 @config_app.command(name="validate")
@@ -142,27 +154,17 @@ def config_validate(
         raise typer.Exit(code=1)
     
     try:
-        # Try loading the config
-        config_manager.config_file = config_path
-        config_manager.load()
-        
+        manager = _config_manager(str(config_path), strict=True)
+
         formatter.print_success(f"Configuration file is valid: {config_file}")
-        
-        # Show summary
-        all_config = config_manager.list_all()
+
+        all_config = manager.list_all()
         formatter.print_info(f"Found {len(all_config)} configuration keys")
     
+    except ConfigError as e:
+        formatter.print_error(str(e))
+        raise typer.Exit(code=e.exit_code) from e
     except Exception as e:
         formatter.print_error(f"Configuration validation failed: {e}")
-        raise typer.Exit(code=1)
-
-
-# Register the config command group as a command
-@command(
-    name="config",
-    help="Manage application configuration (set, get, list, validate)",
-)
-def config_command() -> None:
-    """Configuration management command group."""
-    config_app()
+        raise typer.Exit(code=1) from e
 {%- endif %}
