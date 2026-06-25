@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.2.4](https://github.com/wyattowalsh/riso/compare/v1.2.3...v1.2.4) (2026-06-25)
+
+### Bug Fixes
+
+* **ci:** point matrix-data pnpm cache at web lockfile ([c572f3a](https://github.com/wyattowalsh/riso/commit/c572f3a91b8b7f09aabd508a1dc2a04123258a29))
+* **ci:** repair quality workflow smoke checks and lockfile sync ([d5e9682](https://github.com/wyattowalsh/riso/commit/d5e9682e6cf0709b0149b6b937fc09c7c2a31a6b))
+
 ## [1.2.3](https://github.com/wyattowalsh/riso/compare/v1.2.2...v1.2.3) (2026-06-25)
 
 ### Bug Fixes
