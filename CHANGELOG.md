@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.2.1](https://github.com/wyattowalsh/riso/compare/v1.2.0...v1.2.1) (2026-06-25)
+
+### Bug Fixes
+
+* **ci:** install uv before quality matrix aggregate step ([de305a9](https://github.com/wyattowalsh/riso/commit/de305a9c403b85af7499c19ada153be37a147143))
+
 ## [1.2.0](https://github.com/wyattowalsh/riso/compare/v1.1.4...v1.2.0) (2026-06-25)
 
 ### ⚠ BREAKING CHANGES
