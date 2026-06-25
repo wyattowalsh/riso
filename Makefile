@@ -235,6 +235,22 @@ lock: ## Regenerate uv.lock
 ## CI/CD Helpers
 # ═══════════════════════════════════════════════════════════════════════════════
 
+.PHONY: validate-agents
+validate-agents: ## Validate AGENTS.md template + rendered sample trees
+	@printf "$(BLUE)▸ Validating AGENTS ecosystem...$(RESET)\n"
+	uv run python scripts/ci/validate_agents_ecosystem.py
+	uv run python scripts/ci/check_quality_parity.py
+	uv run python scripts/ci/validate_agents_ecosystem.py \
+		--render-enabled samples/default/render \
+		--render-enabled samples/cli-docs/render \
+		--render-enabled samples/full-stack/render \
+		--render-disabled samples/ai-tools-off/render
+	uv run python scripts/ci/agent_smoke_agents_md.py samples/default/render
+	uv run python scripts/ci/agent_smoke_agents_md.py samples/cli-docs/render
+	uv run python scripts/ci/agent_smoke_agents_md.py samples/full-stack/render
+	uv run python scripts/ci/agent_smoke_agents_md.py samples/ai-tools-off/render
+	@printf "$(GREEN)✓ AGENTS ecosystem validation passed$(RESET)\n"
+
 .PHONY: ci
 ci: install quality ## Run CI checks (install + full quality suite)
 	@printf "$(GREEN)✓ CI checks passed$(RESET)\n"
