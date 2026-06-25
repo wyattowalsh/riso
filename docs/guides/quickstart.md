@@ -8,14 +8,13 @@ pull request.
 Before working on the template, ensure all required tooling is installed:
 
 ```bash
-# Check what tools are installed (dry-run mode)
-./scripts/setup/setup.sh
+# Check what tools are installed (exit 0 if all present)
+make setup-check
+# or: ./scripts/setup/setup.sh --check-only
 
 # Install missing tools (interactive)
-./scripts/setup/setup.sh --install
-
-# Or use the Make target
 make bootstrap
+# or: ./scripts/setup/setup.sh --install
 ```
 
 The setup script detects your platform (macOS, Linux distros, Windows/WSL) and

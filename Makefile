@@ -71,6 +71,16 @@ setup: install ## Full setup (deps + pre-commit hooks)
 	uv run pre-commit install --hook-type pre-push
 	@printf "$(GREEN)✓ Setup complete$(RESET)\n"
 
+.PHONY: setup-check
+setup-check: ## Check required tooling (exit 0 if all present)
+	@printf "$(BLUE)▸ Checking required tooling...$(RESET)\n"
+	./scripts/setup/setup.sh --check-only
+
+.PHONY: bootstrap
+bootstrap: ## Bootstrap dev tools via setup script (interactive)
+	@printf "$(BLUE)▸ Bootstrapping development tools...$(RESET)\n"
+	./scripts/setup/setup.sh --install
+
 .PHONY: hooks
 hooks: ## Run all pre-commit hooks manually
 	@printf "$(BLUE)▸ Running pre-commit hooks...$(RESET)\n"

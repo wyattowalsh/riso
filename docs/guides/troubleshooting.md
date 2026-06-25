@@ -1,7 +1,7 @@
 # Troubleshooting Guide
 
 This guide covers common issues and their solutions when using Riso. Whether you're setting up
-a development environment, rendering templates, or running the MCP server, you'll find
+a development environment, rendering templates, or using the Riso CLI, you'll find
 practical troubleshooting steps here.
 
 ## Installation and Setup Issues
@@ -11,6 +11,7 @@ practical troubleshooting steps here.
 **Symptom:** Error about Python version: `Python 3.11+ required` or `RuntimeError: Python 3.11 minimum`
 
 **Solution:**
+
 ```bash
 # Check your Python version
 python3 --version
@@ -33,6 +34,7 @@ python3.13 --version
 **Symptom:** `command not found: uv` or `zsh: command not found: uv`
 
 **Solution:**
+
 ```bash
 # Install uv if not already installed
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -55,6 +57,7 @@ uv --version
 **Symptom:** `Error: Copier version 9.0+ required` or template rendering fails with version warning
 
 **Solution:**
+
 ```bash
 # Check current Copier version
 copier --version
@@ -76,6 +79,7 @@ copier --version
 **Solution:**
 
 For Node.js and pnpm (required for docs and full-stack projects):
+
 ```bash
 # macOS with Homebrew
 brew install node@20
@@ -92,6 +96,7 @@ pnpm --version    # Should be v8+
 ```
 
 For Git and other build tools:
+
 ```bash
 # macOS
 xcode-select --install
@@ -108,6 +113,7 @@ git --version
 **Symptom:** `Docker daemon is not running` or `cannot connect to Docker daemon`
 
 **Solution:**
+
 ```bash
 # macOS - Start Docker Desktop
 # Click Docker icon in Applications folder
@@ -131,6 +137,7 @@ newgrp docker
 **Symptom:** Copier hangs during rendering, takes excessive time, or times out
 
 **Solution:**
+
 ```bash
 # Try with the --trust flag (disables safety checks)
 copier copy --trust gh:wyattowalsh/riso my-project
@@ -154,6 +161,7 @@ copier copy --verbose gh:wyattowalsh/riso my-project
 **Symptom:** `ValidationError`, `Invalid answer for question`, or errors mentioning `copier-answers.yml`
 
 **Solution:**
+
 ```bash
 # 1. Check the copier.yml for valid answer values
 cat template/copier.yml | grep -A 5 "choices:"
@@ -179,6 +187,7 @@ copier copy gh:wyattowalsh/riso my-project
 **Symptom:** `RuntimeError: PyYAML is required to load Copier configuration`
 
 **Solution:**
+
 ```bash
 # Install PyYAML
 uv pip install PyYAML
@@ -195,6 +204,7 @@ python3 -c "import yaml; print(yaml.__version__)"
 **Symptom:** `TemplateNotFoundError`, `FileNotFoundError`, or specific files not generated
 
 **Solution:**
+
 ```bash
 # Verify template path
 ls -la template/copier.yml
@@ -219,6 +229,7 @@ copier copy . ../my-project
 **Symptom:** `PermissionError`, `Access denied`, or `Permission denied` when writing files
 
 **Solution:**
+
 ```bash
 # Check directory permissions
 ls -ld /path/to/destination
@@ -239,6 +250,7 @@ copier copy gh:wyattowalsh/riso ~/my-project
 **Symptom:** Script execution blocked by Gatekeeper security, or `cannot execute binary file`
 
 **Solution:**
+
 ```bash
 # Remove Gatekeeper quarantine attribute
 xattr -d com.apple.quarantine ./scripts/setup/setup.sh
@@ -256,6 +268,7 @@ chmod +x ./scripts/render-samples.sh
 **Symptom:** Cannot execute `.sh` scripts or Docker access denied on Windows
 
 **Solution:**
+
 ```bash
 # Use Windows Terminal (not Command Prompt) as Administrator
 # Start-Process powershell -Verb RunAs
@@ -270,111 +283,67 @@ wsl --list -v  # Check WSL version
 copier copy gh:wyattowalsh/riso /mnt/c/Users/YourUsername/my-project
 ```
 
-## MCP Server Issues
+## Riso CLI Issues
 
-### MCP Server Won't Start
+### Template Not Found
 
-**Symptom:** MCP server fails to start, errors about socket/port, or connection refused
+**Symptom:** `Template not found` when running `riso` commands outside a checkout
 
 **Solution:**
+
 ```bash
-# Check Python version compatibility
-python3 --version  # Must be 3.11+
+# Clone the repository or pass an explicit template path
+git clone https://github.com/wyattowalsh/riso.git && cd riso
+uv sync --group cli
+uv run riso doctor --json
 
-# Verify MCP dependencies
-uv pip list | grep -i mcp
-
-# Check if port 3141 is in use
-lsof -i :3141  # macOS/Linux
-netstat -ano | findstr :3141  # Windows
-
-# Kill process using the port
-kill -9 <PID>  # macOS/Linux
-taskkill /PID <PID> /F  # Windows
-
-# Rebuild environment
-uv sync
-uv run python -m riso.mcp.server
-
-# With verbose logging
-DEBUG=1 uv run python -m riso.mcp.server
+# Or set RISO_TEMPLATE_PATH
+export RISO_TEMPLATE_PATH=/path/to/riso/template
+uv run riso template path --json
 ```
 
-### Session Not Found or Expired
+### Validation Failures
 
-**Symptom:** `SessionNotFoundError`, `Session not found`, or `Session expired`
+**Symptom:** `riso validate` exits with code 2 and lists answer errors
 
 **Solution:**
+
 ```bash
-# Sessions have a timeout (default: 3600 seconds)
-# Create a new session and complete operations within timeout
+# Inspect prompts and defaults
+uv run riso prompts --json
 
-# For rate limiting issues (too many rapid sessions):
-# Wait 60 seconds between rapid session creations
+# Check for removed legacy keys (api_tracks, docs_site, etc.)
+uv run riso validate --answers-file copier-answers.yml --json
 
-# Check session management
-# Sessions are stored in memory during server runtime
-# Restart server to clear all sessions
+# Use a known-good sample
+uv run riso validate --answers-file samples/default/copier-answers.yml --json
 ```
 
-### Rate Limit Errors (Too Many Requests)
+### Copier Operation Failures
 
-**Symptom:** `TooManyRequestsError`, `429 Too Many Requests`, or rate limit warnings
-
-**Solution:**
-```bash
-# Rate limiting is per-IP with 60-second sliding window
-# For rapid testing, space out requests
-
-# Programmatic usage (wait between calls)
-import time
-time.sleep(60)  # Wait 60 seconds before next request
-
-# Alternative: Use local template instead of remote
-copier copy ./template my-project  # Local path
-
-# Check rate limit headers in response
-# Includes retry_after timing information
-```
-
-### MCP Tool Errors
-
-**Symptom:** Tool execution fails, returns unexpected output, or crashes
+**Symptom:** `riso copy`, `update`, or `recopy` fails with Copier errors
 
 **Solution:**
+
 ```bash
-# Test MCP tools directly
-uv run python -c "
-from riso.mcp.tools.copier_api import resolve_library
-result = resolve_library('test')
-print(result)
-"
+# Preview changes first
+uv run riso copy ./my-app --answers-file answers.yml --dry-run --json
 
-# Enable MCP debugging
-DEBUG=1 python -m riso.mcp.server
+# Increase timeout for large templates
+uv run riso copy ./my-app --answers-file answers.yml --timeout 600 --json
 
-# Check MCP configuration
-cat .mcp.json  # or custom config path
-cat mcp.json
-
-# Validate template path
-ls -la <template_path>
-
-# Test with verbose output
-uv run python -c "
-import logging
-logging.basicConfig(level=logging.DEBUG)
-# Your code here
-"
+# Verify copier is available
+uv run riso doctor --json
 ```
 
 ## Build and Quality Issues
 
 ### Type Checking Failures
 
-**Symptom:** `ty check` fails with type errors, mypy errors
+**Symptom:** `ty check` fails with type errors
 
 **Solution:**
+
 ```bash
 # Run type checker with full output
 uv run ty check
@@ -383,7 +352,7 @@ uv run ty check
 uv run ty check --show-error-context
 
 # Type check specific module
-uv run ty check src/riso/mcp/
+uv run ty check src/riso/cli/ src/riso/core/
 
 # Generate type stub files
 uv run ty stubgen -p riso
@@ -399,6 +368,7 @@ uv run ty stubgen -p riso
 **Symptom:** Code quality checks fail, linting errors
 
 **Solution:**
+
 ```bash
 # Run ruff (fast Python linter)
 uv run ruff check .
@@ -407,9 +377,11 @@ uv run ruff check --fix .  # Auto-fix issues
 # Run pylint (detailed analysis)
 uv run pylint src/riso/
 
-# Run all quality checks
-make quality  # Requires make
-uv run task quality  # Requires Taskipy
+# Maintainer repo (riso/ root)
+make quality
+
+# Rendered project (samples/*/render/)
+make quality  # or: QUALITY_PROFILE=standard uv run task quality
 
 # Fix specific issues
 uv run ruff check --select=E501 .  # Line length
@@ -421,6 +393,7 @@ uv run ruff check --select=F --fix .  # Unused imports
 **Symptom:** `AssertionError` about coverage, `cov-fail-under` error
 
 **Solution:**
+
 ```bash
 # Run tests with coverage
 uv run pytest --cov --cov-report=term-missing --cov-fail-under=90
@@ -446,6 +419,7 @@ uv run coverage report --show-missing
 **Symptom:** Docker build errors, `Dockerfile not found`, or layer build failures
 
 **Solution:**
+
 ```bash
 # Verify Docker is running
 docker ps
@@ -478,6 +452,7 @@ docker run --rm my-project:test python --version
 **Symptom:** CI workflow fails, matrix tests fail, or actions timeout
 
 **Solution:**
+
 ```bash
 # Run quality suite locally matching CI
 uv run python scripts/ci/run_quality_suite.py --profile strict
@@ -504,6 +479,7 @@ uv run python scripts/ci/validate_dockerfiles.py
 **Symptom:** Sample project generation fails, matrix data outdated
 
 **Solution:**
+
 ```bash
 # Regenerate all samples
 ./scripts/render-samples.sh
@@ -525,6 +501,7 @@ cat samples/metadata/matrix-data.json  # Check schema
 **Symptom:** Web UI shows different options than template, missing configurations
 
 **Solution:**
+
 ```bash
 # Regenerate matrix data
 uv run python scripts/ci/render_matrix.py
@@ -546,6 +523,7 @@ uv run python scripts/ci/verify_context_sync.py
 **Symptom:** `sphinx-build` fails, doc build errors
 
 **Solution:**
+
 ```bash
 # Install docs dependencies
 uv sync --group docs
@@ -571,6 +549,7 @@ uv run sphinx-build -W docs docs/_build  # Treat warnings as errors
 **Symptom:** `ModuleNotFoundError` for doc dependencies (sphinx, myst, etc.)
 
 **Solution:**
+
 ```bash
 # Install all doc dependencies
 uv sync --group docs
@@ -589,6 +568,7 @@ uv run python -c "import sphinx; print(sphinx.__version__)"
 **Symptom:** `command not found: pnpm` when building docs or SaaS modules
 
 **Solution:**
+
 ```bash
 # Install pnpm globally
 npm install -g pnpm
@@ -610,6 +590,7 @@ npm run dev
 **Symptom:** Node version incompatibility, pnpm peer dependency issues
 
 **Solution:**
+
 ```bash
 # Check Node version (should be 20 LTS)
 node --version  # Should be v20.x
@@ -635,6 +616,7 @@ pnpm config list
 **Symptom:** Build fails in docs or frontend, TypeScript errors
 
 **Solution:**
+
 ```bash
 # Clear build artifacts
 rm -rf dist .next build
@@ -663,6 +645,7 @@ pnpm exec tsc --noEmit
 **Symptom:** Need more details about what's failing
 
 **Solution:**
+
 ```bash
 # Enable debug output globally
 DEBUG=1 copier copy gh:wyattowalsh/riso my-project
@@ -671,7 +654,7 @@ DEBUG=1 copier copy gh:wyattowalsh/riso my-project
 DEBUG=riso:* copier copy gh:wyattowalsh/riso my-project
 
 # Python debugging
-DEBUG=1 uv run python -m riso.mcp.server
+uv run riso --verbose doctor --json
 
 # Verbose mode for various tools
 copier copy --verbose gh:wyattowalsh/riso my-project
@@ -705,25 +688,27 @@ ls -la .github/workflows/  # CI workflows
 ### Check GitHub Issues and Discussions
 
 1. **Search existing issues**: https://github.com/wyattowalsh/riso/issues
-2. **Check discussions**: https://github.com/wyattowalsh/riso/discussions
-3. **Review documentation**: https://github.com/wyattowalsh/riso/tree/main/docs
+1. **Check discussions**: https://github.com/wyattowalsh/riso/discussions
+1. **Review documentation**: https://github.com/wyattowalsh/riso/tree/main/docs
 
 ### Opening a New Issue
 
 Include:
+
 1. **Title**: Clear, specific description of the issue
-2. **Environment**:
+1. **Environment**:
    - OS and version
    - Python version
    - Riso version or commit hash
    - Node.js version (if applicable)
-3. **Steps to reproduce**: Exact commands that trigger the issue
-4. **Expected behavior**: What should happen
-5. **Actual behavior**: What actually happened
-6. **Error message**: Full error output with stack trace
-7. **Logs**: Debug output from `DEBUG=1` runs
+1. **Steps to reproduce**: Exact commands that trigger the issue
+1. **Expected behavior**: What should happen
+1. **Actual behavior**: What actually happened
+1. **Error message**: Full error output with stack trace
+1. **Logs**: Debug output from `DEBUG=1` runs
 
 Example:
+
 ```
 **Title**: Template rendering times out with Python 3.13 on macOS
 
@@ -777,23 +762,23 @@ NODE_OPTIONS=--max-old-space-size=4096  # Increase memory limit
 
 ## Quick Reference: Common Solutions
 
-| Issue | Quick Fix |
-|-------|-----------|
-| Python 3.11+ needed | `brew install python@3.13` |
-| uv not found | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
-| Copier outdated | `uv pip install --upgrade copier>=9.1.0` |
-| Port 3141 in use | `lsof -i :3141` then `kill -9 <PID>` |
-| Template timeout | `copier copy --trust gh:wyattowalsh/riso ...` |
-| Permission denied | `chmod +x scripts/setup/setup.sh` |
-| Type check fails | `uv run ty check` then fix errors |
-| Coverage too low | `uv run pytest --cov --cov-fail-under=90` |
-| Docker not running | `open /Applications/Docker.app` (macOS) |
-| Clear Copier cache | `rm -rf ~/.cache/copier` |
+| Issue               | Quick Fix                                          |
+| ------------------- | -------------------------------------------------- |
+| Python 3.11+ needed | `brew install python@3.13`                         |
+| uv not found        | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| Copier outdated     | `uv pip install --upgrade copier>=9.1.0`           |
+| Port 3141 in use    | `lsof -i :3141` then `kill -9 <PID>`               |
+| Template timeout    | `copier copy --trust gh:wyattowalsh/riso ...`      |
+| Permission denied   | `chmod +x scripts/setup/setup.sh`                  |
+| Type check fails    | `uv run ty check` then fix errors                  |
+| Coverage too low    | `uv run pytest --cov --cov-fail-under=90`          |
+| Docker not running  | `open /Applications/Docker.app` (macOS)            |
+| Clear Copier cache  | `rm -rf ~/.cache/copier`                           |
 
 ## Additional Resources
 
 - **[Riso GitHub Repository](https://github.com/wyattowalsh/riso)**
 - **[Copier Documentation](https://copier.readthedocs.io/)**
 - **[Python uv Documentation](https://docs.astral.sh/uv/)**
-- **[FastMCP Documentation](https://github.com/jlowin/fastmcp)**
+- **[Riso CLI Reference](../tools/riso-cli.md)**
 - **[Sphinx Documentation](https://www.sphinx-doc.org/)**
