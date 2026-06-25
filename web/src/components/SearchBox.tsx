@@ -42,6 +42,12 @@ export function SearchBox({ onNavigateToStep }: SearchBoxProps) {
     return searchOptions(debouncedQuery, searchIndex)
   }, [debouncedQuery, searchIndex])
 
+  const closeSearch = useCallback(() => {
+    setIsOpen(false)
+    setQuery('')
+    setSelectedIndex(0)
+  }, [])
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -53,26 +59,18 @@ export function SearchBox({ onNavigateToStep }: SearchBoxProps) {
       // Escape to close
       if (e.key === 'Escape' && isOpen) {
         e.preventDefault()
-        setIsOpen(false)
+        closeSearch()
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen])
+  }, [isOpen, closeSearch])
 
   // Focus input when opened
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus()
-    }
-  }, [isOpen])
-
-  // Reset on close
-  useEffect(() => {
-    if (!isOpen) {
-      setQuery('')
-      setSelectedIndex(0)
     }
   }, [isOpen])
 
@@ -91,9 +89,9 @@ export function SearchBox({ onNavigateToStep }: SearchBoxProps) {
           setHighlightedField(null)
         }, 3000)
       }
-      setIsOpen(false)
+      closeSearch()
     },
-    [setHighlightedField, setCurrentStep, onNavigateToStep]
+    [setHighlightedField, setCurrentStep, onNavigateToStep, closeSearch]
   )
 
   // Keyboard navigation within results
@@ -149,7 +147,7 @@ export function SearchBox({ onNavigateToStep }: SearchBoxProps) {
       {/* Backdrop */}
       <div
         className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
-        onClick={() => setIsOpen(false)}
+        onClick={closeSearch}
       />
 
       {/* Modal */}
@@ -179,7 +177,7 @@ export function SearchBox({ onNavigateToStep }: SearchBoxProps) {
               </button>
             )}
             <button
-              onClick={() => setIsOpen(false)}
+              onClick={closeSearch}
               className="ml-2 px-2 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
             >
               esc

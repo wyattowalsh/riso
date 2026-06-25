@@ -50,6 +50,18 @@ import { ExternalLink, BookOpen } from 'lucide-react'
 const RECENT_SEARCHES_KEY = 'riso-recent-searches'
 const MAX_RECENT_SEARCHES = 5
 
+function loadRecentSearches(): RecentSearch[] {
+  try {
+    const stored = localStorage.getItem(RECENT_SEARCHES_KEY)
+    if (stored) {
+      return (JSON.parse(stored) as RecentSearch[]).slice(0, MAX_RECENT_SEARCHES)
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return []
+}
+
 // Category icons mapping
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   Project: Settings,
@@ -89,7 +101,7 @@ interface SearchModalProps {
 export function SearchModal({ isOpen, onClose, onNavigateToStep }: SearchModalProps) {
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
-  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([])
+  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>(loadRecentSearches)
   const [docResults, setDocResults] = useState<DocSearchResult[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
@@ -129,27 +141,23 @@ export function SearchModal({ isOpen, onClose, onNavigateToStep }: SearchModalPr
     return flat
   }, [groupedResults])
 
+  const docSearchQuery =
+    debouncedQuery && debouncedQuery.length >= 2 ? debouncedQuery : null
+
   // Search documentation when query changes
   useEffect(() => {
-    if (!debouncedQuery || debouncedQuery.length < 2) {
-      setDocResults([])
-      return
-    }
-    searchDocs(debouncedQuery).then(setDocResults)
-  }, [debouncedQuery])
+    if (!docSearchQuery) return
 
-  // Load recent searches from localStorage
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(RECENT_SEARCHES_KEY)
-      if (stored) {
-        const parsed = JSON.parse(stored) as RecentSearch[]
-        setRecentSearches(parsed.slice(0, MAX_RECENT_SEARCHES))
-      }
-    } catch {
-      // Ignore parse errors
+    let cancelled = false
+    searchDocs(docSearchQuery).then((results) => {
+      if (!cancelled) setDocResults(results)
+    })
+    return () => {
+      cancelled = true
     }
-  }, [isOpen])
+  }, [docSearchQuery])
+
+  const displayedDocResults = docSearchQuery ? docResults : []
 
   // Save recent search to localStorage
   const saveRecentSearch = useCallback((option: SearchableOption) => {
@@ -186,6 +194,12 @@ export function SearchModal({ isOpen, onClose, onNavigateToStep }: SearchModalPr
     }
   }, [])
 
+  const handleClose = useCallback(() => {
+    setQuery('')
+    setSelectedIndex(0)
+    onClose()
+  }, [onClose])
+
   // Keyboard shortcuts for closing
   useEffect(() => {
     if (!isOpen) return
@@ -193,13 +207,13 @@ export function SearchModal({ isOpen, onClose, onNavigateToStep }: SearchModalPr
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault()
-        onClose()
+        handleClose()
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onClose])
+  }, [isOpen, handleClose])
 
   // Focus input when opened
   useEffect(() => {
@@ -209,14 +223,6 @@ export function SearchModal({ isOpen, onClose, onNavigateToStep }: SearchModalPr
         inputRef.current?.focus()
       }, 50)
       return () => clearTimeout(timer)
-    }
-  }, [isOpen])
-
-  // Reset on close
-  useEffect(() => {
-    if (!isOpen) {
-      setQuery('')
-      setSelectedIndex(0)
     }
   }, [isOpen])
 
@@ -243,9 +249,9 @@ export function SearchModal({ isOpen, onClose, onNavigateToStep }: SearchModalPr
           setHighlightedField(null)
         }, 3000)
       }
-      onClose()
+      handleClose()
     },
-    [saveRecentSearch, setHighlightedField, setCurrentStep, onNavigateToStep, onClose]
+    [saveRecentSearch, setHighlightedField, setCurrentStep, onNavigateToStep, handleClose]
   )
 
   // Handle recent search click
@@ -274,9 +280,9 @@ export function SearchModal({ isOpen, onClose, onNavigateToStep }: SearchModalPr
           setHighlightedField(null)
         }, 3000)
       }
-      onClose()
+      handleClose()
     },
-    [saveRecentSearch, setHighlightedField, setCurrentStep, onNavigateToStep, onClose]
+    [saveRecentSearch, setHighlightedField, setCurrentStep, onNavigateToStep, handleClose]
   )
 
   // Keyboard navigation within results
@@ -327,7 +333,7 @@ export function SearchModal({ isOpen, onClose, onNavigateToStep }: SearchModalPr
       {/* Backdrop */}
       <div
         className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-opacity duration-300"
-        onClick={onClose}
+        onClick={handleClose}
         aria-hidden="true"
       />
 
@@ -371,7 +377,7 @@ export function SearchModal({ isOpen, onClose, onNavigateToStep }: SearchModalPr
 
           {/* Results or suggestions */}
           <div className="max-h-[60vh] overflow-y-auto" ref={resultsRef}>
-            {(flatResults.length > 0 || docResults.length > 0) ? (
+            {(flatResults.length > 0 || displayedDocResults.length > 0) ? (
               /* Search results - config options and documentation */
               <div className="p-2">
                 {/* Configuration options section */}
@@ -420,7 +426,7 @@ export function SearchModal({ isOpen, onClose, onNavigateToStep }: SearchModalPr
                 )}
 
                 {/* Documentation results section */}
-                {docResults.length > 0 && (
+                {displayedDocResults.length > 0 && (
                   <div className="mb-3 last:mb-0">
                     {/* Section header */}
                     <div className="flex items-center gap-2 px-3 py-2">
@@ -432,12 +438,12 @@ export function SearchModal({ isOpen, onClose, onNavigateToStep }: SearchModalPr
                         Documentation
                       </span>
                       <span className="text-xs text-gray-400 dark:text-gray-500">
-                        ({docResults.length})
+                        ({displayedDocResults.length})
                       </span>
                     </div>
                     {/* Doc results list */}
                     <div className="space-y-0.5">
-                      {docResults.map((doc) => (
+                      {displayedDocResults.map((doc) => (
                         <a
                           key={doc.url}
                           href={doc.url}

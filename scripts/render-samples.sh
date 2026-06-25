@@ -45,6 +45,7 @@ run_module_smoke_tests() {
   log_path="$(dirname "${answers_file}")/smoke-results.json"
 
   uv run python - "$variant" "$answers_file" "$destination" "$log_path" <<'PY'
+import glob
 import json
 import subprocess
 import sys
@@ -187,6 +188,13 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
     modules.extend(
         [
             {
+                "name": "quality_just",
+                "enabled": python_project_ready and (python_cwd / "justfile").exists(),
+                "command": ["just", "quality"],
+                "cwd": str(python_cwd),
+                "skip_reason": "Just quality scaffold not rendered for this variant.",
+            },
+            {
                 "name": "quality_make",
                 "enabled": python_project_ready and (python_cwd / "Makefile").exists(),
                 "command": ["make", "quality"],
@@ -214,12 +222,26 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
     return modules
 
 
+def expand_command(cmd: list[str], cwd: Path) -> list[str]:
+    expanded: list[str] = []
+    for part in cmd:
+        if any(marker in part for marker in ("*", "?", "[")):
+            matches = sorted(glob.glob(str(cwd / part)))
+            if matches:
+                expanded.extend(matches)
+                continue
+        expanded.append(part)
+    return expanded
+
+
 def run_command(cmd: list[str], cwd: Path | None = None) -> tuple[str, dict[str, object], float]:
     start_time = time.time()
+    workdir = cwd or destination_path
+    cmd = expand_command(cmd, workdir)
     try:
         proc = subprocess.run(
             cmd,
-            cwd=cwd or destination_path,
+            cwd=workdir,
             check=True,
             capture_output=True,
             text=True,
@@ -352,6 +374,32 @@ write_json(variant_dir / "doc-publish.json", doc_publish)
 PY
 }
 
+bootstrap_render_dependencies() {
+  local destination="$1"
+  local answers_file="$2"
+
+  if [[ -f "${destination}/python/pyproject.toml" ]]; then
+    log "Bootstrapping Python dependencies in ${destination}/python"
+    local -a sync_groups=(--group quality --group test)
+    if grep -Eq '^cli_module:[[:space:]]*enabled' "${answers_file}"; then
+      sync_groups+=(--group cli)
+    fi
+    if ! (cd "${destination}/python" && uv sync "${sync_groups[@]}"); then
+      log "Warning: uv sync failed for ${destination}/python"
+    fi
+  fi
+
+  if [[ -f "${destination}/node/package.json" ]]; then
+    log "Bootstrapping Node dependencies in ${destination}/node"
+    if command -v corepack >/dev/null 2>&1; then
+      corepack enable >/dev/null 2>&1 || true
+    fi
+    if ! (cd "${destination}/node" && pnpm install); then
+      log "Warning: pnpm install failed for ${destination}/node"
+    fi
+  fi
+}
+
 render_variant() {
   local variant="$1"
   local answers_file="$2"
@@ -372,6 +420,7 @@ render_variant() {
     --force \
     "${REPO_ROOT}/template" \
     "${destination}"
+  bootstrap_render_dependencies "${destination}" "${answers_file}"
   if ! run_module_smoke_tests "${variant}" "${answers_file}" "${destination}"; then
     log "Smoke tests encountered issues for variant '${variant}' (continuing)."
   fi

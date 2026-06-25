@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useMemo, useState } from 'react'
 import { Check, LinkIcon, X } from 'lucide-react'
 import { copyToClipboard } from '../../lib/utils'
 import { generateShareableURL } from '../../lib/presets'
@@ -20,13 +20,10 @@ interface SharePresetModalProps {
  */
 export function SharePresetModal({ presetConfig, onClose }: SharePresetModalProps) {
   const [copied, setCopied] = useState(false)
-  const [shareUrl, setShareUrl] = useState('')
-
-  useEffect(() => {
-    if (presetConfig) {
-      setShareUrl(generateShareableURL(presetConfig))
-    }
-  }, [presetConfig])
+  const shareUrl = useMemo(
+    () => (presetConfig ? generateShareableURL(presetConfig) : ''),
+    [presetConfig]
+  )
 
   if (!presetConfig) return null
 
