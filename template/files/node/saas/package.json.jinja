@@ -58,6 +58,11 @@
     "prebuild": "pnpm run db:generate",
     "postinstall": "{% if saas_orm == 'prisma' %}prisma generate{% endif %}"
   },
+  {% if saas_orm == 'prisma' %}
+  "prisma": {
+    "schema": "integrations/orm/prisma/schema.prisma"
+  },
+  {% endif %}
   "dependencies": {
     {# Runtime Framework #}
     {% if saas_runtime == 'nextjs-16' %}
@@ -186,6 +191,11 @@
     
     {# UI Framework #}
     {% if saas_ui_framework == 'shadcn-ui' %}
+    {% if saas_runtime == 'nextjs-16' %}
+    "radix-ui": "^1.6.0",
+    "class-variance-authority": "^0.7.0",
+    "lucide-react": "^1.21.0"
+    {% else %}
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.1",
     "@radix-ui/react-avatar": "^1.1.0",
@@ -202,10 +212,7 @@
     "@radix-ui/react-toast": "^1.2.1",
     "@radix-ui/react-tooltip": "^1.1.2",
     "class-variance-authority": "^0.7.0",
-    {% if saas_runtime == 'nextjs-16' %}
-    "lucide-react": "^1.21.0",
-    {% else %}
-    "lucide-react": "^0.441.0",
+    "lucide-react": "^0.441.0"
     {% endif %}
     {% elif saas_ui_framework == 'radix-primitives' %}
     "@radix-ui/react-accordion": "^1.2.0",
@@ -219,10 +226,10 @@
     "@radix-ui/react-select": "^2.1.1",
     "@radix-ui/react-tabs": "^1.1.0",
     "@radix-ui/react-toast": "^1.2.1",
-    "@radix-ui/react-tooltip": "^1.1.2",
+    "@radix-ui/react-tooltip": "^1.1.2"
     {% elif saas_ui_framework == 'headless-ui' %}
     "@headlessui/react": "^2.1.8",
-    "lucide-react": "^0.441.0",
+    "lucide-react": "^0.441.0"
     {% endif %}
     
     {# Form Library #}
@@ -366,30 +373,30 @@
     {# Styling #}
     {% if saas_ui_framework == 'shadcn-ui' and saas_runtime == 'nextjs-16' %}
     "tailwindcss": "^4.3.1",
-    "@tailwindcss/postcss": "^4.3.1",
+    "@tailwindcss/postcss": "^4.3.1"
     {% else %}
     "tailwindcss": "^3.4.11",
     "postcss": "^8.4.45",
-    "autoprefixer": "^10.4.20",
+    "autoprefixer": "^10.4.20"
     {% endif %}
     {% if saas_blog %}
-    "@tailwindcss/typography": "^0.5.15",
+    ,"@tailwindcss/typography": "^0.5.15"
     {% endif %}
     
     {# Type definitions for new features #}
     {% if saas_gdpr_tools %}
-    "@types/archiver": "^6.0.2",
+    ,"@types/archiver": "^6.0.2"
     {% endif %}
     {% if saas_2fa and saas_auth_provider == 'authjs' %}
-    "@types/qrcode": "^1.5.5",
+    ,"@types/qrcode": "^1.5.5"
     {% endif %}
     {% if saas_api_docs %}
-    "@types/swagger-ui-react": "^4.18.3",
+    ,"@types/swagger-ui-react": "^4.18.3"
     {% endif %}
     
     {# i18n tooling #}
     {% if saas_i18n %}
-    "i18next-parser": "^9.0.2"
+    ,"i18next-parser": "^9.0.2"
     {% endif %}
   }
 }
