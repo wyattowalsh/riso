@@ -74,7 +74,9 @@ jobs:
 
       - name: Render default sample for testing
         run: |
-          ./scripts/render-samples.sh --variant default
+          ./scripts/render-samples.sh \
+            --variant default \
+            --answers samples/default/copier-answers.yml
 
       - name: Run sync test
         run: |
@@ -178,8 +180,12 @@ jobs:
 
       - name: Render AGENTS validation samples
         run: |
-          ./scripts/render-samples.sh --variant default
-          ./scripts/render-samples.sh --variant ai-tools-off --answers samples/ai-tools-off/copier-answers.yml
+          ./scripts/render-samples.sh \
+            --variant default \
+            --answers samples/default/copier-answers.yml
+          ./scripts/render-samples.sh \
+            --variant ai-tools-off \
+            --answers samples/ai-tools-off/copier-answers.yml
 
       - name: Validate rendered AGENTS trees
         run: |
@@ -324,13 +330,8 @@ jobs:
             echo "Smoke test results found for ${{ matrix.variant }}"
             uv run python -m json.tool samples/${{ matrix.variant }}/smoke-results.json
 
-            # Check for failures in smoke tests
-            FAILURES=$(uv run python -c "
-            import json, sys
-            data = json.load(open(sys.argv[1], encoding='utf-8'))
-            failures = [m for m in data.get('modules', []) if m.get('status') == 'FAIL']
-            print(len(failures))
-            " samples/${{ matrix.variant }}/smoke-results.json)
+            # Check for failures in smoke tests (modules is a dict keyed by module name)
+            FAILURES=$(uv run python -c "import json,sys;d=json.load(open(sys.argv[1],encoding='utf-8'));m=d.get('modules',{});items=m.items() if isinstance(m,dict) else [(x.get('name','?'),x) for x in m];print(sum(1 for _,x in items if isinstance(x,dict) and x.get('status') in ('failed','error')))" "samples/${{ matrix.variant }}/smoke-results.json")
 
             if [ "$FAILURES" -gt 0 ]; then
               echo "Error: $FAILURES smoke test(s) failed for ${{ matrix.variant }}"
@@ -357,19 +358,30 @@ jobs:
           summary_file = Path(sys.argv[2])
 
           data = json.load(results_file.open())
-          modules = data.get("modules", [])
+          modules = data.get("modules", {})
+          if isinstance(modules, dict):
+              module_items = list(modules.items())
+          else:
+              module_items = [
+                  (module.get("name", "Unknown"), module) for module in modules
+              ]
 
           with summary_file.open("a") as f:
               f.write("### Module Smoke Test Results\n\n")
               f.write("| Module | Status | Duration |\n")
               f.write("|--------|--------|----------|\n")
 
-              for module in modules:
-                  name = module.get("name", "Unknown")
+              for name, module in module_items:
                   status = module.get("status", "UNKNOWN")
-                  duration = module.get("duration_seconds", 0)
+                  duration = module.get("duration", module.get("duration_seconds", 0))
 
-                  status_emoji = "✅" if status == "PASS" else "⏭️" if status == "SKIP" else "❌"
+                  status_emoji = (
+                      "✅"
+                      if status == "passed"
+                      else "⏭️"
+                      if status == "skipped"
+                      else "❌"
+                  )
                   f.write(f"| {name} | {status_emoji} {status} | {duration:.2f}s |\n")
 
               f.write("\n")
