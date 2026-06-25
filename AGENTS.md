@@ -28,26 +28,26 @@
 
 Maintainer commands — authoritative source: `make help`.
 
-| Task                      | Command                                                 |
-| ------------------------- | ------------------------------------------------------- |
-| Install all deps          | `make install` or `uv sync --group dev --group docs`    |
-| Full setup (deps + hooks) | `make setup`                                            |
-| Check tooling             | `make setup-check`                                      |
-| Bootstrap dev tools       | `make bootstrap`                                        |
-| **Quality suite**         | `make quality`                                          |
-| Lint                      | `make lint`                                             |
-| Typecheck (ty)            | `make typecheck`                                        |
-| Test                      | `make test`                                             |
-| Test + coverage           | `make test-cov`                                         |
-| Pre-commit (all)          | `make hooks`                                            |
-| Render samples            | `make samples` or `./scripts/render-samples.sh`         |
-| Docs dev server           | `make docs`                                             |
-| Docs build                | `make docs-build`                                       |
-| CI locally                | `make ci`                                               |
-| Riso CLI                  | `uv sync --group cli` then `uv run riso --help`         |
-| Render matrix             | `uv run python scripts/ci/render_matrix.py`             |
-| Context sync check        | `uv run python scripts/ci/verify_context_sync.py`       |
-| Validate AGENTS ecosystem | `make validate-agents` |
+| Task                      | Command                                              |
+| ------------------------- | ---------------------------------------------------- |
+| Install all deps          | `make install` or `uv sync --group dev --group docs` |
+| Full setup (deps + hooks) | `make setup`                                         |
+| Check tooling             | `make setup-check`                                   |
+| Bootstrap dev tools       | `make bootstrap`                                     |
+| **Quality suite**         | `make quality`                                       |
+| Lint                      | `make lint`                                          |
+| Typecheck (ty)            | `make typecheck`                                     |
+| Test                      | `make test`                                          |
+| Test + coverage           | `make test-cov`                                      |
+| Pre-commit (all)          | `make hooks`                                         |
+| Render samples            | `make samples` or `./scripts/render-samples.sh`      |
+| Docs dev server           | `make docs`                                          |
+| Docs build                | `make docs-build`                                    |
+| CI locally                | `make ci`                                            |
+| Riso CLI                  | `uv sync --group cli` then `uv run riso --help`      |
+| Render matrix             | `uv run python scripts/ci/render_matrix.py`          |
+| Context sync check        | `uv run python scripts/ci/verify_context_sync.py`    |
+| Validate AGENTS ecosystem | `make validate-agents`                               |
 
 **Riso CLI** (template operations):
 
@@ -159,28 +159,28 @@ Other workflows: `gitleaks.yml`, `codeql.yml`, `release.yml`, `matrix-data.yml`,
 
 <!-- agents-md:auto -->
 
-| Script                                | Purpose                                              |
-| ------------------------------------- | ---------------------------------------------------- |
-| `render_matrix.py`                    | Render all sample variants, update metadata          |
-| `generate_matrix_data.py`             | Regenerate `web/src/data/matrix-data.json`           |
-| `record_module_success.py`            | Aggregate smoke results → `samples/metadata/`        |
-| `run_quality_suite.py`                | CI quality orchestration (profiles)                  |
-| `check_quality_parity.py`             | Makefile/uv task sync validation                     |
-| `verify_context_sync.py`              | `.github/context/` ↔ template context byte parity    |
-| `validate_workflows.py`               | GitHub workflow template validation                  |
-| `validate_dockerfiles.py`             | Dockerfile lint/validation                           |
-| `validate_release_configs.py`         | Release config validation                            |
-| `run_baseline_quickstart.py`          | Quickstart timing evidence                           |
+| Script                                | Purpose                                                               |
+| ------------------------------------- | --------------------------------------------------------------------- |
+| `render_matrix.py`                    | Render all sample variants, update metadata                           |
+| `generate_matrix_data.py`             | Regenerate `web/src/data/matrix-data.json`                            |
+| `record_module_success.py`            | Aggregate smoke results → `samples/metadata/`                         |
+| `run_quality_suite.py`                | CI quality orchestration (profiles)                                   |
+| `check_quality_parity.py`             | Makefile/uv task sync validation                                      |
+| `verify_context_sync.py`              | `.github/context/` ↔ template context byte parity                     |
+| `validate_workflows.py`               | GitHub workflow template validation                                   |
+| `validate_dockerfiles.py`             | Dockerfile lint/validation                                            |
+| `validate_release_configs.py`         | Release config validation                                             |
+| `run_baseline_quickstart.py`          | Quickstart timing evidence                                            |
 | `bump_template_npm_deps.py`           | Audit/bump npm pins via `npm_surfaces.json` (`--parallel`, `--apply`) |
-| `sync_template_shadcn_components.py`  | Refresh SaaS shadcn/ui components from probe project   |
-| `validate_jinja_templates.py`         | Jinja syntax validation (pre-commit)                 |
-| `validate_saas_combinations.py`       | SaaS starter combination smoke renders               |
-| `validate_release_readiness_skill.py` | Mirror check for release-readiness skill             |
-| `track_doc_publish.py`                | Doc publish timestamp governance                     |
-| `verify_version_sync.py`              | Version constant sync across template/setup          |
-| `validate_agents_ecosystem.py`        | AGENTS.md template bridges + pointer file limits     |
-| `agent_smoke_agents_md.py`            | Smoke-test rendered AGENTS.md onboarding questions   |
-| `render_precommit_configs.py`         | Validate pre-commit layout in rendered samples       |
+| `sync_template_shadcn_components.py`  | Refresh SaaS shadcn/ui components from probe project                  |
+| `validate_jinja_templates.py`         | Jinja syntax validation (pre-commit)                                  |
+| `validate_saas_combinations.py`       | SaaS starter combination smoke renders                                |
+| `validate_release_readiness_skill.py` | Mirror check for release-readiness skill                              |
+| `track_doc_publish.py`                | Doc publish timestamp governance                                      |
+| `verify_version_sync.py`              | Version constant sync across template/setup                           |
+| `validate_agents_ecosystem.py`        | AGENTS.md template bridges + pointer file limits                      |
+| `agent_smoke_agents_md.py`            | Smoke-test rendered AGENTS.md onboarding questions                    |
+| `render_precommit_configs.py`         | Validate pre-commit layout in rendered samples                        |
 
 Run with `uv run python scripts/ci/<script>.py`.
 

@@ -10,15 +10,15 @@ preserving stale legacy answer behavior.
 1. **Schema and hooks**: enforce canonical answer keys, reject removed keys,
    remove post-generation pre-commit installation side effects, and keep render
    metadata canonical.
-2. **Samples and automation**: migrate checked sample answer files, update
+1. **Samples and automation**: migrate checked sample answer files, update
    render metadata, and regenerate renders only through automation.
-3. **MCP and web**: expose canonical answer dictionaries through public MCP
+1. **MCP and web**: expose canonical answer dictionaries through public MCP
    tools/resources/prompts and the web configurator.
-4. **Docs and skills**: keep docs warning-free, add release-readiness spec
+1. **Docs and skills**: keep docs warning-free, add release-readiness spec
    artifacts, and add the maintainer-only release skill.
-5. **CI and release**: make package builds blocking, align pnpm, add package
+1. **CI and release**: make package builds blocking, align pnpm, add package
    metadata and install smoke checks, and preserve dry-run-only release proof.
-6. **Security and hygiene**: remove generated artifacts, scan for secrets, audit
+1. **Security and hygiene**: remove generated artifacts, scan for secrets, audit
    dependencies, and record evidence in the release TODO.
 
 ## Non-Goals

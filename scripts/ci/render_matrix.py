@@ -29,7 +29,7 @@ except ModuleNotFoundError:
     from lib.logger import configure_logging, logger
 
 try:  # pragma: no cover - import behaviour depends on invocation style
-    from record_module_success import ModuleSuccessRecorder
+    from record_module_success import ModuleResult, ModuleSuccessRecorder
 except (
     ModuleNotFoundError
 ):  # pragma: no cover - fallback for `python path/to/script.py`
@@ -37,7 +37,22 @@ except (
     from pathlib import Path as _Path
 
     _sys.path.append(str(_Path(__file__).resolve().parent))
-    from record_module_success import ModuleSuccessRecorder
+    from record_module_success import ModuleResult, ModuleSuccessRecorder
+
+
+def _module_results(payload: dict[str, object]) -> list[ModuleResult]:
+    raw = payload.get("results", [])
+    if not isinstance(raw, list):
+        return []
+    typed: list[ModuleResult] = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("name")
+        status = entry.get("status")
+        if isinstance(name, str) and isinstance(status, str):
+            typed.append({"name": name, "status": status})
+    return typed
 
 
 class VariantResult(TypedDict):
@@ -232,7 +247,7 @@ def main() -> None:
             if results:
                 recorder.update_from_results(
                     variant_entry.get("variant", "unknown"),
-                    results.get("results", []),
+                    _module_results(results),
                 )
         module_metrics = recorder.write(METADATA_DIR / "module_success.json")
         summary["module_success"] = module_metrics
@@ -256,7 +271,7 @@ def main() -> None:
             if smoke_results:
                 recorder.update_from_results(
                     variant_summary["variant"],
-                    smoke_results.get("results", []),  # type: ignore[arg-type]
+                    _module_results(smoke_results),
                 )
 
         module_metrics = recorder.write(METADATA_DIR / "module_success.json")

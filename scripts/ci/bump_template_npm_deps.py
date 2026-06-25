@@ -130,7 +130,7 @@ def collect_dep_versions(package: dict[str, object]) -> dict[str, str]:
         deps = package.get(section)
         if isinstance(deps, dict):
             for name, version in deps.items():
-                if isinstance(version, str):
+                if isinstance(name, str) and isinstance(version, str):
                     versions[name] = version
     return versions
 

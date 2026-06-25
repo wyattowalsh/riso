@@ -2,19 +2,19 @@
 
 > Multi-wave parallel research architecture for analyzing SaaS starter templates and synthesizing recommendations for the Riso template.
 
----
+______________________________________________________________________
 
 ## Overview
 
-| Wave | Agents | Type | Purpose | Dependencies |
-|------|--------|------|---------|--------------|
-| 1 | 10 parallel | explore | Analyze individual starters | None |
-| 2 | 6 parallel | explore | Research trends/gaps | None (can run with Wave 1) |
-| 3 | 1 | general-purpose | Synthesize all findings | Waves 1 & 2 complete |
+| Wave | Agents      | Type            | Purpose                     | Dependencies               |
+| ---- | ----------- | --------------- | --------------------------- | -------------------------- |
+| 1    | 10 parallel | explore         | Analyze individual starters | None                       |
+| 2    | 6 parallel  | explore         | Research trends/gaps        | None (can run with Wave 1) |
+| 3    | 1           | general-purpose | Synthesize all findings     | Waves 1 & 2 complete       |
 
 **Total agents:** 17 (16 parallel in waves 1+2, 1 sequential for synthesis)
 
----
+______________________________________________________________________
 
 ## WAVE 1: Parallel Starter Analysis
 
@@ -23,15 +23,15 @@ Each subagent researches ONE specific SaaS starter. Launch all simultaneously.
 ### Starters to Analyze
 
 1. ShipFast
-2. Supastarter
-3. SaaS UI (by Tremor)
-4. Makerkit
-5. Nextless.js
-6. SaaSrock
-7. Bedrock
-8. LaunchFast
-9. T3 Stack / create-t3-app
-10. Vercel SaaS templates
+1. Supastarter
+1. SaaS UI (by Tremor)
+1. Makerkit
+1. Nextless.js
+1. SaaSrock
+1. Bedrock
+1. LaunchFast
+1. T3 Stack / create-t3-app
+1. Vercel SaaS templates
 
 ### Wave 1 Prompt Template
 
@@ -148,7 +148,7 @@ Extract and report:
 </constraints>
 ```
 
----
+______________________________________________________________________
 
 ## WAVE 2: Parallel Trend/Gap Research
 
@@ -157,11 +157,11 @@ Launch after Wave 1 completes (or in parallel). Each subagent researches a speci
 ### Topics to Research
 
 1. Authentication trends 2025-2026
-2. Payment processing trends 2025-2026
-3. AI/LLM SaaS features 2025-2026
-4. Developer pain points with SaaS starters
-5. Emerging SaaS frameworks 2025-2026
-6. SaaS security & compliance 2025-2026
+1. Payment processing trends 2025-2026
+1. AI/LLM SaaS features 2025-2026
+1. Developer pain points with SaaS starters
+1. Emerging SaaS frameworks 2025-2026
+1. SaaS security & compliance 2025-2026
 
 ### Wave 2A: Authentication Trends
 
@@ -397,7 +397,7 @@ Search for:
 </output_format>
 ```
 
----
+______________________________________________________________________
 
 ## WAVE 3: Synthesis
 
@@ -405,7 +405,7 @@ After Waves 1 and 2 complete, a single agent synthesizes all findings.
 
 ### Synthesis Prompt Template
 
-```xml
+````xml
 <context>
 You are synthesizing research from multiple parallel agents analyzing SaaS starter templates.
 Your job is to consolidate findings into actionable template configuration recommendations.
@@ -445,7 +445,7 @@ Synthesize:
 ```yaml
 # copier.yml - SaaS Starter Options
 # [Full YAML schema for template configuration]
-```
+````
 
 ## Dependency Versions (as of Jan 2026)
 
@@ -456,23 +456,30 @@ Synthesize:
 ## Implementation Priority
 
 ### P0 - Core (Week 1-2)
+
 [list]
 
 ### P1 - Essential (Week 3-4)
+
 [list]
 
 ### P2 - Value-Add (Week 5-6)
+
 [list]
 
 ### P3 - Polish (Week 7+)
+
 [list]
 
 ## Differentiation Opportunities
+
 [Based on gap analysis - what we can do better than existing starters]
 
 ## Sources Consolidated
+
 [All unique sources from both waves]
-</output_format>
+\</output_format>
+
 ```
 
 ---
@@ -483,3 +490,4 @@ Synthesize:
 - Wave 3 requires all Wave 1 and Wave 2 outputs
 - Estimated total time: ~3-5 minutes (vs 30+ minutes sequential)
 - Use `subagent_type=Explore` for Waves 1 & 2, `subagent_type=general-purpose` for Wave 3
+```
