@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.2.7](https://github.com/wyattowalsh/riso/compare/v1.2.6...v1.2.7) (2026-06-25)
+
+### Bug Fixes
+
+* **ci:** resolve pnpm workspace root and fumadocs package paths ([fb7cdb2](https://github.com/wyattowalsh/riso/commit/fb7cdb2a31a05394b515d05741c63124821b565b))
+
 ## [1.2.6](https://github.com/wyattowalsh/riso/compare/v1.2.5...v1.2.6) (2026-06-25)
 
 ### Bug Fixes
