@@ -32,10 +32,10 @@ def test_multi_command_structure() -> None:
     from {{ package_name }}.cli.__main__ import discover_commands  # noqa: PLC0415
 
     commands = discover_commands()
-    
+
     # Should have multiple commands
     assert len(commands) >= 3
-    
+
     # Each command should have metadata
     for cmd_func, metadata in commands:
         assert callable(cmd_func)
@@ -48,12 +48,12 @@ def test_command_discovery_mechanism() -> None:
     from {{ package_name }}.cli.__main__ import app  # noqa: PLC0415
 
     runner = CliRunner()
-    
+
     # Test that discovered commands work
     result_quickstart = runner.invoke(app, ["quickstart", "--help"])
     result_version = runner.invoke(app, ["version", "--help"])
     result_init = runner.invoke(app, ["init", "--help"])
-    
+
     assert result_quickstart.exit_code == 0
     assert result_version.exit_code == 0
     assert result_init.exit_code == 0
@@ -109,11 +109,13 @@ def test_main_handles_cli_error() -> None:
     from {{ package_name }}.cli.__main__ import main  # noqa: PLC0415
     from {{ package_name }}.cli.core import CLIError
 
-    with patch.object(sys, "argv", ["{{ project_slug }}"]):
-        with patch(
+    with (
+        patch.object(sys, "argv", ["{{ project_slug }}"]),
+        patch(
             "{{ package_name }}.cli.__main__.app",
             side_effect=CLIError("test failure", exit_code=7),
-        ):
-            with pytest.raises(SystemExit) as exc_info:
-                main()
-            assert exc_info.value.code == 7
+        ),
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        main()
+    assert exc_info.value.code == 7

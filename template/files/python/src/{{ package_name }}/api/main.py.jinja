@@ -44,7 +44,7 @@ def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     config = get_config()
 
-    app = FastAPI(
+    application = FastAPI(
         title=config.app_name,
         description="FastAPI application scaffolded with Riso template",
         version=config.version,
@@ -64,13 +64,13 @@ def create_app() -> FastAPI:
         ],
     )
 
-    configure_request_id(app)
-    configure_cors(app, config)
-    configure_error_handlers(app)
+    configure_request_id(application)
+    configure_cors(application, config)
+    configure_error_handlers(application)
 
-    app.include_router(health.router)
+    application.include_router(health.router)
     if EXAMPLES_ENABLED:
-        app.include_router(examples.router)
+        application.include_router(examples.router)
 
 {% if graphql_api_module == 'enabled' or 'graphql' in api_features %}
     try:
@@ -82,7 +82,7 @@ def create_app() -> FastAPI:
         async def _graphql_context(request):
             return await get_graphql_context(request=request)
 
-        app.include_router(
+        application.include_router(
             GraphQLRouter(schema, context_getter=_graphql_context),
             prefix="/graphql",
         )
@@ -91,10 +91,10 @@ def create_app() -> FastAPI:
 {% endif %}
 
 {% if websocket_module == "enabled" or "websocket" in api_features %}
-    setup_websocket_routes(app)
+    setup_websocket_routes(application)
 {% endif %}
 
-    @app.get("/", tags=["Root"], summary="API Root")
+    @application.get("/", tags=["Root"], summary="API Root")
     async def root() -> dict[str, str]:
         return {
             "message": "Welcome to {{ project_name }}",
@@ -102,7 +102,7 @@ def create_app() -> FastAPI:
             "redoc": "/redoc",
         }
 
-    return app
+    return application
 
 
 app = create_app()
@@ -111,12 +111,12 @@ app = create_app()
 if __name__ == "__main__":
     import uvicorn
 
-    config = get_config()
+    api_config = get_config()
     uvicorn.run(
         "{{ package_name }}.api.main:app",
-        host=config.host,
-        port=config.port,
-        reload=config.reload,
-        log_level=config.log_level.lower(),
+        host=api_config.host,
+        port=api_config.port,
+        reload=api_config.reload,
+        log_level=str(api_config.log_level).lower(),
     )
-{%- endif %}
+{% endif -%}
