@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.2.6](https://github.com/wyattowalsh/riso/compare/v1.2.5...v1.2.6) (2026-06-25)
+
+### Bug Fixes
+
+* **ci:** resolve render paths for single-package and monorepo layouts ([824298a](https://github.com/wyattowalsh/riso/commit/824298aa11bf0a78f9ca4d12deb2bbf6282087db))
+
 ## [1.2.5](https://github.com/wyattowalsh/riso/compare/v1.2.4...v1.2.5) (2026-06-25)
 
 ### Bug Fixes
