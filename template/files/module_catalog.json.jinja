@@ -10,8 +10,10 @@
       "docs_path": "docs/modules/quality.md",
       "ci_jobs": ["python-quality-standard", "python-quality-strict"],
       "validation_commands": [
-        "make quality",
-        "uv run task quality"
+        {% if task_runner in ['just', 'both'] %}"just quality"{% if task_runner == 'both' %},
+        "make quality"{% endif %},
+        {% elif task_runner == 'makefile' %}"make quality",
+        {% endif %}"uv run task quality"
       ]
     },
     {

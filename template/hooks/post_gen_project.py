@@ -40,7 +40,7 @@ DEFAULT_GUIDANCE = [
     "Read AGENTS.md for AI agent instructions and project commands.",
     "Create a virtual environment with `uv venv` (or activate an existing one).",
     "Install dependencies via `uv sync`.",
-    "Install pre-commit hooks via `make hooks` from the project root.",
+    "Install pre-commit hooks via `{hooks_cmd}` from the project root.",
     "Run the baseline quickstart script: `uv run python -m {package}.quickstart`.",
     "Review docs/modules/prompt-reference.md for module-specific commands.",
 ]
@@ -372,9 +372,11 @@ def render_guidance(package: str, answers: dict[str, object]) -> str:
         Formatted multi-line string with all applicable guidance.
     """
     layout = answer_text(answers, "project_layout", "single-package")
+    task_runner = answer_text(answers, "task_runner", "just")
+    hooks_cmd = hooks_install_command(task_runner)
     lines = ["Next steps:"]
     for item in DEFAULT_GUIDANCE:
-        lines.append(f"- {item.format(package=package)}")
+        lines.append(f"- {item.format(package=package, hooks_cmd=hooks_cmd)}")
     for item in layout_guidance(layout):
         lines.append(f"- {item.format(package=package)}")
     for item in docs_guidance(answers):
@@ -386,8 +388,17 @@ def render_guidance(package: str, answers: dict[str, object]) -> str:
     return "\n".join(lines)
 
 
+def hooks_install_command(task_runner: str) -> str:
+    """Return the preferred pre-commit install command for the task runner."""
+    if task_runner in {"just", "both"}:
+        return "just hooks"
+    if task_runner == "makefile":
+        return "make hooks"
+    return "uv run pre-commit install --install-hooks"
+
+
 def pre_commit_setup_guidance(
-    quality_profile: str, changelog_module: str
+    quality_profile: str, changelog_module: str, task_runner: str = "just"
 ) -> dict[str, object]:
     """Describe hook setup without mutating the generated repository."""
     hook_types = ["pre-commit"]
@@ -399,7 +410,7 @@ def pre_commit_setup_guidance(
     return {
         "status": "manual",
         "hooks": hook_types,
-        "install_command": "make hooks",
+        "install_command": hooks_install_command(task_runner),
     }
 
 
@@ -438,7 +449,10 @@ def main() -> None:
     # Record pre-commit setup guidance (manual install; no hook mutation)
     quality_profile = answer_text(answers, "quality_profile", "standard")
     changelog_module = answer_text(answers, "changelog_module", "disabled")
-    pre_commit_result = pre_commit_setup_guidance(quality_profile, changelog_module)
+    task_runner = answer_text(answers, "task_runner", "just")
+    pre_commit_result = pre_commit_setup_guidance(
+        quality_profile, changelog_module, task_runner
+    )
 
     record_metadata(
         destination,

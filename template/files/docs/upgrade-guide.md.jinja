@@ -48,7 +48,7 @@ highlighting module toggles, governance automation, and layout considerations.
   - Install notebook deps: `uv sync --group notebook`
   - Re-run notebooks with `nbclient`.
 - **Changelog & Release (`changelog_module=enabled`)**
-  - Install Git hooks: `make hooks` (or `pnpm run setup-hooks`)
+  - Install Git hooks: {% if task_runner in ['just', 'both'] %}`just hooks`{% elif task_runner == 'makefile' %}`make hooks`{% else %}`uv run pre-commit install --install-hooks`{% endif %} (or `pnpm run setup-hooks`)
   - Configure GitHub Secrets: `PYPI_TOKEN`, `NPM_TOKEN` (if applicable)
   - Review `.commitlintrc.yml` and `.releaserc.yml` configurations
   - Verify workflow: `gh workflow view release.yml`
