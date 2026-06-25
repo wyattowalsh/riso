@@ -449,7 +449,8 @@ bootstrap_render_dependencies() {
     else
       log "Normalizing rendered Python style in ${python_dir}"
       (cd "${python_dir}" && uv run --group quality ruff format . >/dev/null 2>&1) || true
-      (cd "${python_dir}" && uv run --group quality ruff check --fix . >/dev/null 2>&1) || true
+      # Keep setattr-based CLI metadata (B010/B009 break ty on decorator attributes).
+      (cd "${python_dir}" && uv run --group quality ruff check --fix --ignore B009,B010 . >/dev/null 2>&1) || true
     fi
   fi
 
