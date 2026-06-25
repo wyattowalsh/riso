@@ -172,10 +172,10 @@ jobs:
       - name: Install Documentation Tooling
         run: |
           pip install uv
-          uv sync
+          uv sync --group dev --group docs
           if [ -f package.json ]; then pnpm install; fi
       - name: Build Sphinx Docs
-        run: uv run sphinx-build docs/shibuya dist/docs-shibuya
+        run: uv run sphinx-build -W -b html docs dist/docs-shibuya
       - name: Build Fumadocs Site
         run: |
           if [ -f package.json ]; then pnpm --filter docs-fumadocs build; else echo "Skipping Fumadocs build"; fi
@@ -200,6 +200,10 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - name: Install uv
+        run: pip install uv
+      - name: Install dependencies
+        run: uv sync --group dev
       - name: Dry Run Compliance Checkpoints
         run: |
           uv run python scripts/compliance/checkpoints.py \
