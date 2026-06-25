@@ -83,11 +83,10 @@ uv sync && make quality
 Guides \<guides/index>
 Tools \<tools/index>
 API Reference \<api/index>
-MCP Logging <mcp-logging>
-Logging Quick Reference <logging-quick-reference>
 SaaS Starter Research Prompts \<research/saas-starter-research-prompts>
 SaaS Starter Synthesis Report \<research/saas-starter-synthesis-report>
 Changelog <changelog>
+Pre-commit Commit-msg SSOT <adr/precommit-commit-msg-ssot>
 :::
 
 ## Core Features

@@ -13,6 +13,7 @@ Roadmap <roadmap>
 Implementation Guide <implementation-guide>
 Matrix Data <matrix-data>
 CI Platforms <ci-platforms>
-Session Persistence <session-persistence>
+Agent Scaffolding <agent-scaffolding>
+MCP to CLI Migration <mcp-to-cli-migration>
 Troubleshooting <troubleshooting>
 :::
