@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.2.9](https://github.com/wyattowalsh/riso/compare/v1.2.8...v1.2.9) (2026-06-25)
+
+### Bug Fixes
+
+* **template:** harden cli-docs smoke quality for rendered samples ([f886152](https://github.com/wyattowalsh/riso/commit/f886152d770caadd0f3255fc3e9b68a0f1494933))
+
 ## [1.2.8](https://github.com/wyattowalsh/riso/compare/v1.2.7...v1.2.8) (2026-06-25)
 
 ### Bug Fixes
