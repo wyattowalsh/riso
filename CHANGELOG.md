@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.2.8](https://github.com/wyattowalsh/riso/compare/v1.2.7...v1.2.8) (2026-06-25)
+
+### Bug Fixes
+
+* **ci:** keep full-stack strict and skip strict quality smoke ([8e90854](https://github.com/wyattowalsh/riso/commit/8e908540e71cffe8bf41dd4203e6c48a6cbccc52))
+* **ci:** track template lib files and restore sample smoke gates ([4f799ba](https://github.com/wyattowalsh/riso/commit/4f799bad8448830a25fab1d0c56be6b736a535ab))
+
 ## [1.2.7](https://github.com/wyattowalsh/riso/compare/v1.2.6...v1.2.7) (2026-06-25)
 
 ### Bug Fixes
