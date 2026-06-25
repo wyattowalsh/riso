@@ -1,11 +1,19 @@
 {%- if docs_module == 'enabled' and docs_framework == 'fumadocs' -%}
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createMDX } from 'fumadocs-mdx/next';
 
 const withMDX = createMDX();
+const packageRoot = path.dirname(fileURLToPath(import.meta.url));
+const workspaceRoot = path.resolve(packageRoot, '..', '..', '..');
 
 /** @type {import('next').NextConfig} */
 const config = {
   reactStrictMode: true,
+  outputFileTracingRoot: workspaceRoot,
+  turbopack: {
+    root: workspaceRoot,
+  },
 {%- if fumadocs_llms_txt == 'enabled' %}
 
   async rewrites() {
