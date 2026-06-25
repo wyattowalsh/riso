@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.2.5](https://github.com/wyattowalsh/riso/compare/v1.2.4...v1.2.5) (2026-06-25)
+
+### Bug Fixes
+
+* **ci:** bootstrap renders and resolve remaining workflow failures ([356f6ee](https://github.com/wyattowalsh/riso/commit/356f6eec928816d4b4cac5e2140027f9df71d0d3))
+
 ## [1.2.4](https://github.com/wyattowalsh/riso/compare/v1.2.3...v1.2.4) (2026-06-25)
 
 ### Bug Fixes
