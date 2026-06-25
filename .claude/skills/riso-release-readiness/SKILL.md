@@ -39,4 +39,3 @@ uv run python scripts/ci/validate_release_configs.py
 
 Use `scripts/collect_release_evidence.py` when a compact JSON summary of
 evidence files is useful.
-

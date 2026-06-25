@@ -62,4 +62,3 @@ workflows, packaging, generated artifacts, and maintainer skills.
 - Agent Skills specification: <https://agentskills.io/specification>
 - Codex skills: <https://developers.openai.com/codex/skills>
 - Claude Code skills: <https://code.claude.com/docs/en/skills>
-

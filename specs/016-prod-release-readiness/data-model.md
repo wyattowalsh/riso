@@ -54,4 +54,3 @@ Tracks the final handoff ledger in `tmp/riso-prod-ready-release-todo.md`.
 - `status`: pass, fail, skipped, or blocked.
 - `evidence`: exact summary output.
 - `next_action`: owner and remediation when not passed.
-

@@ -38,4 +38,3 @@ preserving stale legacy answer behavior.
 - Render matrix completes for supported sample variants.
 - Package build, metadata check, wheel install smoke, and release dry-run pass.
 - Security scans either pass or have fixed findings.
-
