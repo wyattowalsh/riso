@@ -110,7 +110,7 @@ async def create_example(request: ExampleCreateRequest) -> ExampleResponse:
     """
     example_id = str(uuid.uuid4())
     now = datetime.now(UTC).isoformat()
-    
+
     example = {
         "id": example_id,
         "name": request.name,
@@ -120,7 +120,7 @@ async def create_example(request: ExampleCreateRequest) -> ExampleResponse:
         "created_at": now,
         "updated_at": now,
     }
-    
+
     _examples_db[example_id] = example
     return ExampleResponse(**example)
 
@@ -160,7 +160,7 @@ async def get_example(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Example {example_id} not found",
         )
-    
+
     return ExampleResponse(**_examples_db[example_id])
 
 
@@ -201,9 +201,9 @@ async def update_example(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Example {example_id} not found",
         )
-    
+
     example = _examples_db[example_id]
-    
+
     # Update only provided fields
     if request.name is not None:
         example["name"] = request.name
@@ -213,9 +213,9 @@ async def update_example(
         example["description"] = request.description
     if request.tags is not None:
         example["tags"] = request.tags
-    
+
     example["updated_at"] = datetime.now(UTC).isoformat()
-    
+
     _examples_db[example_id] = example
     return ExampleResponse(**example)
 
@@ -246,6 +246,6 @@ async def delete_example(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Example {example_id} not found",
         )
-    
+
     del _examples_db[example_id]
-{%- endif %}
+{% endif -%}

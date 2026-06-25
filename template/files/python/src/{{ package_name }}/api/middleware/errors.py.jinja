@@ -10,7 +10,6 @@ including validation errors, HTTP exceptions, and unhandled exceptions.
 from __future__ import annotations
 
 import uuid
-from typing import Any
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -52,7 +51,10 @@ def configure_error_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def validation_exception_handler(
+        request: Request,
+        exc: RequestValidationError,
+    ) -> JSONResponse:
         """Handle request validation errors with detailed field errors.
 
         Args:
@@ -81,18 +83,19 @@ def configure_error_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(Exception)
-    async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    async def unhandled_exception_handler(
+        request: Request,
+        _exc: Exception,
+    ) -> JSONResponse:
         """Handle unhandled exceptions with generic error response.
 
         Args:
             request: FastAPI request object
-            exc: Exception instance
 
         Returns:
             JSONResponse with generic error message (no stack trace in production)
         """
         request_id = getattr(request.state, "request_id", None) or str(uuid.uuid4())
-        # In production, don't expose internal error details
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
@@ -101,4 +104,4 @@ def configure_error_handlers(app: FastAPI) -> None:
                 "request_id": request_id,
             },
         )
-{%- endif %}
+{% endif -%}

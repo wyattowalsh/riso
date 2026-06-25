@@ -53,7 +53,7 @@ class ApiConfig(BaseSettings):
         app_name: Application name shown in docs (default: "{{ project_name }}")
         version: Application version (default: "0.1.0")
         log_level: Logging level (default: "INFO", choices: DEBUG, INFO, WARNING, ERROR)
-        environment: Deployment environment (default: "development", choices: development, staging, production)
+        environment: Deployment environment (development, staging, or production)
     """
 
     model_config = SettingsConfigDict(
@@ -115,7 +115,8 @@ class ApiConfig(BaseSettings):
         """Validate CORS origins are valid URLs."""
         for origin in v:
             if not origin.startswith(("http://", "https://")):
-                raise ValueError(f"Invalid CORS origin: {origin} (must start with http:// or https://)")
+                msg = f"Invalid CORS origin: {origin} (must start with http:// or https://)"
+                raise ValueError(msg)
         return v
 
 
