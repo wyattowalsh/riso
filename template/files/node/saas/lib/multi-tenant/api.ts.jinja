@@ -1,0 +1,342 @@
+{% if saas_infra_module == "enabled" and saas_multi_tenancy == 'enterprise' %}
+/**
+ * Multi-Tenancy API Client
+ *
+ * Client-side API functions for tenant operations.
+ */
+
+import type {
+  TenantConfig,
+  CreateTenantInput,
+  UpdateTenantInput,
+  TenantUsage,
+  TenantExportOptions,
+  TenantExportResult,
+  TenantInvitation,
+  TenantMember,
+} from './types';
+
+const API_BASE = '/api/tenants';
+
+/**
+ * Get current tenant from server
+ */
+export async function getCurrentTenant(): Promise<TenantConfig | null> {
+  const response = await fetch(`${API_BASE}/current`, {
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      return null;
+    }
+    throw new Error('Failed to fetch current tenant');
+  }
+
+  return response.json();
+}
+
+/**
+ * Get tenant by slug
+ */
+export async function getTenantBySlug(slug: string): Promise<TenantConfig | null> {
+  const response = await fetch(`${API_BASE}/${slug}`, {
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      return null;
+    }
+    throw new Error('Failed to fetch tenant');
+  }
+
+  return response.json();
+}
+
+/**
+ * Get tenant by ID
+ */
+export async function getTenantById(id: string): Promise<TenantConfig | null> {
+  const response = await fetch(`${API_BASE}/${id}`, {
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      return null;
+    }
+    throw new Error('Failed to fetch tenant');
+  }
+
+  return response.json();
+}
+
+/**
+ * List all tenants (admin only)
+ */
+export async function listTenants(params?: {
+  status?: string;
+  tier?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{ tenants: TenantConfig[]; total: number }> {
+  const searchParams = new URLSearchParams();
+
+  if (params?.status) searchParams.set('status', params.status);
+  if (params?.tier) searchParams.set('tier', params.tier);
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.offset) searchParams.set('offset', params.offset.toString());
+
+  const response = await fetch(`${API_BASE}?${searchParams.toString()}`, {
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to list tenants');
+  }
+
+  return response.json();
+}
+
+/**
+ * Create new tenant
+ */
+export async function createTenant(input: CreateTenantInput): Promise<TenantConfig> {
+  const response = await fetch(API_BASE, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to create tenant');
+  }
+
+  return response.json();
+}
+
+/**
+ * Update tenant
+ */
+export async function updateTenant(
+  id: string,
+  input: UpdateTenantInput
+): Promise<TenantConfig> {
+  const response = await fetch(`${API_BASE}/${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to update tenant');
+  }
+
+  return response.json();
+}
+
+/**
+ * Delete tenant
+ */
+export async function deleteTenant(id: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to delete tenant');
+  }
+}
+
+/**
+ * Get tenant usage statistics
+ */
+export async function getTenantUsage(id: string): Promise<TenantUsage> {
+  const response = await fetch(`${API_BASE}/${id}/usage`, {
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch tenant usage');
+  }
+
+  return response.json();
+}
+
+/**
+ * Export tenant data
+ */
+export async function exportTenantData(
+  id: string,
+  options: TenantExportOptions
+): Promise<TenantExportResult> {
+  const response = await fetch(`${API_BASE}/${id}/export`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(options),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to export tenant data');
+  }
+
+  return response.json();
+}
+
+/**
+ * List tenant members
+ */
+export async function getTenantMembers(tenantId: string): Promise<TenantMember[]> {
+  const response = await fetch(`${API_BASE}/${tenantId}/members`, {
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch tenant members');
+  }
+
+  return response.json();
+}
+
+/**
+ * Invite member to tenant
+ */
+export async function inviteTenantMember(
+  tenantId: string,
+  email: string,
+  role: TenantInvitation['role']
+): Promise<TenantInvitation> {
+  const response = await fetch(`${API_BASE}/${tenantId}/members/invite`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ email, role }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to invite member');
+  }
+
+  return response.json();
+}
+
+/**
+ * Remove member from tenant
+ */
+export async function removeTenantMember(
+  tenantId: string,
+  memberId: string
+): Promise<void> {
+  const response = await fetch(`${API_BASE}/${tenantId}/members/${memberId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to remove member');
+  }
+}
+
+/**
+ * Update member role
+ */
+export async function updateMemberRole(
+  tenantId: string,
+  memberId: string,
+  role: TenantMember['role']
+): Promise<TenantMember> {
+  const response = await fetch(`${API_BASE}/${tenantId}/members/${memberId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ role }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to update member role');
+  }
+
+  return response.json();
+}
+
+/**
+ * List tenant invitations
+ */
+export async function getTenantInvitations(
+  tenantId: string
+): Promise<TenantInvitation[]> {
+  const response = await fetch(`${API_BASE}/${tenantId}/invitations`, {
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch invitations');
+  }
+
+  return response.json();
+}
+
+/**
+ * Cancel invitation
+ */
+export async function cancelInvitation(
+  tenantId: string,
+  invitationId: string
+): Promise<void> {
+  const response = await fetch(
+    `${API_BASE}/${tenantId}/invitations/${invitationId}`,
+    {
+      method: 'DELETE',
+      credentials: 'include',
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to cancel invitation');
+  }
+}
+
+/**
+ * Accept invitation
+ */
+export async function acceptInvitation(token: string): Promise<TenantConfig> {
+  const response = await fetch(`${API_BASE}/invitations/accept`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ token }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to accept invitation');
+  }
+
+  return response.json();
+}
+{% endif %}

@@ -1,0 +1,551 @@
+{% if saas_infra_module == "enabled" and saas_multi_tenancy == 'enterprise' %}
+# Multi-Tenancy Module
+
+Enterprise-grade multi-tenancy implementation with tenant isolation, resolution, and comprehensive management features.
+
+## Features
+
+- **Multiple Resolution Strategies**: Subdomain, path, header, or JWT-based tenant identification
+- **Row-Level Security**: Automatic data isolation with Prisma/Drizzle extensions
+- **React Context**: Easy tenant access in client components with hooks
+- **Tenant Management**: Full CRUD operations with usage tracking
+- **Feature Flags**: Per-tenant feature toggles and tier-based access
+- **SSO/SAML**: Scaffolding for enterprise SSO integration
+- **Data Export**: GDPR-compliant tenant data export utilities
+- **Audit Logging**: Track all tenant operations
+- **Team Management**: Invite members, manage roles
+
+## Quick Start
+
+### 1. Setup Middleware
+
+Configure tenant resolution in your Next.js middleware:
+
+```typescript
+// middleware.ts
+import { createTenantMiddleware } from '@/lib/multi-tenant';
+
+export const middleware = createTenantMiddleware({
+  strategy: 'subdomain',
+  domainSuffix: '.myapp.com',
+  defaultTenant: 'demo',
+});
+
+export const config = {
+  matcher: ['/((?!api/health|_next/static|_next/image|favicon.ico).*)'],
+};
+```
+
+### 2. Wrap App with TenantProvider
+
+```tsx
+// app/layout.tsx
+import { TenantProvider } from '@/lib/multi-tenant';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html>
+      <body>
+        <TenantProvider>{children}</TenantProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+### 3. Use Tenant Context in Components
+
+```tsx
+import { useTenant, FeatureGate } from '@/lib/multi-tenant';
+
+export function Dashboard() {
+  const { tenant, hasFeature } = useTenant();
+
+  return (
+    <div>
+      <h1>Welcome to {tenant?.name}</h1>
+
+      <FeatureGate feature="analytics">
+        <AnalyticsPanel />
+      </FeatureGate>
+    </div>
+  );
+}
+```
+
+### 4. Setup Database Isolation
+
+```typescript
+// lib/db.ts
+import { PrismaClient } from '@prisma/client';
+import { createPrismaExtension } from '@/lib/multi-tenant';
+
+export const db = new PrismaClient().$extends(createPrismaExtension);
+```
+
+Now all queries are automatically scoped to the current tenant:
+
+```typescript
+// This automatically filters by tenantId
+const posts = await db.post.findMany();
+```
+
+## Resolution Strategies
+
+### Subdomain-based (Recommended)
+
+Best for SaaS apps where each tenant has their own subdomain.
+
+```typescript
+createTenantMiddleware({
+  strategy: 'subdomain',
+  domainSuffix: '.myapp.com',
+});
+```
+
+Examples:
+- `acme.myapp.com` → tenant: `acme`
+- `globex.myapp.com` → tenant: `globex`
+
+### Path-based
+
+Good for apps where subdomains aren't feasible.
+
+```typescript
+createTenantMiddleware({
+  strategy: 'path',
+  pathPrefix: '/t',
+});
+```
+
+Examples:
+- `/t/acme/dashboard` → tenant: `acme`
+- `/t/globex/settings` → tenant: `globex`
+
+### Header-based
+
+Best for API-first apps and mobile backends.
+
+```typescript
+createTenantMiddleware({
+  strategy: 'header',
+  headerName: 'x-tenant-id',
+});
+```
+
+Send tenant in request headers:
+```
+X-Tenant-Id: acme
+```
+
+### JWT-based
+
+For multi-tenant mobile or desktop apps using JWT authentication.
+
+```typescript
+createTenantMiddleware({
+  strategy: 'jwt',
+});
+```
+
+Tenant extracted from JWT token's `tenantId` claim.
+
+## Data Isolation
+
+### Automatic Isolation with Prisma
+
+```typescript
+import { PrismaClient } from '@prisma/client';
+import { createPrismaExtension, setCurrentTenant } from '@/lib/multi-tenant';
+
+const prisma = new PrismaClient().$extends(createPrismaExtension);
+
+// Set tenant context (typically done in middleware)
+setCurrentTenant(tenant);
+
+// All queries automatically filtered by tenantId
+const users = await prisma.user.findMany(); // Only returns tenant's users
+const post = await prisma.post.create({ data: { title: 'Hello' } }); // Auto-adds tenantId
+```
+
+### Manual Isolation with Drizzle
+
+```typescript
+import { createDrizzleHelper } from '@/lib/multi-tenant';
+import { db } from '@/lib/db';
+import { posts } from '@/lib/schema';
+
+const postHelper = createDrizzleHelper(db, posts);
+
+// Automatically scoped to current tenant
+const allPosts = await postHelper.select().execute();
+const newPost = await postHelper.insert({ title: 'Hello', content: '...' });
+```
+
+### Configuration
+
+```typescript
+import { initTenantIsolation } from '@/lib/multi-tenant';
+
+initTenantIsolation({
+  enableRLS: true,
+  autoInject: true,
+  tenantIdField: 'tenantId', // Your tenant FK field name
+  excludedTables: ['_migrations', 'system_logs'],
+  strictMode: true, // Throw on cross-tenant access
+});
+```
+
+## React Hooks
+
+### useTenant
+
+Access full tenant context:
+
+```tsx
+const { tenant, loading, error, switchTenant, refetchTenant, hasFeature, getSetting } =
+  useTenant();
+```
+
+### useCurrentTenant
+
+Get just the tenant object:
+
+```tsx
+const tenant = useCurrentTenant();
+```
+
+### useTenantFeature
+
+Check feature availability:
+
+```tsx
+const hasAnalytics = useTenantFeature('analytics');
+
+if (hasAnalytics) {
+  return <AnalyticsPanel />;
+}
+```
+
+### useTenantSetting
+
+Get tenant-specific settings:
+
+```tsx
+const brandColor = useTenantSetting<string>('brandColor', '#000000');
+const maxFileSize = useTenantSetting<number>('maxFileSize', 10485760);
+```
+
+### useIsTenantOwner
+
+Check if user owns the tenant:
+
+```tsx
+const isOwner = useIsTenantOwner(userId);
+```
+
+## Components
+
+### FeatureGate
+
+Conditionally render based on feature flags:
+
+```tsx
+<FeatureGate feature="premium-support" fallback={<UpgradePrompt />}>
+  <PremiumSupportChat />
+</FeatureGate>
+```
+
+### TenantInfo
+
+Display tenant information:
+
+```tsx
+<TenantInfo className="p-4" />
+```
+
+### TenantStatusBadge
+
+Show tenant status badge:
+
+```tsx
+<TenantStatusBadge />
+```
+
+## API Operations
+
+### Create Tenant
+
+```typescript
+import { createTenant } from '@/lib/multi-tenant';
+
+const tenant = await createTenant({
+  name: 'Acme Corporation',
+  slug: 'acme',
+  tier: 'professional',
+  ownerId: userId,
+  features: {
+    analytics: true,
+    api: true,
+  },
+});
+```
+
+### Update Tenant
+
+```typescript
+import { updateTenant } from '@/lib/multi-tenant';
+
+await updateTenant(tenantId, {
+  name: 'Acme Corp',
+  tier: 'enterprise',
+  features: {
+    sso: true,
+  },
+});
+```
+
+### Get Tenant Usage
+
+```typescript
+import { getTenantUsage } from '@/lib/multi-tenant';
+
+const usage = await getTenantUsage(tenantId);
+
+console.log(usage.users.current, '/', usage.users.max);
+console.log(usage.storage.current, '/', usage.storage.max);
+```
+
+### Export Tenant Data
+
+```typescript
+import { exportTenantData } from '@/lib/multi-tenant';
+
+const exportResult = await exportTenantData(tenantId, {
+  format: 'zip',
+  includeUsers: true,
+  includeFiles: true,
+  dateRange: {
+    from: new Date('2024-01-01'),
+    to: new Date('2024-12-31'),
+  },
+});
+
+// Download from exportResult.downloadUrl
+```
+
+## Team Management
+
+### Invite Members
+
+```typescript
+import { inviteTenantMember } from '@/lib/multi-tenant';
+
+const invitation = await inviteTenantMember(tenantId, 'user@example.com', 'admin');
+
+// Send invitation.token via email
+```
+
+### List Members
+
+```typescript
+import { getTenantMembers } from '@/lib/multi-tenant';
+
+const members = await getTenantMembers(tenantId);
+```
+
+### Update Member Role
+
+```typescript
+import { updateMemberRole } from '@/lib/multi-tenant';
+
+await updateMemberRole(tenantId, memberId, 'viewer');
+```
+
+## Utilities
+
+### Validate Tenant Slug
+
+```typescript
+import { isValidTenantSlug, sanitizeTenantSlug } from '@/lib/multi-tenant';
+
+isValidTenantSlug('acme-corp'); // true
+isValidTenantSlug('Acme Corp'); // false
+
+sanitizeTenantSlug('Acme Corp!!!'); // 'acme-corp'
+```
+
+### Calculate Usage
+
+```typescript
+import { calculateUsagePercentage, isApproachingLimit } from '@/lib/multi-tenant';
+
+const percentages = calculateUsagePercentage(usage);
+console.log(`Storage: ${percentages.storage}%`);
+
+if (isApproachingLimit(usage, 80)) {
+  console.warn('Approaching limit!');
+}
+```
+
+### Format Storage
+
+```typescript
+import { formatStorageSize } from '@/lib/multi-tenant';
+
+formatStorageSize(1024 * 1024 * 50); // "50.00 MB"
+```
+
+## Tier Configuration
+
+Default tier limits:
+
+| Tier         | Users | Storage | API Calls | Features                          |
+| ------------ | ----- | ------- | --------- | --------------------------------- |
+| Free         | 3     | 100 MB  | 1,000     | Basic                             |
+| Starter      | 10    | 1 GB    | 10,000    | + Analytics, API                  |
+| Professional | 50    | 10 GB   | 100,000   | + Integrations, Priority Support  |
+| Enterprise   | ∞     | ∞       | ∞         | + SSO, Custom Domain, Audit Logs  |
+
+Customize in `utils.ts`:
+
+```typescript
+export function getTierLimits(tier: TenantTier) {
+  return {
+    free: { maxUsers: 5, maxStorage: 1024 * 1024 * 200 },
+    // ... customize as needed
+  };
+}
+```
+
+## SSO/SAML Integration
+
+SSO configuration is scaffolded in the tenant config:
+
+```typescript
+const tenant = await updateTenant(tenantId, {
+  sso: {
+    enabled: true,
+    provider: 'saml',
+    entryPoint: 'https://sso.example.com/saml',
+    issuer: 'myapp',
+    cert: '-----BEGIN CERTIFICATE-----...',
+  },
+});
+```
+
+Integrate with libraries like:
+- `@node-saml/node-saml` (SAML)
+- `openid-client` (OIDC)
+- `passport` strategies
+
+## Best Practices
+
+1. **Always use middleware**: Ensure tenant is resolved before any app logic
+2. **Enable strict mode**: Catch cross-tenant data access bugs early
+3. **Test with multiple tenants**: Use different accounts during development
+4. **Monitor usage**: Set up alerts when tenants approach limits
+5. **Audit tenant operations**: Log all admin actions for compliance
+6. **Handle suspended tenants**: Show friendly messages, not errors
+7. **Backup tenant data**: Regular exports for disaster recovery
+8. **Document custom features**: Keep tier feature lists updated
+
+## Security Considerations
+
+- **Never trust client-side tenant selection**: Always resolve server-side
+- **Validate all tenant access**: Use `validateTenantAccess()` for sensitive operations
+- **Sanitize tenant slugs**: Prevent path traversal and XSS
+- **Rate limit tenant APIs**: Prevent abuse from a single tenant
+- **Encrypt SSO credentials**: Never store SAML certs in plaintext
+- **Audit data exports**: Log who exported what and when
+- **Implement soft deletes**: Allow tenant data recovery
+
+## Troubleshooting
+
+### Tenant not found
+
+```
+Error: Tenant not found
+```
+
+**Solutions**:
+- Check DNS/subdomain configuration
+- Verify middleware is configured correctly
+- Ensure `domainSuffix` matches your domain
+- Check database for tenant slug
+
+### Cross-tenant data access
+
+```
+Error: Access denied: Record belongs to different tenant
+```
+
+**Solutions**:
+- Verify `setCurrentTenant()` is called in middleware
+- Check excluded tables configuration
+- Ensure tenant context is set before queries
+- Review manual queries for proper filtering
+
+### Missing tenant context
+
+```
+Error: Tenant context is required but not set
+```
+
+**Solutions**:
+- Wrap app with `<TenantProvider>`
+- Set tenant in middleware before accessing isolation
+- Check if running in expected environment
+
+## Migration Guide
+
+### Adding to Existing Database
+
+1. Add `tenantId` column to all tenant-scoped tables:
+
+```sql
+ALTER TABLE users ADD COLUMN tenant_id VARCHAR(255);
+CREATE INDEX idx_users_tenant ON users(tenant_id);
+```
+
+2. Create tenants table:
+
+```sql
+CREATE TABLE tenants (
+  id VARCHAR(255) PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  slug VARCHAR(63) UNIQUE NOT NULL,
+  status VARCHAR(50) NOT NULL,
+  tier VARCHAR(50) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+3. Migrate existing data to default tenant:
+
+```sql
+INSERT INTO tenants (id, name, slug, status, tier)
+VALUES ('default', 'Default Tenant', 'default', 'active', 'enterprise');
+
+UPDATE users SET tenant_id = 'default';
+UPDATE posts SET tenant_id = 'default';
+-- Repeat for all tenant-scoped tables
+```
+
+## API Reference
+
+See individual file documentation:
+- [Types](./types.ts.jinja) - TypeScript type definitions
+- [Context](./context.tsx.jinja) - React context and hooks
+- [Middleware](./middleware.ts.jinja) - Request middleware
+- [Isolation](./isolation.ts.jinja) - Data isolation patterns
+- [Utils](./utils.ts.jinja) - Helper functions
+- [API](./api.ts.jinja) - Client API functions
+
+## Support
+
+For issues or questions:
+1. Check the [troubleshooting section](#troubleshooting)
+2. Review the [examples](../../../runtime/nextjs/app/admin/tenants/)
+3. Open an issue in the repository
+{% endif %}

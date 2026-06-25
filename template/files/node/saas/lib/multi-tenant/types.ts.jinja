@@ -1,0 +1,269 @@
+{% if saas_infra_module == "enabled" and saas_multi_tenancy == 'enterprise' %}
+/**
+ * Multi-Tenancy Type Definitions
+ *
+ * Core types for enterprise multi-tenant architecture supporting
+ * subdomain, path, and header-based tenant resolution.
+ */
+
+export type TenantResolutionStrategy = 'subdomain' | 'path' | 'header' | 'jwt';
+
+export type TenantStatus = 'active' | 'suspended' | 'trial' | 'churned';
+
+export type TenantTier = 'free' | 'starter' | 'professional' | 'enterprise';
+
+export interface TenantConfig {
+  /** Unique tenant identifier */
+  id: string;
+
+  /** Human-readable tenant name */
+  name: string;
+
+  /** Tenant domain/subdomain (e.g., 'acme' for acme.app.com) */
+  slug: string;
+
+  /** Custom domain if configured */
+  customDomain?: string;
+
+  /** Current subscription status */
+  status: TenantStatus;
+
+  /** Subscription tier */
+  tier: TenantTier;
+
+  /** Feature flags enabled for this tenant */
+  features: Record<string, boolean>;
+
+  /** Tenant-specific configuration */
+  settings: Record<string, unknown>;
+
+  /** Maximum users allowed */
+  maxUsers?: number;
+
+  /** Maximum storage in bytes */
+  maxStorage?: number;
+
+  /** Tenant metadata */
+  metadata: {
+    createdAt: Date;
+    updatedAt: Date;
+    ownerId: string;
+    billingEmail?: string;
+    industry?: string;
+    companySize?: string;
+  };
+
+  /** SAML/SSO configuration */
+  sso?: {
+    enabled: boolean;
+    provider?: 'saml' | 'oidc' | 'oauth2';
+    entryPoint?: string;
+    issuer?: string;
+    cert?: string;
+    metadata?: Record<string, unknown>;
+  };
+
+  /** Data residency requirements */
+  dataResidency?: {
+    region: string;
+    compliance: string[];
+  };
+}
+
+export interface TenantContext {
+  tenant: TenantConfig | null;
+  loading: boolean;
+  error?: Error;
+
+  /** Switch to a different tenant (admin only) */
+  switchTenant: (tenantId: string) => Promise<void>;
+
+  /** Refresh current tenant data */
+  refetchTenant: () => Promise<void>;
+
+  /** Check if a feature is enabled for current tenant */
+  hasFeature: (feature: string) => boolean;
+
+  /** Get a tenant setting value */
+  getSetting: <T = unknown>(key: string, defaultValue?: T) => T | undefined;
+}
+
+export interface TenantResolutionOptions {
+  /** Resolution strategy to use */
+  strategy: TenantResolutionStrategy;
+
+  /** Header name when using header strategy */
+  headerName?: string;
+
+  /** Path prefix when using path strategy (e.g., '/t/:tenantSlug') */
+  pathPrefix?: string;
+
+  /** Fallback tenant for local development */
+  defaultTenant?: string;
+
+  /** Domain suffix for subdomain strategy (e.g., '.myapp.com') */
+  domainSuffix?: string;
+}
+
+export interface TenantIsolationConfig {
+  /** Enable row-level security */
+  enableRLS: boolean;
+
+  /** Automatically inject tenant ID in queries */
+  autoInject: boolean;
+
+  /** Tenant ID field name in database */
+  tenantIdField: string;
+
+  /** Tables/collections to exclude from isolation */
+  excludedTables?: string[];
+
+  /** Strict mode - throw errors if tenant not found */
+  strictMode: boolean;
+}
+
+export interface TenantUsage {
+  tenantId: string;
+  users: {
+    current: number;
+    max: number;
+  };
+  storage: {
+    current: number;
+    max: number;
+  };
+  apiCalls: {
+    current: number;
+    max: number;
+    resetAt: Date;
+  };
+}
+
+export interface TenantExportOptions {
+  /** Include user data */
+  includeUsers?: boolean;
+
+  /** Include file attachments */
+  includeFiles?: boolean;
+
+  /** Export format */
+  format: 'json' | 'csv' | 'zip';
+
+  /** Date range for data export */
+  dateRange?: {
+    from: Date;
+    to: Date;
+  };
+
+  /** Tables to include (empty = all) */
+  tables?: string[];
+}
+
+export interface TenantExportResult {
+  tenantId: string;
+  exportId: string;
+  downloadUrl: string;
+  expiresAt: Date;
+  sizeBytes: number;
+  createdAt: Date;
+}
+
+export interface TenantInvitation {
+  id: string;
+  tenantId: string;
+  email: string;
+  role: 'owner' | 'admin' | 'member' | 'viewer';
+  status: 'pending' | 'accepted' | 'expired';
+  invitedBy: string;
+  createdAt: Date;
+  expiresAt: Date;
+  token: string;
+}
+
+export interface TenantMember {
+  id: string;
+  tenantId: string;
+  userId: string;
+  role: 'owner' | 'admin' | 'member' | 'viewer';
+  joinedAt: Date;
+  lastActiveAt: Date;
+}
+
+export interface CreateTenantInput {
+  name: string;
+  slug: string;
+  tier?: TenantTier;
+  ownerId: string;
+  settings?: Record<string, unknown>;
+  features?: Record<string, boolean>;
+  metadata?: Partial<TenantConfig['metadata']>;
+}
+
+export interface UpdateTenantInput {
+  name?: string;
+  slug?: string;
+  customDomain?: string;
+  status?: TenantStatus;
+  tier?: TenantTier;
+  features?: Record<string, boolean>;
+  settings?: Record<string, unknown>;
+  maxUsers?: number;
+  maxStorage?: number;
+}
+
+/**
+ * Tenant-scoped query builder interface
+ */
+export interface TenantQueryBuilder<T> {
+  where(conditions: Partial<T>): TenantQueryBuilder<T>;
+  orderBy(field: keyof T, direction: 'asc' | 'desc'): TenantQueryBuilder<T>;
+  limit(count: number): TenantQueryBuilder<T>;
+  offset(count: number): TenantQueryBuilder<T>;
+  execute(): Promise<T[]>;
+  first(): Promise<T | null>;
+  count(): Promise<number>;
+}
+
+/**
+ * Audit log entry for tenant operations
+ */
+export interface TenantAuditLog {
+  id: string;
+  tenantId: string;
+  userId: string;
+  action: string;
+  resource: string;
+  resourceId?: string;
+  changes?: Record<string, { old: unknown; new: unknown }>;
+  ipAddress?: string;
+  userAgent?: string;
+  timestamp: Date;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Webhook event types for tenant lifecycle
+ */
+export type TenantWebhookEvent =
+  | 'tenant.created'
+  | 'tenant.updated'
+  | 'tenant.deleted'
+  | 'tenant.suspended'
+  | 'tenant.activated'
+  | 'tenant.upgraded'
+  | 'tenant.downgraded'
+  | 'tenant.member.added'
+  | 'tenant.member.removed'
+  | 'tenant.member.role_changed';
+
+export interface TenantWebhook {
+  id: string;
+  tenantId: string;
+  url: string;
+  events: TenantWebhookEvent[];
+  secret: string;
+  enabled: boolean;
+  createdAt: Date;
+  lastTriggeredAt?: Date;
+}
+{% endif %}

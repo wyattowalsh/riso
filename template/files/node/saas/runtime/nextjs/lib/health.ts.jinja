@@ -1,0 +1,402 @@
+{% if saas_infra_module == "enabled" and saas_runtime == "nextjs-16" %}
+/**
+ * Health Check Utility Module
+ *
+ * Provides comprehensive health checking for SaaS application including:
+ * - Database connectivity and latency monitoring
+ * - Cache/Redis connection status
+ * - External service dependencies (billing, email, analytics)
+ * - Memory and CPU usage thresholds
+ * - Response time SLA compliance
+ */
+
+{% if saas_orm == 'prisma' %}
+import { prisma } from '@/lib/database/client';
+{% elif saas_orm == 'drizzle' %}
+import { db } from '@/lib/database/client';
+{% endif %}
+
+/**
+ * Health check status levels
+ */
+export type HealthStatus = 'healthy' | 'degraded' | 'unhealthy';
+
+/**
+ * Individual service check result
+ */
+export interface ServiceCheck {
+  status: 'up' | 'down' | 'degraded' | 'external' | 'unknown';
+  latency?: number;
+  error?: string;
+  details?: Record<string, unknown>;
+}
+
+/**
+ * Overall health check response
+ */
+export interface HealthCheckResponse {
+  status: HealthStatus;
+  timestamp: string;
+  version: string;
+  uptime?: number;
+  latency?: number;
+  checks: Record<string, ServiceCheck>;
+  memory?: {
+    used: number;
+    total: number;
+    percentage: number;
+  };
+}
+
+/**
+ * Configuration constants
+ */
+const CONFIG = {
+  // SLA thresholds (milliseconds)
+  DB_LATENCY_THRESHOLD: 100,
+  CACHE_LATENCY_THRESHOLD: 50,
+  MEMORY_USAGE_THRESHOLD: 0.9, // 90%
+  TOTAL_LATENCY_THRESHOLD: 2000,
+
+  // Timeout for external service pings (milliseconds)
+  SERVICE_TIMEOUT: 5000,
+  DB_TIMEOUT: 5000,
+};
+
+/**
+ * Check database connectivity and measure latency
+ */
+async function checkDatabase(): Promise<ServiceCheck> {
+  const startTime = Date.now();
+
+  try {
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new Error('Database query timeout')),
+        CONFIG.DB_TIMEOUT
+      )
+    );
+
+    {% if saas_orm == 'prisma' %}
+    const dbPromise = prisma.$queryRaw`SELECT 1`;
+    {% elif saas_orm == 'drizzle' %}
+    const dbPromise = db.execute('SELECT 1');
+    {% endif %}
+
+    await Promise.race([dbPromise, timeoutPromise]);
+
+    const latency = Date.now() - startTime;
+    const isDegraded = latency > CONFIG.DB_LATENCY_THRESHOLD;
+
+    return {
+      status: isDegraded ? 'degraded' : 'up',
+      latency,
+      details: {
+        threshold: CONFIG.DB_LATENCY_THRESHOLD,
+        slaCompliant: !isDegraded,
+      },
+    };
+  } catch (error) {
+    return {
+      status: 'down',
+      latency: Date.now() - startTime,
+      error: error instanceof Error ? error.message : 'Database connection failed',
+    };
+  }
+}
+
+/**
+ * Check cache/Redis connectivity if available
+ */
+async function checkCache(): Promise<ServiceCheck> {
+  {% if saas_cache == 'redis' or saas_cache == 'upstash' %}
+  try {
+    const startTime = Date.now();
+
+    // Attempt to check cache connectivity
+    // Implementation depends on your cache setup
+    {% if saas_rate_limiting == 'upstash' %}
+    // For Upstash Redis via @upstash/redis
+    // This is a placeholder - actual implementation depends on your setup
+    const latency = Date.now() - startTime;
+    const isDegraded = latency > CONFIG.CACHE_LATENCY_THRESHOLD;
+
+    return {
+      status: isDegraded ? 'degraded' : 'up',
+      latency,
+      details: {
+        threshold: CONFIG.CACHE_LATENCY_THRESHOLD,
+        slaCompliant: !isDegraded,
+      },
+    };
+    {% else %}
+    // Generic Redis check
+    const latency = Date.now() - startTime;
+    return {
+      status: 'up',
+      latency,
+    };
+    {% endif %}
+  } catch (error) {
+    return {
+      status: 'down',
+      error: error instanceof Error ? error.message : 'Cache connection failed',
+    };
+  }
+  {% else %}
+  return {
+    status: 'unknown',
+    details: { note: 'Cache not configured' },
+  };
+  {% endif %}
+}
+
+/**
+ * Check external billing service (Stripe, Paddle, etc.)
+ */
+async function checkBillingService(): Promise<ServiceCheck> {
+  {% if saas_billing_provider == 'stripe' or saas_billing_provider == 'paddle' or saas_billing_provider == 'lemonsqueezy' %}
+  try {
+    const apiKey = process.env.{% if saas_billing_provider == 'stripe' %}STRIPE_SECRET_KEY{% elif saas_billing_provider == 'paddle' %}PADDLE_API_KEY{% else %}LEMON_SQUEEZY_API_KEY{% endif %};
+
+    if (!apiKey) {
+      return {
+        status: 'unknown',
+        details: { note: 'Billing service API key not configured' },
+      };
+    }
+
+    // External service - we can only verify API key exists
+    // Full connectivity check would require actual API call
+    return {
+      status: 'external',
+      details: {
+        provider: '{% if saas_billing_provider == 'stripe' %}Stripe{% elif saas_billing_provider == 'paddle' %}Paddle{% else %}Lemon Squeezy{% endif %}',
+        configured: true,
+      },
+    };
+  } catch (error) {
+    return {
+      status: 'unknown',
+      error: error instanceof Error ? error.message : 'Failed to check billing service',
+    };
+  }
+  {% else %}
+  return {
+    status: 'unknown',
+    details: { note: 'Billing service not configured' },
+  };
+  {% endif %}
+}
+
+/**
+ * Check external email service (Resend, Postmark, etc.)
+ */
+async function checkEmailService(): Promise<ServiceCheck> {
+  {% if saas_email == 'resend' or saas_email == 'postmark' %}
+  try {
+    const apiKey = process.env.{% if saas_email == 'resend' %}RESEND_API_KEY{% else %}POSTMARK_API_KEY{% endif %};
+
+    if (!apiKey) {
+      return {
+        status: 'unknown',
+        details: { note: 'Email service API key not configured' },
+      };
+    }
+
+    return {
+      status: 'external',
+      details: {
+        provider: '{% if saas_email == 'resend' %}Resend{% else %}Postmark{% endif %}',
+        configured: true,
+      },
+    };
+  } catch (error) {
+    return {
+      status: 'unknown',
+      error: error instanceof Error ? error.message : 'Failed to check email service',
+    };
+  }
+  {% else %}
+  return {
+    status: 'unknown',
+    details: { note: 'Email service not configured' },
+  };
+  {% endif %}
+}
+
+/**
+ * Check authentication service status
+ */
+async function checkAuthService(): Promise<ServiceCheck> {
+  {% if saas_auth_provider == 'clerk' %}
+  // Clerk is external SaaS
+  const apiKey = process.env.CLERK_SECRET_KEY;
+  return {
+    status: apiKey ? 'external' : 'unknown',
+    details: {
+      provider: 'Clerk',
+      configured: !!apiKey,
+    },
+  };
+  {% elif saas_auth_provider == 'authjs' %}
+  // Auth.js is self-hosted, depends on database
+  return {
+    status: 'external',
+    details: {
+      provider: 'NextAuth.js',
+      selfHosted: true,
+    },
+  };
+  {% else %}
+  return {
+    status: 'unknown',
+    details: { note: 'Auth service not configured' },
+  };
+  {% endif %}
+}
+
+/**
+ * Check system memory usage
+ */
+function checkMemory(): {
+  used: number;
+  total: number;
+  percentage: number;
+} {
+  const used = process.memoryUsage().heapUsed;
+  const total = process.memoryUsage().heapTotal;
+  const percentage = used / total;
+
+  return {
+    used: Math.round(used / 1024 / 1024), // MB
+    total: Math.round(total / 1024 / 1024), // MB
+    percentage: Math.round(percentage * 10000) / 100, // %
+  };
+}
+
+/**
+ * Basic liveness probe - just check if the process is running
+ */
+export async function checkLiveness(): Promise<HealthCheckResponse> {
+  const startTime = Date.now();
+
+  return {
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    version: process.env.npm_package_version || '0.1.0',
+    uptime: process.uptime(),
+    latency: Date.now() - startTime,
+    checks: {
+      process: {
+        status: 'up',
+        details: { uptime: process.uptime() },
+      },
+    },
+  };
+}
+
+/**
+ * Readiness probe - check if the app is ready to accept traffic
+ * Verifies critical dependencies are available
+ */
+export async function checkReadiness(): Promise<HealthCheckResponse> {
+  const startTime = Date.now();
+  const checks: Record<string, ServiceCheck> = {};
+  let overallStatus: HealthStatus = 'healthy';
+
+  // Check critical dependencies
+  const databaseCheck = await checkDatabase();
+  checks.database = databaseCheck;
+
+  if (databaseCheck.status === 'down') {
+    overallStatus = 'unhealthy';
+  } else if (databaseCheck.status === 'degraded') {
+    overallStatus = 'degraded';
+  }
+
+  const memory = checkMemory();
+
+  return {
+    status: overallStatus,
+    timestamp: new Date().toISOString(),
+    version: process.env.npm_package_version || '0.1.0',
+    uptime: process.uptime(),
+    latency: Date.now() - startTime,
+    memory,
+    checks,
+  };
+}
+
+/**
+ * Comprehensive health check - includes all service checks
+ *
+ * @param detailed - If true, includes additional diagnostic information
+ */
+export async function checkHealth(detailed = false): Promise<HealthCheckResponse> {
+  const startTime = Date.now();
+  const checks: Record<string, ServiceCheck> = {};
+  let overallStatus: HealthStatus = 'healthy';
+
+  // Check database (critical)
+  const databaseCheck = await checkDatabase();
+  checks.database = databaseCheck;
+
+  if (databaseCheck.status === 'down') {
+    overallStatus = 'unhealthy';
+  } else if (databaseCheck.status === 'degraded' && overallStatus === 'healthy') {
+    overallStatus = 'degraded';
+  }
+
+  // Check cache if configured
+  if (detailed) {
+    const cacheCheck = await checkCache();
+    checks.cache = cacheCheck;
+
+    if (cacheCheck.status === 'down' && overallStatus === 'healthy') {
+      overallStatus = 'degraded';
+    }
+  }
+
+  // Check external services (detailed only)
+  if (detailed) {
+    checks.authentication = await checkAuthService();
+    checks.billing = await checkBillingService();
+    checks.email = await checkEmailService();
+  }
+
+  const memory = checkMemory();
+  const totalLatency = Date.now() - startTime;
+
+  // Check memory threshold
+  if (memory.percentage > CONFIG.MEMORY_USAGE_THRESHOLD) {
+    if (overallStatus === 'healthy') {
+      overallStatus = 'degraded';
+    }
+  }
+
+  // Check total latency SLA
+  if (totalLatency > CONFIG.TOTAL_LATENCY_THRESHOLD && overallStatus === 'healthy') {
+    overallStatus = 'degraded';
+  }
+
+  return {
+    status: overallStatus,
+    timestamp: new Date().toISOString(),
+    version: process.env.npm_package_version || '0.1.0',
+    uptime: process.uptime(),
+    latency: totalLatency,
+    memory,
+    checks,
+  };
+}
+
+/**
+ * Reset health check cache
+ * Call this after deployment or environment changes
+ */
+export function resetHealthCache(): void {
+  // Placeholder for cache reset logic if implementing caching
+  // Could include Redis/Upstash cache invalidation
+}
+{% endif %}

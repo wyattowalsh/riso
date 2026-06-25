@@ -1,0 +1,316 @@
+{% if saas_infra_module == "enabled" and saas_multi_tenancy == 'enterprise' %}
+'use client';
+
+/**
+ * Multi-Tenancy React Context
+ *
+ * Provides tenant information and operations throughout the React component tree.
+ * Automatically handles tenant resolution and provides hooks for tenant-scoped operations.
+ */
+
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  type ReactNode,
+} from 'react';
+import type { TenantConfig, TenantContext as ITenantContext } from './types';
+import { getTenantBySlug, getCurrentTenant } from './api';
+
+const TenantContext = createContext<ITenantContext | undefined>(undefined);
+
+export interface TenantProviderProps {
+  children: ReactNode;
+  /** Initial tenant data (SSR) */
+  initialTenant?: TenantConfig | null;
+  /** Enable automatic tenant refetching */
+  autoRefetch?: boolean;
+  /** Refetch interval in milliseconds */
+  refetchInterval?: number;
+}
+
+/**
+ * Tenant Provider Component
+ *
+ * Wrap your app with this provider to enable tenant context throughout the tree.
+ */
+export function TenantProvider({
+  children,
+  initialTenant = null,
+  autoRefetch = false,
+  refetchInterval = 60000, // 1 minute
+}: TenantProviderProps) {
+  const [tenant, setTenant] = useState<TenantConfig | null>(initialTenant);
+  const [loading, setLoading] = useState(!initialTenant);
+  const [error, setError] = useState<Error | undefined>();
+
+  const fetchTenant = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(undefined);
+      const data = await getCurrentTenant();
+      setTenant(data);
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Failed to fetch tenant');
+      setError(error);
+      setTenant(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const switchTenant = useCallback(async (tenantId: string) => {
+    try {
+      setLoading(true);
+      setError(undefined);
+      const data = await getTenantBySlug(tenantId);
+      setTenant(data);
+
+      // Optionally reload the page to clear cached data
+      // window.location.reload();
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Failed to switch tenant');
+      setError(error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const refetchTenant = useCallback(async () => {
+    await fetchTenant();
+  }, [fetchTenant]);
+
+  const hasFeature = useCallback(
+    (feature: string): boolean => {
+      if (!tenant) return false;
+
+      // Check explicit feature flags
+      if (feature in tenant.features) {
+        return tenant.features[feature];
+      }
+
+      // Check tier-based features
+      const tierFeatures: Record<string, string[]> = {
+        free: ['basic'],
+        starter: ['basic', 'analytics', 'api'],
+        professional: ['basic', 'analytics', 'api', 'integrations', 'priority-support'],
+        enterprise: [
+          'basic',
+          'analytics',
+          'api',
+          'integrations',
+          'priority-support',
+          'sso',
+          'custom-domain',
+          'audit-logs',
+          'data-export',
+        ],
+      };
+
+      return tierFeatures[tenant.tier]?.includes(feature) ?? false;
+    },
+    [tenant]
+  );
+
+  const getSetting = useCallback(
+    <T = unknown,>(key: string, defaultValue?: T): T | undefined => {
+      if (!tenant?.settings) return defaultValue;
+      return (tenant.settings[key] as T) ?? defaultValue;
+    },
+    [tenant]
+  );
+
+  // Initial fetch if no initial tenant provided
+  useEffect(() => {
+    if (!initialTenant) {
+      fetchTenant();
+    }
+  }, [initialTenant, fetchTenant]);
+
+  // Auto-refetch interval
+  useEffect(() => {
+    if (!autoRefetch || !tenant) return;
+
+    const intervalId = setInterval(fetchTenant, refetchInterval);
+    return () => clearInterval(intervalId);
+  }, [autoRefetch, refetchInterval, tenant, fetchTenant]);
+
+  const value: ITenantContext = {
+    tenant,
+    loading,
+    error,
+    switchTenant,
+    refetchTenant,
+    hasFeature,
+    getSetting,
+  };
+
+  return <TenantContext.Provider value={value}>{children}</TenantContext.Provider>;
+}
+
+/**
+ * Hook to access tenant context
+ *
+ * @throws {Error} if used outside TenantProvider
+ */
+export function useTenant(): ITenantContext {
+  const context = useContext(TenantContext);
+
+  if (context === undefined) {
+    throw new Error('useTenant must be used within a TenantProvider');
+  }
+
+  return context;
+}
+
+/**
+ * Hook to access current tenant (or null)
+ */
+export function useCurrentTenant(): TenantConfig | null {
+  const { tenant } = useTenant();
+  return tenant;
+}
+
+/**
+ * Hook to check if tenant has a feature
+ */
+export function useTenantFeature(feature: string): boolean {
+  const { hasFeature } = useTenant();
+  return hasFeature(feature);
+}
+
+/**
+ * Hook to get tenant setting
+ */
+export function useTenantSetting<T = unknown>(
+  key: string,
+  defaultValue?: T
+): T | undefined {
+  const { getSetting } = useTenant();
+  return getSetting<T>(key, defaultValue);
+}
+
+/**
+ * Hook to check if current user is tenant owner
+ */
+export function useIsTenantOwner(userId?: string): boolean {
+  const { tenant } = useTenant();
+  if (!tenant || !userId) return false;
+  return tenant.metadata.ownerId === userId;
+}
+
+/**
+ * Hook to check if current user is tenant admin
+ */
+export function useIsTenantAdmin(userId?: string, userRole?: string): boolean {
+  const isOwner = useIsTenantOwner(userId);
+  return isOwner || userRole === 'admin';
+}
+
+/**
+ * Higher-order component to require tenant
+ */
+export function withTenant<P extends object>(
+  Component: React.ComponentType<P>
+): React.ComponentType<P> {
+  return function WithTenantComponent(props: P) {
+    const { tenant, loading, error } = useTenant();
+
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading tenant...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (error || !tenant) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-red-600 mb-2">Tenant Not Found</h1>
+            <p className="text-gray-600">
+              {error?.message || 'Unable to load tenant information'}
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    return <Component {...props} />;
+  };
+}
+
+/**
+ * Component to conditionally render based on feature flag
+ */
+export function FeatureGate({
+  feature,
+  children,
+  fallback = null,
+}: {
+  feature: string;
+  children: ReactNode;
+  fallback?: ReactNode;
+}) {
+  const hasFeature = useTenantFeature(feature);
+
+  return <>{hasFeature ? children : fallback}</>;
+}
+
+/**
+ * Component to display tenant information
+ */
+export function TenantInfo({ className = '' }: { className?: string }) {
+  const { tenant, loading } = useTenant();
+
+  if (loading) {
+    return <div className={className}>Loading tenant...</div>;
+  }
+
+  if (!tenant) {
+    return <div className={className}>No tenant</div>;
+  }
+
+  return (
+    <div className={className}>
+      <div className="font-semibold">{tenant.name}</div>
+      <div className="text-sm text-gray-600">
+        {tenant.tier} • {tenant.status}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Component to display tenant status badge
+ */
+export function TenantStatusBadge({ className = '' }: { className?: string }) {
+  const { tenant } = useTenant();
+
+  if (!tenant) return null;
+
+  const statusColors = {
+    active: 'bg-green-100 text-green-800',
+    trial: 'bg-yellow-100 text-yellow-800',
+    suspended: 'bg-red-100 text-red-800',
+    churned: 'bg-gray-100 text-gray-800',
+  };
+
+  const color = statusColors[tenant.status];
+
+  return (
+    <span
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${color} ${className}`}
+    >
+      {tenant.status}
+    </span>
+  );
+}
+{% endif %}

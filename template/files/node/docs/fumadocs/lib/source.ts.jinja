@@ -1,0 +1,35 @@
+{%- if docs_module == 'enabled' and docs_framework == 'fumadocs' -%}
+import { docs{%- if fumadocs_blog == 'enabled' %}, blog as blogCollection{%- endif %} } from '@/.source/server';
+import { loader } from 'fumadocs-core/source';
+{%- if fumadocs_openapi == 'enabled' and api_module == 'enabled' and api_languages %}
+import { openapi } from '@/lib/openapi';
+{%- endif %}
+
+export const source = loader(
+{%- if fumadocs_openapi == 'enabled' and api_module == 'enabled' and api_languages %}
+  {
+    docs: docs.toFumadocsSource(),
+    openapi: await openapi.staticSource({
+      baseDir: 'api-reference',
+    }),
+  },
+  {
+    baseUrl: '/docs',
+    plugins: [openapi.loaderPlugin()],
+  },
+{%- else %}
+  {
+    baseUrl: '/docs',
+    source: docs.toFumadocsSource(),
+  },
+{%- endif %}
+);
+
+{%- if fumadocs_blog == 'enabled' %}
+
+export const blog = loader({
+  baseUrl: '/blog',
+  source: blogCollection.toFumadocsSource(),
+});
+{%- endif %}
+{%- endif -%}
