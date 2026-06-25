@@ -21,9 +21,9 @@ uv run sphinx-build docs docs/_build
 - **Matrix snapshot:** `samples/metadata/matrix-data.json` aggregates prompt
   defaults and sample variants; see {doc}`guides/matrix-data` before changing
   options.
-- **Quality:** The bundled Makefile/Taskipy quality targets live in
-  `quality/` (Makefile) and `.taskipy.toml` so `make quality` and
-  `uv run task quality` stay in lockstep.
+- **Quality:** The bundled justfile/Makefile and Taskipy quality targets live in
+  `quality/` and `pyproject.toml` `[tool.taskipy]` so `just quality` (default),
+  `make quality` (when enabled), and `uv run task quality` stay in lockstep.
 - **Docs:** The Sphinx site lives at `docs/` with static assets in `_static/`
   and optional tool metadata under `docs/tools/`.
 
@@ -33,7 +33,7 @@ uv run sphinx-build docs docs/_build
 :class-columns: three
 :class-card: sd-shadow-sm sd-rounded-1 sd-border-secondary sd-bg-light
 
-- :octicons-rocket-24: **Quality gate** — run `make quality` for linting, typing,
+- :octicons-rocket-24: **Quality gate** — run `just quality` (or `make quality` / `uv run task quality` per `task_runner`) for linting, typing,
   pytest, and coverage. See {doc}`guides/testing-strategy` for the ≥90% coverage
   policy and integration/e2e expectations.
 - :material-book-open-variant: **Authoring** — add new guides under `docs/guides/`

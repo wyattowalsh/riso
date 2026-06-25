@@ -38,6 +38,7 @@ _defaults:
   package_name: "{{ project_slug | replace('-', '_') }}"
   project_layout: "single-package"
   quality_profile: "standard"
+  task_runner: "just"
   python_versions: ["3.11", "3.12", "3.13"]
 
   # ========================================
@@ -232,6 +233,21 @@ quality_profile:
   choices:
     - standard
     - strict
+
+task_runner:
+  type: str
+  help: |
+    Task aggregator for local dev commands:
+    - just: justfile only (recommended default)
+    - makefile: GNU Make only
+    - both: ship both; docs treat just as primary
+    - none: no aggregator; use uv run task quality and direct tool commands
+  default: just
+  choices:
+    - just
+    - makefile
+    - both
+    - none
 
 python_versions:
   type: json
@@ -1867,6 +1883,21 @@ _exclude:
   # copied to generated projects (they contain workflows and setup scripts)
 
   # ========================================
+  # Task Runner Exclusions (Makefile vs justfile)
+  # ========================================
+
+  - "{% if task_runner in ['just', 'none'] %}Makefile{% endif %}"
+  - "{% if task_runner in ['just', 'none'] %}quality/makefile.quality{% endif %}"
+  - "{% if task_runner in ['just', 'none'] %}python/Makefile{% endif %}"
+  - "{% if task_runner in ['just', 'none'] %}go/Makefile{% endif %}"
+  - "{% if task_runner in ['just', 'none'] %}rust/Makefile{% endif %}"
+  - "{% if task_runner in ['makefile', 'none'] %}justfile{% endif %}"
+  - "{% if task_runner in ['makefile', 'none'] %}quality/justfile.quality{% endif %}"
+  - "{% if task_runner in ['makefile', 'none'] %}python/justfile{% endif %}"
+  - "{% if task_runner in ['makefile', 'none'] %}go/justfile{% endif %}"
+  - "{% if task_runner in ['makefile', 'none'] %}rust/justfile{% endif %}"
+
+  # ========================================
   # CI/CD Platform Exclusions
   # ========================================
 
@@ -2037,6 +2068,26 @@ _exclude:
   # ========================================
   # SaaS Feature Exclusions
   # ========================================
+
+  # shadcn/ui - exclude vendored components when another UI framework is selected
+  - "{% if saas_ui_framework != 'shadcn-ui' %}node/saas/components/ui/button.tsx{% endif %}"
+  - "{% if saas_ui_framework != 'shadcn-ui' %}node/saas/components/ui/card.tsx{% endif %}"
+  - "{% if saas_ui_framework != 'shadcn-ui' %}node/saas/components/ui/dialog.tsx{% endif %}"
+  - "{% if saas_ui_framework != 'shadcn-ui' %}node/saas/components/ui/command.tsx{% endif %}"
+  - "{% if saas_ui_framework != 'shadcn-ui' %}node/saas/components/ui/dropdown-menu.tsx{% endif %}"
+  - "{% if saas_ui_framework != 'shadcn-ui' %}node/saas/components/ui/avatar.tsx{% endif %}"
+  - "{% if saas_ui_framework != 'shadcn-ui' %}node/saas/components/ui/label.tsx{% endif %}"
+  - "{% if saas_ui_framework != 'shadcn-ui' %}node/saas/components/ui/switch.tsx{% endif %}"
+  - "{% if saas_ui_framework != 'shadcn-ui' %}node/saas/components/ui/tabs.tsx{% endif %}"
+  - "{% if saas_ui_framework != 'shadcn-ui' %}node/saas/components/ui/table.tsx{% endif %}"
+  - "{% if saas_ui_framework != 'shadcn-ui' %}node/saas/components/ui/badge.tsx{% endif %}"
+  - "{% if saas_ui_framework != 'shadcn-ui' %}node/saas/components/ui/select.tsx{% endif %}"
+  - "{% if saas_ui_framework != 'shadcn-ui' %}node/saas/components/ui/input.tsx{% endif %}"
+  - "{% if saas_ui_framework != 'shadcn-ui' %}node/saas/components/ui/collapsible.tsx{% endif %}"
+  - "{% if saas_ui_framework != 'shadcn-ui' %}node/saas/components/ui/separator.tsx{% endif %}"
+  - "{% if saas_ui_framework != 'shadcn-ui' %}node/saas/components.json{% endif %}"
+  - "{% if saas_ui_framework != 'shadcn-ui' %}node/saas/lib/utils.ts{% endif %}"
+  - "{% if saas_ui_framework != 'shadcn-ui' or saas_runtime != 'nextjs-16' %}node/saas/runtime/nextjs/postcss.config.mjs{% endif %}"
 
   # RAG integration - exclude if not using RAG features
   - "{% if not (saas_ai_features in ['rag', 'full'] and vector_db_provider != 'none') %}node/saas/integrations/ai/rag/{% endif %}"

@@ -30,7 +30,7 @@ and code comments.
 uv sync
 
 # Fast feedback (lint + type + unit tests + coverage)
-make quality
+{% if task_runner in ['just', 'both'] %}just quality{% elif task_runner == 'makefile' %}make quality{% else %}uv run task quality{% endif %}
 # or
 QUALITY_PROFILE=standard uv run task quality
 

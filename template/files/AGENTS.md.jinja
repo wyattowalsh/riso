@@ -1,6 +1,11 @@
 {#- AI agent instructions for rendered {{ project_name }} projects. Human docs: README.md -#}
 {%- set _python = (cli_module == 'enabled' and 'python' in cli_languages) or (api_module == 'enabled' and 'python' in api_languages) or (mcp_module == 'enabled' and 'python' in mcp_languages) or (docs_module == 'enabled' and docs_framework == 'sphinx-shibuya') -%}
 {%- set _node = (api_module == 'enabled' and 'node' in api_languages) or (mcp_module == 'enabled' and 'typescript' in mcp_languages) or (docs_module == 'enabled' and docs_framework in ['fumadocs', 'docusaurus']) or saas_infra_module == 'enabled' or desktop_module == 'enabled' or changelog_module == 'enabled' -%}
+{%- set _quality_cmd = 'just quality' if task_runner in ['just', 'both'] else ('make quality' if task_runner == 'makefile' else 'uv run task quality') -%}
+{%- set _hooks_cmd = 'just hooks' if task_runner in ['just', 'both'] else ('make hooks' if task_runner == 'makefile' else 'uv run pre-commit install --install-hooks') -%}
+{%- set _hooks_run_cmd = 'just hooks-run' if task_runner in ['just', 'both'] else ('make hooks-run' if task_runner == 'makefile' else 'uv run pre-commit run --all-files') -%}
+{%- set _hooks_update_cmd = 'just hooks-update' if task_runner in ['just', 'both'] else ('make hooks-update' if task_runner == 'makefile' else 'uv run pre-commit autoupdate') -%}
+{%- set _task_runner_ref = 'quality/justfile.quality' if task_runner in ['just', 'both'] else ('quality/makefile.quality' if task_runner == 'makefile' else 'python/tasks/quality.py') -%}
 # AGENTS.md
 
 > AI coding agent instructions for **{{ project_name }}**. Human docs: [README.md](./README.md)
@@ -15,6 +20,7 @@ Copier-rendered application scaffold (**{{ project_layout }}**).
 - **Package**: `{{ package_name }}`
 - **Layout**: {{ project_layout }}
 - **Quality profile**: {{ quality_profile }}
+- **Task runner**: {{ task_runner }}
 {% if _python %}- **Python**: 3.11+ via [uv](https://docs.astral.sh/uv/){% endif %}
 {% if _node %}- **Node.js**: 20 LTS via [pnpm](https://pnpm.io/){% endif %}
 - **CI platform**: {{ ci_platform }}
@@ -34,10 +40,10 @@ Copier-rendered application scaffold (**{{ project_layout }}**).
 | Run tests | `uv run pytest` |
 | Lint (ruff) | `uv run ruff check .` |
 | Format (ruff) | `uv run ruff format .` |
-| Type check (ty) | `uv run ty check {{ package_name }}` |
-| Quality suite | `make quality` or `QUALITY_PROFILE={{ quality_profile }} uv run task quality` |
-| Install hooks | `make hooks` |
-| Pre-commit (all) | `make hooks-run` or `uv run pre-commit run --all-files` |
+| Type check (ty) | `uv run ty check src/{{ package_name }}` |
+| Quality suite | `{{ _quality_cmd }}`{% if task_runner == 'both' %} or `make quality`{% endif %} or `QUALITY_PROFILE={{ quality_profile }} uv run task quality` |
+| Install hooks | `{{ _hooks_cmd }}` |
+| Pre-commit (all) | `{{ _hooks_run_cmd }}` |
 {% endif %}
 {% if _node %}
 | Install workspace | `pnpm install` |
@@ -73,7 +79,7 @@ Copier-rendered application scaffold (**{{ project_layout }}**).
 
 ```bash
 {% if _python %}uv sync
-make hooks
+{{ _hooks_cmd }}
 uv run python -m {{ package_name }}.quickstart
 {% endif %}
 {% if _node %}pnpm install
@@ -116,23 +122,25 @@ pnpm --filter api-node test
 {% if _python %}Canonical quality lane: `python/tasks/quality.py` (ruff → ty → pylint → coverage).
 
 ```bash
+{{ _quality_cmd }}
+{% if task_runner == 'both' %}# or GNU Make equivalent
 make quality
-# or, when make is unavailable
+{% endif %}# or, when task aggregators are unavailable
 QUALITY_PROFILE={{ quality_profile }} uv run task quality
 ```
 
-Profile **{{ quality_profile }}**{% if quality_profile == 'strict' %} enables stricter ruff/ty/pylint and commit-msg + pre-push hooks{% elif changelog_module == 'enabled' %} installs commit-msg hooks via `make hooks`{% endif %}.
+Profile **{{ quality_profile }}**{% if quality_profile == 'strict' %} enables stricter ruff/ty/pylint and commit-msg + pre-push hooks{% elif changelog_module == 'enabled' %} installs commit-msg hooks via `{{ _hooks_cmd }}`{% endif %}.
 {% endif %}
 
 ## Pre-commit Hooks
 
 {% if _python %}
-Install from project root (delegates to `quality/makefile.quality`):
+Install from project root (delegates to `{{ _task_runner_ref }}`):
 
 ```bash
-make hooks
-make hooks-run
-make hooks-update
+{{ _hooks_cmd }}
+{{ _hooks_run_cmd }}
+{{ _hooks_update_cmd }}
 ```
 {% endif %}
 
@@ -141,7 +149,7 @@ make hooks-update
 <!-- agents-md:auto -->
 
 {% if ci_platform == 'github-actions' %}- **Platform**: GitHub Actions (`.github/workflows/`)
-- Run `make quality` or `uv run task quality` locally before pushing.
+- Run `{{ _quality_cmd }}` or `uv run task quality` locally before pushing.
 {% elif ci_platform == 'gitlab-ci' %}- **Platform**: GitLab CI (`.gitlab/.gitlab-ci.yml`)
 {% elif ci_platform == 'circleci' %}- **Platform**: CircleCI (`.circleci/config.yml`)
 {% endif %}
@@ -189,7 +197,7 @@ Link out — do not duplicate full module docs here.
 ## Build and Test Parity
 
 - Local: commands in **Quick Reference** above.
-- CI: quality workflows mirror `make quality` / `uv run task quality` when Python is enabled.
+- CI: quality workflows mirror `{{ _quality_cmd }}` / `uv run task quality` when Python is enabled.
 - Regenerate or update via `copier update` — do not hand-edit generated scaffolds without syncing template answers.
 
 ## Code Style
@@ -221,7 +229,7 @@ Link out — do not duplicate full module docs here.
 ### Always Do
 
 {% if _python %}- Use `uv run` for Python commands
-- Run quality checks before committing (`make quality` or `uv run task quality`)
+- Run quality checks before committing (`{{ _quality_cmd }}` or `uv run task quality`)
 {% endif %}
 - Update tests when changing behavior
 - Keep docs module pages and AGENTS quick reference in sync when adding commands

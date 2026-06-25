@@ -1,4 +1,5 @@
 {% if project_language == 'rust' or 'rust' in cli_languages or 'rust' in api_languages %}
+{%- set _run = 'just' if task_runner in ['just', 'both'] else 'make' -%}
 # {{ project_name }}
 
 {{ project_description }}
@@ -13,14 +14,15 @@
 {% if api_module == 'enabled' and 'rust' in api_languages %}
 - **API**: Actix-web with async handlers
 {% endif %}
-- **Tooling**: Just, Cargo
+- **Tooling**: {% if task_runner in ['just', 'both'] %}Just{% else %}Make{% endif %}, Cargo
 
 ## Getting Started
 
 ### Prerequisites
 
 - [Rust](https://rustup.rs/) 1.81+
-- [Just](https://github.com/casey/just) (optional, for convenience)
+{% if task_runner in ['just', 'both'] %}- [Just](https://github.com/casey/just) (optional, for convenience)
+{% endif %}
 
 ### Installation
 
@@ -28,8 +30,9 @@
 # Install Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# Install Just (optional)
+{% if task_runner in ['just', 'both'] %}# Install Just (optional)
 cargo install just
+{% endif %}
 ```
 
 ## Commands
@@ -37,13 +40,13 @@ cargo install just
 ### Build
 
 ```bash
-just build              # Build all components
+{{ _run }} build              # Build all components
 cargo build            # Alternative using cargo directly
 {% if cli_module == 'enabled' and 'rust' in cli_languages %}
-just build-cli         # Build CLI only
+{{ _run }} build-cli         # Build CLI only
 {% endif %}
 {% if api_module == 'enabled' and 'rust' in api_languages %}
-just build-api         # Build API server only
+{{ _run }} build-api         # Build API server only
 {% endif %}
 ```
 
@@ -52,16 +55,16 @@ just build-api         # Build API server only
 
 ```bash
 # Run the CLI
-just run-cli hello World
+{{ _run }} run-cli hello World
 
 # Or directly with cargo
 cargo run --bin {{ package_name }} -- hello World
 
 # Get help
-just run-cli --help
+{{ _run }} run-cli --help
 
 # Check version
-just run-cli version
+{{ _run }} run-cli version
 ```
 
 #### Available Commands
@@ -75,10 +78,10 @@ just run-cli version
 
 ```bash
 # Run in development mode
-just run-api-dev
+{{ _run }} run-api-dev
 
 # Or start normally
-just run-api
+{{ _run }} run-api
 
 # Or with cargo
 cargo run --bin {{ package_name }}-api
@@ -103,28 +106,28 @@ cargo run --bin {{ package_name }}-api
 ### Testing
 
 ```bash
-just test              # Run all tests
-just test-verbose      # Run tests with output
+{{ _run }} test              # Run all tests
+{{ _run }} test-verbose      # Run tests with output
 cargo test             # Alternative using cargo
 ```
 
 ### Quality Checks
 
 ```bash
-just quality           # Run all quality checks (fmt + clippy + test)
-just fmt               # Format code
-just fmt-check         # Check formatting without changes
-just clippy            # Run clippy linter
-just clippy-all        # Run clippy with all features
+{{ _run }} quality           # Run all quality checks (fmt + clippy + test)
+{{ _run }} fmt               # Format code
+{{ _run }} fmt-check         # Check formatting without changes
+{{ _run }} clippy            # Run clippy linter
+{{ _run }} clippy-all        # Run clippy with all features
 ```
 
 ### Maintenance
 
 ```bash
-just clean             # Clean build artifacts
-just update            # Update dependencies
-just outdated          # Check for outdated dependencies
-just audit             # Run security audit
+{{ _run }} clean             # Clean build artifacts
+{{ _run }} update            # Update dependencies
+{{ _run }} outdated          # Check for outdated dependencies
+{{ _run }} audit             # Run security audit
 ```
 
 ## Project Structure
@@ -158,7 +161,7 @@ just audit             # Run security audit
 │   {% endif %}{% if api_module == 'enabled' and 'rust' in api_languages %}└── api_integration_test.rs  # API tests
 {% endif %}
 ├── Cargo.toml                 # Rust dependencies
-├── justfile                   # Just commands
+├── {% if task_runner in ['just', 'both'] %}justfile{% else %}Makefile{% endif %}                   # Build commands
 └── README.md                  # This file
 ```
 
@@ -181,7 +184,7 @@ This project follows Rust standard conventions:
 ### Release Builds
 
 ```bash
-just release           # Build optimized release binaries
+{{ _run }} release           # Build optimized release binaries
 {% if cli_module == 'enabled' and 'rust' in cli_languages %}
 # CLI binary will be at: target/release/{{ package_name }}
 {% endif %}

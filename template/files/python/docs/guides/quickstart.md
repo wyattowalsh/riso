@@ -7,12 +7,12 @@ opening a pull request.
 
 ```bash
 uv sync
-make quality
+{% if task_runner in ['just', 'both'] %}just quality{% elif task_runner == 'makefile' %}make quality{% else %}uv run task quality{% endif %}
 ```
 
 The render includes Typer CLI, FastAPI/Fastify tracks, and optional MCP tooling
-behind prompt flags. When `make` is unavailable, run `uv run task quality` to
-mirror the same toolchain with Taskipy.
+behind prompt flags. When task aggregators are unavailable (`task_runner=none`), run
+`uv run task quality` to mirror the same toolchain with Taskipy.
 
 Run explicit coverage gates before opening a PR:
 
@@ -64,7 +64,7 @@ same command (`uv run sphinx-build docs dist/docs`).
 
 ## CI parity
 
-Quality workflows are orchestrated via GitHub Actions, mirroring the `make
-quality` and Taskipy lanes locally. Branch protection relies on matrix jobs
+Quality workflows are orchestrated via GitHub Actions, mirroring `{% if task_runner in ['just', 'both'] %}just quality{% elif task_runner == 'makefile' %}make quality{% else %}uv run task quality{% endif %}`
+locally. Branch protection relies on matrix jobs
 across Python 3.11–3.13; keep dependency groups and lockfiles current to
 maintain parity.

@@ -1,4 +1,5 @@
 {% if 'go' in cli_languages or 'go' in api_languages %}
+{%- set _run = 'just' if task_runner in ['just', 'both'] else 'make' -%}
 # {{ project_name }}
 
 {{ project_description | default('A Go application scaffolded with Riso template.') }}
@@ -15,23 +16,26 @@
 
 ```bash
 # Install development tools
-make install-tools
+{{ _run }} install-tools
 
 # Download dependencies
 go mod download
 
 {% if cli_module == 'enabled' and 'go' in cli_languages %}
 # Run CLI
-make run-cli ARGS="--help"
-make run-cli ARGS="version"
+{% if task_runner in ['just', 'both'] %}{{ _run }} run-cli --help
+{{ _run }} run-cli version
+{% else %}{{ _run }} run-cli ARGS="--help"
+{{ _run }} run-cli ARGS="version"
+{% endif %}
 {% endif %}
 
 {% if api_module == 'enabled' and 'go' in api_languages %}
 # Run API server
-make run-api
+{{ _run }} run-api
 
 # Run API with hot reload
-make run-api-dev
+{{ _run }} run-api-dev
 {% endif %}
 ```
 
@@ -41,16 +45,16 @@ make run-api-dev
 
 ```bash
 # Build all binaries
-make build
+{{ _run }} build
 {% if cli_module == 'enabled' and 'go' in cli_languages %}
 
 # Build CLI only
-make build-cli
+{{ _run }} build-cli
 {% endif %}
 {% if api_module == 'enabled' and 'go' in api_languages %}
 
 # Build API only
-make build-api
+{{ _run }} build-api
 {% endif %}
 ```
 
@@ -58,30 +62,30 @@ make build-api
 
 ```bash
 # Run all tests
-make test
+{{ _run }} test
 
 # Run tests with verbose output
-make test-verbose
+{{ _run }} test-verbose
 
 # Generate coverage report
-make coverage
+{{ _run }} coverage
 ```
 
 ### Lint
 
 ```bash
 # Run linter
-make lint
+{{ _run }} lint
 
 # Run linter with auto-fix
-make lint-fix
+{{ _run }} lint-fix
 ```
 
 ### Format
 
 ```bash
 # Format code
-make fmt
+{{ _run }} fmt
 ```
 
 ## Project Structure
@@ -111,7 +115,7 @@ make fmt
 {% endif %}
 ├── go.mod                   # Go module definition
 ├── go.sum                   # Dependency checksums
-├── Makefile                 # Build automation
+├── {% if task_runner in ['just', 'both'] %}justfile{% else %}Makefile{% endif %}                 # Build automation
 ├── .golangci.yml            # Linter configuration
 ├── Dockerfile               # Container build
 {% if api_module == 'enabled' and 'go' in api_languages %}
@@ -178,10 +182,10 @@ api:
 
 ```bash
 # Build image
-make docker-build
+{{ _run }} docker-build
 
 # Run container
-make docker-run
+{{ _run }} docker-run
 ```
 
 ## License

@@ -20,7 +20,7 @@
 {% endif %}
   "scripts": {
 {% if changelog_module == "enabled" %}
-    "setup-hooks": "make hooks",
+    "setup-hooks": "{% if task_runner in ['just', 'both'] %}just hooks{% elif task_runner == 'makefile' %}make hooks{% else %}uv run pre-commit install --install-hooks{% endif %}",
     "commit": "git-cz",
     "release": "semantic-release",
     "release:dry-run": "semantic-release --dry-run",
