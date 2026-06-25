@@ -14,6 +14,7 @@ warnings/
 ```
 
 **Related:**
+
 - `/web/src/lib/useValidation.ts` - Validation logic hook (238 LOC)
 - `/web/src/components/DependencyWarnings.tsx` - Main module entry (160 LOC, re-exports + utilities)
 
@@ -24,11 +25,13 @@ warnings/
 Slim orchestrator that coordinates validation warnings display.
 
 **Props:**
+
 - `showEmpty?: boolean` - Show success message when no warnings
 - `className?: string` - Additional CSS classes
 - `onNavigateToStep?: (step: number) => void` - Callback for navigation
 
 **Usage:**
+
 ```tsx
 import { DependencyWarnings } from '../components/DependencyWarnings'
 
@@ -40,6 +43,7 @@ import { DependencyWarnings } from '../components/DependencyWarnings'
 Displays a single validation warning with interactive actions.
 
 **Features:**
+
 - Severity-based styling (error, warning, info)
 - Collapsible details
 - Quick-fix buttons
@@ -47,6 +51,7 @@ Displays a single validation warning with interactive actions.
 - Dismissal for info-level warnings
 
 **Props:**
+
 - `warning: Warning` - Warning data
 - `onNavigate: (field: string) => void` - Navigation handler
 - `onDismiss: (id: string) => void` - Dismiss handler
@@ -56,11 +61,13 @@ Displays a single validation warning with interactive actions.
 Displays estimated monthly costs for third-party services.
 
 **Features:**
+
 - Expandable service breakdown
 - Monthly cost summary
 - Free tier indicators
 
 **Props:**
+
 - `estimate: ReturnType<typeof getCostEstimate>` - Cost data
 - `className?: string` - Additional CSS classes
 
@@ -69,11 +76,13 @@ Displays estimated monthly costs for third-party services.
 One-click action button for applying configuration fixes.
 
 **Features:**
+
 - Severity-appropriate styling
 - Lightning bolt icon
 - Hover effects
 
 **Props:**
+
 - `label: string` - Button text
 - `onClick: () => void` - Click handler
 - `severity: 'error' | 'warning' | 'info'` - Styling level
@@ -86,6 +95,7 @@ One-click action button for applying configuration fixes.
 Custom hook that extracts all validation logic.
 
 **Usage:**
+
 ```tsx
 import { useValidation } from '../../lib/useValidation'
 
@@ -94,6 +104,7 @@ const { warnings, errors, warningList, infos, costEstimate, hasIssues } =
 ```
 
 **Returns:**
+
 - `warnings: Warning[]` - All warnings
 - `errors: Warning[]` - Error-level warnings
 - `warningList: Warning[]` - Warning-level items
@@ -110,6 +121,7 @@ These remain in `/web/src/components/DependencyWarnings.tsx`:
 Compact inline warning for form fields.
 
 **Props:**
+
 - `field: string` - Field name to check
 - `className?: string` - Additional CSS classes
 
@@ -118,9 +130,11 @@ Compact inline warning for form fields.
 Summary badge showing validation status.
 
 **Props:**
+
 - `className?: string` - Additional CSS classes
 
 **Display:**
+
 - Valid (green) - No issues
 - N issues (red) - Error count
 - N recommendations (amber) - Warning/info count
@@ -138,12 +152,13 @@ info:    blue-50/blue-900  (border: blue-200/blue-800)
 ### Warning Categorization
 
 1. **Errors** - Must be fixed (e.g., missing required dependencies)
-2. **Warnings** - Should be addressed (e.g., experimental features)
-3. **Info** - Recommendations (e.g., best practices)
+1. **Warnings** - Should be addressed (e.g., experimental features)
+1. **Info** - Recommendations (e.g., best practices)
 
 ### Quick-Fix Actions
 
 Quick fixes apply configuration updates via:
+
 ```tsx
 fix: {
   label: 'Use Clerk',
@@ -154,6 +169,7 @@ fix: {
 ### Field Navigation
 
 Navigation maps fields to wizard steps:
+
 - `saas_*` → Step 3 (SaaS Config)
 - `fumadocs_*`, `docusaurus_*` → Step 2 (Docs Config)
 - `ai_tools_*` → Step 4 (AI Tools)
@@ -162,6 +178,7 @@ Navigation maps fields to wizard steps:
 ## Animation Styles
 
 Warnings appear with smooth transitions:
+
 - `transition-colors` on hover
 - `hover:opacity-70` for dismiss buttons
 - `hover:underline` for navigation links
@@ -169,26 +186,28 @@ Warnings appear with smooth transitions:
 ## Backward Compatibility
 
 The original `/web/src/components/DependencyWarnings.tsx` now:
+
 1. Re-exports all components from `./warnings/`
-2. Maintains utility components (InlineDependencyWarning, DependencyBadge)
-3. Preserves all existing imports
+1. Maintains utility components (InlineDependencyWarning, DependencyBadge)
+1. Preserves all existing imports
 
 Existing code importing from `../components/DependencyWarnings` continues to work unchanged.
 
 ## Refactoring Benefits
 
 1. **Focused Responsibility** - Each component has a single purpose
-2. **Reusability** - Components can be imported individually
-3. **Maintainability** - Easier to locate and update specific functionality
-4. **Testability** - Smaller components are easier to test
-5. **Performance** - Potential for better code splitting
-6. **Readability** - Reduced cognitive load per file (< 150 LOC each)
+1. **Reusability** - Components can be imported individually
+1. **Maintainability** - Easier to locate and update specific functionality
+1. **Testability** - Smaller components are easier to test
+1. **Performance** - Potential for better code splitting
+1. **Readability** - Reduced cognitive load per file (< 150 LOC each)
 
 ## Migration Guide
 
 No migration needed! The refactoring maintains full backward compatibility.
 
 To use new direct imports:
+
 ```tsx
 // Old (still works)
 import { DependencyWarnings, WarningItem } from '../components/DependencyWarnings'
