@@ -24,4 +24,3 @@
 - Mark a gate blocked only when an external approval or external service is the
   next required action.
 - Do not downgrade a release-critical failure to advisory.
-

@@ -18,4 +18,3 @@ Riso release readiness uses only canonical component-first answer keys.
 - Keep active docs, examples, samples, web presets, and MCP payloads canonical.
 - Allow removed-key strings only in negative tests and release notes that explain
   rejection behavior.
-

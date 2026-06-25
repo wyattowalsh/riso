@@ -18,4 +18,3 @@
 - Run generated surfaces only after source changes land.
 - Run broad validation only after focused gates pass.
 - Final synthesis belongs to the coordinator.
-
