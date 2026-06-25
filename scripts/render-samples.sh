@@ -100,6 +100,8 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
     api_languages = set(as_list(config.get("api_languages")))
     docs_enabled = as_enabled(config.get("docs_module"))
     docs_framework = str(config.get("docs_framework", "none")).lower()
+    quality_profile = str(config.get("quality_profile", "standard")).lower()
+    quality_smoke_enabled = quality_profile != "strict"
     python_cwd = resolve_python_cwd(destination_path)
     node_cwd = resolve_node_cwd(destination_path)
     python_project_ready = python_cwd is not None
@@ -221,25 +223,35 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
         [
             {
                 "name": "quality_just",
-                "enabled": python_project_ready
+                "enabled": quality_smoke_enabled
+                and python_project_ready
                 and python_cwd is not None
                 and (python_cwd / "justfile").exists(),
                 "command": ["just", "quality"],
                 "cwd": str(python_cwd),
-                "skip_reason": "Just quality scaffold not rendered for this variant.",
+                "skip_reason": (
+                    "Strict quality profile skips render smoke; run `just quality` locally."
+                    if not quality_smoke_enabled
+                    else "Just quality scaffold not rendered for this variant."
+                ),
             },
             {
                 "name": "quality_make",
-                "enabled": python_project_ready
+                "enabled": quality_smoke_enabled
+                and python_project_ready
                 and python_cwd is not None
                 and (python_cwd / "Makefile").exists(),
                 "command": ["make", "quality"],
                 "cwd": str(python_cwd),
-                "skip_reason": "Python quality scaffold not rendered for this variant.",
+                "skip_reason": (
+                    "Strict quality profile skips render smoke; run `make quality` locally."
+                    if not quality_smoke_enabled
+                    else "Python quality scaffold not rendered for this variant."
+                ),
             },
             {
                 "name": "quality_uv_task",
-                "enabled": python_project_ready and python_cwd is not None,
+                "enabled": quality_smoke_enabled and python_project_ready and python_cwd is not None,
                 "command": [
                     "uv",
                     "run",
@@ -251,7 +263,11 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
                     "quality",
                 ],
                 "cwd": str(python_cwd) if python_cwd else None,
-                "skip_reason": "Python quality scaffold not rendered for this variant.",
+                "skip_reason": (
+                    "Strict quality profile skips render smoke; run `uv run task quality` locally."
+                    if not quality_smoke_enabled
+                    else "Python quality scaffold not rendered for this variant."
+                ),
             },
         ]
     )
