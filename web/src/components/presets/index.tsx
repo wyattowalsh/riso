@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { useRisoStore } from '../../lib/store'
 import { copyToClipboard } from '../../lib/utils'
 import {
@@ -21,13 +21,10 @@ export function Presets() {
   const { config, resetConfig, updateConfig, setStep } = useRisoStore()
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null)
   const [celebratingPreset, setCelebratingPreset] = useState<string | null>(null)
-  const [customPresets, setCustomPresets] = useState<Record<string, CustomPreset>>({})
+  const [customPresets, setCustomPresets] = useState<Record<string, CustomPreset>>(
+    () => loadCustomPresets()
+  )
   const [showSaveModal, setShowSaveModal] = useState(false)
-
-  // Load custom presets on mount
-  useEffect(() => {
-    setCustomPresets(loadCustomPresets())
-  }, [])
 
   const applyPreset = useCallback((preset: Preset, _event: React.MouseEvent) => {
     // Reset config first to clear any existing selections, then apply preset

@@ -307,13 +307,28 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v6
 
+      - uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: web/pnpm-lock.yaml
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y make
+          curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | sudo bash -s -- --to /usr/local/bin
 
       - name: Install dependencies
-        run: uv sync --group dev
+        run: uv sync --group dev --group cli
+
+      - name: Set variant slug
+        run: echo "VARIANT_SLUG=${MATRIX_VARIANT//\//-}" >> "$GITHUB_ENV"
+        env:
+          MATRIX_VARIANT: ${{ matrix.variant }}
 
       - name: Render sample - ${{ matrix.variant }}
         run: |
@@ -394,7 +409,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: render-logs-${{ matrix.variant }}
+          name: render-logs-${{ env.VARIANT_SLUG }}
           path: |
             samples/${{ matrix.variant }}/metadata.json
             samples/${{ matrix.variant }}/smoke-results.json
@@ -407,7 +422,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v6
         with:
-          name: render-success-${{ matrix.variant }}
+          name: render-success-${{ env.VARIANT_SLUG }}
           path: |
             samples/${{ matrix.variant }}/smoke-results.json
             samples/${{ matrix.variant }}/metadata.json
