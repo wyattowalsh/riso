@@ -1,0 +1,39 @@
+{
+  "completed_at": "2026-06-25T04:07:00Z",
+  "gates": {
+    "G1": {
+      "pass": true,
+      "changelog_render_workflows": [
+        "riso-quality.yml",
+        "riso-matrix.yml",
+        "riso-container-build.yml",
+        "riso-container-publish.yml",
+        "riso-release.yml"
+      ],
+      "default_render_workflows": ["riso-quality.yml", "riso-matrix.yml"],
+      "validate_release_configs": "pass",
+      "no_jinja_remnants": true,
+      "no_maintainer_leaks": true
+    },
+    "G2": {
+      "pass": true,
+      "ty_ssot": "riso-matrix, gitlab, circleci, run_quality_suite.py",
+      "container_paths": ".docker/Dockerfile",
+      "shellcheck_hardening": "container/release summary steps quoted"
+    },
+    "G3": {
+      "pass": true,
+      "verify_context_sync": "pass",
+      "maintainer_validate_workflows": "11/11 pass",
+      "unit_tests": "68 passed (workflow_validator, validate_release_configs, rendered_workflows integration)"
+    },
+    "G4": {
+      "pass": true,
+      "actionlint_variants": ["default", "changelog-python", "full-stack"],
+      "validate_release_readiness_skill": "pass",
+      "integration_test": "tests/integration/test_rendered_workflows.py"
+    }
+  },
+  "maturity_score_after": "7/10 rendered github-actions",
+  "ship_github_actions": "yes with branch protection on Matrix Summary + Python Quality Checks"
+}
