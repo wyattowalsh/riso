@@ -202,7 +202,7 @@ class TestTerminalCapabilityFallback:
         formatter.format(data, format=OutputFormat.TABLE)
         
         # Should still produce output
-        output = console.file.getvalue()  # type: ignore[union-attr]
+        output = string_buffer.getvalue()
         assert "Alice" in output
     
     def test_formatter_handles_color_disabled(self) -> None:
@@ -212,8 +212,8 @@ class TestTerminalCapabilityFallback:
         formatter = OutputFormatter(console=console)
         
         formatter.print_success("Success!")
-        output = console.file.getvalue()  # type: ignore[union-attr]
-        
+        output = string_buffer.getvalue()
+
         # Should have content but no ANSI codes
         assert "Success!" in output
 {%- endif %}
