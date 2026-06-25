@@ -440,6 +440,7 @@ function ConfigSummary({ config }: { config: Partial<RisoConfig> }) {
           `Name: ${config.project_name || 'Not set'}`,
           `Layout: ${config.project_layout}`,
           `Quality: ${config.quality_profile}`,
+          `Task runner: ${config.task_runner || 'just'}`,
         ]} />
         <SummaryCard title="Modules" items={enabledModules.length > 0 ? enabledModules as string[] : ['None enabled']} />
         <SummaryCard title="Documentation" items={[docsInfo]} />
