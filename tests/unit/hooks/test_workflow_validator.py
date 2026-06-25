@@ -130,15 +130,31 @@ class TestValidateWorkflowsDirectory:
             assert result == 0
 
     def test_returns_zero_when_no_workflow_files(self, tmp_path: Path):
-        """Test returns 0 when no riso-*.yml files found."""
+        """Test returns 0 when workflows directory has no YAML files."""
         with patch("workflow_validator.check_actionlint_available") as mock_check:
             mock_check.return_value = True
             workflows_dir = tmp_path / "workflows"
             workflows_dir.mkdir()
-            # Create non-matching file
-            (workflows_dir / "other.yml").write_text("name: Other")
             result = validate_workflows_directory(workflows_dir)
             assert result == 0
+
+    def test_validates_all_yaml_workflow_files(self, tmp_path: Path):
+        """Test validates every *.yml/*.yaml workflow, not only riso-*."""
+        workflows_dir = tmp_path / "workflows"
+        workflows_dir.mkdir()
+        (workflows_dir / "other.yml").write_text("name: Other")
+
+        with (
+            patch("workflow_validator.check_actionlint_available") as mock_check,
+            patch("workflow_validator.validate_workflow_file") as mock_validate,
+        ):
+            mock_check.return_value = True
+            mock_validate.return_value = (True, None)
+
+            result = validate_workflows_directory(workflows_dir)
+
+            assert result == 0
+            mock_validate.assert_called_once()
 
     def test_validates_all_workflow_files(self, tmp_path: Path):
         """Test validates all riso-*.yml files."""

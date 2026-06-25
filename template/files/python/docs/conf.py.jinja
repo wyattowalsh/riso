@@ -3,9 +3,18 @@ from __future__ import annotations
 
 import os
 import sys
+import warnings
 from datetime import date
 from pathlib import Path
 from typing import Iterable
+
+# Third-party Sphinx extensions may emit deprecation warnings on Sphinx 9+.
+warnings.filterwarnings("ignore", message=".*RemovedInSphinx10Warning.*")
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    module="sphinx_autodoc_typehints",
+)
 
 import yaml
 
@@ -84,6 +93,12 @@ copyright = f"{date.today().year}, {author}"
 version = os.getenv("{{ project_slug | upper }}_VERSION", "0.1.0")
 release = version
 
+suppress_warnings = [
+    "app.add_directive",
+    "sphinx_autodoc_typehints.forward_reference",
+    "sphinx_autodoc_typehints.guarded_import",
+]
+
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
@@ -100,14 +115,12 @@ extensions = [
     "sphinx_togglebutton",
     "sphinxemoji.sphinxemoji",
     "sphinxcontrib.mermaid",
-    "autodoc2",
     "sphinx_autodoc_typehints",
     "autoclasstoc",
     "sphinx_click",
     "sphinx-jsonschema",
     "sphinxcontrib.httpdomain",
     "sphinx_git",
-    "hoverxref.extension",
     "sphinx_sitemap",
     "notfound.extension",
 ]
@@ -297,19 +310,6 @@ linkcheck_ignore = [r"^http://localhost", r"^https://localhost"]
 extlinks = {
     "issue": (f"https://github.com/{ORG_SLUG}/{PROJECT_SLUG}/issues/%s", "issue %s"),
     "pr": (f"https://github.com/{ORG_SLUG}/{PROJECT_SLUG}/pull/%s", "PR %s"),
-}
-
-hoverxref_auto_ref = True
-hoverxref_domains = ["py"]
-hoverxref_roles = ["option", "doc"]
-hoverxref_role_types = {
-    "mod": "modal",
-    "class": "tooltip",
-    "func": "tooltip",
-    "meth": "tooltip",
-    "attr": "tooltip",
-    "exc": "tooltip",
-    "obj": "tooltip",
 }
 
 (TOOLS_METADATA, TOOL_ITEMS_METADATA) = load_tools_frontmatter()

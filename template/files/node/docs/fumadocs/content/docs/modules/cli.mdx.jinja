@@ -6,53 +6,53 @@ description: Command-line interface reference for {{ project_name }}
 
 # CLI Module
 
-The {{ project_name }} CLI provides a powerful command-line interface built with [Typer](https://typer.tiangolo.com/).
+The {{ project_name }} CLI provides a command-line interface built with [Typer](https://typer.tiangolo.com/).
 
 ## Installation
 
-The CLI is included with the package:
-
 ```bash
-uv sync
+uv sync --group cli
 ```
 
 ## Usage
 
 ```bash
-uv run {{ package_name }} --help
+uv run {{ project_slug }} --help
+# or: uv run python -m {{ package_name }}.cli --help
 ```
 
 ## Commands
 
-### `{{ package_name }} --version`
+Core commands include `quickstart`, `version`, `init`, `list`, `config`, and `plugin`.
+Plugin commands (for example `demo`) are registered via entry points.
 
-Display the current version.
+### `version`
 
 ```bash
-uv run {{ package_name }} --version
+uv run {{ project_slug }} version
+uv run {{ project_slug }} version --short
 ```
 
-### `{{ package_name }} info`
-
-Display system and environment information.
+### `config`
 
 ```bash
-uv run {{ package_name }} info
+uv run {{ project_slug }} config set app.name "my-app"
+uv run {{ project_slug }} config get app.name
+uv run {{ project_slug }} config list
 ```
 
 ## Configuration
 
-The CLI can be configured via:
-
-1. **Environment variables**: Prefixed with `{{ package_name | upper }}_`
+1. **Environment variables**: prefixed with `{{ package_name | upper }}_`
 2. **Config file**: `config.toml` or `.{{ package_name }}.toml`
-3. **Command-line arguments**: Override all other settings
+3. **Command-line arguments**: highest precedence
 
 ### Example Configuration
 
 ```toml
 # config.toml
-[{{ package_name }}]
+[app]
+name = "{{ project_name }}"
 verbose = true
 log_level = "INFO"
 ```

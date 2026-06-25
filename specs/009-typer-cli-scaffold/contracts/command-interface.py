@@ -1,112 +1,56 @@
-"""Command Interface Contract
+"""Command Interface Contract — Typer-first CLI model.
 
-This module defines the interface that all CLI commands must implement.
+Rendered projects use Typer callbacks decorated with ``@command()`` from
+``cli.core.base``. Class-based ``CommandProtocol`` remains available for
+advanced or legacy patterns but is not required for scaffolded commands.
 """
 
-from typing import Protocol, Any, Dict, List, Optional
-from pathlib import Path
+from __future__ import annotations
+
+from typing import Any, Callable, Protocol, TypedDict
 
 
-class CommandProtocol(Protocol):
-    """Protocol defining the interface for CLI commands."""
-
-    name: str
-    """Command name as invoked in the CLI"""
-
-    help_text: str
-    """Help text displayed in --help output"""
-
-    def execute(self, **kwargs: Any) -> int:
-        """Execute the command with provided parameters.
-
-        Args:
-            **kwargs: Command parameters as key-value pairs
-
-        Returns:
-            Exit code (0 for success, non-zero for failure)
-
-        Raises:
-            CLIError: For application-level errors
-            ValueError: For invalid parameter values
-        """
-        ...
-
-    def validate_params(self, params: Dict[str, Any]) -> List[str]:
-        """Validate command parameters before execution.
-
-        Args:
-            params: Parameter dict to validate
-
-        Returns:
-            List of validation error messages (empty if valid)
-        """
-        ...
-
-
-class AsyncCommandProtocol(Protocol):
-    """Protocol for async CLI commands."""
+class CommandMetadata(TypedDict, total=False):
+    """Metadata attached by the ``@command()`` decorator."""
 
     name: str
-    help_text: str
+    help: str
+    aliases: list[str]
+    hidden: bool
 
-    async def execute(self, **kwargs: Any) -> int:
-        """Async execution of the command."""
-        ...
 
-    def validate_params(self, params: Dict[str, Any]) -> List[str]:
-        """Validate command parameters."""
+class TyperCommandProtocol(Protocol):
+    """Protocol for Typer command callables with CLI metadata."""
+
+    _cli_command: bool
+    _cli_name: str
+    _cli_help: str
+    _cli_aliases: list[str]
+    _cli_hidden: bool
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
         ...
 
 
 class CommandGroupProtocol(Protocol):
-    """Protocol for command groups (e.g., 'config' with subcommands)."""
+    """Protocol for Typer sub-apps mounted via ``app.add_typer()``."""
 
     name: str
-    """Group name"""
-
-    help_text: str
-    """Group description"""
-
-    commands: Dict[str, CommandProtocol]
-    """Mapping of command name to command instance"""
-
-    def add_command(self, command: CommandProtocol) -> None:
-        """Register a command in this group."""
-        ...
-
-    def get_command(self, name: str) -> Optional[CommandProtocol]:
-        """Retrieve command by name."""
-        ...
+    help: str
 
 
-# Example implementation
-class BaseCommand:
-    """Base class implementing CommandProtocol."""
-
-    def __init__(self, name: str, help_text: str):
-        self.name = name
-        self.help_text = help_text
-
-    def execute(self, **kwargs: Any) -> int:
-        """Default implementation - subclasses override."""
-        raise NotImplementedError(
-            f"Command {self.name} must implement execute()"
-        )
-
-    def validate_params(self, params: Dict[str, Any]) -> List[str]:
-        """Default validation - subclasses can override."""
-        return []
+def is_typer_command(func: Any) -> bool:
+    """Return True when ``func`` carries ``@command()`` metadata."""
+    return getattr(func, "_cli_command", False) is True
 
 
-# Contract validation
-def validate_command(command: Any) -> bool:
-    """Validate that an object implements CommandProtocol.
-
-    Args:
-        command: Object to validate
-
-    Returns:
-        True if valid command, False otherwise
-    """
-    required_attrs = ["name", "help_text", "execute", "validate_params"]
-    return all(hasattr(command, attr) for attr in required_attrs)
+def get_command_metadata(func: Callable[..., Any]) -> CommandMetadata:
+    """Extract CLI metadata from a decorated command function."""
+    if not is_typer_command(func):
+        return {}
+    return {
+        "name": getattr(func, "_cli_name", func.__name__),
+        "help": getattr(func, "_cli_help", ""),
+        "aliases": list(getattr(func, "_cli_aliases", [])),
+        "hidden": bool(getattr(func, "_cli_hidden", False)),
+    }

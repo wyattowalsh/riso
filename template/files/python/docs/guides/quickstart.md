@@ -39,7 +39,13 @@ same command (`uv run sphinx-build docs dist/docs`).
 
 ## Smoke-test optional modules
 
-- **CLI**: `uv run python -m {{ package_name }}.cli --help`
+- **CLI** (when `cli_module=enabled`):
+  ```bash
+  uv sync --group cli --group test
+  uv run {{ project_slug }} --help
+  uv run python -m {{ package_name }}.cli config list
+  uv run pytest tests/test_cli*.py -v
+  ```
 - **FastAPI**: `uv run uvicorn {{ package_name }}.api.main:app --reload`
 - **Fastify**: `pnpm --filter api-node run dev`
 - **MCP**: `uv run python -c "from shared.mcp import tooling; print(tooling.list_tools())"`

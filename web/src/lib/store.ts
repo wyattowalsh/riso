@@ -42,7 +42,7 @@ export interface RisoConfig {
   fumadocs_ai_search: 'enabled' | 'disabled'
   fumadocs_openapi: 'enabled' | 'disabled'
   fumadocs_typedoc: 'enabled' | 'disabled'
-  fumadocs_theme: 'default' | 'ocean' | 'purple' | 'custom'
+  fumadocs_theme: 'default' | 'shadcn' | 'ocean' | 'purple' | 'custom'
   fumadocs_sidebar: 'default' | 'shadcn'
   fumadocs_i18n: 'enabled' | 'disabled'
   fumadocs_blog: 'enabled' | 'disabled'
@@ -92,7 +92,7 @@ export interface RisoConfig {
   docusaurus_autolink_headings: 'enabled' | 'disabled'
 
   // Infrastructure
-  ci_platform: 'github-actions' | 'none'
+  ci_platform: 'github-actions' | 'gitlab-ci' | 'circleci' | 'none'
 
   // AI Tools
   ai_tools_module: 'enabled' | 'disabled'
@@ -217,7 +217,7 @@ const defaultConfig: Partial<RisoConfig> = {
   fumadocs_ai_search: fromMatrix('fumadocs_ai_search', 'disabled'),
   fumadocs_openapi: fromMatrix('fumadocs_openapi', 'enabled'),
   fumadocs_typedoc: fromMatrix('fumadocs_typedoc', 'disabled'),
-  fumadocs_theme: fromMatrix('fumadocs_theme', 'default'),
+  fumadocs_theme: fromMatrix('fumadocs_theme', 'shadcn'),
   fumadocs_sidebar: fromMatrix('fumadocs_sidebar', 'default'),
   fumadocs_i18n: fromMatrix('fumadocs_i18n', 'disabled'),
   fumadocs_blog: fromMatrix('fumadocs_blog', 'disabled'),

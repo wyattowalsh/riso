@@ -104,6 +104,20 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
         docs_command = None
         docs_reason = "Documentation scaffolding skipped (`docs_module=disabled`)."
 
+    api_python_command: list[str] = [
+        "uv",
+        "run",
+        "--group",
+        "api_python",
+        "--group",
+        "api_python_test",
+        "--group",
+        "test",
+    ]
+    if as_enabled(config.get("cli_module")):
+        api_python_command.extend(["--group", "cli"])
+    api_python_command.extend(["pytest", "tests/api/"])
+
     modules: list[dict[str, object]] = [
         {
             "name": "cli",
@@ -112,9 +126,11 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
                 "uv",
                 "run",
                 "--group",
+                "cli",
+                "--group",
                 "test",
                 "pytest",
-                "tests/test_cli.py",
+                "tests/test_cli*.py",
             ],
             "cwd": str(python_cwd),
             "skip_reason": "CLI module disabled or Python project not rendered.",
@@ -122,14 +138,7 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
         {
             "name": "api_python",
             "enabled": api_enabled and "python" in api_languages and python_project_ready,
-            "command": [
-                "uv",
-                "run",
-                "--group",
-                "test",
-                "pytest",
-                "tests/test_api_fastapi.py",
-            ],
+            "command": api_python_command,
             "cwd": str(python_cwd),
             "skip_reason": "Python API disabled or Python project not rendered.",
         },

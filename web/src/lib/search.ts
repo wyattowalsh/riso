@@ -379,7 +379,7 @@ export const SUGGESTED_SEARCHES = [
 // Documentation links for search
 export const DOC_ENTRIES = [
   { title: 'Quickstart Guide', url: '/docs/guides/quickstart.html', keywords: ['start', 'begin', 'setup', 'install'] },
-  { title: 'MCP Server', url: '/docs/tools/riso-mcp-server.html', keywords: ['mcp', 'model context', 'tools'] },
+  { title: 'Riso CLI', url: '/docs/tools/riso-cli.html', keywords: ['cli', 'riso', 'scaffold', 'copier'] },
   { title: 'Testing Strategy', url: '/docs/guides/testing-strategy.html', keywords: ['test', 'quality', 'ci'] },
   { title: 'Matrix Data', url: '/docs/guides/matrix-data.html', keywords: ['matrix', 'options', 'config'] },
   { title: 'Troubleshooting', url: '/docs/guides/troubleshooting.html', keywords: ['error', 'fix', 'problem', 'help'] },

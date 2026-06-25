@@ -1,5 +1,6 @@
 import type { RisoConfig } from './store'
 import { stringify, parse } from 'yaml'
+import { formatRemovedAnswerKeyErrors } from './removedAnswerKeys'
 
 const CUSTOM_PRESETS_KEY = 'riso-custom-presets'
 
@@ -73,13 +74,32 @@ export function exportPresetYAML(preset: CustomPreset): string {
  * Import preset from YAML string
  */
 export function importPresetYAML(yamlStr: string): CustomPreset {
-  const parsed = parse(yamlStr)
+  const parsed = parse(yamlStr) as Record<string, unknown>
+  const removedKeyErrors = formatRemovedAnswerKeyErrors(parsed)
+  if (removedKeyErrors.length > 0) {
+    throw new Error(
+      `Removed Copier answer keys are no longer supported:\n${removedKeyErrors.map((line) => `- ${line}`).join('\n')}`,
+    )
+  }
+  const config = (parsed.config ?? parsed) as Record<string, unknown>
+  const configErrors = formatRemovedAnswerKeyErrors(config)
+  if (configErrors.length > 0) {
+    throw new Error(
+      `Removed Copier answer keys are no longer supported:\n${configErrors.map((line) => `- ${line}`).join('\n')}`,
+    )
+  }
+  const name = typeof parsed.name === 'string' ? parsed.name : 'Imported Preset'
+  const description =
+    typeof parsed.description === 'string' ? parsed.description : undefined
+  const version = typeof parsed.version === 'number' ? parsed.version : 1
+  const configSource = parsed.config ?? parsed
+
   return {
-    name: parsed.name || 'Imported Preset',
-    description: parsed.description,
-    config: parsed.config || parsed,
+    name,
+    description,
+    config: configSource as CustomPreset['config'],
     createdAt: new Date().toISOString(),
-    version: parsed.version || 1,
+    version,
   }
 }
 

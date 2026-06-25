@@ -18,7 +18,12 @@ from {{ package_name }}.cli.core.formatter import OutputFormat, OutputFormatter
 def formatter() -> OutputFormatter:
     """Create an output formatter with string buffer."""
     string_buffer = StringIO()
-    console = Console(file=string_buffer, force_terminal=True)
+    console = Console(
+        file=string_buffer,
+        force_terminal=False,
+        no_color=True,
+        highlight=False,
+    )
     return OutputFormatter(console=console)
 
 
@@ -55,7 +60,7 @@ class TestTableFormatting:
         formatter.format([], format=OutputFormat.TABLE)
         output = formatter.console.file.getvalue()  # type: ignore[union-attr]
         
-        assert "No data" in output.lower()
+        assert "no data" in output.lower()
     
     def test_format_table_with_title(self, formatter: OutputFormatter) -> None:
         """Test table formatting with custom title."""
@@ -133,6 +138,21 @@ class TestTextFormatting:
         output = formatter.console.file.getvalue()  # type: ignore[union-attr]
         
         assert "name:" in output.lower()
+        assert "Alice" in output
+
+
+class TestYAMLFormatting:
+    """Tests for YAML output formatting."""
+
+    def test_format_yaml_with_dict(self, formatter: OutputFormatter) -> None:
+        """Test YAML formatting with dictionary."""
+        pytest.importorskip("yaml")
+        data = {"name": "Alice", "active": True}
+
+        formatter.format(data, format=OutputFormat.YAML)
+        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
+
+        assert "name:" in output
         assert "Alice" in output
 
 

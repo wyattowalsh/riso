@@ -1,5 +1,8 @@
 {%- if docs_module == 'enabled' and docs_framework == 'fumadocs' -%}
 import { defineDocs, defineConfig{%- if fumadocs_last_updated == 'enabled' or fumadocs_blog == 'enabled' %}, frontmatterSchema{%- endif %}{%- if fumadocs_blog == 'enabled' %}, defineCollections{%- endif %} } from 'fumadocs-mdx/config';
+{%- if fumadocs_last_updated == 'enabled' %}
+import lastModified from 'fumadocs-mdx/plugins/last-modified';
+{%- endif %}
 {%- if fumadocs_twoslash == 'enabled' %}
 import { transformerTwoslash } from 'fumadocs-twoslash';
 {%- endif %}
@@ -13,16 +16,18 @@ import { z } from 'zod';
 
 export const docs = defineDocs({
   dir: 'content/docs',
+  docs: {
 {%- if fumadocs_last_updated == 'enabled' %}
-  schema: frontmatterSchema.extend({
-    lastModified: z.date().optional(),
-  }),
+    schema: frontmatterSchema.extend({
+      lastModified: z.date().optional(),
+    }),
 {%- endif %}
 {%- if fumadocs_llms_txt == 'enabled' %}
-  postprocess: {
-    includeProcessedMarkdown: true,
-  },
+    postprocess: {
+      includeProcessedMarkdown: true,
+    },
 {%- endif %}
+  },
 });
 
 {%- if fumadocs_blog == 'enabled' %}
@@ -39,6 +44,9 @@ export const blog = defineCollections({
 {%- endif %}
 
 export default defineConfig({
+{%- if fumadocs_last_updated == 'enabled' %}
+  plugins: [lastModified()],
+{%- endif %}
   mdxOptions: {
 {%- if fumadocs_math == 'enabled' %}
     remarkPlugins: [remarkMath],

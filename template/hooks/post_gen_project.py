@@ -37,9 +37,10 @@ except ModuleNotFoundError:  # pragma: no cover - template lint
 
 
 DEFAULT_GUIDANCE = [
+    "Read AGENTS.md for AI agent instructions and project commands.",
     "Create a virtual environment with `uv venv` (or activate an existing one).",
     "Install dependencies via `uv sync`.",
-    "Install pre-commit hooks via `make hooks` (or `uv run pre-commit install`).",
+    "Install pre-commit hooks via `make hooks` from the project root.",
     "Run the baseline quickstart script: `uv run python -m {package}.quickstart`.",
     "Review docs/modules/prompt-reference.md for module-specific commands.",
 ]
@@ -163,6 +164,35 @@ def cleanup_empty_scaffold_dirs(destination: pathlib.Path) -> list[str]:
         except OSError:
             continue
         removed.append(relative_path)
+    return removed
+
+
+def cleanup_empty_rendered_files(destination: pathlib.Path) -> list[str]:
+    """Remove zero-byte stubs left by conditional Jinja templates."""
+    removed: list[str] = []
+    for path in sorted(destination.rglob("*")):
+        if not path.is_file() or path.name == ".gitkeep":
+            continue
+        if path.stat().st_size != 0:
+            continue
+        path.unlink()
+        removed.append(str(path.relative_to(destination)))
+    return removed
+
+
+def cleanup_legacy_root_pyproject(destination: pathlib.Path) -> list[str]:
+    """Remove obsolete root pyproject.toml when python/pyproject.toml is canonical."""
+    removed: list[str] = []
+    root_pyproject = destination / "pyproject.toml"
+    python_pyproject = destination / "python" / "pyproject.toml"
+    if not root_pyproject.is_file() or not python_pyproject.is_file():
+        return removed
+    content = root_pyproject.read_text(encoding="utf-8")
+    if "[tool.uv.tasks]" not in content or "[project]" in content:
+        return removed
+    if "{%" in content or "mypy" in content:
+        root_pyproject.unlink()
+        removed.append("pyproject.toml")
     return removed
 
 
@@ -293,6 +323,15 @@ def docs_guidance(answers: dict[str, object]) -> list[str]:
     ]
 
 
+def ai_tools_guidance(answers: dict[str, object]) -> list[str]:
+    """Generate guidance when AI tools harness is enabled."""
+    if not answer_enabled(answers, "ai_tools_module"):
+        return []
+    return [
+        "AI harness: edit AGENTS.md for agent instructions; see docs/ai-tools.md for MCP setup.",
+    ]
+
+
 def optional_module_guidance(answers: dict[str, object]) -> list[str]:
     """Generate guidance for optional modules based on project configuration.
 
@@ -304,7 +343,10 @@ def optional_module_guidance(answers: dict[str, object]) -> list[str]:
     """
     guidance: list[str] = []
     if answer_enabled(answers, "cli_module"):
-        guidance.append("Typer CLI ready: `uv run python -m {package}.cli --help`.")
+        guidance.append(
+            "Typer CLI ready: `uv sync --group cli` then "
+            "`uv run python -m {package}.cli --help`."
+        )
     api_languages = set(api_languages_for_answers(answers))
     if "python" in api_languages:
         guidance.append(
@@ -339,19 +381,25 @@ def render_guidance(package: str, answers: dict[str, object]) -> str:
         lines.append(f"- {item.format(package=package)}")
     for item in optional_module_guidance(answers):
         lines.append(f"- {item.format(package=package)}")
+    for item in ai_tools_guidance(answers):
+        lines.append(f"- {item.format(package=package)}")
     return "\n".join(lines)
 
 
-def pre_commit_setup_guidance(quality_profile: str) -> dict[str, object]:
+def pre_commit_setup_guidance(
+    quality_profile: str, changelog_module: str
+) -> dict[str, object]:
     """Describe hook setup without mutating the generated repository."""
     hook_types = ["pre-commit"]
+    if changelog_module == "enabled" or quality_profile == "strict":
+        hook_types.append("commit-msg")
     if quality_profile == "strict":
-        hook_types.extend(["commit-msg", "pre-push"])
+        hook_types.append("pre-push")
 
     return {
         "status": "manual",
         "hooks": hook_types,
-        "install_command": "uv run pre-commit install --install-hooks",
+        "install_command": "make hooks",
     }
 
 
@@ -366,6 +414,8 @@ def main() -> None:
     validate_removed_answer_keys(answers)
     package = package_for_answers(destination, answers)
     removed_empty_dirs = cleanup_empty_scaffold_dirs(destination)
+    removed_empty_files = cleanup_empty_rendered_files(destination)
+    removed_legacy_files = cleanup_legacy_root_pyproject(destination)
     quality_checks = ensure_python_quality_tools() if ToolCheck is not None else []
     node_checks = []
     if ToolCheck is not None:
@@ -377,13 +427,18 @@ def main() -> None:
     workflow_validation_status = "skipped"
     if ci_platform == "github-actions":
         workflows_dir = destination / ".github" / "workflows"
-        # Run validation but don't fail render on validation failures
-        exit_code = validate_workflows_directory(workflows_dir, strict=False)
+        changelog_enabled = (
+            answer_text(answers, "changelog_module", "disabled") == "enabled"
+        )
+        exit_code = validate_workflows_directory(
+            workflows_dir, strict=changelog_enabled
+        )
         workflow_validation_status = "pass" if exit_code == 0 else "fail"
 
-    # Install pre-commit hooks
-    quality_profile = answers.get("quality_profile", "standard")
-    pre_commit_result = pre_commit_setup_guidance(str(quality_profile))
+    # Record pre-commit setup guidance (manual install; no hook mutation)
+    quality_profile = answer_text(answers, "quality_profile", "standard")
+    changelog_module = answer_text(answers, "changelog_module", "disabled")
+    pre_commit_result = pre_commit_setup_guidance(quality_profile, changelog_module)
 
     record_metadata(
         destination,
@@ -404,6 +459,7 @@ def main() -> None:
                 "shared_logic": answers.get("shared_logic", "disabled"),
                 "desktop_module": answers.get("desktop_module", "disabled"),
                 "saas_infra_module": answers.get("saas_infra_module", "disabled"),
+                "ai_tools_module": answers.get("ai_tools_module", "disabled"),
             },
             "quality": {
                 "profile": quality_profile,
@@ -419,6 +475,8 @@ def main() -> None:
             "workflow_validation": workflow_validation_status,
             "cleanup": {
                 "removed_empty_dirs": removed_empty_dirs,
+                "removed_empty_files": removed_empty_files,
+                "removed_legacy_files": removed_legacy_files,
             },
         },
     )

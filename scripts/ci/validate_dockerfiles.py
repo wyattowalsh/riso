@@ -88,6 +88,33 @@ def find_dockerfiles(directory: Path) -> list[Path]:
     return sorted(set(dockerfiles))  # Deduplicate and sort
 
 
+def check_cli_healthcheck(dockerfile_path: Path) -> list[dict[str, Any]]:
+    """Flag CLI Dockerfiles that use invalid ``--version`` instead of ``version``."""
+    issues: list[dict[str, Any]] = []
+    try:
+        content = dockerfile_path.read_text(encoding="utf-8")
+    except OSError:
+        return issues
+
+    for line_no, line in enumerate(content.splitlines(), start=1):
+        upper = line.upper()
+        if "HEALTHCHECK" not in upper or ".CLI" not in line:
+            continue
+        if "--version" in line and "version --short" not in line:
+            issues.append(
+                {
+                    "code": "RISO-CLI-HEALTHCHECK",
+                    "level": "error",
+                    "line": line_no,
+                    "message": (
+                        "CLI HEALTHCHECK must use 'version --short' subcommand, "
+                        "not '--version' flag"
+                    ),
+                }
+            )
+    return issues
+
+
 def validate_dockerfile(dockerfile_path: Path) -> ValidationResult:
     """Run hadolint on a Dockerfile and return validation result.
 
@@ -124,6 +151,10 @@ def validate_dockerfile(dockerfile_path: Path) -> ValidationResult:
             for issue in issues
             if issue.get("level") in ("warning", "info", "style")
         ]
+
+        cli_issues = check_cli_healthcheck(dockerfile_path)
+        errors.extend(issue for issue in cli_issues if issue.get("level") == "error")
+        warnings.extend(issue for issue in cli_issues if issue.get("level") != "error")
 
         try:
             display_path = dockerfile_path.relative_to(Path.cwd())

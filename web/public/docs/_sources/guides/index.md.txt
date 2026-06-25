@@ -12,4 +12,7 @@ Testing Strategy <testing-strategy>
 Roadmap <roadmap>
 Implementation Guide <implementation-guide>
 Matrix Data <matrix-data>
+CI Platforms <ci-platforms>
+Session Persistence <session-persistence>
+Troubleshooting <troubleshooting>
 :::

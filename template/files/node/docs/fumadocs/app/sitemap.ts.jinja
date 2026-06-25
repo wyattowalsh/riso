@@ -7,7 +7,7 @@ const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://{{ project_slug }}.
 export default function sitemap(): MetadataRoute.Sitemap {
   const docsUrls = source.getPages().map((page) => ({
     url: `${baseUrl}${page.url}`,
-    lastModified: page.data.lastModified || new Date(),
+    lastModified: (page.data as { lastModified?: Date }).lastModified || new Date(),
     changeFrequency: 'weekly' as const,
     priority: page.url === '/docs' ? 1 : 0.8,
   }));

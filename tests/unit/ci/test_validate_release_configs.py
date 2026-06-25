@@ -264,6 +264,27 @@ jobs:
         assert valid is True
         assert len(errors) == 0
 
+    def test_unquoted_on_key_passes(self, temp_dir):
+        """YAML 1.1 parses bare `on:` as boolean True; validator normalizes it."""
+        workflow = temp_dir / "riso-release.yml"
+        workflow.write_text("""
+name: Release
+on:
+  push:
+    branches: [main]
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run semantic-release
+        run: semantic-release
+""")
+        from validate_release_configs import validate_release_workflow
+
+        valid, errors = validate_release_workflow(workflow)
+        assert valid is True
+        assert len(errors) == 0
+
     def test_missing_workflow_returns_true(self, temp_dir):
         """Missing workflow should return True (not an error)."""
         workflow = temp_dir / "riso-release.yml"

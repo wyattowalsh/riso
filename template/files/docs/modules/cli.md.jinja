@@ -12,23 +12,27 @@ Set `cli_module=enabled` when rendering:
 copier copy . my-project --data '{"cli_module": "enabled"}'
 ```
 
-This scaffolds `src/{{ package_name }}/cli/` with automatic command discovery, config management, plugins, and rich formatting.
+This scaffolds `python/src/{{ package_name }}/cli/` (or `src/{{ package_name }}/cli/` in flat layouts) with automatic command discovery, config management, plugins, and rich formatting.
 
 ## Quick Start
 
 ```bash
-# Show available commands
-uv run {{ package_name }} --help
+uv sync --group cli
+
+# Console script (preferred) or module invocation
+uv run {{ project_slug }} --help
+uv run python -m {{ package_name }}.cli --help
 
 # Run commands
-uv run {{ package_name }} quickstart
-uv run {{ package_name }} version
-uv run {{ package_name }} init
+uv run {{ project_slug }} quickstart
+uv run {{ project_slug }} version
+uv run {{ project_slug }} --version    # global flag
+uv run {{ project_slug }} init
 ```
 
 ## Adding Commands (< 5 minutes)
 
-1. Create file in `src/{{ package_name }}/cli/commands/mycommand.py`:
+1. Create file in `python/src/{{ package_name }}/cli/commands/mycommand.py`:
 
 ```python
 from {{ package_name }}.cli.core import command
@@ -42,7 +46,7 @@ def greet_command(name: str = typer.Argument(...)) -> None:
 2. Run it - automatically discovered:
 
 ```bash
-uv run {{ package_name }} greet Alice
+uv run {{ project_slug }} greet Alice
 ```
 
 ## Architecture
@@ -74,16 +78,28 @@ port = 5432
 
 ### Precedence Order
 1. CLI arguments (highest)
-2. Environment variables (`MYAPP_DATABASE_HOST`)
+2. Environment variables (`{{ package_name | upper }}_DATABASE_HOST` by default)
 3. Config file
 4. Defaults (lowest)
 
+Invalid TOML in a config file logs a warning and falls back to defaults during normal reads; use `config validate` to fail on syntax errors.
+
+### Exit codes
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | General failure |
+| 2 | Configuration error |
+| 3 | Plugin error |
+| 4 | Validation error |
+| 130 | Interrupted (Ctrl+C) |
+
 ### Commands
 ```bash
-{{ package_name }} config set app.name "My App"
-{{ package_name }} config get app.name --source
-{{ package_name }} config list
-{{ package_name }} config validate
+{{ project_slug }} config set app.name "My App"
+{{ project_slug }} config get app.name --source
+{{ project_slug }} config list
+{{ project_slug }} config validate
 ```
 
 ## Rich Formatting

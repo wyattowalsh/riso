@@ -64,14 +64,14 @@ lint:python:
     - uv run ruff check .
     - uv run ruff format --check .
 {% if quality_profile == 'strict' %}
-    - uv run mypy .
+    - uv run ty check
     - uv run pylint src/
 {% endif %}
   artifacts:
     when: on_failure
     paths:
       - ruff-output.txt
-      - mypy-output.txt
+      - ty-output.txt
       - pylint-output.txt
     expire_in: 1 week
 
@@ -107,7 +107,7 @@ test:cli:
   stage: test
   script:
     - export PATH="$HOME/.cargo/bin:$PATH"
-    - uv run pytest tests/test_cli.py -v
+    - uv run pytest tests/test_cli*.py -v
   artifacts:
     when: on_failure
     paths:

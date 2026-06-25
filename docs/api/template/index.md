@@ -1,6 +1,6 @@
 # Template Utilities
 
-Template discovery and metadata utilities.
+Copier template helpers for loading configuration, validating answers, and running operations.
 
 ```{eval-rst}
 .. automodule:: riso.template
@@ -12,54 +12,59 @@ Template discovery and metadata utilities.
 
 ## Overview
 
-The template module provides utilities for working with the Riso template:
+The `riso.template` module provides Python APIs used by the `riso` CLI and maintainer automation:
 
-- Template location and discovery
-- Version information
-- Metadata extraction
-- Path resolution
+- Load `copier.yml` and prompt definitions
+- Merge defaults and validate answers
+- List sample variants and module catalog
+- Run Copier copy, update, and recopy operations
 
-## Template Discovery
+For path resolution from arbitrary environments, prefer `riso.core.paths` or the CLI (`riso template path`).
+
+## Template paths (checkout)
+
+When running from a repository checkout, helpers default to the local `template/` and `samples/` directories:
 
 ```python
-from riso.template import get_template_path, get_template_metadata
+from riso.template import get_template_path, get_samples_path
 
-# Get template directory
 template_dir = get_template_path()
-
-# Get template metadata
-metadata = get_template_metadata()
-print(f"Template version: {metadata['version']}")
-print(f"Template description: {metadata['description']}")
+samples_dir = get_samples_path()
 ```
 
-## Path Utilities
+## Configuration and prompts
 
 ```python
-from riso.template import resolve_template_path
+from riso.template import load_copier_config, get_prompts, get_defaults
 
-# Resolve paths relative to template root
-copier_yml = resolve_template_path("copier.yml")
-files_dir = resolve_template_path("files")
+config = load_copier_config(template_dir)
+prompts = get_prompts(template_dir)
+defaults = get_defaults(template_dir, project_name="My App")
 ```
 
-## Version Information
+## Validation
 
 ```python
-from riso.template import get_template_version, is_development_version
+from riso.template import validate_answers
 
-# Get template version
-version = get_template_version()
+result = validate_answers({"project_name": "My App"}, template_dir)
+if not result.valid:
+    print(result.errors)
+print(result.warnings)
+```
 
-# Check if development version
-if is_development_version():
-    print("Running development version")
+## Sample variants and catalog
+
+```python
+from riso.template import list_sample_variants, get_module_catalog
+
+variants = list_sample_variants(samples_dir)
+catalog = get_module_catalog(template_dir)
 ```
 
 ## Integration
 
 The template module integrates with:
 
-- {py:mod}`riso.mcp.tools.copier_api` - Template rendering
-- {py:mod}`riso.mcp.resources.templates` - Template metadata resources
-- {py:mod}`riso.mcp.resources.samples` - Sample variant discovery
+- {py:mod}`riso.cli` — Agent-native CLI for Copier operations
+- {py:mod}`riso.core` — Shared errors, validation, paths, and diff utilities

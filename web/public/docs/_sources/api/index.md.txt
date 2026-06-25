@@ -1,6 +1,6 @@
 # API Reference
 
-The API reference is generated via `sphinx.ext.autodoc`.
+The API reference is generated via `sphinx.ext.autodoc` with full type hint support.
 
 ```bash
 uv sync --group docs
@@ -10,18 +10,51 @@ uv run sphinx-build docs docs/_build
 Rendered projects inherit this configuration so `autodoc` can scan packages in
 `apps/` and `packages/` automatically when present.
 
-## Authoring tips
+## Modules
+
+::::{grid} 2
+:gutter: 3
+
+:::{grid-item-card} MCP Server
+:link: mcp/index
+:link-type: doc
+
+Model Context Protocol server for AI-accessible project scaffolding.
+
+Tools, resources, session management, and configuration.
+:::
+
+:::{grid-item-card} Template Utilities
+:link: template/index
+:link-type: doc
+
+Template discovery, metadata, and path resolution utilities.
+:::
+
+:::{grid-item-card} Scripts
+:link: scripts
+:link-type: doc
+
+Command-line scripts and automation utilities.
+:::
+
+::::
+
+## Authoring Tips
 
 - Keep docstrings NumPy- or Google-style; napoleon is configured for both.
 - Prefer explicit `__all__` exports in packages you want surfaced in the index.
 - If modules are intentionally excluded (tests, experimental branches), add
   context in the docstring or module comments to clarify why.
-- Cross-link functions and CLI entrypoints using the default `:py:func:` role so
-  hoverxref tooltips stay rich.
+- Cross-link functions and CLI entrypoints using the default `:py:func:` role for
+  consistent API references.
+- Type hints are automatically rendered via `sphinx-autodoc-typehints`.
 
 ```{toctree}
 :hidden:
-:maxdepth: 1
+:maxdepth: 2
 
+mcp/index
+template/index
 scripts
 ```

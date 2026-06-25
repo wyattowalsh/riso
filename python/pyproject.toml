@@ -1,0 +1,121 @@
+[build-system]
+requires = ["setuptools>=67", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "changelog-python"
+description = "Baseline Riso project scaffold generated via Copier."
+version = "0.1.0"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Riso Maintainer" }]
+dependencies = [
+  "loguru>=0.7.3",
+  "pydantic>=2.12.3",
+  "pydantic-settings>=2.11.0",
+  "tenacity>=9.1.2",
+]
+
+
+[project.scripts]
+
+changelog-python = "changelog_python.cli.__main__:main"
+
+
+
+
+
+[project.entry-points."changelog_python.cli.plugins"]
+demo = "changelog_python.cli.plugins.example_plugin:demo_command"
+
+
+[dependency-groups]
+test = [
+  "pytest>=8.4.2",
+]
+quality = [
+  "ruff>=0.15.19",
+  "ty>=0.0.53",
+  "pylint>=4.0.2",
+  "coverage>=7.6.9",
+  "taskipy>=1.13.0",
+  "pre-commit>=3.0",
+]
+notebook = [
+  "nbclient>=0.10.2",
+  "jupyterlab>=4.4.10",
+]
+docs = [
+  "sphinx>=9.0",
+  "shibuya>=2024.5.1",
+  "myst-parser>=3.0.1",
+  "sphinx-copybutton>=0.5.2",
+  "sphinx-design>=0.6.1",
+  "sphinx-tabs>=3.4.5",
+  "sphinx-togglebutton>=0.3.2",
+  "sphinxemoji>=0.3.1",
+  "sphinxcontrib-mermaid>=0.9.2",
+
+  "sphinx-autodoc-typehints>=2.3.0",
+  "autoclasstoc>=1.7.0",
+  "sphinx-click>=5.2.1",
+  "sphinx-jsonschema>=1.19.1",
+  "sphinxcontrib-httpdomain>=1.8.1",
+  "sphinx-git>=11.0.0",
+  "sphinx-sitemap>=2.6.0",
+  "sphinx-notfound-page>=1.0.4",
+  "pyyaml>=6.0.2",
+]
+cli = [
+  "click>=8.3.0",
+  "markdown-it-py>=4.0.0",
+  "mdurl>=0.1.2",
+  "pyyaml>=6.0.2",
+  "rich>=14.2.0",
+  "shellingham>=1.5.4",
+  "tomli>=2.0.1; python_version<'3.11'",
+  "tomli-w>=1.0.0",
+  "typer>=0.20.0",
+]
+api_python = [
+  "fastapi>=0.120.2",
+  "uvicorn[standard]>=0.38.0",
+  "python-dotenv>=1.0.0",
+]
+websocket = [
+  "websockets>=14.0",
+  "python-jose[cryptography]>=3.3.0",
+]
+api_python_test = [
+  "httpx>=0.25.0",
+  "pytest-asyncio>=0.21.0",
+]
+
+mcp = [
+  "fastmcp>=3.4.0",
+]
+
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+
+[tool.taskipy]
+ignore_errors = false
+
+[tool.taskipy.tasks]
+quality = "python -m tasks.quality"
+
+[tool.ty.environment]
+python-version = "3.11"
+
+[tool.ty.src]
+respect-ignore-files = true
+
+[tool.ty.terminal]
+output-format = "full"
+
+
+[[tool.ty.overrides]]
+path = "tests/*"

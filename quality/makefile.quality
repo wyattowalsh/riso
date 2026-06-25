@@ -1,0 +1,56 @@
+UV ?= uv
+QUALITY_PROFILE ?= standard
+PACKAGE_NAME ?= changelog_python
+PYTEST_FLAGS ?= -ra
+TY_FLAGS ?=
+RUFF_FLAGS ?=
+PYLINT_FLAGS ?=
+COVERAGE_FLAGS ?= -m pytest $(PYTEST_FLAGS)
+
+ifeq ($(QUALITY_PROFILE),strict)
+	TY_FLAGS := --error-on-warning
+	RUFF_FLAGS := --select ALL --ignore E203,E266,E501
+	PYLINT_FLAGS := --errors-only
+endif
+
+.PHONY: quality quality-python coverage-report format lint \
+
+
+quality: quality-python
+
+quality-python:
+	$(UV) run --group quality --group test ruff check $(RUFF_FLAGS)
+	$(UV) run --group quality --group test ty check $(TY_FLAGS) $(PACKAGE_NAME)
+	$(UV) run --group quality --group test pylint $(PYLINT_FLAGS) $(PACKAGE_NAME) tests
+	$(UV) run --group quality --group test coverage run $(COVERAGE_FLAGS)
+	$(UV) run --group quality coverage report --rcfile coverage.cfg
+
+coverage-report:
+	$(UV) run --group quality coverage html --rcfile coverage.cfg
+
+format:
+	$(UV) run --group quality ruff format $(PACKAGE_NAME) tests
+
+lint:
+	$(UV) run --group quality --group test ruff check $(RUFF_FLAGS)
+	$(UV) run --group quality --group test pylint $(PYLINT_FLAGS) $(PACKAGE_NAME) tests
+
+
+
+# ============================================
+# Pre-commit Hooks
+# ============================================
+.PHONY: hooks hooks-run hooks-update
+
+hooks: ## Install pre-commit hooks
+	$(UV) run --group quality pre-commit install --install-hooks
+
+	$(UV) run --group quality pre-commit install --hook-type commit-msg
+
+
+
+hooks-run: ## Run all pre-commit hooks manually
+	$(UV) run --group quality pre-commit run --all-files
+
+hooks-update: ## Update pre-commit hook versions
+	$(UV) run --group quality pre-commit autoupdate

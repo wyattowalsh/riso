@@ -216,7 +216,7 @@ export function ProjectBasics() {
         <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
           CI/CD Platform
         </label>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <OptionCard
             value="github-actions"
             label="GitHub Actions"
@@ -224,6 +224,22 @@ export function ProjectBasics() {
             icon={Workflow}
             selected={(config.ci_platform || defaultCi) === 'github-actions'}
             onClick={() => updateConfig({ ci_platform: 'github-actions' })}
+          />
+          <OptionCard
+            value="gitlab-ci"
+            label="GitLab CI"
+            description="Parallel matrix pipeline with GitLab Pages docs deploy"
+            icon={Workflow}
+            selected={config.ci_platform === 'gitlab-ci'}
+            onClick={() => updateConfig({ ci_platform: 'gitlab-ci' })}
+          />
+          <OptionCard
+            value="circleci"
+            label="CircleCI"
+            description="Orb-based pipeline with workspaces and parallelism"
+            icon={Workflow}
+            selected={config.ci_platform === 'circleci'}
+            onClick={() => updateConfig({ ci_platform: 'circleci' })}
           />
           <OptionCard
             value="none"

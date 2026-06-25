@@ -90,7 +90,7 @@ _defaults:
   fumadocs_ai_search: "disabled"
   fumadocs_openapi: "enabled"
   fumadocs_typedoc: "disabled"
-  fumadocs_theme: "default"
+  fumadocs_theme: "shadcn"
   fumadocs_sidebar: "default"
   fumadocs_i18n: "disabled"
   fumadocs_blog: "disabled"
@@ -207,6 +207,16 @@ project_name:
   help: "Human friendly project name"
   default: riso-example
 
+project_slug:
+  type: str
+  default: "{{ project_name | replace(' ', '-') | lower }}"
+  when: false
+
+package_name:
+  type: str
+  default: "{{ project_slug | replace('-', '_') }}"
+  when: false
+
 project_layout:
   type: str
   help: "Choose the repository layout"
@@ -320,7 +330,6 @@ api_features:
     Select additional API features (comma-separated):
     - graphql: GraphQL endpoint (Strawberry/Apollo/async-graphql)
     - websocket: WebSocket real-time communication
-    - openapi: OpenAPI documentation generation
   choices:
     - none
     - graphql
@@ -566,12 +575,14 @@ fumadocs_theme:
   help: |
     Select theming approach:
     - default: Fumadocs UI with neutral preset
+    - shadcn: Shadcn UI semantic tokens (pairs with main-app shadcn themes)
     - ocean: Blue-toned ocean preset
     - purple: Purple accent preset
     - custom: Custom CSS variables (scaffold only)
-  default: default
+  default: shadcn
   choices:
     - default
+    - shadcn
     - ocean
     - purple
     - custom
@@ -1171,13 +1182,6 @@ ai_tools_mcp_search:
   default: false
   when: "{{ ai_tools_module == 'enabled' }}"
 
-shared_logic:
-  type: str
-  help: "Generate shared logic package?"
-  default: disabled
-  choices:
-    - disabled
-    - enabled
 include_databases:
   type: str
   help: "Include PostgreSQL and Redis services in docker-compose?"
@@ -1894,7 +1898,7 @@ _exclude:
   - "{% if not ((cli_module == 'enabled' and 'go' in cli_languages) or (api_module == 'enabled' and 'go' in api_languages) or (mcp_module == 'enabled' and 'go' in mcp_languages)) %}go/{% endif %}"
 
   # Frontend directory - include only if SaaS enabled
-  - "{% if saas_infra_module != 'enabled' %}frontend/{% endif %}"
+  - "frontend/"
 
   # Electron directory - include only if desktop module enabled
   - "{% if desktop_module != 'enabled' %}electron/{% endif %}"
@@ -1955,10 +1959,15 @@ _exclude:
   # Go API - exclude if not using Go API
   - "{% if not (api_module == 'enabled' and 'go' in api_languages) %}go/api/{% endif %}"
 
+  # Python WebSocket - exclude if not using WebSocket with Python API
+  - "{% if not (api_module == 'enabled' and 'python' in api_languages and ('websocket' in api_features or websocket_module == 'enabled')) %}python/src/{{ package_name }}/websocket/{% endif %}"
+  - "{% if not (api_module == 'enabled' and 'python' in api_languages and ('websocket' in api_features or websocket_module == 'enabled')) %}python/tests/websocket/{% endif %}"
+  - "{% if not (api_module == 'enabled' and 'python' in api_languages and ('websocket' in api_features or websocket_module == 'enabled')) %}python/src/{{ package_name }}/api/websocket_endpoints.py{% endif %}"
+
   # Python GraphQL - exclude if not using GraphQL with Python API
-  - "{% if not (api_module == 'enabled' and 'python' in api_languages and 'graphql' in api_features) %}python/graphql_api/{% endif %}"
-  - "{% if not (api_module == 'enabled' and 'python' in api_languages and 'graphql' in api_features) %}graphql/{% endif %}"
-  - "{% if not (api_module == 'enabled' and 'python' in api_languages and 'graphql' in api_features) %}tests/graphql/{% endif %}"
+  - "{% if not (api_module == 'enabled' and 'python' in api_languages and ('graphql' in api_features or graphql_api_module == 'enabled')) %}python/graphql_api/{% endif %}"
+  - "{% if not (api_module == 'enabled' and 'python' in api_languages and ('graphql' in api_features or graphql_api_module == 'enabled')) %}graphql/{% endif %}"
+  - "{% if not (api_module == 'enabled' and 'python' in api_languages and ('graphql' in api_features or graphql_api_module == 'enabled')) %}tests/graphql/{% endif %}"
 
   # Node API - exclude if not using Node API
   - "{% if not (api_module == 'enabled' and 'node' in api_languages) %}node/apps/api-node/{% endif %}"
@@ -1977,6 +1986,14 @@ _exclude:
   - "{% if not ((api_module == 'enabled' and 'node' in api_languages) or (mcp_module == 'enabled' and 'typescript' in mcp_languages) or (docs_module == 'enabled' and docs_framework in ['fumadocs', 'docusaurus']) or saas_infra_module == 'enabled' or desktop_module == 'enabled' or changelog_module == 'enabled') %}pnpm-workspace.yaml{% endif %}"
   - "{% if not ((api_module == 'enabled' and 'node' in api_languages) or (mcp_module == 'enabled' and 'typescript' in mcp_languages) or (docs_module == 'enabled' and docs_framework in ['fumadocs', 'docusaurus']) or saas_infra_module == 'enabled' or desktop_module == 'enabled' or changelog_module == 'enabled') %}node/pnpm-workspace.yaml{% endif %}"
 
+  # Maintainer-only workflows (riso repo template CI — never ship to rendered projects)
+  - ".github/workflows/template-ci.yml"
+  - ".github/workflows/quality-matrix.yml"
+
+  # Container workflows - exclude unless API module enabled (Docker scaffold)
+  - "{% if api_module != 'enabled' %}.github/workflows/riso-container-build.yml{% endif %}"
+  - "{% if api_module != 'enabled' %}.github/workflows/riso-container-publish.yml{% endif %}"
+
   # Release files - exclude unless changelog/release automation is enabled
   - "{% if changelog_module != 'enabled' %}.commitlintrc.yml{% endif %}"
   - "{% if changelog_module != 'enabled' %}.releaserc.yml{% endif %}"
@@ -1990,14 +2007,32 @@ _exclude:
   - "{% if api_module != 'enabled' %}docs/modules/api-fastapi.md{% endif %}"
   - "{% if api_module != 'enabled' %}docs/modules/api-node.md{% endif %}"
   - "{% if api_module != 'enabled' %}docs/modules/api-python.md{% endif %}"
-  - "{% if not (api_module == 'enabled' and 'graphql' in api_features) %}docs/modules/graphql.md{% endif %}"
-  - "{% if not (api_module == 'enabled' and 'websocket' in api_features) %}docs/modules/websockets.md{% endif %}"
+  - "{% if not (api_module == 'enabled' and ('graphql' in api_features or graphql_api_module == 'enabled')) %}docs/modules/graphql.md{% endif %}"
+  - "{% if not (api_module == 'enabled' and ('websocket' in api_features or websocket_module == 'enabled')) %}docs/modules/websockets.md{% endif %}"
   - "{% if mcp_module != 'enabled' %}docs/modules/mcp.md{% endif %}"
   - "{% if shared_logic != 'enabled' %}docs/modules/shared-logic.md{% endif %}"
   - "{% if codegen_module != 'enabled' %}docs/modules/codegen-scaffolding.md{% endif %}"
   - "{% if changelog_module != 'enabled' %}docs/modules/changelog-release.md{% endif %}"
   - "{% if docs_module != 'enabled' %}docs/modules/docs-site.md{% endif %}"
   - "{% if saas_infra_module != 'enabled' %}docs/modules/saas-starter.md{% endif %}"
+
+  # ========================================
+  # AI Tools / Harness Exclusions
+  # ========================================
+  # AGENTS.md is always rendered (project SSOT). Exclude harness when disabled.
+
+  - "{% if ai_tools_module != 'enabled' %}CLAUDE.md{% endif %}"
+  - "{% if ai_tools_module != 'enabled' %}.cursor/{% endif %}"
+  - "{% if ai_tools_module != 'enabled' %}.warp/{% endif %}"
+  - "{% if ai_tools_module != 'enabled' %}.gemini/{% endif %}"
+  - "{% if ai_tools_module != 'enabled' %}opencode.json{% endif %}"
+  - "{% if ai_tools_module != 'enabled' %}.mcp.json{% endif %}"
+  - "{% if ai_tools_module != 'enabled' %}mcp.json{% endif %}"
+  - "{% if ai_tools_module != 'enabled' %}.copilot/{% endif %}"
+  - "{% if ai_tools_module != 'enabled' %}.amazonq/{% endif %}"
+  - "{% if ai_tools_module != 'enabled' %}.codex/{% endif %}"
+  - "{% if ai_tools_module != 'enabled' %}.claude/{% endif %}"
+  - "{% if ai_tools_module != 'enabled' %}docs/ai-tools.md{% endif %}"
 
   # ========================================
   # SaaS Feature Exclusions
@@ -2013,9 +2048,6 @@ _exclude:
   # ========================================
   # Root Config File Exclusions
   # ========================================
-
-  # pyproject.toml - include if any Python component enabled
-  - "{% if not ((cli_module == 'enabled' and 'python' in cli_languages) or (api_module == 'enabled' and 'python' in api_languages) or (mcp_module == 'enabled' and 'python' in mcp_languages)) %}pyproject.toml{% endif %}"
 
   # Cargo.toml - include if any Rust component enabled
   - "{% if not ((cli_module == 'enabled' and 'rust' in cli_languages) or (api_module == 'enabled' and 'rust' in api_languages) or (mcp_module == 'enabled' and 'rust' in mcp_languages)) %}rust/Cargo.toml{% endif %}"

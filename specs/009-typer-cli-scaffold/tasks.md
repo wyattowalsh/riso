@@ -187,7 +187,7 @@ ______________________________________________________________________
 ### Edge Case Handling
 
 - [x] T081 [P] Handle Ctrl+C interruption gracefully (cleanup and exit) in `template/files/python/src/{{ package_name }}/cli/__main__.py.jinja`
-- [ ] T081a [P] Create test for Ctrl+C handling with cleanup verification in `template/files/python/tests/test_cli_commands.py.jinja`
+- [x] T081a [P] Create test for Ctrl+C handling with cleanup verification in `template/files/python/tests/test_cli_commands.py.jinja`
 - [x] T082 [P] Handle read-only filesystem errors with clear messages in `template/files/python/src/{{ package_name }}/cli/core/config.py.jinja`
 - [x] T083 [P] Handle invalid environment variable values with warnings in `template/files/python/src/{{ package_name }}/cli/core/config.py.jinja`
 - [x] T084 [P] Show help when CLI invoked without commands in `template/files/python/src/{{ package_name }}/cli/__main__.py.jinja`
@@ -195,30 +195,9 @@ ______________________________________________________________________
 
 ### Async Command Support
 
-- [ ] T086 [P] Add async command example demonstrating pattern in `template/files/python/src/{{ package_name }}/cli/commands/example_async.py.jinja`
+- [x] T086 [P] Add async command example demonstrating pattern in `template/files/python/src/{{ package_name }}/cli/commands/example_async.py.jinja`
 - [x] T087 [P] Document async command pattern in CLI docs in `template/files/shared/docs/modules/cli.md.jinja`
-- [ ] T088 [P] Create test for async command execution in `template/files/python/tests/test_cli_commands.py.jinja`
-
-### Shell Completion
-
-- [ ] T078 Verify Typer's built-in --install-completion works in `template/files/python/src/{{ package_name }}/cli/__main__.py.jinja`
-- [ ] T079 [P] Document shell completion setup for bash/zsh/fish in `template/files/shared/docs/modules/cli.md.jinja`
-- [ ] T080 [P] Add shell completion generation to CI validation in `.github/workflows/riso-quality.yml`
-
-### Edge Case Handling
-
-- [ ] T081 [P] Handle Ctrl+C interruption gracefully (cleanup and exit) in `template/files/python/src/{{ package_name }}/cli/__main__.py.jinja`
-- [ ] T081a [P] Create test for Ctrl+C handling with cleanup verification in `template/files/python/tests/test_cli_commands.py.jinja`
-- [ ] T082 [P] Handle read-only filesystem errors with clear messages in `template/files/python/src/{{ package_name }}/cli/core/config.py.jinja`
-- [ ] T083 [P] Handle invalid environment variable values with warnings in `template/files/python/src/{{ package_name }}/cli/core/config.py.jinja`
-- [ ] T084 [P] Show help when CLI invoked without commands in `template/files/python/src/{{ package_name }}/cli/__main__.py.jinja`
-- [ ] T085 [P] Validate parameter types with helpful messages in `template/files/python/src/{{ package_name }}/cli/core/base.py.jinja`
-
-### Async Command Support
-
-- [ ] T086 [P] Add async command example demonstrating pattern in `template/files/python/src/{{ package_name }}/cli/commands/example_async.py.jinja`
-- [ ] T087 [P] Document async command pattern in CLI docs in `template/files/shared/docs/modules/cli.md.jinja`
-- [ ] T088 [P] Create test for async command execution in `template/files/python/tests/test_cli_commands.py.jinja`
+- [x] T088 [P] Create test for async command execution in `template/files/python/tests/test_cli_commands.py.jinja`
 
 ### Command Versioning (Deferred to v2.0)
 

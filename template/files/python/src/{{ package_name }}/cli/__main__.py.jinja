@@ -25,7 +25,10 @@ from typing import Any
 import typer
 from loguru import logger
 
-from {{ package_name }}.cli.core import CLIError, get_command_metadata
+from {{ package_name }}.cli.core import CLIError, PluginManager, get_command_metadata
+
+# Typer sub-apps are mounted via add_typer — not leaf @command discovery.
+TYPER_GROUP_MODULES = frozenset({"config", "plugin"})
 
 # Initialize Typer app
 app = typer.Typer(
@@ -37,94 +40,180 @@ app = typer.Typer(
 )
 
 
+def _version_callback(value: bool) -> bool:
+    """Eager --version flag: print version and exit."""
+    if value:
+        from {{ package_name }}.cli.commands.version import version_command
+
+        version_command(short=True)
+        raise typer.Exit()
+    return value
+
+
+@app.callback()
+def app_callback(
+    ctx: typer.Context,
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose logging output",
+    ),
+    output_format: str = typer.Option(
+        "table",
+        "--format",
+        "-f",
+        help="Default output format (table, json, yaml, text)",
+    ),
+    version: bool = typer.Option(
+        False,
+        "--version",
+        callback=_version_callback,
+        is_eager=True,
+        help="Show version and exit",
+    ),
+) -> None:
+    """Global CLI options applied to all commands."""
+    ctx.ensure_object(dict)
+    ctx.obj["verbose"] = verbose
+    ctx.obj["format"] = output_format
+    if verbose:
+        logger.enable("{{ package_name }}.cli")
+
+_commands_registered = False
+
+
 def discover_commands() -> list[tuple[Any, dict[str, Any]]]:
-    """Discover all command modules in the commands directory.
-    
+    """Discover leaf command modules in the commands directory.
+
     Returns:
         List of (command_function, metadata) tuples
     """
-    commands = []
+    commands: list[tuple[Any, dict[str, Any]]] = []
     commands_dir = Path(__file__).parent / "commands"
-    
+
     if not commands_dir.exists():
         logger.warning(f"Commands directory not found: {commands_dir}")
         return commands
-    
-    # Find all Python files in commands directory
+
     for file_path in commands_dir.glob("*.py"):
         if file_path.name.startswith("_"):
             continue
-        
+        if file_path.stem in TYPER_GROUP_MODULES:
+            continue
+
         module_name = f"{{ package_name }}.cli.commands.{file_path.stem}"
         try:
             module = importlib.import_module(module_name)
-            
-            # Look for decorated command functions
+
             for attr_name in dir(module):
                 if attr_name.startswith("_"):
                     continue
-                
+
                 attr = getattr(module, attr_name)
                 if not callable(attr):
                     continue
-                
-                # Check if it's a command (has our decorator metadata)
+
                 if hasattr(attr, "_cli_command") and attr._cli_command:
                     metadata = get_command_metadata(attr)
                     commands.append((attr, metadata))
-                    logger.debug(f"Discovered command: {metadata['name']} from {module_name}")
-        
+                    logger.debug(
+                        f"Discovered command: {metadata['name']} from {module_name}"
+                    )
+
         except Exception as e:
             logger.warning(f"Failed to load command module {module_name}: {e}")
             continue
-    
+
     return commands
 
 
+def _register_leaf_command(cmd_func: Any, metadata: dict[str, Any]) -> None:
+    """Register a single leaf command and its aliases."""
+    cmd_name = metadata.get("name", cmd_func.__name__)
+    cmd_help = metadata.get("help", cmd_func.__doc__ or "")
+    hidden = metadata.get("hidden", False)
+
+    app.command(name=cmd_name, help=cmd_help, hidden=hidden)(cmd_func)
+    logger.debug(f"Registered command: {cmd_name}")
+
+    for alias in metadata.get("aliases", []):
+        app.command(name=alias, help=f"Alias for '{cmd_name}'", hidden=True)(cmd_func)
+        logger.debug(f"Registered alias: {alias} -> {cmd_name}")
+
+
+def register_typer_groups() -> None:
+    """Mount Typer sub-apps for command groups."""
+    from {{ package_name }}.cli.commands.config import config_app
+    from {{ package_name }}.cli.commands.plugin import plugin_app
+
+    app.add_typer(config_app, name="config")
+    app.add_typer(plugin_app, name="plugin")
+    logger.debug("Registered Typer groups: config, plugin")
+
+
+def register_plugin_commands(plugin_manager: PluginManager | None = None) -> None:
+    """Register commands from discovered plugins (lazy per plugin)."""
+    manager = plugin_manager or PluginManager()
+    manager.discover()
+
+    for plugin_info in manager.list_plugins(include_loaded=False):
+        plugin_name = plugin_info["name"]
+        try:
+            for cmd_func in manager.get_plugin_commands(plugin_name):
+                metadata = get_command_metadata(cmd_func)
+                if not metadata:
+                    continue
+                plugin_help = metadata.get("help", cmd_func.__doc__ or "")
+                metadata["help"] = f"{plugin_help} [plugin:{plugin_name}]"
+                _register_leaf_command(cmd_func, metadata)
+        except Exception as e:
+            logger.warning(f"Skipping plugin '{plugin_name}': {e}")
+
+
 def register_commands() -> None:
-    """Register all discovered commands with the Typer app."""
-    commands = discover_commands()
-    
-    if not commands:
-        logger.warning("No commands discovered")
+    """Register all discovered leaf commands, groups, and plugin commands."""
+    global _commands_registered
+    if _commands_registered:
         return
-    
+
+    commands = discover_commands()
+    if not commands:
+        logger.warning("No leaf commands discovered")
+
     for cmd_func, metadata in commands:
-        # Register primary command name
-        cmd_name = metadata.get("name", cmd_func.__name__)
-        cmd_help = metadata.get("help", cmd_func.__doc__ or "")
-        hidden = metadata.get("hidden", False)
-        
-        app.command(name=cmd_name, help=cmd_help, hidden=hidden)(cmd_func)
-        logger.debug(f"Registered command: {cmd_name}")
-        
-        # Register aliases if present
-        aliases = metadata.get("aliases", [])
-        for alias in aliases:
-            app.command(name=alias, help=f"Alias for '{cmd_name}'", hidden=True)(cmd_func)
-            logger.debug(f"Registered alias: {alias} -> {cmd_name}")
+        _register_leaf_command(cmd_func, metadata)
+
+    register_typer_groups()
+    register_plugin_commands()
+    _commands_registered = True
+
+
+def _bootstrap() -> None:
+    """Eager registration so tests and `python -m package.cli` share one app."""
+    register_commands()
 
 
 def main() -> None:
     """CLI entry point with error handling."""
     try:
-        # Discover and register commands
         register_commands()
-        
-        # Run the app
         app()
-    
+
     except CLIError as e:
         logger.error(f"CLI error: {e}")
         sys.exit(e.exit_code)
-    
+
     except KeyboardInterrupt:
         logger.info("Interrupted by user")
         sys.exit(130)
-    
+
     except Exception as e:
         logger.exception(f"Unexpected error: {e}")
         sys.exit(1)
+
+
+_bootstrap()
 
 
 if __name__ == "__main__":

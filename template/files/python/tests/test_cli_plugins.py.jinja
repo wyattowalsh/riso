@@ -51,10 +51,13 @@ class TestPluginDiscovery:
     
     def test_plugin_discovery_handles_no_plugins(self, plugin_manager: PluginManager) -> None:
         """Test graceful handling when no plugins found."""
-        with patch("importlib.metadata.entry_points", return_value=[]):
+        with patch(
+            "{{ package_name }}.cli.core.plugin_manager.entry_points",
+            return_value=[],
+        ):
             plugin_manager.discover()
             plugins = plugin_manager.list_plugins()
-            
+
             assert plugins == []
 
 
@@ -104,12 +107,19 @@ class TestPluginErrorIsolation:
         mock_ep_bad.name = "bad_plugin"
         mock_ep_bad.load.side_effect = Exception("Plugin error")
         
-        with patch("importlib.metadata.entry_points", return_value=[mock_ep_good, mock_ep_bad]):
+        with patch(
+            "{{ package_name }}.cli.core.plugin_manager.entry_points",
+            return_value=[mock_ep_good, mock_ep_bad],
+        ):
             plugin_manager.discover()
-            
-            # Good plugin should still be discovered
+
             plugins = plugin_manager.list_plugins()
             assert any(p["name"] == "good_plugin" for p in plugins)
+            assert any(p["name"] == "bad_plugin" for p in plugins)
+
+            plugin_manager.load_plugin("good_plugin")
+            with pytest.raises(PluginError):
+                plugin_manager.load_plugin("bad_plugin")
     
     def test_plugin_load_error_raises_plugin_error(self, plugin_manager: PluginManager) -> None:
         """Test that plugin load errors are wrapped in PluginError."""
@@ -159,6 +169,13 @@ class TestPluginNameConflicts:
 
 class TestPluginCommands:
     """Tests for plugin list command."""
+
+    def test_plugin_command_appears_in_help(self, cli_runner: CliRunner) -> None:
+        """Demo plugin command is registered and visible in --help."""
+        result = cli_runner.invoke(app, ["--help"])
+
+        assert result.exit_code == 0
+        assert "demo" in result.stdout.lower()
     
     def test_plugin_list_command_runs(self, cli_runner: CliRunner) -> None:
         """Test that plugin list command executes."""
@@ -169,8 +186,15 @@ class TestPluginCommands:
     
     def test_plugin_list_shows_no_plugins_message(self, cli_runner: CliRunner) -> None:
         """Test message when no plugins found."""
-        with patch("{{ package_name }}.cli.core.plugin_manager.entry_points", return_value=[]):
-            result = cli_runner.invoke(app, ["plugin", "list"])
+        with patch(
+            "{{ package_name }}.cli.commands.plugin.plugin_manager.discover",
+        ) as mock_discover:
+            mock_discover.return_value = None
+            with patch(
+                "{{ package_name }}.cli.commands.plugin.plugin_manager.list_plugins",
+                return_value=[],
+            ):
+                result = cli_runner.invoke(app, ["plugin", "list"])
             
             assert result.exit_code == 0
             assert "no plugins" in result.stdout.lower() or "0 plugin" in result.stdout.lower()

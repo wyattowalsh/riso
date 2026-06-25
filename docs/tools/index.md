@@ -551,27 +551,15 @@
     </div>
   </article>
 
-  <article class="tool-card" role="article" aria-labelledby="tool-fastmcp" data-name="fastmcp" data-category="optional-modules" data-type="mcp" data-tags="mcp,ai,tools,llm" data-popularity="85" tabindex="0">
+  <article class="tool-card" role="article" aria-labelledby="tool-riso-cli" data-name="riso cli" data-category="project-tools" data-type="cli" data-tags="cli,copier,template,ai,agents,tools" data-popularity="90" tabindex="0">
     <div class="tool-card-header">
-      <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:robot" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-fastmcp"><a href="fastmcp.html">FastMCP</a></h3>
+      <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:terminal-2" width="28" height="28"></iconify-icon></span>
+      <h3 id="tool-riso-cli"><a href="riso-cli.html">Riso CLI</a></h3>
     </div>
-    <p class="tool-description">Python framework for building Model Context Protocol servers</p>
-    <div class="tool-meta">
-      <span class="badge badge-category" data-category="optional-modules">Modules</span>
-      <span class="badge badge-type" data-type="mcp">MCP</span>
-    </div>
-  </article>
-
-  <article class="tool-card" role="article" aria-labelledby="tool-riso-mcp-server" data-name="riso mcp server" data-category="project-tools" data-type="mcp" data-tags="mcp,copier,template,ai,wizard,tools" data-popularity="80" tabindex="0">
-    <div class="tool-card-header">
-      <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:template" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-riso-mcp-server"><a href="riso-mcp-server.html">Riso MCP Server</a></h3>
-    </div>
-    <p class="tool-description">MCP server exposing Riso template scaffolding to AI assistants</p>
+    <p class="tool-description">Agent-native Typer CLI for template introspection, validation, and Copier operations</p>
     <div class="tool-meta">
       <span class="badge badge-category" data-category="project-tools">Project Tools</span>
-      <span class="badge badge-type" data-type="mcp">MCP</span>
+      <span class="badge badge-type" data-type="cli">CLI</span>
     </div>
   </article>
 
@@ -617,6 +605,6 @@
 :hidden:
 :maxdepth: 1
 
-fastmcp
+riso-cli
 riso-mcp-server
 ```

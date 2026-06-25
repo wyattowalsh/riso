@@ -1,9 +1,9 @@
 {% set optional_tests = [] %}
 {% if cli_module | lower != "enabled" %}
-{% set optional_tests = optional_tests + ["tests/test_cli.py"] %}
+{% set optional_tests = optional_tests + ["tests/test_cli*.py"] %}
 {% endif %}
 {% if api_module != 'enabled' or 'python' not in api_languages %}
-{% set optional_tests = optional_tests + ["tests/test_api_fastapi.py"] %}
+{% set optional_tests = optional_tests + ["tests/api/*"] %}
 {% endif %}
 
 [run]
@@ -23,7 +23,7 @@ omit =
 show_missing = True
 skip_covered = False
 precision = 2
-fail_under = 85.0
+fail_under = {% if cli_module | lower == "enabled" %}90.0{% else %}85.0{% endif %}
 {% if optional_tests %}
 omit =
 {% for test in optional_tests %}

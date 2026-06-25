@@ -3,8 +3,8 @@
 Pick a documentation surface that matches your toolchain:
 
 - `docs_module=enabled` with `docs_framework=fumadocs`: Next.js + Fumadocs with AI-ready llms.txt, Orama/Algolia search, and OpenAPI support.
-- `docs_module=enabled` with `docs_framework=sphinx-shibuya`: Shibuya Sphinx site with MyST Markdown, hover
-  references, Mermaid, and `autodoc2` for import-free API docs.
+- `docs_module=enabled` with `docs_framework=sphinx-shibuya`: Shibuya Sphinx site with MyST Markdown,
+  Mermaid, and `autodoc2` for import-free API docs (Sphinx 9+).
 - `docs_framework=docusaurus`: React/TypeScript docs with modern 2025 features.
 - `docs_module=disabled`: Skip docs scaffolding.
 
@@ -40,7 +40,7 @@ This project uses **Fumadocs v16+** with the following configurable features:
 | **Search** | `{{ fumadocs_search_provider }}` | {% if fumadocs_search_provider == 'orama' %}Built-in Orama (free, self-hosted){% elif fumadocs_search_provider == 'algolia' %}Algolia DocSearch{% elif fumadocs_search_provider == 'orama-cloud' %}Orama Cloud{% else %}Disabled{% endif %} |
 | **AI Docs** | `{{ fumadocs_llms_txt }}` | {% if fumadocs_llms_txt == 'enabled' %}llms.txt endpoints for AI/LLM consumption{% else %}Disabled{% endif %} |
 | **AI Search** | `{{ fumadocs_ai_search }}` | {% if fumadocs_ai_search == 'enabled' %}Chat dialog with Vercel AI SDK{% else %}Disabled{% endif %} |
-| **Theme** | `{{ fumadocs_theme }}` | {% if fumadocs_theme == 'ocean' %}Ocean blue preset{% elif fumadocs_theme == 'purple' %}Purple accent{% elif fumadocs_theme == 'custom' %}Custom CSS variables{% else %}Neutral (default){% endif %} |
+| **Theme** | `{{ fumadocs_theme }}` | {% if fumadocs_theme == 'shadcn' %}Shadcn UI semantic tokens{% elif fumadocs_theme == 'ocean' %}Ocean blue preset{% elif fumadocs_theme == 'purple' %}Purple accent{% elif fumadocs_theme == 'custom' %}Custom CSS variables{% else %}Neutral (default){% endif %} |
 | **Sidebar** | `{{ fumadocs_sidebar }}` | {% if fumadocs_sidebar == 'shadcn' %}Custom Shadcn UI sidebar{% else %}Built-in Fumadocs sidebar{% endif %} |
 | **i18n** | `{{ fumadocs_i18n }}` | {% if fumadocs_i18n == 'enabled' %}Internationalization ready{% else %}Single locale{% endif %} |
 | **Blog** | `{{ fumadocs_blog }}` | {% if fumadocs_blog == 'enabled' %}MDX blog collection{% else %}Disabled{% endif %} |
@@ -203,6 +203,16 @@ NEXT_PUBLIC_SITE_URL=https://yourdomain.com
 
 {%- endif %}
 
+{%- if fumadocs_theme == 'shadcn' %}
+
+### Shadcn UI Theme
+
+Fumadocs adopts Shadcn UI semantic tokens via `fumadocs-ui/css/shadcn.css`.
+Edit `app/shadcn-theme.css` to align docs colors with your main application theme
+(`--background`, `--primary`, `--sidebar`, etc.).
+
+{%- endif %}
+
 {%- if fumadocs_theme == 'custom' %}
 
 ### Custom Theme
@@ -240,7 +250,7 @@ Customize the navigation behavior and styling as needed.
 
 ## Docusaurus Configuration
 
-This project uses **Docusaurus 3.8+** with the following configurable features:
+This project uses **Docusaurus 3.10+** with the following configurable features:
 
 ### Features Enabled
 
@@ -318,7 +328,7 @@ To disable optimizations, edit `docusaurus.config.ts`:
 
 ```typescript
 future: {
-  experimental_faster: false,
+  faster: false,
 }
 ```
 
@@ -348,13 +358,14 @@ i18n: {
 
 ### OpenAPI Documentation
 
-Update `openapi/openapi.yaml` with your API specification. The docs will be
-auto-generated during build.
+Update `openapi/openapi.yaml` with your API specification. API reference pages
+are generated automatically before each production build (`prebuild` runs
+`gen-api-docs`).
 
 Regenerate API docs manually:
 
 ```bash
-pnpm --filter docs-docusaurus docusaurus gen-api-docs api
+pnpm --filter docs-docusaurus run gen-api-docs
 ```
 
 {%- endif %}

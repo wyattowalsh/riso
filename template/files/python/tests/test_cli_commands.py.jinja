@@ -51,16 +51,14 @@ class TestCommandDiscovery:
             commands = discover_commands()
             assert commands == []
     
-    def test_register_commands_adds_to_app(self) -> None:
-        """Test that register_commands adds commands to Typer app."""
-        # Reset app commands
-        app.registered_commands = []
-        
+    def test_register_commands_adds_to_app(self, cli_runner: CliRunner) -> None:
+        """Test that register_commands exposes commands on the Typer app."""
         register_commands()
-        
-        # Typer should have commands registered
-        # Note: Typer's internal structure may vary, this is a basic check
-        assert len(app.registered_commands) > 0
+
+        result = cli_runner.invoke(app, ["--help"])
+        assert result.exit_code == 0
+        assert "quickstart" in result.stdout
+        assert "config" in result.stdout
 
 
 class TestQuickstartCommand:
@@ -246,4 +244,30 @@ class TestProgressIndicators:
         
         assert result.exit_code == 0
         assert "Summary" in result.stdout or "resource" in result.stdout.lower()
+
+
+class TestAsyncCommand:
+    """Tests for async command support."""
+
+    def test_async_demo_command_runs(self, cli_runner: CliRunner) -> None:
+        """Async demo command executes successfully."""
+        result = cli_runner.invoke(app, ["async-demo"])
+
+        assert result.exit_code == 0
+        assert "async command completed" in result.stdout.lower()
+
+
+class TestKeyboardInterrupt:
+    """Tests for graceful keyboard interrupt handling."""
+
+    def test_main_exits_130_on_keyboard_interrupt(self) -> None:
+        """main() exits with code 130 on KeyboardInterrupt."""
+        from unittest.mock import patch
+
+        from {{ package_name }}.cli.__main__ import app, main
+
+        with patch.object(app, "__call__", side_effect=KeyboardInterrupt):
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+            assert exc_info.value.code == 130
 {%- endif %}

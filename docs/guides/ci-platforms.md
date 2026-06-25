@@ -40,18 +40,21 @@ Riso provides comprehensive CI/CD templates for multiple platforms, each optimiz
 ## Selection Guide
 
 ### Choose GitHub Actions if:
+
 - Your code is hosted on GitHub
 - You want the largest ecosystem of community actions
 - You need simple matrix builds
 - You want tight integration with GitHub features (releases, packages)
 
 ### Choose GitLab CI if:
+
 - Your code is hosted on GitLab
 - You need self-hosted runners
 - You want built-in container registry integration
 - You need advanced pipeline features (includes, extends)
 
 ### Choose CircleCI if:
+
 - You need maximum parallelism for large test suites
 - You want first-class Docker support
 - You need workspace persistence across jobs
@@ -70,23 +73,27 @@ ci_platform: github-actions  # or gitlab-ci, circleci, none
 All CI platforms use the same component-first architecture:
 
 ### Python Components
-- **Lint**: Ruff check + format, mypy (strict), pylint (strict)
+
+- **Lint**: Ruff check + format, ty (strict), pylint (strict)
 - **Test**: pytest with coverage, component-specific tests (CLI, MCP)
 - **Cache**: uv cache, pip cache
 
 ### Node.js Components
+
 - **Lint**: ESLint, TypeScript type checking
 - **Test**: pnpm test with coverage, E2E tests (SaaS)
 - **Build**: pnpm build, artifact persistence
 - **Cache**: pnpm store, node_modules
 
 ### Rust Components
+
 - **Lint**: cargo fmt, cargo clippy
 - **Test**: cargo test (unit + doc tests)
 - **Build**: cargo build --release
 - **Cache**: cargo registry, target directory
 
 ### Go Components
+
 - **Lint**: go fmt, go vet
 - **Test**: go test with race detector and coverage
 - **Build**: go build with optimizations
@@ -95,11 +102,13 @@ All CI platforms use the same component-first architecture:
 ## Quality Profiles
 
 ### Standard Profile
+
 - Ruff linting and formatting
 - pytest with coverage
 - Basic type checking
 
 ### Strict Profile
+
 - All standard checks plus:
 - mypy static type analysis
 - pylint static analysis
@@ -108,6 +117,7 @@ All CI platforms use the same component-first architecture:
 ## Matrix Builds
 
 ### GitHub Actions
+
 ```yaml
 strategy:
   matrix:
@@ -115,6 +125,7 @@ strategy:
 ```
 
 ### GitLab CI
+
 ```yaml
 parallel:
   matrix:
@@ -122,6 +133,7 @@ parallel:
 ```
 
 ### CircleCI
+
 ```yaml
 parallelism: 3
 ```
@@ -129,46 +141,55 @@ parallelism: 3
 ## Caching Strategies
 
 ### GitHub Actions
+
 - Cache key: `${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('**/uv.lock') }}`
 - Paths: `~/.cache/uv`, `~/.cache/pip`, `.venv`
 
 ### GitLab CI
+
 - Cache key: `python-${CI_COMMIT_REF_SLUG}`
 - Paths: `.cache/pip/`, `.cache/uv/`, `.venv/`
 
 ### CircleCI
+
 - Restore/save cache with checksum: `uv-cache-{{ checksum "uv.lock" }}`
 - Paths: `~/.cache/uv`, `.venv`
 
 ## Documentation Deployment
 
 ### GitHub Actions
+
 - Deploys to GitHub Pages via `gh-pages` branch
 - Sphinx: `sphinx-build docs/ _build/`
 - Fumadocs: `pnpm run docs:build`
 
 ### GitLab CI
+
 - Deploys to GitLab Pages via `public/` artifact
 - Sphinx: `sphinx-build docs/ public/`
 - Fumadocs: `pnpm run docs:build && mv docs/out public/`
 
 ### CircleCI
+
 - Stores docs as artifacts
 - Manual deployment step required
 
 ## Container Builds
 
 ### GitHub Actions
+
 - Uses `docker/build-push-action@v5`
 - Multi-platform builds (linux/amd64, linux/arm64)
 - Automatic tagging (latest, SHA, semantic version)
 
 ### GitLab CI
+
 - Uses Docker-in-Docker service
 - Pushes to GitLab Container Registry
 - Tags: `$CI_COMMIT_SHORT_SHA`, `latest`
 
 ### CircleCI
+
 - Remote Docker executor
 - Manual registry configuration
 - Requires Docker Hub credentials
@@ -178,11 +199,12 @@ parallelism: 3
 To migrate from one CI platform to another:
 
 1. Update `ci_platform` in `.copier-answers.yml`
-2. Run `copier update` to regenerate CI files
-3. Remove old CI configuration manually
-4. Commit the new configuration
+1. Run `copier update` to regenerate CI files
+1. Remove old CI configuration manually
+1. Commit the new configuration
 
 Example:
+
 ```bash
 # Update from GitHub Actions to GitLab CI
 copier update --data ci_platform=gitlab-ci
@@ -198,55 +220,63 @@ git commit -m "chore: migrate to GitLab CI"
 ## Troubleshooting
 
 ### GitHub Actions
+
 - **Issue**: Cache misses
 - **Fix**: Check `uv.lock` is committed and hashFiles works
 
 ### GitLab CI
+
 - **Issue**: Parallel jobs failing
 - **Fix**: Ensure matrix variables are properly templated
 
 ### CircleCI
+
 - **Issue**: Workspace not persisting
 - **Fix**: Verify `persist_to_workspace` and `attach_workspace` paths match
 
 ## Performance Optimization
 
 ### Reduce CI Time
+
 1. **Caching**: Enable all relevant caches (uv, pnpm, cargo)
-2. **Parallelism**: Use matrix builds for independent jobs
-3. **Conditional Jobs**: Skip unchanged components
-4. **Fail-Fast**: Enable for development branches, disable for release
+1. **Parallelism**: Use matrix builds for independent jobs
+1. **Conditional Jobs**: Skip unchanged components
+1. **Fail-Fast**: Enable for development branches, disable for release
 
 ### Reduce CI Cost
+
 1. **Self-Hosted Runners**: GitLab CI supports self-hosted (free)
-2. **Smaller Executors**: Use Alpine images where possible
-3. **Cache Effectively**: Reduce dependency download time
-4. **Optimize Docker Layers**: Order Dockerfile for cache reuse
+1. **Smaller Executors**: Use Alpine images where possible
+1. **Cache Effectively**: Reduce dependency download time
+1. **Optimize Docker Layers**: Order Dockerfile for cache reuse
 
 ## Best Practices
 
 1. **Commit Lock Files**: Always commit `uv.lock`, `pnpm-lock.yaml`, `Cargo.lock`
-2. **Pin Versions**: Use specific action/orb versions (not `@latest`)
-3. **Separate Concerns**: Lint, test, build as separate jobs
-4. **Artifacts Retention**: Set appropriate retention periods (7-90 days)
-5. **Secrets Management**: Use platform-specific secret stores
-6. **Branch Protection**: Require CI pass before merge
+1. **Pin Versions**: Use specific action/orb versions (not `@latest`)
+1. **Separate Concerns**: Lint, test, build as separate jobs
+1. **Artifacts Retention**: Set appropriate retention periods (7-90 days)
+1. **Secrets Management**: Use platform-specific secret stores
+1. **Branch Protection**: Require CI pass before merge
 
 ## Platform-Specific Features
 
 ### GitHub Actions Only
+
 - Dependabot integration
 - GitHub Packages publishing
 - GitHub Releases automation
 - CodeQL security scanning
 
 ### GitLab CI Only
+
 - Auto DevOps
 - Review Apps
 - Built-in container registry
 - Kubernetes integration
 
 ### CircleCI Only
+
 - Advanced parallelism (split tests)
 - Docker layer caching
 - Remote Docker

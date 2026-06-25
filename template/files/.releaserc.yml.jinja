@@ -24,28 +24,28 @@ tagFormat: "v${version}"
 # Release plugins
 plugins:
   # Analyze commits to determine version bump
-  - "@semantic-release/commit-analyzer"
-    releaseRules:
-      - type: feat
-        release: minor
-      - type: fix
-        release: patch
-      - type: perf
-        release: patch
-      - type: revert
-        release: patch
-      - type: docs
-        release: false
-      - type: chore
-        release: false
-      - type: refactor
-        release: false
-      - type: test
-        release: false
-      - type: ci
-        release: false
-      - type: build
-        release: false
+  - - "@semantic-release/commit-analyzer"
+    - releaseRules:
+        - type: feat
+          release: minor
+        - type: fix
+          release: patch
+        - type: perf
+          release: patch
+        - type: revert
+          release: patch
+        - type: docs
+          release: false
+        - type: chore
+          release: false
+        - type: refactor
+          release: false
+        - type: test
+          release: false
+        - type: ci
+          release: false
+        - type: build
+          release: false
 
   # Generate release notes
   - - "@semantic-release/release-notes-generator"
@@ -78,7 +78,7 @@ plugins:
       prepareCmd: "uv run python scripts/release/update-version.py ${nextRelease.version}"
 {% if api_module == 'enabled' and 'node' in api_languages %}
       publishCmd: "uv run python scripts/release/publish-artifacts.py"
-{% elif api_languages == 'python' %}
+{% elif api_module == 'enabled' and 'python' in api_languages %}
       publishCmd: "uv run python scripts/release/publish-pypi.py"
 {% endif %}
 

@@ -10,9 +10,8 @@ import { PageActions } from '@/components/page-actions';
 import { FeedbackWidget } from '@/components/feedback';
 {%- endif %}
 {%- if fumadocs_openapi == 'enabled' and api_module == 'enabled' and api_languages %}
-import { createOpenAPI } from 'fumadocs-openapi/server';
-
-const openapi = createOpenAPI();
+import { openapi } from '@/lib/openapi';
+import { OpenAPIPage } from '@/components/openapi-page';
 {%- endif %}
 
 interface PageProps {
@@ -24,6 +23,20 @@ export default async function Page({ params }: PageProps) {
   const page = source.getPage(slug);
   if (!page) notFound();
 
+{%- if fumadocs_openapi == 'enabled' and api_module == 'enabled' and api_languages %}
+  if (page.type === 'openapi') {
+    return (
+      <DocsPage full>
+        <DocsTitle>{page.data.title}</DocsTitle>
+        <DocsDescription>{page.data.description}</DocsDescription>
+        <DocsBody>
+          <OpenAPIPage {...page.data.getOpenAPIPageProps()} />
+        </DocsBody>
+      </DocsPage>
+    );
+  }
+{%- endif %}
+
   const MDX = page.data.body;
 
   return (
@@ -33,21 +46,21 @@ export default async function Page({ params }: PageProps) {
       tableOfContent={%- raw -%}{{ style: 'clerk' }}{%- endraw -%}
       tableOfContentPopover={%- raw -%}{{ style: 'clerk' }}{%- endraw -%}
 {%- if fumadocs_last_updated == 'enabled' %}
-      lastUpdate={page.data.lastModified}
+      lastUpdate={(page.data as { lastModified?: Date }).lastModified}
 {%- endif %}
 {%- if fumadocs_edit_on_github == 'enabled' %}
       editOnGithub={{ '{{' }}
         owner: '{{ project_slug }}',
         repo: '{{ project_slug }}',
         sha: 'main',
-        path: `content/docs/${page.file.path}`,
+        path: page.path.startsWith('content/') ? page.path : `content/docs/${page.path}`,
       {{ '}}' }}
 {%- endif %}
     >
 {%- if fumadocs_llms_txt == 'enabled' %}
       <PageActions
         markdownUrl={`${page.url}.mdx`}
-        githubUrl={`https://github.com/{{ project_slug }}/{{ project_slug }}/blob/main/content/docs/${page.file.path}`}
+        githubUrl={`https://github.com/{{ project_slug }}/{{ project_slug }}/blob/main/${page.path.startsWith('content/') ? page.path : `content/docs/${page.path}`}`}
       />
 {%- endif %}
       <DocsTitle>{page.data.title}</DocsTitle>
@@ -56,7 +69,9 @@ export default async function Page({ params }: PageProps) {
         <MDX components={{ '{{' }}
           ...defaultMdxComponents,
 {%- if fumadocs_openapi == 'enabled' and api_module == 'enabled' and api_languages %}
-          APIPage: openapi.APIPage,
+          OpenAPIPage: async (props) => (
+            <OpenAPIPage {...await openapi.preloadOpenAPIPage(page)} {...props} />
+          ),
 {%- endif %}
         {{ '}}' }} />
 {%- if fumadocs_feedback == 'enabled' %}

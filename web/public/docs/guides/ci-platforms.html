@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en" data-accent-color="teal" data-content_root="../">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"><title>CI/CD Platform Support - Riso Dev Docs 0.1.0</title><link rel="shortcut icon" href="../_static/favicon.ico"/><link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Session Persistence" href="session-persistence.html" /><link rel="prev" title="Matrix Data Snapshot" href="matrix-data.html" />
+      <link rel="canonical" href="https://riso.build/docs/guides/ci-platforms.html" /><script>
+    function setColorMode(t){let e=document.documentElement;e.setAttribute("data-color-mode",t);let a=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches,s=t;"auto"===t&&(s=a?"dark":"light"),"light"===s?(e.classList.remove("dark"),e.classList.add("light")):(e.classList.remove("light"),e.classList.add("dark"))}
+    setColorMode(localStorage._theme||"auto");
+  </script><link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=e1a1ceaf" />
+    <link rel="stylesheet" type="text/css" href="../_static/shibuya.css?v=9454f7d5" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=9c3e77be" />
+    <link rel="stylesheet" type="text/css" href="../_static/twemoji.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/autoclasstoc.css?v=08871587" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link media="print" rel="stylesheet" type="text/css" href="../_static/print.css?v=20ff2c19" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/design-tokens.css?v=26635bf5" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=6162e6e6" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/components.css?v=c1072880" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/lucide-icons.css?v=d252316b" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sy-f-text: "Inter", var(--sy-f-sys), var(--sy-f-cjk), sans-serif;
+  --sy-f-heading: "Inter", var(--sy-f-sys), var(--sy-f-cjk), sans-serif;
+}
+</style>
+    
+  <meta property="og:type" content="website"/>
+  <meta property="og:url" content="https://riso.build/docs/guides/ci-platforms.html"/>
+  <meta property="og:title" content="CI/CD Platform Support"/>
+    <meta name="twitter:card" content="summary"/>
+  </head>
+<body><div class="sy-head">
+  <div class="sy-head-blur"></div>
+  <div class="sy-head-inner sy-container mx-auto">
+    <a class="sy-head-brand" href="../index.html">
+      <img class="light-logo" src="../_static/img/logo.svg" alt="Riso Dev Docs" height="28" loading="lazy" />
+      <img class="dark-logo" src="../_static/img/logo.svg" alt="Riso Dev Docs" height="28" loading="lazy" />
+      <strong>Riso Dev Docs</strong>
+    </a>
+    <div class="sy-head-nav" id="head-nav">
+      <nav class="sy-head-links"><ul><li class="link">
+          <a href="https://riso.build/">
+            <span>🧭 Configurator</span></a>
+        </li><li class="link"><a href="index.html">📖 Guides</a></li><li class="link"><a href="../tools/index.html">🧰 Tools</a></li><li class="link"><a href="../api/index.html">📚 Reference</a></li><li class="link"><a href="../changelog.html">📝 Changelog</a></li></ul></nav>
+      <div class="sy-head-extra flex items-center print:hidden"><form class="searchbox flex items-center" action="../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <kbd>/</kbd>
+</form><div class="sy-head-socials">
+  <a href="https://github.com/openai/riso" aria-label="GitHub">
+    <iconify-icon icon="simple-icons:github"></iconify-icon>
+  </a></div></div>
+    </div>
+    <div class="sy-head-actions flex items-center shrink-0 print:hidden"><button class="js-theme theme-switch flex items-center"
+data-aria-auto="Switch to light color mode"
+data-aria-light="Switch to dark color mode"
+data-aria-dark="Switch to auto color mode">
+<i class="i-lucide theme-icon"></i>
+</button><button class="md:hidden flex items-center js-menu" aria-label="Menu" type="button" aria-controls="head-nav" aria-expanded="false">
+        <div class="hamburger">
+          <span class="hamburger_1"></span>
+          <span class="hamburger_2"></span>
+          <span class="hamburger_3"></span>
+        </div>
+      </button>
+    </div>
+  </div>
+</div>
+<div class="sy-page sy-container flex mx-auto">
+  <aside id="lside" class="sy-lside md:w-72 md:shrink-0 print:hidden">
+    <div class="sy-lside-inner md:sticky">
+      <div class="sy-scrollbar p-6">
+        <div class="globaltoc" data-expand-depth="0"><ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Guides \</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="testing-strategy.html">Testing Strategy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="roadmap.html">Roadmap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="implementation-guide.html">Implementation Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="matrix-data.html">Matrix Data</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">CI Platforms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="session-persistence.html">Session Persistence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../tools/index.html">Tools \</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference \</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mcp-logging.html">MCP Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../logging-quick-reference.html">Logging Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../research/saas-starter-research-prompts.html">SaaS Starter Research Prompts \</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../research/saas-starter-synthesis-report.html">SaaS Starter Synthesis Report \</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="lside-overlay js-menu" role="button" aria-label="Close left sidebar" aria-controls="lside" aria-expanded="false"></div>
+  <aside id="rside" class="sy-rside pb-3 w-64 shrink-0 order-last">
+    <button class="rside-close js-menu xl:hidden" aria-label="Close Table of Contents" type="button" aria-controls="rside" aria-expanded="false">
+      <i class="i-lucide close"></i>
+    </button>
+    <div class="sy-scrollbar sy-rside-inner px-6 xl:top-16 xl:sticky xl:pl-0 pt-6 pb-4"><div class="localtoc"><h3>On this page</h3><ul>
+<li><a class="reference internal" href="#supported-platforms">Supported Platforms</a><ul>
+<li><a class="reference internal" href="#github-actions-default">GitHub Actions (Default)</a></li>
+<li><a class="reference internal" href="#gitlab-ci">GitLab CI</a></li>
+<li><a class="reference internal" href="#circleci">CircleCI</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#selection-guide">Selection Guide</a><ul>
+<li><a class="reference internal" href="#choose-github-actions-if">Choose GitHub Actions if:</a></li>
+<li><a class="reference internal" href="#choose-gitlab-ci-if">Choose GitLab CI if:</a></li>
+<li><a class="reference internal" href="#choose-circleci-if">Choose CircleCI if:</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#configuration">Configuration</a></li>
+<li><a class="reference internal" href="#component-first-ci">Component-First CI</a><ul>
+<li><a class="reference internal" href="#python-components">Python Components</a></li>
+<li><a class="reference internal" href="#node-js-components">Node.js Components</a></li>
+<li><a class="reference internal" href="#rust-components">Rust Components</a></li>
+<li><a class="reference internal" href="#go-components">Go Components</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#quality-profiles">Quality Profiles</a><ul>
+<li><a class="reference internal" href="#standard-profile">Standard Profile</a></li>
+<li><a class="reference internal" href="#strict-profile">Strict Profile</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#matrix-builds">Matrix Builds</a><ul>
+<li><a class="reference internal" href="#github-actions">GitHub Actions</a></li>
+<li><a class="reference internal" href="#id1">GitLab CI</a></li>
+<li><a class="reference internal" href="#id2">CircleCI</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#caching-strategies">Caching Strategies</a><ul>
+<li><a class="reference internal" href="#id3">GitHub Actions</a></li>
+<li><a class="reference internal" href="#id4">GitLab CI</a></li>
+<li><a class="reference internal" href="#id5">CircleCI</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#documentation-deployment">Documentation Deployment</a><ul>
+<li><a class="reference internal" href="#id6">GitHub Actions</a></li>
+<li><a class="reference internal" href="#id7">GitLab CI</a></li>
+<li><a class="reference internal" href="#id8">CircleCI</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#container-builds">Container Builds</a><ul>
+<li><a class="reference internal" href="#id9">GitHub Actions</a></li>
+<li><a class="reference internal" href="#id10">GitLab CI</a></li>
+<li><a class="reference internal" href="#id11">CircleCI</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#migration-between-platforms">Migration Between Platforms</a></li>
+<li><a class="reference internal" href="#troubleshooting">Troubleshooting</a><ul>
+<li><a class="reference internal" href="#id12">GitHub Actions</a></li>
+<li><a class="reference internal" href="#id13">GitLab CI</a></li>
+<li><a class="reference internal" href="#id14">CircleCI</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#performance-optimization">Performance Optimization</a><ul>
+<li><a class="reference internal" href="#reduce-ci-time">Reduce CI Time</a></li>
+<li><a class="reference internal" href="#reduce-ci-cost">Reduce CI Cost</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#best-practices">Best Practices</a></li>
+<li><a class="reference internal" href="#platform-specific-features">Platform-Specific Features</a><ul>
+<li><a class="reference internal" href="#github-actions-only">GitHub Actions Only</a></li>
+<li><a class="reference internal" href="#gitlab-ci-only">GitLab CI Only</a></li>
+<li><a class="reference internal" href="#circleci-only">CircleCI Only</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#references">References</a></li>
+</ul>
+</div><a class="js-repo-stats repo-stats flex items-center" href="https://github.com/openai/riso"
+  data-type="github" data-user="openai" data-repo="riso">
+  <span class="w-8 flex items-center justify-around shrink-0 text-3xl">
+    <iconify-icon icon="simple-icons:github"></iconify-icon>
+  </span>
+  <span class="flex-grow px-2 break-all">
+    
+    
+      <span>openai/riso</span>
+    
+    <span class="flex text-sm repo-stats-count">
+      <span class="flex items-center pr-3">
+        <iconify-icon icon="lucide:star"></iconify-icon>
+        <strong class="js-repo-stars ml-1">0</strong>
+      </span>
+      <span class="flex items-center">
+        <iconify-icon icon="lucide:git-fork"></iconify-icon>
+        <strong class="js-repo-forks ml-1">0</strong>
+      </span>
+    </span>
+  </span>
+</a><div class="edit-this-page">
+  <a href="https://github.com/openai/riso/blob/main/docs/guides/ci-platforms.md">Edit this page</a>
+</div></div>
+  </aside>
+  <div class="rside-overlay js-menu" role="button" aria-label="Close Table of Contents" aria-controls="rside" aria-expanded="false"></div>
+  <main class="sy-main w-full max-sm:max-w-full print:pt-6">
+<div class="sy-breadcrumbs" role="navigation">
+  <div class="sy-breadcrumbs-inner flex items-center">
+    <div class="md:hidden mr-3">
+      <button class="js-menu" aria-label="Menu" type="button" aria-controls="lside" aria-expanded="false">
+        <i class="i-lucide menu"></i>
+      </button>
+    </div>
+    <ol class="flex-1" itemscope itemtype="https://schema.org/BreadcrumbList"><li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+        <a itemprop="item" href="../index.html"><span itemprop="name">Riso Dev Docs</span></a>
+        <span>/</span>
+        <meta itemprop="position" content="1" />
+      </li><li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+        <a itemprop="item" href="index.html"><span itemprop="name">Guides</span></a>
+        <span>/</span>
+        <meta itemprop="position" content="2" />
+      </li><li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+        <strong itemprop="name">CI/CD Platform Support</strong>
+        <meta itemprop="position" content="3" />
+      </li></ol>
+    <div class="xl:hidden ml-1">
+      <button class="js-menu" aria-label="Show table of contents" type="button" aria-controls="rside"
+        aria-expanded="false">
+        <i class="i-lucide outdent"></i>
+      </button>
+    </div>
+  </div>
+</div><div class="flex flex-col break-words justify-between">
+      <div class="relative min-w-0 max-w-6xl px-6 pb-6 pt-8 xl:px-12">
+  <div class="copy-page-wrapper relative pb-4 lg:absolute lg:top-8 lg:right-6 xl:right-12">
+  <div id="copy-page-trigger">
+    <button
+      type="button"
+      class="js-copy px-3 py-1 inline-flex items-center gap-1"
+      data-url="https://riso.build/docs/_sources/guides/ci-platforms.md.txt"
+    >
+      <i class="i-lucide" data-icon="copy"></i>
+      <span>Copy page</span>
+    </button>
+    <button class="js-menu px-2 py-1" type="button" aria-label="More actions"
+      aria-haspopup="menu" aria-expanded="false" aria-controls="copy-page-content">
+      <i class="i-lucide chevron-down"></i>
+    </button>
+  </div>
+  <div id="copy-page-content" role="menu" aria-orientation="vertical" aria-hidden="true">
+    <div role="presentation">
+      <div class="flex flex-col" role="group">
+        <button class="js-copy" type="button" role="menuitem"
+          data-url="https://riso.build/docs/_sources/guides/ci-platforms.md.txt">
+          <span class="iconify-icon">
+            <i class="i-lucide" data-icon="copy"></i>
+          </span>
+          <span>Copy page</span>
+        </button>
+        <a role="menuitem" href="https://riso.build/docs/_sources/guides/ci-platforms.md.txt" target="_blank" rel="nofollow"><iconify-icon icon="bi:markdown"></iconify-icon>
+            <span>View as Markdown</span></a><a role="menuitem" href="https://chatgpt.com/?hints=search&q=Read%20https%3A//riso.build/docs/_sources/guides/ci-platforms.md.txt%20so%20I%20can%20ask%20questions%20about%20it." target="_blank" rel="nofollow">
+          <iconify-icon icon="bi:openai"></iconify-icon>
+          <span>Open in ChatGPT</span>
+        </a><a role="menuitem" href="https://claude.ai/new?q=Read%20https%3A//riso.build/docs/_sources/guides/ci-platforms.md.txt%20so%20I%20can%20ask%20questions%20about%20it." target="_blank" rel="nofollow">
+          <iconify-icon icon="bi:claude"></iconify-icon>
+          <span>Open in Claude</span>
+        </a></div>
+    </div>
+  </div>
+</div><article class="yue" role="main">
+          <section class="tex2jax_ignore mathjax_ignore" id="ci-cd-platform-support">
+<h1>CI/CD Platform Support<a class="headerlink" href="#ci-cd-platform-support" title="Link to this heading">¶</a></h1>
+<p>Riso provides comprehensive CI/CD templates for multiple platforms, each optimized for the platform’s specific capabilities.</p>
+<section id="supported-platforms">
+<h2>Supported Platforms<a class="headerlink" href="#supported-platforms" title="Link to this heading">¶</a></h2>
+<section id="github-actions-default">
+<h3>GitHub Actions (Default)<a class="headerlink" href="#github-actions-default" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>File</strong>: <code class="docutils literal notranslate"><span class="pre">.github/workflows/riso-quality.yml</span></code>, <code class="docutils literal notranslate"><span class="pre">.github/workflows/riso-matrix.yml</span></code></p></li>
+<li><p><strong>Features</strong>:</p>
+<ul>
+<li><p>Matrix builds for Python versions (3.11, 3.12, 3.13)</p></li>
+<li><p>Dependency caching (uv, pnpm, cargo)</p></li>
+<li><p>Artifacts upload (test results, coverage)</p></li>
+<li><p>Retry logic with exponential backoff</p></li>
+<li><p>Concurrency control</p></li>
+</ul>
+</li>
+<li><p><strong>Best For</strong>: GitHub-hosted projects, open-source, large ecosystem of actions</p></li>
+</ul>
+</section>
+<section id="gitlab-ci">
+<h3>GitLab CI<a class="headerlink" href="#gitlab-ci" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>File</strong>: <code class="docutils literal notranslate"><span class="pre">.gitlab/.gitlab-ci.yml</span></code></p></li>
+<li><p><strong>Features</strong>:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">parallel.matrix</span></code> for multi-version testing</p></li>
+<li><p>Docker-in-Docker for container builds</p></li>
+<li><p>GitLab Pages deployment for docs</p></li>
+<li><p>Component-specific caching (pip, pnpm, cargo)</p></li>
+<li><p>Per-job artifacts with expiration</p></li>
+</ul>
+</li>
+<li><p><strong>Best For</strong>: GitLab-hosted projects, self-hosted runners, enterprise deployments</p></li>
+</ul>
+</section>
+<section id="circleci">
+<h3>CircleCI<a class="headerlink" href="#circleci" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>File</strong>: <code class="docutils literal notranslate"><span class="pre">.circleci/config.yml</span></code></p></li>
+<li><p><strong>Features</strong>:</p>
+<ul>
+<li><p>Official orbs (python&#64;2.1, node&#64;5.2, rust&#64;1.6, go&#64;1.11)</p></li>
+<li><p>Workspace persistence for build artifacts</p></li>
+<li><p>Parallelism for monorepo testing</p></li>
+<li><p>Test results storage and visualization</p></li>
+<li><p>Advanced caching strategies</p></li>
+</ul>
+</li>
+<li><p><strong>Best For</strong>: Complex workflows, parallelism, Docker layer caching</p></li>
+</ul>
+</section>
+</section>
+<section id="selection-guide">
+<h2>Selection Guide<a class="headerlink" href="#selection-guide" title="Link to this heading">¶</a></h2>
+<section id="choose-github-actions-if">
+<h3>Choose GitHub Actions if:<a class="headerlink" href="#choose-github-actions-if" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Your code is hosted on GitHub</p></li>
+<li><p>You want the largest ecosystem of community actions</p></li>
+<li><p>You need simple matrix builds</p></li>
+<li><p>You want tight integration with GitHub features (releases, packages)</p></li>
+</ul>
+</section>
+<section id="choose-gitlab-ci-if">
+<h3>Choose GitLab CI if:<a class="headerlink" href="#choose-gitlab-ci-if" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Your code is hosted on GitLab</p></li>
+<li><p>You need self-hosted runners</p></li>
+<li><p>You want built-in container registry integration</p></li>
+<li><p>You need advanced pipeline features (includes, extends)</p></li>
+</ul>
+</section>
+<section id="choose-circleci-if">
+<h3>Choose CircleCI if:<a class="headerlink" href="#choose-circleci-if" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>You need maximum parallelism for large test suites</p></li>
+<li><p>You want first-class Docker support</p></li>
+<li><p>You need workspace persistence across jobs</p></li>
+<li><p>You require advanced caching (Docker layers, incremental)</p></li>
+</ul>
+</section>
+</section>
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading">¶</a></h2>
+<p>Set <code class="docutils literal notranslate"><span class="pre">ci_platform</span></code> in your Copier answers:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">ci_platform</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">github-actions</span><span class="w">  </span><span class="c1"># or gitlab-ci, circleci, none</span>
+</span></pre></div>
+</div>
+</section>
+<section id="component-first-ci">
+<h2>Component-First CI<a class="headerlink" href="#component-first-ci" title="Link to this heading">¶</a></h2>
+<p>All CI platforms use the same component-first architecture:</p>
+<section id="python-components">
+<h3>Python Components<a class="headerlink" href="#python-components" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>Lint</strong>: Ruff check + format, mypy (strict), pylint (strict)</p></li>
+<li><p><strong>Test</strong>: pytest with coverage, component-specific tests (CLI, MCP)</p></li>
+<li><p><strong>Cache</strong>: uv cache, pip cache</p></li>
+</ul>
+</section>
+<section id="node-js-components">
+<h3>Node.js Components<a class="headerlink" href="#node-js-components" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>Lint</strong>: ESLint, TypeScript type checking</p></li>
+<li><p><strong>Test</strong>: pnpm test with coverage, E2E tests (SaaS)</p></li>
+<li><p><strong>Build</strong>: pnpm build, artifact persistence</p></li>
+<li><p><strong>Cache</strong>: pnpm store, node_modules</p></li>
+</ul>
+</section>
+<section id="rust-components">
+<h3>Rust Components<a class="headerlink" href="#rust-components" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>Lint</strong>: cargo fmt, cargo clippy</p></li>
+<li><p><strong>Test</strong>: cargo test (unit + doc tests)</p></li>
+<li><p><strong>Build</strong>: cargo build –release</p></li>
+<li><p><strong>Cache</strong>: cargo registry, target directory</p></li>
+</ul>
+</section>
+<section id="go-components">
+<h3>Go Components<a class="headerlink" href="#go-components" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>Lint</strong>: go fmt, go vet</p></li>
+<li><p><strong>Test</strong>: go test with race detector and coverage</p></li>
+<li><p><strong>Build</strong>: go build with optimizations</p></li>
+<li><p><strong>Cache</strong>: go mod cache</p></li>
+</ul>
+</section>
+</section>
+<section id="quality-profiles">
+<h2>Quality Profiles<a class="headerlink" href="#quality-profiles" title="Link to this heading">¶</a></h2>
+<section id="standard-profile">
+<h3>Standard Profile<a class="headerlink" href="#standard-profile" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Ruff linting and formatting</p></li>
+<li><p>pytest with coverage</p></li>
+<li><p>Basic type checking</p></li>
+</ul>
+</section>
+<section id="strict-profile">
+<h3>Strict Profile<a class="headerlink" href="#strict-profile" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>All standard checks plus:</p></li>
+<li><p>mypy static type analysis</p></li>
+<li><p>pylint static analysis</p></li>
+<li><p>Extended timeout for thorough checking</p></li>
+</ul>
+</section>
+</section>
+<section id="matrix-builds">
+<h2>Matrix Builds<a class="headerlink" href="#matrix-builds" title="Link to this heading">¶</a></h2>
+<section id="github-actions">
+<h3>GitHub Actions<a class="headerlink" href="#github-actions" title="Link to this heading">¶</a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">strategy</span><span class="p">:</span>
+</span><span data-line="2"><span class="w">  </span><span class="nt">matrix</span><span class="p">:</span>
+</span><span data-line="3"><span class="w">    </span><span class="nt">python-version</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;3.11&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;3.12&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;3.13&quot;</span><span class="p p-Indicator">]</span>
+</span></pre></div>
+</div>
+</section>
+<section id="id1">
+<h3>GitLab CI<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">parallel</span><span class="p">:</span>
+</span><span data-line="2"><span class="w">  </span><span class="nt">matrix</span><span class="p">:</span>
+</span><span data-line="3"><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">PYTHON_VERSION</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;3.11&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;3.12&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;3.13&quot;</span><span class="p p-Indicator">]</span>
+</span></pre></div>
+</div>
+</section>
+<section id="id2">
+<h3>CircleCI<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="nt">parallelism</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+</span></pre></div>
+</div>
+</section>
+</section>
+<section id="caching-strategies">
+<h2>Caching Strategies<a class="headerlink" href="#caching-strategies" title="Link to this heading">¶</a></h2>
+<section id="id3">
+<h3>GitHub Actions<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Cache key: <code class="docutils literal notranslate"><span class="pre">${{</span> <span class="pre">runner.os</span> <span class="pre">}}-py${{</span> <span class="pre">matrix.python-version</span> <span class="pre">}}-${{</span> <span class="pre">hashFiles('**/uv.lock')</span> <span class="pre">}}</span></code></p></li>
+<li><p>Paths: <code class="docutils literal notranslate"><span class="pre">~/.cache/uv</span></code>, <code class="docutils literal notranslate"><span class="pre">~/.cache/pip</span></code>, <code class="docutils literal notranslate"><span class="pre">.venv</span></code></p></li>
+</ul>
+</section>
+<section id="id4">
+<h3>GitLab CI<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Cache key: <code class="docutils literal notranslate"><span class="pre">python-${CI_COMMIT_REF_SLUG}</span></code></p></li>
+<li><p>Paths: <code class="docutils literal notranslate"><span class="pre">.cache/pip/</span></code>, <code class="docutils literal notranslate"><span class="pre">.cache/uv/</span></code>, <code class="docutils literal notranslate"><span class="pre">.venv/</span></code></p></li>
+</ul>
+</section>
+<section id="id5">
+<h3>CircleCI<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Restore/save cache with checksum: <code class="docutils literal notranslate"><span class="pre">uv-cache-{{</span> <span class="pre">checksum</span> <span class="pre">&quot;uv.lock&quot;</span> <span class="pre">}}</span></code></p></li>
+<li><p>Paths: <code class="docutils literal notranslate"><span class="pre">~/.cache/uv</span></code>, <code class="docutils literal notranslate"><span class="pre">.venv</span></code></p></li>
+</ul>
+</section>
+</section>
+<section id="documentation-deployment">
+<h2>Documentation Deployment<a class="headerlink" href="#documentation-deployment" title="Link to this heading">¶</a></h2>
+<section id="id6">
+<h3>GitHub Actions<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Deploys to GitHub Pages via <code class="docutils literal notranslate"><span class="pre">gh-pages</span></code> branch</p></li>
+<li><p>Sphinx: <code class="docutils literal notranslate"><span class="pre">sphinx-build</span> <span class="pre">docs/</span> <span class="pre">_build/</span></code></p></li>
+<li><p>Fumadocs: <code class="docutils literal notranslate"><span class="pre">pnpm</span> <span class="pre">run</span> <span class="pre">docs:build</span></code></p></li>
+</ul>
+</section>
+<section id="id7">
+<h3>GitLab CI<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Deploys to GitLab Pages via <code class="docutils literal notranslate"><span class="pre">public/</span></code> artifact</p></li>
+<li><p>Sphinx: <code class="docutils literal notranslate"><span class="pre">sphinx-build</span> <span class="pre">docs/</span> <span class="pre">public/</span></code></p></li>
+<li><p>Fumadocs: <code class="docutils literal notranslate"><span class="pre">pnpm</span> <span class="pre">run</span> <span class="pre">docs:build</span> <span class="pre">&amp;&amp;</span> <span class="pre">mv</span> <span class="pre">docs/out</span> <span class="pre">public/</span></code></p></li>
+</ul>
+</section>
+<section id="id8">
+<h3>CircleCI<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Stores docs as artifacts</p></li>
+<li><p>Manual deployment step required</p></li>
+</ul>
+</section>
+</section>
+<section id="container-builds">
+<h2>Container Builds<a class="headerlink" href="#container-builds" title="Link to this heading">¶</a></h2>
+<section id="id9">
+<h3>GitHub Actions<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Uses <code class="docutils literal notranslate"><span class="pre">docker/build-push-action&#64;v5</span></code></p></li>
+<li><p>Multi-platform builds (linux/amd64, linux/arm64)</p></li>
+<li><p>Automatic tagging (latest, SHA, semantic version)</p></li>
+</ul>
+</section>
+<section id="id10">
+<h3>GitLab CI<a class="headerlink" href="#id10" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Uses Docker-in-Docker service</p></li>
+<li><p>Pushes to GitLab Container Registry</p></li>
+<li><p>Tags: <code class="docutils literal notranslate"><span class="pre">$CI_COMMIT_SHORT_SHA</span></code>, <code class="docutils literal notranslate"><span class="pre">latest</span></code></p></li>
+</ul>
+</section>
+<section id="id11">
+<h3>CircleCI<a class="headerlink" href="#id11" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Remote Docker executor</p></li>
+<li><p>Manual registry configuration</p></li>
+<li><p>Requires Docker Hub credentials</p></li>
+</ul>
+</section>
+</section>
+<section id="migration-between-platforms">
+<h2>Migration Between Platforms<a class="headerlink" href="#migration-between-platforms" title="Link to this heading">¶</a></h2>
+<p>To migrate from one CI platform to another:</p>
+<ol class="arabic simple">
+<li><p>Update <code class="docutils literal notranslate"><span class="pre">ci_platform</span></code> in <code class="docutils literal notranslate"><span class="pre">.copier-answers.yml</span></code></p></li>
+<li><p>Run <code class="docutils literal notranslate"><span class="pre">copier</span> <span class="pre">update</span></code> to regenerate CI files</p></li>
+<li><p>Remove old CI configuration manually</p></li>
+<li><p>Commit the new configuration</p></li>
+</ol>
+<p>Example:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Update from GitHub Actions to GitLab CI</span>
+</span><span data-line="2">copier<span class="w"> </span>update<span class="w"> </span>--data<span class="w"> </span><span class="nv">ci_platform</span><span class="o">=</span>gitlab-ci
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Remove old GitHub Actions files</span>
+</span><span data-line="5">rm<span class="w"> </span>-rf<span class="w"> </span>.github/workflows/riso-*.yml
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Commit new GitLab CI config</span>
+</span><span data-line="8">git<span class="w"> </span>add<span class="w"> </span>.gitlab/.gitlab-ci.yml
+</span><span data-line="9">git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;chore: migrate to GitLab CI&quot;</span>
+</span></pre></div>
+</div>
+</section>
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading">¶</a></h2>
+<section id="id12">
+<h3>GitHub Actions<a class="headerlink" href="#id12" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>Issue</strong>: Cache misses</p></li>
+<li><p><strong>Fix</strong>: Check <code class="docutils literal notranslate"><span class="pre">uv.lock</span></code> is committed and hashFiles works</p></li>
+</ul>
+</section>
+<section id="id13">
+<h3>GitLab CI<a class="headerlink" href="#id13" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>Issue</strong>: Parallel jobs failing</p></li>
+<li><p><strong>Fix</strong>: Ensure matrix variables are properly templated</p></li>
+</ul>
+</section>
+<section id="id14">
+<h3>CircleCI<a class="headerlink" href="#id14" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>Issue</strong>: Workspace not persisting</p></li>
+<li><p><strong>Fix</strong>: Verify <code class="docutils literal notranslate"><span class="pre">persist_to_workspace</span></code> and <code class="docutils literal notranslate"><span class="pre">attach_workspace</span></code> paths match</p></li>
+</ul>
+</section>
+</section>
+<section id="performance-optimization">
+<h2>Performance Optimization<a class="headerlink" href="#performance-optimization" title="Link to this heading">¶</a></h2>
+<section id="reduce-ci-time">
+<h3>Reduce CI Time<a class="headerlink" href="#reduce-ci-time" title="Link to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Caching</strong>: Enable all relevant caches (uv, pnpm, cargo)</p></li>
+<li><p><strong>Parallelism</strong>: Use matrix builds for independent jobs</p></li>
+<li><p><strong>Conditional Jobs</strong>: Skip unchanged components</p></li>
+<li><p><strong>Fail-Fast</strong>: Enable for development branches, disable for release</p></li>
+</ol>
+</section>
+<section id="reduce-ci-cost">
+<h3>Reduce CI Cost<a class="headerlink" href="#reduce-ci-cost" title="Link to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Self-Hosted Runners</strong>: GitLab CI supports self-hosted (free)</p></li>
+<li><p><strong>Smaller Executors</strong>: Use Alpine images where possible</p></li>
+<li><p><strong>Cache Effectively</strong>: Reduce dependency download time</p></li>
+<li><p><strong>Optimize Docker Layers</strong>: Order Dockerfile for cache reuse</p></li>
+</ol>
+</section>
+</section>
+<section id="best-practices">
+<h2>Best Practices<a class="headerlink" href="#best-practices" title="Link to this heading">¶</a></h2>
+<ol class="arabic simple">
+<li><p><strong>Commit Lock Files</strong>: Always commit <code class="docutils literal notranslate"><span class="pre">uv.lock</span></code>, <code class="docutils literal notranslate"><span class="pre">pnpm-lock.yaml</span></code>, <code class="docutils literal notranslate"><span class="pre">Cargo.lock</span></code></p></li>
+<li><p><strong>Pin Versions</strong>: Use specific action/orb versions (not <code class="docutils literal notranslate"><span class="pre">&#64;latest</span></code>)</p></li>
+<li><p><strong>Separate Concerns</strong>: Lint, test, build as separate jobs</p></li>
+<li><p><strong>Artifacts Retention</strong>: Set appropriate retention periods (7-90 days)</p></li>
+<li><p><strong>Secrets Management</strong>: Use platform-specific secret stores</p></li>
+<li><p><strong>Branch Protection</strong>: Require CI pass before merge</p></li>
+</ol>
+</section>
+<section id="platform-specific-features">
+<h2>Platform-Specific Features<a class="headerlink" href="#platform-specific-features" title="Link to this heading">¶</a></h2>
+<section id="github-actions-only">
+<h3>GitHub Actions Only<a class="headerlink" href="#github-actions-only" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Dependabot integration</p></li>
+<li><p>GitHub Packages publishing</p></li>
+<li><p>GitHub Releases automation</p></li>
+<li><p>CodeQL security scanning</p></li>
+</ul>
+</section>
+<section id="gitlab-ci-only">
+<h3>GitLab CI Only<a class="headerlink" href="#gitlab-ci-only" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Auto DevOps</p></li>
+<li><p>Review Apps</p></li>
+<li><p>Built-in container registry</p></li>
+<li><p>Kubernetes integration</p></li>
+</ul>
+</section>
+<section id="circleci-only">
+<h3>CircleCI Only<a class="headerlink" href="#circleci-only" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Advanced parallelism (split tests)</p></li>
+<li><p>Docker layer caching</p></li>
+<li><p>Remote Docker</p></li>
+<li><p>Insights dashboard</p></li>
+</ul>
+</section>
+</section>
+<section id="references">
+<h2>References<a class="headerlink" href="#references" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><a class="reference external" href="https://docs.github.com/en/actions" rel="noreferer noopener" target="_blank">GitHub Actions Documentation</a></p></li>
+<li><p><a class="reference external" href="https://docs.gitlab.com/ee/ci/" rel="noreferer noopener" target="_blank">GitLab CI Documentation</a></p></li>
+<li><p><a class="reference external" href="https://circleci.com/docs/" rel="noreferer noopener" target="_blank">CircleCI Documentation</a></p></li>
+</ul>
+</section>
+</section>
+
+        </article><button class="back-to-top" type="button">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+  </svg>
+  <span>Back to top</span>
+</button><div class="navigation flex print:hidden"><div class="navigation-prev">
+    <a href="matrix-data.html">
+      <i class="i-lucide chevron-left"></i>
+      <div class="page-info">
+        <span>Previous</span><div class="title">Matrix Data Snapshot</div></div>
+    </a>
+  </div><div class="navigation-next">
+    <a href="session-persistence.html">
+      <div class="page-info">
+        <span>Next</span>
+        <div class="title">Session Persistence</div>
+      </div>
+      <i class="i-lucide chevron-right"></i>
+    </a>
+  </div></div></div>
+    </div>
+  </main>
+</div>
+<footer class="sy-foot">
+  <div class="sy-foot-inner sy-container mx-auto">
+    <div class="sy-foot-reserved md:flex justify-between items-center">
+      <div class="sy-foot-copyright"><p>2026, Riso</p>
+  
+  <p>
+    Made with
+    
+    <a href="https://www.sphinx-doc.org/">Sphinx</a> and
+    
+    <a href="https://shibuya.lepture.com">Shibuya theme</a>.
+  </p>
+</div>
+      <div class="sy-foot-socials">
+<a href="https://github.com/openai/riso" aria-label="GitHub">
+  <iconify-icon icon="simple-icons:github"></iconify-icon>
+</a></div>
+    </div>
+  </div>
+</footer>
+      <script src="../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=6870ed9c"></script>
+      <script src="https://unpkg.com/twemoji@latest/dist/twemoji.min.js"></script>
+      <script src="../_static/twemoji.js"></script>
+      <script>let toggleHintShow = 'Click to show';</script>
+      <script>let toggleHintHide = 'Click to hide';</script>
+      <script>let toggleOpenOnPrint = 'true';</script>
+      <script src="../_static/togglebutton.js?v=b8b12719"></script>
+      <script src="../_static/design-tabs.js?v=f930bc37"></script>
+      <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+      <script src="../_static/shibuya.js?v=50760d75"></script>
+      <script src="../_static/js/custom.js?v=043e1285"></script></body>
+</html>

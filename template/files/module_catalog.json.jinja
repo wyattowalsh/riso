@@ -25,7 +25,7 @@
       "ci_jobs": ["cli-smoke"],
       "validation_commands": [
         "uv run python -m {{ package_name }}.cli --help",
-        "uv run pytest tests/test_cli.py"
+        "uv run pytest tests/test_cli*.py"
       ]
     },
     {
@@ -70,9 +70,9 @@
     },
     {
       "name": "graphql_api",
-      "prompt_key": "graphql_api_module",
+      "prompt_key": "api_features",
       "default_state": "disabled",
-      "selected_state": "{{ 'enabled' if graphql_api_module | lower == 'enabled' else 'disabled' }}",
+      "selected_state": "{{ 'enabled' if (graphql_api_module | lower == 'enabled') or 'graphql' in api_features else 'disabled' }}",
       "description": "Strawberry GraphQL API with DataLoaders, mutations, subscriptions, pagination, and security controls.",
       "dependencies": ["strawberry-graphql", "fastapi", "httpx", "aiodataloader"],
       "docs_path": "docs/modules/graphql.md",
@@ -109,9 +109,9 @@
     },
     {
       "name": "websocket_module",
-      "prompt_key": "websocket_module",
+      "prompt_key": "api_features",
       "default_state": "disabled",
-      "selected_state": "{{ 'enabled' if websocket_module | lower == 'enabled' else 'disabled' }}",
+      "selected_state": "{{ 'enabled' if (websocket_module | lower == 'enabled') or 'websocket' in api_features else 'disabled' }}",
       "description": "WebSocket real-time communication with connection management, heartbeats, broadcasting, and authentication.",
       "dependencies": ["fastapi", "websockets", "python-jose"],
       "docs_path": "docs/modules/websockets.md",

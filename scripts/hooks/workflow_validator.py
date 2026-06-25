@@ -88,9 +88,9 @@ def validate_workflows_directory(workflows_dir: Path, strict: bool = False) -> i
         logger.info(f"No workflows directory found at {workflows_dir}")
         return 0
 
-    # Find workflow files
-    workflow_files = list(workflows_dir.glob("riso-*.yml")) + list(
-        workflows_dir.glob("riso-*.yaml")
+    # Find all workflow files (not only riso-* — catches leaks and satellite workflows)
+    workflow_files = sorted(
+        set(workflows_dir.glob("*.yml")) | set(workflows_dir.glob("*.yaml"))
     )
 
     if not workflow_files:

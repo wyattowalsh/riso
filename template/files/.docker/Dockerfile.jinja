@@ -118,7 +118,7 @@ EXPOSE 8000
 
 # Health check for container orchestration
 # Checks /health endpoint with retries and backoff
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()" || exit 1
 
 # Default command: Run FastAPI with uvicorn
@@ -132,7 +132,7 @@ CMD ["python", "-m", "uvicorn", "{{ package_name }}.api.main:app", \
 # CLI application - no exposed ports
 # Health check verifies CLI binary is functional
 HEALTHCHECK --interval=60s --timeout=5s --retries=2 \
-    CMD python -m {{ package_name }}.cli --version || exit 1
+    CMD python -m {{ package_name }}.cli version --short || exit 1
 
 # Default command: Show CLI help
 CMD ["python", "-m", "{{ package_name }}.cli", "--help"]

@@ -28,8 +28,39 @@ permissions:
   issues: write
   pull-requests: write
   packages: write
+  id-token: write
+
+env:
+  QUALITY_PROFILE: {{ quality_profile }}
+  PACKAGE_NAME: {{ package_name }}
 
 jobs:
+  quality:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    timeout-minutes: {% if quality_profile == 'strict' %}20{% else %}10{% endif %}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '{{ python_versions[0] }}'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+          enable-cache: true
+          cache-dependency-glob: "**/uv.lock"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run quality checks
+        run: QUALITY_PROFILE={{ quality_profile }} uv run task quality
+
   release:
     name: Semantic Release
     runs-on: ubuntu-latest
@@ -39,13 +70,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
 {% if api_module == 'enabled' and 'node' in api_languages %}
@@ -54,19 +85,19 @@ jobs:
 
 {% if api_module == 'enabled' and 'python' in api_languages %}
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '{{ python_versions[0] }}'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v6
         with:
           version: "latest"
           enable-cache: true
+          cache-dependency-glob: "**/uv.lock"
 
       - name: Install Python dependencies
-        run: |
-          uv sync
+        run: uv sync
 {% endif %}
 
 {% if api_module == 'enabled' and 'node' in api_languages %}
@@ -102,18 +133,16 @@ jobs:
 
       - name: Run semantic-release
         env:
-{% raw %}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
 {% if api_module == 'enabled' and 'python' in api_languages %}
-          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+          PYPI_TOKEN: {% raw %}${{ secrets.PYPI_TOKEN }}{% endraw %}
 {% endif %}
 {% if api_module == 'enabled' and 'node' in api_languages %}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: {% raw %}${{ secrets.NPM_TOKEN }}{% endraw %}
 {% endif %}
-          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
-          DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
-          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
-{% endraw %}
+          DOCKER_HUB_USERNAME: {% raw %}${{ secrets.DOCKER_HUB_USERNAME }}{% endraw %}
+          DOCKER_HUB_TOKEN: {% raw %}${{ secrets.DOCKER_HUB_TOKEN }}{% endraw %}
+          DRY_RUN: {% raw %}${{ github.event.inputs.dry_run || 'false' }}{% endraw %}
         run: |
 {% if api_module == 'enabled' and 'node' in api_languages %}
           if [ "$DRY_RUN" = "true" ]; then
@@ -131,7 +160,7 @@ jobs:
 
       - name: Upload release artifacts
         if: {% raw %}success(){% endraw %}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: release-artifacts
           path: |
@@ -147,14 +176,18 @@ jobs:
       - name: Log release summary
         if: {% raw %}always(){% endraw %}
         run: |
-          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Branch**: {% raw %}${{ github.ref_name }}{% endraw %}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit**: {% raw %}${{ github.sha }}{% endraw %}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Dry Run**: $DRY_RUN" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Release Summary"
+            echo ""
+            echo "- **Branch**: {% raw %}${{ github.ref_name }}{% endraw %}"
+            echo "- **Commit**: {% raw %}${{ github.sha }}{% endraw %}"
+            echo "- **Dry Run**: $DRY_RUN"
+          } >> "$GITHUB_STEP_SUMMARY"
           if [ -f "CHANGELOG.md" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Latest Changelog Entry" >> $GITHUB_STEP_SUMMARY
-            head -n 20 CHANGELOG.md >> $GITHUB_STEP_SUMMARY
+            {
+              echo ""
+              echo "### Latest Changelog Entry"
+              head -n 20 CHANGELOG.md
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
 {% endif %}

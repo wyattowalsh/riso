@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en" data-accent-color="teal" data-content_root="../">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Troubleshooting Guide - Riso Dev Docs 0.1.0</title><link rel="shortcut icon" href="../_static/favicon.ico"/><link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Tool Catalog" href="../tools/index.html" /><link rel="prev" title="Session Persistence" href="session-persistence.html" />
+      <link rel="canonical" href="https://riso.build/docs/guides/troubleshooting.html" /><script>
+    function setColorMode(t){let e=document.documentElement;e.setAttribute("data-color-mode",t);let a=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches,s=t;"auto"===t&&(s=a?"dark":"light"),"light"===s?(e.classList.remove("dark"),e.classList.add("light")):(e.classList.remove("light"),e.classList.add("dark"))}
+    setColorMode(localStorage._theme||"auto");
+  </script><link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=e1a1ceaf" />
+    <link rel="stylesheet" type="text/css" href="../_static/shibuya.css?v=9454f7d5" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=9c3e77be" />
+    <link rel="stylesheet" type="text/css" href="../_static/twemoji.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/autoclasstoc.css?v=08871587" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link media="print" rel="stylesheet" type="text/css" href="../_static/print.css?v=20ff2c19" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/design-tokens.css?v=26635bf5" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=6162e6e6" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/components.css?v=c1072880" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/lucide-icons.css?v=d252316b" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sy-f-text: "Inter", var(--sy-f-sys), var(--sy-f-cjk), sans-serif;
+  --sy-f-heading: "Inter", var(--sy-f-sys), var(--sy-f-cjk), sans-serif;
+}
+</style>
+    
+  <meta property="og:type" content="website"/>
+  <meta property="og:url" content="https://riso.build/docs/guides/troubleshooting.html"/>
+  <meta property="og:title" content="Troubleshooting Guide"/>
+    <meta name="twitter:card" content="summary"/>
+  </head>
+<body><div class="sy-head">
+  <div class="sy-head-blur"></div>
+  <div class="sy-head-inner sy-container mx-auto">
+    <a class="sy-head-brand" href="../index.html">
+      <img class="light-logo" src="../_static/img/logo.svg" alt="Riso Dev Docs" height="28" loading="lazy" />
+      <img class="dark-logo" src="../_static/img/logo.svg" alt="Riso Dev Docs" height="28" loading="lazy" />
+      <strong>Riso Dev Docs</strong>
+    </a>
+    <div class="sy-head-nav" id="head-nav">
+      <nav class="sy-head-links"><ul><li class="link">
+          <a href="https://riso.build/">
+            <span>🧭 Configurator</span></a>
+        </li><li class="link"><a href="index.html">📖 Guides</a></li><li class="link"><a href="../tools/index.html">🧰 Tools</a></li><li class="link"><a href="../api/index.html">📚 Reference</a></li><li class="link"><a href="../changelog.html">📝 Changelog</a></li></ul></nav>
+      <div class="sy-head-extra flex items-center print:hidden"><form class="searchbox flex items-center" action="../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <kbd>/</kbd>
+</form><div class="sy-head-socials">
+  <a href="https://github.com/openai/riso" aria-label="GitHub">
+    <iconify-icon icon="simple-icons:github"></iconify-icon>
+  </a></div></div>
+    </div>
+    <div class="sy-head-actions flex items-center shrink-0 print:hidden"><button class="js-theme theme-switch flex items-center"
+data-aria-auto="Switch to light color mode"
+data-aria-light="Switch to dark color mode"
+data-aria-dark="Switch to auto color mode">
+<i class="i-lucide theme-icon"></i>
+</button><button class="md:hidden flex items-center js-menu" aria-label="Menu" type="button" aria-controls="head-nav" aria-expanded="false">
+        <div class="hamburger">
+          <span class="hamburger_1"></span>
+          <span class="hamburger_2"></span>
+          <span class="hamburger_3"></span>
+        </div>
+      </button>
+    </div>
+  </div>
+</div>
+<div class="sy-page sy-container flex mx-auto">
+  <aside id="lside" class="sy-lside md:w-72 md:shrink-0 print:hidden">
+    <div class="sy-lside-inner md:sticky">
+      <div class="sy-scrollbar p-6">
+        <div class="globaltoc" data-expand-depth="0"><ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Guides \</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="testing-strategy.html">Testing Strategy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="roadmap.html">Roadmap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="implementation-guide.html">Implementation Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="matrix-data.html">Matrix Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ci-platforms.html">CI Platforms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="session-persistence.html">Session Persistence</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Troubleshooting</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../tools/index.html">Tools \</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference \</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mcp-logging.html">MCP Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../logging-quick-reference.html">Logging Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../research/saas-starter-research-prompts.html">SaaS Starter Research Prompts \</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../research/saas-starter-synthesis-report.html">SaaS Starter Synthesis Report \</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="lside-overlay js-menu" role="button" aria-label="Close left sidebar" aria-controls="lside" aria-expanded="false"></div>
+  <aside id="rside" class="sy-rside pb-3 w-64 shrink-0 order-last">
+    <button class="rside-close js-menu xl:hidden" aria-label="Close Table of Contents" type="button" aria-controls="rside" aria-expanded="false">
+      <i class="i-lucide close"></i>
+    </button>
+    <div class="sy-scrollbar sy-rside-inner px-6 xl:top-16 xl:sticky xl:pl-0 pt-6 pb-4"><div class="localtoc"><h3>On this page</h3><ul>
+<li><a class="reference internal" href="#installation-and-setup-issues">Installation and Setup Issues</a><ul>
+<li><a class="reference internal" href="#python-version-incompatibility">Python Version Incompatibility</a></li>
+<li><a class="reference internal" href="#uv-not-found-or-not-in-path">uv Not Found or Not in PATH</a></li>
+<li><a class="reference internal" href="#copier-version-mismatch">Copier Version Mismatch</a></li>
+<li><a class="reference internal" href="#missing-system-dependencies">Missing System Dependencies</a></li>
+<li><a class="reference internal" href="#docker-not-running">Docker Not Running</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#template-rendering-issues">Template Rendering Issues</a><ul>
+<li><a class="reference internal" href="#template-rendering-timeout">Template Rendering Timeout</a></li>
+<li><a class="reference internal" href="#invalid-answer-or-validation-error">Invalid Answer or Validation Error</a></li>
+<li><a class="reference internal" href="#pyyaml-import-error">PyYAML Import Error</a></li>
+<li><a class="reference internal" href="#missing-template-files">Missing Template Files</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#permission-and-access-issues">Permission and Access Issues</a><ul>
+<li><a class="reference internal" href="#permission-denied-creating-files">Permission Denied Creating Files</a></li>
+<li><a class="reference internal" href="#macos-gatekeeper-blocks-script">macOS Gatekeeper Blocks Script</a></li>
+<li><a class="reference internal" href="#windows-permission-denied-scripts-docker">Windows Permission Denied (Scripts/Docker)</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mcp-server-issues">MCP Server Issues</a><ul>
+<li><a class="reference internal" href="#mcp-server-wont-start">MCP Server Won&#8217;t Start</a></li>
+<li><a class="reference internal" href="#session-not-found-or-expired">Session Not Found or Expired</a></li>
+<li><a class="reference internal" href="#rate-limit-errors-too-many-requests">Rate Limit Errors (Too Many Requests)</a></li>
+<li><a class="reference internal" href="#mcp-tool-errors">MCP Tool Errors</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#build-and-quality-issues">Build and Quality Issues</a><ul>
+<li><a class="reference internal" href="#type-checking-failures">Type Checking Failures</a></li>
+<li><a class="reference internal" href="#linting-failures-ruff-pylint">Linting Failures (ruff/pylint)</a></li>
+<li><a class="reference internal" href="#test-coverage-below-threshold">Test Coverage Below Threshold</a></li>
+<li><a class="reference internal" href="#docker-build-fails">Docker Build Fails</a></li>
+<li><a class="reference internal" href="#github-actions-workflow-failures">GitHub Actions Workflow Failures</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#sample-and-matrix-issues">Sample and Matrix Issues</a><ul>
+<li><a class="reference internal" href="#sample-rendering-fails">Sample Rendering Fails</a></li>
+<li><a class="reference internal" href="#matrix-data-out-of-sync">Matrix Data Out of Sync</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#documentation-issues">Documentation Issues</a><ul>
+<li><a class="reference internal" href="#sphinx-build-fails">Sphinx Build Fails</a></li>
+<li><a class="reference internal" href="#missing-dependencies-for-docs">Missing Dependencies for Docs</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#node-js-and-javascript-issues">Node.js and JavaScript Issues</a><ul>
+<li><a class="reference internal" href="#pnpm-command-not-found">pnpm Command Not Found</a></li>
+<li><a class="reference internal" href="#node-version-mismatch">Node Version Mismatch</a></li>
+<li><a class="reference internal" href="#vite-or-typescript-build-error">Vite or TypeScript Build Error</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#debugging-and-getting-help">Debugging and Getting Help</a><ul>
+<li><a class="reference internal" href="#enable-debug-logging">Enable Debug Logging</a></li>
+<li><a class="reference internal" href="#collect-diagnostic-information">Collect Diagnostic Information</a></li>
+<li><a class="reference internal" href="#check-github-issues-and-discussions">Check GitHub Issues and Discussions</a></li>
+<li><a class="reference internal" href="#opening-a-new-issue">Opening a New Issue</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#common-environment-variables">Common Environment Variables</a></li>
+<li><a class="reference internal" href="#quick-reference-common-solutions">Quick Reference: Common Solutions</a></li>
+<li><a class="reference internal" href="#additional-resources">Additional Resources</a></li>
+</ul>
+</div><a class="js-repo-stats repo-stats flex items-center" href="https://github.com/openai/riso"
+  data-type="github" data-user="openai" data-repo="riso">
+  <span class="w-8 flex items-center justify-around shrink-0 text-3xl">
+    <iconify-icon icon="simple-icons:github"></iconify-icon>
+  </span>
+  <span class="flex-grow px-2 break-all">
+    
+    
+      <span>openai/riso</span>
+    
+    <span class="flex text-sm repo-stats-count">
+      <span class="flex items-center pr-3">
+        <iconify-icon icon="lucide:star"></iconify-icon>
+        <strong class="js-repo-stars ml-1">0</strong>
+      </span>
+      <span class="flex items-center">
+        <iconify-icon icon="lucide:git-fork"></iconify-icon>
+        <strong class="js-repo-forks ml-1">0</strong>
+      </span>
+    </span>
+  </span>
+</a><div class="edit-this-page">
+  <a href="https://github.com/openai/riso/blob/main/docs/guides/troubleshooting.md">Edit this page</a>
+</div></div>
+  </aside>
+  <div class="rside-overlay js-menu" role="button" aria-label="Close Table of Contents" aria-controls="rside" aria-expanded="false"></div>
+  <main class="sy-main w-full max-sm:max-w-full print:pt-6">
+<div class="sy-breadcrumbs" role="navigation">
+  <div class="sy-breadcrumbs-inner flex items-center">
+    <div class="md:hidden mr-3">
+      <button class="js-menu" aria-label="Menu" type="button" aria-controls="lside" aria-expanded="false">
+        <i class="i-lucide menu"></i>
+      </button>
+    </div>
+    <ol class="flex-1" itemscope itemtype="https://schema.org/BreadcrumbList"><li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+        <a itemprop="item" href="../index.html"><span itemprop="name">Riso Dev Docs</span></a>
+        <span>/</span>
+        <meta itemprop="position" content="1" />
+      </li><li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+        <a itemprop="item" href="index.html"><span itemprop="name">Guides</span></a>
+        <span>/</span>
+        <meta itemprop="position" content="2" />
+      </li><li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+        <strong itemprop="name">Troubleshooting Guide</strong>
+        <meta itemprop="position" content="3" />
+      </li></ol>
+    <div class="xl:hidden ml-1">
+      <button class="js-menu" aria-label="Show table of contents" type="button" aria-controls="rside"
+        aria-expanded="false">
+        <i class="i-lucide outdent"></i>
+      </button>
+    </div>
+  </div>
+</div><div class="flex flex-col break-words justify-between">
+      <div class="relative min-w-0 max-w-6xl px-6 pb-6 pt-8 xl:px-12">
+  <div class="copy-page-wrapper relative pb-4 lg:absolute lg:top-8 lg:right-6 xl:right-12">
+  <div id="copy-page-trigger">
+    <button
+      type="button"
+      class="js-copy px-3 py-1 inline-flex items-center gap-1"
+      data-url="https://riso.build/docs/_sources/guides/troubleshooting.md.txt"
+    >
+      <i class="i-lucide" data-icon="copy"></i>
+      <span>Copy page</span>
+    </button>
+    <button class="js-menu px-2 py-1" type="button" aria-label="More actions"
+      aria-haspopup="menu" aria-expanded="false" aria-controls="copy-page-content">
+      <i class="i-lucide chevron-down"></i>
+    </button>
+  </div>
+  <div id="copy-page-content" role="menu" aria-orientation="vertical" aria-hidden="true">
+    <div role="presentation">
+      <div class="flex flex-col" role="group">
+        <button class="js-copy" type="button" role="menuitem"
+          data-url="https://riso.build/docs/_sources/guides/troubleshooting.md.txt">
+          <span class="iconify-icon">
+            <i class="i-lucide" data-icon="copy"></i>
+          </span>
+          <span>Copy page</span>
+        </button>
+        <a role="menuitem" href="https://riso.build/docs/_sources/guides/troubleshooting.md.txt" target="_blank" rel="nofollow"><iconify-icon icon="bi:markdown"></iconify-icon>
+            <span>View as Markdown</span></a><a role="menuitem" href="https://chatgpt.com/?hints=search&q=Read%20https%3A//riso.build/docs/_sources/guides/troubleshooting.md.txt%20so%20I%20can%20ask%20questions%20about%20it." target="_blank" rel="nofollow">
+          <iconify-icon icon="bi:openai"></iconify-icon>
+          <span>Open in ChatGPT</span>
+        </a><a role="menuitem" href="https://claude.ai/new?q=Read%20https%3A//riso.build/docs/_sources/guides/troubleshooting.md.txt%20so%20I%20can%20ask%20questions%20about%20it." target="_blank" rel="nofollow">
+          <iconify-icon icon="bi:claude"></iconify-icon>
+          <span>Open in Claude</span>
+        </a></div>
+    </div>
+  </div>
+</div><article class="yue" role="main">
+          <section class="tex2jax_ignore mathjax_ignore" id="troubleshooting-guide">
+<h1>Troubleshooting Guide<a class="headerlink" href="#troubleshooting-guide" title="Link to this heading">¶</a></h1>
+<p>This guide covers common issues and their solutions when using Riso. Whether you’re setting up
+a development environment, rendering templates, or running the MCP server, you’ll find
+practical troubleshooting steps here.</p>
+<section id="installation-and-setup-issues">
+<h2>Installation and Setup Issues<a class="headerlink" href="#installation-and-setup-issues" title="Link to this heading">¶</a></h2>
+<section id="python-version-incompatibility">
+<h3>Python Version Incompatibility<a class="headerlink" href="#python-version-incompatibility" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> Error about Python version: <code class="docutils literal notranslate"><span class="pre">Python</span> <span class="pre">3.11+</span> <span class="pre">required</span></code> or <code class="docutils literal notranslate"><span class="pre">RuntimeError:</span> <span class="pre">Python</span> <span class="pre">3.11</span> <span class="pre">minimum</span></code></p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Check your Python version</span>
+</span><span data-line="2">python3<span class="w"> </span>--version
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># If below 3.11, install a newer version</span>
+</span><span data-line="5"><span class="c1"># macOS with Homebrew</span>
+</span><span data-line="6">brew<span class="w"> </span>install<span class="w"> </span>python@3.13
+</span><span data-line="7">
+</span><span data-line="8"><span class="c1"># Linux (Ubuntu/Debian)</span>
+</span><span data-line="9">sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>python3.13
+</span><span data-line="10">
+</span><span data-line="11"><span class="c1"># Then set it as default or use explicitly</span>
+</span><span data-line="12">python3.13<span class="w"> </span>--version
+</span></pre></div>
+</div>
+<p><strong>Note:</strong> Riso requires Python 3.11, 3.12, or 3.13 for full compatibility and CI testing.</p>
+</section>
+<section id="uv-not-found-or-not-in-path">
+<h3>uv Not Found or Not in PATH<a class="headerlink" href="#uv-not-found-or-not-in-path" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> <code class="docutils literal notranslate"><span class="pre">command</span> <span class="pre">not</span> <span class="pre">found:</span> <span class="pre">uv</span></code> or <code class="docutils literal notranslate"><span class="pre">zsh:</span> <span class="pre">command</span> <span class="pre">not</span> <span class="pre">found:</span> <span class="pre">uv</span></code></p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Install uv if not already installed</span>
+</span><span data-line="2">curl<span class="w"> </span>-LsSf<span class="w"> </span>https://astral.sh/uv/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Add to your shell profile (~/.bashrc, ~/.zshrc, ~/.profile, etc.)</span>
+</span><span data-line="5"><span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$HOME</span><span class="s2">/.cargo/bin:</span><span class="nv">$PATH</span><span class="s2">&quot;</span><span class="w">  </span><span class="c1"># If installed via curl</span>
+</span><span data-line="6"><span class="c1"># OR</span>
+</span><span data-line="7"><span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$HOME</span><span class="s2">/.local/bin:</span><span class="nv">$PATH</span><span class="s2">&quot;</span><span class="w">  </span><span class="c1"># If installed via pip</span>
+</span><span data-line="8">
+</span><span data-line="9"><span class="c1"># Reload shell configuration</span>
+</span><span data-line="10"><span class="nb">source</span><span class="w"> </span>~/.zshrc<span class="w">  </span><span class="c1"># for zsh</span>
+</span><span data-line="11"><span class="nb">source</span><span class="w"> </span>~/.bashrc<span class="w">  </span><span class="c1"># for bash</span>
+</span><span data-line="12">
+</span><span data-line="13"><span class="c1"># Verify installation</span>
+</span><span data-line="14">uv<span class="w"> </span>--version
+</span></pre></div>
+</div>
+</section>
+<section id="copier-version-mismatch">
+<h3>Copier Version Mismatch<a class="headerlink" href="#copier-version-mismatch" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> <code class="docutils literal notranslate"><span class="pre">Error:</span> <span class="pre">Copier</span> <span class="pre">version</span> <span class="pre">9.0+</span> <span class="pre">required</span></code> or template rendering fails with version warning</p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Check current Copier version</span>
+</span><span data-line="2">copier<span class="w"> </span>--version
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Update Copier to compatible version</span>
+</span><span data-line="5">pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>copier&gt;<span class="o">=</span><span class="m">9</span>.1.0
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Or use uv</span>
+</span><span data-line="8">uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>copier&gt;<span class="o">=</span><span class="m">9</span>.1.0
+</span><span data-line="9">
+</span><span data-line="10"><span class="c1"># Verify upgrade</span>
+</span><span data-line="11">copier<span class="w"> </span>--version
+</span></pre></div>
+</div>
+</section>
+<section id="missing-system-dependencies">
+<h3>Missing System Dependencies<a class="headerlink" href="#missing-system-dependencies" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> Various errors during setup (e.g., <code class="docutils literal notranslate"><span class="pre">command</span> <span class="pre">not</span> <span class="pre">found:</span> <span class="pre">node</span></code>, <code class="docutils literal notranslate"><span class="pre">pnpm:</span> <span class="pre">command</span> <span class="pre">not</span> <span class="pre">found</span></code>)</p>
+<p><strong>Solution:</strong></p>
+<p>For Node.js and pnpm (required for docs and full-stack projects):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># macOS with Homebrew</span>
+</span><span data-line="2">brew<span class="w"> </span>install<span class="w"> </span>node@20
+</span><span data-line="3">npm<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span>pnpm
+</span><span data-line="4">
+</span><span data-line="5"><span class="c1"># Linux (Ubuntu/Debian)</span>
+</span><span data-line="6">curl<span class="w"> </span>-fsSL<span class="w"> </span>https://deb.nodesource.com/setup_20.x<span class="w"> </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>-E<span class="w"> </span>bash<span class="w"> </span>-
+</span><span data-line="7">sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>nodejs
+</span><span data-line="8">npm<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span>pnpm
+</span><span data-line="9">
+</span><span data-line="10"><span class="c1"># Verify installations</span>
+</span><span data-line="11">node<span class="w"> </span>--version<span class="w">    </span><span class="c1"># Should be v20.x or higher</span>
+</span><span data-line="12">pnpm<span class="w"> </span>--version<span class="w">    </span><span class="c1"># Should be v8+</span>
+</span></pre></div>
+</div>
+<p>For Git and other build tools:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># macOS</span>
+</span><span data-line="2">xcode-select<span class="w"> </span>--install
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Linux (Ubuntu/Debian)</span>
+</span><span data-line="5">sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>build-essential<span class="w"> </span>git<span class="w"> </span>curl<span class="w"> </span>wget
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Verify</span>
+</span><span data-line="8">git<span class="w"> </span>--version
+</span></pre></div>
+</div>
+</section>
+<section id="docker-not-running">
+<h3>Docker Not Running<a class="headerlink" href="#docker-not-running" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> <code class="docutils literal notranslate"><span class="pre">Docker</span> <span class="pre">daemon</span> <span class="pre">is</span> <span class="pre">not</span> <span class="pre">running</span></code> or <code class="docutils literal notranslate"><span class="pre">cannot</span> <span class="pre">connect</span> <span class="pre">to</span> <span class="pre">Docker</span> <span class="pre">daemon</span></code></p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># macOS - Start Docker Desktop</span>
+</span><span data-line="2"><span class="c1"># Click Docker icon in Applications folder</span>
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Linux - Start Docker daemon</span>
+</span><span data-line="5">sudo<span class="w"> </span>systemctl<span class="w"> </span>start<span class="w"> </span>docker
+</span><span data-line="6">sudo<span class="w"> </span>systemctl<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>docker<span class="w">  </span><span class="c1"># Auto-start on boot</span>
+</span><span data-line="7">
+</span><span data-line="8"><span class="c1"># Verify Docker is running</span>
+</span><span data-line="9">docker<span class="w"> </span>ps
+</span><span data-line="10">
+</span><span data-line="11"><span class="c1"># If permission denied, add user to docker group</span>
+</span><span data-line="12">sudo<span class="w"> </span>usermod<span class="w"> </span>-aG<span class="w"> </span>docker<span class="w"> </span><span class="nv">$USER</span>
+</span><span data-line="13">newgrp<span class="w"> </span>docker
+</span></pre></div>
+</div>
+</section>
+</section>
+<section id="template-rendering-issues">
+<h2>Template Rendering Issues<a class="headerlink" href="#template-rendering-issues" title="Link to this heading">¶</a></h2>
+<section id="template-rendering-timeout">
+<h3>Template Rendering Timeout<a class="headerlink" href="#template-rendering-timeout" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> Copier hangs during rendering, takes excessive time, or times out</p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Try with the --trust flag (disables safety checks)</span>
+</span><span data-line="2">copier<span class="w"> </span>copy<span class="w"> </span>--trust<span class="w"> </span>gh:wyattowalsh/riso<span class="w"> </span>my-project
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Clear Copier cache and retry</span>
+</span><span data-line="5">rm<span class="w"> </span>-rf<span class="w"> </span>~/.cache/copier
+</span><span data-line="6">copier<span class="w"> </span>copy<span class="w"> </span>gh:wyattowalsh/riso<span class="w"> </span>my-project
+</span><span data-line="7">
+</span><span data-line="8"><span class="c1"># Check network connectivity</span>
+</span><span data-line="9">ping<span class="w"> </span>github.com
+</span><span data-line="10">
+</span><span data-line="11"><span class="c1"># If behind a proxy, configure git</span>
+</span><span data-line="12">git<span class="w"> </span>config<span class="w"> </span>--global<span class="w"> </span>http.proxy<span class="w"> </span><span class="o">[</span>protocol://<span class="o">]</span>proxyhost<span class="o">[</span>:port<span class="o">]</span>
+</span><span data-line="13">
+</span><span data-line="14"><span class="c1"># Increase Copier verbosity for debugging</span>
+</span><span data-line="15">copier<span class="w"> </span>copy<span class="w"> </span>--verbose<span class="w"> </span>gh:wyattowalsh/riso<span class="w"> </span>my-project
+</span></pre></div>
+</div>
+</section>
+<section id="invalid-answer-or-validation-error">
+<h3>Invalid Answer or Validation Error<a class="headerlink" href="#invalid-answer-or-validation-error" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> <code class="docutils literal notranslate"><span class="pre">ValidationError</span></code>, <code class="docutils literal notranslate"><span class="pre">Invalid</span> <span class="pre">answer</span> <span class="pre">for</span> <span class="pre">question</span></code>, or errors mentioning <code class="docutils literal notranslate"><span class="pre">copier-answers.yml</span></code></p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># 1. Check the copier.yml for valid answer values</span>
+</span><span data-line="2">cat<span class="w"> </span>template/copier.yml<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-A<span class="w"> </span><span class="m">5</span><span class="w"> </span><span class="s2">&quot;choices:&quot;</span>
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># 2. Review your copier-answers.yml for typos</span>
+</span><span data-line="5">cat<span class="w"> </span>copier-answers.yml
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># 3. Valid values commonly used:</span>
+</span><span data-line="8"><span class="c1">#    - project_layout: &quot;single-package&quot; or &quot;monorepo&quot;</span>
+</span><span data-line="9"><span class="c1">#    - quality_profile: &quot;standard&quot; or &quot;strict&quot;</span>
+</span><span data-line="10"><span class="c1">#    - api_languages: &quot;none&quot;, &quot;python&quot;, &quot;node&quot;, or &quot;python+node&quot;</span>
+</span><span data-line="11"><span class="c1">#    - docs_framework: &quot;fumadocs&quot;, &quot;sphinx-shibuya&quot;, &quot;docusaurus&quot;, or &quot;none&quot;</span>
+</span><span data-line="12"><span class="c1">#    - cli_module: &quot;enabled&quot; or &quot;disabled&quot;</span>
+</span><span data-line="13"><span class="c1">#    - mcp_module: &quot;enabled&quot; or &quot;disabled&quot;</span>
+</span><span data-line="14">
+</span><span data-line="15"><span class="c1"># 4. Regenerate from scratch with interactive prompts</span>
+</span><span data-line="16">rm<span class="w"> </span>copier-answers.yml
+</span><span data-line="17">copier<span class="w"> </span>copy<span class="w"> </span>gh:wyattowalsh/riso<span class="w"> </span>my-project
+</span></pre></div>
+</div>
+</section>
+<section id="pyyaml-import-error">
+<h3>PyYAML Import Error<a class="headerlink" href="#pyyaml-import-error" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> <code class="docutils literal notranslate"><span class="pre">RuntimeError:</span> <span class="pre">PyYAML</span> <span class="pre">is</span> <span class="pre">required</span> <span class="pre">to</span> <span class="pre">load</span> <span class="pre">Copier</span> <span class="pre">configuration</span></code></p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Install PyYAML</span>
+</span><span data-line="2">uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>PyYAML
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Or with pip</span>
+</span><span data-line="5">pip<span class="w"> </span>install<span class="w"> </span>PyYAML
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Verify installation</span>
+</span><span data-line="8">python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import yaml; print(yaml.__version__)&quot;</span>
+</span></pre></div>
+</div>
+</section>
+<section id="missing-template-files">
+<h3>Missing Template Files<a class="headerlink" href="#missing-template-files" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> <code class="docutils literal notranslate"><span class="pre">TemplateNotFoundError</span></code>, <code class="docutils literal notranslate"><span class="pre">FileNotFoundError</span></code>, or specific files not generated</p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Verify template path</span>
+</span><span data-line="2">ls<span class="w"> </span>-la<span class="w"> </span>template/copier.yml
+</span><span data-line="3">ls<span class="w"> </span>-la<span class="w"> </span>template/files/
+</span><span data-line="4">
+</span><span data-line="5"><span class="c1"># Check git status - ensure template files are committed</span>
+</span><span data-line="6">git<span class="w"> </span>status<span class="w"> </span>template/
+</span><span data-line="7">
+</span><span data-line="8"><span class="c1"># Clone fresh copy of Riso</span>
+</span><span data-line="9">rm<span class="w"> </span>-rf<span class="w"> </span>riso
+</span><span data-line="10">git<span class="w"> </span>clone<span class="w"> </span>https://github.com/wyattowalsh/riso.git
+</span><span data-line="11"><span class="nb">cd</span><span class="w"> </span>riso
+</span><span data-line="12">
+</span><span data-line="13"><span class="c1"># Try rendering again</span>
+</span><span data-line="14">copier<span class="w"> </span>copy<span class="w"> </span>.<span class="w"> </span>../my-project
+</span></pre></div>
+</div>
+</section>
+</section>
+<section id="permission-and-access-issues">
+<h2>Permission and Access Issues<a class="headerlink" href="#permission-and-access-issues" title="Link to this heading">¶</a></h2>
+<section id="permission-denied-creating-files">
+<h3>Permission Denied Creating Files<a class="headerlink" href="#permission-denied-creating-files" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> <code class="docutils literal notranslate"><span class="pre">PermissionError</span></code>, <code class="docutils literal notranslate"><span class="pre">Access</span> <span class="pre">denied</span></code>, or <code class="docutils literal notranslate"><span class="pre">Permission</span> <span class="pre">denied</span></code> when writing files</p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Check directory permissions</span>
+</span><span data-line="2">ls<span class="w"> </span>-ld<span class="w"> </span>/path/to/destination
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Fix permissions</span>
+</span><span data-line="5">chmod<span class="w"> </span>u+w<span class="w"> </span>/path/to/destination
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Or use different destination</span>
+</span><span data-line="8">copier<span class="w"> </span>copy<span class="w"> </span>gh:wyattowalsh/riso<span class="w"> </span>~/my-project
+</span><span data-line="9">
+</span><span data-line="10"><span class="c1"># On Windows/WSL, run as administrator</span>
+</span><span data-line="11"><span class="c1"># PowerShell: Start-Process powershell -Verb RunAs</span>
+</span><span data-line="12"><span class="c1"># Then re-run the copier command</span>
+</span></pre></div>
+</div>
+</section>
+<section id="macos-gatekeeper-blocks-script">
+<h3>macOS Gatekeeper Blocks Script<a class="headerlink" href="#macos-gatekeeper-blocks-script" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> Script execution blocked by Gatekeeper security, or <code class="docutils literal notranslate"><span class="pre">cannot</span> <span class="pre">execute</span> <span class="pre">binary</span> <span class="pre">file</span></code></p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Remove Gatekeeper quarantine attribute</span>
+</span><span data-line="2">xattr<span class="w"> </span>-d<span class="w"> </span>com.apple.quarantine<span class="w"> </span>./scripts/setup/setup.sh
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Alternative: Allow via security settings</span>
+</span><span data-line="5"><span class="c1"># System Settings &gt; Security &amp; Privacy &gt; General &gt; Allow apps downloaded from</span>
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Or make scripts executable</span>
+</span><span data-line="8">chmod<span class="w"> </span>+x<span class="w"> </span>./scripts/setup/setup.sh
+</span><span data-line="9">chmod<span class="w"> </span>+x<span class="w"> </span>./scripts/render-samples.sh
+</span></pre></div>
+</div>
+</section>
+<section id="windows-permission-denied-scripts-docker">
+<h3>Windows Permission Denied (Scripts/Docker)<a class="headerlink" href="#windows-permission-denied-scripts-docker" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> Cannot execute <code class="docutils literal notranslate"><span class="pre">.sh</span></code> scripts or Docker access denied on Windows</p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Use Windows Terminal (not Command Prompt) as Administrator</span>
+</span><span data-line="2"><span class="c1"># Start-Process powershell -Verb RunAs</span>
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Use .ps1 scripts instead of .sh</span>
+</span><span data-line="5">.<span class="se">\s</span>cripts<span class="se">\s</span>etup<span class="se">\s</span>etup.ps1<span class="w"> </span>-Install
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># For WSL2, ensure integration is enabled</span>
+</span><span data-line="8">wsl<span class="w"> </span>--list<span class="w"> </span>-v<span class="w">  </span><span class="c1"># Check WSL version</span>
+</span><span data-line="9">
+</span><span data-line="10"><span class="c1"># Use WSL2 instead of native Windows</span>
+</span><span data-line="11">copier<span class="w"> </span>copy<span class="w"> </span>gh:wyattowalsh/riso<span class="w"> </span>/mnt/c/Users/YourUsername/my-project
+</span></pre></div>
+</div>
+</section>
+</section>
+<section id="mcp-server-issues">
+<h2>MCP Server Issues<a class="headerlink" href="#mcp-server-issues" title="Link to this heading">¶</a></h2>
+<section id="mcp-server-wont-start">
+<h3>MCP Server Won’t Start<a class="headerlink" href="#mcp-server-wont-start" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> MCP server fails to start, errors about socket/port, or connection refused</p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Check Python version compatibility</span>
+</span><span data-line="2">python3<span class="w"> </span>--version<span class="w">  </span><span class="c1"># Must be 3.11+</span>
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Verify MCP dependencies</span>
+</span><span data-line="5">uv<span class="w"> </span>pip<span class="w"> </span>list<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>mcp
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Check if port 3141 is in use</span>
+</span><span data-line="8">lsof<span class="w"> </span>-i<span class="w"> </span>:3141<span class="w">  </span><span class="c1"># macOS/Linux</span>
+</span><span data-line="9">netstat<span class="w"> </span>-ano<span class="w"> </span><span class="p">|</span><span class="w"> </span>findstr<span class="w"> </span>:3141<span class="w">  </span><span class="c1"># Windows</span>
+</span><span data-line="10">
+</span><span data-line="11"><span class="c1"># Kill process using the port</span>
+</span><span data-line="12"><span class="nb">kill</span><span class="w"> </span>-9<span class="w"> </span>&lt;PID&gt;<span class="w">  </span><span class="c1"># macOS/Linux</span>
+</span><span data-line="13">taskkill<span class="w"> </span>/PID<span class="w"> </span>&lt;PID&gt;<span class="w"> </span>/F<span class="w">  </span><span class="c1"># Windows</span>
+</span><span data-line="14">
+</span><span data-line="15"><span class="c1"># Rebuild environment</span>
+</span><span data-line="16">uv<span class="w"> </span>sync
+</span><span data-line="17">uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>riso.mcp.server
+</span><span data-line="18">
+</span><span data-line="19"><span class="c1"># With verbose logging</span>
+</span><span data-line="20"><span class="nv">DEBUG</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>riso.mcp.server
+</span></pre></div>
+</div>
+</section>
+<section id="session-not-found-or-expired">
+<h3>Session Not Found or Expired<a class="headerlink" href="#session-not-found-or-expired" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> <code class="docutils literal notranslate"><span class="pre">SessionNotFoundError</span></code>, <code class="docutils literal notranslate"><span class="pre">Session</span> <span class="pre">not</span> <span class="pre">found</span></code>, or <code class="docutils literal notranslate"><span class="pre">Session</span> <span class="pre">expired</span></code></p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Sessions have a timeout (default: 3600 seconds)</span>
+</span><span data-line="2"><span class="c1"># Create a new session and complete operations within timeout</span>
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># For rate limiting issues (too many rapid sessions):</span>
+</span><span data-line="5"><span class="c1"># Wait 60 seconds between rapid session creations</span>
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Check session management</span>
+</span><span data-line="8"><span class="c1"># Sessions are stored in memory during server runtime</span>
+</span><span data-line="9"><span class="c1"># Restart server to clear all sessions</span>
+</span></pre></div>
+</div>
+</section>
+<section id="rate-limit-errors-too-many-requests">
+<h3>Rate Limit Errors (Too Many Requests)<a class="headerlink" href="#rate-limit-errors-too-many-requests" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> <code class="docutils literal notranslate"><span class="pre">TooManyRequestsError</span></code>, <code class="docutils literal notranslate"><span class="pre">429</span> <span class="pre">Too</span> <span class="pre">Many</span> <span class="pre">Requests</span></code>, or rate limit warnings</p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Rate limiting is per-IP with 60-second sliding window</span>
+</span><span data-line="2"><span class="c1"># For rapid testing, space out requests</span>
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Programmatic usage (wait between calls)</span>
+</span><span data-line="5">import<span class="w"> </span><span class="nb">time</span>
+</span><span data-line="6">time.sleep<span class="o">(</span><span class="m">60</span><span class="o">)</span><span class="w">  </span><span class="c1"># Wait 60 seconds before next request</span>
+</span><span data-line="7">
+</span><span data-line="8"><span class="c1"># Alternative: Use local template instead of remote</span>
+</span><span data-line="9">copier<span class="w"> </span>copy<span class="w"> </span>./template<span class="w"> </span>my-project<span class="w">  </span><span class="c1"># Local path</span>
+</span><span data-line="10">
+</span><span data-line="11"><span class="c1"># Check rate limit headers in response</span>
+</span><span data-line="12"><span class="c1"># Includes retry_after timing information</span>
+</span></pre></div>
+</div>
+</section>
+<section id="mcp-tool-errors">
+<h3>MCP Tool Errors<a class="headerlink" href="#mcp-tool-errors" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> Tool execution fails, returns unexpected output, or crashes</p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Test MCP tools directly</span>
+</span><span data-line="2">uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
+</span><span data-line="3"><span class="s2">from riso.mcp.tools.copier_api import resolve_library</span>
+</span><span data-line="4"><span class="s2">result = resolve_library(&#39;test&#39;)</span>
+</span><span data-line="5"><span class="s2">print(result)</span>
+</span><span data-line="6"><span class="s2">&quot;</span>
+</span><span data-line="7">
+</span><span data-line="8"><span class="c1"># Enable MCP debugging</span>
+</span><span data-line="9"><span class="nv">DEBUG</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>riso.mcp.server
+</span><span data-line="10">
+</span><span data-line="11"><span class="c1"># Check MCP configuration</span>
+</span><span data-line="12">cat<span class="w"> </span>.mcp.json<span class="w">  </span><span class="c1"># or custom config path</span>
+</span><span data-line="13">cat<span class="w"> </span>mcp.json
+</span><span data-line="14">
+</span><span data-line="15"><span class="c1"># Validate template path</span>
+</span><span data-line="16">ls<span class="w"> </span>-la<span class="w"> </span>&lt;template_path&gt;
+</span><span data-line="17">
+</span><span data-line="18"><span class="c1"># Test with verbose output</span>
+</span><span data-line="19">uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
+</span><span data-line="20"><span class="s2">import logging</span>
+</span><span data-line="21"><span class="s2">logging.basicConfig(level=logging.DEBUG)</span>
+</span><span data-line="22"><span class="s2"># Your code here</span>
+</span><span data-line="23"><span class="s2">&quot;</span>
+</span></pre></div>
+</div>
+</section>
+</section>
+<section id="build-and-quality-issues">
+<h2>Build and Quality Issues<a class="headerlink" href="#build-and-quality-issues" title="Link to this heading">¶</a></h2>
+<section id="type-checking-failures">
+<h3>Type Checking Failures<a class="headerlink" href="#type-checking-failures" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> <code class="docutils literal notranslate"><span class="pre">ty</span> <span class="pre">check</span></code> fails with type errors, mypy errors</p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Run type checker with full output</span>
+</span><span data-line="2">uv<span class="w"> </span>run<span class="w"> </span>ty<span class="w"> </span>check
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Show all errors at once</span>
+</span><span data-line="5">uv<span class="w"> </span>run<span class="w"> </span>ty<span class="w"> </span>check<span class="w"> </span>--show-error-context
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Type check specific module</span>
+</span><span data-line="8">uv<span class="w"> </span>run<span class="w"> </span>ty<span class="w"> </span>check<span class="w"> </span>src/riso/mcp/
+</span><span data-line="9">
+</span><span data-line="10"><span class="c1"># Generate type stub files</span>
+</span><span data-line="11">uv<span class="w"> </span>run<span class="w"> </span>ty<span class="w"> </span>stubgen<span class="w"> </span>-p<span class="w"> </span>riso
+</span><span data-line="12">
+</span><span data-line="13"><span class="c1"># Check for common type issues</span>
+</span><span data-line="14"><span class="c1"># - Missing type hints on function parameters</span>
+</span><span data-line="15"><span class="c1"># - Incompatible return types</span>
+</span><span data-line="16"><span class="c1"># - Type annotation mismatches</span>
+</span></pre></div>
+</div>
+</section>
+<section id="linting-failures-ruff-pylint">
+<h3>Linting Failures (ruff/pylint)<a class="headerlink" href="#linting-failures-ruff-pylint" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> Code quality checks fail, linting errors</p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Run ruff (fast Python linter)</span>
+</span><span data-line="2">uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>.
+</span><span data-line="3">uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>--fix<span class="w"> </span>.<span class="w">  </span><span class="c1"># Auto-fix issues</span>
+</span><span data-line="4">
+</span><span data-line="5"><span class="c1"># Run pylint (detailed analysis)</span>
+</span><span data-line="6">uv<span class="w"> </span>run<span class="w"> </span>pylint<span class="w"> </span>src/riso/
+</span><span data-line="7">
+</span><span data-line="8"><span class="c1"># Run all quality checks</span>
+</span><span data-line="9">make<span class="w"> </span>quality<span class="w">  </span><span class="c1"># Requires make</span>
+</span><span data-line="10">uv<span class="w"> </span>run<span class="w"> </span>task<span class="w"> </span>quality<span class="w">  </span><span class="c1"># Requires Taskipy</span>
+</span><span data-line="11">
+</span><span data-line="12"><span class="c1"># Fix specific issues</span>
+</span><span data-line="13">uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>--select<span class="o">=</span>E501<span class="w"> </span>.<span class="w">  </span><span class="c1"># Line length</span>
+</span><span data-line="14">uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>--select<span class="o">=</span>F<span class="w"> </span>--fix<span class="w"> </span>.<span class="w">  </span><span class="c1"># Unused imports</span>
+</span></pre></div>
+</div>
+</section>
+<section id="test-coverage-below-threshold">
+<h3>Test Coverage Below Threshold<a class="headerlink" href="#test-coverage-below-threshold" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> <code class="docutils literal notranslate"><span class="pre">AssertionError</span></code> about coverage, <code class="docutils literal notranslate"><span class="pre">cov-fail-under</span></code> error</p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Run tests with coverage</span>
+</span><span data-line="2">uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>--cov<span class="w"> </span>--cov-report<span class="o">=</span>term-missing<span class="w"> </span>--cov-fail-under<span class="o">=</span><span class="m">90</span>
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># See coverage by file</span>
+</span><span data-line="5">uv<span class="w"> </span>run<span class="w"> </span>coverage<span class="w"> </span>report
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Generate HTML coverage report</span>
+</span><span data-line="8">uv<span class="w"> </span>run<span class="w"> </span>coverage<span class="w"> </span>html
+</span><span data-line="9">open<span class="w"> </span>htmlcov/index.html<span class="w">  </span><span class="c1"># View in browser</span>
+</span><span data-line="10">
+</span><span data-line="11"><span class="c1"># Run specific test categories</span>
+</span><span data-line="12">uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-m<span class="w"> </span>unit<span class="w">  </span><span class="c1"># Unit tests only</span>
+</span><span data-line="13">uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-m<span class="w"> </span>integration<span class="w">  </span><span class="c1"># Integration tests</span>
+</span><span data-line="14">uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;not slow&quot;</span><span class="w">  </span><span class="c1"># Skip slow tests</span>
+</span><span data-line="15">
+</span><span data-line="16"><span class="c1"># Identify uncovered code</span>
+</span><span data-line="17">uv<span class="w"> </span>run<span class="w"> </span>coverage<span class="w"> </span>report<span class="w"> </span>--show-missing
+</span></pre></div>
+</div>
+</section>
+<section id="docker-build-fails">
+<h3>Docker Build Fails<a class="headerlink" href="#docker-build-fails" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> Docker build errors, <code class="docutils literal notranslate"><span class="pre">Dockerfile</span> <span class="pre">not</span> <span class="pre">found</span></code>, or layer build failures</p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Verify Docker is running</span>
+</span><span data-line="2">docker<span class="w"> </span>ps
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Check Dockerfile syntax</span>
+</span><span data-line="5">docker<span class="w"> </span>build<span class="w"> </span>--check<span class="w"> </span>.<span class="w">  </span><span class="c1"># Syntax check</span>
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Build with verbose output</span>
+</span><span data-line="8">docker<span class="w"> </span>build<span class="w"> </span>--progress<span class="o">=</span>plain<span class="w"> </span>.
+</span><span data-line="9">
+</span><span data-line="10"><span class="c1"># Common issues and fixes:</span>
+</span><span data-line="11"><span class="c1"># 1. Check base image availability</span>
+</span><span data-line="12">docker<span class="w"> </span>pull<span class="w"> </span>python:3.13-slim
+</span><span data-line="13">
+</span><span data-line="14"><span class="c1"># 2. Clear Docker cache</span>
+</span><span data-line="15">docker<span class="w"> </span>build<span class="w"> </span>--no-cache<span class="w"> </span>.
+</span><span data-line="16">
+</span><span data-line="17"><span class="c1"># 3. Fix layer issues</span>
+</span><span data-line="18"><span class="c1"># - Ensure COPY/ADD paths exist</span>
+</span><span data-line="19"><span class="c1"># - Use absolute paths in Dockerfile</span>
+</span><span data-line="20"><span class="c1"># - Check .dockerignore for excluding needed files</span>
+</span><span data-line="21">
+</span><span data-line="22"><span class="c1"># 4. Test locally before CI</span>
+</span><span data-line="23">docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>my-project:test<span class="w"> </span>.
+</span><span data-line="24">docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>my-project:test<span class="w"> </span>python<span class="w"> </span>--version
+</span></pre></div>
+</div>
+</section>
+<section id="github-actions-workflow-failures">
+<h3>GitHub Actions Workflow Failures<a class="headerlink" href="#github-actions-workflow-failures" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> CI workflow fails, matrix tests fail, or actions timeout</p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Run quality suite locally matching CI</span>
+</span><span data-line="2">uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/ci/run_quality_suite.py<span class="w"> </span>--profile<span class="w"> </span>strict
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Test across Python versions locally</span>
+</span><span data-line="5">python3.11<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>venv311
+</span><span data-line="6"><span class="nb">source</span><span class="w"> </span>venv311/bin/activate
+</span><span data-line="7">uv<span class="w"> </span>sync<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>pytest
+</span><span data-line="8">
+</span><span data-line="9"><span class="c1"># Check workflow syntax</span>
+</span><span data-line="10">actionlint<span class="w"> </span>.github/workflows/quality.yml
+</span><span data-line="11">
+</span><span data-line="12"><span class="c1"># Validate Docker in CI</span>
+</span><span data-line="13">uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/ci/validate_dockerfiles.py
+</span><span data-line="14">
+</span><span data-line="15"><span class="c1"># Review workflow logs in GitHub</span>
+</span><span data-line="16"><span class="c1"># Actions tab &gt; Failed workflow &gt; Review logs</span>
+</span></pre></div>
+</div>
+</section>
+</section>
+<section id="sample-and-matrix-issues">
+<h2>Sample and Matrix Issues<a class="headerlink" href="#sample-and-matrix-issues" title="Link to this heading">¶</a></h2>
+<section id="sample-rendering-fails">
+<h3>Sample Rendering Fails<a class="headerlink" href="#sample-rendering-fails" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> Sample project generation fails, matrix data outdated</p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Regenerate all samples</span>
+</span><span data-line="2">./scripts/render-samples.sh
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Regenerate specific sample</span>
+</span><span data-line="5">copier<span class="w"> </span>copy<span class="w"> </span>-f<span class="w"> </span>--data<span class="o">=</span><span class="s1">&#39;{&quot;project_name&quot;:&quot;test&quot;}&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span data-line="6"><span class="w">  </span>template<span class="w"> </span>samples/default/render
+</span><span data-line="7">
+</span><span data-line="8"><span class="c1"># Check sample variants</span>
+</span><span data-line="9">uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/ci/render_matrix.py
+</span><span data-line="10">
+</span><span data-line="11"><span class="c1"># Validate sample configurations</span>
+</span><span data-line="12">cat<span class="w"> </span>samples/default/copier-answers.yml
+</span><span data-line="13">cat<span class="w"> </span>samples/metadata/matrix-data.json<span class="w">  </span><span class="c1"># Check schema</span>
+</span></pre></div>
+</div>
+</section>
+<section id="matrix-data-out-of-sync">
+<h3>Matrix Data Out of Sync<a class="headerlink" href="#matrix-data-out-of-sync" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> Web UI shows different options than template, missing configurations</p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Regenerate matrix data</span>
+</span><span data-line="2">uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/ci/render_matrix.py
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Generate full matrix</span>
+</span><span data-line="5">uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/ci/generate_matrix_data.py
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Verify matrix schema</span>
+</span><span data-line="8">cat<span class="w"> </span>samples/metadata/matrix-data.json<span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>json.tool
+</span><span data-line="9">
+</span><span data-line="10"><span class="c1"># Check template against matrix</span>
+</span><span data-line="11">uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/ci/verify_context_sync.py
+</span></pre></div>
+</div>
+</section>
+</section>
+<section id="documentation-issues">
+<h2>Documentation Issues<a class="headerlink" href="#documentation-issues" title="Link to this heading">¶</a></h2>
+<section id="sphinx-build-fails">
+<h3>Sphinx Build Fails<a class="headerlink" href="#sphinx-build-fails" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> <code class="docutils literal notranslate"><span class="pre">sphinx-build</span></code> fails, doc build errors</p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Install docs dependencies</span>
+</span><span data-line="2">uv<span class="w"> </span>sync<span class="w"> </span>--group<span class="w"> </span>docs
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Build documentation</span>
+</span><span data-line="5">uv<span class="w"> </span>run<span class="w"> </span>sphinx-build<span class="w"> </span>docs<span class="w"> </span>docs/_build
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Clean and rebuild</span>
+</span><span data-line="8">rm<span class="w"> </span>-rf<span class="w"> </span>docs/_build
+</span><span data-line="9">uv<span class="w"> </span>run<span class="w"> </span>sphinx-build<span class="w"> </span>docs<span class="w"> </span>docs/_build
+</span><span data-line="10">
+</span><span data-line="11"><span class="c1"># View built docs</span>
+</span><span data-line="12">open<span class="w"> </span>docs/_build/index.html<span class="w">  </span><span class="c1"># macOS</span>
+</span><span data-line="13">xdg-open<span class="w"> </span>docs/_build/index.html<span class="w">  </span><span class="c1"># Linux</span>
+</span><span data-line="14">start<span class="w"> </span>docs<span class="se">\_</span>build<span class="se">\i</span>ndex.html<span class="w">  </span><span class="c1"># Windows</span>
+</span><span data-line="15">
+</span><span data-line="16"><span class="c1"># Check for warnings</span>
+</span><span data-line="17">uv<span class="w"> </span>run<span class="w"> </span>sphinx-build<span class="w"> </span>-W<span class="w"> </span>docs<span class="w"> </span>docs/_build<span class="w">  </span><span class="c1"># Treat warnings as errors</span>
+</span></pre></div>
+</div>
+</section>
+<section id="missing-dependencies-for-docs">
+<h3>Missing Dependencies for Docs<a class="headerlink" href="#missing-dependencies-for-docs" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> <code class="docutils literal notranslate"><span class="pre">ModuleNotFoundError</span></code> for doc dependencies (sphinx, myst, etc.)</p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Install all doc dependencies</span>
+</span><span data-line="2">uv<span class="w"> </span>sync<span class="w"> </span>--group<span class="w"> </span>docs
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Or install specific packages</span>
+</span><span data-line="5">uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>sphinx-shibuya<span class="w"> </span>myst-parser<span class="w"> </span>sphinx-copybutton
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Verify installation</span>
+</span><span data-line="8">uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import sphinx; print(sphinx.__version__)&quot;</span>
+</span></pre></div>
+</div>
+</section>
+</section>
+<section id="node-js-and-javascript-issues">
+<h2>Node.js and JavaScript Issues<a class="headerlink" href="#node-js-and-javascript-issues" title="Link to this heading">¶</a></h2>
+<section id="pnpm-command-not-found">
+<h3>pnpm Command Not Found<a class="headerlink" href="#pnpm-command-not-found" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> <code class="docutils literal notranslate"><span class="pre">command</span> <span class="pre">not</span> <span class="pre">found:</span> <span class="pre">pnpm</span></code> when building docs or SaaS modules</p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Install pnpm globally</span>
+</span><span data-line="2">npm<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span>pnpm
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Verify installation</span>
+</span><span data-line="5">pnpm<span class="w"> </span>--version<span class="w">  </span><span class="c1"># Should be v8+</span>
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Set pnpm in Riso config if needed</span>
+</span><span data-line="8"><span class="c1"># Some projects specify pnpm version in package.json engines</span>
+</span><span data-line="9">cat<span class="w"> </span>package.json<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>engines
+</span><span data-line="10">
+</span><span data-line="11"><span class="c1"># Use npm instead temporarily</span>
+</span><span data-line="12">npm<span class="w"> </span>install
+</span><span data-line="13">npm<span class="w"> </span>run<span class="w"> </span>dev
+</span></pre></div>
+</div>
+</section>
+<section id="node-version-mismatch">
+<h3>Node Version Mismatch<a class="headerlink" href="#node-version-mismatch" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> Node version incompatibility, pnpm peer dependency issues</p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Check Node version (should be 20 LTS)</span>
+</span><span data-line="2">node<span class="w"> </span>--version<span class="w">  </span><span class="c1"># Should be v20.x</span>
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Update Node via nvm</span>
+</span><span data-line="5">curl<span class="w"> </span>-o-<span class="w"> </span>https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>bash
+</span><span data-line="6">nvm<span class="w"> </span>install<span class="w"> </span><span class="m">20</span>
+</span><span data-line="7">nvm<span class="w"> </span>use<span class="w"> </span><span class="m">20</span>
+</span><span data-line="8">
+</span><span data-line="9"><span class="c1"># Or via Homebrew (macOS)</span>
+</span><span data-line="10">brew<span class="w"> </span>upgrade<span class="w"> </span>node@20
+</span><span data-line="11">
+</span><span data-line="12"><span class="c1"># Clear node_modules and reinstall</span>
+</span><span data-line="13">rm<span class="w"> </span>-rf<span class="w"> </span>node_modules<span class="w"> </span>pnpm-lock.yaml
+</span><span data-line="14">pnpm<span class="w"> </span>install
+</span><span data-line="15">
+</span><span data-line="16"><span class="c1"># Check pnpm config</span>
+</span><span data-line="17">pnpm<span class="w"> </span>config<span class="w"> </span>list
+</span></pre></div>
+</div>
+</section>
+<section id="vite-or-typescript-build-error">
+<h3>Vite or TypeScript Build Error<a class="headerlink" href="#vite-or-typescript-build-error" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> Build fails in docs or frontend, TypeScript errors</p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Clear build artifacts</span>
+</span><span data-line="2">rm<span class="w"> </span>-rf<span class="w"> </span>dist<span class="w"> </span>.next<span class="w"> </span>build
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Reinstall dependencies</span>
+</span><span data-line="5">pnpm<span class="w"> </span>install<span class="w"> </span>--force
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Run type check</span>
+</span><span data-line="8">pnpm<span class="w"> </span>type-check
+</span><span data-line="9">
+</span><span data-line="10"><span class="c1"># Build with verbose output</span>
+</span><span data-line="11">pnpm<span class="w"> </span>build<span class="w"> </span>--debug
+</span><span data-line="12">
+</span><span data-line="13"><span class="c1"># Check TypeScript configuration</span>
+</span><span data-line="14">cat<span class="w"> </span>tsconfig.json
+</span><span data-line="15">cat<span class="w"> </span>vite.config.ts
+</span><span data-line="16">
+</span><span data-line="17"><span class="c1"># Compile TypeScript directly</span>
+</span><span data-line="18">pnpm<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>tsc<span class="w"> </span>--noEmit
+</span></pre></div>
+</div>
+</section>
+</section>
+<section id="debugging-and-getting-help">
+<h2>Debugging and Getting Help<a class="headerlink" href="#debugging-and-getting-help" title="Link to this heading">¶</a></h2>
+<section id="enable-debug-logging">
+<h3>Enable Debug Logging<a class="headerlink" href="#enable-debug-logging" title="Link to this heading">¶</a></h3>
+<p><strong>Symptom:</strong> Need more details about what’s failing</p>
+<p><strong>Solution:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Enable debug output globally</span>
+</span><span data-line="2"><span class="nv">DEBUG</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>copier<span class="w"> </span>copy<span class="w"> </span>gh:wyattowalsh/riso<span class="w"> </span>my-project
+</span><span data-line="3">
+</span><span data-line="4"><span class="c1"># Enable for specific modules</span>
+</span><span data-line="5"><span class="nv">DEBUG</span><span class="o">=</span>riso:*<span class="w"> </span>copier<span class="w"> </span>copy<span class="w"> </span>gh:wyattowalsh/riso<span class="w"> </span>my-project
+</span><span data-line="6">
+</span><span data-line="7"><span class="c1"># Python debugging</span>
+</span><span data-line="8"><span class="nv">DEBUG</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>riso.mcp.server
+</span><span data-line="9">
+</span><span data-line="10"><span class="c1"># Verbose mode for various tools</span>
+</span><span data-line="11">copier<span class="w"> </span>copy<span class="w"> </span>--verbose<span class="w"> </span>gh:wyattowalsh/riso<span class="w"> </span>my-project
+</span><span data-line="12">uv<span class="w"> </span>--verbose<span class="w"> </span>sync
+</span><span data-line="13">pnpm<span class="w"> </span>--verbose<span class="w"> </span>install
+</span></pre></div>
+</div>
+</section>
+<section id="collect-diagnostic-information">
+<h3>Collect Diagnostic Information<a class="headerlink" href="#collect-diagnostic-information" title="Link to this heading">¶</a></h3>
+<p>Before opening an issue, gather:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># System information</span>
+</span><span data-line="2">uname<span class="w"> </span>-a<span class="w">  </span><span class="c1"># OS info</span>
+</span><span data-line="3">python3<span class="w"> </span>--version<span class="w">  </span><span class="c1"># Python version</span>
+</span><span data-line="4">copier<span class="w"> </span>--version<span class="w">  </span><span class="c1"># Copier version</span>
+</span><span data-line="5">uv<span class="w"> </span>--version<span class="w">  </span><span class="c1"># uv version</span>
+</span><span data-line="6">git<span class="w"> </span>--version<span class="w">  </span><span class="c1"># Git version</span>
+</span><span data-line="7">
+</span><span data-line="8"><span class="c1"># Riso-specific info</span>
+</span><span data-line="9"><span class="nb">cd</span><span class="w"> </span>/path/to/riso
+</span><span data-line="10">git<span class="w"> </span>log<span class="w"> </span>-1<span class="w"> </span>--oneline<span class="w">  </span><span class="c1"># Last commit</span>
+</span><span data-line="11">git<span class="w"> </span>remote<span class="w"> </span>-v<span class="w">  </span><span class="c1"># Remote URLs</span>
+</span><span data-line="12">
+</span><span data-line="13"><span class="c1"># Project-specific info (in generated project)</span>
+</span><span data-line="14">cat<span class="w"> </span>pyproject.toml<span class="w">  </span><span class="c1"># Dependencies</span>
+</span><span data-line="15">cat<span class="w"> </span>copier-answers.yml<span class="w">  </span><span class="c1"># Configuration</span>
+</span><span data-line="16">ls<span class="w"> </span>-la<span class="w"> </span>.github/workflows/<span class="w">  </span><span class="c1"># CI workflows</span>
+</span></pre></div>
+</div>
+</section>
+<section id="check-github-issues-and-discussions">
+<h3>Check GitHub Issues and Discussions<a class="headerlink" href="#check-github-issues-and-discussions" title="Link to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Search existing issues</strong>: <a class="reference external" href="https://github.com/wyattowalsh/riso/issues" rel="noreferer noopener" target="_blank">https://github.com/wyattowalsh/riso/issues</a></p></li>
+<li><p><strong>Check discussions</strong>: <a class="reference external" href="https://github.com/wyattowalsh/riso/discussions" rel="noreferer noopener" target="_blank">https://github.com/wyattowalsh/riso/discussions</a></p></li>
+<li><p><strong>Review documentation</strong>: <a class="reference external" href="https://github.com/wyattowalsh/riso/tree/main/docs" rel="noreferer noopener" target="_blank">https://github.com/wyattowalsh/riso/tree/main/docs</a></p></li>
+</ol>
+</section>
+<section id="opening-a-new-issue">
+<h3>Opening a New Issue<a class="headerlink" href="#opening-a-new-issue" title="Link to this heading">¶</a></h3>
+<p>Include:</p>
+<ol class="arabic simple">
+<li><p><strong>Title</strong>: Clear, specific description of the issue</p></li>
+<li><p><strong>Environment</strong>:</p>
+<ul class="simple">
+<li><p>OS and version</p></li>
+<li><p>Python version</p></li>
+<li><p>Riso version or commit hash</p></li>
+<li><p>Node.js version (if applicable)</p></li>
+</ul>
+</li>
+<li><p><strong>Steps to reproduce</strong>: Exact commands that trigger the issue</p></li>
+<li><p><strong>Expected behavior</strong>: What should happen</p></li>
+<li><p><strong>Actual behavior</strong>: What actually happened</p></li>
+<li><p><strong>Error message</strong>: Full error output with stack trace</p></li>
+<li><p><strong>Logs</strong>: Debug output from <code class="docutils literal notranslate"><span class="pre">DEBUG=1</span></code> runs</p></li>
+</ol>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span data-line="1">**Title**: Template rendering times out with Python 3.13 on macOS
+</span><span data-line="2">
+</span><span data-line="3">**Environment**:
+</span><span data-line="4">- OS: macOS 14.2
+</span><span data-line="5">- Python: 3.13.0
+</span><span data-line="6">- Copier: 9.1.0
+</span><span data-line="7">- Riso: commit abc123
+</span><span data-line="8">
+</span><span data-line="9">**Steps to reproduce**:
+</span><span data-line="10">1. Run: `copier copy gh:wyattowalsh/riso my-project`
+</span><span data-line="11">2. Select all default options
+</span><span data-line="12">3. Hangs after ~30 seconds
+</span><span data-line="13">
+</span><span data-line="14">**Error message**:
+</span><span data-line="15">[full error text]
+</span><span data-line="16">
+</span><span data-line="17">**Debug output**:
+</span><span data-line="18">DEBUG=1 copier copy gh:wyattowalsh/riso my-project
+</span><span data-line="19">[debug output]
+</span></pre></div>
+</div>
+</section>
+</section>
+<section id="common-environment-variables">
+<h2>Common Environment Variables<a class="headerlink" href="#common-environment-variables" title="Link to this heading">¶</a></h2>
+<p>Use these to configure Riso behavior:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span data-line="1"><span class="c1"># Debugging</span>
+</span><span data-line="2"><span class="nv">DEBUG</span><span class="o">=</span><span class="m">1</span><span class="w">  </span><span class="c1"># Enable debug logging</span>
+</span><span data-line="3"><span class="nv">DEBUG</span><span class="o">=</span>riso:*<span class="w">  </span><span class="c1"># Debug specific modules</span>
+</span><span data-line="4"><span class="nv">VERBOSE</span><span class="o">=</span><span class="m">1</span><span class="w">  </span><span class="c1"># Verbose output</span>
+</span><span data-line="5">
+</span><span data-line="6"><span class="c1"># Colors and output</span>
+</span><span data-line="7"><span class="nv">NO_COLOR</span><span class="o">=</span><span class="m">1</span><span class="w">  </span><span class="c1"># Disable colored output</span>
+</span><span data-line="8">
+</span><span data-line="9"><span class="c1"># Setup scripts</span>
+</span><span data-line="10"><span class="nv">RISO_LOG_DIR</span><span class="o">=</span>/custom/log/dir<span class="w">  </span><span class="c1"># Override log directory</span>
+</span><span data-line="11"><span class="nv">GITHUB_TOKEN</span><span class="o">=</span>&lt;token&gt;<span class="w">  </span><span class="c1"># Avoid GitHub API rate limits during CI</span>
+</span><span data-line="12">
+</span><span data-line="13"><span class="c1"># Python</span>
+</span><span data-line="14"><span class="nv">PYTHONPATH</span><span class="o">=</span>/path/to/riso<span class="w">  </span><span class="c1"># Add Riso to Python path</span>
+</span><span data-line="15"><span class="nv">PYTHONDONTWRITEBYTECODE</span><span class="o">=</span><span class="m">1</span><span class="w">  </span><span class="c1"># Don&#39;t create __pycache__</span>
+</span><span data-line="16">
+</span><span data-line="17"><span class="c1"># Git (if behind proxy)</span>
+</span><span data-line="18"><span class="nv">GIT_TRACE</span><span class="o">=</span><span class="m">1</span><span class="w">  </span><span class="c1"># Debug git operations</span>
+</span><span data-line="19"><span class="nv">GIT_SSH_COMMAND</span><span class="o">=</span><span class="s2">&quot;ssh -vvv&quot;</span><span class="w">  </span><span class="c1"># Verbose SSH</span>
+</span><span data-line="20">
+</span><span data-line="21"><span class="c1"># Node.js</span>
+</span><span data-line="22"><span class="nv">NODE_OPTIONS</span><span class="o">=</span>--max-old-space-size<span class="o">=</span><span class="m">4096</span><span class="w">  </span><span class="c1"># Increase memory limit</span>
+</span></pre></div>
+</div>
+</section>
+<section id="quick-reference-common-solutions">
+<h2>Quick Reference: Common Solutions<a class="headerlink" href="#quick-reference-common-solutions" title="Link to this heading">¶</a></h2>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Issue</p></th>
+<th class="head"><p>Quick Fix</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Python 3.11+ needed</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">brew</span> <span class="pre">install</span> <span class="pre">python&#64;3.13</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>uv not found</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">curl</span> <span class="pre">-LsSf</span> <span class="pre">https://astral.sh/uv/install.sh</span> <span class="pre">|</span> <span class="pre">sh</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Copier outdated</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">pip</span> <span class="pre">install</span> <span class="pre">--upgrade</span> <span class="pre">copier&gt;=9.1.0</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Port 3141 in use</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">lsof</span> <span class="pre">-i</span> <span class="pre">:3141</span></code> then <code class="docutils literal notranslate"><span class="pre">kill</span> <span class="pre">-9</span> <span class="pre">&lt;PID&gt;</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Template timeout</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">copier</span> <span class="pre">copy</span> <span class="pre">--trust</span> <span class="pre">gh:wyattowalsh/riso</span> <span class="pre">...</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Permission denied</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">chmod</span> <span class="pre">+x</span> <span class="pre">scripts/setup/setup.sh</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Type check fails</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">ty</span> <span class="pre">check</span></code> then fix errors</p></td>
+</tr>
+<tr class="row-odd"><td><p>Coverage too low</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">pytest</span> <span class="pre">--cov</span> <span class="pre">--cov-fail-under=90</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Docker not running</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">open</span> <span class="pre">/Applications/Docker.app</span></code> (macOS)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Clear Copier cache</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">rm</span> <span class="pre">-rf</span> <span class="pre">~/.cache/copier</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="additional-resources">
+<h2>Additional Resources<a class="headerlink" href="#additional-resources" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong><a class="reference external" href="https://github.com/wyattowalsh/riso" rel="noreferer noopener" target="_blank">Riso GitHub Repository</a></strong></p></li>
+<li><p><strong><a class="reference external" href="https://copier.readthedocs.io/" rel="noreferer noopener" target="_blank">Copier Documentation</a></strong></p></li>
+<li><p><strong><a class="reference external" href="https://docs.astral.sh/uv/" rel="noreferer noopener" target="_blank">Python uv Documentation</a></strong></p></li>
+<li><p><strong><a class="reference external" href="https://github.com/jlowin/fastmcp" rel="noreferer noopener" target="_blank">FastMCP Documentation</a></strong></p></li>
+<li><p><strong><a class="reference external" href="https://www.sphinx-doc.org/" rel="noreferer noopener" target="_blank">Sphinx Documentation</a></strong></p></li>
+</ul>
+</section>
+</section>
+
+        </article><button class="back-to-top" type="button">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+  </svg>
+  <span>Back to top</span>
+</button><div class="navigation flex print:hidden"><div class="navigation-prev">
+    <a href="session-persistence.html">
+      <i class="i-lucide chevron-left"></i>
+      <div class="page-info">
+        <span>Previous</span><div class="title">Session Persistence</div></div>
+    </a>
+  </div><div class="navigation-next">
+    <a href="../tools/index.html">
+      <div class="page-info">
+        <span>Next</span>
+        <div class="title">Tool Catalog</div>
+      </div>
+      <i class="i-lucide chevron-right"></i>
+    </a>
+  </div></div></div>
+    </div>
+  </main>
+</div>
+<footer class="sy-foot">
+  <div class="sy-foot-inner sy-container mx-auto">
+    <div class="sy-foot-reserved md:flex justify-between items-center">
+      <div class="sy-foot-copyright"><p>2026, Riso</p>
+  
+  <p>
+    Made with
+    
+    <a href="https://www.sphinx-doc.org/">Sphinx</a> and
+    
+    <a href="https://shibuya.lepture.com">Shibuya theme</a>.
+  </p>
+</div>
+      <div class="sy-foot-socials">
+<a href="https://github.com/openai/riso" aria-label="GitHub">
+  <iconify-icon icon="simple-icons:github"></iconify-icon>
+</a></div>
+    </div>
+  </div>
+</footer>
+      <script src="../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=6870ed9c"></script>
+      <script src="https://unpkg.com/twemoji@latest/dist/twemoji.min.js"></script>
+      <script src="../_static/twemoji.js"></script>
+      <script>let toggleHintShow = 'Click to show';</script>
+      <script>let toggleHintHide = 'Click to hide';</script>
+      <script>let toggleOpenOnPrint = 'true';</script>
+      <script src="../_static/togglebutton.js?v=b8b12719"></script>
+      <script src="../_static/design-tabs.js?v=f930bc37"></script>
+      <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+      <script src="../_static/shibuya.js?v=50760d75"></script>
+      <script src="../_static/js/custom.js?v=043e1285"></script></body>
+</html>

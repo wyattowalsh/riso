@@ -368,6 +368,15 @@ describe('Preset System', () => {
   // test_import_preset_yaml
   // ========================================
   describe('importPresetYAML', () => {
+    it('rejects removed Copier answer keys', () => {
+      const yaml = `
+name: Legacy Preset
+config:
+  api_tracks: python+node
+`
+      expect(() => importPresetYAML(yaml)).toThrow(/api_tracks/)
+    })
+
     it('should import preset from YAML string', () => {
       const yaml = `
 name: Imported Preset

@@ -13,7 +13,8 @@ from typing import Any
 import json
 import ast
 
-from riso.mcp.errors import OperationTimeoutError
+from riso.core.answers import prepare_copier_data
+from riso.core.errors import OperationTimeoutError
 
 
 @dataclass
@@ -541,9 +542,11 @@ def run_generator(
     kwargs = _filter_kwargs(
         run_copy,
         {
-            "data": data,
+            "data": prepare_copier_data(data),
             "vcs_ref": vcs_ref,
-            "force": force,
+            "overwrite": force,
+            "unsafe": True,
+            "skip_tasks": True,
         },
     )
 
@@ -584,6 +587,8 @@ def run_update(
         run_update,
         {
             "skip_answered": skip_answered,
+            "unsafe": True,
+            "skip_tasks": True,
         },
     )
 
@@ -591,7 +596,6 @@ def run_update(
         run_update,
         timeout,
         str(dest_path),
-        str(template_path),
         **kwargs,
     )
 
@@ -620,10 +624,13 @@ def run_recopy(
     except ModuleNotFoundError as exc:
         raise RuntimeError("Copier is required to recopy projects.") from exc
 
+    copier_data = prepare_copier_data(data) if data else None
     kwargs = _filter_kwargs(
         run_recopy,
         {
-            "data": data,
+            "data": copier_data,
+            "unsafe": True,
+            "skip_tasks": True,
         },
     )
 
@@ -631,7 +638,6 @@ def run_recopy(
         run_recopy,
         timeout,
         str(dest_path),
-        str(template_path),
         **kwargs,
     )
 
