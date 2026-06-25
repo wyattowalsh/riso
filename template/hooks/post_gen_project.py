@@ -17,6 +17,7 @@ sys.path.append(str(pathlib.Path(__file__).resolve().parents[2] / "scripts"))
 
 try:
     from hooks.quality_tool_check import (
+        ToolCheck,
         ensure_node_quality_tools,
         ensure_python_quality_tools,
     )
@@ -24,6 +25,15 @@ try:
 
     _TOOL_CHECK_AVAILABLE = True
 except ModuleNotFoundError:  # pragma: no cover - template lint
+    from dataclasses import dataclass
+
+    @dataclass
+    class ToolCheck:
+        name: str
+        status: str
+        command: str
+        stderr: str | None = None
+        next_steps: str | None = None
 
     def ensure_python_quality_tools():
         return []
