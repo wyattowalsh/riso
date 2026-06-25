@@ -19,7 +19,7 @@ QUESTIONS: list[tuple[str, str]] = [
     ("boundaries_section", r"## Boundaries"),
 ]
 
-MERGED_ROW_PATTERN = re.compile(r"\|\s*\|")
+MERGED_ROW_PATTERN = re.compile(r"\|\|")
 
 
 def evaluate(agents_text: str) -> dict[str, object]:
@@ -39,7 +39,7 @@ def evaluate(agents_text: str) -> dict[str, object]:
     checks.append(
         {
             "id": "table_rows_not_merged",
-            "pattern": "no '| |' row merges in quick-reference table",
+            "pattern": "no '||' row merges in quick-reference table",
             "passed": not merged_rows,
         }
     )

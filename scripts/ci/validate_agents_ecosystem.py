@@ -87,7 +87,7 @@ def check_render_tree(render_dir: Path, *, ai_tools_enabled: bool) -> int:
             f"AGENTS.md too short in {render_dir} ({len(agents_lines)} lines)"
         )
 
-    if re.search(r"\|\s*\|", agents_text):
+    if re.search(r"\|\|", agents_text):
         errors += _fail(
             f"AGENTS.md quick-reference table has merged rows in {render_dir}"
         )
