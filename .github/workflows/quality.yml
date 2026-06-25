@@ -72,18 +72,18 @@ jobs:
       - name: Install Python dependencies
         run: uv sync --group dev
 
-      - name: Render default sample for testing
+      - name: Render api-python sample for sync testing
         run: |
           ./scripts/render-samples.sh \
-            --variant default \
-            --answers samples/default/copier-answers.yml
+            --variant api-python \
+            --answers samples/api-python/copier-answers.yml
 
       - name: Run sync test
         run: |
           uv run python tests/automation/sync_test.py \
             --threshold 15 \
             --output sync_test_results.json \
-            --cwd samples/default/render
+            --cwd samples/api-python/render/python
         continue-on-error: true
 
       - name: Upload sync test results
@@ -313,8 +313,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "20"
-          cache: "pnpm"
-          cache-dependency-path: web/pnpm-lock.yaml
 
       - name: Install system dependencies
         run: |

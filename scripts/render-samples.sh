@@ -79,22 +79,43 @@ def as_list(value: object) -> list[str]:
     return []
 
 
+def resolve_python_cwd(destination: Path) -> Path | None:
+    for candidate in (destination / "python", destination):
+        if (candidate / "pyproject.toml").exists():
+            return candidate
+    return None
+
+
+def resolve_node_cwd(destination: Path) -> Path | None:
+    node_root = destination / "node"
+    if (node_root / "package.json").exists() or (node_root / "pnpm-workspace.yaml").exists():
+        return node_root
+    if (destination / "package.json").exists() or (destination / "pnpm-workspace.yaml").exists():
+        return destination
+    return None
+
+
 def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
     api_enabled = as_enabled(config.get("api_module"))
     api_languages = set(as_list(config.get("api_languages")))
     docs_enabled = as_enabled(config.get("docs_module"))
     docs_framework = str(config.get("docs_framework", "none")).lower()
-    python_cwd = destination_path / "python"
-    node_cwd = destination_path / "node"
-    python_project_ready = (python_cwd / "pyproject.toml").exists()
-    node_install_ready = (node_cwd / "node_modules").exists()
+    python_cwd = resolve_python_cwd(destination_path)
+    node_cwd = resolve_node_cwd(destination_path)
+    python_project_ready = python_cwd is not None
+    node_install_ready = bool(node_cwd and (node_cwd / "node_modules").exists())
 
     docs_command: list[str] | None
     docs_cwd: Path | None = None
     docs_reason = "Documentation module disabled."
     if docs_enabled and docs_framework == "fumadocs":
         docs_cwd = node_cwd
-        if (node_cwd / "docs" / "fumadocs" / "package.json").exists() and node_install_ready:
+        fumadocs_pkg = (
+            (node_cwd / "docs" / "fumadocs" / "package.json")
+            if node_cwd
+            else None
+        )
+        if fumadocs_pkg and fumadocs_pkg.exists() and node_install_ready:
             docs_command = ["pnpm", "--filter", "docs-fumadocs", "build"]
             docs_reason = "Fumadocs build command configured."
         else:
@@ -102,7 +123,7 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
             docs_reason = "Fumadocs scaffold rendered; run pnpm install before build smoke."
     elif docs_enabled and docs_framework == "sphinx-shibuya":
         docs_cwd = python_cwd
-        if python_project_ready and (python_cwd / "docs").exists():
+        if python_cwd and (python_cwd / "docs").exists():
             docs_command = ["uv", "run", "make", "linkcheck"]
             docs_reason = "Sphinx Shibuya link check configured."
         else:
@@ -110,7 +131,10 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
             docs_reason = "Sphinx scaffold not present for this rendered variant."
     elif docs_enabled and docs_framework == "docusaurus":
         docs_cwd = node_cwd
-        if (node_cwd / "docs" / "docusaurus" / "package.json").exists() and node_install_ready:
+        docusaurus_pkg = (
+            (node_cwd / "docs" / "docusaurus" / "package.json") if node_cwd else None
+        )
+        if docusaurus_pkg and docusaurus_pkg.exists() and node_install_ready:
             docs_command = ["pnpm", "--filter", "docs-docusaurus", "build"]
             docs_reason = "Docusaurus build command configured."
         else:
@@ -148,21 +172,21 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
                 "pytest",
                 "tests/test_cli*.py",
             ],
-            "cwd": str(python_cwd),
+            "cwd": str(python_cwd) if python_cwd else None,
             "skip_reason": "CLI module disabled or Python project not rendered.",
         },
         {
             "name": "api_python",
             "enabled": api_enabled and "python" in api_languages and python_project_ready,
             "command": api_python_command,
-            "cwd": str(python_cwd),
+            "cwd": str(python_cwd) if python_cwd else None,
             "skip_reason": "Python API disabled or Python project not rendered.",
         },
         {
             "name": "api_node",
             "enabled": api_enabled and "node" in api_languages and node_install_ready,
             "command": ["pnpm", "--filter", "api-node", "test"],
-            "cwd": str(node_cwd),
+            "cwd": str(node_cwd) if node_cwd else None,
             "skip_reason": "Node API disabled or pnpm dependencies not installed.",
         },
         {
@@ -189,21 +213,25 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
         [
             {
                 "name": "quality_just",
-                "enabled": python_project_ready and (python_cwd / "justfile").exists(),
+                "enabled": python_project_ready
+                and python_cwd is not None
+                and (python_cwd / "justfile").exists(),
                 "command": ["just", "quality"],
                 "cwd": str(python_cwd),
                 "skip_reason": "Just quality scaffold not rendered for this variant.",
             },
             {
                 "name": "quality_make",
-                "enabled": python_project_ready and (python_cwd / "Makefile").exists(),
+                "enabled": python_project_ready
+                and python_cwd is not None
+                and (python_cwd / "Makefile").exists(),
                 "command": ["make", "quality"],
                 "cwd": str(python_cwd),
                 "skip_reason": "Python quality scaffold not rendered for this variant.",
             },
             {
                 "name": "quality_uv_task",
-                "enabled": python_project_ready,
+                "enabled": python_project_ready and python_cwd is not None,
                 "command": [
                     "uv",
                     "run",
@@ -214,7 +242,7 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
                     "task",
                     "quality",
                 ],
-                "cwd": str(python_cwd),
+                "cwd": str(python_cwd) if python_cwd else None,
                 "skip_reason": "Python quality scaffold not rendered for this variant.",
             },
         ]
@@ -377,25 +405,39 @@ PY
 bootstrap_render_dependencies() {
   local destination="$1"
   local answers_file="$2"
+  local python_dir=""
+  local node_dir=""
 
   if [[ -f "${destination}/python/pyproject.toml" ]]; then
-    log "Bootstrapping Python dependencies in ${destination}/python"
+    python_dir="${destination}/python"
+  elif [[ -f "${destination}/pyproject.toml" ]]; then
+    python_dir="${destination}"
+  fi
+
+  if [[ -n "${python_dir}" ]]; then
+    log "Bootstrapping Python dependencies in ${python_dir}"
     local -a sync_groups=(--group quality --group test)
     if grep -Eq '^cli_module:[[:space:]]*enabled' "${answers_file}"; then
       sync_groups+=(--group cli)
     fi
-    if ! (cd "${destination}/python" && uv sync "${sync_groups[@]}"); then
-      log "Warning: uv sync failed for ${destination}/python"
+    if ! (cd "${python_dir}" && uv sync "${sync_groups[@]}"); then
+      log "Warning: uv sync failed for ${python_dir}"
     fi
   fi
 
-  if [[ -f "${destination}/node/package.json" ]]; then
-    log "Bootstrapping Node dependencies in ${destination}/node"
+  if [[ -f "${destination}/node/package.json" || -f "${destination}/node/pnpm-workspace.yaml" ]]; then
+    node_dir="${destination}/node"
+  elif [[ -f "${destination}/package.json" || -f "${destination}/pnpm-workspace.yaml" ]]; then
+    node_dir="${destination}"
+  fi
+
+  if [[ -n "${node_dir}" ]]; then
+    log "Bootstrapping Node dependencies in ${node_dir}"
     if command -v corepack >/dev/null 2>&1; then
       corepack enable >/dev/null 2>&1 || true
     fi
-    if ! (cd "${destination}/node" && pnpm install); then
-      log "Warning: pnpm install failed for ${destination}/node"
+    if ! (cd "${node_dir}" && pnpm install); then
+      log "Warning: pnpm install failed for ${node_dir}"
     fi
   fi
 }
