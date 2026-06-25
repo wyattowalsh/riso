@@ -167,7 +167,7 @@ class TestGitLabCITemplate:
             changelog_module="disabled",
         )
 
-        assert "mypy ." in result
+        assert "uv run ty check" in result
         assert "pylint src/" in result
 
     def test_matrix_builds_for_monorepo(self, jinja_env):

@@ -153,7 +153,7 @@ class TestCircleCITemplate:
         assert "build-go:" in result
 
     def test_strict_quality_profile_python(self, jinja_env):
-        """Strict quality profile should enable mypy and pylint."""
+        """Strict quality profile should enable ty and pylint."""
         template = jinja_env.get_template(".circleci/config.yml.jinja")
 
         result = template.render(
@@ -170,7 +170,7 @@ class TestCircleCITemplate:
             changelog_module="disabled",
         )
 
-        assert "uv run mypy ." in result
+        assert "uv run ty check" in result
         assert "uv run pylint src/" in result
 
     def test_parallelism_for_monorepo(self, jinja_env):
