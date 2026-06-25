@@ -21,10 +21,19 @@ LOG_PATH = Path(".riso/toolchain_provisioning.jsonl")
 sys.path.append(str(Path(__file__).resolve().parents[2] / "scripts"))
 
 try:
-    from hooks.quality_tool_check import ensure_python_quality_tools
+    from hooks.quality_tool_check import ToolCheck, ensure_python_quality_tools
 
     _TOOL_CHECK_AVAILABLE = True
 except ModuleNotFoundError:  # pragma: no cover - during template linting
+    from dataclasses import dataclass
+
+    @dataclass
+    class ToolCheck:
+        name: str
+        status: str
+        command: str
+        stderr: str | None = None
+        next_steps: str | None = None
 
     def ensure_python_quality_tools():
         return []

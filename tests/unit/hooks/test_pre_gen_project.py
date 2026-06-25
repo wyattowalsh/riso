@@ -528,15 +528,14 @@ class TestCheckPythonQualityTools:
         assert len(failures) == 1
         assert failures[0]["tool_name"] == "mypy"
 
-    def test_handles_toolcheck_none(self, tmp_path, monkeypatch):
-        """Test handles case when ToolCheck is None (during template linting)."""
+    def test_handles_toolcheck_unavailable(self, tmp_path, monkeypatch):
+        """Test skips checks when quality tooling is unavailable during lint."""
         from pre_gen_project import _check_python_quality_tools
         from unittest.mock import patch
 
         monkeypatch.chdir(tmp_path)
 
-        # Simulate ToolCheck being None
-        with patch("pre_gen_project.ToolCheck", None):
+        with patch("pre_gen_project._TOOL_CHECK_AVAILABLE", False):
             failures = _check_python_quality_tools()
 
         assert failures == []
