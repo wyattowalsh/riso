@@ -47,7 +47,7 @@ Maintainer commands — authoritative source: `make help`.
 | Riso CLI                  | `uv sync --group cli` then `uv run riso --help`         |
 | Render matrix             | `uv run python scripts/ci/render_matrix.py`             |
 | Context sync check        | `uv run python scripts/ci/verify_context_sync.py`       |
-| Validate AGENTS ecosystem | `uv run python scripts/ci/validate_agents_ecosystem.py` |
+| Validate AGENTS ecosystem | `make validate-agents` |
 
 **Riso CLI** (template operations):
 
@@ -171,7 +171,8 @@ Other workflows: `gitleaks.yml`, `codeql.yml`, `release.yml`, `matrix-data.yml`,
 | `validate_dockerfiles.py`             | Dockerfile lint/validation                           |
 | `validate_release_configs.py`         | Release config validation                            |
 | `run_baseline_quickstart.py`          | Quickstart timing evidence                           |
-| `bump_template_npm_deps.py`           | Audit/bump npm pins in template `package.json.jinja` |
+| `bump_template_npm_deps.py`           | Audit/bump npm pins via `npm_surfaces.json` (`--parallel`, `--apply`) |
+| `sync_template_shadcn_components.py`  | Refresh SaaS shadcn/ui components from probe project   |
 | `validate_jinja_templates.py`         | Jinja syntax validation (pre-commit)                 |
 | `validate_saas_combinations.py`       | SaaS starter combination smoke renders               |
 | `validate_release_readiness_skill.py` | Mirror check for release-readiness skill             |
