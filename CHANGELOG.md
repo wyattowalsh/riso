@@ -6,6 +6,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.2.0](https://github.com/wyattowalsh/riso/compare/v1.1.4...v1.2.0) (2026-06-25)
+
+### ⚠ BREAKING CHANGES
+
+* **cli:** riso-mcp is removed. Use uv run riso or the riso-scaffold skill. See docs/guides/mcp-to-cli-migration.md.
+
+### Features
+
+* **cli:** replace riso-mcp with riso CLI and scaffold skill ([6edbffa](https://github.com/wyattowalsh/riso/commit/6edbffaa3cfa95d8cee433dd893d7f4d7b272250))
+* **mcp:** add persistent wizard workflows ([52c7b57](https://github.com/wyattowalsh/riso/commit/52c7b57199f1fb0c1fd15395377a49d8b65cd456))
+* **template:** add task_runner prompt and justfile aggregators ([3d401fe](https://github.com/wyattowalsh/riso/commit/3d401fe4656461f1c9c6246f34cfe16f641b8992))
+* **template:** expand polyglot scaffold payloads ([3b9373e](https://github.com/wyattowalsh/riso/commit/3b9373e46ba188be678abfa09ceb4f056ba53440))
+* **template:** vendor shadcn ui components for saas starter ([c5bb2f2](https://github.com/wyattowalsh/riso/commit/c5bb2f268de727730882cb2099e6c5c60fe1dcd4))
+* **web:** add task_runner to configurator wizard ([859a145](https://github.com/wyattowalsh/riso/commit/859a145cee10098bb77a4edd0b9cec9f490fa132))
+* **web:** expand configurator validation UI ([c7957cb](https://github.com/wyattowalsh/riso/commit/c7957cb5265efd272c52a7797800740405887aaf))
+
+### Bug Fixes
+
+* **ci:** clear ty diagnostics and pre-commit formatting drift ([d3d33d3](https://github.com/wyattowalsh/riso/commit/d3d33d36d5dc77aa55c151a812776f53dfeb9b59))
+* **ci:** restore GitHub Actions after task_runner rollout ([22a98cc](https://github.com/wyattowalsh/riso/commit/22a98ccbe23fafd9e0ff3cdfc87abca6167baa68))
+* **ci:** unblock Release docs and Template CI strict quality ([bf644d2](https://github.com/wyattowalsh/riso/commit/bf644d27e49f1a59d566ee5add98e46112a085b1))
+* **hooks:** keep ToolCheck export for hook unit tests ([149b983](https://github.com/wyattowalsh/riso/commit/149b9839d53d5ffa5e024bb80dea27031b37517c))
+* **template:** align ty check paths across quality lanes ([4efa919](https://github.com/wyattowalsh/riso/commit/4efa919a78eb25a033017aad67e272da61bce9ab))
+* **template:** harden CLI test assertions for waves 3–10 assurance ([6ae78dd](https://github.com/wyattowalsh/riso/commit/6ae78ddc9abe5e4057b4b3d807cbe04525e4f859))
+* **template:** harden python api template for pylint ([a77baa5](https://github.com/wyattowalsh/riso/commit/a77baa5151e900c7f52849c3415f56c980aaf77a))
+* **test:** isolate bump npm deps fixture from sample renders ([9040931](https://github.com/wyattowalsh/riso/commit/90409316034d2598eabb736b7038542c24c7308b))
+
+### Documentation
+
+* add release readiness guidance ([f0614eb](https://github.com/wyattowalsh/riso/commit/f0614eb8dbe0a662982a88e68a8039c6d7ad1960))
+* **agents:** refactor maintainer SSOT and pointer ecosystem ([f0b4fc4](https://github.com/wyattowalsh/riso/commit/f0b4fc4b8dcf0ab00e22adf19bc5d113be73aa4f))
+* sync quality context for task_runner default ([05117e8](https://github.com/wyattowalsh/riso/commit/05117e8101405d0c904ac29722fcdd19b92a36eb))
+
 ## <small>1.1.4 (2026-01-15)</small>
 
 * fix(deploy): fix MCP API JSON import and docs configurator link ([02c8381](https://github.com/wyattowalsh/riso/commit/02c8381))
