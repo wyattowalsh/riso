@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import os
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Sequence
 
 from loguru import logger
@@ -20,7 +20,7 @@ from rich.table import Table
 from {{ package_name }}.cli.core.exceptions import ValidationError
 
 
-class OutputFormat(str, Enum):
+class OutputFormat(StrEnum):
     """Supported output formats."""
     
     TABLE = "table"
@@ -93,11 +93,11 @@ class OutputFormatter:
             if not data:
                 self.console.print("[dim]No data to display[/dim]")
                 return
-            if isinstance(data[0], dict):
-                rows = data
-            else:
-                # List of primitives -> single column
-                rows = [{"value": item} for item in data]
+            rows = (
+                data
+                if isinstance(data[0], dict)
+                else [{"value": item} for item in data]
+            )
         else:
             rows = [{"value": data}]
         

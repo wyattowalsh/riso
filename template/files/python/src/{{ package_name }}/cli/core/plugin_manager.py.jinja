@@ -8,9 +8,8 @@ Supports dynamic command registration via setuptools entry points.
 
 from __future__ import annotations
 
-import sys
 from importlib.metadata import entry_points
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, cast
 
 from loguru import logger
 
@@ -47,13 +46,7 @@ class PluginManager:
             return
         
         try:
-            # Python 3.10+ API
-            if sys.version_info >= (3, 10):
-                eps = entry_points(group=self.entry_point_group)
-            # Python 3.9 API
-            else:
-                all_eps = entry_points()
-                eps = all_eps.get(self.entry_point_group, [])  # type: ignore[assignment]
+            eps = entry_points(group=self.entry_point_group)
             
             for ep in eps:
                 self._discovered_plugins[ep.name] = ep
@@ -188,8 +181,8 @@ class PluginManager:
                 plugin_name=name,
             )
         
-        return commands
-    
+        return cast(list[Callable[..., Any]], commands)
+
     def register_plugin(
         self,
         name: str,

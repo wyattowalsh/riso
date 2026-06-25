@@ -9,22 +9,13 @@ Handles configuration loading with precedence: CLI args > env vars > config file
 from __future__ import annotations
 
 import os
-import sys
+import tomllib
 from pathlib import Path
 from typing import Any
 
 from loguru import logger
 
 from {{ package_name }}.cli.core.exceptions import ConfigError
-
-# Import appropriate TOML library based on Python version
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    try:
-        import tomli as tomllib  # type: ignore[import-not-found,no-redef]
-    except ImportError:
-        tomllib = None  # type: ignore[assignment]
 
 
 class ConfigManager:

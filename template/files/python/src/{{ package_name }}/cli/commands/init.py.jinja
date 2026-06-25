@@ -38,10 +38,16 @@ def init_command(
     config_file = Path(config_path)
     
     # Check if config already exists
-    if config_file.exists() and not force:
-        if not confirm(f"Configuration file '{config_file}' already exists. Overwrite?", default=False):
-            formatter.print_info("Initialization cancelled")
-            raise typer.Exit(code=0)
+    if (
+        config_file.exists()
+        and not force
+        and not confirm(
+            f"Configuration file '{config_file}' already exists. Overwrite?",
+            default=False,
+        )
+    ):
+        formatter.print_info("Initialization cancelled")
+        raise typer.Exit(code=0)
     
     # Create default configuration with progress indicator
     default_config = """# {{ project_name }} Configuration
@@ -73,13 +79,13 @@ cli_enabled = true
                 progress.update(task, completed=True)
             except Exception as e:
                 formatter.print_error(f"Failed to create configuration: {e}")
-                raise typer.Exit(code=1)
+                raise typer.Exit(code=1) from e
     else:
         try:
             config_file.write_text(default_config)
         except Exception as e:
             formatter.print_error(f"Failed to create configuration: {e}")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from e
     
     formatter.print_success(f"Created configuration file: {config_file}")
     
