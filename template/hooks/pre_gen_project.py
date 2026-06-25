@@ -21,13 +21,15 @@ LOG_PATH = Path(".riso/toolchain_provisioning.jsonl")
 sys.path.append(str(Path(__file__).resolve().parents[2] / "scripts"))
 
 try:
-    from hooks.quality_tool_check import ensure_python_quality_tools, ToolCheck
+    from hooks.quality_tool_check import ensure_python_quality_tools
+
+    _TOOL_CHECK_AVAILABLE = True
 except ModuleNotFoundError:  # pragma: no cover - during template linting
 
     def ensure_python_quality_tools():
         return []
 
-    ToolCheck = None  # type: ignore[assignment]
+    _TOOL_CHECK_AVAILABLE = False
 
 # Valid configuration values
 VALID_DOCS_SITES = {"fumadocs", "sphinx-shibuya", "docusaurus", "none"}
@@ -500,7 +502,7 @@ def _check_python_quality_tools() -> list[ProvisionResult]:
         List of failed ProvisionResult objects for unavailable tools
     """
     failures = []
-    if ToolCheck is not None:
+    if _TOOL_CHECK_AVAILABLE:
         for check in ensure_python_quality_tools():
             entry = ProvisionResult(
                 tool_name=check.name,

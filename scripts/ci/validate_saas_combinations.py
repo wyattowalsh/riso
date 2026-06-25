@@ -121,7 +121,9 @@ VALIDATION_RULES: dict[RuleLevel, list[CombinationRule]] = {
 REQUIRED_RULES: list[ConditionalRule] = [
     {
         "name": "billing_requires_auth",
-        "condition": lambda combo: combo.get("billing") and not combo.get("auth"),
+        "condition": lambda combo: (
+            bool(combo.get("billing")) and not bool(combo.get("auth"))
+        ),
         "message": "Billing functionality requires authentication to be enabled.",
         "severity": "error",
     },
@@ -131,7 +133,9 @@ REQUIRED_RULES: list[ConditionalRule] = [
 RECOMMENDATION_RULES: list[ConditionalRule] = [
     {
         "name": "database_should_have_orm",
-        "condition": lambda combo: combo.get("database") and not combo.get("orm"),
+        "condition": lambda combo: (
+            bool(combo.get("database")) and not bool(combo.get("orm"))
+        ),
         "message": "Database selected without ORM. Consider adding Prisma or Drizzle for better developer experience.",
         "severity": "warning",
     },

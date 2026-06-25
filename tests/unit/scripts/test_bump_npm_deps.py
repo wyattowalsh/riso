@@ -53,7 +53,9 @@ def test_ncu_up_to_date_detection(
     module = _load_bump_module()
     sample_dir = tmp_path / "samples" / "default"
     sample_dir.mkdir(parents=True)
-    (sample_dir / "copier-answers.yml").write_text("project_name: test\n", encoding="utf-8")
+    (sample_dir / "copier-answers.yml").write_text(
+        "project_name: test\n", encoding="utf-8"
+    )
     render_dir = sample_dir / "render"
     render_dir.mkdir(parents=True)
     (render_dir / "package.json").write_text(

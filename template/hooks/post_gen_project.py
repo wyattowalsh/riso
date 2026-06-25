@@ -19,9 +19,10 @@ try:
     from hooks.quality_tool_check import (
         ensure_node_quality_tools,
         ensure_python_quality_tools,
-        ToolCheck,
     )
     from hooks.workflow_validator import validate_workflows_directory
+
+    _TOOL_CHECK_AVAILABLE = True
 except ModuleNotFoundError:  # pragma: no cover - template lint
 
     def ensure_python_quality_tools():
@@ -30,7 +31,7 @@ except ModuleNotFoundError:  # pragma: no cover - template lint
     def ensure_node_quality_tools(_):
         return []
 
-    ToolCheck = None  # type: ignore[assignment]
+    _TOOL_CHECK_AVAILABLE = False
 
     def validate_workflows_directory(*args, **kwargs):  # noqa: ARG001
         return 0
@@ -427,9 +428,9 @@ def main() -> None:
     removed_empty_dirs = cleanup_empty_scaffold_dirs(destination)
     removed_empty_files = cleanup_empty_rendered_files(destination)
     removed_legacy_files = cleanup_legacy_root_pyproject(destination)
-    quality_checks = ensure_python_quality_tools() if ToolCheck is not None else []
+    quality_checks = ensure_python_quality_tools() if _TOOL_CHECK_AVAILABLE else []
     node_checks = []
-    if ToolCheck is not None:
+    if _TOOL_CHECK_AVAILABLE:
         node_required = "node" in api_languages_for_answers(answers)
         node_checks = ensure_node_quality_tools(node_required)
 

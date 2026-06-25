@@ -80,9 +80,14 @@ def main() -> int:
         payload = {"render_dir": str(args.render_dir), **result}
         sys.stdout.write(json.dumps(payload, indent=2) + "\n")
     else:
-        for check in result["checks"]:
-            status = "PASS" if check["passed"] else "FAIL"
-            sys.stdout.write(f"[{status}] {check['id']}\n")
+        checks = result.get("checks", [])
+        if not isinstance(checks, list):
+            checks = []
+        for check in checks:
+            if not isinstance(check, dict):
+                continue
+            status = "PASS" if check.get("passed") else "FAIL"
+            sys.stdout.write(f"[{status}] {check.get('id', 'unknown')}\n")
         sys.stdout.write(
             f"agent-smoke: {result['passed']}/{result['total']} checks passed\n"
         )

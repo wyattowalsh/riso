@@ -37,7 +37,10 @@ TASK_RUNNER_EXCLUDE_RULES = [
         "python/justfile",
         "{% if task_runner in ['makefile', 'none'] %}python/justfile{% endif %}",
     ),
-    ("go/justfile", "{% if task_runner in ['makefile', 'none'] %}go/justfile{% endif %}"),
+    (
+        "go/justfile",
+        "{% if task_runner in ['makefile', 'none'] %}go/justfile{% endif %}",
+    ),
     (
         "rust/justfile",
         "{% if task_runner in ['makefile', 'none'] %}rust/justfile{% endif %}",
@@ -124,7 +127,11 @@ def test_copier_exclude_rules_reference_task_runner() -> None:
 @pytest.mark.parametrize(
     ("task_runner", "excluded", "present"),
     [
-        ("just", {"Makefile", "quality/makefile.quality", "python/Makefile"}, {"justfile"}),
+        (
+            "just",
+            {"Makefile", "quality/makefile.quality", "python/Makefile"},
+            {"justfile"},
+        ),
         (
             "makefile",
             {"justfile", "quality/justfile.quality", "python/justfile"},

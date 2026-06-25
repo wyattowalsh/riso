@@ -11,13 +11,13 @@ rendered project payloads.
 ## Workflow
 
 1. Inspect `git status --short --branch` and preserve unrelated dirty work.
-2. Read `specs/016-prod-release-readiness/` before editing release surfaces.
-3. Enforce the no-legacy-answer policy in
+1. Read `specs/016-prod-release-readiness/` before editing release surfaces.
+1. Enforce the no-legacy-answer policy in
    `references/no-legacy-answer-policy.md`.
-4. Use the validation ladder in `references/release-gates.md`.
-5. Use the parallel task graph in `references/task-graph.md` to split work while
+1. Use the validation ladder in `references/release-gates.md`.
+1. Use the parallel task graph in `references/task-graph.md` to split work while
    keeping same-file edits serialized.
-6. Record final command evidence in `tmp/riso-prod-ready-release-todo.md`.
+1. Record final command evidence in `tmp/riso-prod-ready-release-todo.md`.
 
 ## Stop Rules
 
