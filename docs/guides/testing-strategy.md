@@ -26,6 +26,15 @@ comments.
 
 ## Commands to run
 
+### Maintainer repo (`riso/` root)
+
+```bash
+make quality
+uv run pytest --cov --cov-report=term-missing --cov-fail-under=70
+```
+
+### Inside a rendered project (`samples/*/render/`)
+
 ```bash
 # Render + sync env
 ./scripts/render-samples.sh
@@ -34,7 +43,7 @@ uv sync
 
 # Fast feedback (lint + type + unit tests + coverage)
 make quality
-# or
+# or, when make is unavailable
 QUALITY_PROFILE=standard uv run task quality
 
 # Explicit coverage visualization with hard gate

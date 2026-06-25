@@ -9,7 +9,7 @@
 ![Tests](https://img.shields.io/badge/tests-398-green)
 ![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)
 
-Riso is a batteries-included template system that scaffolds production-ready projects with optional CLI, API, MCP (Model Context Protocol), documentation, and SaaS starter modules.
+Riso is a batteries-included template system that scaffolds production-ready projects with optional CLI, API, documentation, and SaaS starter modules. Maintainers use the agent-native `riso` CLI for template operations.
 
 ## Features
 
@@ -30,29 +30,35 @@ Riso is a batteries-included template system that scaffolds production-ready pro
 ## Quick Start
 
 ```bash
-# Install Copier if you haven't already
-pip install copier
+git clone https://github.com/wyattowalsh/riso.git && cd riso
+uv sync --group cli
+uv run riso doctor --json
+uv run riso variants list --json
+uv run riso copy ./my-app --answers-file samples/default/copier-answers.yml
+```
 
-# Create a new project from the template
+For AI agents, install the skill from `.agents/skills/riso-scaffold/`.
+
+To scaffold without cloning the repo, use Copier directly:
+
+```bash
 copier copy gh:wyattowalsh/riso my-project
-
-# Follow the interactive prompts to configure your project
 ```
 
 ## Module Reference
 
-| Module        | Prompt Key            | Options                                    | Description              |
-| ------------- | --------------------- | ------------------------------------------ | ------------------------ |
-| **Layout**    | `project_layout`      | single-package, monorepo                   | Repository structure     |
-| **Quality**   | `quality_profile`     | standard, strict                           | Linting strictness       |
-| **CLI**       | `cli_module`          | disabled, enabled                          | Typer CLI scaffolding    |
-| **API**       | `api_tracks`          | none, python, node, python+node            | FastAPI/Fastify services |
-| **GraphQL**   | `graphql_api_module`  | disabled, enabled                          | Strawberry GraphQL       |
-| **WebSocket** | `websocket_module`    | disabled, enabled                          | Real-time communication  |
-| **MCP**       | `mcp_module`          | disabled, enabled                          | Model Context Protocol   |
-| **Docs**      | `docs_site`           | fumadocs, sphinx-shibuya, docusaurus, none | Documentation site       |
-| **Changelog** | `changelog_module`    | disabled, enabled                          | Semantic release         |
-| **SaaS**      | `saas_starter_module` | disabled, enabled                          | Full SaaS boilerplate    |
+| Module        | Prompt Key                       | Options                                     | Description                      |
+| ------------- | -------------------------------- | ------------------------------------------- | -------------------------------- |
+| **Layout**    | `project_layout`                 | single-package, monorepo                    | Repository structure             |
+| **Quality**   | `quality_profile`                | standard, strict                            | Linting strictness               |
+| **CLI**       | `cli_module`                     | disabled, enabled                           | Typer CLI scaffolding            |
+| **API**       | `api_module` + `api_languages`   | python, node, go, rust (multi-select)       | FastAPI/Fastify/Go/Rust services |
+| **GraphQL**   | `graphql_api_module`             | disabled, enabled                           | Strawberry GraphQL               |
+| **WebSocket** | `websocket_module`               | disabled, enabled                           | Real-time communication          |
+| **MCP**       | `mcp_module` + `mcp_languages`   | python, typescript, rust, go (multi-select) | Model Context Protocol           |
+| **Docs**      | `docs_module` + `docs_framework` | fumadocs, sphinx-shibuya, docusaurus, none  | Documentation site               |
+| **Changelog** | `changelog_module`               | disabled, enabled                           | Semantic release                 |
+| **SaaS**      | `saas_infra_module`              | disabled, enabled                           | SaaS infrastructure layer        |
 
 ## Template Matrix Snapshot
 
@@ -129,9 +135,9 @@ See [Testing Strategy](docs/guides/testing-strategy.md) for full documentation.
 Contributions are welcome! Please read our contributing guidelines:
 
 1. Fork the repository
-1. Create a feature branch: `git checkout -b feature/amazing-feature`
+1. Create a feature branch: `git checkout -b feat/amazing-feature`
 1. Make your changes
-1. Run quality checks: `make quality` or `uv run task quality`
+1. Run quality checks: `make quality`
 1. Commit with conventional commits: `feat: add amazing feature`
 1. Push and open a Pull Request
 

@@ -39,7 +39,7 @@ Please be respectful and constructive in all interactions. We welcome contributo
 1. Run quality checks:
 
    ```bash
-   uv run task quality
+   make quality
    ```
 
 ## Development Workflow
@@ -65,7 +65,7 @@ Please be respectful and constructive in all interactions. We welcome contributo
 1. Run quality checks:
 
    ```bash
-   uv run task quality
+   make quality
    ```
 
 1. Run tests:

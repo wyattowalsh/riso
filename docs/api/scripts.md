@@ -127,7 +127,7 @@ Checks and provisions quality tools.
 
 - `ensure_python_quality_tools() -> list[ToolCheck]`
 
-  - Ensures ruff, mypy, pylint, coverage are available
+  - Ensures ruff, ty, pylint, coverage are available
 
 - `ensure_node_quality_tools(require_pnpm: bool) -> list[ToolCheck]`
 
