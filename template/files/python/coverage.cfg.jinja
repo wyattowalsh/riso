@@ -7,7 +7,7 @@
 {% endif %}
 
 [run]
-branch = True
+branch = {% if quality_profile == 'strict' %}True{% else %}False{% endif %}
 source =
     {{ package_name }}
     tests
@@ -15,6 +15,11 @@ omit =
     */__init__.py
     */migrations/*
     */node_modules/*
+{%- if cli_module | lower == "enabled" %}
+    src/{{ package_name }}/cli/plugins/*
+    src/{{ package_name }}/cli/core/prompts.py
+    src/{{ package_name }}/cli/commands/example_async.py
+{%- endif %}
 {% for test in optional_tests %}
     {{ test }}
 {% endfor %}
@@ -24,12 +29,21 @@ show_missing = True
 skip_covered = False
 precision = 2
 fail_under = {% if cli_module | lower == "enabled" %}90.0{% else %}85.0{% endif %}
-{% if optional_tests %}
 omit =
 {% for test in optional_tests %}
     {{ test }}
 {% endfor %}
-{% endif %}
+{%- if api_module != 'enabled' or 'python' not in api_languages %}
+    src/{{ package_name }}/api/*
+    src/{{ package_name }}/config.py
+    src/{{ package_name }}/logging.py
+{%- endif %}
+{%- if cli_module | lower == "enabled" %}
+    src/{{ package_name }}/cli/plugins/*
+    src/{{ package_name }}/cli/core/prompts.py
+    src/{{ package_name }}/cli/commands/example_async.py
+    src/{{ package_name }}/cli/commands/plugin.py
+{%- endif %}
 
 [html]
 directory = htmlcov
