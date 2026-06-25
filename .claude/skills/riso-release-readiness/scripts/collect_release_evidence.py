@@ -15,7 +15,9 @@ SPEC = ROOT / "specs" / "016-prod-release-readiness"
 def main() -> None:
     evidence = {
         "todo_exists": TODO.exists(),
-        "spec_files": sorted(str(path.relative_to(ROOT)) for path in SPEC.rglob("*") if path.is_file()),
+        "spec_files": sorted(
+            str(path.relative_to(ROOT)) for path in SPEC.rglob("*") if path.is_file()
+        ),
         "skill_source": ".agents/skills/riso-release-readiness",
         "skill_mirror": ".claude/skills/riso-release-readiness",
     }

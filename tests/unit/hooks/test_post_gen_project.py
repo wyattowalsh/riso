@@ -906,7 +906,7 @@ class TestPreCommitSetupGuidance:
         content = json.loads(metadata_file.read_text(encoding="utf-8"))
 
         assert content["pre_commit"]["hooks"] == ["pre-commit", "commit-msg"]
-        assert content["pre_commit"]["install_command"] == "make hooks"
+        assert content["pre_commit"]["install_command"] == "just hooks"
 
     def test_strict_includes_pre_push(self, tmp_path, monkeypatch):
         """strict profile should list pre-push hooks."""

@@ -51,7 +51,10 @@ def _run(cmd: list[str], *, cwd: Path) -> None:
 def sync(*, dry_run: bool) -> int:
     if not PROBE_DIR.exists():
         print(f"Probe directory missing: {PROBE_DIR}", file=sys.stderr)
-        print("Create tmp/shadcn-probe with components.json + lib/utils.ts first.", file=sys.stderr)
+        print(
+            "Create tmp/shadcn-probe with components.json + lib/utils.ts first.",
+            file=sys.stderr,
+        )
         return 1
 
     _run(
@@ -89,7 +92,9 @@ def sync(*, dry_run: bool) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dry-run", action="store_true", help="Show copies without writing.")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Show copies without writing."
+    )
     args = parser.parse_args()
     try:
         return sync(dry_run=args.dry_run)

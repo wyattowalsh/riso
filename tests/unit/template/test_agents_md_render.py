@@ -33,6 +33,7 @@ def base_context() -> dict[str, object]:
         "package_name": "test_project",
         "project_layout": "single-package",
         "quality_profile": "standard",
+        "task_runner": "just",
         "ci_platform": "github-actions",
         "cli_module": "disabled",
         "cli_languages": [],

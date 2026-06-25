@@ -39,22 +39,41 @@ class TestRenderedPrecommitLayout:
             content = root_pyproject.read_text(encoding="utf-8")
             assert "[project]" in content or "[tool.uv.tasks]" not in content
 
-    def test_root_makefile_delegates_hooks(self, changelog_render: Path) -> None:
+    def test_root_task_runner_delegates_hooks(self, changelog_render: Path) -> None:
+        justfile = changelog_render / "justfile"
         makefile = changelog_render / "Makefile"
-        assert makefile.exists()
-        content = makefile.read_text(encoding="utf-8")
-        assert "quality/makefile.quality" in content
-        assert "hooks" in content
+        if justfile.exists():
+            content = justfile.read_text(encoding="utf-8")
+            assert "quality/justfile.quality" in content
+            quality_content = (
+                changelog_render / "quality" / "justfile.quality"
+            ).read_text(encoding="utf-8")
+            assert "hooks" in quality_content
+        elif makefile.exists():
+            content = makefile.read_text(encoding="utf-8")
+            assert "quality/makefile.quality" in content
+            quality_content = (
+                changelog_render / "quality" / "makefile.quality"
+            ).read_text(encoding="utf-8")
+            assert "hooks" in quality_content
+        else:
+            pytest.fail("expected justfile or Makefile at project root")
 
     def test_post_gen_metadata_hooks_install(self, changelog_render: Path) -> None:
         metadata_path = changelog_render / ".riso" / "post_gen_metadata.json"
         assert metadata_path.exists()
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         pre_commit = metadata["pre_commit"]
-        assert pre_commit["install_command"] == "make hooks"
+        install_cmd = pre_commit["install_command"]
+        assert install_cmd in {"just hooks", "make hooks"}
         assert "commit-msg" in pre_commit["hooks"]
 
     def test_render_precommit_script_passes_changelog(self) -> None:
+        if not CHANGELOG_RENDER.is_dir():
+            pytest.skip(
+                "changelog-python render missing; run ./scripts/render-samples.sh"
+            )
+
         import subprocess
 
         result = subprocess.run(

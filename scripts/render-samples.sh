@@ -9,17 +9,32 @@ log() {
   printf "[render-samples] %s\n" "$*" >&2
 }
 
-validate_copier_cmd() {
+resolve_copier_cmd() {
   local cmd="${COPIER_CMD:-copier}"
   if [[ "$cmd" == "copier" ]]; then
-    return 0
-  elif [[ "$cmd" =~ ^/.*copier$ ]] && [[ -x "$cmd" ]]; then
-    return 0
-  else
-    echo "ERROR: Invalid COPIER_CMD: $cmd" >&2
-    echo "Must be 'copier' or absolute path to copier binary" >&2
+    if command -v copier >/dev/null 2>&1; then
+      COPIER_CMD=copier
+      return 0
+    fi
+    if [[ -x "${REPO_ROOT}/.venv/bin/copier" ]]; then
+      COPIER_CMD="${REPO_ROOT}/.venv/bin/copier"
+      return 0
+    fi
+    echo "ERROR: copier not found in PATH or ${REPO_ROOT}/.venv/bin/copier" >&2
+    echo "Run: uv sync --group dev (or set COPIER_CMD to an absolute copier path)" >&2
     return 1
   fi
+  if [[ "$cmd" == "uv run copier" ]]; then
+    COPIER_CMD="uv run copier"
+    return 0
+  fi
+  if [[ -x "$cmd" ]]; then
+    COPIER_CMD="$cmd"
+    return 0
+  fi
+  echo "ERROR: Invalid COPIER_CMD: $cmd" >&2
+  echo "Must be 'copier', 'uv run copier', or an absolute path to the copier binary" >&2
+  return 1
 }
 
 run_module_smoke_tests() {
@@ -349,7 +364,7 @@ render_variant() {
   start_ts=$(date +%s)
   rm -rf "${destination}"
   mkdir -p "$(dirname "${destination}")"
-  validate_copier_cmd || exit 1
+  resolve_copier_cmd || exit 1
   ${COPIER_CMD} copy \
     --trust \
     --vcs-ref=HEAD \
