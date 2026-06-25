@@ -1,12 +1,14 @@
-"""Ensure Makefile and uv task definitions stay aligned for quality commands."""
+"""Ensure task-runner and uv task definitions stay aligned for quality commands."""
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MAKEFILE = REPO_ROOT / "template" / "files" / "quality" / "makefile.quality.jinja"
+JUSTFILE = REPO_ROOT / "template" / "files" / "quality" / "justfile.quality.jinja"
 PYTHON_TASK = REPO_ROOT / "template" / "files" / "python" / "tasks" / "quality.py.jinja"
 
 MAKEFILE_PATTERNS = [
@@ -16,11 +18,13 @@ MAKEFILE_PATTERNS = [
     "coverage run",
     "coverage report",
 ]
+JUSTFILE_PATTERNS = MAKEFILE_PATTERNS
 TASK_PATTERNS = ['"ruff"', '"ty"', '"pylint"', '"coverage"']
 NODE_MAKEFILE_PATTERNS = [
     "pnpm --filter api-node lint",
     "pnpm --filter api-node typecheck",
 ]
+NODE_JUSTFILE_PATTERNS = NODE_MAKEFILE_PATTERNS
 NODE_TASK_PATTERNS = [
     '"api-node", "lint"',
     '"api-node", "typecheck"',
@@ -30,6 +34,19 @@ NODE_TASK_PATTERNS = [
 REQUIRED_PATTERNS = MAKEFILE_PATTERNS
 NODE_PATTERNS = NODE_MAKEFILE_PATTERNS
 UV_TASK = PYTHON_TASK
+
+NODE_SECTION_PATTERN = re.compile(
+    r"\{%\s*if\s+api_module\s*==\s*'enabled'\s+and\s+'node'\s+in\s+api_languages\s*%\}"
+    r".*?"
+    r"\{%\s*endif\s*%\}",
+    re.DOTALL,
+)
+
+
+def _has_unconditional_patterns(text: str, patterns: list[str]) -> bool:
+    """Return True when patterns appear outside optional Node API Jinja blocks."""
+    stripped = NODE_SECTION_PATTERN.sub("", text)
+    return all(pattern in stripped for pattern in patterns)
 
 
 def assert_contains(path: Path, fragments: list[str]) -> list[str]:
@@ -42,23 +59,32 @@ def assert_contains(path: Path, fragments: list[str]) -> list[str]:
 
 
 def main() -> int:
-    makefile_text = MAKEFILE.read_text(encoding="utf-8")
     task_text = PYTHON_TASK.read_text(encoding="utf-8")
-
-    makefile_missing = [p for p in MAKEFILE_PATTERNS if p not in makefile_text]
     task_missing = [p for p in TASK_PATTERNS if p not in task_text]
 
     errors: list[str] = []
-    if makefile_missing:
-        errors.append(f"Makefile missing: {', '.join(makefile_missing)}")
     if task_missing:
         errors.append(f"python task missing: {', '.join(task_missing)}")
 
-    # Only enforce Node parity when Node snippets exist in Makefile
-    makefile_node_missing = [
-        p for p in NODE_MAKEFILE_PATTERNS if p not in makefile_text
-    ]
-    if not makefile_node_missing:
+    requires_node_parity = False
+
+    if MAKEFILE.exists():
+        makefile_text = MAKEFILE.read_text(encoding="utf-8")
+        makefile_missing = [p for p in MAKEFILE_PATTERNS if p not in makefile_text]
+        if makefile_missing:
+            errors.append(f"Makefile missing: {', '.join(makefile_missing)}")
+        if _has_unconditional_patterns(makefile_text, NODE_MAKEFILE_PATTERNS):
+            requires_node_parity = True
+
+    if JUSTFILE.exists():
+        justfile_text = JUSTFILE.read_text(encoding="utf-8")
+        justfile_missing = [p for p in JUSTFILE_PATTERNS if p not in justfile_text]
+        if justfile_missing:
+            errors.append(f"justfile missing: {', '.join(justfile_missing)}")
+        if _has_unconditional_patterns(justfile_text, NODE_JUSTFILE_PATTERNS):
+            requires_node_parity = True
+
+    if requires_node_parity:
         task_node_missing = [p for p in NODE_TASK_PATTERNS if p not in task_text]
         if task_node_missing:
             errors.append(

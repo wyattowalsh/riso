@@ -68,25 +68,50 @@ def validate_render(render_dir: Path, answers: dict[str, object]) -> list[str]:
             if not isinstance(config, dict) or "repos" not in config:
                 errors.append(".pre-commit-config.yaml missing repos key")
 
+    task_runner = str(answers.get("task_runner", "just"))
     root_makefile = render_dir / "Makefile"
+    root_justfile = render_dir / "justfile"
     quality_makefile = render_dir / "quality" / "makefile.quality"
-    if not root_makefile.exists():
-        errors.append("missing root Makefile")
-    elif "quality/makefile.quality" not in root_makefile.read_text(encoding="utf-8"):
-        errors.append("root Makefile does not delegate to quality/makefile.quality")
-    if not quality_makefile.exists():
-        errors.append("missing quality/makefile.quality")
-    elif "hooks:" not in quality_makefile.read_text(encoding="utf-8"):
-        errors.append("quality/makefile.quality missing hooks target")
+    quality_justfile = render_dir / "quality" / "justfile.quality"
+
+    if task_runner in {"just", "both"}:
+        if not root_justfile.exists():
+            errors.append("missing root justfile")
+        elif "quality/justfile.quality" not in root_justfile.read_text(
+            encoding="utf-8"
+        ):
+            errors.append("root justfile does not import quality/justfile.quality")
+        if not quality_justfile.exists():
+            errors.append("missing quality/justfile.quality")
+        elif "hooks:" not in quality_justfile.read_text(encoding="utf-8"):
+            errors.append("quality/justfile.quality missing hooks target")
+
+    if task_runner in {"makefile", "both"}:
+        if not root_makefile.exists():
+            errors.append("missing root Makefile")
+        elif "quality/makefile.quality" not in root_makefile.read_text(
+            encoding="utf-8"
+        ):
+            errors.append("root Makefile does not delegate to quality/makefile.quality")
+        if not quality_makefile.exists():
+            errors.append("missing quality/makefile.quality")
+        elif "hooks:" not in quality_makefile.read_text(encoding="utf-8"):
+            errors.append("quality/makefile.quality missing hooks target")
 
     metadata_path = render_dir / ".riso" / "post_gen_metadata.json"
     if metadata_path.exists():
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         pre_commit = metadata.get("pre_commit", {})
         install_cmd = pre_commit.get("install_command", "")
-        if install_cmd != "make hooks":
+        expected_install = {
+            "just": "just hooks",
+            "both": "just hooks",
+            "makefile": "make hooks",
+            "none": "uv run pre-commit install --install-hooks",
+        }.get(task_runner, "just hooks")
+        if install_cmd != expected_install:
             errors.append(
-                f"pre_commit.install_command expected 'make hooks', got {install_cmd!r}"
+                f"pre_commit.install_command expected {expected_install!r}, got {install_cmd!r}"
             )
 
     if python_enabled(answers):
