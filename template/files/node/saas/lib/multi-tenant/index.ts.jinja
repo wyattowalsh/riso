@@ -1,0 +1,114 @@
+{% if saas_infra_module == "enabled" and saas_multi_tenancy == 'enterprise' %}
+/**
+ * Multi-Tenancy Module
+ *
+ * Enterprise-grade multi-tenancy with tenant isolation, resolution, and management.
+ *
+ * @module multi-tenant
+ */
+
+// Types
+export type {
+  TenantConfig,
+  TenantContext,
+  TenantResolutionStrategy,
+  TenantResolutionOptions,
+  TenantIsolationConfig,
+  TenantStatus,
+  TenantTier,
+  TenantUsage,
+  TenantExportOptions,
+  TenantExportResult,
+  TenantInvitation,
+  TenantMember,
+  CreateTenantInput,
+  UpdateTenantInput,
+  TenantQueryBuilder,
+  TenantAuditLog,
+  TenantWebhook,
+  TenantWebhookEvent,
+} from './types';
+
+// Context & Hooks
+export {
+  TenantProvider,
+  useTenant,
+  useCurrentTenant,
+  useTenantFeature,
+  useTenantSetting,
+  useIsTenantOwner,
+  useIsTenantAdmin,
+  withTenant,
+  FeatureGate,
+  TenantInfo,
+  TenantStatusBadge,
+} from './context';
+
+// Middleware
+export {
+  createTenantMiddleware,
+  getTenantFromRequest,
+  getServerTenant,
+  rewriteWithTenant,
+  withTenantAPI,
+  tenantMiddlewareConfig,
+} from './middleware';
+
+// Data Isolation
+export {
+  initTenantIsolation,
+  getTenantContext,
+  setCurrentTenant,
+  getCurrentTenant,
+  requireTenant,
+  withTenant as withTenantContext,
+  createPrismaExtension,
+  createDrizzleHelper,
+  buildTenantQuery,
+  validateTenantAccess,
+  withTenantIsolation,
+} from './isolation';
+
+// Utilities
+export {
+  isValidTenantSlug,
+  sanitizeTenantSlug,
+  extractTenantFromSubdomain,
+  extractTenantFromPath,
+  getTenantUrl,
+  hasPermission,
+  calculateUsagePercentage,
+  isApproachingLimit,
+  getTierLimits,
+  canAccessFeature,
+  formatStorageSize,
+  validateCreateTenantInput,
+  validateUpdateTenantInput,
+  generateInvitationToken,
+  getTenantStatusColor,
+  getTrialDaysRemaining,
+  isInTrial,
+  maskSSOConfig,
+  cloneTenantConfig,
+} from './utils';
+
+// API Client
+export {
+  getCurrentTenant as fetchCurrentTenant,
+  getTenantBySlug,
+  getTenantById,
+  listTenants,
+  createTenant,
+  updateTenant,
+  deleteTenant,
+  getTenantUsage,
+  exportTenantData,
+  getTenantMembers,
+  inviteTenantMember,
+  removeTenantMember,
+  updateMemberRole,
+  getTenantInvitations,
+  cancelInvitation,
+  acceptInvitation,
+} from './api';
+{% endif %}

@@ -1,0 +1,374 @@
+{% if saas_infra_module == "enabled" and saas_multi_tenancy == 'enterprise' %}
+/**
+ * Multi-Tenancy Utility Functions
+ *
+ * Helper functions for tenant operations, validation, and data access.
+ */
+
+import type {
+  TenantConfig,
+  TenantResolutionOptions,
+  CreateTenantInput,
+  UpdateTenantInput,
+  TenantUsage,
+} from './types';
+
+/**
+ * Validate tenant slug format
+ * Must be lowercase alphanumeric with hyphens, 3-63 chars
+ */
+export function isValidTenantSlug(slug: string): boolean {
+  const slugRegex = /^[a-z0-9]([a-z0-9-]{1,61}[a-z0-9])?$/;
+  return slugRegex.test(slug);
+}
+
+/**
+ * Sanitize tenant slug
+ */
+export function sanitizeTenantSlug(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-')
+    .substring(0, 63);
+}
+
+/**
+ * Extract tenant slug from subdomain
+ */
+export function extractTenantFromSubdomain(
+  hostname: string,
+  options: TenantResolutionOptions
+): string | null {
+  const { domainSuffix } = options;
+
+  if (!domainSuffix) {
+    throw new Error('domainSuffix is required for subdomain strategy');
+  }
+
+  // Remove protocol if present
+  const cleanHostname = hostname.replace(/^https?:\/\//, '');
+
+  // Check if hostname ends with domain suffix
+  if (!cleanHostname.endsWith(domainSuffix)) {
+    return null;
+  }
+
+  // Extract subdomain
+  const subdomain = cleanHostname.slice(0, -domainSuffix.length);
+
+  // Ignore www and naked domain
+  if (subdomain === '' || subdomain === 'www') {
+    return null;
+  }
+
+  // Handle multi-level subdomains (use first part only)
+  const parts = subdomain.split('.');
+  const tenantSlug = parts[0];
+
+  return isValidTenantSlug(tenantSlug) ? tenantSlug : null;
+}
+
+/**
+ * Extract tenant slug from URL path
+ */
+export function extractTenantFromPath(
+  pathname: string,
+  options: TenantResolutionOptions
+): string | null {
+  const { pathPrefix = '/t' } = options;
+
+  // Remove trailing slash from prefix
+  const cleanPrefix = pathPrefix.replace(/\/$/, '');
+
+  // Check if path starts with tenant prefix
+  if (!pathname.startsWith(`${cleanPrefix}/`)) {
+    return null;
+  }
+
+  // Extract tenant slug (first path segment after prefix)
+  const remaining = pathname.slice(cleanPrefix.length + 1);
+  const [tenantSlug] = remaining.split('/');
+
+  return tenantSlug && isValidTenantSlug(tenantSlug) ? tenantSlug : null;
+}
+
+/**
+ * Generate tenant subdomain URL
+ */
+export function getTenantUrl(
+  tenantSlug: string,
+  baseDomain: string,
+  protocol: 'http' | 'https' = 'https'
+): string {
+  return `${protocol}://${tenantSlug}.${baseDomain}`;
+}
+
+/**
+ * Check if user has permission in tenant
+ */
+export function hasPermission(
+  tenant: TenantConfig,
+  userId: string,
+  permission: string
+): boolean {
+  // Implementation would check against tenant members and roles
+  // This is a placeholder
+  return tenant.metadata.ownerId === userId;
+}
+
+/**
+ * Calculate tenant usage percentage
+ */
+export function calculateUsagePercentage(usage: TenantUsage): {
+  users: number;
+  storage: number;
+  apiCalls: number;
+} {
+  return {
+    users: usage.users.max > 0 ? (usage.users.current / usage.users.max) * 100 : 0,
+    storage:
+      usage.storage.max > 0 ? (usage.storage.current / usage.storage.max) * 100 : 0,
+    apiCalls:
+      usage.apiCalls.max > 0
+        ? (usage.apiCalls.current / usage.apiCalls.max) * 100
+        : 0,
+  };
+}
+
+/**
+ * Check if tenant is approaching limits
+ */
+export function isApproachingLimit(
+  usage: TenantUsage,
+  threshold: number = 80
+): boolean {
+  const percentages = calculateUsagePercentage(usage);
+  return (
+    percentages.users >= threshold ||
+    percentages.storage >= threshold ||
+    percentages.apiCalls >= threshold
+  );
+}
+
+/**
+ * Get tenant tier limits
+ */
+export function getTierLimits(tier: TenantConfig['tier']): {
+  maxUsers: number;
+  maxStorage: number;
+  maxApiCalls: number;
+  features: string[];
+} {
+  const limits = {
+    free: {
+      maxUsers: 3,
+      maxStorage: 1024 * 1024 * 100, // 100MB
+      maxApiCalls: 1000,
+      features: ['basic'],
+    },
+    starter: {
+      maxUsers: 10,
+      maxStorage: 1024 * 1024 * 1024, // 1GB
+      maxApiCalls: 10000,
+      features: ['basic', 'analytics', 'api'],
+    },
+    professional: {
+      maxUsers: 50,
+      maxStorage: 1024 * 1024 * 1024 * 10, // 10GB
+      maxApiCalls: 100000,
+      features: ['basic', 'analytics', 'api', 'integrations', 'priority-support'],
+    },
+    enterprise: {
+      maxUsers: -1, // unlimited
+      maxStorage: -1, // unlimited
+      maxApiCalls: -1, // unlimited
+      features: [
+        'basic',
+        'analytics',
+        'api',
+        'integrations',
+        'priority-support',
+        'sso',
+        'custom-domain',
+        'audit-logs',
+        'data-export',
+      ],
+    },
+  };
+
+  return limits[tier];
+}
+
+/**
+ * Validate tenant feature access
+ */
+export function canAccessFeature(tenant: TenantConfig, feature: string): boolean {
+  // Check explicit feature flags first
+  if (feature in tenant.features) {
+    return tenant.features[feature];
+  }
+
+  // Check tier-based features
+  const tierLimits = getTierLimits(tenant.tier);
+  return tierLimits.features.includes(feature);
+}
+
+/**
+ * Format storage size for display
+ */
+export function formatStorageSize(bytes: number): string {
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let size = bytes;
+  let unitIndex = 0;
+
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex++;
+  }
+
+  return `${size.toFixed(2)} ${units[unitIndex]}`;
+}
+
+/**
+ * Validate tenant creation input
+ */
+export function validateCreateTenantInput(
+  input: CreateTenantInput
+): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  if (!input.name || input.name.trim().length === 0) {
+    errors.push('Tenant name is required');
+  }
+
+  if (input.name && input.name.length > 100) {
+    errors.push('Tenant name must be 100 characters or less');
+  }
+
+  if (!input.slug || input.slug.trim().length === 0) {
+    errors.push('Tenant slug is required');
+  }
+
+  if (input.slug && !isValidTenantSlug(input.slug)) {
+    errors.push(
+      'Tenant slug must be lowercase alphanumeric with hyphens, 3-63 characters'
+    );
+  }
+
+  if (!input.ownerId || input.ownerId.trim().length === 0) {
+    errors.push('Owner ID is required');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+/**
+ * Validate tenant update input
+ */
+export function validateUpdateTenantInput(
+  input: UpdateTenantInput
+): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  if (input.name !== undefined) {
+    if (input.name.trim().length === 0) {
+      errors.push('Tenant name cannot be empty');
+    }
+    if (input.name.length > 100) {
+      errors.push('Tenant name must be 100 characters or less');
+    }
+  }
+
+  if (input.slug !== undefined && !isValidTenantSlug(input.slug)) {
+    errors.push(
+      'Tenant slug must be lowercase alphanumeric with hyphens, 3-63 characters'
+    );
+  }
+
+  if (input.customDomain !== undefined && input.customDomain) {
+    // Basic domain validation
+    const domainRegex = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/i;
+    if (!domainRegex.test(input.customDomain)) {
+      errors.push('Invalid custom domain format');
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+/**
+ * Generate unique tenant invitation token
+ */
+export function generateInvitationToken(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Get tenant status badge color
+ */
+export function getTenantStatusColor(
+  status: TenantConfig['status']
+): 'green' | 'yellow' | 'red' | 'gray' {
+  const colors = {
+    active: 'green' as const,
+    trial: 'yellow' as const,
+    suspended: 'red' as const,
+    churned: 'gray' as const,
+  };
+  return colors[status];
+}
+
+/**
+ * Get time until trial expires
+ */
+export function getTrialDaysRemaining(createdAt: Date, trialDays: number = 14): number {
+  const now = new Date();
+  const trialEnd = new Date(createdAt);
+  trialEnd.setDate(trialEnd.getDate() + trialDays);
+
+  const diffTime = trialEnd.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  return Math.max(0, diffDays);
+}
+
+/**
+ * Check if tenant is in trial period
+ */
+export function isInTrial(tenant: TenantConfig): boolean {
+  return tenant.status === 'trial' && getTrialDaysRemaining(tenant.metadata.createdAt) > 0;
+}
+
+/**
+ * Mask sensitive SSO configuration
+ */
+export function maskSSOConfig(tenant: TenantConfig): TenantConfig {
+  if (!tenant.sso) return tenant;
+
+  return {
+    ...tenant,
+    sso: {
+      ...tenant.sso,
+      cert: tenant.sso.cert ? '***REDACTED***' : undefined,
+      metadata: tenant.sso.metadata ? { ...tenant.sso.metadata, secret: '***REDACTED***' } : undefined,
+    },
+  };
+}
+
+/**
+ * Deep clone tenant config safely
+ */
+export function cloneTenantConfig(tenant: TenantConfig): TenantConfig {
+  return JSON.parse(JSON.stringify(tenant));
+}
+{% endif %}

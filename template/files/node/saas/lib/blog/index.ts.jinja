@@ -1,0 +1,118 @@
+{% if saas_infra_module == "enabled" and saas_blog and saas_runtime == "nextjs-16" %}
+import fs from 'fs';
+import path from 'path';
+import matter from 'gray-matter';
+import readingTime from 'reading-time';
+
+const BLOG_DIR = path.join(process.cwd(), 'content/blog');
+
+export interface BlogPost {
+  slug: string;
+  title: string;
+  description: string;
+  author: string;
+  date: string;
+  tags: string[];
+  readingTime: string;
+  wordCount: number;
+  content: string;
+}
+
+export interface BlogPostMeta {
+  slug: string;
+  title: string;
+  description: string;
+  author: string;
+  date: string;
+  tags: string[];
+  readingTime: string;
+  wordCount: number;
+}
+
+export function getAllPosts(): BlogPostMeta[] {
+  if (!fs.existsSync(BLOG_DIR)) {
+    return [];
+  }
+
+  const files = fs.readdirSync(BLOG_DIR).filter((file) => file.endsWith('.mdx'));
+
+  const posts = files
+    .map((file) => {
+      const filePath = path.join(BLOG_DIR, file);
+      const fileContent = fs.readFileSync(filePath, 'utf-8');
+      const { data, content } = matter(fileContent);
+      const stats = readingTime(content);
+
+      return {
+        slug: file.replace('.mdx', ''),
+        title: data.title || 'Untitled',
+        description: data.description || '',
+        author: data.author || 'Anonymous',
+        date: data.date || new Date().toISOString(),
+        tags: data.tags || [],
+        readingTime: stats.text,
+        wordCount: stats.words,
+      };
+    })
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  return posts;
+}
+
+export function getPostBySlug(slug: string): BlogPost | null {
+  // Prevent path traversal attacks
+  if (slug.includes('..') || slug.includes('/') || slug.includes('\\')) {
+    return null;
+  }
+
+  const filePath = path.join(BLOG_DIR, `${slug}.mdx`);
+
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  const { data, content } = matter(fileContent);
+  const stats = readingTime(content);
+
+  return {
+    slug,
+    title: data.title || 'Untitled',
+    description: data.description || '',
+    author: data.author || 'Anonymous',
+    date: data.date || new Date().toISOString(),
+    tags: data.tags || [],
+    readingTime: stats.text,
+    wordCount: stats.words,
+    content,
+  };
+}
+
+export function getPostSlugs(): string[] {
+  if (!fs.existsSync(BLOG_DIR)) {
+    return [];
+  }
+
+  return fs
+    .readdirSync(BLOG_DIR)
+    .filter((file) => file.endsWith('.mdx'))
+    .map((file) => file.replace('.mdx', ''));
+}
+
+export function getPostsByTag(tag: string): BlogPostMeta[] {
+  return getAllPosts().filter((post) =>
+    post.tags.map((t) => t.toLowerCase()).includes(tag.toLowerCase())
+  );
+}
+
+export function getAllTags(): string[] {
+  const posts = getAllPosts();
+  const tagSet = new Set<string>();
+
+  posts.forEach((post) => {
+    post.tags.forEach((tag) => tagSet.add(tag.toLowerCase()));
+  });
+
+  return Array.from(tagSet).sort();
+}
+{% endif %}

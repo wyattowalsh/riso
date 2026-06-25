@@ -36,6 +36,7 @@ class MCPError(Exception):
     data: dict[str, Any] | None = None
 
     def __str__(self) -> str:
+        """Return the error message."""
         return self.message
 
     def to_dict(self) -> dict[str, Any]:
@@ -53,6 +54,7 @@ class OperationError(MCPError):
     """Raised when an operation fails."""
 
     def __init__(self, operation: str, details: str) -> None:
+        """Initialize with the failed operation and error details."""
         super().__init__(
             message=f"{operation} failed: {details}",
             code=MCPErrorCode.OPERATION_FAILED,
@@ -64,6 +66,7 @@ class ValidationError(MCPError):
     """Raised when validation fails."""
 
     def __init__(self, errors: list[str]) -> None:
+        """Initialize with the validation error messages."""
         super().__init__(
             message=f"Validation failed with {len(errors)} error(s)",
             code=MCPErrorCode.VALIDATION_FAILED,
@@ -75,6 +78,7 @@ class NotFoundError(MCPError):
     """Raised when a resource is not found."""
 
     def __init__(self, resource: str, identifier: str) -> None:
+        """Initialize with the missing resource type and identifier."""
         super().__init__(
             message=f"{resource} not found: {identifier}",
             code=MCPErrorCode.NOT_FOUND,

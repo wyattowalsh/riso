@@ -1,0 +1,344 @@
+{% if saas_infra_module == "enabled" and saas_multi_tenancy == 'enterprise' %}
+/**
+ * Multi-Tenancy Middleware
+ *
+ * Handles tenant resolution from various sources (subdomain, path, header, JWT)
+ * and injects tenant context into the request.
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import type { TenantResolutionOptions, TenantConfig } from './types';
+import {
+  extractTenantFromSubdomain,
+  extractTenantFromPath,
+  isValidTenantSlug,
+} from './utils';
+
+const DEFAULT_OPTIONS: TenantResolutionOptions = {
+  strategy: 'subdomain',
+  headerName: 'x-tenant-id',
+  pathPrefix: '/t',
+  domainSuffix: process.env.NEXT_PUBLIC_DOMAIN_SUFFIX || '.localhost:3000',
+  defaultTenant: process.env.DEFAULT_TENANT,
+};
+
+/**
+ * Tenant resolution middleware for Next.js
+ *
+ * Usage in middleware.ts:
+ * ```typescript
+ * import { createTenantMiddleware } from '@/lib/multi-tenant/middleware';
+ *
+ * export const middleware = createTenantMiddleware({
+ *   strategy: 'subdomain',
+ *   domainSuffix: '.myapp.com',
+ * });
+ * ```
+ */
+export function createTenantMiddleware(
+  options: Partial<TenantResolutionOptions> = {}
+) {
+  const config: TenantResolutionOptions = { ...DEFAULT_OPTIONS, ...options };
+
+  return async function tenantMiddleware(request: NextRequest) {
+    const tenantSlug = await resolveTenant(request, config);
+
+    // If no tenant found and not in allowed paths, handle accordingly
+    if (!tenantSlug) {
+      const pathname = request.nextUrl.pathname;
+
+      // Allow certain paths without tenant
+      const allowedPaths = [
+        '/api/health',
+        '/api/webhooks',
+        '/_next',
+        '/favicon.ico',
+        '/robots.txt',
+        '/sitemap.xml',
+        '/public',
+      ];
+
+      const isAllowedPath = allowedPaths.some((path) => pathname.startsWith(path));
+
+      if (!isAllowedPath && config.defaultTenant) {
+        // Redirect to default tenant
+        const url = request.nextUrl.clone();
+        url.hostname = `${config.defaultTenant}.${config.domainSuffix?.replace(/^\./, '')}`;
+        return NextResponse.redirect(url);
+      }
+
+      if (!isAllowedPath) {
+        // Return 404 or redirect to tenant selection page
+        return new NextResponse('Tenant not found', { status: 404 });
+      }
+    }
+
+    // Create response with tenant header
+    const response = NextResponse.next();
+
+    if (tenantSlug) {
+      // Add tenant to headers for downstream consumption
+      response.headers.set('x-tenant-slug', tenantSlug);
+
+      // Optionally add tenant cookie for client-side access
+      response.cookies.set('tenant-slug', tenantSlug, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+      });
+    }
+
+    return response;
+  };
+}
+
+/**
+ * Resolve tenant from request
+ */
+async function resolveTenant(
+  request: NextRequest,
+  options: TenantResolutionOptions
+): Promise<string | null> {
+  const { strategy } = options;
+
+  switch (strategy) {
+    case 'subdomain':
+      return resolveTenantFromSubdomain(request, options);
+
+    case 'path':
+      return resolveTenantFromPath(request, options);
+
+    case 'header':
+      return resolveTenantFromHeader(request, options);
+
+    case 'jwt':
+      return resolveTenantFromJWT(request, options);
+
+    default:
+      throw new Error(`Unknown tenant resolution strategy: ${strategy}`);
+  }
+}
+
+/**
+ * Resolve tenant from subdomain
+ */
+function resolveTenantFromSubdomain(
+  request: NextRequest,
+  options: TenantResolutionOptions
+): string | null {
+  const hostname = request.headers.get('host') || request.nextUrl.hostname;
+  return extractTenantFromSubdomain(hostname, options);
+}
+
+/**
+ * Resolve tenant from URL path
+ */
+function resolveTenantFromPath(
+  request: NextRequest,
+  options: TenantResolutionOptions
+): string | null {
+  const pathname = request.nextUrl.pathname;
+  return extractTenantFromPath(pathname, options);
+}
+
+/**
+ * Resolve tenant from HTTP header
+ */
+function resolveTenantFromHeader(
+  request: NextRequest,
+  options: TenantResolutionOptions
+): string | null {
+  const { headerName = 'x-tenant-id' } = options;
+  const tenantSlug = request.headers.get(headerName);
+
+  if (!tenantSlug) {
+    return null;
+  }
+
+  return isValidTenantSlug(tenantSlug) ? tenantSlug : null;
+}
+
+/**
+ * Resolve tenant from JWT token
+ */
+async function resolveTenantFromJWT(
+  request: NextRequest,
+  _options: TenantResolutionOptions
+): Promise<string | null> {
+  // Extract JWT from Authorization header
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return null;
+  }
+
+  const token = authHeader.slice(7);
+
+  try {
+    // Decode JWT (implementation depends on your JWT library)
+    // This is a placeholder - integrate with your auth system
+    const payload = decodeJWT(token);
+
+    if (payload.tenantId && isValidTenantSlug(payload.tenantId)) {
+      return payload.tenantId;
+    }
+  } catch (error) {
+    console.error('Failed to decode JWT for tenant resolution:', error);
+  }
+
+  return null;
+}
+
+/**
+ * JWT decode helper (replace with your JWT library)
+ */
+function decodeJWT(token: string): { tenantId?: string } {
+  try {
+    // Basic JWT decode (not verified - for tenant slug only)
+    const [, payloadBase64] = token.split('.');
+    const payload = JSON.parse(
+      Buffer.from(payloadBase64, 'base64').toString('utf-8')
+    );
+    return payload;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Get tenant slug from request in API routes
+ */
+export function getTenantFromRequest(request: Request): string | null {
+  // Try header first
+  const tenantHeader = request.headers.get('x-tenant-slug');
+  if (tenantHeader && isValidTenantSlug(tenantHeader)) {
+    return tenantHeader;
+  }
+
+  // Try subdomain from host header
+  const host = request.headers.get('host');
+  if (host) {
+    const tenantSlug = extractTenantFromSubdomain(host, DEFAULT_OPTIONS);
+    if (tenantSlug) {
+      return tenantSlug;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Server-side tenant resolution for Server Components
+ */
+export async function getServerTenant(
+  options: Partial<TenantResolutionOptions> = {}
+): Promise<TenantConfig | null> {
+  // This is a placeholder - implement based on your data layer
+  // Example using headers():
+  // import { headers } from 'next/headers';
+  // const headersList = headers();
+  // const tenantSlug = headersList.get('x-tenant-slug');
+
+  const tenantSlug = null; // Replace with actual implementation
+
+  if (!tenantSlug) {
+    return null;
+  }
+
+  // Fetch tenant from database
+  try {
+    // Implementation depends on your ORM/database
+    // Example:
+    // const tenant = await db.tenant.findUnique({
+    //   where: { slug: tenantSlug }
+    // });
+    // return tenant;
+
+    return null; // Replace with actual fetch
+  } catch (error) {
+    console.error('Failed to fetch tenant:', error);
+    return null;
+  }
+}
+
+/**
+ * Rewrite URL to include tenant in path (useful for multi-tenant routing)
+ */
+export function rewriteWithTenant(
+  request: NextRequest,
+  tenantSlug: string
+): NextResponse {
+  const url = request.nextUrl.clone();
+
+  // Don't rewrite if already has tenant prefix
+  if (url.pathname.startsWith(`/t/${tenantSlug}`)) {
+    return NextResponse.next();
+  }
+
+  // Rewrite to tenant-prefixed path
+  url.pathname = `/t/${tenantSlug}${url.pathname}`;
+
+  return NextResponse.rewrite(url);
+}
+
+/**
+ * Middleware config matcher
+ */
+export const tenantMiddlewareConfig = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api/health (health check endpoints)
+     * - api/webhooks (webhook endpoints)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public (public files)
+     */
+    '/((?!api/health|api/webhooks|_next/static|_next/image|favicon.ico|public).*)',
+  ],
+};
+
+/**
+ * Create tenant-aware API route handler
+ */
+export function withTenantAPI<T = unknown>(
+  handler: (request: Request, tenant: TenantConfig) => Promise<Response>
+) {
+  return async function tenantAPIHandler(request: Request): Promise<Response> {
+    const tenantSlug = getTenantFromRequest(request);
+
+    if (!tenantSlug) {
+      return new Response('Tenant not found', { status: 404 });
+    }
+
+    // Fetch tenant from database
+    const tenant = await fetchTenantBySlug(tenantSlug);
+
+    if (!tenant) {
+      return new Response('Tenant not found', { status: 404 });
+    }
+
+    // Check tenant status
+    if (tenant.status === 'suspended') {
+      return new Response('Tenant is suspended', { status: 403 });
+    }
+
+    return handler(request, tenant);
+  };
+}
+
+/**
+ * Fetch tenant by slug (placeholder - implement with your data layer)
+ */
+async function fetchTenantBySlug(slug: string): Promise<TenantConfig | null> {
+  // Implementation depends on your ORM/database
+  // Example:
+  // const tenant = await db.tenant.findUnique({
+  //   where: { slug }
+  // });
+  // return tenant;
+
+  return null; // Replace with actual implementation
+}
+{% endif %}

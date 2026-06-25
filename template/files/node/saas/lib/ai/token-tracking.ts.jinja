@@ -1,0 +1,585 @@
+{% if saas_infra_module == "enabled" and saas_ai_features == 'full' %}
+/**
+ * Token Usage Tracking and Billing Integration
+ *
+ * Track AI token usage for billing and analytics:
+ * - Per-user token tracking
+ * - Per-organization aggregation
+ * - Cost calculation based on model pricing
+ * - Usage analytics and reporting
+ * - Integration with billing system
+ *
+ * @see https://platform.openai.com/docs/guides/rate-limits
+ */
+
+{% if saas_orm == "prisma" %}
+import { prisma } from '@/integrations/orm/prisma/client';
+{% elif saas_orm == "drizzle" %}
+import { db } from '@/integrations/orm/drizzle/client';
+import { sql } from 'drizzle-orm';
+{% endif %}
+
+import type { TokenUsage, TokenTrackingEvent } from '@/integrations/ai/rag/types';
+
+// ============================================================================
+// Database Schema
+// ============================================================================
+
+/**
+ * Required database table:
+ *
+ * ```sql
+ * CREATE TABLE ai_token_usage (
+ *   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+ *   user_id TEXT NOT NULL,
+ *   organization_id TEXT,
+ *   conversation_id TEXT,
+ *   message_id TEXT,
+ *   operation TEXT NOT NULL, -- 'embedding', 'generation', 'rerank'
+ *   model TEXT NOT NULL,
+ *   input_tokens INTEGER NOT NULL DEFAULT 0,
+ *   output_tokens INTEGER NOT NULL DEFAULT 0,
+ *   total_tokens INTEGER NOT NULL DEFAULT 0,
+ *   embedding_tokens INTEGER DEFAULT 0,
+ *   cost DECIMAL(10, 6),
+ *   created_at TIMESTAMP DEFAULT NOW(),
+ *
+ *   -- Indexes
+ *   INDEX idx_token_usage_user (user_id, created_at),
+ *   INDEX idx_token_usage_org (organization_id, created_at),
+ *   INDEX idx_token_usage_conv (conversation_id)
+ * );
+ * ```
+ */
+
+// ============================================================================
+// Model Pricing (per 1K tokens)
+// ============================================================================
+
+const MODEL_PRICING: Record<
+  string,
+  { input: number; output: number; embedding?: number }
+> = {
+  // OpenAI GPT-4
+  'gpt-4-turbo-preview': { input: 0.01, output: 0.03 },
+  'gpt-4': { input: 0.03, output: 0.06 },
+  'gpt-4-32k': { input: 0.06, output: 0.12 },
+
+  // OpenAI GPT-3.5
+  'gpt-3.5-turbo': { input: 0.0015, output: 0.002 },
+  'gpt-3.5-turbo-16k': { input: 0.003, output: 0.004 },
+
+  // OpenAI Embeddings
+  'text-embedding-3-small': { input: 0, output: 0, embedding: 0.00002 },
+  'text-embedding-3-large': { input: 0, output: 0, embedding: 0.00013 },
+  'text-embedding-ada-002': { input: 0, output: 0, embedding: 0.0001 },
+
+  // Anthropic Claude
+  'claude-3-5-sonnet-20241022': { input: 0.003, output: 0.015 },
+  'claude-3-opus-20240229': { input: 0.015, output: 0.075 },
+  'claude-3-haiku-20240307': { input: 0.00025, output: 0.00125 },
+
+  // Anthropic/Voyage Embeddings
+  'voyage-2': { input: 0, output: 0, embedding: 0.0001 },
+  'voyage-large-2': { input: 0, output: 0, embedding: 0.00012 },
+};
+
+// ============================================================================
+// Tracking Functions
+// ============================================================================
+
+/**
+ * Track token usage event
+ *
+ * @example
+ * ```ts
+ * await trackTokenUsage({
+ *   userId: 'user-123',
+ *   organizationId: 'org-456',
+ *   conversationId: 'conv-789',
+ *   operation: 'generation',
+ *   usage: {
+ *     inputTokens: 1000,
+ *     outputTokens: 500,
+ *     totalTokens: 1500,
+ *     model: 'gpt-4-turbo-preview',
+ *   },
+ *   timestamp: new Date(),
+ * });
+ * ```
+ */
+export async function trackTokenUsage(
+  event: TokenTrackingEvent
+): Promise<void> {
+  try {
+    const cost = calculateCost(event.usage);
+
+    {% if saas_orm == "prisma" %}
+    await prisma.aiTokenUsage.create({
+      data: {
+        userId: event.userId,
+        organizationId: event.organizationId,
+        conversationId: event.conversationId,
+        messageId: event.messageId,
+        operation: event.operation,
+        model: event.usage.model,
+        inputTokens: event.usage.inputTokens,
+        outputTokens: event.usage.outputTokens,
+        totalTokens: event.usage.totalTokens,
+        embeddingTokens: event.usage.embeddingTokens || 0,
+        cost,
+        createdAt: event.timestamp,
+      },
+    });
+    {% elif saas_orm == "drizzle" %}
+    await db.execute(sql`
+      INSERT INTO ai_token_usage (
+        user_id, organization_id, conversation_id, message_id,
+        operation, model, input_tokens, output_tokens, total_tokens,
+        embedding_tokens, cost, created_at
+      ) VALUES (
+        ${event.userId},
+        ${event.organizationId || null},
+        ${event.conversationId || null},
+        ${event.messageId || null},
+        ${event.operation},
+        ${event.usage.model},
+        ${event.usage.inputTokens},
+        ${event.usage.outputTokens},
+        ${event.usage.totalTokens},
+        ${event.usage.embeddingTokens || 0},
+        ${cost},
+        ${event.timestamp}
+      )
+    `);
+    {% endif %}
+  } catch (error) {
+    console.error('Failed to track token usage:', error);
+    // Don't throw - tracking failures shouldn't break the main flow
+  }
+}
+
+// ============================================================================
+// Query Functions
+// ============================================================================
+
+/**
+ * Get token usage for a user
+ */
+export async function getUserTokenUsage(params: {
+  userId: string;
+  startDate?: Date;
+  endDate?: Date;
+  operation?: string;
+}): Promise<{
+  totalTokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  embeddingTokens: number;
+  totalCost: number;
+  breakdown: Array<{
+    operation: string;
+    model: string;
+    tokens: number;
+    cost: number;
+  }>;
+}> {
+  try {
+    const whereConditions: string[] = [`user_id = '${params.userId}'`];
+
+    if (params.startDate) {
+      whereConditions.push(
+        `created_at >= '${params.startDate.toISOString()}'`
+      );
+    }
+
+    if (params.endDate) {
+      whereConditions.push(`created_at <= '${params.endDate.toISOString()}'`);
+    }
+
+    if (params.operation) {
+      whereConditions.push(`operation = '${params.operation}'`);
+    }
+
+    const whereClause = whereConditions.join(' AND ');
+
+    {% if saas_orm == "prisma" %}
+    const results = await prisma.$queryRaw<
+      Array<{
+        totalTokens: bigint;
+        inputTokens: bigint;
+        outputTokens: bigint;
+        embeddingTokens: bigint;
+        totalCost: number;
+      }>
+    >`
+      SELECT
+        SUM(total_tokens) as "totalTokens",
+        SUM(input_tokens) as "inputTokens",
+        SUM(output_tokens) as "outputTokens",
+        SUM(embedding_tokens) as "embeddingTokens",
+        SUM(cost) as "totalCost"
+      FROM ai_token_usage
+      WHERE ${sql.raw(whereClause)}
+    `;
+
+    const breakdown = await prisma.$queryRaw<
+      Array<{
+        operation: string;
+        model: string;
+        tokens: bigint;
+        cost: number;
+      }>
+    >`
+      SELECT
+        operation,
+        model,
+        SUM(total_tokens) as tokens,
+        SUM(cost) as cost
+      FROM ai_token_usage
+      WHERE ${sql.raw(whereClause)}
+      GROUP BY operation, model
+      ORDER BY cost DESC
+    `;
+    {% elif saas_orm == "drizzle" %}
+    const results = await db.execute<{
+      totalTokens: number;
+      inputTokens: number;
+      outputTokens: number;
+      embeddingTokens: number;
+      totalCost: number;
+    }>(sql`
+      SELECT
+        SUM(total_tokens) as "totalTokens",
+        SUM(input_tokens) as "inputTokens",
+        SUM(output_tokens) as "outputTokens",
+        SUM(embedding_tokens) as "embeddingTokens",
+        SUM(cost) as "totalCost"
+      FROM ai_token_usage
+      WHERE ${sql.raw(whereClause)}
+    `);
+
+    const breakdown = await db.execute<{
+      operation: string;
+      model: string;
+      tokens: number;
+      cost: number;
+    }>(sql`
+      SELECT
+        operation,
+        model,
+        SUM(total_tokens) as tokens,
+        SUM(cost) as cost
+      FROM ai_token_usage
+      WHERE ${sql.raw(whereClause)}
+      GROUP BY operation, model
+      ORDER BY cost DESC
+    `);
+    {% endif %}
+
+    const summary = results[0];
+
+    return {
+      totalTokens: Number(summary?.totalTokens || 0),
+      inputTokens: Number(summary?.inputTokens || 0),
+      outputTokens: Number(summary?.outputTokens || 0),
+      embeddingTokens: Number(summary?.embeddingTokens || 0),
+      totalCost: Number(summary?.totalCost || 0),
+      breakdown: breakdown.map((row) => ({
+        operation: row.operation,
+        model: row.model,
+        tokens: Number(row.tokens),
+        cost: Number(row.cost),
+      })),
+    };
+  } catch (error) {
+    console.error('Failed to get user token usage:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get token usage for an organization
+ */
+export async function getOrganizationTokenUsage(params: {
+  organizationId: string;
+  startDate?: Date;
+  endDate?: Date;
+  groupByUser?: boolean;
+}): Promise<{
+  totalTokens: number;
+  totalCost: number;
+  userBreakdown?: Array<{
+    userId: string;
+    tokens: number;
+    cost: number;
+  }>;
+}> {
+  try {
+    const whereConditions: string[] = [
+      `organization_id = '${params.organizationId}'`,
+    ];
+
+    if (params.startDate) {
+      whereConditions.push(
+        `created_at >= '${params.startDate.toISOString()}'`
+      );
+    }
+
+    if (params.endDate) {
+      whereConditions.push(`created_at <= '${params.endDate.toISOString()}'`);
+    }
+
+    const whereClause = whereConditions.join(' AND ');
+
+    {% if saas_orm == "prisma" %}
+    const results = await prisma.$queryRaw<
+      Array<{ totalTokens: bigint; totalCost: number }>
+    >`
+      SELECT
+        SUM(total_tokens) as "totalTokens",
+        SUM(cost) as "totalCost"
+      FROM ai_token_usage
+      WHERE ${sql.raw(whereClause)}
+    `;
+
+    let userBreakdown;
+    if (params.groupByUser) {
+      userBreakdown = await prisma.$queryRaw<
+        Array<{ userId: string; tokens: bigint; cost: number }>
+      >`
+        SELECT
+          user_id as "userId",
+          SUM(total_tokens) as tokens,
+          SUM(cost) as cost
+        FROM ai_token_usage
+        WHERE ${sql.raw(whereClause)}
+        GROUP BY user_id
+        ORDER BY cost DESC
+      `;
+    }
+    {% elif saas_orm == "drizzle" %}
+    const results = await db.execute<{
+      totalTokens: number;
+      totalCost: number;
+    }>(sql`
+      SELECT
+        SUM(total_tokens) as "totalTokens",
+        SUM(cost) as "totalCost"
+      FROM ai_token_usage
+      WHERE ${sql.raw(whereClause)}
+    `);
+
+    let userBreakdown;
+    if (params.groupByUser) {
+      userBreakdown = await db.execute<{
+        userId: string;
+        tokens: number;
+        cost: number;
+      }>(sql`
+        SELECT
+          user_id as "userId",
+          SUM(total_tokens) as tokens,
+          SUM(cost) as cost
+        FROM ai_token_usage
+        WHERE ${sql.raw(whereClause)}
+        GROUP BY user_id
+        ORDER BY cost DESC
+      `);
+    }
+    {% endif %}
+
+    const summary = results[0];
+
+    return {
+      totalTokens: Number(summary?.totalTokens || 0),
+      totalCost: Number(summary?.totalCost || 0),
+      userBreakdown: userBreakdown
+        ? userBreakdown.map((row) => ({
+            userId: row.userId,
+            tokens: Number(row.tokens),
+            cost: Number(row.cost),
+          }))
+        : undefined,
+    };
+  } catch (error) {
+    console.error('Failed to get organization token usage:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get token usage for a conversation
+ */
+export async function getConversationTokenUsage(
+  conversationId: string
+): Promise<{
+  totalTokens: number;
+  totalCost: number;
+  messages: number;
+}> {
+  try {
+    {% if saas_orm == "prisma" %}
+    const results = await prisma.$queryRaw<
+      Array<{
+        totalTokens: bigint;
+        totalCost: number;
+        messages: bigint;
+      }>
+    >`
+      SELECT
+        SUM(total_tokens) as "totalTokens",
+        SUM(cost) as "totalCost",
+        COUNT(DISTINCT message_id) as messages
+      FROM ai_token_usage
+      WHERE conversation_id = ${conversationId}
+    `;
+    {% elif saas_orm == "drizzle" %}
+    const results = await db.execute<{
+      totalTokens: number;
+      totalCost: number;
+      messages: number;
+    }>(sql`
+      SELECT
+        SUM(total_tokens) as "totalTokens",
+        SUM(cost) as "totalCost",
+        COUNT(DISTINCT message_id) as messages
+      FROM ai_token_usage
+      WHERE conversation_id = ${conversationId}
+    `);
+    {% endif %}
+
+    const summary = results[0];
+
+    return {
+      totalTokens: Number(summary?.totalTokens || 0),
+      totalCost: Number(summary?.totalCost || 0),
+      messages: Number(summary?.messages || 0),
+    };
+  } catch (error) {
+    console.error('Failed to get conversation token usage:', error);
+    throw error;
+  }
+}
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Calculate cost for token usage
+ */
+export function calculateCost(usage: TokenUsage): number {
+  const pricing = MODEL_PRICING[usage.model];
+
+  if (!pricing) {
+    console.warn(`Unknown model pricing: ${usage.model}`);
+    return 0;
+  }
+
+  if (usage.embeddingTokens && pricing.embedding) {
+    // Embedding cost
+    return (usage.embeddingTokens / 1000) * pricing.embedding;
+  }
+
+  // Generation cost
+  const inputCost = (usage.inputTokens / 1000) * pricing.input;
+  const outputCost = (usage.outputTokens / 1000) * pricing.output;
+
+  return inputCost + outputCost;
+}
+
+/**
+ * Check if user is within usage limits
+ */
+export async function checkUsageLimits(params: {
+  userId: string;
+  monthlyLimit?: number; // in tokens
+  costLimit?: number; // in dollars
+}): Promise<{
+  withinLimits: boolean;
+  currentUsage: number;
+  currentCost: number;
+  limit?: number;
+  costLimit?: number;
+}> {
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const usage = await getUserTokenUsage({
+    userId: params.userId,
+    startDate: startOfMonth,
+  });
+
+  const withinTokenLimit = params.monthlyLimit
+    ? usage.totalTokens < params.monthlyLimit
+    : true;
+
+  const withinCostLimit = params.costLimit
+    ? usage.totalCost < params.costLimit
+    : true;
+
+  return {
+    withinLimits: withinTokenLimit && withinCostLimit,
+    currentUsage: usage.totalTokens,
+    currentCost: usage.totalCost,
+    limit: params.monthlyLimit,
+    costLimit: params.costLimit,
+  };
+}
+
+// ============================================================================
+// Billing Integration
+// ============================================================================
+
+/**
+ * Generate usage invoice data
+ */
+export async function generateUsageInvoice(params: {
+  userId?: string;
+  organizationId?: string;
+  startDate: Date;
+  endDate: Date;
+}): Promise<{
+  totalCost: number;
+  lineItems: Array<{
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    amount: number;
+  }>;
+}> {
+  const usage = params.organizationId
+    ? await getOrganizationTokenUsage({
+        organizationId: params.organizationId,
+        startDate: params.startDate,
+        endDate: params.endDate,
+      })
+    : await getUserTokenUsage({
+        userId: params.userId!,
+        startDate: params.startDate,
+        endDate: params.endDate,
+      });
+
+  const lineItems = usage.breakdown
+    ? usage.breakdown.map((item) => ({
+        description: `${item.operation} - ${item.model}`,
+        quantity: item.tokens,
+        unitPrice: item.cost / item.tokens,
+        amount: item.cost,
+      }))
+    : [];
+
+  return {
+    totalCost: usage.totalCost,
+    lineItems,
+  };
+}
+
+// ============================================================================
+// Exports
+// ============================================================================
+
+export { MODEL_PRICING };
+{% endif %}

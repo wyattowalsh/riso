@@ -1,0 +1,313 @@
+{% if saas_infra_module == "enabled" and saas_runtime == "nextjs-16" %}
+/**
+ * Advanced Health Check Utilities
+ *
+ * Provides caching, historical tracking, and advanced monitoring features
+ */
+
+import type { HealthCheckResponse, HealthStatus } from './health';
+
+/**
+ * Health check cache entry
+ */
+interface CacheEntry {
+  data: HealthCheckResponse;
+  timestamp: number;
+  ttl: number;
+}
+
+/**
+ * Simple in-memory cache for health check results
+ */
+class HealthCheckCache {
+  private cache: Map<string, CacheEntry> = new Map();
+  private maxEntries = 100;
+
+  set(key: string, value: HealthCheckResponse, ttlSeconds = 30): void {
+    // Prevent unbounded growth
+    if (this.cache.size >= this.maxEntries) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) this.cache.delete(firstKey);
+    }
+
+    this.cache.set(key, {
+      data: value,
+      timestamp: Date.now(),
+      ttl: ttlSeconds * 1000,
+    });
+  }
+
+  get(key: string): HealthCheckResponse | null {
+    const entry = this.cache.get(key);
+
+    if (!entry) return null;
+
+    const isExpired = Date.now() - entry.timestamp > entry.ttl;
+    if (isExpired) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return entry.data;
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+
+  size(): number {
+    return this.cache.size;
+  }
+}
+
+/**
+ * Health check history tracker
+ */
+class HealthCheckHistory {
+  private history: Array<{
+    timestamp: number;
+    status: HealthStatus;
+    latency: number;
+  }> = [];
+
+  private maxHistory = 1000; // Keep last 1000 checks
+
+  record(status: HealthStatus, latency: number): void {
+    this.history.push({
+      timestamp: Date.now(),
+      status,
+      latency,
+    });
+
+    // Trim history if too large
+    if (this.history.length > this.maxHistory) {
+      this.history = this.history.slice(-this.maxHistory);
+    }
+  }
+
+  getRecent(count = 10): Array<{
+    timestamp: number;
+    status: HealthStatus;
+    latency: number;
+  }> {
+    return this.history.slice(-count);
+  }
+
+  getStats(windowMs = 3600000): {
+    healthyCount: number;
+    degradedCount: number;
+    unhealthyCount: number;
+    avgLatency: number;
+    minLatency: number;
+    maxLatency: number;
+  } {
+    const now = Date.now();
+    const window = this.history.filter(h => now - h.timestamp <= windowMs);
+
+    const healthyCount = window.filter(h => h.status === 'healthy').length;
+    const degradedCount = window.filter(h => h.status === 'degraded').length;
+    const unhealthyCount = window.filter(h => h.status === 'unhealthy').length;
+
+    const latencies = window.map(h => h.latency);
+    const avgLatency = latencies.length > 0 ? latencies.reduce((a, b) => a + b, 0) / latencies.length : 0;
+    const minLatency = latencies.length > 0 ? Math.min(...latencies) : 0;
+    const maxLatency = latencies.length > 0 ? Math.max(...latencies) : 0;
+
+    return {
+      healthyCount,
+      degradedCount,
+      unhealthyCount,
+      avgLatency,
+      minLatency,
+      maxLatency,
+    };
+  }
+
+  clear(): void {
+    this.history = [];
+  }
+}
+
+/**
+ * Health trend analyzer
+ */
+class HealthTrendAnalyzer {
+  /**
+   * Detect if there's a degradation trend
+   */
+  static detectTrend(
+    history: Array<{
+      timestamp: number;
+      status: string;
+      latency: number;
+    }>,
+    windowSize = 5
+  ): 'improving' | 'stable' | 'degrading' {
+    if (history.length < windowSize) {
+      return 'stable';
+    }
+
+    const recent = history.slice(-windowSize);
+    const healthyCounts = recent.reduce((count, h) => (h.status === 'healthy' ? count + 1 : count), 0);
+
+    const isHealthy = healthyCounts === windowSize;
+    const isDegraded = healthyCounts === 0;
+
+    if (isHealthy) return 'improving';
+    if (isDegraded) return 'degrading';
+    return 'stable';
+  }
+
+  /**
+   * Predict if status will change based on trend
+   */
+  static predictStatusChange(
+    history: Array<{
+      timestamp: number;
+      status: string;
+      latency: number;
+    }>
+  ): {
+    willDegrade: boolean;
+    probability: number;
+    reason?: string;
+  } {
+    if (history.length < 3) {
+      return { willDegrade: false, probability: 0 };
+    }
+
+    const recent = history.slice(-3);
+    const latencies = recent.map(h => h.latency);
+
+    // Check for increasing latency trend
+    const isIncreasing = latencies[1] > latencies[0] && latencies[2] > latencies[1];
+
+    if (isIncreasing) {
+      const latencyGrowth = ((latencies[2] - latencies[0]) / latencies[0]) * 100;
+
+      if (latencyGrowth > 50) {
+        return {
+          willDegrade: true,
+          probability: 0.8,
+          reason: `Latency increasing by ${Math.round(latencyGrowth)}%`,
+        };
+      }
+
+      if (latencyGrowth > 20) {
+        return {
+          willDegrade: true,
+          probability: 0.5,
+          reason: `Latency trending upward (${Math.round(latencyGrowth)}%)`,
+        };
+      }
+    }
+
+    return { willDegrade: false, probability: 0 };
+  }
+}
+
+/**
+ * Singleton cache instance
+ */
+export const healthCheckCache = new HealthCheckCache();
+
+/**
+ * Singleton history instance
+ */
+export const healthCheckHistory = new HealthCheckHistory();
+
+/**
+ * Export analyzer for use in monitoring
+ */
+export { HealthTrendAnalyzer };
+
+/**
+ * Helper to get cached health check with fallback
+ */
+export function getCachedHealth(
+  cacheKey: string,
+  fetcher: () => Promise<HealthCheckResponse>,
+  ttlSeconds = 30
+): Promise<HealthCheckResponse> {
+  const cached = healthCheckCache.get(cacheKey);
+  if (cached) {
+    return Promise.resolve(cached);
+  }
+
+  return fetcher().then(health => {
+    healthCheckCache.set(cacheKey, health, ttlSeconds);
+    healthCheckHistory.record(health.status, health.latency || 0);
+    return health;
+  });
+}
+
+/**
+ * Generate health report with statistics
+ */
+export function generateHealthReport(windowMs = 3600000): {
+  current: HealthCheckResponse | null;
+  stats: ReturnType<HealthCheckHistory['getStats']>;
+  trend: string;
+  predictions: ReturnType<HealthTrendAnalyzer['predictStatusChange']>;
+  recommendations: string[];
+} {
+  const recentHistory = healthCheckHistory.getRecent(100);
+  const stats = healthCheckHistory.getStats(windowMs);
+  const trend = HealthTrendAnalyzer.detectTrend(recentHistory);
+  const predictions = HealthTrendAnalyzer.predictStatusChange(recentHistory);
+
+  const recommendations: string[] = [];
+
+  // Generate recommendations based on stats
+  if (stats.unhealthyCount > 0) {
+    recommendations.push('Critical: Application has been unhealthy. Investigate immediately.');
+  }
+
+  if (stats.degradedCount > stats.healthyCount * 0.2) {
+    recommendations.push('Warning: High rate of degraded status. Check system resources.');
+  }
+
+  if (stats.avgLatency > 100) {
+    recommendations.push('Optimize: Average latency is high. Check database and external services.');
+  }
+
+  if (trend === 'degrading') {
+    recommendations.push('Alert: Health is trending downward. Monitor closely.');
+  }
+
+  if (predictions.willDegrade && predictions.probability > 0.7) {
+    recommendations.push(`Preventive: ${predictions.reason} - Consider scaling or optimization.`);
+  }
+
+  if (recommendations.length === 0) {
+    recommendations.push('Status: System is healthy and performing well.');
+  }
+
+  return {
+    current: recentHistory.length > 0 ? (recentHistory[recentHistory.length - 1] as any) : null,
+    stats,
+    trend,
+    predictions,
+    recommendations,
+  };
+}
+
+/**
+ * Reset all health monitoring data
+ */
+export function resetHealthMonitoring(): void {
+  healthCheckCache.clear();
+  healthCheckHistory.clear();
+}
+
+/**
+ * Format health check response for logging
+ */
+export function formatHealthLog(health: HealthCheckResponse): string {
+  const checks = Object.entries(health.checks)
+    .map(([name, check]) => `${name}=${check.status}(${check.latency || '?'}ms)`)
+    .join(' ');
+
+  return `[${health.status.toUpperCase()}] ${checks} latency=${health.latency}ms memory=${health.memory?.percentage.toFixed(1)}%`;
+}
+{% endif %}
