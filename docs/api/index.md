@@ -50,5 +50,5 @@ The maintainer `riso-mcp` server was removed in v1.2.0. See
 :hidden:
 
 Scripts <scripts>
-Template Utilities <template/index>
+Template Utilities \<template/index>
 :::

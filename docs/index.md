@@ -86,7 +86,7 @@ API Reference \<api/index>
 SaaS Starter Research Prompts \<research/saas-starter-research-prompts>
 SaaS Starter Synthesis Report \<research/saas-starter-synthesis-report>
 Changelog <changelog>
-Pre-commit Commit-msg SSOT <adr/precommit-commit-msg-ssot>
+Pre-commit Commit-msg SSOT \<adr/precommit-commit-msg-ssot>
 :::
 
 ## Core Features
