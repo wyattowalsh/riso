@@ -446,6 +446,10 @@ bootstrap_render_dependencies() {
     fi
     if ! (cd "${python_dir}" && uv sync "${sync_groups[@]}"); then
       log "Warning: uv sync failed for ${python_dir}"
+    else
+      log "Normalizing rendered Python style in ${python_dir}"
+      (cd "${python_dir}" && uv run --group quality ruff format . >/dev/null 2>&1) || true
+      (cd "${python_dir}" && uv run --group quality ruff check --fix . >/dev/null 2>&1) || true
     fi
   fi
 

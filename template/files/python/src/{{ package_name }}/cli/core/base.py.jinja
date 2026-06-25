@@ -93,7 +93,7 @@ def command(
     """
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
         # Attach metadata to function for later registration
-        cmd_name = name or func.__name__.replace("_", "-")
+        cmd_name = name or getattr(func, "__name__", "command").replace("_", "-")
         cmd_help = help or func.__doc__ or ""
         
         # Store metadata as function attributes
@@ -153,7 +153,7 @@ def get_command_metadata(func: Callable[..., Any]) -> dict[str, Any]:
         return {}
     
     return {
-        "name": getattr(func, "_cli_name", func.__name__),
+        "name": getattr(func, "_cli_name", getattr(func, "__name__", "command")),
         "help": getattr(func, "_cli_help", ""),
         "aliases": getattr(func, "_cli_aliases", []),
         "hidden": getattr(func, "_cli_hidden", False),
