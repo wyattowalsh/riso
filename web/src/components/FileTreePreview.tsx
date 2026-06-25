@@ -260,6 +260,14 @@ function buildFileTree(config: Partial<RisoConfig>): FileNode[] {
   addFile('.gitignore', root)
   addFile('README.md', root)
 
+  const taskRunner = config.task_runner || 'just'
+  if (taskRunner === 'just' || taskRunner === 'both') {
+    addFile('justfile', root)
+  }
+  if (taskRunner === 'makefile' || taskRunner === 'both') {
+    addFile('Makefile', root)
+  }
+
   // CI/CD
   if (config.ci_platform === 'github-actions') {
     const github = addFolder('.github', root)

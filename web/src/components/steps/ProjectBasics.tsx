@@ -109,6 +109,10 @@ export function ProjectBasics() {
     'ci_platform',
     'github-actions'
   )
+  const defaultTaskRunner = getPromptDefault<'just' | 'makefile' | 'both' | 'none'>(
+    'task_runner',
+    'just'
+  )
 
   const validation = validateProjectName(config.project_name || '')
 
@@ -207,6 +211,52 @@ export function ProjectBasics() {
         {getPromptHelpSummary('quality_profile') && (
           <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
             {getPromptHelpSummary('quality_profile')}
+          </p>
+        )}
+      </div>
+
+      {/* Task Runner */}
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+          Task Runner
+        </label>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <OptionCard
+            value="just"
+            label="Just"
+            description="justfile only (recommended default)"
+            icon={Shield}
+            selected={(config.task_runner || defaultTaskRunner) === 'just'}
+            onClick={() => updateConfig({ task_runner: 'just' })}
+          />
+          <OptionCard
+            value="makefile"
+            label="Makefile"
+            description="GNU Make only"
+            icon={Shield}
+            selected={config.task_runner === 'makefile'}
+            onClick={() => updateConfig({ task_runner: 'makefile' })}
+          />
+          <OptionCard
+            value="both"
+            label="Both"
+            description="Ship justfile and Makefile; docs prefer just"
+            icon={Shield}
+            selected={config.task_runner === 'both'}
+            onClick={() => updateConfig({ task_runner: 'both' })}
+          />
+          <OptionCard
+            value="none"
+            label="None"
+            description="Use uv run task quality and direct tool commands"
+            icon={Shield}
+            selected={config.task_runner === 'none'}
+            onClick={() => updateConfig({ task_runner: 'none' })}
+          />
+        </div>
+        {getPromptHelpSummary('task_runner') && (
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            {getPromptHelpSummary('task_runner')}
           </p>
         )}
       </div>

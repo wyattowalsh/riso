@@ -8,6 +8,7 @@ export interface RisoConfig {
   project_name: string
   project_layout: 'single-package' | 'monorepo'
   quality_profile: 'standard' | 'strict'
+  task_runner: 'just' | 'makefile' | 'both' | 'none'
 
   // ========================================
   // Component-First Modules
@@ -184,6 +185,7 @@ const defaultConfig: Partial<RisoConfig> = {
   project_name: '',
   project_layout: fromMatrix('project_layout', 'single-package'),
   quality_profile: fromMatrix('quality_profile', 'standard'),
+  task_runner: fromMatrix('task_runner', 'just'),
 
   // ========================================
   // Component-First Module Defaults
