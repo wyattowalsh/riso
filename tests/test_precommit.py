@@ -364,3 +364,46 @@ class TestMakefileIntegration:
         content = template_makefile_path.read_text(encoding="utf-8")
         assert "changelog_module == 'enabled' or quality_profile == 'strict'" in content
         assert "--hook-type commit-msg" in content
+
+
+class TestJustfileIntegration:
+    """Tests for justfile pre-commit targets."""
+
+    @pytest.fixture
+    def root_justfile_jinja_path(self) -> Path:
+        return Path(__file__).parents[1] / "template" / "files" / "justfile.jinja"
+
+    @pytest.fixture
+    def template_justfile_path(self) -> Path:
+        return (
+            Path(__file__).parents[1]
+            / "template"
+            / "files"
+            / "quality"
+            / "justfile.quality.jinja"
+        )
+
+    def test_template_root_justfile_imports_quality(
+        self, root_justfile_jinja_path: Path
+    ) -> None:
+        content = root_justfile_jinja_path.read_text(encoding="utf-8")
+        assert "quality/justfile.quality" in content
+
+    def test_template_justfile_has_hooks_targets(
+        self, template_justfile_path: Path
+    ) -> None:
+        content = template_justfile_path.read_text(encoding="utf-8")
+        assert "hooks:" in content
+        assert "hooks-run:" in content
+        assert "hooks-update:" in content
+
+    def test_template_python_justfile_imports_quality(self) -> None:
+        python_justfile = (
+            Path(__file__).parents[1]
+            / "template"
+            / "files"
+            / "python"
+            / "justfile.jinja"
+        )
+        content = python_justfile.read_text(encoding="utf-8")
+        assert "../quality/justfile.quality" in content

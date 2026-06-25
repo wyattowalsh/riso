@@ -43,7 +43,12 @@ class TestValidateRender:
         (tmp_path / ".pre-commit-config.yaml").write_text("repos: []\n")
 
         errors = validate_render(
-            tmp_path, {"api_module": "enabled", "api_languages": ["python"]}
+            tmp_path,
+            {
+                "api_module": "enabled",
+                "api_languages": ["python"],
+                "task_runner": "makefile",
+            },
         )
         assert any("legacy root pyproject.toml" in err for err in errors)
 
@@ -83,6 +88,33 @@ class TestMain:
         )
 
         errors = validate_render(
-            tmp_path, {"api_module": "enabled", "api_languages": ["python"]}
+            tmp_path,
+            {
+                "api_module": "enabled",
+                "api_languages": ["python"],
+                "task_runner": "makefile",
+            },
+        )
+        assert errors == []
+
+    def test_valid_just_render_passes(self, tmp_path):
+        (tmp_path / "python").mkdir()
+        (tmp_path / "python" / "pyproject.toml").write_text("[project]\nname='x'\n")
+        (tmp_path / "justfile").write_text("import 'quality/justfile.quality'\n")
+        (tmp_path / "quality").mkdir()
+        (tmp_path / "quality" / "justfile.quality").write_text("hooks:\n\ttrue\n")
+        (tmp_path / ".pre-commit-config.yaml").write_text("repos: []\n")
+        (tmp_path / ".riso").mkdir()
+        (tmp_path / ".riso" / "post_gen_metadata.json").write_text(
+            json.dumps({"pre_commit": {"install_command": "just hooks"}})
+        )
+
+        errors = validate_render(
+            tmp_path,
+            {
+                "api_module": "enabled",
+                "api_languages": ["python"],
+                "task_runner": "just",
+            },
         )
         assert errors == []

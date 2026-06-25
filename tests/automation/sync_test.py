@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Sync Test Script: Verify make quality and uv run task quality produce consistent results.
+Sync Test Script: Verify task-runner quality and uv run task quality produce consistent results.
 
 This script runs both quality command interfaces and compares:
 - Exit codes (must match exactly)
@@ -28,9 +28,13 @@ from typing import Dict, List, Optional
 class QualityRunner:
     """Runs quality commands and captures execution metrics."""
 
-    def __init__(self):
+    def __init__(self, cwd: Optional[Path] = None):
         self.results = {}
         self.make_available = shutil.which("make") is not None
+        self.just_available = shutil.which("just") is not None
+        self.cwd = cwd
+        self.has_justfile = (cwd / "justfile").exists() if cwd is not None else False
+        self.has_makefile = (cwd / "Makefile").exists() if cwd is not None else False
 
     def run_command(
         self, command: List[str], name: str, cwd: Optional[Path] = None
@@ -119,6 +123,43 @@ class QualityRunner:
 
         return self.run_command(["make", "quality"], "make quality", cwd)
 
+    def run_just_quality(self, cwd: Optional[Path] = None) -> Dict:
+        """Run 'just quality' and return metrics."""
+        if not self.just_available:
+            return {
+                "exit_code": -3,
+                "duration": 0.0,
+                "stdout": "",
+                "stderr": "just command not available",
+                "success": False,
+                "command": "just quality",
+                "skipped": True,
+            }
+
+        return self.run_command(["just", "quality"], "just quality", cwd)
+
+    def run_aggregator_quality(self, cwd: Optional[Path] = None) -> Dict:
+        """Run the primary task-runner quality command available in cwd."""
+        workdir = cwd or self.cwd
+        if workdir is not None:
+            if (workdir / "justfile").exists():
+                return self.run_just_quality(cwd)
+            if (workdir / "Makefile").exists():
+                return self.run_make_quality(cwd)
+        if self.has_justfile:
+            return self.run_just_quality(cwd)
+        if self.has_makefile:
+            return self.run_make_quality(cwd)
+        return {
+            "exit_code": -3,
+            "duration": 0.0,
+            "stdout": "",
+            "stderr": "no task aggregator found (justfile/Makefile)",
+            "success": False,
+            "command": "aggregator quality",
+            "skipped": True,
+        }
+
     def run_uv_quality(self, cwd: Optional[Path] = None) -> Dict:
         """Run 'uv run task quality' and return metrics."""
         return self.run_command(
@@ -142,6 +183,7 @@ class QualityRunner:
         comparison = {
             "exit_codes_match": make_result["exit_code"] == uv_result["exit_code"],
             "both_succeeded": make_result["success"] and uv_result["success"],
+            "aggregator_duration": make_result["duration"],
             "make_duration": make_result["duration"],
             "uv_duration": uv_result["duration"],
             "duration_variance_percent": 0.0,
@@ -150,10 +192,10 @@ class QualityRunner:
             "status": "PASS",
         }
 
-        # Check if make was skipped
+        # Check if aggregator was skipped
         if make_result.get("skipped"):
             comparison["issues"].append(
-                "make command not available - only tested uv task"
+                "task aggregator not available - only tested uv task"
             )
             comparison["status"] = "SKIP" if uv_result["success"] else "FAIL"
             return comparison
@@ -180,7 +222,7 @@ class QualityRunner:
                     comparison["status"] = "WARN"
         else:
             if not make_result["success"]:
-                comparison["issues"].append("make quality failed")
+                comparison["issues"].append("task-runner quality failed")
             if not uv_result["success"]:
                 comparison["issues"].append("uv run task quality failed")
             comparison["status"] = "FAIL"
@@ -208,12 +250,16 @@ class QualityRunner:
         """
         report = {
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "aggregator_quality": make_result,
             "make_quality": make_result,
             "uv_task_quality": uv_result,
             "comparison": comparison,
             "overall_status": comparison["status"],
             "summary": {
                 "make_available": self.make_available,
+                "just_available": self.just_available,
+                "has_justfile": self.has_justfile,
+                "has_makefile": self.has_makefile,
                 "exit_codes_match": comparison["exit_codes_match"],
                 "both_succeeded": comparison["both_succeeded"],
                 "duration_variance": f"{comparison['duration_variance_percent']:.1f}%",
@@ -252,7 +298,7 @@ class QualityRunner:
             print("\n✓ No issues found - both interfaces are synchronized")
 
         print("\nDuration Comparison:")
-        print(f"  make quality:        {comparison['make_duration']:.2f}s")
+        print(f"  task-runner quality: {comparison['make_duration']:.2f}s")
         print(f"  uv run task quality: {comparison['uv_duration']:.2f}s")
         if comparison["duration_variance_percent"] > 0:
             print(
@@ -288,10 +334,10 @@ def main():
 
     args = parser.parse_args()
 
-    runner = QualityRunner()
+    runner = QualityRunner(cwd=args.cwd)
 
     # Run both quality commands
-    make_result = runner.run_make_quality(cwd=args.cwd)
+    make_result = runner.run_aggregator_quality(cwd=args.cwd)
     uv_result = runner.run_uv_quality(cwd=args.cwd)
 
     # Compare results
