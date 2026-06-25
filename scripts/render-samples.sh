@@ -87,11 +87,11 @@ def resolve_python_cwd(destination: Path) -> Path | None:
 
 
 def resolve_node_cwd(destination: Path) -> Path | None:
+    if (destination / "package.json").exists() or (destination / "pnpm-workspace.yaml").exists():
+        return destination
     node_root = destination / "node"
     if (node_root / "package.json").exists() or (node_root / "pnpm-workspace.yaml").exists():
         return node_root
-    if (destination / "package.json").exists() or (destination / "pnpm-workspace.yaml").exists():
-        return destination
     return None
 
 
@@ -110,12 +110,15 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
     docs_reason = "Documentation module disabled."
     if docs_enabled and docs_framework == "fumadocs":
         docs_cwd = node_cwd
-        fumadocs_pkg = (
-            (node_cwd / "docs" / "fumadocs" / "package.json")
-            if node_cwd
-            else None
-        )
-        if fumadocs_pkg and fumadocs_pkg.exists() and node_install_ready:
+        fumadocs_pkg = None
+        for candidate in (
+            destination_path / "node" / "docs" / "fumadocs" / "package.json",
+            destination_path / "docs" / "fumadocs" / "package.json",
+        ):
+            if candidate.exists():
+                fumadocs_pkg = candidate
+                break
+        if fumadocs_pkg and node_install_ready:
             docs_command = ["pnpm", "--filter", "docs-fumadocs", "build"]
             docs_reason = "Fumadocs build command configured."
         else:
@@ -131,10 +134,15 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
             docs_reason = "Sphinx scaffold not present for this rendered variant."
     elif docs_enabled and docs_framework == "docusaurus":
         docs_cwd = node_cwd
-        docusaurus_pkg = (
-            (node_cwd / "docs" / "docusaurus" / "package.json") if node_cwd else None
-        )
-        if docusaurus_pkg and docusaurus_pkg.exists() and node_install_ready:
+        docusaurus_pkg = None
+        for candidate in (
+            destination_path / "node" / "docs" / "docusaurus" / "package.json",
+            destination_path / "docs" / "docusaurus" / "package.json",
+        ):
+            if candidate.exists():
+                docusaurus_pkg = candidate
+                break
+        if docusaurus_pkg and node_install_ready:
             docs_command = ["pnpm", "--filter", "docs-docusaurus", "build"]
             docs_reason = "Docusaurus build command configured."
         else:
@@ -425,10 +433,10 @@ bootstrap_render_dependencies() {
     fi
   fi
 
-  if [[ -f "${destination}/node/package.json" || -f "${destination}/node/pnpm-workspace.yaml" ]]; then
-    node_dir="${destination}/node"
-  elif [[ -f "${destination}/package.json" || -f "${destination}/pnpm-workspace.yaml" ]]; then
+  if [[ -f "${destination}/package.json" || -f "${destination}/pnpm-workspace.yaml" ]]; then
     node_dir="${destination}"
+  elif [[ -f "${destination}/node/package.json" || -f "${destination}/node/pnpm-workspace.yaml" ]]; then
+    node_dir="${destination}/node"
   fi
 
   if [[ -n "${node_dir}" ]]; then
