@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.2.11](https://github.com/wyattowalsh/riso/compare/v1.2.10...v1.2.11) (2026-06-26)
+
+### Bug Fixes
+
+* **template:** unblock cli-docs quality smoke for pylint and coverage ([ae1a585](https://github.com/wyattowalsh/riso/commit/ae1a585a4d6dadcc0a992f111892ba8f973cc9d5))
+
 ## [1.2.10](https://github.com/wyattowalsh/riso/compare/v1.2.9...v1.2.10) (2026-06-25)
 
 ### Bug Fixes
