@@ -137,7 +137,7 @@ Contributions are welcome! Please read our contributing guidelines:
 1. Fork the repository
 1. Create a feature branch: `git checkout -b feat/amazing-feature`
 1. Make your changes
-1. Run quality checks: `make quality`
+1. Run quality checks: `just quality`
 1. Commit with conventional commits: `feat: add amazing feature`
 1. Push and open a Pull Request
 
