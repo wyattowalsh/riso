@@ -19,35 +19,35 @@
 
 | Context                                    | Audience             | Quality                          | Tests                                   |
 | ------------------------------------------ | -------------------- | -------------------------------- | --------------------------------------- |
-| **This repo** (`riso/`)                    | Template maintainers | `make quality`                   | `tests/`, `scripts/`, `template/hooks/` |
-| **Rendered project** (`samples/*/render/`) | Generated app users  | `make quality` inside render dir | Package-specific                        |
+| **This repo** (`riso/`)                    | Template maintainers | `just quality`                   | `tests/`, `scripts/`, `template/hooks/` |
+| **Rendered project** (`samples/*/render/`) | Generated app users  | `just quality` or `make quality` | Package-specific                        |
 
 ## Quick Reference
 
 <!-- agents-md:auto -->
 
-Maintainer commands — authoritative source: `make help`.
+Maintainer commands — authoritative source: `just --list` (`justfile`). `make <target>` forwards to `just` for compatibility.
 
 | Task                      | Command                                              |
 | ------------------------- | ---------------------------------------------------- |
-| Install all deps          | `make install` or `uv sync --group dev --group docs` |
-| Full setup (deps + hooks) | `make setup`                                         |
-| Check tooling             | `make setup-check`                                   |
-| Bootstrap dev tools       | `make bootstrap`                                     |
-| **Quality suite**         | `make quality`                                       |
-| Lint                      | `make lint`                                          |
-| Typecheck (ty)            | `make typecheck`                                     |
-| Test                      | `make test`                                          |
-| Test + coverage           | `make test-cov`                                      |
-| Pre-commit (all)          | `make hooks`                                         |
-| Render samples            | `make samples` or `./scripts/render-samples.sh`      |
-| Docs dev server           | `make docs`                                          |
-| Docs build                | `make docs-build`                                    |
-| CI locally                | `make ci`                                            |
+| Install all deps          | `just install` or `uv sync --group dev --group docs` |
+| Full setup (deps + hooks) | `just setup`                                         |
+| Check tooling             | `just setup-check`                                   |
+| Bootstrap dev tools       | `just bootstrap`                                     |
+| **Quality suite**         | `just quality`                                       |
+| Lint                      | `just lint`                                          |
+| Typecheck (ty)            | `just typecheck`                                     |
+| Test                      | `just test`                                          |
+| Test + coverage           | `just test-cov`                                      |
+| Pre-commit (all)          | `just hooks`                                         |
+| Render samples            | `just samples` or `./scripts/render-samples.sh`      |
+| Docs dev server           | `just docs`                                          |
+| Docs build                | `just docs-build`                                    |
+| CI locally                | `just ci`                                            |
 | Riso CLI                  | `uv sync --group cli` then `uv run riso --help`      |
 | Render matrix             | `uv run python scripts/ci/render_matrix.py`          |
 | Context sync check        | `uv run python scripts/ci/verify_context_sync.py`    |
-| Validate AGENTS ecosystem | `make validate-agents`                               |
+| Validate AGENTS ecosystem | `just validate-agents`                               |
 
 **Riso CLI** (template operations):
 
@@ -64,8 +64,8 @@ uv run riso copy ./dest --answers-file path.yml
 
 ```bash
 git clone https://github.com/wyattowalsh/riso.git && cd riso
-make setup                    # install + pre-commit hooks
-make setup-check              # verify tooling (via scripts/setup/setup.sh)
+just setup                    # install + pre-commit hooks
+just setup-check              # verify tooling (via scripts/setup/setup.sh)
 uv run pytest tests/ -x -q    # smoke test
 ```
 
@@ -80,7 +80,7 @@ Bootstrap tooling: [scripts/setup/README.md](scripts/setup/README.md). Windows: 
 - **Markers**: `slow`, `integration`, `unit`
 
 ```bash
-make test                              # preferred
+just test                              # preferred
 uv run pytest                          # equivalent
 uv run pytest tests/unit/test_cli/ -v  # CLI only
 uv run pytest -m "not slow"            # skip slow
@@ -93,7 +93,7 @@ uv run pytest -m integration           # integration only
 
 <!-- agents-md:auto -->
 
-`make quality` runs **lint → typecheck → test** per `Makefile`:
+`just quality` runs **lint → typecheck → test** per `justfile`:
 
 | Target      | Command scope                                                                   |
 | ----------- | ------------------------------------------------------------------------------- |
@@ -101,12 +101,12 @@ uv run pytest -m integration           # integration only
 | `typecheck` | `ty check scripts template/hooks`                                               |
 | `test`      | `pytest tests`                                                                  |
 
-Pylint runs via **pre-commit**, not `make quality`. Config: `pyproject.toml` (`[tool.ruff]`, `[tool.ty]`, `[tool.pylint]`).
+Pylint runs via **pre-commit**, not `just quality`. Config: `pyproject.toml` (`[tool.ruff]`, `[tool.ty]`, `[tool.pylint]`).
 
 ```bash
-make quality      # full suite
-make lint-fix     # auto-fix ruff issues
-make security     # pip-audit
+just quality      # full suite
+just lint-fix     # auto-fix ruff issues
+just security     # pip-audit
 ```
 
 For **rendered projects** inside `samples/*/render/`, quality tooling is template-generated — see [docs/guides/quickstart.md](docs/guides/quickstart.md).
@@ -123,7 +123,7 @@ For **rendered projects** inside `samples/*/render/`, quality tooling is templat
 
 ```bash
 uv run pre-commit install --install-hooks
-make hooks
+just hooks
 ```
 
 CI skips some hooks locally enforced (ty, pylint, pytest, vulture); gitleaks runs in `.github/workflows/gitleaks.yml`.
@@ -144,6 +144,8 @@ CI skips some hooks locally enforced (ty, pylint, pytest, vulture); gitleaks run
 | `security-scan`    | pip-audit                                                                      |
 | `docs-build`       | Sphinx build + linkcheck                                                       |
 | `validate-samples` | Render + smoke-test sample variants                                            |
+| `validate-agents-ecosystem` | AGENTS.md bridges, render smoke, quality parity in samples          |
+| `verify-context-sync` | `.github/context/` ↔ template context byte parity                         |
 | `web-tests`        | Web wizard unit/lint/build + Playwright E2E (`web/`)                           |
 
 Other workflows: `gitleaks.yml`, `codeql.yml`, `release.yml`, `matrix-data.yml`, `pre-commit.yml`, `sbom.yml`.
@@ -151,9 +153,18 @@ Other workflows: `gitleaks.yml`, `codeql.yml`, `release.yml`, `matrix-data.yml`,
 **PR checks** (`.github/workflows/quality.yml` — configure required status in GitHub branch protection):
 
 - `quality` (matrix across Python 3.11–3.13 × standard/strict)
-- `sync-test`, `lint-workflows`, `cli-tests`, `security-scan`, `docs-build`, `validate-samples`, `web-tests`
+- `sync-test`, `lint-workflows`, `cli-tests`, `security-scan`, `docs-build`, `validate-samples`, `validate-agents-ecosystem`, `verify-context-sync`, `web-tests`
 
-**Local CI parity**: `make ci` (install + quality suite).
+**Local CI parity**:
+
+| Recipe | Scope |
+| ------ | ----- |
+| `just quality` | Maintainer lint + typecheck + pytest (fast default) |
+| `just ci` | `install` + `just quality` |
+| `just ci-full` | `run_quality_suite.py` (standard) + pytest with `--cov-fail-under=70` |
+| `just ci-strict` | `run_quality_suite.py` (strict profile, adds pylint) |
+
+`sync-test` validates **rendered** sample just/make parity (`samples/api-python/render/python`), not the maintainer Makefile shim.
 
 ## CI Scripts Reference
 
@@ -225,7 +236,8 @@ riso/
 ├── specs/                   # Spec Kit feature workspace
 ├── web/                     # Template configurator (pnpm; optional for template work)
 ├── pyproject.toml           # Maintainer Python config + dependency groups
-└── Makefile                 # Command SSOT for maintainers
+├── justfile                 # Command SSOT for maintainers
+└── Makefile                 # Thin shim → `just` (template tracks still ship both)
 ```
 
 **Security-critical**: `template/hooks/`, `scripts/ci/verify_context_sync.py`
@@ -250,10 +262,10 @@ Inside `samples/<variant>/render/` only — full matrix: [docs/guides/testing-st
 
 ```bash
 cd samples/default/render
-uv sync && make quality
+uv sync && just quality
 ```
 
-Do **not** copy rendered-project quality patterns into maintainer `make quality` expectations.
+Do **not** copy rendered-project quality patterns into maintainer `just quality` expectations.
 
 ### Spec Kit
 
@@ -292,8 +304,8 @@ Brief conventions — examples in existing code:
 **Pull requests**:
 
 1. Branch from `main`
-1. `make hooks` or `uv run pre-commit run --all-files`
-1. `make quality`
+1. `just hooks` or `uv run pre-commit run --all-files`
+1. `just quality`
 1. Squash merge; delete branch
 
 ## Boundaries
@@ -302,7 +314,7 @@ Brief conventions — examples in existing code:
 
 ### Always Do
 
-- `make quality` before pushing maintainer changes
+- `just quality` before pushing maintainer changes
 - `uv run` for all Python commands
 - Update tests when changing behavior
 - Keep `.github/context/` synced with template (`verify_context_sync.py`)
@@ -337,7 +349,7 @@ Brief conventions — examples in existing code:
 
 ### Docs Stewardship
 
-- Maintainer docs: `docs/` (Sphinx Shibuya) — `make docs` / `make docs-build`
+- Maintainer docs: `docs/` (Sphinx Shibuya) — `just docs` / `just docs-build`
 - Mirror navigation/config changes to `template/files/python/docs/`
 - Doc deps: `uv sync --group docs` (`pyproject.toml` `[dependency-groups.docs]`)
 
