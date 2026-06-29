@@ -10,7 +10,13 @@ import yaml
 from riso.cli.helpers import parse_data_pairs
 from riso.core.answers import prepare_copier_data, reject_removed_answer_keys
 from riso.core.diff import compute_diff
-from riso.core.errors import CopierOperationError, PathNotFoundError
+from riso.core.errors import (
+    CopierOperationError,
+    PathNotFoundError,
+    ValidationFailedError,
+)
+from riso.core.names import validate_identity_fields
+from riso.core.paths import validate_destination
 from riso.template import run_recopy as template_run_recopy
 
 if TYPE_CHECKING:
@@ -26,7 +32,7 @@ def run_recopy(
     dry_run: bool = False,
 ) -> dict:
     """Recopy an existing Copier project."""
-    dest_path = Path(destination).expanduser().resolve()
+    dest_path = validate_destination(destination)
     if not dest_path.exists():
         raise PathNotFoundError(str(dest_path))
 
@@ -36,6 +42,9 @@ def run_recopy(
 
         provided = {**load_answers_file(answers_file), **provided}
     reject_removed_answer_keys(provided)
+    identity_errors = validate_identity_fields(provided)
+    if identity_errors:
+        raise ValidationFailedError(identity_errors)
 
     if dry_run:
         existing: dict = {}
@@ -49,6 +58,7 @@ def run_recopy(
             destination=dest_path,
             template_path=config.template_path,
             operation="recopy",
+            timeout=config.timeout,
         )
         return diff.to_dict()
 
@@ -57,6 +67,7 @@ def run_recopy(
             destination=dest_path,
             data=provided or None,
             template_path=config.template_path,
+            force_unsafe=config.force_unsafe,
             timeout=config.timeout,
         )
     except Exception as exc:

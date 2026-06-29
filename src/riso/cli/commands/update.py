@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from riso.core.diff import compute_diff
 from riso.core.errors import CopierOperationError, PathNotFoundError
+from riso.core.paths import validate_destination
 from riso.template import run_update as template_run_update
 
 if TYPE_CHECKING:
@@ -21,7 +21,7 @@ def run_update(
     dry_run: bool = False,
 ) -> dict:
     """Update an existing Copier project."""
-    dest_path = Path(destination).expanduser().resolve()
+    dest_path = validate_destination(destination)
     if not dest_path.exists():
         raise PathNotFoundError(str(dest_path))
 
@@ -44,6 +44,7 @@ def run_update(
             destination=dest_path,
             template_path=config.template_path,
             operation="update",
+            timeout=config.timeout,
         )
         return diff.to_dict()
 
@@ -52,6 +53,7 @@ def run_update(
             destination=dest_path,
             template_path=config.template_path,
             skip_answered=skip_answered,
+            force_unsafe=config.force_unsafe,
             timeout=config.timeout,
         )
     except Exception as exc:

@@ -102,6 +102,13 @@ def global_options(
         Optional[int],
         typer.Option("--timeout", help="Timeout seconds for Copier operations."),
     ] = 300,
+    force_unsafe: Annotated[
+        bool,
+        typer.Option(
+            "--force-unsafe",
+            help="Allow Copier unsafe template features (Jinja extensions).",
+        ),
+    ] = False,
 ) -> None:
     """Global options stored on Typer context."""
     ctx.ensure_object(dict)
@@ -109,6 +116,7 @@ def global_options(
         template_path=template_path,
         samples_path=samples_path,
         timeout=timeout,
+        force_unsafe=force_unsafe,
     )
     ctx.obj["cli"] = _ctx(
         json_output=json_output,
@@ -437,6 +445,7 @@ _GLOBAL_FLAGS = {
     "--template-path",
     "--samples-path",
     "--timeout",
+    "--force-unsafe",
     "--help",
     "-h",
 }

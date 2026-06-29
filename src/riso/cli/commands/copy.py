@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from riso.cli.helpers import resolve_answers, validate_and_raise
 from riso.core.diff import compute_diff
 from riso.core.errors import CopierOperationError
-from riso.core.paths import validate_destination
+from riso.core.paths import external_template_warning, validate_destination
 from riso.template import run_generator
 
 if TYPE_CHECKING:
@@ -34,14 +34,24 @@ def run_copy(
     )
     validate_and_raise(answers, config.template_path)
 
+    warnings: list[str] = []
+    trust_warning = external_template_warning(config.template_path)
+    if trust_warning:
+        warnings.append(trust_warning)
+
     if dry_run:
         diff = compute_diff(
             answers=answers,
             destination=dest_path,
             template_path=config.template_path,
             operation="copy",
+            timeout=config.timeout,
+            force_unsafe=config.force_unsafe,
         )
-        return diff.to_dict()
+        payload = diff.to_dict()
+        if warnings:
+            payload["warnings"] = warnings
+        return payload
 
     try:
         result = run_generator(
@@ -49,10 +59,14 @@ def run_copy(
             data=answers,
             template_path=config.template_path,
             force=force,
+            force_unsafe=config.force_unsafe,
             vcs_ref=vcs_ref,
             timeout=config.timeout,
         )
     except Exception as exc:
         raise CopierOperationError("copy", str(exc)) from exc
 
-    return result.to_dict()
+    payload = result.to_dict()
+    if warnings:
+        payload["warnings"] = warnings
+    return payload

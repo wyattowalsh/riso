@@ -102,6 +102,12 @@ def handle_exception(ctx: CliContext, exc: BaseException) -> None:
             errors=_error_messages(exc),
             exit_code=exc.exit_code,
         )
+    if isinstance(exc, FileExistsError):
+        emit_error(
+            ctx,
+            str(exc),
+            exit_code=ExitCode.USAGE_OR_VALIDATION,
+        )
     if isinstance(exc, SystemExit):
         raise
     if isinstance(exc, KeyboardInterrupt):

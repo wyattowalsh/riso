@@ -15,6 +15,8 @@ import ast
 
 from riso.core.answers import prepare_copier_data
 from riso.core.errors import OperationTimeoutError
+from riso.core.names import validate_identity_fields
+from riso.core.paths import validate_destination
 
 
 @dataclass
@@ -331,12 +333,18 @@ def _safe_eval(expr: str, context: dict[str, Any]) -> bool:
     return bool(eval_node(node))
 
 
-def _evaluate_when(expr: str | None, context: dict[str, Any]) -> bool:
+def _evaluate_when(
+    expr: str | None,
+    context: dict[str, Any],
+    warnings: list[str] | None = None,
+) -> bool:
     if not expr:
         return True
     try:
         rendered = _render_template(expr, context).strip()
-    except Exception:
+    except Exception as exc:
+        if warnings is not None:
+            warnings.append(f"when expression render failed for {expr!r}: {exc}")
         return False
     if rendered == "":
         return False
@@ -349,7 +357,11 @@ def _evaluate_when(expr: str | None, context: dict[str, Any]) -> bool:
         return True
     try:
         return _safe_eval(rendered, context)
-    except Exception:
+    except Exception as exc:
+        if warnings is not None:
+            warnings.append(
+                f"when expression eval failed for {expr!r} -> {rendered!r}: {exc}"
+            )
         return False
 
 
@@ -370,6 +382,8 @@ def validate_answers(
     errors: list[str] = []
     warnings: list[str] = []
 
+    errors.extend(validate_identity_fields(answers))
+
     # Unknown keys are warnings (not fatal).
     for key in answers:
         if key not in prompts and key not in defaults:
@@ -380,7 +394,7 @@ def validate_answers(
             continue
         prompt_def = prompt if isinstance(prompt, dict) else {}
         when_expr = prompt_def.get("when")
-        if not _evaluate_when(when_expr, context):
+        if not _evaluate_when(when_expr, context, warnings):
             continue
 
         has_answer = key in answers
@@ -393,7 +407,11 @@ def validate_answers(
 
         value = answers.get(key)
         prompt_type = prompt_def.get("type")
-        if prompt_type:
+        multiselect = bool(prompt_def.get("multiselect"))
+        if multiselect:
+            if not isinstance(value, list):
+                errors.append(f"{key}: expected list for multiselect")
+        elif prompt_type:
             if prompt_type == "bool" and not isinstance(value, bool):
                 errors.append(f"{key}: expected bool")
             elif prompt_type == "int" and not isinstance(value, int):
@@ -410,7 +428,12 @@ def validate_answers(
         choices = prompt_def.get("choices")
         if choices:
             choice_list = list(choices.keys()) if isinstance(choices, dict) else choices
-            if value not in choice_list:
+            if multiselect:
+                if isinstance(value, list):
+                    for item in value:
+                        if item not in choice_list:
+                            errors.append(f"{key}: invalid choice '{item}'")
+            elif value not in choice_list:
                 errors.append(f"{key}: invalid choice '{value}'")
 
     return ValidationResult(valid=len(errors) == 0, errors=errors, warnings=warnings)
@@ -465,9 +488,9 @@ def get_module_catalog(
 ) -> dict[str, Any]:
     """Load the module catalog and render Jinja placeholders."""
     template_root = template_path or get_template_path()
-    catalog_path = template_root / "files" / "shared" / "module_catalog.json.jinja"
+    catalog_path = template_root / "files" / "module_catalog.json.jinja"
     if not catalog_path.exists():
-        catalog_path = template_root / "files" / "shared" / "module_catalog.json"
+        catalog_path = template_root / "files" / "module_catalog.json"
     if not catalog_path.exists():
         return {"modules": [], "error": "module_catalog.json not found"}
 
@@ -524,11 +547,12 @@ def run_generator(
     data: dict[str, Any],
     template_path: Path,
     force: bool = False,
+    force_unsafe: bool = False,
     vcs_ref: str | None = None,
     timeout: int | None = None,
 ) -> OperationResult:
     """Generate a new project using Copier."""
-    dest_path = destination.expanduser().resolve()
+    dest_path = validate_destination(str(destination))
     if dest_path.exists() and not force:
         raise FileExistsError(
             f"Destination already exists: {dest_path}. Use force to overwrite."
@@ -545,7 +569,7 @@ def run_generator(
             "data": prepare_copier_data(data),
             "vcs_ref": vcs_ref,
             "overwrite": force,
-            "unsafe": True,
+            "unsafe": force_unsafe,
             "skip_tasks": True,
         },
     )
@@ -571,10 +595,11 @@ def run_update(
     destination: Path,
     template_path: Path,
     skip_answered: bool = True,
+    force_unsafe: bool = False,
     timeout: int | None = None,
 ) -> OperationResult:
     """Update an existing project using Copier."""
-    dest_path = destination.expanduser().resolve()
+    dest_path = validate_destination(str(destination))
     if not dest_path.exists():
         raise FileNotFoundError(dest_path)
 
@@ -587,8 +612,9 @@ def run_update(
         run_update,
         {
             "skip_answered": skip_answered,
-            "unsafe": True,
+            "unsafe": force_unsafe,
             "skip_tasks": True,
+            "defaults": {"_src_path": str(template_path)},
         },
     )
 
@@ -612,10 +638,11 @@ def run_recopy(
     destination: Path,
     data: dict[str, Any] | None,
     template_path: Path,
+    force_unsafe: bool = False,
     timeout: int | None = None,
 ) -> OperationResult:
     """Recopy an existing project using Copier."""
-    dest_path = destination.expanduser().resolve()
+    dest_path = validate_destination(str(destination))
     if not dest_path.exists():
         raise FileNotFoundError(dest_path)
 
@@ -624,12 +651,13 @@ def run_recopy(
     except ModuleNotFoundError as exc:
         raise RuntimeError("Copier is required to recopy projects.") from exc
 
-    copier_data = prepare_copier_data(data) if data else None
+    copier_data = prepare_copier_data(data) if data else {}
+    copier_data = {**copier_data, "_src_path": str(template_path)}
     kwargs = _filter_kwargs(
         run_recopy,
         {
             "data": copier_data,
-            "unsafe": True,
+            "unsafe": force_unsafe,
             "skip_tasks": True,
         },
     )
@@ -649,6 +677,8 @@ def run_recopy(
     )
 
 
+run_with_timeout = _run_with_timeout
+
 __all__ = [
     "OperationResult",
     "ValidationResult",
@@ -665,4 +695,5 @@ __all__ = [
     "run_generator",
     "run_update",
     "run_recopy",
+    "run_with_timeout",
 ]
