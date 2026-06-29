@@ -1,6 +1,7 @@
 """Unit tests for pre_gen_project.py hook."""
 
 import json
+import os
 import pytest
 from typing import Any
 
@@ -712,15 +713,17 @@ class TestParametrizedCiPlatformValidation:
         "ci_value,expected",
         [
             ("github-actions", "github-actions"),
+            ("gitlab-ci", "gitlab-ci"),
+            ("circleci", "circleci"),
             ("none", "none"),
             ("jenkins", "github-actions"),  # Invalid, falls back to default
-            ("gitlab-ci", "github-actions"),  # Invalid, falls back to default
         ],
         ids=[
             "valid_github_actions",
+            "valid_gitlab_ci",
+            "valid_circleci",
             "valid_none",
             "invalid_jenkins",
-            "invalid_gitlab",
         ],
     )
     def test_load_ci_platform_parametrized(
@@ -1091,3 +1094,59 @@ class TestNormalizeApiFeatureModules:
             }
         )
         assert result["websocket_module"] == "enabled"
+
+
+@pytest.mark.unit
+class TestWriteCopierContext:
+    """Tests for writing normalized context back to Copier env vars."""
+
+    def test_updates_existing_copier_answers(self, monkeypatch):
+        from pre_gen_project import _write_copier_context
+
+        monkeypatch.setenv("COPIER_ANSWERS", json.dumps({"api_features": "websocket"}))
+        monkeypatch.delenv("COPIER_JINJA2_CONTEXT", raising=False)
+
+        _write_copier_context(
+            {
+                "api_features": "websocket",
+                "websocket_module": "enabled",
+            }
+        )
+
+        updated = json.loads(os.environ["COPIER_ANSWERS"])
+        assert updated["websocket_module"] == "enabled"
+
+
+@pytest.mark.unit
+class TestMainContextMerge:
+    """Tests for api_features normalization during main()."""
+
+    def test_merges_api_feature_modules_into_env_context(
+        self,
+        tmp_path,
+        monkeypatch,
+        mock_shutil_which_found,
+        mock_subprocess_success,
+        mock_tool_check_success,
+    ):
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv(
+            "COPIER_ANSWERS",
+            json.dumps(
+                {
+                    "api_features": "graphql,websocket",
+                    "graphql_api_module": "disabled",
+                    "websocket_module": "disabled",
+                    "saas_infra_module": "disabled",
+                    "docs_module": "disabled",
+                }
+            ),
+        )
+
+        from pre_gen_project import main
+
+        main()
+
+        updated = json.loads(os.environ["COPIER_ANSWERS"])
+        assert updated["graphql_api_module"] == "enabled"
+        assert updated["websocket_module"] == "enabled"

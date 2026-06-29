@@ -23,7 +23,7 @@ REPO_ROOT = DOCS_DIR.parent
 PKG_ROOT = REPO_ROOT / "packages"
 APP_ROOT = REPO_ROOT / "apps"
 PROJECT_SLUG = "riso"
-ORG_SLUG = "openai"
+ORG_SLUG = "wyattowalsh"
 DEFAULT_BRANCH = os.getenv("DOCS_BRANCH", "main")
 
 
