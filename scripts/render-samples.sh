@@ -4,6 +4,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SAMPLES_DIR="${REPO_ROOT}/samples"
 COPIER_CMD=${COPIER_CMD:-copier}
+COPIER_CMD_ARR=()
 
 log() {
   printf "[render-samples] %s\n" "$*" >&2
@@ -11,13 +12,16 @@ log() {
 
 resolve_copier_cmd() {
   local cmd="${COPIER_CMD:-copier}"
+  COPIER_CMD_ARR=()
   if [[ "$cmd" == "copier" ]]; then
     if command -v copier >/dev/null 2>&1; then
       COPIER_CMD=copier
+      COPIER_CMD_ARR=(copier)
       return 0
     fi
     if [[ -x "${REPO_ROOT}/.venv/bin/copier" ]]; then
       COPIER_CMD="${REPO_ROOT}/.venv/bin/copier"
+      COPIER_CMD_ARR=("${REPO_ROOT}/.venv/bin/copier")
       return 0
     fi
     echo "ERROR: copier not found in PATH or ${REPO_ROOT}/.venv/bin/copier" >&2
@@ -26,15 +30,31 @@ resolve_copier_cmd() {
   fi
   if [[ "$cmd" == "uv run copier" ]]; then
     COPIER_CMD="uv run copier"
+    COPIER_CMD_ARR=(uv run copier)
     return 0
   fi
   if [[ -x "$cmd" ]]; then
+    local base
+    base="$(basename "$cmd")"
+    if [[ "$base" != "copier" ]]; then
+      echo "ERROR: COPIER_CMD must resolve to a copier binary (basename: ${base})" >&2
+      return 1
+    fi
     COPIER_CMD="$cmd"
+    COPIER_CMD_ARR=("$cmd")
     return 0
   fi
   echo "ERROR: Invalid COPIER_CMD: $cmd" >&2
   echo "Must be 'copier', 'uv run copier', or an absolute path to the copier binary" >&2
   return 1
+}
+
+canonicalize_answers_path() {
+  local answers="$1"
+  if [[ "${answers}" != /* ]]; then
+    answers="${REPO_ROOT}/${answers#./}"
+  fi
+  printf '%s' "${answers}"
 }
 
 run_module_smoke_tests() {
@@ -471,6 +491,31 @@ bootstrap_render_dependencies() {
   fi
 }
 
+validate_render_paths() {
+  local variant="$1"
+  local answers_file="$2"
+  local destination="$3"
+
+  if [[ ! "${variant}" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]]; then
+    log "ERROR: Invalid variant name: ${variant}"
+    exit 1
+  fi
+
+  if [[ "${answers_file}" != "${SAMPLES_DIR}/"* ]]; then
+    log "ERROR: Answers file must live under ${SAMPLES_DIR}: ${answers_file}"
+    exit 1
+  fi
+  if [[ ! -f "${answers_file}" ]]; then
+    log "ERROR: Answers file not found: ${answers_file}"
+    exit 1
+  fi
+
+  if [[ "${destination}" != "${SAMPLES_DIR}/"*"/render" ]]; then
+    log "ERROR: Destination must be samples/<variant>/render (got ${destination})"
+    exit 1
+  fi
+}
+
 render_variant() {
   local variant="$1"
   local answers_file="$2"
@@ -479,12 +524,15 @@ render_variant() {
   local end_ts
   local duration
 
+  validate_render_paths "${variant}" "${answers_file}" "${destination}"
+
   log "Rendering variant '${variant}' using answers '${answers_file}'"
+  log "Removing existing render directory: ${destination}"
   start_ts=$(date +%s)
   rm -rf "${destination}"
   mkdir -p "$(dirname "${destination}")"
   resolve_copier_cmd || exit 1
-  ${COPIER_CMD} copy \
+  "${COPIER_CMD_ARR[@]}" copy \
     --trust \
     --vcs-ref=HEAD \
     --data-file "${answers_file}" \
@@ -516,6 +564,9 @@ Usage: $0 [--variant NAME --answers FILE] [--validate-containers]
 
 Without arguments the script renders the default sample. When --variant and
 --answers are provided it renders just that combination.
+
+This script deletes the target render directory with rm -rf before copying.
+Paths are constrained to samples/<variant>/render under this repository.
 
 Options:
   --validate-containers   Run Dockerfile validation after rendering
@@ -567,6 +618,7 @@ main() {
     exit 1
   fi
 
+  answers="$(canonicalize_answers_path "${answers}")"
   render_variant "${variant}" "${answers}" "${SAMPLES_DIR}/${variant}/render"
 
   if [[ "${validate_containers}" == "true" ]]; then
