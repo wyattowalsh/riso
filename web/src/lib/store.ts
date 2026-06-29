@@ -336,7 +336,7 @@ export const useRisoStore = create<RisoStore>()(
 
       resetConfig: () =>
         set({
-          config: defaultConfig,
+          config: { ...defaultConfig },
           currentStep: 0,
         }),
 
@@ -371,7 +371,7 @@ export const useRisoStore = create<RisoStore>()(
       loadFromHistory: (id) => {
         const history = get().history.find((h) => h.id === id)
         if (history) {
-          set({ config: history.config })
+          set({ config: structuredClone(history.config) })
         }
       },
 

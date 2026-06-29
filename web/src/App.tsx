@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Wizard } from './components/Wizard'
 import { Header } from './components/Header'
 import { Presets } from './components/presets'
@@ -8,10 +9,18 @@ import { DocsCallout } from './components/DocsCallout'
 import { Footer } from './components/Footer'
 import { SidebarSummary } from './components/SidebarSummary'
 import { MobileDrawer } from './components/MobileDrawer'
+import { parseShareableURL } from './lib/presets'
 import { useRisoStore } from './lib/store'
 
 export default function App() {
-  const { isDrawerOpen, setDrawerOpen } = useRisoStore()
+  const { isDrawerOpen, setDrawerOpen, updateConfig } = useRisoStore()
+
+  useEffect(() => {
+    const presetConfig = parseShareableURL(window.location.href)
+    if (presetConfig) {
+      updateConfig(presetConfig)
+    }
+  }, [updateConfig])
 
   return (
     <div className="min-h-screen riso-backdrop">
