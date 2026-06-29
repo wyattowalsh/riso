@@ -529,6 +529,20 @@ describe('Configuration Validation System', () => {
     })
   })
 
+  describe('SaaS strict quality recommendation', () => {
+    it('emits a single saas-strict-quality warning from validation.ts', () => {
+      const results = validateConfig(
+        testConfig({
+          saas_auth_module: 'enabled',
+          saas_auth_provider: 'clerk',
+          quality_profile: 'standard',
+        }),
+      )
+      const strictWarnings = results.filter((r) => r.id === 'saas-strict-quality')
+      expect(strictWarnings).toHaveLength(1)
+    })
+  })
+
   describe('VALIDATION_RULES constant', () => {
     it('should contain expected rule IDs', () => {
       const ruleIds = VALIDATION_RULES.map((r) => r.id)

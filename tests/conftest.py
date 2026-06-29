@@ -16,17 +16,16 @@ _lib_scripts_root = _project_root / "scripts" / "lib"
 def _setup_sys_path():
     """Setup sys.path for script imports.
 
-    This must be called before any script imports happen.
-    Order matters: project_root must be first for 'from scripts.lib...' imports.
+    Repository root must precede ``scripts/lib`` and ``scripts/ci`` so
+    ``from scripts.lib...`` resolves. Append script paths (do not prepend) so
+    pytest test directories and the repo root stay ahead of bare-module names.
     """
-    # First, add scripts subdirs (will be pushed back when project_root is added)
-    if str(_ci_scripts_root) not in sys.path:
-        sys.path.insert(0, str(_ci_scripts_root))
-    if str(_lib_scripts_root) not in sys.path:
-        sys.path.insert(0, str(_lib_scripts_root))
-    # Then add project root at position 0
     if str(_project_root) not in sys.path:
         sys.path.insert(0, str(_project_root))
+    if str(_ci_scripts_root) not in sys.path:
+        sys.path.append(str(_ci_scripts_root))
+    if str(_lib_scripts_root) not in sys.path:
+        sys.path.append(str(_lib_scripts_root))
 
 
 # Setup sys.path immediately at module load time
@@ -110,8 +109,11 @@ def mock_subprocess(monkeypatch):
 @pytest.fixture
 def ci_scripts_path(monkeypatch):
     """Add CI scripts to Python path for imports."""
-    scripts_path = Path(__file__).parent.parent / "scripts" / "ci"
+    repo_root = Path(__file__).parent.parent
+    scripts_path = repo_root / "scripts" / "ci"
     monkeypatch.syspath_prepend(str(scripts_path))
+    # Repo root must precede scripts/ci so ``from scripts.lib...`` resolves.
+    monkeypatch.syspath_prepend(str(repo_root))
     return scripts_path
 
 
