@@ -27,9 +27,12 @@ import sys
 from pathlib import Path
 from typing import Any, TypedDict
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(_REPO))
+
+from scripts.lib.paths import repo_root  # noqa: E402
+
+REPO_ROOT = repo_root()
 
 try:
     from scripts.lib.logger import configure_logging, logger

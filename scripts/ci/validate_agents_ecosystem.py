@@ -20,6 +20,12 @@ BRIDGE_FILES = [
     TEMPLATE_FILES / ".warp" / "WARP.md.jinja",
 ]
 
+MAINTAINER_BRIDGE_FILES = [
+    REPO_ROOT / "CLAUDE.md",
+    REPO_ROOT / ".cursor" / "rules",
+    REPO_ROOT / ".github" / "copilot-instructions.md",
+]
+
 MAX_BRIDGE_LINES = 15
 
 
@@ -40,20 +46,39 @@ def check_required_files() -> int:
     return errors
 
 
+def _check_bridge_pointer_file(path: Path) -> int:
+    """Ensure a bridge file is short, references AGENTS.md, and has no command table."""
+    errors = 0
+    text = path.read_text(encoding="utf-8")
+    lines = [line for line in text.splitlines() if line.strip()]
+    label = path.relative_to(REPO_ROOT)
+    if len(lines) > MAX_BRIDGE_LINES:
+        errors += _fail(
+            f"{label} has {len(lines)} non-empty lines (max {MAX_BRIDGE_LINES})"
+        )
+    if "AGENTS.md" not in text:
+        errors += _fail(f"{label} does not reference AGENTS.md")
+    if "| Task | Command |" in text:
+        errors += _fail(f"{label} duplicates command table from AGENTS.md")
+    return errors
+
+
 def check_bridge_pointer_only() -> int:
     """Bridge files must be short and reference AGENTS.md."""
     errors = 0
     for path in BRIDGE_FILES:
-        text = path.read_text(encoding="utf-8")
-        lines = [line for line in text.splitlines() if line.strip()]
-        if len(lines) > MAX_BRIDGE_LINES:
-            errors += _fail(
-                f"{path.name} has {len(lines)} non-empty lines (max {MAX_BRIDGE_LINES})"
-            )
-        if "AGENTS.md" not in text:
-            errors += _fail(f"{path.name} does not reference AGENTS.md")
-        if "| Task | Command |" in text:
-            errors += _fail(f"{path.name} duplicates command table from AGENTS.md")
+        errors += _check_bridge_pointer_file(path)
+    return errors
+
+
+def check_maintainer_bridges() -> int:
+    """Maintainer bridge files must be pointer-only like template bridges."""
+    errors = 0
+    for path in MAINTAINER_BRIDGE_FILES:
+        if not path.is_file():
+            errors += _fail(f"missing maintainer bridge: {path.relative_to(REPO_ROOT)}")
+            continue
+        errors += _check_bridge_pointer_file(path)
     return errors
 
 
@@ -147,6 +172,7 @@ def main() -> int:
     errors = 0
     errors += check_required_files()
     errors += check_bridge_pointer_only()
+    errors += check_maintainer_bridges()
     errors += check_copier_exclude()
     for render_dir in args.render_enabled:
         errors += check_render_tree(render_dir, ai_tools_enabled=True)

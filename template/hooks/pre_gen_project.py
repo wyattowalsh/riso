@@ -20,6 +20,8 @@ LOG_PATH = Path(".riso/toolchain_provisioning.jsonl")
 
 sys.path.append(str(Path(__file__).resolve().parents[2] / "scripts"))
 
+from lib.removed_answer_keys import REMOVED_ANSWER_KEYS  # noqa: E402
+
 try:
     from hooks.quality_tool_check import ToolCheck, ensure_python_quality_tools
 
@@ -42,7 +44,7 @@ except ModuleNotFoundError:  # pragma: no cover - during template linting
 
 # Valid configuration values
 VALID_DOCS_SITES = {"fumadocs", "sphinx-shibuya", "docusaurus", "none"}
-VALID_CI_PLATFORMS = {"github-actions", "none"}
+VALID_CI_PLATFORMS = {"github-actions", "gitlab-ci", "circleci", "none"}
 VALID_PROJECT_LAYOUTS = {"single-package", "monorepo"}
 VALID_QUALITY_PROFILES = {"standard", "strict"}
 
@@ -77,17 +79,6 @@ def normalize_api_feature_modules(context: dict) -> dict[str, str]:
         "graphql_api_module": graphql,
         "websocket_module": websocket,
     }
-
-
-REMOVED_ANSWER_KEYS = {
-    "api_tracks": "Use api_module plus api_languages.",
-    "api_language": "Use api_languages.",
-    "docs_site": "Use docs_module plus docs_framework.",
-    "mcp_language": "Use mcp_languages.",
-    "saas_starter_module": "Use saas_infra_module.",
-    "saas_auth": "Use saas_auth_module plus saas_auth_provider.",
-    "saas_billing": "Use saas_billing_module plus saas_billing_provider.",
-}
 
 
 class ProvisionResult(dict):
@@ -187,6 +178,16 @@ def _load_copier_context() -> dict:
         except json.JSONDecodeError:
             continue
     return {}
+
+
+def _write_copier_context(context: dict) -> None:
+    """Write merged context back to Copier environment variables."""
+    payload = json.dumps(context)
+    for key in ("COPIER_ANSWERS", "COPIER_JINJA2_CONTEXT", "COPIER_RENDER_CONTEXT"):
+        if os.environ.get(key):
+            os.environ[key] = payload
+            return
+    os.environ["COPIER_ANSWERS"] = payload
 
 
 def _validate_removed_answer_keys(context: dict) -> bool:
@@ -659,6 +660,8 @@ def _build_tool_matrix(
 
 def main() -> None:
     context = _load_copier_context()
+    context.update(normalize_api_feature_modules(context))
+    _write_copier_context(context)
     if not _validate_removed_answer_keys(context):
         sys.exit(1)
 

@@ -8,12 +8,15 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import pathlib
 import re
 import sys
 from datetime import datetime, timezone
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[2] / "scripts"))
+
+from lib.removed_answer_keys import REMOVED_ANSWER_KEYS  # noqa: E402
 
 try:
     from hooks.quality_tool_check import (
@@ -68,16 +71,6 @@ EMPTY_SCAFFOLD_DIRS = [
     "tests/integration",
     "tests",
 ]
-
-REMOVED_ANSWER_KEYS = {
-    "api_tracks": "Use api_module plus api_languages.",
-    "api_language": "Use api_languages.",
-    "docs_site": "Use docs_module plus docs_framework.",
-    "mcp_language": "Use mcp_languages.",
-    "saas_starter_module": "Use saas_infra_module.",
-    "saas_auth": "Use saas_auth_module plus saas_auth_provider.",
-    "saas_billing": "Use saas_billing_module plus saas_billing_provider.",
-}
 
 
 def answer_text(
@@ -141,13 +134,19 @@ def api_languages_for_answers(answers: dict[str, object]) -> list[str]:
     return answer_list(answers, "api_languages", ["python"])
 
 
+def sanitize_package_name(name: str) -> str:
+    """Normalize a package import name like derived project names."""
+    package = re.sub(r"[^0-9A-Za-z_]+", "_", name).strip("_").lower()
+    return package
+
+
 def package_for_answers(destination: pathlib.Path, answers: dict[str, object]) -> str:
     """Resolve the package import name for guidance."""
     explicit = answer_text(answers, "package_name", "", lower=False).strip()
     if explicit:
-        return explicit
+        return sanitize_package_name(explicit) or destination.name.replace("-", "_")
     project_name = answer_text(answers, "project_name", destination.name, lower=False)
-    package = re.sub(r"[^0-9A-Za-z_]+", "_", project_name).strip("_").lower()
+    package = sanitize_package_name(project_name)
     return package or destination.name.replace("-", "_")
 
 
@@ -171,13 +170,21 @@ def cleanup_empty_scaffold_dirs(destination: pathlib.Path) -> list[str]:
 def cleanup_empty_rendered_files(destination: pathlib.Path) -> list[str]:
     """Remove zero-byte stubs left by conditional Jinja templates."""
     removed: list[str] = []
-    for path in sorted(destination.rglob("*")):
+    root = destination.resolve()
+    for path in sorted(root.rglob("*")):
+        if path.is_symlink():
+            continue
+        try:
+            if not path.is_relative_to(root):
+                continue
+        except ValueError:
+            continue
         if not path.is_file() or path.name == ".gitkeep":
             continue
         if path.stat().st_size != 0:
             continue
         path.unlink()
-        removed.append(str(path.relative_to(destination)))
+        removed.append(str(path.relative_to(root)))
     return removed
 
 
@@ -216,15 +223,28 @@ def load_answers(destination: pathlib.Path) -> dict[str, object]:
         return {}
     try:
         import yaml
-
-        with answers_path.open(encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-            if isinstance(data, dict):
-                return {str(k): v for k, v in data.items() if v is not None}
-            return {}
-    except Exception as e:
+    except ImportError as e:
         sys.stderr.write(f"Warning: Failed to parse answers file: {e}\n")
         return {}
+    try:
+        with answers_path.open(encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        sys.stderr.write(f"Error: Failed to parse answers file: {e}\n")
+        raise SystemExit(1) from e
+    if isinstance(data, dict):
+        return {str(k): v for k, v in data.items() if v is not None}
+    return {}
+
+
+def should_install_node_dependencies(answers: dict[str, object]) -> bool:
+    """Return True when post-gen should run pnpm install."""
+    if os.environ.get("RISO_POST_GEN_INSTALL_NODE") == "1":
+        return True
+    value = answers.get("post_gen_install_node")
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "enabled", "on"}
 
 
 def layout_guidance(layout: str) -> list[str]:
@@ -431,7 +451,8 @@ def main() -> None:
     quality_checks = ensure_python_quality_tools() if _TOOL_CHECK_AVAILABLE else []
     node_checks = []
     if _TOOL_CHECK_AVAILABLE:
-        node_required = "node" in api_languages_for_answers(answers)
+        node_track = "node" in api_languages_for_answers(answers)
+        node_required = node_track and should_install_node_dependencies(answers)
         node_checks = ensure_node_quality_tools(node_required)
 
     # Validate generated workflows if CI platform is GitHub Actions

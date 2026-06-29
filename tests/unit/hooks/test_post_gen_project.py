@@ -188,14 +188,15 @@ class TestLoadAnswers:
         assert result == {}
 
     def test_handles_malformed_yaml(self, tmp_path):
-        """Should handle malformed YAML gracefully."""
+        """Should fail closed on malformed YAML."""
         from post_gen_project import load_answers
 
         answers_file = tmp_path / ".copier-answers.yml"
         answers_file.write_text("invalid: yaml: content: {{{", encoding="utf-8")
 
-        result = load_answers(tmp_path)
-        assert result == {}
+        with pytest.raises(SystemExit) as exc_info:
+            load_answers(tmp_path)
+        assert exc_info.value.code == 1
 
     def test_handles_missing_yaml_module(self, tmp_path, monkeypatch):
         """Should handle missing yaml module gracefully."""
@@ -927,3 +928,95 @@ class TestPreCommitSetupGuidance:
             "commit-msg",
             "pre-push",
         ]
+
+
+@pytest.mark.unit
+class TestSanitizePackageName:
+    """Tests for explicit package_name sanitization."""
+
+    def test_sanitizes_explicit_package_name(self, tmp_path):
+        from post_gen_project import package_for_answers
+
+        answers = {"package_name": "My Cool App!"}
+        assert package_for_answers(tmp_path, answers) == "my_cool_app"
+
+    def test_falls_back_when_sanitized_name_empty(self, tmp_path):
+        from post_gen_project import package_for_answers
+
+        answers = {"package_name": "!!!"}
+        assert package_for_answers(tmp_path, answers) == tmp_path.name.replace("-", "_")
+
+
+@pytest.mark.unit
+class TestCleanupEmptyRenderedFilesSafety:
+    """Tests for symlink and path containment checks."""
+
+    def test_skips_symlinks(self, tmp_path):
+        from post_gen_project import cleanup_empty_rendered_files
+
+        empty_target = tmp_path / "target.txt"
+        empty_target.write_text("", encoding="utf-8")
+        symlink = tmp_path / "link.txt"
+        symlink.symlink_to(empty_target)
+
+        removed = cleanup_empty_rendered_files(tmp_path)
+
+        assert "target.txt" in removed
+        assert not empty_target.exists()
+        assert symlink.is_symlink()
+
+
+@pytest.mark.unit
+class TestShouldInstallNodeDependencies:
+    """Tests for gating post-gen pnpm install."""
+
+    def test_enabled_by_env_var(self, monkeypatch):
+        from post_gen_project import should_install_node_dependencies
+
+        monkeypatch.setenv("RISO_POST_GEN_INSTALL_NODE", "1")
+        assert should_install_node_dependencies({}) is True
+
+    def test_enabled_by_copier_answer(self):
+        from post_gen_project import should_install_node_dependencies
+
+        assert (
+            should_install_node_dependencies({"post_gen_install_node": "enabled"})
+            is True
+        )
+
+    def test_disabled_by_default(self, monkeypatch):
+        from post_gen_project import should_install_node_dependencies
+
+        monkeypatch.delenv("RISO_POST_GEN_INSTALL_NODE", raising=False)
+        assert should_install_node_dependencies({}) is False
+
+
+@pytest.mark.unit
+class TestNodeInstallGating:
+    """Tests for skipping pnpm install unless explicitly enabled."""
+
+    def test_skips_pnpm_install_without_gate(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("RISO_POST_GEN_INSTALL_NODE", raising=False)
+
+        answers_file = tmp_path / ".copier-answers.yml"
+        answers_file.write_text(
+            "api_module: enabled\napi_languages:\n  - node\n",
+            encoding="utf-8",
+        )
+
+        import post_gen_project
+
+        install_calls: list[list[str]] = []
+
+        def _track_install(required: bool):
+            install_calls.append(["install", str(required)])
+            return []
+
+        monkeypatch.setattr(
+            post_gen_project, "ensure_node_quality_tools", _track_install
+        )
+
+        post_gen_project.main()
+
+        assert install_calls == [["install", "False"]]
