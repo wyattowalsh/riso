@@ -7,7 +7,7 @@
 - `uv run pytest tests/unit/hooks/test_post_gen_project.py -q --override-ini='addopts='`
 - `uv run pytest tests/integration/test_template_rendering.py -q --override-ini='addopts='`
 - `uv run pytest tests/unit/ci/test_render_matrix.py -q --override-ini='addopts='`
-- `uv run pytest tests/unit/test_mcp tests/integration/test_mcp_server.py -q --override-ini='addopts='`
+- `uv run pytest tests/unit/test_cli/ -q --override-ini='addopts='`
 - `uv run ruff check scripts template/hooks tests src`
 - `uv run ruff format --check scripts template/hooks tests src`
 - `uv run python scripts/ci/render_matrix.py`
