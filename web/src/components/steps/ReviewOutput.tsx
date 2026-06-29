@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useRisoStore, type RisoConfig } from '../../lib/store'
+import { generateCliCommand, generateYamlConfig } from '../../lib/exportConfig'
+import { useValidation } from '../../lib/useValidation'
 import { Copy, Check, Download, Terminal, FileCode, Settings2, FolderTree } from 'lucide-react'
-import { stringify } from 'yaml'
 import { cn, copyToClipboard, downloadFile } from '../../lib/utils'
 import { DependencyWarnings, DependencyBadge } from '../DependencyWarnings'
 import { FileTreePreview } from '../FileTreePreview'
@@ -22,7 +23,8 @@ const TABS: TabConfig[] = [
 ]
 
 export function ReviewOutput() {
-  const { config, resetConfig, saveToHistory } = useRisoStore()
+  const { config, resetConfig, saveToHistory, updateConfig } = useRisoStore()
+  const { errors } = useValidation(config, updateConfig)
   const [activeTab, setActiveTab] = useState<TabType>('configuration')
   const [mode, setMode] = useState<OutputMode>('cli')
   const [copied, setCopied] = useState(false)
@@ -67,6 +69,18 @@ export function ReviewOutput() {
 
       {/* Dependency Warnings */}
       <DependencyWarnings showEmpty />
+
+      {errors.length > 0 && (
+        <div
+          role="status"
+          className="rounded-lg border border-amber-300/80 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100"
+        >
+          <p className="font-medium">Configuration has {errors.length} blocking issue(s).</p>
+          <p className="mt-1 text-amber-800/90 dark:text-amber-200/90">
+            Review warnings above before running the generated command.
+          </p>
+        </div>
+      )}
 
       {/* Tabbed Interface */}
       <div className="riso-card rounded-xl overflow-hidden">
@@ -461,227 +475,4 @@ function SummaryCard({ title, items }: { title: string; items: string[] }) {
       </ul>
     </div>
   )
-}
-
-function generateCliCommand(config: Partial<RisoConfig>): string {
-  const projectName = config.project_name || 'my-project'
-  const args: string[] = []
-
-  // Core settings
-  if (config.project_name) args.push(`project_name="${config.project_name}"`)
-  if (config.project_layout) args.push(`project_layout="${config.project_layout}"`)
-  if (config.quality_profile) args.push(`quality_profile="${config.quality_profile}"`)
-  if (config.ci_platform) args.push(`ci_platform="${config.ci_platform}"`)
-
-  // CLI Module
-  if (config.cli_module) args.push(`cli_module="${config.cli_module}"`)
-  if (config.cli_module === 'enabled' && config.cli_languages?.length) {
-    args.push(`cli_languages='${JSON.stringify(config.cli_languages)}'`)
-  }
-
-  // API Module
-  if (config.api_module) args.push(`api_module="${config.api_module}"`)
-  if (config.api_module === 'enabled') {
-    if (config.api_languages?.length) args.push(`api_languages='${JSON.stringify(config.api_languages)}'`)
-    if (config.api_features && config.api_features !== 'none') args.push(`api_features="${config.api_features}"`)
-  }
-
-  // MCP Module
-  if (config.mcp_module) args.push(`mcp_module="${config.mcp_module}"`)
-  if (config.mcp_module === 'enabled' && config.mcp_languages?.length) {
-    args.push(`mcp_languages='${JSON.stringify(config.mcp_languages)}'`)
-  }
-
-  // Documentation
-  if (config.docs_module) args.push(`docs_module="${config.docs_module}"`)
-  if (config.docs_module === 'enabled' && config.docs_framework) {
-    args.push(`docs_framework="${config.docs_framework}"`)
-  }
-
-  // Other modules
-  if (config.codegen_module) args.push(`codegen_module="${config.codegen_module}"`)
-  if (config.changelog_module) args.push(`changelog_module="${config.changelog_module}"`)
-  if (config.shared_logic) args.push(`shared_logic="${config.shared_logic}"`)
-
-  // Fumadocs options
-  if (config.docs_module === 'enabled' && config.docs_framework === 'fumadocs') {
-    if (config.fumadocs_search_provider) args.push(`fumadocs_search_provider="${config.fumadocs_search_provider}"`)
-    if (config.fumadocs_theme) args.push(`fumadocs_theme="${config.fumadocs_theme}"`)
-    if (config.fumadocs_llms_txt) args.push(`fumadocs_llms_txt="${config.fumadocs_llms_txt}"`)
-    if (config.fumadocs_openapi) args.push(`fumadocs_openapi="${config.fumadocs_openapi}"`)
-    if (config.fumadocs_blog) args.push(`fumadocs_blog="${config.fumadocs_blog}"`)
-    if (config.fumadocs_mermaid) args.push(`fumadocs_mermaid="${config.fumadocs_mermaid}"`)
-    if (config.fumadocs_math) args.push(`fumadocs_math="${config.fumadocs_math}"`)
-  }
-
-  // Docusaurus options
-  if (config.docs_module === 'enabled' && config.docs_framework === 'docusaurus') {
-    if (config.docusaurus_search_provider) args.push(`docusaurus_search_provider="${config.docusaurus_search_provider}"`)
-    if (config.docusaurus_theme) args.push(`docusaurus_theme="${config.docusaurus_theme}"`)
-    if (config.docusaurus_analytics) args.push(`docusaurus_analytics="${config.docusaurus_analytics}"`)
-    if (config.docusaurus_blog) args.push(`docusaurus_blog="${config.docusaurus_blog}"`)
-    if (config.docusaurus_faster) args.push(`docusaurus_faster="${config.docusaurus_faster}"`)
-  }
-
-  // SaaS Layers
-  if (config.saas_infra_module) args.push(`saas_infra_module="${config.saas_infra_module}"`)
-  if (config.saas_infra_module === 'enabled') {
-    if (config.saas_runtime) args.push(`saas_runtime="${config.saas_runtime}"`)
-    if (config.saas_hosting) args.push(`saas_hosting="${config.saas_hosting}"`)
-    if (config.saas_database) args.push(`saas_database="${config.saas_database}"`)
-    if (config.saas_orm) args.push(`saas_orm="${config.saas_orm}"`)
-  }
-  if (config.saas_auth_module) args.push(`saas_auth_module="${config.saas_auth_module}"`)
-  if (config.saas_auth_module === 'enabled') {
-    if (config.saas_auth_provider) args.push(`saas_auth_provider="${config.saas_auth_provider}"`)
-    if (config.saas_enterprise_bridge) args.push(`saas_enterprise_bridge="${config.saas_enterprise_bridge}"`)
-  }
-  if (config.saas_billing_module) args.push(`saas_billing_module="${config.saas_billing_module}"`)
-  if (config.saas_billing_module === 'enabled') {
-    if (config.saas_billing_provider) args.push(`saas_billing_provider="${config.saas_billing_provider}"`)
-  }
-  if (config.saas_app_module) args.push(`saas_app_module="${config.saas_app_module}"`)
-  if (config.saas_app_module === 'enabled') {
-    if (config.saas_jobs) args.push(`saas_jobs="${config.saas_jobs}"`)
-    if (config.saas_email) args.push(`saas_email="${config.saas_email}"`)
-    if (config.saas_analytics) args.push(`saas_analytics="${config.saas_analytics}"`)
-    if (config.saas_ai) args.push(`saas_ai="${config.saas_ai}"`)
-    if (config.saas_storage) args.push(`saas_storage="${config.saas_storage}"`)
-  }
-
-  // AI Tools
-  if (config.ai_tools_module) args.push(`ai_tools_module="${config.ai_tools_module}"`)
-  if (config.ai_tools_module === 'enabled') {
-    if (config.ai_tools_mcp_thinking !== undefined) args.push(`ai_tools_mcp_thinking=${config.ai_tools_mcp_thinking}`)
-    if (config.ai_tools_mcp_web !== undefined) args.push(`ai_tools_mcp_web=${config.ai_tools_mcp_web}`)
-    if (config.ai_tools_mcp_documents !== undefined) args.push(`ai_tools_mcp_documents=${config.ai_tools_mcp_documents}`)
-    if (config.ai_tools_mcp_utilities !== undefined) args.push(`ai_tools_mcp_utilities=${config.ai_tools_mcp_utilities}`)
-    if (config.ai_tools_mcp_search !== undefined) args.push(`ai_tools_mcp_search=${config.ai_tools_mcp_search}`)
-  }
-
-  const dataArgs = args.map(arg => `  --data ${arg}`).join(' \\\n')
-
-  return `copier copy gh:wyattowalsh/riso ./${projectName} \\
-${dataArgs}`
-}
-
-function generateYamlConfig(config: Partial<RisoConfig>): string {
-  const yamlObj: Record<string, unknown> = {}
-
-  // Core settings
-  if (config.project_name) yamlObj.project_name = config.project_name
-  if (config.project_layout) yamlObj.project_layout = config.project_layout
-  if (config.quality_profile) yamlObj.quality_profile = config.quality_profile
-  if (config.ci_platform) yamlObj.ci_platform = config.ci_platform
-
-  // CLI Module
-  if (config.cli_module) yamlObj.cli_module = config.cli_module
-  if (config.cli_module === 'enabled' && config.cli_languages?.length) {
-    yamlObj.cli_languages = config.cli_languages
-  }
-
-  // API Module
-  if (config.api_module) yamlObj.api_module = config.api_module
-  if (config.api_module === 'enabled') {
-    if (config.api_languages?.length) yamlObj.api_languages = config.api_languages
-    if (config.api_features && config.api_features !== 'none') yamlObj.api_features = config.api_features
-  }
-
-  // MCP Module
-  if (config.mcp_module) yamlObj.mcp_module = config.mcp_module
-  if (config.mcp_module === 'enabled' && config.mcp_languages?.length) {
-    yamlObj.mcp_languages = config.mcp_languages
-  }
-
-  // Documentation
-  if (config.docs_module) yamlObj.docs_module = config.docs_module
-  if (config.docs_module === 'enabled' && config.docs_framework) {
-    yamlObj.docs_framework = config.docs_framework
-  }
-
-  // Other modules
-  if (config.codegen_module) yamlObj.codegen_module = config.codegen_module
-  if (config.changelog_module) yamlObj.changelog_module = config.changelog_module
-  if (config.shared_logic) yamlObj.shared_logic = config.shared_logic
-
-  // Fumadocs options
-  if (config.docs_module === 'enabled' && config.docs_framework === 'fumadocs') {
-    if (config.fumadocs_search_provider) yamlObj.fumadocs_search_provider = config.fumadocs_search_provider
-    if (config.fumadocs_theme) yamlObj.fumadocs_theme = config.fumadocs_theme
-    if (config.fumadocs_code_theme) yamlObj.fumadocs_code_theme = config.fumadocs_code_theme
-    if (config.fumadocs_toc_depth) yamlObj.fumadocs_toc_depth = config.fumadocs_toc_depth
-    if (config.fumadocs_llms_txt) yamlObj.fumadocs_llms_txt = config.fumadocs_llms_txt
-    if (config.fumadocs_openapi) yamlObj.fumadocs_openapi = config.fumadocs_openapi
-    if (config.fumadocs_blog) yamlObj.fumadocs_blog = config.fumadocs_blog
-    if (config.fumadocs_mermaid) yamlObj.fumadocs_mermaid = config.fumadocs_mermaid
-    if (config.fumadocs_math) yamlObj.fumadocs_math = config.fumadocs_math
-    if (config.fumadocs_image_zoom) yamlObj.fumadocs_image_zoom = config.fumadocs_image_zoom
-    if (config.fumadocs_last_updated) yamlObj.fumadocs_last_updated = config.fumadocs_last_updated
-    if (config.fumadocs_edit_on_github) yamlObj.fumadocs_edit_on_github = config.fumadocs_edit_on_github
-    if (config.fumadocs_i18n) yamlObj.fumadocs_i18n = config.fumadocs_i18n
-  }
-
-  // Docusaurus options
-  if (config.docs_module === 'enabled' && config.docs_framework === 'docusaurus') {
-    if (config.docusaurus_search_provider) yamlObj.docusaurus_search_provider = config.docusaurus_search_provider
-    if (config.docusaurus_theme) yamlObj.docusaurus_theme = config.docusaurus_theme
-    if (config.docusaurus_analytics) yamlObj.docusaurus_analytics = config.docusaurus_analytics
-    if (config.docusaurus_comments) yamlObj.docusaurus_comments = config.docusaurus_comments
-    if (config.docusaurus_llms_txt) yamlObj.docusaurus_llms_txt = config.docusaurus_llms_txt
-    if (config.docusaurus_faster) yamlObj.docusaurus_faster = config.docusaurus_faster
-    if (config.docusaurus_blog) yamlObj.docusaurus_blog = config.docusaurus_blog
-    if (config.docusaurus_mermaid) yamlObj.docusaurus_mermaid = config.docusaurus_mermaid
-    if (config.docusaurus_math) yamlObj.docusaurus_math = config.docusaurus_math
-    if (config.docusaurus_versioning) yamlObj.docusaurus_versioning = config.docusaurus_versioning
-    if (config.docusaurus_pwa) yamlObj.docusaurus_pwa = config.docusaurus_pwa
-    if (config.docusaurus_i18n) yamlObj.docusaurus_i18n = config.docusaurus_i18n
-    if (config.docusaurus_sitemap) yamlObj.docusaurus_sitemap = config.docusaurus_sitemap
-  }
-
-  // SaaS Layers
-  if (config.saas_infra_module) yamlObj.saas_infra_module = config.saas_infra_module
-  if (config.saas_infra_module === 'enabled') {
-    if (config.saas_runtime) yamlObj.saas_runtime = config.saas_runtime
-    if (config.saas_hosting) yamlObj.saas_hosting = config.saas_hosting
-    if (config.saas_database) yamlObj.saas_database = config.saas_database
-    if (config.saas_orm) yamlObj.saas_orm = config.saas_orm
-  }
-  if (config.saas_auth_module) yamlObj.saas_auth_module = config.saas_auth_module
-  if (config.saas_auth_module === 'enabled') {
-    if (config.saas_auth_provider) yamlObj.saas_auth_provider = config.saas_auth_provider
-    if (config.saas_enterprise_bridge) yamlObj.saas_enterprise_bridge = config.saas_enterprise_bridge
-  }
-  if (config.saas_billing_module) yamlObj.saas_billing_module = config.saas_billing_module
-  if (config.saas_billing_module === 'enabled') {
-    if (config.saas_billing_provider) yamlObj.saas_billing_provider = config.saas_billing_provider
-  }
-  if (config.saas_app_module) yamlObj.saas_app_module = config.saas_app_module
-  if (config.saas_app_module === 'enabled') {
-    if (config.saas_jobs) yamlObj.saas_jobs = config.saas_jobs
-    if (config.saas_email) yamlObj.saas_email = config.saas_email
-    if (config.saas_analytics) yamlObj.saas_analytics = config.saas_analytics
-    if (config.saas_ai) yamlObj.saas_ai = config.saas_ai
-    if (config.saas_storage) yamlObj.saas_storage = config.saas_storage
-    if (config.saas_observability_sentry !== undefined) yamlObj.saas_observability_sentry = config.saas_observability_sentry
-    if (config.saas_observability_datadog !== undefined) yamlObj.saas_observability_datadog = config.saas_observability_datadog
-    if (config.saas_observability_otel !== undefined) yamlObj.saas_observability_otel = config.saas_observability_otel
-    if (config.saas_observability_structured_logging !== undefined) yamlObj.saas_observability_structured_logging = config.saas_observability_structured_logging
-  }
-
-  // AI Tools
-  if (config.ai_tools_module) yamlObj.ai_tools_module = config.ai_tools_module
-  if (config.ai_tools_module === 'enabled') {
-    if (config.ai_tools_mcp_thinking !== undefined) yamlObj.ai_tools_mcp_thinking = config.ai_tools_mcp_thinking
-    if (config.ai_tools_mcp_web !== undefined) yamlObj.ai_tools_mcp_web = config.ai_tools_mcp_web
-    if (config.ai_tools_mcp_documents !== undefined) yamlObj.ai_tools_mcp_documents = config.ai_tools_mcp_documents
-    if (config.ai_tools_mcp_utilities !== undefined) yamlObj.ai_tools_mcp_utilities = config.ai_tools_mcp_utilities
-    if (config.ai_tools_mcp_search !== undefined) yamlObj.ai_tools_mcp_search = config.ai_tools_mcp_search
-  }
-
-  const header = `# Riso Configuration
-# Generated: ${new Date().toISOString()}
-# Usage: copier copy gh:wyattowalsh/riso . --answers-file copier-answers.yml
-
-`
-  return header + stringify(yamlObj)
 }

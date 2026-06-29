@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRisoStore } from '../lib/store'
-import { ProjectBasics } from './steps/ProjectBasics'
+import { ProjectBasics, validateProjectName } from './steps/ProjectBasics'
 import { ModulesConfig } from './steps/ModulesConfig'
 import { DocsConfig } from './steps/DocsConfig'
 import { SaaSConfig } from './steps/SaaSConfig'
@@ -20,7 +20,11 @@ const STEPS = [
 ]
 
 export function Wizard() {
-  const { currentStep, setStep } = useRisoStore()
+  const { currentStep, setStep, config } = useRisoStore()
+  const canProceedFromBasics = validateProjectName(config.project_name || '').valid
+  const canVisitStep = (stepId: number) =>
+    stepId <= currentStep || (stepId > 0 && canProceedFromBasics)
+  const canGoNext = currentStep !== 0 || canProceedFromBasics
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right')
   const prevStepRef = useRef(currentStep)
@@ -74,11 +78,14 @@ export function Wizard() {
                 </div>
               )}
               <button
-                onClick={() => setStep(step.id)}
+                onClick={() => canVisitStep(step.id) && setStep(step.id)}
+                disabled={!canVisitStep(step.id)}
                 aria-current={currentStep === step.id ? 'step' : undefined}
                 className={cn(
                   'group flex flex-col items-center transition-all duration-300 w-full',
-                  currentStep >= step.id ? 'cursor-pointer hover:-translate-y-1 hover:scale-105' : 'cursor-not-allowed opacity-60'
+                  canVisitStep(step.id)
+                    ? 'cursor-pointer hover:-translate-y-1 hover:scale-105'
+                    : 'cursor-not-allowed opacity-60'
                 )}
               >
                 {/* Step circle */}
@@ -183,10 +190,10 @@ export function Wizard() {
 
         <button
           onClick={() => setStep(Math.min(STEPS.length - 1, currentStep + 1))}
-          disabled={currentStep === STEPS.length - 1}
+          disabled={currentStep === STEPS.length - 1 || !canGoNext}
           className={cn(
             'group flex items-center gap-2 transition-all duration-300',
-            currentStep === STEPS.length - 1
+            currentStep === STEPS.length - 1 || !canGoNext
               ? 'px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed'
               : 'btn-primary hover:translate-x-1'
           )}

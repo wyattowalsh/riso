@@ -142,68 +142,6 @@ export function useValidation(
       })
     }
 
-    // Quality profile recommendation for SaaS
-    if (
-      (config.saas_infra_module === 'enabled' ||
-        config.saas_auth_module === 'enabled' ||
-        config.saas_billing_module === 'enabled') &&
-      config.quality_profile === 'standard'
-    ) {
-      warnings.push({
-        id: 'saas-quality-strict',
-        type: 'recommendation',
-        severity: 'info',
-        message: 'Consider strict quality profile for SaaS applications',
-        details: 'Strict quality checks help catch issues early in production SaaS apps',
-        fix: {
-          label: 'Use Strict',
-          action: () => updateConfig({ quality_profile: 'strict' }),
-        },
-        relatedField: 'quality_profile',
-      })
-    }
-
-    // Docs without OpenAPI recommendation
-    if (
-      config.docs_module === 'enabled' &&
-      config.api_module === 'enabled' &&
-      config.docs_framework === 'fumadocs' &&
-      config.fumadocs_openapi === 'disabled'
-    ) {
-      warnings.push({
-        id: 'fumadocs-openapi-recommend',
-        type: 'recommendation',
-        severity: 'info',
-        message: 'Enable OpenAPI docs for better API documentation',
-        details: 'OpenAPI integration provides interactive API documentation',
-        fix: {
-          label: 'Enable OpenAPI',
-          action: () => updateConfig({ fumadocs_openapi: 'enabled' }),
-        },
-        relatedField: 'fumadocs_openapi',
-      })
-    }
-
-    // AI Search without Orama
-    if (
-      config.fumadocs_ai_search === 'enabled' &&
-      config.fumadocs_search_provider !== 'orama' &&
-      config.fumadocs_search_provider !== 'orama-cloud'
-    ) {
-      warnings.push({
-        id: 'ai-search-orama',
-        type: 'recommendation',
-        severity: 'info',
-        message: 'AI Search works best with Orama search provider',
-        details: 'Orama provides vector search capabilities for better AI-powered search',
-        fix: {
-          label: 'Use Orama',
-          action: () => updateConfig({ fumadocs_search_provider: 'orama' }),
-        },
-        relatedField: 'fumadocs_search_provider',
-      })
-    }
-
     // Monorepo without shared logic
     if (config.project_layout === 'monorepo' && config.shared_logic === 'disabled') {
       warnings.push({
@@ -220,7 +158,14 @@ export function useValidation(
       })
     }
 
-    return warnings.filter((w) => !dismissedIds.has(w.id))
+    const seen = new Set<string>()
+    return warnings
+      .filter((w) => !dismissedIds.has(w.id))
+      .filter((w) => {
+        if (seen.has(w.id)) return false
+        seen.add(w.id)
+        return true
+      })
   }, [config, dependencyWarnings, validationResults, dismissedIds, updateConfig])
 
   const errors = enhancedWarnings.filter((w) => w.severity === 'error')
