@@ -73,6 +73,7 @@ def test_rendered_workflows_have_no_jinja_remnants(variant: str) -> None:
             )
 
 
+@pytest.mark.xdist_group("actionlint")
 @pytest.mark.parametrize("variant", GITHUB_ACTION_VARIANTS)
 def test_rendered_workflows_pass_actionlint(
     variant: str,

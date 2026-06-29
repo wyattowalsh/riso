@@ -308,24 +308,16 @@ class TestMakefileIntegration:
             / "makefile.quality.jinja"
         )
 
-    def test_root_makefile_has_hooks_target(self, makefile_path: Path) -> None:
-        """Verify root Makefile has hooks target."""
+    def test_root_makefile_forwards_to_just(self, makefile_path: Path) -> None:
+        """Verify maintainer Makefile is a compatibility shim to just."""
         content = makefile_path.read_text(encoding="utf-8")
-        assert "hooks:" in content, "Makefile should have hooks target"
-        assert "pre-commit run --all-files" in content, (
-            "hooks target should run pre-commit"
-        )
+        assert "just --list" in content, "Makefile help should delegate to just"
+        assert "just $@" in content, "Makefile targets should forward to just"
 
     def test_root_makefile_has_setup_with_hooks(self, makefile_path: Path) -> None:
-        """Verify root Makefile setup installs all hook types."""
+        """Verify maintainer Makefile forwards setup (and hooks) via just shim."""
         content = makefile_path.read_text(encoding="utf-8")
-        assert "pre-commit install --install-hooks" in content, (
-            "setup should install hooks"
-        )
-        assert "--hook-type commit-msg" in content, (
-            "setup should install commit-msg hooks"
-        )
-        assert "--hook-type pre-push" in content, "setup should install pre-push hooks"
+        assert "just $@" in content, "setup should be available through just forwarding"
 
     def test_template_makefile_has_hooks_targets(
         self, template_makefile_path: Path
@@ -370,6 +362,11 @@ class TestJustfileIntegration:
     """Tests for justfile pre-commit targets."""
 
     @pytest.fixture
+    def justfile_path(self) -> Path:
+        """Return path to the maintainer root justfile."""
+        return Path(__file__).parents[1] / "justfile"
+
+    @pytest.fixture
     def root_justfile_jinja_path(self) -> Path:
         return Path(__file__).parents[1] / "template" / "files" / "justfile.jinja"
 
@@ -382,6 +379,27 @@ class TestJustfileIntegration:
             / "quality"
             / "justfile.quality.jinja"
         )
+
+    def test_root_justfile_has_hooks_target(self, justfile_path: Path) -> None:
+        """Verify maintainer justfile has hooks target."""
+        content = justfile_path.read_text(encoding="utf-8")
+        assert "hooks:" in content, "justfile should have hooks recipe"
+        assert "pre-commit run --all-files" in content, (
+            "hooks recipe should run pre-commit"
+        )
+
+    def test_root_justfile_setup_installs_all_hook_types(
+        self, justfile_path: Path
+    ) -> None:
+        """Verify maintainer justfile setup installs all hook types."""
+        content = justfile_path.read_text(encoding="utf-8")
+        assert "pre-commit install --install-hooks" in content, (
+            "setup should install hooks"
+        )
+        assert "--hook-type commit-msg" in content, (
+            "setup should install commit-msg hooks"
+        )
+        assert "--hook-type pre-push" in content, "setup should install pre-push hooks"
 
     def test_template_root_justfile_imports_quality(
         self, root_justfile_jinja_path: Path

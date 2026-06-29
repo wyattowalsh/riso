@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from riso.core.errors import TemplateNotFoundError
+from riso.core.errors import PermissionDeniedError, TemplateNotFoundError
 from riso.core.paths import resolve_template_path, validate_destination
 
 
@@ -22,5 +22,13 @@ def test_resolve_template_explicit(tmp_path: Path) -> None:
 
 
 def test_validate_destination_blocks_etc() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(PermissionDeniedError):
         validate_destination("/etc/passwd")
+
+
+def test_validate_destination_blocks_dollar_home(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("HOME", "/etc")
+    with pytest.raises(PermissionDeniedError):
+        validate_destination("$HOME/passwd")
