@@ -8,6 +8,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -24,9 +27,17 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v6
       - name: Install dependencies
-        run: uv sync --group dev
+        run: |
+          if [ -f uv.lock ]; then
+            uv sync --frozen --group dev
+          else
+            uv sync --group dev
+          fi
       - name: Run quality suite
-        run: uv run python scripts/ci/run_quality_suite.py
+        run: |
+          uv run python scripts/ci/run_quality_suite.py \
+            --profile "${{ matrix.quality-profile }}" \
+            --log-dir "quality-${{ matrix.quality-profile }}"
 
       - name: Run tests with coverage
         run: |
@@ -66,11 +77,15 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y make
-          curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | sudo bash -s -- --to /usr/local/bin
+          sudo apt-get install -y make just
 
       - name: Install Python dependencies
-        run: uv sync --group dev
+        run: |
+          if [ -f uv.lock ]; then
+            uv sync --frozen --group dev
+          else
+            uv sync --group dev
+          fi
 
       - name: Render api-python sample for sync testing
         run: |
@@ -101,7 +116,7 @@ jobs:
             STATUS=$(jq -r '.overall_status' sync_test_results.json)
             echo "Sync test status: $STATUS"
             if [ "$STATUS" = "FAIL" ]; then
-              echo "❌ Sync test failed - make and uv task quality are out of sync"
+              echo "❌ Sync test failed - just / make / uv task quality are out of sync"
               exit 1
             elif [ "$STATUS" = "WARN" ]; then
               echo "⚠️ Sync test warning - performance variance detected"
@@ -130,7 +145,12 @@ jobs:
         uses: astral-sh/setup-uv@v6
 
       - name: Install dependencies
-        run: uv sync --group dev
+        run: |
+          if [ -f uv.lock ]; then
+            uv sync --frozen --group dev
+          else
+            uv sync --group dev
+          fi
 
       - name: Validate maintainer workflows
         run: uv run python scripts/ci/validate_workflows.py
@@ -150,7 +170,12 @@ jobs:
         uses: astral-sh/setup-uv@v6
 
       - name: Install dependencies
-        run: uv sync --group dev
+        run: |
+          if [ -f uv.lock ]; then
+            uv sync --frozen --group dev
+          else
+            uv sync --group dev
+          fi
 
       - name: Verify template context parity
         run: uv run python scripts/ci/verify_context_sync.py
@@ -170,7 +195,12 @@ jobs:
         uses: astral-sh/setup-uv@v6
 
       - name: Install dependencies
-        run: uv sync --group dev
+        run: |
+          if [ -f uv.lock ]; then
+            uv sync --frozen --group dev
+          else
+            uv sync --group dev
+          fi
 
       - name: Validate template artifacts
         run: |
@@ -184,6 +214,12 @@ jobs:
             --variant default \
             --answers samples/default/copier-answers.yml
           ./scripts/render-samples.sh \
+            --variant cli-docs \
+            --answers samples/cli-docs/copier-answers.yml
+          ./scripts/render-samples.sh \
+            --variant full-stack \
+            --answers samples/full-stack/copier-answers.yml
+          ./scripts/render-samples.sh \
             --variant ai-tools-off \
             --answers samples/ai-tools-off/copier-answers.yml
 
@@ -191,8 +227,12 @@ jobs:
         run: |
           uv run python scripts/ci/validate_agents_ecosystem.py \
             --render-enabled samples/default/render \
+            --render-enabled samples/cli-docs/render \
+            --render-enabled samples/full-stack/render \
             --render-disabled samples/ai-tools-off/render
           uv run python scripts/ci/agent_smoke_agents_md.py samples/default/render --json
+          uv run python scripts/ci/agent_smoke_agents_md.py samples/cli-docs/render --json
+          uv run python scripts/ci/agent_smoke_agents_md.py samples/full-stack/render --json
           uv run python scripts/ci/agent_smoke_agents_md.py samples/ai-tools-off/render --json
 
   cli-tests:
@@ -210,7 +250,12 @@ jobs:
         uses: astral-sh/setup-uv@v6
 
       - name: Install dependencies
-        run: uv sync --group dev
+        run: |
+          if [ -f uv.lock ]; then
+            uv sync --frozen --group dev
+          else
+            uv sync --group dev
+          fi
 
       - name: Run CLI unit tests
         run: |
@@ -236,7 +281,12 @@ jobs:
         uses: astral-sh/setup-uv@v6
 
       - name: Install dependencies
-        run: uv sync --group dev
+        run: |
+          if [ -f uv.lock ]; then
+            uv sync --frozen --group dev
+          else
+            uv sync --group dev
+          fi
 
       - name: Run pip-audit
         run: uv run pip-audit --strict --vulnerability-service osv
@@ -256,7 +306,12 @@ jobs:
         uses: astral-sh/setup-uv@v6
 
       - name: Install dependencies
-        run: uv sync --group docs
+        run: |
+          if [ -f uv.lock ]; then
+            uv sync --frozen --group docs
+          else
+            uv sync --group docs
+          fi
 
       - name: Build documentation
         run: |
@@ -317,11 +372,15 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y make
-          curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | sudo bash -s -- --to /usr/local/bin
+          sudo apt-get install -y make just
 
       - name: Install dependencies
-        run: uv sync --group dev --group cli
+        run: |
+          if [ -f uv.lock ]; then
+            uv sync --frozen --group dev --group cli
+          else
+            uv sync --group dev --group cli
+          fi
 
       - name: Set variant slug
         run: echo "VARIANT_SLUG=${MATRIX_VARIANT//\//-}" >> "$GITHUB_ENV"
@@ -443,6 +502,9 @@ jobs:
       - name: Install dependencies
         working-directory: web
         run: pnpm install --frozen-lockfile
+      - name: Audit production dependencies
+        working-directory: web
+        run: pnpm audit --prod
       - name: Run tests
         working-directory: web
         run: pnpm test:run
