@@ -7,10 +7,11 @@ from typing import TYPE_CHECKING, Literal
 
 import yaml
 
-from riso.cli.helpers import resolve_answers
+from riso.cli.helpers import resolve_answers, validate_and_raise
 from riso.core.answers import reject_removed_answer_keys
 from riso.core.diff import compute_diff
 from riso.core.errors import PathNotFoundError
+from riso.core.paths import validate_destination
 
 if TYPE_CHECKING:
     from riso.cli.config import CliConfig
@@ -27,7 +28,7 @@ def run_diff(
     operation: Operation = "copy",
 ) -> dict:
     """Compute diff for a Copier operation."""
-    dest_path = Path(destination).expanduser().resolve()
+    dest_path = validate_destination(destination)
 
     if operation in ("update", "recopy") and not dest_path.exists():
         raise PathNotFoundError(str(dest_path))
@@ -38,6 +39,7 @@ def run_diff(
             data_pairs=data_pairs,
             template_path=config.template_path,
         )
+        validate_and_raise(final_answers, config.template_path)
     else:
         existing: dict = {}
         answers_path = dest_path / ".copier-answers.yml"
@@ -60,5 +62,7 @@ def run_diff(
         destination=dest_path,
         template_path=config.template_path,
         operation=operation,
+        timeout=config.timeout,
+        force_unsafe=config.force_unsafe,
     )
     return diff.to_dict()

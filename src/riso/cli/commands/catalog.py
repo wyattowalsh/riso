@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from riso.core.paths import repo_root
 from riso.template import get_module_catalog
 
 if TYPE_CHECKING:
@@ -18,7 +19,7 @@ def run_catalog_modules(config: CliConfig) -> dict:
 
 def run_catalog_dependencies(config: CliConfig) -> dict:
     """Summarize lock files and tooling versions."""
-    root = config.template_path.parent
+    root = repo_root()
     summary: dict[str, object] = {"template_path": str(config.template_path)}
 
     lock_files = {

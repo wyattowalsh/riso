@@ -16,6 +16,7 @@ class CliConfig:
     template_path_override: Path | None = None
     samples_path_override: Path | None = None
     timeout: int | None = 300
+    force_unsafe: bool = False
 
     @classmethod
     def from_options(
@@ -24,15 +25,19 @@ class CliConfig:
         template_path: Path | None = None,
         samples_path: Path | None = None,
         timeout: int | None = None,
+        force_unsafe: bool = False,
     ) -> CliConfig:
         return cls(
             template_path_override=(
-                template_path.expanduser().resolve() if template_path else None
+                Path(str(template_path)).expanduser().resolve()
+                if template_path
+                else None
             ),
             samples_path_override=(
                 samples_path.expanduser().resolve() if samples_path else None
             ),
             timeout=timeout,
+            force_unsafe=force_unsafe,
         )
 
     @property

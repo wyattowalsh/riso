@@ -6,15 +6,20 @@ from typing import Any
 
 from riso.core.errors import ValidationFailedError
 
-REMOVED_ANSWER_KEYS: dict[str, str] = {
-    "api_tracks": "`api_module` plus `api_languages`",
-    "api_language": "`api_languages`",
-    "docs_site": "`docs_module` plus `docs_framework`",
-    "mcp_language": "`mcp_languages`",
-    "saas_starter_module": "`saas_infra_module`",
-    "saas_auth": "`saas_auth_module` plus `saas_auth_provider`",
-    "saas_billing": "`saas_billing_module` plus `saas_billing_provider`",
-}
+
+def _load_removed_answer_keys() -> dict[str, str]:
+    import sys
+    from pathlib import Path
+
+    scripts_parent = Path(__file__).resolve().parents[3] / "scripts"
+    if str(scripts_parent) not in sys.path:
+        sys.path.insert(0, str(scripts_parent))
+    from lib.removed_answer_keys import REMOVED_ANSWER_KEYS as keys
+
+    return dict(keys)
+
+
+REMOVED_ANSWER_KEYS: dict[str, str] = _load_removed_answer_keys()
 
 
 def prepare_copier_data(answers: dict[str, Any]) -> dict[str, Any]:

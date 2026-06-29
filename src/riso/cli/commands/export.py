@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -9,6 +10,7 @@ from typing import TYPE_CHECKING
 import yaml
 
 from riso.cli.helpers import resolve_answers
+from riso.core.paths import validate_destination
 
 if TYPE_CHECKING:
     from riso.cli.config import CliConfig
@@ -22,29 +24,30 @@ def run_export_cli(
     destination: str = "./my-project",
 ) -> dict:
     """Export a human-readable copier copy command."""
+    validate_destination(destination)
     answers = resolve_answers(
         answers_file=answers_file,
         data_pairs=data_pairs,
         template_path=config.template_path,
     )
+    template_q = shlex.quote(str(config.template_path))
+    dest_q = shlex.quote(destination)
     if answers_file:
-        cmd = (
-            f"copier copy {config.template_path} {destination} "
-            f"--answers-file {answers_file}"
-        )
+        answers_q = shlex.quote(str(answers_file))
+        cmd = f"copier copy {template_q} {dest_q} --answers-file {answers_q}"
     else:
-        data_args = " ".join(f'--data "{k}={v}"' for k, v in sorted(answers.items()))
-        cmd = f"copier copy {config.template_path} {destination} {data_args}".strip()
-
-    riso_cmd = (
-        f"uv run riso copy {destination} "
-        + (f"--answers-file {answers_file}" if answers_file else "")
-        + (
-            " " + " ".join(f"--data {k}={v}" for k, v in sorted(answers.items()))
-            if not answers_file
-            else ""
+        data_args = " ".join(
+            f"--data {shlex.quote(f'{k}={v}')}" for k, v in sorted(answers.items())
         )
-    ).strip()
+        cmd = f"copier copy {template_q} {dest_q} {data_args}".strip()
+
+    riso_parts = ["uv", "run", "riso", "copy", dest_q]
+    if answers_file:
+        riso_parts.extend(["--answers-file", shlex.quote(str(answers_file))])
+    else:
+        for key, value in sorted(answers.items()):
+            riso_parts.extend(["--data", shlex.quote(f"{key}={value}")])
+    riso_cmd = " ".join(riso_parts)
 
     return {
         "copier_command": cmd,

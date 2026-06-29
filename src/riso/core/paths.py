@@ -13,17 +13,33 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parents[3]
 
 
+def external_template_warning(path: Path) -> str | None:
+    """Return a warning when using a template outside this repository checkout."""
+    bundled = repo_root() / "template"
+    if not bundled.exists():
+        return None
+    try:
+        if path.resolve() != bundled.resolve():
+            return (
+                f"Template path {path} is outside this repository. "
+                "Only use templates from sources you trust."
+            )
+    except OSError:
+        return None
+    return None
+
+
 def resolve_template_path(explicit: Path | None = None) -> Path:
     """Resolve template directory from explicit path, env, or checkout."""
     if explicit is not None:
-        path = explicit.expanduser().resolve()
+        path = Path(os.path.expandvars(str(explicit))).expanduser().resolve()
         if not path.exists():
             raise TemplateNotFoundError(str(path))
         return path
 
     env_path = os.environ.get("RISO_TEMPLATE_PATH")
     if env_path:
-        path = Path(env_path).expanduser().resolve()
+        path = Path(os.path.expandvars(env_path)).expanduser().resolve()
         if not path.exists():
             raise TemplateNotFoundError(str(path))
         return path
@@ -49,7 +65,7 @@ def resolve_samples_path(explicit: Path | None = None) -> Path:
 
 def validate_destination(dest: str, safe_parent: Path | None = None) -> Path:
     """Validate destination does not escape safe directory or system paths."""
-    path = Path(dest).expanduser().resolve()
+    path = Path(os.path.expandvars(dest)).expanduser().resolve()
 
     if safe_parent:
         safe_parent = safe_parent.resolve()
@@ -60,28 +76,42 @@ def validate_destination(dest: str, safe_parent: Path | None = None) -> Path:
                 "destination", f"Outside allowed parent: {safe_parent}"
             ) from err
 
-    dangerous_paths = [
+    dangerous_exact = {
+        "/",
         "/etc",
         "/usr",
         "/bin",
         "/sbin",
         "/root",
         "/private/etc",
-        "/var/log",
-        "/var/db",
-        "/var/mail",
-        "/var/spool",
-        "/private/var/log",
-        "/private/var/db",
-        "/private/var/mail",
-        "/private/var/spool",
-        "/System/Volumes/Data/home",
-        "/home",
-    ]
+        "/var",
+        "/private/var",
+        "/System",
+        "/System/Volumes/Data",
+    }
+    dangerous_prefixes = (
+        "/etc/",
+        "/usr/",
+        "/bin/",
+        "/sbin/",
+        "/root/",
+        "/private/etc/",
+        "/var/log/",
+        "/var/db/",
+        "/var/mail/",
+        "/var/spool/",
+        "/private/var/log/",
+        "/private/var/db/",
+        "/private/var/mail/",
+        "/private/var/spool/",
+        "/System/",
+    )
     path_str = str(path)
 
-    for dangerous in dangerous_paths:
-        if path_str == dangerous or path_str.startswith(dangerous + "/"):
+    if path_str in dangerous_exact:
+        raise PermissionDeniedError("destination", "Cannot write to system directories")
+    for prefix in dangerous_prefixes:
+        if path_str.startswith(prefix):
             raise PermissionDeniedError(
                 "destination", "Cannot write to system directories"
             )

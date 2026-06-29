@@ -367,6 +367,8 @@ def compute_diff(
     destination: Path,
     template_path: Path,
     operation: str = "copy",
+    timeout: int | None = None,
+    force_unsafe: bool = False,
 ) -> DiffResult:
     """Compute diff between current state and what Copier would generate.
 
@@ -425,11 +427,15 @@ def compute_diff(
                             {**stored, **preview_answers}
                         )
 
-            run_copy(
+            from riso.template import run_with_timeout
+
+            run_with_timeout(
+                run_copy,
+                timeout,
                 str(template_path),
                 str(temp_dest),
                 data=preview_answers,
-                unsafe=True,
+                unsafe=force_unsafe,
                 defaults=True,
                 overwrite=True,
                 skip_tasks=True,

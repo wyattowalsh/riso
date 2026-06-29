@@ -7,6 +7,9 @@ import shutil
 import subprocess
 from typing import TYPE_CHECKING
 
+from riso.core.paths import external_template_warning
+from riso.template import load_copier_config
+
 if TYPE_CHECKING:
     from riso.cli.config import CliConfig
 
@@ -15,11 +18,22 @@ def run_doctor(*, config: CliConfig) -> dict:
     """Check tooling and resolved paths."""
     checks: dict[str, object] = {}
 
+    warnings: list[str] = []
     template_path, template_error = config.optional_template_path()
     if template_path is not None:
         checks["template_path"] = str(template_path)
         checks["template_exists"] = template_path.exists()
-        checks["copier_yml"] = str(template_path / "copier.yml")
+        try:
+            load_copier_config(template_path)
+            checks["copier_config_valid"] = True
+            checks["copier_yml"] = str(template_path / "copier.yml")
+        except (FileNotFoundError, RuntimeError) as exc:
+            checks["copier_config_valid"] = False
+            checks["copier_yml"] = None
+            checks["copier_config_error"] = str(exc)
+        trust_warning = external_template_warning(template_path)
+        if trust_warning:
+            warnings.append(trust_warning)
     else:
         checks["template_path"] = None
         checks["template_exists"] = False
@@ -59,8 +73,11 @@ def run_doctor(*, config: CliConfig) -> dict:
     checks["ready"] = bool(
         template_path is not None
         and checks["template_exists"]
-        and (template_path / "copier.yml").exists()
+        and checks.get("copier_config_valid")
         and checks["copier"]["available"]
     )
 
-    return {"checks": checks, "ready": checks["ready"]}
+    payload: dict[str, object] = {"checks": checks, "ready": checks["ready"]}
+    if warnings:
+        payload["warnings"] = warnings
+    return payload
