@@ -102,10 +102,20 @@ class WebSocketConfig(BaseSettings):
         le=3600,
     )
 
-    # CORS configuration
+    environment: str = Field(
+        default="development",
+        description="Deployment environment (development, staging, production)",
+    )
+
+    # Origin allowlist (never use wildcard in production)
     websocket_origins: List[str] = Field(
-        default=["*"],
-        description="Allowed WebSocket origins for CORS",
+        default_factory=lambda: ["http://localhost:3000"],
+        description="Allowed WebSocket Origin header values",
+    )
+
+    enable_demo_endpoints: bool = Field(
+        default=True,
+        description="Expose /ws demo routes (disabled automatically in production)",
     )
 
     # Feature flags
@@ -141,6 +151,10 @@ def get_config() -> WebSocketConfig:
     global _config
     if _config is None:
         _config = WebSocketConfig()
+        if _config.environment == "production":
+            _config.enable_demo_endpoints = False
+            if _config.websocket_origins == ["http://localhost:3000"]:
+                _config.websocket_origins = []
     return _config
 
 

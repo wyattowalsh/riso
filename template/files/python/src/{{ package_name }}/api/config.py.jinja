@@ -78,8 +78,8 @@ class ApiConfig(BaseSettings):
         description="Enable auto-reload (development only)",
     )
     cors_origins: list[str] = Field(
-        default=["http://localhost:3000"],
-        description="Allowed CORS origins",
+        default_factory=list,
+        description="Allowed CORS origins (empty in production until explicitly configured)",
     )
     app_name: str          = Field(
         default="{{ project_name }}",
@@ -109,6 +109,21 @@ class ApiConfig(BaseSettings):
             raise ValueError("reload must be False in production environment")
         return v
 
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def default_cors_for_non_production(
+        cls,
+        v: list[str] | None,
+        info,
+    ) -> list[str]:
+        """Use localhost default only outside production."""
+        if v:
+            return v
+        environment = info.data.get("environment", "development")
+        if environment == "production":
+            return []
+        return ["http://localhost:3000"]
+
     @field_validator("cors_origins")
     @classmethod
     def validate_cors_origins(cls, v: list[str]) -> list[str]:
@@ -117,6 +132,9 @@ class ApiConfig(BaseSettings):
             if not origin.startswith(("http://", "https://")):
                 msg = f"Invalid CORS origin: {origin} (must start with http:// or https://)"
                 raise ValueError(msg)
+        if v == ["*"]:
+            msg = "Wildcard CORS origin is not allowed; list explicit origins"
+            raise ValueError(msg)
         return v
 
 

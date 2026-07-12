@@ -2,7 +2,7 @@
 
 This module runs quality checks on generated projects:
 - Syntax validation for Python, TypeScript, etc.
-- Linting with ruff, mypy, pylint
+- Linting with ruff, ty, pylint
 - Basic security scans
 """
 
@@ -85,39 +85,41 @@ class QualityChecker:
             logger.warning(f"Failed to run ruff: {e}")
             return True, []
     
-    def run_mypy(self) -> tuple[bool, list[str]]:
-        """Run mypy type checker if available.
+    def run_ty(self) -> tuple[bool, list[str]]:
+        """Run ty type checker if available.
         
         Returns:
             Tuple of (passed, list_of_issues)
         """
-        if not self._command_exists("mypy"):
-            logger.debug("mypy not available, skipping")
+        if not self._command_exists("ty"):
+            logger.debug("ty not available, skipping")
             return True, []
         
-        logger.info("Running mypy type checker")
+        logger.info("Running ty type checker")
+        src_dir = self.project_dir / "src"
+        check_path = str(src_dir) if src_dir.is_dir() else str(self.project_dir)
         
         try:
             result = subprocess.run(
-                ["mypy", str(self.project_dir), "--ignore-missing-imports"],
+                ["ty", "check", check_path],
                 capture_output=True,
                 text=True,
                 timeout=60,
             )
             
             issues = []
-            if result.returncode != 0 and result.stdout:
-                # Parse mypy output
-                for line in result.stdout.strip().split("\n"):
-                    if ": error:" in line or ": warning:" in line:
+            if result.returncode != 0:
+                output = (result.stdout or "") + (result.stderr or "")
+                for line in output.strip().split("\n"):
+                    if line.strip():
                         issues.append(line)
             
             return result.returncode == 0, issues
         
         except subprocess.TimeoutExpired:
-            return False, ["Mypy timed out after 60 seconds"]
+            return False, ["ty timed out after 60 seconds"]
         except Exception as e:
-            logger.warning(f"Failed to run mypy: {e}")
+            logger.warning(f"Failed to run ty: {e}")
             return True, []
     
     def check_imports(self) -> tuple[bool, list[str]]:
@@ -176,10 +178,10 @@ class QualityChecker:
             results["ruff"] = ruff_issues
             has_warnings = True
         
-        # Mypy
-        mypy_ok, mypy_issues = self.run_mypy()
-        if mypy_issues:
-            results["mypy"] = mypy_issues
+        # ty
+        _ty_ok, ty_issues = self.run_ty()
+        if ty_issues:
+            results["ty"] = ty_issues
             has_warnings = True
         
         # Determine overall status

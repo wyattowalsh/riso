@@ -9,6 +9,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from loguru import logger
 
 from {{ package_name }}.websocket import ConnectionManager
+from {{ package_name }}.websocket.config import get_config as get_ws_config
 from {{ package_name }}.websocket.decorators import websocket_endpoint
 from {{ package_name }}.websocket.exceptions import WebSocketError
 from {{ package_name }}.websocket.models import MessageType
@@ -23,6 +24,10 @@ def setup_websocket_routes(app: FastAPI) -> None:
         app: FastAPI application instance
     """
     manager = ConnectionManager()
+    ws_config = get_ws_config()
+
+    if not ws_config.enable_demo_endpoints:
+        return
 
     @app.websocket("/ws")
     async def websocket_basic_endpoint(websocket: WebSocket):

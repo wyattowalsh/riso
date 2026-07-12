@@ -63,6 +63,165 @@ get_tool_version() {
 }
 
 #
+# Security Utilities
+#
+
+# Verify checksum of a downloaded file
+# Args: file_path, expected_checksum, algorithm (default: sha256)
+# Returns: 0 if checksum matches, 1 otherwise
+verify_checksum() {
+    local file_path="$1"
+    local expected_checksum="$2"
+    local algorithm="${3:-sha256}"
+
+    if [ ! -f "$file_path" ]; then
+        log_error "Cannot verify checksum: file not found: $file_path"
+        return 1
+    fi
+
+    local actual_checksum
+    case "$algorithm" in
+        sha256)
+            if has_cmd sha256sum; then
+                actual_checksum=$(sha256sum "$file_path" | cut -d' ' -f1)
+            elif has_cmd shasum; then
+                actual_checksum=$(shasum -a 256 "$file_path" | cut -d' ' -f1)
+            else
+                log_warn "No checksum tool available (sha256sum or shasum)"
+                return 1
+            fi
+            ;;
+        sha512)
+            if has_cmd sha512sum; then
+                actual_checksum=$(sha512sum "$file_path" | cut -d' ' -f1)
+            elif has_cmd shasum; then
+                actual_checksum=$(shasum -a 512 "$file_path" | cut -d' ' -f1)
+            else
+                log_warn "No checksum tool available"
+                return 1
+            fi
+            ;;
+        *)
+            log_error "Unsupported checksum algorithm: $algorithm"
+            return 1
+            ;;
+    esac
+
+    if [ "$actual_checksum" = "$expected_checksum" ]; then
+        log_debug "Checksum verified for $file_path"
+        return 0
+    else
+        log_error "Checksum mismatch for $file_path"
+        log_error "  Expected: $expected_checksum"
+        log_error "  Actual:   $actual_checksum"
+        return 1
+    fi
+}
+
+# Secure download with retry logic
+# Args: url, output_file, [expected_checksum]
+# Returns: 0 on success, 1 on failure
+secure_download() {
+    local url="$1"
+    local output_file="$2"
+    local expected_checksum="${3:-}"
+    local max_retries=3
+    local retry_delay=5
+
+    for ((i = 1; i <= max_retries; i++)); do
+        log_debug "Download attempt $i/$max_retries: $url"
+        if curl -fsSL --retry 3 --retry-delay 2 -o "$output_file" "$url"; then
+            if [ -n "$expected_checksum" ]; then
+                if verify_checksum "$output_file" "$expected_checksum"; then
+                    return 0
+                else
+                    log_error "Checksum verification failed, removing file"
+                    rm -f "$output_file"
+                    return 1
+                fi
+            fi
+            return 0
+        fi
+
+        if [ $i -lt $max_retries ]; then
+            log_warn "Download failed, retrying in ${retry_delay}s..."
+            sleep "$retry_delay"
+            retry_delay=$((retry_delay * 2))
+        fi
+    done
+
+    log_error "Download failed after $max_retries attempts: $url"
+    return 1
+}
+
+# GitHub API request with optional authentication
+# Uses GITHUB_TOKEN or GH_TOKEN environment variable if available
+# Args: api_endpoint (e.g., "repos/owner/repo/releases/latest")
+# Returns: JSON response on stdout, 0 on success, 1 on failure
+github_api() {
+    local endpoint="$1"
+    local url="https://api.github.com/${endpoint}"
+    local token="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
+
+    local response
+    if [ -n "$token" ]; then
+        log_debug "Using authenticated GitHub API request"
+        response=$(curl -fsSL -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $token" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "$url" 2>/dev/null)
+    else
+        log_debug "Using unauthenticated GitHub API request (rate limits apply)"
+        response=$(curl -fsSL -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "$url" 2>/dev/null)
+    fi
+
+    if [ $? -eq 0 ] && [ -n "$response" ]; then
+        echo "$response"
+        return 0
+    fi
+
+    log_warn "GitHub API request failed: $url"
+    return 1
+}
+
+# Securely execute a remote installer script with checksum verification
+# Args: url, expected_checksum, [interpreter (default: sh)]
+# Returns: 0 on success, 1 on failure
+secure_install_script() {
+    local url="$1"
+    local expected_checksum="${2:-}"
+    local interpreter="${3:-sh}"
+
+    if [ -z "$expected_checksum" ]; then
+        log_error "Refusing remote installer without checksum: $url"
+        return 1
+    fi
+
+    local tmp_script
+    tmp_script=$(mktemp "${TMPDIR:-/tmp}/riso-install-XXXXXX.sh")
+
+    trap 'rm -f "$tmp_script"' EXIT
+
+    log_info "Downloading installer from $url..."
+    if ! secure_download "$url" "$tmp_script" "$expected_checksum"; then
+        log_error "Failed to download installer script"
+        return 1
+    fi
+
+    log_info "Executing installer..."
+    if $interpreter "$tmp_script"; then
+        rm -f "$tmp_script"
+        return 0
+    fi
+
+    log_error "Installer script failed"
+    rm -f "$tmp_script"
+    return 1
+}
+
+#
 # UV Installation (Always required for Python projects)
 #
 
@@ -105,14 +264,9 @@ install_uv_with_winget() {
 }
 
 install_uv_with_curl() {
-    if ! has_cmd curl; then
-        log_warn "curl is required for standalone uv installation"
-        return 1
-    fi
-
-    log_info "Installing uv with standalone installer..."
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-    return 0
+    log_error "Refusing uv curl|sh install: Astral does not publish install.sh checksums"
+    log_error "Install via mise, Homebrew, or winget: https://docs.astral.sh/uv/getting-started/installation/"
+    return 1
 }
 
 install_uv() {
@@ -385,21 +539,13 @@ install_node_with_brew() {
 }
 
 install_node_with_apt() {
-    if ! has_cmd apt-get || ! has_cmd curl; then
+    if ! has_cmd apt-get; then
         return 1
     fi
 
-    log_info "Installing Node.js with apt (via NodeSource)..."
-
-    # Add NodeSource repository
-    if has_cmd sudo; then
-        curl -fsSL "https://deb.nodesource.com/setup_${NODE_MIN_VERSION}.x" | sudo bash -
-        sudo apt-get install -y nodejs
-    else
-        curl -fsSL "https://deb.nodesource.com/setup_${NODE_MIN_VERSION}.x" | bash -
-        apt-get install -y nodejs
-    fi
-    return 0
+    log_error "Refusing NodeSource curl|bash setup: no published checksum for setup script"
+    log_error "Use mise, Homebrew, dnf module, pacman, or winget for Node.js ${NODE_MIN_VERSION}+"
+    return 1
 }
 
 install_node_with_dnf() {
@@ -780,11 +926,17 @@ install_actionlint_with_download() {
 
     log_info "Downloading actionlint from GitHub releases..."
 
-    # Get latest release version
+    local release_info
+    release_info=$(github_api "repos/rhysd/actionlint/releases/latest")
+
+    if [ -z "$release_info" ]; then
+        log_warn "Failed to fetch actionlint release info from GitHub API"
+        log_warn "Set GITHUB_TOKEN to avoid rate limits"
+        return 1
+    fi
+
     local latest_version
-    latest_version=$(curl -fsSL https://api.github.com/repos/rhysd/actionlint/releases/latest |
-                     grep '"tag_name"' |
-                     sed -E 's/.*"v([^"]+)".*/\1/')
+    latest_version=$(echo "$release_info" | grep '"tag_name"' | sed -E 's/.*"v([^"]+)".*/\1/')
 
     if [ -z "$latest_version" ]; then
         log_warn "Failed to determine latest actionlint version"
@@ -792,17 +944,46 @@ install_actionlint_with_download() {
     fi
 
     local download_url="https://github.com/rhysd/actionlint/releases/download/v${latest_version}/actionlint_${latest_version}_${os_name}_${arch_name}.tar.gz"
+    local checksum_url="https://github.com/rhysd/actionlint/releases/download/v${latest_version}/actionlint_${latest_version}_checksums.txt"
     local install_dir="${HOME}/.local/bin"
+    local tmp_dir
+    tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/actionlint-XXXXXX")
+    local tarball="${tmp_dir}/actionlint.tar.gz"
 
     mkdir -p "$install_dir"
 
-    if curl -fsSL "$download_url" | tar -xz -C "$install_dir" actionlint; then
-        chmod +x "${install_dir}/actionlint"
-        return 0
-    else
+    if ! secure_download "$download_url" "$tarball"; then
         log_warn "Failed to download actionlint"
+        rm -rf "$tmp_dir"
         return 1
     fi
+
+    local checksums_file="${tmp_dir}/checksums.txt"
+    if secure_download "$checksum_url" "$checksums_file"; then
+        local expected_checksum
+        expected_checksum=$(grep "actionlint_${latest_version}_${os_name}_${arch_name}.tar.gz" "$checksums_file" | cut -d' ' -f1)
+        if [ -n "$expected_checksum" ]; then
+            if ! verify_checksum "$tarball" "$expected_checksum"; then
+                log_error "Checksum verification failed for actionlint"
+                rm -rf "$tmp_dir"
+                return 1
+            fi
+            log_success "Checksum verified for actionlint v${latest_version}"
+        fi
+    else
+        log_warn "Could not fetch checksums for actionlint (continuing without verification)"
+    fi
+
+    if tar -xzf "$tarball" -C "$tmp_dir" actionlint; then
+        mv "${tmp_dir}/actionlint" "${install_dir}/actionlint"
+        chmod +x "${install_dir}/actionlint"
+        rm -rf "$tmp_dir"
+        return 0
+    fi
+
+    log_warn "Failed to extract actionlint"
+    rm -rf "$tmp_dir"
+    return 1
 }
 
 install_actionlint() {
@@ -851,6 +1032,7 @@ install_actionlint() {
 
 # Export all functions
 export -f has_cmd version_gte get_tool_version
+export -f verify_checksum secure_download github_api secure_install_script
 export -f install_uv install_python
 {% if api_module == 'enabled' and 'node' in api_languages or docs_framework in ['fumadocs', 'docusaurus'] or saas_infra_module == 'enabled' -%}
 export -f install_node install_pnpm

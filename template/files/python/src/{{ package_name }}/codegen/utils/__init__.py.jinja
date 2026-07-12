@@ -8,7 +8,7 @@ from functools import lru_cache, wraps
 from pathlib import Path
 from typing import Any, Callable
 import hashlib
-import pickle
+import json
 from datetime import datetime
 from loguru import logger
 
@@ -43,8 +43,7 @@ def disk_cache(cache_dir: Path | None = None):
             # Check cache
             if cache_file.exists():
                 try:
-                    with open(cache_file, "rb") as f:
-                        cached_result = pickle.load(f)
+                    cached_result = json.loads(cache_file.read_text(encoding="utf-8"))
                     logger.debug(f"Cache hit for {func.__name__}")
                     return cached_result
                 except Exception as e:
@@ -54,9 +53,13 @@ def disk_cache(cache_dir: Path | None = None):
             result = func(*args, **kwargs)
             
             try:
-                with open(cache_file, "wb") as f:
-                    pickle.dump(result, f)
+                cache_file.write_text(
+                    json.dumps(result, default=str),
+                    encoding="utf-8",
+                )
                 logger.debug(f"Cached result for {func.__name__}")
+            except (TypeError, ValueError) as e:
+                logger.debug(f"Skipping non-JSON-serializable cache for {func.__name__}: {e}")
             except Exception as e:
                 logger.warning(f"Cache write failed for {func.__name__}: {e}")
             

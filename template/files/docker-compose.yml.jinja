@@ -39,8 +39,8 @@
 #
 # Environment variables:
 #   Set in .env file or export before running docker compose
-#   - POSTGRES_PASSWORD (default: dev_password)
-#   - REDIS_PASSWORD (default: dev_password)
+#   - POSTGRES_PASSWORD (development default: dev_password — set a strong secret for real deployments)
+#   - REDIS_PASSWORD (development default: dev_password — set a strong secret for real deployments)
 
 services:
 {%- if api_module == "enabled" and "python" in api_languages %}
@@ -310,7 +310,8 @@ services:
       - {{ project_slug }}-network
     labels:
       - "com.{{ project_slug }}.service=postgres"
-      - "com.{{ project_slug }}.environment=production"
+      - "com.{{ project_slug }}.environment=development"
+      - "com.{{ project_slug }}.credentials=dev-only"
 
   redis:
     image: redis:7-alpine
@@ -337,7 +338,8 @@ services:
       - {{ project_slug }}-network
     labels:
       - "com.{{ project_slug }}.service=redis"
-      - "com.{{ project_slug }}.environment=production"
+      - "com.{{ project_slug }}.environment=development"
+      - "com.{{ project_slug }}.credentials=dev-only"
 {%- endif %}
 
 # =============================================================================

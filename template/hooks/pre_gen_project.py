@@ -144,9 +144,33 @@ def _load_from_env(
     return default
 
 
+def _soft_load_context() -> dict:
+    """Best-effort context load for helpers (never fail-closed)."""
+    context: dict = {}
+    for key in (
+        "COPIER_ANSWERS",
+        "COPIER_JINJA2_CONTEXT",
+        "COPIER_RENDER_CONTEXT",
+    ):
+        raw = os.environ.get(key)
+        if not raw:
+            continue
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(data, dict):
+            context = data
+            break
+    file_answers, file_present = _load_answers_yaml_file()
+    if file_present and file_answers:
+        context = {**context, **file_answers}
+    return context
+
+
 def _load_docs_framework(context: dict | None = None, default: str = "fumadocs") -> str:
     """Best-effort retrieval of the selected documentation variant."""
-    active_context = context or _load_copier_context()
+    active_context = context if context is not None else _soft_load_context()
     if active_context.get("docs_module") == "disabled":
         return "none"
     value = active_context.get("docs_framework")
@@ -155,13 +179,51 @@ def _load_docs_framework(context: dict | None = None, default: str = "fumadocs")
     return _load_from_env("docs_framework", VALID_DOCS_SITES, default)
 
 
-def _load_ci_platform(default: str = "github-actions") -> str:
+def _load_ci_platform(
+    context: dict | None = None, default: str = "github-actions"
+) -> str:
     """Best-effort retrieval of the selected CI platform."""
+    if context:
+        value = context.get("ci_platform")
+        if isinstance(value, str) and value in VALID_CI_PLATFORMS:
+            return value
     return _load_from_env("ci_platform", VALID_CI_PLATFORMS, default)
 
 
+def _env_flag(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _load_answers_yaml_file(base_dir: Path | None = None) -> tuple[dict, bool]:
+    """Load ``.copier-answers.yml`` from the render destination.
+
+    Returns:
+        Tuple of (answers dict, whether the answers file was present).
+    """
+    answers_path = (base_dir or Path.cwd()) / ".copier-answers.yml"
+    if not answers_path.is_file():
+        return {}, False
+    try:
+        import yaml
+    except ImportError as exc:
+        sys.stderr.write(
+            "Error: PyYAML is required to read .copier-answers.yml during pre-generation.\n"
+        )
+        raise SystemExit(1) from exc
+    try:
+        with answers_path.open(encoding="utf-8") as handle:
+            data = yaml.safe_load(handle)
+    except yaml.YAMLError as exc:
+        sys.stderr.write(f"Error: Failed to parse .copier-answers.yml: {exc}\n")
+        raise SystemExit(1) from exc
+    if not isinstance(data, dict):
+        return {}, True
+    return {str(key): value for key, value in data.items() if value is not None}, True
+
+
 def _load_copier_context() -> dict:
-    """Load full copier context for validation."""
+    """Load full copier context for validation (env + ``.copier-answers.yml``)."""
+    context: dict = {}
     candidates = (
         "COPIER_ANSWERS",
         "COPIER_JINJA2_CONTEXT",
@@ -174,10 +236,22 @@ def _load_copier_context() -> dict:
         try:
             data = json.loads(raw)
             if isinstance(data, dict):
-                return data
+                context = data
+                break
         except json.JSONDecodeError:
             continue
-    return {}
+
+    file_answers, file_present = _load_answers_yaml_file()
+    if file_present:
+        context = {**context, **file_answers}
+    elif not context:
+        sys.stderr.write(
+            "Error: No Copier answers available (missing env context and "
+            ".copier-answers.yml). Cannot run pre-generation validation.\n"
+        )
+        raise SystemExit(1)
+
+    return context
 
 
 def _write_copier_context(context: dict) -> None:
@@ -200,6 +274,30 @@ def _validate_removed_answer_keys(context: dict) -> bool:
     for key in removed:
         sys.stderr.write(f"- {key}: {REMOVED_ANSWER_KEYS[key]}\n")
     return False
+
+
+def _validate_generation_answers(context: dict) -> bool:
+    """Run shared generation gates when importable; else local validation."""
+    try:
+        from riso.core.generation_gates import validate_answers_for_generation
+    except ImportError:
+        if not _validate_removed_answer_keys(context):
+            return False
+        return _validate_and_report_saas_starter(context)
+
+    result = validate_answers_for_generation(context)
+    for warning in result.warnings:
+        sys.stderr.write(f"⚠️  {warning}\n")
+    if not result.ok:
+        sys.stderr.write("\n❌ Pre-generation validation failed:\n\n")
+        for err in result.errors:
+            sys.stderr.write(f"  {err}\n")
+        return False
+
+    if context.get("saas_infra_module") == "enabled":
+        return _validate_and_report_saas_starter(context)
+
+    return True
 
 
 def _validate_saas_starter(context: dict) -> list[dict]:
@@ -644,33 +742,40 @@ def _build_tool_matrix(
         List of (tool_name, version, mise_spec) tuples
     """
     tool_matrix: list[tuple[str, str, str | None]] = [
-        ("uv", "0.4.30", "uv@0.4.30"),
+        ("uv", "0.11.26", "uv@0.11.26"),
     ]
 
     if docs_framework != "none" or context.get("saas_infra_module") == "enabled":
         tool_matrix.extend(
             [
-                ("node", "20", "node@20"),
-                ("pnpm", "9.15.0", "pnpm@9.15.0"),
+                ("node", "22", "node@22"),
+                ("pnpm", "11.11.0", "pnpm@11.11.0"),
             ]
         )
 
     return tool_matrix
 
 
+def _require_hook_tooling() -> None:
+    if _TOOL_CHECK_AVAILABLE or _env_flag("RISO_SKIP_HOOK_TOOLS"):
+        return
+    sys.stderr.write(
+        "Error: Riso hook helper scripts are unavailable (hooks.quality_tool_check). "
+        "Set RISO_SKIP_HOOK_TOOLS=1 only for isolated lint runs.\n"
+    )
+    sys.exit(1)
+
+
 def main() -> None:
+    _require_hook_tooling()
     context = _load_copier_context()
     context.update(normalize_api_feature_modules(context))
     _write_copier_context(context)
-    if not _validate_removed_answer_keys(context):
+    if not _validate_generation_answers(context):
         sys.exit(1)
 
     docs_framework = _load_docs_framework(context)
-    ci_platform = _load_ci_platform()
-
-    # Validate SaaS Starter configuration if enabled
-    if not _validate_and_report_saas_starter(context):
-        sys.exit(1)
+    ci_platform = _load_ci_platform(context)
 
     tool_matrix = _build_tool_matrix(docs_framework, context)
 

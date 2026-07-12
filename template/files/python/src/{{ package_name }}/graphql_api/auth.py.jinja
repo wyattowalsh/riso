@@ -120,12 +120,8 @@ async def get_current_user_from_token(token: str) -> dict:
     # except jwt.InvalidTokenError:
     #     raise AuthError("Invalid authentication token")
     
-    # Placeholder implementation
-    if token == "valid-token":
-        return {
-            "id": "user-123",
-            "email": "user@example.com",
-            "permissions": ["user:read", "user:write"],
-        }
-    else:
-        raise AuthError("Invalid authentication token")
+    # Fail closed: no placeholder backdoor tokens in generated projects.
+    # Wire JWT/session validation before enabling authenticated GraphQL mutations.
+    raise AuthError(
+        "Authentication is not configured. Implement token validation before use."
+    )

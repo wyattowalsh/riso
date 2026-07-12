@@ -5,8 +5,8 @@
       "prompt_key": "quality_profile",
       "default_state": "standard",
       "selected_state": "{{ quality_profile }}",
-      "description": "Unified Ruff/Mypy/Pylint/coverage suite with optional Node tooling.",
-      "dependencies": ["taskipy", "coverage", "ruff", "mypy", "pylint"],
+      "description": "Unified Ruff/ty/Pylint/coverage suite with optional Node tooling.",
+      "dependencies": ["taskipy", "coverage", "ruff", "ty", "pylint"],
       "docs_path": "docs/modules/quality.md",
       "ci_jobs": ["python-quality-standard", "python-quality-strict"],
       "validation_commands": [
@@ -106,7 +106,8 @@
       "docs_path": "docs/modules/mcp.md",
       "ci_jobs": ["mcp-smoke"],
       "validation_commands": [
-        "uv run python -c \"from shared.mcp import tooling; print(tooling.list_tools())\""
+        {% if 'python' in mcp_languages %}"uv run python -m mcp --help",
+        {% endif %}"uv run python -c \"from shared.mcp import tooling; print(tooling.list_tools())\""
       ]
     },
     {

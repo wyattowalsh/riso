@@ -9,8 +9,9 @@ This module executes hook scripts with security restrictions:
 
 from pathlib import Path
 from typing import Optional
-import subprocess
 import os
+import shlex
+import subprocess
 from loguru import logger
 
 from ..models import HookConfiguration
@@ -129,9 +130,10 @@ class HookExecutor:
         
         try:
             # Execute with timeout and security restrictions
+            command = shlex.split(script)
             result = subprocess.run(
-                script,
-                shell=True,
+                command,
+                shell=False,
                 cwd=self.project_dir,
                 env=env,
                 capture_output=True,

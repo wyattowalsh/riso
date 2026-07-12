@@ -7,7 +7,7 @@ import uuid
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-
+from fastapi import WebSocket
 from loguru import logger
 from pydantic import ValidationError
 
@@ -34,6 +34,24 @@ def generate_message_id() -> str:
         str: UUID4 string
     """
     return str(uuid.uuid4())
+
+
+def validate_websocket_origin(websocket: WebSocket, allowed_origins: List[str]) -> None:
+    """Reject connections whose Origin header is not in the allowlist."""
+    if not allowed_origins:
+        return
+    origin = websocket.headers.get("origin") or websocket.headers.get("Origin")
+    if origin is None:
+        return
+    normalized_allowed = {o.rstrip("/") for o in allowed_origins}
+    if origin.rstrip("/") not in normalized_allowed:
+        from {{ package_name }}.websocket.exceptions import WebSocketError
+
+        raise WebSocketError(
+            message="WebSocket origin not allowed",
+            code="ORIGIN_FORBIDDEN",
+            details={"origin": origin},
+        )
 
 
 def get_utc_timestamp() -> datetime:
