@@ -5,10 +5,24 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, TypedDict
+
+_REPO = Path(__file__).resolve().parents[2]
+
+if str(_REPO) not in sys.path:
+    sys.path.insert(0, str(_REPO))
+
+try:
+    from scripts.lib.smoke_schema import iter_modules, load_smoke  # noqa: E402
+except ModuleNotFoundError:  # pragma: no cover - path-polluted test envs
+    scripts_dir = _REPO / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from lib.smoke_schema import iter_modules, load_smoke  # type: ignore[no-redef]  # noqa: E402
 
 
 class ModuleResult(TypedDict):
@@ -231,6 +245,19 @@ class ModuleSuccessRecorder:
         return payload
 
 
+def smoke_payload_to_results(payload: dict[str, object]) -> list[ModuleResult]:
+    """Convert canonical or legacy smoke JSON to module result rows."""
+    results: list[ModuleResult] = []
+    for name, entry in iter_modules(payload):
+        results.append(
+            ModuleResult(
+                name=name,
+                status=str(entry.get("status", "skipped")),
+            )
+        )
+    return results
+
+
 def iter_smoke_logs(samples_dir: Path) -> Iterable[tuple[str, list[ModuleResult]]]:
     """Iterate over all smoke test result files in the samples directory.
 
@@ -240,11 +267,10 @@ def iter_smoke_logs(samples_dir: Path) -> Iterable[tuple[str, list[ModuleResult]
     Yields:
         Tuples of (variant_name, results_list) for each smoke-results.json file found.
     """
-    for answers_file in sorted(samples_dir.glob("*/smoke-results.json")):
-        variant = answers_file.parent.name
-        data: SmokeResults = json.loads(answers_file.read_text(encoding="utf-8"))
-        results = data.get("results", [])
-        yield variant, list(results)
+    for smoke_file in sorted(samples_dir.glob("*/smoke-results.json")):
+        variant = smoke_file.parent.name
+        payload = load_smoke(smoke_file)
+        yield variant, smoke_payload_to_results(payload)
 
 
 def update_support_ticket_metrics(destination: Path) -> None:

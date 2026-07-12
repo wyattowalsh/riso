@@ -42,6 +42,61 @@ NODE_SECTION_PATTERN = re.compile(
     re.DOTALL,
 )
 
+_TY_LINE = re.compile(r"ty\s+check\b", re.IGNORECASE)
+_PYLINT_LINE = re.compile(r"\bpylint\b", re.IGNORECASE)
+
+
+def _normalize_checker_paths(text: str) -> tuple[str | None, str | None]:
+    """Return normalized ty/pylint path signatures when present in quality commands."""
+    ty_sig: str | None = None
+    pylint_sig: str | None = None
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        normalized = (
+            line.replace("$(PACKAGE_NAME)", "{{ package_name }}")
+            .replace("$(PYLINT_FLAGS)", "")
+            .replace("$(TY_FLAGS)", "")
+        )
+        if _TY_LINE.search(normalized):
+            if "src/{{ package_name }}" in normalized or "src/PKG" in normalized:
+                ty_sig = "src/PKG"
+            elif "{{ package_name }}" in normalized or "PKG" in normalized:
+                ty_sig = "PKG"
+        if _PYLINT_LINE.search(normalized) and "run" in normalized:
+            tokens: list[str] = []
+            if "src/{{ package_name }}" in normalized or "src/PKG" in normalized:
+                tokens.append("src/PKG")
+            if "{{ package_name }}" in normalized or "$(PACKAGE_NAME)" in line:
+                tokens.append("PKG")
+            if "tests" in normalized:
+                tokens.append("tests")
+            if tokens:
+                pylint_sig = "+".join(sorted(set(tokens)))
+    return ty_sig, pylint_sig
+
+
+def _checker_path_errors(
+    surfaces: dict[str, str],
+) -> list[str]:
+    """Compare ty/pylint path segments across makefile, justfile, and uv task."""
+    errors: list[str] = []
+    signatures = {
+        name: _normalize_checker_paths(text) for name, text in surfaces.items()
+    }
+    ty_values = {name: sig[0] for name, sig in signatures.items() if sig[0] is not None}
+    pylint_surfaces = {
+        name: sig[1]
+        for name, sig in signatures.items()
+        if sig[1] is not None and name in {"Makefile", "justfile"}
+    }
+    if len(ty_values) >= 2 and len(set(ty_values.values())) > 1:
+        errors.append(f"ty check path mismatch: {ty_values}")
+    if len(pylint_surfaces) >= 2 and len(set(pylint_surfaces.values())) > 1:
+        errors.append(f"pylint path mismatch: {pylint_surfaces}")
+    return errors
+
 
 def _has_unconditional_patterns(text: str, patterns: list[str]) -> bool:
     """Return True when patterns appear outside optional Node API Jinja blocks."""
@@ -90,6 +145,13 @@ def main() -> int:
             errors.append(
                 f"python task missing Node commands: {', '.join(task_node_missing)}"
             )
+
+    surfaces: dict[str, str] = {"python task": task_text}
+    if MAKEFILE.exists():
+        surfaces["Makefile"] = MAKEFILE.read_text(encoding="utf-8")
+    if JUSTFILE.exists():
+        surfaces["justfile"] = JUSTFILE.read_text(encoding="utf-8")
+    errors.extend(_checker_path_errors(surfaces))
 
     if errors:
         for error in errors:

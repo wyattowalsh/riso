@@ -17,9 +17,16 @@ from pathlib import Path
 from typing import TypedDict
 
 _REPO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(_REPO))
+if str(_REPO) not in sys.path:
+    sys.path.insert(0, str(_REPO))
 
-from scripts.lib.paths import repo_root  # noqa: E402
+try:
+    from scripts.lib.paths import repo_root  # noqa: E402
+except ModuleNotFoundError:  # pragma: no cover
+    scripts_dir = _REPO / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from lib.paths import repo_root  # type: ignore[no-redef]  # noqa: E402
 
 REPO_ROOT = repo_root()
 
@@ -32,7 +39,11 @@ except ModuleNotFoundError:
     from lib.logger import configure_logging, logger
 
 try:  # pragma: no cover - import behaviour depends on invocation style
-    from record_module_success import ModuleResult, ModuleSuccessRecorder
+    from record_module_success import (
+        ModuleResult,
+        ModuleSuccessRecorder,
+        smoke_payload_to_results,
+    )
 except (
     ModuleNotFoundError
 ):  # pragma: no cover - fallback for `python path/to/script.py`
@@ -40,22 +51,15 @@ except (
     from pathlib import Path as _Path
 
     _sys.path.append(str(_Path(__file__).resolve().parent))
-    from record_module_success import ModuleResult, ModuleSuccessRecorder
+    from record_module_success import (
+        ModuleResult,
+        ModuleSuccessRecorder,
+        smoke_payload_to_results,
+    )
 
 
 def _module_results(payload: dict[str, object]) -> list[ModuleResult]:
-    raw = payload.get("results", [])
-    if not isinstance(raw, list):
-        return []
-    typed: list[ModuleResult] = []
-    for entry in raw:
-        if not isinstance(entry, dict):
-            continue
-        name = entry.get("name")
-        status = entry.get("status")
-        if isinstance(name, str) and isinstance(status, str):
-            typed.append({"name": name, "status": status})
-    return typed
+    return smoke_payload_to_results(payload)
 
 
 class VariantResult(TypedDict):

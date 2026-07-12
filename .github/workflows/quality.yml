@@ -54,7 +54,7 @@ jobs:
         uses: actions/upload-artifact@v6
         if: always()
         with:
-          name: coverage-report-${{ matrix.python-version }}
+          name: coverage-report-${{ matrix.python-version }}-${{ matrix.quality-profile }}
           path: |
             htmlcov/
             coverage.xml
@@ -152,8 +152,13 @@ jobs:
             uv sync --group dev
           fi
 
+      - name: Install actionlint
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          sudo install -m 0755 ./actionlint /usr/local/bin/actionlint
+
       - name: Validate maintainer workflows
-        run: uv run python scripts/ci/validate_workflows.py
+        run: uv run python scripts/ci/validate_workflows.py --require-actionlint
 
   verify-context-sync:
     name: Verify Context Sync
@@ -390,11 +395,11 @@ jobs:
       - name: Render sample - ${{ matrix.variant }}
         run: |
           ./scripts/render-samples.sh \
-            --variant ${{ matrix.variant }} \
-            --answers samples/${{ matrix.variant }}/copier-answers.yml
+            --variant "${{ matrix.variant }}" \
+            --answers "samples/${{ matrix.variant }}/copier-answers.yml"
 
       - name: Validate pre-commit render layout
-        run: uv run python scripts/ci/render_precommit_configs.py --variants ${{ matrix.variant }}
+        run: uv run python scripts/ci/render_precommit_configs.py --variants "${{ matrix.variant }}"
 
       - name: Verify smoke test results
         run: |
@@ -412,7 +417,8 @@ jobs:
 
             echo "All smoke tests passed for ${{ matrix.variant }}"
           else
-            echo "Warning: No smoke test results found for ${{ matrix.variant }}"
+            echo "Error: No smoke test results found for ${{ matrix.variant }}"
+            exit 1
           fi
 
       - name: Generate job summary
@@ -486,6 +492,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+  # web-tests pins pnpm 9.15.0; validate-agents/saas matrix jobs use pnpm/action-setup default — align when touching those jobs.
   web-tests:
     name: Web UI Tests
     runs-on: ubuntu-latest

@@ -13,13 +13,17 @@ try:
 except ModuleNotFoundError as exc:  # pragma: no cover - dependency wiring
     raise SystemExit("PyYAML is required to generate matrix data.") from exc
 
+from riso.template import get_defaults, get_prompts, load_copier_config
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-TEMPLATE_COPIER = REPO_ROOT / "template" / "copier.yml"
+TEMPLATE_DIR = REPO_ROOT / "template"
+TEMPLATE_COPIER = TEMPLATE_DIR / "copier.yml"
 SAMPLES_DIR = REPO_ROOT / "samples"
 METADATA_DIR = SAMPLES_DIR / "metadata"
 RENDER_MATRIX = METADATA_DIR / "render_matrix.json"
 OUTPUT_FILE = METADATA_DIR / "matrix-data.json"
+WEB_OUTPUT = REPO_ROOT / "web" / "src" / "data" / "matrix-data.json"
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
@@ -34,6 +38,15 @@ def load_json(path: Path) -> dict[str, Any] | None:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def template_defaults_block(copier_data: dict[str, Any]) -> dict[str, Any]:
+    """Return raw ``_defaults`` / legacy ``defaults`` from copier.yml."""
+    return dict(copier_data.get("_defaults", copier_data.get("defaults", {})) or {})
+
+
+def template_metadata(copier_data: dict[str, Any]) -> dict[str, Any]:
+    return dict(copier_data.get("_metadata", copier_data.get("metadata", {})) or {})
+
+
 def normalize_prompt(key: str, prompt: Any, defaults: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(prompt, dict):
         return {
@@ -43,6 +56,7 @@ def normalize_prompt(key: str, prompt: Any, defaults: dict[str, Any]) -> dict[st
             "default": defaults.get(key),
             "when": None,
             "help": None,
+            "multiselect": None,
         }
 
     return {
@@ -52,24 +66,28 @@ def normalize_prompt(key: str, prompt: Any, defaults: dict[str, Any]) -> dict[st
         "default": defaults.get(key, prompt.get("default")),
         "when": prompt.get("when"),
         "help": prompt.get("help"),
+        "multiselect": prompt.get("multiselect"),
     }
 
 
-def collect_prompts(copier_data: dict[str, Any]) -> dict[str, Any]:
-    defaults = copier_data.get("defaults", {}) or {}
-    prompts = copier_data.get("prompts", {}) or {}
+def collect_prompts(template_path: Path) -> dict[str, Any]:
+    copier_data = load_copier_config(template_path)
+    raw_defaults = template_defaults_block(copier_data)
+    effective_defaults = get_defaults(template_path)
+    prompts = get_prompts(template_path)
 
     prompt_entries = [
-        normalize_prompt(key, prompt, defaults) for key, prompt in prompts.items()
+        normalize_prompt(key, prompt, effective_defaults)
+        for key, prompt in sorted(prompts.items())
     ]
-    prompt_entries.sort(key=lambda item: item["key"])
 
     saas_prompts = [
         prompt for prompt in prompt_entries if prompt["key"].startswith("saas_")
     ]
 
     return {
-        "defaults": defaults,
+        "_defaults": raw_defaults,
+        "defaults": effective_defaults,
         "prompts": prompt_entries,
         "saas_prompts": saas_prompts,
     }
@@ -100,8 +118,8 @@ def collect_samples(render_matrix: dict[str, Any] | None) -> dict[str, Any]:
 def main() -> None:
     METADATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    copier_data = load_yaml(TEMPLATE_COPIER)
     render_matrix = load_json(RENDER_MATRIX)
+    prompt_bundle = collect_prompts(TEMPLATE_DIR)
 
     payload: dict[str, Any] = {
         "generated_at": datetime.now(tz=timezone.utc).isoformat(),
@@ -110,14 +128,19 @@ def main() -> None:
             "render_matrix": str(RENDER_MATRIX) if render_matrix else None,
         },
         "template": {
-            "metadata": copier_data.get("metadata", {}),
-            **collect_prompts(copier_data),
+            "metadata": template_metadata(load_copier_config(TEMPLATE_DIR)),
+            **prompt_bundle,
         },
         "samples": collect_samples(render_matrix),
     }
 
-    OUTPUT_FILE.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    print(f"Matrix data written to {OUTPUT_FILE}")
+    text = json.dumps(payload, indent=2) + "\n"
+    OUTPUT_FILE.write_text(text, encoding="utf-8")
+    prompt_count = len(prompt_bundle["prompts"])
+    print(f"Matrix data written to {OUTPUT_FILE} ({prompt_count} prompts)")
+    if WEB_OUTPUT.parent.is_dir():
+        WEB_OUTPUT.write_text(text, encoding="utf-8")
+        print(f"Matrix data dual-written to {WEB_OUTPUT}")
 
 
 if __name__ == "__main__":
