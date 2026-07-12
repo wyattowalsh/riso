@@ -115,20 +115,20 @@ class TestSmokeResultsLoading:
         smoke_file.write_text(
             json.dumps(
                 {
-                    "results": [
-                        {"module": "cli", "status": "passed", "duration": 1.5},
-                        {"module": "api", "status": "failed", "error": "Import error"},
-                    ]
+                    "variant": "variant",
+                    "modules": {
+                        "cli": {"status": "passed", "duration": 1.5},
+                        "api": {"status": "failed", "error": "Import error"},
+                    },
                 }
             )
         )
 
         results = load_smoke_results(answers_file)
         assert results is not None
-        assert "results" in results
-        assert len(results["results"]) == 2
-        assert results["results"][0]["module"] == "cli"
-        assert results["results"][0]["status"] == "passed"
+        assert "modules" in results
+        assert len(results["modules"]) == 2
+        assert results["modules"]["cli"]["status"] == "passed"
 
     def test_returns_none_for_missing_file(self, temp_dir):
         """Should return None for missing smoke results file."""
@@ -170,11 +170,11 @@ class TestSmokeResultsLoading:
         answers_file.write_text("project_name: Test\n")
 
         smoke_file = variant_dir / "smoke-results.json"
-        smoke_file.write_text(json.dumps({"results": []}))
+        smoke_file.write_text(json.dumps({"variant": "variant", "modules": {}}))
 
         results = load_smoke_results(answers_file)
         assert results is not None
-        assert results["results"] == []
+        assert results["modules"] == {}
 
 
 @pytest.mark.unit
@@ -287,7 +287,10 @@ class TestIntegration:
         smoke_file = variant_dir / "smoke-results.json"
         smoke_file.write_text(
             json.dumps(
-                {"results": [{"module": "cli", "status": "passed", "duration": 0.5}]}
+                {
+                    "variant": "default",
+                    "modules": {"cli": {"status": "passed", "duration": 0.5}},
+                }
             )
         )
 
@@ -310,7 +313,7 @@ class TestIntegration:
         # Load associated data
         smoke_results = load_smoke_results(variant_answers)
         assert smoke_results is not None
-        assert len(smoke_results["results"]) == 1
+        assert len(smoke_results["modules"]) == 1
 
         metadata = load_post_gen_metadata(variant_answers)
         assert metadata is not None
@@ -445,7 +448,7 @@ class TestMain:
                 {
                     "variant": "default",
                     "smoke_results": {
-                        "results": [{"module": "cli", "status": "passed"}]
+                        "modules": {"cli": {"status": "passed"}},
                     },
                 }
             ]

@@ -40,6 +40,18 @@ def pytest_configure(config):
     _setup_sys_path()
 
 
+@pytest.fixture(autouse=True)
+def _ensure_repo_sys_path():
+    """Re-assert import paths before every test (guards against path pollution)."""
+    _setup_sys_path()
+    # Prefer repo-root ``scripts`` package over a bare ``scripts/`` path entry.
+    if str(_project_root) in sys.path:
+        # Keep repo root first among path entries we manage.
+        sys.path.remove(str(_project_root))
+        sys.path.insert(0, str(_project_root))
+    yield
+
+
 @pytest.fixture
 def temp_dir() -> Generator[Path, None, None]:
     """Create a temporary directory for test isolation."""

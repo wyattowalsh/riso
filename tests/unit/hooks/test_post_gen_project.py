@@ -18,6 +18,18 @@ pytestmark = pytest.mark.usefixtures("hooks_path")
 class TestRecordMetadata:
     """Tests for record_metadata function."""
 
+    def test_rejects_symlink_riso_dir(self, tmp_path):
+        """Should refuse to write metadata when .riso is a symlink."""
+        from post_gen_project import record_metadata
+
+        target = tmp_path / "metadata-store"
+        target.mkdir()
+        (tmp_path / ".riso").symlink_to(target, target_is_directory=True)
+
+        with pytest.raises(SystemExit) as exc_info:
+            record_metadata(tmp_path, {"test": True})
+        assert exc_info.value.code == 1
+
     def test_creates_metadata_directory(self, tmp_path):
         """Should create .riso directory if it doesn't exist."""
         from post_gen_project import record_metadata
@@ -199,13 +211,12 @@ class TestLoadAnswers:
         assert exc_info.value.code == 1
 
     def test_handles_missing_yaml_module(self, tmp_path, monkeypatch):
-        """Should handle missing yaml module gracefully."""
+        """Should fail closed when yaml is missing but answers file exists."""
         from post_gen_project import load_answers
 
         answers_file = tmp_path / ".copier-answers.yml"
         answers_file.write_text("key: value\n", encoding="utf-8")
 
-        # Mock yaml import to raise ImportError
         import builtins
 
         original_import = builtins.__import__
@@ -217,14 +228,29 @@ class TestLoadAnswers:
 
         monkeypatch.setattr(builtins, "__import__", mock_import)
 
-        result = load_answers(tmp_path)
-        # Should return empty dict when yaml can't be imported
-        assert isinstance(result, dict)
+        with pytest.raises(SystemExit) as exc_info:
+            load_answers(tmp_path)
+        assert exc_info.value.code == 1
 
 
 @pytest.mark.unit
 class TestCleanupEmptyScaffoldDirs:
     """Tests for empty scaffold directory cleanup."""
+
+    def test_skips_directory_symlinks(self, tmp_path):
+        """Should not follow or remove directories via symlinks."""
+        from post_gen_project import cleanup_empty_scaffold_dirs
+
+        outside = tmp_path / "outside-empty"
+        outside.mkdir()
+        link = tmp_path / "graphql"
+        link.symlink_to(outside, target_is_directory=True)
+
+        removed = cleanup_empty_scaffold_dirs(tmp_path)
+
+        assert removed == []
+        assert outside.exists()
+        assert link.is_symlink()
 
     def test_removes_known_empty_scaffold_dirs(self, tmp_path):
         """Should remove known empty directories left by Copier excludes."""
@@ -664,7 +690,7 @@ class TestMain:
         content = json.loads(metadata_file.read_text(encoding="utf-8"))
 
         assert "workflow_validation" in content
-        assert content["workflow_validation"] in ["pass", "fail"]
+        assert content["workflow_validation"] in ["pass", "fail", "tool_missing"]
 
     def test_skips_workflow_validation_for_other_ci(self, tmp_path, monkeypatch):
         """Should skip workflow validation for non-GitHub CI platforms."""
@@ -732,9 +758,15 @@ class TestMain:
         # Mock quality tool checks to avoid subprocess calls
         import post_gen_project
 
-        monkeypatch.setattr(post_gen_project, "ensure_python_quality_tools", lambda: [])
         monkeypatch.setattr(
-            post_gen_project, "ensure_node_quality_tools", lambda required: []
+            post_gen_project,
+            "ensure_python_quality_tools",
+            lambda *args, **kwargs: [],
+        )
+        monkeypatch.setattr(
+            post_gen_project,
+            "ensure_node_quality_tools",
+            lambda *args, **kwargs: [],
         )
 
         from post_gen_project import main
