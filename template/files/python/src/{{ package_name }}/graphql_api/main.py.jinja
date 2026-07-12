@@ -44,10 +44,17 @@ async def get_context(
 
 
 # Create GraphQL router with Strawberry
+# GraphiQL is development-only; never enable the playground in production.
+import os
+
+_graphiql = os.environ.get("GRAPHIQL", "").lower() in {"1", "true", "yes"} and (
+    os.environ.get("ENV", os.environ.get("ENVIRONMENT", "development")).lower()
+    not in {"prod", "production"}
+)
 graphql_app = GraphQLRouter(
     schema=schema,
     context_getter=get_context,
-    graphiql=True,  # Enable GraphQL playground
+    graphiql=_graphiql,
 )
 
 

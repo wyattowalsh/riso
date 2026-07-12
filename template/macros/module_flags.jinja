@@ -2,6 +2,14 @@
 {{ cli_module | lower == "enabled" }}
 {%- endmacro -%}
 
+{%- macro python_cli_enabled() -%}
+{{ cli_module | lower == "enabled" and "python" in cli_languages }}
+{%- endmacro -%}
+
+{%- macro api_feature_enabled(feature) -%}
+{{ (feature in api_features) or (feature == "graphql" and graphql_api_module | lower == "enabled") or (feature == "websocket" and websocket_module | lower == "enabled") }}
+{%- endmacro -%}
+
 {%- macro python_api_enabled() -%}
 {{ api_module == "enabled" and "python" in api_languages }}
 {%- endmacro -%}

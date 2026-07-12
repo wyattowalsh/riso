@@ -15,6 +15,7 @@ from {{ package_name }}.websocket.exceptions import (
     RoomNotFoundError,
 )
 from {{ package_name }}.websocket.middleware import ConnectionMiddleware
+from {{ package_name }}.websocket.utils import validate_websocket_origin
 from {{ package_name }}.websocket.models import Room, WebSocketConnectionModel
 
 
@@ -123,6 +124,8 @@ class ConnectionManager:
         Raises:
             ConnectionError: If connection limits exceeded
         """
+        validate_websocket_origin(websocket, self.config.websocket_origins)
+
         async with self._lock:
             # Check global connection limit
             if len(self._connections) >= self.config.max_connections_global:

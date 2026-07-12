@@ -6,10 +6,54 @@ Demonstrates async tools with external dependencies.
 
 from __future__ import annotations
 
+import ipaddress
+import socket
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlparse
 
 if TYPE_CHECKING:
     from fastmcp import FastMCP
+
+
+def _validate_fetch_url(url: str, *, allow_http: bool = False) -> str:
+    """SSRF guard: HTTPS preferred; block private/link-local/metadata targets."""
+    parsed = urlparse(url)
+    if parsed.scheme not in {"https", "http"}:
+        msg = "URL must use http or https"
+        raise ValueError(msg)
+    if parsed.scheme == "http" and not allow_http:
+        msg = "HTTP URLs are blocked; use HTTPS or set MCP_HTTP_ALLOW_INSECURE=1"
+        raise ValueError(msg)
+    if not parsed.hostname:
+        msg = "URL must include a hostname"
+        raise ValueError(msg)
+
+    host = parsed.hostname.lower()
+    blocked_names = {
+        "localhost",
+        "metadata.google.internal",
+        "metadata",
+    }
+    if host in blocked_names or host.endswith(".localhost"):
+        raise ValueError(f"Blocked host: {host}")
+
+    try:
+        addr_infos = socket.getaddrinfo(host, None)
+    except socket.gaierror as exc:
+        raise ValueError(f"Could not resolve host: {host}") from exc
+
+    for info in addr_infos:
+        ip = ipaddress.ip_address(info[4][0])
+        if (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+        ):
+            raise ValueError(f"Blocked private or reserved address: {ip}")
+
+    return url
 
 
 def register_http_tools(mcp: FastMCP) -> None:
@@ -45,11 +89,25 @@ def register_http_tools(mcp: FastMCP) -> None:
         dict
             Response with status, headers, and content
         """
+        import os
+
         import httpx
 
+        allow_http = os.environ.get("MCP_HTTP_ALLOW_INSECURE", "").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
         try:
-            async with httpx.AsyncClient(timeout=timeout) as client:
-                response = await client.get(url, headers=headers)
+            safe_url = _validate_fetch_url(url, allow_http=allow_http)
+        except ValueError as exc:
+            return {"success": False, "error": str(exc)}
+
+        try:
+            async with httpx.AsyncClient(
+                timeout=timeout, follow_redirects=False
+            ) as client:
+                response = await client.get(safe_url, headers=headers)
 
                 return {
                     "success": True,
@@ -101,14 +159,26 @@ def register_http_tools(mcp: FastMCP) -> None:
         dict
             Response with status and content
         """
+        import os
+
         import httpx
 
+        allow_http = os.environ.get("MCP_HTTP_ALLOW_INSECURE", "").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
         try:
-            async with httpx.AsyncClient(timeout=timeout) as client:
+            safe_url = _validate_fetch_url(url, allow_http=allow_http)
+        except ValueError as exc:
+            return {"success": False, "error": str(exc)}
+
+        try:
+            async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
                 if json_body:
-                    response = await client.post(url, json=json_body, headers=headers)
+                    response = await client.post(safe_url, json=json_body, headers=headers)
                 else:
-                    response = await client.post(url, data=data, headers=headers)
+                    response = await client.post(safe_url, data=data, headers=headers)
 
                 return {
                     "success": True,
@@ -151,11 +221,23 @@ def register_http_tools(mcp: FastMCP) -> None:
         dict
             Response headers and status
         """
+        import os
+
         import httpx
 
+        allow_http = os.environ.get("MCP_HTTP_ALLOW_INSECURE", "").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
         try:
-            async with httpx.AsyncClient(timeout=timeout) as client:
-                response = await client.head(url, headers=headers)
+            safe_url = _validate_fetch_url(url, allow_http=allow_http)
+        except ValueError as exc:
+            return {"success": False, "error": str(exc)}
+
+        try:
+            async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
+                response = await client.head(safe_url, headers=headers)
 
                 return {
                     "success": True,

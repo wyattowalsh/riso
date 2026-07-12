@@ -24,18 +24,16 @@ class TestErrorHandling:
     
     def test_query_syntax_error(self, graphql_client):
         """Test that syntax errors return clear messages."""
-        # Invalid GraphQL syntax
         query = """
             query {
                 user(id: "1") {
                     id
                     name
-                }  # Missing closing brace
+                }
         """
         
         result = graphql_client.query(query)
         
-        # Should return syntax error
         assert result.errors is not None
     
     def test_invalid_field_error(self, graphql_client):
@@ -51,7 +49,6 @@ class TestErrorHandling:
         
         result = graphql_client.query(query)
         
-        # Should return field validation error
         assert result.errors is not None
         assert any("invalidField" in str(error) for error in result.errors)
     

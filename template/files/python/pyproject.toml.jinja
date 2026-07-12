@@ -17,9 +17,9 @@ dependencies = [
   "tenacity>=9.1.2",
 ]
 
-{% if cli_module == 'enabled' or codegen_module == 'enabled' %}
+{% if (cli_module == 'enabled' and 'python' in cli_languages) or codegen_module == 'enabled' %}
 [project.scripts]
-{% if cli_module == 'enabled' %}
+{% if cli_module == 'enabled' and 'python' in cli_languages %}
 {{ project_slug }} = "{{ package_name }}.cli.__main__:main"
 {% endif %}
 {% if codegen_module == 'enabled' %}
@@ -27,7 +27,7 @@ scaffold = "{{ package_name }}.codegen.cli:main"
 {% endif %}
 {% endif %}
 
-{% if cli_module == 'enabled' %}
+{% if cli_module == 'enabled' and 'python' in cli_languages %}
 [project.entry-points."{{ package_name }}.cli.plugins"]
 demo = "{{ package_name }}.cli.plugins.example_plugin:demo_command"
 {% endif %}
@@ -138,3 +138,20 @@ respect-ignore-files = true
 [tool.ty.terminal]
 output-format = "full"
 {% if quality_profile == 'strict' %}error-on-warning = true{% endif %}
+
+{% if mcp_module == 'enabled' and 'python' in mcp_languages %}
+[tool.setuptools.packages.find]
+where = ["src", "."]
+include = ["{{ package_name }}*", "mcp*"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+mcp = "mcp"
+{% else %}
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["{{ package_name }}*"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+{% endif %}

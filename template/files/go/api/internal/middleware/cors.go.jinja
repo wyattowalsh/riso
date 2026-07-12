@@ -42,13 +42,26 @@ func DefaultCORSConfig() CORSConfig {
 }
 
 // ProductionCORSConfig returns a restrictive CORS configuration for production.
+// Rejects wildcard origins when credentials are enabled (browser-unsafe).
 func ProductionCORSConfig(allowedOrigins []string) CORSConfig {
+	origins := make([]string, 0, len(allowedOrigins))
+	for _, o := range allowedOrigins {
+		if o == "*" || o == "" {
+			continue
+		}
+		origins = append(origins, o)
+	}
+	if len(origins) == 0 {
+		// Fail closed: no origins → no CORS reflection
+		origins = []string{}
+	}
 	return CORSConfig{
-		AllowOrigins:     allowedOrigins,
+		AllowOrigins:     origins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
 		AllowHeaders:     []string{"Accept", "Authorization", "Content-Type", "X-Request-ID"},
 		ExposeHeaders:    []string{"X-Request-ID"},
-		AllowCredentials: true,
+		// Only enable credentials when an explicit allowlist is configured.
+		AllowCredentials: len(origins) > 0,
 		MaxAge:           3600, // 1 hour
 	}
 }

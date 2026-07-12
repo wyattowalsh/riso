@@ -18,7 +18,6 @@ _metadata:
   tags:
     - polyglot
     - python
-    - typescript
     - rust
     - typer
     - fastapi
@@ -57,12 +56,13 @@ _defaults:
     - python
   api_features: []
 
+  # Legacy answer keys (no Copier prompts): prefer api_features multiselect.
+  graphql_api_module: "disabled"
+  websocket_module: "disabled"
+
   # Go Module Configuration
   go_framework: "gin"
   go_version: "1.24"
-
-  graphql_api_module: "disabled"
-  websocket_module: "disabled"
 
   # MCP Module
   mcp_module: "disabled"
@@ -192,7 +192,6 @@ _defaults:
   saas_include_fixtures: true
   saas_include_factories: true
   saas_test_suite_level: "standard"
-  include_admin: false
   saas_search_provider: "none"
   saas_multi_tenancy_level: "teams"
   saas_compliance_level: "basic"
@@ -273,12 +272,10 @@ cli_languages:
     Select CLI implementation language(s) - multiselect supported for monorepo:
     - python: Typer with Rich console output
     - rust: Clap with colored output
-    - typescript: Commander.js with Chalk
     - go: Cobra v1.10 with slog logging
   choices:
     - python
     - rust
-    - typescript
     - go
   default:
     - python
@@ -342,16 +339,15 @@ go_version:
 
 api_features:
   type: str
+  multiselect: true
   help: |
-    Select additional API features (comma-separated):
+    Select additional API features (multiselect):
     - graphql: GraphQL endpoint (Strawberry/Apollo/async-graphql)
     - websocket: WebSocket real-time communication
   choices:
-    - none
     - graphql
     - websocket
-    - graphql,websocket
-  default: none
+  default: []
   when: "{{ api_module == 'enabled' }}"
 
 
@@ -377,7 +373,6 @@ mcp_languages:
     - go: Official MCP Go SDK with slog logging
   choices:
     - python
-    - typescript
     - rust
     - go
   default:
@@ -484,12 +479,10 @@ docs_framework:
     - fumadocs: Next.js-based, modern UI, MDX
     - sphinx-shibuya: Python Sphinx with Shibuya theme
     - docusaurus: React-based, versioning, blog
-    - mkdocs: Python-based, Material theme
   choices:
     - fumadocs
     - sphinx-shibuya
     - docusaurus
-    - mkdocs
   default: fumadocs
   when: "{{ docs_module == 'enabled' }}"
 
@@ -1556,12 +1549,6 @@ saas_onboarding:
     - none
   when: "{{ saas_infra_module == 'enabled' }}"
 
-include_admin:
-  type: bool
-  help: "Include admin dashboard scaffolding (user management, subscriptions, audit logs)"
-  default: false
-  when: "{{ saas_infra_module == 'enabled' }}"
-
 saas_admin_dashboard:
   type: bool
   help: |
@@ -1996,9 +1983,9 @@ _exclude:
   - "{% if not (api_module == 'enabled' and 'python' in api_languages and ('websocket' in api_features or websocket_module == 'enabled')) %}python/src/{{ package_name }}/api/websocket_endpoints.py{% endif %}"
 
   # Python GraphQL - exclude if not using GraphQL with Python API
-  - "{% if not (api_module == 'enabled' and 'python' in api_languages and ('graphql' in api_features or graphql_api_module == 'enabled')) %}python/graphql_api/{% endif %}"
+  - "{% if not (api_module == 'enabled' and 'python' in api_languages and ('graphql' in api_features or graphql_api_module == 'enabled')) %}python/src/{{ package_name }}/graphql_api/{% endif %}"
   - "{% if not (api_module == 'enabled' and 'python' in api_languages and ('graphql' in api_features or graphql_api_module == 'enabled')) %}graphql/{% endif %}"
-  - "{% if not (api_module == 'enabled' and 'python' in api_languages and ('graphql' in api_features or graphql_api_module == 'enabled')) %}tests/graphql/{% endif %}"
+  - "{% if not (api_module == 'enabled' and 'python' in api_languages and ('graphql' in api_features or graphql_api_module == 'enabled')) %}python/tests/graphql/{% endif %}"
 
   # Node API - exclude if not using Node API
   - "{% if not (api_module == 'enabled' and 'node' in api_languages) %}node/apps/api-node/{% endif %}"
@@ -2113,6 +2100,26 @@ _tasks:
 
         src_path = pathlib.Path({{ _copier_conf.src_path | to_json }})
         candidates = (
+            src_path / "hooks" / "pre_gen_project.py",
+            src_path / "template" / "hooks" / "pre_gen_project.py",
+            src_path.parent / "hooks" / "pre_gen_project.py",
+        )
+        for candidate in candidates:
+            if candidate.exists():
+                runpy.run_path(str(candidate), run_name="__main__")
+                break
+        else:
+            raise SystemExit("Riso pre-generation hook not found")
+    when: "{{ _copier_operation == 'copy' }}"
+  - command:
+      - "{{ _copier_python }}"
+      - "-c"
+      - |
+        import pathlib
+        import runpy
+
+        src_path = pathlib.Path({{ _copier_conf.src_path | to_json }})
+        candidates = (
             src_path / "hooks" / "post_gen_project.py",
             src_path / "template" / "hooks" / "post_gen_project.py",
             src_path.parent / "hooks" / "post_gen_project.py",
@@ -2123,4 +2130,4 @@ _tasks:
                 break
         else:
             raise SystemExit("Riso post-generation hook not found")
-    when: "{{ _copier_operation == 'copy' }}"
+    when: "{{ _copier_operation == 'copy' or _copier_operation == 'update' or _copier_operation == 'recopy' }}"

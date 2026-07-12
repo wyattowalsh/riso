@@ -1,4 +1,4 @@
-# Riso prompt schema (rendered into docs or automation)
+# Riso prompt schema (rendered into docs or automation; SSOT is template/copier.yml)
 project_layout:
   default: "{{ project_layout }}"
   choices:
@@ -6,7 +6,7 @@ project_layout:
     - monorepo
   description: >
     Select between a lightweight single-package layout or a pnpm-backed monorepo
-    with dedicated `apps/` and `packages/` directories.
+    with dedicated apps/ and packages/ directories.
 
 quality_profile:
   default: "{{ quality_profile }}"
@@ -15,7 +15,7 @@ quality_profile:
     - strict
   description: >
     Configure the quality suite profile. `standard` runs pragmatic linting/type
-    checks, while `strict` enables Mypy strict mode and extended Ruff rules.
+    checks, while `strict` enables extended Ruff rules and pylint.
 
 cli_module:
   default: "{{ cli_module }}"
@@ -23,19 +23,42 @@ cli_module:
     - disabled
     - enabled
   description: >
-    When enabled, scaffold a Typer-based CLI, Vitest smoke tests, and usage
-    documentation.
+    When enabled, scaffold CLI applications for the selected `cli_languages`
+    (Python Typer, Rust Clap, Go Cobra).
+
+cli_languages:
+  default: "{{ cli_languages }}"
+  choices:
+    - python
+    - rust
+    - go
+  description: >
+    Multiselect CLI implementation languages. TypeScript CLI is not scaffolded yet.
+
+api_module:
+  default: "{{ api_module }}"
+  choices:
+    - disabled
+    - enabled
+  description: Enable REST/HTTP API scaffolding for selected `api_languages`.
 
 api_languages:
   default: "{{ api_languages }}"
   choices:
-    - none
     - python
     - node
-    - python+node
+    - rust
+    - go
   description: >
-    Configure optional FastAPI (Python) and Fastify (Node) services. Selecting
-    `api_languages=[python,node]` scaffolds both tracks with shared logic.
+    Multiselect API implementation languages (FastAPI, Fastify, Actix, Go frameworks).
+
+api_features:
+  default: "{{ api_features }}"
+  choices:
+    - graphql
+    - websocket
+  description: >
+    Optional API add-ons (multiselect). Empty selection means no GraphQL or WebSocket.
 
 mcp_module:
   default: "{{ mcp_module }}"
@@ -43,8 +66,14 @@ mcp_module:
     - disabled
     - enabled
   description: >
-    Enable FastMCP tooling, contracts, and validation scripts for machine
-    controller protocol integrations.
+    Enable MCP server scaffolding for selected `mcp_languages`.
+
+docs_module:
+  default: "{{ docs_module }}"
+  choices:
+    - disabled
+    - enabled
+  description: Enable documentation site scaffolding.
 
 docs_framework:
   default: "{{ docs_framework }}"
@@ -52,13 +81,8 @@ docs_framework:
     - fumadocs
     - sphinx-shibuya
     - docusaurus
-    - none
   description: >
-    Select the documentation experience:
-    `fumadocs` (Next.js 16 + Tailwind 4, requires Node.js 20 and pnpm ≥8),
-    `sphinx-shibuya` (Python/uv managed build with Shibuya theme),
-    `docusaurus` (React/TypeScript with DocSearch v4 integration), or `none`
-    to skip documentation scaffolding entirely.
+    Documentation stack: Fumadocs (Next.js), Sphinx Shibuya (Python), or Docusaurus.
 
 shared_logic:
   default: "{{ shared_logic }}"
@@ -66,5 +90,12 @@ shared_logic:
     - disabled
     - enabled
   description: >
-    Generate a reusable shared logic package that can be imported by CLI or API
-    modules without forcing unused dependencies into the baseline render.
+    Generate a reusable shared logic package imported by CLI or API modules.
+
+ci_platform:
+  default: "{{ ci_platform }}"
+  choices:
+    - github-actions
+    - none
+  description: >
+    CI platform scaffolding (`github-actions` or skip CI templates).

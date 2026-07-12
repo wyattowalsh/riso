@@ -7,7 +7,7 @@ quality: quality-python{% if api_module == 'enabled' and 'node' in api_languages
 quality-python:
     uv run --group quality --group test ruff check{% if quality_profile == 'strict' %} --select ALL --ignore E203,E266,E501{% endif %}
     uv run --group quality --group test ty check{% if quality_profile == 'strict' %} --error-on-warning{% endif %} src/{{ package_name }}
-    uv run --group quality --group test pylint{% if quality_profile == 'strict' %} --errors-only{% endif %} {{ package_name }} tests
+    uv run --group quality --group test pylint{% if quality_profile == 'strict' %} --errors-only{% endif %} src/{{ package_name }} tests
     uv run --group quality --group test coverage run --rcfile coverage.cfg -m pytest -ra
     uv run --group quality coverage report --rcfile coverage.cfg
 
@@ -15,11 +15,11 @@ coverage-report:
     uv run --group quality coverage html --rcfile coverage.cfg
 
 format:
-    uv run --group quality ruff format {{ package_name }} tests
+    uv run --group quality ruff format src/{{ package_name }} tests
 
 lint:
     uv run --group quality --group test ruff check{% if quality_profile == 'strict' %} --select ALL --ignore E203,E266,E501{% endif %}
-    uv run --group quality --group test pylint{% if quality_profile == 'strict' %} --errors-only{% endif %} {{ package_name }} tests
+    uv run --group quality --group test pylint{% if quality_profile == 'strict' %} --errors-only{% endif %} src/{{ package_name }} tests
 
 {% if api_module == 'enabled' and 'node' in api_languages %}
 quality-node:

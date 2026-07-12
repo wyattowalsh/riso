@@ -28,16 +28,16 @@ try:
     _TOOL_CHECK_AVAILABLE = True
 except ModuleNotFoundError:  # pragma: no cover - template lint
 
-    def ensure_python_quality_tools():
-        return []
+    def ensure_python_quality_tools(*, install: bool = True):  # type: ignore[misc]
+        raise ModuleNotFoundError("quality_tool_check unavailable")
 
-    def ensure_node_quality_tools(_):
-        return []
+    def ensure_node_quality_tools(required: bool):  # type: ignore[misc]
+        raise ModuleNotFoundError("quality_tool_check unavailable")
+
+    def validate_workflows_directory(workflows_dir, strict: bool = False):  # type: ignore[misc]
+        raise ModuleNotFoundError("workflow_validator unavailable")
 
     _TOOL_CHECK_AVAILABLE = False
-
-    def validate_workflows_directory(*args, **kwargs):  # noqa: ARG001
-        return 0
 
 
 DEFAULT_GUIDANCE = [
@@ -67,7 +67,7 @@ EMPTY_SCAFFOLD_DIRS = [
     "scripts/hooks",
     "tauri",
     "testing",
-    "tests/graphql",
+    "python/tests/graphql",
     "tests/integration",
     "tests",
 ]
@@ -153,10 +153,19 @@ def package_for_answers(destination: pathlib.Path, answers: dict[str, object]) -
 def cleanup_empty_scaffold_dirs(destination: pathlib.Path) -> list[str]:
     """Remove known empty scaffold directories left after conditional excludes."""
     removed: list[str] = []
+    root = destination.resolve()
     for relative_path in sorted(
         EMPTY_SCAFFOLD_DIRS, key=lambda path: path.count("/"), reverse=True
     ):
         path = destination / relative_path
+        if path.is_symlink():
+            continue
+        try:
+            resolved = path.resolve()
+            if not resolved.is_relative_to(root):
+                continue
+        except (OSError, ValueError):
+            continue
         if not path.is_dir():
             continue
         try:
@@ -211,7 +220,13 @@ def record_metadata(destination: pathlib.Path, data: dict[str, object]) -> None:
         destination: Root directory of the rendered project.
         data: Metadata dictionary to write to the file.
     """
-    metadata_file = destination / ".riso" / "post_gen_metadata.json"
+    riso_dir = destination / ".riso"
+    if riso_dir.is_symlink():
+        sys.stderr.write(
+            "Error: .riso must not be a symlink before writing metadata.\n"
+        )
+        raise SystemExit(1)
+    metadata_file = riso_dir / "post_gen_metadata.json"
     metadata_file.parent.mkdir(parents=True, exist_ok=True)
     metadata_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
@@ -219,13 +234,15 @@ def record_metadata(destination: pathlib.Path, data: dict[str, object]) -> None:
 def load_answers(destination: pathlib.Path) -> dict[str, object]:
     """Load answers from YAML file safely."""
     answers_path = destination / ".copier-answers.yml"
-    if not answers_path.exists():
+    if not answers_path.is_file():
         return {}
     try:
         import yaml
-    except ImportError as e:
-        sys.stderr.write(f"Warning: Failed to parse answers file: {e}\n")
-        return {}
+    except ImportError as exc:
+        sys.stderr.write(
+            "Error: PyYAML is required to read .copier-answers.yml during post-generation.\n"
+        )
+        raise SystemExit(1) from exc
     try:
         with answers_path.open(encoding="utf-8") as f:
             data = yaml.safe_load(f)
@@ -235,6 +252,49 @@ def load_answers(destination: pathlib.Path) -> dict[str, object]:
     if isinstance(data, dict):
         return {str(k): v for k, v in data.items() if v is not None}
     return {}
+
+
+def _env_flag(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _require_hook_tooling() -> None:
+    if _TOOL_CHECK_AVAILABLE or _env_flag("RISO_SKIP_HOOK_TOOLS"):
+        return
+    sys.stderr.write(
+        "Error: Riso hook helper scripts are unavailable. "
+        "Set RISO_SKIP_HOOK_TOOLS=1 only for isolated lint runs.\n"
+    )
+    raise SystemExit(1)
+
+
+def _revalidate_saas_answers(answers: dict[str, object]) -> None:
+    """Re-run SaaS / generation gate checks after render."""
+    try:
+        from riso.core.generation_gates import validate_answers_for_generation
+    except ImportError:
+        if answers.get("saas_infra_module") != "enabled":
+            return
+        hook_dir = pathlib.Path(__file__).resolve().parent
+        if str(hook_dir) not in sys.path:
+            sys.path.insert(0, str(hook_dir))
+        from pre_gen_project import _validate_saas_starter  # noqa: PLC0415
+
+        issues = _validate_saas_starter(answers)
+        errors = [item for item in issues if item["severity"] == "error"]
+        if errors:
+            sys.stderr.write("\n❌ SaaS configuration errors after generation:\n\n")
+            for error in errors:
+                sys.stderr.write(f"  {error['message']}\n")
+            raise SystemExit(1)
+        return
+
+    result = validate_answers_for_generation(answers)
+    if not result.ok:
+        sys.stderr.write("\n❌ Post-generation answer validation failed:\n\n")
+        for err in result.errors:
+            sys.stderr.write(f"  {err}\n")
+        raise SystemExit(1)
 
 
 def should_install_node_dependencies(answers: dict[str, object]) -> bool:
@@ -441,19 +501,29 @@ def main() -> None:
     Validates Python and Node quality tools, validates generated workflows,
     records metadata, and prints next-steps guidance to stdout.
     """
+    _require_hook_tooling()
     destination = pathlib.Path.cwd()
     answers = load_answers(destination)
     validate_removed_answer_keys(answers)
+    _revalidate_saas_answers(answers)
     package = package_for_answers(destination, answers)
     removed_empty_dirs = cleanup_empty_scaffold_dirs(destination)
     removed_empty_files = cleanup_empty_rendered_files(destination)
     removed_legacy_files = cleanup_legacy_root_pyproject(destination)
-    quality_checks = ensure_python_quality_tools() if _TOOL_CHECK_AVAILABLE else []
+    install_python_tools = _env_flag("RISO_POST_GEN_INSTALL_TOOLS")
+    quality_checks = (
+        ensure_python_quality_tools(install=install_python_tools)
+        if _TOOL_CHECK_AVAILABLE
+        else []
+    )
     node_checks = []
     if _TOOL_CHECK_AVAILABLE:
         node_track = "node" in api_languages_for_answers(answers)
         node_required = node_track and should_install_node_dependencies(answers)
         node_checks = ensure_node_quality_tools(node_required)
+
+    quality_profile = answer_text(answers, "quality_profile", "standard")
+    strict_hooks = _env_flag("RISO_STRICT_HOOKS") or quality_profile == "strict"
 
     # Validate generated workflows if CI platform is GitHub Actions
     ci_platform = answer_text(answers, "ci_platform", "github-actions")
@@ -463,13 +533,16 @@ def main() -> None:
         changelog_enabled = (
             answer_text(answers, "changelog_module", "disabled") == "enabled"
         )
-        exit_code = validate_workflows_directory(
-            workflows_dir, strict=changelog_enabled
+        workflow_strict = strict_hooks or changelog_enabled
+        exit_code, workflow_validation_status = validate_workflows_directory(
+            workflows_dir, strict=workflow_strict
         )
-        workflow_validation_status = "pass" if exit_code == 0 else "fail"
+        if strict_hooks and (
+            workflow_validation_status in {"fail", "tool_missing"} or exit_code != 0
+        ):
+            raise SystemExit(exit_code or 1)
 
     # Record pre-commit setup guidance (manual install; no hook mutation)
-    quality_profile = answer_text(answers, "quality_profile", "standard")
     changelog_module = answer_text(answers, "changelog_module", "disabled")
     task_runner = answer_text(answers, "task_runner", "just")
     pre_commit_result = pre_commit_setup_guidance(

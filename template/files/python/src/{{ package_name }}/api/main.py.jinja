@@ -86,8 +86,17 @@ def create_app() -> FastAPI:
         async def _graphql_context(request):
             return await get_graphql_context(request=request)
 
+        import os
+
+        _graphiql = os.environ.get("GRAPHIQL", "").lower() in {"1", "true", "yes"} and (
+            config.environment != "production"
+        )
         application.include_router(
-            GraphQLRouter(schema, context_getter=_graphql_context),
+            GraphQLRouter(
+                schema,
+                context_getter=_graphql_context,
+                graphiql=_graphiql,
+            ),
             prefix="/graphql",
         )
     except ImportError:
