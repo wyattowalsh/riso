@@ -31,6 +31,63 @@ updates:
       prefix: "deps(actions)"
       include: "scope"
 
+  # Web wizard (maintainer configurator)
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      web-npm:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "deps(web)"
+      include: "scope"
+
+  # Root package.json if present
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      root-npm:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "deps(npm)"
+      include: "scope"
+    # Ignore if no lockfile at root — Dependabot no-ops cleanly
+
+  # Maintainer root (semantic-release, commit tooling)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      root-node-deps:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "deps(node-root)"
+      include: "scope"
+
+  # Web configurator
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      web-deps:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "deps(web)"
+      include: "scope"
+
   # Node.js dependencies (for template files)
   - package-ecosystem: "npm"
     directory: "/template/files/node/saas"

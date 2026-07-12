@@ -65,7 +65,9 @@ def validate_workflow_file(workflow_path: Path) -> tuple[bool, str | None]:
         return False, f"Unexpected error: {e}"
 
 
-def validate_workflows_directory(workflows_dir: Path, strict: bool = False) -> int:
+def validate_workflows_directory(
+    workflows_dir: Path, strict: bool = False
+) -> tuple[int, str]:
     """
     Validate all workflows in a directory.
 
@@ -74,19 +76,21 @@ def validate_workflows_directory(workflows_dir: Path, strict: bool = False) -> i
         strict: If True, fail on any validation error; if False, warn but continue
 
     Returns:
-        Exit code (0 for success, 1 for failures)
+        Tuple of (exit code, status) where status is one of
+        ``pass``, ``fail``, ``tool_missing``, or ``skipped``.
     """
     # Check if actionlint is available
     if not check_actionlint_available():
         logger.warning("actionlint not found - skipping workflow validation")
         logger.info("Install: brew install actionlint (macOS)")
         logger.info("Or see: https://github.com/rhysd/actionlint")
-        return 0 if not strict else 1
+        code = 1 if strict else 0
+        return code, "tool_missing"
 
     # Check if workflows directory exists
     if not workflows_dir.exists():
         logger.info(f"No workflows directory found at {workflows_dir}")
-        return 0
+        return 0, "skipped"
 
     # Find all workflow files (not only riso-* — catches leaks and satellite workflows)
     workflow_files = sorted(
@@ -95,7 +99,7 @@ def validate_workflows_directory(workflows_dir: Path, strict: bool = False) -> i
 
     if not workflow_files:
         logger.info("No template workflows generated (expected for minimal configs)")
-        return 0
+        return 0, "pass"
 
     # Validate each workflow
     all_valid = True
@@ -120,14 +124,14 @@ def validate_workflows_directory(workflows_dir: Path, strict: bool = False) -> i
         if strict:
             logger.error("Workflow validation failed in strict mode")
             logger.error("Fix the errors above and try again")
-            return 1
+            return 1, "fail"
         else:
             logger.warning("Workflow validation failed, but continuing anyway")
             logger.warning("Workflows may not work correctly")
             logger.warning("Run 'actionlint .github/workflows/*.yml' to debug")
-            return 0
+            return 0, "fail"
 
-    return 0
+    return 0, "pass"
 
 
 if __name__ == "__main__":
@@ -137,4 +141,5 @@ if __name__ == "__main__":
     target_dir = Path(".github/workflows")
     is_strict = "--strict" in sys.argv
 
-    sys.exit(validate_workflows_directory(target_dir, is_strict))
+    exit_code, _status = validate_workflows_directory(target_dir, is_strict)
+    sys.exit(exit_code)

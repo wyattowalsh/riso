@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Capture baseline quickstart timing metrics."""
+"""Record baseline quickstart evidence without fabricating command success."""
 
 from __future__ import annotations
 
 import json
 import sys
-import time
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parents[2]
@@ -28,12 +27,7 @@ RESULT_FILE = EVIDENCE_DIR / "baseline_quickstart_metrics.json"
 
 
 def run() -> dict[str, object]:
-    """Run baseline quickstart validation.
-
-    Returns:
-        Dictionary with validation status and metrics.
-    """
-    start = time.perf_counter()
+    """Build a neutral metrics payload (no sham mypy/ok status)."""
     package = "<package>"
     answers_file = EVIDENCE_DIR / "copier-answers.yml"
     if answers_file.exists():
@@ -42,19 +36,21 @@ def run() -> dict[str, object]:
                 package = line.split(":", 1)[1].strip().strip("'\"")
                 break
 
-    payload = {
-        "status": "ok",
-        "commands": [
+    return {
+        "status": "not_executed",
+        "note": (
+            "Baseline quickstart timings are not simulated here. "
+            "Use render/smoke automation and local `just quality` for evidence."
+        ),
+        "package_name": package,
+        "documented_commands": [
             ["uv", "sync"],
             ["uv", "run", "pytest"],
             ["uv", "run", "ruff", "check"],
-            ["uv", "run", "mypy"],
-            ["uv", "run", "pylint", package],
+            ["uv", "run", "ty", "check", f"src/{package}"],
+            ["uv", "run", "pylint", package, "tests"],
         ],
     }
-    duration = time.perf_counter() - start
-    payload["duration_seconds"] = duration
-    return payload
 
 
 def main() -> None:
@@ -63,7 +59,7 @@ def main() -> None:
     EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
     data = run()
     RESULT_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    logger.info(f"Baseline quickstart metrics written to {RESULT_FILE}")
+    logger.info("Baseline quickstart metrics written to %s", RESULT_FILE)
 
 
 if __name__ == "__main__":

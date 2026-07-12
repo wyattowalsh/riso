@@ -71,6 +71,9 @@ def main() -> None:
 
     logger.info("Running Ruff...")
     durations["ruff"] = run_command(["uv", "run", "ruff", "check", *PYTHON_TARGETS])
+    durations["ruff"] += run_command(
+        ["uv", "run", "ruff", "format", "--check", *PYTHON_TARGETS]
+    )
 
     logger.info("Running ty...")
     durations["ty"] = run_command(

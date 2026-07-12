@@ -8,15 +8,23 @@ Used by CI automation and post-generation hooks.
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any, TypedDict
 
 _REPO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(_REPO))
+if str(_REPO) not in sys.path:
+    sys.path.insert(0, str(_REPO))
 
-from scripts.lib.paths import repo_root  # noqa: E402
+try:
+    from scripts.lib.paths import repo_root  # noqa: E402
+except ModuleNotFoundError:  # pragma: no cover - path-polluted test envs
+    scripts_dir = _REPO / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from lib.paths import repo_root  # type: ignore[no-redef]  # noqa: E402
 
 REPO_ROOT = repo_root()
 
@@ -53,7 +61,15 @@ def _int_value(value: Any) -> int:
     return value if isinstance(value, int) else 0
 
 
-def validate_workflow(workflow_path: Path) -> WorkflowResult:
+def _require_actionlint_flag(require_actionlint: bool | None) -> bool:
+    if require_actionlint is not None:
+        return require_actionlint
+    return os.environ.get("CI", "").lower() in ("true", "1")
+
+
+def validate_workflow(
+    workflow_path: Path, *, require_actionlint: bool = False
+) -> WorkflowResult:
     """
     Validate a single workflow file using actionlint.
 
@@ -104,10 +120,16 @@ def validate_workflow(workflow_path: Path) -> WorkflowResult:
                     result["errors"].append({"message": line})
 
     except FileNotFoundError:
-        result["status"] = "skipped"
-        result["errors"].append(
-            {"message": "actionlint not found - skipping validation"}
-        )
+        if require_actionlint:
+            result["status"] = "fail"
+            result["errors"].append(
+                {"message": "actionlint not found - required for workflow validation"}
+            )
+        else:
+            result["status"] = "skipped"
+            result["errors"].append(
+                {"message": "actionlint not found - skipping validation"}
+            )
     except subprocess.TimeoutExpired:
         result["status"] = "fail"
         result["errors"].append({"message": "Validation timed out after 30 seconds"})
@@ -115,7 +137,12 @@ def validate_workflow(workflow_path: Path) -> WorkflowResult:
     return result
 
 
-def validate_workflows(workflows_dir: Path, output_json: bool = False) -> int:
+def validate_workflows(
+    workflows_dir: Path,
+    output_json: bool = False,
+    *,
+    require_actionlint: bool | None = None,
+) -> int:
     """
     Validate all workflow files in a directory.
 
@@ -141,14 +168,17 @@ def validate_workflows(workflows_dir: Path, output_json: bool = False) -> int:
             logger.info("No workflow files found")
         return 0
 
+    required = _require_actionlint_flag(require_actionlint)
     results = []
     all_passed = True
 
     for workflow_file in workflow_files:
-        result = validate_workflow(workflow_file)
+        result = validate_workflow(workflow_file, require_actionlint=required)
         results.append(result)
 
-        if result["status"] == "fail":
+        if result["status"] in ("fail",) or (
+            required and result["status"] == "skipped"
+        ):
             all_passed = False
 
     if output_json:
@@ -206,10 +236,19 @@ def main() -> int:
         help="Directory containing workflow files",
     )
     parser.add_argument("--json", action="store_true", help="Output results as JSON")
+    parser.add_argument(
+        "--require-actionlint",
+        action="store_true",
+        help="Treat missing actionlint as failure (also when CI=true)",
+    )
 
     args = parser.parse_args()
 
-    return validate_workflows(args.workflows_dir, args.json)
+    return validate_workflows(
+        args.workflows_dir,
+        args.json,
+        require_actionlint=args.require_actionlint or None,
+    )
 
 
 if __name__ == "__main__":

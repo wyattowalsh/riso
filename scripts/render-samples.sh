@@ -54,7 +54,27 @@ canonicalize_answers_path() {
   if [[ "${answers}" != /* ]]; then
     answers="${REPO_ROOT}/${answers#./}"
   fi
-  printf '%s' "${answers}"
+  uv run python -c "from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())" "${answers}"
+}
+
+write_bootstrap_error() {
+  local status_file="$1"
+  local key="$2"
+  local reason="$3"
+  uv run python - "${status_file}" "${key}" "${reason}" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+key, reason = sys.argv[2:4]
+payload: dict[str, object] = {}
+if path.exists():
+    payload = json.loads(path.read_text(encoding="utf-8"))
+payload[key] = {"status": "error", "reason": reason}
+path.parent.mkdir(parents=True, exist_ok=True)
+path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+PY
 }
 
 run_module_smoke_tests() {
@@ -221,7 +241,7 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
         },
         {
             "name": "mcp_module",
-            "enabled": config.get("mcp_module", "").lower() == "enabled",
+            "enabled": as_enabled(config.get("mcp_module")),
             "command": None,
             "skip_reason": "MCP smoke tests pending implementation.",
         },
@@ -234,7 +254,7 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
         },
         {
             "name": "shared_logic",
-            "enabled": config.get("shared_logic", "").lower() == "enabled",
+            "enabled": as_enabled(config.get("shared_logic")),
             "command": None,
             "skip_reason": "Shared logic smoke tests pending implementation.",
         },
@@ -342,8 +362,53 @@ def run_command(cmd: list[str], cwd: Path | None = None) -> tuple[str, dict[str,
 
 
 config = load_answers(answers_file)
+docs_enabled = as_enabled(config.get("docs_module"))
+docs_framework = str(config.get("docs_framework", "none")).lower()
 modules = collect_modules(config)
 results_dict: dict[str, dict[str, object]] = {}
+
+bootstrap_status: dict[str, object] = {}
+bootstrap_file = destination_path / ".riso" / "bootstrap-status.json"
+if bootstrap_file.exists():
+    bootstrap_status = json.loads(bootstrap_file.read_text(encoding="utf-8"))
+
+python_bootstrap = bootstrap_status.get("python_bootstrap", {})
+node_bootstrap = bootstrap_status.get("node_bootstrap", {})
+python_bootstrap_failed = (
+    isinstance(python_bootstrap, dict)
+    and str(python_bootstrap.get("status", "")).lower() == "error"
+)
+node_bootstrap_failed = (
+    isinstance(node_bootstrap, dict)
+    and str(node_bootstrap.get("status", "")).lower() == "error"
+)
+
+
+def module_needs_python(name: str) -> bool:
+    if name in {
+        "cli",
+        "api_python",
+        "quality_just",
+        "quality_make",
+        "quality_uv_task",
+    }:
+        return True
+    return (
+        name == "docs"
+        and docs_enabled
+        and docs_framework == "sphinx-shibuya"
+    )
+
+
+def module_needs_node(name: str) -> bool:
+    if name == "api_node":
+        return True
+    return (
+        name == "docs"
+        and docs_enabled
+        and docs_framework in {"fumadocs", "docusaurus"}
+    )
+
 
 for module in modules:
     module_name = module["name"]
@@ -351,6 +416,18 @@ for module in modules:
         results_dict[module_name] = {
             "status": "skipped",
             "reason": module.get("skip_reason", "Module disabled in prompt answers."),
+        }
+        continue
+    if python_bootstrap_failed and module_needs_python(module_name):
+        results_dict[module_name] = {
+            "status": "error",
+            "reason": str(python_bootstrap.get("reason", "Python bootstrap failed")),
+        }
+        continue
+    if node_bootstrap_failed and module_needs_node(module_name):
+        results_dict[module_name] = {
+            "status": "error",
+            "reason": str(node_bootstrap.get("reason", "Node bootstrap failed")),
         }
         continue
     command = module.get("command")
@@ -380,6 +457,12 @@ if durations_path.exists():
 
 Path(log_path).write_text(json.dumps(summary, indent=2), encoding="utf-8")
 print(json.dumps(summary))
+failures = sum(
+    1
+    for entry in results_dict.values()
+    if str(entry.get("status", "")).lower() in ("failed", "error")
+)
+sys.exit(1 if failures else 0)
 PY
 }
 
@@ -451,6 +534,10 @@ bootstrap_render_dependencies() {
   local answers_file="$2"
   local python_dir=""
   local node_dir=""
+  local status_file="${destination}/.riso/bootstrap-status.json"
+
+  mkdir -p "${destination}/.riso"
+  echo '{}' > "${status_file}"
 
   if [[ -f "${destination}/python/pyproject.toml" ]]; then
     python_dir="${destination}/python"
@@ -465,7 +552,8 @@ bootstrap_render_dependencies() {
       sync_groups+=(--group cli)
     fi
     if ! (cd "${python_dir}" && uv sync "${sync_groups[@]}"); then
-      log "Warning: uv sync failed for ${python_dir}"
+      log "ERROR: uv sync failed for ${python_dir}"
+      write_bootstrap_error "${status_file}" "python_bootstrap" "uv sync failed for ${python_dir}"
     else
       log "Normalizing rendered Python style in ${python_dir}"
       (cd "${python_dir}" && uv run --group quality ruff format . >/dev/null 2>&1) || true
@@ -486,7 +574,8 @@ bootstrap_render_dependencies() {
       corepack enable >/dev/null 2>&1 || true
     fi
     if ! (cd "${node_dir}" && pnpm install); then
-      log "Warning: pnpm install failed for ${node_dir}"
+      log "ERROR: pnpm install failed for ${node_dir}"
+      write_bootstrap_error "${status_file}" "node_bootstrap" "pnpm install failed for ${node_dir}"
     fi
   fi
 }
@@ -501,12 +590,22 @@ validate_render_paths() {
     exit 1
   fi
 
-  if [[ "${answers_file}" != "${SAMPLES_DIR}/"* ]]; then
-    log "ERROR: Answers file must live under ${SAMPLES_DIR}: ${answers_file}"
-    exit 1
-  fi
   if [[ ! -f "${answers_file}" ]]; then
     log "ERROR: Answers file not found: ${answers_file}"
+    exit 1
+  fi
+  if ! uv run python - "${REPO_ROOT}" "${answers_file}" <<'PY'
+import sys
+from pathlib import Path
+
+repo = Path(sys.argv[1]).resolve()
+answers = Path(sys.argv[2]).resolve()
+samples = (repo / "samples").resolve()
+if not answers.is_file() or samples not in answers.parents:
+    raise SystemExit(1)
+PY
+  then
+    log "ERROR: Answers file must resolve under ${SAMPLES_DIR}: ${answers_file}"
     exit 1
   fi
 
@@ -524,6 +623,7 @@ render_variant() {
   local end_ts
   local duration
 
+  answers_file="$(canonicalize_answers_path "${answers_file}")"
   validate_render_paths "${variant}" "${answers_file}" "${destination}"
 
   log "Rendering variant '${variant}' using answers '${answers_file}'"
@@ -541,7 +641,8 @@ render_variant() {
     "${destination}"
   bootstrap_render_dependencies "${destination}" "${answers_file}"
   if ! run_module_smoke_tests "${variant}" "${answers_file}" "${destination}"; then
-    log "Smoke tests encountered issues for variant '${variant}' (continuing)."
+    log "Smoke tests failed for variant '${variant}'"
+    exit 1
   fi
   end_ts=$(date +%s)
   duration=$((end_ts - start_ts))
@@ -555,7 +656,6 @@ render_default() {
     log "Validating containers for default sample..."
     uv run python "${REPO_ROOT}/scripts/ci/validate_dockerfiles.py" "${SAMPLES_DIR}/default/render"
   fi
-  uv run python "${REPO_ROOT}/scripts/ci/run_baseline_quickstart.py"
 }
 
 usage() {

@@ -1,5 +1,7 @@
 name: PR Labeler
 
+# pull_request_target runs with base-repo credentials. Never checkout the PR head
+# ref or execute untrusted code from the fork; label via the API using the event payload.
 on:
   pull_request_target:
     types: [opened, synchronize, reopened]
@@ -13,11 +15,14 @@ jobs:
     name: Label PR
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - name: Checkout base branch
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 1
 
       - name: Label PR based on files changed
-        uses: actions/labeler@v5
+        uses: actions/labeler@8558fd74291d67161a8a78ce36a881fa63b766a9 # v5
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           configuration-path: .github/labeler.yml

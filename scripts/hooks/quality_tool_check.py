@@ -35,7 +35,7 @@ def _run(command: Iterable[str]) -> subprocess.CompletedProcess[str]:
     )
 
 
-def _ensure_tool(tool: str) -> ToolCheck:
+def _ensure_tool(tool: str, *, install: bool = True) -> ToolCheck:
     if shutil.which("uv") is None:
         return ToolCheck(
             name=tool,
@@ -46,10 +46,19 @@ def _ensure_tool(tool: str) -> ToolCheck:
     check = _run(["uv", "tool", "run", tool, "--version"])
     if check.returncode == 0:
         return ToolCheck(name=tool, status="present", command="uv tool run")
-    install = _run(["uv", "tool", "install", tool])
-    if install.returncode == 0:
+    if not install:
+        stderr = check.stderr or check.stdout
+        return ToolCheck(
+            name=tool,
+            status="missing",
+            command="uv tool run",
+            stderr=stderr.strip() or None,
+            next_steps=f"Install {tool} with uv tool install or set RISO_POST_GEN_INSTALL_TOOLS=1.",
+        )
+    install_run = _run(["uv", "tool", "install", tool])
+    if install_run.returncode == 0:
         return ToolCheck(name=tool, status="installed", command="uv tool install")
-    stderr = install.stderr or install.stdout
+    stderr = install_run.stderr or install_run.stdout
     return ToolCheck(
         name=tool,
         status="failed",
@@ -59,8 +68,8 @@ def _ensure_tool(tool: str) -> ToolCheck:
     )
 
 
-def ensure_python_quality_tools() -> list[ToolCheck]:
-    return [_ensure_tool(tool) for tool in QUALITY_TOOLS]
+def ensure_python_quality_tools(*, install: bool = True) -> list[ToolCheck]:
+    return [_ensure_tool(tool, install=install) for tool in QUALITY_TOOLS]
 
 
 def ensure_node_quality_tools(required: bool) -> list[ToolCheck]:
