@@ -351,12 +351,11 @@ def _should_ignore(path: Path) -> bool:
         ".copier-answers.yml",  # Don't diff the answers file itself
     }
 
-    path_str = str(path)
     for pattern in ignore_patterns:
         if pattern.startswith("*"):
             if path.name.endswith(pattern[1:]):
                 return True
-        elif pattern in path.parts or pattern in path_str:
+        elif pattern in path.parts:
             return True
 
     return False

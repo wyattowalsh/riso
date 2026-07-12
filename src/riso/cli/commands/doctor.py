@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.metadata
+import importlib.util
 import shutil
 import subprocess
 from typing import TYPE_CHECKING
@@ -44,9 +45,10 @@ def run_doctor(*, config: CliConfig) -> dict:
     checks["samples_path"] = str(samples_path)
     checks["samples_exists"] = samples_path.exists()
 
+    copier_importable = importlib.util.find_spec("copier") is not None
     copier_path = shutil.which("copier")
     checks["copier"] = {
-        "available": copier_path is not None,
+        "available": copier_importable,
         "path": copier_path,
     }
     if copier_path:
@@ -74,7 +76,7 @@ def run_doctor(*, config: CliConfig) -> dict:
         template_path is not None
         and checks["template_exists"]
         and checks.get("copier_config_valid")
-        and checks["copier"]["available"]
+        and copier_importable
     )
 
     payload: dict[str, object] = {"checks": checks, "ready": checks["ready"]}

@@ -109,6 +109,14 @@ def global_options(
             help="Allow Copier unsafe template features (Jinja extensions).",
         ),
     ] = False,
+    skip_post_gen: Annotated[
+        bool,
+        typer.Option(
+            "--skip-post-gen",
+            help="Skip post-generation hooks after copy/update/recopy.",
+            envvar="RISO_SKIP_POST_GEN",
+        ),
+    ] = False,
 ) -> None:
     """Global options stored on Typer context."""
     ctx.ensure_object(dict)
@@ -117,6 +125,7 @@ def global_options(
         samples_path=samples_path,
         timeout=timeout,
         force_unsafe=force_unsafe,
+        skip_post_gen=skip_post_gen,
     )
     ctx.obj["cli"] = _ctx(
         json_output=json_output,

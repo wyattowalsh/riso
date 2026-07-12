@@ -59,6 +59,7 @@ def run_recopy(
             template_path=config.template_path,
             operation="recopy",
             timeout=config.timeout,
+            force_unsafe=config.force_unsafe,
         )
         return diff.to_dict()
 
@@ -69,6 +70,7 @@ def run_recopy(
             template_path=config.template_path,
             force_unsafe=config.force_unsafe,
             timeout=config.timeout,
+            skip_post_gen=config.skip_post_gen,
         )
     except Exception as exc:
         raise CopierOperationError("recopy", str(exc)) from exc

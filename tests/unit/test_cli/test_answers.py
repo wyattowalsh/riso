@@ -20,7 +20,7 @@ def test_reject_removed_keys() -> None:
 
 
 def test_removed_keys_sync_count() -> None:
-    assert len(REMOVED_ANSWER_KEYS) == 7
+    assert len(REMOVED_ANSWER_KEYS) == 8
 
 
 def test_prepare_copier_data_strips_empty_lists() -> None:
