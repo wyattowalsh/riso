@@ -168,6 +168,23 @@ export function validateDependencies(config: Partial<RisoConfig>): DependencyWar
     const sourceValue = config[rule.source]
     const targetValue = config[rule.target]
 
+    if (rule.source === 'fumadocs_openapi') {
+      if (
+        config.docs_module !== 'enabled' ||
+        config.docs_framework !== 'fumadocs'
+      ) {
+        continue
+      }
+    }
+    if (rule.source === 'docusaurus_openapi') {
+      if (
+        config.docs_module !== 'enabled' ||
+        config.docs_framework !== 'docusaurus'
+      ) {
+        continue
+      }
+    }
+
     // Check if source condition matches
     const sourceMatches =
       rule.sourceValue === undefined || sourceValue === rule.sourceValue

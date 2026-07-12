@@ -13,6 +13,7 @@
  */
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useFocusTrap } from '../lib/useFocusTrap'
 import {
   Search,
   X,
@@ -105,7 +106,10 @@ export function SearchModal({ isOpen, onClose, onNavigateToStep }: SearchModalPr
   const [docResults, setDocResults] = useState<DocSearchResult[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
   const { setCurrentStep, setHighlightedField } = useRisoStore()
+
+  useFocusTrap(isOpen, dialogRef)
 
   // Build search index once
   const searchIndex = useMemo(() => buildSearchIndex(), [])
@@ -344,7 +348,10 @@ export function SearchModal({ isOpen, onClose, onNavigateToStep }: SearchModalPr
         aria-modal="true"
         aria-label="Search configuration options"
       >
-        <div className="overflow-hidden rounded-2xl bg-white dark:bg-gray-900 shadow-2xl ring-1 ring-gray-200/50 dark:ring-gray-700/50">
+        <div
+          ref={dialogRef}
+          className="overflow-hidden rounded-2xl bg-white dark:bg-gray-900 shadow-2xl ring-1 ring-gray-200/50 dark:ring-gray-700/50"
+        >
           {/* Search input header */}
           <div className="flex items-center gap-3 border-b border-gray-200 dark:border-gray-800 px-4 py-3">
             <Search className="h-5 w-5 text-gray-400 flex-shrink-0" aria-hidden="true" />

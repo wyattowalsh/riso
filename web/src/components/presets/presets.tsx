@@ -96,6 +96,7 @@ export const PRESETS: Preset[] = [
     estimatedFiles: 15,
     icon: <Box className="h-6 w-6" />,
     config: {
+      project_name: 'python-cli-tool',
       project_layout: 'single-package',
       quality_profile: 'standard',
       cli_module: 'enabled',
@@ -125,6 +126,7 @@ export const PRESETS: Preset[] = [
     estimatedFiles: 35,
     icon: <Server className="h-6 w-6" />,
     config: {
+      project_name: 'python-rest-api',
       project_layout: 'single-package',
       quality_profile: 'standard',
       cli_module: 'disabled',

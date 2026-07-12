@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import { useFocusTrap } from '../../lib/useFocusTrap'
 import { X } from 'lucide-react'
 
 /**
@@ -20,6 +21,9 @@ interface SavePresetModalProps {
 export function SavePresetModal({ isOpen, onClose, onSave }: SavePresetModalProps) {
   const [presetName, setPresetName] = useState('')
   const [presetDescription, setPresetDescription] = useState('')
+  const dialogRef = useRef<HTMLDivElement>(null)
+
+  useFocusTrap(isOpen, dialogRef)
 
   if (!isOpen) return null
 
@@ -37,10 +41,24 @@ export function SavePresetModal({ isOpen, onClose, onSave }: SavePresetModalProp
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-xl border border-gray-200 dark:border-gray-800">
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      role="presentation"
+      onClick={handleClose}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="save-preset-title"
+        className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-xl border border-gray-200 dark:border-gray-800"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h3
+            id="save-preset-title"
+            className="text-lg font-semibold text-gray-900 dark:text-white"
+          >
             Save Custom Preset
           </h3>
           <button

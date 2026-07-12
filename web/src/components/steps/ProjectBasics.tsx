@@ -36,6 +36,7 @@ function OptionCard({ label, description, icon: Icon, selected, onClick }: Optio
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={selected}
       className={cn(
         'group relative p-4 rounded-xl border-2 text-left transition-all duration-300 overflow-hidden',
         selected

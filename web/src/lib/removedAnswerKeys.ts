@@ -1,13 +1,15 @@
 /** Copier answer keys removed from the public template surface. */
 
+/** Keep in parity with `src/riso/core/removed_answer_keys.py`. */
 export const REMOVED_ANSWER_KEYS: Record<string, string> = {
-  api_tracks: 'api_module + api_languages',
-  api_language: 'api_languages',
-  docs_site: 'docs_module + docs_framework',
-  mcp_language: 'mcp_languages',
-  saas_starter_module: 'saas_infra_module',
-  saas_auth: 'saas_auth_module + saas_auth_provider',
-  saas_billing: 'saas_billing_module + saas_billing_provider',
+  api_tracks: '`api_module` plus `api_languages`',
+  api_language: '`api_languages`',
+  docs_site: '`docs_module` plus `docs_framework`',
+  mcp_language: '`mcp_languages`',
+  saas_starter_module: '`saas_infra_module`',
+  saas_auth: '`saas_auth_module` plus `saas_auth_provider`',
+  saas_billing: '`saas_billing_module` plus `saas_billing_provider`',
+  include_admin: '`saas_admin_dashboard`',
 }
 
 export function findRemovedAnswerKeys(

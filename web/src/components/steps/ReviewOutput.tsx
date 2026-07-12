@@ -85,13 +85,24 @@ export function ReviewOutput() {
       {/* Tabbed Interface */}
       <div className="riso-card rounded-xl overflow-hidden">
         {/* Tab Bar */}
-        <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+        <div
+          role="tablist"
+          aria-label="Review output sections"
+          className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50"
+        >
           {TABS.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
+            const panelId = `review-tab-panel-${tab.id}`
             return (
               <button
                 key={tab.id}
+                id={`review-tab-${tab.id}`}
+                role="tab"
+                type="button"
+                aria-selected={isActive}
+                aria-controls={panelId}
+                tabIndex={isActive ? 0 : -1}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
                   'relative flex items-center gap-2 px-5 py-3.5 text-sm font-medium transition-all duration-200',
@@ -118,6 +129,9 @@ export function ReviewOutput() {
         <div className="p-6">
           {/* Configuration Tab */}
           <div
+            id="review-tab-panel-configuration"
+            role="tabpanel"
+            aria-labelledby="review-tab-configuration"
             className={cn(
               'transition-all duration-300',
               activeTab === 'configuration'
@@ -130,6 +144,9 @@ export function ReviewOutput() {
 
           {/* File Preview Tab */}
           <div
+            id="review-tab-panel-file-preview"
+            role="tabpanel"
+            aria-labelledby="review-tab-file-preview"
             className={cn(
               'transition-all duration-300',
               activeTab === 'file-preview'
@@ -142,6 +159,9 @@ export function ReviewOutput() {
 
           {/* CLI Command Tab */}
           <div
+            id="review-tab-panel-cli-command"
+            role="tabpanel"
+            aria-labelledby="review-tab-cli-command"
             className={cn(
               'transition-all duration-300',
               activeTab === 'cli-command'

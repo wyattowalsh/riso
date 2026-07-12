@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useRisoStore, type ConfigHistory } from '../lib/store'
 import { History as HistoryIcon, Trash2, Upload, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '../lib/utils'
+import { stepAfterExternalConfigApply } from '../lib/wizardGate'
 
 export function History() {
   const { history, loadFromHistory, deleteFromHistory, setStep } = useRisoStore()
@@ -12,8 +13,9 @@ export function History() {
   }
 
   const handleLoad = (id: string) => {
+    const entry = history.find((h) => h.id === id)
     loadFromHistory(id)
-    setStep(5) // Go to review step
+    setStep(stepAfterExternalConfigApply(entry?.config ?? {}))
     setIsOpen(false)
   }
 

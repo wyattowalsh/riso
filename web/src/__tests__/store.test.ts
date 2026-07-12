@@ -67,19 +67,38 @@ describe('Riso Store', () => {
   })
 
   describe('setStep', () => {
-    it('updates current step', () => {
-      const { setStep } = useRisoStore.getState()
+    it('updates current step when gate allows', () => {
+      const { updateConfig, setStep } = useRisoStore.getState()
 
+      updateConfig({ project_name: 'step-test' })
       setStep(2)
 
       expect(useRisoStore.getState().currentStep).toBe(2)
+    })
+
+    it('blocks forward jumps without a valid project name', () => {
+      const { setStep } = useRisoStore.getState()
+
+      setStep(4)
+
+      expect(useRisoStore.getState().currentStep).toBe(0)
+    })
+
+    it('allows review step when project name is valid', () => {
+      const { updateConfig, setStep } = useRisoStore.getState()
+
+      updateConfig({ project_name: 'gated-app' })
+      setStep(5)
+
+      expect(useRisoStore.getState().currentStep).toBe(5)
     })
   })
 
   describe('setCurrentStep', () => {
     it('is an alias for setStep', () => {
-      const { setCurrentStep } = useRisoStore.getState()
+      const { setCurrentStep, updateConfig } = useRisoStore.getState()
 
+      updateConfig({ project_name: 'gated-app' })
       setCurrentStep(4)
 
       expect(useRisoStore.getState().currentStep).toBe(4)

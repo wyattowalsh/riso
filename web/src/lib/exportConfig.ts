@@ -1,4 +1,5 @@
 import { stringify } from 'yaml'
+import { validateProjectName } from '../components/steps/ProjectBasics'
 import type { RisoConfig } from './store'
 
 export type CopierArgs = Record<string, unknown>
@@ -200,21 +201,35 @@ export function configToCopierArgs(config: Partial<RisoConfig>): CopierArgs {
   return args
 }
 
+/** POSIX-safe single-quoted shell literal. */
+export function shellEscapeString(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`
+}
+
 function formatCliArg(key: string, value: unknown): string {
   if (Array.isArray(value)) {
-    return `${key}='${JSON.stringify(value)}'`
+    return `${key}=${shellEscapeString(JSON.stringify(value))}`
   }
   if (typeof value === 'boolean') {
     return `${key}=${value}`
   }
   if (typeof value === 'string') {
-    return `${key}="${value}"`
+    return `${key}=${shellEscapeString(value)}`
   }
-  return `${key}=${String(value)}`
+  return `${key}=${shellEscapeString(String(value))}`
+}
+
+export function resolveExportProjectName(config: Partial<RisoConfig>): string {
+  const candidate = (config.project_name || 'my-project').trim()
+  const validation = validateProjectName(candidate)
+  if (!validation.valid) {
+    throw new Error(validation.error ?? 'Invalid project name for export')
+  }
+  return candidate
 }
 
 export function generateCliCommand(config: Partial<RisoConfig>): string {
-  const projectName = config.project_name || 'my-project'
+  const projectName = resolveExportProjectName(config)
   const args = configToCopierArgs(config)
   if (!args.project_name) {
     args.project_name = projectName
@@ -223,7 +238,8 @@ export function generateCliCommand(config: Partial<RisoConfig>): string {
     .map(([key, value]) => `  --data ${formatCliArg(key, value)}`)
     .join(' \\\n')
 
-  return `copier copy gh:wyattowalsh/riso ./${projectName} \\\n${dataArgs}`
+  const dest = shellEscapeString(`./${projectName}`)
+  return `uv run riso copy ${dest} \\\n${dataArgs}`
 }
 
 export function generateYamlConfig(config: Partial<RisoConfig>): string {

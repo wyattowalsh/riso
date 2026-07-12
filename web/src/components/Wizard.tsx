@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRisoStore } from '../lib/store'
-import { ProjectBasics, validateProjectName } from './steps/ProjectBasics'
+import { ProjectBasics } from './steps/ProjectBasics'
 import { ModulesConfig } from './steps/ModulesConfig'
 import { DocsConfig } from './steps/DocsConfig'
 import { SaaSConfig } from './steps/SaaSConfig'
@@ -9,6 +9,7 @@ import { ReviewOutput } from './steps/ReviewOutput'
 import { Check, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { WIZARD_STEPS } from '../lib/wizardSteps'
+import { canProceedFromBasics, canVisitStep } from '../lib/wizardGate'
 
 const STEPS = [
   { ...WIZARD_STEPS[0], component: ProjectBasics },
@@ -21,10 +22,11 @@ const STEPS = [
 
 export function Wizard() {
   const { currentStep, setStep, config } = useRisoStore()
-  const canProceedFromBasics = validateProjectName(config.project_name || '').valid
-  const canVisitStep = (stepId: number) =>
-    stepId <= currentStep || (stepId > 0 && canProceedFromBasics)
-  const canGoNext = currentStep !== 0 || canProceedFromBasics
+  const projectName = config.project_name || ''
+  const basicsValid = canProceedFromBasics(projectName)
+  const visitStep = (stepId: number) =>
+    canVisitStep(stepId, currentStep, projectName)
+  const canGoNext = currentStep !== 0 || basicsValid
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right')
   const prevStepRef = useRef(currentStep)
@@ -78,12 +80,12 @@ export function Wizard() {
                 </div>
               )}
               <button
-                onClick={() => canVisitStep(step.id) && setStep(step.id)}
-                disabled={!canVisitStep(step.id)}
+                onClick={() => visitStep(step.id) && setStep(step.id)}
+                disabled={!visitStep(step.id)}
                 aria-current={currentStep === step.id ? 'step' : undefined}
                 className={cn(
                   'group flex flex-col items-center transition-all duration-300 w-full',
-                  canVisitStep(step.id)
+                  visitStep(step.id)
                     ? 'cursor-pointer hover:-translate-y-1 hover:scale-105'
                     : 'cursor-not-allowed opacity-60'
                 )}
@@ -173,7 +175,7 @@ export function Wizard() {
           {STEPS.map((_, index) => (
             <button
               key={index}
-              onClick={() => index <= currentStep && setStep(index)}
+              onClick={() => visitStep(index) && setStep(index)}
               className={cn(
                 'h-2 rounded-full transition-all duration-300',
                 index === currentStep
@@ -183,7 +185,7 @@ export function Wizard() {
                     : 'w-2 bg-gray-300 dark:bg-gray-600'
               )}
               aria-label={`Go to step ${index + 1}`}
-              disabled={index > currentStep}
+              disabled={!visitStep(index)}
             />
           ))}
         </div>

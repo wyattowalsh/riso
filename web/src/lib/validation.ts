@@ -14,6 +14,31 @@ import type { RisoConfig } from './store'
 
 export type ValidationSeverity = 'error' | 'warning' | 'info'
 
+function isFumadocsOpenApiActive(state: Partial<RisoConfig>): boolean {
+  return (
+    state.docs_module === 'enabled' &&
+    state.docs_framework === 'fumadocs' &&
+    state.fumadocs_openapi === 'enabled'
+  )
+}
+
+function isDocusaurusOpenApiActive(state: Partial<RisoConfig>): boolean {
+  return (
+    state.docs_module === 'enabled' &&
+    state.docs_framework === 'docusaurus' &&
+    state.docusaurus_openapi === 'enabled'
+  )
+}
+
+function isSaasStackActive(state: Partial<RisoConfig>): boolean {
+  return (
+    state.saas_infra_module === 'enabled' ||
+    state.saas_auth_module === 'enabled' ||
+    state.saas_billing_module === 'enabled' ||
+    state.saas_app_module === 'enabled'
+  )
+}
+
 export interface ValidationRule {
   id: string
   check: (state: Partial<RisoConfig>) => boolean // true = violation
@@ -143,30 +168,33 @@ export const VALIDATION_RULES: ValidationRule[] = [
 
   {
     id: 'openapi-requires-api',
-    check: (s) =>
-      s.fumadocs_openapi === 'enabled' && s.api_module !== 'enabled',
+    check: (s) => isFumadocsOpenApiActive(s) && s.api_module !== 'enabled',
     message: 'OpenAPI documentation requires an API module',
     severity: 'error',
-    affectedFields: ['fumadocs_openapi', 'api_module'],
+    affectedFields: ['fumadocs_openapi', 'docs_module', 'docs_framework', 'api_module'],
     quickFix: {
       label: 'Enable API module',
       apply: () => ({ api_module: 'enabled', api_languages: ['python'] }),
     },
-    details: 'OpenAPI docs are generated from API endpoints.',
+    details: 'OpenAPI docs are generated from API endpoints when docs are enabled.',
   },
 
   {
     id: 'docusaurus-openapi-requires-api',
-    check: (s) =>
-      s.docusaurus_openapi === 'enabled' && s.api_module !== 'enabled',
+    check: (s) => isDocusaurusOpenApiActive(s) && s.api_module !== 'enabled',
     message: 'OpenAPI documentation requires an API module',
     severity: 'error',
-    affectedFields: ['docusaurus_openapi', 'api_module'],
+    affectedFields: [
+      'docusaurus_openapi',
+      'docs_module',
+      'docs_framework',
+      'api_module',
+    ],
     quickFix: {
       label: 'Enable API module',
       apply: () => ({ api_module: 'enabled', api_languages: ['python'] }),
     },
-    details: 'OpenAPI docs are generated from API endpoints.',
+    details: 'OpenAPI docs are generated from API endpoints when docs are enabled.',
   },
 
   {
@@ -214,7 +242,8 @@ export const VALIDATION_RULES: ValidationRule[] = [
   // ========================================
   {
     id: 'stripe-cost-warning',
-    check: (s) => s.saas_billing_provider === 'stripe',
+    check: (s) =>
+      s.saas_billing_module === 'enabled' && s.saas_billing_provider === 'stripe',
     message: 'Stripe charges 2.9% + $0.30 per transaction',
     severity: 'info',
     affectedFields: ['saas_billing_provider'],
@@ -224,7 +253,8 @@ export const VALIDATION_RULES: ValidationRule[] = [
 
   {
     id: 'paddle-cost-warning',
-    check: (s) => s.saas_billing_provider === 'paddle',
+    check: (s) =>
+      s.saas_billing_module === 'enabled' && s.saas_billing_provider === 'paddle',
     message: 'Paddle charges 5% + $0.50 per transaction',
     severity: 'info',
     affectedFields: ['saas_billing_provider'],
@@ -234,7 +264,9 @@ export const VALIDATION_RULES: ValidationRule[] = [
 
   {
     id: 'lemonsqueezy-cost-warning',
-    check: (s) => s.saas_billing_provider === 'lemonsqueezy',
+    check: (s) =>
+      s.saas_billing_module === 'enabled' &&
+      s.saas_billing_provider === 'lemonsqueezy',
     message: 'Lemon Squeezy charges 5% per transaction',
     severity: 'info',
     affectedFields: ['saas_billing_provider'],
@@ -244,7 +276,8 @@ export const VALIDATION_RULES: ValidationRule[] = [
 
   {
     id: 'clerk-cost-warning',
-    check: (s) => s.saas_auth_provider === 'clerk',
+    check: (s) =>
+      s.saas_auth_module === 'enabled' && s.saas_auth_provider === 'clerk',
     message: 'Clerk is free up to 10,000 monthly active users',
     severity: 'info',
     affectedFields: ['saas_auth_provider'],
@@ -254,7 +287,8 @@ export const VALIDATION_RULES: ValidationRule[] = [
 
   {
     id: 'posthog-cost-warning',
-    check: (s) => s.saas_analytics === 'posthog',
+    check: (s) =>
+      s.saas_app_module === 'enabled' && s.saas_analytics === 'posthog',
     message: 'PostHog offers 1M events/month free, then pay-as-you-go',
     severity: 'info',
     affectedFields: ['saas_analytics'],
@@ -263,7 +297,8 @@ export const VALIDATION_RULES: ValidationRule[] = [
 
   {
     id: 'amplitude-cost-warning',
-    check: (s) => s.saas_analytics === 'amplitude',
+    check: (s) =>
+      s.saas_app_module === 'enabled' && s.saas_analytics === 'amplitude',
     message: 'Amplitude offers 10M events/month free for startups',
     severity: 'info',
     affectedFields: ['saas_analytics'],
@@ -272,7 +307,10 @@ export const VALIDATION_RULES: ValidationRule[] = [
 
   {
     id: 'neon-cost-warning',
-    check: (s) => s.saas_database === 'neon',
+    check: (s) =>
+      isSaasStackActive(s) &&
+      s.saas_infra_module === 'enabled' &&
+      s.saas_database === 'neon',
     message: 'Neon offers generous free tier with 3GB storage',
     severity: 'info',
     affectedFields: ['saas_database'],
@@ -282,7 +320,10 @@ export const VALIDATION_RULES: ValidationRule[] = [
 
   {
     id: 'supabase-cost-warning',
-    check: (s) => s.saas_database === 'supabase',
+    check: (s) =>
+      isSaasStackActive(s) &&
+      s.saas_infra_module === 'enabled' &&
+      s.saas_database === 'supabase',
     message: 'Supabase free tier includes 500MB database + 1GB storage',
     severity: 'info',
     affectedFields: ['saas_database'],
@@ -293,8 +334,12 @@ export const VALIDATION_RULES: ValidationRule[] = [
   {
     id: 'algolia-cost-warning',
     check: (s) =>
-      s.fumadocs_search_provider === 'algolia' ||
-      s.docusaurus_search_provider === 'algolia',
+      (s.docs_module === 'enabled' &&
+        s.docs_framework === 'fumadocs' &&
+        s.fumadocs_search_provider === 'algolia') ||
+      (s.docs_module === 'enabled' &&
+        s.docs_framework === 'docusaurus' &&
+        s.docusaurus_search_provider === 'algolia'),
     message: 'Algolia offers 10k search requests/month free',
     severity: 'info',
     affectedFields: ['fumadocs_search_provider', 'docusaurus_search_provider'],
@@ -304,7 +349,10 @@ export const VALIDATION_RULES: ValidationRule[] = [
 
   {
     id: 'orama-cloud-cost-warning',
-    check: (s) => s.fumadocs_search_provider === 'orama-cloud',
+    check: (s) =>
+      s.docs_module === 'enabled' &&
+      s.docs_framework === 'fumadocs' &&
+      s.fumadocs_search_provider === 'orama-cloud',
     message: 'Orama Cloud offers 100k search operations/month free',
     severity: 'info',
     affectedFields: ['fumadocs_search_provider'],
@@ -524,21 +572,35 @@ export interface CostEstimate {
  */
 export function getCostEstimate(state: Partial<RisoConfig>): CostEstimate {
   const services: CostEstimate['services'] = []
+  const saasActive = isSaasStackActive(state)
+
+  if (!saasActive) {
+    return { monthly: 0, services: [] }
+  }
 
   // Authentication
-  if (state.saas_auth_provider === 'clerk') {
+  if (
+    state.saas_auth_module === 'enabled' &&
+    state.saas_auth_provider === 'clerk'
+  ) {
     services.push({
       name: 'Clerk',
       cost: 0,
       note: 'Free up to 10k MAU',
     })
-  } else if (state.saas_auth_provider === 'authjs') {
+  } else if (
+    state.saas_auth_module === 'enabled' &&
+    state.saas_auth_provider === 'authjs'
+  ) {
     services.push({
       name: 'Auth.js',
       cost: 0,
       note: 'Self-hosted, free',
     })
-  } else if (state.saas_auth_provider === 'lucia') {
+  } else if (
+    state.saas_auth_module === 'enabled' &&
+    state.saas_auth_provider === 'lucia'
+  ) {
     services.push({
       name: 'Lucia',
       cost: 0,
@@ -547,7 +609,10 @@ export function getCostEstimate(state: Partial<RisoConfig>): CostEstimate {
   }
 
   // Enterprise bridge
-  if (state.saas_enterprise_bridge === 'workos') {
+  if (
+    state.saas_auth_module === 'enabled' &&
+    state.saas_enterprise_bridge === 'workos'
+  ) {
     services.push({
       name: 'WorkOS',
       cost: 0,
@@ -556,19 +621,28 @@ export function getCostEstimate(state: Partial<RisoConfig>): CostEstimate {
   }
 
   // Billing
-  if (state.saas_billing_provider === 'stripe') {
+  if (
+    state.saas_billing_module === 'enabled' &&
+    state.saas_billing_provider === 'stripe'
+  ) {
     services.push({
       name: 'Stripe',
       cost: 0,
       note: '2.9% + $0.30 per txn',
     })
-  } else if (state.saas_billing_provider === 'paddle') {
+  } else if (
+    state.saas_billing_module === 'enabled' &&
+    state.saas_billing_provider === 'paddle'
+  ) {
     services.push({
       name: 'Paddle',
       cost: 0,
       note: '5% + $0.50 per txn',
     })
-  } else if (state.saas_billing_provider === 'lemonsqueezy') {
+  } else if (
+    state.saas_billing_module === 'enabled' &&
+    state.saas_billing_provider === 'lemonsqueezy'
+  ) {
     services.push({
       name: 'Lemon Squeezy',
       cost: 0,
@@ -577,13 +651,16 @@ export function getCostEstimate(state: Partial<RisoConfig>): CostEstimate {
   }
 
   // Database
-  if (state.saas_database === 'neon') {
+  if (state.saas_infra_module === 'enabled' && state.saas_database === 'neon') {
     services.push({
       name: 'Neon',
       cost: 0,
       note: 'Free tier: 3GB storage',
     })
-  } else if (state.saas_database === 'supabase') {
+  } else if (
+    state.saas_infra_module === 'enabled' &&
+    state.saas_database === 'supabase'
+  ) {
     services.push({
       name: 'Supabase',
       cost: 0,
@@ -592,13 +669,16 @@ export function getCostEstimate(state: Partial<RisoConfig>): CostEstimate {
   }
 
   // Hosting
-  if (state.saas_hosting === 'vercel') {
+  if (state.saas_infra_module === 'enabled' && state.saas_hosting === 'vercel') {
     services.push({
       name: 'Vercel',
       cost: 0,
       note: 'Free tier: 100GB bandwidth',
     })
-  } else if (state.saas_hosting === 'cloudflare') {
+  } else if (
+    state.saas_infra_module === 'enabled' &&
+    state.saas_hosting === 'cloudflare'
+  ) {
     services.push({
       name: 'Cloudflare Pages',
       cost: 0,
@@ -607,13 +687,13 @@ export function getCostEstimate(state: Partial<RisoConfig>): CostEstimate {
   }
 
   // Email
-  if (state.saas_email === 'resend') {
+  if (state.saas_app_module === 'enabled' && state.saas_email === 'resend') {
     services.push({
       name: 'Resend',
       cost: 0,
       note: 'Free tier: 3k emails/month',
     })
-  } else if (state.saas_email === 'postmark') {
+  } else if (state.saas_app_module === 'enabled' && state.saas_email === 'postmark') {
     services.push({
       name: 'Postmark',
       cost: 10,
@@ -622,13 +702,16 @@ export function getCostEstimate(state: Partial<RisoConfig>): CostEstimate {
   }
 
   // Analytics
-  if (state.saas_analytics === 'posthog') {
+  if (state.saas_app_module === 'enabled' && state.saas_analytics === 'posthog') {
     services.push({
       name: 'PostHog',
       cost: 0,
       note: 'Free tier: 1M events/month',
     })
-  } else if (state.saas_analytics === 'amplitude') {
+  } else if (
+    state.saas_app_module === 'enabled' &&
+    state.saas_analytics === 'amplitude'
+  ) {
     services.push({
       name: 'Amplitude',
       cost: 0,
@@ -637,13 +720,13 @@ export function getCostEstimate(state: Partial<RisoConfig>): CostEstimate {
   }
 
   // Background jobs
-  if (state.saas_jobs === 'triggerdev') {
+  if (state.saas_app_module === 'enabled' && state.saas_jobs === 'triggerdev') {
     services.push({
       name: 'Trigger.dev',
       cost: 0,
       note: 'Free tier: 1M steps/month',
     })
-  } else if (state.saas_jobs === 'inngest') {
+  } else if (state.saas_app_module === 'enabled' && state.saas_jobs === 'inngest') {
     services.push({
       name: 'Inngest',
       cost: 0,
@@ -652,13 +735,16 @@ export function getCostEstimate(state: Partial<RisoConfig>): CostEstimate {
   }
 
   // Storage
-  if (state.saas_storage === 'r2') {
+  if (state.saas_app_module === 'enabled' && state.saas_storage === 'r2') {
     services.push({
       name: 'Cloudflare R2',
       cost: 0,
       note: 'Free tier: 10GB storage',
     })
-  } else if (state.saas_storage === 'supabase-storage') {
+  } else if (
+    state.saas_app_module === 'enabled' &&
+    state.saas_storage === 'supabase-storage'
+  ) {
     services.push({
       name: 'Supabase Storage',
       cost: 0,
@@ -667,13 +753,13 @@ export function getCostEstimate(state: Partial<RisoConfig>): CostEstimate {
   }
 
   // AI
-  if (state.saas_ai === 'openai') {
+  if (state.saas_app_module === 'enabled' && state.saas_ai === 'openai') {
     services.push({
       name: 'OpenAI',
       cost: 0,
       note: 'Pay per token ($0.002-0.03/1k)',
     })
-  } else if (state.saas_ai === 'anthropic') {
+  } else if (state.saas_app_module === 'enabled' && state.saas_ai === 'anthropic') {
     services.push({
       name: 'Anthropic',
       cost: 0,
@@ -682,14 +768,14 @@ export function getCostEstimate(state: Partial<RisoConfig>): CostEstimate {
   }
 
   // Observability
-  if (state.saas_observability_sentry) {
+  if (state.saas_app_module === 'enabled' && state.saas_observability_sentry) {
     services.push({
       name: 'Sentry',
       cost: 0,
       note: 'Free tier: 5k errors/month',
     })
   }
-  if (state.saas_observability_datadog) {
+  if (state.saas_app_module === 'enabled' && state.saas_observability_datadog) {
     services.push({
       name: 'Datadog',
       cost: 0,
@@ -699,7 +785,18 @@ export function getCostEstimate(state: Partial<RisoConfig>): CostEstimate {
 
   // Search providers
   if (
-    state.fumadocs_search_provider === 'algolia' ||
+    state.docs_module === 'enabled' &&
+    state.docs_framework === 'fumadocs' &&
+    state.fumadocs_search_provider === 'algolia'
+  ) {
+    services.push({
+      name: 'Algolia',
+      cost: 0,
+      note: 'Free tier: 10k requests/month',
+    })
+  } else if (
+    state.docs_module === 'enabled' &&
+    state.docs_framework === 'docusaurus' &&
     state.docusaurus_search_provider === 'algolia'
   ) {
     services.push({
@@ -707,7 +804,11 @@ export function getCostEstimate(state: Partial<RisoConfig>): CostEstimate {
       cost: 0,
       note: 'Free tier: 10k requests/month',
     })
-  } else if (state.fumadocs_search_provider === 'orama-cloud') {
+  } else if (
+    state.docs_module === 'enabled' &&
+    state.docs_framework === 'fumadocs' &&
+    state.fumadocs_search_provider === 'orama-cloud'
+  ) {
     services.push({
       name: 'Orama Cloud',
       cost: 0,

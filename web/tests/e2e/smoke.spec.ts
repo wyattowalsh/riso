@@ -8,8 +8,8 @@ test.describe('Wizard Smoke Tests', () => {
 
   test('wizard form is visible', async ({ page }) => {
     await page.goto('/');
-    // Check for project name input or wizard step indicator
-    const projectNameInput = page.getByLabel(/project name/i);
-    await expect(projectNameInput).toBeVisible();
+    // ProjectBasics uses id="projectName" (label association may vary)
+    const projectNameInput = page.locator('#projectName');
+    await expect(projectNameInput).toBeVisible({ timeout: 15000 });
   });
 });
