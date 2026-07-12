@@ -12,6 +12,7 @@ import { CustomPresetsSection } from './CustomPresetsSection'
 import { SavePresetModal } from './SavePresetModal'
 import type { Preset } from './types'
 import type { RisoConfig } from '../../lib/store'
+import { stepAfterExternalConfigApply } from '../../lib/wizardGate'
 
 /**
  * Main Presets component that orchestrates preset selection and management
@@ -33,7 +34,7 @@ export function Presets() {
 
     // Navigate to review after a brief delay for the animation
     setTimeout(() => {
-      setStep(5) // Jump to review step
+      setStep(stepAfterExternalConfigApply(preset.config))
       setCelebratingPreset(null)
     }, 400)
   }, [resetConfig, updateConfig, setStep])
@@ -45,7 +46,7 @@ export function Presets() {
 
     // Navigate to review after a brief delay for the animation
     setTimeout(() => {
-      setStep(5) // Jump to review step
+      setStep(stepAfterExternalConfigApply(preset.config))
       setCelebratingPreset(null)
     }, 400)
   }, [resetConfig, updateConfig, setStep])

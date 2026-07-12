@@ -11,16 +11,18 @@ import { SidebarSummary } from './components/SidebarSummary'
 import { MobileDrawer } from './components/MobileDrawer'
 import { parseShareableURL } from './lib/presets'
 import { useRisoStore } from './lib/store'
+import { stepAfterExternalConfigApply } from './lib/wizardGate'
 
 export default function App() {
-  const { isDrawerOpen, setDrawerOpen, updateConfig } = useRisoStore()
+  const { isDrawerOpen, setDrawerOpen, updateConfig, setStep } = useRisoStore()
 
   useEffect(() => {
     const presetConfig = parseShareableURL(window.location.href)
     if (presetConfig) {
       updateConfig(presetConfig)
+      setStep(stepAfterExternalConfigApply(presetConfig))
     }
-  }, [updateConfig])
+  }, [updateConfig, setStep])
 
   return (
     <div className="min-h-screen riso-backdrop">

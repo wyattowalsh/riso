@@ -1,6 +1,10 @@
 import type { RisoConfig } from './store'
 import { stringify, parse } from 'yaml'
 import { formatRemovedAnswerKeyErrors } from './removedAnswerKeys'
+import {
+  parseCustomPresetsStorage,
+  parseShareConfigPayload,
+} from './configSchemas'
 
 const CUSTOM_PRESETS_KEY = 'riso-custom-presets'
 
@@ -38,7 +42,12 @@ export function saveCustomPreset(
 export function loadCustomPresets(): Record<string, CustomPreset> {
   try {
     const stored = localStorage.getItem(CUSTOM_PRESETS_KEY)
-    return stored ? JSON.parse(stored) : {}
+    if (!stored) {
+      return {}
+    }
+    const parsed = JSON.parse(stored) as unknown
+    const validated = parseCustomPresetsStorage(parsed)
+    return validated as Record<string, CustomPreset>
   } catch (error) {
     console.error('Failed to load custom presets:', error)
     return {}
@@ -119,7 +128,13 @@ export function parseShareableURL(url: string): Partial<RisoConfig> | null {
     const urlObj = new URL(url)
     const preset = urlObj.searchParams.get('preset')
     if (!preset) return null
-    return JSON.parse(atob(decodeURIComponent(preset)))
+    const raw = JSON.parse(atob(decodeURIComponent(preset))) as unknown
+    const parsed = parseShareConfigPayload(raw)
+    if (!parsed.success) {
+      console.warn('Rejected share URL config:', parsed.error)
+      return null
+    }
+    return parsed.data as Partial<RisoConfig>
   } catch {
     return null
   }

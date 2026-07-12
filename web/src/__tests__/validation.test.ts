@@ -260,6 +260,8 @@ describe('Configuration Validation System', () => {
   describe('test_cost_estimate_calculation', () => {
     it('should calculate zero cost for free tier services', () => {
       const config = testConfig({
+        saas_infra_module: 'enabled',
+        saas_auth_module: 'enabled',
         saas_auth_provider: 'clerk',
         saas_database: 'neon',
         saas_hosting: 'vercel',
@@ -271,6 +273,7 @@ describe('Configuration Validation System', () => {
 
     it('should include service names and notes', () => {
       const config = testConfig({
+        saas_auth_module: 'enabled',
         saas_auth_provider: 'clerk',
       })
       const estimate = getCostEstimate(config)
@@ -281,6 +284,8 @@ describe('Configuration Validation System', () => {
 
     it('should calculate monthly cost for paid services', () => {
       const config = testConfig({
+        saas_app_module: 'enabled',
+        saas_infra_module: 'enabled',
         saas_email: 'postmark',
       })
       const estimate = getCostEstimate(config)
@@ -291,6 +296,8 @@ describe('Configuration Validation System', () => {
 
     it('should aggregate multiple service costs', () => {
       const config = testConfig({
+        saas_app_module: 'enabled',
+        saas_infra_module: 'enabled',
         saas_email: 'postmark', // $10/month
         saas_observability_sentry: true,
         saas_observability_datadog: true,
@@ -343,6 +350,73 @@ describe('Configuration Validation System', () => {
       const severities = results.map((r) => r.severity)
       expect(severities).toContain('error')
       expect(severities).toContain('warning')
+    })
+  })
+
+  describe('OpenAPI when-parity with Copier prompts', () => {
+    it('does not block default config when API and docs are off', () => {
+      const results = validateConfig({
+        project_name: 'test-project',
+        docs_module: 'disabled',
+        api_module: 'disabled',
+        fumadocs_openapi: 'enabled',
+        docusaurus_openapi: 'enabled',
+      })
+      const openapiErrors = results.filter(
+        (r) =>
+          r.id === 'openapi-requires-api' ||
+          r.id === 'docusaurus-openapi-requires-api',
+      )
+      expect(openapiErrors).toHaveLength(0)
+    })
+
+    it('flags OpenAPI when fumadocs docs are on but API is off', () => {
+      const results = validateConfig(
+        testConfig({
+          docs_module: 'enabled',
+          docs_framework: 'fumadocs',
+          fumadocs_openapi: 'enabled',
+          api_module: 'disabled',
+        }),
+      )
+      expect(results.some((r) => r.id === 'openapi-requires-api')).toBe(true)
+    })
+
+    it('does not flag dormant OpenAPI on non-active docs framework', () => {
+      const results = validateConfig(
+        testConfig({
+          docs_module: 'enabled',
+          docs_framework: 'fumadocs',
+          docusaurus_openapi: 'enabled',
+          api_module: 'disabled',
+        }),
+      )
+      expect(
+        results.some((r) => r.id === 'docusaurus-openapi-requires-api'),
+      ).toBe(false)
+    })
+  })
+
+  describe('SaaS-gated cost warnings', () => {
+    it('does not emit clerk cost info without auth module', () => {
+      const results = validateConfig(
+        testConfig({
+          saas_auth_module: 'disabled',
+          saas_auth_provider: 'clerk',
+        }),
+      )
+      expect(results.some((r) => r.id === 'clerk-cost-warning')).toBe(false)
+    })
+
+    it('emits stripe cost info when billing module is enabled', () => {
+      const results = validateConfig(
+        testConfig({
+          saas_billing_module: 'enabled',
+          saas_auth_module: 'enabled',
+          saas_billing_provider: 'stripe',
+        }),
+      )
+      expect(results.some((r) => r.id === 'stripe-cost-warning')).toBe(true)
     })
   })
 
@@ -483,6 +557,7 @@ describe('Configuration Validation System', () => {
 
     it('should have optional quick fixes for info violations', () => {
       const config = testConfig({
+        saas_auth_module: 'enabled',
         saas_auth_provider: 'clerk',
       })
       const results = validateConfig(config)

@@ -114,8 +114,10 @@ test.describe('Wizard Error Handling', () => {
 
     for (const invalidName of invalidNames) {
       await projectNameInput.fill(invalidName);
-      const errorMessage = page.locator('text=/must start with a letter|contain only|at least 2 characters/i');
-      await expect(errorMessage).toBeVisible({ timeout: 2000 });
+      const errorMessage = page.getByText(
+        /must be at least 2 characters|Must start with a letter, contain only letters/i,
+      );
+      await expect(errorMessage).toBeVisible({ timeout: 5000 });
       await projectNameInput.clear();
     }
   });
@@ -133,9 +135,11 @@ test.describe('Wizard Error Handling', () => {
     }
   });
 
-  test('navigation works even without project name filled', async ({ page }) => {
-    await page.getByRole('button', { name: /^next$/i }).click();
-    await expect(page.getByRole('heading', { name: /components/i })).toBeVisible();
+  test('blocks next step without a valid project name', async ({ page }) => {
+    const nextButton = page.getByRole('button', { name: /^next$/i });
+    await expect(nextButton).toBeDisabled();
+    await expect(page.locator('#projectName')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Project Basics' })).toBeVisible();
   });
 });
 

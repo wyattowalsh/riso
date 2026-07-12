@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { matrixDefaults } from './matrixData'
+import { clampWizardStep } from './wizardGate'
 
 // Configuration interface aligned with template/copier.yml v2.0 (component-first)
 export interface RisoConfig {
@@ -217,7 +218,7 @@ const defaultConfig: Partial<RisoConfig> = {
   fumadocs_search_provider: fromMatrix('fumadocs_search_provider', 'orama'),
   fumadocs_llms_txt: fromMatrix('fumadocs_llms_txt', 'enabled'),
   fumadocs_ai_search: fromMatrix('fumadocs_ai_search', 'disabled'),
-  fumadocs_openapi: fromMatrix('fumadocs_openapi', 'enabled'),
+  fumadocs_openapi: fromMatrix('fumadocs_openapi', 'disabled'),
   fumadocs_typedoc: fromMatrix('fumadocs_typedoc', 'disabled'),
   fumadocs_theme: fromMatrix('fumadocs_theme', 'shadcn'),
   fumadocs_sidebar: fromMatrix('fumadocs_sidebar', 'default'),
@@ -243,7 +244,7 @@ const defaultConfig: Partial<RisoConfig> = {
   docusaurus_versioning: fromMatrix('docusaurus_versioning', 'disabled'),
   docusaurus_blog: fromMatrix('docusaurus_blog', 'enabled'),
   docusaurus_faster: fromMatrix('docusaurus_faster', 'enabled'),
-  docusaurus_openapi: fromMatrix('docusaurus_openapi', 'enabled'),
+  docusaurus_openapi: fromMatrix('docusaurus_openapi', 'disabled'),
   docusaurus_mermaid: fromMatrix('docusaurus_mermaid', 'enabled'),
   docusaurus_math: fromMatrix('docusaurus_math', 'disabled'),
   docusaurus_live_codeblock: fromMatrix('docusaurus_live_codeblock', 'disabled'),
@@ -320,10 +321,37 @@ const defaultConfig: Partial<RisoConfig> = {
   saas_test_suite_level: fromMatrix('saas_test_suite_level', 'standard'),
 }
 
+/** Align OpenAPI toggles with Copier `when` clauses (docs + framework + API). */
+export function normalizeCopierWhenDefaults(
+  config: Partial<RisoConfig>,
+): Partial<RisoConfig> {
+  const next = { ...config }
+
+  const fumadocsOpenApiActive =
+    next.docs_module === 'enabled' &&
+    next.docs_framework === 'fumadocs' &&
+    next.api_module === 'enabled'
+  if (!fumadocsOpenApiActive) {
+    next.fumadocs_openapi = 'disabled'
+  }
+
+  const docusaurusOpenApiActive =
+    next.docs_module === 'enabled' &&
+    next.docs_framework === 'docusaurus' &&
+    next.api_module === 'enabled'
+  if (!docusaurusOpenApiActive) {
+    next.docusaurus_openapi = 'disabled'
+  }
+
+  return next
+}
+
+const initialConfig = normalizeCopierWhenDefaults(defaultConfig)
+
 export const useRisoStore = create<RisoStore>()(
   persist(
     (set, get) => ({
-      config: defaultConfig,
+      config: initialConfig,
       history: [],
       currentStep: 0,
       highlightedField: null,
@@ -331,20 +359,32 @@ export const useRisoStore = create<RisoStore>()(
 
       updateConfig: (config) =>
         set((state) => ({
-          config: { ...state.config, ...config },
+          config: normalizeCopierWhenDefaults({ ...state.config, ...config }),
         })),
 
       resetConfig: () =>
         set({
-          config: { ...defaultConfig },
+          config: normalizeCopierWhenDefaults({ ...defaultConfig }),
           currentStep: 0,
         }),
 
       setStep: (step) =>
-        set({ currentStep: step }),
+        set((state) => ({
+          currentStep: clampWizardStep(
+            step,
+            state.currentStep,
+            state.config.project_name ?? '',
+          ),
+        })),
 
       setCurrentStep: (step) =>
-        set({ currentStep: step }),
+        set((state) => ({
+          currentStep: clampWizardStep(
+            step,
+            state.currentStep,
+            state.config.project_name ?? '',
+          ),
+        })),
 
       setHighlightedField: (field) =>
         set({ highlightedField: field }),

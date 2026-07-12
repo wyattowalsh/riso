@@ -1,4 +1,5 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
+import { useFocusTrap } from '../lib/useFocusTrap'
 import { X } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { SidebarSummary } from './SidebarSummary'
@@ -9,6 +10,9 @@ interface MobileDrawerProps {
 }
 
 export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
+  const drawerRef = useRef<HTMLElement>(null)
+  useFocusTrap(isOpen, drawerRef)
+
   // Handle escape key press
   const handleEscape = useCallback(
     (event: KeyboardEvent) => {
@@ -52,6 +56,7 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
 
       {/* Slide-in drawer */}
       <aside
+        ref={drawerRef}
         className={cn(
           'fixed top-0 right-0 z-[70] h-full bg-white/95 dark:bg-gray-950/95 backdrop-blur-lg',
           'w-[320px] sm:w-[380px]',
