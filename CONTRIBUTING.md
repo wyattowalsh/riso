@@ -1,3 +1,10 @@
+## Maintainer quick path
+
+```bash
+just setup
+just quality
+```
+
 # Contributing to Riso
 
 Thank you for your interest in contributing to Riso! This document provides guidelines and instructions for contributing.

@@ -139,8 +139,11 @@ newgrp docker
 **Solution:**
 
 ```bash
-# Try with the --trust flag (disables safety checks)
-copier copy --trust gh:wyattowalsh/riso my-project
+# Prefer the Riso CLI (validates answers + runs post-gen safely):
+uv run riso copy ./my-project --answers-file answers.yml
+
+# Raw Copier --trust disables task/unsafe checks — use only if you understand the risk:
+# copier copy --trust gh:wyattowalsh/riso my-project
 
 # Clear Copier cache and retry
 rm -rf ~/.cache/copier
@@ -782,3 +785,7 @@ NODE_OPTIONS=--max-old-space-size=4096  # Increase memory limit
 - **[Python uv Documentation](https://docs.astral.sh/uv/)**
 - **[Riso CLI Reference](../tools/riso-cli.md)**
 - **[Sphinx Documentation](https://www.sphinx-doc.org/)**
+
+### Copier update / recopy and hooks
+
+Raw `copier update` / `copier recopy` with `--trust` run **post-generation** tasks (metadata, cleanup). Prefer `uv run riso update` / `uv run riso recopy` so answers are validated before Copier runs. Use `--skip-post-gen` or `RISO_SKIP_POST_GEN=1` only for agent/test escape hatches.

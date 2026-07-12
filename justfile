@@ -133,7 +133,7 @@ test-cov:
 [group("quality")]
 security:
     @printf '\033[34m▸ Scanning for vulnerabilities...\033[0m\n'
-    uv run pip-audit
+    uv run pip-audit --strict --vulnerability-service osv
     @printf '\033[32m✓ Security scan complete\033[0m\n'
 
 # ── Template generation ───────────────────────────────────────────────────────
@@ -293,3 +293,7 @@ info:
     @printf 'sphinx:  %s\n' "$(uv run sphinx-build --version 2>&1 || echo 'not installed')"
     @printf 'copier:  %s\n' "$(uv run copier --version 2>&1 || echo 'not installed')"
     @printf 'just:    %s\n' "$(just --version 2>&1 || echo 'not installed')"
+
+# Generate matrix data for web wizard + samples metadata
+matrix-data:
+    uv run python scripts/ci/generate_matrix_data.py

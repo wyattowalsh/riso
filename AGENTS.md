@@ -73,6 +73,8 @@ Bootstrap tooling: [scripts/setup/README.md](scripts/setup/README.md). Windows: 
 
 ## Testing
 
+**Coverage floors:** maintainer CI uses `--cov-fail-under=70` (see `just ci-full`); rendered sample projects may enforce 90 via template quality profiles. Do not conflate the two.
+
 <!-- agents-md:auto -->
 
 - **Framework**: pytest (xdist parallel, cov, randomly)
@@ -98,7 +100,7 @@ uv run pytest -m integration           # integration only
 | Target      | Command scope                                                                   |
 | ----------- | ------------------------------------------------------------------------------- |
 | `lint`      | `ruff check` + `ruff format --check` on `scripts/`, `template/hooks/`, `tests/` |
-| `typecheck` | `ty check scripts template/hooks`                                               |
+| `typecheck` | `ty check scripts template/hooks src`                                           |
 | `test`      | `pytest tests`                                                                  |
 
 Pylint runs via **pre-commit**, not `just quality`. Config: `pyproject.toml` (`[tool.ruff]`, `[tool.ty]`, `[tool.pylint]`).
@@ -135,18 +137,18 @@ CI skips some hooks locally enforced (ty, pylint, pytest, vulture); gitleaks run
 - **Platform**: GitHub Actions — `.github/workflows/quality.yml` (maintainer)
 - **Rendered template workflows**: `template/files/.github/workflows/riso-*.yml.jinja`
 
-| Job                | Purpose                                                                        |
-| ------------------ | ------------------------------------------------------------------------------ |
-| `quality`          | Matrix: Python 3.11–3.13 × standard/strict profiles via `run_quality_suite.py` |
-| `sync-test`        | Makefile ↔ uv task parity in rendered default sample                           |
-| `lint-workflows`   | actionlint on workflow YAML                                                    |
-| `cli-tests`        | `tests/unit/test_cli/` + `riso doctor`                                         |
-| `security-scan`    | pip-audit                                                                      |
-| `docs-build`       | Sphinx build + linkcheck                                                       |
-| `validate-samples` | Render + smoke-test sample variants                                            |
-| `validate-agents-ecosystem` | AGENTS.md bridges, render smoke, quality parity in samples          |
-| `verify-context-sync` | `.github/context/` ↔ template context byte parity                         |
-| `web-tests`        | Web wizard unit/lint/build + Playwright E2E (`web/`)                           |
+| Job                         | Purpose                                                                        |
+| --------------------------- | ------------------------------------------------------------------------------ |
+| `quality`                   | Matrix: Python 3.11–3.13 × standard/strict profiles via `run_quality_suite.py` |
+| `sync-test`                 | Makefile ↔ uv task parity in rendered default sample                           |
+| `lint-workflows`            | actionlint on workflow YAML                                                    |
+| `cli-tests`                 | `tests/unit/test_cli/` + `riso doctor`                                         |
+| `security-scan`             | pip-audit                                                                      |
+| `docs-build`                | Sphinx build + linkcheck                                                       |
+| `validate-samples`          | Render + smoke-test sample variants                                            |
+| `validate-agents-ecosystem` | AGENTS.md bridges, render smoke, quality parity in samples                     |
+| `verify-context-sync`       | `.github/context/` ↔ template context byte parity                              |
+| `web-tests`                 | Web wizard unit/lint/build + Playwright E2E (`web/`)                           |
 
 Other workflows: `gitleaks.yml`, `codeql.yml`, `release.yml`, `matrix-data.yml`, `pre-commit.yml`, `sbom.yml`.
 
@@ -157,12 +159,12 @@ Other workflows: `gitleaks.yml`, `codeql.yml`, `release.yml`, `matrix-data.yml`,
 
 **Local CI parity**:
 
-| Recipe | Scope |
-| ------ | ----- |
-| `just quality` | Maintainer lint + typecheck + pytest (fast default) |
-| `just ci` | `install` + `just quality` |
-| `just ci-full` | `run_quality_suite.py` (standard) + pytest with `--cov-fail-under=70` |
-| `just ci-strict` | `run_quality_suite.py` (strict profile, adds pylint) |
+| Recipe           | Scope                                                                 |
+| ---------------- | --------------------------------------------------------------------- |
+| `just quality`   | Maintainer lint + typecheck + pytest (fast default)                   |
+| `just ci`        | `install` + `just quality`                                            |
+| `just ci-full`   | `run_quality_suite.py` (standard) + pytest with `--cov-fail-under=70` |
+| `just ci-strict` | `run_quality_suite.py` (strict profile, adds pylint)                  |
 
 `sync-test` validates **rendered** sample just/make parity (`samples/api-python/render/python`), not the maintainer Makefile shim.
 
