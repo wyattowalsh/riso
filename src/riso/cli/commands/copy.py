@@ -62,6 +62,7 @@ def run_copy(
             force_unsafe=config.force_unsafe,
             vcs_ref=vcs_ref,
             timeout=config.timeout,
+            skip_post_gen=config.skip_post_gen,
         )
     except Exception as exc:
         raise CopierOperationError("copy", str(exc)) from exc

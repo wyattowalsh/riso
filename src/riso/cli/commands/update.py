@@ -38,6 +38,8 @@ def run_update(
         from riso.core.answers import reject_removed_answer_keys
 
         answers = yaml.safe_load(answers_file.read_text(encoding="utf-8")) or {}
+        if not isinstance(answers, dict):
+            answers = {}
         reject_removed_answer_keys(answers)
         diff = compute_diff(
             answers=answers,
@@ -45,6 +47,7 @@ def run_update(
             template_path=config.template_path,
             operation="update",
             timeout=config.timeout,
+            force_unsafe=config.force_unsafe,
         )
         return diff.to_dict()
 
@@ -55,6 +58,7 @@ def run_update(
             skip_answered=skip_answered,
             force_unsafe=config.force_unsafe,
             timeout=config.timeout,
+            skip_post_gen=config.skip_post_gen,
         )
     except Exception as exc:
         raise CopierOperationError("update", str(exc)) from exc

@@ -32,3 +32,31 @@ def test_validate_destination_blocks_dollar_home(
     monkeypatch.setenv("HOME", "/etc")
     with pytest.raises(PermissionDeniedError):
         validate_destination("$HOME/passwd")
+
+
+def test_validate_destination_blocks_home_secret_dirs(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_home = tmp_path / "userhome"
+    fake_home.mkdir()
+    for name in (".ssh", ".gnupg", ".aws"):
+        (fake_home / name).mkdir()
+    monkeypatch.setattr("riso.core.paths.Path.home", lambda: fake_home)
+
+    for name in (".ssh", ".gnupg", ".aws"):
+        with pytest.raises(PermissionDeniedError):
+            validate_destination(str(fake_home / name / "credentials"))
+
+
+def test_validate_destination_allows_projects_under_home(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_home = tmp_path / "userhome"
+    fake_home.mkdir()
+    project = fake_home / "dev" / "my-app"
+    monkeypatch.setattr("riso.core.paths.Path.home", lambda: fake_home)
+
+    resolved = validate_destination(str(project))
+    assert resolved == project.resolve()

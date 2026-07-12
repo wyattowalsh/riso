@@ -17,6 +17,7 @@ class CliConfig:
     samples_path_override: Path | None = None
     timeout: int | None = 300
     force_unsafe: bool = False
+    skip_post_gen: bool = False
 
     @classmethod
     def from_options(
@@ -26,6 +27,7 @@ class CliConfig:
         samples_path: Path | None = None,
         timeout: int | None = None,
         force_unsafe: bool = False,
+        skip_post_gen: bool = False,
     ) -> CliConfig:
         return cls(
             template_path_override=(
@@ -38,6 +40,7 @@ class CliConfig:
             ),
             timeout=timeout,
             force_unsafe=force_unsafe,
+            skip_post_gen=skip_post_gen,
         )
 
     @property

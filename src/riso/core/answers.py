@@ -2,24 +2,49 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from riso.core.errors import ValidationFailedError
+from riso.core.removed_answer_keys import REMOVED_ANSWER_KEYS
+
+__all__ = [
+    "REMOVED_ANSWER_KEYS",
+    "load_answers_file",
+    "prepare_copier_data",
+    "reject_removed_answer_keys",
+]
 
 
-def _load_removed_answer_keys() -> dict[str, str]:
-    import sys
-    from pathlib import Path
+def load_answers_file(path: Path) -> dict[str, Any]:
+    """Load a YAML mapping of Copier answers (fail-closed on corruption).
 
-    scripts_parent = Path(__file__).resolve().parents[3] / "scripts"
-    if str(scripts_parent) not in sys.path:
-        sys.path.insert(0, str(scripts_parent))
-    from lib.removed_answer_keys import REMOVED_ANSWER_KEYS as keys
+    Raises:
+        FileNotFoundError: if path does not exist.
+        ValidationFailedError: on I/O, encoding, YAML parse, or non-mapping roots.
+    """
+    if not path.exists():
+        raise FileNotFoundError(path)
+    try:
+        import yaml
+    except ModuleNotFoundError as exc:  # pragma: no cover
+        raise ValidationFailedError(
+            ["PyYAML is required to load answers files"]
+        ) from exc
 
-    return dict(keys)
+    try:
+        raw = path.read_text(encoding="utf-8")
+        data = yaml.safe_load(raw)
+    except (OSError, UnicodeError) as exc:
+        raise ValidationFailedError([f"Cannot read answers file: {exc}"]) from exc
+    except yaml.YAMLError as exc:
+        raise ValidationFailedError([f"Invalid answers YAML: {exc}"]) from exc
 
-
-REMOVED_ANSWER_KEYS: dict[str, str] = _load_removed_answer_keys()
+    if data is None:
+        return {}
+    if not isinstance(data, dict):
+        raise ValidationFailedError([f"Answers file must be a mapping: {path}"])
+    return data
 
 
 def prepare_copier_data(answers: dict[str, Any]) -> dict[str, Any]:

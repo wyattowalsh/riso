@@ -13,10 +13,16 @@ from typing import Any
 import json
 import ast
 
-from riso.core.answers import prepare_copier_data
-from riso.core.errors import OperationTimeoutError
+from riso.core.answers import load_answers_file, prepare_copier_data
+from riso.core.errors import (
+    CopierOperationError,
+    OperationTimeoutError,
+    ValidationFailedError,
+)
+from riso.core.generation_gates import validate_answers_for_generation
 from riso.core.names import validate_identity_fields
 from riso.core.paths import validate_destination
+from riso.template.hooks_runner import run_post_gen, should_skip_post_gen
 
 
 @dataclass
@@ -520,25 +526,59 @@ def _filter_kwargs(func: Any, kwargs: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in kwargs.items() if key in params}
 
 
-def _run_with_timeout(func: Any, timeout: int | None, *args: Any, **kwargs: Any) -> Any:
-    if timeout is None:
-        return func(*args, **kwargs)
+def _enforce_generation_gates(answers: dict[str, Any]) -> None:
+    """Raise ValidationFailedError when generation gates fail."""
+    result = validate_answers_for_generation(answers)
+    if not result.ok:
+        raise ValidationFailedError(list(result.errors))
 
-    from concurrent.futures import (
-        ThreadPoolExecutor,
-        TimeoutError as FutureTimeoutError,
-    )
 
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(func, *args, **kwargs)
-        try:
-            return future.result(timeout=timeout)
-        except FutureTimeoutError as exc:
-            raise OperationTimeoutError(
-                operation=func.__name__,
-                timeout_seconds=timeout,
-                details=f"Operation exceeded {timeout}s timeout",
-            ) from exc
+def _run_copier_worker(
+    operation: str,
+    payload: dict[str, Any],
+    timeout: int | None,
+) -> None:
+    """Run Copier in a subprocess so timeouts can kill the work."""
+    import json
+    import subprocess
+    import sys
+
+    from riso.template._copier_worker import run_argv_with_timeout
+
+    cmd = [
+        sys.executable,
+        "-m",
+        "riso.template._copier_worker",
+        operation,
+        "--json-args",
+        json.dumps(payload),
+    ]
+    try:
+        completed = run_argv_with_timeout(cmd, timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        raise OperationTimeoutError(
+            operation=operation,
+            timeout_seconds=int(timeout or 0),
+            details=f"Copier {operation} exceeded {timeout}s timeout",
+        ) from exc
+
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout or "").strip()
+        raise CopierOperationError(
+            operation,
+            detail or f"exit {completed.returncode}",
+        )
+
+
+def _maybe_run_post_gen(
+    dest_path: Path,
+    *,
+    template_path: Path,
+    skip_post_gen: bool,
+) -> None:
+    if should_skip_post_gen(skip_flag=skip_post_gen):
+        return
+    run_post_gen(dest_path, template_hint=template_path)
 
 
 def run_generator(
@@ -550,6 +590,7 @@ def run_generator(
     force_unsafe: bool = False,
     vcs_ref: str | None = None,
     timeout: int | None = None,
+    skip_post_gen: bool = False,
 ) -> OperationResult:
     """Generate a new project using Copier."""
     dest_path = validate_destination(str(destination))
@@ -558,28 +599,24 @@ def run_generator(
             f"Destination already exists: {dest_path}. Use force to overwrite."
         )
 
-    try:
-        from copier import run_copy
-    except ModuleNotFoundError as exc:
-        raise RuntimeError("Copier is required to generate projects.") from exc
+    prepared = prepare_copier_data(data)
+    _enforce_generation_gates(prepared)
 
-    kwargs = _filter_kwargs(
-        run_copy,
+    _run_copier_worker(
+        "copy",
         {
-            "data": prepare_copier_data(data),
+            "template_path": str(template_path),
+            "destination": str(dest_path),
+            "data": prepared,
             "vcs_ref": vcs_ref,
             "overwrite": force,
             "unsafe": force_unsafe,
             "skip_tasks": True,
         },
-    )
-
-    _run_with_timeout(
-        run_copy,
         timeout,
-        str(template_path),
-        str(dest_path),
-        **kwargs,
+    )
+    _maybe_run_post_gen(
+        dest_path, template_path=template_path, skip_post_gen=skip_post_gen
     )
 
     return OperationResult(
@@ -597,32 +634,36 @@ def run_update(
     skip_answered: bool = True,
     force_unsafe: bool = False,
     timeout: int | None = None,
+    skip_post_gen: bool = False,
+    answers: dict[str, Any] | None = None,
 ) -> OperationResult:
     """Update an existing project using Copier."""
     dest_path = validate_destination(str(destination))
     if not dest_path.exists():
         raise FileNotFoundError(dest_path)
 
-    try:
-        from copier import run_update
-    except ModuleNotFoundError as exc:
-        raise RuntimeError("Copier is required to update projects.") from exc
+    gate_answers = answers
+    if gate_answers is None:
+        answers_file = dest_path / ".copier-answers.yml"
+        if answers_file.is_file():
+            gate_answers = load_answers_file(answers_file)
+    if isinstance(gate_answers, dict):
+        _enforce_generation_gates(gate_answers)
 
-    kwargs = _filter_kwargs(
-        run_update,
+    _run_copier_worker(
+        "update",
         {
+            "destination": str(dest_path),
             "skip_answered": skip_answered,
             "unsafe": force_unsafe,
             "skip_tasks": True,
-            "defaults": {"_src_path": str(template_path)},
+            # Copier expects defaults: bool; template override goes in data.
+            "data": {"_src_path": str(template_path)},
         },
-    )
-
-    _run_with_timeout(
-        run_update,
         timeout,
-        str(dest_path),
-        **kwargs,
+    )
+    _maybe_run_post_gen(
+        dest_path, template_path=template_path, skip_post_gen=skip_post_gen
     )
 
     return OperationResult(
@@ -640,33 +681,34 @@ def run_recopy(
     template_path: Path,
     force_unsafe: bool = False,
     timeout: int | None = None,
+    skip_post_gen: bool = False,
 ) -> OperationResult:
     """Recopy an existing project using Copier."""
     dest_path = validate_destination(str(destination))
     if not dest_path.exists():
         raise FileNotFoundError(dest_path)
 
-    try:
-        from copier import run_recopy
-    except ModuleNotFoundError as exc:
-        raise RuntimeError("Copier is required to recopy projects.") from exc
-
     copier_data = prepare_copier_data(data) if data else {}
+    # Merge existing answers for gates when partial data provided.
+    answers_file = dest_path / ".copier-answers.yml"
+    existing: dict[str, Any] = {}
+    if answers_file.is_file():
+        existing = load_answers_file(answers_file)
+    _enforce_generation_gates({**existing, **copier_data})
+
     copier_data = {**copier_data, "_src_path": str(template_path)}
-    kwargs = _filter_kwargs(
-        run_recopy,
+    _run_copier_worker(
+        "recopy",
         {
+            "destination": str(dest_path),
             "data": copier_data,
             "unsafe": force_unsafe,
             "skip_tasks": True,
         },
-    )
-
-    _run_with_timeout(
-        run_recopy,
         timeout,
-        str(dest_path),
-        **kwargs,
+    )
+    _maybe_run_post_gen(
+        dest_path, template_path=template_path, skip_post_gen=skip_post_gen
     )
 
     return OperationResult(
@@ -675,6 +717,31 @@ def run_recopy(
         message="Project regenerated successfully.",
         metadata={},
     )
+
+
+def _run_with_timeout(func: Any, timeout: int | None, *args: Any, **kwargs: Any) -> Any:
+    """Legacy helper for non-Copier callables (kept for public alias).
+
+    Copier mutations use :func:`_run_copier_worker` instead so work can be killed.
+    """
+    if timeout is None or timeout <= 0:
+        return func(*args, **kwargs)
+
+    from concurrent.futures import (
+        ThreadPoolExecutor,
+        TimeoutError as FutureTimeoutError,
+    )
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(func, *args, **kwargs)
+        try:
+            return future.result(timeout=timeout)
+        except FutureTimeoutError as exc:
+            raise OperationTimeoutError(
+                operation=getattr(func, "__name__", "operation"),
+                timeout_seconds=timeout,
+                details=f"Operation exceeded {timeout}s timeout",
+            ) from exc
 
 
 run_with_timeout = _run_with_timeout

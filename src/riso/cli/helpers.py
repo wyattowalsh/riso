@@ -5,9 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import yaml
-
-from riso.core.answers import prepare_copier_data, reject_removed_answer_keys
+from riso.core.answers import (
+    load_answers_file,
+    prepare_copier_data,
+    reject_removed_answer_keys,
+)
 from riso.core.errors import ValidationFailedError
 from riso.template import (
     get_defaults,
@@ -16,15 +18,13 @@ from riso.template import (
     validate_answers,
 )
 
-
-def load_answers_file(path: Path) -> dict[str, Any]:
-    """Load answers from a YAML file."""
-    if not path.exists():
-        raise FileNotFoundError(path)
-    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    if not isinstance(data, dict):
-        raise ValueError(f"Answers file must be a mapping: {path}")
-    return data
+# Re-export SSOT loader for CLI callers/tests.
+__all__ = [
+    "load_answers_file",
+    "parse_data_pairs",
+    "resolve_answers",
+    "validate_and_raise",
+]
 
 
 def parse_data_pairs(data: list[str] | None) -> dict[str, Any]:

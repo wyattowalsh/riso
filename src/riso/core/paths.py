@@ -63,6 +63,29 @@ def resolve_samples_path(explicit: Path | None = None) -> Path:
     return (repo_root() / "samples").resolve()
 
 
+_HOME_SECRET_DIR_NAMES = (".ssh", ".gnupg", ".aws")
+
+
+def _home_secret_dirs() -> list[Path]:
+    home = Path.home().resolve()
+    return [(home / name).resolve() for name in _HOME_SECRET_DIR_NAMES]
+
+
+def _raises_if_under_secret_dir(path: Path) -> None:
+    for secret_dir in _home_secret_dirs():
+        if path == secret_dir:
+            raise PermissionDeniedError(
+                "destination", f"Cannot write to secret directory: {secret_dir}"
+            )
+        try:
+            path.relative_to(secret_dir)
+        except ValueError:
+            continue
+        raise PermissionDeniedError(
+            "destination", f"Cannot write under secret directory: {secret_dir}"
+        )
+
+
 def validate_destination(dest: str, safe_parent: Path | None = None) -> Path:
     """Validate destination does not escape safe directory or system paths."""
     path = Path(os.path.expandvars(dest)).expanduser().resolve()
@@ -115,5 +138,7 @@ def validate_destination(dest: str, safe_parent: Path | None = None) -> Path:
             raise PermissionDeniedError(
                 "destination", "Cannot write to system directories"
             )
+
+    _raises_if_under_secret_dir(path)
 
     return path

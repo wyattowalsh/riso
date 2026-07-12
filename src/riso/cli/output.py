@@ -58,11 +58,57 @@ def emit_success(
         return
 
     if not ctx.quiet and data:
+        if _emit_human_command_output(data):
+            return
         for key, value in data.items():
             if key == "message":
                 print(value)
             elif key == "summary":
                 print(value)
+
+
+def _emit_human_command_output(data: dict[str, Any]) -> bool:
+    """Print structured command results in human mode. Return True if handled."""
+    if "yaml" in data and isinstance(data.get("yaml"), str):
+        yaml_text = data["yaml"]
+        end = "" if yaml_text.endswith("\n") else "\n"
+        print(yaml_text, end=end)
+        return True
+
+    if "copier_command" in data:
+        print(data["copier_command"])
+        if riso_cmd := data.get("riso_command"):
+            print(riso_cmd)
+        return True
+
+    if "valid" in data:
+        status = "valid" if data.get("valid") else "invalid"
+        print(f"validation: {status}")
+        for err in data.get("errors") or []:
+            print(f"  error: {err}")
+        for warn in data.get("warnings") or []:
+            print(f"  warning: {warn}")
+        return True
+
+    if "checks" in data and "ready" in data:
+        ready = data.get("ready")
+        print(f"ready: {ready}")
+        checks = data.get("checks")
+        if isinstance(checks, dict):
+            if checks.get("template_path"):
+                print(f"template_path: {checks['template_path']}")
+            copier = checks.get("copier")
+            if isinstance(copier, dict):
+                print(
+                    f"copier: {'available' if copier.get('available') else 'missing'}"
+                )
+            if checks.get("riso_version"):
+                print(f"riso_version: {checks['riso_version']}")
+        for warn in data.get("warnings") or []:
+            print(f"warning: {warn}")
+        return True
+
+    return False
 
 
 def emit_error(
@@ -108,8 +154,14 @@ def handle_exception(ctx: CliContext, exc: BaseException) -> None:
             str(exc),
             exit_code=ExitCode.USAGE_OR_VALIDATION,
         )
+    if isinstance(exc, (ValueError, FileNotFoundError)):
+        emit_error(
+            ctx,
+            str(exc),
+            exit_code=ExitCode.USAGE_OR_VALIDATION,
+        )
     if isinstance(exc, SystemExit):
-        raise
+        raise exc
     if isinstance(exc, KeyboardInterrupt):
         emit_error(
             ctx,
