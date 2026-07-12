@@ -111,6 +111,39 @@ class TestLoadCiPlatform:
 
 
 @pytest.mark.unit
+class TestLoadCopierContext:
+    """Tests for merged env + .copier-answers.yml loading."""
+
+    def test_loads_answers_from_file_when_env_empty(self, tmp_path, monkeypatch):
+        from pre_gen_project import _load_copier_context
+
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("COPIER_ANSWERS", raising=False)
+        monkeypatch.delenv("COPIER_JINJA2_CONTEXT", raising=False)
+        monkeypatch.delenv("COPIER_RENDER_CONTEXT", raising=False)
+        (tmp_path / ".copier-answers.yml").write_text(
+            "docs_framework: docusaurus\nci_platform: none\n",
+            encoding="utf-8",
+        )
+
+        context = _load_copier_context()
+        assert context["docs_framework"] == "docusaurus"
+        assert context["ci_platform"] == "none"
+
+    def test_exits_when_no_env_and_no_answers_file(self, tmp_path, monkeypatch):
+        from pre_gen_project import _load_copier_context
+
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("COPIER_ANSWERS", raising=False)
+        monkeypatch.delenv("COPIER_JINJA2_CONTEXT", raising=False)
+        monkeypatch.delenv("COPIER_RENDER_CONTEXT", raising=False)
+
+        with pytest.raises(SystemExit) as exc_info:
+            _load_copier_context()
+        assert exc_info.value.code == 1
+
+
+@pytest.mark.unit
 class TestValidateRemovedAnswerKeys:
     """Tests for removed answer key rejection."""
 
@@ -199,7 +232,7 @@ class TestProvisionResult:
 
         result = ProvisionResult(
             tool_name="uv",
-            version_requested="0.4.30",
+            version_requested="0.11.26",
             status="installed",
         )
         assert result["tool_name"] == "uv"
@@ -216,11 +249,11 @@ class TestProvisionResult:
             status="failed",
             stderr="Error message",
             next_steps="Install manually",
-            retry_command="mise install node@20",
+            retry_command="mise install node@22",
         )
         assert result["stderr"] == "Error message"
         assert result["next_steps"] == "Install manually"
-        assert result["retry_command"] == "mise install node@20"
+        assert result["retry_command"] == "mise install node@22"
 
 
 @pytest.mark.unit
@@ -316,7 +349,7 @@ class TestBuildToolMatrix:
 
         result = _build_tool_matrix("none", {})
         assert any(tool[0] == "uv" for tool in result)
-        assert result[0] == ("uv", "0.4.30", "uv@0.4.30")
+        assert result[0] == ("uv", "0.11.26", "uv@0.11.26")
 
     def test_includes_node_for_docs_framework(self):
         """Test that node/pnpm are included when docs framework is not 'none'."""
@@ -352,12 +385,12 @@ class TestBuildToolMatrix:
         result = _build_tool_matrix("fumadocs", {})
         # Check uv version
         uv_entry = [tool for tool in result if tool[0] == "uv"][0]
-        assert uv_entry[1] == "0.4.30"
-        assert uv_entry[2] == "uv@0.4.30"
+        assert uv_entry[1] == "0.11.26"
+        assert uv_entry[2] == "uv@0.11.26"
         # Check node version
         node_entry = [tool for tool in result if tool[0] == "node"][0]
-        assert node_entry[1] == "20"
-        assert node_entry[2] == "node@20"
+        assert node_entry[1] == "22"
+        assert node_entry[2] == "node@22"
 
 
 @pytest.mark.unit
@@ -434,7 +467,7 @@ class TestInstallRequiredTools:
 
         monkeypatch.chdir(tmp_path)
 
-        tool_matrix = [("uv", "0.4.30", "uv@0.4.30")]
+        tool_matrix = [("uv", "0.11.26", "uv@0.11.26")]
 
         with patch("shutil.which", return_value="/usr/bin/uv"):
             failures = _install_required_tools(tool_matrix)
@@ -467,8 +500,8 @@ class TestInstallRequiredTools:
         monkeypatch.chdir(tmp_path)
 
         tool_matrix = [
-            ("uv", "0.4.30", "uv@0.4.30"),
-            ("node", "20", "node@20"),
+            ("uv", "0.11.26", "uv@0.11.26"),
+            ("node", "22", "node@22"),
         ]
 
         with patch("shutil.which", return_value="/usr/bin/tool"):
@@ -563,11 +596,11 @@ class TestReportFailuresAndExit:
         failures = [
             ProvisionResult(
                 tool_name="uv",
-                version_requested="0.4.30",
+                version_requested="0.11.26",
                 status="failed",
                 stderr="Error installing",
                 next_steps="Install manually",
-                retry_command="mise install uv@0.4.30",
+                retry_command="mise install uv@0.11.26",
             )
         ]
 
@@ -586,7 +619,7 @@ class TestReportFailuresAndExit:
         )
         # Check for tool details
         assert "uv" in captured.err
-        assert "0.4.30" in captured.err
+        assert "0.11.26" in captured.err
 
     def test_reports_all_failure_details(self, capsys):
         """Test that all failure details are reported."""
@@ -599,7 +632,7 @@ class TestReportFailuresAndExit:
                 status="failed",
                 stderr="Installation failed",
                 next_steps="Install Node.js manually",
-                retry_command="mise install node@20",
+                retry_command="mise install node@22",
             )
         ]
 
@@ -610,7 +643,7 @@ class TestReportFailuresAndExit:
         output = captured.err
         # Check for all failure details
         assert "Installation failed" in output
-        assert "mise install node@20" in output
+        assert "mise install node@22" in output
         assert "Install Node.js manually" in output or "manually" in output.lower()
 
     def test_handles_multiple_failures(self, capsys):
@@ -620,7 +653,7 @@ class TestReportFailuresAndExit:
         failures = [
             ProvisionResult(
                 tool_name="uv",
-                version_requested="0.4.30",
+                version_requested="0.11.26",
                 status="failed",
             ),
             ProvisionResult(
@@ -641,7 +674,7 @@ class TestReportFailuresAndExit:
         # Verify we have multiple failure entries
         assert (
             output.count("failed") >= 2
-            or output.count("0.4.30") >= 1
+            or output.count("0.11.26") >= 1
             and output.count("20") >= 1
         )
 
@@ -870,8 +903,8 @@ class TestParametrizedToolMatrix:
         assert tool_names == expected_tools
         # Verify uv always has correct version
         uv_entry = [tool for tool in result if tool[0] == "uv"][0]
-        assert uv_entry[1] == "0.4.30"
-        assert uv_entry[2] == "uv@0.4.30"
+        assert uv_entry[1] == "0.11.26"
+        assert uv_entry[2] == "uv@0.11.26"
 
 
 @pytest.mark.unit
@@ -884,7 +917,7 @@ class TestParametrizedProvisionResult:
             (
                 {
                     "tool_name": "uv",
-                    "version_requested": "0.4.30",
+                    "version_requested": "0.11.26",
                     "status": "installed",
                 },
                 {"tool_name": "uv", "status": "installed"},
@@ -901,7 +934,7 @@ class TestParametrizedProvisionResult:
             (
                 {
                     "tool_name": "pnpm",
-                    "version_requested": "9.15.0",
+                    "version_requested": "11.11.0",
                     "status": "already_present",
                 },
                 {"tool_name": "pnpm", "status": "already_present"},

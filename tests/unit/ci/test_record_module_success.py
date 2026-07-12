@@ -155,6 +155,41 @@ class TestModuleSuccessRecorder:
 
 
 @pytest.mark.unit
+class TestSmokeLogIteration:
+    """Tests for smoke-results.json ingestion via smoke_schema."""
+
+    def test_iter_smoke_logs_reads_modules_shape(self, tmp_path):
+        """Should aggregate canonical modules dict from smoke-results.json."""
+        from record_module_success import iter_smoke_logs
+
+        variant_dir = tmp_path / "default"
+        variant_dir.mkdir()
+        (variant_dir / "smoke-results.json").write_text(
+            json.dumps(
+                {
+                    "variant": "default",
+                    "modules": {
+                        "cli": {"status": "passed"},
+                        "api": {"status": "failed"},
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        rows = list(iter_smoke_logs(tmp_path))
+        assert rows == [
+            (
+                "default",
+                [
+                    {"name": "cli", "status": "passed"},
+                    {"name": "api", "status": "failed"},
+                ],
+            )
+        ]
+
+
+@pytest.mark.unit
 class TestWorkflowValidation:
     """Tests for workflow validation tracking."""
 

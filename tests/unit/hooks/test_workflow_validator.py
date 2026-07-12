@@ -111,23 +111,26 @@ class TestValidateWorkflowsDirectory:
         """Test returns 0 when actionlint not available in non-strict mode."""
         with patch("workflow_validator.check_actionlint_available") as mock_check:
             mock_check.return_value = False
-            result = validate_workflows_directory(Path("/fake"), strict=False)
-            assert result == 0
+            code, status = validate_workflows_directory(Path("/fake"), strict=False)
+            assert code == 0
+            assert status == "tool_missing"
 
     def test_returns_one_when_actionlint_not_available_strict(self):
         """Test returns 1 when actionlint not available in strict mode."""
         with patch("workflow_validator.check_actionlint_available") as mock_check:
             mock_check.return_value = False
-            result = validate_workflows_directory(Path("/fake"), strict=True)
-            assert result == 1
+            code, status = validate_workflows_directory(Path("/fake"), strict=True)
+            assert code == 1
+            assert status == "tool_missing"
 
     def test_returns_zero_when_directory_not_exists(self, tmp_path: Path):
         """Test returns 0 when workflows directory doesn't exist."""
         with patch("workflow_validator.check_actionlint_available") as mock_check:
             mock_check.return_value = True
             non_existent = tmp_path / "nonexistent"
-            result = validate_workflows_directory(non_existent)
-            assert result == 0
+            code, status = validate_workflows_directory(non_existent)
+            assert code == 0
+            assert status == "skipped"
 
     def test_returns_zero_when_no_workflow_files(self, tmp_path: Path):
         """Test returns 0 when workflows directory has no YAML files."""
@@ -135,8 +138,9 @@ class TestValidateWorkflowsDirectory:
             mock_check.return_value = True
             workflows_dir = tmp_path / "workflows"
             workflows_dir.mkdir()
-            result = validate_workflows_directory(workflows_dir)
-            assert result == 0
+            code, status = validate_workflows_directory(workflows_dir)
+            assert code == 0
+            assert status == "pass"
 
     def test_validates_all_yaml_workflow_files(self, tmp_path: Path):
         """Test validates every *.yml/*.yaml workflow, not only riso-*."""
@@ -151,9 +155,10 @@ class TestValidateWorkflowsDirectory:
             mock_check.return_value = True
             mock_validate.return_value = (True, None)
 
-            result = validate_workflows_directory(workflows_dir)
+            code, status = validate_workflows_directory(workflows_dir)
 
-            assert result == 0
+            assert code == 0
+            assert status == "pass"
             mock_validate.assert_called_once()
 
     def test_validates_all_workflow_files(self, tmp_path: Path):
@@ -170,9 +175,10 @@ class TestValidateWorkflowsDirectory:
             mock_check.return_value = True
             mock_validate.return_value = (True, None)
 
-            result = validate_workflows_directory(workflows_dir)
+            code, status = validate_workflows_directory(workflows_dir)
 
-            assert result == 0
+            assert code == 0
+            assert status == "pass"
             assert mock_validate.call_count == 2
 
     def test_returns_zero_on_failure_non_strict(self, tmp_path: Path):
@@ -188,8 +194,9 @@ class TestValidateWorkflowsDirectory:
             mock_check.return_value = True
             mock_validate.return_value = (False, "error")
 
-            result = validate_workflows_directory(workflows_dir, strict=False)
-            assert result == 0
+            code, status = validate_workflows_directory(workflows_dir, strict=False)
+            assert code == 0
+            assert status == "fail"
 
     def test_returns_one_on_failure_strict(self, tmp_path: Path):
         """Test returns 1 on validation failure in strict mode."""
@@ -204,5 +211,6 @@ class TestValidateWorkflowsDirectory:
             mock_check.return_value = True
             mock_validate.return_value = (False, "error")
 
-            result = validate_workflows_directory(workflows_dir, strict=True)
-            assert result == 1
+            code, status = validate_workflows_directory(workflows_dir, strict=True)
+            assert code == 1
+            assert status == "fail"
