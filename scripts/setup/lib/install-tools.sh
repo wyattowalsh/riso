@@ -202,6 +202,11 @@ secure_install_script() {
     local expected_checksum="${2:-}"
     local interpreter="${3:-sh}"
 
+    if [ -z "$expected_checksum" ]; then
+        log_error "Refusing remote installer without checksum: $url"
+        return 1
+    fi
+
     local tmp_script
     tmp_script=$(mktemp "${TMPDIR:-/tmp}/riso-install-XXXXXX.sh")
 
@@ -212,12 +217,6 @@ secure_install_script() {
     if ! secure_download "$url" "$tmp_script" "$expected_checksum"; then
         log_error "Failed to download installer script"
         return 1
-    fi
-
-    # If no checksum provided, warn but continue (for backwards compatibility)
-    if [ -z "$expected_checksum" ]; then
-        log_warn "No checksum verification for: $url"
-        log_warn "Consider adding checksum verification for security"
     fi
 
     log_info "Executing installer..."
@@ -279,13 +278,8 @@ install_uv_with_curl() {
         return 1
     fi
 
-    log_info "Installing uv with standalone installer..."
-    # Note: uv's install script doesn't provide static checksums
-    # The script is fetched over HTTPS from Astral's CDN
-    # For enhanced security, consider using mise or brew instead
-    if secure_install_script "https://astral.sh/uv/install.sh" "" "sh"; then
-        return 0
-    fi
+    log_error "Refusing uv curl|sh install: Astral does not publish install.sh checksums"
+    log_error "Install via mise, Homebrew, or winget: https://docs.astral.sh/uv/getting-started/installation/"
     return 1
 }
 
@@ -558,21 +552,13 @@ install_node_with_brew() {
 }
 
 install_node_with_apt() {
-    if ! has_cmd apt-get || ! has_cmd curl; then
+    if ! has_cmd apt-get; then
         return 1
     fi
 
-    log_info "Installing Node.js with apt (via NodeSource)..."
-
-    # Add NodeSource repository
-    if has_cmd sudo; then
-        curl -fsSL "https://deb.nodesource.com/setup_${NODE_MIN_VERSION}.x" | sudo bash -
-        sudo apt-get install -y nodejs
-    else
-        curl -fsSL "https://deb.nodesource.com/setup_${NODE_MIN_VERSION}.x" | bash -
-        apt-get install -y nodejs
-    fi
-    return 0
+    log_error "Refusing NodeSource curl|bash setup: no published checksum for setup script"
+    log_error "Use mise, Homebrew, dnf module, pacman, or winget for Node.js ${NODE_MIN_VERSION}+"
+    return 1
 }
 
 install_node_with_dnf() {
