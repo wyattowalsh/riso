@@ -106,7 +106,13 @@ class TestElectronTemplateRendering:
         env = create_jinja_env(electron_files_dir)
         template = env.get_template("package.json.jinja")
 
-        result = template.render(base_electron_context)
+        # Full platforms + auto_updater: core deps, updater dep, and platform scripts.
+        context = {
+            **base_electron_context,
+            "desktop_features": ["auto_updater"],
+            "desktop_platforms": ["mac", "windows", "linux"],
+        }
+        result = template.render(context)
         data = json.loads(result)
 
         # Check basic metadata
@@ -114,7 +120,7 @@ class TestElectronTemplateRendering:
         assert data["version"] == "0.1.0"
         assert data["main"] == "./out/main/index.js"
 
-        # Check required dependencies
+        # Check required dependencies (electron-updater only when auto_updater enabled)
         required_deps = [
             "electron-updater",
             "electron-log",
@@ -144,6 +150,22 @@ class TestElectronTemplateRendering:
         assert "build:mac" in data["scripts"]
         assert "build:win" in data["scripts"]
         assert "build:linux" in data["scripts"]
+        assert "publish" in data["scripts"]
+
+        # Without auto_updater: electron-updater and publish must be absent
+        no_updater = template.render(
+            {
+                **base_electron_context,
+                "desktop_features": [],
+                "desktop_platforms": ["mac"],
+            }
+        )
+        no_updater_data = json.loads(no_updater)
+        assert "electron-updater" not in no_updater_data["dependencies"]
+        assert "publish" not in no_updater_data["scripts"]
+        assert "build:mac" in no_updater_data["scripts"]
+        assert "build:win" not in no_updater_data["scripts"]
+        assert "build:linux" not in no_updater_data["scripts"]
 
     @pytest.mark.parametrize(
         "feature,expected_content",
