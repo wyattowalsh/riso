@@ -57,20 +57,43 @@ EMPTY_SCAFFOLD_DIRS = [
     "electron",
     "frontend",
     "go",
+    "go/api",
+    "go/cli",
+    "go/mcp",
     "graphql",
     "logic",
     "mcp",
     "node",
+    "node/apps/api-node",
+    "node/mcp",
+    "node/release",
+    "node/saas",
     "python",
+    "python/docs",
+    "python/mcp",
+    "python/release",
+    "python/tests/codegen",
+    "python/tests/graphql",
+    "python/tests/websocket",
     "rust",
+    "rust/api",
+    "rust/cli",
+    "rust/mcp",
     "saas-starter",
     "scripts/hooks",
+    "scripts/release",
     "tauri",
     "testing",
-    "python/tests/graphql",
     "tests/integration",
     "tests",
 ]
+
+# Package-relative optional subtrees (filled with package import name at cleanup).
+EMPTY_PACKAGE_SCAFFOLD_DIRS = (
+    "python/src/{package}/codegen",
+    "python/src/{package}/graphql_api",
+    "python/src/{package}/websocket",
+)
 
 
 def answer_text(
@@ -150,30 +173,90 @@ def package_for_answers(destination: pathlib.Path, answers: dict[str, object]) -
     return package or destination.name.replace("-", "_")
 
 
-def cleanup_empty_scaffold_dirs(destination: pathlib.Path) -> list[str]:
+def _empty_scaffold_candidates(package: str | None = None) -> list[str]:
+    """Return known empty-scaffold relative paths, deepest first."""
+    candidates = list(EMPTY_SCAFFOLD_DIRS)
+    if package:
+        candidates.extend(
+            pattern.format(package=package) for pattern in EMPTY_PACKAGE_SCAFFOLD_DIRS
+        )
+    # Deepest paths first so nested empty trees collapse before parents.
+    return sorted(set(candidates), key=lambda path: path.count("/"), reverse=True)
+
+
+def _resolved_under_root(path: pathlib.Path, root: pathlib.Path) -> pathlib.Path | None:
+    """Return resolved *path* when it stays under *root*, else ``None``."""
+    try:
+        resolved = path.resolve()
+    except (OSError, ValueError):
+        return None
+    if not resolved.is_relative_to(root):
+        return None
+    return resolved
+
+
+def _tree_has_files(path: pathlib.Path) -> bool:
+    """Return True when *path* contains any non-symlink file."""
+    try:
+        return any(
+            entry.is_file() and not entry.is_symlink() for entry in path.rglob("*")
+        )
+    except OSError:
+        return True
+
+
+def _remove_empty_tree(path: pathlib.Path, root: pathlib.Path) -> list[str]:
+    """Remove *path* only when it is a file-free empty shell.
+
+    *root* must already be ``.resolve()``d. If any real file exists under
+    *path*, leave the tree untouched (populated modules may contain empty
+    subdirs that are not in the candidate list). File-free shells left by
+    Copier excludes are removed bottom-up.
+    """
+    removed: list[str] = []
+    if path.is_symlink() or not path.is_dir():
+        return removed
+    resolved = _resolved_under_root(path, root)
+    if resolved is None or _tree_has_files(path):
+        return removed
+
+    for child in sorted(path.rglob("*"), key=lambda p: len(p.parts), reverse=True):
+        if child.is_symlink() or not child.is_dir():
+            continue
+        child_resolved = _resolved_under_root(child, root)
+        if child_resolved is None:
+            continue
+        try:
+            child.rmdir()
+        except OSError:
+            continue
+        removed.append(str(child_resolved.relative_to(root)))
+
+    try:
+        path.rmdir()
+    except OSError:
+        return removed
+    removed.append(str(resolved.relative_to(root)))
+    return removed
+
+
+def cleanup_empty_scaffold_dirs(
+    destination: pathlib.Path, package: str | None = None
+) -> list[str]:
     """Remove known empty scaffold directories left after conditional excludes."""
     removed: list[str] = []
     root = destination.resolve()
-    for relative_path in sorted(
-        EMPTY_SCAFFOLD_DIRS, key=lambda path: path.count("/"), reverse=True
-    ):
-        path = destination / relative_path
-        if path.is_symlink():
-            continue
-        try:
-            resolved = path.resolve()
-            if not resolved.is_relative_to(root):
-                continue
-        except (OSError, ValueError):
-            continue
-        if not path.is_dir():
-            continue
-        try:
-            path.rmdir()
-        except OSError:
-            continue
-        removed.append(relative_path)
-    return removed
+    for relative_path in _empty_scaffold_candidates(package):
+        path = root / relative_path
+        removed.extend(_remove_empty_tree(path, root))
+    # Stable unique order for metadata / tests.
+    seen: set[str] = set()
+    unique: list[str] = []
+    for item in removed:
+        if item not in seen:
+            seen.add(item)
+            unique.append(item)
+    return unique
 
 
 def cleanup_empty_rendered_files(destination: pathlib.Path) -> list[str]:
@@ -360,7 +443,8 @@ def docs_guidance(answers: dict[str, object]) -> list[str]:
             guidance.append("Performance: Rspack + SWC enabled for 2-4x faster builds.")
         if answer_enabled(answers, "docusaurus_i18n"):
             guidance.append(
-                "i18n: Generate translations with `pnpm --filter docs-docusaurus write-translations`."
+                "i18n: Generate translations with "
+                "`pnpm --filter docs-docusaurus write-translations`."
             )
         if answer_enabled(answers, "docusaurus_openapi"):
             guidance.append(
@@ -400,7 +484,8 @@ def docs_guidance(answers: dict[str, object]) -> list[str]:
             )
         return guidance
     return [
-        "Documentation scaffolding skipped (`docs_module=disabled`). Review docs/guidance/none.md for enabling docs later.",
+        "Documentation scaffolding skipped (`docs_module=disabled`). "
+        "Review docs/guidance/none.md for enabling docs later.",
     ]
 
 
@@ -437,7 +522,8 @@ def optional_module_guidance(answers: dict[str, object]) -> list[str]:
         guidance.append("Fastify service: `pnpm --filter api-node run dev`.")
     if answer_enabled(answers, "mcp_module"):
         guidance.append(
-            'List MCP tools: `uv run python -c "from shared.mcp import tooling; print(tooling.list_tools())"`.'
+            "List MCP tools: `uv run python -c "
+            '"from shared.mcp import tooling; print(tooling.list_tools())"`.'
         )
     return guidance
 
@@ -507,8 +593,9 @@ def main() -> None:
     validate_removed_answer_keys(answers)
     _revalidate_saas_answers(answers)
     package = package_for_answers(destination, answers)
-    removed_empty_dirs = cleanup_empty_scaffold_dirs(destination)
+    # Zero-byte dual-gate stubs first so package optional dirs can rmdir.
     removed_empty_files = cleanup_empty_rendered_files(destination)
+    removed_empty_dirs = cleanup_empty_scaffold_dirs(destination, package=package)
     removed_legacy_files = cleanup_legacy_root_pyproject(destination)
     install_python_tools = _env_flag("RISO_POST_GEN_INSTALL_TOOLS")
     quality_checks = (
