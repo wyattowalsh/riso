@@ -816,3 +816,28 @@ class TestGoTemplateIntegration:
         assert "}}" not in rendered
         assert "{%-" not in rendered
         assert "-%}" not in rendered
+
+
+class TestGoSharedInternalPackages:
+    """QUAL follow-ups from SYS handoff QUAL-go-template-tests."""
+
+    def test_shared_internal_config_and_logger_exist(self, go_templates_dir):
+        """Shared go/internal/{config,logger} packages must exist."""
+        assert (go_templates_dir / "internal" / "config" / "config.go.jinja").exists()
+        assert (go_templates_dir / "internal" / "logger" / "logger.go.jinja").exists()
+
+    def test_api_templates_do_not_import_cli_internal(self, go_templates_dir):
+        """API-only templates must not reference cli/internal (use shared internal/)."""
+        api_dir = go_templates_dir / "api"
+        offenders: list[str] = []
+        for path in api_dir.rglob("*.jinja"):
+            text = path.read_text(encoding="utf-8")
+            if "cli/internal" in text:
+                offenders.append(str(path.relative_to(go_templates_dir)))
+        assert not offenders, f"API templates still import cli/internal: {offenders}"
+
+    def test_api_main_uses_shared_internal_config(self, go_templates_dir):
+        """API main should import project_slug/internal/config (shared package)."""
+        main = (go_templates_dir / "api" / "main.go.jinja").read_text(encoding="utf-8")
+        assert 'internal/config"' in main or "/internal/config" in main
+        assert "cli/internal" not in main
