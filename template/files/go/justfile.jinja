@@ -1,6 +1,11 @@
-{% if 'go' in cli_languages or 'go' in api_languages %}
+{% if 'go' in cli_languages or 'go' in api_languages or 'go' in mcp_languages %}
+{%- set _has_cli = cli_module == 'enabled' and 'go' in cli_languages -%}
+{%- set _has_api = api_module == 'enabled' and 'go' in api_languages -%}
+{%- set _has_mcp = mcp_module == 'enabled' and 'go' in mcp_languages -%}
+{%- set _has_root = _has_cli or _has_api -%}
 # {{ project_name }} justfile
 # Go {{ go_version | default('1.24') }} project
+# MCP is a nested module (mcp/go.mod) — use `go -C mcp ...`
 
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
@@ -8,14 +13,18 @@ set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 all: lint test build
 
 build:
-{% if cli_module == 'enabled' and 'go' in cli_languages %}
+{% if _has_cli %}
     go build -ldflags "-s -w" -o bin/{{ project_slug }} ./cli
 {% endif %}
-{% if api_module == 'enabled' and 'go' in api_languages %}
+{% if _has_api %}
     go build -ldflags "-s -w" -o bin/{{ project_slug }}-api ./api
 {% endif %}
+{% if _has_mcp %}
+    mkdir -p bin
+    go -C mcp build -ldflags "-s -w" -o ../bin/{{ project_slug }}-mcp ./cmd/server
+{% endif %}
 
-{% if cli_module == 'enabled' and 'go' in cli_languages %}
+{% if _has_cli %}
 build-cli:
     go build -ldflags "-s -w" -o bin/{{ project_slug }} ./cli
 
@@ -23,7 +32,7 @@ run-cli *ARGS:
     go run ./cli {% raw %}{{ARGS}}{% endraw %}
 {% endif %}
 
-{% if api_module == 'enabled' and 'go' in api_languages %}
+{% if _has_api %}
 build-api:
     go build -ldflags "-s -w" -o bin/{{ project_slug }}-api ./api
 
@@ -34,37 +43,93 @@ run-api-dev:
     air -c .air.toml
 {% endif %}
 
+{% if _has_mcp %}
+build-mcp:
+    mkdir -p bin
+    go -C mcp build -ldflags "-s -w" -o ../bin/{{ project_slug }}-mcp ./cmd/server
+
+run-mcp:
+    go -C mcp run ./cmd/server --transport stdio
+{% endif %}
+
 test:
+{% if _has_root %}
     go test -v -race -coverprofile=coverage.out ./...
+{% endif %}
+{% if _has_mcp %}
+    go -C mcp test -v ./...
+{% endif %}
 
 test-short:
+{% if _has_root %}
     go test -short -v ./...
+{% endif %}
+{% if _has_mcp %}
+    go -C mcp test -short -v ./...
+{% endif %}
 
+{% if _has_root %}
 coverage: test
     go tool cover -html=coverage.out -o coverage.html
     @echo "Coverage report generated: coverage.html"
+{% endif %}
 
 lint:
+{% if _has_root %}
     golangci-lint run --timeout=5m
+{% endif %}
+{% if _has_mcp %}
+    golangci-lint run --timeout=5m ./mcp/...
+{% endif %}
 
 lint-fix:
+{% if _has_root %}
     golangci-lint run --fix --timeout=5m
+{% endif %}
+{% if _has_mcp %}
+    golangci-lint run --fix --timeout=5m ./mcp/...
+{% endif %}
 
 fmt:
+{% if _has_root %}
     go fmt ./...
     gofumpt -l -w .
+{% endif %}
+{% if _has_mcp %}
+    go -C mcp fmt ./...
+{% endif %}
 
 vet:
+{% if _has_root %}
     go vet ./...
+{% endif %}
+{% if _has_mcp %}
+    go -C mcp vet ./...
+{% endif %}
 
 mod-tidy:
+{% if _has_root %}
     go mod tidy
+{% endif %}
+{% if _has_mcp %}
+    go -C mcp mod tidy
+{% endif %}
 
 mod-verify:
+{% if _has_root %}
     go mod verify
+{% endif %}
+{% if _has_mcp %}
+    go -C mcp mod verify
+{% endif %}
 
 mod-download:
+{% if _has_root %}
     go mod download
+{% endif %}
+{% if _has_mcp %}
+    go -C mcp mod download
+{% endif %}
 
 clean:
     rm -rf bin/
@@ -73,7 +138,7 @@ clean:
 install-tools:
     go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0
     go install mvdan.cc/gofumpt@latest
-{% if api_module == 'enabled' and 'go' in api_languages %}
+{% if _has_api %}
     go install github.com/air-verse/air@latest
 {% endif %}
 
@@ -81,7 +146,7 @@ docker-build:
     docker build -t {{ project_slug }}:latest .
 
 docker-run:
-{% if api_module == 'enabled' and 'go' in api_languages %}
+{% if _has_api %}
     docker run -p 8080:8080 {{ project_slug }}:latest
 {% else %}
     docker run {{ project_slug }}:latest

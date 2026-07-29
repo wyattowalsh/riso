@@ -92,18 +92,18 @@ go mod download
 
 ```
 .
+├── internal/
+│   ├── config/              # Shared configuration (koanf)
+│   └── logger/              # Shared structured logging (slog)
 {% if cli_module == 'enabled' and 'go' in cli_languages %}
 ├── cli/
 │   ├── main.go              # CLI entry point
-│   ├── cmd/
-│   │   ├── root.go          # Root command with global flags
-│   │   ├── version.go       # Version command
+│   └── cmd/
+│       ├── root.go          # Root command with global flags
+│       ├── version.go       # Version command
 {% if api_module == 'enabled' and 'go' in api_languages %}
-│   │   └── serve.go         # Serve command (starts API)
+│       └── serve.go         # Serve command (starts API)
 {% endif %}
-│   └── internal/
-│       ├── config/          # Configuration management (koanf)
-│       └── logger/          # Structured logging (slog)
 {% endif %}
 {% if api_module == 'enabled' and 'go' in api_languages %}
 ├── api/
@@ -111,7 +111,12 @@ go mod download
 │   └── internal/
 │       ├── handlers/        # HTTP request handlers
 │       ├── middleware/      # HTTP middleware (logging, CORS, recovery)
-│       └── server/          # HTTP server setup
+│       └── server/          # HTTP server setup (gin/fiber/echo/chi)
+{% endif %}
+{% if mcp_module == 'enabled' and 'go' in mcp_languages %}
+├── mcp/                     # Nested MCP module (own go.mod)
+│   ├── cmd/server/          # MCP server entry point
+│   └── internal/            # MCP tools, resources, server
 {% endif %}
 ├── go.mod                   # Go module definition
 ├── go.sum                   # Dependency checksums
@@ -123,6 +128,24 @@ go mod download
 {% endif %}
 └── README.md                # This file
 ```
+
+{% if api_module == 'enabled' and 'go' in api_languages %}
+## HTTP frameworks
+
+The API scaffold is selected via `go_framework` and supports **gin** (default), **fiber**, **echo**, and **chi**. Each framework gets equivalent server setup, health/ready/live routes, and CORS/logging/recovery middleware.
+{% endif %}
+{% if mcp_module == 'enabled' and 'go' in mcp_languages %}
+## MCP server
+
+When Go is selected in `mcp_languages`, a nested module under `mcp/` is rendered. Build/run with:
+
+```bash
+{{ _run }} build-mcp
+{{ _run }} run-mcp
+```
+
+See `mcp/README.md` for transport options and tool development.
+{% endif %}
 
 ## Configuration
 

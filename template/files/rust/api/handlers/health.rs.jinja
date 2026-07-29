@@ -50,14 +50,19 @@ pub async fn liveness_check() -> impl Responder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actix_web::test;
+    use actix_web::{http::StatusCode, test, App};
 
     #[actix_web::test]
     async fn test_health_check() {
-        let config = web::Data::new(Config::default());
-        let resp = health_check(config).await;
-        // Basic check that we get a response
-        assert!(true);
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(Config::default()))
+                .service(health_check),
+        )
+        .await;
+        let req = test::TestRequest::get().uri("/health").to_request();
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), StatusCode::OK);
     }
 }
 {% endif %}
