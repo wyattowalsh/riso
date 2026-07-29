@@ -1,6 +1,10 @@
 """Tests for doctor command."""
 
+# pylint: disable=missing-function-docstring
+
 from __future__ import annotations
+
+from pathlib import Path
 
 import pytest
 
@@ -32,3 +36,24 @@ def test_doctor_ready_uses_copier_import_not_only_which(
 
     assert result["checks"]["copier"]["available"] is True
     assert result["ready"] is True
+
+
+def test_doctor_not_ready_when_template_path_missing(tmp_path: Path) -> None:
+    missing = tmp_path / "no-template-here"
+    config = CliConfig.from_options(template_path=missing)
+    result = run_doctor(config=config)
+
+    assert result["ready"] is False
+    assert result["checks"]["template_exists"] is False
+    assert result["checks"]["template_path"] is None
+    assert result["checks"].get("template_error")
+
+
+def test_doctor_result_includes_envelope_friendly_top_level_keys() -> None:
+    config = CliConfig.from_options()
+    result = run_doctor(config=config)
+
+    assert "ready" in result
+    assert "checks" in result
+    assert isinstance(result["checks"], dict)
+    assert isinstance(result["warnings"], list)

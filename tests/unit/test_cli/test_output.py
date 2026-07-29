@@ -1,12 +1,14 @@
 """Tests for CLI JSON envelope."""
 
+# pylint: disable=missing-function-docstring
+
 from __future__ import annotations
 
 import json
 
 import pytest
 
-from riso.cli.output import CliContext, emit_success, handle_exception
+from riso.cli.output import CliContext, emit_error, emit_success, handle_exception
 from riso.core.errors import ExitCode, ValidationFailedError
 
 
@@ -89,19 +91,58 @@ def test_emit_success_human_validate(capsys: pytest.CaptureFixture[str]) -> None
     assert "extra: unknown" in out
 
 
-def test_handle_exception_value_error_usage_exit(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
+def test_handle_exception_value_error_usage_exit() -> None:
     ctx = CliContext(json_mode=False)
     with pytest.raises(SystemExit) as exc:
         handle_exception(ctx, ValueError("bad input"))
     assert exc.value.code == int(ExitCode.USAGE_OR_VALIDATION)
 
 
-def test_handle_exception_file_not_found_usage_exit(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
+def test_handle_exception_file_not_found_usage_exit() -> None:
     ctx = CliContext(json_mode=False)
     with pytest.raises(SystemExit) as exc:
         handle_exception(ctx, FileNotFoundError("/missing.yml"))
     assert exc.value.code == int(ExitCode.USAGE_OR_VALIDATION)
+
+
+def test_emit_error_json_writes_envelope_to_stderr(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    ctx = CliContext(json_mode=True, command_name="riso validate")
+    with pytest.raises(SystemExit) as exc:
+        emit_error(
+            ctx,
+            "Validation failed",
+            errors=["project_name: required"],
+            exit_code=ExitCode.USAGE_OR_VALIDATION,
+        )
+    assert exc.value.code == int(ExitCode.USAGE_OR_VALIDATION)
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    payload = json.loads(captured.err)
+    assert payload["ok"] is False
+    assert payload["command"] == "riso validate"
+    assert payload["errors"] == ["project_name: required"]
+    assert payload["data"] == {}
+    assert payload["warnings"] == []
+
+
+def test_handle_exception_riso_error_json_uses_exit_code(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    ctx = CliContext(json_mode=True, command_name="riso copy")
+    with pytest.raises(SystemExit) as exc:
+        handle_exception(ctx, ValidationFailedError(["api_tracks: removed"]))
+    assert exc.value.code == int(ExitCode.USAGE_OR_VALIDATION)
+    payload = json.loads(capsys.readouterr().err)
+    assert payload["ok"] is False
+    assert any("api_tracks" in e for e in payload["errors"])
+
+
+def test_emit_success_quiet_suppresses_human_output(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    ctx = CliContext(json_mode=False, quiet=True, command_name="riso doctor")
+    emit_success(ctx, data={"ready": True, "message": "should stay quiet"})
+    captured = capsys.readouterr()
+    assert captured.out == ""
