@@ -25,8 +25,8 @@ Configure the API via environment variables:
 
 ```bash
 # .env
-PORT=3000
-HOST=0.0.0.0
+RISO_API_NODE_HOST=0.0.0.0
+RISO_API_NODE_PORT=3000
 NODE_ENV=development
 ```
 
@@ -38,14 +38,14 @@ NODE_ENV=development
 GET /health
 ```
 
-Returns the health status of the API.
+Returns the health status of the API (container/orchestrator probe).
 
 **Response:**
 
 ```json
 {
-  "status": "ok",
-  "timestamp": "2026-01-14T12:00:00.000Z"
+  "status": "healthy",
+  "service": "api-node"
 }
 ```
 
@@ -75,9 +75,9 @@ import { FastifyPluginAsync } from 'fastify';
 
 const routes: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Reply: { status: string };
+    Reply: { status: string; service: string };
   }>('/health', async () => {
-    return { status: 'ok' };
+    return { status: 'healthy', service: 'api-node' };
   });
 };
 
