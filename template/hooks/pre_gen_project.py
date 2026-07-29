@@ -49,33 +49,54 @@ VALID_PROJECT_LAYOUTS = {"single-package", "monorepo"}
 VALID_QUALITY_PROFILES = {"standard", "strict"}
 
 
+def normalize_api_features(raw: object) -> list[str]:
+    """Normalize api_features to a token list (``none`` / empty → ``[]``).
+
+    Aligns with ``riso.core.generation_gates.normalize_api_features``: accept
+    list/tuple/set or comma-separated string; discard the sentinel ``none``;
+    avoid substring false positives (e.g. ``not-graphql``).
+    """
+    if raw is None:
+        return []
+    if isinstance(raw, (list, tuple, set, frozenset)):
+        tokens = {str(item).strip().lower() for item in raw if str(item).strip()}
+    else:
+        text = str(raw).strip().lower()
+        if not text or text in {"none", "[]"}:
+            return []
+        if "," in text:
+            tokens = {part.strip() for part in text.split(",") if part.strip()}
+        else:
+            tokens = {text}
+    tokens.discard("none")
+    # Stable order for Jinja / answers reproducibility.
+    return sorted(tokens)
+
+
 def _api_features_enabled(raw: object, feature: str) -> bool:
     """Return True when *feature* is selected in api_features."""
-    if raw is None:
-        return False
-    if isinstance(raw, str):
-        return feature in raw
-    if isinstance(raw, (list, tuple, set)):
-        return feature in raw
-    return False
+    return feature.strip().lower() in normalize_api_features(raw)
 
 
-def normalize_api_feature_modules(context: dict) -> dict[str, str]:
-    """Derive graphql/websocket module flags from api_features.
+def normalize_api_feature_modules(context: dict) -> dict[str, object]:
+    """Derive graphql/websocket flags and token-list api_features.
 
     Explicit ``graphql_api_module`` / ``websocket_module`` answers win when set
     to ``enabled``; otherwise ``api_features`` drives the derived state.
+    Rewrites ``api_features`` to a sorted token list so Jinja membership tests
+    (``"websocket" in api_features``) are token-safe during render/excludes.
     """
-    api_features = context.get("api_features")
+    tokens = normalize_api_features(context.get("api_features"))
     graphql = context.get("graphql_api_module", "disabled")
     websocket = context.get("websocket_module", "disabled")
 
-    if graphql != "enabled" and _api_features_enabled(api_features, "graphql"):
+    if graphql != "enabled" and "graphql" in tokens:
         graphql = "enabled"
-    if websocket != "enabled" and _api_features_enabled(api_features, "websocket"):
+    if websocket != "enabled" and "websocket" in tokens:
         websocket = "enabled"
 
     return {
+        "api_features": tokens,
         "graphql_api_module": graphql,
         "websocket_module": websocket,
     }
