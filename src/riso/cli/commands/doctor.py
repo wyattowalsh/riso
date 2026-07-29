@@ -79,7 +79,9 @@ def run_doctor(*, config: CliConfig) -> dict:
         and copier_importable
     )
 
-    payload: dict[str, object] = {"checks": checks, "ready": checks["ready"]}
-    if warnings:
-        payload["warnings"] = warnings
-    return payload
+    # Always emit envelope-friendly top-level keys (empty warnings list when clean).
+    return {
+        "checks": checks,
+        "ready": checks["ready"],
+        "warnings": warnings,
+    }
