@@ -1,0 +1,1467 @@
+{
+  "ok": true,
+  "command": "riso prompts",
+  "data": {
+    "prompts": {
+      "project_name": {
+        "type": "str",
+        "help": "Human friendly project name",
+        "default": "riso-example"
+      },
+      "project_slug": {
+        "type": "str",
+        "default": "{{ project_name | replace(' ', '-') | lower }}",
+        "when": false
+      },
+      "package_name": {
+        "type": "str",
+        "default": "{{ project_slug | replace('-', '_') }}",
+        "when": false
+      },
+      "project_layout": {
+        "type": "str",
+        "help": "Choose the repository layout",
+        "default": "single-package",
+        "choices": [
+          "single-package",
+          "monorepo"
+        ]
+      },
+      "quality_profile": {
+        "type": "str",
+        "help": "Select baseline quality suite profile",
+        "default": "standard",
+        "choices": [
+          "standard",
+          "strict"
+        ]
+      },
+      "task_runner": {
+        "type": "str",
+        "help": "Task aggregator for local dev commands:\n- just: justfile only (recommended default)\n- makefile: GNU Make only\n- both: ship both; docs treat just as primary\n- none: no aggregator; use uv run task quality and direct tool commands\n",
+        "default": "just",
+        "choices": [
+          "just",
+          "makefile",
+          "both",
+          "none"
+        ]
+      },
+      "python_versions": {
+        "type": "json",
+        "help": "Python versions to test in CI matrix",
+        "default": "[\"3.11\", \"3.12\", \"3.13\"]",
+        "when": "{{ ci_platform == 'github-actions' }}"
+      },
+      "cli_module": {
+        "type": "str",
+        "help": "Enable CLI application scaffolding?",
+        "default": "disabled",
+        "choices": [
+          "disabled",
+          "enabled"
+        ]
+      },
+      "cli_languages": {
+        "type": "str",
+        "multiselect": true,
+        "help": "Select CLI implementation language(s) - multiselect supported for monorepo:\n- python: Typer with Rich console output\n- rust: Clap with colored output\n- go: Cobra v1.10 with slog logging\n",
+        "choices": [
+          "python",
+          "rust",
+          "go"
+        ],
+        "default": [
+          "python"
+        ],
+        "when": "{{ cli_module == 'enabled' }}"
+      },
+      "api_module": {
+        "type": "str",
+        "help": "Enable REST/HTTP API scaffolding?",
+        "default": "disabled",
+        "choices": [
+          "disabled",
+          "enabled"
+        ]
+      },
+      "api_languages": {
+        "type": "str",
+        "multiselect": true,
+        "help": "Select API implementation language(s) - multiselect supported for monorepo:\n- python: FastAPI with Pydantic v2\n- node: Fastify with TypeScript\n- rust: Actix-web with Serde\n- go: Go with selectable framework (Gin, Fiber, Echo, Chi)\n",
+        "choices": [
+          "python",
+          "node",
+          "rust",
+          "go"
+        ],
+        "default": [
+          "python"
+        ],
+        "when": "{{ api_module == 'enabled' }}"
+      },
+      "go_framework": {
+        "type": "str",
+        "help": "Select Go HTTP framework:\n- gin: Gin v1.11 - Most popular, great performance, rich middleware\n- fiber: Fiber v2.52 - Express-inspired, fastest, low memory\n- echo: Echo v4.13 - Minimalist, great docs, built-in middleware\n- chi: Chi v5.2 - Lightweight, stdlib-compatible, idiomatic\n",
+        "choices": [
+          "gin",
+          "fiber",
+          "echo",
+          "chi"
+        ],
+        "default": "gin",
+        "when": "{{ api_module == 'enabled' and 'go' in api_languages }}"
+      },
+      "go_version": {
+        "type": "str",
+        "help": "Select Go version (1.24 stable, 1.26 releasing Feb 2026)\n",
+        "choices": [
+          "1.24",
+          "1.23"
+        ],
+        "default": "1.24",
+        "when": "{{ 'go' in cli_languages or 'go' in api_languages or 'go' in mcp_languages }}"
+      },
+      "api_features": {
+        "type": "str",
+        "multiselect": true,
+        "help": "Select additional API features (multiselect):\n- graphql: GraphQL endpoint (Strawberry/Apollo/async-graphql)\n- websocket: WebSocket real-time communication\n",
+        "choices": [
+          "graphql",
+          "websocket"
+        ],
+        "default": [],
+        "when": "{{ api_module == 'enabled' }}"
+      },
+      "mcp_module": {
+        "type": "str",
+        "help": "Enable MCP (Model Context Protocol) server scaffolding?",
+        "default": "disabled",
+        "choices": [
+          "disabled",
+          "enabled"
+        ]
+      },
+      "mcp_languages": {
+        "type": "str",
+        "multiselect": true,
+        "help": "Select MCP server implementation language(s) - multiselect supported for monorepo:\n- python: FastMCP v2 with Pydantic\n- typescript: FastMCP (Node.js) with Zod\n- rust: Rust SDK (rmcp)\n- go: Official MCP Go SDK with slog logging\n",
+        "choices": [
+          "python",
+          "typescript",
+          "rust",
+          "go"
+        ],
+        "default": [
+          "python"
+        ],
+        "when": "{{ mcp_module == 'enabled' }}"
+      },
+      "mcp_transport": {
+        "type": "str",
+        "help": "Select default transport protocol:\n- stdio: Standard I/O (default, best for local agents)\n- sse: Server-Sent Events (for web clients)\n- http: HTTP streaming\n",
+        "choices": [
+          "stdio",
+          "sse",
+          "http"
+        ],
+        "default": "stdio",
+        "when": "{{ mcp_module == 'enabled' }}"
+      },
+      "mcp_example_tools": {
+        "type": "bool",
+        "help": "Include example tools (echo, timestamp, fetch)?",
+        "default": true,
+        "when": "{{ mcp_module == 'enabled' }}"
+      },
+      "desktop_module": {
+        "type": "str",
+        "help": "Enable native desktop application scaffolding?",
+        "default": "disabled",
+        "choices": [
+          "disabled",
+          "enabled"
+        ]
+      },
+      "desktop_framework": {
+        "type": "str",
+        "help": "Select desktop framework:\n- electron-vite: Electron 34.x with electron-vite for optimal dev experience\n- electron-forge: Electron Forge for alternative build setup\n- tauri: Rust-based lightweight alternative to Electron\n",
+        "choices": [
+          "electron-vite",
+          "electron-forge",
+          "tauri"
+        ],
+        "default": "electron-vite",
+        "when": "{{ desktop_module == 'enabled' }}"
+      },
+      "desktop_features": {
+        "type": "str",
+        "help": "Select desktop features (comma-separated):\n- auto_updater: Auto-update via GitHub Releases\n- tray_icon: System tray icon support\n- custom_titlebar: Frameless window with custom title bar\n",
+        "choices": [
+          "none",
+          "auto_updater",
+          "tray_icon",
+          "custom_titlebar",
+          "auto_updater,tray_icon",
+          "auto_updater,custom_titlebar",
+          "tray_icon,custom_titlebar",
+          "auto_updater,tray_icon,custom_titlebar"
+        ],
+        "default": "auto_updater",
+        "when": "{{ desktop_module == 'enabled' }}"
+      },
+      "desktop_platforms": {
+        "type": "str",
+        "help": "Select target platforms (comma-separated):\n- mac: macOS (x64 and ARM64)\n- windows: Windows (x64 and ARM64)\n- linux: Linux (AppImage, deb, rpm)\n",
+        "choices": [
+          "mac",
+          "windows",
+          "linux",
+          "mac,windows",
+          "mac,linux",
+          "windows,linux",
+          "mac,windows,linux"
+        ],
+        "default": "mac,windows,linux",
+        "when": "{{ desktop_module == 'enabled' }}"
+      },
+      "docs_module": {
+        "type": "str",
+        "help": "Enable documentation site scaffolding?",
+        "default": "disabled",
+        "choices": [
+          "disabled",
+          "enabled"
+        ]
+      },
+      "docs_framework": {
+        "type": "str",
+        "help": "Select documentation framework:\n- fumadocs: Next.js-based, modern UI, MDX\n- sphinx-shibuya: Python Sphinx with Shibuya theme\n- docusaurus: React-based, versioning, blog\n",
+        "choices": [
+          "fumadocs",
+          "sphinx-shibuya",
+          "docusaurus"
+        ],
+        "default": "fumadocs",
+        "when": "{{ docs_module == 'enabled' }}"
+      },
+      "shared_logic": {
+        "type": "str",
+        "help": "Generate shared logic package for cross-module code?",
+        "default": "disabled",
+        "choices": [
+          "disabled",
+          "enabled"
+        ]
+      },
+      "codegen_module": {
+        "type": "str",
+        "help": "Enable code generation and scaffolding tools?",
+        "default": "disabled",
+        "choices": [
+          "disabled",
+          "enabled"
+        ]
+      },
+      "changelog_module": {
+        "type": "str",
+        "help": "Enable changelog generation and release management?",
+        "default": "disabled",
+        "choices": [
+          "disabled",
+          "enabled"
+        ]
+      },
+      "fumadocs_search_provider": {
+        "type": "str",
+        "help": "Select search provider for Fumadocs:\n- orama: Built-in free search (default, self-hosted)\n- algolia: Hosted DocSearch, enterprise-grade\n- orama-cloud: Orama Cloud SDK for scaling\n- none: No search integration\n",
+        "default": "orama",
+        "choices": [
+          "orama",
+          "algolia",
+          "orama-cloud",
+          "none"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+      },
+      "fumadocs_llms_txt": {
+        "type": "str",
+        "help": "Enable llms.txt AI integration?\nGenerates AI-friendly documentation endpoints:\n- /llms.txt (summary)\n- /llms-full.txt (complete docs)\n- /*.mdx (per-page markdown)\n",
+        "default": "enabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+      },
+      "fumadocs_ai_search": {
+        "type": "str",
+        "help": "Enable AI-powered search dialog?\nScaffolds chat interface with Vercel AI SDK.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' and fumadocs_llms_txt == 'enabled' }}"
+      },
+      "fumadocs_openapi": {
+        "type": "str",
+        "help": "Enable OpenAPI documentation integration?\nAuto-generates interactive API reference from specs.\n",
+        "default": "enabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' and api_module == 'enabled' }}"
+      },
+      "fumadocs_typedoc": {
+        "type": "str",
+        "help": "Enable TypeDoc SDK documentation?\nGenerates TypeScript API docs from source.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' and api_module == 'enabled' and 'node' in api_languages }}"
+      },
+      "fumadocs_theme": {
+        "type": "str",
+        "help": "Select theming approach:\n- default: Fumadocs UI with neutral preset\n- shadcn: Shadcn UI semantic tokens (pairs with main-app shadcn themes)\n- ocean: Blue-toned ocean preset\n- purple: Purple accent preset\n- custom: Custom CSS variables (scaffold only)\n",
+        "default": "shadcn",
+        "choices": [
+          "default",
+          "shadcn",
+          "ocean",
+          "purple",
+          "custom"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+      },
+      "fumadocs_sidebar": {
+        "type": "str",
+        "help": "Select sidebar style:\n- default: Built-in Fumadocs sidebar\n- shadcn: Shadcn UI sidebar component\n",
+        "default": "default",
+        "choices": [
+          "default",
+          "shadcn"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+      },
+      "fumadocs_i18n": {
+        "type": "str",
+        "help": "Enable internationalization support?\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+      },
+      "fumadocs_blog": {
+        "type": "str",
+        "help": "Enable blog/changelog section?\nUses MDX content collection for posts.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+      },
+      "fumadocs_code_theme": {
+        "type": "str",
+        "help": "Select syntax highlighting theme for code blocks:\n- github: GitHub light/dark (default)\n- catppuccin: Catppuccin latte/mocha\n- dracula: Dracula theme\n- nord: Nord theme\n- one: One light/dark\n",
+        "default": "github",
+        "choices": [
+          "github",
+          "catppuccin",
+          "dracula",
+          "nord",
+          "one"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+      },
+      "fumadocs_twoslash": {
+        "type": "str",
+        "help": "Enable Twoslash for TypeScript code blocks?\nShows inline type hints, errors, and completions.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' and api_module == 'enabled' and 'node' in api_languages }}"
+      },
+      "fumadocs_image_zoom": {
+        "type": "str",
+        "help": "Enable medium-style image zoom on click?\n",
+        "default": "enabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+      },
+      "fumadocs_banner": {
+        "type": "str",
+        "help": "Enable announcement banner at top of docs?\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+      },
+      "fumadocs_last_updated": {
+        "type": "str",
+        "help": "Show \"Last updated\" timestamp from git history?\n",
+        "default": "enabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+      },
+      "fumadocs_edit_on_github": {
+        "type": "str",
+        "help": "Show \"Edit on GitHub\" links on documentation pages?\n",
+        "default": "enabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+      },
+      "fumadocs_feedback": {
+        "type": "str",
+        "help": "Enable \"Was this helpful?\" feedback widget on pages?\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+      },
+      "fumadocs_toc_depth": {
+        "type": "str",
+        "help": "Table of contents heading depth (2-6):\n- 2: H2 headings only\n- 3: H2-H3 headings (default)\n- 4: H2-H4 headings\n",
+        "default": "3",
+        "choices": [
+          "2",
+          "3",
+          "4"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+      },
+      "fumadocs_mermaid": {
+        "type": "str",
+        "help": "Enable Mermaid diagrams in Markdown?\nSupports flowcharts, sequence diagrams, ERDs, etc.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+      },
+      "fumadocs_math": {
+        "type": "str",
+        "help": "Enable KaTeX math equations in Markdown?\nSupports inline ($) and block ($$) LaTeX.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'fumadocs' }}"
+      },
+      "docusaurus_search_provider": {
+        "type": "str",
+        "help": "Select search provider for Docusaurus:\n- local: Offline full-text search (docusaurus-search-local)\n- algolia: Hosted DocSearch, best UX, requires API key\n- typesense: Self-hosted, privacy-focused search\n- none: No search integration\n",
+        "default": "local",
+        "choices": [
+          "local",
+          "algolia",
+          "typesense",
+          "none"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_analytics": {
+        "type": "str",
+        "help": "Select analytics for Docusaurus:\n- none: No analytics\n- posthog: Product analytics + session replay\n- google: Google Analytics 4\n- matomo: Privacy-focused, self-hosted option\n",
+        "default": "none",
+        "choices": [
+          "none",
+          "posthog",
+          "google",
+          "matomo"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_theme": {
+        "type": "str",
+        "help": "Select theming approach:\n- classic: Default Infima CSS framework\n- tailwind: Tailwind CSS v4 + utility-first styling\n",
+        "default": "classic",
+        "choices": [
+          "classic",
+          "tailwind"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_llms_txt": {
+        "type": "str",
+        "help": "Enable llms.txt plugin for AI-ready documentation?\nGenerates concatenated docs for LLM consumption and RAG pipelines.\n",
+        "default": "enabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_i18n": {
+        "type": "str",
+        "help": "Enable internationalization (i18n) support?\nScaffolds locale config and translation workflow.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_versioning": {
+        "type": "str",
+        "help": "Enable documentation versioning?\nAllows maintaining multiple doc versions (v1, v2, etc.)\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_blog": {
+        "type": "str",
+        "help": "Enable blog functionality?\nScaffolds blog directory with example posts and RSS/Atom feeds.\n",
+        "default": "enabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_faster": {
+        "type": "str",
+        "help": "Enable Docusaurus Faster optimizations?\nUses Rspack bundler, SWC, and LightningCSS for 2-4x faster builds.\n",
+        "default": "enabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_openapi": {
+        "type": "str",
+        "help": "Enable OpenAPI documentation integration?\nAuto-generates API reference from OpenAPI specs.\n",
+        "default": "enabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' and api_module == 'enabled' }}"
+      },
+      "docusaurus_mermaid": {
+        "type": "str",
+        "help": "Enable Mermaid diagram support?\nRender flowcharts, sequence diagrams, ERDs, Gantt charts directly in markdown.\n",
+        "default": "enabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_math": {
+        "type": "str",
+        "help": "Enable KaTeX math equation support?\nRender LaTeX math with $...$ (inline) and $$...$$ (block) syntax.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_live_codeblock": {
+        "type": "str",
+        "help": "Enable live code playground?\nInteractive React code blocks that users can edit and run in the browser.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_show_last_update": {
+        "type": "str",
+        "help": "Show last updated time on docs?\nDisplays git-based \"Last updated\" timestamp and author on each page.\n",
+        "default": "enabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_ideal_images": {
+        "type": "str",
+        "help": "Enable ideal-image plugin?\nResponsive images with lazy loading and low-quality placeholders.\n",
+        "default": "enabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_image_zoom": {
+        "type": "str",
+        "help": "Enable image zoom plugin?\nMedium-style click-to-zoom for documentation images.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_pwa": {
+        "type": "str",
+        "help": "Enable Progressive Web App (PWA) support?\nOffline capability, app installation, and service worker caching.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_comments": {
+        "type": "str",
+        "help": "Enable comments on documentation pages?\n- giscus: GitHub Discussions-powered comments (recommended)\n- none: No comments\n",
+        "default": "none",
+        "choices": [
+          "giscus",
+          "none"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_feedback": {
+        "type": "str",
+        "help": "Enable \"Was this page helpful?\" feedback widget?\nCollects reader feedback on documentation quality.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_sitemap": {
+        "type": "str",
+        "help": "Enable sitemap.xml generation?\nImproves search engine discoverability and crawling.\n",
+        "default": "enabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_structured_data": {
+        "type": "str",
+        "help": "Enable JSON-LD structured data for SEO?\nAdds schema.org Organization, WebSite, and Article markup for rich results.\n",
+        "default": "enabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_redirects": {
+        "type": "str",
+        "help": "Enable client-side redirects plugin?\nHandle URL changes and old page preservation gracefully.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_announcement_bar": {
+        "type": "str",
+        "help": "Enable announcement bar at top of site?\nIdeal for new releases, events, or important notices.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_back_to_top": {
+        "type": "str",
+        "help": "Enable back-to-top button?\nFloating button for quick scroll to page top.\n",
+        "default": "enabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_edit_url": {
+        "type": "str",
+        "help": "Enable \"Edit this page\" links?\nLinks to source file on GitHub for community contributions.\n",
+        "default": "enabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_code_tabs": {
+        "type": "str",
+        "help": "Enable tabbed code blocks plugin?\nGroup code samples by language with synchronized tab selection.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_changelog": {
+        "type": "str",
+        "help": "Enable changelog integration?\nInclude CHANGELOG.md as documentation page.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_debug": {
+        "type": "str",
+        "help": "Enable debug plugin in development?\nAdds /__docusaurus/debug route for inspecting site data.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_reading_time": {
+        "type": "str",
+        "help": "Show estimated reading time on docs/blog?\nDisplays \"X min read\" based on word count.\n",
+        "default": "enabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_gfm": {
+        "type": "str",
+        "help": "Enable GitHub Flavored Markdown (GFM)?\nAdds tables, strikethrough, task lists, and autolink literals.\n",
+        "default": "enabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_emoji": {
+        "type": "str",
+        "help": "Enable emoji shortcode support?\nConverts :smile: to \ud83d\ude04 and other emoji shortcodes.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_github_links": {
+        "type": "str",
+        "help": "Enable GitHub reference autolinking?\nAutolinks #issues, @mentions, and commit SHAs to GitHub.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "docusaurus_autolink_headings": {
+        "type": "str",
+        "help": "Enable autolinked headings?\nAdds clickable anchor links to all headings.\n",
+        "default": "enabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ docs_module == 'enabled' and docs_framework == 'docusaurus' }}"
+      },
+      "ai_tools_module": {
+        "type": "str",
+        "help": "Enable AI coding tools configuration?\nGenerates config files for Claude Code, Codex CLI, GitHub Copilot CLI,\nCursor CLI, Gemini CLI, Amazon Q CLI, and OpenCode.\nAll tools share AGENTS.md as the single source of truth.\n",
+        "default": "enabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ]
+      },
+      "ai_tools_mcp_thinking": {
+        "type": "bool",
+        "help": "Include thinking/reasoning MCP servers?\n(sequential-thinking, structured-thinking, cascade-thinking, etc.)\n",
+        "default": true,
+        "when": "{{ ai_tools_module == 'enabled' }}"
+      },
+      "ai_tools_mcp_web": {
+        "type": "bool",
+        "help": "Include web MCP servers?\n(fetch, fetcher, playwright, deepwiki)\n",
+        "default": true,
+        "when": "{{ ai_tools_module == 'enabled' }}"
+      },
+      "ai_tools_mcp_documents": {
+        "type": "bool",
+        "help": "Include document processing MCP servers?\n(docling for PDF/DOCX, repomix for repo context)\n",
+        "default": true,
+        "when": "{{ ai_tools_module == 'enabled' }}"
+      },
+      "ai_tools_mcp_utilities": {
+        "type": "bool",
+        "help": "Include utility MCP servers?\n(memory persistence)\n",
+        "default": true,
+        "when": "{{ ai_tools_module == 'enabled' }}"
+      },
+      "ai_tools_mcp_search": {
+        "type": "bool",
+        "help": "Include search MCP servers (requires API keys)?\n(brave-search, tavily, context7 - keys via env vars)\n",
+        "default": false,
+        "when": "{{ ai_tools_module == 'enabled' }}"
+      },
+      "include_databases": {
+        "type": "str",
+        "help": "Include PostgreSQL and Redis services in docker-compose?",
+        "choices": [
+          "no",
+          "yes"
+        ],
+        "default": "no",
+        "when": "{{ api_module == 'enabled' }}"
+      },
+      "ci_platform": {
+        "type": "str",
+        "help": "Select CI/CD platform:\n- github-actions: GitHub Actions with matrix builds, caching, artifacts\n- gitlab-ci: GitLab CI with parallel.matrix, Docker-in-Docker, GitLab Pages\n- circleci: CircleCI 2.1 with orbs, workspaces, parallelism\n- none: Skip CI configuration\n",
+        "default": "github-actions",
+        "choices": [
+          "github-actions",
+          "gitlab-ci",
+          "circleci",
+          "none"
+        ]
+      },
+      "saas_infra_module": {
+        "type": "str",
+        "help": "Enable SaaS Infrastructure layer?\nSets up: Next.js/Remix runtime, Vercel/Cloudflare hosting, database, ORM.\nThis is the foundation layer - required before enabling auth or billing.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ]
+      },
+      "saas_runtime": {
+        "type": "str",
+        "help": "Select runtime framework:\n- Next.js 16: React 19.2, App Router, Turbopack, largest ecosystem\n- Remix 2.x: Server-first routes, explicit data loading, forms\n",
+        "default": "nextjs-16",
+        "choices": [
+          "nextjs-16",
+          "remix-2"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_hosting": {
+        "type": "str",
+        "help": "Select hosting platform:\n- Vercel: Native Next.js support, edge functions, preview deployments\n- Cloudflare: Global edge network, Pages + Workers, lower egress\n",
+        "default": "vercel",
+        "choices": [
+          "vercel",
+          "cloudflare"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_database": {
+        "type": "str",
+        "help": "Select database provider:\n- Neon: Serverless Postgres, branching, autoscale-to-zero\n- Supabase: Postgres + Auth + Storage + Edge Functions\n",
+        "default": "neon",
+        "choices": [
+          "neon",
+          "supabase"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_orm": {
+        "type": "str",
+        "help": "Select ORM for database access:\n- Prisma: Best TypeScript ergonomics, schema DSL, Prisma Studio\n- Drizzle: Lightweight, SQL-like syntax, edge-optimized\n",
+        "default": "prisma",
+        "choices": [
+          "prisma",
+          "drizzle"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_auth_module": {
+        "type": "str",
+        "help": "Enable SaaS Authentication layer?\nRequires saas_infra_module. Sets up user auth, sessions, and roles.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_auth_provider": {
+        "type": "str",
+        "help": "Select authentication provider:\n- Clerk: Hosted auth, built-in UI, organizations, passkeys\n- Auth.js: Self-hosted, open-source, full control\n- Lucia: Type-safe sessions, any database, full control\n",
+        "default": "clerk",
+        "choices": [
+          "clerk",
+          "authjs",
+          "lucia"
+        ],
+        "when": "{{ saas_auth_module == 'enabled' }}"
+      },
+      "saas_enterprise_bridge": {
+        "type": "str",
+        "help": "Add enterprise authentication bridge (SSO, SCIM)?\n- WorkOS: Enterprise SSO (Okta, Azure AD), SCIM provisioning\n- None: Skip enterprise features for now\n",
+        "default": "none",
+        "choices": [
+          "workos",
+          "none"
+        ],
+        "when": "{{ saas_auth_module == 'enabled' }}"
+      },
+      "saas_billing_module": {
+        "type": "str",
+        "help": "Enable SaaS Billing layer?\nRequires saas_auth_module. Sets up subscriptions, payments, invoices.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ saas_auth_module == 'enabled' }}"
+      },
+      "saas_billing_provider": {
+        "type": "str",
+        "help": "Select billing provider:\n- Stripe: Full control, usage metering, widest ecosystem\n- Paddle: Merchant of Record, automatic tax/VAT\n- LemonSqueezy: MoR alternative, indie-hacker friendly\n",
+        "default": "stripe",
+        "choices": [
+          "stripe",
+          "paddle",
+          "lemonsqueezy"
+        ],
+        "when": "{{ saas_billing_module == 'enabled' }}"
+      },
+      "saas_app_module": {
+        "type": "str",
+        "help": "Enable SaaS Application features?\nRequires saas_billing_module. Adds background jobs, email, analytics, AI.\n",
+        "default": "disabled",
+        "choices": [
+          "enabled",
+          "disabled"
+        ],
+        "when": "{{ saas_billing_module == 'enabled' }}"
+      },
+      "saas_jobs": {
+        "type": "str",
+        "help": "Select background job system:\n- Trigger.dev: Task-centric, AI-optimized, built-in retries\n- Inngest: Event-driven workflows, durable execution\n",
+        "default": "triggerdev",
+        "choices": [
+          "triggerdev",
+          "inngest"
+        ],
+        "when": "{{ saas_app_module == 'enabled' }}"
+      },
+      "saas_email": {
+        "type": "str",
+        "help": "Select email provider:\n- Resend: React Email templates, Vercel integration\n- Postmark: Industry-leading deliverability\n",
+        "default": "resend",
+        "choices": [
+          "resend",
+          "postmark"
+        ],
+        "when": "{{ saas_app_module == 'enabled' }}"
+      },
+      "saas_analytics": {
+        "type": "str",
+        "help": "Select analytics platform:\n- PostHog: Product OS (analytics + flags + replay)\n- Amplitude: Enterprise analytics, cohorts\n",
+        "default": "posthog",
+        "choices": [
+          "posthog",
+          "amplitude"
+        ],
+        "when": "{{ saas_app_module == 'enabled' }}"
+      },
+      "saas_ai": {
+        "type": "str",
+        "help": "Select AI provider:\n- OpenAI: GPT-4o/GPT-5, function calling\n- Anthropic: Claude 4.x, longer context windows\n",
+        "default": "openai",
+        "choices": [
+          "openai",
+          "anthropic"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_storage": {
+        "type": "str",
+        "help": "Select file storage provider:\n- Cloudflare R2: S3-compatible, zero egress fees, global edge network\n- Supabase Storage: Integrated with Supabase platform, RLS policies, image transformations\n",
+        "default": "r2",
+        "choices": [
+          "r2",
+          "supabase-storage"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_cicd": {
+        "type": "str",
+        "help": "Select CI/CD platform:\n- GitHub Actions: Native GitHub integration, marketplace actions, deploy to Vercel\n- Cloudflare CI: Integrated with Cloudflare Pages/Workers, fast edge deployments\n",
+        "default": "github-actions",
+        "choices": [
+          "github-actions",
+          "cloudflare-ci"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_observability_sentry": {
+        "type": "bool",
+        "help": "Enable Sentry for error tracking?",
+        "default": true,
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_observability_datadog": {
+        "type": "bool",
+        "help": "Enable Datadog for APM (Application Performance Monitoring)?",
+        "default": true,
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_observability_otel": {
+        "type": "bool",
+        "help": "Enable OpenTelemetry instrumentation for traces and metrics?",
+        "default": true,
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_observability_structured_logging": {
+        "type": "bool",
+        "help": "Enable structured JSON logging with correlation IDs?",
+        "default": true,
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_include_fixtures": {
+        "type": "bool",
+        "help": "Include seeded database fixtures with example users, organizations, and subscriptions?\n",
+        "default": true,
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_include_factories": {
+        "type": "bool",
+        "help": "Include test data factories (Faker.js integration) for generating realistic test data?\n",
+        "default": true,
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_test_suite_level": {
+        "type": "str",
+        "help": "Select test suite coverage level:\n- Standard: Unit tests + integration tests for all services\n- Comprehensive: Standard + E2E tests for critical user flows (signup, billing, dashboard)\n",
+        "default": "standard",
+        "choices": [
+          "standard",
+          "comprehensive"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_multi_tenancy_level": {
+        "type": "str",
+        "help": "Multi-tenancy support level (enterprise adds tenant isolation, SAML scaffolding)",
+        "default": "teams",
+        "choices": [
+          "none",
+          "teams",
+          "enterprise"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_tenancy_model": {
+        "type": "str",
+        "help": "Select tenancy model for your SaaS application:\n- B2B Teams: Organization-centric with team workspaces, seat-based billing, team invites,\n  shared resources, and organization switching. Best for collaboration tools, project\n  management, and enterprise software.\n- B2C Users: User-centric with individual accounts, personal subscriptions, no team\n  features. Best for consumer apps, personal productivity tools, and individual SaaS.\n",
+        "default": "b2b-teams",
+        "choices": [
+          "b2b-teams",
+          "b2c-users"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_rbac_system": {
+        "type": "str",
+        "help": "Select role-based access control (RBAC) system:\n- Basic Roles: Fixed owner/admin/member roles with hardcoded permissions. Simple,\n  predictable, covers 80% of use cases. No admin UI needed.\n- Custom Permissions: Dynamic permission system with role management UI, granular\n  access control, and permission inheritance. Best for enterprise or complex access needs.\n",
+        "default": "basic-roles",
+        "choices": [
+          "basic-roles",
+          "custom-permissions"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_onboarding": {
+        "type": "str",
+        "help": "Include user onboarding flow scaffolding?\n- Wizard: Multi-step guided setup with progress indicator, data collection, and\n  completion tracking. Great for complex products requiring initial configuration.\n- Checklist: Dashboard checklist with completion tracking and contextual prompts.\n  Non-blocking, lets users explore while guiding them to key actions.\n- None: No onboarding scaffolding. Users land directly on the dashboard.\n",
+        "default": "wizard",
+        "choices": [
+          "wizard",
+          "checklist",
+          "none"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_admin_dashboard": {
+        "type": "bool",
+        "help": "Include admin dashboard scaffolding? Generates:\n- Admin-only routes with role-based authentication\n- User management (list, search, view details, suspend accounts)\n- Organization management (for B2B) or subscription overview (for B2C)\n- User impersonation for debugging customer issues\n- Basic metrics dashboard (signups, active users, revenue)\n",
+        "default": true,
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_user_impersonation": {
+        "type": "bool",
+        "help": "Enable user impersonation for admin users? Allows admins to:\n- View the app as any user for debugging and support\n- Audit trail of all impersonation sessions\n- Clear visual indicator when impersonating\nRequires saas_admin_dashboard to be enabled.\n",
+        "default": true,
+        "when": "{{ saas_app_module == 'enabled' and saas_admin_dashboard }}"
+      },
+      "saas_notifications": {
+        "type": "str",
+        "help": "Select notification system scaffolding:\n- Both: Real-time in-app notification center + email notifications with preferences.\n  Includes notification bell component, WebSocket/SSE delivery, and email digests.\n- Email Only: Email notifications only. Simpler architecture, no real-time component.\n- None: No notification scaffolding. You'll implement notifications manually.\n",
+        "default": "both",
+        "choices": [
+          "both",
+          "email-only",
+          "none"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_waitlist": {
+        "type": "bool",
+        "help": "Include pre-launch waitlist scaffolding? Generates:\n- Waitlist landing page with email capture\n- Invite code system with limited-use codes\n- Referral tracking (who invited whom)\n- Admin panel for managing waitlist and sending invites\nBest for validating demand before full launch.\n",
+        "default": false,
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_search_provider": {
+        "type": "str",
+        "help": "Search provider for content indexing",
+        "default": "none",
+        "choices": [
+          "none",
+          "meilisearch",
+          "algolia"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_i18n": {
+        "type": "bool",
+        "help": "Enable internationalization support with next-intl.\nInclude internationalization (i18n) scaffolding? Generates:\n- next-intl (Next.js) or remix-i18next (Remix) configuration\n- Default English locale with placeholder translations\n- Language switcher component in navigation\n- Date, number, and currency formatting utilities\n- Translation key extraction setup\n",
+        "default": false,
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_api_access": {
+        "type": "str",
+        "help": "Select API access model for your SaaS:\n- Public API: Full API key management with user-facing UI, rate limiting dashboard,\n  usage tracking, and auto-generated API documentation. Best for developer platforms.\n- Internal Only: API routes exist but for internal use only. No API key management UI.\n  Users interact via web interface only.\n",
+        "default": "internal-only",
+        "choices": [
+          "public-api",
+          "internal-only"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_ui_framework": {
+        "type": "str",
+        "help": "Select UI component framework:\n- shadcn-ui: Copy-paste components built on Radix, full customization, Tailwind-native.\n  Best for: Custom designs, full control over styling.\n- Radix Primitives: Unstyled accessible primitives, bring your own styles.\n  Best for: Design systems, maximum flexibility.\n- Headless UI: Tailwind Labs components, simpler API, good defaults.\n  Best for: Quick prototypes, Tailwind-first teams.\n",
+        "default": "shadcn-ui",
+        "choices": [
+          "shadcn-ui",
+          "radix-primitives",
+          "headless-ui"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_form_library": {
+        "type": "str",
+        "help": "Select form handling library:\n- React Hook Form: Performance-focused, minimal re-renders, Zod integration.\n- Conform: Remix-native, progressive enhancement, server validation.\n- None: Manual form handling with native React.\n",
+        "default": "react-hook-form",
+        "choices": [
+          "react-hook-form",
+          "conform",
+          "none"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_realtime": {
+        "type": "str",
+        "help": "Select real-time communication provider:\n- Socket.io: Self-hosted, full control, works with any backend.\n- Pusher: Industry standard, channels/presence, easy setup, generous free tier.\n- Ably: Enterprise-grade, message history, global edge network.\n- Supabase Realtime: Integrated with Supabase, Postgres changes, presence.\n- None: No real-time features (polling or SSE only).\n",
+        "default": "none",
+        "choices": [
+          "socketio",
+          "pusher",
+          "ably",
+          "supabase-realtime",
+          "none"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_landing_page": {
+        "type": "bool",
+        "help": "Include marketing landing page scaffolding? Generates:\n- Hero section with CTA\n- Features grid\n- Pricing table (connected to billing plans)\n- Testimonials section\n- FAQ accordion\n- Footer with links\n",
+        "default": true,
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_blog": {
+        "type": "bool",
+        "help": "Include MDX blog scaffolding? Generates:\n- Blog listing page\n- Individual post pages with MDX support\n- Author profiles\n- Categories/tags\n- RSS feed\n- SEO metadata\n",
+        "default": false,
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_changelog_public": {
+        "type": "bool",
+        "help": "Include public changelog page? Generates:\n- Changelog listing from MDX files\n- Version badges (new, improved, fixed)\n- Subscribe to updates\n- RSS feed for changelog\n",
+        "default": false,
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_2fa": {
+        "type": "bool",
+        "help": "Include two-factor authentication (2FA) scaffolding? Generates:\n- TOTP setup flow (Google Authenticator, Authy compatible)\n- Backup codes generation and storage\n- 2FA enforcement settings per organization\n- Recovery flow\nNote: Clerk has built-in 2FA. This adds custom 2FA for Auth.js.\n",
+        "default": false,
+        "when": "{{ saas_auth_module == 'enabled' and saas_auth_provider == 'authjs' }}"
+      },
+      "saas_compliance_level": {
+        "type": "str",
+        "help": "Compliance requirements level",
+        "default": "basic",
+        "choices": [
+          "basic",
+          "gdpr",
+          "hipaa",
+          "soc2"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_gdpr_tools": {
+        "type": "bool",
+        "help": "Include GDPR compliance tools? Generates:\n- Data export endpoint (download all user data as JSON/ZIP)\n- Account deletion flow with grace period\n- Cookie consent banner\n- Privacy preference center\n- Data processing records\n",
+        "default": false,
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_ai_features": {
+        "type": "str",
+        "help": "AI integration level (full includes RAG with pgvector)",
+        "default": "none",
+        "choices": [
+          "none",
+          "basic",
+          "rag",
+          "full"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "vector_db_provider": {
+        "type": "str",
+        "help": "Vector database for AI/RAG features:\n- none: No vector database (for non-RAG AI features)\n- pinecone: Managed vector database with high performance\n- qdrant: Open-source vector database, self-hostable\n- weaviate: GraphQL-based vector database with rich semantics\n",
+        "default": "none",
+        "choices": [
+          "none",
+          "pinecone",
+          "qdrant",
+          "weaviate"
+        ],
+        "when": "{{ saas_ai_features in ['rag', 'full'] }}"
+      },
+      "embedding_provider": {
+        "type": "str",
+        "help": "Embedding provider for vector database:\n- openai: OpenAI text-embedding-ada-002 or text-embedding-3\n- cohere: Cohere embed-english-v3.0 or embed-multilingual-v3.0\n",
+        "default": "openai",
+        "choices": [
+          "openai",
+          "cohere"
+        ],
+        "when": "{{ vector_db_provider != 'none' }}"
+      },
+      "saas_api_docs": {
+        "type": "bool",
+        "help": "Include API documentation generation? Generates:\n- OpenAPI 3.1 schema from route handlers\n- Swagger UI at /api/docs\n- TypeScript client generation script\n- API versioning support\n",
+        "default": false,
+        "when": "{{ saas_app_module == 'enabled' and saas_api_access == 'public-api' }}"
+      },
+      "saas_rate_limiting": {
+        "type": "str",
+        "help": "Select rate limiting implementation:\n- Upstash: Redis-based, serverless, sliding window, great for edge.\n- Built-in: In-memory rate limiting (resets on deploy, single-instance only).\n- None: No rate limiting (handle at infrastructure level).\n",
+        "default": "upstash",
+        "choices": [
+          "upstash",
+          "built-in",
+          "none"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      },
+      "saas_file_upload": {
+        "type": "str",
+        "help": "Select file upload widget:\n- UploadThing: Type-safe uploads, built for Next.js, S3-compatible backend.\n- React Dropzone: Flexible, bring your own backend, more control.\n- None: Manual file input handling.\n",
+        "default": "uploadthing",
+        "choices": [
+          "uploadthing",
+          "react-dropzone",
+          "none"
+        ],
+        "when": "{{ saas_infra_module == 'enabled' }}"
+      }
+    },
+    "defaults": {
+      "project_name": "riso-example",
+      "project_slug": "riso-example",
+      "package_name": "riso_example",
+      "project_layout": "single-package",
+      "quality_profile": "standard",
+      "task_runner": "just",
+      "python_versions": [
+        "3.11",
+        "3.12",
+        "3.13"
+      ],
+      "cli_module": "disabled",
+      "cli_languages": [
+        "python"
+      ],
+      "api_module": "disabled",
+      "api_languages": [
+        "python"
+      ],
+      "api_features": [],
+      "graphql_api_module": "disabled",
+      "websocket_module": "disabled",
+      "go_framework": "gin",
+      "go_version": "1.24",
+      "mcp_module": "disabled",
+      "mcp_languages": [
+        "python"
+      ],
+      "mcp_transport": "stdio",
+      "mcp_example_tools": true,
+      "docs_module": "disabled",
+      "docs_framework": "fumadocs",
+      "desktop_module": "disabled",
+      "desktop_framework": "electron-vite",
+      "desktop_features": "auto_updater",
+      "desktop_platforms": "mac,windows,linux",
+      "shared_logic": "disabled",
+      "codegen_module": "disabled",
+      "changelog_module": "disabled",
+      "fumadocs_search_provider": "orama",
+      "fumadocs_llms_txt": "enabled",
+      "fumadocs_ai_search": "disabled",
+      "fumadocs_openapi": "enabled",
+      "fumadocs_typedoc": "disabled",
+      "fumadocs_theme": "shadcn",
+      "fumadocs_sidebar": "default",
+      "fumadocs_i18n": "disabled",
+      "fumadocs_blog": "disabled",
+      "fumadocs_code_theme": "github",
+      "fumadocs_twoslash": "disabled",
+      "fumadocs_image_zoom": "enabled",
+      "fumadocs_banner": "disabled",
+      "fumadocs_last_updated": "enabled",
+      "fumadocs_edit_on_github": "enabled",
+      "fumadocs_feedback": "disabled",
+      "fumadocs_toc_depth": "3",
+      "fumadocs_mermaid": "disabled",
+      "fumadocs_math": "disabled",
+      "docusaurus_search_provider": "local",
+      "docusaurus_analytics": "none",
+      "docusaurus_theme": "classic",
+      "docusaurus_llms_txt": "enabled",
+      "docusaurus_i18n": "disabled",
+      "docusaurus_versioning": "disabled",
+      "docusaurus_blog": "enabled",
+      "docusaurus_faster": "enabled",
+      "docusaurus_openapi": "enabled",
+      "docusaurus_mermaid": "enabled",
+      "docusaurus_math": "disabled",
+      "docusaurus_live_codeblock": "disabled",
+      "docusaurus_show_last_update": "enabled",
+      "docusaurus_ideal_images": "enabled",
+      "docusaurus_image_zoom": "disabled",
+      "docusaurus_pwa": "disabled",
+      "docusaurus_comments": "none",
+      "docusaurus_feedback": "disabled",
+      "docusaurus_sitemap": "enabled",
+      "docusaurus_structured_data": "enabled",
+      "docusaurus_redirects": "disabled",
+      "docusaurus_announcement_bar": "disabled",
+      "docusaurus_back_to_top": "enabled",
+      "docusaurus_edit_url": "enabled",
+      "docusaurus_code_tabs": "disabled",
+      "docusaurus_changelog": "disabled",
+      "docusaurus_debug": "disabled",
+      "docusaurus_reading_time": "enabled",
+      "docusaurus_gfm": "enabled",
+      "docusaurus_emoji": "disabled",
+      "docusaurus_github_links": "disabled",
+      "docusaurus_autolink_headings": "enabled",
+      "ci_platform": "github-actions",
+      "saas_infra_module": "disabled",
+      "saas_runtime": "nextjs-16",
+      "saas_hosting": "vercel",
+      "saas_database": "neon",
+      "saas_orm": "prisma",
+      "saas_auth_module": "disabled",
+      "saas_auth_provider": "clerk",
+      "saas_enterprise_bridge": "none",
+      "saas_billing_module": "disabled",
+      "saas_billing_provider": "stripe",
+      "saas_app_module": "disabled",
+      "saas_jobs": "triggerdev",
+      "saas_email": "resend",
+      "saas_analytics": "posthog",
+      "saas_ai": "openai",
+      "saas_storage": "r2",
+      "saas_cicd": "github-actions",
+      "ai_tools_module": "enabled",
+      "ai_tools_mcp_thinking": true,
+      "ai_tools_mcp_web": true,
+      "ai_tools_mcp_documents": true,
+      "ai_tools_mcp_utilities": true,
+      "ai_tools_mcp_search": false,
+      "saas_observability_sentry": true,
+      "saas_observability_datadog": true,
+      "saas_observability_otel": true,
+      "saas_observability_structured_logging": true,
+      "saas_include_fixtures": true,
+      "saas_include_factories": true,
+      "saas_test_suite_level": "standard",
+      "saas_search_provider": "none",
+      "saas_multi_tenancy_level": "teams",
+      "saas_compliance_level": "basic",
+      "saas_ai_features": "none",
+      "vector_db_provider": "none",
+      "embedding_provider": "openai",
+      "include_databases": "no",
+      "saas_tenancy_model": "b2b-teams",
+      "saas_rbac_system": "basic-roles",
+      "saas_onboarding": "wizard",
+      "saas_admin_dashboard": true,
+      "saas_user_impersonation": true,
+      "saas_notifications": "both",
+      "saas_waitlist": false,
+      "saas_i18n": false,
+      "saas_api_access": "internal-only",
+      "saas_ui_framework": "shadcn-ui",
+      "saas_form_library": "react-hook-form",
+      "saas_realtime": "none",
+      "saas_landing_page": true,
+      "saas_blog": false,
+      "saas_changelog_public": false,
+      "saas_2fa": false,
+      "saas_gdpr_tools": false,
+      "saas_api_docs": false,
+      "saas_rate_limiting": "upstash",
+      "saas_file_upload": "uploadthing"
+    },
+    "metadata": {}
+  },
+  "errors": [],
+  "warnings": []
+}
