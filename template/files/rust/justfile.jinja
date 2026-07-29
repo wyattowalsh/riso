@@ -1,4 +1,4 @@
-{% if project_language == 'rust' or 'rust' in cli_languages or 'rust' in api_languages %}
+{% if project_language == 'rust' or 'rust' in cli_languages or 'rust' in api_languages or 'rust' in mcp_languages %}
 set shell := ["zsh", "-c"]
 
 # Build the project
@@ -27,6 +27,16 @@ build-api:
 # Run API with environment variables
 run-api-dev:
     RUST_LOG=debug HOST=127.0.0.1 PORT=8080 cargo run --bin {{ package_name }}-api
+{% endif %}
+
+{% if mcp_module == 'enabled' and 'rust' in mcp_languages %}
+# Run MCP server (stdio)
+run-mcp:
+    cargo run --manifest-path mcp/Cargo.toml -- --transport stdio
+
+# Build MCP for release
+build-mcp:
+    cargo build --release --manifest-path mcp/Cargo.toml
 {% endif %}
 
 # Run tests

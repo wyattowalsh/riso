@@ -1,4 +1,8 @@
-{% if project_language == 'rust' or 'rust' in cli_languages or 'rust' in api_languages %}
+{% if project_language == 'rust' or 'rust' in cli_languages or 'rust' in api_languages or 'rust' in mcp_languages %}
+{%- set _has_cli = cli_module == 'enabled' and 'rust' in cli_languages -%}
+{%- set _has_api = api_module == 'enabled' and 'rust' in api_languages -%}
+{%- set _has_mcp = mcp_module == 'enabled' and 'rust' in mcp_languages -%}
+{%- set _has_bins = _has_cli or _has_api -%}
 [package]
 name = "{{ package_name }}"
 version = "0.1.0"
@@ -7,14 +11,16 @@ description = "{{ project_description }}"
 authors = ["{{ author_name|default('Riso Maintainer', true) }}"]
 license = "MIT"
 rust-version = "1.81"
+{% if _has_bins %}
+# Explicit [[bin]] entries below; do not auto-discover src/main.rs
+autobins = false
+{% endif %}
 
-{% if project_layout == 'monorepo' %}
+{% if _has_mcp %}
+# Only list crates that have their own Cargo.toml. CLI/API are root [[bin]]
+# paths (cli/main.rs, api/main.rs), not workspace members.
 [workspace]
-members = [
-    {%- if mcp_module == 'enabled' and 'rust' in mcp_languages -%}"mcp",{%- endif -%}
-    {%- if cli_module == 'enabled' and 'rust' in cli_languages -%}"cli",{%- endif -%}
-    {%- if api_module == 'enabled' and 'rust' in api_languages -%}"api",{%- endif -%}
-]
+members = ["mcp"]
 resolver = "2"
 {% endif %}
 
@@ -29,14 +35,14 @@ serde_json = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+{% if _has_cli %}
 # CLI dependencies
 clap = { version = "4.5", features = ["derive", "env"] }
 colored = "2.1"
 {% endif %}
 
-{% if api_module == 'enabled' and 'rust' in api_languages %}
-# API dependencies
+{% if _has_api %}
+# API dependencies (Actix-web + Tokio)
 actix-web = "4.9"
 actix-cors = "0.7"
 chrono = { version = "0.4", features = ["serde"] }
@@ -45,17 +51,17 @@ chrono = { version = "0.4", features = ["serde"] }
 [dev-dependencies]
 tokio-test = "0.4"
 pretty_assertions = "1.4"
-{% if api_module == 'enabled' and 'rust' in api_languages %}
-actix-web-test = "4.9"
+{% if _has_api %}
+# actix-web provides #[actix_web::test] and actix_web::test helpers
 {% endif %}
 
-{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+{% if _has_cli %}
 [[bin]]
 name = "{{ package_name }}"
 path = "cli/main.rs"
 {% endif %}
 
-{% if api_module == 'enabled' and 'rust' in api_languages %}
+{% if _has_api %}
 [[bin]]
 name = "{{ package_name }}-api"
 path = "api/main.rs"

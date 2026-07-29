@@ -1,4 +1,4 @@
-{% if project_language == 'rust' or 'rust' in cli_languages or 'rust' in api_languages %}
+{% if project_language == 'rust' or 'rust' in cli_languages or 'rust' in api_languages or 'rust' in mcp_languages %}
 {%- set _run = 'just' if task_runner in ['just', 'both'] else 'make' -%}
 # {{ project_name }}
 
@@ -13,6 +13,9 @@
 {% endif %}
 {% if api_module == 'enabled' and 'rust' in api_languages %}
 - **API**: Actix-web with async handlers
+{% endif %}
+{% if mcp_module == 'enabled' and 'rust' in mcp_languages %}
+- **MCP**: Nested `mcp/` crate (rmcp) for Model Context Protocol tools
 {% endif %}
 - **Tooling**: {% if task_runner in ['just', 'both'] %}Just{% else %}Make{% endif %}, Cargo
 
@@ -47,6 +50,9 @@ cargo build            # Alternative using cargo directly
 {% endif %}
 {% if api_module == 'enabled' and 'rust' in api_languages %}
 {{ _run }} build-api         # Build API server only
+{% endif %}
+{% if mcp_module == 'enabled' and 'rust' in mcp_languages %}
+{{ _run }} build-mcp         # Build MCP server (nested crate)
 {% endif %}
 ```
 
