@@ -48,7 +48,16 @@
   },
   "bundle": {
     "active": true,
+    {# Prefer platform-scoped targets when not all three desktop_platforms are selected. #}
+    {% set _plats = desktop_platforms | default(['mac', 'windows', 'linux']) %}
+    {% set _has_mac = 'mac' in _plats %}
+    {% set _has_win = 'windows' in _plats %}
+    {% set _has_linux = 'linux' in _plats %}
+    {% if _has_mac and _has_win and _has_linux %}
     "targets": "all",
+    {% else %}
+    "targets": [{% if _has_mac %}"dmg", "app"{% if _has_win or _has_linux %}, {% endif %}{% endif %}{% if _has_win %}"nsis", "msi"{% if _has_linux %}, {% endif %}{% endif %}{% if _has_linux %}"appimage", "deb", "rpm"{% endif %}],
+    {% endif %}
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -108,9 +117,14 @@
     "externalBin": [],
     "shortDescription": "{{ project_description | default(project_name) }}",
     "longDescription": "{{ project_description | default(project_name ~ ' - A cross-platform desktop application built with Tauri') }}"
-  }
-  {# auto_updater intentionally omitted until a real pubkey/endpoints are configured.
-     Enabling the plugin with YOUR_PUBLIC_KEY_HERE is unsafe. #}
+  }{% if desktop_features is defined and 'auto_updater' in desktop_features %},
+  "plugins": {
+    "updater": {
+      {# Replace pubkey + endpoints before enabling production auto-update. #}
+      "pubkey": "",
+      "endpoints": []
+    }
+  }{% endif %}
 }
 
 {% endif %}
