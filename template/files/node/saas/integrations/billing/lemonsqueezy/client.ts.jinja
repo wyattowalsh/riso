@@ -1,0 +1,188 @@
+{% if saas_infra_module == "enabled" and saas_billing_module == "enabled" and saas_billing_provider == "lemonsqueezy" %}
+/**
+ * LemonSqueezy Billing Client
+ *
+ * Checkout, customer portal, and subscription helpers for the LemonSqueezy API.
+ * Webhook handling lives in `./webhooks`.
+ *
+ * @see https://docs.lemonsqueezy.com/api
+ */
+
+const LEMONSQUEEZY_API = 'https://api.lemonsqueezy.com/v1';
+
+async function lemonSqueezyFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const apiKey = process.env.LEMONSQUEEZY_API_KEY;
+  if (!apiKey) {
+    throw new Error('LEMONSQUEEZY_API_KEY is not set');
+  }
+
+  const response = await fetch(`${LEMONSQUEEZY_API}${endpoint}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/vnd.api+json',
+      Accept: 'application/vnd.api+json',
+      ...options?.headers,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`LemonSqueezy API error: ${response.status}`);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+/**
+ * Create or locate a customer by email (store-scoped).
+ * LemonSqueezy creates customers at checkout; this helper is a thin upsert for metadata.
+ */
+export async function createCustomer(params: {
+  email: string;
+  name?: string;
+  metadata?: Record<string, string>;
+}) {
+  const storeId = process.env.LEMONSQUEEZY_STORE_ID;
+  if (!storeId) {
+    throw new Error('LEMONSQUEEZY_STORE_ID is not set');
+  }
+
+  return await lemonSqueezyFetch<{ data: { id: string; attributes: Record<string, unknown> } }>(
+    '/customers',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        data: {
+          type: 'customers',
+          attributes: {
+            name: params.name ?? params.email,
+            email: params.email,
+          },
+          relationships: {
+            store: {
+              data: { type: 'stores', id: storeId },
+            },
+          },
+        },
+      }),
+    }
+  );
+}
+
+/**
+ * Create a checkout URL for a variant (priceId maps to LemonSqueezy variant id).
+ */
+export async function createCheckout(params: {
+  priceId: string;
+  customerId?: string;
+  customerEmail?: string;
+  successUrl?: string;
+  cancelUrl?: string;
+  userId?: string;
+  metadata?: Record<string, string>;
+}) {
+  const storeId = process.env.LEMONSQUEEZY_STORE_ID;
+  if (!storeId) {
+    throw new Error('LEMONSQUEEZY_STORE_ID is not set');
+  }
+
+  const response = await lemonSqueezyFetch<{ data: { attributes: { url: string } } }>(
+    '/checkouts',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        data: {
+          type: 'checkouts',
+          attributes: {
+            checkout_data: {
+              email: params.customerEmail,
+              custom: {
+                user_id: params.userId,
+                ...params.metadata,
+              },
+            },
+            product_options: {
+              redirect_url: params.successUrl,
+            },
+          },
+          relationships: {
+            store: {
+              data: { type: 'stores', id: storeId },
+            },
+            variant: {
+              data: { type: 'variants', id: params.priceId },
+            },
+          },
+        },
+      }),
+    }
+  );
+
+  return { url: response.data.attributes.url };
+}
+
+/**
+ * Cancel a subscription (at period end by default).
+ */
+export async function cancelSubscription(subscriptionId: string, immediately = false) {
+  return await lemonSqueezyFetch(`/subscriptions/${subscriptionId}`, {
+    method: 'DELETE',
+    body: immediately
+      ? undefined
+      : JSON.stringify({
+          data: {
+            type: 'subscriptions',
+            id: subscriptionId,
+            attributes: { cancelled: true },
+          },
+        }),
+  });
+}
+
+/**
+ * Update subscription variant/quantity.
+ */
+export async function updateSubscription(params: {
+  subscriptionId: string;
+  priceId?: string;
+  quantity?: number;
+}) {
+  return await lemonSqueezyFetch(`/subscriptions/${params.subscriptionId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      data: {
+        type: 'subscriptions',
+        id: params.subscriptionId,
+        attributes: {
+          ...(params.priceId ? { variant_id: Number(params.priceId) } : {}),
+          ...(params.quantity != null
+            ? { product_options: { enabled_variants: [Number(params.priceId)] } }
+            : {}),
+        },
+      },
+    }),
+  });
+}
+
+/**
+ * Customer portal URL for self-service billing.
+ */
+export async function createPortalSession(params: {
+  customerId: string;
+  returnUrl: string;
+}) {
+  const response = await lemonSqueezyFetch<{
+    data: { attributes: { urls: { customer_portal: string } } };
+  }>(`/customers/${params.customerId}`);
+
+  return {
+    url: response.data.attributes.urls.customer_portal ?? params.returnUrl,
+  };
+}
+
+export async function getSubscription(subscriptionId: string) {
+  return await lemonSqueezyFetch(`/subscriptions/${subscriptionId}`);
+}
+
+export type LemonSqueezyCheckout = Awaited<ReturnType<typeof createCheckout>>;
+{% endif %}
