@@ -19,6 +19,13 @@ function createServer(config: ApiNodeConfig) {
 
   // Register container health check endpoint
   registerHealthRoutes(server);
+{%- if shared_logic | lower == "enabled" %}
+  if (sharedLogicEnabled()) {
+    server.log.info(
+      summarizeStatus({ status: "healthy", service: config.serviceName })
+    );
+  }
+{%- endif %}
 
   return server;
 }

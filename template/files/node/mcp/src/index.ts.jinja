@@ -59,18 +59,20 @@ async function main() {
     await mcp.start({
       transportType: "stdio",
     });
-  } else if (transport === "sse") {
-    await mcp.start({
-      transportType: "sse",
-      sse: { endpoint: "/sse" },
-    });
-    console.error(`SSE server listening on http://${host}:${port}/sse`);
-  } else if (transport === "http") {
+  } else if (transport === "sse" || transport === "http") {
+    // FastMCP serves HTTP streaming at `endpoint` and SSE at /sse when httpStream starts.
+    const endpoint = transport === "sse" ? "/sse" : "/mcp";
     await mcp.start({
       transportType: "httpStream",
-      httpStream: { endpoint: "/mcp" },
+      httpStream: {
+        host,
+        port,
+        endpoint: endpoint as `/${string}`,
+      },
     });
-    console.error(`HTTP server listening on http://${host}:${port}/mcp`);
+    console.error(
+      `MCP server listening on http://${host}:${port}${endpoint} (SSE also at /sse)`
+    );
   } else {
     console.error(`Unknown transport: ${transport}`);
     process.exit(1);
