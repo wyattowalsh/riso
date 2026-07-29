@@ -11,9 +11,14 @@ import sys
 from pathlib import Path
 
 try:
-    from scripts.lib.logger import logger, configure_logging
+    # Maintainer package layout: scripts is a package root on PYTHONPATH.
+    from scripts.lib.logger import configure_logging, logger
 except ModuleNotFoundError:
-    from logger import logger, configure_logging
+    try:
+        # post_gen_project appends <repo>/scripts to sys.path (not repo root).
+        from lib.logger import configure_logging, logger
+    except ModuleNotFoundError:
+        from logger import configure_logging, logger
 
 
 def check_actionlint_available() -> bool:

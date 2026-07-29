@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 from dataclasses import asdict, dataclass
@@ -26,13 +27,47 @@ class ToolCheck:
         return {k: v for k, v in payload.items() if v is not None}
 
 
-def _run(command: Iterable[str]) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        list(command),
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+def _subprocess_env() -> dict[str, str]:
+    """Build env for tool probes, trusting cwd (and parent) for mise configs."""
+    env = dict(os.environ)
+    cwd = Path.cwd().resolve()
+    trusted_paths = [str(cwd), str(cwd.parent)]
+    existing = env.get("MISE_TRUSTED_CONFIG_PATHS", "").strip()
+    if existing:
+        parts = [p for p in existing.split(os.pathsep) if p]
+        for path in trusted_paths:
+            if path not in parts:
+                parts.append(path)
+        env["MISE_TRUSTED_CONFIG_PATHS"] = os.pathsep.join(parts)
+    else:
+        env["MISE_TRUSTED_CONFIG_PATHS"] = os.pathsep.join(trusted_paths)
+    return env
+
+
+def _run(
+    command: Iterable[str],
+    *,
+    timeout: float = 120.0,
+) -> subprocess.CompletedProcess[str]:
+    try:
+        return subprocess.run(
+            list(command),
+            check=False,
+            capture_output=True,
+            text=True,
+            env=_subprocess_env(),
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        # Normalize timeouts so callers can treat them as failed probes.
+        stdout = exc.stdout if isinstance(exc.stdout, str) else ""
+        stderr_base = exc.stderr if isinstance(exc.stderr, str) else ""
+        return subprocess.CompletedProcess[str](
+            args=list(command),
+            returncode=124,
+            stdout=stdout,
+            stderr=f"{stderr_base}\nTimed out after {timeout}s",
+        )
 
 
 def _ensure_tool(tool: str, *, install: bool = True) -> ToolCheck:

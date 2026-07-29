@@ -62,7 +62,7 @@ def _module_results(payload: dict[str, object]) -> list[ModuleResult]:
     return smoke_payload_to_results(payload)
 
 
-class VariantResult(TypedDict):
+class VariantResult(TypedDict, total=False):
     """Result metadata from rendering a single variant."""
 
     variant: str
@@ -71,6 +71,8 @@ class VariantResult(TypedDict):
     smoke_results: dict[str, object] | None
     workflow_validation: str
     container_status: str
+    render_status: str
+    render_returncode: int
 
 
 class RenderSummary(TypedDict, total=False):
@@ -133,15 +135,20 @@ def render_variant(variant: str, answers_file: Path) -> VariantResult:
 
     Returns:
         Dictionary containing variant metadata including smoke results, workflow validation
-        status, and container validation status.
-
-    Raises:
-        subprocess.CalledProcessError: If the render script fails.
+        status, and container validation status. Render script failures are recorded rather
+        than aborting the full matrix so remaining variants still run.
     """
     destination = answers_file.parent / "render"
     cmd = [str(RENDER_SCRIPT), "--variant", variant, "--answers", str(answers_file)]
     env = {**os.environ, "COPIER_CMD": os.environ.get("COPIER_CMD", "copier")}
-    subprocess.run(cmd, check=True, cwd=REPO_ROOT, env=env)
+    completed = subprocess.run(cmd, check=False, cwd=REPO_ROOT, env=env)
+    render_status = "ok" if completed.returncode == 0 else "failed"
+    if completed.returncode != 0:
+        logger.error(
+            "Render script failed for variant %s (exit %s); continuing matrix",
+            variant,
+            completed.returncode,
+        )
 
     metadata = load_post_gen_metadata(answers_file)
     workflow_status = "unknown"
@@ -206,6 +213,7 @@ def render_variant(variant: str, answers_file: Path) -> VariantResult:
                             stdin=f,
                             capture_output=True,
                             timeout=30,
+                            check=False,
                         )
                     if hadolint_result.returncode == 0:
                         container_status = "validated"
@@ -226,6 +234,8 @@ def render_variant(variant: str, answers_file: Path) -> VariantResult:
         smoke_results=load_smoke_results(answers_file),
         workflow_validation=workflow_status,
         container_status=container_status,
+        render_status=render_status,
+        render_returncode=int(completed.returncode),
     )
 
 
@@ -297,6 +307,15 @@ def main() -> None:
 
     output_file.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     logger.info(f"Render matrix complete. Metadata saved to {output_file}")
+
+    failed = [
+        v.get("variant", "?")
+        for v in summary.get("variants", [])
+        if v.get("render_status") == "failed"
+    ]
+    if failed:
+        logger.error("Matrix completed with render failures: %s", ", ".join(failed))
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
