@@ -1,25 +1,19 @@
-{% if saas_infra_module == "enabled" %}
+{% if saas_infra_module == "enabled" and saas_billing_module == "enabled" %}
 /**
- * Unified Billing Service
- * 
- * Provides a consistent interface for billing operations
- * regardless of whether Stripe or Paddle is used.
- * 
- * This abstraction makes it easier to:
- * - Switch billing providers
- * - Mock billing in tests
- * - Add business logic around billing
+ * Unified Billing Service (Stripe / Paddle / LemonSqueezy)
  */
 
 {% if saas_billing_provider == "stripe" %}
 import * as stripe from './stripe/client';
 {% elif saas_billing_provider == "paddle" %}
 import * as paddle from './paddle/client';
+{% elif saas_billing_provider == "lemonsqueezy" %}
+import * as lemonsqueezy from './lemonsqueezy/client';
+import {
+  handleLemonSqueezyWebhook,
+  verifyLemonSqueezyWebhook,
+} from './lemonsqueezy/webhooks';
 {% endif %}
-
-// ============================================================================
-// Customer Operations
-// ============================================================================
 
 export async function createCustomer(params: {
   email: string;
@@ -34,12 +28,10 @@ export async function createCustomer(params: {
     name: params.name,
     customData: params.metadata,
   });
+  {% elif saas_billing_provider == "lemonsqueezy" %}
+  return await lemonsqueezy.createCustomer(params);
   {% endif %}
 }
-
-// ============================================================================
-// Subscription Operations
-// ============================================================================
 
 export async function startSubscription(params: {
   customerId?: string;
@@ -48,6 +40,8 @@ export async function startSubscription(params: {
   successUrl: string;
   cancelUrl: string;
   trialDays?: number;
+  userId?: string;
+  metadata?: Record<string, string>;
 }) {
   {% if saas_billing_provider == "stripe" %}
   return await stripe.createCheckoutSession(params);
@@ -58,17 +52,26 @@ export async function startSubscription(params: {
     customerEmail: params.customerEmail,
     successUrl: params.successUrl,
   });
+  {% elif saas_billing_provider == "lemonsqueezy" %}
+  return await lemonsqueezy.createCheckout({
+    priceId: params.priceId,
+    customerId: params.customerId,
+    customerEmail: params.customerEmail,
+    successUrl: params.successUrl,
+    cancelUrl: params.cancelUrl,
+    userId: params.userId,
+    metadata: params.metadata,
+  });
   {% endif %}
 }
 
-export async function cancelSubscription(
-  subscriptionId: string,
-  immediately = false
-) {
+export async function cancelSubscription(subscriptionId: string, immediately = false) {
   {% if saas_billing_provider == "stripe" %}
   return await stripe.cancelSubscription(subscriptionId, immediately);
   {% elif saas_billing_provider == "paddle" %}
   return await paddle.cancelSubscription(subscriptionId, immediately);
+  {% elif saas_billing_provider == "lemonsqueezy" %}
+  return await lemonsqueezy.cancelSubscription(subscriptionId, immediately);
   {% endif %}
 }
 
@@ -81,18 +84,12 @@ export async function updateSubscription(params: {
   return await stripe.updateSubscription(params);
   {% elif saas_billing_provider == "paddle" %}
   return await paddle.updateSubscription(params);
+  {% elif saas_billing_provider == "lemonsqueezy" %}
+  return await lemonsqueezy.updateSubscription(params);
   {% endif %}
 }
 
-// ============================================================================
-// Usage-Based Billing (Metering)
-// ============================================================================
-
 {% if saas_billing_provider == "stripe" %}
-/**
- * Report usage for metered billing
- * Only available with Stripe
- */
 export async function reportUsage(params: {
   subscriptionItemId: string;
   quantity: number;
@@ -106,10 +103,6 @@ export async function getUsageRecords(subscriptionItemId: string) {
 }
 {% endif %}
 
-// ============================================================================
-// Customer Portal
-// ============================================================================
-
 export async function createPortalSession(params: {
   customerId: string;
   returnUrl: string;
@@ -117,35 +110,29 @@ export async function createPortalSession(params: {
   {% if saas_billing_provider == "stripe" %}
   return await stripe.createPortalSession(params);
   {% elif saas_billing_provider == "paddle" %}
-  // Paddle doesn't have a separate portal - use update payment method URL
   const subscription = await paddle.getSubscription(params.customerId);
   return { url: subscription.managementUrls?.updatePaymentMethod };
+  {% elif saas_billing_provider == "lemonsqueezy" %}
+  return await lemonsqueezy.createPortalSession(params);
   {% endif %}
 }
-
-// ============================================================================
-// Webhook Processing
-// ============================================================================
 
 export async function processWebhook(payload: string, signature: string) {
   {% if saas_billing_provider == "stripe" %}
   return await stripe.processWebhook(payload, signature);
   {% elif saas_billing_provider == "paddle" %}
   const isValid = await paddle.verifyWebhookSignature(payload, signature);
-  if (!isValid) {
+  if (!isValid) throw new Error('Invalid webhook signature');
+  return JSON.parse(payload);
+  {% elif saas_billing_provider == "lemonsqueezy" %}
+  if (!verifyLemonSqueezyWebhook(payload, signature)) {
     throw new Error('Invalid webhook signature');
   }
-  
   const event = JSON.parse(payload);
-  // EXTENSION POINT: Implement Paddle webhook routing based on event.event_type
-  // See: https://developer.paddle.com/webhooks/signature-verification
+  await handleLemonSqueezyWebhook(event);
   return event;
   {% endif %}
 }
-
-// ============================================================================
-// Type Exports
-// ============================================================================
 
 {% if saas_billing_provider == "stripe" %}
 export type {
@@ -156,5 +143,7 @@ export type {
 } from './stripe/client';
 {% elif saas_billing_provider == "paddle" %}
 export type { Paddle } from './paddle/client';
+{% elif saas_billing_provider == "lemonsqueezy" %}
+export type { LemonSqueezyCheckout } from './lemonsqueezy/client';
 {% endif %}
 {% endif %}
