@@ -54,8 +54,10 @@ pub fn init_menu(app: &App) -> Result<Menu<tauri::Wry>> {
     let about_item = MenuItem::with_id(app, "about", "About {{ project_name }}", true, None::<&str>)?;
     let help_menu = Submenu::with_items(app, "Help", true, &[&about_item])?;
 
-    // Build the menu
+    // Build and install the menu
     let menu = Menu::with_items(app, &[&file_menu, &edit_menu, &view_menu, &help_menu])?;
+    app.set_menu(menu.clone())?;
+    app.on_menu_event(|app, event| handle_menu_event(app, event));
 
     Ok(menu)
 }

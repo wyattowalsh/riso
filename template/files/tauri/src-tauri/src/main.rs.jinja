@@ -24,11 +24,26 @@ fn main() {
     info!("Starting {{ project_name }}...");
 
     let result = tauri::Builder::default()
-        {% if desktop_features is defined and 'tray_icon' in desktop_features %}
         .plugin(tauri_plugin_shell::init())
+        {% if desktop_features is defined and 'auto_updater' in desktop_features %}
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
+        {% endif %}
+        {% if desktop_features is defined and 'notifications' in desktop_features %}
+        .plugin(tauri_plugin_notification::init())
+        {% endif %}
+        {% if desktop_features is defined and 'file_system' in desktop_features %}
+        .plugin(tauri_plugin_fs::init())
+        {% endif %}
         .setup(|app| {
+            {% if desktop_features is defined and 'tray_icon' in desktop_features %}
             // Initialize system tray
             tray::init_tray(app)?;
+            {% endif %}
+            {% if desktop_features is defined and 'menu' in desktop_features %}
+            // Initialize application menu
+            menu::init_menu(app)?;
+            {% endif %}
             {% if desktop_features is defined and 'auto_updater' in desktop_features %}
             // Check for updates on startup (production only)
             #[cfg(not(debug_assertions))]
@@ -44,31 +59,6 @@ fn main() {
             {% endif %}
             Ok(())
         })
-        {% else %}
-        .plugin(tauri_plugin_shell::init())
-        {% if desktop_features is defined and 'auto_updater' in desktop_features %}
-        .setup(|app| {
-            // Check for updates on startup (production only)
-            #[cfg(not(debug_assertions))]
-            {
-                let handle = app.handle().clone();
-                tauri::async_runtime::spawn(async move {
-                    match commands::check_for_updates(handle).await {
-                        Ok(_) => info!("Update check completed"),
-                        Err(e) => error!("Update check failed: {}", e),
-                    }
-                });
-            }
-            Ok(())
-        })
-        {% endif %}
-        {% endif %}
-        {% if desktop_features is defined and 'notifications' in desktop_features %}
-        .plugin(tauri_plugin_notification::init())
-        {% endif %}
-        {% if desktop_features is defined and 'file_system' in desktop_features %}
-        .plugin(tauri_plugin_fs::init())
-        {% endif %}
         .invoke_handler(tauri::generate_handler![
             commands::greet,
             {% if desktop_features is defined and 'system_info' in desktop_features %}

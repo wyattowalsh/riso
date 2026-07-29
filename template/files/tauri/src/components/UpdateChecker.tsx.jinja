@@ -1,6 +1,6 @@
 {% if desktop_module == "enabled" and desktop_framework == "tauri" and desktop_features is defined and 'auto_updater' in desktop_features %}
 import { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { getVersion } from '@tauri-apps/api/app';
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 
@@ -23,20 +23,21 @@ function UpdateChecker() {
     setError(null);
 
     try {
+      const currentVersion = await getVersion();
       const update = await check();
 
       if (update) {
         setUpdateInfo({
           available: true,
           version: update.version,
-          current_version: update.currentVersion,
+          current_version: update.currentVersion || currentVersion,
           date: update.date,
           body: update.body,
         });
       } else {
         setUpdateInfo({
           available: false,
-          current_version: await invoke('get_app_version'),
+          current_version: currentVersion,
         });
       }
     } catch (err) {

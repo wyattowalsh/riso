@@ -27,15 +27,17 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,html}\"",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "build:mac": "electron-builder --mac",
-    "build:win": "electron-builder --win",
-    "build:linux": "electron-builder --linux",
-    "build:all": "electron-builder --mac --win --linux",
-    "publish": "electron-builder --publish always"
+    "test:coverage": "vitest run --coverage"{% if 'mac' in desktop_platforms %},
+    "build:mac": "electron-builder --mac"{% endif %}{% if 'windows' in desktop_platforms %},
+    "build:win": "electron-builder --win"{% endif %}{% if 'linux' in desktop_platforms %},
+    "build:linux": "electron-builder --linux"{% endif %},
+    "build:all": "electron-builder{% if 'mac' in desktop_platforms %} --mac{% endif %}{% if 'windows' in desktop_platforms %} --win{% endif %}{% if 'linux' in desktop_platforms %} --linux{% endif %}"{% if 'auto_updater' in desktop_features %},
+    "publish": "electron-builder --publish always"{% endif %}
   },
   "dependencies": {
+    {% if 'auto_updater' in desktop_features %}
     "electron-updater": "^6.3.9",
+    {% endif %}
     "electron-log": "^5.2.4",
     "electron-store": "^10.0.0",
     "zustand": "^5.0.3",
