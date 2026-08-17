@@ -53,10 +53,6 @@ class TestAgentsPluginDetection:
         """Unrelated JSON is not treated as Agents plugin enablement."""
         assert _enables_agents_plugin('{"permissions":{"defaultMode":"ask"}}') is False
 
-
-class TestRequiredPluginTemplates:
-    """Template payload includes Agents plugin settings files."""
-
     def test_check_required_files_passes_on_repo(self):
         """Live template files satisfy the ecosystem required-file check."""
         assert check_required_files() == 0
