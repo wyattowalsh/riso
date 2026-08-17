@@ -14,6 +14,25 @@ REQUIRED_ALWAYS = [
     TEMPLATE_FILES / "AGENTS.md.jinja",
 ]
 
+PLUGIN_SETTINGS_FILES = [
+    TEMPLATE_FILES / ".cursor" / "settings.json.jinja",
+    TEMPLATE_FILES / ".claude" / "settings.json.jinja",
+    TEMPLATE_FILES / ".github" / "copilot" / "settings.json.jinja",
+]
+
+AGENTS_PLUGIN_MARKERS = (
+    "wyattowalsh/agents",
+    "agents@agents",
+)
+
+
+def _enables_agents_plugin(text: str) -> bool:
+    """Return True if settings text enables the wyattowalsh/agents plugin."""
+    if any(marker in text for marker in AGENTS_PLUGIN_MARKERS):
+        return True
+    return '"plugins"' in text and '"agents"' in text and '"enabled"' in text
+
+
 BRIDGE_FILES = [
     TEMPLATE_FILES / "CLAUDE.md.jinja",
     TEMPLATE_FILES / ".cursor" / "rules.jinja",
@@ -43,6 +62,18 @@ def check_required_files() -> int:
     for path in BRIDGE_FILES:
         if not path.is_file():
             errors += _fail(f"missing bridge template: {path.relative_to(REPO_ROOT)}")
+    for path in PLUGIN_SETTINGS_FILES:
+        if not path.is_file():
+            errors += _fail(
+                "missing agents plugin settings template: "
+                f"{path.relative_to(REPO_ROOT)}"
+            )
+        else:
+            text = path.read_text(encoding="utf-8")
+            if not _enables_agents_plugin(text):
+                errors += _fail(
+                    f"{path.relative_to(REPO_ROOT)} does not enable wyattowalsh/agents"
+                )
     return errors
 
 
@@ -89,6 +120,7 @@ def check_copier_exclude() -> int:
     required_snippets = [
         "ai_tools_module != 'enabled' %}CLAUDE.md",
         "ai_tools_module != 'enabled' %}docs/ai-tools.md",
+        "ai_tools_module != 'enabled' %}.github/copilot/",
     ]
     errors = 0
     for snippet in required_snippets:
@@ -125,6 +157,11 @@ def check_render_tree(render_dir: Path, *, ai_tools_enabled: bool) -> int:
         render_dir / ".warp" / "WARP.md",
         render_dir / ".cursor" / "rules",
     ]
+    plugin_settings_paths = [
+        render_dir / ".cursor" / "settings.json",
+        render_dir / ".claude" / "settings.json",
+        render_dir / ".github" / "copilot" / "settings.json",
+    ]
     if ai_tools_enabled:
         for path in bridge_paths:
             if not path.is_file():
@@ -139,10 +176,22 @@ def check_render_tree(render_dir: Path, *, ai_tools_enabled: bool) -> int:
                     errors += _fail(
                         f"{path.name} has {len(lines)} lines (max {MAX_BRIDGE_LINES})"
                     )
+        for path in plugin_settings_paths:
+            if not path.is_file():
+                errors += _fail(f"ai_tools enabled but missing plugin settings: {path}")
+            else:
+                text = path.read_text(encoding="utf-8")
+                if not _enables_agents_plugin(text):
+                    errors += _fail(f"{path} does not enable wyattowalsh/agents")
     else:
         for path in bridge_paths:
             if path.exists():
                 errors += _fail(f"ai_tools disabled but bridge present: {path}")
+        for path in plugin_settings_paths:
+            if path.exists():
+                errors += _fail(
+                    f"ai_tools disabled but plugin settings present: {path}"
+                )
         if (render_dir / "docs" / "ai-tools.md").exists():
             errors += _fail("ai_tools disabled but docs/ai-tools.md present")
     return errors

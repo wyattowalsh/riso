@@ -367,6 +367,13 @@ Invoke by description; read `SKILL.md` when triggered — do not inline here.
 | `riso-release-readiness` | `.agents/skills/riso-release-readiness/` | Pre-release gates, render validation                                   |
 | `agents-md-manager`      | `.claude/skills/agents-md-manager/`      | AGENTS.md analysis, platform pointer sync (restore payload before use) |
 | `mcp-installer`          | `.claude/skills/mcp-installer/`          | Stub — MCP server install/sync (payload not shipped)                   |
+| `agents` plugin          | `github.com/wyattowalsh/agents`          | Portable skills/subagents via `/add-plugin github.com/wyattowalsh/agents` |
+
+Enable the Agents plugin in project settings (do not vendor skill bodies):
+
+- Cursor: `.cursor/settings.json` (`plugins.agents.enabled`)
+- Claude Code: `.claude/settings.json` (`enabledPlugins` + `extraKnownMarketplaces`)
+- GitHub Copilot: `.github/copilot/settings.json` (workspace recommendation)
 
 `agents-md-manager` scripts run from `.claude/skills/agents-md-manager/` when the skill payload is present. Until restored, maintain pointers manually (this file + `CLAUDE.md` + `.cursor/rules` + `.github/copilot-instructions.md`).
 
@@ -378,7 +385,7 @@ Template skill propagation: `template/files/.claude/skills/` when present in pay
 
 - **Copilot**: `.github/copilot-instructions.md` → pointer to this file
 - **Claude**: `CLAUDE.md` → pointer to this file
-- **Cursor**: `.cursor/rules` → pointer; Spec Kit in `.cursor/commands/`
+- **Cursor**: `.cursor/rules` → pointer; Spec Kit in `.cursor/commands/`; Agents plugin in `.cursor/settings.json`
 - **Gemini**: `.gemini/commands/update.AGENTSmd.toml` — internal AGENTS maintainer playbook
 - **Validation**: `uv run python scripts/ci/validate_agents_ecosystem.py`
 
@@ -389,6 +396,7 @@ Template skill propagation: `template/files/.claude/skills/` when present in pay
 - **CLI migration**: Maintainer `riso-mcp` removed → `riso` CLI + `riso-scaffold` skill ([migration guide](docs/guides/mcp-to-cli-migration.md))
 - **Type checker**: `ty` replaces mypy for maintainer repo quality
 - **Agent skills**: `riso-scaffold`, `riso-release-readiness` under `.agents/skills/`
+- **Agents plugin**: project enablement for `github.com/wyattowalsh/agents` (`/add-plugin github.com/wyattowalsh/agents`)
 - **Release automation**: Conventional commits, semantic-release, `release.yml` workflow
 - Full history: [docs/changelog.md](docs/changelog.md) · [CHANGELOG.md](./CHANGELOG.md)
 

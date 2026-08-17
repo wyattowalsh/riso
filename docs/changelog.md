@@ -10,6 +10,9 @@
   `uv run riso migrate DEST [--dry-run] [--json]` or
   `uv run riso migrate --answers-file PATH [--dry-run] [--json]`. Full table:
   {doc}`guides/v2-migration` and root `CHANGELOG.md`.
+- **2026-08-17** — Enabled the [`wyattowalsh/agents`](https://github.com/wyattowalsh/agents)
+  plugin for Cursor, Claude Code, and GitHub Copilot (`/add-plugin github.com/wyattowalsh/agents`).
+  Generated projects with `ai_tools_module=enabled` receive the same project settings.
 - **2026-06-24** — **Breaking:** Removed maintainer `riso-mcp` server; replaced with
   agent-native `riso` Typer CLI (`uv run riso --help`) and `riso-scaffold` agent skill.
   See {doc}`guides/mcp-to-cli-migration`.

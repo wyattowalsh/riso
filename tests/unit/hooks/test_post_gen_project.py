@@ -605,6 +605,7 @@ class TestRenderGuidance:
 
         assert "AGENTS.md" in result
         assert "ai-tools.md" in result
+        assert "wyattowalsh/agents" in result
 
     def test_comprehensive_guidance_rendering(self):
         """Should render comprehensive guidance with all features."""
