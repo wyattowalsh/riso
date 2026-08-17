@@ -16,6 +16,8 @@ GITHUB_ACTION_VARIANTS = (
     "default",
     "changelog-python",
     "full-stack",
+    "rust-api",
+    "go-api",
 )
 
 LEAKED_WORKFLOW_NAMES = frozenset({"template-ci.yml", "quality-matrix.yml"})

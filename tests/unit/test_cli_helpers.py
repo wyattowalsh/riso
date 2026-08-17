@@ -27,6 +27,14 @@ def test_parse_data_pairs_coerces_bool_and_int() -> None:
     assert result["ratio"] == 1.5
 
 
+def test_parse_data_pairs_yaml_lists() -> None:
+    result = parse_data_pairs(
+        ["api_languages=[python]", "mcp_languages=['typescript', 'go']"]
+    )
+    assert result["api_languages"] == ["python"]
+    assert result["mcp_languages"] == ["typescript", "go"]
+
+
 def test_parse_data_pairs_rejects_invalid_pair() -> None:
     with pytest.raises(ValueError, match="expected key=value"):
         parse_data_pairs(["not-a-pair"])

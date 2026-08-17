@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pytest
 
-from riso.cli.app import _normalize_argv
+from riso.cli.app import _GLOBAL_FLAGS, _normalize_argv
 
 pytestmark = pytest.mark.unit
 
@@ -36,6 +36,25 @@ def test_normalize_argv_handles_equals_form_timeout() -> None:
         "copy",
         "./out",
     ]
+
+
+def test_normalize_argv_moves_skip_post_gen() -> None:
+    assert _normalize_argv(["copy", "./out", "--skip-post-gen"]) == [
+        "--skip-post-gen",
+        "copy",
+        "./out",
+    ]
+
+
+def test_global_flags_keep_skip_post_gen() -> None:
+    assert "--skip-post-gen" in _GLOBAL_FLAGS
+
+
+def test_normalize_argv_does_not_hoist_help() -> None:
+    assert _normalize_argv(["migrate", "--help"]) == ["migrate", "--help"]
+    assert _normalize_argv(["migrate", "-h"]) == ["migrate", "-h"]
+    assert "--help" not in _GLOBAL_FLAGS
+    assert "-h" not in _GLOBAL_FLAGS
 
 
 def test_normalize_argv_empty_and_passthrough() -> None:

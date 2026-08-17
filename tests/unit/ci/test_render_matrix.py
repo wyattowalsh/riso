@@ -96,6 +96,35 @@ class TestVariantDiscovery:
         # Should be alphabetically sorted
         assert variant_names == ["alpha", "middle", "zebra"]
 
+    def test_discovers_nested_saas_starter_without_flattening(
+        self, temp_dir, monkeypatch
+    ):
+        """Nested answers stay relative to samples/ and are not basename-flattened."""
+        from render_matrix import discover_variants
+        import render_matrix
+
+        samples_dir = temp_dir / "samples"
+        nested = samples_dir / "saas-starter" / "vercel-starter"
+        nested.mkdir(parents=True)
+        (nested / "copier-answers.yml").write_text("project_name: Nested\n")
+        (samples_dir / "default").mkdir(parents=True)
+        (samples_dir / "default" / "copier-answers.yml").write_text(
+            "project_name: Default\n"
+        )
+        render_copy = samples_dir / "default" / "render" / "copier-answers.yml"
+        render_copy.parent.mkdir(parents=True)
+        render_copy.write_text("project_name: ShouldIgnore\n")
+
+        monkeypatch.setattr(render_matrix, "SAMPLES_DIR", samples_dir)
+
+        variants = discover_variants()
+        variant_names = [v[0] for v in variants]
+        assert "default" in variant_names
+        assert "saas-starter/vercel-starter" in variant_names
+        assert "vercel-starter" not in variant_names
+        dest_by_name = {name: answers.parent / "render" for name, answers in variants}
+        assert dest_by_name["saas-starter/vercel-starter"] == nested / "render"
+
 
 @pytest.mark.unit
 class TestSmokeResultsLoading:

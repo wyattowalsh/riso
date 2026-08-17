@@ -55,13 +55,13 @@ def test_validate_rejects_removed_key() -> None:
         "--data",
         "project_name=Test",
         "--data",
-        "api_tracks=python",
+        "saas_auth=firebase",
         "--json",
     )
     assert proc.returncode == 2
     payload = json.loads(proc.stderr)
     assert payload["ok"] is False
-    assert any("api_tracks" in err for err in payload["errors"])
+    assert any("saas_auth" in err for err in payload["errors"])
 
 
 @pytest.mark.integration

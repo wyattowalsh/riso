@@ -77,6 +77,7 @@ class TestCircleCITemplate:
         assert "lint-python:" in result
         assert "test-python:" in result
         assert "setup-uv:" in result
+        assert "uv --directory python sync" in result
 
     def test_node_orb_and_jobs(self, jinja_env):
         """Node orb and jobs should render when Node components are enabled."""
@@ -298,6 +299,8 @@ class TestCircleCITemplate:
         )
 
         assert "build-docs:" in result
+        assert "mv node/docs/fumadocs/out public/" in result
+        assert "mv docs/out public/" not in result
 
     def test_cache_restoration_and_saving(self, jinja_env):
         """Commands should restore and save caches."""

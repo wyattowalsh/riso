@@ -145,7 +145,7 @@ class TestLoadCopierContext:
 
 @pytest.mark.unit
 class TestValidateRemovedAnswerKeys:
-    """Tests for removed answer key rejection."""
+    """Tests for apply-then-reject leftover removed keys."""
 
     def test_allows_canonical_keys(self):
         """Should allow canonical component-first answer keys."""
@@ -154,16 +154,47 @@ class TestValidateRemovedAnswerKeys:
         context = {"api_module": "enabled", "api_languages": ["python"]}
         assert _validate_removed_answer_keys(context) is True
 
-    def test_rejects_removed_keys(self, capsys):
-        """Should reject removed answer keys with replacement guidance."""
+    def test_remaps_docs_site_then_allows(self):
+        """Should remap a known old key and drop it."""
         from pre_gen_project import _validate_removed_answer_keys
 
-        result = _validate_removed_answer_keys({"docs_site": "fumadocs"})
+        context = {"docs_site": "fumadocs"}
+        assert _validate_removed_answer_keys(context) is True
+        assert "docs_site" not in context
+        assert context["docs_module"] == "enabled"
+        assert context["docs_framework"] == "fumadocs"
+
+    def test_rejects_unmapped_leftover(self, capsys):
+        """Should fail-closed on leftover removed keys after remap."""
+        from pre_gen_project import _validate_removed_answer_keys
+
+        context = {"saas_auth": "firebase"}
+        result = _validate_removed_answer_keys(context)
 
         assert result is False
+        assert context["saas_auth"] == "firebase"
         captured = capsys.readouterr()
-        assert "docs_site" in captured.err
-        assert "docs_module" in captured.err
+        assert "saas_auth" in captured.err
+        assert "saas_auth_module" in captured.err
+
+    def test_does_not_overwrite_dest(self):
+        """Should drop the old key without overwriting an existing dest."""
+        from pre_gen_project import _validate_removed_answer_keys
+
+        context = {"api_language": "python", "api_languages": ["go"]}
+        assert _validate_removed_answer_keys(context) is True
+        assert "api_language" not in context
+        assert context["api_languages"] == ["go"]
+
+    def test_second_apply_is_idempotent(self):
+        """Should be a no-op after a successful remap."""
+        from pre_gen_project import _validate_removed_answer_keys
+
+        context = {"api_language": "python"}
+        assert _validate_removed_answer_keys(context) is True
+        snapshot = dict(context)
+        assert _validate_removed_answer_keys(context) is True
+        assert context == snapshot
 
 
 @pytest.mark.unit
@@ -1183,3 +1214,31 @@ class TestMainContextMerge:
         updated = json.loads(os.environ["COPIER_ANSWERS"])
         assert updated["graphql_api_module"] == "enabled"
         assert updated["websocket_module"] == "enabled"
+
+    def test_main_remaps_legacy_keys_into_env_context(
+        self,
+        tmp_path,
+        monkeypatch,
+        mock_shutil_which_found,
+        mock_subprocess_success,
+        mock_tool_check_success,
+    ):
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv(
+            "COPIER_ANSWERS",
+            json.dumps(
+                {
+                    "docs_site": "sphinx",
+                    "saas_infra_module": "disabled",
+                }
+            ),
+        )
+
+        from pre_gen_project import main
+
+        main()
+
+        updated = json.loads(os.environ["COPIER_ANSWERS"])
+        assert "docs_site" not in updated
+        assert updated["docs_module"] == "enabled"
+        assert updated["docs_framework"] == "sphinx-shibuya"
