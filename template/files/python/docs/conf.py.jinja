@@ -4,9 +4,11 @@ from __future__ import annotations
 import os
 import sys
 import warnings
+from collections.abc import Iterable
 from datetime import date
 from pathlib import Path
-from typing import Iterable
+
+import yaml
 
 # Third-party Sphinx extensions may emit deprecation warnings on Sphinx 9+.
 warnings.filterwarnings("ignore", message=".*RemovedInSphinx10Warning.*")
@@ -15,8 +17,6 @@ warnings.filterwarnings(
     category=DeprecationWarning,
     module="sphinx_autodoc_typehints",
 )
-
-import yaml
 
 DOCS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = DOCS_DIR.parent
@@ -266,12 +266,107 @@ copybutton_here_doc_delimiter = "EOF"
 
 sphinxemoji_style = "twemoji"
 
+# Design tokens + optional plot loaders (DESIGN.md). matplotlib/plotly are
+# not default docs extras — the helpers no-op when those packages are absent.
+RISO_DESIGN_TOKENS = {
+    "accent": "#14b8a6",
+    "paper": "#f8fafc",
+    "surface_dark": "#0f172a",
+    "text_light": "#0b132b",
+    "text_dark": "#e2e8f0",
+}
+RISO_MPLSTYLE = DOCS_DIR / "_static" / "mpl" / "riso.mplstyle"
+RISO_PLOTLY_TEMPLATE = DOCS_DIR / "_static" / "js" / "riso-plotly-template.json"
+
+
+def apply_riso_matplotlib_style() -> Path | None:
+    """Load docs/_static/mpl/riso.mplstyle when matplotlib is installed."""
+    if not RISO_MPLSTYLE.is_file():
+        return None
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        return None
+    plt.style.use(RISO_MPLSTYLE)
+    return RISO_MPLSTYLE
+
+
+def apply_riso_plotly_template(*, default: bool = True) -> Path | None:
+    """Register the Riso Plotly template when plotly is installed."""
+    if not RISO_PLOTLY_TEMPLATE.is_file():
+        return None
+    try:
+        import json
+
+        import plotly.graph_objects as go
+        import plotly.io as pio
+    except ImportError:
+        return None
+    payload = json.loads(RISO_PLOTLY_TEMPLATE.read_text(encoding="utf-8"))
+    pio.templates["riso"] = go.layout.Template(payload)
+    if default:
+        pio.templates.default = "riso"
+    return RISO_PLOTLY_TEMPLATE
+
+
+apply_riso_matplotlib_style()
+apply_riso_plotly_template()
+
 mermaid_cmd = (REPO_ROOT / "node_modules/.bin/mmdc") if (REPO_ROOT / "node_modules/.bin/mmdc").exists() else None
 mermaid_cmd = str(mermaid_cmd) if mermaid_cmd else (os.getenv("MERMAID_CMD") or "mmdc")
 mermaid_version = "11.12.1"
 mermaid_output_format = "svg"
 mermaid_d3_zoom = True
-mermaid_params = ["--theme", "default", "--backgroundColor", "transparent"]
+mermaid_params = ["--theme", "base", "--backgroundColor", "transparent"]
+mermaid_init_js = """
+mermaid.initialize({
+  startOnLoad: false,
+  securityLevel: "strict",
+  theme: "base",
+  deterministicIds: true,
+  htmlLabels: false,
+  fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+  themeVariables: {
+    primaryColor: "#14b8a6",
+    primaryTextColor: "#0b132b",
+    primaryBorderColor: "#0f766e",
+    secondaryColor: "#ccfbf1",
+    tertiaryColor: "#f1f5f9",
+    lineColor: "#334155",
+    textColor: "#0b132b",
+    background: "#f8fafc",
+    mainBkg: "#ffffff",
+    secondBkg: "#f1f5f9",
+    clusterBkg: "#f0fdfa",
+    clusterBorder: "#14b8a6",
+    titleColor: "#0b132b",
+    edgeLabelBackground: "#ffffff",
+    actorBkg: "#ccfbf1",
+    actorBorder: "#0f766e",
+    actorTextColor: "#0b132b",
+    noteBkgColor: "#f0fdfa",
+    noteTextColor: "#0b132b",
+    noteBorderColor: "#14b8a6",
+    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+    fontSize: "16px"
+  },
+  flowchart: {
+    padding: 16,
+    diagramPadding: 16,
+    nodeSpacing: 50,
+    rankSpacing: 50,
+    htmlLabels: false
+  },
+  sequence: {
+    actorMargin: 50,
+    messageMargin: 40,
+    boxMargin: 10,
+    noteMargin: 10
+  },
+  er: { diagramPadding: 20, entityPadding: 15, minEntityWidth: 100 }
+});
+""".strip()
+
 
 viewcode_follow_imported_members = True
 viewcode_enable_epub = False

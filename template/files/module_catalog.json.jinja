@@ -5,8 +5,8 @@
       "prompt_key": "quality_profile",
       "default_state": "standard",
       "selected_state": "{{ quality_profile }}",
-      "description": "Unified Ruff/ty/Pylint/coverage suite with optional Node tooling.",
-      "dependencies": ["taskipy", "coverage", "ruff", "ty", "pylint"],
+      "description": "Unified Ruff/ty/Pylint/coverage suite (ty, not mypy) with optional Node tooling.",
+      "dependencies": ["taskipy", "coverage", "ruff", "ty", "pylint", "mise"],
       "docs_path": "docs/modules/quality.md",
       "ci_jobs": ["python-quality-standard", "python-quality-strict"],
       "validation_commands": [
@@ -34,7 +34,7 @@
       "name": "api_python",
       "prompt_key": "api_languages",
       "default_state": "none",
-      "selected_state": "{{ api_languages }}",
+      "selected_state": "{{ api_languages if api_module == 'enabled' else 'disabled' }}",
       "description": "Production-ready FastAPI application with comprehensive scaffolding, health checks, CRUD examples, and auto-documentation.",
       "dependencies": ["fastapi", "uvicorn", "pydantic", "pydantic-settings", "python-dotenv", "httpx", "pytest-asyncio"],
       "docs_path": "docs/modules/api-fastapi.md",
@@ -60,7 +60,7 @@
       "name": "api_node",
       "prompt_key": "api_languages",
       "default_state": "none",
-      "selected_state": "{{ api_languages }}",
+      "selected_state": "{{ api_languages if api_module == 'enabled' else 'disabled' }}",
       "description": "Fastify service with shared logic wiring and Vitest smoke tests.",
       "dependencies": ["pnpm", "fastify", "shared_logic"],
       "docs_path": "docs/modules/api-node.md",
@@ -106,8 +106,8 @@
       "docs_path": "docs/modules/mcp.md",
       "ci_jobs": ["mcp-smoke"],
       "validation_commands": [
-        {% if 'python' in mcp_languages %}"uv run python -m mcp --help",
-        {% endif %}"uv run python -c \"from shared.mcp import tooling; print(tooling.list_tools())\""
+        {% if mcp_module == 'enabled' and 'python' in mcp_languages %}"uv run python -m mcp --help",
+        "uv run python -c \"from shared.mcp import tooling; print(tooling.list_tools())\""{% elif mcp_module == 'enabled' and 'typescript' in mcp_languages %}"pnpm --filter @{{ package_name }}/mcp-server test"{% else %}"true"{% endif %}
       ]
     },
     {
@@ -138,8 +138,8 @@
     {
       "name": "docs_framework",
       "prompt_key": "docs_framework",
-      "default_state": "starter-guide",
-      "selected_state": "{{ docs_framework }}",
+      "default_state": "fumadocs",
+      "selected_state": "{{ docs_framework if docs_module == 'enabled' else 'disabled' }}",
       "description": "Fumadocs/Next.js documentation experience for TypeScript consumers.",
       "dependencies": ["pnpm", "next", "fumadocs"],
       "docs_path": "docs/modules/docs-site.md",
@@ -176,7 +176,7 @@
         "actionlint .github/workflows/riso-matrix.yml"
       ],
       "features": [
-        "Automated quality validation (ruff, mypy, pylint, pytest)",
+        "Automated quality validation (ruff, ty, pylint, pytest)",
         "Matrix testing across Python 3.11, 3.12, 3.13",
         "Dependency caching with 70%+ hit rate target",
         "90-day artifact retention",
@@ -208,6 +208,32 @@
         "Pre-release version support (alpha, beta, rc)",
         "Release process completion in <10 minutes",
         "Comprehensive logging with correlation IDs"
+      ]
+    },
+    {
+      "name": "mise",
+      "prompt_key": "mise",
+      "default_state": "enabled",
+      "selected_state": "enabled",
+      "description": "Always-on generated mise.toml toolchain pins (python/node/pnpm/uv). Not a Copier extra; no toggle. Generated Node floor is 20+, not the maintainer 22 pin.",
+      "dependencies": ["mise"],
+      "docs_path": "docs/modules/quality.md",
+      "ci_jobs": [],
+      "validation_commands": [
+        "mise --version"
+      ]
+    },
+    {
+      "name": "openspec_extra",
+      "prompt_key": "openspec_extra",
+      "default_state": "disabled",
+      "selected_state": "{{ 'enabled' if openspec_extra | lower == 'enabled' else 'disabled' }}",
+      "description": "Optional OpenSpec extra (default disabled). Enable openspec_extra to copy openspec/**. Riso 2.0 remaps removed 1.x Copier keys via riso migrate / riso update, then fail-closed.",
+      "dependencies": ["openspec"],
+      "docs_path": "docs/modules/quality.md",
+      "ci_jobs": [],
+      "validation_commands": [
+        {% if openspec_extra | lower == 'enabled' %}"openspec --help"{% endif %}
       ]
     }
   ]

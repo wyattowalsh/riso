@@ -14,6 +14,9 @@ import {
   shell,
 } from 'electron';
 import { is } from '@electron-toolkit/utils';
+{% if 'auto_updater' in desktop_features %}
+import { checkForUpdatesInteractive } from './updater';
+{% endif %}
 
 /**
  * Set up the application menu
@@ -178,7 +181,7 @@ export function setupMenu(mainWindow: BrowserWindow): void {
         {
           label: 'Check for Updates...',
           click: (): void => {
-            mainWindow.webContents.send('check-for-updates');
+            void checkForUpdatesInteractive(mainWindow);
           },
         },
         {% endif %}

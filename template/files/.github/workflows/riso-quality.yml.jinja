@@ -17,6 +17,7 @@ env:
   PACKAGE_NAME: {{ package_name }}
 
 jobs:
+  {% if (cli_module == 'enabled' and 'python' in cli_languages) or (api_module == 'enabled' and 'python' in api_languages) or (mcp_module == 'enabled' and 'python' in mcp_languages) or (docs_module == 'enabled' and docs_framework == 'sphinx-shibuya') %}
   python-quality:
     name: Python Quality Checks
     runs-on: ubuntu-latest
@@ -50,6 +51,7 @@ jobs:
           cache-dependency-glob: "**/uv.lock"
       
       - name: Install dependencies
+        working-directory: python
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           uv sync
@@ -63,17 +65,19 @@ jobs:
           exponential_backoff: true
           command: |
             export PATH="$HOME/.local/bin:$PATH"
-            QUALITY_PROFILE={{ quality_profile }} uv run task quality
+            QUALITY_PROFILE={{ quality_profile }} uv --directory python run task quality
       
       {% if cli_module == 'enabled' %}
       - name: Test CLI module
+        working-directory: python
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           uv run pytest tests/test_cli*.py -v
       {% endif %}
       
-      {% if mcp_module == 'enabled' %}
+      {% if mcp_module == 'enabled' and 'python' in mcp_languages %}
       - name: Test MCP module
+        working-directory: python
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           uv run pytest tests/test_mcp.py -v
@@ -85,9 +89,9 @@ jobs:
         with:
           name: test-results-py3.11-{% raw %}${{ github.run_id }}{% endraw %}
           path: |
-            test-results.xml
-            htmlcov/
-            .coverage
+            python/test-results.xml
+            python/htmlcov/
+            python/.coverage
           retention-days: 90
       
       - name: Upload quality logs
@@ -96,12 +100,44 @@ jobs:
         with:
           name: quality-logs-py3.11-{% raw %}${{ github.run_id }}{% endraw %}
           path: |
-            .riso/quality-durations.json
-            ruff-output.txt
-            ty-output.txt
-            pylint-output.txt
+            python/.riso/quality-durations.json
+            python/ruff-output.txt
+            python/ty-output.txt
+            python/pylint-output.txt
           retention-days: 90
           if-no-files-found: warn
+  {% endif %}
+
+  {% if mcp_module == 'enabled' and 'typescript' in mcp_languages %}
+  node-mcp-quality:
+    name: Node MCP Quality Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: {% if quality_profile == 'strict' %}20{% else %}10{% endif %}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint MCP server
+        run: pnpm --filter @{{ package_name }}/mcp-server run lint
+
+      - name: Typecheck MCP server
+        run: pnpm --filter @{{ package_name }}/mcp-server run typecheck
+
+      - name: Test MCP server
+        run: pnpm --filter @{{ package_name }}/mcp-server test
+  {% endif %}
 
   {% if api_module == 'enabled' and 'node' in api_languages %}
   node-quality:
@@ -183,15 +219,32 @@ jobs:
             {% raw %}${{ runner.os }}-cargo-{% endraw %}
 
       - name: Check formatting
-        working-directory: {{ package_name | replace('_', '-') }}-mcp
+        working-directory: rust/mcp
         run: cargo fmt -- --check
 
       - name: Run clippy
-        working-directory: {{ package_name | replace('_', '-') }}-mcp
+        working-directory: rust/mcp
         run: cargo clippy -- -D warnings
 
       - name: Run tests
-        working-directory: {{ package_name | replace('_', '-') }}-mcp
+        working-directory: rust/mcp
         run: cargo test
+  {% endif %}
+
+  {% if not (
+        (cli_module == 'enabled' and 'python' in cli_languages)
+     or (api_module == 'enabled' and 'python' in api_languages)
+     or (mcp_module == 'enabled' and 'python' in mcp_languages)
+     or (docs_module == 'enabled' and docs_framework == 'sphinx-shibuya')
+     or (api_module == 'enabled' and 'node' in api_languages)
+     or (mcp_module == 'enabled' and 'typescript' in mcp_languages)
+     or (mcp_module == 'enabled' and 'rust' in mcp_languages)
+  ) %}
+  scaffold-ok:
+    name: Scaffold (no language quality jobs)
+    runs-on: ubuntu-latest
+    steps:
+      - name: No Python, Node, or Rust quality tracks selected
+        run: echo "No language quality jobs for this combination."
   {% endif %}
 {% endif %}

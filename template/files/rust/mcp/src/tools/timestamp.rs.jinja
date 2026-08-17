@@ -1,34 +1,29 @@
 {%- if mcp_module == 'enabled' and 'rust' in mcp_languages and mcp_example_tools -%}
-//! Timestamp tool - date and time utilities
-//!
-//! Demonstrates tools with multiple return types.
+//! Timestamp tool helpers.
 
-use chrono::{DateTime, TimeZone, Utc};
-use rmcp::{Server, tool};
+use chrono::{DateTime, Datelike, TimeZone, Timelike, Utc};
+use rmcp::schemars;
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize)]
-struct GetTimeParams {
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct GetTimeParams {
     #[serde(default = "default_format")]
-    format: String,
+    pub format: String,
 }
 
 fn default_format() -> String {
     "iso".to_string()
 }
 
-#[derive(Serialize)]
-struct TimeResult {
-    timestamp: String,
-    format: String,
-    unix: i64,
+#[derive(Debug, Serialize)]
+pub struct TimeResult {
+    pub timestamp: String,
+    pub format: String,
+    pub unix: i64,
 }
 
-/// Get the current time in various formats
-#[tool]
-async fn get_current_time(params: GetTimeParams) -> Result<TimeResult, String> {
+pub fn get_current_time(params: &GetTimeParams) -> TimeResult {
     let now = Utc::now();
-
     let timestamp = match params.format.as_str() {
         "iso" => now.to_rfc3339(),
         "unix" => now.timestamp().to_string(),
@@ -37,36 +32,34 @@ async fn get_current_time(params: GetTimeParams) -> Result<TimeResult, String> {
         _ => now.to_rfc3339(),
     };
 
-    Ok(TimeResult {
+    TimeResult {
         timestamp,
-        format: params.format,
+        format: params.format.clone(),
         unix: now.timestamp(),
-    })
+    }
 }
 
-#[derive(Deserialize)]
-struct ParseParams {
-    timestamp: String,
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ParseParams {
+    pub timestamp: String,
     #[serde(default = "default_format")]
-    input_format: String,
+    pub input_format: String,
 }
 
-#[derive(Serialize)]
-struct ParseResult {
-    success: bool,
-    year: Option<i32>,
-    month: Option<u32>,
-    day: Option<u32>,
-    hour: Option<u32>,
-    minute: Option<u32>,
-    second: Option<u32>,
-    iso: Option<String>,
-    error: Option<String>,
+#[derive(Debug, Serialize)]
+pub struct ParseResult {
+    pub success: bool,
+    pub year: Option<i32>,
+    pub month: Option<u32>,
+    pub day: Option<u32>,
+    pub hour: Option<u32>,
+    pub minute: Option<u32>,
+    pub second: Option<u32>,
+    pub iso: Option<String>,
+    pub error: Option<String>,
 }
 
-/// Parse a timestamp string into components
-#[tool]
-async fn parse_timestamp(params: ParseParams) -> Result<ParseResult, String> {
+pub fn parse_timestamp(params: &ParseParams) -> ParseResult {
     let result = if params.input_format == "unix" {
         params
             .timestamp
@@ -80,7 +73,7 @@ async fn parse_timestamp(params: ParseParams) -> Result<ParseResult, String> {
     };
 
     match result {
-        Some(dt) => Ok(ParseResult {
+        Some(dt) => ParseResult {
             success: true,
             year: Some(dt.year()),
             month: Some(dt.month()),
@@ -90,8 +83,8 @@ async fn parse_timestamp(params: ParseParams) -> Result<ParseResult, String> {
             second: Some(dt.second()),
             iso: Some(dt.to_rfc3339()),
             error: None,
-        }),
-        None => Ok(ParseResult {
+        },
+        None => ParseResult {
             success: false,
             year: None,
             month: None,
@@ -101,15 +94,7 @@ async fn parse_timestamp(params: ParseParams) -> Result<ParseResult, String> {
             second: None,
             iso: None,
             error: Some("Failed to parse timestamp".to_string()),
-        }),
+        },
     }
 }
-
-pub fn register(server: &Server) {
-    server.register_tool("get_current_time", get_current_time);
-    server.register_tool("parse_timestamp", parse_timestamp);
-}
-
-// Bring chrono traits into scope
-use chrono::{Datelike, Timelike};
 {%- endif %}

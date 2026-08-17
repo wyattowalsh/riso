@@ -5,7 +5,17 @@
 
 pub mod config;
 pub mod error;
-pub mod tools;
+pub mod server;
+{%- if mcp_example_tools %}
+mod prompts;
+mod resources;
+mod tools;
+{%- endif %}
+{%- if mcp_transport in ['sse', 'http'] %}
+pub mod transport;
+{%- endif %}
+
+pub use server::McpServer;
 
 pub const VERSION: &str = "1.0.0";
 pub const SERVER_NAME: &str = "{{ package_name }}-mcp";

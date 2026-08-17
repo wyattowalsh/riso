@@ -9,7 +9,7 @@ When generating a project with MCP enabled, you can configure:
 
 | Option | Description | Values |
 |--------|-------------|--------|
-| `mcp_languages` | Server implementation language | `python`, `typescript`, `rust` |
+| `mcp_languages` | Server implementation language | `python`, `typescript`, `rust`, `go` |
 | `mcp_transport` | Default transport protocol | `stdio`, `sse`, `http` |
 | `mcp_example_tools` | Include example tools | `true`, `false` |
 
@@ -54,8 +54,8 @@ npx @modelcontextprotocol/inspector uv run python -m {{ package_name }}.mcp
 ### TypeScript (FastMCP)
 
 ```
-packages/mcp/
-├── package.json
+node/mcp/
+├── package.json         # name: @{{ package_name }}/mcp-server
 ├── tsconfig.json
 ├── biome.json
 └── src/
@@ -74,16 +74,46 @@ packages/mcp/
 
 ```bash
 # Build the server
-pnpm --filter mcp build
+pnpm --filter @{{ package_name }}/mcp-server build
 
 # Run in stdio mode
-pnpm --filter mcp start
+pnpm --filter @{{ package_name }}/mcp-server start
 
 # Run in SSE mode
-pnpm --filter mcp start --transport sse --port 3000
+pnpm --filter @{{ package_name }}/mcp-server start --transport sse --port 3000
 
 # With MCP Inspector
-npx @modelcontextprotocol/inspector pnpm --filter mcp start
+npx @modelcontextprotocol/inspector pnpm --filter @{{ package_name }}/mcp-server start
+```
+
+{% elif 'go' in mcp_languages %}
+### Go (official MCP Go SDK)
+
+```
+mcp/
+├── go.mod
+├── cmd/server/main.go
+└── internal/
+    ├── mcp/             # server, config, tools, resources
+    ├── tools/
+    └── resources/
+```
+
+### Running the Server
+
+```bash
+# Build the server
+go build -o {{ package_name }}-mcp ./cmd/server
+
+# stdio mode (default, for Claude Desktop)
+./{{ package_name }}-mcp --transport stdio
+
+# SSE or HTTP streaming
+./{{ package_name }}-mcp --transport sse --host 127.0.0.1 --port 3000
+./{{ package_name }}-mcp --transport http --host 127.0.0.1 --port 3000
+
+# With MCP Inspector
+npx @modelcontextprotocol/inspector ./{{ package_name }}-mcp
 ```
 
 {% elif 'rust' in mcp_languages %}
@@ -140,7 +170,11 @@ Add to your `mcp.json`:
 {% elif 'typescript' in mcp_languages %}
       "type": "stdio",
       "command": "pnpm",
-      "args": ["--filter", "mcp", "start"],
+      "args": ["--filter", "@{{ package_name }}/mcp-server", "start"],
+{% elif 'go' in mcp_languages %}
+      "type": "stdio",
+      "command": "./{{ package_name }}-mcp",
+      "args": ["--transport", "stdio"],
 {% elif 'rust' in mcp_languages %}
       "type": "stdio",
       "command": "./target/release/{{ package_name }}-mcp",
@@ -201,6 +235,24 @@ export function registerMyTools(mcp: FastMCP) {
 }
 ```
 
+{% elif 'go' in mcp_languages %}
+```go
+// In mcp/internal/tools/my_tool.go
+package tools
+
+import "context"
+
+type MyToolInput struct {
+	Param string `json:"param" jsonschema:"The input parameter"`
+}
+
+func MyTool(_ context.Context, input MyToolInput) (map[string]string, error) {
+	return map[string]string{"result": input.Param}, nil
+}
+```
+
+Register the tool with the official Go SDK (`mcp.AddTool`) in `internal/mcp`.
+
 {% elif 'rust' in mcp_languages %}
 ```rust
 // In src/tools/my_tool.rs
@@ -239,5 +291,6 @@ pub async fn my_tool(input: MyToolInput) -> Result<MyToolOutput, Box<dyn std::er
 
 - [FastMCP Documentation](https://github.com/jlowin/fastmcp) - Python/TypeScript framework
 - [rmcp SDK](https://docs.rs/rmcp) - Rust MCP implementation
+- [MCP Go SDK](https://pkg.go.dev/github.com/modelcontextprotocol/go-sdk) - Official Go implementation
 - [MCP Specification](https://modelcontextprotocol.io/) - Official protocol documentation
 {%- endif %}

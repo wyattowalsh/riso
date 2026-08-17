@@ -14,8 +14,10 @@ quality_profile:
     - standard
     - strict
   description: >
-    Configure the quality suite profile. `standard` runs pragmatic linting/type
-    checks, while `strict` enables extended Ruff rules and pylint.
+    Configure the quality suite profile. Typecheck is ty (not mypy). `standard`
+    runs pragmatic linting/type checks, while `strict` enables extended Ruff
+    rules and pylint. Riso 2.0 always renders mise.toml; OpenSpec is optional
+    via `openspec_extra` (default disabled).
 
 cli_module:
   default: "{{ cli_module }}"
@@ -99,3 +101,15 @@ ci_platform:
     - none
   description: >
     CI platform scaffolding (`github-actions` or skip CI templates).
+
+openspec_extra:
+  default: "{{ openspec_extra }}"
+  choices:
+    - disabled
+    - enabled
+  description: >
+    Optional OpenSpec extra for generated projects (default disabled). Enable
+    to copy `openspec/**`. mise.toml always renders and is not gated by this
+    extra. Riso 2.0 remaps removed 1.x Copier keys via `riso migrate` /
+    `riso update` (dry-run preview) then fail-closed on leftovers. No dual-path
+    aliases after remap.

@@ -1,0 +1,72 @@
+{% if saas_infra_module == "enabled" and saas_orm == "prisma" and saas_include_fixtures %}
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  const user = await prisma.user.upsert({
+    where: { email: 'demo@example.com' },
+    update: {},
+    create: {
+      email: 'demo@example.com',
+      name: 'Demo User',
+    },
+  });
+
+  {% if saas_tenancy_model == "b2b-teams" %}
+  const organization = await prisma.organization.upsert({
+    where: { slug: 'acme' },
+    update: {},
+    create: {
+      name: 'Acme',
+      slug: 'acme',
+      plan: 'starter',
+    },
+  });
+
+  await prisma.organizationMembership.upsert({
+    where: {
+      userId_organizationId: {
+        userId: user.id,
+        organizationId: organization.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: user.id,
+      organizationId: organization.id,
+      {% if saas_rbac_system == "basic-roles" %}
+      role: 'owner',
+      {% endif %}
+      acceptedAt: new Date(),
+    },
+  });
+  {% endif %}
+
+  await prisma.subscription.upsert({
+    where: { id: 'seed-subscription' },
+    update: {},
+    create: {
+      id: 'seed-subscription',
+      userId: user.id,
+      {% if saas_tenancy_model == "b2b-teams" %}
+      organizationId: organization.id,
+      {% endif %}
+      status: 'active',
+      plan: 'starter',
+      billingCycle: 'monthly',
+    },
+  });
+
+  console.log('Seeded demo fixtures');
+}
+
+main()
+  .catch((error: unknown) => {
+    console.error(error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
+{% endif %}

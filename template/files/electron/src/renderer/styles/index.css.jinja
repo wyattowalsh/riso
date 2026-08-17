@@ -4,38 +4,48 @@
 @tailwind utilities;
 
 @layer base {
-  /* Root variables */
   :root {
-    --background: 255 255 255;
-    --foreground: 15 23 42;
-    --muted: 241 245 249;
-    --muted-foreground: 100 116 139;
-    --accent: 59 130 246;
-    --accent-foreground: 255 255 255;
+    --accent: 20 184 166;
+    --accent-hex: #14b8a6;
+    --surface: 248 250 252;
+    --surface-elevated: 255 255 255;
+    --surface-muted: 226 232 240;
+    --foreground: 11 19 43;
+    --muted: 71 85 105;
+    --border: 203 213 225;
+    --riso-accent: #14b8a6;
+    --riso-surface: #f8fafc;
+    --riso-text: #0b132b;
+    --background: var(--surface);
   }
 
   .dark {
-    --background: 15 23 42;
+    --accent: 20 184 166;
+    --accent-hex: #14b8a6;
+    --surface: 15 23 42;
+    --surface-elevated: 30 41 59;
+    --surface-muted: 51 65 85;
     --foreground: 248 250 252;
-    --muted: 30 41 59;
-    --muted-foreground: 148 163 184;
-    --accent: 59 130 246;
-    --accent-foreground: 255 255 255;
+    --muted: 148 163 184;
+    --border: 51 65 85;
+    --riso-accent: #14b8a6;
+    --riso-surface: #0f172a;
+    --riso-text: #f8fafc;
+    --background: var(--surface);
   }
 
-  /* Base styles */
   * {
-    @apply border-slate-200 dark:border-slate-700;
+    @apply border-border;
   }
 
   body {
-    @apply bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100;
+    @apply bg-surface text-ink;
+    font-family: Inter, system-ui, 'Segoe UI', sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
-  /* Scrollbar styling */
   ::-webkit-scrollbar {
-    @apply w-2 h-2;
+    @apply h-2 w-2;
   }
 
   ::-webkit-scrollbar-track {
@@ -43,85 +53,77 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-slate-300 dark:bg-slate-700 rounded-full;
+    @apply rounded-full bg-surface-muted;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-slate-400 dark:bg-slate-600;
+    @apply bg-muted;
   }
 
-  /* Selection */
   ::selection {
-    @apply bg-blue-500/30;
+    background: rgb(20 184 166 / 0.3);
   }
 }
 
 @layer components {
-  /* Button variants */
   .btn {
-    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .btn-primary {
-    @apply btn bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
+    @apply btn bg-accent-600 text-white hover:bg-accent-700 focus-visible:ring-accent-500;
   }
 
   .btn-secondary {
-    @apply btn bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600 focus:ring-slate-500;
+    @apply btn bg-surface-muted text-ink hover:bg-border focus-visible:ring-accent-500;
   }
 
   .btn-ghost {
-    @apply btn hover:bg-slate-100 dark:hover:bg-slate-800 focus:ring-slate-500;
+    @apply btn hover:bg-surface-muted focus-visible:ring-accent-500;
   }
 
   .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+    @apply btn bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500;
   }
 
-  /* Card */
   .card {
-    @apply bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm;
+    @apply rounded-xl border border-border bg-surface-elevated shadow-sm;
   }
 
-  /* Input */
   .input {
-    @apply w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50;
+    @apply w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted focus-visible:border-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 disabled:opacity-50;
   }
 
-  /* Badge */
   .badge {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
 
   .badge-primary {
-    @apply badge bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300;
+    @apply badge bg-accent-100 text-accent-800 dark:bg-accent-900/30 dark:text-accent-300;
   }
 
   .badge-success {
-    @apply badge bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300;
+    @apply badge bg-accent-100 text-accent-800 dark:bg-accent-900/30 dark:text-accent-300;
   }
 
   .badge-warning {
-    @apply badge bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300;
+    @apply badge bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300;
   }
 
   .badge-danger {
-    @apply badge bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300;
+    @apply badge bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300;
   }
 }
 
 @layer utilities {
-  /* No drag region for interactive elements in title bar */
   .no-drag {
     -webkit-app-region: no-drag;
   }
 
-  /* Drag region for title bar */
   .drag {
     -webkit-app-region: drag;
   }
 
-  /* Hide scrollbar but allow scrolling */
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -131,7 +133,6 @@
     display: none;
   }
 
-  /* Text ellipsis */
   .truncate-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;

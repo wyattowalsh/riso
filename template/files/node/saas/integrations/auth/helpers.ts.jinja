@@ -62,6 +62,13 @@ export async function hasRole(role: 'admin' | 'org:member') {
   return has({ role });
 }
 
+export async function requireAdminRole() {
+  const allowed = await hasRole('admin');
+  if (!allowed) {
+    throw new ForbiddenError('Admin role required');
+  }
+}
+
 export async function isAuthenticated() {
   const { userId } = await auth();
   return !!userId;
@@ -140,6 +147,13 @@ export async function hasRole(args: ClerkArgs, role: string) {
   return orgRole === role;
 }
 
+export async function requireAdminRole(args: ClerkArgs) {
+  const allowed = await hasRole(args, 'org:admin') || await hasRole(args, 'admin');
+  if (!allowed) {
+    throw new ForbiddenError('Admin role required');
+  }
+}
+
 export async function isAuthenticated(args: ClerkArgs) {
   const { userId } = await getAuth(args);
   return !!userId;
@@ -203,6 +217,19 @@ export async function getUserEmail() {
 export async function getUserDisplayName() {
   const session = await auth();
   return session?.user?.name ?? session?.user?.email ?? 'User';
+}
+
+export async function hasRole(role: string) {
+  const session = await auth();
+  const userRole = (session?.user as { role?: string } | undefined)?.role;
+  return userRole === role;
+}
+
+export async function requireAdminRole() {
+  const allowed = await hasRole('admin');
+  if (!allowed) {
+    throw new ForbiddenError('Admin role required');
+  }
 }
 {% endif %}
 

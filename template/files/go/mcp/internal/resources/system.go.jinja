@@ -10,7 +10,6 @@ import (
 	"runtime"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"github.com/modelcontextprotocol/go-sdk/server"
 )
 
 // SystemInfo represents system information.
@@ -24,20 +23,16 @@ type SystemInfo struct {
 }
 
 // RegisterSystemResources registers all system-related resources with the MCP server.
-func RegisterSystemResources(srv *server.Server, logger *slog.Logger) {
-	// system://info - Get basic system information
-	resource := mcp.Resource{
+func RegisterSystemResources(srv *mcp.Server, logger *slog.Logger) {
+	srv.AddResource(&mcp.Resource{
 		URI:         "system://info",
 		Name:        "System Information",
 		Description: "Get basic system information including OS, architecture, and Go runtime details.",
-		MimeType:    "application/json",
-	}
-
-	srv.RegisterResource(resource, func(ctx context.Context) (mcp.ResourceContent, error) {
+		MIMEType:    "application/json",
+	}, func(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 		logger.Debug("reading system://info resource")
 
 		hostname, _ := os.Hostname()
-
 		info := SystemInfo{
 			OS:           runtime.GOOS,
 			Architecture: runtime.GOARCH,
@@ -50,41 +45,39 @@ func RegisterSystemResources(srv *server.Server, logger *slog.Logger) {
 		data, err := json.MarshalIndent(info, "", "  ")
 		if err != nil {
 			logger.Error("failed to marshal system info", "error", err)
-			return mcp.ResourceContent{}, err
+			return nil, err
 		}
 
-		return mcp.ResourceContent{
-			URI:      "system://info",
-			MimeType: "application/json",
-			Text:     string(data),
+		return &mcp.ReadResourceResult{
+			Contents: []*mcp.ResourceContents{
+				{
+					URI:      req.Params.URI,
+					MIMEType: "application/json",
+					Text:     string(data),
+				},
+			},
 		}, nil
 	})
 
-	// system://env - Get environment variables (filtered for safety)
-	envResource := mcp.Resource{
+	srv.AddResource(&mcp.Resource{
 		URI:         "system://env",
 		Name:        "Environment Variables",
 		Description: "Get non-sensitive environment variables.",
-		MimeType:    "application/json",
-	}
-
-	srv.RegisterResource(envResource, func(ctx context.Context) (mcp.ResourceContent, error) {
+		MIMEType:    "application/json",
+	}, func(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 		logger.Debug("reading system://env resource")
 
-		// Only include safe environment variables
 		safeVars := map[string]string{
-			"PATH":       os.Getenv("PATH"),
-			"HOME":       os.Getenv("HOME"),
-			"USER":       os.Getenv("USER"),
-			"SHELL":      os.Getenv("SHELL"),
-			"LANG":       os.Getenv("LANG"),
-			"TERM":       os.Getenv("TERM"),
-			"GOPATH":     os.Getenv("GOPATH"),
-			"GOROOT":     os.Getenv("GOROOT"),
+			"PATH":        os.Getenv("PATH"),
+			"HOME":        os.Getenv("HOME"),
+			"USER":        os.Getenv("USER"),
+			"SHELL":       os.Getenv("SHELL"),
+			"LANG":        os.Getenv("LANG"),
+			"TERM":        os.Getenv("TERM"),
+			"GOPATH":      os.Getenv("GOPATH"),
+			"GOROOT":      os.Getenv("GOROOT"),
 			"GO111MODULE": os.Getenv("GO111MODULE"),
 		}
-
-		// Remove empty values
 		for key, val := range safeVars {
 			if val == "" {
 				delete(safeVars, key)
@@ -94,13 +87,17 @@ func RegisterSystemResources(srv *server.Server, logger *slog.Logger) {
 		data, err := json.MarshalIndent(safeVars, "", "  ")
 		if err != nil {
 			logger.Error("failed to marshal env vars", "error", err)
-			return mcp.ResourceContent{}, err
+			return nil, err
 		}
 
-		return mcp.ResourceContent{
-			URI:      "system://env",
-			MimeType: "application/json",
-			Text:     string(data),
+		return &mcp.ReadResourceResult{
+			Contents: []*mcp.ResourceContents{
+				{
+					URI:      req.Params.URI,
+					MIMEType: "application/json",
+					Text:     string(data),
+				},
+			},
 		}, nil
 	})
 

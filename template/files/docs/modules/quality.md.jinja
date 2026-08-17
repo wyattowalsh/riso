@@ -1,0 +1,53 @@
+# Quality Suite
+
+The quality suite standardises linting, type-checking, testing, and coverage
+for this project. The type checker is **ty** (`uv run ty check`). Do not add
+mypy or `mypy.ini`.
+
+## Commands
+
+{% if task_runner in ['just', 'both'] %}
+- `just quality` – default aggregator: Ruff, ty, Pylint, pytest (via coverage),
+  and optional Node checks when the Node API track is enabled.
+{% endif %}
+{% if task_runner in ['makefile', 'both'] %}
+- `make quality` – GNU Make aggregator (present when `task_runner` is
+  `makefile` or `both`).
+{% endif %}
+- `uv run task quality` – Taskipy fallback when aggregators are unavailable
+  (`task_runner=none`). Durations land in `.riso/quality-durations.json`.
+- `uv run ty check` / `{% if task_runner in ['just', 'both'] %}just typecheck{% elif task_runner == 'makefile' %}make typecheck{% else %}uv run ty check{% endif %}` – type check only.
+
+Recipes honour `QUALITY_PROFILE` (default
+`{{ quality_profile|default('standard') }}`). Set `QUALITY_PROFILE=strict` for
+stricter ty and Ruff rules during local runs or CI.
+
+## Configuration Files
+
+- `ruff.toml`
+- `pyproject.toml` (`[tool.ty]`)
+- `.pylintrc`
+- `coverage.cfg`
+
+Visual tokens for docs, charts, and frontend surfaces are documented in
+[DESIGN.md](../../DESIGN.md) at the project root.
+
+## Tooling Expectations
+
+| Tool      | Provisioning                        | Notes |
+|-----------|-------------------------------------|-------|
+| Ruff      | quality extra / `uv`                | Shared ignore list |
+| ty        | quality extra / `uv`                | Astral type checker; stricter in `strict` profile |
+| Pylint    | quality extra / `uv`                | Baseline config |
+| Coverage  | quality extra                       | Reports for governance |
+| pnpm lint | When Node API track is enabled      | Skipped otherwise |
+
+## Evidence & Governance
+
+- Local runs record durations when the quality helper writes
+  `.riso/quality-durations.json`.
+{% if ci_platform == 'github-actions' %}
+- CI uploads logs via `.github/workflows/riso-quality.yml` and
+  `.github/workflows/riso-matrix.yml` (not `quality-matrix.yml`).
+{% endif %}
+- `.riso/post_gen_metadata.json` records `quality_profile` (do not hand-edit).

@@ -23,6 +23,9 @@ Copier-rendered application scaffold (**{{ project_layout }}**).
 - **Task runner**: {{ task_runner }}
 {% if _python %}- **Python**: 3.11+ via [uv](https://docs.astral.sh/uv/){% endif %}
 {% if _node %}- **Node.js**: 20 LTS via [pnpm](https://pnpm.io/){% endif %}
+- **Toolchain pins**: `mise.toml` always ships (not an extra). After clone: `mise install`. Generated pins: Python 3.11, Node **20** (do not raise to maintainer 22), pnpm, uv.
+- **OpenSpec extra**: `{{ openspec_extra | default('disabled') }}` — optional; **default disabled**. Does not gate mise.
+- **Quality defaults**: **just** (`task_runner`), **ty** (not mypy), **pnpm** for Node. See [DESIGN.md](./DESIGN.md) Tooling table.
 - **CI platform**: {{ ci_platform }}
 
 **Enabled modules:** {% if cli_module == 'enabled' %}CLI{% endif %}{% if api_module == 'enabled' %} API ({{ api_languages | join(', ') }}){% endif %}{% if mcp_module == 'enabled' %} MCP{% endif %}{% if docs_module == 'enabled' %} Docs ({{ docs_framework }}){% endif %}{% if shared_logic == 'enabled' %} Shared logic{% endif %}{% if changelog_module == 'enabled' %} Changelog/release{% endif %}{% if saas_infra_module == 'enabled' %} SaaS{% endif %}{% if cli_module != 'enabled' and api_module != 'enabled' and mcp_module != 'enabled' and docs_module != 'enabled' and shared_logic != 'enabled' and changelog_module != 'enabled' and saas_infra_module != 'enabled' %}baseline only{% endif %}
@@ -33,6 +36,7 @@ Copier-rendered application scaffold (**{{ project_layout }}**).
 
 | Task | Command |
 | ---- | ------- |
+| Toolchain (mise) | `mise install` |
 {% if _python %}
 | Install deps | `uv sync` |
 | Install test deps | `uv sync --group test` |
@@ -79,6 +83,7 @@ Copier-rendered application scaffold (**{{ project_layout }}**).
 <!-- agents-md:auto -->
 
 ```bash
+mise install
 {% if _python %}uv sync
 {{ _hooks_cmd }}
 uv run python -m {{ package_name }}.quickstart
@@ -90,6 +95,7 @@ uv run python -m {{ package_name }}.quickstart
 ```
 
 Read [docs/modules/prompt-reference.md](docs/modules/prompt-reference.md) for Copier prompt context and dependency groups.
+1.x → 2.0 answer remaps (`apply` then fail-closed): [docs/upgrade-guide.md](docs/upgrade-guide.md). Use `uv run riso migrate . --dry-run` then `uv run riso update .`. Do not restore removed keys.
 
 {% if ai_tools_module == 'enabled' %}
 Review [docs/ai-tools.md](docs/ai-tools.md) for MCP and multi-agent harness configuration.
@@ -193,13 +199,19 @@ Link out — do not duplicate full module docs here.
 {% endif %}
 {% if saas_infra_module == 'enabled' %}- [SaaS starter](docs/modules/saas-starter.md)
 {% endif %}
-- [Prompt reference](docs/modules/prompt-reference.md)
+{% if openspec_extra | default('disabled') == 'enabled' %}- [OpenSpec extra](openspec/USAGE.md)
+{% endif %}
+- [Quality suite](docs/modules/quality.md)
+- [Upgrade guide (2.0 remaps, mise, OpenSpec)](docs/upgrade-guide.md)
+{% if ci_platform != 'none' %}- [Workflows](docs/modules/workflows.md)
+{% endif %}
+- [Prompt reference](docs/modules/prompt-reference.md) (`api_features` enables GraphQL/WebSocket; `graphql_api_module` / `websocket_module` are derived flags)
 
 ## Build and Test Parity
 
 - Local: commands in **Quick Reference** above.
 - CI: quality workflows mirror `{{ _quality_cmd }}` / `uv run task quality` when Python is enabled.
-- Regenerate or update via `copier update` — do not hand-edit generated scaffolds without syncing template answers.
+- Regenerate or update via `uv run riso update .` (remap first with `uv run riso migrate . --dry-run`). Do not hand-edit generated scaffolds without syncing answers.
 
 ## Code Style
 
@@ -215,6 +227,7 @@ Link out — do not duplicate full module docs here.
 
 - Never commit secrets; use `.env` files (gitignored) and `${ENV_VAR}` in MCP configs.
 - Never manually edit `uv.lock` or `pnpm-lock.yaml` — use package managers.
+- Do not raise generated `mise.toml` Node pin from 20 to the maintainer 22 floor.
 - Ask before modifying CI workflows or Copier prompt defaults.
 
 ## Git Workflow
@@ -246,6 +259,8 @@ Link out — do not duplicate full module docs here.
 - `.env*` secrets
 - Lock files (regenerate via uv/pnpm)
 - `.copier-answers.yml` without understanding render impact
+- Removed 1.x Copier keys (`api_language`, `mcp_language`, `api_tracks`, `docs_site`, `saas_starter_module`, `saas_auth`, `saas_billing`, `include_admin`) — remap via `riso migrate`, then fail-closed
+- `mypy.ini` / mypy as the default type checker (use **ty**)
 
 ### Avoid
 
@@ -257,10 +272,13 @@ Link out — do not duplicate full module docs here.
 
 <!-- agents-md:auto -->
 
-{% if _python %}- Python 3.11+ (uv), ruff, ty, pylint, pytest, coverage, taskipy
+{% if _python %}- Python 3.11+ (uv), ruff, **ty** (not mypy), pylint, pytest, coverage, taskipy
 {% endif %}
-{% if _node %}- Node.js 20 LTS, pnpm
+{% if _node %}- Node.js 20 LTS, **pnpm**
 {% endif %}
+- mise (`mise.toml` always-on; `mise install`)
+- Task runner: **just** by default (`{{ task_runner }}`); Makefile when selected
+- OpenSpec extra: `{{ openspec_extra | default('disabled') }}` (opt-in)
 {% if docs_module == 'enabled' and docs_framework == 'fumadocs' %}- Fumadocs / Next.js docs site
 {% endif %}
 {% if docs_module == 'enabled' and docs_framework == 'sphinx-shibuya' %}- Sphinx + Shibuya docs site
@@ -274,12 +292,17 @@ Link out — do not duplicate full module docs here.
 
 ## Recent Changes
 
+- **Riso 2.0 remaps**: `riso migrate` / `riso update` apply then reject leftovers. See [docs/upgrade-guide.md](docs/upgrade-guide.md).
+- **mise always-on**: generated `mise.toml` (Python 3.11, Node 20, pnpm, uv). Not a Copier extra.
+- **OpenSpec extra**: `openspec_extra` default **disabled**; opt in for `openspec/**`.
 - **AI tools module**: Optional MCP + bridge files when `ai_tools_module=enabled`; AGENTS.md is always the instruction SSOT.
 - **Component-first layout**: Enable CLI, API, MCP, docs, and SaaS modules independently via Copier answers.
-- **Quality profiles**: `standard` vs `strict` control ruff/ty/pylint strictness and hook stages.
+- **Quality profiles**: `standard` vs `strict` control ruff/ty/pylint strictness and hook stages. Default aggregator is **just**; typecheck is **ty**; Node is **pnpm**.
 
 ## References
 
+- [DESIGN.md](./DESIGN.md) — generated-project tokens, type, Mermaid, charts, and the Tooling table (just / ty / pnpm)
+- [Upgrade guide](docs/upgrade-guide.md) — 1.x remaps, mise pins, OpenSpec extra
 - [Prompt reference](docs/modules/prompt-reference.md)
 {% if docs_module == 'enabled' and docs_framework == 'sphinx-shibuya' %}- [Quickstart](docs/guides/quickstart.md)
 {% endif %}

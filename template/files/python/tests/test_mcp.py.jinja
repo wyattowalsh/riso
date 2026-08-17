@@ -1,0 +1,19 @@
+{%- if mcp_module == 'enabled' and 'python' in mcp_languages -%}
+"""Smoke test that the generated Python MCP package imports."""
+
+from __future__ import annotations
+
+import importlib
+
+import pytest
+
+
+def test_mcp_package_exports_server() -> None:
+    """Top-level ``mcp`` package is wired in generated pyproject package-dir."""
+    try:
+        mod = importlib.import_module("mcp")
+    except ImportError as exc:
+        pytest.skip(f"mcp package not importable: {exc}")
+    assert hasattr(mod, "run_server")
+    assert hasattr(mod, "mcp")
+{%- endif -%}

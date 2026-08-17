@@ -1,38 +1,17 @@
 {%- if mcp_module == 'enabled' and 'rust' in mcp_languages and mcp_example_tools -%}
-//! Review prompts - code review templates.
+//! Review prompt helpers.
 
-use rmcp::{Server, prompt};
-use serde::{Deserialize, Serialize};
+use rmcp::{model::*, schemars};
+use serde::Deserialize;
 
-#[derive(Deserialize)]
-struct ReviewParams {
-    code: String,
-    language: Option<String>,
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ReviewParams {
+    pub code: String,
+    pub language: Option<String>,
 }
 
-#[derive(Serialize)]
-struct ReviewResult {
-    messages: Vec<Message>,
-}
-
-#[derive(Serialize)]
-struct Message {
-    role: String,
-    content: Content,
-}
-
-#[derive(Serialize)]
-struct Content {
-    #[serde(rename = "type")]
-    msg_type: String,
-    text: String,
-}
-
-/// Create a code review prompt
-#[prompt]
-async fn review_code(params: ReviewParams) -> Result<ReviewResult, String> {
-    let language = params.language.unwrap_or_else(|| "rust".to_string());
-    
+pub fn review_code(params: &ReviewParams) -> GetPromptResult {
+    let language = params.language.clone().unwrap_or_else(|| "rust".to_string());
     let text = format!(
         "Please review the following {} code for:\n\
         1. Bugs and potential runtime errors\n\
@@ -47,18 +26,9 @@ async fn review_code(params: ReviewParams) -> Result<ReviewResult, String> {
         language, language, params.code
     );
 
-    Ok(ReviewResult {
-        messages: vec![Message {
-            role: "user".to_string(),
-            content: Content {
-                msg_type: "text".to_string(),
-                text,
-            },
-        }],
-    })
-}
-
-pub fn register(server: &Server) {
-    server.register_prompt("review_code", review_code);
+    GetPromptResult {
+        description: Some(format!("Code review prompt for {language}")),
+        messages: vec![PromptMessage::new_text(PromptMessageRole::User, text)],
+    }
 }
 {%- endif %}

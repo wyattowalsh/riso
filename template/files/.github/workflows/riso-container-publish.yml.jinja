@@ -21,6 +21,7 @@ permissions:
   id-token: write  # OIDC for ghcr.io trusted publishing
 
 jobs:
+{%- if api_module == "enabled" and (("python" in api_languages) or ("node" in api_languages)) %}
   publish-ghcr:
     name: Publish to GitHub Container Registry
     runs-on: ubuntu-latest
@@ -121,6 +122,7 @@ jobs:
           name: trivy-scan-{% raw %}${{ matrix.target.name }}{% endraw %}
           path: trivy-results.sarif
           retention-days: 90
+{%- endif %}
 
   # Optional: Publish to Docker Hub
   # Uncomment and configure secrets.DOCKERHUB_USERNAME and secrets.DOCKERHUB_TOKEN
@@ -164,7 +166,9 @@ jobs:
   summary:
     name: Publish Summary
     runs-on: ubuntu-latest
+{%- if api_module == "enabled" and (("python" in api_languages) or ("node" in api_languages)) %}
     needs: [publish-ghcr]
+{%- endif %}
     if: always()
     steps:
       - name: Publish summary

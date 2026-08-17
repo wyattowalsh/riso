@@ -1,0 +1,46 @@
+"""Hypothesis wiring tests for the generated Python test extra."""
+
+from __future__ import annotations
+
+import importlib
+
+import pytest
+
+hypothesis = pytest.importorskip(
+    "hypothesis",
+    reason="hypothesis is provided by the generated test extra",
+)
+given = hypothesis.given
+settings = hypothesis.settings
+st = hypothesis.strategies
+
+PACKAGE_NAME = "{{ package_name }}"
+
+
+@given(st.integers(min_value=1, max_value=25))
+@settings(max_examples=20)
+def test_run_heartbeat_is_stable(n: int) -> None:
+    """run() is a pure heartbeat; n calls always return the same sentinel."""
+    if not PACKAGE_NAME.isidentifier():
+        pytest.skip("unrendered template")
+    run = importlib.import_module(PACKAGE_NAME).run
+    assert [run() for _ in range(n)] == ["riso-ready"] * n
+
+
+@given(
+    st.lists(
+        st.text(
+            min_size=1,
+            max_size=8,
+            alphabet=st.characters(min_codepoint=97, max_codepoint=122),
+        ),
+        min_size=1,
+        max_size=5,
+    )
+)
+@settings(max_examples=25)
+def test_hyphen_join_round_trips_ascii_tokens(parts: list[str]) -> None:
+    """Hypothesis is collected and can exercise a pure helper."""
+    slug = "-".join(parts)
+    assert slug.split("-") == parts
+    assert slug

@@ -50,9 +50,15 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
 {%- if fumadocs_mermaid == 'enabled' %}
     // Mermaid code blocks
     pre: ({ children, ...props }: any) => {
-      const lang = children?.props?.className?.replace('language-', '');
+      const className = children?.props?.className;
+      const lang =
+        typeof className === 'string'
+          ? className.replace(/^language-/, '').split(/\s+/)[0]
+          : '';
       if (lang === 'mermaid') {
-        return <Mermaid chart={children.props.children} />;
+        const raw = children?.props?.children;
+        const chart = Array.isArray(raw) ? raw.join('') : String(raw ?? '');
+        return <Mermaid chart={chart} />;
       }
       return <defaultComponents.pre {...props}>{children}</defaultComponents.pre>;
     },

@@ -21,10 +21,30 @@ def test_quickstart_runs(monkeypatch: pytest.MonkeyPatch) -> None:
 
     result = module.run_quickstart(dry_run=False)
 
-    expected = [(tuple(cmd), True) for cmd in module.COMMANDS]
+    expected_commands: list[list[str]] = [
+        ["uv", "sync", "--group", "quality", "--group", "test"],
+{%- if (task_runner | default('just')) in ['just', 'both'] %}
+        ["just", "quality"],
+{%- elif (task_runner | default('just')) == 'makefile' %}
+        ["make", "quality"],
+{%- else %}
+        [
+            "uv",
+            "run",
+            "--group",
+            "quality",
+            "--group",
+            "test",
+            "task",
+            "quality",
+        ],
+{%- endif %}
+    ]
+    expected = [(tuple(cmd), True) for cmd in expected_commands]
+    assert module.COMMANDS == expected_commands
     assert recorded_commands == expected
     assert result["status"] == "ok"
-    assert result["executed"] == len(module.COMMANDS)
+    assert result["executed"] == len(expected_commands)
 
 
 def test_write_evidence(tmp_path: Path) -> None:

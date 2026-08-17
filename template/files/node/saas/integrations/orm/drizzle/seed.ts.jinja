@@ -1,0 +1,119 @@
+{% if saas_infra_module == "enabled" and saas_orm == "drizzle" and saas_include_fixtures %}
+import { eq } from 'drizzle-orm';
+{% if saas_database == 'neon' %}
+import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
+{% else %}
+import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/postgres-js';
+{% endif %}
+import {
+  users,
+  subscriptions,
+  {% if saas_tenancy_model == "b2b-teams" %}
+  organizations,
+  organizationMemberships,
+  {% endif %}
+} from './schema';
+
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL is required to seed');
+}
+
+{% if saas_database == 'neon' %}
+const db = drizzle(neon(databaseUrl));
+{% else %}
+const db = drizzle(postgres(databaseUrl));
+{% endif %}
+
+async function main() {
+  const existingUsers = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, 'demo@example.com'))
+    .limit(1);
+
+  const [user] =
+    existingUsers[0] === undefined
+      ? await db
+          .insert(users)
+          .values({
+            email: 'demo@example.com',
+            name: 'Demo User',
+          })
+          .returning()
+      : existingUsers;
+
+  if (user === undefined) {
+    throw new Error('Failed to seed demo user');
+  }
+
+  {% if saas_tenancy_model == "b2b-teams" %}
+  const existingOrgs = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.slug, 'acme'))
+    .limit(1);
+
+  const [organization] =
+    existingOrgs[0] === undefined
+      ? await db
+          .insert(organizations)
+          .values({
+            name: 'Acme',
+            slug: 'acme',
+            plan: 'starter',
+          })
+          .returning()
+      : existingOrgs;
+
+  if (organization === undefined) {
+    throw new Error('Failed to seed demo organization');
+  }
+
+  const existingMemberships = await db
+    .select()
+    .from(organizationMemberships)
+    .where(eq(organizationMemberships.userId, user.id))
+    .limit(1);
+
+  if (existingMemberships[0] === undefined) {
+    await db.insert(organizationMemberships).values({
+      userId: user.id,
+      organizationId: organization.id,
+      {% if saas_rbac_system == "basic-roles" %}
+      role: 'owner',
+      {% endif %}
+      acceptedAt: new Date(),
+    });
+  }
+  {% endif %}
+
+  const existingSubs = await db
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.id, 'seed-subscription'))
+    .limit(1);
+
+  if (existingSubs[0] === undefined) {
+    await db.insert(subscriptions).values({
+      id: 'seed-subscription',
+      userId: user.id,
+      {% if saas_tenancy_model == "b2b-teams" %}
+      organizationId: organization.id,
+      {% endif %}
+      status: 'active',
+      plan: 'starter',
+      billingCycle: 'monthly',
+    });
+  }
+
+  console.log('Seeded demo fixtures');
+}
+
+main().catch((error: unknown) => {
+  console.error(error);
+  process.exit(1);
+});
+{% endif %}

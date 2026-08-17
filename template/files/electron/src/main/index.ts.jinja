@@ -14,7 +14,7 @@
 
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
-import { createMainWindow } from './window';
+import { createMainWindow, getMainWindow{% if 'tray_icon' in desktop_features %}, markQuitting{% endif %} } from './window';
 import { setupMenu } from './menu';
 import { registerIpcHandlers } from './ipc';
 {% if 'auto_updater' in desktop_features %}
@@ -49,15 +49,12 @@ async function init(): Promise<void> {
   setupMenu(mainWindow);
 
   {% if 'auto_updater' in desktop_features %}
-  // Set up auto-updater (production only)
-  if (!is.dev) {
-    setupAutoUpdater(mainWindow);
-  }
+  // Event handlers always; scheduled checks are production-only inside setupAutoUpdater
+  setupAutoUpdater(mainWindow);
   {% endif %}
 
   {% if 'tray_icon' in desktop_features %}
-  // Set up system tray icon
-  setupTrayIcon(mainWindow);
+  setupTrayIcon();
   {% endif %}
 
   log.info('{{ project_name }} initialized successfully');
@@ -75,8 +72,13 @@ app.whenReady().then(async () => {
 
   await init();
 
-  // macOS: Re-create window when dock icon is clicked and no windows are open
   app.on('activate', async () => {
+    const existing = getMainWindow();
+    if (existing && !existing.isDestroyed()) {
+      existing.show();
+      existing.focus();
+      return;
+    }
     if (BrowserWindow.getAllWindows().length === 0) {
       mainWindow = await createMainWindow();
     }
@@ -85,20 +87,28 @@ app.whenReady().then(async () => {
 
 /**
  * Handle window-all-closed event
- * Quit the app on all platforms except macOS
+ * Quit the app on all platforms except macOS (and stay alive when a tray exists)
  */
 app.on('window-all-closed', () => {
-  // On macOS, apps typically stay active until explicitly quit
+  {% if 'tray_icon' in desktop_features %}
+  // Tray apps remain running until Quit
+  mainWindow = null;
+  return;
+  {% else %}
   if (process.platform !== 'darwin') {
     app.quit();
   }
   mainWindow = null;
+  {% endif %}
 });
 
 /**
  * Handle before-quit event
  */
 app.on('before-quit', () => {
+  {% if 'tray_icon' in desktop_features %}
+  markQuitting();
+  {% endif %}
   log.info('{{ project_name }} shutting down...');
 });
 

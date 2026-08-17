@@ -1,4 +1,4 @@
-{%- if cli_module | lower != "enabled" %}
+{%- if cli_module | lower != "enabled" or "python" not in cli_languages %}
 # CLI module disabled - this file is not generated
 {%- else %}
 """Plugin management commands."""
@@ -32,7 +32,10 @@ def plugin_list(
     
     if not plugins:
         formatter.print_warning("No plugins discovered")
-        formatter.print_info(f"Plugins can be registered via entry points in '{{ package_name }}.cli.plugins' group")
+        formatter.print_info(
+            "Plugins can be registered via entry points in "
+            "'{{ package_name }}.cli.plugins' group"
+        )
         return
     
     if verbose:

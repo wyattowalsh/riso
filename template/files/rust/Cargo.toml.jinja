@@ -3,6 +3,13 @@
 {%- set _has_api = api_module == 'enabled' and 'rust' in api_languages -%}
 {%- set _has_mcp = mcp_module == 'enabled' and 'rust' in mcp_languages -%}
 {%- set _has_bins = _has_cli or _has_api -%}
+{%- set _virtual_workspace = _has_mcp and not _has_bins -%}
+{% if _virtual_workspace %}
+# MCP-only: virtual workspace so `cargo build` builds mcp/, not a stub root crate.
+[workspace]
+members = ["mcp"]
+resolver = "2"
+{% else %}
 [package]
 name = "{{ package_name }}"
 version = "0.1.0"
@@ -75,4 +82,5 @@ codegen-units = 1
 # Optimize for size in release builds
 [profile.release.package."*"]
 opt-level = "z"
+{% endif %}
 {% endif %}

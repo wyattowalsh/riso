@@ -27,6 +27,26 @@ pnpm --filter docs-docusaurus build
 Add navigation entries to `fumadocs.config.ts`, `docusaurus.config.ts`, or the
 Shibuya toctree files and commit generated assets to ensure deterministic builds.
 
+## Visual system and Mermaid
+
+The generated-project SSOT is [DESIGN.md](../../DESIGN.md) at the repo root
+(teal `#14b8a6`, Inter + JetBrains Mono, light/dark surfaces). Docs adapters
+alias framework-native variables to those tokens; they do not invent a second
+brand.
+
+Mermaid policy for every adapter:
+
+- `startOnLoad: false`
+- `securityLevel: 'strict'` (never `loose`)
+- `theme: 'base'` plus `themeVariables` mapped to `#14b8a6` / `#0f172a` / `#0b132b`
+- Deterministic diagram ids (no `Math.random()`)
+- Flowchart padding 16 / nodeSpacing 50; sequence actorMargin 50; ER entityPadding 15
+
+Sphinx: `mermaid_params` uses `--theme base` and `mermaid_init_js` in
+`python/docs/conf.py`. Plot styles (optional extras) are
+`python/docs/_static/mpl/riso.mplstyle` and
+`python/docs/_static/js/riso-plotly-template.json`.
+
 {%- if docs_module == 'enabled' and docs_framework == 'fumadocs' %}
 
 ## Fumadocs Configuration
@@ -386,6 +406,8 @@ flowchart TD
 ````
 
 Supports flowcharts, sequence diagrams, entity-relationship diagrams, Gantt charts, and more.
+Init uses `securityLevel: 'strict'`, `theme: 'base'`, and DESIGN.md `themeVariables`
+(see `docusaurus.config.ts` `themeConfig.mermaid`). Never set `loose`.
 
 {%- endif %}
 

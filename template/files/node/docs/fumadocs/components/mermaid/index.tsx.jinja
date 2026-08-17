@@ -3,52 +3,111 @@
 
 import { useEffect, useRef, useState } from 'react';
 import mermaid from 'mermaid';
+import { mermaidOptions, prefersDark } from './theme';
 
 interface MermaidProps {
   chart: string;
 }
 
-mermaid.initialize({
-  startOnLoad: false,
-  theme: 'neutral',
-  securityLevel: 'loose',
-});
+// Mermaid ids cannot contain colons (React useId) or rely on Math.random.
+let mermaidSeq = 0;
+function nextMermaidId(): string {
+  mermaidSeq += 1;
+  return `mermaid-${mermaidSeq}`;
+}
+
+function toChartSource(chart: string): string {
+  return String(chart ?? '').replace(/\r\n/g, '\n').trim();
+}
 
 export default function Mermaid({ chart }: MermaidProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [svg, setSvg] = useState<string>('');
-  const [error, setError] = useState<string>('');
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [svg, setSvg] = useState('');
+  const [error, setError] = useState('');
+  const source = toChartSource(chart);
 
   useEffect(() => {
-    const renderChart = async () => {
-      if (!ref.current) return;
+    let cancelled = false;
+    let lastDark = prefersDark();
 
+    const draw = async () => {
+      mermaid.initialize(mermaidOptions(lastDark));
       try {
-        const id = `mermaid-${Math.random().toString(36).slice(2)}`;
-        const { svg } = await mermaid.render(id, chart);
-        setSvg(svg);
-        setError('');
+        const id = nextMermaidId();
+        // strict + mermaid.render runs the SVG through DOMPurify.
+        // Do not call bindFunctions (re-enables clicks).
+        const rendered = await mermaid.render(id, source);
+        if (!cancelled) {
+          setSvg(rendered.svg);
+          setError('');
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to render diagram');
-        setSvg('');
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to render diagram');
+          setSvg('');
+        }
       }
     };
 
-    renderChart();
-  }, [chart]);
+    void draw();
+
+    const root = document.documentElement;
+    const observer = new MutationObserver(() => {
+      const next = prefersDark();
+      if (next !== lastDark) {
+        lastDark = next;
+        void draw();
+      }
+    });
+    observer.observe(root, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const onMedia = () => {
+      const next = prefersDark();
+      if (next !== lastDark) {
+        lastDark = next;
+        void draw();
+      }
+    };
+    media.addEventListener('change', onMedia);
+
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+      media.removeEventListener('change', onMedia);
+    };
+  }, [source]);
 
   if (error) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600 dark:border-red-800 dark:bg-red-950 dark:text-red-400">
-        <strong>Mermaid Error:</strong> {error}
+      <div
+        role="alert"
+        className="my-4 rounded-lg border border-fd-border bg-fd-card p-4 text-sm text-fd-foreground"
+      >
+        <strong>Mermaid error:</strong> {error}
+      </div>
+    );
+  }
+
+  if (!svg) {
+    return (
+      <div
+        ref={hostRef}
+        role="status"
+        aria-live="polite"
+        className="my-4 flex justify-center overflow-x-auto rounded-lg bg-fd-card p-4 text-sm text-fd-muted-foreground"
+      >
+        Rendering diagram…
       </div>
     );
   }
 
   return (
     <div
-      ref={ref}
-      className="my-4 flex justify-center overflow-x-auto rounded-lg bg-fd-card p-4"
+      ref={hostRef}
+      role="img"
+      aria-label="Mermaid diagram"
+      className="my-4 flex justify-center overflow-x-auto rounded-lg bg-fd-card p-4 [&_svg]:bg-transparent"
       dangerouslySetInnerHTML={{ '{{' }} __html: svg {{ '}}' }}
     />
   );

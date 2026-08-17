@@ -1,46 +1,74 @@
 {%- if mcp_module == 'enabled' and 'rust' in mcp_languages and mcp_example_tools -%}
-//! HTTP fetch tool - web content retrieval
-//!
-//! Demonstrates async tools with external dependencies.
+//! HTTP fetch tool helpers (https-only).
 
-use rmcp::{Server, tool};
+use rmcp::schemars;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
 
-#[derive(Deserialize)]
-struct HttpGetParams {
-    url: String,
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct HttpGetParams {
+    pub url: String,
     #[serde(default)]
-    headers: HashMap<String, String>,
+    pub headers: HashMap<String, String>,
     #[serde(default = "default_timeout")]
-    timeout: u64,
+    pub timeout: u64,
 }
 
 fn default_timeout() -> u64 {
     30
 }
 
-#[derive(Serialize)]
-struct HttpResult {
-    success: bool,
-    status_code: Option<u16>,
-    headers: Option<HashMap<String, String>>,
-    content: Option<String>,
-    content_length: Option<usize>,
-    error: Option<String>,
+#[derive(Debug, Serialize)]
+pub struct HttpResult {
+    pub success: bool,
+    pub status_code: Option<u16>,
+    pub headers: Option<HashMap<String, String>>,
+    pub content: Option<String>,
+    pub content_length: Option<usize>,
+    pub error: Option<String>,
 }
 
-/// Fetch content from a URL via HTTP GET
-#[tool]
-async fn http_get(params: HttpGetParams) -> Result<HttpResult, String> {
+fn deny_url(url: &str) -> Option<&'static str> {
+    let lower = url.to_ascii_lowercase();
+    if !lower.starts_with("https://") {
+        return Some("only https:// URLs are allowed");
+    }
+    for blocked in [
+        "localhost",
+        "127.0.0.1",
+        "0.0.0.0",
+        "::1",
+        "169.254.169.254",
+        "metadata.google",
+        "[::1]",
+    ] {
+        if lower.contains(blocked) {
+            return Some("URL host is not allowed (SSRF protection)");
+        }
+    }
+    None
+}
+
+pub async fn http_get(params: HttpGetParams) -> Result<HttpResult, String> {
+    if let Some(err) = deny_url(&params.url) {
+        return Ok(HttpResult {
+            success: false,
+            status_code: None,
+            headers: None,
+            content: None,
+            content_length: None,
+            error: Some(err.to_string()),
+        });
+    }
+
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(params.timeout))
+        .redirect(reqwest::redirect::Policy::none())
         .build()
         .map_err(|e| e.to_string())?;
 
     let mut request = client.get(&params.url);
-
     for (key, value) in params.headers {
         request = request.header(&key, &value);
     }
@@ -57,13 +85,11 @@ async fn http_get(params: HttpGetParams) -> Result<HttpResult, String> {
             match response.text().await {
                 Ok(content) => {
                     let len = content.len();
-                    // Limit content size
                     let truncated = if len > 10000 {
                         content[..10000].to_string()
                     } else {
                         content
                     };
-
                     Ok(HttpResult {
                         success: true,
                         status_code: Some(status),
@@ -98,35 +124,44 @@ async fn http_get(params: HttpGetParams) -> Result<HttpResult, String> {
     }
 }
 
-#[derive(Deserialize)]
-struct HttpHeadParams {
-    url: String,
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct HttpHeadParams {
+    pub url: String,
     #[serde(default)]
-    headers: HashMap<String, String>,
+    pub headers: HashMap<String, String>,
     #[serde(default = "default_timeout")]
-    timeout: u64,
+    pub timeout: u64,
 }
 
-#[derive(Serialize)]
-struct HttpHeadResult {
-    success: bool,
-    status_code: Option<u16>,
-    headers: Option<HashMap<String, String>>,
-    content_type: Option<String>,
-    content_length: Option<String>,
-    error: Option<String>,
+#[derive(Debug, Serialize)]
+pub struct HttpHeadResult {
+    pub success: bool,
+    pub status_code: Option<u16>,
+    pub headers: Option<HashMap<String, String>>,
+    pub content_type: Option<String>,
+    pub content_length: Option<String>,
+    pub error: Option<String>,
 }
 
-/// Get headers from a URL without downloading content
-#[tool]
-async fn http_head(params: HttpHeadParams) -> Result<HttpHeadResult, String> {
+pub async fn http_head(params: HttpHeadParams) -> Result<HttpHeadResult, String> {
+    if let Some(err) = deny_url(&params.url) {
+        return Ok(HttpHeadResult {
+            success: false,
+            status_code: None,
+            headers: None,
+            content_type: None,
+            content_length: None,
+            error: Some(err.to_string()),
+        });
+    }
+
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(params.timeout))
+        .redirect(reqwest::redirect::Policy::none())
         .build()
         .map_err(|e| e.to_string())?;
 
     let mut request = client.head(&params.url);
-
     for (key, value) in params.headers {
         request = request.header(&key, &value);
     }
@@ -139,10 +174,8 @@ async fn http_head(params: HttpHeadParams) -> Result<HttpHeadResult, String> {
                 .iter()
                 .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
                 .collect();
-
             let content_type = headers.get("content-type").cloned();
             let content_length = headers.get("content-length").cloned();
-
             Ok(HttpHeadResult {
                 success: true,
                 status_code: Some(status),
@@ -161,10 +194,5 @@ async fn http_head(params: HttpHeadParams) -> Result<HttpHeadResult, String> {
             error: Some(e.to_string()),
         }),
     }
-}
-
-pub fn register(server: &Server) {
-    server.register_tool("http_get", http_get);
-    server.register_tool("http_head", http_head);
 }
 {%- endif %}

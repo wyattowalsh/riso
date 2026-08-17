@@ -1,0 +1,44 @@
+# OpenSpec project config (copied only when openspec_extra=enabled).
+schema: spec-driven
+
+context: |
+  Project: {{ project_name }}
+  Package: {{ package_name }}
+  Layout: {{ project_layout }}
+  Quality profile: {{ quality_profile }}
+  Task runner: {{ task_runner }}
+  CLI module: {{ cli_module }}
+  API module: {{ api_module }}
+  API languages: {{ api_languages | join(', ') }}
+  MCP module: {{ mcp_module }}
+  MCP languages: {{ mcp_languages | join(', ') }}
+  Docs module: {{ docs_module }}
+  Docs framework: {{ docs_framework }}
+  SaaS infra: {{ saas_infra_module }}
+  Desktop module: {{ desktop_module }}
+  Generated Python floor: 3.11+
+  Generated Node floor: 20+ (do not raise to maintainer 22)
+  Typecheck: ty (not mypy)
+  OpenSpec extra: enabled (this tree)
+  mise.toml: always-on (not gated by this extra)
+
+  Write proposals and specs as observable behavior. Put implementation
+  mechanics in design.md or tasks.md unless the mechanism is the contract.
+  Do not add new languages, runtimes, or vendors.
+
+rules:
+  proposal:
+    - State intent, in-scope, and out-of-scope.
+    - Do not introduce languages, runtimes, or vendors this project does not already use.
+  specs:
+    - Use RFC 2119 keywords (MUST / SHALL / SHOULD / MAY).
+    - Include testable Given/When/Then (or WHEN/THEN) scenarios.
+    - Describe user-facing or API-visible behavior, not internal class names.
+  design:
+    - Prefer existing Riso tracks (just/uv/ruff/ty/pnpm/pytest) over new tooling.
+  tasks:
+    - Numbered checkboxes small enough for one session.
+    - Include a validation task (tests or riso validate) when behavior changes.
+
+githubCopilot:
+  cloudAgent: false

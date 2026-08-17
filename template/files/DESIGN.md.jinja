@@ -1,0 +1,265 @@
+{#- Visual SSOT for generated {{ project_name }} apps. Not the maintainer wizard. -#}
+{%- set _quality_cmd = 'just quality' if task_runner in ['just', 'both'] else ('make quality' if task_runner == 'makefile' else 'uv run task quality') -%}
+{%- set _typecheck_cmd = 'just typecheck' if task_runner in ['just', 'both'] else ('make typecheck' if task_runner == 'makefile' else 'uv run ty check') -%}
+# Design system
+
+Visual and interaction contract for **{{ project_name }}**. App developers and
+coding agents treat this file as the generated-project SSOT. The maintainer
+wizard (Fraunces, Manrope, federal-blue) is a different product and must not be
+copied here.
+
+Register: restrained technical. Prefer tokens over raw hues. Prefer the
+commands in [Tooling](#tooling) over ad-hoc checkers.
+
+## Tokens
+
+Canonical CSS variables live in `python/docs/_static/css/design-tokens.css`
+when the Sphinx payload is rendered. Framework adapters alias the same hex
+values; they do not invent a second brand.
+
+| Role | CSS | Hex | RGB | Notes |
+| ---- | --- | --- | --- | ----- |
+| Accent | `--accent` | `#14b8a6` | `20 184 166` | Brand teal. Chrome, focus, chart series 0. |
+| Accent text | `--accent-text` | `#0f766e` | `15 118 110` | Links and text on `--paper` (AA). |
+| Paper | `--paper` | `#f8fafc` | `248 250 252` | Light page background. |
+| Surface (light) | `--surface` | `#ffffff` | `255 255 255` | Light raised surface. |
+| Text (light) | `--text` | `#0b132b` | `11 19 43` | Light-mode body text only. |
+| Muted text | `--text-muted` | `#334155` | `51 65 85` | Secondary copy on paper. |
+| Border | `--border` | `#cbd5e1` | `203 213 225` | Hairlines, tables, cards. |
+| Hover | `--hover` | `#f1f5f9` | `241 245 249` | Light hover / code wash. |
+| Surface (dark) | `--surface` in `.dark` | `#0f172a` | `15 23 42` | Dark surface only — never pair with `--text` `#0b132b`. |
+| Surface raised | `--surface-raised` | `#ffffff` / `#1e293b` | — | Light card / dark raised. |
+| Text (dark) | `--text` in `.dark` | `#e2e8f0` | `226 232 240` | Dark-mode body text. |
+| Paper (dark) | `--paper` in `.dark` | `#020617` | `2 6 23` | Dark page background. |
+
+`--riso-*` names are 1:1 aliases of the unprefixed set (`--riso-accent` =
+`--accent`). Keep both in lockstep.
+
+Do **not** substitute:
+
+- Maintainer docs teal `#008080`
+- Wizard federal-blue / fluorescent pink
+- Infima default blue `#2563eb` / `#3b82f6`
+- Per-scaffold Tailwind `blue-*` / `orange-*` / `emerald-*` as the brand
+
+`#14b8a6` on `#ffffff` is below 4.5:1. Use `--text` or `--accent-text` for
+copy. Use `--accent` for borders, icons, focus rings, fills with
+`--accent-foreground`, and large chrome.
+
+### Light / dark
+
+| Mode | Selector | Paper | Surface | Text |
+| ---- | -------- | ----- | ------- | ---- |
+| Light | `:root` | `#f8fafc` | `#ffffff` | `#0b132b` |
+| Dark | `.dark`, `[data-theme="dark"]` | `#020617` | `#0f172a` | `#e2e8f0` |
+
+Set `color-scheme` on the same nodes. Next.js / Fumadocs / SaaS layouts that
+already toggle `.dark` inherit the token swap. Vite, Electron, and Tauri must
+define the same pair (or RGB `20 184 166` plus this surface/text pair) in
+`theme.extend.colors` / `:root` and `.dark`.
+
+## Typography
+
+| Role | Family | Load |
+| ---- | ------ | ---- |
+| Sans | **Inter** | `next/font/google` on Next.js surfaces. Self-host `@fontsource/inter` on Vite, Electron, Tauri, and Sphinx so CSP can stay `font-src 'self'`. |
+| Mono | **JetBrains Mono** | `next/font` or `@fontsource/jetbrains-mono`. Do not ship Fira Code or Arial as the system mono. |
+
+Do not pull wizard Manrope or Fraunces into generated apps.
+
+Scale (use tokens `--text-body-size` / `--text-body-leading` / `--heading-weight`):
+
+| Element | Size | Line-height | Weight |
+| ------- | ---- | ----------- | ------ |
+| Body | 16px / `1rem` | 1.5 | 400 |
+| Small / meta | 14px | 1.45 | 400 |
+| `h3` | 1.25rem | 1.3 | 600 |
+| `h2` | 1.5rem | 1.25 | 650 |
+| `h1` | 2rem | 1.2 | 700 |
+| Code | 0.875em | 1.5 | 400 (mono) |
+
+Letter-spacing on headings: `--heading-letter-spacing` (`-0.02em`). Body color is
+`--text`, never `--accent`.
+
+## Color
+
+- Prefer `bg-background` / `text-foreground` / `text-muted-foreground` /
+  `bg-primary` (or the CSS variables above) over raw Tailwind palettes.
+- Tailwind `theme.extend.colors.accent` / `primary` = `#14b8a6`.
+- Electron `--accent` is RGB `20 184 166`, not `59 130 246`.
+- Docusaurus `--ifm-color-primary` = `#14b8a6` (not Infima blue).
+- Fumadocs `--fd-primary` and shadcn `--primary` map to the same teal, not gray.
+- Sphinx Shibuya `accent_color` stays `teal`; content chrome consumes `var(--*)`.
+
+Chart colorway (matplotlib + Plotly + extras):
+
+`#14b8a6`, `#0f172a`, `#0d9488`, `#334155`, `#2dd4bf`, `#64748b`, `#0f766e`, `#94a3b8`
+
+## Motion
+
+| Token | CSS | Value | Use |
+| ----- | --- | ----- | --- |
+| Color / opacity | `--motion-color` | 150ms ease-out | Hover, focus, theme toggle |
+| Transform / layout | `--motion-layout` | 250ms ease-out | Drawers, collapse |
+| Enter | `--motion-enter` | 200ms ease-out | Dialogs, toasts |
+
+Honor `prefers-reduced-motion: reduce`: drop non-essential animation, keep
+opacity/color if a state change would otherwise be invisible. Do not run
+confetti or `element.animate()` when that media query matches.
+
+## Accessibility
+
+- Body text contrast ≥ 4.5:1 (`--text` on `--paper` / dark `--text` on `--surface`).
+- UI chrome and large text ≥ 3:1.
+- Focus: `focus-visible` ring `2px` `--focus-ring`, offset `2px`. Do not use
+  `outline-none` without a visible replacement.
+- Icon-only controls need an accessible name.
+- Color is never the only state signal.
+- Mermaid errors use `role="alert"`. In-progress figures use `role="status"`.
+- Limit `user-select: none` to drag strips, not document bodies.
+
+## Mermaid
+
+All adapters share one init policy. Never set `securityLevel` to `loose`.
+
+| Option | Value |
+| ------ | ----- |
+| `startOnLoad` | `false` |
+| `securityLevel` | `strict` (HTML encoded, clicks off, SVG run through DOMPurify) |
+| `theme` | `base`. Fumadocs retargets `themeVariables` on `.dark`. Docusaurus keeps `theme.dark: 'base'` — do not pair mermaid `dark` with the light token bag. |
+| Ids | Deterministic increment (`mermaid-1`…). Not `Math.random()`. Not React `useId()` (colons break Mermaid). |
+| `htmlLabels` | `false` |
+| `deterministicIds` | `true` |
+
+`themeVariables` (light) map to the token table: `primaryColor` `#14b8a6`,
+`primaryTextColor` / `textColor` `#0b132b`, `background` `#f8fafc`,
+`mainBkg` `#ffffff`, `lineColor` `#334155`, `fontFamily` Inter. Dark variables
+use `#14b8a6`, `#0f172a` / `#1e293b` surfaces, and `#e2e8f0` text.
+
+Diagram padding:
+
+| Kind | Keys |
+| ---- | ---- |
+| Flowchart | `padding` / `diagramPadding` 16, `nodeSpacing` 50, `rankSpacing` 50 |
+| Sequence | `actorMargin` 50, `messageMargin` 40, `boxMargin` 10, `noteMargin` 10 |
+| ER | `diagramPadding` 20, `entityPadding` 15, `minEntityWidth` 100 |
+
+`mermaid.render()` SVG may be inserted into the DOM only after `strict`
+sanitization. Do not call `bindFunctions` (that re-enables clicks). Do not
+recommend unsanitized `innerHTML`.
+
+Implementations (paths are generated-project relative; present when that adapter is rendered):
+
+- Fumadocs: `node/docs/fumadocs/components/mermaid/theme.ts` + `index.tsx` —
+  observes `.dark` / `data-theme` and re-inits with the matching token bag.
+- Docusaurus: `node/docs/docusaurus/docusaurus.config.ts` (`themeConfig.mermaid`).
+  `themeConfig` is JSON-cloned, so one `options.themeVariables` bag (light).
+  Complete dark twin: file-local `mermaidThemeByColorMode.dark` in the same
+  file. Do not named-export that bag from `docusaurus.config.ts` (Docusaurus 3
+  `validateConfig` treats named exports as unknown site-config fields).
+- Sphinx: `mermaid_params` `--theme base` plus `mermaid_init_js` in
+  `python/docs/conf.py`. Containers stay `background: transparent`.
+
+## Matplotlib
+
+Stylesheet: `python/docs/_static/mpl/riso.mplstyle`.
+
+matplotlib is **not** a default runtime or docs extra. Add it only when the
+project actually plots.
+
+```python
+from pathlib import Path
+import matplotlib.pyplot as plt
+
+plt.style.use(Path("python/docs/_static/mpl/riso.mplstyle"))
+```
+
+From a Sphinx `conf.py` that already defines `DOCS_DIR`:
+
+```python
+from conf import apply_riso_matplotlib_style
+
+apply_riso_matplotlib_style()  # no-op if matplotlib is missing
+```
+
+The sheet uses Inter with DejaVu Sans fallback, the chart colorway above,
+`--paper` / `--text` / `--border` for figure chrome, and no top/right spines.
+
+Dark figures: set `figure.facecolor` / `axes.facecolor` to `#0f172a` /
+`#020617` and `text.color` to `#e2e8f0`. Do not use light `--text` on the dark
+surface.
+
+## Plotly
+
+Template: `python/docs/_static/js/riso-plotly-template.json`.
+
+plotly is **not** a default dependency.
+
+```python
+import json
+from pathlib import Path
+import plotly.graph_objects as go
+import plotly.io as pio
+
+payload = json.loads(Path("python/docs/_static/js/riso-plotly-template.json").read_text())
+pio.templates["riso"] = go.layout.Template(payload)
+pio.templates.default = "riso"
+```
+
+Or `apply_riso_plotly_template()` in `python/docs/conf.py`. Dark override:
+`paper_bgcolor="#0f172a"`, `plot_bgcolor="#020617"`, `font.color="#e2e8f0"`.
+
+## Docs adapters
+
+Leave each framework's native variable names in place; point them at this
+palette.
+
+| Adapter | Brand hook | Mermaid | CSS |
+| ------- | ---------- | ------- | --- |
+| Sphinx Shibuya | `accent_color: "teal"` | `python/docs/conf.py` `mermaid_init_js` | `python/docs/_static/css/design-tokens.css` + `custom.css` |
+| Docusaurus | `--ifm-color-primary: #14b8a6` | `node/docs/docusaurus/docusaurus.config.ts` `themeConfig.mermaid` | Do not keep Infima blue |
+| Fumadocs | `--fd-primary` / shadcn `--primary` → teal | `node/docs/fumadocs/components/mermaid/` | No gray primary |
+
+Sphinx mermaid SVG and Plotly/matplotlib figures use transparent or `--surface`
+backgrounds so they sit on `--paper`.
+
+## File map
+
+| Artifact | Path |
+| -------- | ---- |
+| This SSOT | `DESIGN.md` (repo root) |
+| CSS tokens | `python/docs/_static/css/design-tokens.css` |
+| Sphinx chrome | `python/docs/_static/css/custom.css` |
+| Sphinx cards | `python/docs/_static/css/components.css` |
+| Sphinx icons | `python/docs/_static/css/lucide-icons.css` |
+| matplotlib | `python/docs/_static/mpl/riso.mplstyle` |
+| Plotly | `python/docs/_static/js/riso-plotly-template.json` |
+| Sphinx mermaid + plot loaders | `python/docs/conf.py` |
+| Fumadocs mermaid | `node/docs/fumadocs/components/mermaid/theme.ts`, `index.tsx` |
+| Docusaurus mermaid | `node/docs/docusaurus/docusaurus.config.ts` |
+
+## Tooling
+
+Default `task_runner` is **just**. Makefile is a shim when
+`task_runner` is `makefile` or `both`. Typecheck is **ty**, not mypy. Node
+package manager is **pnpm**. Generated `mise.toml` is always-on (Python 3.11,
+Node **20**, pnpm, uv) — do not raise the generated Node pin to the
+maintainer 22 floor. `openspec_extra` defaults to **disabled** and does not
+gate mise. 1.x Copier remaps live in
+[docs/upgrade-guide.md](docs/upgrade-guide.md); command pointers live in
+[AGENTS.md](./AGENTS.md).
+
+| Task | Command |
+| ---- | ------- |
+| Quality | `{{ _quality_cmd }}`{% if task_runner == 'both' %} or `make quality`{% endif %} |
+| Typecheck | `{{ _typecheck_cmd }}` or `uv run ty check` |
+| Lint / format | `uv run ruff check` / `uv run ruff format` |
+| Python env | `uv sync` (`uv run` for every Python invocation) |
+| Node workspace | `pnpm install` |
+{% if docs_module == 'enabled' and docs_framework == 'sphinx-shibuya' %}| Sphinx | `uv run sphinx-build python/docs dist/docs` |
+{% endif %}{% if docs_module == 'enabled' and docs_framework == 'fumadocs' %}| Fumadocs | `pnpm --filter docs-fumadocs dev` / `build` |
+{% endif %}{% if docs_module == 'enabled' and docs_framework == 'docusaurus' %}| Docusaurus | `pnpm --filter docs-docusaurus start` / `build` |
+{% endif %}
+
+Do not document `mypy`, `mypy.ini`, or `riso-mcp` as defaults. The removed
+maintainer MCP server is not part of this scaffold.

@@ -1,18 +1,20 @@
-{%- if docs_module == 'enabled' and docs_framework == 'fumadocs' -%}
+{%- if ci_platform == 'github-actions' and docs_module == 'enabled' and docs_framework == 'fumadocs' -%}
 name: Deploy Documentation
 
 on:
   push:
     branches: [main]
     paths:
-      - 'docs/**'
-      - 'content/**'
-      - 'app/**'
-      - 'components/**'
-      - 'lib/**'
+      - 'node/docs/fumadocs/**'
       - 'package.json'
-      - 'next.config.ts'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
   workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
   group: docs-deploy-{% raw %}${{ github.ref }}{% endraw %}
@@ -27,32 +29,40 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build documentation
-        run: npm run build
+        working-directory: node/docs/fumadocs
+        run: pnpm build
         env:
           NEXT_TELEMETRY_DISABLED: 1
-{%- if fumadocs_search == 'algolia' %}
+{%- if fumadocs_search_provider == 'algolia' %}
           NEXT_PUBLIC_ALGOLIA_APP_ID: {% raw %}${{ secrets.ALGOLIA_APP_ID }}{% endraw %}
-          NEXT_PUBLIC_ALGOLIA_SEARCH_KEY: {% raw %}${{ secrets.ALGOLIA_SEARCH_KEY }}{% endraw %}
+          NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY: {% raw %}${{ secrets.ALGOLIA_SEARCH_API_KEY }}{% endraw %}
 {%- endif %}
 {%- if fumadocs_ai_search == 'enabled' %}
           OPENAI_API_KEY: {% raw %}${{ secrets.OPENAI_API_KEY }}{% endraw %}
 {%- endif %}
 
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
       - name: Upload build artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./out
-{%- if fumadocs_search == 'algolia' %}
+          path: node/docs/fumadocs/out
+{%- if fumadocs_search_provider == 'algolia' %}
 
   sync-algolia:
     runs-on: ubuntu-latest
@@ -61,21 +71,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Sync search index
-        run: node scripts/sync-algolia.mjs
+        working-directory: node/docs/fumadocs
+        run: pnpm search:sync
         env:
-          ALGOLIA_ADMIN_KEY: {% raw %}${{ secrets.ALGOLIA_ADMIN_KEY }}{% endraw %}
           ALGOLIA_APP_ID: {% raw %}${{ secrets.ALGOLIA_APP_ID }}{% endraw %}
-          ALGOLIA_INDEX_NAME: {{ project_slug }}_docs
+          ALGOLIA_ADMIN_API_KEY: {% raw %}${{ secrets.ALGOLIA_ADMIN_API_KEY }}{% endraw %}
 {%- endif %}
 
   deploy:

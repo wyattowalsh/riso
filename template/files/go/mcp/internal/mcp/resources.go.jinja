@@ -6,10 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"github.com/modelcontextprotocol/go-sdk/server"
 )
-
-// ResourceRegistration provides helper functions for registering MCP resources.
 
 // RegisterResource is a helper for registering MCP resources.
 //
@@ -19,20 +16,18 @@ import (
 //	    return `{"os": "linux"}`, nil
 //	})
 func RegisterResource(
-	srv *server.Server,
+	srv *mcp.Server,
 	logger *slog.Logger,
 	uri string,
 	description string,
 	handler func(ctx context.Context) (string, error),
 ) {
-	resource := mcp.Resource{
+	srv.AddResource(&mcp.Resource{
 		URI:         uri,
 		Name:        uri,
 		Description: description,
-		MimeType:    "application/json",
-	}
-
-	srv.RegisterResource(resource, func(ctx context.Context) (mcp.ResourceContent, error) {
+		MIMEType:    "application/json",
+	}, func(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 		logger.Debug("reading resource", "uri", uri)
 
 		content, err := handler(ctx)
@@ -41,34 +36,36 @@ func RegisterResource(
 				"uri", uri,
 				"error", err,
 			)
-			return mcp.ResourceContent{}, err
+			return nil, err
 		}
 
 		logger.Debug("resource read successfully", "uri", uri)
-		return mcp.ResourceContent{
-			URI:      uri,
-			MimeType: "application/json",
-			Text:     content,
+		return &mcp.ReadResourceResult{
+			Contents: []*mcp.ResourceContents{
+				{
+					URI:      req.Params.URI,
+					MIMEType: "application/json",
+					Text:     content,
+				},
+			},
 		}, nil
 	})
 }
 
 // RegisterTextResource registers a resource that returns plain text.
 func RegisterTextResource(
-	srv *server.Server,
+	srv *mcp.Server,
 	logger *slog.Logger,
 	uri string,
 	description string,
 	handler func(ctx context.Context) (string, error),
 ) {
-	resource := mcp.Resource{
+	srv.AddResource(&mcp.Resource{
 		URI:         uri,
 		Name:        uri,
 		Description: description,
-		MimeType:    "text/plain",
-	}
-
-	srv.RegisterResource(resource, func(ctx context.Context) (mcp.ResourceContent, error) {
+		MIMEType:    "text/plain",
+	}, func(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 		logger.Debug("reading text resource", "uri", uri)
 
 		content, err := handler(ctx)
@@ -77,57 +74,57 @@ func RegisterTextResource(
 				"uri", uri,
 				"error", err,
 			)
-			return mcp.ResourceContent{}, err
+			return nil, err
 		}
 
 		logger.Debug("text resource read successfully", "uri", uri)
-		return mcp.ResourceContent{
-			URI:      uri,
-			MimeType: "text/plain",
-			Text:     content,
+		return &mcp.ReadResourceResult{
+			Contents: []*mcp.ResourceContents{
+				{
+					URI:      req.Params.URI,
+					MIMEType: "text/plain",
+					Text:     content,
+				},
+			},
 		}, nil
 	})
 }
 
 // RegisterDynamicResource registers a resource template for dynamic URIs.
-//
-// Example usage:
-//
-//	RegisterDynamicResource(srv, logger, "file://{path}", "Read file contents", func(ctx context.Context, params map[string]string) (string, error) {
-//	    path := params["path"]
-//	    return readFile(path)
-//	})
 func RegisterDynamicResource(
-	srv *server.Server,
+	srv *mcp.Server,
 	logger *slog.Logger,
 	uriTemplate string,
 	description string,
-	handler func(ctx context.Context, params map[string]string) (string, error),
+	handler func(ctx context.Context, uri string) (string, error),
 ) {
-	template := mcp.ResourceTemplate{
+	srv.AddResourceTemplate(&mcp.ResourceTemplate{
 		URITemplate: uriTemplate,
 		Name:        uriTemplate,
 		Description: description,
-		MimeType:    "application/json",
-	}
+		MIMEType:    "application/json",
+	}, func(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+		uri := req.Params.URI
+		logger.Debug("reading dynamic resource", "uri", uri)
 
-	srv.RegisterResourceTemplate(template, func(ctx context.Context, uri string, params map[string]string) (mcp.ResourceContent, error) {
-		logger.Debug("reading dynamic resource", "uri", uri, "params", params)
-
-		content, err := handler(ctx, params)
+		content, err := handler(ctx, uri)
 		if err != nil {
 			logger.Error("failed to read dynamic resource",
 				"uri", uri,
 				"error", err,
 			)
-			return mcp.ResourceContent{}, err
+			return nil, err
 		}
 
 		logger.Debug("dynamic resource read successfully", "uri", uri)
-		return mcp.ResourceContent{
-			URI:      uri,
-			MimeType: "application/json",
-			Text:     content,
+		return &mcp.ReadResourceResult{
+			Contents: []*mcp.ResourceContents{
+				{
+					URI:      uri,
+					MIMEType: "application/json",
+					Text:     content,
+				},
+			},
 		}, nil
 	})
 }

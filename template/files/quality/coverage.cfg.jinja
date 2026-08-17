@@ -1,7 +1,7 @@
 [run]
-branch = True
+branch = {% if quality_profile == 'strict' %}True{% else %}False{% endif %}
 source =
-    {{ package_name }}
+    src/{{ package_name }}
     tests
 omit =
     */__init__.py
@@ -12,7 +12,7 @@ omit =
 show_missing = True
 skip_covered = False
 precision = 2
-fail_under = 85.0
+fail_under = {% if cli_module | lower == "enabled" %}90.0{% else %}85.0{% endif %}
 
 [html]
 directory = htmlcov

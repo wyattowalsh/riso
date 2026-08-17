@@ -96,6 +96,7 @@ pub struct UpdateInfo {
     pub available: bool,
     pub version: Option<String>,
     pub current_version: String,
+    /// Display string from `OffsetDateTime` (JS plugin remains the UI path).
     pub date: Option<String>,
     pub body: Option<String>,
 }
@@ -122,7 +123,7 @@ pub async fn check_for_updates(app: AppHandle) -> Result<UpdateInfo, String> {
                     available: true,
                     version: Some(update.version.clone()),
                     current_version,
-                    date: update.date.clone(),
+                    date: update.date.map(|d| d.to_string()),
                     body: update.body.clone(),
                 })
             }
@@ -164,8 +165,9 @@ pub async fn install_update(app: AppHandle) -> Result<(), String> {
                 match update.download_and_install(|_, _| {}, || {}).await {
                     Ok(_) => {
                         info!("Update installed successfully, restarting...");
-                        // Restart the application
                         app.restart();
+                        #[allow(unreachable_code)]
+                        Ok(())
                     }
                     Err(e) => {
                         error!("Failed to download/install update: {}", e);

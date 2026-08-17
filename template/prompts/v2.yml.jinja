@@ -1,0 +1,57 @@
+# Riso 2.0 prompt/help SSOT (rendered into docs or automation).
+# Copier questions live in template/copier.yml; this file documents extras + remap.
+
+version: "2.0.0"
+
+remap:
+  apply_then_reject: true
+  commands:
+    - "riso migrate DEST|--answers-file PATH [--dry-run] [--json]"
+    - "riso update DEST [--dry-run]"
+  contract: >
+    apply_removed_key_remaps first, then reject leftover removed keys.
+    Do not overwrite a destination key that is already set. Drop the old key
+    after a successful apply. Second apply is a no-op (idempotent). Unknown
+    leftovers fail closed. No dual-path aliases after remap.
+  keys:
+    api_language:
+      operator: wrap-list
+      dest: api_languages
+    mcp_language:
+      operator: wrap-list
+      dest: mcp_languages
+      notes: "map node/js → typescript"
+    api_tracks:
+      operator: derive
+      dest: [api_module, api_languages]
+    docs_site:
+      operator: derive
+      dest: [docs_module, docs_framework]
+    saas_starter_module:
+      operator: rename
+      dest: saas_infra_module
+    saas_auth:
+      operator: split
+      dest: [saas_auth_module, saas_auth_provider]
+    saas_billing:
+      operator: split
+      dest: [saas_billing_module, saas_billing_provider]
+    include_admin:
+      operator: rename-bool
+      dest: saas_admin_dashboard
+
+extras:
+  mise:
+    always_on: true
+    path: mise.toml
+    exclude: false
+    description: >
+      Generated mise.toml always renders. Not a Copier extra. MISE lane fills
+      pins (generated Node 20+, not the maintainer 22 floor).
+  openspec_extra:
+    default: disabled
+    choices: [disabled, enabled]
+    exclude_unless_enabled: openspec/
+    description: >
+      Optional OpenSpec extra, off by default. Maintainer repo uses OpenSpec;
+      generated projects opt in.

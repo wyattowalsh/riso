@@ -28,6 +28,9 @@ interface StoreSchema {
   theme: 'system' | 'light' | 'dark';
   firstLaunch: boolean;
   recentFiles: string[];
+  {% if 'tray_icon' in desktop_features %}
+  startMinimized: boolean;
+  {% endif %}
 }
 
 const store = new Store<StoreSchema>({
@@ -36,6 +39,9 @@ const store = new Store<StoreSchema>({
     theme: 'system',
     firstLaunch: true,
     recentFiles: [],
+    {% if 'tray_icon' in desktop_features %}
+    startMinimized: false,
+    {% endif %}
   },
 });
 
@@ -166,7 +172,11 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC_CHANNELS.CLOSE_WINDOW, (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
+    {% if 'tray_icon' in desktop_features %}
+    window?.hide();
+    {% else %}
     window?.close();
+    {% endif %}
   });
 
   ipcMain.handle(IPC_CHANNELS.IS_MAXIMIZED, (event) => {

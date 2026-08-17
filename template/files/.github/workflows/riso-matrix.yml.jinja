@@ -22,6 +22,7 @@ env:
   PACKAGE_NAME: {{ package_name }}
 
 jobs:
+  {% if (cli_module == 'enabled' and 'python' in cli_languages) or (api_module == 'enabled' and 'python' in api_languages) or (mcp_module == 'enabled' and 'python' in mcp_languages) or (docs_module == 'enabled' and docs_framework == 'sphinx-shibuya') %}
   matrix-test:
     name: Python {% raw %}${{ matrix.python-version }}{% endraw %} Quality
     runs-on: ubuntu-latest
@@ -49,7 +50,7 @@ jobs:
           path: |
             ~/.cache/uv
             ~/.cache/pip
-          key: {% raw %}${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('**/uv.lock') }}{% endraw %}
+          key: {% raw %}${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('python/uv.lock', '**/uv.lock') }}{% endraw %}
           restore-keys: |
             {% raw %}${{ runner.os }}-py${{ matrix.python-version }}-{% endraw %}
             {% raw %}${{ runner.os }}-{% endraw %}
@@ -62,6 +63,7 @@ jobs:
           cache-dependency-glob: "**/uv.lock"
       
       - name: Install dependencies with uv
+        working-directory: python
         run: uv sync
       
       - name: Run pytest with retry logic
@@ -71,17 +73,17 @@ jobs:
           max_attempts: 3
           retry_wait_seconds: 30
           exponential_backoff: true
-          command: uv run pytest --tb=short --junit-xml=test-results.xml --cov --cov-report=xml
+          command: uv --directory python run pytest --tb=short --junit-xml=test-results.xml --cov --cov-report=xml
       
       - name: Run type checking (ty)
-        run: uv run ty check
+        run: uv --directory python run ty check
       
       - name: Run linting (ruff)
-        run: uv run ruff check .
+        run: uv --directory python run ruff check .
 {% if quality_profile == 'strict' %}
       
       - name: Run static analysis (pylint) - strict profile only
-        run: uv run pylint src/
+        run: uv --directory python run pylint src/
 {% endif %}
       
       - name: Upload test results and coverage
@@ -90,9 +92,9 @@ jobs:
         with:
           name: matrix-results-py{% raw %}${{ matrix.python-version }}{% endraw %}-{% raw %}${{ github.run_id }}{% endraw %}
           path: |
-            test-results.xml
-            coverage.xml
-            .coverage
+            python/test-results.xml
+            python/coverage.xml
+            python/.coverage
           if-no-files-found: warn
           retention-days: 90
       
@@ -126,4 +128,12 @@ jobs:
           fi
           echo "✅ All Python versions passed quality checks"
           echo "Tested versions: {{ python_versions|join(', ') }}"
+  {% else %}
+  scaffold-ok:
+    name: Scaffold (no Python matrix)
+    runs-on: ubuntu-latest
+    steps:
+      - name: No Python track on this dest
+        run: echo "riso-matrix has no Python jobs when python/ is excluded."
+  {% endif %}
 {% endif -%}

@@ -86,16 +86,16 @@ const featureCategories = [
   { name: 'Compliance Tools', key: 'compliance' },
 ];
 
-function FeatureCell({ value, note }) {
+function FeatureCell({ value, note }: { value: unknown; note?: string }) {
   if (typeof value === 'boolean') {
     return (
       <div className="flex items-center gap-2">
         {value ? (
-          <CheckCircle2 className="w-5 h-5 text-green-600" />
+          <CheckCircle2 className="h-5 w-5 text-primary" aria-label="Yes" />
         ) : (
-          <Circle className="w-5 h-5 text-gray-300" />
+          <Circle className="h-5 w-5 text-muted-foreground" aria-label="No" />
         )}
-        {note && <span className="text-xs text-gray-600">{note}</span>}
+        {note && <span className="text-xs text-muted-foreground">{note}</span>}
       </div>
     );
   }
@@ -115,25 +115,25 @@ function FeatureCell({ value, note }) {
   return (
     <div>
       <p className="font-semibold">{value}</p>
-      {note && <p className="text-xs text-gray-600">{note}</p>}
+      {note && <p className="text-xs text-muted-foreground">{note}</p>}
     </div>
   );
 }
 
 export default function ComparisonPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
-      <div className="relative overflow-hidden border-b bg-white">
+      <div className="relative overflow-hidden border-b border-border bg-card">
         <div className="absolute inset-0 opacity-5">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500" />
+          <div className="absolute inset-0 bg-gradient-to-r from-primary to-sidebar" />
         </div>
         <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
+            <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
               How Riso Compares
             </h1>
-            <p className="mt-4 text-lg text-slate-600">
+            <p className="mt-4 text-lg text-muted-foreground">
               Transparent feature comparison with other SaaS starters and frameworks
             </p>
           </div>
@@ -144,40 +144,41 @@ export default function ComparisonPage() {
       <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         {/* Quick Stats */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-12">
-          <div className="rounded-lg bg-white p-6 shadow-sm border border-slate-200">
-            <div className="text-3xl font-bold text-blue-600">Free</div>
-            <p className="mt-2 text-sm text-slate-600">Open source and modular</p>
+          <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+            <div className="text-3xl font-bold text-primary">Free</div>
+            <p className="mt-2 text-sm text-muted-foreground">Open source and modular</p>
           </div>
-          <div className="rounded-lg bg-white p-6 shadow-sm border border-slate-200">
-            <div className="text-3xl font-bold text-blue-600">2+</div>
-            <p className="mt-2 text-sm text-slate-600">Runtimes (Next.js, Remix)</p>
+          <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+            <div className="text-3xl font-bold text-primary">2+</div>
+            <p className="mt-2 text-sm text-muted-foreground">Runtimes (Next.js, Remix)</p>
           </div>
-          <div className="rounded-lg bg-white p-6 shadow-sm border border-slate-200">
-            <div className="text-3xl font-bold text-blue-600">8+</div>
-            <p className="mt-2 text-sm text-slate-600">Auth providers built-in</p>
+          <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+            <div className="text-3xl font-bold text-primary">8+</div>
+            <p className="mt-2 text-sm text-muted-foreground">Auth providers built-in</p>
           </div>
-          <div className="rounded-lg bg-white p-6 shadow-sm border border-slate-200">
-            <div className="text-3xl font-bold text-blue-600">Self-host</div>
-            <p className="mt-2 text-sm text-slate-600">Docker-first architecture</p>
+          <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+            <div className="text-3xl font-bold text-primary">Self-host</div>
+            <p className="mt-2 text-sm text-muted-foreground">Docker-first architecture</p>
           </div>
         </div>
 
         {/* Comparison Table */}
-        <div className="rounded-lg bg-white shadow-sm border border-slate-200 overflow-hidden mb-12">
+        <div className="mb-12 overflow-hidden rounded-lg border border-border bg-card shadow-sm">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
+            <table className="min-w-full divide-y divide-border" aria-label="SaaS starter feature comparison">
+              <thead className="bg-muted">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 w-32">
+                  <th scope="col" className="w-32 px-6 py-4 text-left text-sm font-semibold text-foreground">
                     Feature
                   </th>
                   {['riso', 'shipfast', 'supastarter', 'makerkit'].map((key) => (
                     <th
                       key={key}
+                      scope="col"
                       className={`px-6 py-4 text-left text-sm font-semibold ${
                         competitors[key].highlight
-                          ? 'bg-blue-50 text-blue-900'
-                          : 'text-slate-900'
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-foreground'
                       }`}
                     >
                       {competitors[key].name}
@@ -185,17 +186,17 @@ export default function ComparisonPage() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-border">
                 {featureCategories.map((category) => (
                   <tr key={category.key}>
-                    <td className="px-6 py-4 text-sm font-medium text-slate-900">
+                    <td className="px-6 py-4 text-sm font-medium text-foreground">
                       {category.name}
                     </td>
                     {['riso', 'shipfast', 'supastarter', 'makerkit'].map((key) => (
                       <td
                         key={key}
                         className={`px-6 py-4 text-sm ${
-                          competitors[key].highlight ? 'bg-blue-50' : 'bg-white'
+                          competitors[key].highlight ? 'bg-primary/10' : 'bg-card'
                         }`}
                       >
                         <FeatureCell
@@ -213,66 +214,66 @@ export default function ComparisonPage() {
 
         {/* Unique Advantages */}
         <div className="mb-12">
-          <h2 className="text-2xl font-bold text-slate-900 mb-6">
+          <h2 className="text-2xl font-bold text-foreground mb-6">
             Riso's Unique Advantages
           </h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="rounded-lg bg-white p-6 shadow-sm border border-slate-200 hover:border-blue-300 transition-colors">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm hover:border-primary transition-colors">
               <div className="flex gap-3 mb-3">
-                <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
-                <h3 className="font-semibold text-slate-900">Copier-Based Modularity</h3>
+                <CheckCircle2 className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
+                <h3 className="font-semibold text-foreground">Copier-Based Modularity</h3>
               </div>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 Configure exactly what you need. Add or remove features post-generation with Copier's intelligent diff system. No bloat, no unused code.
               </p>
             </div>
 
-            <div className="rounded-lg bg-white p-6 shadow-sm border border-slate-200 hover:border-blue-300 transition-colors">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm hover:border-primary transition-colors">
               <div className="flex gap-3 mb-3">
-                <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
-                <h3 className="font-semibold text-slate-900">Python + Node.js Dual Support</h3>
+                <CheckCircle2 className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
+                <h3 className="font-semibold text-foreground">Python + Node.js Dual Support</h3>
               </div>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 Not just Next.js. Build with Python FastAPI, Node.js backends, or both. Full support for monorepo and single-package layouts.
               </p>
             </div>
 
-            <div className="rounded-lg bg-white p-6 shadow-sm border border-slate-200 hover:border-blue-300 transition-colors">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm hover:border-primary transition-colors">
               <div className="flex gap-3 mb-3">
-                <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
-                <h3 className="font-semibold text-slate-900">Enterprise Compliance Built-in</h3>
+                <CheckCircle2 className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
+                <h3 className="font-semibold text-foreground">Enterprise Compliance Built-in</h3>
               </div>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 GDPR compliance module, HIPAA-ready patterns, SOC2 audit logging. Compliance as code, not as an afterthought.
               </p>
             </div>
 
-            <div className="rounded-lg bg-white p-6 shadow-sm border border-slate-200 hover:border-blue-300 transition-colors">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm hover:border-primary transition-colors">
               <div className="flex gap-3 mb-3">
-                <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
-                <h3 className="font-semibold text-slate-900">MCP Server Scaffolding</h3>
+                <CheckCircle2 className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
+                <h3 className="font-semibold text-foreground">MCP Server Scaffolding</h3>
               </div>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 Built-in support for Model Context Protocol servers. AI agent integration ready. FastMCP (Python & Node.js) out of the box.
               </p>
             </div>
 
-            <div className="rounded-lg bg-white p-6 shadow-sm border border-slate-200 hover:border-blue-300 transition-colors">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm hover:border-primary transition-colors">
               <div className="flex gap-3 mb-3">
-                <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
-                <h3 className="font-semibold text-slate-900">Self-Hosting First-Class</h3>
+                <CheckCircle2 className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
+                <h3 className="font-semibold text-foreground">Self-Hosting First-Class</h3>
               </div>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 Docker, Kubernetes, VPS ready. Full control over your data and infrastructure. Zero vendor lock-in.
               </p>
             </div>
 
-            <div className="rounded-lg bg-white p-6 shadow-sm border border-slate-200 hover:border-blue-300 transition-colors">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm hover:border-primary transition-colors">
               <div className="flex gap-3 mb-3">
-                <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
-                <h3 className="font-semibold text-slate-900">Open Source Community</h3>
+                <CheckCircle2 className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
+                <h3 className="font-semibold text-foreground">Open Source Community</h3>
               </div>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 Transparent development, community-driven roadmap, and no licensing restrictions. Fork, modify, and extend freely.
               </p>
             </div>
@@ -280,67 +281,67 @@ export default function ComparisonPage() {
         </div>
 
         {/* Current Project Configuration */}
-        <div className="rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 p-8 mb-12">
-          <h2 className="text-2xl font-bold text-slate-900 mb-6">
+        <div className="mb-12 rounded-lg border border-primary/20 bg-muted p-8">
+          <h2 className="text-2xl font-bold text-foreground mb-6">
             Your Project Configuration
           </h2>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-              <p className="text-sm font-medium text-slate-600">Runtime</p>
-              <p className="text-lg font-semibold text-slate-900 mt-1">Next.js 16</p>
+              <p className="text-sm font-medium text-muted-foreground">Runtime</p>
+              <p className="text-lg font-semibold text-foreground mt-1">Next.js 16</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-600">Hosting</p>
-              <p className="text-lg font-semibold text-slate-900 mt-1">{{ saas_hosting | title }}</p>
+              <p className="text-sm font-medium text-muted-foreground">Hosting</p>
+              <p className="text-lg font-semibold text-foreground mt-1">{{ saas_hosting | title }}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-600">Database</p>
-              <p className="text-lg font-semibold text-slate-900 mt-1">{{ saas_database | title }}</p>
+              <p className="text-sm font-medium text-muted-foreground">Database</p>
+              <p className="text-lg font-semibold text-foreground mt-1">{{ saas_database | title }}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-600">ORM</p>
-              <p className="text-lg font-semibold text-slate-900 mt-1">{{ saas_orm | title }}</p>
+              <p className="text-sm font-medium text-muted-foreground">ORM</p>
+              <p className="text-lg font-semibold text-foreground mt-1">{{ saas_orm | title }}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-600">Authentication</p>
-              <p className="text-lg font-semibold text-slate-900 mt-1">{{ saas_auth_provider | title }}</p>
+              <p className="text-sm font-medium text-muted-foreground">Authentication</p>
+              <p className="text-lg font-semibold text-foreground mt-1">{{ saas_auth_provider | title }}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-600">Payments</p>
-              <p className="text-lg font-semibold text-slate-900 mt-1">{{ saas_billing_provider | title }}</p>
+              <p className="text-sm font-medium text-muted-foreground">Payments</p>
+              <p className="text-lg font-semibold text-foreground mt-1">{{ saas_billing_provider | title }}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-600">Email Service</p>
-              <p className="text-lg font-semibold text-slate-900 mt-1">{{ saas_email | title }}</p>
+              <p className="text-sm font-medium text-muted-foreground">Email Service</p>
+              <p className="text-lg font-semibold text-foreground mt-1">{{ saas_email | title }}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-600">Analytics</p>
-              <p className="text-lg font-semibold text-slate-900 mt-1">{{ saas_analytics | title }}</p>
+              <p className="text-sm font-medium text-muted-foreground">Analytics</p>
+              <p className="text-lg font-semibold text-foreground mt-1">{{ saas_analytics | title }}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-600">AI Provider</p>
-              <p className="text-lg font-semibold text-slate-900 mt-1">{{ saas_ai | title }}</p>
+              <p className="text-sm font-medium text-muted-foreground">AI Provider</p>
+              <p className="text-lg font-semibold text-foreground mt-1">{{ saas_ai | title }}</p>
             </div>
             {%- if saas_tenancy_model == "b2b-teams" %}
             <div>
-              <p className="text-sm font-medium text-slate-600">Tenancy Model</p>
-              <p className="text-lg font-semibold text-slate-900 mt-1">B2B Teams</p>
+              <p className="text-sm font-medium text-muted-foreground">Tenancy Model</p>
+              <p className="text-lg font-semibold text-foreground mt-1">B2B Teams</p>
             </div>
             {%- elif saas_tenancy_model == "b2c-users" %}
             <div>
-              <p className="text-sm font-medium text-slate-600">Tenancy Model</p>
-              <p className="text-lg font-semibold text-slate-900 mt-1">B2C Users</p>
+              <p className="text-sm font-medium text-muted-foreground">Tenancy Model</p>
+              <p className="text-lg font-semibold text-foreground mt-1">B2C Users</p>
             </div>
             {%- endif %}
             {%- if saas_rbac_system == "custom-permissions" %}
             <div>
-              <p className="text-sm font-medium text-slate-600">RBAC System</p>
-              <p className="text-lg font-semibold text-slate-900 mt-1">Custom Permissions</p>
+              <p className="text-sm font-medium text-muted-foreground">RBAC System</p>
+              <p className="text-lg font-semibold text-foreground mt-1">Custom Permissions</p>
             </div>
             {%- else %}
             <div>
-              <p className="text-sm font-medium text-slate-600">RBAC System</p>
-              <p className="text-lg font-semibold text-slate-900 mt-1">Basic Roles</p>
+              <p className="text-sm font-medium text-muted-foreground">RBAC System</p>
+              <p className="text-lg font-semibold text-foreground mt-1">Basic Roles</p>
             </div>
             {%- endif %}
           </div>
@@ -348,16 +349,16 @@ export default function ComparisonPage() {
 
         {/* CTA Section */}
         <div className="text-center mb-12">
-          <h2 className="text-2xl font-bold text-slate-900 mb-4">
+          <h2 className="text-2xl font-bold text-foreground mb-4">
             Ready to Build Your SaaS?
           </h2>
-          <p className="text-lg text-slate-600 mb-8">
+          <p className="text-lg text-muted-foreground mb-8">
             You've already got Riso set up. Start building with your configured stack.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/docs"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               View Documentation
               <ArrowRight className="w-4 h-4" />
@@ -366,7 +367,7 @@ export default function ComparisonPage() {
               href="https://github.com/riso-io/riso"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium"
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-6 py-3 font-medium text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               GitHub Repository
               <ArrowRight className="w-4 h-4" />
@@ -376,66 +377,66 @@ export default function ComparisonPage() {
 
         {/* FAQ */}
         <div className="mb-12">
-          <h2 className="text-2xl font-bold text-slate-900 mb-6">
+          <h2 className="text-2xl font-bold text-foreground mb-6">
             Frequently Asked Questions
           </h2>
           <div className="space-y-4">
-            <details className="rounded-lg bg-white p-6 shadow-sm border border-slate-200 group cursor-pointer">
-              <summary className="flex items-center justify-between font-semibold text-slate-900">
+            <details className="rounded-lg border border-border bg-card p-6 shadow-sm group cursor-pointer">
+              <summary className="flex items-center justify-between font-semibold text-foreground">
                 Why is Riso free if competitors charge $199-$599?
-                <span className="text-slate-400 group-open:rotate-180 transition-transform">
+                <span className="text-muted-foreground group-open:rotate-180 transition-transform">
                   ▼
                 </span>
               </summary>
-              <p className="text-slate-600 mt-4">
+              <p className="text-muted-foreground mt-4">
                 Riso is open-source software. We believe excellent tooling should be accessible to everyone. We make money through premium hosting, consulting, and enterprise support services, not by gatekeeping the template itself.
               </p>
             </details>
 
-            <details className="rounded-lg bg-white p-6 shadow-sm border border-slate-200 group cursor-pointer">
-              <summary className="flex items-center justify-between font-semibold text-slate-900">
+            <details className="rounded-lg border border-border bg-card p-6 shadow-sm group cursor-pointer">
+              <summary className="flex items-center justify-between font-semibold text-foreground">
                 Can I use Riso for production applications?
-                <span className="text-slate-400 group-open:rotate-180 transition-transform">
+                <span className="text-muted-foreground group-open:rotate-180 transition-transform">
                   ▼
                 </span>
               </summary>
-              <p className="text-slate-600 mt-4">
+              <p className="text-muted-foreground mt-4">
                 Absolutely. Riso is production-ready with enterprise-grade patterns for authentication, authorization, billing, compliance, and observability. The template includes best practices for security, testing, and deployment.
               </p>
             </details>
 
-            <details className="rounded-lg bg-white p-6 shadow-sm border border-slate-200 group cursor-pointer">
-              <summary className="flex items-center justify-between font-semibold text-slate-900">
+            <details className="rounded-lg border border-border bg-card p-6 shadow-sm group cursor-pointer">
+              <summary className="flex items-center justify-between font-semibold text-foreground">
                 What about vendor lock-in with Riso?
-                <span className="text-slate-400 group-open:rotate-180 transition-transform">
+                <span className="text-muted-foreground group-open:rotate-180 transition-transform">
                   ▼
                 </span>
               </summary>
-              <p className="text-slate-600 mt-4">
+              <p className="text-muted-foreground mt-4">
                 Riso uses Copier for templating, which generates plain code in your repository. You own 100% of the code. Update dependencies, swap providers, and modify as needed. Self-hosting with Docker means you control everything.
               </p>
             </details>
 
-            <details className="rounded-lg bg-white p-6 shadow-sm border border-slate-200 group cursor-pointer">
-              <summary className="flex items-center justify-between font-semibold text-slate-900">
+            <details className="rounded-lg border border-border bg-card p-6 shadow-sm group cursor-pointer">
+              <summary className="flex items-center justify-between font-semibold text-foreground">
                 How does Riso compare to building from scratch?
-                <span className="text-slate-400 group-open:rotate-180 transition-transform">
+                <span className="text-muted-foreground group-open:rotate-180 transition-transform">
                   ▼
                 </span>
               </summary>
-              <p className="text-slate-600 mt-4">
+              <p className="text-muted-foreground mt-4">
                 Riso saves 3-6 months of engineering effort. It includes production patterns, compliance modules, testing infrastructure, and CI/CD setup. You focus on your unique business logic, not boilerplate authentication and billing systems.
               </p>
             </details>
 
-            <details className="rounded-lg bg-white p-6 shadow-sm border border-slate-200 group cursor-pointer">
-              <summary className="flex items-center justify-between font-semibold text-slate-900">
+            <details className="rounded-lg border border-border bg-card p-6 shadow-sm group cursor-pointer">
+              <summary className="flex items-center justify-between font-semibold text-foreground">
                 Can I switch runtimes or frameworks later?
-                <span className="text-slate-400 group-open:rotate-180 transition-transform">
+                <span className="text-muted-foreground group-open:rotate-180 transition-transform">
                   ▼
                 </span>
               </summary>
-              <p className="text-slate-600 mt-4">
+              <p className="text-muted-foreground mt-4">
                 Yes. Riso's modular architecture and Copier-based updates let you upgrade components. You can start with Next.js and add a Python API, or migrate between supported runtimes using our migration guides.
               </p>
             </details>
@@ -444,15 +445,15 @@ export default function ComparisonPage() {
       </main>
 
       {/* Footer CTA */}
-      <div className="border-t bg-white">
+      <div className="border-t border-border bg-card">
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 text-center">
-          <p className="text-slate-600 mb-4">
+          <p className="text-muted-foreground mb-4">
             Questions about Riso? Check out our documentation or join the community.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/docs"
-              className="text-blue-600 hover:text-blue-700 font-medium"
+              className="text-primary hover:text-primary font-medium"
             >
               Documentation →
             </Link>
@@ -460,7 +461,7 @@ export default function ComparisonPage() {
               href="https://github.com/riso-io/riso/discussions"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-700 font-medium"
+              className="text-primary hover:text-primary font-medium"
             >
               GitHub Discussions →
             </a>
@@ -468,7 +469,7 @@ export default function ComparisonPage() {
               href="https://discord.gg/riso"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-700 font-medium"
+              className="text-primary hover:text-primary font-medium"
             >
               Discord Community →
             </a>

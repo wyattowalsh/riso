@@ -14,6 +14,19 @@ import { BrowserWindow, shell } from 'electron';
 import { join } from 'path';
 import { is } from '@electron-toolkit/utils';
 import log from 'electron-log/main';
+{% if 'tray_icon' in desktop_features %}
+import Store from 'electron-store';
+
+let quitting = false;
+
+export function markQuitting(): void {
+  quitting = true;
+}
+
+export function isQuitting(): boolean {
+  return quitting;
+}
+{% endif %}
 
 // Store references to all windows
 const windows = new Map<string, BrowserWindow>();
@@ -49,7 +62,7 @@ export async function createMainWindow(options: WindowOptions = {}): Promise<Bro
     center = true,
     frame = {% if 'custom_titlebar' in desktop_features %}false{% else %}true{% endif %},
     titleBarStyle = {% if 'custom_titlebar' in desktop_features %}'hidden'{% else %}'default'{% endif %},
-    backgroundColor = '#1a1a2e',
+    backgroundColor = '#0f172a',
   } = options;
 
   // Check if window already exists
@@ -98,13 +111,30 @@ export async function createMainWindow(options: WindowOptions = {}): Promise<Bro
   // Store window reference
   windows.set(id, window);
 
-  // Show window when ready to prevent visual flash
   window.on('ready-to-show', () => {
+    {% if 'tray_icon' in desktop_features %}
+    const prefs = new Store<{ startMinimized: boolean }>({
+      defaults: { startMinimized: false },
+    });
+    if (prefs.get('startMinimized')) {
+      log.info(`Window '${id}' ready (starting minimized to tray)`);
+      return;
+    }
+    {% endif %}
     window.show();
     log.info(`Window '${id}' is ready`);
   });
 
-  // Clean up reference when window is closed
+  {% if 'tray_icon' in desktop_features %}
+  window.on('close', (event) => {
+    if (!isQuitting()) {
+      event.preventDefault();
+      window.hide();
+      log.info(`Window '${id}' hidden to tray`);
+    }
+  });
+  {% endif %}
+
   window.on('closed', () => {
     windows.delete(id);
     log.info(`Window '${id}' closed`);

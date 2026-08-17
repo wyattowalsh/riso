@@ -36,14 +36,7 @@
           "$RESOURCE/**"
         ]
       }
-    }{% if desktop_features is defined and 'tray_icon' in desktop_features %},
-    "trayIcon": {
-      "id": "main-tray",
-      "iconPath": "icons/icon.png",
-      "iconAsTemplate": true,
-      "menuOnLeftClick": false,
-      "tooltip": "{{ project_name }}"
-    }{% endif %}{% if desktop_features is defined and 'deep_linking' in desktop_features %},
+    }{% if desktop_features is defined and 'deep_linking' in desktop_features %},
     "macOSPrivateApi": true{% endif %}
   },
   "bundle": {
@@ -116,7 +109,8 @@
     "resources": [],
     "externalBin": [],
     "shortDescription": "{{ project_description | default(project_name) }}",
-    "longDescription": "{{ project_description | default(project_name ~ ' - A cross-platform desktop application built with Tauri') }}"
+    "longDescription": "{{ project_description | default(project_name ~ ' - A cross-platform desktop application built with Tauri') }}"{% if desktop_features is defined and 'auto_updater' in desktop_features %},
+    "createUpdaterArtifacts": true{% endif %}
   }{% if desktop_features is defined and 'auto_updater' in desktop_features %},
   "plugins": {
     "updater": {

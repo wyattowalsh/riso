@@ -9,6 +9,12 @@ import {
 } from '@remix-run/react';
 import type { LinksFunction } from '@remix-run/node';
 import stylesheet from '~/styles/globals.css';
+{% if saas_ui_framework == 'shadcn-ui' %}
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
+import '@fontsource/jetbrains-mono/400.css';
+{% endif %}
 
 export const links: LinksFunction = () => [
   { rel: 'stylesheet', href: stylesheet },
@@ -24,7 +30,12 @@ export default function App() {
         <Links />
       </head>
       <body>
-        <Outlet />
+        <a href="#main-content" className="skip-link">
+          Skip to content
+        </a>
+        <div id="main-content" tabIndex={-1}>
+          <Outlet />
+        </div>
         <ScrollRestoration />
         <Scripts />
         <LiveReload />
