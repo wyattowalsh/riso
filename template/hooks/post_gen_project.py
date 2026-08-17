@@ -329,7 +329,8 @@ def ai_tools_guidance(answers: dict[str, object]) -> list[str]:
     if not answer_enabled(answers, "ai_tools_module"):
         return []
     return [
-        "AI harness: edit AGENTS.md for agent instructions; see docs/ai-tools.md for MCP setup.",
+        "AI harness: edit AGENTS.md for agent instructions; "
+        "see docs/ai-tools.md for MCP setup and the wyattowalsh/agents plugin.",
     ]
 
 
