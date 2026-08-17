@@ -3,6 +3,7 @@ import { getLLMText } from '@/lib/get-llm-text';
 import { source } from '@/lib/source';
 import { notFound } from 'next/navigation';
 
+export const dynamic = 'force-static';
 export const revalidate = false;
 
 interface RouteProps {
@@ -22,6 +23,11 @@ export async function GET(_req: Request, { params }: RouteProps) {
 }
 
 export function generateStaticParams() {
-  return source.generateParams();
+  // Skip the empty slug so static export does not write `docs` as both a
+  // file and a directory.
+  return source.generateParams().filter((entry) => {
+    const slug = (entry as { slug?: string[] }).slug;
+    return Array.isArray(slug) && slug.length > 0;
+  });
 }
 {%- endif -%}

@@ -2,16 +2,25 @@
 import { source } from '@/lib/source';
 import { createFromSource } from 'fumadocs-core/search/server';
 
-export const { GET } = createFromSource(source, {
+export const dynamic = 'force-static';
+export const revalidate = false;
+
+const search = createFromSource(source, {
   // Add tag support for filtering
   // tag: (page) => page.data.tags ?? [],
 });
+
+export const GET = search.staticGET;
 {%- elif docs_module == 'enabled' and docs_framework == 'fumadocs' and fumadocs_search_provider == 'orama-cloud' -%}
 import { source } from '@/lib/source';
 import { createFromSource } from 'fumadocs-core/search/server';
 
-// Configure for Orama Cloud
-export const { GET } = createFromSource(source, {
+export const dynamic = 'force-static';
+export const revalidate = false;
+
+const search = createFromSource(source, {
   // Orama Cloud configuration
 });
+
+export const GET = search.staticGET;
 {%- endif -%}
