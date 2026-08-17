@@ -10,21 +10,16 @@ const workspaceRoot = path.resolve(packageRoot, '..', '..', '..');
 /** @type {import('next').NextConfig} */
 const config = {
   reactStrictMode: true,
+  output: 'export' as const,
+  images: {
+    unoptimized: true,
+  },
   outputFileTracingRoot: workspaceRoot,
   turbopack: {
     root: workspaceRoot,
   },
-{%- if fumadocs_llms_txt == 'enabled' %}
-
-  async rewrites() {
-    return [
-      {
-        source: '/docs/:path*.mdx',
-        destination: '/llms.mdx/docs/:path*',
-      },
-    ];
-  },
-{%- endif %}
+  // Rewrites and middleware/proxy are invalid with `output: 'export'`.
+  // LLM markdown stays at `/llms.mdx/docs/...`, `/llms.txt`, and `/llms-full.txt`.
 };
 
 export default withMDX(config);

@@ -1,0 +1,176 @@
+{%- if mcp_module == 'enabled' and 'rust' in mcp_languages -%}
+//! MCP server handler (rmcp ServerHandler + tool/prompt routers).
+
+use rmcp::{
+    ErrorData as McpError, ServerHandler,
+    handler::server::router::{prompt::PromptRouter, tool::ToolRouter},
+    model::*,
+    prompt_handler, prompt_router, tool_handler, tool_router,
+{%- if mcp_example_tools %}
+    RoleServer,
+    handler::server::wrapper::Parameters,
+    prompt, service::RequestContext, tool,
+{%- endif %}
+};
+
+use crate::{SERVER_NAME, VERSION};
+{%- if mcp_example_tools %}
+use crate::{prompts, resources, tools};
+{%- endif %}
+
+#[derive(Clone)]
+pub struct McpServer {
+    tool_router: ToolRouter<Self>,
+    prompt_router: PromptRouter<Self>,
+}
+
+#[tool_router]
+impl McpServer {
+    pub fn new() -> Self {
+        Self {
+            tool_router: Self::tool_router(),
+            prompt_router: Self::prompt_router(),
+        }
+    }
+
+{%- if mcp_example_tools %}
+    #[tool(description = "Echo back the provided message")]
+    async fn echo(
+        &self,
+        Parameters(params): Parameters<tools::echo::EchoParams>,
+    ) -> Result<CallToolResult, McpError> {
+        text_json(tools::echo::echo(&params))
+    }
+
+    #[tool(description = "Echo the message in reverse")]
+    async fn echo_reverse(
+        &self,
+        Parameters(params): Parameters<tools::echo::EchoParams>,
+    ) -> Result<CallToolResult, McpError> {
+        text_json(tools::echo::echo_reverse(&params))
+    }
+
+    #[tool(description = "Echo the message in uppercase")]
+    async fn echo_uppercase(
+        &self,
+        Parameters(params): Parameters<tools::echo::EchoParams>,
+    ) -> Result<CallToolResult, McpError> {
+        text_json(tools::echo::echo_uppercase(&params))
+    }
+
+    #[tool(description = "Get the current time in various formats")]
+    async fn get_current_time(
+        &self,
+        Parameters(params): Parameters<tools::timestamp::GetTimeParams>,
+    ) -> Result<CallToolResult, McpError> {
+        text_json(tools::timestamp::get_current_time(&params))
+    }
+
+    #[tool(description = "Parse a timestamp string into components")]
+    async fn parse_timestamp(
+        &self,
+        Parameters(params): Parameters<tools::timestamp::ParseParams>,
+    ) -> Result<CallToolResult, McpError> {
+        text_json(tools::timestamp::parse_timestamp(&params))
+    }
+
+    #[tool(description = "Fetch content from a URL via HTTP GET (https only)")]
+    async fn http_get(
+        &self,
+        Parameters(params): Parameters<tools::http_fetch::HttpGetParams>,
+    ) -> Result<CallToolResult, McpError> {
+        match tools::http_fetch::http_get(params).await {
+            Ok(result) => text_json(result),
+            Err(err) => Err(McpError::internal_error(err, None)),
+        }
+    }
+
+    #[tool(description = "Get headers from a URL without downloading content (https only)")]
+    async fn http_head(
+        &self,
+        Parameters(params): Parameters<tools::http_fetch::HttpHeadParams>,
+    ) -> Result<CallToolResult, McpError> {
+        match tools::http_fetch::http_head(params).await {
+            Ok(result) => text_json(result),
+            Err(err) => Err(McpError::internal_error(err, None)),
+        }
+    }
+{%- endif %}
+}
+
+#[prompt_router]
+impl McpServer {
+{%- if mcp_example_tools %}
+    /// Create a code review prompt
+    #[prompt(name = "review_code")]
+    async fn review_code(
+        &self,
+        Parameters(params): Parameters<prompts::review::ReviewParams>,
+        _ctx: RequestContext<RoleServer>,
+    ) -> Result<GetPromptResult, McpError> {
+        Ok(prompts::review::review_code(&params))
+    }
+{%- endif %}
+}
+
+#[tool_handler]
+#[prompt_handler]
+impl ServerHandler for McpServer {
+    fn get_info(&self) -> ServerInfo {
+        ServerInfo {
+            protocol_version: ProtocolVersion::default(),
+            capabilities: ServerCapabilities::builder()
+                .enable_tools()
+{%- if mcp_example_tools %}
+                .enable_prompts()
+                .enable_resources()
+{%- endif %}
+                .build(),
+            server_info: Implementation {
+                name: SERVER_NAME.to_string(),
+                version: VERSION.to_string(),
+                ..Default::default()
+            },
+            instructions: Some(format!(
+                "{SERVER_NAME} MCP server. Tools and resources for {{ project_name }}."
+            )),
+        }
+    }
+
+{%- if mcp_example_tools %}
+    async fn list_resources(
+        &self,
+        _request: Option<PaginatedRequestParam>,
+        _: RequestContext<RoleServer>,
+    ) -> Result<ListResourcesResult, McpError> {
+        Ok(ListResourcesResult {
+            resources: resources::system::list_resources(),
+            next_cursor: None,
+            meta: None,
+        })
+    }
+
+    async fn read_resource(
+        &self,
+        ReadResourceRequestParam { uri }: ReadResourceRequestParam,
+        _: RequestContext<RoleServer>,
+    ) -> Result<ReadResourceResult, McpError> {
+        resources::system::read_resource(&uri)
+    }
+{%- endif %}
+}
+
+impl Default for McpServer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+{%- if mcp_example_tools %}
+fn text_json<T: serde::Serialize>(value: T) -> Result<CallToolResult, McpError> {
+    let text = serde_json::to_string(&value)
+        .map_err(|err| McpError::internal_error(err.to_string(), None))?;
+    Ok(CallToolResult::success(vec![Content::text(text)]))
+}
+{%- endif %}
+{%- endif %}

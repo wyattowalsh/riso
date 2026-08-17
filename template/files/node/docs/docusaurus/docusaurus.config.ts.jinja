@@ -3,6 +3,97 @@ import { themes as prismThemes } from 'prism-react-renderer';
 import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
+{%- if docusaurus_mermaid == 'enabled' %}
+
+/** DESIGN.md mermaid tokens. themeConfig is JSON-cloned — one options bag. */
+const mermaidThemeVariablesLight = {
+  darkMode: false,
+  background: '#f8fafc',
+  fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+  fontSize: '16px',
+  primaryColor: '#14b8a6',
+  primaryTextColor: '#0b132b',
+  primaryBorderColor: '#0f766e',
+  secondaryColor: '#ccfbf1',
+  secondaryTextColor: '#0b132b',
+  secondaryBorderColor: '#14b8a6',
+  tertiaryColor: '#f1f5f9',
+  tertiaryTextColor: '#0b132b',
+  tertiaryBorderColor: '#cbd5e1',
+  lineColor: '#334155',
+  textColor: '#0b132b',
+  mainBkg: '#ffffff',
+  secondBkg: '#f1f5f9',
+  nodeBorder: '#0f766e',
+  clusterBkg: '#f0fdfa',
+  clusterBorder: '#14b8a6',
+  titleColor: '#0b132b',
+  edgeLabelBackground: '#ffffff',
+  actorBkg: '#ccfbf1',
+  actorBorder: '#0f766e',
+  actorTextColor: '#0b132b',
+  actorLineColor: '#334155',
+  signalColor: '#334155',
+  signalTextColor: '#0b132b',
+  labelBoxBkgColor: '#ffffff',
+  labelBoxBorderColor: '#14b8a6',
+  labelTextColor: '#0b132b',
+  loopTextColor: '#0b132b',
+  noteBkgColor: '#f0fdfa',
+  noteTextColor: '#0b132b',
+  noteBorderColor: '#14b8a6',
+  activationBorderColor: '#0f766e',
+  activationBkgColor: '#ccfbf1',
+  sequenceNumberColor: '#042f2e',
+};
+
+const mermaidThemeVariablesDark = {
+  darkMode: true,
+  background: '#0f172a',
+  fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+  fontSize: '16px',
+  primaryColor: '#14b8a6',
+  primaryTextColor: '#042f2e',
+  primaryBorderColor: '#2dd4bf',
+  secondaryColor: '#134e4a',
+  secondaryTextColor: '#e2e8f0',
+  secondaryBorderColor: '#14b8a6',
+  tertiaryColor: '#1e293b',
+  tertiaryTextColor: '#e2e8f0',
+  tertiaryBorderColor: '#334155',
+  lineColor: '#94a3b8',
+  textColor: '#e2e8f0',
+  mainBkg: '#1e293b',
+  secondBkg: '#334155',
+  nodeBorder: '#2dd4bf',
+  clusterBkg: '#134e4a',
+  clusterBorder: '#14b8a6',
+  titleColor: '#e2e8f0',
+  edgeLabelBackground: '#0f172a',
+  actorBkg: '#134e4a',
+  actorBorder: '#2dd4bf',
+  actorTextColor: '#e2e8f0',
+  actorLineColor: '#94a3b8',
+  signalColor: '#94a3b8',
+  signalTextColor: '#e2e8f0',
+  labelBoxBkgColor: '#1e293b',
+  labelBoxBorderColor: '#14b8a6',
+  labelTextColor: '#e2e8f0',
+  loopTextColor: '#e2e8f0',
+  noteBkgColor: '#134e4a',
+  noteTextColor: '#e2e8f0',
+  noteBorderColor: '#14b8a6',
+  activationBorderColor: '#2dd4bf',
+  activationBkgColor: '#134e4a',
+  sequenceNumberColor: '#042f2e',
+};
+
+const mermaidThemeByColorMode = {
+  light: mermaidThemeVariablesLight,
+  dark: mermaidThemeVariablesDark,
+};
+{%- endif %}
+
 const config: Config = {
   title: '{{ project_name }}',
   tagline: 'Documentation for {{ project_name }}',
@@ -285,7 +376,7 @@ const config: Config = {
           {
             tagName: 'meta',
             name: 'theme-color',
-            content: '#2563eb',
+            content: '#14b8a6',
           },
           {
             tagName: 'meta',
@@ -295,7 +386,7 @@ const config: Config = {
           {
             tagName: 'meta',
             name: 'apple-mobile-web-app-status-bar-style',
-            content: '#2563eb',
+            content: '#14b8a6',
           },
           {
             tagName: 'link',
@@ -345,7 +436,7 @@ const config: Config = {
       id: 'announcement',
       content:
         '⭐ If you like {{ project_name }}, give it a star on <a target="_blank" rel="noopener noreferrer" href="https://github.com/{{ project_slug }}/{{ project_slug }}">GitHub</a>!',
-      backgroundColor: '#3b82f6',
+      backgroundColor: '#14b8a6',
       textColor: '#ffffff',
       isCloseable: true,
     },
@@ -363,14 +454,6 @@ const config: Config = {
           position: 'left',
           label: 'Docs',
         },
-{%- if docusaurus_openapi == 'enabled' and api_module == 'enabled' and api_languages %}
-        {
-          type: 'docSidebar',
-          sidebarId: 'api',
-          position: 'left',
-          label: 'API',
-        },
-{%- endif %}
 {%- if docusaurus_blog == 'enabled' %}
         { to: '/blog', label: 'Blog', position: 'left' },
 {%- endif %}
@@ -455,12 +538,43 @@ const config: Config = {
 {%- endif %}
 {%- if docusaurus_mermaid == 'enabled' %}
     mermaid: {
-      theme: { light: 'neutral', dark: 'dark' },
+      // Both modes stay `base`. Pairing mermaid `dark` with the light token bag
+      // paints #0b132b text on dark fills. themeConfig is JSON-cloned, so only
+      // one options.themeVariables object reaches the client — use the light
+      // bag here; mermaidThemeByColorMode.dark is the file-local dark twin.
+      theme: { light: 'base', dark: 'base' },
       options: {
+        startOnLoad: false,
+        securityLevel: 'strict',
         maxTextSize: 50000,
+        deterministicIds: true,
+        htmlLabels: false,
+        fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+        themeVariables: mermaidThemeByColorMode.light,
+        flowchart: {
+          padding: 16,
+          diagramPadding: 16,
+          nodeSpacing: 50,
+          rankSpacing: 50,
+          htmlLabels: false,
+        },
+        sequence: {
+          actorMargin: 50,
+          messageMargin: 40,
+          boxMargin: 10,
+          boxTextMargin: 5,
+          noteMargin: 10,
+        },
+        er: {
+          diagramPadding: 20,
+          entityPadding: 15,
+          minEntityWidth: 100,
+          fontSize: 16,
+        },
       },
     },
 {%- endif %}
+
 {%- if docusaurus_image_zoom == 'enabled' %}
     zoom: {
       selector: '.markdown :not(em) > img',

@@ -1,0 +1,48 @@
+# OpenSpec extra for {{ project_name }}
+
+This tree is copied only when `openspec_extra=enabled`. It is **off by default**
+on generated projects. The Riso maintainer repo uses OpenSpec; generated apps
+opt in.
+
+## Layout
+
+```text
+openspec/
+├── AGENTS.md              # Agent workflow for this extra
+├── config.yaml            # spec-driven schema + project context
+├── USAGE.md               # this file
+├── specs/                 # Source of truth (current behavior)
+│   └── <domain>/spec.md
+└── changes/               # Proposed work (one folder per change)
+    ├── <change-name>/
+    │   ├── proposal.md
+    │   ├── design.md
+    │   ├── tasks.md
+    │   └── specs/<domain>/spec.md
+    └── archive/           # Completed changes after archive
+```
+
+If `openspec/specs/` is empty after generate, add domain specs as
+`openspec/specs/<domain>/spec.md` (one folder per capability).
+
+## Workflow
+
+1. Propose: create `openspec/changes/<change-name>/` with proposal, specs, design, tasks.
+2. Apply: implement the task checklist.
+3. Archive: merge delta specs into `openspec/specs/` and move the change under `archive/`.
+
+Delta specs use `## ADDED Requirements`, `## MODIFIED Requirements`, and
+`## REMOVED Requirements`. Requirements use RFC 2119 keywords (MUST / SHALL /
+SHOULD / MAY) and testable scenarios.
+
+## CLI (optional)
+
+These files are the extra. Installing an OpenSpec CLI is optional and is **not**
+added as a generated dependency. If you already have `openspec` on PATH:
+
+```bash
+openspec list
+openspec validate
+```
+
+`mise.toml` always renders and is not gated by this extra.

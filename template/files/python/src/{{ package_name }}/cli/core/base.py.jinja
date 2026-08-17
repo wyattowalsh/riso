@@ -1,4 +1,4 @@
-{%- if cli_module | lower != "enabled" %}
+{%- if cli_module | lower != "enabled" or "python" not in cli_languages %}
 # CLI module disabled - this file is not generated
 {%- else %}
 """Base command infrastructure for CLI framework.
@@ -22,46 +22,70 @@ R = TypeVar("R")
 
 
 class BaseCommand:
-    """Base class for CLI commands with common functionality.
-    
-    Provides execute() and validate_params() methods that can be overridden.
+    """Class-based CLI command: validate parameters, then run a handler.
+
+    Decorator-based commands use ``@command``. This class is the object
+    alternative: pass ``handler`` or override ``run()``.
     """
-    
-    def __init__(self, name: str, help_text: str = ""):
+
+    def __init__(
+        self,
+        name: str,
+        help_text: str = "",
+        handler: Callable[..., Any] | None = None,
+    ) -> None:
         """Initialize base command.
-        
+
         Args:
             name: Command name as invoked in CLI
             help_text: Description shown in --help
+            handler: Callable invoked by ``execute()`` after validation
         """
         self.name = name
         self.help_text = help_text
-    
+        self.handler = handler
+
     def validate_params(self, **kwargs: Any) -> None:
         """Validate command parameters before execution.
-        
+
         Args:
             **kwargs: Command parameters to validate
-            
+
         Raises:
             CLIError: If validation fails
         """
-        # Override in subclasses for custom validation
-        pass
-    
+
+    def run(self, **kwargs: Any) -> Any:
+        """Run the command body after validation.
+
+        Override in subclasses, or pass ``handler`` to the constructor.
+        """
+        if self.handler is None:
+            raise CLIError(
+                f"Command '{self.name}' has no handler. "
+                "Pass handler=... or override run()."
+            )
+        return self.handler(**kwargs)
+
     def execute(self, **kwargs: Any) -> Any:
-        """Execute the command with validated parameters.
-        
+        """Validate parameters, then run the command.
+
         Args:
             **kwargs: Command parameters
-            
+
         Returns:
             Command execution result
-            
+
         Raises:
-            CLIError: If execution fails
+            CLIError: If validation or execution fails
         """
-        raise NotImplementedError("Subclasses must implement execute()")
+        self.validate_params(**kwargs)
+        try:
+            return self.run(**kwargs)
+        except CLIError:
+            raise
+        except Exception as exc:
+            raise CLIError(f"Command '{self.name}' failed: {exc}") from exc
 
 
 def command(

@@ -1,21 +1,30 @@
-{% if api_module == 'enabled' and 'node' in api_languages or docs_module == "enabled" and docs_framework in ["fumadocs", "docusaurus"] or mcp_module == "enabled" and "node" in mcp_languages or saas_infra_module == "enabled" or desktop_module == "enabled" or changelog_module == "enabled" -%}
+{% if (api_module == 'enabled' and 'node' in api_languages) or (docs_module == "enabled" and docs_framework in ["fumadocs", "docusaurus"]) or (mcp_module == "enabled" and "typescript" in mcp_languages) or saas_infra_module == "enabled" or desktop_module == "enabled" or changelog_module == "enabled" -%}
 {
   "name": "{{ project_slug }}",
   "version": "0.1.0",
   "description": "{{ project_name }}",
   "private": true,
-{% if project_layout == "monorepo" %}
+{% if project_layout == "monorepo" or (mcp_module == "enabled" and "typescript" in mcp_languages) %}
+{%- set _ws = [] -%}
+{%- if api_module == 'enabled' and 'node' in api_languages -%}
+{%- set _ = _ws.append("node/apps/api-node") -%}
+{%- endif -%}
+{%- if docs_module == "enabled" and docs_framework == "fumadocs" -%}
+{%- set _ = _ws.append("node/docs/fumadocs") -%}
+{%- endif -%}
+{%- if docs_module == "enabled" and docs_framework == "docusaurus" -%}
+{%- set _ = _ws.append("node/docs/docusaurus") -%}
+{%- endif -%}
+{%- if mcp_module == "enabled" and "typescript" in mcp_languages -%}
+{%- set _ = _ws.append("node/mcp") -%}
+{%- endif -%}
+{%- if project_layout == "monorepo" -%}
+{%- set _ = _ws.append("node/packages/*") -%}
+{%- endif %}
   "workspaces": [
-{% if api_module == 'enabled' and 'node' in api_languages %}
-    "node/apps/api-node",
-{% endif %}
-{% if docs_module == "enabled" and docs_framework == "fumadocs" %}
-    "node/docs/fumadocs",
-{% endif %}
-{% if docs_module == "enabled" and docs_framework == "docusaurus" %}
-    "node/docs/docusaurus",
-{% endif %}
-    "node/packages/*"
+{%- for member in _ws %}
+    "{{ member }}"{% if not loop.last %},{% endif %}
+{%- endfor %}
   ],
 {% endif %}
   "scripts": {
@@ -29,6 +38,11 @@
     "dev": "pnpm --filter api-node run dev",
     "build": "pnpm --filter api-node run build",
     "test": "pnpm --filter api-node run test",
+{% endif %}
+{% if mcp_module == "enabled" and "typescript" in mcp_languages %}
+    "mcp:dev": "pnpm --filter @{{ package_name }}/mcp-server run dev",
+    "mcp:build": "pnpm --filter @{{ package_name }}/mcp-server run build",
+    "mcp:test": "pnpm --filter @{{ package_name }}/mcp-server run test",
 {% endif %}
 {% if docs_module == "enabled" and docs_framework == "fumadocs" %}
     "docs:dev": "pnpm --filter docs-fumadocs run dev",

@@ -1,14 +1,19 @@
 {% if project_language == 'rust' or 'rust' in cli_languages or 'rust' in api_languages or 'rust' in mcp_languages %}
-set shell := ["zsh", "-c"]
+{%- set _has_mcp = mcp_module == 'enabled' and 'rust' in mcp_languages -%}
+set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
 # Build the project
 build:
+{% if _has_mcp %}
+    cargo build --workspace
+{% else %}
     cargo build
+{% endif %}
 
 {% if cli_module == 'enabled' and 'rust' in cli_languages %}
 # Run the CLI
 run-cli *ARGS:
-    cargo run --bin {{ package_name }} -- {{ARGS}}
+    cargo run --bin {{ package_name }} -- {% raw %}{{ARGS}}{% endraw %}
 
 # Build CLI for release
 build-cli:
@@ -29,7 +34,7 @@ run-api-dev:
     RUST_LOG=debug HOST=127.0.0.1 PORT=8080 cargo run --bin {{ package_name }}-api
 {% endif %}
 
-{% if mcp_module == 'enabled' and 'rust' in mcp_languages %}
+{% if _has_mcp %}
 # Run MCP server (stdio)
 run-mcp:
     cargo run --manifest-path mcp/Cargo.toml -- --transport stdio
@@ -41,34 +46,62 @@ build-mcp:
 
 # Run tests
 test:
+{% if _has_mcp %}
+    cargo test --workspace
+{% else %}
     cargo test
+{% endif %}
 
 # Run tests with output
 test-verbose:
+{% if _has_mcp %}
+    cargo test --workspace -- --nocapture
+{% else %}
     cargo test -- --nocapture
+{% endif %}
 
 # Check code quality (fmt + clippy + test)
 quality: fmt-check clippy test
 
 # Format code
 fmt:
+{% if _has_mcp %}
+    cargo fmt --all
+{% else %}
     cargo fmt
+{% endif %}
 
 # Check formatting
 fmt-check:
+{% if _has_mcp %}
+    cargo fmt --all -- --check
+{% else %}
     cargo fmt -- --check
+{% endif %}
 
 # Run clippy
 clippy:
+{% if _has_mcp %}
+    cargo clippy --workspace -- -D warnings
+{% else %}
     cargo clippy -- -D warnings
+{% endif %}
 
 # Run clippy with all features
 clippy-all:
+{% if _has_mcp %}
+    cargo clippy --workspace --all-features -- -D warnings
+{% else %}
     cargo clippy --all-features -- -D warnings
+{% endif %}
 
 # Build for release
 release:
+{% if _has_mcp %}
+    cargo build --workspace --release
+{% else %}
     cargo build --release
+{% endif %}
 
 # Clean build artifacts
 clean:

@@ -1,6 +1,6 @@
 {% if saas_infra_module == "enabled" and saas_runtime == "nextjs-16" %}
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 {% if saas_auth_provider == 'clerk' %}
 import { ClerkProvider } from '@clerk/nextjs';
@@ -13,7 +13,11 @@ import { PostHogProvider } from '@/lib/analytics/posthog-provider';
 import { AmplitudeProvider } from '@/lib/analytics/amplitude-provider';
 {% endif %}
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+});
 
 export const metadata: Metadata = {
   title: '{{ project_name }}',
@@ -25,11 +29,16 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const bodyClass = `${inter.variable} ${jetbrainsMono.variable} ${inter.className}`;
   return (
     {% if saas_auth_provider == 'clerk' %}
     <ClerkProvider>
       <html lang="en">
-        <body className={inter.className}>
+        <body className={bodyClass}>
+          <a href="#main-content" className="skip-link">
+            Skip to content
+          </a>
+          <div id="main-content" tabIndex={-1}>
           {% if saas_analytics == 'posthog' %}
           <PostHogProvider>
             {children}
@@ -41,12 +50,17 @@ export default function RootLayout({
           {% else %}
           {children}
           {% endif %}
+          </div>
         </body>
       </html>
     </ClerkProvider>
     {% elif saas_auth_provider == 'authjs' %}
     <html lang="en">
-      <body className={inter.className}>
+      <body className={bodyClass}>
+        <a href="#main-content" className="skip-link">
+          Skip to content
+        </a>
+        <div id="main-content" tabIndex={-1}>
         <SessionProvider>
           {% if saas_analytics == 'posthog' %}
           <PostHogProvider>
@@ -60,11 +74,16 @@ export default function RootLayout({
           {children}
           {% endif %}
         </SessionProvider>
+        </div>
       </body>
     </html>
     {% else %}
     <html lang="en">
-      <body className={inter.className}>
+      <body className={bodyClass}>
+        <a href="#main-content" className="skip-link">
+          Skip to content
+        </a>
+        <div id="main-content" tabIndex={-1}>
         {% if saas_analytics == 'posthog' %}
         <PostHogProvider>
           {children}
@@ -76,6 +95,7 @@ export default function RootLayout({
         {% else %}
         {children}
         {% endif %}
+        </div>
       </body>
     </html>
     {% endif %}

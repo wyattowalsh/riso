@@ -40,7 +40,7 @@ executors:
   {% if api_module == 'enabled' and 'node' in api_languages or docs_module == 'enabled' and docs_framework in ['fumadocs', 'docusaurus'] or saas_infra_module == 'enabled' -%}
   node-executor:
     docker:
-      - image: cimg/node:22.11
+      - image: cimg/node:20.18
     environment:
       PNPM_HOME: /home/circleci/.local/share/pnpm
   {% endif -%}
@@ -73,18 +73,18 @@ commands:
             echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> $BASH_ENV
       - restore_cache:
           keys:
-            - uv-cache-{{ "{{" }} checksum "uv.lock" {{ "}}" }}
+            - uv-cache-{{ "{{" }} checksum "python/uv.lock" {{ "}}" }}
             - uv-cache-
       - run:
           name: Install Python dependencies
           command: |
             export PATH="$HOME/.cargo/bin:$PATH"
-            uv sync
+            uv --directory python sync
       - save_cache:
-          key: uv-cache-{{ "{{" }} checksum "uv.lock" {{ "}}" }}
+          key: uv-cache-{{ "{{" }} checksum "python/uv.lock" {{ "}}" }}
           paths:
             - ~/.cache/uv
-            - .venv
+            - python/.venv
   {% endif -%}
 
   {% if api_module == 'enabled' and 'node' in api_languages or docs_module == 'enabled' and docs_framework in ['fumadocs', 'docusaurus'] or saas_infra_module == 'enabled' -%}
@@ -127,21 +127,21 @@ jobs:
           name: Run Ruff linter
           command: |
             export PATH="$HOME/.cargo/bin:$PATH"
-            uv run ruff check .
+            uv --directory python run ruff check .
       - run:
           name: Check code formatting
           command: |
             export PATH="$HOME/.cargo/bin:$PATH"
-            uv run ruff format --check .
+            uv --directory python run ruff format --check .
       {% if quality_profile == 'strict' -%}
       - run:
           name: Run ty type checker
-          command: uv run ty check
+          command: uv --directory python run ty check
       - run:
           name: Run Pylint static analysis
           command: |
             export PATH="$HOME/.cargo/bin:$PATH"
-            uv run pylint src/
+            uv --directory python run pylint src/
       {% endif -%}
 
   test-python:
@@ -156,7 +156,7 @@ jobs:
           name: Run pytest with coverage
           command: |
             export PATH="$HOME/.cargo/bin:$PATH"
-            uv run pytest tests/ -v --cov --cov-report=xml --cov-report=html --junit-xml=test-results.xml
+            uv --directory python run pytest tests/ -v --cov --cov-report=xml --cov-report=html --junit-xml=test-results.xml
       - store_test_results:
           path: test-results.xml
       - store_artifacts:
@@ -175,6 +175,7 @@ jobs:
           name: Test CLI module
           command: |
             export PATH="$HOME/.cargo/bin:$PATH"
+            cd python
             uv run pytest tests/test_cli*.py -v
   {% endif -%}
 
@@ -188,6 +189,7 @@ jobs:
           name: Test MCP module
           command: |
             export PATH="$HOME/.cargo/bin:$PATH"
+            cd python
             uv run pytest tests/test_mcp.py -v
   {% endif -%}
 
@@ -385,7 +387,7 @@ jobs:
           name: Build Sphinx documentation
           command: |
             export PATH="$HOME/.cargo/bin:$PATH"
-            uv run sphinx-build docs/ public/
+            uv --directory python run --group docs sphinx-build docs ../public/
       - store_artifacts:
           path: public
           destination: docs
@@ -400,10 +402,10 @@ jobs:
           command: |
             {% if docs_framework == 'fumadocs' -%}
             pnpm run docs:build
-            mv docs/out public/
+            mv node/docs/fumadocs/out public/
             {% elif docs_framework == 'docusaurus' -%}
-            cd docs && pnpm run build
-            mv build ../public/
+            pnpm --filter docs-docusaurus run build
+            mv node/docs/docusaurus/build public/
             {% endif -%}
       - store_artifacts:
           path: public

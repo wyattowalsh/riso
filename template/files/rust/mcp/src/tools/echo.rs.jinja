@@ -1,48 +1,35 @@
 {%- if mcp_module == 'enabled' and 'rust' in mcp_languages and mcp_example_tools -%}
-//! Echo tool - simple message reflection
-//!
-//! Demonstrates basic tool implementation.
+//! Echo tool helpers.
 
-use rmcp::{Server, tool};
+use rmcp::schemars;
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize)]
-struct EchoParams {
-    message: String,
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct EchoParams {
+    /// The message to echo back
+    pub message: String,
 }
 
-#[derive(Serialize)]
-struct EchoResult {
-    message: String,
+#[derive(Debug, Serialize)]
+pub struct EchoResult {
+    pub message: String,
 }
 
-/// Echo back the provided message
-#[tool]
-async fn echo(params: EchoParams) -> Result<EchoResult, String> {
-    Ok(EchoResult {
-        message: params.message,
-    })
+pub fn echo(params: &EchoParams) -> EchoResult {
+    EchoResult {
+        message: params.message.clone(),
+    }
 }
 
-/// Echo the message in reverse
-#[tool]
-async fn echo_reverse(params: EchoParams) -> Result<EchoResult, String> {
-    Ok(EchoResult {
+pub fn echo_reverse(params: &EchoParams) -> EchoResult {
+    EchoResult {
         message: params.message.chars().rev().collect(),
-    })
+    }
 }
 
-/// Echo the message in uppercase
-#[tool]
-async fn echo_uppercase(params: EchoParams) -> Result<EchoResult, String> {
-    Ok(EchoResult {
+pub fn echo_uppercase(params: &EchoParams) -> EchoResult {
+    EchoResult {
         message: params.message.to_uppercase(),
-    })
-}
-
-pub fn register(server: &Server) {
-    server.register_tool("echo", echo);
-    server.register_tool("echo_reverse", echo_reverse);
-    server.register_tool("echo_uppercase", echo_uppercase);
+    }
 }
 {%- endif %}

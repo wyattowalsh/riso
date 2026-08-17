@@ -1,11 +1,63 @@
 {%- if mcp_module == 'enabled' and 'rust' in mcp_languages and mcp_example_tools -%}
-//! System resources - basic system information access.
+//! System resources — OS and environment snapshots.
 
-use rmcp::{Server}; // Add resource macro if available in future rmcp versions
+use rmcp::{ErrorData as McpError, model::*};
+use serde::Serialize;
+use serde_json::json;
 
-pub fn register(server: &Server) {
-    // Implementation pending rmcp resource macro support or explicit handler pattern integration
-    // server.register_resource("system://info", ...);
-    let _ = server;
+const INFO_URI: &str = "system://info";
+const ENV_URI: &str = "system://env";
+
+#[derive(Serialize)]
+struct SystemInfo {
+    os: String,
+    arch: String,
+    family: String,
+    server_name: String,
+}
+
+pub fn list_resources() -> Vec<Resource> {
+    vec![
+        RawResource::new(INFO_URI, "System Information").no_annotation(),
+        RawResource::new(ENV_URI, "Environment Variables").no_annotation(),
+    ]
+}
+
+pub fn read_resource(uri: &str) -> Result<ReadResourceResult, McpError> {
+    match uri {
+        INFO_URI => {
+            let info = SystemInfo {
+                os: std::env::consts::OS.to_string(),
+                arch: std::env::consts::ARCH.to_string(),
+                family: std::env::consts::FAMILY.to_string(),
+                server_name: crate::SERVER_NAME.to_string(),
+            };
+            let text = serde_json::to_string_pretty(&info).unwrap_or_else(|_| "{}".to_string());
+            Ok(ReadResourceResult {
+                contents: vec![ResourceContents::text(text, uri)],
+            })
+        }
+        ENV_URI => {
+            let safe = [
+                ("PATH", std::env::var("PATH").ok()),
+                ("HOME", std::env::var("HOME").ok()),
+                ("USER", std::env::var("USER").ok()),
+                ("SHELL", std::env::var("SHELL").ok()),
+                ("LANG", std::env::var("LANG").ok()),
+                ("TERM", std::env::var("TERM").ok()),
+            ]
+            .into_iter()
+            .filter_map(|(k, v)| v.map(|value| (k, value)))
+            .collect::<std::collections::BTreeMap<_, _>>();
+            let text = serde_json::to_string_pretty(&safe).unwrap_or_else(|_| "{}".to_string());
+            Ok(ReadResourceResult {
+                contents: vec![ResourceContents::text(text, uri)],
+            })
+        }
+        _ => Err(McpError::resource_not_found(
+            "resource_not_found",
+            Some(json!({ "uri": uri })),
+        )),
+    }
 }
 {%- endif %}

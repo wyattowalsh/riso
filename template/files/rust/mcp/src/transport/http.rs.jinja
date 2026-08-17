@@ -1,27 +1,26 @@
 {%- if mcp_module == 'enabled' and 'rust' in mcp_languages and mcp_transport in ['sse', 'http'] -%}
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::{IntoResponse, Response},
-    Json,
-};
-use serde_json::Value;
+use crate::server::McpServer;
+use rmcp::transport::streamable_http_server::session::local::LocalSessionManager;
+use rmcp::transport::{StreamableHttpServerConfig, StreamableHttpService};
+use std::net::SocketAddr;
 use std::sync::Arc;
-use rmcp::Server;
 
-pub struct AppState {
-    pub server: Arc<Server>,
-}
+pub async fn serve_streamable_http(
+    host: &str,
+    port: u16,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let service = StreamableHttpService::new(
+        || Ok(McpServer::new()),
+        Arc::new(LocalSessionManager::default()),
+        StreamableHttpServerConfig::default(),
+    );
 
-pub async fn handle_request(
-    State(_state): State<Arc<AppState>>,
-    Json(payload): Json<Value>,
-) -> Response {
-    tracing::debug!("Received HTTP request: {:?}", payload);
-    
-    // Placeholder: Process via RMCP server
-    // let _res = _state.server.handle_request(payload).await;
+    let app = axum::Router::new().fallback_service(service);
+    let addr: SocketAddr = format!("{host}:{port}").parse()?;
+    tracing::info!("Streamable HTTP MCP server listening on {addr}");
 
-    (StatusCode::OK, Json(payload)).into_response()
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
+    Ok(())
 }
 {%- endif -%}

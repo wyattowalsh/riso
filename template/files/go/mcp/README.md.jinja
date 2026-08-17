@@ -5,7 +5,7 @@ Go implementation of the Model Context Protocol (MCP) server using the official 
 
 ## Features
 
-- **Language**: Go {{ go_version | default('1.22') }}+
+- **Language**: Go {{ go_version | default('1.24') }}+
 - **Transport**: {{ mcp_transport | upper }} (support for stdio, sse, http)
 - **SDK**: Official MCP Go SDK (`github.com/modelcontextprotocol/go-sdk`)
 - **Logging**: Structured logging with `slog` to stderr
@@ -44,7 +44,7 @@ Server-Sent Events for streaming updates to web clients.
 
 #### HTTP Mode
 
-Standard JSON-RPC over HTTP streaming.
+Streamable HTTP (JSON-RPC over HTTP).
 
 ```bash
 ./{{ package_name }}-mcp --transport http --host 127.0.0.1 --port 3000
@@ -117,36 +117,25 @@ import (
     "log/slog"
 
     "github.com/modelcontextprotocol/go-sdk/mcp"
-    "github.com/modelcontextprotocol/go-sdk/server"
 )
 
-// MyToolInput represents the input schema.
 type MyToolInput struct {
-    Name string `json:"name" description:"User's name"`
+    Name string `json:"name" jsonschema:"user's name"`
 }
 
-// MyToolOutput represents the output schema.
 type MyToolOutput struct {
     Greeting string `json:"greeting"`
 }
 
-func RegisterMyTools(srv *server.Server, logger *slog.Logger) {
-    srv.RegisterTool(
-        mcp.Tool{
-            Name:        "greet",
-            Description: "Greet a user by name",
-            InputSchema: mcp.GenerateSchema[MyToolInput](),
-        },
-        func(ctx context.Context, params map[string]any) (any, error) {
-            input, err := mcp.ParseInput[MyToolInput](params)
-            if err != nil {
-                return nil, err
-            }
-            return MyToolOutput{
-                Greeting: "Hello, " + input.Name + "!",
-            }, nil
-        },
-    )
+func RegisterMyTools(srv *mcp.Server, logger *slog.Logger) {
+    mcp.AddTool(srv, &mcp.Tool{
+        Name:        "greet",
+        Description: "Greet a user by name",
+    }, func(ctx context.Context, req *mcp.CallToolRequest, input MyToolInput) (*mcp.CallToolResult, MyToolOutput, error) {
+        return nil, MyToolOutput{
+            Greeting: "Hello, " + input.Name + "!",
+        }, nil
+    })
 }
 ```
 
@@ -171,27 +160,28 @@ import (
     "log/slog"
 
     "github.com/modelcontextprotocol/go-sdk/mcp"
-    "github.com/modelcontextprotocol/go-sdk/server"
 )
 
-func RegisterConfigResource(srv *server.Server, logger *slog.Logger) {
-    resource := mcp.Resource{
+func RegisterConfigResource(srv *mcp.Server, logger *slog.Logger) {
+    srv.AddResource(&mcp.Resource{
         URI:         "config://app",
         Name:        "Application Config",
         Description: "Get application configuration",
-        MimeType:    "application/json",
-    }
-
-    srv.RegisterResource(resource, func(ctx context.Context) (mcp.ResourceContent, error) {
+        MIMEType:    "application/json",
+    }, func(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
         config := map[string]any{
             "version": "1.0.0",
             "env":     "development",
         }
         data, _ := json.MarshalIndent(config, "", "  ")
-        return mcp.ResourceContent{
-            URI:      "config://app",
-            MimeType: "application/json",
-            Text:     string(data),
+        return &mcp.ReadResourceResult{
+            Contents: []*mcp.ResourceContents{
+                {
+                    URI:      req.Params.URI,
+                    MIMEType: "application/json",
+                    Text:     string(data),
+                },
+            },
         }, nil
     })
 }
@@ -220,7 +210,7 @@ go vet ./...
 ## Architecture
 
 ```
-{{ project_slug }}/
+{{ project_slug }}/mcp/
 ├── cmd/
 │   └── server/
 │       └── main.go          # Entry point
@@ -235,7 +225,7 @@ go vet ./...
 │   │   └── http_fetch.go    # HTTP fetch tool
 │   └── resources/
 │       └── system.go        # System resources
-├── go.mod
+├── go.mod                   # module {{ project_slug }}/mcp
 └── README.md
 ```
 

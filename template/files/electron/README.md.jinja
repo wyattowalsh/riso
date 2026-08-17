@@ -32,10 +32,21 @@
 
 ## Getting Started
 
+Default task runner is **just** (`justfile` in this directory). `pnpm` scripts are the underlying commands.
+
+```bash
+just dev          # pnpm dev
+just typecheck    # pnpm typecheck:node && pnpm typecheck:web
+just lint
+just test
+just build
+```
+
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) 20+
-- [pnpm](https://pnpm.io/) (recommended) or npm
+- [pnpm](https://pnpm.io/) (recommended)
+- [just](https://github.com/casey/just) (optional; `pnpm` works without it)
 
 ### Installation
 
@@ -44,23 +55,18 @@
 pnpm install
 
 # Start development
-pnpm dev
+just dev
+# or: pnpm dev
 ```
 
 ### Development
 
 ```bash
-# Start with hot-reload
-pnpm dev
-
-# Type check
-pnpm typecheck
-
-# Lint
-pnpm lint
-
-# Format code
-pnpm format
+just dev
+just typecheck
+just lint
+just format
+# equivalent: pnpm dev / pnpm typecheck / pnpm lint / pnpm format
 ```
 
 ### Building
@@ -114,6 +120,7 @@ Built applications will be in the `dist/` directory.
 │   └── entitlements.mac.plist
 ├── electron.vite.config.ts  # Vite configuration
 ├── electron-builder.yml     # Build configuration
+├── justfile                 # just dev/typecheck/lint/test/build
 └── package.json
 ```
 
@@ -143,15 +150,15 @@ contextBridge.exposeInMainWorld('api', {
 
 ### App Icons
 
-Place your app icons in the `resources/` directory:
+`resources/` ships a teal (`#14b8a6`) square placeholder (`icon.png`, `icon.icns`, `icon.ico`).
 
-- `icon.png` - 512x512 PNG for all platforms
-- `icon.icns` - macOS icon (generate from PNG)
-- `icon.ico` - Windows icon (generate from PNG)
+Replace `icon.png` with a 512×512 mark, then regenerate platform formats:
 
-You can generate icons from a 512x512 PNG using:
-- [electron-icon-builder](https://www.npmjs.com/package/electron-icon-builder)
-- [icongen](https://github.com/nickcis/icon-gen)
+```bash
+just icons
+```
+
+You can also use [electron-icon-builder](https://www.npmjs.com/package/electron-icon-builder) or [icongen](https://github.com/nickcis/icon-gen).
 
 {% if 'auto_updater' in desktop_features %}
 ## Auto-Updates

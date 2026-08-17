@@ -11,162 +11,132 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"github.com/modelcontextprotocol/go-sdk/server"
 )
 
 // HTTPFetchInput represents the input for http_fetch.
 type HTTPFetchInput struct {
-	URL     string            `json:"url" description:"URL to fetch"`
-	Method  string            `json:"method,omitempty" description:"HTTP method (GET, POST, etc.). Default: GET"`
-	Headers map[string]string `json:"headers,omitempty" description:"Optional HTTP headers"`
-	Body    string            `json:"body,omitempty" description:"Optional request body"`
-	Timeout int               `json:"timeout,omitempty" description:"Request timeout in seconds (default: 30)"`
+	URL     string            `json:"url" jsonschema:"URL to fetch"`
+	Method  string            `json:"method,omitempty" jsonschema:"HTTP method (GET, POST, etc.). Default: GET"`
+	Headers map[string]string `json:"headers,omitempty" jsonschema:"optional HTTP headers"`
+	Body    string            `json:"body,omitempty" jsonschema:"optional request body"`
+	Timeout int               `json:"timeout,omitempty" jsonschema:"request timeout in seconds (default: 30)"`
 }
 
 // HTTPFetchOutput represents the output from http_fetch.
 type HTTPFetchOutput struct {
-	Success    bool              `json:"success" description:"Whether the fetch was successful"`
-	StatusCode int               `json:"status_code,omitempty" description:"HTTP status code"`
-	Status     string            `json:"status,omitempty" description:"HTTP status text"`
-	Headers    map[string]string `json:"headers,omitempty" description:"Response headers"`
-	Body       string            `json:"body,omitempty" description:"Response body (truncated if > 10KB)"`
-	BodyLength int               `json:"body_length,omitempty" description:"Total body length in bytes"`
-	Truncated  bool              `json:"truncated,omitempty" description:"Whether the body was truncated"`
-	Error      string            `json:"error,omitempty" description:"Error message if fetch failed"`
+	Success    bool              `json:"success" jsonschema:"whether the fetch was successful"`
+	StatusCode int               `json:"status_code,omitempty" jsonschema:"HTTP status code"`
+	Status     string            `json:"status,omitempty" jsonschema:"HTTP status text"`
+	Headers    map[string]string `json:"headers,omitempty" jsonschema:"response headers"`
+	Body       string            `json:"body,omitempty" jsonschema:"response body (truncated if > 10KB)"`
+	BodyLength int               `json:"body_length,omitempty" jsonschema:"total body length in bytes"`
+	Truncated  bool              `json:"truncated,omitempty" jsonschema:"whether the body was truncated"`
+	Error      string            `json:"error,omitempty" jsonschema:"error message if fetch failed"`
 }
 
 const maxBodySize = 10 * 1024 // 10KB
 
 // RegisterHTTPTools registers all HTTP-related tools with the MCP server.
-func RegisterHTTPTools(srv *server.Server, logger *slog.Logger) {
-	// http_fetch - Fetch content from a URL
-	srv.RegisterTool(
-		mcp.Tool{
-			Name:        "http_fetch",
-			Description: "Fetch content from a URL. Supports GET, POST, and other HTTP methods with custom headers.",
-			InputSchema: mcp.GenerateSchema[HTTPFetchInput](),
-		},
-		func(ctx context.Context, params map[string]any) (any, error) {
-			input, err := mcp.ParseInput[HTTPFetchInput](params)
-			if err != nil {
-				logger.Error("failed to parse http_fetch input", "error", err)
-				return nil, err
-			}
-
-			// Validate URL
-			if input.URL == "" {
-				return HTTPFetchOutput{
+func RegisterHTTPTools(srv *mcp.Server, logger *slog.Logger) {
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "http_fetch",
+		Description: "Fetch content from a URL. Supports GET, POST, and other HTTP methods with custom headers.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input HTTPFetchInput) (*mcp.CallToolResult, HTTPFetchOutput, error) {
+		if input.URL == "" {
+			return nil, HTTPFetchOutput{Success: false, Error: "URL is required"}, nil
+		}
+		if !strings.HasPrefix(strings.ToLower(input.URL), "https://") {
+			return nil, HTTPFetchOutput{Success: false, Error: "only https:// URLs are allowed"}, nil
+		}
+		lower := strings.ToLower(input.URL)
+		for _, blocked := range []string{
+			"localhost", "127.0.0.1", "0.0.0.0", "::1",
+			"169.254.169.254", "metadata.google", "[::1]",
+			"10.", "192.168.", "172.16.", "172.17.", "172.18.",
+		} {
+			if strings.Contains(lower, blocked) {
+				return nil, HTTPFetchOutput{
 					Success: false,
-					Error:   "URL is required",
+					Error:   "URL host is not allowed (SSRF protection)",
 				}, nil
 			}
-			// SSRF guard: HTTPS only; block localhost/metadata/private hosts
-			if !strings.HasPrefix(strings.ToLower(input.URL), "https://") {
-				return HTTPFetchOutput{
-					Success: false,
-					Error:   "only https:// URLs are allowed",
-				}, nil
-			}
-			lower := strings.ToLower(input.URL)
-			for _, blocked := range []string{
-				"localhost", "127.0.0.1", "0.0.0.0", "::1",
-				"169.254.169.254", "metadata.google", "[::1]",
-				"10.", "192.168.", "172.16.", "172.17.", "172.18.",
-			} {
-				if strings.Contains(lower, blocked) {
-					return HTTPFetchOutput{
-						Success: false,
-						Error:   "URL host is not allowed (SSRF protection)",
-					}, nil
-				}
-			}
+		}
 
-			// Defaults
-			if input.Method == "" {
-				input.Method = "GET"
-			}
-			if input.Timeout == 0 {
-				input.Timeout = 30
-			}
+		if input.Method == "" {
+			input.Method = "GET"
+		}
+		if input.Timeout == 0 {
+			input.Timeout = 30
+		}
 
-			// Create HTTP client with timeout
-			client := &http.Client{
-				Timeout: time.Duration(input.Timeout) * time.Second,
-				CheckRedirect: func(req *http.Request, via []*http.Request) error {
-					return http.ErrUseLastResponse
-				},
-			}
+		client := &http.Client{
+			Timeout: time.Duration(input.Timeout) * time.Second,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}
 
-			// Create request
-			var bodyReader io.Reader
-			if input.Body != "" {
-				bodyReader = strings.NewReader(input.Body)
-			}
+		var bodyReader io.Reader
+		if input.Body != "" {
+			bodyReader = strings.NewReader(input.Body)
+		}
 
-			req, err := http.NewRequestWithContext(ctx, input.Method, input.URL, bodyReader)
-			if err != nil {
-				return HTTPFetchOutput{
-					Success: false,
-					Error:   fmt.Sprintf("failed to create request: %v", err),
-				}, nil
-			}
+		req, err := http.NewRequestWithContext(ctx, input.Method, input.URL, bodyReader)
+		if err != nil {
+			return nil, HTTPFetchOutput{
+				Success: false,
+				Error:   fmt.Sprintf("failed to create request: %v", err),
+			}, nil
+		}
 
-			// Add headers
-			for key, value := range input.Headers {
-				req.Header.Set(key, value)
-			}
+		for key, value := range input.Headers {
+			req.Header.Set(key, value)
+		}
+		if req.Header.Get("User-Agent") == "" {
+			req.Header.Set("User-Agent", "{{ package_name }}-mcp/1.0")
+		}
 
-			// Set default User-Agent
-			if req.Header.Get("User-Agent") == "" {
-				req.Header.Set("User-Agent", "{{ package_name }}-mcp/1.0")
-			}
+		logger.Debug("executing http_fetch tool", "url", input.URL, "method", input.Method)
 
-			logger.Debug("executing http_fetch tool", "url", input.URL, "method", input.Method)
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, HTTPFetchOutput{
+				Success: false,
+				Error:   fmt.Sprintf("request failed: %v", err),
+			}, nil
+		}
+		defer resp.Body.Close()
 
-			// Execute request
-			resp, err := client.Do(req)
-			if err != nil {
-				return HTTPFetchOutput{
-					Success: false,
-					Error:   fmt.Sprintf("request failed: %v", err),
-				}, nil
-			}
-			defer resp.Body.Close()
-
-			// Read body (limited size)
-			body, err := io.ReadAll(io.LimitReader(resp.Body, maxBodySize+1))
-			if err != nil {
-				return HTTPFetchOutput{
-					Success:    true,
-					StatusCode: resp.StatusCode,
-					Status:     resp.Status,
-					Error:      fmt.Sprintf("failed to read body: %v", err),
-				}, nil
-			}
-
-			// Check if truncated
-			truncated := len(body) > maxBodySize
-			if truncated {
-				body = body[:maxBodySize]
-			}
-
-			// Extract response headers
-			responseHeaders := make(map[string]string)
-			for key := range resp.Header {
-				responseHeaders[key] = resp.Header.Get(key)
-			}
-
-			return HTTPFetchOutput{
+		body, err := io.ReadAll(io.LimitReader(resp.Body, maxBodySize+1))
+		if err != nil {
+			return nil, HTTPFetchOutput{
 				Success:    true,
 				StatusCode: resp.StatusCode,
 				Status:     resp.Status,
-				Headers:    responseHeaders,
-				Body:       string(body),
-				BodyLength: len(body),
-				Truncated:  truncated,
+				Error:      fmt.Sprintf("failed to read body: %v", err),
 			}, nil
-		},
-	)
+		}
+
+		truncated := len(body) > maxBodySize
+		if truncated {
+			body = body[:maxBodySize]
+		}
+
+		responseHeaders := make(map[string]string)
+		for key := range resp.Header {
+			responseHeaders[key] = resp.Header.Get(key)
+		}
+
+		return nil, HTTPFetchOutput{
+			Success:    true,
+			StatusCode: resp.StatusCode,
+			Status:     resp.Status,
+			Headers:    responseHeaders,
+			Body:       string(body),
+			BodyLength: len(body),
+			Truncated:  truncated,
+		}, nil
+	})
 
 	logger.Debug("registered HTTP tools")
 }

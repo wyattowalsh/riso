@@ -9,7 +9,7 @@ license = "MIT"
 rust-version = "1.81"
 
 [dependencies]
-rmcp = "0.11"
+rmcp = { version = "0.11", features = ["server", "macros", "transport-io"{% if mcp_transport in ['sse', 'http'] %}, "transport-streamable-http-server"{% endif %}] }
 tokio = { version = "1.40", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -19,10 +19,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 clap = { version = "4.5", features = ["derive", "env"] }
 config = "0.14"
 {%- if mcp_transport in ['sse', 'http'] %}
-axum = { version = "0.7", features = ["macros"] }
-tower = { version = "0.5", features = ["util"] }
-tower-http = { version = "0.6", features = ["cors", "trace"] }
-futures = "0.3"
+axum = "0.8"
 {%- endif %}
 {%- if mcp_example_tools %}
 reqwest = { version = "0.12", features = ["json"] }
@@ -35,8 +32,4 @@ tokio-test = "0.4"
 [[bin]]
 name = "{{ package_name }}-mcp"
 path = "src/main.rs"
-
-[profile.release]
-lto = true
-codegen-units = 1
 {%- endif %}

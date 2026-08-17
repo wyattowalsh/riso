@@ -1,25 +1,9 @@
 {%- if mcp_module == 'enabled' and 'rust' in mcp_languages -%}
-//! MCP Tools registration
-//!
-//! Registers all available tools with the MCP server.
-
-use rmcp::Server;
+//! MCP tool helpers used by [`crate::server::McpServer`].
 
 {%- if mcp_example_tools %}
-mod echo;
-mod timestamp;
-mod http_fetch;
+pub mod echo;
+pub mod http_fetch;
+pub mod timestamp;
 {%- endif %}
-
-/// Register all tools with the MCP server
-pub fn register(server: &Server) {
-{%- if mcp_example_tools %}
-    echo::register(server);
-    timestamp::register(server);
-    http_fetch::register(server);
-{%- else %}
-    // Add your tool registrations here
-    let _ = server;
-{%- endif %}
-}
 {%- endif %}

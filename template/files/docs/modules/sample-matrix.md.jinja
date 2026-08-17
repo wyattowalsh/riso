@@ -1,17 +1,18 @@
-# Sample Matrix
+# Generated Project Smoke
 
-The template ships with curated sample renders stored in `samples/`. Use this
-matrix to regenerate and validate each variant.
+This page is for **this generated project**, not the Riso maintainer repo.
+Do not run `scripts/render-samples.sh` or `scripts/ci/render_matrix.py` here.
 
-| Variant | Description | Prompt Overrides | Suggested Commands |
-|---------|-------------|------------------|--------------------|
-| `default` | Baseline Python-only render. | Defaults | `./scripts/render-samples.sh --variant default --answers samples/default/copier-answers.yml`<br>`uv run python -m {{ package_name }}.quickstart` |
-| `cli-docs` | CLI + shared logic + Fumadocs docs. | `cli_module=enabled`, `docs_module=enabled` with `docs_framework=fumadocs`, `shared_logic=enabled` | `uv sync --group cli`<br>`uv run pytest tests/test_cli.py` |
-| `api-monorepo` | Monorepo with FastAPI + Fastify + shared logic. | `project_layout=monorepo`, `api_module=enabled, api_languages=[python,node]`, `shared_logic=enabled` | `uv sync --group api_python`<br>`pnpm --filter api-node test` |
-| `full-stack` | All modules enabled (CLI, APIs, FastMCP, docs). | `cli_module=enabled`, `api_module=enabled`, `api_languages=[python,node]`, `mcp_module=enabled`, `docs_module=enabled` with `docs_framework=fumadocs`, `shared_logic=enabled`, `project_layout=monorepo` | `uv sync --group cli`<br>`uv sync --group api_python`<br>`uv sync --group mcp`<br>`pnpm --filter api-node test` |
+| Surface | When it applies | Smoke commands |
+|---------|-----------------|----------------|
+| Toolchain | always | `mise install` (pins are in `mise.toml`; generated Node is 20) |
+| Python quality | Python CLI/API/MCP or Sphinx | `uv sync --group quality`<br>`uv run task quality` |
+| Python tests | Python track | `uv run pytest` |
+| CLI | `cli_module=enabled` and `python` in `cli_languages` | `uv sync --group cli`<br>`uv run pytest tests/test_cli.py` |
+| FastAPI | `api_module=enabled` and `python` in `api_languages` | `uv sync --group api_python`<br>`uv run pytest tests/api/` |
+| Node API | `api_module=enabled` and `node` in `api_languages` | `pnpm --filter api-node test` |
+| TypeScript MCP | `mcp_module=enabled` and `typescript` in `mcp_languages` | `pnpm --filter @{{ package_name }}/mcp-server test` |
+| Docs | `docs_module=enabled` | `just docs-build` or the framework `pnpm`/`sphinx-build` command |
 
-## Regeneration Checklist
-
-1. Run `./scripts/render-samples.sh` (defaults or targeted variants).
-2. Execute `python scripts/ci/render_matrix.py` to capture metadata.
-3. Upload evidence stored under `samples/metadata/` with your pull request.
+Use `uv run` for every Python command. Use `riso migrate --dry-run` on a
+1.x answers file before `riso update` if you are upgrading this project.

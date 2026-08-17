@@ -1,0 +1,38 @@
+{% if desktop_module == "enabled" and desktop_framework == "tauri" %}
+# {{ project_name }} — Tauri desktop recipes
+set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
+
+default:
+    just --list
+
+# Dev server (frontend + Rust)
+dev:
+    pnpm dev
+
+# Frontend only
+dev-frontend:
+    pnpm dev:frontend
+
+typecheck:
+    pnpm typecheck
+
+lint:
+    pnpm lint
+
+test:
+    pnpm test
+
+format:
+    pnpm format
+
+build:
+    pnpm build
+
+# Generate .icns/.ico/PNG sizes from src-tauri/icons/icon.png
+icons:
+    pnpm tauri icon src-tauri/icons/icon.png
+
+# Rust checks in src-tauri
+check-rust:
+    cargo check --manifest-path src-tauri/Cargo.toml
+{% endif %}

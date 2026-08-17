@@ -1,0 +1,145 @@
+{%- if docs_module == 'enabled' and docs_framework == 'fumadocs' and fumadocs_mermaid == 'enabled' -%}
+/**
+ * Shared Mermaid init for generated docs. Policy: DESIGN.md.
+ * securityLevel is always strict. startOnLoad is always false.
+ */
+
+export const RISO_ACCENT = '#14b8a6';
+
+export const mermaidThemeVariablesLight = {
+  darkMode: false,
+  background: '#f8fafc',
+  fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+  fontSize: '16px',
+  primaryColor: '#14b8a6',
+  primaryTextColor: '#0b132b',
+  primaryBorderColor: '#0f766e',
+  secondaryColor: '#ccfbf1',
+  secondaryTextColor: '#0b132b',
+  secondaryBorderColor: '#14b8a6',
+  tertiaryColor: '#f1f5f9',
+  tertiaryTextColor: '#0b132b',
+  tertiaryBorderColor: '#cbd5e1',
+  lineColor: '#334155',
+  textColor: '#0b132b',
+  mainBkg: '#ffffff',
+  secondBkg: '#f1f5f9',
+  nodeBorder: '#0f766e',
+  clusterBkg: '#f0fdfa',
+  clusterBorder: '#14b8a6',
+  titleColor: '#0b132b',
+  edgeLabelBackground: '#ffffff',
+  actorBkg: '#ccfbf1',
+  actorBorder: '#0f766e',
+  actorTextColor: '#0b132b',
+  actorLineColor: '#334155',
+  signalColor: '#334155',
+  signalTextColor: '#0b132b',
+  labelBoxBkgColor: '#ffffff',
+  labelBoxBorderColor: '#14b8a6',
+  labelTextColor: '#0b132b',
+  loopTextColor: '#0b132b',
+  noteBkgColor: '#f0fdfa',
+  noteTextColor: '#0b132b',
+  noteBorderColor: '#14b8a6',
+  activationBorderColor: '#0f766e',
+  activationBkgColor: '#ccfbf1',
+  sequenceNumberColor: '#042f2e',
+} as const;
+
+export const mermaidThemeVariablesDark = {
+  darkMode: true,
+  background: '#0f172a',
+  fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+  fontSize: '16px',
+  primaryColor: '#14b8a6',
+  primaryTextColor: '#042f2e',
+  primaryBorderColor: '#2dd4bf',
+  secondaryColor: '#134e4a',
+  secondaryTextColor: '#e2e8f0',
+  secondaryBorderColor: '#14b8a6',
+  tertiaryColor: '#1e293b',
+  tertiaryTextColor: '#e2e8f0',
+  tertiaryBorderColor: '#334155',
+  lineColor: '#94a3b8',
+  textColor: '#e2e8f0',
+  mainBkg: '#1e293b',
+  secondBkg: '#334155',
+  nodeBorder: '#2dd4bf',
+  clusterBkg: '#134e4a',
+  clusterBorder: '#14b8a6',
+  titleColor: '#e2e8f0',
+  edgeLabelBackground: '#0f172a',
+  actorBkg: '#134e4a',
+  actorBorder: '#2dd4bf',
+  actorTextColor: '#e2e8f0',
+  actorLineColor: '#94a3b8',
+  signalColor: '#94a3b8',
+  signalTextColor: '#e2e8f0',
+  labelBoxBkgColor: '#1e293b',
+  labelBoxBorderColor: '#14b8a6',
+  labelTextColor: '#e2e8f0',
+  loopTextColor: '#e2e8f0',
+  noteBkgColor: '#134e4a',
+  noteTextColor: '#e2e8f0',
+  noteBorderColor: '#14b8a6',
+  activationBorderColor: '#2dd4bf',
+  activationBkgColor: '#134e4a',
+  sequenceNumberColor: '#042f2e',
+} as const;
+
+const flowchart = {
+  padding: 16,
+  diagramPadding: 16,
+  nodeSpacing: 50,
+  rankSpacing: 50,
+  htmlLabels: false,
+  useMaxWidth: true,
+} as const;
+
+const sequence = {
+  actorMargin: 50,
+  messageMargin: 40,
+  boxMargin: 10,
+  boxTextMargin: 5,
+  noteMargin: 10,
+} as const;
+
+const er = {
+  diagramPadding: 20,
+  entityPadding: 15,
+  minEntityWidth: 100,
+  fontSize: 16,
+} as const;
+
+export function mermaidOptions(dark: boolean) {
+  return {
+    startOnLoad: false,
+    securityLevel: 'strict' as const,
+    theme: 'base' as const,
+    darkMode: dark,
+    deterministicIds: true,
+    htmlLabels: false,
+    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+    themeVariables: dark ? mermaidThemeVariablesDark : mermaidThemeVariablesLight,
+    flowchart,
+    sequence,
+    er,
+    suppressErrorRendering: true,
+  };
+}
+
+export function prefersDark(): boolean {
+  if (typeof document === 'undefined') {
+    return false;
+  }
+  const root = document.documentElement;
+  if (root.classList.contains('dark') || root.dataset.theme === 'dark') {
+    return true;
+  }
+  if (root.classList.contains('light') || root.dataset.theme === 'light') {
+    return false;
+  }
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+}
+{%- endif -%}

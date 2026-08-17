@@ -12,7 +12,10 @@ _metadata:
     Rust, and Go. Each component (CLI, API, MCP, Docs, SaaS) can be independently
     configured with its own language choice, enabling flexible combinations like
     Rust CLI + Python API + Fumadocs. Features modular SaaS scaffolding with
-    opt-in auth, billing, and infrastructure layers.
+    opt-in auth, billing, and infrastructure layers. Riso 2.0 remaps removed 1.x
+    Copier keys via `riso migrate` / `riso update` (then fail-closed), always
+    renders generated mise.toml, and ships an optional OpenSpec extra
+    (`openspec_extra`, default disabled). Typecheck is ty, not mypy.
   maintainers:
     - "Riso Template Working Group"
   tags:
@@ -30,6 +33,9 @@ _metadata:
     - sphinx-shibuya
     - docusaurus
     - saas
+    - ty
+    - mise
+    - openspec
 
 _defaults:
   project_name: "riso-example"
@@ -85,6 +91,8 @@ _defaults:
   shared_logic: "disabled"
   codegen_module: "disabled"
   changelog_module: "disabled"
+  # Riso 2.0 extras: OpenSpec optional (off); mise.toml always-on (no toggle)
+  openspec_extra: "disabled"
   # Fumadocs configuration defaults
   fumadocs_search_provider: "orama"
   fumadocs_llms_txt: "enabled"
@@ -227,7 +235,13 @@ project_layout:
 
 quality_profile:
   type: str
-  help: "Select baseline quality suite profile"
+  help: |
+    Select baseline quality suite profile. Typecheck is ty (not mypy).
+    `standard` runs pragmatic linting/type checks; `strict` enables
+    extended Ruff rules and pylint. Riso 2.0 always renders mise.toml
+    (not an extra). OpenSpec is optional via `openspec_extra` (default
+    disabled). Removed 1.x Copier keys are remapped by `riso migrate` /
+    `riso update` before fail-closed reject.
   default: standard
   choices:
     - standard
@@ -509,6 +523,28 @@ codegen_module:
 changelog_module:
   type: str
   help: "Enable changelog generation and release management?"
+  default: disabled
+  choices:
+    - disabled
+    - enabled
+
+# ========================================
+# Riso 2.0 extras (mise always-on; OpenSpec optional)
+# ========================================
+openspec_extra:
+  type: str
+  help: |
+    Include optional OpenSpec extra files (`openspec/**`)?
+    Default disabled — OpenSpec is used on the maintainer repo; generated
+    projects opt in. mise.toml always renders (not gated by this extra).
+
+    Riso 2.0 remaps removed Copier keys before fail-closed reject:
+    api_language → api_languages; mcp_language → mcp_languages;
+    api_tracks → api_module/api_languages; docs_site → docs_module/docs_framework;
+    saas_starter_module → saas_infra_module; saas_auth → saas_auth_module/provider;
+    saas_billing → saas_billing_module/provider; include_admin → saas_admin_dashboard.
+    Use `riso migrate` or `riso update` (dry-run preview). Leftover 1.x keys
+    fail closed. Do not pass dual-path aliases after remap.
   default: disabled
   choices:
     - disabled
@@ -1304,12 +1340,10 @@ saas_auth_provider:
     Select authentication provider:
     - Clerk: Hosted auth, built-in UI, organizations, passkeys
     - Auth.js: Self-hosted, open-source, full control
-    - Lucia: Type-safe sessions, any database, full control
   default: clerk
   choices:
     - clerk
     - authjs
-    - lucia
   when: "{{ saas_auth_module == 'enabled' }}"
 
 saas_enterprise_bridge:
@@ -1857,14 +1891,11 @@ saas_file_upload:
   when: "{{ saas_infra_module == 'enabled' }}"
 
 _exclude:
-  # Static excludes - never copy these (template-level files, not project files)
+  # Static excludes — template-root leftovers only. Do not use unrooted
+  # "README.md", "specs/", "config/", or "hooks/": those gitignore-anywhere
+  # patterns drop dest files such as electron/README.md, openspec/specs/**,
+  # go/internal/config/**, node/saas/config/**, and scripts/hooks/**.
   - ".git"
-  - "README.md"
-  - "specs/"
-  - "config/"
-  - "samples/"
-  - "prompts/"
-  - "hooks/"
   - "COMPARISON_PAGE.md"
   - ".DS_Store"
   # Note: .github/ and scripts/ are now at template/files/ root and SHOULD be
@@ -2062,6 +2093,13 @@ _exclude:
   - "{% if ai_tools_module != 'enabled' %}.codex/{% endif %}"
   - "{% if ai_tools_module != 'enabled' %}.claude/{% endif %}"
   - "{% if ai_tools_module != 'enabled' %}docs/ai-tools.md{% endif %}"
+
+  # ========================================
+  # Riso 2.0 extras
+  # ========================================
+  # mise.toml is the only generated mise config (Node pin 20).
+  - ".mise.toml"
+  - "{% if openspec_extra != 'enabled' %}openspec/{% endif %}"
 
   # ========================================
   # SaaS Feature Exclusions

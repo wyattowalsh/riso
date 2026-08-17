@@ -43,6 +43,36 @@ def test_multi_command_structure() -> None:
         assert "help" in metadata
 
 
+def test_base_command_execute_runs_handler() -> None:
+    """BaseCommand.execute validates then calls the handler."""
+    from {{ package_name }}.cli.core.base import BaseCommand  # noqa: PLC0415
+
+    seen: dict[str, str] = {}
+
+    def handler(*, name: str) -> str:
+        seen["name"] = name
+        return f"ok:{name}"
+
+    cmd = BaseCommand("demo", help_text="demo", handler=handler)
+    assert cmd.execute(name="riso") == "ok:riso"
+    assert seen["name"] == "riso"
+
+
+def test_base_command_execute_requires_handler() -> None:
+    """execute() raises CLIError when no handler or run() override exists."""
+    from {{ package_name }}.cli.core.base import BaseCommand  # noqa: PLC0415
+    from {{ package_name }}.cli.core.exceptions import CLIError  # noqa: PLC0415
+
+    cmd = BaseCommand("empty")
+    try:
+        cmd.execute()
+    except CLIError as exc:
+        assert "empty" in str(exc)
+        assert "handler" in str(exc).lower()
+    else:
+        raise AssertionError("expected CLIError when handler is missing")
+
+
 def test_command_discovery_mechanism() -> None:
     """Test that commands are discovered from commands/ directory."""
     from {{ package_name }}.cli.__main__ import app  # noqa: PLC0415

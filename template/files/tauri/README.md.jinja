@@ -30,11 +30,23 @@
 
 ## Getting Started
 
+Default task runner is **just** (`justfile` in this directory). `pnpm` scripts are the underlying commands.
+
+```bash
+just dev          # pnpm dev
+just typecheck    # pnpm typecheck
+just lint         # pnpm lint
+just test         # pnpm test
+just build        # pnpm build
+just icons        # regenerate platform icons from src-tauri/icons/icon.png
+```
+
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) 20+
 - [Rust](https://www.rust-lang.org/tools/install) 1.77.2+
-- [pnpm](https://pnpm.io/) (recommended) or npm
+- [pnpm](https://pnpm.io/) (recommended)
+- [just](https://github.com/casey/just) (optional; `pnpm` works without it)
 
 #### Platform-Specific Requirements
 
@@ -95,29 +107,20 @@ sudo pacman -S webkit2gtk-4.1 \
 pnpm install
 
 # Start development
-pnpm dev
+just dev
+# or: pnpm dev
 ```
 
 ### Development
 
 ```bash
-# Start with hot-reload (frontend + Tauri)
-pnpm dev
-
-# Start only frontend (for UI work)
-pnpm dev:frontend
-
-# Type check
-pnpm typecheck
-
-# Lint
-pnpm lint
-
-# Format code
-pnpm format
-
-# Run tests
-pnpm test
+just dev              # hot-reload (frontend + Tauri)
+just dev-frontend     # frontend only
+just typecheck
+just lint
+just format
+just test
+# equivalent pnpm scripts: pnpm dev, pnpm typecheck, pnpm lint, ...
 ```
 
 ### Building
@@ -170,6 +173,7 @@ Built applications will be in the `src-tauri/target/release/bundle/` directory.
 │   ├── tauri.conf.json       # Tauri configuration
 │   └── build.rs              # Build script
 ├── package.json              # Node dependencies
+├── justfile                  # just dev/typecheck/lint/test/build
 ├── vite.config.ts            # Vite configuration
 ├── tsconfig.json             # TypeScript config
 └── tailwind.config.js        # Tailwind config
@@ -235,11 +239,11 @@ Place your app icons in `src-tauri/icons/`:
 - `icon.icns` - macOS icon
 - `icon.ico` - Windows icon
 
-Generate icons from a 512x512 PNG:
+Generate icons from a 512×512 PNG (`src-tauri/icons/icon.png`):
 
 ```bash
-cd src-tauri
-pnpm tauri icon path/to/icon.png
+just icons
+# or: pnpm tauri icon src-tauri/icons/icon.png
 ```
 
 {% if 'auto_updater' in desktop_features | default([]) %}

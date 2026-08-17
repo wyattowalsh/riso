@@ -6,59 +6,61 @@
  * Allows the app to run in the background and be quickly accessed.
  */
 
-import { app, BrowserWindow, Menu, Tray, nativeImage } from 'electron';
+import { app, Menu, Tray, nativeImage } from 'electron';
 import { join } from 'path';
 import { is } from '@electron-toolkit/utils';
 import log from 'electron-log/main';
+import Store from 'electron-store';
+import { createMainWindow, getMainWindow, markQuitting } from './window';
 
 let tray: Tray | null = null;
+
+const prefs = new Store<{ startMinimized: boolean }>({
+  defaults: { startMinimized: false },
+});
+
+async function showOrCreateMainWindow(): Promise<void> {
+  const existing = getMainWindow();
+  if (existing && !existing.isDestroyed()) {
+    if (existing.isMinimized()) {
+      existing.restore();
+    }
+    existing.show();
+    existing.focus();
+    return;
+  }
+  const created = await createMainWindow();
+  created.show();
+  created.focus();
+}
 
 /**
  * Set up the system tray icon
  */
-export function setupTrayIcon(mainWindow: BrowserWindow): void {
-  // Create tray icon from resources
+export function setupTrayIcon(): void {
   const iconPath = is.dev
     ? join(__dirname, '../../resources/icon.png')
     : join(process.resourcesPath, 'icon.png');
 
-  // Create a smaller image for the tray
   let icon = nativeImage.createFromPath(iconPath);
 
-  // Resize for tray (16x16 on macOS, 16x16 or 32x32 on Windows/Linux)
   if (process.platform === 'darwin') {
     icon = icon.resize({ width: 16, height: 16 });
-    // Mark as template for macOS dark mode support
     icon.setTemplateImage(true);
   } else {
     icon = icon.resize({ width: 32, height: 32 });
   }
 
   tray = new Tray(icon);
-
-  // Set tooltip
   tray.setToolTip('{{ project_name }}');
+  tray.setContextMenu(createTrayContextMenu());
 
-  // Create context menu
-  const contextMenu = createTrayContextMenu(mainWindow);
-  tray.setContextMenu(contextMenu);
-
-  // Click behavior
   tray.on('click', () => {
-    if (mainWindow.isVisible()) {
-      if (mainWindow.isMinimized()) {
-        mainWindow.restore();
-      }
-      mainWindow.focus();
-    } else {
-      mainWindow.show();
-    }
+    void showOrCreateMainWindow();
   });
 
-  // Double-click behavior (Windows)
   tray.on('double-click', () => {
-    mainWindow.show();
-    mainWindow.focus();
+    void showOrCreateMainWindow();
   });
 
   log.info('System tray icon created');
@@ -67,23 +69,21 @@ export function setupTrayIcon(mainWindow: BrowserWindow): void {
 /**
  * Create the tray context menu
  */
-function createTrayContextMenu(mainWindow: BrowserWindow): Menu {
+function createTrayContextMenu(): Menu {
   return Menu.buildFromTemplate([
     {
       label: 'Show {{ project_name }}',
       click: (): void => {
-        mainWindow.show();
-        mainWindow.focus();
+        void showOrCreateMainWindow();
       },
     },
     { type: 'separator' },
     {
       label: 'Start Minimized',
       type: 'checkbox',
-      checked: false,
+      checked: prefs.get('startMinimized'),
       click: (menuItem): void => {
-        // Save preference to electron-store
-        // TODO: Integrate with store
+        prefs.set('startMinimized', menuItem.checked);
         log.info('Start minimized:', menuItem.checked);
       },
     },
@@ -92,6 +92,7 @@ function createTrayContextMenu(mainWindow: BrowserWindow): Menu {
       label: 'Quit',
       accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
       click: (): void => {
+        markQuitting();
         app.quit();
       },
     },

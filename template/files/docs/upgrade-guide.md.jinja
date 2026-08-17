@@ -1,34 +1,145 @@
 # Upgrade Guide
 
-This document summarizes the steps required to stay current with the Riso template,
-highlighting module toggles, governance automation, and layout considerations.
+Stay current with the Riso **2.0** template: remapped Copier keys, always-on
+mise pins, optional OpenSpec extra (off by default), and quality tooling
+(**ty** / **just** / **pnpm**). Visual tokens stay in [DESIGN.md](../DESIGN.md).
+
+## Riso 2.0 — 1.x answer remaps
+
+`riso migrate` and `riso update` run **`apply_removed_key_remaps` first**, then
+reject leftover removed keys. Do not overwrite a destination key that is
+already set. Drop the old key after a successful apply. A second apply is a
+no-op (idempotent). Unmapped leftovers fail closed. No dual-path aliases after
+remap.
+
+### Preview then apply
+
+Prefer the Riso CLI (not raw Copier) so remaps print a preview. Provide
+exactly one target: this project (`.`) or `--answers-file`. `--json` is a
+global flag.
+
+```bash
+uv run riso migrate . --dry-run
+uv run riso migrate --answers-file path/to/copier-answers.yml --dry-run
+uv run riso migrate --answers-file path/to/copier-answers.yml --dry-run --json
+uv run riso migrate .
+uv run riso update . --dry-run
+uv run riso update .
+```
+
+`--dry-run` applies remaps in memory and does **not** write. Leftovers still
+fail closed. `riso update` remaps `.copier-answers.yml` **before** Copier.
+`copier update` still works; pre_gen hooks apply the same contract. Do not
+pass both a removed key and its dest after remap.
+
+### Remap table
+
+These are the only remappable removed keys (same table as the maintainer 2.0
+migration guide).
+
+| Old key | Operator | Canonical dest | Value rules |
+| --- | --- | --- | --- |
+| `api_tracks` | derive | `api_module`, `api_languages` | empty/`none`/`disabled`/`[]` → `api_module=disabled`; else enabled + intersection with `{python,node,rust,go}` (`fastapi`→python, `fastify`→node, `actix`→rust) |
+| `api_language` | wrap-list | `api_languages` | scalar `python`/`node`/`rust`/`go` → `[that]`; already-list → keep |
+| `docs_site` | derive | `docs_module`, `docs_framework` | `none`/`false`/`disabled`/`off` → `docs_module=disabled`; `sphinx`/`sphinx-shibuya` → enabled + `sphinx-shibuya`; `docusaurus` / `fumadocs` → enabled + that framework |
+| `mcp_language` | wrap-list | `mcp_languages` | scalar `python`/`typescript`/`rust`/`go` → `[that]`; `node`/`js` → `typescript`; already-list keeps shape, drops empties, still aliases `node`/`js` |
+| `saas_starter_module` | rename | `saas_infra_module` | copy `enabled`/`disabled` (also common truthy/falsey tokens) |
+| `saas_auth` | split | `saas_auth_module`, `saas_auth_provider` | off tokens → module disabled; `clerk`/`authjs` → enabled + provider; `lucia` fail-closes (no payload) |
+| `saas_billing` | split | `saas_billing_module`, `saas_billing_provider` | off tokens → module disabled; `stripe`/`paddle`/`lemonsqueezy` → enabled + provider |
+| `include_admin` | rename-bool | `saas_admin_dashboard` | truthy/falsey → bool |
+
+`graphql_api_module` and `websocket_module` are derived Jinja flags, not
+removed user keys. They are not remapped.
+
+Leftover removed keys (or unmapped values such as `saas_auth: firebase` or
+`docs_site: mkdocs`) fail closed with a pointer to the replacement. Do not
+restore `api_tracks`, `api_language`, `docs_site`, `mcp_language`,
+`saas_starter_module`, `saas_auth`, `saas_billing`, or `include_admin` in
+`.copier-answers.yml`.
+
+## Toolchain: mise (always-on)
+
+Generated projects always ship `mise.toml`. It is **not** a Copier extra and
+is **not** gated by `openspec_extra`. Generated Node floor stays **20+** (do
+not raise the pin to the maintainer 22 floor).
+
+| Tool | Generated pin |
+| --- | --- |
+| Python | `3.11` |
+| Node | `20` |
+| pnpm | `9.15.0` |
+| uv | `0.4.30` |
+
+After clone or upgrade:
+
+```bash
+mise install
+```
+
+## OpenSpec extra (default off)
+
+`openspec_extra` is **disabled** by default. OpenSpec is used on the
+maintainer repo; generated projects opt in. When disabled, `openspec/` is not
+copied. Enabling the extra does not toggle mise.
+
+{% if openspec_extra | default('disabled') == 'enabled' %}
+This project opted in (`openspec_extra=enabled`). See [openspec/USAGE.md](../openspec/USAGE.md).
+{% else %}
+This project left the extra off (`openspec_extra={{ openspec_extra | default('disabled') }}`).
+Re-render with `openspec_extra=enabled` only if you want `openspec/**`.
+{% endif %}
 
 ## Baseline Update Flow
 
-1. Pull the latest template sources and review `CHANGELOG.md`.
-2. Regenerate your project with Copier:
+1. Remap 1.x answers (`uv run riso migrate . --dry-run`, then without `--dry-run`).
+2. Pull the latest template and review the template `CHANGELOG.md` Unreleased 2.0.0 notes.
+3. Update the project:
 
    ```bash
-   copier update --force
+   uv run riso update . --dry-run
+   uv run riso update .
    ```
 
-3. Re-run the baseline checks:
+4. Install toolchain pins and re-run baseline checks:
 
    ```bash
+   mise install
    uv sync
    uv run python -m {{ package_name }}.quickstart
+   {% if task_runner in ['just', 'both'] %}just quality{% elif task_runner == 'makefile' %}make quality{% else %}uv run task quality{% endif %}
    ```
 
-## Prompt Summary
+   Node workspaces: `pnpm install`. Typecheck is **ty** (`{% if task_runner in ['just', 'both'] %}just typecheck{% elif task_runner == 'makefile' %}make typecheck{% else %}uv run ty check{% endif %}`), not mypy.
 
-| Prompt | Default | Notes |
+## Canonical prompts (2.0)
+
+| Prompt | This project | Notes |
 |--------|---------|-------|
-| `project_layout` | `{{ project_layout }}` | `single-package` keeps a lean tree, `monorepo` enables pnpm workspaces. |
+| `project_layout` | `{{ project_layout }}` | `single-package` keeps a lean tree; `monorepo` enables pnpm workspaces. |
+| `task_runner` | `{{ task_runner }}` | Default **just**; Makefile is the alternative; `none` uses `uv run task quality`. |
 | `cli_module` | `{{ cli_module }}` | Enables Typer CLI and CLI smoke tests. |
-| `api_languages` | `{{ api_languages }}` | Choose `python`, `node`, or `api_languages=[python,node]` for FastAPI/Fastify services. |
-| `mcp_module` | `{{ mcp_module }}` | Adds FastMCP scaffolding and tooling helpers. |
-| `docs_framework` | `{{ docs_framework }}` | `starter-guide` for Sphinx, `fumadocs` for the Next.js docs experience. |
-| `shared_logic` | `{{ shared_logic }}` | Introduces cross-module helpers shared by CLI/APIs. |
+| `api_module` / `api_languages` | `{{ api_module | default('disabled') }}` / `{{ api_languages }}` | Not `api_language` or `api_tracks`. Choose `python`, `node`, `rust`, `go`. |
+| `api_features` | `{{ api_features | default([]) }}` | Copier prompt (`graphql`, `websocket`) when `api_module=enabled`. Not `graphql_api_module` / `websocket_module`. |
+| `mcp_module` / `mcp_languages` | `{{ mcp_module }}` / `{{ mcp_languages | default([]) }}` | Not `mcp_language`. `node`/`js` remap to `typescript`. |
+| `docs_module` / `docs_framework` | `{{ docs_module | default('disabled') }}` / `{{ docs_framework }}` | Not `docs_site`. Frameworks: `sphinx-shibuya`, `fumadocs`, `docusaurus`. |
+| `shared_logic` | `{{ shared_logic }}` | Cross-module helpers shared by CLI/APIs. |
+| `saas_infra_module` | `{{ saas_infra_module | default('disabled') }}` | Not `saas_starter_module`. |
+| `saas_auth_module` / `saas_auth_provider` | `{{ saas_auth_module | default('disabled') }}` / `{{ saas_auth_provider | default('none') }}` | Not `saas_auth`. |
+| `saas_billing_module` / `saas_billing_provider` | `{{ saas_billing_module | default('disabled') }}` / `{{ saas_billing_provider | default('none') }}` | Not `saas_billing`. |
+| `saas_admin_dashboard` | `{{ saas_admin_dashboard | default(false) }}` | Not `include_admin`. |
+| `openspec_extra` | `{{ openspec_extra | default('disabled') }}` | Optional; **default disabled**. Does not gate `mise.toml`. |
+| mise.toml | always-on | No Copier toggle. Pins Python 3.11, Node 20, pnpm, uv. |
+
+Visual tokens, type, and Mermaid/chart palettes live in
+[DESIGN.md](../DESIGN.md). Agent command pointers (mise, OpenSpec extra, ty,
+just, pnpm) live in [AGENTS.md](../AGENTS.md).
+
+## Quality configs after upgrade
+
+- Type checker is **ty** (`uv run ty check` / `{% if task_runner in ['just', 'both'] %}just typecheck{% elif task_runner == 'makefile' %}make typecheck{% else %}uv run ty check{% endif %}`). There is no `mypy.ini`.
+- Quality aggregator is `{% if task_runner in ['just', 'both'] %}`just quality`{% elif task_runner == 'makefile' %}`make quality`{% else %}`uv run task quality`{% endif %}`.
+- Node package manager is **pnpm** (`pnpm install`). Do not document npm/yarn as the default.
+- CI files (when `ci_platform=github-actions`) are `.github/workflows/riso-quality.yml` and `riso-matrix.yml`, not `quality-matrix.yml`.
 
 ## Module-Specific Post-Update Tasks
 
@@ -52,6 +163,9 @@ highlighting module toggles, governance automation, and layout considerations.
   - Configure GitHub Secrets: `PYPI_TOKEN`, `NPM_TOKEN` (if applicable)
   - Review `.commitlintrc.yml` and `.releaserc.yml` configurations
   - Verify workflow: `gh workflow view release.yml`
+{% if saas_infra_module | default('disabled') == 'enabled' %}- **SaaS (`saas_infra_module=enabled`)**
+  - Confirm answers use `saas_auth_module` / `saas_billing_module` / `saas_admin_dashboard`, not 1.x `saas_auth` / `saas_billing` / `include_admin`.
+{% endif %}
 
 ## Layout Migrations
 
@@ -63,27 +177,13 @@ highlighting module toggles, governance automation, and layout considerations.
   - Clean up `apps/` and `packages/` artifacts after regeneration.
   - Ensure Git workflows stop referencing pnpm-specific paths.
 
-## Governance Checklist
+## After-upgrade checklist
 
-1. Run `./scripts/render-samples.sh` (all variants or targeted) and commit updated `samples/**`.
-2. Execute automation scripts:
+1. `.copier-answers.yml` has none of the eight removed keys.
+2. `mise.toml` is present; `mise install` succeeds (Node pin remains 20).
+3. `openspec/` exists only when `openspec_extra=enabled`.
+4. Quality is `{% if task_runner in ['just', 'both'] %}just quality{% elif task_runner == 'makefile' %}make quality{% else %}uv run task quality{% endif %}` and typecheck is ty (not mypy).
+5. Node workspaces use pnpm.
 
-   ```bash
-   python scripts/ci/render_matrix.py
-   python scripts/ci/record_module_success.py
-   python scripts/ci/track_doc_publish.py --site shibuya --status pass
-   python scripts/ci/track_doc_publish.py --site fumadocs --status pass
-   python scripts/compliance/checkpoints.py --principle automation_governed --status pass --evidence "local-run" --dry-run
-   ```
-
-3. Upload relevant artifacts to your CI (render metadata, doc publish logs, compliance outputs).
-
-## Context Sync
-
-After each template upgrade:
-
-```bash
-python scripts/ci/verify_context_sync.py
-```
-
-Regenerate `.github/context/` assets or documentation fragments flagged as out of sync before merging.
+Do not hand-edit generated scaffolds without syncing answers. Do not restore
+`riso-mcp`. Do not hand-edit `uv.lock` or `pnpm-lock.yaml`.

@@ -51,8 +51,12 @@ interface AppState {
   updateAvailable: boolean;
   updateVersion: string | null;
   updateProgress: number;
+  updateDownloaded: boolean;
+  updateError: string | null;
   setUpdateAvailable: (available: boolean, version?: string) => void;
   setUpdateProgress: (progress: number) => void;
+  setUpdateDownloaded: (downloaded: boolean, version?: string) => void;
+  setUpdateError: (message: string | null) => void;
   {% endif %}
 
   // Sidebar
@@ -93,13 +97,24 @@ export const useAppStore = create<AppState>()(
         resetCounter: () => set({ counter: 0 }),
 
         {% if 'auto_updater' in desktop_features %}
-        // Update state
         updateAvailable: false,
         updateVersion: null,
         updateProgress: 0,
+        updateDownloaded: false,
+        updateError: null,
         setUpdateAvailable: (available, version) =>
-          set({ updateAvailable: available, updateVersion: version || null }),
+          set({
+            updateAvailable: available,
+            updateVersion: version || null,
+            updateError: null,
+          }),
         setUpdateProgress: (progress) => set({ updateProgress: progress }),
+        setUpdateDownloaded: (downloaded, version) =>
+          set({
+            updateDownloaded: downloaded,
+            updateVersion: version || null,
+          }),
+        setUpdateError: (message) => set({ updateError: message }),
         {% endif %}
 
         // Sidebar
@@ -176,12 +191,16 @@ export const useUpdateState = (): {
   available: boolean;
   version: string | null;
   progress: number;
+  downloaded: boolean;
+  error: string | null;
 } => {
   const available = useAppStore((state) => state.updateAvailable);
   const version = useAppStore((state) => state.updateVersion);
   const progress = useAppStore((state) => state.updateProgress);
+  const downloaded = useAppStore((state) => state.updateDownloaded);
+  const error = useAppStore((state) => state.updateError);
 
-  return { available, version, progress };
+  return { available, version, progress, downloaded, error };
 };
 {% endif %}
 {% endif %}

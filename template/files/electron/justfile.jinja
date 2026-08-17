@@ -1,0 +1,42 @@
+{% if desktop_module == "enabled" and desktop_framework == "electron-vite" %}
+# {{ project_name }} — Electron desktop recipes
+set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
+
+default:
+    just --list
+
+dev:
+    pnpm dev
+
+typecheck:
+    pnpm typecheck
+
+lint:
+    pnpm lint
+
+test:
+    pnpm test
+
+format:
+    pnpm format
+
+build:
+    pnpm build
+
+{% if 'mac' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+build-mac:
+    pnpm build:mac
+{% endif %}
+{% if 'windows' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+build-win:
+    pnpm build:win
+{% endif %}
+{% if 'linux' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
+build-linux:
+    pnpm build:linux
+{% endif %}
+
+# Generate .icns/.ico from resources/icon.png when electron-icon-builder is available
+icons:
+    pnpm exec -- electron-icon-builder --input=resources/icon.png --output=resources --flatten || echo "Install electron-icon-builder or replace resources/icon.png, icon.icns, and icon.ico"
+{% endif %}

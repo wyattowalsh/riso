@@ -26,7 +26,7 @@ cache:
   key:
     files:
       {% if cli_module == 'enabled' and 'python' in cli_languages or api_module == 'enabled' and 'python' in api_languages or mcp_module == 'enabled' and 'python' in mcp_languages -%}
-      - uv.lock
+      - python/uv.lock
       {% endif -%}
       {% if api_module == 'enabled' and 'node' in api_languages or docs_module == 'enabled' and docs_framework in ['fumadocs', 'docusaurus'] or saas_infra_module == 'enabled' -%}
       - pnpm-lock.yaml
@@ -48,24 +48,24 @@ cache:
     - apt-get update && apt-get install -y curl git
     - curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.cargo/bin:$PATH"
-    - uv sync
+    - uv --directory python sync
   cache:
     key: python-${CI_COMMIT_REF_SLUG}
     paths:
       - .cache/pip/
       - .cache/uv/
-      - .venv/
+      - python/.venv/
 
 lint:python:
   extends: .python-base
   stage: lint
   script:
     - export PATH="$HOME/.cargo/bin:$PATH"
-    - uv run ruff check .
-    - uv run ruff format --check .
+    - uv --directory python run ruff check .
+    - uv --directory python run ruff format --check .
 {% if quality_profile == 'strict' %}
-    - uv run ty check
-    - uv run pylint src/
+    - uv --directory python run ty check
+    - uv --directory python run pylint src/
 {% endif %}
   artifacts:
     when: on_failure
@@ -80,7 +80,7 @@ test:python:
   stage: test
   script:
     - export PATH="$HOME/.cargo/bin:$PATH"
-    - uv run pytest tests/ -v --cov --cov-report=xml --cov-report=html --junit-xml=test-results.xml
+    - uv --directory python run pytest tests/ -v --cov --cov-report=xml --cov-report=html --junit-xml=test-results.xml
   coverage: '/TOTAL.*\s+(\d+%)/'
   artifacts:
     when: always
@@ -107,6 +107,7 @@ test:cli:
   stage: test
   script:
     - export PATH="$HOME/.cargo/bin:$PATH"
+    - cd python
     - uv run pytest tests/test_cli*.py -v
   artifacts:
     when: on_failure
@@ -121,6 +122,7 @@ test:mcp:
   stage: test
   script:
     - export PATH="$HOME/.cargo/bin:$PATH"
+    - cd python
     - uv run pytest tests/test_mcp.py -v
   artifacts:
     when: on_failure
@@ -137,7 +139,7 @@ test:mcp:
 # ========================================
 
 .node-base:
-  image: node:22-alpine
+  image: node:20-alpine
   before_script:
     - corepack enable
     - pnpm install --frozen-lockfile
@@ -322,10 +324,10 @@ pages:
   before_script:
     - curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.cargo/bin:$PATH"
-    - uv sync
+    - uv --directory python sync
   script:
     - export PATH="$HOME/.cargo/bin:$PATH"
-    - uv run sphinx-build docs/ public/
+    - uv --directory python run --group docs sphinx-build docs ../public/
   artifacts:
     paths:
       - public/
@@ -338,10 +340,10 @@ pages:
   script:
 {% if docs_framework == 'fumadocs' %}
     - pnpm run docs:build
-    - mv docs/out public/
+    - mv node/docs/fumadocs/out public/
 {% elif docs_framework == 'docusaurus' %}
-    - cd docs && pnpm run build
-    - mv build ../public/
+    - pnpm --filter docs-docusaurus run build
+    - mv node/docs/docusaurus/build public/
 {% endif %}
   artifacts:
     paths:
@@ -381,7 +383,7 @@ build:container:
 {% if changelog_module == 'enabled' -%}
 release:
   stage: deploy
-  image: node:22-alpine
+  image: node:20-alpine
   before_script:
     - apk add --no-cache git
   script:

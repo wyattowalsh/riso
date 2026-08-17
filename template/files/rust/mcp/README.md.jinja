@@ -5,10 +5,9 @@ Rust implementation of the Model Context Protocol (MCP) server.
 
 ## Features
 
-- **Language**: Rust 1.75+
-- **Transport**: {{ mcp_transport | upper }} (support for stdio, sse, http)
-- **Framework**: Axum (for web transports), Tokio (async runtime)
-- **SDK**: `rmcp`
+- **Language**: Rust 1.81+
+- **Transport**: {{ mcp_transport | upper }} (stdio, or streamable HTTP when sse/http is selected)
+- **SDK**: `rmcp` 0.11 (`ServerHandler`, `#[tool_router]`, `#[tool]`)
 
 ## Running
 
@@ -28,15 +27,8 @@ Suitable for local integration with Claude Desktop or generic MCP clients.
 cargo run -- --transport stdio
 ```
 
-### SSE Mode
-Server-Sent Events for streaming updates.
-
-```bash
-cargo run -- --transport sse --port 3000
-```
-
-### HTTP Mode
-Standard JSON-RPC over HTTP.
+### HTTP / SSE Mode
+Streamable HTTP (JSON-RPC + SSE) via `rmcp` `StreamableHttpService`.
 
 ```bash
 cargo run -- --transport http --port 3000
@@ -44,6 +36,6 @@ cargo run -- --transport http --port 3000
 
 ## Adding Tools
 
-Edit `src/tools/mod.rs` to register new tools. Implement them using the `#[tool]` macro from `rmcp`.
+Add a `#[tool]` method on `McpServer` in `src/server.rs`. Keep request types in `src/tools/`.
 
 {%- endif -%}

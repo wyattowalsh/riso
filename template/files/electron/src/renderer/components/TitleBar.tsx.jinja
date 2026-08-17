@@ -47,16 +47,14 @@ function TitleBar(props: TitleBarProps): JSX.Element {
 
   return (
     <div
-      className="h-10 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center select-none"
+      className="flex h-10 select-none items-center border-b border-border bg-surface"
       style={% raw %}{{ WebkitAppRegion: 'drag' } as React.CSSProperties}{% endraw %}
     >
       {/* macOS: Empty space for traffic lights */}
       {isMac && <div className="w-20" />}
 
       {/* Title */}
-      <div className="flex-1 text-center text-sm font-medium text-slate-700 dark:text-slate-300">
-        {title}
-      </div>
+      <div className="flex-1 text-center text-sm font-medium text-ink">{title}</div>
 
       {/* Windows/Linux: Custom window controls */}
       {!isMac && (
@@ -66,12 +64,13 @@ function TitleBar(props: TitleBarProps): JSX.Element {
         >
           {/* Minimize */}
           <button
+            type="button"
             onClick={handleMinimize}
-            className="w-12 h-10 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="flex h-10 w-12 items-center justify-center text-muted transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-500"
             aria-label="Minimize"
           >
             <svg
-              className="w-4 h-4 text-slate-600 dark:text-slate-400"
+              className="h-4 w-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -87,13 +86,16 @@ function TitleBar(props: TitleBarProps): JSX.Element {
 
           {/* Maximize/Restore */}
           <button
-            onClick={handleMaximize}
-            className="w-12 h-10 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            type="button"
+            onClick={() => {
+              void handleMaximize();
+            }}
+            className="flex h-10 w-12 items-center justify-center text-muted transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-500"
             aria-label={isMaximized ? 'Restore' : 'Maximize'}
           >
             {isMaximized ? (
               <svg
-                className="w-4 h-4 text-slate-600 dark:text-slate-400"
+                className="h-4 w-4"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -107,7 +109,7 @@ function TitleBar(props: TitleBarProps): JSX.Element {
               </svg>
             ) : (
               <svg
-                className="w-4 h-4 text-slate-600 dark:text-slate-400"
+                className="h-4 w-4"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -124,12 +126,13 @@ function TitleBar(props: TitleBarProps): JSX.Element {
 
           {/* Close */}
           <button
+            type="button"
             onClick={handleClose}
-            className="w-12 h-10 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors"
+            className="flex h-10 w-12 items-center justify-center text-muted transition-colors hover:bg-red-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-500"
             aria-label="Close"
           >
             <svg
-              className="w-4 h-4 text-slate-600 dark:text-slate-400"
+              className="h-4 w-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"

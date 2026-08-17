@@ -177,6 +177,7 @@ jobs:
           retention-days: 90
 {%- endif %}
 
+{%- if api_module == "enabled" and (("python" in api_languages) or ("node" in api_languages)) %}
   scan:
     name: Security Scan
     runs-on: ubuntu-latest
@@ -227,11 +228,12 @@ jobs:
             trivy-results-{% raw %}${{ matrix.target.name }}{% endraw %}.sarif
             sbom-{% raw %}${{ matrix.target.name }}{% endraw %}.json
           retention-days: 90
+{%- endif %}
 
   summary:
     name: Build Summary
     runs-on: ubuntu-latest
-    needs: [scan]
+    needs: [{% if api_module == "enabled" and (("python" in api_languages) or ("node" in api_languages)) %}scan{% else %}hadolint{% endif %}]
     if: always()
     steps:
       - name: Build summary

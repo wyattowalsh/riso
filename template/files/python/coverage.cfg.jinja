@@ -1,5 +1,5 @@
 {% set optional_tests = [] %}
-{% if cli_module | lower != "enabled" %}
+{% if cli_module | lower != "enabled" or "python" not in cli_languages %}
 {% set optional_tests = optional_tests + ["tests/test_cli*.py"] %}
 {% endif %}
 {% if api_module != 'enabled' or 'python' not in api_languages %}
@@ -15,7 +15,7 @@ omit =
     */__init__.py
     */migrations/*
     */node_modules/*
-{%- if cli_module | lower == "enabled" %}
+{%- if cli_module | lower == "enabled" and "python" in cli_languages %}
     src/{{ package_name }}/cli/plugins/*
     src/{{ package_name }}/cli/core/prompts.py
     src/{{ package_name }}/cli/commands/example_async.py
@@ -28,7 +28,7 @@ omit =
 show_missing = True
 skip_covered = False
 precision = 2
-fail_under = {% if cli_module | lower == "enabled" %}90.0{% else %}85.0{% endif %}
+fail_under = {% if cli_module | lower == "enabled" and "python" in cli_languages %}90.0{% else %}85.0{% endif %}
 omit =
 {% for test in optional_tests %}
     {{ test }}
@@ -38,7 +38,7 @@ omit =
     src/{{ package_name }}/config.py
     src/{{ package_name }}/logging.py
 {%- endif %}
-{%- if cli_module | lower == "enabled" %}
+{%- if cli_module | lower == "enabled" and "python" in cli_languages %}
     src/{{ package_name }}/cli/plugins/*
     src/{{ package_name }}/cli/core/prompts.py
     src/{{ package_name }}/cli/commands/example_async.py

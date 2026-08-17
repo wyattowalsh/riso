@@ -1,4 +1,4 @@
-{%- if cli_module | lower != "enabled" %}
+{%- if cli_module | lower != "enabled" or "python" not in cli_languages %}
 # CLI module disabled - this file is not generated
 {%- else %}
 """Plugin system with lazy loading and entry point discovery.
@@ -21,8 +21,9 @@ if TYPE_CHECKING:
 
 class PluginManager:
     """Manages plugin discovery and lazy loading.
-    
-    Plugins are discovered via setuptools entry points in the '{{ package_name }}.cli.plugins' group.
+
+    Plugins are discovered via setuptools entry points in the
+    '{{ package_name }}.cli.plugins' group.
     Commands are loaded on-demand to minimize startup time.
     """
     

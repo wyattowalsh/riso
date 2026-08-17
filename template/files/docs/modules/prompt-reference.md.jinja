@@ -8,13 +8,28 @@ Use this guide to understand how each Copier prompt shapes the generated project
 
 | Prompt | Choices | Default | Description |
 |--------|---------|---------|-------------|
-| `project_layout` | `single-package`, `monorepo` | `{{ project_layout }}` | Choose between a lean Python-first tree or a pnpm-managed monorepo with `apps/` and `packages/`. |
-| `task_runner` | `just`, `makefile`, `both`, `none` | `{{ task_runner }}` | Local task aggregator: justfile (default), GNU Make, both, or none (`uv run task quality` only). |
-| `cli_module` | `disabled`, `enabled` | `{{ cli_module }}` | Enables the Typer CLI package, CLI smoke tests, and CLI dependency group. |
-| `api_languages` | `none`, `python`, `node`, `api_languages=[python,node]` | `{{ api_languages }}` | Adds FastAPI (`python`), Fastify (`node`), or both services with shared logic wiring. |
-| `mcp_module` | `disabled`, `enabled` | `{{ mcp_module }}` | Adds FastMCP tooling, sample registry, and compliance helpers. |
-| `docs_framework` | `sphinx-shibuya`, `fumadocs`, `docusaurus`, `none` | `{{ docs_framework }}` | Choose between the bundled Shibuya Sphinx site, Fumadocs (Next.js), Docusaurus, or disable docs entirely. |
-| `shared_logic` | `disabled`, `enabled` | `{{ shared_logic }}` | Provides shared helper modules consumed by CLI/APIs. |
+| `project_layout` | `single-package`, `monorepo` | `{{ project_layout }}` | Lean single package or a pnpm-managed monorepo. |
+| `task_runner` | `just`, `makefile`, `both`, `none` | `{{ task_runner }}` | Local task aggregator. `just` is the 2.0 default. |
+| `openspec_extra` | `disabled`, `enabled` | `{{ openspec_extra }}` | Optional OpenSpec extra files. Off by default. |
+| `cli_module` | `disabled`, `enabled` | `{{ cli_module }}` | Enables the CLI package and CLI tests. |
+| `cli_languages` | `python`, `rust`, `go` (multiselect list) | `{{ cli_languages }}` | CLI implementation languages. TypeScript is MCP-only, not a CLI choice. |
+| `api_module` | `disabled`, `enabled` | `{{ api_module }}` | Master switch for HTTP APIs. |
+{% if api_module == 'enabled' %}
+| `api_languages` | `python`, `node`, `rust`, `go` (multiselect list) | `{{ api_languages }}` | API languages when `api_module=enabled`. Must be a YAML list. |
+| `api_features` | `graphql`, `websocket` (multiselect list) | `{{ api_features | default([]) }}` | Optional API extras when `api_module=enabled`. `graphql_api_module` / `websocket_module` are derived flags, not prompts. |
+{% endif %}
+| `mcp_module` | `disabled`, `enabled` | `{{ mcp_module }}` | Adds an MCP server scaffold. |
+| `mcp_languages` | `python`, `typescript`, `rust`, `go` (multiselect list) | `{{ mcp_languages }}` | MCP languages. `node`/`js` remaps to `typescript`. |
+| `docs_module` | `disabled`, `enabled` | `{{ docs_module }}` | Master switch for the docs site. Disable here — `docs_framework` has no `none`. |
+{% if docs_module == 'enabled' %}
+| `docs_framework` | `fumadocs`, `sphinx-shibuya`, `docusaurus` | `{{ docs_framework }}` | Docs engine when `docs_module=enabled`. |
+{% endif %}
+| `saas_infra_module` | `disabled`, `enabled` | `{{ saas_infra_module }}` | SaaS starter infra (was `saas_starter_module`). |
+| `saas_auth_module` / `saas_auth_provider` | module toggle; provider `clerk` or `authjs` | — | Auth split dests (was `saas_auth`). `lucia` is not a dest provider and fail-closes. |
+| `saas_billing_module` / `saas_billing_provider` | module toggle; `stripe` / `paddle` / `lemonsqueezy` | — | Billing split dests (was `saas_billing`). |
+| `saas_admin_dashboard` | `true`, `false` | `{{ saas_admin_dashboard }}` | Admin dashboard (was `include_admin`). |
+| `shared_logic` | `disabled`, `enabled` | `{{ shared_logic }}` | Shared helper modules consumed by CLI/APIs. |
+| `mise.toml` | always rendered | Node **20**, Python 3.11, pnpm 9.15.0 | Generated toolchain pin. Not an extra toggle. |
 
 ## Dependency Groups
 

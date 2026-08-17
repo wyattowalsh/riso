@@ -55,13 +55,12 @@ WORKDIR /app
 # Install production dependencies only
 RUN corepack enable && corepack prepare pnpm@9 --activate
 
-# Copy built application
+# Copy built application (runtime trees stay under runtime/{nextjs,remix})
 {% if saas_runtime == "nextjs-16" %}
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
+COPY --from=builder /app/runtime/nextjs/.next ./runtime/nextjs/.next
+COPY --from=builder /app/runtime/nextjs/next.config.js ./runtime/nextjs/next.config.js
 {% elif saas_runtime == "remix-2" %}
-COPY --from=builder /app/build ./build
-COPY --from=builder /app/public ./public
+COPY --from=builder /app/runtime/remix/build ./runtime/remix/build
 {% endif %}
 
 # Copy dependencies
@@ -69,8 +68,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
 {% if saas_orm == "prisma" %}
-# Copy Prisma schema and client
-COPY --from=builder /app/prisma ./prisma
+# Copy Prisma schema and client (schema lives under integrations/)
+COPY --from=builder /app/integrations/orm/prisma ./integrations/orm/prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 {% endif %}
 

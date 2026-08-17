@@ -2,22 +2,14 @@
 
 from __future__ import annotations
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class BaseAppSettings(BaseSettings):
     """Shared base settings for all runtime configurations."""
 
-    env_file = ".env"
-    env_file_encoding = "utf-8"
-    env_prefix = "RISO_"
-
-
-class QuickstartSettings(BaseAppSettings):
-    """Configuration values used by the quickstart workflow."""
-
-    notebook_path: str = "notebooks/getting-started.ipynb"
-    enable_notebooks: bool = True
-
-
-settings = QuickstartSettings()
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        env_prefix="RISO_",
+    )

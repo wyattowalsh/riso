@@ -1,7 +1,11 @@
-{% if 'go' in cli_languages or 'go' in api_languages %}
+{%- set _has_cli_or_api = (cli_module == 'enabled' and 'go' in cli_languages)
+                      or (api_module == 'enabled' and 'go' in api_languages) -%}
+{%- set _has_mcp = mcp_module == 'enabled' and 'go' in mcp_languages -%}
+{% if _has_cli_or_api or _has_mcp %}
 module {{ project_slug }}
 
 go {{ go_version | default('1.24') }}
+{% if _has_cli_or_api %}
 
 require (
 {% if cli_module == 'enabled' and 'go' in cli_languages %}
@@ -27,4 +31,5 @@ require (
 	github.com/rs/cors v1.11.1
 {% endif %}
 )
+{% endif %}
 {% endif %}

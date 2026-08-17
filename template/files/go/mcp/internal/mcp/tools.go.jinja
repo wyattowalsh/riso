@@ -7,19 +7,14 @@ import (
 	"log/slog"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"github.com/modelcontextprotocol/go-sdk/server"
 )
 
-// ToolRegistration provides helper functions for registering MCP tools.
-// Uses Go generics for type-safe tool registration following the official SDK patterns.
-
-// RegisterTool is a type-safe helper for registering MCP tools.
-// It wraps the SDK's tool registration with proper typing.
+// RegisterTool is a type-safe helper for registering MCP tools via mcp.AddTool.
 //
 // Example usage:
 //
 //	type EchoInput struct {
-//	    Message string `json:"message"`
+//	    Message string `json:"message" jsonschema:"the message to echo"`
 //	}
 //
 //	type EchoOutput struct {
@@ -30,30 +25,16 @@ import (
 //	    return EchoOutput{Result: input.Message}, nil
 //	})
 func RegisterTool[I, O any](
-	srv *server.Server,
+	srv *mcp.Server,
 	logger *slog.Logger,
 	name string,
 	description string,
 	handler func(ctx context.Context, input I) (O, error),
 ) {
-	tool := mcp.Tool{
+	mcp.AddTool(srv, &mcp.Tool{
 		Name:        name,
 		Description: description,
-		InputSchema: mcp.GenerateSchema[I](),
-	}
-
-	srv.RegisterTool(tool, func(ctx context.Context, params map[string]any) (any, error) {
-		// Parse input
-		input, err := mcp.ParseInput[I](params)
-		if err != nil {
-			logger.Error("failed to parse tool input",
-				"tool", name,
-				"error", err,
-			)
-			return nil, fmt.Errorf("invalid input: %w", err)
-		}
-
-		// Execute handler
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input I) (*mcp.CallToolResult, O, error) {
 		logger.Debug("executing tool", "tool", name)
 		result, err := handler(ctx, input)
 		if err != nil {
@@ -61,28 +42,27 @@ func RegisterTool[I, O any](
 				"tool", name,
 				"error", err,
 			)
-			return nil, err
+			var zero O
+			return nil, zero, err
 		}
-
 		logger.Debug("tool executed successfully", "tool", name)
-		return result, nil
+		return nil, result, nil
 	})
 }
 
 // RegisterSimpleTool registers a tool with a simple string input/output.
-// Useful for basic tools that don't need complex schemas.
 func RegisterSimpleTool(
-	srv *server.Server,
+	srv *mcp.Server,
 	logger *slog.Logger,
 	name string,
 	description string,
 	handler func(ctx context.Context, input string) (string, error),
 ) {
 	type SimpleInput struct {
-		Input string `json:"input" description:"Input value"`
+		Input string `json:"input" jsonschema:"input value"`
 	}
 	type SimpleOutput struct {
-		Output string `json:"output" description:"Output value"`
+		Output string `json:"output" jsonschema:"output value"`
 	}
 
 	RegisterTool(srv, logger, name, description, func(ctx context.Context, in SimpleInput) (SimpleOutput, error) {
