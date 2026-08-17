@@ -20,7 +20,10 @@ LOG_PATH = Path(".riso/toolchain_provisioning.jsonl")
 
 sys.path.append(str(Path(__file__).resolve().parents[2] / "scripts"))
 
-from lib.removed_answer_keys import REMOVED_ANSWER_KEYS  # noqa: E402
+from lib.removed_answer_keys import (  # noqa: E402
+    REMOVED_ANSWER_KEYS,
+    apply_removed_key_remaps,
+)
 
 try:
     from hooks.quality_tool_check import ToolCheck, ensure_python_quality_tools
@@ -285,16 +288,29 @@ def _write_copier_context(context: dict) -> None:
     os.environ["COPIER_ANSWERS"] = payload
 
 
-def _validate_removed_answer_keys(context: dict) -> bool:
-    """Reject removed answer keys instead of silently translating them."""
-    removed = sorted(key for key in REMOVED_ANSWER_KEYS if key in context)
-    if not removed:
+def _apply_removed_key_remaps(context: dict) -> None:
+    """Apply known remaps in place. Unmapped leftovers stay for reject."""
+    remapped = dict(apply_removed_key_remaps(context).answers)
+    context.clear()
+    context.update(remapped)
+
+
+def _reject_leftover_removed_keys(context: dict) -> bool:
+    """Reject leftover removed keys after remaps have been applied."""
+    leftover = sorted(key for key in REMOVED_ANSWER_KEYS if key in context)
+    if not leftover:
         return True
 
     sys.stderr.write("Removed Copier answer keys are no longer supported:\n")
-    for key in removed:
+    for key in leftover:
         sys.stderr.write(f"- {key}: {REMOVED_ANSWER_KEYS[key]}\n")
     return False
+
+
+def _validate_removed_answer_keys(context: dict) -> bool:
+    """Apply known remaps in place, then reject leftover removed keys."""
+    _apply_removed_key_remaps(context)
+    return _reject_leftover_removed_keys(context)
 
 
 def _validate_generation_answers(context: dict) -> bool:
@@ -302,7 +318,7 @@ def _validate_generation_answers(context: dict) -> bool:
     try:
         from riso.core.generation_gates import validate_answers_for_generation
     except ImportError:
-        if not _validate_removed_answer_keys(context):
+        if not _reject_leftover_removed_keys(context):
             return False
         return _validate_and_report_saas_starter(context)
 
@@ -790,6 +806,8 @@ def _require_hook_tooling() -> None:
 def main() -> None:
     _require_hook_tooling()
     context = _load_copier_context()
+    if not _validate_removed_answer_keys(context):
+        sys.exit(1)
     context.update(normalize_api_feature_modules(context))
     _write_copier_context(context)
     if not _validate_generation_answers(context):

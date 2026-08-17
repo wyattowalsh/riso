@@ -16,7 +16,10 @@ from datetime import datetime, timezone
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[2] / "scripts"))
 
-from lib.removed_answer_keys import REMOVED_ANSWER_KEYS  # noqa: E402
+from lib.removed_answer_keys import (  # noqa: E402
+    REMOVED_ANSWER_KEYS,
+    apply_removed_key_remaps,
+)
 
 try:
     from hooks.quality_tool_check import (
@@ -68,6 +71,7 @@ EMPTY_SCAFFOLD_DIRS = [
     "node/mcp",
     "node/release",
     "node/saas",
+    "openspec",
     "python",
     "python/docs",
     "python/mcp",
@@ -132,13 +136,16 @@ def answer_list(
 
 
 def validate_removed_answer_keys(answers: dict[str, object]) -> None:
-    """Fail renders that still carry removed Copier answer keys."""
-    removed = sorted(key for key in REMOVED_ANSWER_KEYS if key in answers)
-    if not removed:
+    """Apply known remaps in place, then fail on leftover removed keys."""
+    remapped = dict(apply_removed_key_remaps(answers).answers)
+    answers.clear()
+    answers.update(remapped)
+    leftover = sorted(key for key in REMOVED_ANSWER_KEYS if key in answers)
+    if not leftover:
         return
 
     sys.stderr.write("Removed Copier answer keys are no longer supported:\n")
-    for key in removed:
+    for key in leftover:
         sys.stderr.write(f"- {key}: {REMOVED_ANSWER_KEYS[key]}\n")
     raise SystemExit(1)
 
