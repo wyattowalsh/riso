@@ -20,11 +20,9 @@ export function Header() {
   useEffect(() => {
     localStorage.setItem(DARK_MODE_KEY, String(darkMode))
 
-    if (darkMode) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
+    const root = document.documentElement
+    root.classList.toggle('dark', darkMode)
+    root.style.colorScheme = darkMode ? 'dark' : 'light'
   }, [darkMode])
 
   const matrixStamp = formatMatrixTimestamp(matrixMeta.generatedAt)
@@ -38,7 +36,7 @@ export function Header() {
               <img src="/riso.svg" alt="" className="h-6 w-6" aria-hidden="true" />
             </div>
             <div>
-              <h1 className="text-xl font-display font-semibold text-gray-900 dark:text-white">Riso</h1>
+              <p className="text-xl font-display font-semibold text-gray-900 dark:text-white">Riso</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">Project Generator</p>
               <p className="text-[11px] text-gray-400 dark:text-gray-500">
                 v{matrixMeta.templateVersion} · {matrixStamp ?? 'snapshot'}

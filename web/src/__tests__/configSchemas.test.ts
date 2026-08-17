@@ -5,9 +5,22 @@ import {
 } from '../lib/configSchemas'
 
 describe('configSchemas', () => {
-  it('rejects share payloads with removed answer keys', () => {
+  it('remaps share payloads with known removed answer keys', () => {
     const result = parseShareConfigPayload({ api_tracks: 'python' })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.api_module).toBe('enabled')
+      expect(result.data.api_languages).toEqual(['python'])
+      expect(result.data).not.toHaveProperty('api_tracks')
+    }
+  })
+
+  it('rejects share payloads with leftover unmapped removed keys', () => {
+    const result = parseShareConfigPayload({ saas_auth: 'firebase' })
     expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toMatch(/saas_auth/)
+    }
   })
 
   it('accepts valid share payloads', () => {

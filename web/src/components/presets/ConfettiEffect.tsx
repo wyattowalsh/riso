@@ -16,6 +16,13 @@ const CONFETTI_COLORS = [
  * @param y - Y coordinate for the confetti origin
  */
 export function createConfetti(x: number, y: number) {
+  if (
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  ) {
+    return
+  }
+
   const container = document.createElement('div')
   container.className = 'confetti-container'
   document.body.appendChild(container)

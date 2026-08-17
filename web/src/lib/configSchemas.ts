@@ -1,5 +1,10 @@
 import { z } from 'zod'
-import { findRemovedAnswerKeys } from './removedAnswerKeys'
+import {
+  applyThenRejectRemovedKeys,
+  dropLeftoverRemovedKeys,
+  findRemovedAnswerKeys,
+  RemovedAnswerKeyError,
+} from './removedAnswerKeys'
 
 function rejectRemovedKeys(
   value: Record<string, unknown>,
@@ -39,12 +44,25 @@ export type ParsedCustomPreset = z.infer<typeof customPresetSchema>
 export function parseShareConfigPayload(
   raw: unknown,
 ): { success: true; data: ParsedShareConfig } | { success: false; error: string } {
-  const result = shareConfigSchema.safeParse(raw)
-  if (!result.success) {
-    const message = result.error.issues.map((i) => i.message).join('; ')
-    return { success: false, error: message || 'Invalid share configuration' }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { success: false, error: 'Invalid share configuration' }
   }
-  return { success: true, data: result.data }
+  try {
+    const remapped = applyThenRejectRemovedKeys({
+      ...(raw as Record<string, unknown>),
+    })
+    const result = shareConfigSchema.safeParse(remapped.answers)
+    if (!result.success) {
+      const message = result.error.issues.map((i) => i.message).join('; ')
+      return { success: false, error: message || 'Invalid share configuration' }
+    }
+    return { success: true, data: result.data }
+  } catch (error) {
+    if (error instanceof RemovedAnswerKeyError) {
+      return { success: false, error: error.message }
+    }
+    throw error
+  }
 }
 
 export function parseCustomPresetsStorage(
@@ -56,16 +74,27 @@ export function parseCustomPresetsStorage(
   // Soft-parse each preset so one bad entry does not drop the whole store.
   const out: Record<string, ParsedCustomPreset> = {}
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
-    const withDefaults =
-      value && typeof value === 'object'
-        ? {
-            name: key,
-            createdAt: new Date(0).toISOString(),
-            version: 1,
-            config: {},
-            ...(value as Record<string, unknown>),
-          }
-        : value
+    const entry =
+      value && typeof value === 'object' && !Array.isArray(value)
+        ? (value as Record<string, unknown>)
+        : null
+    const rawConfig =
+      entry &&
+      entry.config &&
+      typeof entry.config === 'object' &&
+      !Array.isArray(entry.config)
+        ? (entry.config as Record<string, unknown>)
+        : {}
+    const remappedConfig = dropLeftoverRemovedKeys({ ...rawConfig })
+    const withDefaults = entry
+      ? {
+          name: key,
+          createdAt: new Date(0).toISOString(),
+          version: 1,
+          ...entry,
+          config: remappedConfig,
+        }
+      : value
     const result = customPresetSchema.safeParse(withDefaults)
     if (result.success) {
       out[key] = result.data

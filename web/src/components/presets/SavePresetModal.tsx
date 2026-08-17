@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useFocusTrap } from '../../lib/useFocusTrap'
 import { X } from 'lucide-react'
 
@@ -23,7 +23,13 @@ export function SavePresetModal({ isOpen, onClose, onSave }: SavePresetModalProp
   const [presetDescription, setPresetDescription] = useState('')
   const dialogRef = useRef<HTMLDivElement>(null)
 
-  useFocusTrap(isOpen, dialogRef)
+  const handleClose = useCallback(() => {
+    setPresetName('')
+    setPresetDescription('')
+    onClose()
+  }, [onClose])
+
+  useFocusTrap(isOpen, dialogRef, handleClose)
 
   if (!isOpen) return null
 
@@ -32,12 +38,6 @@ export function SavePresetModal({ isOpen, onClose, onSave }: SavePresetModalProp
     onSave(presetName.trim(), presetDescription.trim())
     setPresetName('')
     setPresetDescription('')
-  }
-
-  const handleClose = () => {
-    setPresetName('')
-    setPresetDescription('')
-    onClose()
   }
 
   return (
@@ -62,8 +62,10 @@ export function SavePresetModal({ isOpen, onClose, onSave }: SavePresetModalProp
             Save Custom Preset
           </h3>
           <button
+            type="button"
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            aria-label="Close save preset dialog"
+            className="rounded-lg p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-riso-federal-blue"
           >
             <X className="h-5 w-5" />
           </button>
@@ -71,10 +73,14 @@ export function SavePresetModal({ isOpen, onClose, onSave }: SavePresetModalProp
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label
+              htmlFor="save-preset-name"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
               Preset Name
             </label>
             <input
+              id="save-preset-name"
               type="text"
               value={presetName}
               onChange={(e) => setPresetName(e.target.value)}
@@ -85,10 +91,14 @@ export function SavePresetModal({ isOpen, onClose, onSave }: SavePresetModalProp
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label
+              htmlFor="save-preset-description"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
               Description (optional)
             </label>
             <textarea
+              id="save-preset-description"
               value={presetDescription}
               onChange={(e) => setPresetDescription(e.target.value)}
               placeholder="Brief description of this preset..."

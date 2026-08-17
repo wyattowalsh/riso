@@ -56,11 +56,10 @@ export function Hero() {
               </div>
               <Terminal className="h-4 w-4 text-riso-federal-blue dark:text-riso-cornflower" aria-hidden="true" />
             </div>
-            <pre className="mt-4 w-full max-w-full text-sm leading-relaxed bg-gray-900 text-gray-100 rounded-xl p-4 overflow-x-auto" aria-label="Example Copier command">
-              <code>{`copier copy gh:wyattowalsh/riso ./my-project \\
+            <pre className="mt-4 w-full max-w-full text-sm leading-relaxed bg-gray-900 text-gray-100 rounded-xl p-4 overflow-x-auto" aria-label="Example Riso command">
+              <code>{`uv run riso copy ./my-project \\
   --data project_layout=monorepo \\
   --data quality_profile=strict \\
-  --data docs_module=enabled \\
   --data docs_module=enabled \\
   --data docs_framework=fumadocs`}</code>
             </pre>

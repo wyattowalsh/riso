@@ -15,3 +15,6 @@ export type { LanguageSelectorProps, LanguageOption } from './LanguageSelector'
 
 export { FeatureToggleGroup } from './FeatureToggleGroup'
 export type { FeatureToggleGroupProps, ToggleOption } from './FeatureToggleGroup'
+
+export { Switch } from './Switch'
+export type { SwitchProps, SwitchAccent } from './Switch'

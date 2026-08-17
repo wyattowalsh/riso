@@ -505,13 +505,12 @@ describe('FileTreePreview Component', () => {
       const config: Partial<RisoConfig> = {
         project_name: 'deep-project',
         cli_module: 'enabled',
-        cli_languages: ['typescript'],
+        cli_languages: ['python'],
       }
 
       render(<FileTreePreview config={config} />)
 
-      // TypeScript CLI creates src-ts folder, not src
-      expect(screen.getByText('src-ts')).toBeInTheDocument()
+      expect(screen.getByText('src')).toBeInTheDocument()
     })
 
     it('maintains padding hierarchy for nested items', () => {
@@ -665,11 +664,10 @@ describe('FileTreePreview Component', () => {
     })
 
     it('supports different CLI languages', () => {
-      const languages: Array<'python' | 'rust' | 'go' | 'typescript'> = [
+      const languages: Array<'python' | 'rust' | 'go'> = [
         'python',
         'rust',
         'go',
-        'typescript',
       ]
 
       languages.forEach(lang => {

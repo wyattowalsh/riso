@@ -1,20 +1,30 @@
-import { useRisoStore, type RisoConfig } from '../../lib/store'
-import { buildChoiceOptions } from '../../lib/matrixData'
-import { cn } from '../../lib/utils'
-import { Layers, Shield, CreditCard, Rocket, ChevronRight, Check } from 'lucide-react'
+import { FieldHighlight } from "../FieldHighlight";
+import { Switch } from "../modules/Switch";
+import { useRisoStore, type RisoConfig } from "../../lib/store";
+import { buildChoiceOptions } from "../../lib/matrixData";
+import { cn } from "../../lib/utils";
+import {
+  Layers,
+  Shield,
+  CreditCard,
+  Rocket,
+  ChevronRight,
+  Check,
+} from "lucide-react";
 
 interface LayerCardProps {
-  title: string
-  description: string
-  icon: React.ElementType
-  enabled: boolean
-  onToggle: (enabled: boolean) => void
-  children?: React.ReactNode
-  accentColor: string
-  iconColor: string
-  disabled?: boolean
-  disabledReason?: string
-  isComplete?: boolean
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  enabled: boolean;
+  onToggle: (enabled: boolean) => void;
+  children?: React.ReactNode;
+  accentColor: string;
+  iconColor: string;
+  disabled?: boolean;
+  disabledReason?: string;
+  isComplete?: boolean;
+  fieldKey?: string;
 }
 
 function LayerCard({
@@ -29,16 +39,18 @@ function LayerCard({
   disabled = false,
   disabledReason,
   isComplete = false,
+  fieldKey,
 }: LayerCardProps) {
-  return (
+  const titleId = `saas-layer-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+  const card = (
     <div
       className={cn(
-        'rounded-xl border-2 transition-all',
+        "rounded-xl border-2 transition-all",
         disabled
-          ? 'border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 opacity-60'
+          ? "border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 opacity-60"
           : enabled
             ? accentColor
-            : 'border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30'
+            : "border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30",
       )}
     >
       <div className="p-4">
@@ -46,17 +58,27 @@ function LayerCard({
           <div className="flex items-start gap-3">
             <div
               className={cn(
-                'p-2 rounded-lg transition-colors',
-                enabled && !disabled ? accentColor : 'bg-gray-100 dark:bg-gray-700'
+                "p-2 rounded-lg transition-colors",
+                enabled && !disabled
+                  ? accentColor
+                  : "bg-gray-100 dark:bg-gray-700",
               )}
             >
               <Icon
-                className={cn('h-5 w-5', enabled && !disabled ? iconColor : 'text-gray-400')}
+                className={cn(
+                  "h-5 w-5",
+                  enabled && !disabled ? iconColor : "text-gray-400",
+                )}
               />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-gray-900 dark:text-white">{title}</h3>
+                <h3
+                  id={titleId}
+                  className="font-semibold text-gray-900 dark:text-white"
+                >
+                  {title}
+                </h3>
                 {isComplete && enabled && (
                   <span className="flex items-center gap-1 text-xs text-riso-green dark:text-riso-mint font-medium">
                     <Check className="h-3 w-3" />
@@ -64,42 +86,38 @@ function LayerCard({
                   </span>
                 )}
               </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                {description}
+              </p>
               {disabled && disabledReason && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">{disabledReason}</p>
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  {disabledReason}
+                </p>
               )}
             </div>
           </div>
-          <button
-            type="button"
+          <Switch
+            checked={enabled}
+            onCheckedChange={onToggle}
+            labelledBy={titleId}
             disabled={disabled}
-            onClick={() => onToggle(!enabled)}
-            className={cn(
-              'relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out',
-              disabled
-                ? 'cursor-not-allowed bg-gray-200 dark:bg-gray-600'
-                : enabled
-                  ? 'cursor-pointer bg-riso-orange'
-                  : 'cursor-pointer bg-gray-200 dark:bg-gray-600'
-            )}
-          >
-            <span
-              className={cn(
-                'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-                enabled ? 'translate-x-5' : 'translate-x-0'
-              )}
-            />
-          </button>
+            accent="orange"
+          />
         </div>
       </div>
 
       {enabled && !disabled && children && (
         <div className="px-4 pb-4">
-          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">{children}</div>
+          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+            {children}
+          </div>
         </div>
       )}
     </div>
-  )
+  );
+
+  if (!fieldKey) return card;
+  return <FieldHighlight fieldKey={fieldKey}>{card}</FieldHighlight>;
 }
 
 function CategorySelect({
@@ -107,13 +125,15 @@ function CategorySelect({
   value,
   onChange,
   options,
+  fieldKey,
 }: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  options: { value: string; label: string; description?: string }[]
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string; description?: string }[];
+  fieldKey?: string;
 }) {
-  return (
+  const body = (
     <div>
       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
         {label}
@@ -126,13 +146,15 @@ function CategorySelect({
             onClick={() => onChange(option.value)}
             aria-pressed={value === option.value}
             className={cn(
-              'p-3 rounded-lg border text-left transition-all',
+              "p-3 rounded-lg border text-left transition-all",
               value === option.value
-                ? 'border-riso-orange bg-riso-orange/10 dark:bg-riso-orange/5'
-                : 'border-gray-200 dark:border-gray-700 hover:border-riso-orange/50'
+                ? "border-riso-orange bg-riso-orange/10 dark:bg-riso-orange/5"
+                : "border-gray-200 dark:border-gray-700 hover:border-riso-orange/50",
             )}
           >
-            <div className="font-medium text-sm text-gray-900 dark:text-white">{option.label}</div>
+            <div className="font-medium text-sm text-gray-900 dark:text-white">
+              {option.label}
+            </div>
             {option.description && (
               <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                 {option.description}
@@ -142,7 +164,9 @@ function CategorySelect({
         ))}
       </div>
     </div>
-  )
+  );
+  if (!fieldKey) return body;
+  return <FieldHighlight fieldKey={fieldKey}>{body}</FieldHighlight>;
 }
 
 function ToggleCheckbox({
@@ -150,9 +174,9 @@ function ToggleCheckbox({
   checked,
   onChange,
 }: {
-  label: string
-  checked: boolean
-  onChange: (checked: boolean) => void
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
 }) {
   return (
     <label className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:border-riso-orange/50 transition-colors">
@@ -162,190 +186,190 @@ function ToggleCheckbox({
         onChange={(e) => onChange(e.target.checked)}
         className="h-4 w-4 rounded border-gray-300 text-riso-orange focus:ring-riso-orange accent-riso-orange"
       />
-      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</span>
+      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        {label}
+      </span>
     </label>
-  )
+  );
 }
 
 export function SaaSConfig() {
-  const { config, updateConfig } = useRisoStore()
+  const { config, updateConfig } = useRisoStore();
 
   // Layer states with defaults
-  const infraEnabled = config.saas_infra_module === 'enabled'
-  const authEnabled = config.saas_auth_module === 'enabled'
-  const billingEnabled = config.saas_billing_module === 'enabled'
-  const appEnabled = config.saas_app_module === 'enabled'
+  const infraEnabled = config.saas_infra_module === "enabled";
+  const authEnabled = config.saas_auth_module === "enabled";
+  const billingEnabled = config.saas_billing_module === "enabled";
+  const appEnabled = config.saas_app_module === "enabled";
 
   // Build options from matrix data
   const runtimeOptions = buildChoiceOptions({
-    key: 'saas_runtime',
-    fallbackChoices: ['nextjs-16', 'remix-2'],
+    key: "saas_runtime",
+    fallbackChoices: ["nextjs-16", "remix-2"],
     labels: {
-      'nextjs-16': 'Next.js 16',
-      'remix-2': 'Remix 2.x',
+      "nextjs-16": "Next.js 16",
+      "remix-2": "Remix 2.x",
     },
     descriptions: {
-      'nextjs-16': 'React 19, App Router, Turbopack',
-      'remix-2': 'Server-first, explicit data loading',
+      "nextjs-16": "React 19, App Router, Turbopack",
+      "remix-2": "Server-first, explicit data loading",
     },
-  })
+  });
 
   const hostingOptions = buildChoiceOptions({
-    key: 'saas_hosting',
-    fallbackChoices: ['vercel', 'cloudflare'],
+    key: "saas_hosting",
+    fallbackChoices: ["vercel", "cloudflare"],
     labels: {
-      vercel: 'Vercel',
-      cloudflare: 'Cloudflare',
+      vercel: "Vercel",
+      cloudflare: "Cloudflare",
     },
     descriptions: {
-      vercel: 'Native Next.js, edge functions',
-      cloudflare: 'Global edge, lower egress',
+      vercel: "Native Next.js, edge functions",
+      cloudflare: "Global edge, lower egress",
     },
-  })
+  });
 
   const databaseOptions = buildChoiceOptions({
-    key: 'saas_database',
-    fallbackChoices: ['neon', 'supabase'],
+    key: "saas_database",
+    fallbackChoices: ["neon", "supabase"],
     labels: {
-      neon: 'Neon',
-      supabase: 'Supabase',
+      neon: "Neon",
+      supabase: "Supabase",
     },
     descriptions: {
-      neon: 'Serverless Postgres, branching',
-      supabase: 'Postgres + Auth + Storage',
+      neon: "Serverless Postgres, branching",
+      supabase: "Postgres + Auth + Storage",
     },
-  })
+  });
 
   const ormOptions = buildChoiceOptions({
-    key: 'saas_orm',
-    fallbackChoices: ['prisma', 'drizzle'],
+    key: "saas_orm",
+    fallbackChoices: ["prisma", "drizzle"],
     labels: {
-      prisma: 'Prisma',
-      drizzle: 'Drizzle',
+      prisma: "Prisma",
+      drizzle: "Drizzle",
     },
     descriptions: {
-      prisma: 'Best TypeScript DX, migrations',
-      drizzle: 'Lightweight, edge-optimized',
+      prisma: "Best TypeScript DX, migrations",
+      drizzle: "Lightweight, edge-optimized",
     },
-  })
+  });
 
   const authProviderOptions = buildChoiceOptions({
-    key: 'saas_auth_provider',
-    fallbackChoices: ['clerk', 'authjs', 'lucia'],
+    key: "saas_auth_provider",
+    fallbackChoices: ["clerk", "authjs"],
     labels: {
-      clerk: 'Clerk',
-      authjs: 'Auth.js',
-      lucia: 'Lucia',
+      clerk: "Clerk",
+      authjs: "Auth.js",
     },
     descriptions: {
-      clerk: 'Hosted, built-in UI, passkeys',
-      authjs: 'Self-hosted, full control',
-      lucia: 'Lightweight, session-based',
+      clerk: "Hosted, built-in UI, passkeys",
+      authjs: "Self-hosted, full control",
     },
-  })
+  });
 
   const billingProviderOptions = buildChoiceOptions({
-    key: 'saas_billing_provider',
-    fallbackChoices: ['stripe', 'paddle', 'lemonsqueezy'],
+    key: "saas_billing_provider",
+    fallbackChoices: ["stripe", "paddle", "lemonsqueezy"],
     labels: {
-      stripe: 'Stripe',
-      paddle: 'Paddle',
-      lemonsqueezy: 'LemonSqueezy',
+      stripe: "Stripe",
+      paddle: "Paddle",
+      lemonsqueezy: "LemonSqueezy",
     },
     descriptions: {
-      stripe: 'Full control, widest ecosystem',
-      paddle: 'Merchant of Record, auto tax',
-      lemonsqueezy: 'Simple MoR, indie-friendly',
+      stripe: "Full control, widest ecosystem",
+      paddle: "Merchant of Record, auto tax",
+      lemonsqueezy: "Simple MoR, indie-friendly",
     },
-  })
+  });
 
   const analyticsOptions = buildChoiceOptions({
-    key: 'saas_analytics',
-    fallbackChoices: ['posthog', 'amplitude'],
+    key: "saas_analytics",
+    fallbackChoices: ["posthog", "amplitude"],
     labels: {
-      posthog: 'PostHog',
-      amplitude: 'Amplitude',
+      posthog: "PostHog",
+      amplitude: "Amplitude",
     },
     descriptions: {
-      posthog: 'Product OS, open-source',
-      amplitude: 'Enterprise analytics',
+      posthog: "Product OS, open-source",
+      amplitude: "Enterprise analytics",
     },
-  })
+  });
 
   const aiOptions = buildChoiceOptions({
-    key: 'saas_ai',
-    fallbackChoices: ['openai', 'anthropic'],
+    key: "saas_ai",
+    fallbackChoices: ["openai", "anthropic"],
     labels: {
-      openai: 'OpenAI',
-      anthropic: 'Anthropic',
+      openai: "OpenAI",
+      anthropic: "Anthropic",
     },
     descriptions: {
-      openai: 'GPT-4o/5, largest ecosystem',
-      anthropic: 'Claude 4.x, longer context',
+      openai: "GPT-4o/5, largest ecosystem",
+      anthropic: "Claude 4.x, longer context",
     },
-  })
+  });
 
   const emailOptions = buildChoiceOptions({
-    key: 'saas_email',
-    fallbackChoices: ['resend', 'postmark'],
+    key: "saas_email",
+    fallbackChoices: ["resend", "postmark"],
     labels: {
-      resend: 'Resend',
-      postmark: 'Postmark',
+      resend: "Resend",
+      postmark: "Postmark",
     },
     descriptions: {
-      resend: 'React Email, modern DX',
-      postmark: 'Best deliverability',
+      resend: "React Email, modern DX",
+      postmark: "Best deliverability",
     },
-  })
+  });
 
   const jobsOptions = buildChoiceOptions({
-    key: 'saas_jobs',
-    fallbackChoices: ['triggerdev', 'inngest'],
+    key: "saas_jobs",
+    fallbackChoices: ["triggerdev", "inngest"],
     labels: {
-      triggerdev: 'Trigger.dev',
-      inngest: 'Inngest',
+      triggerdev: "Trigger.dev",
+      inngest: "Inngest",
     },
     descriptions: {
-      triggerdev: 'Task-centric, AI-optimized',
-      inngest: 'Event-driven workflows',
+      triggerdev: "Task-centric, AI-optimized",
+      inngest: "Event-driven workflows",
     },
-  })
+  });
 
   // Handle layer toggle with cascading disables
   const handleInfraToggle = (enabled: boolean) => {
-    updateConfig({ saas_infra_module: enabled ? 'enabled' : 'disabled' })
+    updateConfig({ saas_infra_module: enabled ? "enabled" : "disabled" });
     if (!enabled) {
       // Disable dependent layers
       updateConfig({
-        saas_auth_module: 'disabled',
-        saas_billing_module: 'disabled',
-        saas_app_module: 'disabled',
-      })
+        saas_auth_module: "disabled",
+        saas_billing_module: "disabled",
+        saas_app_module: "disabled",
+      });
     }
-  }
+  };
 
   const handleAuthToggle = (enabled: boolean) => {
-    updateConfig({ saas_auth_module: enabled ? 'enabled' : 'disabled' })
+    updateConfig({ saas_auth_module: enabled ? "enabled" : "disabled" });
     if (!enabled) {
       // Disable dependent layers
       updateConfig({
-        saas_billing_module: 'disabled',
-        saas_app_module: 'disabled',
-      })
+        saas_billing_module: "disabled",
+        saas_app_module: "disabled",
+      });
     }
-  }
+  };
 
   const handleBillingToggle = (enabled: boolean) => {
-    updateConfig({ saas_billing_module: enabled ? 'enabled' : 'disabled' })
+    updateConfig({ saas_billing_module: enabled ? "enabled" : "disabled" });
     if (!enabled) {
       // Disable dependent layer
-      updateConfig({ saas_app_module: 'disabled' })
+      updateConfig({ saas_app_module: "disabled" });
     }
-  }
+  };
 
   const handleAppToggle = (enabled: boolean) => {
-    updateConfig({ saas_app_module: enabled ? 'enabled' : 'disabled' })
-  }
+    updateConfig({ saas_app_module: enabled ? "enabled" : "disabled" });
+  };
 
   return (
     <div className="space-y-6">
@@ -360,18 +384,18 @@ export function SaaSConfig() {
       <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-100 dark:bg-gray-800/50">
         <div className="flex items-center gap-1">
           {[
-            { enabled: infraEnabled, label: 'Infra' },
-            { enabled: authEnabled, label: 'Auth' },
-            { enabled: billingEnabled, label: 'Billing' },
-            { enabled: appEnabled, label: 'App' },
+            { enabled: infraEnabled, label: "Infra" },
+            { enabled: authEnabled, label: "Auth" },
+            { enabled: billingEnabled, label: "Billing" },
+            { enabled: appEnabled, label: "App" },
           ].map((layer, i, arr) => (
             <div key={layer.label} className="flex items-center">
               <div
                 className={cn(
-                  'px-2 py-1 rounded text-xs font-medium transition-colors',
+                  "px-2 py-1 rounded text-xs font-medium transition-colors",
                   layer.enabled
-                    ? 'bg-riso-orange text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                    ? "bg-riso-orange text-white"
+                    : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400",
                 )}
               >
                 {layer.label}
@@ -383,7 +407,12 @@ export function SaaSConfig() {
           ))}
         </div>
         <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">
-          {[infraEnabled, authEnabled, billingEnabled, appEnabled].filter(Boolean).length}/4 layers
+          {
+            [infraEnabled, authEnabled, billingEnabled, appEnabled].filter(
+              Boolean,
+            ).length
+          }
+          /4 layers
         </span>
       </div>
 
@@ -398,36 +427,66 @@ export function SaaSConfig() {
           accentColor="border-riso-orange/30 bg-riso-orange/5"
           iconColor="text-riso-orange"
           isComplete={infraEnabled}
+          fieldKey="saas_infra_module"
         >
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <CategorySelect
                 label="Runtime Framework"
-                value={config.saas_runtime || 'nextjs-16'}
-                onChange={(v) => updateConfig({ saas_runtime: v as RisoConfig['saas_runtime'] })}
+                fieldKey="saas_runtime"
+                value={config.saas_runtime || "nextjs-16"}
+                onChange={(v) =>
+                  updateConfig({
+                    saas_runtime: v as RisoConfig["saas_runtime"],
+                  })
+                }
                 options={runtimeOptions}
               />
               <CategorySelect
                 label="Hosting Platform"
-                value={config.saas_hosting || 'vercel'}
-                onChange={(v) => updateConfig({ saas_hosting: v as RisoConfig['saas_hosting'] })}
+                fieldKey="saas_hosting"
+                value={config.saas_hosting || "vercel"}
+                onChange={(v) =>
+                  updateConfig({
+                    saas_hosting: v as RisoConfig["saas_hosting"],
+                  })
+                }
                 options={hostingOptions}
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <CategorySelect
                 label="Database"
-                value={config.saas_database || 'neon'}
-                onChange={(v) => updateConfig({ saas_database: v as RisoConfig['saas_database'] })}
+                fieldKey="saas_database"
+                value={config.saas_database || "neon"}
+                onChange={(v) =>
+                  updateConfig({
+                    saas_database: v as RisoConfig["saas_database"],
+                  })
+                }
                 options={databaseOptions}
               />
               <CategorySelect
                 label="ORM"
-                value={config.saas_orm || 'prisma'}
-                onChange={(v) => updateConfig({ saas_orm: v as RisoConfig['saas_orm'] })}
+                fieldKey="saas_orm"
+                value={config.saas_orm || "prisma"}
+                onChange={(v) =>
+                  updateConfig({ saas_orm: v as RisoConfig["saas_orm"] })
+                }
                 options={ormOptions}
               />
             </div>
+            <FieldHighlight fieldKey="saas_admin_dashboard">
+              <label className="flex items-center justify-between gap-3 text-sm text-gray-700 dark:text-gray-300">
+                <span>Admin dashboard</span>
+                <Switch
+                  checked={config.saas_admin_dashboard !== false}
+                  onCheckedChange={(enabled) =>
+                    updateConfig({ saas_admin_dashboard: enabled })
+                  }
+                />
+              </label>
+            </FieldHighlight>
           </div>
         </LayerCard>
 
@@ -443,12 +502,16 @@ export function SaaSConfig() {
           disabled={!infraEnabled}
           disabledReason="Enable Infrastructure layer first"
           isComplete={authEnabled}
+          fieldKey="saas_auth_module"
         >
           <CategorySelect
             label="Auth Provider"
-            value={config.saas_auth_provider || 'clerk'}
+            fieldKey="saas_auth_provider"
+            value={config.saas_auth_provider || "clerk"}
             onChange={(v) =>
-              updateConfig({ saas_auth_provider: v as RisoConfig['saas_auth_provider'] })
+              updateConfig({
+                saas_auth_provider: v as RisoConfig["saas_auth_provider"],
+              })
             }
             options={authProviderOptions}
           />
@@ -466,12 +529,16 @@ export function SaaSConfig() {
           disabled={!authEnabled}
           disabledReason="Enable Authentication layer first"
           isComplete={billingEnabled}
+          fieldKey="saas_billing_module"
         >
           <CategorySelect
             label="Billing Provider"
-            value={config.saas_billing_provider || 'stripe'}
+            fieldKey="saas_billing_provider"
+            value={config.saas_billing_provider || "stripe"}
             onChange={(v) =>
-              updateConfig({ saas_billing_provider: v as RisoConfig['saas_billing_provider'] })
+              updateConfig({
+                saas_billing_provider: v as RisoConfig["saas_billing_provider"],
+              })
             }
             options={billingProviderOptions}
           />
@@ -489,33 +556,48 @@ export function SaaSConfig() {
           disabled={!billingEnabled}
           disabledReason="Enable Billing layer first"
           isComplete={appEnabled}
+          fieldKey="saas_app_module"
         >
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <CategorySelect
                 label="Analytics"
-                value={config.saas_analytics || 'posthog'}
-                onChange={(v) => updateConfig({ saas_analytics: v as RisoConfig['saas_analytics'] })}
+                fieldKey="saas_analytics"
+                value={config.saas_analytics || "posthog"}
+                onChange={(v) =>
+                  updateConfig({
+                    saas_analytics: v as RisoConfig["saas_analytics"],
+                  })
+                }
                 options={analyticsOptions}
               />
               <CategorySelect
                 label="AI Provider"
-                value={config.saas_ai || 'openai'}
-                onChange={(v) => updateConfig({ saas_ai: v as RisoConfig['saas_ai'] })}
+                fieldKey="saas_ai"
+                value={config.saas_ai || "openai"}
+                onChange={(v) =>
+                  updateConfig({ saas_ai: v as RisoConfig["saas_ai"] })
+                }
                 options={aiOptions}
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <CategorySelect
                 label="Email"
-                value={config.saas_email || 'resend'}
-                onChange={(v) => updateConfig({ saas_email: v as RisoConfig['saas_email'] })}
+                fieldKey="saas_email"
+                value={config.saas_email || "resend"}
+                onChange={(v) =>
+                  updateConfig({ saas_email: v as RisoConfig["saas_email"] })
+                }
                 options={emailOptions}
               />
               <CategorySelect
                 label="Background Jobs"
-                value={config.saas_jobs || 'triggerdev'}
-                onChange={(v) => updateConfig({ saas_jobs: v as RisoConfig['saas_jobs'] })}
+                fieldKey="saas_jobs"
+                value={config.saas_jobs || "triggerdev"}
+                onChange={(v) =>
+                  updateConfig({ saas_jobs: v as RisoConfig["saas_jobs"] })
+                }
                 options={jobsOptions}
               />
             </div>
@@ -529,12 +611,16 @@ export function SaaSConfig() {
                 <ToggleCheckbox
                   label="Sentry (Error Tracking)"
                   checked={config.saas_observability_sentry ?? true}
-                  onChange={(v) => updateConfig({ saas_observability_sentry: v })}
+                  onChange={(v) =>
+                    updateConfig({ saas_observability_sentry: v })
+                  }
                 />
                 <ToggleCheckbox
                   label="Datadog (APM)"
                   checked={config.saas_observability_datadog ?? true}
-                  onChange={(v) => updateConfig({ saas_observability_datadog: v })}
+                  onChange={(v) =>
+                    updateConfig({ saas_observability_datadog: v })
+                  }
                 />
                 <ToggleCheckbox
                   label="OpenTelemetry"
@@ -544,7 +630,9 @@ export function SaaSConfig() {
                 <ToggleCheckbox
                   label="Structured Logging"
                   checked={config.saas_observability_structured_logging ?? true}
-                  onChange={(v) => updateConfig({ saas_observability_structured_logging: v })}
+                  onChange={(v) =>
+                    updateConfig({ saas_observability_structured_logging: v })
+                  }
                 />
               </div>
             </div>
@@ -556,11 +644,11 @@ export function SaaSConfig() {
       {!infraEnabled && (
         <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
           <p className="text-sm text-amber-800 dark:text-amber-200">
-            <strong>Tip:</strong> Enable Infrastructure to unlock the full SaaS stack. Each layer
-            builds on the previous one.
+            <strong>Tip:</strong> Enable Infrastructure to unlock the full SaaS
+            stack. Each layer builds on the previous one.
           </p>
         </div>
       )}
     </div>
-  )
+  );
 }

@@ -20,17 +20,24 @@ export function FieldHighlight({ fieldKey, children, className }: FieldHighlight
   const ref = useRef<HTMLDivElement>(null)
   const isHighlighted = highlightedField === fieldKey
 
-  // Auto-scroll to highlighted field
+  // Auto-scroll and move focus into the highlighted control
   useEffect(() => {
-    if (isHighlighted && ref.current) {
-      // Small delay to ensure the step transition completes
-      setTimeout(() => {
-        ref.current?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-        })
-      }, 400)
-    }
+    if (!isHighlighted || !ref.current) return
+
+    const timer = window.setTimeout(() => {
+      const node = ref.current
+      if (!node) return
+      node.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      })
+      const focusable = node.querySelector<HTMLElement>(
+        'input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [role="switch"]:not([disabled])',
+      )
+      focusable?.focus({ preventScroll: true })
+    }, 400)
+
+    return () => window.clearTimeout(timer)
   }, [isHighlighted])
 
   return (

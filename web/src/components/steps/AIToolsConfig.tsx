@@ -1,4 +1,6 @@
 import { Info } from 'lucide-react'
+import { FieldHighlight } from '../FieldHighlight'
+import { Switch } from '../modules/Switch'
 import { useRisoStore } from '../../lib/store'
 import { getPromptDefault, getPromptHelpSummary } from '../../lib/matrixData'
 
@@ -32,21 +34,24 @@ export function AIToolsConfig() {
       </div>
 
       {/* Enable/Disable Toggle - Master Toggle */}
+      <FieldHighlight fieldKey="ai_tools_module">
       <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-riso-teal/10 to-riso-cornflower/10 dark:from-riso-teal/5 dark:to-riso-cornflower/5 border border-riso-teal/20 dark:border-riso-teal/10">
         <div>
-          <h3 className="font-semibold text-gray-900 dark:text-white">Enable AI Tools</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Configure MCP servers and AI assistants</p>
+          <h3 id="ai-tools-enable-title" className="font-semibold text-gray-900 dark:text-white">
+            Enable AI Tools
+          </h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Configure MCP servers and AI assistants</p>
         </div>
-        <label className="relative inline-flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            checked={isEnabled}
-            onChange={(e) => updateConfig({ ai_tools_module: e.target.checked ? 'enabled' : 'disabled' })}
-            className="sr-only peer"
-          />
-          <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-riso-teal/60 dark:peer-focus:ring-riso-teal/40 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-riso-teal"></div>
-        </label>
+        <Switch
+          checked={isEnabled}
+          onCheckedChange={(enabled) =>
+            updateConfig({ ai_tools_module: enabled ? 'enabled' : 'disabled' })
+          }
+          labelledBy="ai-tools-enable-title"
+          accent="teal"
+        />
       </div>
+      </FieldHighlight>
 
       {isEnabled && (
         <div className="space-y-6">

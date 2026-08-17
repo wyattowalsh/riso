@@ -46,4 +46,5 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.clearAllMocks()
+  localStorage.clear()
 })

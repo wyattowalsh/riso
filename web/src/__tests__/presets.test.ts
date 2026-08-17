@@ -368,13 +368,29 @@ describe('Preset System', () => {
   // test_import_preset_yaml
   // ========================================
   describe('importPresetYAML', () => {
-    it('rejects removed Copier answer keys', () => {
+    it('remaps 1.x Copier answer keys then stores canonical dests', () => {
       const yaml = `
 name: Legacy Preset
 config:
   api_tracks: python+node
 `
-      expect(() => importPresetYAML(yaml)).toThrow(/api_tracks/)
+      const preset = importPresetYAML(yaml)
+      expect(preset.config.api_module).toBe('enabled')
+      expect(preset.config.api_languages).toEqual(['python', 'node'])
+      expect(preset.config).not.toHaveProperty('api_tracks')
+      expect(preset.remapPreview?.some((line) => line.includes('api_tracks'))).toBe(
+        true,
+      )
+    })
+
+    it('fails closed on leftover unmapped removed keys', () => {
+      const yaml = `
+name: Leftover Preset
+config:
+  saas_auth: firebase
+`
+      expect(() => importPresetYAML(yaml)).toThrow(/saas_auth/)
+      expect(() => importPresetYAML(yaml)).toThrow(/saas_auth_module/)
     })
 
     it('should import preset from YAML string', () => {
@@ -622,6 +638,12 @@ config:
       const parsed = parseShareableURL(url)
 
       expect(parsed).toBeNull()
+    })
+
+    it('throws on leftover removed keys in a share URL', () => {
+      const encoded = btoa(JSON.stringify({ saas_auth: 'firebase' }))
+      const url = `http://localhost:3000/wizard?preset=${encodeURIComponent(encoded)}`
+      expect(() => parseShareableURL(url)).toThrow(/saas_auth/)
     })
 
     it('should handle complex config roundtrip', () => {

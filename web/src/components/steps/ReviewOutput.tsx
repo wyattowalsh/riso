@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type KeyboardEvent } from 'react'
 import { useRisoStore, type RisoConfig } from '../../lib/store'
 import { generateCliCommand, generateYamlConfig } from '../../lib/exportConfig'
 import { useValidation } from '../../lib/useValidation'
@@ -72,12 +72,12 @@ export function ReviewOutput() {
 
       {errors.length > 0 && (
         <div
-          role="status"
-          className="rounded-lg border border-amber-300/80 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100"
+          role="alert"
+          className="rounded-lg border border-red-300/80 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-700 dark:bg-red-950/40 dark:text-red-100"
         >
           <p className="font-medium">Configuration has {errors.length} blocking issue(s).</p>
-          <p className="mt-1 text-amber-800/90 dark:text-amber-200/90">
-            Review warnings above before running the generated command.
+          <p className="mt-1 text-red-800/90 dark:text-red-200/90">
+            Review the issues listed above before running the generated command.
           </p>
         </div>
       )}
@@ -90,10 +90,22 @@ export function ReviewOutput() {
           aria-label="Review output sections"
           className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50"
         >
-          {TABS.map((tab) => {
+          {TABS.map((tab, index) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
             const panelId = `review-tab-panel-${tab.id}`
+            const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+              if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return
+              event.preventDefault()
+              let nextIndex = index
+              if (event.key === 'ArrowRight') nextIndex = (index + 1) % TABS.length
+              if (event.key === 'ArrowLeft') nextIndex = (index - 1 + TABS.length) % TABS.length
+              if (event.key === 'Home') nextIndex = 0
+              if (event.key === 'End') nextIndex = TABS.length - 1
+              const nextTab = TABS[nextIndex]
+              setActiveTab(nextTab.id)
+              document.getElementById(`review-tab-${nextTab.id}`)?.focus()
+            }
             return (
               <button
                 key={tab.id}
@@ -104,6 +116,7 @@ export function ReviewOutput() {
                 aria-controls={panelId}
                 tabIndex={isActive ? 0 : -1}
                 onClick={() => setActiveTab(tab.id)}
+                onKeyDown={onTabKeyDown}
                 className={cn(
                   'relative flex items-center gap-2 px-5 py-3.5 text-sm font-medium transition-all duration-200',
                   'hover:bg-white/50 dark:hover:bg-gray-700/50',
@@ -132,6 +145,7 @@ export function ReviewOutput() {
             id="review-tab-panel-configuration"
             role="tabpanel"
             aria-labelledby="review-tab-configuration"
+            hidden={activeTab !== 'configuration'}
             className={cn(
               'transition-all duration-300',
               activeTab === 'configuration'
@@ -147,6 +161,7 @@ export function ReviewOutput() {
             id="review-tab-panel-file-preview"
             role="tabpanel"
             aria-labelledby="review-tab-file-preview"
+            hidden={activeTab !== 'file-preview'}
             className={cn(
               'transition-all duration-300',
               activeTab === 'file-preview'
@@ -162,6 +177,7 @@ export function ReviewOutput() {
             id="review-tab-panel-cli-command"
             role="tabpanel"
             aria-labelledby="review-tab-cli-command"
+            hidden={activeTab !== 'cli-command'}
             className={cn(
               'transition-all duration-300',
               activeTab === 'cli-command'
@@ -184,7 +200,11 @@ export function ReviewOutput() {
 
       {/* Save Configuration */}
       <div className="flex gap-3 items-center p-4 riso-card-soft rounded-xl">
+        <label htmlFor="save-config-name" className="sr-only">
+          Configuration name
+        </label>
         <input
+          id="save-config-name"
           type="text"
           value={saveName}
           onChange={(e) => setSaveName(e.target.value)}
@@ -316,9 +336,15 @@ function CLICommandTabContent({
             {copied ? 'Copied to clipboard' : ''}
           </span>
           <button
+            type="button"
             onClick={handleDownload}
             className="btn-secondary text-sm px-3 py-1.5"
             title="Download file"
+            aria-label={
+              mode === 'yaml'
+                ? 'Download YAML answers file'
+                : 'Download CLI command script'
+            }
           >
             <Download className="h-4 w-4" />
           </button>
@@ -343,7 +369,7 @@ function CLICommandTabContent({
             <p className="text-sm text-blue-700 dark:text-blue-300">
               1. Download the <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">copier-answers.yml</code> file<br />
               2. Place it in your project directory<br />
-              3. Run: <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">copier copy gh:wyattowalsh/riso . --answers-file copier-answers.yml</code>
+              3. Run: <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">uv run riso copy --answers-file copier-answers.yml</code>
             </p>
           </div>
         )}
