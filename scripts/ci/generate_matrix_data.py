@@ -101,18 +101,27 @@ def collect_samples(render_matrix: dict[str, Any] | None) -> dict[str, Any]:
         }
 
     variants: list[dict[str, Any]] = []
-    for answers_file in sorted(SAMPLES_DIR.glob("*/copier-answers.yml")):
-        variant = answers_file.parent.name
-        answers = load_yaml(answers_file)
-        variants.append(
-            {
-                "variant": variant,
-                "answers_file": str(answers_file),
-                "answers": answers,
-            }
-        )
+    if SAMPLES_DIR.is_dir():
+        from scripts.lib.paths import iter_sample_answer_files
 
-    return {"source": "samples/*/copier-answers.yml", "variants": variants}
+        for answers_file in iter_sample_answer_files(SAMPLES_DIR):
+            try:
+                rel = answers_file.parent.relative_to(SAMPLES_DIR)
+            except ValueError:
+                continue
+            if "render" in rel.parts or "metadata" in rel.parts:
+                continue
+            variant = rel.as_posix()
+            answers = load_yaml(answers_file)
+            variants.append(
+                {
+                    "variant": variant,
+                    "answers_file": str(answers_file),
+                    "answers": answers,
+                }
+            )
+
+    return {"source": "samples/**/copier-answers.yml", "variants": variants}
 
 
 def main() -> None:

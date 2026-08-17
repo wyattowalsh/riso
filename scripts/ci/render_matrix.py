@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Render matrix orchestration for the Riso template.
 
-The script discovers sample variants in ``samples/*/copier-answers.yml`` and
-invokes ``scripts/render-samples.sh`` for each one. It records metadata that
-other CI helpers (success-rate recorder, doc tracker) can consume.
+The script discovers sample variants via ``samples/**/copier-answers.yml`` and
+invokes ``scripts/render-samples.sh`` for each one. Nested trees keep a path
+relative to ``samples/`` (dest is ``<answers_dir>/render``). It records metadata
+that other CI helpers (success-rate recorder, doc tracker) can consume.
 """
 
 from __future__ import annotations
@@ -89,15 +90,36 @@ RENDER_SCRIPT = REPO_ROOT / "scripts" / "render-samples.sh"
 METADATA_DIR = REPO_ROOT / "samples" / "metadata"
 
 
+def _is_discoverable_answers(answers_file: Path) -> bool:
+    """Return True when *answers_file* is a sample answers file, not metadata/render."""
+    try:
+        rel = answers_file.parent.relative_to(SAMPLES_DIR)
+    except ValueError:
+        return False
+    return "render" not in rel.parts and "metadata" not in rel.parts
+
+
 def discover_variants() -> list[tuple[str, Path]]:
-    """Discover all sample variants by scanning for copier-answers.yml files.
+    """Discover sample variants by scanning for ``copier-answers.yml`` files.
+
+    Nested trees (for example ``samples/saas-starter/vercel-starter/``) keep a
+    path relative to ``samples/`` so dest stays ``<answers_dir>/render``.
 
     Returns:
         List of tuples containing (variant_name, answers_file_path), sorted by variant name.
     """
     variants: list[tuple[str, Path]] = []
-    for answers_file in SAMPLES_DIR.glob("*/copier-answers.yml"):
-        variant = answers_file.parent.name
+    if not SAMPLES_DIR.is_dir():
+        return variants
+    try:
+        from scripts.lib.paths import iter_sample_answer_files
+    except ModuleNotFoundError:  # pragma: no cover
+        from lib.paths import iter_sample_answer_files  # type: ignore[no-redef]
+
+    for answers_file in iter_sample_answer_files(SAMPLES_DIR):
+        if not _is_discoverable_answers(answers_file):
+            continue
+        variant = answers_file.parent.relative_to(SAMPLES_DIR).as_posix()
         variants.append((variant, answers_file))
     return sorted(variants)
 
@@ -145,7 +167,7 @@ def render_variant(variant: str, answers_file: Path) -> VariantResult:
     render_status = "ok" if completed.returncode == 0 else "failed"
     if completed.returncode != 0:
         logger.error(
-            "Render script failed for variant %s (exit %s); continuing matrix",
+            "Render script failed for variant {} (exit {}); continuing matrix",
             variant,
             completed.returncode,
         )
@@ -314,7 +336,7 @@ def main() -> None:
         if v.get("render_status") == "failed"
     ]
     if failed:
-        logger.error("Matrix completed with render failures: %s", ", ".join(failed))
+        logger.error("Matrix completed with render failures: {}", ", ".join(failed))
         raise SystemExit(1)
 
 

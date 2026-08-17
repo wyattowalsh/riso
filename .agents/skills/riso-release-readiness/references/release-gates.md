@@ -3,6 +3,10 @@
 ## Blocking Gates
 
 - `uv run python scripts/ci/validate_release_readiness_skill.py`
+- `uv run python scripts/ci/check_removed_key_ssot.py`
+- `uv run python scripts/ci/validate_jinja_templates.py template/files`
+- `uv run python scripts/ci/validate_workflows.py`
+- `uv run python scripts/ci/validate_release_configs.py`
 - `uv run --group docs sphinx-build -W -b html docs /tmp/riso-docs-build-release`
 - `uv run pytest tests/unit/hooks/test_post_gen_project.py -q --override-ini='addopts='`
 - `uv run pytest tests/integration/test_template_rendering.py -q --override-ini='addopts='`
@@ -16,6 +20,8 @@
 - `pnpm --dir web run build`
 - `uv build --no-sources`
 - `uv run --with twine twine check dist/*`
+- Official 37-sample validate: `uv run riso validate --answers-file samples/<v>/copier-answers.yml --json`
+- Leftover-key scan is part of `check_removed_key_ssot.py` (sample answers must have zero `REMOVED_ANSWER_KEYS`)
 
 ## Evidence Rules
 

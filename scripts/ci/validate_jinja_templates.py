@@ -5,7 +5,7 @@ This script checks Jinja2 templates for syntax errors without rendering them.
 It's designed to be used as a pre-commit hook to catch template errors early.
 
 Usage:
-    python scripts/ci/validate_jinja_templates.py [file1.jinja] [file2.jinja] ...
+    python scripts/ci/validate_jinja_templates.py [file1.jinja] [dir ...] ...
 
 Exit codes:
     0 - All templates are valid
@@ -15,6 +15,7 @@ Exit codes:
 from __future__ import annotations
 
 import sys
+from collections.abc import Iterable
 from pathlib import Path
 
 from jinja2 import BaseLoader, Environment, TemplateSyntaxError, Undefined
@@ -69,6 +70,17 @@ def validate_template(file_path: Path) -> tuple[bool, str | None]:
         return False, f"{file_path}: File read error: {e}"
 
 
+def _expand_jinja_paths(raw_paths: Iterable[Path]) -> list[Path]:
+    """Expand directory arguments to ``*.jinja`` files; keep explicit files."""
+    expanded: list[Path] = []
+    for file_path in raw_paths:
+        if file_path.is_dir():
+            expanded.extend(sorted(file_path.rglob("*.jinja")))
+            continue
+        expanded.append(file_path)
+    return expanded
+
+
 def main() -> int:
     """Validate all provided Jinja template files.
 
@@ -76,11 +88,11 @@ def main() -> int:
         Exit code: 0 if all valid, 1 if any errors.
     """
     if len(sys.argv) < 2:
-        print("Usage: validate_jinja_templates.py <file1.jinja> [file2.jinja] ...")
+        print("Usage: validate_jinja_templates.py <file-or-dir> [file-or-dir ...]")
         print("No files provided, nothing to validate.")
         return 0
 
-    files = [Path(f) for f in sys.argv[1:]]
+    files = _expand_jinja_paths(Path(arg) for arg in sys.argv[1:])
     errors: list[str] = []
     validated = 0
 
