@@ -1,0 +1,22 @@
+# Facts
+
+- All SYS implementation edits stay under template/files/go/** and template/files/rust/** only.
+- SYS never edits template/copier.yml, template/hooks/**, template/macros/**, or module_catalog.json.jinja; contract changes are COORD handoffs only.
+- SYS never edits samples/*/copier-answers.yml or samples/*/render/**; sample answer files are PLATFORM, renders are regenerate-only.
+- This goal invests equal effort in Go and Rust scaffolds (API, CLI, MCP, task runners, in-tree docs/tests).
+- Within go/ and rust/, work is coherence plus heavy modernization/refinement/enhancement of existing stacks — not a greenfield redesign and not inventing new Copier answer keys.
+- Go API, CLI, and MCP scaffolds under template/files/go/ are independently useful and coherent with existing answer keys (cli_languages/api_languages/mcp_languages, go_framework, go_version).
+- Go HTTP API scaffolds render coherently for all four go_framework choices: gin, fiber, echo, and chi (Gin remains the samples/go-api golden path).
+- Go root Makefile/justfile, go.mod/go.work, Dockerfile, golangci, air, and README stay consistent with go_version and selected modules.
+- Rust stays on the fixed Actix-web + Clap + Tokio stack; no Axum migration in this goal.
+- Rust API, CLI, and MCP scaffolds under template/files/rust/ are independently useful and coherent with existing language multiselect keys (no new rust_* answer keys).
+- Rust Cargo.toml, Makefile/justfile, README/QUICKSTART/ARCHITECTURE, and in-tree tests under rust/ are modernized and consistent with the fixed stack.
+- Go and Rust scaffolds remain independently useful; SYS does not force cross-language coupling or refactor Python/Node/SaaS to accommodate them.
+- SYS writes a COORD handoff that go_version when-clause should include go in mcp_languages (today only cli/api).
+- SYS writes a PLATFORM handoff requesting optional samples/rust-api, rust-cli, and rust-mcp copier-answers for matrix/validate parity.
+- Other contract gaps found during SYS work (hooks, catalog, validation) are documented as COORD handoffs without SYS editing those files.
+- Done requires successful uv run riso validate --json against samples/go-api, go-cli, and go-mcp copier-answers.
+- Done requires tests/unit/test_go_templates.py (and any SYS-owned extensions) to pass under uv run pytest.
+- Done requires uv run python scripts/ci/validate_jinja_templates.py to pass for go/rust template files.
+- SYS does not hand-edit uv.lock or pnpm-lock.yaml, and does not invent ad-hoc lock churn inside template trees.
+- SYS creates no branches, worktrees, commits, or pushes unless the human explicitly asks.

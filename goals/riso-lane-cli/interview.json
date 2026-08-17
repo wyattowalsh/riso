@@ -1,0 +1,103 @@
+{
+  "stage": "interview",
+  "title": "Riso Lane CLI — maintainer riso CLI and unit tests",
+  "goalSlug": "riso-lane-cli",
+  "questions": [
+    {
+      "id": "priority-mode",
+      "prompt": "When this lane runs under /goal, what should it prioritize first?",
+      "description": "CLI already exposes doctor, validate, copy, update, recopy, diff, variants, catalog, prompts, export under src/riso with tests in tests/unit/test_cli. No maintainer riso-mcp.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Agent reliability baseline: keep JSON envelopes, exit codes, template-path resolution, and timeouts solid; green doctor --json and tests/unit/test_cli; only touch behavior with matching tests.",
+      "recommendedOptionIds": ["agent-reliability"],
+      "options": [
+        {
+          "id": "agent-reliability",
+          "label": "Agent reliability baseline"
+        },
+        {
+          "id": "expand-coverage",
+          "label": "Expand unit coverage first"
+        },
+        {
+          "id": "new-commands",
+          "label": "Add/expand CLI commands"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "ownership-boundary",
+      "prompt": "Confirm write ownership boundaries for this lane.",
+      "description": "src/riso includes cli/, core/, and template/ helpers (hooks_runner, copier worker). Generated project Typer CLI under template/files/python is PY lane. scripts/ci is PLATFORM.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Own all of src/riso/** and tests/unit/test_cli/**. Read template/ and samples/ freely. Never write template payload, copier.yml, hooks, web/, samples answers/renders, or scripts/ci (except avoid even tiny CI edits unless unavoidable).",
+      "recommendedOptionIds": ["full-src-riso"],
+      "options": [
+        {
+          "id": "full-src-riso",
+          "label": "Full src/riso/** + test_cli"
+        },
+        {
+          "id": "cli-package-only",
+          "label": "Only src/riso/cli/** + tests"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "contract-changes",
+      "prompt": "If CLI work discovers a Copier/prompt/hook/catalog contract gap, what should happen?",
+      "description": "Lane must not reintroduce riso-mcp or invent template contracts.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Write a COORD handoff; keep CLI resilient/compatible without editing template/copier.yml, hooks, macros, or module_catalog. Prefer CLI code/tests fixes.",
+      "recommendedOptionIds": ["coord-handoff"],
+      "options": [
+        {
+          "id": "coord-handoff",
+          "label": "COORD handoff only"
+        },
+        {
+          "id": "cli-workaround",
+          "label": "CLI workaround + handoff"
+        },
+        {
+          "id": "edit-template",
+          "label": "Allow limited template edits"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "verification-bar",
+      "prompt": "What verification is required before calling the lane done?",
+      "description": "Prefer narrowest green checks first; just quality only if broader maintainer Python surfaces change.",
+      "answerMode": "multi-custom",
+      "recommendedAnswer": "uv run pytest tests/unit/test_cli/ -q; uv run riso doctor --json; exercise catalog/prompts/variants when those commands change; just quality only if needed.",
+      "recommendedOptionIds": [
+        "pytest-cli",
+        "doctor-json",
+        "relevant-subcommands"
+      ],
+      "options": [
+        {
+          "id": "pytest-cli",
+          "label": "pytest tests/unit/test_cli -q"
+        },
+        {
+          "id": "doctor-json",
+          "label": "riso doctor --json"
+        },
+        {
+          "id": "relevant-subcommands",
+          "label": "catalog / prompts / variants as relevant"
+        },
+        {
+          "id": "just-quality",
+          "label": "Always just quality"
+        }
+      ],
+      "required": true
+    }
+  ]
+}

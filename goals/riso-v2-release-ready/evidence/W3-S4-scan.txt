@@ -1,0 +1,60 @@
+W3-S4 / PL-T01.S4 — rg removed Copier keys in shard answers
+===========================================================
+wave:     W3-S4
+task:     PL-T01.S4
+when:     2026-08-13T23:44:20Z
+repo:     /Users/ww/dev/projects/riso
+HEAD:     f7951fe62e7c635f3a90d17811d3711c2a2d7c1b
+branch:   main
+scope:    shard S4 copier-answers.yml only (not samples/*/render/**)
+verify:   per-shard rg empty
+result:   EMPTY (0 old-key hits; no remaps applied)
+
+Removed keys (plan.taskgraph.json remap_keys):
+  1. api_tracks
+  2. api_language
+  3. docs_site
+  4. mcp_language
+  5. saas_starter_module
+  6. saas_auth
+  7. saas_billing
+  8. include_admin
+
+Command
+-------
+rg -n --glob 'copier-answers.yml' \
+  -e '\bapi_tracks\b' -e '\bapi_language\b' -e '\bdocs_site\b' \
+  -e '\bmcp_language\b' -e '\bsaas_starter_module\b' \
+  -e '\bsaas_auth\b' -e '\bsaas_billing\b' -e '\binclude_admin\b' \
+  samples/electron-app \
+  samples/tauri-app \
+  samples/saas-starter/all-in-one \
+  samples/saas-starter/b2b-teams-full \
+  samples/saas-starter/b2c-consumer-app \
+  samples/saas-starter/edge-optimized
+# rg exit 1 (no matches)
+
+Also checked exact YAML key: ^(old_key)\s*:  — 0 hits in all six files.
+
+Files scanned: 6
+----------------
+S4  samples/electron-app/copier-answers.yml
+S4  samples/tauri-app/copier-answers.yml
+S4  samples/saas-starter/all-in-one/copier-answers.yml
+S4  samples/saas-starter/b2b-teams-full/copier-answers.yml
+S4  samples/saas-starter/b2c-consumer-app/copier-answers.yml
+S4  samples/saas-starter/edge-optimized/copier-answers.yml
+
+Canonical keys present (not remaps; do not treat as leftovers)
+--------------------------------------------------------------
+Desktop: api_module / mcp_module / docs_module (all disabled) + desktop_module.
+SaaS four: saas_infra_module, saas_auth_module + saas_auth_provider,
+saas_billing_module + saas_billing_provider, saas_admin_dashboard,
+docs_module + docs_framework.
+
+Answers files changed: 0
+samples/*/render/** writes: 0
+
+Verdict
+-------
+EMPTY. PL-T01.S4 green. No apply_removed_key_remaps needed.

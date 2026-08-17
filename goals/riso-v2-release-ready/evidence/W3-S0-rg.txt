@@ -1,0 +1,66 @@
+W3 PL-T01.S0 — rg removed Copier keys in shard S0 answers
+=========================================================
+task:     PL-T01.S0
+wave:     W3-S0
+when:     2026-08-13T23:43:46Z
+repo:     /Users/ww/dev/projects/riso
+branch:   main
+HEAD:     f7951fe62e7c635f3a90d17811d3711c2a2d7c1b
+scope:    samples/{default,ai-tools-off,makefile-runner,cli-docs,rag-enabled,gitlab-ci-python}/copier-answers.yml
+forbid:   samples/*/render/** (not scanned for edit; not written)
+verify:   per-shard rg empty of the 8 removed keys
+
+Removed keys (REMOVED_ANSWER_KEYS / ANSWER_KEY_REMAPS)
+------------------------------------------------------
+  1. api_tracks
+  2. api_language
+  3. docs_site
+  4. mcp_language
+  5. saas_starter_module
+  6. saas_auth
+  7. saas_billing
+  8. include_admin
+
+Queries
+-------
+A. Exact YAML key:
+   rg --glob 'copier-answers.yml' '^(api_tracks|api_language|docs_site|mcp_language|saas_starter_module|saas_auth|saas_billing|include_admin)\s*:'
+   hits: 0
+
+B. Word-boundary per key (\bKEY\b) under the six shard roots:
+   api_tracks            hits: 0
+   api_language          hits: 0
+   docs_site             hits: 0
+   mcp_language          hits: 0
+   saas_starter_module   hits: 0
+   saas_auth             hits: 0
+   saas_billing          hits: 0
+   include_admin         hits: 0
+
+Files scanned (6)
+-----------------
+samples/default/copier-answers.yml
+samples/ai-tools-off/copier-answers.yml
+samples/makefile-runner/copier-answers.yml
+samples/cli-docs/copier-answers.yml
+samples/rag-enabled/copier-answers.yml
+samples/gitlab-ci-python/copier-answers.yml
+
+git status --short on the six answers files: clean (no local diffs)
+
+Remaps applied: 0
+Answers files rewritten: 0
+
+Canonical substring notes (not old-key hits; do not remap)
+----------------------------------------------------------
+samples/gitlab-ci-python/copier-answers.yml:23:api_languages:
+samples/rag-enabled/copier-answers.yml:36:saas_auth_module: enabled
+samples/rag-enabled/copier-answers.yml:37:saas_auth_provider: clerk
+samples/rag-enabled/copier-answers.yml:40:saas_billing_module: enabled
+samples/rag-enabled/copier-answers.yml:41:saas_billing_provider: stripe
+samples/rag-enabled/copier-answers.yml:71:saas_admin_dashboard: true
+
+Verdict
+-------
+EMPTY. Shard S0 answers already use canonical keys only.
+No apply_removed_key_remaps write was required. PL-T02.S0 may validate in place.

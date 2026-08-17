@@ -1,0 +1,24 @@
+# Facts
+
+- This is one integrator goal that finishes, refines, and assures all eight lanes (COORD, PY, NODE, SAAS, SYS, DESKTOP, CLI, PLATFORM) — not a new product feature backlog.
+- NODE and SAAS packages get goal.md (and plan gate when needed) so every lane has a complete, launchable package under goals/riso-lane-*/.
+- Every lane's accepted facts.md is either evidenced green or has an explicit residual with owner, failing command, and redacted evidence.
+- Execution order is Wave 0 package hygiene → Wave 1 COORD handoff apply → Wave 2 parallel payload (PY/NODE/SAAS/SYS/DESKTOP/CLI) → Wave 3 PLATFORM answers + full matrix/smokes → Wave 4 assurance report.
+- Agents keep exclusive write roots from each lane charter; foreign-tree fixes are handoffs only (no silent cross-lane edits).
+- All open handoffs are triaged then applied or explicitly residualed: PY (api_features normalize, exclude empty dirs, graphql sample coverage), SYS (go_version+MCP, rust module excludes, PLATFORM rust samples, go api_features answers, QUAL go tests), PLATFORM (mcp_languages typescript), COORD (bootstrap-verify).
+- COORD applies the smallest coherent contract changes (copier.yml/hooks/macros/catalog/prompts/context) for accepted handoffs, enforces illegal combos, keeps context parity, and publishes outbox deltas for payload/PLATFORM follow-through.
+- Payload lanes finish remaining planned work under their trees: PY python/**, NODE node/** except saas, SAAS node/saas + saas-starter, SYS go+rust, DESKTOP electron+tauri, CLI src/riso + tests/unit/test_cli.
+- Correctness and gates go green first; then only planned refine/modernize from each lane plan runs (SYS heavy modernization, SAAS full sweep, DESKTOP deep features) — no inventing new product modules.
+- PLATFORM updates sample answers after COORD outbox keys, never invents keys, regenerates only via official scripts, and runs full render_matrix after answer changes.
+- Maintainer just quality passes before done.
+- Every samples/*/copier-answers.yml passes uv run riso validate --answers-file … --json (or is an owned residual with evidence).
+- Full uv run python scripts/ci/render_matrix.py completes with smoke evidence; samples/*/render/ is never hand-edited.
+- uv run python scripts/ci/validate_jinja_templates.py passes for touched/owned template trees.
+- Lane-targeted pytest passes where applicable: tests/unit/test_cli, tests/unit/test_go_templates.py, tests/unit/ci, hooks/validators tests when those surfaces change.
+- When context or agents surfaces change, verify_context_sync.py and/or validate_agents_ecosystem.py pass.
+- Done requires green results or explicit owned residuals with owner lane, failing command, redacted log excerpt, and human-blocking reason — no silent skip of full matrix.
+- A final assurance report under goals/riso-lanes-assurance/ maps each lane fact and each handoff to evidence (command + pass/fail) or residual.
+- Atomic conventional commits are allowed without further ask; no force-push; no secrets in commits; lockfiles only via package managers.
+- Out of scope: inventing product modules outside lane plans; hand-editing samples/*/render/; hand-editing uv.lock/pnpm-lock.yaml; secrets; reintroducing maintainer riso-mcp.
+- Maintainer surface remains riso CLI + skills; riso-mcp is not reintroduced.
+- Pre-existing dirty work (Go/Python templates, sample answers, CI scripts, CLI doctor) is incorporated, finished, and verified under the correct lane ownership rather than discarded.

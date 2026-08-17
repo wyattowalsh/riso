@@ -1,0 +1,54 @@
+W3 PL-T09 — rg riso-mcp under src/riso + template
+=================================================
+task:     PL-T09
+wave:     W3-PL-T09
+lane:     PLATFORM
+when:     2026-08-13T23:46:09Z
+repo:     /Users/ww/dev/projects/riso
+branch:   main
+HEAD:     f7951fe62e7c635f3a90d17811d3711c2a2d7c1b
+rg:       ripgrep 15.2.0
+scope:    src/riso  template
+forbid:   samples/*/render/** (not scanned; not written)
+verify:   no riso-mcp matches under src/riso or template
+write:    evidence only (this file + residuals/PLATFORM.md)
+
+Command (as specified)
+----------------------
+  rg -n riso-mcp src/riso template || true
+
+Bare rg (without || true) is the real emptiness check:
+  rg -n riso-mcp src/riso template
+  exit: 0   (ripgrep exits 0 when it finds matches)
+
+Split scopes
+------------
+  rg -n riso-mcp src/riso     exit: 1   hits: 0
+  rg -n riso-mcp template     exit: 0   hits: 1
+
+Match count: 1
+Files with hits: 1
+  template/files/DESIGN.md.jinja
+
+Raw output (redacted: no secrets present)
+-----------------------------------------
+template/files/DESIGN.md.jinja:257:Do not document `mypy`, `mypy.ini`, or `riso-mcp` as defaults. The removed
+
+Context (lines 257-258; not a reintroduction of the server)
+-----------------------------------------------------------
+Do not document `mypy`, `mypy.ini`, or `riso-mcp` as defaults. The removed
+maintainer MCP server is not part of this scaffold.
+
+src/riso
+--------
+EMPTY. No `riso-mcp` token under src/riso.
+
+Verdict
+-------
+NOT EMPTY. Gate fails: one literal `riso-mcp` token remains under template/.
+The hit is a keep-polish "do not document" sentence in DESIGN.md.jinja
+(W0-keep-drop KEEP; W0-inventory DOCS lock). This lane cannot rewrite that
+file (exclusive write = evidence only). Residualed to DOCS.
+
+samples/*/render/** writes this task: 0
+status: residualed

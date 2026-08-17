@@ -1,0 +1,164 @@
+W0-T02b — rg removed Copier keys in samples/**/copier-answers.yml
+================================================================
+task:     W0-T02b
+when:     2026-08-13
+repo:     /Users/ww/dev/projects/riso
+scope:    samples/**/copier-answers.yml  (not samples/*/render/**)
+verify:   cited or empty
+result:   EMPTY
+
+Removed keys searched (plan.taskgraph.json remap_keys):
+  1. api_tracks
+  2. api_language
+  3. docs_site
+  4. mcp_language
+  5. saas_starter_module
+  6. saas_auth
+  7. saas_billing
+  8. include_admin
+
+Queries (grep / ripgrep-equivalent; glob **/copier-answers.yml under samples/)
+-----------------------------------------------------------------------------
+A. Exact YAML key (start-of-line):
+   ^(api_tracks|api_language|docs_site|mcp_language|saas_starter_module|saas_auth|saas_billing|include_admin):
+   hits: 0
+
+B. Exact YAML key, optional whitespace before colon:
+   ^(api_tracks|api_language|docs_site|mcp_language|saas_starter_module|saas_auth|saas_billing|include_admin)\s*:
+   also scanned any *answers*.yml under samples/
+   hits: 0
+
+C. Word-boundary per key (\bKEY\b), one query each:
+   api_tracks            hits: 0
+   api_language          hits: 0
+   docs_site             hits: 0
+   mcp_language          hits: 0
+   saas_starter_module   hits: 0
+   saas_auth             hits: 0
+   saas_billing          hits: 0
+   include_admin         hits: 0
+
+D. Official-ladder substring (plan.md, informational only — NOT old-key hits):
+   api_tracks|api_language|docs_site|mcp_language|saas_starter_module|^saas_auth:|^saas_billing:|include_admin
+   This pattern is noisy: `api_language` is a prefix of canonical `api_languages`,
+   and `mcp_language` of `mcp_languages`. Those matches are current keys, not remaps.
+   Word-boundary + `^old_key:` queries above are the inventory.
+
+Files scanned: 37  (matches plan sample_shards S0–S5)
+----------------------------------------------------
+S0  samples/default/copier-answers.yml
+S0  samples/ai-tools-off/copier-answers.yml
+S0  samples/makefile-runner/copier-answers.yml
+S0  samples/cli-docs/copier-answers.yml
+S0  samples/rag-enabled/copier-answers.yml
+S0  samples/gitlab-ci-python/copier-answers.yml
+S1  samples/api-python/copier-answers.yml
+S1  samples/api-monorepo/copier-answers.yml
+S1  samples/full-stack/copier-answers.yml
+S1  samples/changelog-python/copier-answers.yml
+S1  samples/changelog-full-stack/copier-answers.yml
+S1  samples/changelog-monorepo/copier-answers.yml
+S2  samples/docs-sphinx/copier-answers.yml
+S2  samples/docs-docusaurus/copier-answers.yml
+S2  samples/docs-fumadocs/copier-answers.yml
+S2  samples/docs-fumadocs-full/copier-answers.yml
+S2  samples/circleci-node/copier-answers.yml
+S2  samples/mcp-typescript/copier-answers.yml
+S3  samples/go-api/copier-answers.yml
+S3  samples/go-cli/copier-answers.yml
+S3  samples/go-mcp/copier-answers.yml
+S3  samples/rust-api/copier-answers.yml
+S3  samples/rust-cli/copier-answers.yml
+S3  samples/rust-mcp/copier-answers.yml
+S4  samples/electron-app/copier-answers.yml
+S4  samples/tauri-app/copier-answers.yml
+S4  samples/saas-starter/all-in-one/copier-answers.yml
+S4  samples/saas-starter/b2b-teams-full/copier-answers.yml
+S4  samples/saas-starter/b2c-consumer-app/copier-answers.yml
+S4  samples/saas-starter/edge-optimized/copier-answers.yml
+S5  samples/saas-starter/enterprise-ready/copier-answers.yml
+S5  samples/saas-starter/nextjs-vercel-neon-clerk-workos/copier-answers.yml
+S5  samples/saas-starter/nextjs-vercel-neon-clerk/copier-answers.yml
+S5  samples/saas-starter/nextjs-vercel-supabase-clerk/copier-answers.yml
+S5  samples/saas-starter/prelaunch-waitlist/copier-answers.yml
+S5  samples/saas-starter/remix-cloudflare-neon-drizzle/copier-answers.yml
+S5  samples/saas-starter/vercel-starter/copier-answers.yml
+
+Canonical-key substring hits (not old keys; do not treat as remaps)
+-------------------------------------------------------------------
+These lines matched a naive substring of api_language / mcp_language / saas_auth / saas_billing.
+They are current Copier keys (plurals / _module / _provider). Cited so W3 PL-T01 does not
+re-open them as leftover removed keys.
+
+  samples/api-monorepo/copier-answers.yml:23:api_languages:
+  samples/api-python/copier-answers.yml:21:api_languages:
+  samples/changelog-full-stack/copier-answers.yml:23:api_languages:
+  samples/changelog-full-stack/copier-answers.yml:29:mcp_languages:
+  samples/changelog-monorepo/copier-answers.yml:23:api_languages:
+  samples/changelog-python/copier-answers.yml:23:api_languages:
+  samples/circleci-node/copier-answers.yml:14:api_languages:
+  samples/docs-docusaurus/copier-answers.yml:21:api_languages:
+  samples/docs-fumadocs-full/copier-answers.yml:23:api_languages:
+  samples/docs-fumadocs-full/copier-answers.yml:27:mcp_languages:
+  samples/docs-sphinx/copier-answers.yml:21:api_languages:
+  samples/full-stack/copier-answers.yml:23:api_languages:
+  samples/full-stack/copier-answers.yml:29:mcp_languages:
+  samples/gitlab-ci-python/copier-answers.yml:23:api_languages:
+  samples/go-api/copier-answers.yml:21:api_languages:
+  samples/go-mcp/copier-answers.yml:22:mcp_languages:
+  samples/mcp-typescript/copier-answers.yml:16:mcp_languages:
+  samples/rag-enabled/copier-answers.yml:36:saas_auth_module: enabled
+  samples/rag-enabled/copier-answers.yml:37:saas_auth_provider: clerk
+  samples/rag-enabled/copier-answers.yml:40:saas_billing_module: enabled
+  samples/rag-enabled/copier-answers.yml:41:saas_billing_provider: stripe
+  samples/rust-api/copier-answers.yml:21:api_languages:
+  samples/rust-mcp/copier-answers.yml:22:mcp_languages:
+  samples/saas-starter/all-in-one/copier-answers.yml:32:saas_auth_module: enabled
+  samples/saas-starter/all-in-one/copier-answers.yml:33:saas_auth_provider: authjs
+  samples/saas-starter/all-in-one/copier-answers.yml:36:saas_billing_module: enabled
+  samples/saas-starter/all-in-one/copier-answers.yml:37:saas_billing_provider: paddle
+  samples/saas-starter/b2b-teams-full/copier-answers.yml:32:saas_auth_module: enabled
+  samples/saas-starter/b2b-teams-full/copier-answers.yml:33:saas_auth_provider: clerk
+  samples/saas-starter/b2b-teams-full/copier-answers.yml:36:saas_billing_module: enabled
+  samples/saas-starter/b2b-teams-full/copier-answers.yml:37:saas_billing_provider: stripe
+  samples/saas-starter/b2c-consumer-app/copier-answers.yml:32:saas_auth_module: enabled
+  samples/saas-starter/b2c-consumer-app/copier-answers.yml:33:saas_auth_provider: clerk
+  samples/saas-starter/b2c-consumer-app/copier-answers.yml:36:saas_billing_module: enabled
+  samples/saas-starter/b2c-consumer-app/copier-answers.yml:37:saas_billing_provider: paddle
+  samples/saas-starter/edge-optimized/copier-answers.yml:32:saas_auth_module: enabled
+  samples/saas-starter/edge-optimized/copier-answers.yml:33:saas_auth_provider: clerk
+  samples/saas-starter/edge-optimized/copier-answers.yml:36:saas_billing_module: enabled
+  samples/saas-starter/edge-optimized/copier-answers.yml:37:saas_billing_provider: stripe
+  samples/saas-starter/enterprise-ready/copier-answers.yml:32:saas_auth_module: enabled
+  samples/saas-starter/enterprise-ready/copier-answers.yml:33:saas_auth_provider: clerk
+  samples/saas-starter/enterprise-ready/copier-answers.yml:36:saas_billing_module: enabled
+  samples/saas-starter/enterprise-ready/copier-answers.yml:37:saas_billing_provider: stripe
+  samples/saas-starter/nextjs-vercel-neon-clerk-workos/copier-answers.yml:32:saas_auth_module: enabled
+  samples/saas-starter/nextjs-vercel-neon-clerk-workos/copier-answers.yml:33:saas_auth_provider: clerk
+  samples/saas-starter/nextjs-vercel-neon-clerk-workos/copier-answers.yml:36:saas_billing_module: enabled
+  samples/saas-starter/nextjs-vercel-neon-clerk-workos/copier-answers.yml:37:saas_billing_provider: stripe
+  samples/saas-starter/nextjs-vercel-neon-clerk/copier-answers.yml:32:saas_auth_module: enabled
+  samples/saas-starter/nextjs-vercel-neon-clerk/copier-answers.yml:33:saas_auth_provider: clerk
+  samples/saas-starter/nextjs-vercel-neon-clerk/copier-answers.yml:36:saas_billing_module: enabled
+  samples/saas-starter/nextjs-vercel-neon-clerk/copier-answers.yml:37:saas_billing_provider: stripe
+  samples/saas-starter/nextjs-vercel-supabase-clerk/copier-answers.yml:32:saas_auth_module: enabled
+  samples/saas-starter/nextjs-vercel-supabase-clerk/copier-answers.yml:33:saas_auth_provider: clerk
+  samples/saas-starter/nextjs-vercel-supabase-clerk/copier-answers.yml:36:saas_billing_module: enabled
+  samples/saas-starter/nextjs-vercel-supabase-clerk/copier-answers.yml:37:saas_billing_provider: stripe
+  samples/saas-starter/prelaunch-waitlist/copier-answers.yml:32:saas_auth_module: enabled
+  samples/saas-starter/prelaunch-waitlist/copier-answers.yml:33:saas_auth_provider: clerk
+  samples/saas-starter/prelaunch-waitlist/copier-answers.yml:36:saas_billing_module: enabled
+  samples/saas-starter/prelaunch-waitlist/copier-answers.yml:37:saas_billing_provider: stripe
+  samples/saas-starter/remix-cloudflare-neon-drizzle/copier-answers.yml:32:saas_auth_module: enabled
+  samples/saas-starter/remix-cloudflare-neon-drizzle/copier-answers.yml:33:saas_auth_provider: authjs
+  samples/saas-starter/remix-cloudflare-neon-drizzle/copier-answers.yml:36:saas_billing_module: enabled
+  samples/saas-starter/remix-cloudflare-neon-drizzle/copier-answers.yml:37:saas_billing_provider: stripe
+  samples/saas-starter/vercel-starter/copier-answers.yml:32:saas_auth_module: enabled
+  samples/saas-starter/vercel-starter/copier-answers.yml:33:saas_auth_provider: clerk
+  samples/saas-starter/vercel-starter/copier-answers.yml:36:saas_billing_module: enabled
+  samples/saas-starter/vercel-starter/copier-answers.yml:37:saas_billing_provider: stripe
+
+Verdict
+-------
+EMPTY. No sample copier-answers.yml contains any of the 8 removed keys as YAML keys
+or word-boundary tokens. No hits to cite. PL-T01 shards start clean on this inventory.

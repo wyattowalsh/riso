@@ -1,0 +1,398 @@
+{
+  "version": 1,
+  "goalSlug": "riso-lane-sys",
+  "lane": "SYS",
+  "writeRoots": ["template/files/go/**", "template/files/rust/**"],
+  "allowedDocsRoots": ["goals/riso-lane-sys/**"],
+  "forbiddenRoots": [
+    "template/copier.yml",
+    "template/hooks/**",
+    "template/macros/**",
+    "template/files/module_catalog.json.jinja",
+    "template/files/python/**",
+    "template/files/node/**",
+    "template/files/frontend/**",
+    "template/files/electron/**",
+    "template/files/tauri/**",
+    "template/files/quality/**",
+    "template/files/testing/**",
+    "src/riso/**",
+    "web/**",
+    "samples/*/render/**",
+    "samples/*/copier-answers.yml",
+    "uv.lock",
+    "pnpm-lock.yaml"
+  ],
+  "maxConcurrency": 6,
+  "locks": {
+    "L-GO-CORE": { "paths": ["template/files/go/internal/**"], "exclusive": true },
+    "L-GO-API": { "paths": ["template/files/go/api/**"], "exclusive": true },
+    "L-GO-CLI": { "paths": ["template/files/go/cli/**"], "exclusive": true },
+    "L-GO-MCP": { "paths": ["template/files/go/mcp/**"], "exclusive": true },
+    "L-GO-ROOT": {
+      "paths": [
+        "template/files/go/go.mod.jinja",
+        "template/files/go/go.work.jinja",
+        "template/files/go/Makefile.jinja",
+        "template/files/go/justfile.jinja",
+        "template/files/go/Dockerfile.jinja",
+        "template/files/go/.golangci.yml.jinja",
+        "template/files/go/.air.toml.jinja",
+        "template/files/go/README.md.jinja",
+        "template/files/go/config.example.yaml.jinja"
+      ],
+      "exclusive": true
+    },
+    "L-RS-CORE": {
+      "paths": [
+        "template/files/rust/Cargo.toml.jinja",
+        "template/files/rust/Makefile.jinja",
+        "template/files/rust/justfile.jinja",
+        "template/files/rust/build.rs.jinja",
+        "template/files/rust/rustfmt.toml.jinja",
+        "template/files/rust/src/**"
+      ],
+      "exclusive": true
+    },
+    "L-RS-API": { "paths": ["template/files/rust/api/**"], "exclusive": true },
+    "L-RS-CLI": { "paths": ["template/files/rust/cli/**"], "exclusive": true },
+    "L-RS-MCP": { "paths": ["template/files/rust/mcp/**"], "exclusive": true },
+    "L-RS-DOCS": {
+      "paths": [
+        "template/files/rust/README.md.jinja",
+        "template/files/rust/QUICKSTART.md.jinja",
+        "template/files/rust/ARCHITECTURE.md.jinja",
+        "template/files/rust/tests/**"
+      ],
+      "exclusive": true
+    },
+    "L-HANDOFF": { "paths": ["goals/riso-lane-sys/handoffs/**"], "exclusive": true },
+    "L-GOAL-META": {
+      "paths": ["goals/riso-lane-sys/baseline.md", "goals/riso-lane-sys/FIX_LIST.json"],
+      "exclusive": true
+    }
+  },
+  "agents": {
+    "VERIFY": { "capability": "read-only", "locks": [] },
+    "GO-CORE": { "capability": "read-write", "locks": ["L-GO-CORE"] },
+    "GO-API": { "capability": "read-write", "locks": ["L-GO-API"] },
+    "GO-CLI": { "capability": "read-write", "locks": ["L-GO-CLI"] },
+    "GO-MCP": { "capability": "read-write", "locks": ["L-GO-MCP"] },
+    "GO-TOOL": { "capability": "read-write", "locks": ["L-GO-ROOT"] },
+    "RS-CORE": { "capability": "read-write", "locks": ["L-RS-CORE"] },
+    "RS-API": { "capability": "read-write", "locks": ["L-RS-API"] },
+    "RS-CLI": { "capability": "read-write", "locks": ["L-RS-CLI"] },
+    "RS-MCP": { "capability": "read-write", "locks": ["L-RS-MCP"] },
+    "RS-DOCS": { "capability": "read-write", "locks": ["L-RS-DOCS"] },
+    "HANDOFF": { "capability": "read-write", "locks": ["L-HANDOFF", "L-GOAL-META"] }
+  },
+  "importContract": {
+    "goSharedConfig": "{{ project_slug }}/internal/config",
+    "goSharedLogger": "{{ project_slug }}/internal/logger",
+    "forbiddenAfterG1": ["{{ project_slug }}/cli/internal/config", "{{ project_slug }}/cli/internal/logger"],
+    "rustApiStack": ["actix-web", "actix-cors", "tokio", "serde"],
+    "rustCliStack": ["clap", "tokio", "tracing"],
+    "rustMcpStack": ["rmcp", "tokio"],
+    "rustMsrv": "1.81"
+  },
+  "tasks": [
+    {
+      "id": "W0.T1",
+      "wave": 0,
+      "agent": "VERIFY",
+      "deps": [],
+      "title": "Validate go sample answers",
+      "commands": [
+        "uv run riso validate --answers-file samples/go-api/copier-answers.yml --json",
+        "uv run riso validate --answers-file samples/go-cli/copier-answers.yml --json",
+        "uv run riso validate --answers-file samples/go-mcp/copier-answers.yml --json"
+      ],
+      "writes": [],
+      "acceptance": ["JSON captured for each sample; classify template vs answers vs CLI errors"]
+    },
+    {
+      "id": "W0.T2",
+      "wave": 0,
+      "agent": "VERIFY",
+      "deps": [],
+      "title": "Go unit template tests",
+      "commands": ["uv run pytest tests/unit/test_go_templates.py -q"],
+      "writes": [],
+      "acceptance": ["exit code recorded"]
+    },
+    {
+      "id": "W0.T3",
+      "wave": 0,
+      "agent": "VERIFY",
+      "deps": [],
+      "title": "Jinja syntax go+rust",
+      "commands": [
+        "uv run python scripts/ci/validate_jinja_templates.py $(find template/files/go template/files/rust -name '*.jinja')"
+      ],
+      "writes": [],
+      "acceptance": ["exit 0 or file:line list"]
+    },
+    {
+      "id": "W0.T4",
+      "wave": 0,
+      "agent": "HANDOFF",
+      "deps": ["W0.T1", "W0.T2", "W0.T3"],
+      "title": "Write baseline.md + FIX_LIST seed",
+      "writes": ["goals/riso-lane-sys/baseline.md", "goals/riso-lane-sys/FIX_LIST.json"],
+      "acceptance": ["P0 G1/R1 listed", "C3 validate note present"]
+    },
+    {
+      "id": "W1.G.T1",
+      "wave": 1,
+      "agent": "GO-CORE",
+      "deps": ["W0.T4"],
+      "title": "Create go/internal/config package templates",
+      "writes": ["template/files/go/internal/config/**"],
+      "acceptance": ["koanf load/validate/default; no framework imports"]
+    },
+    {
+      "id": "W1.G.T2",
+      "wave": 1,
+      "agent": "GO-CORE",
+      "deps": ["W0.T4"],
+      "title": "Create go/internal/logger package templates",
+      "writes": ["template/files/go/internal/logger/**"],
+      "acceptance": ["slog helpers; NewLogger API stable for api+cli"]
+    },
+    {
+      "id": "W1.G.T3",
+      "wave": 1,
+      "agent": "GO-CORE",
+      "deps": ["W1.G.T1", "W1.G.T2"],
+      "title": "Publish import contract + deprecate cli/internal copies plan",
+      "writes": ["goals/riso-lane-sys/baseline.md"],
+      "acceptance": ["importContract paths documented"]
+    },
+    {
+      "id": "W1.R.T1",
+      "wave": 1,
+      "agent": "RS-CORE",
+      "deps": ["W0.T4"],
+      "title": "Fix Cargo.toml gates + MSRV + workspace",
+      "writes": ["template/files/rust/Cargo.toml.jinja"],
+      "acceptance": [
+        "mcp_languages in root gate",
+        "rust-version 1.81",
+        "Actix/Clap/Tokio only for API/CLI",
+        "no invalid actix-web-test if broken"
+      ]
+    },
+    {
+      "id": "W1.R.T2",
+      "wave": 1,
+      "agent": "RS-CORE",
+      "deps": ["W0.T4"],
+      "title": "Fix Makefile/justfile/build.rs/rustfmt gates",
+      "writes": [
+        "template/files/rust/Makefile.jinja",
+        "template/files/rust/justfile.jinja",
+        "template/files/rust/build.rs.jinja",
+        "template/files/rust/rustfmt.toml.jinja"
+      ],
+      "acceptance": ["mcp_languages considered; module-conditional targets"]
+    },
+    {
+      "id": "W1.R.T3",
+      "wave": 1,
+      "agent": "RS-CORE",
+      "deps": ["W1.R.T1"],
+      "title": "Resolve rust/src/main.rs vs multi-bin conflict",
+      "writes": ["template/files/rust/src/**"],
+      "acceptance": ["no double main for cli-enabled single-package"]
+    },
+    {
+      "id": "W1.H.T1",
+      "wave": 1,
+      "agent": "HANDOFF",
+      "deps": ["W0.T4"],
+      "title": "Seed COORD/PLATFORM handoffs",
+      "writes": [
+        "goals/riso-lane-sys/handoffs/COORD-go-version-mcp.md",
+        "goals/riso-lane-sys/handoffs/PLATFORM-rust-samples.md",
+        "goals/riso-lane-sys/handoffs/PLATFORM-go-api-features-answers.md",
+        "goals/riso-lane-sys/handoffs/COORD-rust-module-excludes.md"
+      ],
+      "acceptance": ["four handoff files exist"]
+    },
+    {
+      "id": "W2.G.T1",
+      "wave": 2,
+      "agent": "GO-API",
+      "deps": ["W1.G.T1", "W1.G.T2"],
+      "title": "Rewire api/main + server imports to shared internal",
+      "writes": ["template/files/go/api/main.go.jinja", "template/files/go/api/internal/server/server.go.jinja"],
+      "acceptance": ["zero cli/internal imports"]
+    },
+    {
+      "id": "W2.G.T2",
+      "wave": 2,
+      "agent": "GO-API",
+      "deps": ["W2.G.T1"],
+      "title": "Framework parity: server New/Listen/Shutdown x4",
+      "writes": ["template/files/go/api/internal/server/server.go.jinja"],
+      "acceptance": ["gin fiber echo chi all complete"]
+    },
+    {
+      "id": "W2.G.T3",
+      "wave": 2,
+      "agent": "GO-API",
+      "deps": ["W2.G.T1"],
+      "title": "Framework parity: handlers health+routes x4",
+      "writes": [
+        "template/files/go/api/internal/handlers/health.go.jinja",
+        "template/files/go/api/internal/handlers/routes.go.jinja"
+      ],
+      "acceptance": ["health/ready/live/ping for all four"]
+    },
+    {
+      "id": "W2.G.T4",
+      "wave": 2,
+      "agent": "GO-API",
+      "deps": ["W2.G.T1"],
+      "title": "Framework parity: middleware cors/logging/recovery x4",
+      "writes": [
+        "template/files/go/api/internal/middleware/cors.go.jinja",
+        "template/files/go/api/internal/middleware/logging.go.jinja",
+        "template/files/go/api/internal/middleware/recovery.go.jinja"
+      ],
+      "acceptance": ["chi/echo/fiber not thinner than gin for status+latency logging"]
+    },
+    {
+      "id": "W2.G.T5",
+      "wave": 2,
+      "agent": "GO-CLI",
+      "deps": ["W1.G.T1", "W1.G.T2"],
+      "title": "CLI import rewire + Cobra polish",
+      "writes": ["template/files/go/cli/**"],
+      "acceptance": ["shared imports; obsolete cli/internal removed or empty"]
+    },
+    {
+      "id": "W2.G.T6",
+      "wave": 2,
+      "agent": "GO-MCP",
+      "deps": ["W0.T4"],
+      "title": "MCP go_version + SDK + server polish",
+      "writes": ["template/files/go/mcp/**"],
+      "acceptance": ["go.mod uses go_version; README matches"]
+    },
+    {
+      "id": "W2.R.T1",
+      "wave": 2,
+      "agent": "RS-API",
+      "deps": ["W1.R.T1"],
+      "title": "Modernize Actix API module",
+      "writes": ["template/files/rust/api/**"],
+      "acceptance": ["actix-web only; graceful shutdown; tests idiomatic"]
+    },
+    {
+      "id": "W2.R.T2",
+      "wave": 2,
+      "agent": "RS-CLI",
+      "deps": ["W1.R.T1"],
+      "title": "Modernize Clap CLI module",
+      "writes": ["template/files/rust/cli/**"],
+      "acceptance": ["clap derive; tracing; subcommands"]
+    },
+    {
+      "id": "W2.R.T3",
+      "wave": 2,
+      "agent": "RS-MCP",
+      "deps": ["W1.R.T1"],
+      "title": "Modernize rmcp MCP module",
+      "writes": ["template/files/rust/mcp/**"],
+      "acceptance": ["MSRV 1.81; transport axum only for sse/http"]
+    },
+    {
+      "id": "W2.G.T7",
+      "wave": 2,
+      "agent": "GO-TOOL",
+      "deps": ["W1.G.T1", "W2.G.T1", "W2.G.T5", "W2.G.T6"],
+      "title": "Root go.mod/work/Makefile/just/Docker/air/golangci/README",
+      "writes": [
+        "template/files/go/go.mod.jinja",
+        "template/files/go/go.work.jinja",
+        "template/files/go/Makefile.jinja",
+        "template/files/go/justfile.jinja",
+        "template/files/go/Dockerfile.jinja",
+        "template/files/go/.golangci.yml.jinja",
+        "template/files/go/.air.toml.jinja",
+        "template/files/go/README.md.jinja",
+        "template/files/go/config.example.yaml.jinja"
+      ],
+      "acceptance": ["module-aware targets; air not forced on cli/internal only"]
+    },
+    {
+      "id": "W3.R.T1",
+      "wave": 3,
+      "agent": "RS-DOCS",
+      "deps": ["W2.R.T1", "W2.R.T2", "W2.R.T3", "W1.R.T2"],
+      "title": "Rust docs + in-tree tests alignment",
+      "writes": [
+        "template/files/rust/README.md.jinja",
+        "template/files/rust/QUICKSTART.md.jinja",
+        "template/files/rust/ARCHITECTURE.md.jinja",
+        "template/files/rust/tests/**"
+      ],
+      "acceptance": ["docs match Actix/Clap/Tokio; gates include mcp"]
+    },
+    {
+      "id": "W3.G.T1",
+      "wave": 3,
+      "agent": "GO-TOOL",
+      "deps": ["W2.G.T2", "W2.G.T3", "W2.G.T4", "W2.G.T7"],
+      "title": "Go README four-framework + module matrix polish",
+      "writes": ["template/files/go/README.md.jinja"],
+      "acceptance": ["documents gin fiber echo chi"]
+    },
+    {
+      "id": "W4.H.T1",
+      "wave": 4,
+      "agent": "HANDOFF",
+      "deps": ["W3.R.T1", "W3.G.T1"],
+      "title": "Residual handoffs + FIX_LIST closeout",
+      "writes": ["goals/riso-lane-sys/handoffs/**", "goals/riso-lane-sys/FIX_LIST.json"],
+      "acceptance": ["QUAL test handoff if test_go_templates import paths stale"]
+    },
+    {
+      "id": "W4.V.T1",
+      "wave": 4,
+      "agent": "VERIFY",
+      "deps": ["W4.H.T1"],
+      "title": "Final verification suite",
+      "commands": [
+        "uv run riso validate --answers-file samples/go-api/copier-answers.yml --json",
+        "uv run riso validate --answers-file samples/go-cli/copier-answers.yml --json",
+        "uv run riso validate --answers-file samples/go-mcp/copier-answers.yml --json",
+        "uv run pytest tests/unit/test_go_templates.py -q",
+        "uv run python scripts/ci/validate_jinja_templates.py $(find template/files/go template/files/rust -name '*.jinja')"
+      ],
+      "writes": [],
+      "acceptance": [
+        "template-owned failures zero",
+        "C3 answers failures documented only",
+        "path audit clean"
+      ]
+    }
+  ],
+  "criticalPath": [
+    "W0.T4",
+    "W1.G.T1",
+    "W1.G.T2",
+    "W2.G.T1",
+    "W2.G.T2",
+    "W2.G.T7",
+    "W3.G.T1",
+    "W4.V.T1"
+  ],
+  "parallelSets": [
+    ["W0.T1", "W0.T2", "W0.T3"],
+    ["W1.G.T1", "W1.G.T2", "W1.R.T1", "W1.R.T2", "W1.H.T1"],
+    ["W2.G.T2", "W2.G.T3", "W2.G.T4", "W2.G.T5", "W2.G.T6", "W2.R.T1", "W2.R.T2", "W2.R.T3"],
+    ["W3.R.T1", "W3.G.T1"]
+  ]
+}

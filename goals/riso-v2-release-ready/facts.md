@@ -1,0 +1,27 @@
+# Facts
+
+- This goal makes the maintainer repo evidence-ready for 2.0.0. It does not create a git tag, push, or publish to PyPI.
+- Copier keys, CLI flags, and generated layout may change when the change makes the existing tracks better. No new languages, runtimes, or vendors are added.
+- Generated projects stay on Python 3.11+ (CI 3.11–3.13) and Node 20+ unless a failing gate proves a higher floor is required.
+- Maintainer and generated defaults stay just + uv + ruff + ty + pnpm + pytest + pre-commit, with pydantic/loguru/typer on Python and Playwright/Vitest where UI tests already exist. Makefile remains the generated alternative via task_runner.
+- Maintainer repo and generated projects ship mise toolchain pins for the canon tools.
+- OpenSpec is used on the maintainer repo. Generated projects get an optional OpenSpec extra that is off by default.
+- Generated Python test extras include hypothesis and respx, with at least one shipped test showing each is wired.
+- riso update remaps every key in the removed-answer-keys SSOT, prints a dry-run preview, is idempotent, and is covered by tests. After remap, removed keys fail closed with a pointer. No dual-path or legacy aliases remain in hooks or CLI.
+- No sample answers file and no generated default answers contain a removed Copier key.
+- Generated payloads, riso CLI (including migrate), web wizard, and maintainer docs stay in lockstep on keys, defaults, and 2.0 behavior.
+- Work starts from the current dirty tree. Matching polish is kept. Changes that fight this goal (for example a SaaS Next/Remix flatten) stay reverted or are rewritten.
+- Waves are: 0 dirty-tree + removed-key inventory; 1 COORD contracts and migration SSOT; 2 parallel PY/NODE/SAAS/SYS/DESKTOP plus CLI migrate plus wizard; 3 PLATFORM answers, render_matrix, and quality; 4 docs and ASSURANCE evidence.
+- Agents keep exclusive write roots. copier.yml and hooks stay serial COORD. No silent cross-lane edits. samples/*/render is never hand-edited.
+- Broken scaffolds and contract bugs are fixed before DX/visual refine. Desktop Electron boot (electron-store ESM), lint, and typecheck stay fixed.
+- Refine stops when two consecutive review passes find no new P0/P1 on required surfaces and the full release ladder is green.
+- just quality passes on the maintainer repo (lint, ty, pytest).
+- Every samples/**/copier-answers.yml passes uv run riso validate --json with ok true.
+- uv run python scripts/ci/validate_jinja_templates.py on template/files succeeds.
+- Context sync and agents-ecosystem validators pass when those surfaces change, and at closeout.
+- uv run python scripts/ci/render_matrix.py completes and writes samples/metadata/render_matrix.json. Residual is not done.
+- uv run --group docs sphinx-build -W -b html docs succeeds.
+- validate_release_readiness_skill.py, validate_workflows.py, and validate_release_configs.py all exit 0.
+- A 1.x → 2.0 migration guide exists and CHANGELOG has an Unreleased 2.0.0 section that names breaking remaps. No version tag is created.
+- Maintainer riso-mcp is not reintroduced under src/riso or template.
+- Closeout writes goals/riso-v2-release-ready/ASSURANCE.md plus command evidence under goals/riso-v2-release-ready/evidence/ mapping every accepted fact to green or an owned residual with command and log.

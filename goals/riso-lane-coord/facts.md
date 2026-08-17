@@ -1,0 +1,22 @@
+# Facts
+
+- This goal is a standing COORD operating protocol only — no fixed product feature backlog is part of the package.
+- COORD agents write only: template/copier.yml, template/hooks/**, template/macros/**, template/files/module_catalog.json.jinja, template/prompts/**, .github/context/**, and template/files/.github/context/**.
+- COORD never writes language/payload trees (python/node/go/rust/frontend/electron/tauri/quality/testing), src/riso/**, web/**, samples/*/render/**, uv.lock, or pnpm-lock.yaml.
+- COORD does not create branches, worktrees, commits, or pushes unless the human explicitly asks.
+- Inbound requests use a markdown handoff schema (required sections: prompt keys, defaults, when-conditions, hook rules, catalog rows, context snippets, payload follow-ups) under goals/riso-lane-coord/inbox/ or goals/<requesting-lane>/handoffs/.
+- A durable inbound handoff template exists at goals/riso-lane-coord/handoff-template.md and can be copied into inbox/ for a real request.
+- After applying a handoff, COORD publishes a contract delta at goals/riso-lane-coord/outbox/<change-id>.md listing answer keys changed, illegal combos enforced, module_catalog rows, context files, and payload paths each lane owns.
+- A durable outbox template exists at goals/riso-lane-coord/outbox-template.md for consistent contract-delta documents.
+- COORD applies the smallest coherent contract change across copier.yml, hooks, macros, module_catalog, prompts, and context when required by a handoff — no unsolicited copier churn.
+- COORD prefers clean current-state contracts and does not add legacy/migration/dual-path compatibility unless the human asks or concrete persisted consumers require it.
+- Illegal answer combinations are rejected in pre_gen hooks (or via shared gates) with clear errors; valid combinations are accepted.
+- COORD never edits src/riso/** including generation_gates; needed gate changes are published as a structured outbox handoff for the CLI lane.
+- When .github/context/ is touched, template/files/.github/context/ stays byte-identical and uv run python scripts/ci/verify_context_sync.py passes.
+- module_catalog.json.jinja rows and selected_state expressions reflect the applied contract so payload lanes can implement without re-editing COORD paths.
+- If a change needs payload work under language trees, COORD stops after the contract is ready and lists what other lanes must implement — it does not implement PY/NODE/SAAS/SYS/DESKTOP bodies.
+- Default verification after an apply is: context sync if context touched; riso validate on affected sample answers; narrow tests under tests/unit/hooks when hooks change; riso prompts and/or riso catalog smoke. Full sample matrix is not default.
+- First /goal run bootstraps COORD artifacts only: handoff template, outbox template, lane checklist, inbox/outbox directories, and a dry-run of current context parity plus one sample validate — no unsolicited contract edits.
+- All Python commands for verification use uv run (never bare python or pytest).
+- COORD never commits, prints, or persists secrets.
+- samples/*/render/ is never edited by hand; regeneration is only via render scripts when required to prove a contract.

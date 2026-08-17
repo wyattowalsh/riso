@@ -1,0 +1,79 @@
+=== W5-LADDER-mcp-rg ===
+utc=2026-08-14T05:53:25Z
+cwd=/Users/ww/dev/projects/riso
+branch=main
+HEAD=f7951fe62e7c635f3a90d17811d3711c2a2d7c1b
+rg=ripgrep 15.2.0
+wave=LADDER-mcp-rg
+task=PL-T09 / W5-LADDER-mcp-rg
+lane=GOAL (evidence-only)
+write_root=goals/riso-v2-release-ready/evidence/W5-LADDER-mcp.txt
+forbid=samples/*/render/** (not scanned; not written); uv.lock; pnpm-lock.yaml; secrets; reintroduce riso-mcp
+render_matrix.py=not started; not killed
+git=no commit / tag / push / PyPI
+secrets=none in command output or hit context (no env values, tokens, or key material)
+
+Green when (this mission)
+-------------------------
+  src/riso empty
+  template hits only prohibition sentences
+
+Command (as specified)
+----------------------
+  rg -n riso-mcp src/riso template || true
+
+Bare rg (without || true) is the real emptiness check:
+  rg -n riso-mcp src/riso template
+  combined EXIT=0   (ripgrep exits 0 when it finds matches)
+
+Split scopes
+------------
+  rg -n riso-mcp src/riso     EXIT=1   hits=0
+  rg -n riso-mcp template     EXIT=0   hits=2
+
+src/riso tree (no mcp package)
+------------------------------
+  cli/
+  core/
+  template/
+  find src/riso -iname '*mcp*' -o -iname '*riso-mcp*'  → empty
+
+Raw output (redacted: no secrets present)
+-----------------------------------------
+template/files/DESIGN.md.jinja:264:Do not document `mypy`, `mypy.ini`, or `riso-mcp` as defaults. The removed
+template/files/docs/upgrade-guide.md.jinja:188:`riso-mcp`. Do not hand-edit `uv.lock` or `pnpm-lock.yaml`.
+
+Classification (template hits = prohibition only)
+-------------------------------------------------
+HIT 1  template/files/DESIGN.md.jinja:264
+  sentence: Do not document `mypy`, `mypy.ini`, or `riso-mcp` as defaults.
+            The removed maintainer MCP server is not part of this scaffold.
+  class: prohibition / tombstone
+  not: package, import, extra, server, CLI entry, or install instruction
+  note: line was 257 in W3-PL-T09 / W5-CLOSE-ladder-a; now 264 after later DESIGN edits.
+        Same prohibition sentence.
+
+HIT 2  template/files/docs/upgrade-guide.md.jinja:187-188
+  sentence: Do not restore `riso-mcp`. Do not hand-edit `uv.lock` or `pnpm-lock.yaml`.
+  class: prohibition
+  not: package restore, import, extra, or server
+
+src/riso
+--------
+EMPTY. No `riso-mcp` token. No mcp directory. Maintainer riso-mcp is not reintroduced.
+
+samples/*/render/** writes this task: 0
+product-code writes this task: 0
+lockfile writes this task: 0
+
+Verdict
+-------
+GREEN. src/riso empty. Two template hits are prohibition sentences only.
+Combined `rg` is non-empty (so a literal-empty PL-T09 check would still
+report matches), but this mission's green rule is prohibition-only, not
+zero tokens. Matches fact-no-riso-mcp (facts.md L26) and ASSURANCE
+"template prohibition only".
+
+status=green
+evidence=goals/riso-v2-release-ready/evidence/W5-LADDER-mcp.txt
+residual=none

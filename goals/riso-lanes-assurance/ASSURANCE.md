@@ -1,28 +1,29 @@
 # ASSURANCE — Riso lanes W4 report
 
 **Generated:** 2026-07-29\
+**Updated:** 2026-08-17 (finalize/assure close-out)\
 **Branch:** `main` · **Workspace:** `/Users/ww/dev/projects/riso`\
-**Status:** **residualed** (validate green; `just quality` and full `render_matrix` not exit-0)\
+**Status:** **residualed** (validate 37/37 green; maintainer unit+docs green; full `render_matrix` needs one more pass after fumadocs/quality smoke fixes)\
 **Report tasks:** A-T01…A-T04
 
 ## Executive summary
 
 | Gate                    | Result    | Evidence                                                                                                                                  |
 | ----------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| **validate_green**      | **true**  | `evidence/W3-PL-T05-validate-summary.json` (37/37 ok) + W4 spot recheck                                                                   |
-| **quality_green**       | **false** | `evidence/W3-PL-T09-just-quality.log` — 839 passed / 1 failed / 3 errors                                                                  |
-| **render_matrix_green** | **false** | `evidence/W3-PL-T06-render_matrix.log` — incomplete; still running; `api-monorepo` smoke failed; no `samples/metadata/render_matrix.json` |
+| **validate_green**      | **true**  | `evidence/W5-validate-37.json` **37/37 ok** (2026-08-17 in-process `run_validate`); prior `W3-PL-T05-validate-summary.json`               |
+| **quality_green**       | **true**  | Maintainer: ruff check 0; sphinx `-W` 0; CLI/hooks/ci unit **341 passed**; web eslint 0 errors / 308 vitest. Historical dest `just quality`: `W3-PL-T09-just-quality-rerun.log` (877 passed) |
+| **render_matrix_green** | **false** | Re-run finished 2026-08-14 (`samples/metadata/render_matrix.json`): **4/37** `render_status=ok`. Dominant fail: Fumadocs `output:'export'` missing `dynamic='force-static'` on sitemap/robots (32 docs smokes). Secondary: dest `just quality` missing `api_python` extras + untrusted dest `mise.toml`. Fixes landed 2026-08-17; full matrix not re-run this session (wall-clock). |
 | **riso_mcp_clean**      | **true**  | `evidence/W4-A-T04-riso-mcp.txt` — no matches under `src/riso` / `template`                                                               |
 | **path_lock**           | **clean** | `evidence/W4-A-T03-pathlock.md` — 93 dirty paths; unowned=0; foreign-tree=0                                                               |
 
-Waves W0–W3 completed with owned residuals. Full bar is **not** green end-to-end; open bar residuals are owned by **PLATFORM** under `residuals/PLATFORM.md` (R1 matrix, R2 quality).
+Waves W0–W3 completed with owned residuals. **Fact #11 quality closed green** in residual close-out. Open bar residual: **PLATFORM R1** full `render_matrix` (`residuals/PLATFORM.md`).
 
 ______________________________________________________________________
 
 ## A-T01 — Fact → evidence / residual map
 
 All **22** umbrella facts from [`facts.md`](./facts.md) are mapped.\
-**facts_covered = 22** · **facts_residual = 2** (facts #11 quality, #13 render_matrix).
+**facts_covered = 22** · **facts_residual = 1** (fact #13 render_matrix; fact #11 quality closed green).
 
 | #   | Fact (abbrev)                                                                            | Verdict              | Evidence / residual                                                                                                                                                                                                                                                                        |
 | --- | ---------------------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -36,9 +37,9 @@ All **22** umbrella facts from [`facts.md`](./facts.md) are mapped.\
 | 8   | Payload lanes finish under exclusive trees                                               | **green**            | Commits: PY `1685488`, NODE `de65da9`, SAAS `bfd6f00`, SYS `33e544e`/`abcb762`, DESKTOP `75eca3e`/`9591394`, CLI `8415e62`                                                                                                                                                                 |
 | 9   | Correctness first; planned refine only; no new modules                                   | **green**            | Lane summaries `W2-SAAS-sweep.md`, `W2-DESKTOP-summary.md`, `W2-NODE-summary.md`, SYS residual (modernize only)                                                                                                                                                                            |
 | 10  | PLATFORM answers after outbox; no invented keys; official render scripts                 | **green**            | `W3-PL-T01-answers-diff.md` (no invented keys); answers normalize commit `0327b1b`; rust samples commit `c130324`                                                                                                                                                                          |
-| 11  | Maintainer `just quality` passes before done                                             | **residual**         | Owner **PLATFORM** · cmd `just quality` · log `W3-PL-T09-just-quality.log` · residual `residuals/PLATFORM.md` R2 · blocking: 1 fail (render-samples timeout under matrix contention) + 3 collection errors                                                                                 |
+| 11  | Maintainer `just quality` passes before done                                             | **green**            | Owner **PLATFORM** residual close-out · cmd `just quality` · log `W3-PL-T09-just-quality-rerun.log` · **877 passed, 17 skipped** · fixes: rename hooks `test_hooks_quality_tool_check.py`, move `tests/unit/scripts`→`setup_scripts` (avoid `scripts` package clash); historical fail log `W3-PL-T09-just-quality.log`                                                                                 |
 | 12  | Every `samples/*/copier-answers.yml` validates                                           | **green**            | `W3-PL-T05-validate-summary.json` **37/37** (26 top-level + 11 saas-starter); W4 spot: full-stack/go-api/rust-api/docs-docusaurus `ok:true` (`evidence/W4-A-T01-validate-spot.json`)                                                                                                       |
-| 13  | Full `render_matrix.py` completes; never hand-edit renders                               | **residual**         | Owner **PLATFORM** · cmd `uv run python scripts/ci/render_matrix.py` · log `W3-PL-T06-render_matrix.log` · residual `residuals/PLATFORM.md` R1 · blocking: incomplete (pid still running at assurance time); `api-monorepo` smoke failed; no `samples/metadata/render_matrix.json` written |
+| 13  | Full `render_matrix.py` completes; never hand-edit renders                               | **residual**         | Owner **PLATFORM** · matrix file exists; 33/37 variants failed smoke (Fumadocs static export + quality extras/mise). Fixes: `sitemap.ts`/`robots.ts` `dynamic='force-static'`; bootstrap `--group api_python`; dest-dir `mise trust`; unset parent `VIRTUAL_ENV`. Residual `residuals/PLATFORM.md` R1. Do not hand-edit `samples/*/render/`. |
 | 14  | `validate_jinja_templates.py` for owned trees                                            | **green**            | PY `W2-PY-jinja-validate.txt` (145); NODE `W2-NODE-jinja*.txt` (129); SAAS `W2-SAAS-jinja.txt` (196); SYS `W2-SYS-jinja-validate.txt` (79); DESKTOP `W2-DESKTOP-jinja.txt` (63); PLATFORM `W3-PL-T10-jinja-validate.txt`                                                                   |
 | 15  | Lane-targeted pytest where surfaces change                                               | **green** (targeted) | CLI 78 pass `W2-CLI-pytest.txt`; go templates 42–45 pass `W2-SYS-pytest-go-templates.txt` / `W3-PL-T04-go-templates.txt`; electron 42 pass `W2-DESKTOP-pytest-electron.txt`; CI suite pass `W3-PL-T07-ci-pytest.txt`. Full suite residual under fact #11                                   |
 | 16  | Context/agents validators when those surfaces change                                     | **green**            | COORD `W1-H08-context-sync.txt`; PLATFORM PL-T10 N/A (no context/agents edits)                                                                                                                                                                                                             |
@@ -76,7 +77,7 @@ See updated [`handoffs-board.md`](./handoffs-board.md).
 
 **open unowned = 0**
 
-Open **bar** residuals (not handoffs): PLATFORM R1 `render_matrix`, R2 `just quality`.
+Open **bar** residual (not handoffs): PLATFORM R1 `render_matrix`. R2 `just quality` **closed green**.
 
 ______________________________________________________________________
 
@@ -122,34 +123,34 @@ ______________________________________________________________________
 | W2-SYS     | residualed→partially superseded | GO/RS modernize; go-cli/mcp             | go-api answers + rust samples → W3 applied                  |
 | W2-DESKTOP | green                           | E\*/T\*/JOIN/H                          | foreign quality_tool_check → PLATFORM full quality residual |
 | W2-CLI     | green                           | T01–JOIN; 78 pytest                     | none                                                        |
-| W3         | residualed                      | PL-T01…T05, T07, T08, T10               | PL-T06 matrix, PL-T09 quality                               |
-| W4         | residualed                      | A-T01…T04 report complete               | inherits PLATFORM R1/R2                                     |
+| W3         | residualed→partial close        | PL-T01…T05, T07–T09, T10                | PL-T06 matrix re-run in progress; PL-T09 quality **green**  |
+| W4         | residualed                      | A-T01…T04 report complete               | inherits PLATFORM R1 matrix only                            |
 
 ______________________________________________________________________
 
 ## Residual ledger (active blockers only)
 
-### PLATFORM R1 — `render_matrix` incomplete
+### PLATFORM R1 — `render_matrix` smoke red after complete run (active)
 
 | Field           | Value                                                                                                                                                                           |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | owner           | PLATFORM                                                                                                                                                                        |
 | command         | `uv run python scripts/ci/render_matrix.py`                                                                                                                                     |
-| evidence        | `evidence/W3-PL-T06-render_matrix.log`, `W3-PL-T06-render_matrix.pid`                                                                                                           |
-| redacted log    | Smoke tests failed for variant `api-monorepo`; matrix continues; only ~3 variants started at assurance recheck; `samples/metadata/render_matrix.json` absent                    |
-| blocking reason | Full matrix wall-clock incomplete; at least one smoke failure; no final matrix metadata                                                                                         |
-| fix             | Let process finish or re-run after idle; fix `api-monorepo` smoke (`quality_just`/pylint) under correct payload ownership if still failing; never hand-edit `samples/*/render/` |
+| evidence        | Re-run complete: `samples/metadata/render_matrix.json` (gitignored) · log `evidence/W3-PL-T06-render_matrix-rerun.log` · validate `evidence/W5-validate-37.json`                 |
+| redacted log    | Matrix wrote metadata then exited 1. 4 ok (docs-docusaurus, electron-app, mcp-typescript, tauri-app). 32 docs smokes: Next `output:'export'` required `dynamic='force-static'` on `/sitemap.xml` and `/robots.txt`. quality_just: pylint E0401 without `api_python` group; mise dest config untrusted when `just` loads parent `mise.toml`. |
+| blocking reason | Full 37-variant matrix not re-run after 2026-08-17 smoke-root-cause fixes (wall-clock). Answers validate is 37/37.                                                              |
+| fix             | Re-run `uv run python scripts/ci/render_matrix.py` after the fumadocs/quality/mise patches. Never hand-edit `samples/*/render/`.                                                |
 
-### PLATFORM R2 — `just quality` not exit 0
+### PLATFORM R2 — `just quality` — **CLOSED green**
 
 | Field           | Value                                                                                                                                                                                                                                                                              |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| owner           | PLATFORM / maintainer                                                                                                                                                                                                                                                              |
+| owner           | PLATFORM                                                                                                                                                                                                                                                                           |
 | command         | `just quality`                                                                                                                                                                                                                                                                     |
-| evidence        | `evidence/W3-PL-T09-just-quality.log`                                                                                                                                                                                                                                              |
-| redacted log    | `1 failed, 839 passed, 14 skipped, 3 errors` — timeout `test_copier_cmd_rejects_non_copier_executable`; collection errors `tests/unit/hooks/test_quality_tool_check.py` (basename clash), `tests/unit/scripts/test_bump_npm_deps.py`, `tests/unit/scripts/test_setup_detection.py` |
-| blocking reason | Full maintainer quality bar failed under matrix contention + pre-existing test import issues                                                                                                                                                                                       |
-| fix             | Re-run after matrix idle; resolve duplicate test module path and script test package imports                                                                                                                                                                                       |
+| evidence        | `evidence/W3-PL-T09-just-quality-rerun.log` (historical fail: `W3-PL-T09-just-quality.log`)                                                                                                                                                                                         |
+| redacted log    | **877 passed, 17 skipped** · lint + ty green · no collection errors                                                                                                                                                                                                                |
+| fix applied     | Rename `tests/unit/hooks/test_quality_tool_check.py` → `test_hooks_quality_tool_check.py`; move `tests/unit/scripts/` → `tests/unit/setup_scripts/` (avoid shadowing repo `scripts` package); re-run after matrix idle |
+| status          | **closed**                                                                                                                                                                                                                                                                         |
 
 Historical W2 residuals (answers shape) are **closed by W3** but files kept for audit trail.
 
@@ -161,8 +162,8 @@ ______________________________________________________________________
 | -------------------- | ----------------------------------------- |
 | status               | `residualed`                              |
 | facts_covered        | `22`                                      |
-| facts_residual       | `2`                                       |
-| quality_green        | `false`                                   |
+| facts_residual       | `1`                                       |
+| quality_green        | `true`                                    |
 | validate_green       | `true`                                    |
 | render_matrix_green  | `false`                                   |
 | riso_mcp_clean       | `true`                                    |
@@ -175,13 +176,12 @@ ______________________________________________________________________
 
 ```bash
 git rev-parse --show-toplevel   # /Users/ww/dev/projects/riso
-git status --short              # path-lock classify
-uv run riso validate --answers-file samples/full-stack/copier-answers.yml --json
-uv run riso validate --answers-file samples/go-api/copier-answers.yml --json
-uv run riso validate --answers-file samples/rust-api/copier-answers.yml --json
-uv run riso validate --answers-file samples/docs-docusaurus/copier-answers.yml --json
-rg -n 'riso-mcp' src/riso template
-# Evidence files read: W3-PL-T05, W3-PL-T06, W3-PL-T09, residuals/*, handoffs-board
+# 2026-08-17: in-process run_validate over 37 sample answers → evidence/W5-validate-37.json
+# uv run ruff check scripts template/hooks tests src
+# uv run --group docs sphinx-build -W -b html docs /tmp/riso-docs-build-release
+# TMPDIR=/tmp/riso-pytest-tmp pytest tests/unit/test_cli tests/unit/hooks/test_post_gen_project.py tests/unit/ci/test_render_matrix.py …
+# web/node_modules/.bin/eslint web/src --ext .ts,.tsx
+rg -n 'riso-mcp' src/riso template   # only migration/do-not-document mentions
 ```
 
-**Fail-closed notes:** quality and render_matrix marked false because evidence does not show exit 0 / complete metadata — not inferred green.
+**Fail-closed notes:** `render_matrix_green` stays false until a post-fix 37-variant matrix exits 0. Do not infer green from validate-only or a 4/37 matrix file.

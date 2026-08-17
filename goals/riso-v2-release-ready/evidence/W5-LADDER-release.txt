@@ -1,0 +1,115 @@
+W5 LADDER-release — official release validators
+===============================================
+task:     LADDER-release / PL-T07
+wave:     LADDER-release
+when:     2026-08-14T05:53:19Z
+repo:     /Users/ww/dev/projects/riso
+branch:   main
+HEAD:     f7951fe62e7c635f3a90d17811d3711c2a2d7c1b
+lane:     GOAL
+writes:   this file only (goals/riso-v2-release-ready/evidence/W5-LADDER-release.txt)
+forbid:   samples/*/render/** hand-edits = 0
+          uv.lock / pnpm-lock.yaml hand-edits = 0
+          commit / tag / push / PyPI = 0
+          render_matrix.py started or killed = 0
+status:   GREEN — all three official argv exit 0
+
+Cwd / branch (confirmed)
+------------------------
+  git rev-parse --show-toplevel     -> /Users/ww/dev/projects/riso
+  git rev-parse --abbrev-ref HEAD   -> main
+  git rev-parse HEAD                -> f7951fe62e7c635f3a90d17811d3711c2a2d7c1b
+  git tag -l 'v2.0.0' '2.0.0'       -> (empty)
+  (no checkout / stash / reset / rebase / commit / tag / push)
+
+Live render_matrix
+------------------
+  pgrep -fl 'scripts/ci/render_matrix.py'
+  result: no dedicated python render_matrix.py process
+  (wrapper shells that mention the string in argv are not the renderer)
+
+Default dest (read-only check)
+------------------------------
+  samples/default/render: directory present
+  samples/default/render/.copier-answers.yml: present
+  .commitlintrc.yml: absent (changelog module disabled — validator treats as pass)
+  .releaserc.yml: absent (changelog module disabled — validator treats as pass)
+  .github/workflows/riso-release.yml: absent (changelog module disabled — validator treats as pass)
+
+Command (mission, semicolon chain)
+----------------------------------
+  uv run python scripts/ci/validate_release_readiness_skill.py ; \
+  uv run python scripts/ci/validate_workflows.py ; \
+  uv run python scripts/ci/validate_release_configs.py
+
+  combined last-exit: 0
+  secrets in logs: none (no token/password/key/secret values printed)
+
+Per-script results
+------------------
+1) uv run python scripts/ci/validate_release_readiness_skill.py
+   exit: 0
+   stdout (redacted; no secrets present):
+     Release readiness skill mirror is valid.
+   skill_exit=0
+   cmp .agents/skills/riso-release-readiness ↔ .claude/skills/riso-release-readiness
+     IDENTICAL SKILL.md
+     IDENTICAL references/no-legacy-answer-policy.md
+     IDENTICAL references/release-gates.md
+     IDENTICAL references/task-graph.md
+     IDENTICAL scripts/collect_release_evidence.py
+
+2) uv run python scripts/ci/validate_workflows.py
+   exit: 0
+   default dir: .github/workflows
+   actionlint: /opt/homebrew/bin/actionlint
+   stderr/stdout (redacted; no secrets present):
+     2026-08-14 01:53:21 | INFO     | __main__:validate_workflows:204 - release.yml - passed
+     2026-08-14 01:53:21 | INFO     | __main__:validate_workflows:204 - matrix-data.yml - passed
+     2026-08-14 01:53:21 | INFO     | __main__:validate_workflows:204 - labeler.yml - passed
+     2026-08-14 01:53:21 | INFO     | __main__:validate_workflows:204 - codeql.yml - passed
+     2026-08-14 01:53:21 | INFO     | __main__:validate_workflows:204 - pre-commit.yml - passed
+     2026-08-14 01:53:21 | INFO     | __main__:validate_workflows:204 - quality.yml - passed
+     2026-08-14 01:53:21 | INFO     | __main__:validate_workflows:204 - release-drafter.yml - passed
+     2026-08-14 01:53:21 | INFO     | __main__:validate_workflows:204 - gitleaks.yml - passed
+     2026-08-14 01:53:21 | INFO     | __main__:validate_workflows:204 - template-ci.yml - passed
+     2026-08-14 01:53:21 | INFO     | __main__:validate_workflows:204 - sbom.yml - passed
+     2026-08-14 01:53:21 | INFO     | __main__:validate_workflows:204 - quality-matrix.yml - passed
+     Total: 11 | Passed: 11 | Failed: 0 | Skipped: 0
+   workflows_exit=0
+
+3) uv run python scripts/ci/validate_release_configs.py
+   exit: 0
+   default --project-dir: samples/default/render
+   stdout/stderr (redacted; no secrets present):
+     2026-08-14 01:53:21 | INFO     | __main__:main:252 - Validating release configurations...
+     2026-08-14 01:53:21 | INFO     | __main__:main:253 - Project directory: samples/default/render
+     2026-08-14 01:53:21 | INFO     | __main__:main:259 - Validating .commitlintrc.yml...
+     2026-08-14 01:53:21 | INFO     | __main__:main:269 - Not present (changelog module disabled)
+     2026-08-14 01:53:21 | INFO     | __main__:main:273 - Validating .releaserc.yml...
+     2026-08-14 01:53:21 | INFO     | __main__:main:283 - Not present (changelog module disabled)
+     2026-08-14 01:53:21 | INFO     | __main__:main:287 - Validating .github/workflows/riso-release.yml...
+     2026-08-14 01:53:21 | INFO     | __main__:main:297 - Not present (changelog module disabled)
+     2026-08-14 01:53:21 | INFO     | __main__:main:306 - All validation checks passed!
+   release_configs_exit=0
+
+Green / residual split
+----------------------
+  validate_release_readiness_skill.py           GREEN (exit 0; 5 REQUIRED_FILES identical)
+  validate_workflows.py                         GREEN (11/11; exit 0)
+  validate_release_configs.py                   GREEN (exit 0; dest present; changelog off)
+
+Historical note (not live)
+--------------------------
+  evidence/W3-PL-T07-release.txt is STALE (skill mirror mismatch + dest absent).
+  residuals/SKILL.md R1 and residuals/PLATFORM.md R2 remain CLOSED.
+  This run re-confirms live tree; no product-code edit required.
+
+Path lock (this session)
+------------------------
+  exclusive write root: goals/riso-v2-release-ready/**
+  files written: goals/riso-v2-release-ready/evidence/W5-LADDER-release.txt
+  samples/*/render/** hand-edits: 0
+  lockfile / secret / foreign-tree / product edits: 0
+  render_matrix.py started or killed: 0
+  git tag created: 0

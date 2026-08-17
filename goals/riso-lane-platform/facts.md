@@ -1,0 +1,22 @@
+# Facts
+
+- PLATFORM is a standing operating protocol plus known backlog: exclusive write owner of scripts/ci/**, scripts/render-samples.sh (and closely related sample render entrypoints), template/files/quality/**, template/files/testing/**, samples/*/copier-answers.yml, tool-generated samples/metadata/**, and minimal maintainer .github/workflows/** glue for quality/validate-samples/matrix only.
+- PLATFORM never writes samples/*/render/** (regenerate only), template/copier.yml, template/hooks/**, template/macros/**, module_catalog.json.jinja, language payload trees (python/node/go/rust/frontend/electron/tauri), src/riso/**, web/**, lockfiles, or secrets.
+- PLATFORM work is triggered by: COORD outbox contract deltas, payload-lane handoffs into goals/riso-lane-platform/inbox/, CI failures in PLATFORM write roots, and any red maintainer CI job (including jobs that fail in payload trees).
+- When CI is red in a non-PLATFORM tree, PLATFORM may investigate and reproduce the failure, but must not implement the fix in foreign paths; it files a durable handoff to the owning lane (PY/NODE/SAAS/SYS/DESKTOP/CLI/COORD as appropriate).
+- After COORD changes Copier keys, PLATFORM updates every samples/*/copier-answers.yml affected by the outbox keys; it does not invent keys or defaults beyond COORD outbox guidance and published defaults.
+- Every touched sample answers file must pass: uv run riso validate --answers-file samples/<variant>/copier-answers.yml --json
+- When sample answers change as part of PLATFORM work, PLATFORM runs the full sample matrix via uv run python scripts/ci/render_matrix.py (not hand-edited renders).
+- No file under samples/*/render/ is hand-edited; all render updates come from official render scripts.
+- Payload bugs discovered by PLATFORM are recorded as durable handoff files under goals/riso-lane-platform/outbox/ (and/or the owning lane inbox) including failing command, redacted log excerpt, suspected ownership, and requested fix.
+- template/files/quality/** and template/files/testing/** stay consistent with quality_profile and task_runner-style answers used by sample variants (just/make/uv task quality surfaces remain coherent).
+- When scripts/ci/** changes, PLATFORM runs uv run pytest tests/unit/ci/ (or a documented narrower subset covering the touched modules).
+- When maintainer Python CI scripts change broadly, PLATFORM runs just quality before claiming done.
+- When context runners or agents gates are involved, PLATFORM also runs uv run python scripts/ci/verify_context_sync.py and/or uv run python scripts/ci/validate_agents_ecosystem.py as applicable.
+- Maintainer .github/workflows/** edits happen only when quality/validate-samples/matrix orchestration cannot land via scripts/ci alone; diffs stay minimal.
+- PLATFORM maintains durable operating artifacts under goals/riso-lane-platform/: inbox/ and outbox/ handoff templates plus an operating checklist of ownership, forbidden paths, inbound signals, and verification matrix.
+- First /goal run audits current PLATFORM surfaces for drift: sample answers vs current Copier keys, quality/testing consistency with quality_profile/task_runner, scripts/ci unit coverage gaps, and CI entrypoint smoke — then fixes only proven PLATFORM-owned bugs (handoffs for foreign bugs).
+- Known backlog item: keep samples/*/copier-answers.yml current with COORD-published keys (scan all variants; fix missing/extra/wrong keys without inventing contract).
+- Known backlog item: ensure scripts/ci modules with non-trivial behavior have unit coverage under tests/unit/ci/ (or document intentional gaps).
+- Known backlog item: review and keep template/files/quality and template/files/testing aligned with standard/strict quality profiles and task-runner variants used in samples.
+- PLATFORM does not create branches, worktrees, commits, or pushes unless the human explicitly asks.

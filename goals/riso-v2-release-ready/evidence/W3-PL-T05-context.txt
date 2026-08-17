@@ -1,0 +1,54 @@
+# W3-PL-T05 — context sync + validate-agents
+
+date_utc: 2026-08-13T23:46:18Z
+cwd: /Users/ww/dev/projects/riso
+branch: main
+HEAD: f7951fe62e7c635f3a90d17811d3711c2a2d7c1b
+command: uv run python scripts/ci/verify_context_sync.py ; just validate-agents
+overall_exit: 1
+secrets: none present; no redaction applied
+
+## cmd1: uv run python scripts/ci/verify_context_sync.py
+
+exit: 0
+
+2026-08-13 19:46:18 | INFO     | __main__:main:62 - Context directories are in sync.
+
+context files (both trees, identical names):
+  .github/context/ and template/files/.github/context/
+  astral-sh_uv_llms.txt
+  copier-org_copier_llms.txt
+  Delgan_loguru_llms.txt
+  fastapi-patterns.md
+  jlowin_fastmcp_llms.txt
+  pydantic_pydantic-settings_llms.txt
+  pydantic_pydantic_llms.txt
+  quality.md
+  workflows.md
+
+## cmd2: just validate-agents
+
+exit: 1
+
+▸ Validating AGENTS ecosystem...
+uv run python scripts/ci/validate_agents_ecosystem.py
+agents-ecosystem: all checks passed
+uv run python scripts/ci/check_quality_parity.py
+Quality parity checks passed.
+uv run python scripts/ci/validate_agents_ecosystem.py --render-enabled samples/default/render --render-enabled samples/cli-docs/render --render-enabled samples/full-stack/render --render-disabled samples/ai-tools-off/render
+agents-ecosystem: render missing AGENTS.md: samples/default/render
+agents-ecosystem: render missing AGENTS.md: samples/cli-docs/render
+agents-ecosystem: render missing AGENTS.md: samples/full-stack/render
+agents-ecosystem: render missing AGENTS.md: samples/ai-tools-off/render
+agents-ecosystem: 4 check(s) failed
+error: recipe `validate-agents` failed on line 216 with exit code 1
+
+## notes
+
+- Template-only agents-ecosystem check: pass
+- check_quality_parity.py: pass
+- Render-tree agents check: fail — samples/{default,cli-docs,full-stack,ai-tools-off}/render are absent (no samples/*/render dirs; no samples/metadata/render_matrix.json)
+- agent_smoke_agents_md.py did not run (just recipe stopped after render check)
+- No live render_matrix.py process observed
+- Did not hand-edit samples/*/render/**
+- Residual: goals/riso-v2-release-ready/residuals/PLATFORM.md (PL-T05 R1)

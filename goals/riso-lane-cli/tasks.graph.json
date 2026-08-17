@@ -1,0 +1,124 @@
+{
+  "goalSlug": "riso-lane-cli",
+  "version": 3,
+  "exclusiveWriteRoots": ["src/riso/**", "tests/unit/test_cli/**"],
+  "handoffRoot": "goals/riso-lane-cli/handoffs/**",
+  "baselineCapturedAt": "2026-07-25",
+  "baseline": {
+    "help": { "command": "uv run riso --help", "exit": 0 },
+    "doctorJson": {
+      "command": "uv run riso doctor --json",
+      "exit": 0,
+      "ok": true,
+      "ready": true,
+      "envelopeKeys": ["ok", "command", "data", "errors", "warnings"]
+    },
+    "pytestCli": {
+      "command": "uv run pytest tests/unit/test_cli/ -q",
+      "passed": 54,
+      "failed": 0
+    },
+    "introspect": {
+      "catalogModules": { "ok": true, "command": "riso catalog modules" },
+      "catalogDependencies": { "ok": true, "command": "riso catalog dependencies" },
+      "variantsList": { "ok": true, "command": "riso variants list" },
+      "prompts": { "ok": true, "command": "riso prompts" }
+    },
+    "noMcpInSrcRiso": true
+  },
+  "shards": [
+    "S-OUT", "S-APP", "S-CFG", "S-ERR", "S-PATH", "S-ANS", "S-DIFF", "S-TPL",
+    "S-DOC", "S-VAL", "S-COPY", "S-UPD", "S-RCP", "S-DFC", "S-VAR", "S-CAT",
+    "S-PRM", "S-EXP", "S-HND", "S-VFY"
+  ],
+  "waves": [
+    {
+      "id": "W0",
+      "name": "baseline",
+      "mode": "read-execute",
+      "maxParallel": 12,
+      "tasks": [
+        "C0.01", "C0.02", "C0.03", "C0.04", "C0.05", "C0.06",
+        "C0.07", "C0.08", "C0.09", "C0.10", "C0.11", "C0.12", "C0.13"
+      ]
+    },
+    {
+      "id": "W1",
+      "name": "foundation",
+      "mode": "write-serial-ish",
+      "maxParallel": 2,
+      "tasks": ["C1.01", "C1.02", "C1.03", "C1.04", "C1.05", "C1.06"]
+    },
+    {
+      "id": "W2",
+      "name": "introspect-commands",
+      "mode": "write-parallel",
+      "maxParallel": 6,
+      "tasks": [
+        "C2.D1", "C2.D2", "C2.V0", "C2.V1", "C2.V2",
+        "C2.C1", "C2.C2", "C2.P1", "C2.P2", "C2.R1", "C2.R2",
+        "C2.E1", "C2.E2", "C2.G1", "C2.K1"
+      ]
+    },
+    {
+      "id": "W3",
+      "name": "mutation-commands",
+      "mode": "write-parallel",
+      "maxParallel": 4,
+      "tasks": [
+        "C3.C1", "C3.C2", "C3.U1", "C3.U2",
+        "C3.R1", "C3.R2", "C3.D1", "C3.D2", "C3.A1"
+      ]
+    },
+    {
+      "id": "W4",
+      "name": "coverage",
+      "mode": "write-parallel",
+      "maxParallel": 8,
+      "priorityOrder": [
+        "C4.01", "C4.02", "C4.03", "C4.04", "C4.05", "C4.06",
+        "C4.07", "C4.08", "C4.09", "C4.10", "C4.11", "C4.12"
+      ]
+    },
+    {
+      "id": "W5",
+      "name": "handoffs",
+      "mode": "append-parallel",
+      "tasks": ["H5.01", "H5.02", "H5.03", "H5.04", "H5.05"]
+    },
+    {
+      "id": "W6",
+      "name": "verify",
+      "mode": "serial-lead",
+      "tasks": [
+        "V6.01", "V6.02", "V6.03", "V6.04", "V6.05", "V6.06", "V6.07", "V6.08"
+      ]
+    }
+  ],
+  "recipes": {
+    "A_health": ["C0.01", "C0.02", "C0.03", "C0.09", "V6.01", "V6.02", "V6.03", "V6.08"],
+    "C_coverage_p0": ["C4.01", "C4.02", "C4.03", "V6.03", "V6.08"],
+    "D_ro_day": ["C2.D1", "C2.V1", "C2.C1", "C2.P1", "C2.R1", "C2.E1", "W2-gate"],
+    "E_mutation_day": ["C3.C1", "C3.U1", "C3.R1", "C3.D1", "W3-gate", "W6"]
+  },
+  "p0Gaps": [
+    {
+      "id": "C4.01",
+      "module": "commands/prompts.py",
+      "newTestFile": "tests/unit/test_cli/test_prompts.py",
+      "shard": "S-PRM"
+    },
+    {
+      "id": "C4.02",
+      "module": "commands/variants.py",
+      "newTestFile": "tests/unit/test_cli/test_variants.py",
+      "shard": "S-VAR"
+    },
+    {
+      "id": "C4.03",
+      "module": "commands/recopy.py",
+      "newTestFile": "tests/unit/test_cli/test_recopy.py",
+      "shard": "S-RCP"
+    }
+  ]
+}

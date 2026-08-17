@@ -1,0 +1,173 @@
+{
+  "stage": "interview",
+  "title": "Riso Lane COORD — answers, hooks, macros, catalog, context parity",
+  "goalSlug": "riso-lane-coord",
+  "questions": [
+    {
+      "id": "goal_mode",
+      "prompt": "What should this COORD goal package primarily enable?",
+      "description": "Sibling lane goals are empty; this package will drive /goal runs. Infer from your multi-agent wave model: COORD is Wave 0 serial owner. Pick how much “standing process” vs “apply concrete backlog” this goal should own.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Standing COORD operating protocol: accept structured handoffs, apply smallest coherent contract, document payload handoffs — no fixed feature backlog in this package.",
+      "recommendedOptionIds": ["protocol"],
+      "options": [
+        {
+          "id": "protocol",
+          "label": "Standing protocol only",
+          "description": "Define how COORD applies handoffs and verifies; no specific prompt/catalog batch baked into the goal."
+        },
+        {
+          "id": "protocol_plus_backlog",
+          "label": "Protocol + known backlog",
+          "description": "Same protocol, plus list first concrete contract items to apply when /goal runs."
+        },
+        {
+          "id": "backlog_only",
+          "label": "Concrete backlog only",
+          "description": "Skip process docs; goal is only a specific set of contract changes."
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "handoff_in",
+      "prompt": "How should other lanes request COORD contract changes?",
+      "description": "Codebase has no formal handoff schema yet. COORD must stay serial and not invent payload work. Choose the inbound contract shape.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Structured markdown under goals/<requesting-lane>/handoffs/ or goals/riso-lane-coord/inbox/ with required sections: prompt keys, defaults, when-conditions, hook rules, catalog rows, context snippets, payload follow-ups.",
+      "recommendedOptionIds": ["md_schema"],
+      "options": [
+        {
+          "id": "md_schema",
+          "label": "Markdown handoff schema",
+          "description": "Template sections in goals/; human or agent fills fields; COORD applies."
+        },
+        {
+          "id": "json_schema",
+          "label": "JSON handoff schema",
+          "description": "Machine-checked JSON fields only; stricter, less narrative."
+        },
+        {
+          "id": "ad_hoc",
+          "label": "Ad-hoc chat/PR notes",
+          "description": "No fixed schema; COORD interprets freeform proposals (higher error risk)."
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "handoff_out",
+      "prompt": "Where should COORD publish the contract delta for payload lanes?",
+      "description": "After COORD edits copier/hooks/catalog/context, payload lanes need a clear “implement this, do not re-touch COORD” note.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Write goals/riso-lane-coord/outbox/<change-id>.md (or per-lane handoffs/) listing: answer keys changed, illegal combos now enforced, module_catalog rows, context files, and exact payload paths each lane owns.",
+      "recommendedOptionIds": ["coord_outbox"],
+      "options": [
+        {
+          "id": "coord_outbox",
+          "label": "COORD outbox markdown",
+          "description": "Canonical deltas under goals/riso-lane-coord/outbox/."
+        },
+        {
+          "id": "per_lane",
+          "label": "Per-lane inbox files",
+          "description": "Write directly into goals/riso-lane-{py,node,...}/inbox/."
+        },
+        {
+          "id": "inline_only",
+          "label": "Chat summary only",
+          "description": "No durable file; summarize in session (weaker multi-agent continuity)."
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "gates_boundary",
+      "prompt": "How should COORD treat shared generation_gates under src/riso/core/?",
+      "description": "pre_gen_project.py and post_gen import riso.core.generation_gates (CLI lane write root). Hook wrappers live under template/hooks/ (COORD). This is the main cross-lane boundary risk.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "COORD owns template/hooks validation UX and may add local hook checks; any change to src/riso/core/generation_gates.py is a structured handoff to the CLI lane — COORD never edits src/riso/**.",
+      "recommendedOptionIds": ["handoff_cli"],
+      "options": [
+        {
+          "id": "handoff_cli",
+          "label": "Handoff gates to CLI lane",
+          "description": "COORD does not touch src/riso; proposes gate changes via outbox for CLI."
+        },
+        {
+          "id": "coord_exception",
+          "label": "COORD may edit generation_gates",
+          "description": "Treat generation_gates as COORD-adjacent exception (breaks strict CLI ownership)."
+        },
+        {
+          "id": "duplicate_local",
+          "label": "Duplicate rules in hooks only",
+          "description": "Keep all new rules in pre_gen only; avoid shared gates (drift risk)."
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "verify_bar",
+      "prompt": "What is the default verification bar after applying a handoff?",
+      "description": "Commands exist: verify_context_sync, riso validate, riso prompts, riso catalog, tests/unit/hooks/. Full matrix regen is out of scope unless proving a contract.",
+      "answerMode": "multi-custom",
+      "recommendedAnswer": "Always: context sync if context touched; riso validate on affected sample answers; narrow hook/unit tests when hooks/validators change; optional prompts/catalog smoke. Never full sample matrix unless human asks or contract unprovable otherwise.",
+      "recommendedOptionIds": [
+        "context_if_touched",
+        "validate_samples",
+        "narrow_hook_tests",
+        "prompts_catalog_smoke"
+      ],
+      "options": [
+        {
+          "id": "context_if_touched",
+          "label": "verify_context_sync when context touched"
+        },
+        {
+          "id": "validate_samples",
+          "label": "riso validate on affected sample answers"
+        },
+        {
+          "id": "narrow_hook_tests",
+          "label": "Narrow tests under tests/unit/hooks when hooks change"
+        },
+        {
+          "id": "prompts_catalog_smoke",
+          "label": "riso prompts / riso catalog smoke"
+        },
+        {
+          "id": "full_matrix",
+          "label": "Full render matrix every time (heavy)"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "first_run_scope",
+      "prompt": "On the first /goal run for this package, what should the agent actually do?",
+      "description": "Goal packages for empty lanes often need a bootstrap deliverable. Prefer something durable without inventing product features.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Bootstrap COORD artifacts only: handoff template, outbox template, lane checklist, and a dry-run verification of current context parity + one sample validate — no unsolicited copier.yml churn.",
+      "recommendedOptionIds": ["bootstrap_artifacts"],
+      "options": [
+        {
+          "id": "bootstrap_artifacts",
+          "label": "Bootstrap handoff/outbox templates + dry-run verify",
+          "description": "No contract churn unless an inbox handoff already exists."
+        },
+        {
+          "id": "audit_current",
+          "label": "Audit current contracts for drift",
+          "description": "Scan copier/hooks/catalog/context for known inconsistencies and fix only proven COORD bugs."
+        },
+        {
+          "id": "wait_for_handoffs",
+          "label": "No files until a real handoff arrives",
+          "description": "Goal package is documentation only; first apply waits for another lane."
+        }
+      ],
+      "required": true
+    }
+  ]
+}

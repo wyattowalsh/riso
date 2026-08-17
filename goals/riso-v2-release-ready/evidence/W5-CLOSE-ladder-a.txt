@@ -1,0 +1,67 @@
+=== W5-CLOSE-GOAL-EVIDENCE ladder ===
+utc=2026-08-14T05:34:29Z
+cwd=/Users/ww/dev/projects/riso
+branch=main
+head=f7951fe62e7c635f3a90d17811d3711c2a2d7c1b
+render_matrix_procs=85125
+85145
+85147
+
+=== git tag -l v2.0.0 2.0.0 ===
+tag_exit=0
+
+=== leftover removed keys in sample answers ===
+leftover_rg_exit=1  # 1 means empty (good)
+
+=== leftover removed keys in generated dest answers ===
+dest_leftover_rg_exit=1
+
+=== rg riso-mcp src/riso template ===
+template/files/DESIGN.md.jinja:257:Do not document `mypy`, `mypy.ini`, or `riso-mcp` as defaults. The removed
+template/files/docs/upgrade-guide.md.jinja:188:`riso-mcp`. Do not hand-edit `uv.lock` or `pnpm-lock.yaml`.
+riso_mcp_rg_exit=0
+
+=== check_removed_key_ssot.py ===
+check_removed_key_ssot: 3-way key+op parity
+  core:   src/riso/core/removed_answer_keys.py
+  twin:   scripts/lib/removed_answer_keys.py (_FALLBACK_*)
+  wizard: web/src/lib/removedAnswerKeys.ts
+
+keys (8): api_tracks, api_language, docs_site, mcp_language, saas_starter_module, saas_auth, saas_billing, include_admin
+ops (core):
+    api_tracks: derive -> api_module, api_languages
+    api_language: wrap-list -> api_languages
+    docs_site: derive -> docs_module, docs_framework
+    mcp_language: wrap-list -> mcp_languages
+    saas_starter_module: rename -> saas_infra_module
+    saas_auth: split -> saas_auth_module, saas_auth_provider
+    saas_billing: split -> saas_billing_module, saas_billing_provider
+    include_admin: rename-bool -> saas_admin_dashboard
+
+ok: 3-way key+op parity (core == scripts.lib fallback == web TS)
+ok: sample copier-answers.yml files have zero removed keys
+ssot_exit=0
+
+=== validate_jinja_templates.py template/files ===
+Validated 800 Jinja template(s): all OK
+jinja_exit=0
+
+=== verify_context_sync.py ===
+context_exit=0
+
+=== validate_release_readiness_skill.py ===
+Release readiness skill mirror is valid.
+skill_exit=0
+
+=== validate_workflows.py ===
+workflows_exit=0
+
+=== validate_release_configs.py ===
+release_configs_exit=1
+
+=== skill mirror cmp ===
+IDENTICAL SKILL.md
+IDENTICAL references/no-legacy-answer-policy.md
+IDENTICAL references/release-gates.md
+IDENTICAL references/task-graph.md
+IDENTICAL scripts/collect_release_evidence.py

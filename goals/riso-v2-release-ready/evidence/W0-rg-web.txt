@@ -1,0 +1,251 @@
+W0-T02c — rg 8 removed Copier keys in web/src (presets, store, export, tests)
+===============================================================================
+task:            W0-T02c
+wave:            W0 / group W0A
+lane:            GOAL (write: this file only)
+repo:            /Users/ww/dev/projects/riso
+method:          grep / read_file (no git mutation; no shell)
+verify:          cited
+status:          green — every exact-token hit in web/src is cited below
+
+Keys (plan.taskgraph.json remap_keys / REMOVED_ANSWER_KEYS)
+----------------------------------------------------------
+  1. api_tracks
+  2. api_language          (not api_languages)
+  3. docs_site
+  4. mcp_language          (not mcp_languages)
+  5. saas_starter_module
+  6. saas_auth             (not saas_auth_module / saas_auth_provider)
+  7. saas_billing          (not saas_billing_module / saas_billing_provider)
+  8. include_admin
+
+Exact-token rule
+----------------
+A hit is an identifier or string whose token is one of the eight names
+above, with no extra suffix. Naive substring rg (saas_auth, api_language,
+mcp_language) also matches the *canonical* successors
+(saas_auth_module, api_languages, mcp_languages). Those successors are
+NOT old-key hits; they are listed only in the false-positive note.
+
+Surfaces searched
+-----------------
+  IN SCOPE (mission + plan: web/src presets / store / export / tests)
+    web/src/lib/presets.ts
+    web/src/components/presets/**
+    web/src/lib/store.ts
+    web/src/lib/exportConfig.ts
+    web/src/lib/removedAnswerKeys.ts          (wizard SSOT; names the 8 keys)
+    web/src/lib/configSchemas.ts              (share/preset reject path)
+    web/src/lib/api.ts                        (YAML import reject path)
+    web/src/__tests__/                        (vitest: presets, store, export, SSOT)
+    web/src/data/matrix-data.json
+  ALSO CHECKED (plan WEB lane includes web/tests)
+    web/tests/**                              (Playwright e2e)
+  OUT OF SCOPE (not web/src; not cited as inventory hits)
+    web/public/docs/**                        (generated Sphinx HTML; include_admin
+                                              appears in a research report)
+
+===============================================================================
+A. EXACT-TOKEN HITS (cite)
+===============================================================================
+
+A1. SSOT — web/src/lib/removedAnswerKeys.ts
+    All eight keys live here as the wizard dict (replacement *prose*, not remap ops).
+    Parity comment L3: keep in parity with src/riso/core/removed_answer_keys.py.
+    Helpers findRemovedAnswerKeys / formatRemovedAnswerKeyErrors *reject* leftovers;
+    there is no apply/remap function yet (WEB-T01).
+
+    L5:  api_tracks: '`api_module` plus `api_languages`',
+    L6:  api_language: '`api_languages`',
+    L7:  docs_site: '`docs_module` plus `docs_framework`',
+    L8:  mcp_language: '`mcp_languages`',
+    L9:  saas_starter_module: '`saas_infra_module`',
+    L10: saas_auth: '`saas_auth_module` plus `saas_auth_provider`',
+    L11: saas_billing: '`saas_billing_module` plus `saas_billing_provider`',
+    L12: include_admin: '`saas_admin_dashboard`',
+
+A2. SSOT test — web/src/__tests__/removedAnswerKeys.test.ts
+    Fixture list PYTHON_REMOVED_KEYS (L4–12) + length/set assertions (L16–23).
+    These are *name* citations, not live Copier answers.
+
+    L5:  'api_tracks',
+    L6:  'api_language',
+    L7:  'docs_site',
+    L8:  'mcp_language',
+    L9:  'saas_starter_module',
+    L10: 'saas_auth',
+    L11: 'saas_billing',
+    L12: 'include_admin',
+
+A3. Preset import test — web/src/__tests__/presets.test.ts
+    Only old key used in a fixture: api_tracks.
+    Test expects importPresetYAML to *throw* (reject, not remap).
+
+    L371–377:
+      it('rejects removed Copier answer keys', () => {
+        const yaml = `
+      name: Legacy Preset
+      config:
+        api_tracks: python+node
+      `
+        expect(() => importPresetYAML(yaml)).toThrow(/api_tracks/)
+      })
+
+    Other keys in this file (api_languages, etc.) are canonical successors, not hits.
+
+A4. Share-payload schema test — web/src/__tests__/configSchemas.test.ts
+    Only old key used in a fixture: api_tracks.
+    parseShareConfigPayload({ api_tracks: 'python' }) must fail.
+
+    L8–10:
+      it('rejects share payloads with removed answer keys', () => {
+        const result = parseShareConfigPayload({ api_tracks: 'python' })
+        expect(result.success).toBe(false)
+      })
+
+A5. Per-key exact-token tally (web/src + web/tests)
+
+    key                    hits   files
+    ---------------------  -----  ------------------------------------------------
+    api_tracks             4      removedAnswerKeys.ts:5
+                                  removedAnswerKeys.test.ts:5
+                                  presets.test.ts:375,377
+                                  configSchemas.test.ts:9
+    api_language           2      removedAnswerKeys.ts:6
+                                  removedAnswerKeys.test.ts:6
+    docs_site              2      removedAnswerKeys.ts:7
+                                  removedAnswerKeys.test.ts:7
+    mcp_language           2      removedAnswerKeys.ts:8
+                                  removedAnswerKeys.test.ts:8
+    saas_starter_module    2      removedAnswerKeys.ts:9
+                                  removedAnswerKeys.test.ts:9
+    saas_auth              2      removedAnswerKeys.ts:10
+                                  removedAnswerKeys.test.ts:10
+    saas_billing           2      removedAnswerKeys.ts:11
+                                  removedAnswerKeys.test.ts:11
+    include_admin          2      removedAnswerKeys.ts:12
+                                  removedAnswerKeys.test.ts:12
+
+    Total exact-token occurrences in web/src: 19
+    Total exact-token occurrences in web/tests: 0
+
+===============================================================================
+B. EMPTY SURFACES (no exact-token old keys) — still cited
+===============================================================================
+
+B1. store — web/src/lib/store.ts
+    ZERO exact old keys.
+    RisoConfig + defaultConfig use successors only:
+      api_languages          (L25, L225)     not api_language / api_tracks
+      mcp_languages          (L30, L230)     not mcp_language
+      docs_module + docs_framework (L33–34, L233–234)  not docs_site
+      saas_infra_module      (L113, L312)    not saas_starter_module
+      saas_auth_module + saas_auth_provider  (L121–122, L320–321)  not saas_auth
+      saas_billing_module + saas_billing_provider (L126–127, L325–326)  not saas_billing
+      include_admin: absent
+      dest saas_admin_dashboard: also absent from RisoConfig / defaultConfig
+
+    Default task_runner is already canonical `just` (L213).
+
+B2. store tests — web/src/__tests__/store.test.ts
+    ZERO exact old keys. Fixtures use api_module / api_languages / saas_infra_module.
+
+B3. export — web/src/lib/exportConfig.ts
+    ZERO exact old keys.
+    configToCopierArgs / assignSaasOptions emit only successors:
+      api_languages          (L173)
+      mcp_languages          (L181–182)
+      docs_module + docs_framework (L186–188)
+      saas_infra_module      (L95)
+      saas_auth_module + saas_auth_provider (L105–107)
+      saas_billing_module + saas_billing_provider (L111–113)
+    No api_tracks, api_language, docs_site, mcp_language, saas_starter_module,
+    saas_auth, saas_billing, or include_admin is assigned onto CopierArgs.
+
+B4. export tests — web/src/__tests__/exportConfig.test.ts
+    ZERO exact old keys. L41 uses api_languages (canonical).
+
+B5. built-in presets data — web/src/components/presets/presets.tsx
+    ZERO exact old keys.
+    Catalog configs use api_languages / mcp_languages / saas_infra_module /
+    saas_auth_module / saas_billing_module (e.g. L134, L268, L489, L494, L496,
+    L631, L636, L638).
+
+B6. presets helper — web/src/lib/presets.ts
+    ZERO exact old-key *literals*.
+    Reject-only wiring (imports SSOT helper; does not name the eight keys):
+      L3:   import { formatRemovedAnswerKeyErrors } from './removedAnswerKeys'
+      L87:  const removedKeyErrors = formatRemovedAnswerKeyErrors(parsed)
+      L88–91: throw if top-level YAML has a removed key
+      L94:  const configErrors = formatRemovedAnswerKeyErrors(config)
+      L95–98: throw if config: block has a removed key
+    No apply/remap. importPresetYAML fail-closes (see A3).
+
+B7. share/preset schema — web/src/lib/configSchemas.ts
+    ZERO exact old-key *literals*.
+    Reject-only via findRemovedAnswerKeys:
+      L2:  import { findRemovedAnswerKeys } from './removedAnswerKeys'
+      L9–15: rejectRemovedKeys adds Zod issue `Removed answer key: ${key}`
+      L19–23: shareConfigSchema.superRefine(rejectRemovedKeys)
+    parseShareConfigPayload therefore fails closed (see A4). No remap.
+
+B8. YAML import (wizard API) — web/src/lib/api.ts
+    ZERO exact old-key *literals*.
+    importConfig L112–117: formatRemovedAnswerKeyErrors then throw.
+    exportConfig L100–103: stringify(config) as given — callers must already
+    be on RisoConfig (canonical). No old-key emission in this helper.
+
+B9. matrix data — web/src/data/matrix-data.json
+    ZERO exact old keys.
+    Canonical dest include_admin → saas_admin_dashboard is present
+    (e.g. L293, L1357, L1944) — successor only.
+
+B10. Playwright — web/tests/e2e/{smoke,wizard}.spec.ts
+     ZERO exact old keys. WEB-T06 (remap happy-path + leftover error) not started.
+
+===============================================================================
+C. REJECT WIRING (related, not extra key literals)
+===============================================================================
+Today the wizard *rejects* the eight keys; it does not apply remaps.
+
+  removedAnswerKeys.ts     SSOT + find/format (reject leftovers)
+  presets.ts               importPresetYAML apply? NO — reject then throw
+  configSchemas.ts         share + custom-preset storage reject
+  api.ts                   importConfig reject
+  tests                    only api_tracks is used as a live fixture (A3, A4);
+                           the other seven keys are named only in the SSOT test
+
+W1/WEB-T01 still need remapRemovedAnswerKeys + apply-then-reject.
+W0-T02c does not implement that.
+
+===============================================================================
+D. NAIVE-SUBSTRING FALSE POSITIVES (do not treat as old-key hits)
+===============================================================================
+These files match a loose rg of saas_auth|saas_billing|api_language|mcp_language
+because they use the *canonical* successors. Confirmed not exact old keys:
+
+  web/src/lib/store.ts
+  web/src/lib/exportConfig.ts
+  web/src/lib/validation.ts
+  web/src/lib/useValidation.ts
+  web/src/lib/dependencies.ts
+  web/src/lib/search.ts
+  web/src/components/steps/ReviewOutput.tsx
+  web/src/components/presets/presets.tsx
+  web/src/__tests__/validation.test.ts
+  web/src/__tests__/exportConfig.test.ts
+  web/src/__tests__/store.test.ts
+  web/src/__tests__/presets.test.ts   (aside from A3 api_tracks fixture)
+
+===============================================================================
+E. VERDICT
+===============================================================================
+  exact old-key literals in production preset/store/export config objects:  NONE
+  exact old-key literals in wizard SSOT (removedAnswerKeys.ts):             all 8
+  exact old-key literals in tests:  all 8 (SSOT parity) + api_tracks reject
+                                    fixtures in presets.test.ts and
+                                    configSchemas.test.ts
+  remap/apply in web/src:           ABSENT (reject-only)
+  web/tests e2e old keys:           NONE
+
+W0-T02c verify (cited) is met.
