@@ -84,9 +84,10 @@ run_module_smoke_tests() {
   local log_path
   log_path="$(dirname "${answers_file}")/smoke-results.json"
 
-  uv run python - "$variant" "$answers_file" "$destination" "$log_path" <<'PY'
+  uv run python - "$variant" "$answers_file" "$destination" "$log_path" "${REPO_ROOT}" <<'PY'
 import glob
 import json
+import os
 import subprocess
 import sys
 import time
@@ -95,7 +96,10 @@ from pathlib import Path
 
 import yaml
 
-variant, answers_path, destination, log_path = sys.argv[1:5]
+variant, answers_path, destination, log_path, repo_root = sys.argv[1:6]
+if repo_root not in sys.path:
+    sys.path.insert(0, repo_root)
+from scripts.lib.sphinx_smoke import sphinx_linkcheck_command
 answers_file = Path(answers_path)
 destination_path = Path(destination)
 
@@ -169,7 +173,8 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
     elif docs_enabled and docs_framework == "sphinx-shibuya":
         docs_cwd = python_cwd
         if python_cwd and (python_cwd / "docs").exists():
-            docs_command = ["uv", "run", "make", "linkcheck"]
+            task_runner = str(config.get("task_runner") or "just")
+            docs_command = sphinx_linkcheck_command(python_cwd, task_runner)
             docs_reason = "Sphinx Shibuya link check configured."
         else:
             docs_command = None
@@ -330,6 +335,8 @@ def run_command(cmd: list[str], cwd: Path | None = None) -> tuple[str, dict[str,
     start_time = time.time()
     workdir = cwd or destination_path
     cmd = expand_command(cmd, workdir)
+    child_env = os.environ.copy()
+    child_env.pop("VIRTUAL_ENV", None)
     try:
         proc = subprocess.run(
             cmd,
@@ -337,6 +344,7 @@ def run_command(cmd: list[str], cwd: Path | None = None) -> tuple[str, dict[str,
             check=True,
             capture_output=True,
             text=True,
+            env=child_env,
         )
     except FileNotFoundError as exc:
         duration = time.time() - start_time
@@ -535,6 +543,7 @@ bootstrap_render_dependencies() {
   local python_dir=""
   local node_dir=""
   local status_file="${destination}/.riso/bootstrap-status.json"
+  local failed=0
 
   mkdir -p "${destination}/.riso"
   echo '{}' > "${status_file}"
@@ -551,9 +560,14 @@ bootstrap_render_dependencies() {
     if grep -Eq '^cli_module:[[:space:]]*enabled' "${answers_file}"; then
       sync_groups+=(--group cli)
     fi
-    if ! (cd "${python_dir}" && uv sync "${sync_groups[@]}"); then
+    if grep -Eq '^api_module:[[:space:]]*enabled' "${answers_file}" \
+      && grep -Eq '(^[[:space:]]*-[[:space:]]*python[[:space:]]*$|^api_languages:[[:space:]]*\[.*python)' "${answers_file}"; then
+      sync_groups+=(--group api_python --group api_python_test)
+    fi
+    if ! (cd "${python_dir}" && env -u VIRTUAL_ENV uv sync "${sync_groups[@]}"); then
       log "ERROR: uv sync failed for ${python_dir}"
       write_bootstrap_error "${status_file}" "python_bootstrap" "uv sync failed for ${python_dir}"
+      failed=1
     else
       log "Normalizing rendered Python style in ${python_dir}"
       (cd "${python_dir}" && uv run --group quality ruff format . >/dev/null 2>&1) || true
@@ -576,8 +590,11 @@ bootstrap_render_dependencies() {
     if ! (cd "${node_dir}" && pnpm install); then
       log "ERROR: pnpm install failed for ${node_dir}"
       write_bootstrap_error "${status_file}" "node_bootstrap" "pnpm install failed for ${node_dir}"
+      failed=1
     fi
   fi
+
+  return "${failed}"
 }
 
 validate_render_paths() {
@@ -585,7 +602,7 @@ validate_render_paths() {
   local answers_file="$2"
   local destination="$3"
 
-  if [[ ! "${variant}" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]]; then
+  if [[ ! "${variant}" =~ ^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$ ]]; then
     log "ERROR: Invalid variant name: ${variant}"
     exit 1
   fi
@@ -639,7 +656,17 @@ render_variant() {
     --force \
     "${REPO_ROOT}/template" \
     "${destination}"
-  bootstrap_render_dependencies "${destination}" "${answers_file}"
+  if [[ -f "${destination}/mise.toml" ]] && command -v mise >/dev/null 2>&1; then
+    if ! mise trust "${destination}/mise.toml"; then
+      log "WARNING: mise trust failed for ${destination}/mise.toml"
+    fi
+    # Directory-level trust so `just`/`uv` launched from python/ still accept dest mise.toml.
+    mise trust "${destination}" >/dev/null 2>&1 || true
+  fi
+  if ! bootstrap_render_dependencies "${destination}" "${answers_file}"; then
+    log "ERROR: bootstrap failed for variant '${variant}'"
+    exit 1
+  fi
   if ! run_module_smoke_tests "${variant}" "${answers_file}" "${destination}"; then
     log "Smoke tests failed for variant '${variant}'"
     exit 1
