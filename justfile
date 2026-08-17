@@ -77,7 +77,7 @@ docs: install-docs
 [group("docs")]
 docs-build: install-docs
     @printf '\033[34m▸ Building documentation...\033[0m\n'
-    uv run sphinx-build -b html docs docs/_build
+    uv run --group docs sphinx-build -W -b html docs docs/_build
     @printf '\033[32m✓ Docs built at docs/_build/index.html\033[0m\n'
 
 [group("docs")]
@@ -95,8 +95,17 @@ docs-linkcheck: install-docs
 # ── Code quality ──────────────────────────────────────────────────────────────
 
 [group("quality")]
-quality: lint typecheck test
+quality: lint typecheck test ssot
     @printf '\033[32m✓ All quality checks passed\033[0m\n'
+
+[group("quality")]
+ssot:
+    @printf '\033[34m▸ Checking removed-key SSOT + sample leftovers...\033[0m\n'
+    uv run python scripts/ci/check_removed_key_ssot.py
+    @printf '\033[32m✓ SSOT parity passed\033[0m\n'
+
+[group("quality")]
+ci-ssot: ssot
 
 [group("quality")]
 lint:
