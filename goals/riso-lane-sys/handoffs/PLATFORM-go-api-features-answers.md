@@ -1,7 +1,7 @@
 # PLATFORM/COORD handoff: `api_features` multiselect shape (go-api sample)
 
-**From:** SYS lane  
-**To:** PLATFORM (answers) / COORD (schema if needed)  
+**From:** SYS lane
+**To:** PLATFORM (answers) / COORD (schema if needed)
 **Priority:** P2 (was P1; current validate is green)
 
 ## Context

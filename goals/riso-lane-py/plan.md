@@ -16,11 +16,11 @@
 
 ## 1. Goal & non-negotiables
 
-**Write root:** `template/files/python/**` only.  
-**Also allowed:** `goals/riso-lane-py/**` (handoffs, scratch, this plan).  
-**Never write:** copier/hooks/macros/module_catalog, other language trees, samples/**, src/riso/**, web/**, lockfiles, secrets.  
-**Git:** no branch/worktree/commit/push unless human asks.  
-**Python:** `uv run` only.  
+**Write root:** `template/files/python/**` only.
+**Also allowed:** `goals/riso-lane-py/**` (handoffs, scratch, this plan).
+**Never write:** copier/hooks/macros/module_catalog, other language trees, samples/**, src/riso/**, web/**, lockfiles, secrets.
+**Git:** no branch/worktree/commit/push unless human asks.
+**Python:** `uv run` only.
 **Keys:** never invent; handoff to COORD at `goals/riso-lane-py/handoffs/`.
 
 **Facts:** [`facts.md`](./facts.md) — mission = health + harden + targeted; all surfaces in scope; standard verify = Jinja + `riso validate` + narrow pytest.
@@ -132,10 +132,10 @@ INTEG    → pyproject.toml.jinja, justfile.jinja, Makefile.jinja,
 
 Treat `pyproject.toml.jinja` as ordered sections; apply proposals in this order only:
 
-1. `[project]` metadata / requires-python  
-2. `[project.scripts]` / entry-points (CLI, codegen)  
-3. `[dependency-groups]` — merge keys alphabetically within group; never delete a group another surface needs  
-4. `[tool.*]` (pytest, taskipy, ty)  
+1. `[project]` metadata / requires-python
+2. `[project.scripts]` / entry-points (CLI, codegen)
+3. `[dependency-groups]` — merge keys alphabetically within group; never delete a group another surface needs
+4. `[tool.*]` (pytest, taskipy, ty)
 5. `[tool.setuptools.*]` (MCP vs non-MCP branches)
 
 Each proposal must list: **section**, **diff intent**, **gates**, **surface**.
@@ -377,12 +377,12 @@ uv run pytest tests/integration/test_template_rendering.py \
 
 ## 8. Recovery ladder
 
-1. **Syntax fail (T3.1)** → owning surface re-opens Wave 1 for that path only.  
-2. **validate fail, message points at python Jinja** → same.  
-3. **validate fail, missing key / hook / exclude** → stop writing payload; T4.1 COORD handoff.  
-4. **validate fail, sample answers** → PLATFORM handoff (e.g. `api_features` encoding).  
-5. **pytest fail in task_runner** → may need QUAL read + CORE/INTEG; still no writes outside python/.  
-6. **Agent thrash on pyproject** → freeze surfaces; only INTEG edits; re-queue proposals.  
+1. **Syntax fail (T3.1)** → owning surface re-opens Wave 1 for that path only.
+2. **validate fail, message points at python Jinja** → same.
+3. **validate fail, missing key / hook / exclude** → stop writing payload; T4.1 COORD handoff.
+4. **validate fail, sample answers** → PLATFORM handoff (e.g. `api_features` encoding).
+5. **pytest fail in task_runner** → may need QUAL read + CORE/INTEG; still no writes outside python/.
+6. **Agent thrash on pyproject** → freeze surfaces; only INTEG edits; re-queue proposals.
 7. **Budget exhausted** → ship P0 health (T0 + T3.1 + T3.2 + critical API/CLI) + handoffs for rest.
 
 ---
@@ -422,23 +422,23 @@ Output: files touched, residual defects, proposals under goals/riso-lane-py/scra
 
 Likely early handoffs (hypotheses, not yet proven):
 
-1. Normalize `api_features` in **hook** context to a list (align with `normalize_api_features`) — COORD  
-2. Add/ensure sample with GraphQL for PLATFORM matrix — PLATFORM  
-3. Any `_exclude` miss discovered in T0.4 — COORD  
+1. Normalize `api_features` in **hook** context to a list (align with `normalize_api_features`) — COORD
+2. Add/ensure sample with GraphQL for PLATFORM matrix — PLATFORM
+3. Any `_exclude` miss discovered in T0.4 — COORD
 
 ---
 
 ## 12. Done checklist
 
-- [x] Write root honored  
-- [x] T3.1 green  
-- [x] T3.2–T3.6 green or handoffs  
-- [x] T3.7 green or handoffs  
-- [x] Dual-gates preserved  
-- [x] No invented keys  
-- [x] Handoffs complete  
-- [x] facts.md satisfied  
-- [x] No unauthorized git/lock/secret/render edits  
+- [x] Write root honored
+- [x] T3.1 green
+- [x] T3.2–T3.6 green or handoffs
+- [x] T3.7 green or handoffs
+- [x] Dual-gates preserved
+- [x] No invented keys
+- [x] Handoffs complete
+- [x] facts.md satisfied
+- [x] No unauthorized git/lock/secret/render edits
 
 ## Deviations
 

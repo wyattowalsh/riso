@@ -1,6 +1,6 @@
 # Residuals — SAAS lane (W2)
 
-**Status:** none blocking  
+**Status:** none blocking
 **Date:** 2026-07-28
 
 No owned residual blocks W2-SAAS closeout.

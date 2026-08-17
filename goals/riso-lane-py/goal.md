@@ -14,11 +14,11 @@ See [`plan.md`](./plan.md) (Plannotator-approved). Parallel sub-lanes with seria
 
 ## Done when
 
-- Jinja under `template/files/python/**` is valid for relevant answer combinations  
-- Feature-gated content is correct when enabled and does not break when siblings are off  
-- Verification: `validate_jinja_templates.py` + `riso validate` on python-heavy samples + narrow maintainer pytest  
-- COORD handoffs listed for any contract gaps  
-- No writes outside `template/files/python/**` (except this goal package)  
+- Jinja under `template/files/python/**` is valid for relevant answer combinations
+- Feature-gated content is correct when enabled and does not break when siblings are off
+- Verification: `validate_jinja_templates.py` + `riso validate` on python-heavy samples + narrow maintainer pytest
+- COORD handoffs listed for any contract gaps
+- No writes outside `template/files/python/**` (except this goal package)
 - No unauthorized git ops, lockfile edits, secrets, or hand-edits of `samples/*/render/`
 
 ## Launch

@@ -1,8 +1,8 @@
 # PLATFORM handoff: optional `samples/rust-*` answer files
 
-**From:** SYS lane  
-**To:** PLATFORM  
-**Priority:** P1  
+**From:** SYS lane
+**To:** PLATFORM
+**Priority:** P1
 
 ## Problem
 

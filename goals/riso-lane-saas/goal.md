@@ -10,7 +10,7 @@ This is a **payload lane package** for multi-agent execution, not a new product-
 
 Accepted facts: [`facts.md`](./facts.md) (metadata: [`facts.meta.json`](./facts.meta.json)).
 
-Interview provenance: [`interview.json`](./interview.json) → [`interview-result.json`](./interview-result.json)  
+Interview provenance: [`interview.json`](./interview.json) → [`interview-result.json`](./interview-result.json)
 (facts review: [`facts-review.json`](./facts-review.json) → [`facts-result.json`](./facts-result.json)).
 
 ### Interview decisions (locked)

@@ -333,8 +333,8 @@ RETURN: summary, files touched, residual risks, handoffs filed
 
 ## 6. Done when
 
-- Enum deep features coherent on electron-vite + tauri  
-- COORD handoffs filed (forge, exclusions, non-enum)  
-- Validate both samples + jinja green  
-- Optional render smoke without hand-edited renders  
+- Enum deep features coherent on electron-vite + tauri
+- COORD handoffs filed (forge, exclusions, non-enum)
+- Validate both samples + jinja green
+- Optional render smoke without hand-edited renders
 - Diff only under `electron/**`, `tauri/**`, and `goals/riso-lane-desktop/**`

@@ -282,7 +282,7 @@ flowchart TB
 | **W5.T4** | A_GATE | R | `uv run python scripts/ci/verify_context_sync.py` | classify COORD vs ok |
 | **W5.T5** | A_GATE | R | `uv run python scripts/ci/validate_agents_ecosystem.py` | classify |
 
-**Untested modules (current inventory):**  
+**Untested modules (current inventory):**
 `run_quality_suite`, `generate_matrix_data`, `verify_version_sync`, `validate_jinja_templates`, `validate_saas_combinations`, `run_baseline_quickstart`, `bump_template_npm_deps`, `sync_template_shadcn_components`.
 
 **First-run coverage pack (required progress):** first three in list.
@@ -430,7 +430,7 @@ If `MATRIX_REQUIRED=false`, skip W8.T2–T5 unless human asks or a fix is unprov
 | Agents | `uv run python scripts/ci/validate_agents_ecosystem.py` |
 | Workflows | `uv run python scripts/ci/validate_workflows.py` |
 
-Single-variant render (debug only, not a substitute for full matrix policy):  
+Single-variant render (debug only, not a substitute for full matrix policy):
 `./scripts/render-samples.sh --variant NAME --answers samples/NAME/copier-answers.yml`
 
 ---
@@ -489,39 +489,39 @@ Prefer writing under goals/riso-lane-platform/audit/ only.
 
 ## 10. Definition of done (first `/goal`)
 
-1. Ops artifacts + audit report exist.  
-2. Answers: all `PLATFORM_FIX` applied; validates green; `COORD_HANDOFF` outboxed.  
-3. `MATRIX_REQUIRED` honored with full `render_matrix.py` when true.  
-4. Quality parity green or PY handoff.  
-5. Coverage pack progressed (3 modules or documented).  
-6. Foreign issues only as outbox.  
-7. No hand-edited renders; no foreign tree edits; no unsolicited git mutation.  
-8. Wave E commands run as applicable.  
+1. Ops artifacts + audit report exist.
+2. Answers: all `PLATFORM_FIX` applied; validates green; `COORD_HANDOFF` outboxed.
+3. `MATRIX_REQUIRED` honored with full `render_matrix.py` when true.
+4. Quality parity green or PY handoff.
+5. Coverage pack progressed (3 modules or documented).
+6. Foreign issues only as outbox.
+7. No hand-edited renders; no foreign tree edits; no unsolicited git mutation.
+8. Wave E commands run as applicable.
 9. Every `facts.md` line evidenced or explicitly deferred.
 
 ---
 
 ## 11. INTEGRATOR runbook (first 15 minutes)
 
-1. Load `plan.taskgraph.json` concurrency + shard maps.  
-2. Spawn OPS (W0) + PROBE inventory (W1) in parallel.  
-3. On A_GATE: spawn W2 validate fanout (**max 8** concurrent), W3, W4, W5, W6.  
-4. Freeze `FIX_LIST.json` (§0.2); spawn W7A shards (≤6) + W7B + W7C + W7D×3 + W7E.  
-5. Sole owner of W8 matrix (`maxConcurrency.matrix = 1`).  
+1. Load `plan.taskgraph.json` concurrency + shard maps.
+2. Spawn OPS (W0) + PROBE inventory (W1) in parallel.
+3. On A_GATE: spawn W2 validate fanout (**max 8** concurrent), W3, W4, W5, W6.
+4. Freeze `FIX_LIST.json` (§0.2); spawn W7A shards (≤6) + W7B + W7C + W7D×3 + W7E.
+5. Sole owner of W8 matrix (`maxConcurrency.matrix = 1`).
 6. W9 gates → W10 audit → stop.
 
-**Do not** start matrix until answers shards re-validate.  
-**Do not** open a second matrix agent.  
+**Do not** start matrix until answers shards re-validate.
+**Do not** open a second matrix agent.
 **Do not** exceed taskgraph concurrency caps without human override.
 
 ## 12. Parallelism proof checklist (for gate reviewers)
 
-- [x] Machine-readable DAG: `plan.taskgraph.json`  
-- [x] Explicit locks for every write class  
-- [x] 24-way read validate + 6-way answer write shards  
-- [x] 3-way CI module coverage pack in parallel  
-- [x] Serial matrix + serial workflow glue  
-- [x] Subagent briefs + recovery ladder  
-- [x] FIX_LIST schema + per-script inventory  
-- [x] Mermaid wave graph  
+- [x] Machine-readable DAG: `plan.taskgraph.json`
+- [x] Explicit locks for every write class
+- [x] 24-way read validate + 6-way answer write shards
+- [x] 3-way CI module coverage pack in parallel
+- [x] Serial matrix + serial workflow glue
+- [x] Subagent briefs + recovery ladder
+- [x] FIX_LIST schema + per-script inventory
+- [x] Mermaid wave graph
 - [x] Foreign ownership router (investigate any red CI, never foreign edits)

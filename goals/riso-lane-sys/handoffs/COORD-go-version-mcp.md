@@ -1,8 +1,8 @@
 # COORD handoff: `go_version` when-clause should include MCP
 
-**From:** SYS lane  
-**To:** COORD  
-**Priority:** P1  
+**From:** SYS lane
+**To:** COORD
+**Priority:** P1
 
 ## Problem
 

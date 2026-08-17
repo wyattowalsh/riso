@@ -45,9 +45,9 @@ Handoff follow-through: `exclude-empty-dirs` (W1-H04 + PY-T09), GraphQL dual-gat
 
 ## COORD outbox paths to read
 - `goals/riso-lane-coord/outbox/` (especially empty-dirs + api-features deltas after W1)
-- Lane handoffs (already filed):  
-  - `goals/riso-lane-py/handoffs/exclude-empty-dirs.md`  
-  - `goals/riso-lane-py/handoffs/api-features-normalize.md`  
+- Lane handoffs (already filed):
+  - `goals/riso-lane-py/handoffs/exclude-empty-dirs.md`
+  - `goals/riso-lane-py/handoffs/api-features-normalize.md`
   - `goals/riso-lane-py/handoffs/graphql-sample-coverage.md` (answers = PLATFORM)
 
 ## Dirty paths assigned

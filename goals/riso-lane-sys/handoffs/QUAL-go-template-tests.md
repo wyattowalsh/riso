@@ -1,12 +1,12 @@
 # QUAL handoff: maintainer `tests/unit/test_go_templates.py` is outside SYS write root
 
-**From:** SYS lane  
-**To:** QUAL / maintainer  
-**Priority:** P3  
+**From:** SYS lane
+**To:** QUAL / maintainer
+**Priority:** P3
 
 ## Context
 
-SYS exclusive write roots are `template/files/go/**` and `template/files/rust/**`.  
+SYS exclusive write roots are `template/files/go/**` and `template/files/rust/**`.
 `tests/unit/test_go_templates.py` remains the maintainer gate for Go templates and **passed** after SYS changes (42 tests).
 
 ## Notable template changes tests should keep covering

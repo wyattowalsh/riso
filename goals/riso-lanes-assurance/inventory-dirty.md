@@ -345,4 +345,3 @@ Status codes: `M` modified tracked · `D` deleted tracked · `??` untracked.
 - Multi-owned paths: `0`
 
 Evidence: [`evidence/W0-T03-inventory.md`](./evidence/W0-T03-inventory.md)
-

@@ -95,8 +95,8 @@ Shadcn UI primitives are further excluded by COORD `_exclude` rows when `saas_ui
 | storage | r2, supabase-storage |
 | cicd | github-actions, cloudflare-ci |
 
-**Error rule SAAS templates must respect:** neon + supabase-storage incompatible.  
-**Required rule:** billing implies auth.  
+**Error rule SAAS templates must respect:** neon + supabase-storage incompatible.
+**Required rule:** billing implies auth.
 **Sample answers (PLATFORM-owned, 11 variants):** all-in-one, b2b-teams-full, b2c-consumer-app, edge-optimized, enterprise-ready, nextjs-vercel-neon-clerk, nextjs-vercel-neon-clerk-workos, nextjs-vercel-supabase-clerk, prelaunch-waitlist, remix-cloudflare-neon-drizzle, vercel-starter.
 
 ### COORD handoff template
@@ -403,7 +403,7 @@ uv run riso validate --answers-file samples/saas-starter/remix-cloudflare-neon-d
 
 ## Done condition
 
-1. Waves 0–7 complete (or residual only non-owned, documented in handoffs).  
-2. Strict matrix + combination + jinja pass **or** remaining failures exclusively require COORD/PLATFORM.  
-3. `git status` shows no forbidden-path writes.  
+1. Waves 0–7 complete (or residual only non-owned, documented in handoffs).
+2. Strict matrix + combination + jinja pass **or** remaining failures exclusively require COORD/PLATFORM.
+3. `git status` shows no forbidden-path writes.
 4. `handoffs/` lists any contract gaps.

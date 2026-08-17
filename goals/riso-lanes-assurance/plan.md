@@ -16,7 +16,7 @@ Integrator over eight exclusive-write lanes. Source of truth for ownership/facts
 
 **Git:** atomic conventional commits OK without further ask; no force-push; no secrets; lockfiles via package managers only.
 
-Companion machine graph: [`plan.taskgraph.json`](./plan.taskgraph.json)  
+Companion machine graph: [`plan.taskgraph.json`](./plan.taskgraph.json)
 Grok prompt packs: [`grok-context/`](./grok-context/) (generated in W0)
 
 ---
@@ -44,8 +44,8 @@ IDs are stable. `deps` must complete before start. `parallel_group` tasks may ru
 
 ### Legend
 
-- **agent:** recommended subagent type / grok isolation  
-- **lock:** exclusive write paths for that leaf  
+- **agent:** recommended subagent type / grok isolation
+- **lock:** exclusive write paths for that leaf
 - **verify:** concrete green command(s)
 
 ---
@@ -241,10 +241,10 @@ Shortest parallel payload (CLI/DESKTOP) should finish early and free agents for 
 
 ### Principles
 
-1. **One leaf task = one `grok -p` (or subagent) with exclusive lock list**  
-2. **Worktrees for write-heavy payload lanes** (`isolation=worktree` / `grok` worktree) when available; merge only at join  
-3. **Context packs are short and path-scoped** — never dump full monorepo  
-4. **Parent retains synthesis** of ASSURANCE.md and residual policy  
+1. **One leaf task = one `grok -p` (or subagent) with exclusive lock list**
+2. **Worktrees for write-heavy payload lanes** (`isolation=worktree` / `grok` worktree) when available; merge only at join
+3. **Context packs are short and path-scoped** — never dump full monorepo
+4. **Parent retains synthesis** of ASSURANCE.md and residual policy
 
 ### Context pack schema (`grok-context/<lane>.md`)
 
@@ -282,17 +282,17 @@ grok -p "$(cat goals/riso-lanes-assurance/grok-context/PY.md)"
 
 For hyperfine leaves inside a lane (e.g. SYS-GO-02 vs SYS-RS-02), spawn children with **only** the sub-lock:
 
-- SYS-GO-* → `template/files/go/**`  
-- SYS-RS-* → `template/files/rust/**`  
+- SYS-GO-* → `template/files/go/**`
+- SYS-RS-* → `template/files/rust/**`
 
 SAAS integration batches S4 may use up to 4 concurrent agents if each owns distinct directories under `node/saas/integrations/**` and none touch `package.json.jinja` (package.json owner = SAAS-T01/T10 only).
 
 ### Parent harness rules (Grok / Claude / Codex)
 
-- Preflight: `bash skills/grok-delegate/scripts/preflight.sh` when using grok-delegate  
-- Tier-T trivial leaves only for ≤3 reads or ≤1 edit ≤80 LOC; this goal is mostly multi-node → **full lane leaders**, not Tier-T  
-- Same-file → serial; disjoint → parallel  
-- After each wave join, parent updates `handoffs-board.md` and `evidence/`  
+- Preflight: `bash skills/grok-delegate/scripts/preflight.sh` when using grok-delegate
+- Tier-T trivial leaves only for ≤3 reads or ≤1 edit ≤80 LOC; this goal is mostly multi-node → **full lane leaders**, not Tier-T
+- Same-file → serial; disjoint → parallel
+- After each wave join, parent updates `handoffs-board.md` and `evidence/`
 
 ### Evidence capture convention
 
@@ -353,11 +353,11 @@ Failure policy: **green or owned residual with evidence** — no silent matrix s
 
 ## Recovery ladder
 
-1. Repro → log under `evidence/`  
-2. Foreign tree → residual handoff, no patch  
-3. Contract gap → re-enter W1 with new change-id  
-4. Matrix flake → one retry; then residual with log path  
-5. Worktree merge conflict → lane leader serializes join on that root only  
+1. Repro → log under `evidence/`
+2. Foreign tree → residual handoff, no patch
+3. Contract gap → re-enter W1 with new change-id
+4. Matrix flake → one retry; then residual with log path
+5. Worktree merge conflict → lane leader serializes join on that root only
 
 ---
 
@@ -433,10 +433,10 @@ flowchart TB
 
 ## Implementation notes for `/goal`
 
-1. Materialize W0 artifacts first in-session (fast).  
-2. Run W1 as single agent with COORD lock.  
-3. Spawn up to 6 Grok/worktree agents for W2 using `grok-context/*`.  
-4. Join, then PLATFORM with answer shards.  
-5. Full matrix + quality.  
-6. ASSURANCE.md.  
-7. Atomic commits per change-id / lane join as work lands.  
+1. Materialize W0 artifacts first in-session (fast).
+2. Run W1 as single agent with COORD lock.
+3. Spawn up to 6 Grok/worktree agents for W2 using `grok-context/*`.
+4. Join, then PLATFORM with answer shards.
+5. Full matrix + quality.
+6. ASSURANCE.md.
+7. Atomic commits per change-id / lane join as work lands.
