@@ -110,8 +110,9 @@ All CI platforms use the same component-first architecture:
 ### Strict Profile
 
 - All standard checks plus:
-- mypy static type analysis
+- ty static type analysis (`uv run ty check` / `just typecheck`)
 - pylint static analysis
+- Extended Ruff rules
 - Extended timeout for thorough checking
 
 ## Matrix Builds

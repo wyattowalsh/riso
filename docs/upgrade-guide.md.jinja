@@ -1,5 +1,22 @@
 # Upgrade Guide
 
+## Riso 2.0 answer remaps
+
+Before adopting CI, quality, or container updates, remap 1.x Copier answers.
+`riso migrate` and `riso update` run `apply_removed_key_remaps` first, then
+reject leftovers. Do not overwrite a dest key that is already set. A second
+apply is a no-op. No dual-path aliases after remap.
+
+```bash
+uv run riso migrate DEST|--answers-file PATH [--dry-run] [--json]
+```
+
+Eight old keys: `api_tracks`, `api_language`, `docs_site`, `mcp_language`,
+`saas_starter_module`, `saas_auth`, `saas_billing`, `include_admin`.
+`lucia` is not a dest `saas_auth_provider` and fail-closes. Full table:
+[guides/v2-migration.md](guides/v2-migration.md). Generated-project copy:
+`template/files/docs/upgrade-guide.md.jinja`.
+
 ## Adopting GitHub Actions CI/CD Workflows
 
 1. **Pull new workflow files** – regenerate your project with the latest template version or manually copy:
@@ -33,18 +50,22 @@
 
 ## Adopting the Quality Integration Suite
 
-1. **Pull new template files** – regenerate your project with the latest template version or copy the following files:
-   - `ruff.toml`, `mypy.ini`, `.pylintrc`, `coverage.cfg`
-   - `Makefile` (quality targets) and `tasks/quality.py`
-   - `.github/workflows/quality-matrix.yml`
-2. **Install Taskipy support** – run `uv sync --group quality --group test` to ensure `task` CLI is available.
+1. **Pull new template files** – regenerate with the latest template (`uv run riso update` or `copier update`) or copy:
+   - `justfile` (default task runner) and, when `task_runner` includes makefile, `Makefile`
+   - `ruff.toml`, `.pylintrc`, `coverage.cfg`
+   - `[tool.ty]` in `pyproject.toml` (do **not** restore `mypy.ini`; ty replaced mypy)
+   - `python/tasks/quality.py` (Taskipy entrypoint)
+   - `.github/workflows/riso-quality.yml` and `.github/workflows/riso-matrix.yml`
+   - Drop leftover `quality-matrix.yml` if it is still in the tree (it is not shipped)
+2. **Install quality deps** – run `uv sync --group quality --group test` so `just quality` / `uv run task quality` resolve.
 3. **Select a profile** – update your `copier-answers.yml` (or template prompts) with `quality_profile=standard` or `strict`.
 4. **Node projects** – if `api_module=enabled` and `api_languages` includes `node`, run `corepack pnpm install` once so the quality suite can execute ESLint/TypeScript checks.
-5. **Governance evidence** – ensure CI runs the new `quality-matrix` workflow and archives artifacts for 90 days. Update `.riso/post_gen_metadata.json` to keep `quality.tool_install_attempts` entries when backfilling metadata.
+5. **Governance evidence** – ensure CI runs `riso-quality` / `riso-matrix` and archives artifacts for 90 days. Update `.riso/post_gen_metadata.json` to keep `quality.tool_install_attempts` entries when backfilling metadata.
 
 ## Troubleshooting
 
-- `make quality` fails because `uv` is missing → run `pip install uv` and re-run the command.
+- `just quality` fails because `uv` is missing → install [uv](https://docs.astral.sh/uv/) and re-run. Use `make quality` only when `task_runner` is `makefile` or `both`.
+- Typecheck failures → run `just typecheck` or `uv run ty check`. Do not add mypy.
 - `uv run task quality` fails with `task` not found → rerun `uv sync --group quality --group test`.
 - Node checks skipped unexpectedly → confirm `api_module=enabled` and `api_languages` includes `node` and `QUALITY_PROFILE` is not set to override your prompt.
 

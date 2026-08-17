@@ -1,66 +1,47 @@
 # Roadmap Snapshot
 
-This roadmap condenses the priorities tracked in `specs/` (see
-`specs/001-build-riso-template/plan.md`) into Sphinx to keep planning and
-documentation in one place. Phases align to the template module catalog and CI
-expectations.
+This snapshot tracks work already shipped in `specs/001`–`015` (see the
+Completed Features list in the repository `README.md`) and what is still
+planned. Spec numbers match `specs/<nnn>-*` directories. Do not reuse those
+numbers for unshipped ideas.
 
-## Phase 1 – Critical Infrastructure
+## Shipped
 
-| #   | Feature                             | Category       | Why now                                                     |
-| --- | ----------------------------------- | -------------- | ----------------------------------------------------------- |
-| 004 | Security & Vulnerability Management | Infrastructure | Establishes scanning, SAST, and secret detection baselines. |
-| 005 | Container & Deployment Patterns     | Infrastructure | Production-ready Docker/compose defaults.                   |
-| 006 | Testing Framework Enhancement       | Quality        | Stronger pytest coverage and quality automation.            |
-| 007 | Database & Persistence Layer        | Core           | Enables persistence, migrations, and pooling.               |
+| Spec | Feature | Notes |
+| ---- | ------- | ----- |
+| 001 | Template foundation | Copier payload, optional modules, maintainer CLI |
+| 002 | Documentation templates | Fumadocs, Sphinx Shibuya, Docusaurus |
+| 003 | Code quality | Ruff, ty, Pylint, pytest (not mypy) |
+| 004 | GitHub Actions workflows | `riso-quality` / `riso-matrix` |
+| 005 | Containers & deployment | Docker/Compose patterns |
+| 006 | FastAPI scaffold | Python API track |
+| 007 | GraphQL scaffold | Strawberry |
+| 008 | WebSocket scaffold | Real-time Python track |
+| 009 | Typer CLI scaffold | Optional CLI module |
+| 010 | API versioning | Version strategy |
+| 011 | API rate limiting | Throttle helpers |
+| 012 | SaaS starter | Optional SaaS infrastructure |
+| 013 | MCP servers | Python, TypeScript, Rust, Go tracks |
+| 014 | Changelog & release | Semantic-release / commitlint |
+| 015 | Codegen scaffolding | Template-based generators |
 
-**Timeline:** 6–9 months • **Impact:** High
+## Active
 
-## Phase 2 – Core Capabilities
+| Spec | Feature | Status |
+| ---- | ------- | ------ |
+| 016 | Production release readiness | In `specs/016-prod-release-readiness/` — RC gates, no publish/tag |
 
-| #   | Feature                        | Category     | Dependencies |
-| --- | ------------------------------ | ------------ | ------------ |
-| 009 | Authentication & Authorization | Security     | 007, 006     |
-| 010 | Monitoring & Observability     | Operations   | 005, 007     |
-| 011 | Task Queue & Background Jobs   | Core         | 007, 010     |
-| 012 | Event-Driven Architecture      | Architecture | 007, 011     |
+## Later (exploratory)
 
-## Phase 3 – Developer Experience
+Unnumbered ideas live in `specs/ideas.md`. Treat that file as a backlog, not a
+second spec series. Themes still open:
 
-| #   | Feature                            | Category      | Notes                                          |
-| --- | ---------------------------------- | ------------- | ---------------------------------------------- |
-| 013 | Development Environment Management | DevEx         | Devcontainers, hot reload, IDE automation.     |
-| 014 | Code Generation & Scaffolding      | DevEx         | Generator, templates, and merge-aware updates. |
-| 015 | Performance Optimization           | Performance   | Caching, profiling, load testing.              |
-| 016 | API Documentation Automation       | Documentation | OpenAPI/SDK generation flows.                  |
+- Standalone database / persistence module beyond SaaS extras
+- Deeper auth, observability, and background-job packs
+- Multi-tenancy, i18n, and search as first-class template modules
+- Compliance, backup, and FinOps kits
 
-## Phase 4 – Advanced Features
-
-| #   | Feature                        | Category      | Quick Description                          |
-| --- | ------------------------------ | ------------- | ------------------------------------------ |
-| 017 | Changelog & Release Management | Documentation | Semantic release + changelog automation.   |
-| 018 | Architecture Decision Records  | Documentation | ADR templates and tooling.                 |
-| 019 | Multi-tenancy Support          | Architecture  | Database/schema/row-level tenancy.         |
-| 020 | Feature Flags & Configuration  | Operations    | Gradual rollouts and A/B testing.          |
-| 021 | Internationalization (i18n)    | Feature       | Locale support and translation management. |
-| 022 | Notifications & Messaging      | Feature       | Email/SMS/push/webhooks.                   |
-| 023 | Search & Full-Text Search      | Feature       | Elasticsearch/Meilisearch adapters.        |
-| 024 | File Storage & Management      | Feature       | S3/GCS abstraction and processing.         |
-| 025 | Webhook Management             | Integration   | Emission and consumption plumbing.         |
-| 026 | AI/ML Integration Scaffolding  | Feature       | LLM APIs, vector DBs, and RAG patterns.    |
-
-## Phase 5 – Governance & Operations
-
-| #   | Feature                     | Category   | Quick Description                        |
-| --- | --------------------------- | ---------- | ---------------------------------------- |
-| 027 | Compliance & Audit Logging  | Compliance | Immutable trails for SOC2/GDPR/HIPAA.    |
-| 028 | Data Privacy & GDPR Toolkit | Compliance | Export, deletion, and consent tooling.   |
-| 029 | Backup & Disaster Recovery  | Operations | Automated backups and restore testing.   |
-| 030 | Cost Optimization & FinOps  | Operations | Cost tracking and optimization patterns. |
-
-## Suggested implementation flow
-
-- **Quarter 1–2:** 004 → 005 → 006 (establish security, containers, and quality).
-- **Quarter 3–4:** 007 → 009 → 010 (database, auth, observability), then branch
-  into 011/012 for asynchronous workloads.
-- **Beyond:** Iterate through Phases 3–5 based on adopter demand.
+Default generated-project commands stay **just-first** (`just quality`,
+`just typecheck`). `make` is only for `task_runner=makefile|both`. Type
+checking is **ty**, not mypy. Visual tokens for generated apps live in
+`DESIGN.md` when that file is present.

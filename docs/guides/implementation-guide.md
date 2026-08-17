@@ -24,11 +24,12 @@ Use this checklist when rolling out new modules or refreshing existing ones.
 
 ## Validation
 
-- Run `make quality` (or `uv run task quality`) inside rendered samples.
+- Run `just quality` (or `make quality` when `task_runner=makefile|both`, or
+  `uv run task quality` when no aggregator is present) inside rendered samples.
 - For Sphinx changes, execute `uv run sphinx-build docs docs/_build`.
 - For Node surfaces, run `pnpm --filter docs-fumadocs build` where applicable.
 - Use `uv run python scripts/ci/run_quality_suite.py --profile standard` to
-  validate parity between `make quality` and Taskipy flows, and `--profile strict`
+  validate parity between `just quality` and Taskipy flows, and `--profile strict`
   to ensure coverage stays above the floor.
 
 ## Delivery

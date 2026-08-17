@@ -48,8 +48,8 @@
     <div class="stat-label">Categories</div>
   </div>
   <div class="stat-card">
-    <div class="stat-value">90%+</div>
-    <div class="stat-label">Coverage Target</div>
+    <div class="stat-value">70% / 90%</div>
+    <div class="stat-label">Coverage Floors</div>
   </div>
   <div class="stat-card">
     <div class="stat-value">3.11+</div>
@@ -64,6 +64,9 @@
 # Bootstrap development environment (first time)
 ./scripts/setup/setup.sh --install
 
+# 1.x answers: remap then fail-closed leftovers
+uv run riso migrate --answers-file samples/default/copier-answers.yml --dry-run
+
 # Render the default sample
 ./scripts/render-samples.sh
 
@@ -71,7 +74,7 @@
 cd samples/default/render
 
 # Set up and run
-uv sync && make quality
+uv sync && just quality
 ```
 
 :::
@@ -98,8 +101,8 @@ Pre-commit Commit-msg SSOT \<adr/precommit-commit-msg-ssot>
     </div>
     <h3 class="feature-title">Quality Gate</h3>
     <p class="feature-description">
-      Run <code>make quality</code> for the canonical lane: ruff, ty, pylint, pytest with coverage.
-      90%+ unit test coverage enforced.
+      Run <code>just quality</code> for the canonical lane: ruff, ty, pylint, pytest with coverage.
+      Maintainer floor is 70%; rendered Python packages enforce 90%.
     </p>
   </div>
 
@@ -163,7 +166,7 @@ Pre-commit Commit-msg SSOT \<adr/precommit-commit-msg-ssot>
       <div class="callout-title">Quality Tooling</div>
       <div class="callout-text">
         The Python quality lane lives in <code>template/files/quality/</code> with
-        Makefile + uv tasks and CI orchestration scripts.
+        just (default), optional Makefile, uv tasks, and CI orchestration scripts.
       </div>
     </div>
   </div>
@@ -205,8 +208,8 @@ Pre-commit Commit-msg SSOT \<adr/precommit-commit-msg-ssot>
       <iconify-icon icon="tabler:chart-pie"></iconify-icon>
     </div>
     <div class="stat-label" style="font-size: 0.875rem; line-height: 1.4;">
-      <strong>Coverage Floor</strong><br>
-      90% unit test coverage across Python packages
+      <strong>Coverage Floors</strong><br>
+      70% maintainer CI · 90% rendered Python packages
     </div>
   </div>
 
@@ -234,9 +237,9 @@ Pre-commit Commit-msg SSOT \<adr/precommit-commit-msg-ssot>
 :::{admonition} Coverage Policy
 :class: note
 
-Aim for **90% unit test coverage** across rendered Python packages. Integration and e2e suites must
-exercise critical paths (auth, CLI, API, background tasks). Enforce `--cov-fail-under=90` locally
-and in CI to prevent regressions.
+Maintainer CI enforces **70%** (`just ci-full`, `--cov-fail-under=70`). Rendered Python packages
+aim for **90%** unit coverage. Integration and e2e suites must exercise critical paths (auth, CLI,
+API, background tasks). Use the floor that matches the tree you are changing.
 :::
 
 <div class="section-divider"></div>
@@ -272,7 +275,7 @@ and in CI to prevent regressions.
     <iconify-icon icon="tabler:layout-grid"></iconify-icon>
     Matrix Data
   </a>
-  <a href="https://github.com/openai/riso" class="quick-link" target="_blank">
+  <a href="https://github.com/wyattowalsh/riso" class="quick-link" target="_blank">
     <iconify-icon icon="tabler:brand-github"></iconify-icon>
     GitHub
   </a>

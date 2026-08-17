@@ -172,15 +172,23 @@ cat template/copier.yml | grep -A 5 "choices:"
 # 2. Review your copier-answers.yml for typos
 cat copier-answers.yml
 
-# 3. Valid values commonly used:
-#    - project_layout: "single-package" or "monorepo"
-#    - quality_profile: "standard" or "strict"
-#    - api_languages: "none", "python", "node", or "python+node"
-#    - docs_framework: "fumadocs", "sphinx-shibuya", "docusaurus", or "none"
-#    - cli_module: "enabled" or "disabled"
-#    - mcp_module: "enabled" or "disabled"
+# 3. Canonical 2.0 values (lists must be YAML lists, not scalars):
+#    - project_layout: single-package | monorepo
+#    - quality_profile: standard | strict
+#    - api_module: enabled | disabled
+#    - api_languages: [python] | [node] | [rust] | [go] | combinations
+#    - docs_module: enabled | disabled  (this is how you turn docs off)
+#    - docs_framework: fumadocs | sphinx-shibuya | docusaurus
+#    - mcp_module: enabled | disabled
+#    - mcp_languages: [python] | [typescript] | [rust] | [go]
+#    - cli_languages: [python] | [rust] | [go]  (no typescript)
 
-# 4. Regenerate from scratch with interactive prompts
+# 4. Leftover 1.x keys (api_tracks, api_language, docs_site, mcp_language,
+#    saas_starter_module, saas_auth, saas_billing, include_admin):
+uv run riso migrate --answers-file copier-answers.yml --dry-run
+# See docs/guides/v2-migration.md
+
+# 5. Regenerate from scratch with interactive prompts
 rm copier-answers.yml
 copier copy gh:wyattowalsh/riso my-project
 ```
@@ -318,9 +326,14 @@ uv run riso prompts --json
 # Check for removed legacy keys (api_tracks, docs_site, etc.)
 uv run riso validate --answers-file copier-answers.yml --json
 
+# Remap known 1.x keys, then fail-closed leftovers
+uv run riso migrate --answers-file copier-answers.yml --dry-run
+
 # Use a known-good sample
 uv run riso validate --answers-file samples/default/copier-answers.yml --json
 ```
+
+See {doc}`v2-migration` for the eight-key apply-then-reject table.
 
 ### Copier Operation Failures
 
@@ -381,10 +394,11 @@ uv run ruff check --fix .  # Auto-fix issues
 uv run pylint src/riso/
 
 # Maintainer repo (riso/ root)
-make quality
+just quality
 
 # Rendered project (samples/*/render/)
-make quality  # or: QUALITY_PROFILE=standard uv run task quality
+just quality  # or: make quality when task_runner=makefile|both
+              # or: QUALITY_PROFILE=standard uv run task quality
 
 # Fix specific issues
 uv run ruff check --select=E501 .  # Line length

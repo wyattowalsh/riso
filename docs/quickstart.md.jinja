@@ -12,15 +12,18 @@ Welcome to **{{ project_name }}**, the baseline render produced by the Riso temp
 ```bash
 uv sync
 uv run python -m {{ package_name }}.quickstart
-make quality
-# or, if make is unavailable
+{% if task_runner in ['just', 'both'] %}just quality{% elif task_runner == 'makefile' %}make quality{% else %}uv run task quality{% endif %}
+{% if task_runner == 'both' %}# or: make quality
+{% endif %}{% if task_runner != 'none' %}# or, if the aggregator is unavailable
 uv run task quality
+{% endif %}
 ```
 
-The quickstart script executes pytest, ruff, mypy, and pylint. The `quality` target chains all
+The quickstart script executes pytest, ruff, ty, and pylint. The `quality` target chains all
 quality tools (linting, typing, coverage) and records durations in `.riso/quality-durations.json`
-for governance evidence. The `uv run task quality` fallback relies on the bundled Taskipy
-definition so environments without `make` stay aligned.
+for governance evidence. Default `task_runner` is `just`. Use `make quality` only when
+`task_runner` is `makefile` or `both`. The `uv run task quality` fallback relies on Taskipy
+when no aggregator is present.
 
 ## Optional Modules
 
@@ -147,7 +150,7 @@ Test results, coverage reports, and quality logs are automatically uploaded as a
 - `test-results.xml` - JUnit XML test results
 - `coverage.xml` - Coverage report in Cobertura format
 - `.coverage` - Raw coverage data (SQLite)
-- `quality-logs/` - Ruff, mypy, pylint outputs
+- `quality-logs/` - Ruff, ty, pylint outputs
 
 **Command Line Download:**
 ```bash
@@ -189,7 +192,7 @@ After setup, try creating a test PR with failing code:
 
 ```python
 # Add to any Python file
-def broken_function():  # Missing type hints, will fail mypy
+def broken_function():  # Missing type hints, will fail ty
     return "test"
 ```
 
@@ -227,9 +230,9 @@ Fix the reported issues and push again.
 **Type Checking Failure:**
 ```
 ❌ Quality Checks > Run type checking
-Error: mypy found 1 error
+Error: ty found 1 error
 ```
-Correct type mismatches and verify locally with `uv run mypy .`
+Correct type mismatches and verify locally with `uv run ty check`
 
 **Cache Issues:**
 
