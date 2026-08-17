@@ -25,7 +25,8 @@ rendered project payloads.
   or publishing.
 - Stop on secrets or generated artifacts that contain sensitive data.
 - Stop if a release-critical gate is made non-blocking instead of fixed.
-- Stop if compatibility logic is added for removed answer keys.
+- Stop if dual-path aliases remain after remap, or leftover removed keys are
+  not fail-closed (see `references/no-legacy-answer-policy.md`).
 - Stop if `samples/*/render` would need manual edits.
 
 ## Commands
