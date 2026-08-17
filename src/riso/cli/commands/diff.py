@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Literal
 import yaml
 
 from riso.cli.helpers import resolve_answers, validate_and_raise
-from riso.core.answers import reject_removed_answer_keys
+from riso.core.answers import apply_then_reject_removed_keys
 from riso.core.diff import compute_diff
 from riso.core.errors import PathNotFoundError
 from riso.core.paths import validate_destination
@@ -53,9 +53,9 @@ def run_diff(
         from riso.cli.helpers import parse_data_pairs
 
         provided.update(parse_data_pairs(data_pairs))
-        reject_removed_answer_keys(existing)
-        reject_removed_answer_keys(provided)
-        final_answers = {**existing, **provided}
+        if not isinstance(existing, dict):
+            existing = {}
+        final_answers = apply_then_reject_removed_keys({**existing, **provided}).answers
 
     diff = compute_diff(
         answers=final_answers,

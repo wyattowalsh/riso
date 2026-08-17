@@ -9,10 +9,24 @@ from typing import TYPE_CHECKING
 import yaml
 
 from riso.cli.helpers import parse_data_pairs, resolve_answers
+from riso.core.answers import apply_then_reject_removed_keys
+from riso.core.removed_answer_keys import REMOVED_ANSWER_KEYS
 from riso.core.paths import validate_destination
 
 if TYPE_CHECKING:
     from riso.cli.config import CliConfig
+
+
+def format_data_assignment(key: str, value: object) -> str:
+    """Serialize a --data assignment so parse_data_pairs can re-ingest it."""
+    if isinstance(value, (list, dict)):
+        dumped = yaml.safe_dump(
+            value,
+            default_flow_style=True,
+            sort_keys=False,
+        ).strip()
+        return f"{key}={dumped}"
+    return f"{key}={value}"
 
 
 def run_export_cli(
@@ -31,16 +45,23 @@ def run_export_cli(
     )
     template_q = shlex.quote(str(config.template_path))
     dest_q = shlex.quote(destination)
-    overrides = parse_data_pairs(data_pairs)
+    overrides = apply_then_reject_removed_keys(parse_data_pairs(data_pairs)).answers
+    overrides = {
+        key: value for key, value in overrides.items() if key not in REMOVED_ANSWER_KEYS
+    }
     cmd_parts = ["copier", "copy", template_q, dest_q]
     if answers_file:
         cmd_parts.extend(["--answers-file", shlex.quote(str(answers_file))])
     if overrides:
         for key, value in sorted(overrides.items()):
-            cmd_parts.append(f"--data {shlex.quote(f'{key}={value}')}")
+            cmd_parts.append(
+                f"--data {shlex.quote(format_data_assignment(key, value))}"
+            )
     elif not answers_file:
         for key, value in sorted(answers.items()):
-            cmd_parts.append(f"--data {shlex.quote(f'{key}={value}')}")
+            cmd_parts.append(
+                f"--data {shlex.quote(format_data_assignment(key, value))}"
+            )
     cmd = " ".join(cmd_parts)
 
     riso_parts = ["uv", "run", "riso", "copy", dest_q]
@@ -48,10 +69,14 @@ def run_export_cli(
         riso_parts.extend(["--answers-file", shlex.quote(str(answers_file))])
     if overrides:
         for key, value in sorted(overrides.items()):
-            riso_parts.extend(["--data", shlex.quote(f"{key}={value}")])
+            riso_parts.extend(
+                ["--data", shlex.quote(format_data_assignment(key, value))]
+            )
     elif not answers_file:
         for key, value in sorted(answers.items()):
-            riso_parts.extend(["--data", shlex.quote(f"{key}={value}")])
+            riso_parts.extend(
+                ["--data", shlex.quote(format_data_assignment(key, value))]
+            )
     riso_cmd = " ".join(riso_parts)
 
     return {
@@ -74,5 +99,8 @@ def run_export_yaml(
         data_pairs=data_pairs,
         template_path=config.template_path,
     )
+    answers = {
+        key: value for key, value in answers.items() if key not in REMOVED_ANSWER_KEYS
+    }
     yaml_text = yaml.safe_dump(answers, sort_keys=False, default_flow_style=False)
     return {"yaml": yaml_text, "answers": answers}

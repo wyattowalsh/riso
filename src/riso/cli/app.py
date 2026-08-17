@@ -14,6 +14,7 @@ from riso.cli.commands import (
     diff,
     doctor,
     export,
+    migrate,
     prompts,
     recopy,
     update,
@@ -266,6 +267,32 @@ def recopy_cmd(
     )
 
 
+@app.command("migrate")
+def migrate_cmd(
+    ctx: typer.Context,
+    destination: Annotated[
+        Optional[str],
+        typer.Argument(help="Existing project directory with .copier-answers.yml."),
+    ] = None,
+    answers_file: Annotated[
+        Optional[Path],
+        typer.Option("--answers-file", "-f", help="Answers YAML to remap."),
+    ] = None,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Preview remaps without writing.")
+    ] = False,
+) -> None:
+    """Remap removed Copier answer keys (1.x → 2.0)."""
+    _run(
+        migrate.run_migrate,
+        _cli(ctx, "riso migrate"),
+        config=_config(ctx),
+        destination=destination,
+        answers_file=answers_file,
+        dry_run=dry_run,
+    )
+
+
 @app.command("diff")
 def diff_cmd(
     ctx: typer.Context,
@@ -455,8 +482,7 @@ _GLOBAL_FLAGS = {
     "--samples-path",
     "--timeout",
     "--force-unsafe",
-    "--help",
-    "-h",
+    "--skip-post-gen",
 }
 
 

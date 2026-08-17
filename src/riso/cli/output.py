@@ -108,7 +108,46 @@ def _emit_human_command_output(data: dict[str, Any]) -> bool:
             print(f"warning: {warn}")
         return True
 
+    remap_only = "ops" in data and "answers_file" in data
+    remap_payload = data.get("remap") if isinstance(data.get("remap"), dict) else None
+    if remap_only or remap_payload is not None:
+        _emit_remap_preview(data, remap_payload)
+        if remap_only:
+            return True
+        if "summary" in data:
+            print(data["summary"])
+            return True
+        if "message" in data:
+            print(data["message"])
+            return True
+        return True
+
     return False
+
+
+def _emit_remap_preview(
+    data: dict[str, Any],
+    remap_payload: dict[str, Any] | None,
+) -> None:
+    """Print apply-then-reject remap preview rows."""
+    payload = remap_payload or data
+    answers_file = payload.get("answers_file") or data.get("answers_file")
+    if answers_file:
+        print(f"answers_file: {answers_file}")
+    ops = payload.get("ops") or []
+    if not ops:
+        print("remap: already canonical")
+    else:
+        print(f"remap: {len(ops)} key(s)")
+        for op in ops:
+            dests = ", ".join(str(key) for key in (op.get("new_keys") or []))
+            print(f"  {op.get('old')} -> {dests} ({op.get('action')})")
+    if payload.get("written"):
+        print("wrote: true")
+    if data.get("dry_run"):
+        print("dry_run: true")
+    if data.get("message") and "ops" in data:
+        print(data["message"])
 
 
 def emit_error(
