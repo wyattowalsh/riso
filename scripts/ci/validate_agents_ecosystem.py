@@ -129,6 +129,60 @@ def check_copier_exclude() -> int:
     return errors
 
 
+def _plugin_settings_paths(render_dir: Path) -> list[Path]:
+    """Return rendered Agents plugin settings paths."""
+    return [
+        render_dir / ".cursor" / "settings.json",
+        render_dir / ".claude" / "settings.json",
+        render_dir / ".github" / "copilot" / "settings.json",
+    ]
+
+
+def _check_render_plugin_settings(render_dir: Path, *, ai_tools_enabled: bool) -> int:
+    """Require or forbid Agents plugin settings in a render tree."""
+    errors = 0
+    for path in _plugin_settings_paths(render_dir):
+        if ai_tools_enabled:
+            if not path.is_file():
+                errors += _fail(f"ai_tools enabled but missing plugin settings: {path}")
+            elif not _enables_agents_plugin(path.read_text(encoding="utf-8")):
+                errors += _fail(f"{path} does not enable wyattowalsh/agents")
+        elif path.exists():
+            errors += _fail(f"ai_tools disabled but plugin settings present: {path}")
+    return errors
+
+
+def _bridge_paths(render_dir: Path) -> list[Path]:
+    """Return rendered harness pointer files."""
+    return [
+        render_dir / "CLAUDE.md",
+        render_dir / ".warp" / "WARP.md",
+        render_dir / ".cursor" / "rules",
+    ]
+
+
+def _check_render_bridges(render_dir: Path, *, ai_tools_enabled: bool) -> int:
+    """Require or forbid short AGENTS.md pointer files in a render tree."""
+    errors = 0
+    for path in _bridge_paths(render_dir):
+        if ai_tools_enabled:
+            if not path.is_file():
+                errors += _fail(f"ai_tools enabled but missing bridge: {path}")
+                continue
+            lines = [
+                line
+                for line in path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            if len(lines) > MAX_BRIDGE_LINES:
+                errors += _fail(
+                    f"{path.name} has {len(lines)} lines (max {MAX_BRIDGE_LINES})"
+                )
+        elif path.exists():
+            errors += _fail(f"ai_tools disabled but bridge present: {path}")
+    return errors
+
+
 def check_render_tree(render_dir: Path, *, ai_tools_enabled: bool) -> int:
     """Validate AGENTS.md and optional harness files in a render directory."""
     errors = 0
@@ -152,48 +206,12 @@ def check_render_tree(render_dir: Path, *, ai_tools_enabled: bool) -> int:
     if (render_dir / "macros").exists():
         errors += _fail(f"render leaked template macros/: {render_dir / 'macros'}")
 
-    bridge_paths = [
-        render_dir / "CLAUDE.md",
-        render_dir / ".warp" / "WARP.md",
-        render_dir / ".cursor" / "rules",
-    ]
-    plugin_settings_paths = [
-        render_dir / ".cursor" / "settings.json",
-        render_dir / ".claude" / "settings.json",
-        render_dir / ".github" / "copilot" / "settings.json",
-    ]
-    if ai_tools_enabled:
-        for path in bridge_paths:
-            if not path.is_file():
-                errors += _fail(f"ai_tools enabled but missing bridge: {path}")
-            else:
-                lines = [
-                    line
-                    for line in path.read_text(encoding="utf-8").splitlines()
-                    if line.strip()
-                ]
-                if len(lines) > MAX_BRIDGE_LINES:
-                    errors += _fail(
-                        f"{path.name} has {len(lines)} lines (max {MAX_BRIDGE_LINES})"
-                    )
-        for path in plugin_settings_paths:
-            if not path.is_file():
-                errors += _fail(f"ai_tools enabled but missing plugin settings: {path}")
-            else:
-                text = path.read_text(encoding="utf-8")
-                if not _enables_agents_plugin(text):
-                    errors += _fail(f"{path} does not enable wyattowalsh/agents")
-    else:
-        for path in bridge_paths:
-            if path.exists():
-                errors += _fail(f"ai_tools disabled but bridge present: {path}")
-        for path in plugin_settings_paths:
-            if path.exists():
-                errors += _fail(
-                    f"ai_tools disabled but plugin settings present: {path}"
-                )
-        if (render_dir / "docs" / "ai-tools.md").exists():
-            errors += _fail("ai_tools disabled but docs/ai-tools.md present")
+    errors += _check_render_bridges(render_dir, ai_tools_enabled=ai_tools_enabled)
+    errors += _check_render_plugin_settings(
+        render_dir, ai_tools_enabled=ai_tools_enabled
+    )
+    if not ai_tools_enabled and (render_dir / "docs" / "ai-tools.md").exists():
+        errors += _fail("ai_tools disabled but docs/ai-tools.md present")
     return errors
 
 
