@@ -9,6 +9,7 @@ import pytest
 
 from riso.cli.commands.export import run_export_cli, run_export_yaml
 from riso.cli.config import CliConfig
+from riso.cli.helpers import parse_data_pairs, resolve_answers, validate_and_raise
 from riso.core.errors import PermissionDeniedError
 from riso.core.paths import resolve_template_path
 
@@ -69,6 +70,62 @@ def test_run_export_cli_includes_data_overrides_with_answers_file(
     assert "project_name=Override" in result["copier_command"]
     assert "--data" in result["riso_command"]
     assert "project_name=Override" in result["riso_command"]
+
+
+def test_export_cli_and_yaml_omit_removed_keys(tmp_path: Path) -> None:
+    config = CliConfig.from_options(template_path=resolve_template_path())
+    result = run_export_cli(
+        config,
+        answers_file=None,
+        data_pairs=["project_name=Demo", "api_tracks=python", "api_language=go"],
+        destination=str(tmp_path / "out"),
+    )
+    assert "api_tracks=" not in result["copier_command"]
+    assert "api_language=" not in result["copier_command"]
+    assert "api_tracks=" not in result["riso_command"]
+    assert "api_language=" not in result["riso_command"]
+    assert "api_module=enabled" in result["riso_command"]
+    assert "saas_auth=" not in result["riso_command"]
+
+    yaml_result = run_export_yaml(
+        config,
+        answers_file=None,
+        data_pairs=["project_name=Demo", "saas_auth=clerk"],
+    )
+    assert "saas_auth:" not in yaml_result["yaml"]
+    assert "saas_auth" not in yaml_result["answers"]
+    assert yaml_result["answers"]["saas_auth_module"] == "enabled"
+    assert yaml_result["answers"]["saas_auth_provider"] == "clerk"
+
+
+def test_export_cli_wrap_list_round_trips_through_parse_and_validate(
+    tmp_path: Path,
+) -> None:
+    config = CliConfig.from_options(template_path=resolve_template_path())
+    result = run_export_cli(
+        config,
+        answers_file=None,
+        data_pairs=["project_name=Demo", "api_tracks=python"],
+        destination=str(tmp_path / "out"),
+    )
+    parts = shlex.split(result["riso_command"])
+    data_pairs: list[str] = []
+    index = 0
+    while index < len(parts):
+        if parts[index] == "--data" and index + 1 < len(parts):
+            data_pairs.append(parts[index + 1])
+            index += 2
+            continue
+        index += 1
+    parsed = parse_data_pairs(data_pairs)
+    assert isinstance(parsed["api_languages"], list)
+    assert parsed["api_languages"] == ["python"]
+    merged = resolve_answers(
+        answers_file=None,
+        data_pairs=data_pairs,
+        template_path=config.template_path,
+    )
+    validate_and_raise(merged, config.template_path)
 
 
 def test_run_export_yaml_does_not_write_stdout(

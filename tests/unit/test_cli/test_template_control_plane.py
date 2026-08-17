@@ -22,10 +22,35 @@ def test_run_generator_blocks_removed_keys_before_copier(tmp_path: Path) -> None
         with pytest.raises(ValidationFailedError):
             run_generator(
                 destination=dest,
-                data={"api_tracks": "python", "project_name": "x"},
+                data={"saas_auth": "firebase", "project_name": "x"},
                 template_path=tmp_path,
             )
         worker.assert_not_called()
+
+
+def test_run_generator_remaps_old_keys_before_copier(tmp_path: Path) -> None:
+    dest = tmp_path / "out"
+    captured: dict[str, Any] = {}
+
+    def fake_worker(op: str, payload: dict[str, Any], timeout: int | None) -> None:
+        captured["payload"] = payload
+        dest.mkdir()
+
+    with (
+        patch("riso.template._run_copier_worker", side_effect=fake_worker),
+        patch("riso.template._maybe_run_post_gen"),
+    ):
+        run_generator(
+            destination=dest,
+            data={"api_tracks": "python", "project_name": "x"},
+            template_path=tmp_path,
+            skip_post_gen=True,
+        )
+
+    data = captured["payload"]["data"]
+    assert data["api_module"] == "enabled"
+    assert data["api_languages"] == ["python"]
+    assert "api_tracks" not in data
 
 
 def test_run_generator_calls_worker_with_skip_tasks_true(

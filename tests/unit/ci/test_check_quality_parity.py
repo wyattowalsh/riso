@@ -11,7 +11,10 @@ from check_quality_parity import (
     MAKEFILE_PATTERNS,
     NODE_MAKEFILE_PATTERNS,
     NODE_TASK_PATTERNS,
+    PYTHON_TASK,
     TASK_PATTERNS,
+    UV_TASK,
+    _command_present,
     _has_unconditional_patterns,
     assert_contains,
     main,
@@ -52,6 +55,13 @@ class TestAssertContains:
 @pytest.mark.unit
 class TestMainFunction:
     """Tests for main function."""
+
+    @pytest.fixture(autouse=True)
+    def _hide_live_uv_task(self):
+        """Keep mocked main() isolated from the live uv_tasks template."""
+        with patch("check_quality_parity.UV_TASK") as mock_uv:
+            mock_uv.exists.return_value = False
+            yield mock_uv
 
     @patch("check_quality_parity.JUSTFILE")
     @patch("check_quality_parity.MAKEFILE")
@@ -193,6 +203,8 @@ class TestConstantsAndPaths:
         assert "ruff check" in MAKEFILE_PATTERNS
         assert "ty check" in MAKEFILE_PATTERNS
         assert "pylint" in MAKEFILE_PATTERNS
+        assert "ruff format" in MAKEFILE_PATTERNS
+        assert "--rcfile" in MAKEFILE_PATTERNS
 
     def test_task_patterns_defined(self):
         """Should have uv task quality check patterns."""
@@ -205,3 +217,21 @@ class TestConstantsAndPaths:
         """Should have Node-specific patterns for both template formats."""
         assert "pnpm --filter api-node lint" in NODE_MAKEFILE_PATTERNS
         assert '"api-node", "lint"' in NODE_TASK_PATTERNS
+
+    def test_uv_tasks_is_not_python_task_alias(self):
+        """PLATFORM uv_tasks must be a distinct surface from Taskipy."""
+        assert UV_TASK != PYTHON_TASK
+        assert UV_TASK.name == "quality.py.jinja"
+        assert "uv_tasks" in UV_TASK.parts
+
+    def test_command_present_treats_split_argv_as_ty_check(self):
+        text = '            "ty",\n            "check",\n            "src/{{ package_name }}",\n'
+        assert _command_present(text, "ty check")
+
+    def test_live_quality_templates_pass(self):
+        """Unmocked template files must stay at parity (ty, format, --rcfile)."""
+        with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
+            with patch("sys.stderr", new_callable=StringIO) as mock_stderr:
+                result = main()
+        assert result == 0, mock_stderr.getvalue()
+        assert "Quality parity checks passed" in mock_stdout.getvalue()

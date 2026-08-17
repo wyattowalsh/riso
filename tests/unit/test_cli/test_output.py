@@ -139,10 +139,53 @@ def test_handle_exception_riso_error_json_uses_exit_code(
     assert any("api_tracks" in e for e in payload["errors"])
 
 
+def test_emit_success_human_migrate_preview(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    ctx = CliContext(json_mode=False, command_name="riso migrate")
+    emit_success(
+        ctx,
+        data={
+            "answers_file": "/tmp/answers.yml",
+            "changed": True,
+            "written": False,
+            "dry_run": True,
+            "ops": [
+                {
+                    "old": "api_language",
+                    "new_keys": ["api_languages"],
+                    "action": "wrap-list",
+                    "before": "python",
+                    "after": {"api_languages": ["python"]},
+                }
+            ],
+            "answers": {"api_languages": ["python"]},
+            "message": "Remapped 1 key(s)",
+        },
+    )
+    out = capsys.readouterr().out
+    assert "answers_file: /tmp/answers.yml" in out
+    assert "api_language -> api_languages (wrap-list)" in out
+    assert "dry_run: true" in out
+    assert "Remapped 1 key(s)" in out
+
+
 def test_emit_success_quiet_suppresses_human_output(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     ctx = CliContext(json_mode=False, quiet=True, command_name="riso doctor")
-    emit_success(ctx, data={"ready": True, "message": "should stay quiet"})
+    emit_success(
+        ctx,
+        data={
+            "ready": True,
+            "checks": {
+                "template_path": "/tmp/template",
+                "copier": {"available": True},
+                "riso_version": "1.0.0",
+            },
+            "warnings": [],
+        },
+    )
     captured = capsys.readouterr()
     assert captured.out == ""
+    assert captured.err == ""

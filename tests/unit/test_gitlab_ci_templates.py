@@ -74,7 +74,7 @@ class TestGitLabCITemplate:
         assert "lint:python" in result
         assert "test:python" in result
         assert ".python-base" in result
-        assert "uv sync" in result
+        assert "uv --directory python sync" in result
 
     def test_node_jobs_rendered_when_node_enabled(self, jinja_env):
         """Node jobs should render when Node components are enabled."""
@@ -167,7 +167,7 @@ class TestGitLabCITemplate:
             changelog_module="disabled",
         )
 
-        assert "uv run ty check" in result
+        assert "uv --directory python run ty check" in result
         assert "pylint src/" in result
 
     def test_matrix_builds_for_monorepo(self, jinja_env):
@@ -213,6 +213,8 @@ class TestGitLabCITemplate:
 
         assert "pages:" in result
         assert "public/" in result
+        assert "mv node/docs/fumadocs/out public/" in result
+        assert "mv docs/out public/" not in result
 
     def test_cache_configuration(self, jinja_env):
         """Template should configure caching appropriately."""

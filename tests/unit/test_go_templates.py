@@ -224,11 +224,139 @@ class TestGoModTemplate:
             cli_languages=["python"],
             api_module="enabled",
             api_languages=["python"],
+            mcp_module="disabled",
+            mcp_languages=["python"],
             project_slug="test-project",
         )
 
         # Should render to empty or whitespace only
         assert rendered.strip() == ""
+
+    def test_go_mod_mcp_only_emits_workspace_parent(self):
+        """MCP-only Go still needs a valid root module for go.work."""
+        from jinja2 import Environment, FileSystemLoader
+
+        template_dir = Path(__file__).parents[2] / "template" / "files" / "go"
+        env = Environment(loader=FileSystemLoader(str(template_dir)))
+        template = env.get_template("go.mod.jinja")
+
+        rendered = template.render(
+            cli_module="disabled",
+            cli_languages=["python"],
+            api_module="disabled",
+            api_languages=["python"],
+            mcp_module="enabled",
+            mcp_languages=["go"],
+            project_slug="riso-go-mcp",
+            go_version="1.24",
+        )
+
+        assert "module riso-go-mcp" in rendered
+        assert "go 1.24" in rendered
+        assert rendered.strip() != ""
+
+
+class TestGoWorkTemplate:
+    """Tests for go.work.jinja monorepo workspace listing."""
+
+    def test_go_work_monorepo_cli_api_mcp_lists_root_and_mcp(self):
+        """Monorepo CLI+API+MCP should use `.` and `./mcp`, never `./cli` or `./api`."""
+        from jinja2 import Environment, FileSystemLoader
+
+        template_dir = Path(__file__).parents[2] / "template" / "files" / "go"
+        env = Environment(loader=FileSystemLoader(str(template_dir)))
+        template = env.get_template("go.work.jinja")
+
+        rendered = template.render(
+            project_layout="monorepo",
+            cli_module="enabled",
+            cli_languages=["go"],
+            api_module="enabled",
+            api_languages=["go"],
+            mcp_module="enabled",
+            mcp_languages=["go"],
+            go_version="1.24",
+        )
+
+        use_lines = [line.strip() for line in rendered.splitlines()]
+        assert "use (" in rendered
+        assert "." in use_lines
+        assert "./mcp" in use_lines
+        assert "./cli" not in use_lines
+        assert "./api" not in use_lines
+
+    def test_go_work_monorepo_mcp_only_lists_root_and_mcp(self):
+        """MCP-only still emits a workspace parent `.` plus `./mcp`."""
+        from jinja2 import Environment, FileSystemLoader
+
+        template_dir = Path(__file__).parents[2] / "template" / "files" / "go"
+        env = Environment(loader=FileSystemLoader(str(template_dir)))
+        template = env.get_template("go.work.jinja")
+
+        rendered = template.render(
+            project_layout="monorepo",
+            cli_module="disabled",
+            cli_languages=["go"],
+            api_module="disabled",
+            api_languages=["go"],
+            mcp_module="enabled",
+            mcp_languages=["go"],
+            go_version="1.24",
+        )
+
+        use_lines = [line.strip() for line in rendered.splitlines()]
+        assert "./mcp" in use_lines
+        assert "." in use_lines
+        assert "use (" in rendered
+
+    def test_go_work_single_package_cli_lists_root(self):
+        """single-package + go CLI must emit a non-empty `use (` block."""
+        from jinja2 import Environment, FileSystemLoader
+
+        template_dir = Path(__file__).parents[2] / "template" / "files" / "go"
+        env = Environment(loader=FileSystemLoader(str(template_dir)))
+        template = env.get_template("go.work.jinja")
+
+        rendered = template.render(
+            project_layout="single-package",
+            cli_module="enabled",
+            cli_languages=["go"],
+            api_module="disabled",
+            api_languages=["go"],
+            mcp_module="disabled",
+            mcp_languages=["go"],
+            go_version="1.24",
+        )
+
+        use_lines = [line.strip() for line in rendered.splitlines()]
+        assert "use (" in rendered
+        assert "." in use_lines
+        assert "./mcp" not in use_lines
+
+    def test_go_work_monorepo_cli_only_lists_root(self):
+        """Monorepo go CLI-only should list `.` and not `./mcp`."""
+        from jinja2 import Environment, FileSystemLoader
+
+        template_dir = Path(__file__).parents[2] / "template" / "files" / "go"
+        env = Environment(loader=FileSystemLoader(str(template_dir)))
+        template = env.get_template("go.work.jinja")
+
+        rendered = template.render(
+            project_layout="monorepo",
+            cli_module="enabled",
+            cli_languages=["go"],
+            api_module="disabled",
+            api_languages=["go"],
+            mcp_module="disabled",
+            mcp_languages=["go"],
+            go_version="1.24",
+        )
+
+        use_lines = [line.strip() for line in rendered.splitlines()]
+        assert "." in use_lines
+        assert "./mcp" not in use_lines
+        assert "./cli" not in use_lines
+        assert "./api" not in use_lines
 
 
 class TestGoMakefileTemplate:
@@ -603,8 +731,8 @@ class TestGoMcpTemplate:
             project_slug="test-mcp",
         )
 
-        assert "module test-mcp" in rendered
-        assert "go 1.22" in rendered
+        assert "module test-mcp/mcp" in rendered
+        assert "go 1.24" in rendered
         assert "github.com/modelcontextprotocol/go-sdk" in rendered
 
     def test_mcp_go_mod_empty_when_disabled(self):
@@ -648,7 +776,7 @@ class TestGoMcpTemplate:
         )
 
         assert "package main" in rendered
-        assert 'test-mcp/internal/mcp"' in rendered
+        assert 'test-mcp/mcp/internal/mcp"' in rendered
         assert "serverName" in rendered
 
 

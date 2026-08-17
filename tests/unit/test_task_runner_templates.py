@@ -96,6 +96,33 @@ def test_quality_justfile_and_makefile_share_targets() -> None:
         assert fragment in quality_just
     assert "src/$(PACKAGE_NAME)" in quality_make
     assert "src/task_runner_test" in quality_just
+    assert "ruff format src/$(PACKAGE_NAME) tests" in quality_make
+    assert "ruff format src/task_runner_test tests" in quality_just
+    assert 'env("QUALITY_PROFILE"' in quality_just
+    assert "uv --directory" in quality_just
+    assert "UV_DIR" in quality_make
+
+
+def test_quality_justfile_skips_python_recipe_without_python_track() -> None:
+    env = Environment(
+        loader=FileSystemLoader(TEMPLATE_FILES), keep_trailing_newline=True
+    )
+    context = _base_context()
+    context.update(
+        {
+            "cli_module": "disabled",
+            "cli_languages": [],
+            "api_module": "disabled",
+            "api_languages": [],
+            "mcp_module": "disabled",
+            "mcp_languages": [],
+            "docs_module": "enabled",
+            "docs_framework": "fumadocs",
+        }
+    )
+    quality_just = env.get_template("quality/justfile.quality.jinja").render(**context)
+    assert "quality-python:" not in quality_just
+    assert "No Python or Node quality track on this dest" in quality_just
 
 
 def test_root_delegators_reference_quality_modules() -> None:
@@ -166,6 +193,30 @@ def test_copier_defaults_task_runner_to_just() -> None:
     prompts = data.get("task_runner", {})
     assert defaults.get("task_runner") == "just"
     assert prompts.get("default") == "just"
+
+
+def test_package_json_mcp_typescript_is_valid_json() -> None:
+    import json
+
+    env = Environment(
+        loader=FileSystemLoader(TEMPLATE_FILES), keep_trailing_newline=True
+    )
+    context = {
+        **_base_context(),
+        "cli_module": "disabled",
+        "api_module": "disabled",
+        "mcp_module": "enabled",
+        "mcp_languages": ["typescript"],
+        "docs_module": "disabled",
+        "changelog_module": "disabled",
+        "saas_infra_module": "disabled",
+        "desktop_module": "disabled",
+    }
+    rendered = env.get_template("package.json.jinja").render(**context)
+    payload = json.loads(rendered)
+    assert payload["name"] == "task-runner-test"
+    assert "node/mcp" in payload["workspaces"]
+    assert payload["packageManager"] == "pnpm@9.15.0"
 
 
 def test_package_json_setup_hooks_respects_task_runner_none() -> None:

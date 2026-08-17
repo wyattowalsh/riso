@@ -17,7 +17,7 @@ def test_run_generator_rejects_removed_keys_before_worker(tmp_path: Path) -> Non
         with pytest.raises(ValidationFailedError):
             run_generator(
                 destination=tmp_path / "out",
-                data={"api_tracks": "python", "project_name": "demo"},
+                data={"saas_auth": "firebase", "project_name": "demo"},
                 template_path=tmp_path,
                 skip_post_gen=True,
             )

@@ -163,12 +163,22 @@ class TestLoadAnswers:
         assert result["port"] == 8000
         assert result["enabled"] is True
 
-    def test_validate_removed_answer_keys_rejects_legacy_keys(self):
-        """Should fail fast when removed answer keys are present."""
+    def test_validate_removed_answer_keys_remaps_legacy_keys(self):
+        """Should remap a known old key and drop it."""
+        from post_gen_project import validate_removed_answer_keys
+
+        answers = {"api_tracks": "python"}
+        validate_removed_answer_keys(answers)
+        assert "api_tracks" not in answers
+        assert answers["api_module"] == "enabled"
+        assert answers["api_languages"] == ["python"]
+
+    def test_validate_removed_answer_keys_rejects_unmapped_leftover(self):
+        """Should fail-closed on leftover removed keys after remap."""
         from post_gen_project import validate_removed_answer_keys
 
         with pytest.raises(SystemExit):
-            validate_removed_answer_keys({"api_tracks": "python"})
+            validate_removed_answer_keys({"saas_auth": "firebase"})
 
     def test_filters_none_values(self, tmp_path):
         """Should filter out None values from answers."""
@@ -267,6 +277,19 @@ class TestCleanupEmptyScaffoldDirs:
         assert "graphql" in removed
         assert not empty_dir.exists()
         assert populated_dir.exists()
+
+    def test_removes_empty_openspec_dir(self, tmp_path):
+        """Copier leaves an empty openspec/ shell when the extra is disabled."""
+        from post_gen_project import EMPTY_SCAFFOLD_DIRS, cleanup_empty_scaffold_dirs
+
+        assert "openspec" in EMPTY_SCAFFOLD_DIRS
+        empty_dir = tmp_path / "openspec"
+        empty_dir.mkdir()
+
+        removed = cleanup_empty_scaffold_dirs(tmp_path)
+
+        assert "openspec" in removed
+        assert not empty_dir.exists()
 
 
 @pytest.mark.unit
