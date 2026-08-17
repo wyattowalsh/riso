@@ -1,19 +1,23 @@
+"""Quality helper aligned with just/make (src layout + coverage --rcfile)."""
+
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import List
 
 DEFAULT_PROFILE = "{{ quality_profile|default('standard') }}"
 QUALITY_PROFILE = os.environ.get("QUALITY_PROFILE", DEFAULT_PROFILE).lower()
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+# quality/uv_tasks/quality.py → dest root; canonical pyproject is python/
+DEST_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = DEST_ROOT / "python"
 
-RUFF_FLAGS: List[str] = []
-TY_FLAGS: List[str] = []
-PYLINT_FLAGS: List[str] = []
+RUFF_FLAGS: list[str] = []
+TY_FLAGS: list[str] = []
+PYLINT_FLAGS: list[str] = []
 
 if QUALITY_PROFILE == "strict":
     RUFF_FLAGS = ["--select", "ALL", "--ignore", "E203,E266,E501"]
@@ -47,7 +51,7 @@ COMMANDS: list[tuple[str, list[str]]] = [
             "ty",
             "check",
             *TY_FLAGS,
-            "src",
+            "src/{{ package_name }}",
         ],
     ),
     (
@@ -59,9 +63,19 @@ COMMANDS: list[tuple[str, list[str]]] = [
             "quality",
             "--group",
             "test",
+{% if cli_module == 'enabled' and 'python' in cli_languages %}
+            "--group",
+            "cli",
+{% endif %}
+{% if api_module == 'enabled' and 'python' in api_languages %}
+            "--group",
+            "api_python",
+            "--group",
+            "api_python_test",
+{% endif %}
             "pylint",
             *PYLINT_FLAGS,
-            "{{ package_name }}",
+            "src/{{ package_name }}",
             "tests",
         ],
     ),
@@ -76,6 +90,8 @@ COMMANDS: list[tuple[str, list[str]]] = [
             "test",
             "coverage",
             "run",
+            "--rcfile",
+            "coverage.cfg",
             "-m",
             "pytest",
             "-ra",
@@ -114,7 +130,7 @@ COMMANDS.extend(
 
 def run_command(label: str, command: list[str]) -> float:
     start = time.perf_counter()
-    result = subprocess.run(command, check=False)
+    result = subprocess.run(command, check=False, cwd=PROJECT_ROOT)
     duration = time.perf_counter() - start
     if result.returncode != 0:
         sys.stderr.write(f"\n[quality] {label} failed with exit code {result.returncode}\n")
@@ -127,13 +143,9 @@ def main() -> int:
     durations: dict[str, float] = {}
     for label, command in COMMANDS:
         durations[label] = run_command(label, command)
-    out = PROJECT_ROOT / ".riso" / "quality-durations.json"
+    out = DEST_ROOT / ".riso" / "quality-durations.json"
     out.parent.mkdir(exist_ok=True, parents=True)
-    content = "{\n" + ",\n".join(
-        f"  \"{label}\": {value:.3f}"
-        for label, value in durations.items()
-    ) + "\n}\n"
-    out.write_text(content, encoding="utf-8")
+    out.write_text(json.dumps(durations, indent=2), encoding="utf-8")
     sys.stdout.write(f"[quality] Durations written to {out}\n")
     return 0
 

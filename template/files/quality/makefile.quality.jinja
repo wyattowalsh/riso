@@ -1,3 +1,5 @@
+{%- set _python = (cli_module == 'enabled' and 'python' in cli_languages) or (api_module == 'enabled' and 'python' in api_languages) or (mcp_module == 'enabled' and 'python' in mcp_languages) or (docs_module == 'enabled' and docs_framework == 'sphinx-shibuya') -%}
+{%- set _node = api_module == 'enabled' and 'node' in api_languages -%}
 UV ?= uv
 QUALITY_PROFILE ?= {{ quality_profile|default('standard') }}
 PACKAGE_NAME ?= {{ package_name }}
@@ -5,7 +7,15 @@ PYTEST_FLAGS ?= -ra
 TY_FLAGS ?=
 RUFF_FLAGS ?=
 PYLINT_FLAGS ?=
-COVERAGE_FLAGS ?= --rcfile coverage.cfg -m pytest $(PYTEST_FLAGS)
+COVERAGE_RCFILE ?= $(or $(firstword $(wildcard coverage.cfg quality/coverage.cfg ../quality/coverage.cfg)),coverage.cfg)
+PYLINT_RCFILE ?= $(or $(firstword $(wildcard .pylintrc pylintrc quality/.pylintrc quality/pylintrc ../quality/.pylintrc ../quality/pylintrc)))
+PYLINT_RC_FLAG ?= $(if $(PYLINT_RCFILE),--rcfile $(abspath $(PYLINT_RCFILE)),)
+COVERAGE_FLAGS ?= --rcfile $(COVERAGE_RCFILE) -m pytest $(PYTEST_FLAGS)
+ifneq ($(wildcard python/pyproject.toml),)
+UV_DIR := --directory python
+else
+UV_DIR :=
+endif
 
 ifeq ($(QUALITY_PROFILE),strict)
 	TY_FLAGS := --error-on-warning
@@ -13,29 +23,36 @@ ifeq ($(QUALITY_PROFILE),strict)
 	PYLINT_FLAGS := --errors-only
 endif
 
-.PHONY: quality quality-python coverage-report format lint \
-{% if api_module == 'enabled' and 'node' in api_languages %}quality-node lint-node{% endif %}
+.PHONY: quality{% if _python %} quality-python coverage-report format lint hooks hooks-run hooks-update{% endif %} \
+{% if _node %}quality-node lint-node{% endif %}
 
-quality: quality-python{% if api_module == 'enabled' and 'node' in api_languages %} quality-node{% endif %}
+{% if _python %}
+quality: quality-python{% if _node %} quality-node{% endif %}
 
 quality-python:
-	$(UV) run --group quality --group test ruff check $(RUFF_FLAGS)
-	$(UV) run --group quality --group test ty check $(TY_FLAGS) src/$(PACKAGE_NAME)
-	$(UV) run --group quality --group test pylint $(PYLINT_FLAGS) src/$(PACKAGE_NAME) tests
-	$(UV) run --group quality --group test coverage run $(COVERAGE_FLAGS)
-	$(UV) run --group quality coverage report --rcfile coverage.cfg
+	$(UV) $(UV_DIR) run --group quality --group test{% if cli_module == 'enabled' and 'python' in cli_languages %} --group cli{% endif %}{% if api_module == 'enabled' and 'python' in api_languages %} --group api_python --group api_python_test{% endif %} ruff check $(RUFF_FLAGS)
+	$(UV) $(UV_DIR) run --group quality --group test{% if cli_module == 'enabled' and 'python' in cli_languages %} --group cli{% endif %}{% if api_module == 'enabled' and 'python' in api_languages %} --group api_python --group api_python_test{% endif %} ty check $(TY_FLAGS) src/$(PACKAGE_NAME)
+	$(UV) $(UV_DIR) run --group quality --group test{% if cli_module == 'enabled' and 'python' in cli_languages %} --group cli{% endif %}{% if api_module == 'enabled' and 'python' in api_languages %} --group api_python --group api_python_test{% endif %} pylint $(PYLINT_FLAGS) $(PYLINT_RC_FLAG) src/$(PACKAGE_NAME) tests
+	$(UV) $(UV_DIR) run --group quality --group test{% if cli_module == 'enabled' and 'python' in cli_languages %} --group cli{% endif %}{% if api_module == 'enabled' and 'python' in api_languages %} --group api_python --group api_python_test{% endif %} coverage run $(COVERAGE_FLAGS)
+	$(UV) $(UV_DIR) run --group quality coverage report --rcfile $(COVERAGE_RCFILE)
 
 coverage-report:
-	$(UV) run --group quality coverage html --rcfile coverage.cfg
+	$(UV) $(UV_DIR) run --group quality coverage html --rcfile $(COVERAGE_RCFILE)
 
 format:
-	$(UV) run --group quality ruff format $(PACKAGE_NAME) tests
+	$(UV) $(UV_DIR) run --group quality ruff format src/$(PACKAGE_NAME) tests
 
 lint:
-	$(UV) run --group quality --group test ruff check $(RUFF_FLAGS)
-	$(UV) run --group quality --group test pylint $(PYLINT_FLAGS) src/$(PACKAGE_NAME) tests
+	$(UV) $(UV_DIR) run --group quality --group test ruff check $(RUFF_FLAGS)
+	$(UV) $(UV_DIR) run --group quality --group test pylint $(PYLINT_FLAGS) $(PYLINT_RC_FLAG) src/$(PACKAGE_NAME) tests
+{% elif _node %}
+quality: quality-node
+{% else %}
+quality:
+	@echo "No Python or Node quality track on this dest"
+{% endif %}
 
-{% if api_module == 'enabled' and 'node' in api_languages %}
+{% if _node %}
 quality-node:
 	@command -v pnpm >/dev/null 2>&1 || { echo "pnpm is required for Node quality checks"; exit 1; }
 	pnpm --filter api-node lint
@@ -45,22 +62,22 @@ lint-node:
 	pnpm --filter api-node lint
 {% endif %}
 
+{% if _python %}
 # ============================================
 # Pre-commit Hooks
 # ============================================
-.PHONY: hooks hooks-run hooks-update
-
 hooks: ## Install pre-commit hooks
-	$(UV) run --group quality pre-commit install --install-hooks
+	$(UV) $(UV_DIR) run --group quality pre-commit install --install-hooks
 {% if changelog_module == 'enabled' or quality_profile == 'strict' %}
-	$(UV) run --group quality pre-commit install --hook-type commit-msg
+	$(UV) $(UV_DIR) run --group quality pre-commit install --hook-type commit-msg
 {% endif %}
 {% if quality_profile == 'strict' %}
-	$(UV) run --group quality pre-commit install --hook-type pre-push
+	$(UV) $(UV_DIR) run --group quality pre-commit install --hook-type pre-push
 {% endif %}
 
 hooks-run: ## Run all pre-commit hooks manually
-	$(UV) run --group quality pre-commit run --all-files
+	$(UV) $(UV_DIR) run --group quality pre-commit run --all-files
 
 hooks-update: ## Update pre-commit hook versions
-	$(UV) run --group quality pre-commit autoupdate
+	$(UV) $(UV_DIR) run --group quality pre-commit autoupdate
+{% endif %}
