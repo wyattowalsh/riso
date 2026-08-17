@@ -171,8 +171,8 @@ class TestCircleCITemplate:
             changelog_module="disabled",
         )
 
-        assert "uv run ty check" in result
-        assert "uv run pylint src/" in result
+        assert "uv --directory python run ty check" in result
+        assert "uv --directory python run pylint src/" in result
 
     def test_parallelism_for_monorepo(self, jinja_env):
         """Monorepo layout should enable parallelism."""
