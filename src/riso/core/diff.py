@@ -144,6 +144,7 @@ class DiffResult:
         """
         return {
             "summary": self.summary or self.generate_summary(),
+            "preview_engine": "copy",
             "added_count": self.added_count,
             "modified_count": self.modified_count,
             "deleted_count": self.deleted_count,
@@ -395,7 +396,7 @@ def compute_diff(
     Exception
         If Copier operation fails or comparison fails
     """
-    from riso.core.answers import prepare_copier_data
+    from riso.core.answers import apply_then_reject_removed_keys, prepare_copier_data
 
     if operation not in {"copy", "update", "recopy"}:
         raise ValueError(f"Unknown operation: {operation}")
@@ -409,10 +410,14 @@ def compute_diff(
         logger.debug("Temp directory: %s", temp_dest)
 
         try:
-            # Run Copier in temp directory
+            # File diffs are a copier.run_copy approximation. Remap ops are
+            # the SSOT preview; live update/recopy still use Copier's own
+            # operation (skip_answered / dest merge).
             from copier import run_copy
 
-            preview_answers = prepare_copier_data(answers)
+            preview_answers = prepare_copier_data(
+                apply_then_reject_removed_keys(answers).answers
+            )
             if operation in {"update", "recopy"}:
                 answers_path = destination / ".copier-answers.yml"
                 if answers_path.exists():
@@ -423,7 +428,9 @@ def compute_diff(
                     )
                     if isinstance(stored, dict):
                         preview_answers = prepare_copier_data(
-                            {**stored, **preview_answers}
+                            apply_then_reject_removed_keys(
+                                {**stored, **preview_answers}
+                            ).answers
                         )
 
             from riso.template import run_with_timeout

@@ -6,7 +6,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from riso.core.removed_answer_keys import REMOVED_ANSWER_KEYS
+from riso.core.removed_answer_keys import (
+    REMOVED_ANSWER_KEYS,
+    apply_removed_key_remaps,
+)
 
 
 @dataclass(frozen=True)
@@ -57,7 +60,7 @@ def _collect_saas_selected(answers: Mapping[str, Any]) -> list[str]:
         "saas_hosting",
         "saas_database",
         "saas_orm",
-        "saas_auth",
+        "saas_auth_module",
         "saas_storage",
         "saas_cicd",
         "saas_auth_provider",
@@ -139,9 +142,10 @@ def validate_answers_for_generation(answers: Mapping[str, Any]) -> GateResult:
     errors: list[str] = []
     warnings: list[str] = []
 
-    errors.extend(_removed_key_errors(answers))
-    errors.extend(_saas_errors(answers))
-    errors.extend(_language_errors(answers))
+    remapped = apply_removed_key_remaps(answers).answers
+    errors.extend(_removed_key_errors(remapped))
+    errors.extend(_saas_errors(remapped))
+    errors.extend(_language_errors(remapped))
 
     # api_features normalize is available for callers; warn on bare substring traps
     # is handled by normalize_api_features used elsewhere.

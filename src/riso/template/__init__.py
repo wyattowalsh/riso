@@ -10,8 +10,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import json
 import ast
+import json
+import os
 
 from riso.core.answers import load_answers_file, prepare_copier_data
 from riso.core.errors import (
@@ -20,6 +21,7 @@ from riso.core.errors import (
     ValidationFailedError,
 )
 from riso.core.generation_gates import validate_answers_for_generation
+from riso.core.removed_answer_keys import apply_removed_key_remaps
 from riso.core.names import validate_identity_fields
 from riso.core.paths import validate_destination
 from riso.template.hooks_runner import run_post_gen, should_skip_post_gen
@@ -453,10 +455,17 @@ def list_sample_variants(samples_path: Path | None = None) -> list[dict[str, Any
     if not samples_root.exists():
         return variants
 
-    for variant_dir in sorted(
-        [p for p in samples_root.iterdir() if p.is_dir() and p.name != "metadata"],
-        key=lambda p: p.name,
-    ):
+    with os.scandir(samples_root) as entries:
+        variant_dirs = sorted(
+            (
+                Path(entry.path)
+                for entry in entries
+                if entry.is_dir(follow_symlinks=False) and entry.name != "metadata"
+            ),
+            key=lambda path: path.name,
+        )
+
+    for variant_dir in variant_dirs:
         answers_file = variant_dir / "copier-answers.yml"
         render_dir = variant_dir / "render"
 
@@ -527,7 +536,11 @@ def _filter_kwargs(func: Any, kwargs: dict[str, Any]) -> dict[str, Any]:
 
 
 def _enforce_generation_gates(answers: dict[str, Any]) -> None:
-    """Raise ValidationFailedError when generation gates fail."""
+    """Apply remaps, then raise when leftover keys or combo gates fail."""
+    remapped = apply_removed_key_remaps(answers)
+    if remapped.ops:
+        answers.clear()
+        answers.update(remapped.answers)
     result = validate_answers_for_generation(answers)
     if not result.ok:
         raise ValidationFailedError(list(result.errors))

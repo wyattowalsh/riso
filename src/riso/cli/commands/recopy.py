@@ -5,16 +5,19 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import yaml
-
 from riso.cli.helpers import parse_data_pairs
-from riso.core.answers import prepare_copier_data, reject_removed_answer_keys
+from riso.core.answers import (
+    apply_then_reject_removed_keys,
+    prepare_copier_data,
+    remap_answers_file,
+)
 from riso.core.diff import compute_diff
 from riso.core.errors import (
     CopierOperationError,
     PathNotFoundError,
     ValidationFailedError,
 )
+from riso.core.generation_gates import validate_answers_for_generation
 from riso.core.names import validate_identity_fields
 from riso.core.paths import validate_destination
 from riso.template import run_recopy as template_run_recopy
@@ -41,18 +44,23 @@ def run_recopy(
         from riso.cli.helpers import load_answers_file
 
         provided = {**load_answers_file(answers_file), **provided}
-    reject_removed_answer_keys(provided)
+    provided = apply_then_reject_removed_keys(provided).answers
     identity_errors = validate_identity_fields(provided)
     if identity_errors:
         raise ValidationFailedError(identity_errors)
 
+    dest_answers = dest_path / ".copier-answers.yml"
+    dest_remapped: dict = {}
+    if dest_answers.exists():
+        dest_remapped = remap_answers_file(dest_answers, write=not dry_run).answers
+
+    merged = apply_then_reject_removed_keys({**dest_remapped, **provided}).answers
+    gate = validate_answers_for_generation(merged)
+    if not gate.ok:
+        raise ValidationFailedError(list(gate.errors))
+
     if dry_run:
-        existing: dict = {}
-        answers_path = dest_path / ".copier-answers.yml"
-        if answers_path.exists():
-            existing = yaml.safe_load(answers_path.read_text(encoding="utf-8")) or {}
-        reject_removed_answer_keys(existing)
-        final_answers = prepare_copier_data({**existing, **provided})
+        final_answers = prepare_copier_data(merged)
         diff = compute_diff(
             answers=final_answers,
             destination=dest_path,

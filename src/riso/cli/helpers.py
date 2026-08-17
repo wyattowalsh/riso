@@ -5,10 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from riso.core.answers import (
+    apply_then_reject_removed_keys,
     load_answers_file,
     prepare_copier_data,
-    reject_removed_answer_keys,
 )
 from riso.core.errors import ValidationFailedError
 from riso.template import (
@@ -45,7 +47,14 @@ def parse_data_pairs(data: list[str] | None) -> dict[str, Any]:
 
 
 def _coerce_value(value: str) -> Any:
-    """Coerce string values to bool/int/float when obvious."""
+    """Coerce string values to list/dict (YAML) or bool/int/float when obvious."""
+    try:
+        parsed = yaml.safe_load(value)
+    except yaml.YAMLError:
+        parsed = None
+    else:
+        if isinstance(parsed, (list, dict)):
+            return parsed
     lowered = value.lower()
     if lowered in {"true", "yes"}:
         return True
@@ -70,7 +79,7 @@ def resolve_answers(
     if answers_file:
         provided.update(load_answers_file(answers_file))
     provided.update(parse_data_pairs(data_pairs))
-    reject_removed_answer_keys(provided)
+    provided = apply_then_reject_removed_keys(provided).answers
 
     copier_config = load_copier_config(template_path)
     defaults = get_defaults(template_path)
@@ -90,7 +99,9 @@ def validate_and_raise(
     template_path: Path,
 ) -> dict[str, Any]:
     """Validate answers and return result dict; raise on failure."""
-    reject_removed_answer_keys(answers)
+    remapped = apply_then_reject_removed_keys(answers).answers
+    answers.clear()
+    answers.update(remapped)
     result = validate_answers(answers, template_path)
     if not result.valid:
         raise ValidationFailedError(result.errors)

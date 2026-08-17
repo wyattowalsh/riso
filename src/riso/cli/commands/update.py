@@ -4,8 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from riso.core.answers import remap_answers_file, serialize_remap_ops
 from riso.core.diff import compute_diff
-from riso.core.errors import CopierOperationError, PathNotFoundError
+from riso.core.errors import (
+    CopierOperationError,
+    PathNotFoundError,
+    ValidationFailedError,
+)
+from riso.core.generation_gates import validate_answers_for_generation
 from riso.core.paths import validate_destination
 from riso.template import run_update as template_run_update
 
@@ -32,24 +38,29 @@ def run_update(
             f"No .copier-answers.yml found at {dest_path}",
         )
 
+    remapped = remap_answers_file(answers_file, write=not dry_run)
+    remap_payload = {
+        "answers_file": str(answers_file),
+        "changed": bool(remapped.ops),
+        "written": bool(remapped.ops) and not dry_run,
+        "ops": serialize_remap_ops(remapped.ops),
+    }
+
     if dry_run:
-        import yaml
-
-        from riso.core.answers import reject_removed_answer_keys
-
-        answers = yaml.safe_load(answers_file.read_text(encoding="utf-8")) or {}
-        if not isinstance(answers, dict):
-            answers = {}
-        reject_removed_answer_keys(answers)
+        gate = validate_answers_for_generation(remapped.answers)
+        if not gate.ok:
+            raise ValidationFailedError(list(gate.errors))
         diff = compute_diff(
-            answers=answers,
+            answers=remapped.answers,
             destination=dest_path,
             template_path=config.template_path,
             operation="update",
             timeout=config.timeout,
             force_unsafe=config.force_unsafe,
         )
-        return diff.to_dict()
+        payload = diff.to_dict()
+        payload["remap"] = remap_payload
+        return payload
 
     try:
         result = template_run_update(
@@ -63,4 +74,6 @@ def run_update(
     except Exception as exc:
         raise CopierOperationError("update", str(exc)) from exc
 
-    return result.to_dict()
+    payload = result.to_dict()
+    payload["remap"] = remap_payload
+    return payload
