@@ -1,0 +1,184 @@
+{
+  "goalSlug": "riso-lane-platform",
+  "version": 4,
+  "maxConcurrency": {
+    "probeValidate": 8,
+    "answerShards": 6,
+    "ciModules": 3,
+    "matrix": 1,
+    "workflow": 1
+  },
+  "locks": [
+    "L-OPS",
+    "L-ANSWERS",
+    "L-QUAL",
+    "L-TEST",
+    "L-CI-run_quality_suite",
+    "L-CI-generate_matrix_data",
+    "L-CI-verify_version_sync",
+    "L-MATRIX",
+    "L-WF"
+  ],
+  "waves": [
+    {
+      "id": "A",
+      "name": "bootstrap_inventory",
+      "gate": "A_GATE",
+      "parallelGroups": [
+        {
+          "id": "ops",
+          "lock": "L-OPS",
+          "tasks": ["W0.T1", "W0.T2", "W0.T3", "W0.T4", "W0.T5"]
+        },
+        {
+          "id": "probe",
+          "lock": null,
+          "tasks": ["W1.T1", "W1.T2", "W1.T3", "W1.T4", "W1.T5", "W1.T6", "W1.T7", "W1.T8"]
+        }
+      ]
+    },
+    {
+      "id": "B",
+      "name": "audit_classify",
+      "dependsOn": ["A_GATE"],
+      "gate": "B_GATE",
+      "parallelGroups": [
+        {
+          "id": "answers_validate_fanout",
+          "maxConcurrency": 8,
+          "taskPattern": "W2.T1.<variant>",
+          "variantsFrom": "samples/*/copier-answers.yml",
+          "then": ["W2.T2", "W2.T3", "W2.T4", "W2.T5"]
+        },
+        {
+          "id": "qual_audit",
+          "tasks": ["W3.T1", "W3.T2", "W3.T3", "W3.T4"]
+        },
+        {
+          "id": "test_audit",
+          "tasks": ["W4.T1", "W4.T2", "W4.T3"]
+        },
+        {
+          "id": "ci_audit",
+          "tasks": ["W5.T1", "W5.T2", "W5.T3", "W5.T4", "W5.T5"]
+        },
+        {
+          "id": "wf_analysis",
+          "tasks": ["W6.T1", "W6.T2"]
+        }
+      ]
+    },
+    {
+      "id": "C",
+      "name": "exclusive_root_fixes",
+      "dependsOn": ["B_GATE"],
+      "gate": "C_GATE",
+      "parallelGroups": [
+        {
+          "id": "answers_shards",
+          "lock": "L-ANSWERS",
+          "maxConcurrency": 6,
+          "shards": ["S0", "S1", "S2", "S3", "S4", "S5"],
+          "perShardTasks": ["W7A.S{n}.T1", "W7A.S{n}.T2"],
+          "then": ["W7A.T3"]
+        },
+        {
+          "id": "qual_fix",
+          "lock": "L-QUAL",
+          "tasks": ["W7B.T1", "W7B.T2"]
+        },
+        {
+          "id": "test_fix",
+          "lock": "L-TEST",
+          "tasks": ["W7C.T1", "W7C.T2"]
+        },
+        {
+          "id": "ci_mod_1",
+          "lock": "L-CI-run_quality_suite",
+          "tasks": ["W7D.T1"]
+        },
+        {
+          "id": "ci_mod_2",
+          "lock": "L-CI-generate_matrix_data",
+          "tasks": ["W7D.T2"]
+        },
+        {
+          "id": "ci_mod_3",
+          "lock": "L-CI-verify_version_sync",
+          "tasks": ["W7D.T3"]
+        },
+        {
+          "id": "outbox",
+          "lock": "L-OPS",
+          "tasks": ["W7D.T4", "W7E.T1", "W7E.T2"]
+        }
+      ]
+    },
+    {
+      "id": "D",
+      "name": "full_matrix_serial",
+      "dependsOn": ["C_GATE"],
+      "gate": "D_GATE",
+      "parallelGroups": [
+        {
+          "id": "matrix",
+          "lock": "L-MATRIX",
+          "maxConcurrency": 1,
+          "tasks": ["W8.T1", "W8.T2", "W8.T3", "W8.T4", "W8.T5", "W8.T6"]
+        }
+      ]
+    },
+    {
+      "id": "E",
+      "name": "conditional_gates",
+      "dependsOn": ["D_GATE"],
+      "gate": "E_GATE",
+      "parallelGroups": [
+        {
+          "id": "gates",
+          "tasks": ["W9.T1", "W9.T2", "W9.T3", "W9.T4"],
+          "note": "T1-T4 parallelizable when independent; T5-T6 serial after"
+        },
+        {
+          "id": "wf_glue",
+          "lock": "L-WF",
+          "maxConcurrency": 1,
+          "tasks": ["W9.T5", "W9.T6"]
+        }
+      ]
+    },
+    {
+      "id": "F",
+      "name": "synthesize",
+      "dependsOn": ["E_GATE"],
+      "gate": "DONE",
+      "parallelGroups": [
+        {
+          "id": "audit",
+          "lock": "L-OPS",
+          "tasks": ["W10.T1", "W10.T2", "W10.T3"]
+        }
+      ]
+    }
+  ],
+  "variantShards": {
+    "S0": ["default", "cli-docs", "ai-tools-off", "makefile-runner"],
+    "S1": ["api-python", "api-monorepo", "full-stack", "rag-enabled"],
+    "S2": ["saas-starter", "mcp-typescript", "changelog-python", "changelog-monorepo", "changelog-full-stack"],
+    "S3": ["docs-fumadocs", "docs-fumadocs-full", "docs-sphinx", "docs-docusaurus"],
+    "S4": ["go-api", "go-cli", "go-mcp", "electron-app", "tauri-app"],
+    "S5": ["circleci-node", "gitlab-ci-python"]
+  },
+  "coveragePack": [
+    "run_quality_suite",
+    "generate_matrix_data",
+    "verify_version_sync"
+  ],
+  "coverageDeferred": [
+    "validate_jinja_templates",
+    "validate_saas_combinations",
+    "run_baseline_quickstart",
+    "bump_template_npm_deps",
+    "sync_template_shadcn_components"
+  ]
+}

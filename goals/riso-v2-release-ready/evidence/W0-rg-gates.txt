@@ -1,0 +1,234 @@
+W0-T02d — rg 8 old keys + saas_auth
+====================================
+task: W0-T02d
+wave: W0 / group W0A
+lane: GOAL (write only this evidence file)
+verify: saas_auth hit in generation_gates cited
+status: green — leftover cited; inventory complete
+
+repo: /Users/ww/dev/projects/riso
+git: .git/HEAD = ref: refs/heads/main
+     (.git present at workspace root; no branch switch; no mutation)
+     git rev-parse --show-toplevel equivalent: /Users/ww/dev/projects/riso
+     (no shell; confirmed via .git/HEAD + workspace path)
+
+keys (plan.taskgraph.json remap_keys + explicit saas_auth):
+  api_tracks
+  api_language
+  docs_site
+  mcp_language
+  saas_starter_module
+  saas_auth
+  saas_billing
+  include_admin
+
+pattern (rg equivalent via grep tool):
+  api_tracks|api_language|docs_site|mcp_language|saas_starter_module|saas_auth|saas_billing|include_admin
+
+word-boundary follow-up:
+  \b(api_tracks|api_language|docs_site|mcp_language|saas_starter_module|saas_auth|saas_billing|include_admin)\b
+
+scopes (only these trees):
+  src/riso/core/generation_gates.py
+  template/hooks/
+  docs/
+  .agents/skills/riso-release-readiness/
+
+
+================================================================
+LEFTOVER (required citation) — generation_gates still reads saas_auth
+================================================================
+
+file: src/riso/core/generation_gates.py
+fn:   _collect_saas_selected
+lines: 53-69
+
+    def _collect_saas_selected(answers: Mapping[str, Any]) -> list[str]:
+        selected: list[str] = []
+        for key in (
+            "saas_runtime",
+            "saas_hosting",
+            "saas_database",
+            "saas_orm",
+            "saas_auth",            # <-- LEFTOVER OLD KEY (L60)
+            "saas_storage",
+            "saas_cicd",
+            "saas_auth_provider",   # canonical (not leftover)
+            "saas_billing_provider",# canonical (not leftover)
+        ):
+            value = answers.get(key)
+            if value is not None and str(value).strip():
+                selected.append(str(value).strip())
+        return selected
+
+hit: src/riso/core/generation_gates.py:60:        "saas_auth",
+
+why leftover:
+  REMOVED_ANSWER_KEYS["saas_auth"] = "`saas_auth_module` plus `saas_auth_provider`"
+  _collect_saas_selected still treats the removed key as a live SaaS selector.
+  That is dual-path / old-key read after remap contract (apply then reject).
+  plan.md W1-C06: drop saas_auth; use module/provider.
+  plan.md critique: "generation_gates still reads saas_auth".
+
+not leftover in this file:
+  L23  ("api_module", "api_languages")     — canonical new keys
+  L24  ("mcp_module", "mcp_languages")     — canonical new keys
+  L63  "saas_auth_provider"                — canonical dest
+  L64  "saas_billing_provider"             — canonical dest
+  L127-131 _removed_key_errors             — reject leftovers; no apply
+  L142 errors.extend(_removed_key_errors)  — reject-only choke, not remap
+
+unanchored rg on generation_gates.py:
+  23:    ("api_module", "api_languages"),
+  24:    ("mcp_module", "mcp_languages"),
+  60:        "saas_auth",
+  63:        "saas_auth_provider",
+  64:        "saas_billing_provider",
+
+word-boundary old-key hits in generation_gates.py:
+  60:        "saas_auth",
+  (saas_auth_provider / saas_billing_provider / api_languages / mcp_languages excluded)
+
+
+================================================================
+template/hooks — no old-key identifier hits
+================================================================
+
+files:
+  template/hooks/pre_gen_project.py
+  template/hooks/post_gen_project.py
+  template/hooks/validators/   (empty; no matches)
+
+word-boundary old-key hits: NONE
+
+unanchored rg (canonical / substring only — not leftover keys):
+  template/hooks/post_gen_project.py
+    153:def api_languages_for_answers(...)
+    157:    return answer_list(answers, "api_languages", ["python"])
+    516:    api_languages = set(api_languages_for_answers(answers))
+    517:    if "python" in api_languages:
+    521:    if "node" in api_languages:
+    608:        node_track = "node" in api_languages_for_answers(answers)
+    650:                "api_languages": api_languages_for_answers(answers),
+    652:                "mcp_languages": answer_list(answers, "mcp_languages", ["python"]),
+  template/hooks/pre_gen_project.py
+    46:VALID_DOCS_SITES = {"fumadocs", "sphinx-shibuya", "docusaurus", "none"}
+        (name contains DOCS_SITES; not the removed key docs_site)
+    198:    if isinstance(value, str) and value in VALID_DOCS_SITES:
+    200:    return _load_from_env("docs_framework", VALID_DOCS_SITES, default)
+    380:            context.get("saas_auth_provider"),
+    381:            context.get("saas_billing_provider"),
+    538:    if context.get("saas_2fa") and context.get("saas_auth_provider") == "clerk":
+
+hooks reject-only (no apply_removed_key_remaps) — inventory for W1-C07:
+  pre_gen_project.py:23   from lib.removed_answer_keys import REMOVED_ANSWER_KEYS
+  pre_gen_project.py:288-297
+    def _validate_removed_answer_keys(context):
+        """Reject removed answer keys instead of silently translating them."""
+        removed = sorted(key for key in REMOVED_ANSWER_KEYS if key in context)
+        ... write replacement prose ...
+        return False
+  pre_gen_project.py:300-308
+    _validate_generation_answers imports riso.core.generation_gates
+    (so the L60 saas_auth leftover is live on the hook path when import works)
+  post_gen_project.py:19   from lib.removed_answer_keys import REMOVED_ANSWER_KEYS
+  post_gen_project.py:134-143
+    def validate_removed_answer_keys(answers):
+        """Fail renders that still carry removed Copier answer keys."""
+        reject-only; SystemExit(1); no apply
+
+
+================================================================
+docs/ — 2 word-boundary old-key hits
+================================================================
+
+word-boundary hits (true old keys):
+  docs/guides/troubleshooting.md:318
+    # Check for removed legacy keys (api_tracks, docs_site, etc.)
+    (docs mention of removed keys; not a live Copier answer read)
+
+  docs/research/saas-starter-synthesis-report.md:372
+    include_admin:
+      type: bool
+      default: false
+      help: "Include admin dashboard scaffolding"
+    (research dump of an old prompt sketch; not canonical Copier SSOT)
+
+word-boundary misses (no hits):
+  api_language, mcp_language, saas_starter_module, saas_auth, saas_billing
+  (except include_admin / api_tracks / docs_site above)
+
+unanchored rg extras (canonical keys only; not leftovers):
+  docs/modules/quality.md.jinja:9     api_languages
+  docs/modules/workflows.md.jinja:31,109,131,287   api_languages
+  docs/upgrade-guide.md.jinja:22,45,53             api_languages
+  docs/modules/matrix-data.md.jinja:64,66,68,137,198  api_languages
+  docs/modules/matrix-data.md.jinja:148            saas_auth_provider  (canonical)
+  docs/modules/containers.md.jinja:67,99,149,155,158  api_languages
+  docs/quickstart.md.jinja:31,36,78,81,135,182,215,281  api_languages
+  docs/guides/testing-strategy.md:84               api_languages
+  docs/guides/troubleshooting.md:178               api_languages
+  docs/changelog.md: no matches
+
+docs/changelog.md: no old-key hits
+
+
+================================================================
+.agents/skills/riso-release-readiness — policy lists 5 of 8
+================================================================
+
+word-boundary / unanchored hits (same 5 lines):
+  .agents/skills/riso-release-readiness/references/no-legacy-answer-policy.md
+    7:- `api_tracks`
+    8:- `api_language`
+    9:- `docs_site`
+    10:- `mcp_language`
+    11:- `saas_starter_module`
+
+missing from skill Removed Keys list (present in remap_keys / REMOVED_ANSWER_KEYS):
+  saas_auth
+  saas_billing
+  include_admin
+
+policy still forbids convert (W1-C08 rewrite target):
+  no-legacy-answer-policy.md:15
+    - Do not convert removed keys into canonical keys.
+  no-legacy-answer-policy.md:16
+    - Do not add hidden aliases, fallbacks, migrations, or dual-path behavior.
+  no-legacy-answer-policy.md:17
+    - Reject removed keys with a clear validation error.
+
+other skill files (no old-key hits):
+  .agents/skills/riso-release-readiness/SKILL.md
+  .agents/skills/riso-release-readiness/references/release-gates.md
+  .agents/skills/riso-release-readiness/references/task-graph.md
+  .agents/skills/riso-release-readiness/scripts/collect_release_evidence.py
+
+
+================================================================
+per-key rollup (old identifiers only)
+================================================================
+
+key                    generation_gates     hooks     docs                          skill
+---------------------  -------------------  --------  ----------------------------  ------------------------------------------
+api_tracks             no                   no        troubleshooting.md:318        no-legacy-answer-policy.md:7
+api_language           no                   no        no                            no-legacy-answer-policy.md:8
+docs_site              no                   no        troubleshooting.md:318        no-legacy-answer-policy.md:9
+mcp_language           no                   no        no                            no-legacy-answer-policy.md:10
+saas_starter_module    no                   no        no                            no-legacy-answer-policy.md:11
+saas_auth              YES leftover L60     no        no                            MISSING from 5-key list
+saas_billing           no                   no        no                            MISSING from 5-key list
+include_admin          no                   no        saas-starter-synthesis L372   MISSING from 5-key list
+
+
+================================================================
+handoffs (inventory only; this task does not edit those trees)
+================================================================
+
+W1-C06  COORD/CLI  drop saas_auth from generation_gates._collect_saas_selected
+W1-C07  COORD      hooks apply then reject leftovers (pre_gen + post_gen)
+W1-C08  SKILL      rewrite no-legacy policy: 8 keys; remap then fail-closed;
+                   drop "Do not convert"
+W4-D01  DOCS       v2-migration guide + leftover docs mentions as needed
+
+W0-T02d verify met: saas_auth leftover in generation_gates.py:60 is cited.

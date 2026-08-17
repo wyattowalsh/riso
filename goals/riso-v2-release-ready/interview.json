@@ -1,0 +1,132 @@
+{
+  "stage": "interview",
+  "title": "Riso 2.0 release-ready — execution leftovers",
+  "goalSlug": "riso-v2-release-ready",
+  "questions": [
+    {
+      "id": "settled-scope",
+      "prompt": "Confirm the grilled product scope (correct anything that is wrong).",
+      "description": "Already decided in chat. This is a check, not a restatement exercise.",
+      "answerMode": "multi-custom",
+      "recommendedAnswer": "Hard-major 2.0.0 readiness without tagging/publishing. Reshape existing tracks only. Tooling canon (uv/ruff/ty/just/pnpm/pytest/pre-commit/pydantic/loguru/typer/playwright/vitest) plus mise on maintainer and generated, OpenSpec maintainer-first and optional/off for generated apps, hypothesis+respx on generated Python tests. Full release ladder including render_matrix is blocking. Fold the current dirty tree. Super-good auto-migrate of known old Copier keys then fail-closed. Correctness then planned refine until dry. Required surfaces: payloads, riso CLI migrate, web wizard, docs, CI/gates.",
+      "recommendedOptionIds": [
+        "hard-major-no-tag",
+        "reshape-existing",
+        "tooling-canon-mise-openspec",
+        "hypothesis-respx",
+        "full-ladder-matrix",
+        "fold-dirty-tree",
+        "super-migrate",
+        "correctness-then-refine",
+        "all-surfaces"
+      ],
+      "options": [
+        {
+          "id": "hard-major-no-tag",
+          "label": "Hard major 2.0: keys/CLI/layout may change; no tag or PyPI publish in this goal"
+        },
+        {
+          "id": "reshape-existing",
+          "label": "No new languages, runtimes, or vendors"
+        },
+        {
+          "id": "tooling-canon-mise-openspec",
+          "label": "Canon stack + mise (maintainer and generated) + OpenSpec (maintainer + optional generated off by default)"
+        },
+        {
+          "id": "hypothesis-respx",
+          "label": "Add hypothesis + respx to generated Python test extras"
+        },
+        {
+          "id": "full-ladder-matrix",
+          "label": "just quality, all sample validates, jinja, context/agents, full render_matrix, no-legacy answers, docs -W, release validators — all blocking"
+        },
+        {
+          "id": "fold-dirty-tree",
+          "label": "Start from current dirty tree; keep what matches, rewrite what fights"
+        },
+        {
+          "id": "super-migrate",
+          "label": "Auto-remap known removed keys with dry-run preview, tests, idempotence; then fail-closed; no dual-path"
+        },
+        {
+          "id": "correctness-then-refine",
+          "label": "Correctness first, then planned DX/visual refine until dry"
+        },
+        {
+          "id": "all-surfaces",
+          "label": "Payloads + CLI migrate + wizard + docs + gates must stay in lockstep"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "execution-waves",
+      "prompt": "How should work be ordered across agents?",
+      "description": "This repo already uses exclusive write lanes. Hard-major contract edits still serialize on copier.yml/hooks.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Reuse exclusive-write lanes. Wave 0 inventory dirty tree + removed-key map. Wave 1 COORD contracts/migration SSOT. Wave 2 parallel payload (PY/NODE/SAAS/SYS/DESKTOP) + CLI migrate + wizard. Wave 3 PLATFORM matrix/gates. Wave 4 docs + ASSURANCE evidence. Refine loops until two consecutive passes add no P0/P1.",
+      "recommendedOptionIds": ["lanes-coord-first"],
+      "options": [
+        {
+          "id": "lanes-coord-first",
+          "label": "Exclusive lanes: COORD/migrate first, then parallel payload+CLI+wizard, then PLATFORM matrix, then docs/assurance (Recommended)"
+        },
+        {
+          "id": "single-stream",
+          "label": "One serial stream in this goal directory only"
+        },
+        {
+          "id": "payload-first",
+          "label": "Polish payloads first; batch Copier/CLI contract changes late"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "refine-stop",
+      "prompt": "When does “planned refine until dry” stop?",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Stop refine when two consecutive review passes find no new P0/P1 on required surfaces, and the full release ladder is green.",
+      "recommendedOptionIds": ["two-clean-passes"],
+      "options": [
+        {
+          "id": "two-clean-passes",
+          "label": "Two consecutive passes with no new P0/P1, and the full ladder green (Recommended)"
+        },
+        {
+          "id": "one-refine-wave",
+          "label": "Exactly one refine wave after correctness, then stop"
+        },
+        {
+          "id": "timebox",
+          "label": "Stop after a timebox even if P1s remain (you would set the box later)"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "runtime-floors",
+      "prompt": "Keep or raise generated runtime floors for 2.0?",
+      "description": "Today: Python 3.11–3.13, Node 20+. Raising floors is a valid hard-major break.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Keep Python 3.11+ and Node 20+ unless a gate proves a higher floor is required. Do not drop 3.11 or Node 20 just for taste.",
+      "recommendedOptionIds": ["keep-floors"],
+      "options": [
+        {
+          "id": "keep-floors",
+          "label": "Keep Python 3.11+ and Node 20+ (Recommended)"
+        },
+        {
+          "id": "raise-py312",
+          "label": "Raise Python floor to 3.12+"
+        },
+        {
+          "id": "raise-node22",
+          "label": "Raise Node floor to 22+"
+        }
+      ],
+      "required": true
+    }
+  ]
+}

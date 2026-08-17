@@ -1,0 +1,91 @@
+W3 PL-T07 — release validators
+==============================
+task:     PL-T07
+wave:     W3-PL-T07
+when:     2026-08-13T23:46:53Z (reconfirm 2026-08-13T23:47:30Z)
+repo:     /Users/ww/dev/projects/riso
+branch:   main
+HEAD:     f7951fe62e7c635f3a90d17811d3711c2a2d7c1b
+lane:     PLATFORM
+writes:   this file + residuals/PLATFORM.md only
+forbid:   samples/*/render/** writes = 0 (none created or edited)
+status:   residualed — combined command last-exit=1 (not green)
+
+Cwd / branch (confirmed)
+------------------------
+  git rev-parse --show-toplevel  -> /Users/ww/dev/projects/riso
+  git rev-parse --abbrev-ref HEAD -> main
+  (no checkout / stash / reset / rebase / commit / tag / push)
+
+Command (mission, semicolon chain)
+----------------------------------
+  uv run python scripts/ci/validate_release_readiness_skill.py ; \
+  uv run python scripts/ci/validate_workflows.py ; \
+  uv run python scripts/ci/validate_release_configs.py
+
+  combined last-exit: 1
+  secrets in logs: none (no token/password/key values printed)
+
+Per-script results
+------------------
+1) uv run python scripts/ci/validate_release_readiness_skill.py
+   exit: 1
+   stdout: (empty)
+   stderr (redacted; no secrets present):
+     Skill mirror mismatch: SKILL.md
+     Skill mirror mismatch: references/no-legacy-answer-policy.md
+   cmp SKILL.md: differ
+   cmp references/no-legacy-answer-policy.md: differ
+   source: .agents/skills/riso-release-readiness/
+   mirror: .claude/skills/riso-release-readiness/
+   note: W1-C08 rewrote source policy (8 keys; apply then fail-closed).
+         Mirror copy is a foreign tree (not this write root). See
+         residuals/SKILL.md R1 and residuals/PLATFORM.md R1.
+
+2) uv run python scripts/ci/validate_workflows.py
+   exit: 0
+   default dir: .github/workflows
+   actionlint: /opt/homebrew/bin/actionlint
+   stderr (redacted; no secrets present):
+     2026-08-13 19:47:30 | INFO     | __main__:validate_workflows:204 - release.yml - passed
+     2026-08-13 19:47:30 | INFO     | __main__:validate_workflows:204 - matrix-data.yml - passed
+     2026-08-13 19:47:30 | INFO     | __main__:validate_workflows:204 - labeler.yml - passed
+     2026-08-13 19:47:30 | INFO     | __main__:validate_workflows:204 - codeql.yml - passed
+     2026-08-13 19:47:30 | INFO     | __main__:validate_workflows:204 - pre-commit.yml - passed
+     2026-08-13 19:47:30 | INFO     | __main__:validate_workflows:204 - quality.yml - passed
+     2026-08-13 19:47:30 | INFO     | __main__:validate_workflows:204 - release-drafter.yml - passed
+     2026-08-13 19:47:30 | INFO     | __main__:validate_workflows:204 - gitleaks.yml - passed
+     2026-08-13 19:47:30 | INFO     | __main__:validate_workflows:204 - template-ci.yml - passed
+     2026-08-13 19:47:30 | INFO     | __main__:validate_workflows:204 - sbom.yml - passed
+     2026-08-13 19:47:30 | INFO     | __main__:validate_workflows:204 - quality-matrix.yml - passed
+     Total: 11 | Passed: 11 | Failed: 0 | Skipped: 0
+
+3) uv run python scripts/ci/validate_release_configs.py
+   exit: 1
+   default --project-dir: samples/default/render
+   stdout: (empty)
+   stderr (redacted; no secrets present):
+     2026-08-13 19:47:30 | ERROR    | __main__:main:247 - Project directory validation failed:
+     2026-08-13 19:47:30 | ERROR    | __main__:main:249 -   - Path does not exist: samples/default/render
+   samples/*/render dirs present: 0 (ls -d samples/*/render empty)
+   samples/default exists (copier-answers.yml only; no render/)
+   note: PL-T06 render_matrix is the owner that may create render/.
+         Hand-creating or editing samples/*/render/** is forbidden.
+
+Green / residual split
+----------------------
+  validate_workflows.py                         GREEN (11/11)
+  validate_release_readiness_skill.py           RESIDUAL (mirror)
+  validate_release_configs.py                   RESIDUAL (no render/)
+
+Residuals
+---------
+  goals/riso-v2-release-ready/residuals/PLATFORM.md
+  (skill mirror also recorded in residuals/SKILL.md from W1-C08)
+
+Not done here (out of write root)
+---------------------------------
+  copy .agents skill files into .claude mirror
+  run or kill render_matrix.py
+  hand-create samples/default/render
+  edit scripts/ci/check_removed_key_ssot.py (PL-T10 only)

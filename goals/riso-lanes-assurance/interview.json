@@ -1,0 +1,212 @@
+{
+  "stage": "interview",
+  "title": "Riso lanes assurance — finish, refine, full verify",
+  "goalSlug": "riso-lanes-assurance",
+  "questions": [
+    {
+      "id": "scope",
+      "prompt": "What must this single goal complete?",
+      "description": "Integrator over all eight lane packages under goals/riso-lane-*/. Your chat answers already select full finish + refine + full verification.",
+      "answerMode": "multi-custom",
+      "recommendedAnswer": "Finish incomplete lane packages (NODE/SAAS goal.md + gates if needed), finish/refine every lane against its facts.md, apply open COORD/PLATFORM handoffs end-to-end, preserve exclusive write roots, full verification including render matrix.",
+      "recommendedOptionIds": [
+        "finish-packages",
+        "finish-payload",
+        "apply-handoffs",
+        "refine",
+        "full-verify",
+        "lane-locks"
+      ],
+      "options": [
+        {
+          "id": "finish-packages",
+          "label": "Close package gaps (NODE/SAAS goal.md, incomplete gates)"
+        },
+        {
+          "id": "finish-payload",
+          "label": "Finish remaining work for all 8 lanes vs their facts.md"
+        },
+        {
+          "id": "apply-handoffs",
+          "label": "Apply/resolve open handoffs (COORD then PLATFORM follow-through)"
+        },
+        {
+          "id": "refine",
+          "label": "Refine/harden in-lane after baseline green (not greenfield redesign)"
+        },
+        {
+          "id": "full-verify",
+          "label": "Full bar: just quality + all sample riso validate + full render_matrix + smokes"
+        },
+        {
+          "id": "lane-locks",
+          "label": "Keep exclusive write roots; no foreign-tree fixes without handoff"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "wave-order",
+      "prompt": "How should multi-agent waves be ordered?",
+      "description": "COORD owns contracts; PLATFORM owns answers/matrix; payload lanes own trees.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Wave 0 package hygiene → Wave 1 COORD apply all open contract handoffs → Wave 2 parallel payload lanes (PY/NODE/SAAS/SYS/DESKTOP/CLI) → Wave 3 PLATFORM answers + full matrix/smoke → Wave 4 assurance report + residual only if blocked.",
+      "recommendedOptionIds": ["coord-first-parallel-payload"],
+      "options": [
+        {
+          "id": "coord-first-parallel-payload",
+          "label": "COORD first, then parallel payload, then PLATFORM full matrix (Recommended)"
+        },
+        {
+          "id": "payload-first",
+          "label": "Finish payload first; batch COORD handoffs late"
+        },
+        {
+          "id": "fully-serial",
+          "label": "Fully serial: COORD→PY→NODE→SAAS→SYS→DESKTOP→CLI→PLATFORM"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "handoff-policy",
+      "prompt": "How should open handoffs be treated?",
+      "description": "Known open items include PY api_features/exclude-dirs/graphql-sample, SYS go_version+MCP / rust excludes / rust samples / go api_features answers, PLATFORM mcp_languages typescript, COORD bootstrap-verify.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Triage then apply all non-blocked handoffs in this goal; only defer with written residual + owner when truly blocked by human product decision.",
+      "recommendedOptionIds": ["apply-all-triaged"],
+      "options": [
+        {
+          "id": "apply-all-triaged",
+          "label": "Apply all open handoffs after triage (Recommended)"
+        },
+        {
+          "id": "p0-only",
+          "label": "Only P0/P1 correctness handoffs; defer modernization samples"
+        },
+        {
+          "id": "document-only",
+          "label": "Document handoffs only; no contract edits this goal"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "refine-depth",
+      "prompt": "How deep should refine/modernize go for lanes that asked for heavy work (esp. SYS/SAAS)?",
+      "description": "Still respect exclusive write roots and no unsolicited redesign of Copier contracts.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Correctness + coherence first for every lane; then in-lane modernization where the lane plan already scoped it (SYS heavy, SAAS full sweep, DESKTOP deep features); stop short of inventing new product modules.",
+      "recommendedOptionIds": ["correctness-then-planned-refine"],
+      "options": [
+        {
+          "id": "correctness-then-planned-refine",
+          "label": "Green first, then execute planned refine only (Recommended)"
+        },
+        {
+          "id": "correctness-only",
+          "label": "Correctness/gates only — skip heavy modernization"
+        },
+        {
+          "id": "max-refine",
+          "label": "Maximize refine/modernize within every lane plan"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "verification-bar",
+      "prompt": "What is the full verification bar for done?",
+      "description": "You selected full verification in chat.",
+      "answerMode": "multi-custom",
+      "recommendedAnswer": "just quality; all samples riso validate --json; full render_matrix; smoke results per matrix policy; Jinja validation for touched trees; lane-targeted pytest (CLI test_cli, go templates, ci unit); context/agents checks if COORD/PLATFORM touch those surfaces.",
+      "recommendedOptionIds": [
+        "just-quality",
+        "all-validate",
+        "full-matrix",
+        "jinja",
+        "targeted-pytest",
+        "conditional-context-agents"
+      ],
+      "options": [
+        { "id": "just-quality", "label": "just quality (maintainer)" },
+        { "id": "all-validate", "label": "uv run riso validate on every samples/*/copier-answers.yml" },
+        { "id": "full-matrix", "label": "uv run python scripts/ci/render_matrix.py (full) + smokes" },
+        { "id": "jinja", "label": "validate_jinja_templates on touched/owned trees" },
+        { "id": "targeted-pytest", "label": "Lane-targeted pytest (CLI, go templates, scripts/ci, hooks)" },
+        {
+          "id": "conditional-context-agents",
+          "label": "verify_context_sync / validate_agents_ecosystem when those surfaces change"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "failure-policy",
+      "prompt": "If full matrix or a sample stays red after owned fixes, what happens?",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Goal is not done until green OR every residual has owner lane, failing command, redacted evidence, and explicit human-blocking reason. No silent skip of full matrix.",
+      "recommendedOptionIds": ["green-or-owned-residual"],
+      "options": [
+        {
+          "id": "green-or-owned-residual",
+          "label": "Must be green or explicit owned residual with evidence (Recommended)"
+        },
+        {
+          "id": "best-effort",
+          "label": "Best-effort: ship assurance report with known reds"
+        },
+        {
+          "id": "hard-green",
+          "label": "Hard green only — no residuals allowed"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "git-policy",
+      "prompt": "Git / publish policy for this assurance goal?",
+      "answerMode": "single",
+      "recommendedAnswer": "No branches, commits, or pushes unless you explicitly ask later.",
+      "recommendedOptionIds": ["no-git-ops"],
+      "options": [
+        {
+          "id": "no-git-ops",
+          "label": "No branch/commit/push unless explicitly requested later (Recommended)"
+        },
+        {
+          "id": "commit-ok",
+          "label": "Atomic conventional commits OK without further ask"
+        },
+        {
+          "id": "pr-ok",
+          "label": "Commits + PR OK when green"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "out-of-scope",
+      "prompt": "What stays out of scope even for this umbrella?",
+      "answerMode": "multi-custom",
+      "recommendedAnswer": "No new product modules beyond lane plans; no hand-edited samples/*/render; no lockfile hand-edits; no secrets; no reintroducing riso-mcp; web wizard only if a lane fact requires it (none do by default).",
+      "recommendedOptionIds": [
+        "no-new-modules",
+        "no-hand-render",
+        "no-lock-handedit",
+        "no-secrets",
+        "no-riso-mcp",
+        "web-default-out"
+      ],
+      "options": [
+        { "id": "no-new-modules", "label": "No inventing new product modules outside lane plans" },
+        { "id": "no-hand-render", "label": "Never hand-edit samples/*/render/" },
+        { "id": "no-lock-handedit", "label": "Never hand-edit uv.lock / pnpm-lock.yaml" },
+        { "id": "no-secrets", "label": "No secrets commit/print/persist" },
+        { "id": "no-riso-mcp", "label": "Do not reintroduce maintainer riso-mcp" },
+        { "id": "web-default-out", "label": "web/ wizard out of scope unless blocked and assigned" }
+      ],
+      "required": true
+    }
+  ]
+}

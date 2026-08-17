@@ -1,0 +1,213 @@
+{
+  "stage": "interview",
+  "title": "Riso Lane PLATFORM — CI tools, shared quality/testing, sample answers",
+  "goalSlug": "riso-lane-platform",
+  "questions": [
+    {
+      "id": "goal_mode",
+      "prompt": "What should this PLATFORM goal package primarily enable?",
+      "description": "PLATFORM is Wave 2 in the multi-agent model: integrates COORD contracts + payload lanes via CI scripts, quality/testing fragments, and sample answers. It does not implement language features.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Standing PLATFORM operating protocol: consume COORD outbox + lane handoffs, update sample answers/CI glue/quality-testing payload only in exclusive roots, regenerate via scripts when intended, hand off payload bugs — no fixed feature backlog baked into the package.",
+      "recommendedOptionIds": ["protocol"],
+      "options": [
+        {
+          "id": "protocol",
+          "label": "Standing protocol only",
+          "description": "Define how PLATFORM integrates and verifies; no concrete CI/sample batch locked into the goal."
+        },
+        {
+          "id": "protocol_plus_backlog",
+          "label": "Protocol + known backlog",
+          "description": "Same protocol, plus list first concrete PLATFORM work items for the first /goal run."
+        },
+        {
+          "id": "backlog_only",
+          "label": "Concrete backlog only",
+          "description": "Skip process docs; goal is only a specific set of CI/sample/quality changes."
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "inbound_signals",
+      "prompt": "What inbound signals should trigger PLATFORM work?",
+      "description": "PLATFORM integrates other lanes. Choose which durable inputs count as “do work now” vs ignore.",
+      "answerMode": "multi-custom",
+      "recommendedAnswer": "COORD outbox contract deltas (keys/defaults/illegal combos); payload-lane handoffs that affect answers, quality/testing, or CI entrypoints; maintainer CI failures owned by scripts/ci or quality/testing templates. Chat-only notes only if human explicitly promotes them.",
+      "recommendedOptionIds": [
+        "coord_outbox",
+        "lane_handoffs",
+        "ci_failures_owned"
+      ],
+      "options": [
+        {
+          "id": "coord_outbox",
+          "label": "COORD outbox contract deltas",
+          "description": "goals/riso-lane-coord/outbox/* listing changed keys/catalog/context."
+        },
+        {
+          "id": "lane_handoffs",
+          "label": "Payload-lane handoffs into PLATFORM inbox",
+          "description": "e.g. goals/riso-lane-platform/inbox/ from PY/NODE/SAAS/SYS/DESKTOP/CLI."
+        },
+        {
+          "id": "ci_failures_owned",
+          "label": "CI failures in PLATFORM write roots",
+          "description": "Broken scripts/ci, quality/, testing/, sample answers validation."
+        },
+        {
+          "id": "any_ci_red",
+          "label": "Any red CI job (including payload trees)",
+          "description": "PLATFORM may dig into language trees (risks ownership violations)."
+        },
+        {
+          "id": "chat_only",
+          "label": "Chat/PR freeform only",
+          "description": "No durable inbox; higher multi-agent drift."
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "sample_answer_policy",
+      "prompt": "After COORD changes Copier keys, how should PLATFORM update samples/*/copier-answers.yml?",
+      "description": "Do not invent keys. ~26 sample variants exist. Full matrix regen is separate from answer-file edits.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Update every sample answers file that is missing, extra, or wrong for keys listed in the COORD outbox; run uv run riso validate --answers-file … --json per touched variant. Do not invent defaults beyond COORD defaults/outbox guidance.",
+      "recommendedOptionIds": ["all_affected"],
+      "options": [
+        {
+          "id": "all_affected",
+          "label": "All variants affected by the outbox keys",
+          "description": "Scan samples/*/copier-answers.yml; fix every file impacted by the contract delta."
+        },
+        {
+          "id": "matrix_core_only",
+          "label": "Matrix-core variants only",
+          "description": "Only default, api-python, full-stack, saas-starter, and other CI-matrix primaries."
+        },
+        {
+          "id": "explicit_list",
+          "label": "Only variants named in the handoff",
+          "description": "No automatic scan; human/COORD lists paths."
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "regen_and_workflows",
+      "prompt": "When may PLATFORM regenerate samples or edit maintainer workflows?",
+      "description": "Never hand-edit samples/*/render/. Workflow ownership is allowed only for quality/validate-samples/matrix orchestration and must stay minimal.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Regenerate only when the human asks or when a PLATFORM-owned gate is unprovable without render smoke; prefer single-variant ./scripts/render-samples.sh before full render_matrix.py. Edit .github/workflows/** only if a script entrypoint change cannot land without orchestration glue — keep diffs minimal; prefer scripts/ci changes alone.",
+      "recommendedOptionIds": ["conservative"],
+      "options": [
+        {
+          "id": "conservative",
+          "label": "Conservative regen + rare workflow glue",
+          "description": "Human-ask or unprovable gate → narrow regen; workflows only when scripts alone cannot orchestrate."
+        },
+        {
+          "id": "auto_regen_matrix",
+          "label": "Auto full matrix after answer changes",
+          "description": "Always run render_matrix.py when answers change (heavy, slower waves)."
+        },
+        {
+          "id": "never_regen",
+          "label": "Never regenerate in this lane",
+          "description": "PLATFORM only edits answers/scripts; Wave 3 integrator always regenerates."
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "payload_bug_handoff",
+      "prompt": "If CI fails because of a language/module payload bug (not PLATFORM-owned), what should PLATFORM do?",
+      "description": "Forbidden: implement FastAPI/SaaS/Go/Rust/desktop features under language trees. Must file a handoff to PY/NODE/SAAS/SYS/DESKTOP.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Do not edit foreign trees. Write a durable handoff under goals/riso-lane-platform/outbox/ (or the owning lane’s inbox/) with failing command, stack/log excerpt (no secrets), suspected path ownership, and requested fix. Stop PLATFORM work on that failure path until the owning lane returns.",
+      "recommendedOptionIds": ["outbox_handoff"],
+      "options": [
+        {
+          "id": "outbox_handoff",
+          "label": "Durable outbox/inbox handoff file",
+          "description": "goals/riso-lane-platform/outbox/<id>.md (or per-lane inbox)."
+        },
+        {
+          "id": "github_issue",
+          "label": "GitHub issue only",
+          "description": "Open issue via gh; no goals/ file (weaker offline multi-agent continuity)."
+        },
+        {
+          "id": "chat_only",
+          "label": "Chat note only",
+          "description": "Summarize in session; no durable artifact."
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "verify_bar",
+      "prompt": "What is the default verification bar for a PLATFORM change set?",
+      "description": "Existing tools: verify_context_sync, validate_agents_ecosystem, render_matrix, render-samples, riso validate, tests/unit/ci/, just quality.",
+      "answerMode": "multi-custom",
+      "recommendedAnswer": "Always: uv run riso validate --json on every touched answers file; uv run pytest on tests/unit/ci/ (or narrower tests) when scripts/ci change; just quality when maintainer Python CI scripts change broadly. Conditional: verify_context_sync when context runners involved; validate_agents_ecosystem when agents gates touched; regenerate only under the regen policy above. Never claim success with hand-edited samples/*/render/.",
+      "recommendedOptionIds": [
+        "validate_touched_answers",
+        "pytest_ci_unit",
+        "just_quality_broad",
+        "conditional_context_agents"
+      ],
+      "options": [
+        {
+          "id": "validate_touched_answers",
+          "label": "riso validate on every touched answers file"
+        },
+        {
+          "id": "pytest_ci_unit",
+          "label": "pytest tests/unit/ci when scripts/ci change"
+        },
+        {
+          "id": "just_quality_broad",
+          "label": "just quality when CI scripts change broadly"
+        },
+        {
+          "id": "conditional_context_agents",
+          "label": "verify_context_sync / validate_agents_ecosystem when those surfaces are involved"
+        },
+        {
+          "id": "always_full_matrix",
+          "label": "Always full render_matrix (heavy)"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "first_run_scope",
+      "prompt": "On the first /goal run for this package, what should the agent actually do?",
+      "description": "Prefer durable bootstrap without inventing product features or unsolicited matrix regen.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Bootstrap PLATFORM artifacts only: inbox/outbox handoff templates, operating checklist (ownership + forbidden paths + verification matrix), dry-run of key entrypoints (riso validate on one sample, pytest tests/unit/ci/ smoke or --collect-only if slow) — no unsolicited answer churn, workflow edits, or full matrix unless an inbox handoff already requires it.",
+      "recommendedOptionIds": ["bootstrap_artifacts"],
+      "options": [
+        {
+          "id": "bootstrap_artifacts",
+          "label": "Bootstrap handoff templates + dry-run verify",
+          "description": "No sample/CI churn unless inbox already has work."
+        },
+        {
+          "id": "audit_current",
+          "label": "Audit current PLATFORM surfaces for drift",
+          "description": "Scan answers vs copier keys, quality/testing consistency, and CI unit coverage gaps; fix only proven PLATFORM-owned bugs."
+        },
+        {
+          "id": "wait_for_handoffs",
+          "label": "No files until a real handoff arrives",
+          "description": "Goal package is documentation only; first apply waits for COORD/payload signals."
+        }
+      ],
+      "required": true
+    }
+  ]
+}

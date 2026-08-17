@@ -1,0 +1,124 @@
+{
+  "stage": "interview",
+  "title": "Riso Lane SAAS — node/saas + saas-starter",
+  "goalSlug": "riso-lane-saas",
+  "questions": [
+    {
+      "id": "first-execution-focus",
+      "prompt": "What should the first /goal execution of this SAAS lane prioritize?",
+      "description": "Lane ownership is fixed (node/saas + saas-starter only; COORD for contracts). This picks the first concrete work bar inside that boundary.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Baseline health + coherence pass: fix broken Jinja gates, shared package/lib collisions, and layering inconsistencies under owned paths; emit COORD handoffs for any contract gaps. Defer broad feature expansion until the tree is coherent.",
+      "recommendedOptionIds": ["baseline-coherence"],
+      "options": [
+        {
+          "id": "baseline-coherence",
+          "label": "Baseline coherence",
+          "description": "Health pass on gates, layering, package/lib collisions; COORD handoffs only for contract gaps"
+        },
+        {
+          "id": "combo-hardening",
+          "label": "Combination hardening",
+          "description": "Drive validate_saas_combinations + sample-matrix coherence; fix failures under owned paths"
+        },
+        {
+          "id": "stack-depth",
+          "label": "Stack depth (one vertical)",
+          "description": "Deepen one popular stack (e.g. Next+Vercel+Neon+Clerk+Stripe) end-to-end under owned paths"
+        },
+        {
+          "id": "full-sweep",
+          "label": "Full module sweep",
+          "description": "Broader pass across runtime → integrations → UI → compliance in one execution"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "internal-sequence",
+      "prompt": "For large SAAS work, which internal sequencing should the plan enforce?",
+      "description": "Still one ownership boundary (shared package.json / lib collisions). Sequencing only — not separate write lanes unless you later split.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "runtime → hosting/ORM/db wiring → auth → billing → remaining integrations → UI/marketing → compliance/observability/tests. Always resolve shared package/lib collisions before parallelizing sub-areas.",
+      "recommendedOptionIds": ["canonical-layers"],
+      "options": [
+        {
+          "id": "canonical-layers",
+          "label": "Canonical layers",
+          "description": "runtime → infra wiring → auth → billing → integrations → UI → compliance"
+        },
+        {
+          "id": "sample-first",
+          "label": "Sample-first",
+          "description": "Start from saas-starter sample failures and walk inward"
+        },
+        {
+          "id": "collision-first",
+          "label": "Collision-first",
+          "description": "Audit shared package.json / lib roots first, then modules"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "verification-bar",
+      "prompt": "How deep should automated verification go for this goal?",
+      "description": "Render hand-edits remain forbidden. PLATFORM owns sample answers; SAAS may only validate against existing answers files.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Standard: riso validate on representative saas-starter variants + validate_saas_combinations when available + validate_jinja_templates scoped or full when available. No sample render hand-edits; note COORD/PLATFORM handoffs if answers/matrix need changes.",
+      "recommendedOptionIds": ["standard"],
+      "options": [
+        {
+          "id": "minimal",
+          "label": "Minimal",
+          "description": "riso validate on 1–2 variants only"
+        },
+        {
+          "id": "standard",
+          "label": "Standard",
+          "description": "validate + saas combinations + jinja templates"
+        },
+        {
+          "id": "strict-matrix",
+          "label": "Strict matrix",
+          "description": "All saas-starter variants validate + combination script; flag every failure"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "coord-handoff-style",
+      "prompt": "How should SAAS request Copier/contract changes from COORD?",
+      "description": "SAAS must not edit copier.yml, hooks, macros, or module_catalog.json.jinja.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Write a short COORD handoff note under goals/riso-lane-saas/handoffs/ with: need, proposed saas_* keys/when-conditions, affected samples, and verification. Do not edit contract files from this lane.",
+      "recommendedOptionIds": ["goal-handoffs-dir"],
+      "options": [
+        {
+          "id": "goal-handoffs-dir",
+          "label": "Goal handoffs dir",
+          "description": "goals/riso-lane-saas/handoffs/*.md with structured proposals"
+        },
+        {
+          "id": "inline-plan-only",
+          "label": "Inline in plan only",
+          "description": "List COORD asks in plan.md risks; no separate files"
+        },
+        {
+          "id": "coord-goal-comments",
+          "label": "COORD goal package",
+          "description": "File requests into goals/riso-lane-coord/ when that package exists"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "known-pain",
+      "prompt": "Any known SAAS pain points or must-not-break surfaces for this first execution?",
+      "description": "Optional. Leave blank to discover from codebase. Prefer concrete paths, modules, or sample variants.",
+      "answerMode": "text",
+      "recommendedAnswer": "None predetermined — discover via validate scripts and layered when-conditions. Must not break: non-SaaS node trees outside node/saas/; layering saas_infra → auth → billing; existing saas-starter variant answers (PLATFORM-owned).",
+      "required": false
+    }
+  ]
+}

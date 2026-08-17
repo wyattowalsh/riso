@@ -1,0 +1,71 @@
+W3-S5 / PL-T01.S5 — rg removed Copier keys in shard answers
+===========================================================
+task:     PL-T01.S5
+when:     2026-08-13
+repo:     /Users/ww/dev/projects/riso
+branch:   main
+head:     f7951fe62e7c635f3a90d17811d3711c2a2d7c1b
+scope:    S5 samples/**/copier-answers.yml only (not samples/*/render/**)
+write:    none (already canonical)
+result:   EMPTY
+
+Removed keys searched (plan.taskgraph.json remap_keys):
+  1. api_tracks
+  2. api_language
+  3. docs_site
+  4. mcp_language
+  5. saas_starter_module
+  6. saas_auth
+  7. saas_billing
+  8. include_admin
+
+Shard files (7)
+---------------
+samples/saas-starter/enterprise-ready/copier-answers.yml
+samples/saas-starter/nextjs-vercel-neon-clerk-workos/copier-answers.yml
+samples/saas-starter/nextjs-vercel-neon-clerk/copier-answers.yml
+samples/saas-starter/nextjs-vercel-supabase-clerk/copier-answers.yml
+samples/saas-starter/prelaunch-waitlist/copier-answers.yml
+samples/saas-starter/remix-cloudflare-neon-drizzle/copier-answers.yml
+samples/saas-starter/vercel-starter/copier-answers.yml
+
+Queries
+-------
+A. Exact YAML key (start-of-line):
+   ^(api_tracks|api_language|docs_site|mcp_language|saas_starter_module|saas_auth|saas_billing|include_admin)\s*:
+   hits: 0
+
+B. Word-boundary per key (\bKEY\b):
+   api_tracks            hits: 0
+   api_language          hits: 0
+   docs_site             hits: 0
+   mcp_language          hits: 0
+   saas_starter_module   hits: 0
+   saas_auth             hits: 0
+   saas_billing          hits: 0
+   include_admin         hits: 0
+
+C. Official-ladder substring (plan.md, informational):
+   api_tracks|api_language|docs_site|mcp_language|saas_starter_module|^saas_auth:|^saas_billing:|include_admin
+   hits: 0  (S5 files do not emit api_languages / mcp_languages)
+
+D. samples/*/render/** writes in this shard: 0
+
+Canonical dest keys present (not remaps; cited so join does not re-open)
+------------------------------------------------------------------------
+Every S5 answers file already has:
+  api_module
+  mcp_module
+  docs_module
+  docs_framework
+  saas_infra_module
+  saas_auth_module / saas_auth_provider
+  saas_billing_module / saas_billing_provider
+  saas_admin_dashboard
+
+No apply_removed_key_remaps write was required. Dest keys were already set.
+Idempotent: leftover removed-key set is empty.
+
+Verdict
+-------
+EMPTY. PL-T01.S5 green. No answers-file edits.

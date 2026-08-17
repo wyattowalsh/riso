@@ -1,0 +1,46 @@
+W3 PL-T04 — validate_jinja_templates.py on template/files
+=========================================================
+task:     PL-T04
+wave:     W3-PL-T04
+when:     2026-08-13T23:46:55Z
+repo:     /Users/ww/dev/projects/riso
+branch:   main
+HEAD:     f7951fe62e7c635f3a90d17811d3711c2a2d7c1b
+cwd:      /Users/ww/dev/projects/riso (git rev-parse --show-toplevel)
+forbid:   samples/*/render/** not written; uv.lock / pnpm-lock.yaml not written; no commit/tag/push
+write:    this evidence file + residuals/PLATFORM.md only
+secrets:  none present; nothing redacted
+
+Command A (official ladder argv; required)
+-----------------------------------------
+uv run python scripts/ci/validate_jinja_templates.py template/files
+
+stdout: (empty)
+stderr:
+  Jinja template validation failed (1 error(s)):
+    template/files: Not a file
+exit: 1
+
+Note: scripts/ci/validate_jinja_templates.py iterates argv as files only
+(is_file() required; directories are errors). It does not recurse. Pre-commit
+passes individual *.jinja paths (pass_filenames: true). This mission write
+root is evidence only, so the script was not patched.
+
+Command B (directory expansion; syntax gate)
+--------------------------------------------
+find template/files -type f -name '*.jinja' | wc -l
+  799
+
+find template/files -type f -name '*.jinja' -print0 \
+  | xargs -0 uv run python scripts/ci/validate_jinja_templates.py
+
+stdout:
+  Validated 799 Jinja template(s): all OK
+stderr: (empty)
+exit: 0
+
+Verdict
+-------
+- Official argv (Command A) exit=1 → PL-T04 cannot be status=green.
+- All 799 *.jinja under template/files parse clean (Command B exit=0).
+- Residual: PLATFORM.md (teach validator to walk directories, or keep find|xargs).

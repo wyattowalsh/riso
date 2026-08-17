@@ -1,0 +1,189 @@
+{
+  "stage": "interview",
+  "title": "Riso Lane SYS — Go and Rust template tracks",
+  "goalSlug": "riso-lane-sys",
+  "questions": [
+    {
+      "id": "execution-depth",
+      "prompt": "How deep should this SYS pass go inside go/ and rust/?",
+      "description": "SYS can only edit template/files/go/** and template/files/rust/**. Contract/sample work is handoff-only. Choose the ambition level for this goal.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Coherence pass: fix broken/inconsistent scaffolds, align Jinja with existing answer keys (go_framework, go_version, language multiselects), keep docs/task runners working. No greenfield redesign of stacks.",
+      "recommendedOptionIds": ["coherence"],
+      "options": [
+        {
+          "id": "coherence",
+          "label": "Coherence pass (recommended)",
+          "description": "Fix correctness/consistency for existing Go/Rust API·CLI·MCP trees; document COORD gaps; no stack redesign."
+        },
+        {
+          "id": "modernize",
+          "label": "Coherence + light modernization",
+          "description": "Same as coherence, plus sensible dep/docs polish already modeled (e.g. framework branches, README accuracy) without new answer keys."
+        },
+        {
+          "id": "minimal",
+          "label": "Minimal smoke only",
+          "description": "Only fix issues that break riso validate / Jinja / existing go unit tests; leave polish for later."
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "language-priority",
+      "prompt": "Relative priority of Go vs Rust in this goal?",
+      "description": "Repo state: Go has samples (go-api/cli/mcp), unit tests (tests/unit/test_go_templates.py), and multi-framework API branches. Rust trees exist (Actix/Clap/Tokio) but no samples/rust-* and no dedicated unit tests.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Go first for verification against real samples; still bring Rust to independent coherence in the same goal (not deferred forever).",
+      "recommendedOptionIds": ["go-first-both"],
+      "options": [
+        {
+          "id": "go-first-both",
+          "label": "Go first, both in scope (recommended)",
+          "description": "Verify Go against go-* samples; harden Rust scaffolds without requiring PLATFORM samples first."
+        },
+        {
+          "id": "equal",
+          "label": "Equal effort Go + Rust",
+          "description": "Split work evenly even if Rust lacks samples (use synthetic answers / structure tests)."
+        },
+        {
+          "id": "go-only",
+          "label": "Go only this pass",
+          "description": "Rust limited to inventory + COORD/PLATFORM handoffs; no deep Rust edits."
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "go-framework-bar",
+      "prompt": "What is the quality bar for Go HTTP frameworks (gin/fiber/echo/chi)?",
+      "description": "copier.yml already models all four when api_module + go in api_languages. Templates branch on go_framework in api handlers/server/go.mod. SYS must not invent keys.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "All four frameworks must render coherent API scaffolds; Gin remains the sample golden path (samples/go-api).",
+      "recommendedOptionIds": ["all-four"],
+      "options": [
+        {
+          "id": "all-four",
+          "label": "All four coherent (recommended)",
+          "description": "Gin golden path + fiber/echo/chi branches render and stay consistent."
+        },
+        {
+          "id": "gin-primary",
+          "label": "Gin primary only",
+          "description": "Guarantee Gin; other frameworks best-effort without blocking done."
+        },
+        {
+          "id": "gin-only-doc",
+          "label": "Gin only + COORD handoff",
+          "description": "Focus Gin; hand off shrinking choices or validation to COORD if others are broken."
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "rust-platform-handoff",
+      "prompt": "Should SYS request PLATFORM/COORD handoffs for missing Rust samples and contract gaps?",
+      "description": "SYS cannot write samples/*/copier-answers.yml or copier.yml. Known discoverable gaps: go_version when omits go-only MCP; no rust_* version/framework keys; no samples/rust-*.",
+      "answerMode": "multi-custom",
+      "recommendedAnswer": "Yes: PLATFORM for optional rust-api/cli/mcp answer files; COORD for go_version when-clause to include mcp_languages, and any missing validation. Do not invent keys in SYS.",
+      "recommendedOptionIds": ["platform-rust-samples", "coord-go-version-mcp", "coord-other-gaps"],
+      "options": [
+        {
+          "id": "platform-rust-samples",
+          "label": "PLATFORM: rust-* sample answers (optional)",
+          "description": "Handoff to add samples/rust-api|cli|mcp copier-answers for matrix/validate parity."
+        },
+        {
+          "id": "coord-go-version-mcp",
+          "label": "COORD: go_version when includes mcp",
+          "description": "go_version currently when cli/api only; go-mcp sample still sets go_version manually."
+        },
+        {
+          "id": "coord-other-gaps",
+          "label": "COORD: other contract gaps as found",
+          "description": "Document hook/catalog/validation gaps without editing those files."
+        },
+        {
+          "id": "no-handoffs",
+          "label": "No sample/contract handoffs",
+          "description": "Stay inside go/rust trees only; skip external handoffs."
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "rust-stack-stance",
+      "prompt": "Rust stack stance for this goal?",
+      "description": "Templates already fix Rust API to Actix-web + CLI Clap + Tokio. There is no rust_framework answer key. Changing to Axum would be a product decision (COORD) or a silent template break.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Keep Actix/Clap/Tokio as the fixed Rust stack; improve correctness and docs inside that model. Framework swap only via COORD handoff if desired later.",
+      "recommendedOptionIds": ["keep-actix"],
+      "options": [
+        {
+          "id": "keep-actix",
+          "label": "Keep Actix/Clap/Tokio (recommended)",
+          "description": "No framework migration; harden current stack."
+        },
+        {
+          "id": "coord-axum",
+          "label": "Handoff Axum migration proposal only",
+          "description": "Do not migrate in SYS; write COORD proposal for rust_framework or fixed Axum switch."
+        },
+        {
+          "id": "migrate-axum",
+          "label": "Migrate templates to Axum in SYS",
+          "description": "Rewrite rust/api to Axum without new answer keys (riskier, still no sample matrix)."
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "done-definition",
+      "prompt": "What is good enough to call this goal done?",
+      "description": "Verification already proposed: riso validate on go-api/cli/mcp; Jinja validate; narrow tests. Confirm acceptance bar.",
+      "answerMode": "multi-custom",
+      "recommendedAnswer": "Go samples validate; go unit tests pass; Jinja templates for go/rust parse; no writes outside go/rust; COORD/PLATFORM handoffs written for known gaps; Rust structure coherent without requiring new samples.",
+      "recommendedOptionIds": [
+        "validate-go-samples",
+        "go-unit-tests",
+        "jinja-go-rust",
+        "lane-boundary",
+        "handoffs-written"
+      ],
+      "options": [
+        {
+          "id": "validate-go-samples",
+          "label": "riso validate go-api/cli/mcp",
+          "description": "uv run riso validate --answers-file samples/go-*/copier-answers.yml --json"
+        },
+        {
+          "id": "go-unit-tests",
+          "label": "tests/unit/test_go_templates.py",
+          "description": "Narrow maintainer pytest for Go tree"
+        },
+        {
+          "id": "jinja-go-rust",
+          "label": "validate_jinja_templates.py",
+          "description": "When available for go/rust paths"
+        },
+        {
+          "id": "lane-boundary",
+          "label": "No writes outside go/ and rust/",
+          "description": "Hard success condition for the lane"
+        },
+        {
+          "id": "handoffs-written",
+          "label": "COORD/PLATFORM handoffs filed",
+          "description": "Documented contract/sample gaps"
+        },
+        {
+          "id": "require-rust-samples",
+          "label": "Block done until rust samples exist",
+          "description": "Would require PLATFORM work; not SYS-writable"
+        }
+      ],
+      "required": true
+    }
+  ]
+}

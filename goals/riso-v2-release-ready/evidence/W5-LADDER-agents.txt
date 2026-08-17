@@ -1,0 +1,129 @@
+=== W5-LADDER-agents ===
+utc_start=2026-08-14T05:59:52Z
+utc_end=2026-08-14T06:01:10Z
+cwd=/Users/ww/dev/projects/riso
+branch=main
+head=f7951fe62e7c635f3a90d17811d3711c2a2d7c1b
+tags_v2=none (git tag -l 'v2.0.0' '2.0.0' empty)
+lane=LADDER-agents
+command=uv run python scripts/ci/verify_context_sync.py ; just validate-agents
+secrets=none (command has no secret-bearing output)
+product_edits=0
+hand_edit_samples_render=0
+hand_edit_lockfiles=0
+riso_mcp_reintroduced=no
+render_matrix=not started; not killed
+
+Path lock
+---------
+Exclusive write this mission: goals/riso-v2-release-ready/evidence/W5-LADDER-agents.txt
+Official dest writes only via ./scripts/render-samples.sh (dest was absent at wave start).
+Did not hand-create samples/default/render/AGENTS.md.
+Did not write uv.lock / pnpm-lock.yaml.
+Did not commit / tag / push / publish.
+
+Live dest prerequisite
+----------------------
+At wave start (2026-08-14T05:59:52Z): samples/default/render ABSENT.
+Stale ASSURANCE.md / residuals/PLATFORM.md R4 / W5-CLOSE-dest-recheck.txt claimed dest + validate-agents 0; live tree did not match.
+Sibling evidence W5-LADDER-default-render.txt (05:50:38Z) had dest after official copy; dest was gone again before this wave.
+No live render_matrix.py / render-samples.sh / copier process.
+
+Official dest restore (not a hand-edit)
+---------------------------------------
+command=./scripts/render-samples.sh --variant default --answers samples/default/copier-answers.yml
+utc_start=2026-08-14T06:00:33Z
+utc_end=2026-08-14T06:01:00Z
+DEST_BEFORE=no
+copy_success=yes (copier create AGENTS.md + dest tree)
+bootstrap_node=yes (pnpm workspace, 590 packages, 7.6s)
+script_exit=1
+reason=smoke failed AFTER copier copy (docs fumadocs next build)
+docs_stderr_redacted=export const dynamic="force-static"/export const revalidate not configured on route "/robots.txt" with "output: export"
+dest_deleted_after_smoke=no
+DEST_AFTER=yes
+AGENTS_AFTER=yes
+agents_path=samples/default/render/AGENTS.md
+agents_lines=217
+dest_answers=yes (samples/default/render/.copier-answers.yml)
+openspec_present=no (extra default off)
+dest_leftover_rg=empty
+Node floor in dest AGENTS.md: 20 LTS (not raised to maintainer 22)
+OpenSpec extra in dest AGENTS.md: disabled
+
+Copy success + smoke-only fail still satisfies just validate-agents if dest AGENTS.md exists.
+Fumadocs dest smoke remains GATES/NODE residual (residuals/GATES.md R2; live route now /robots.txt).
+
+cmd1: uv run python scripts/ci/verify_context_sync.py
+---------------------------------------
+utc=2026-08-14T05:59:52Z
+exit=0
+log: 2026-08-14 01:59:52 | INFO | __main__:main:62 - Context directories are in sync.
+
+cmd2: just validate-agents
+---------------------------------------
+utc_start=2026-08-14T06:01:09Z
+utc_end=2026-08-14T06:01:10Z
+exit=0
+
+▸ Validating AGENTS ecosystem...
+uv run python scripts/ci/validate_agents_ecosystem.py
+agents-ecosystem: all checks passed
+uv run python scripts/ci/check_quality_parity.py
+Quality parity checks passed.
+uv run python scripts/ci/validate_agents_ecosystem.py \
+    --render-enabled samples/default/render \
+    --render-enabled samples/cli-docs/render \
+    --render-enabled samples/full-stack/render \
+    --render-disabled samples/ai-tools-off/render
+agents-ecosystem: all checks passed
+uv run python scripts/ci/agent_smoke_agents_md.py samples/default/render
+[PASS] project_identity
+[PASS] package_name
+[PASS] human_docs_pointer
+[PASS] quick_reference_table
+[PASS] boundaries_section
+[PASS] table_rows_not_merged
+agent-smoke: 6/6 checks passed
+uv run python scripts/ci/agent_smoke_agents_md.py samples/cli-docs/render
+[PASS] project_identity
+[PASS] package_name
+[PASS] human_docs_pointer
+[PASS] quick_reference_table
+[PASS] boundaries_section
+[PASS] table_rows_not_merged
+agent-smoke: 6/6 checks passed
+uv run python scripts/ci/agent_smoke_agents_md.py samples/full-stack/render
+[PASS] project_identity
+[PASS] package_name
+[PASS] human_docs_pointer
+[PASS] quick_reference_table
+[PASS] boundaries_section
+[PASS] table_rows_not_merged
+agent-smoke: 6/6 checks passed
+uv run python scripts/ci/agent_smoke_agents_md.py samples/ai-tools-off/render
+[PASS] project_identity
+[PASS] package_name
+[PASS] human_docs_pointer
+[PASS] quick_reference_table
+[PASS] boundaries_section
+[PASS] table_rows_not_merged
+agent-smoke: 6/6 checks passed
+✓ AGENTS ecosystem validation passed
+
+Dest AGENTS.md after validate-agents
+------------------------------------
+default:     217 lines  samples/default/render/AGENTS.md
+cli-docs:    247 lines  samples/cli-docs/render/AGENTS.md
+full-stack:  261 lines  samples/full-stack/render/AGENTS.md
+ai-tools-off:193 lines  samples/ai-tools-off/render/AGENTS.md
+DEST_AGENTS_STILL=yes after just validate-agents
+
+Gate
+----
+verify_context_sync_exit=0
+validate_agents_exit=0
+overall_exit=0
+status: GREEN
+samples/*/render/** hand-edits: 0
+official dest restore: yes (render-samples.sh --variant default)

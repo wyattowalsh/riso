@@ -43,8 +43,8 @@ ______________________________________________________________________
 
 | id                          | owner    | status     | residual                                                                                       |
 | --------------------------- | -------- | ---------- | ---------------------------------------------------------------------------------------------- |
-| PL-T06 full `render_matrix` | PLATFORM | residualed | [`residuals/PLATFORM.md`](./residuals/PLATFORM.md) R1 · `evidence/W3-PL-T06-render_matrix.log` |
-| PL-T09 `just quality`       | PLATFORM | residualed | [`residuals/PLATFORM.md`](./residuals/PLATFORM.md) R2 · `evidence/W3-PL-T09-just-quality.log`  |
+| PL-T06 full `render_matrix` | PLATFORM | residualed (re-run) | [`residuals/PLATFORM.md`](./residuals/PLATFORM.md) R1 · `evidence/W3-PL-T06-render_matrix-rerun.log` |
+| PL-T09 `just quality`       | PLATFORM | **closed green**    | [`residuals/PLATFORM.md`](./residuals/PLATFORM.md) R2 · `evidence/W3-PL-T09-just-quality-rerun.log` (877 pass) |
 
 ______________________________________________________________________
 

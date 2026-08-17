@@ -1,0 +1,173 @@
+{
+  "stage": "interview",
+  "title": "Riso Lane NODE — non-SaaS Node/TypeScript",
+  "goalSlug": "riso-lane-node",
+  "questions": [
+    {
+      "id": "execution-depth",
+      "prompt": "What is the primary execution depth for this NODE lane goal?",
+      "description": "Lane ownership is fixed (template/files/node/** except node/saas/**). Choose how deep the first /goal execution should go.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Validate the three Node-oriented samples, fix defects found in owned paths only, and emit COORD handoffs for any contract gaps. No dep modernization unless a gate fails.",
+      "recommendedOptionIds": ["validate-fix-handoff"],
+      "options": [
+        {
+          "id": "validate-only",
+          "label": "Validate only",
+          "description": "Run verification gates, document findings, no template edits unless blocking."
+        },
+        {
+          "id": "validate-fix-handoff",
+          "label": "Validate + fix + COORD handoffs (Recommended)",
+          "description": "Fix defects under owned NODE paths; hand off copier/hooks/catalog gaps to COORD; leave SaaS untouched."
+        },
+        {
+          "id": "harden-modernize",
+          "label": "Harden + modernize deps",
+          "description": "Also refresh package.json.jinja pins/tooling inside owned paths when safe (still no lockfile hand-edits)."
+        },
+        {
+          "id": "charter-only",
+          "label": "Charter only",
+          "description": "Produce goal package and baseline facts; defer code changes to a later /goal run."
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "surface-priority",
+      "prompt": "If tradeoffs force ordering, which non-SaaS surfaces get attention first?",
+      "description": "All remain in lane ownership. Priority only affects fix order when time is limited. Existing verification targets: docs-fumadocs, docs-docusaurus, mcp-typescript.",
+      "answerMode": "multi-custom",
+      "recommendedAnswer": "Docs frameworks (Fumadocs then Docusaurus), then TypeScript MCP, then Fastify api-node, then shared-config/workspace/release fragments.",
+      "recommendedOptionIds": ["docs-fumadocs", "docs-docusaurus", "mcp-ts", "api-node", "workspace-shared"],
+      "options": [
+        {
+          "id": "docs-fumadocs",
+          "label": "Fumadocs docs site",
+          "description": "template/files/node/docs/fumadocs/** + docs-fumadocs sample"
+        },
+        {
+          "id": "docs-docusaurus",
+          "label": "Docusaurus docs site",
+          "description": "template/files/node/docs/docusaurus/** + docs-docusaurus sample"
+        },
+        {
+          "id": "mcp-ts",
+          "label": "TypeScript MCP package",
+          "description": "template/files/node/mcp/** + mcp-typescript sample"
+        },
+        {
+          "id": "api-node",
+          "label": "Fastify api-node",
+          "description": "template/files/node/apps/api-node/** (e.g. circleci-node / monorepo node API)"
+        },
+        {
+          "id": "workspace-shared",
+          "label": "Workspace + shared-config + release",
+          "description": "pnpm-workspace.yaml.jinja, shared-config/**, release/** outside saas"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "verification-matrix",
+      "prompt": "Which verification matrix should define done for this goal?",
+      "description": "Never hand-edit samples/*/render/ or lockfiles. Prefer uv run for Python tooling.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Jinja validate when available + riso validate on docs-fumadocs, docs-docusaurus, and mcp-typescript. Optional: circleci-node answers only if api-node work is touched. No render/ by hand.",
+      "recommendedOptionIds": ["core-three-plus-jinja"],
+      "options": [
+        {
+          "id": "core-three",
+          "label": "Three samples only",
+          "description": "riso validate on docs-fumadocs, docs-docusaurus, mcp-typescript"
+        },
+        {
+          "id": "core-three-plus-jinja",
+          "label": "Three samples + Jinja validate (Recommended)",
+          "description": "Add validate_jinja_templates.py when available"
+        },
+        {
+          "id": "core-plus-api-node",
+          "label": "Core three + api-node sample",
+          "description": "Also riso validate samples/circleci-node (node API) when api-node is in scope"
+        },
+        {
+          "id": "full-node-samples",
+          "label": "All Node-touching samples",
+          "description": "Broader matrix including monorepo/docs variants; still no hand-edit of render/"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "workspace-saas-boundary",
+      "prompt": "How should NODE treat monorepo workspace Jinja that still lists the saas package path?",
+      "description": "pnpm-workspace.yaml.jinja currently includes a saas entry. SAAS lane owns template/files/node/saas/** content. NODE owns workspace coherence for non-SaaS packages.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Keep the saas workspace entry if required for monorepo renders, but never edit node/saas/**. If the entry is wrong or should be conditional on answers, emit a COORD handoff rather than inventing answer keys.",
+      "recommendedOptionIds": ["preserve-list-handoff-conditionals"],
+      "options": [
+        {
+          "id": "preserve-list-handoff-conditionals",
+          "label": "Preserve saas list entry; handoff conditionals (Recommended)",
+          "description": "Do not touch saas content; COORD owns answer-key/conditional changes"
+        },
+        {
+          "id": "never-touch-saas-entry",
+          "label": "Never change saas workspace entry",
+          "description": "Treat the saas line as SAAS-owned even when editing the workspace file for other packages"
+        },
+        {
+          "id": "allow-local-workspace-conditionals",
+          "label": "Allow NODE to conditionalize workspace packages",
+          "description": "Only using existing answer keys; still no saas/** file edits"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "out-of-scope-confirm",
+      "prompt": "Confirm hard out-of-scope for this lane goal (anything else to exclude?).",
+      "description": "Already excluded: node/saas/**, saas-starter, copier/hooks/macros/catalog, python/go/rust/frontend/electron/tauri, src/riso, web wizard, samples render/ and copier-answers.yml.",
+      "answerMode": "multi-custom",
+      "recommendedAnswer": "Keep the stated exclusions. No branches/commits/pushes unless human asks. No secret handling. No inventing Copier answer keys.",
+      "recommendedOptionIds": [
+        "no-saas",
+        "no-coord-contracts",
+        "no-git-unless-asked",
+        "no-new-answer-keys",
+        "no-render-or-lockfiles"
+      ],
+      "options": [
+        {
+          "id": "no-saas",
+          "label": "No node/saas/** or saas-starter/**",
+          "description": "SAAS lane exclusive"
+        },
+        {
+          "id": "no-coord-contracts",
+          "label": "No copier.yml / hooks / macros / module_catalog",
+          "description": "COORD serial ownership"
+        },
+        {
+          "id": "no-git-unless-asked",
+          "label": "No branches/worktrees/commits/pushes unless asked",
+          "description": "Human gate for git mutations"
+        },
+        {
+          "id": "no-new-answer-keys",
+          "label": "No new Copier answer keys",
+          "description": "Handoff to COORD instead"
+        },
+        {
+          "id": "no-render-or-lockfiles",
+          "label": "No hand-edit of render/ or lockfiles",
+          "description": "Regenerate samples; package managers own locks"
+        }
+      ],
+      "required": true
+    }
+  ]
+}

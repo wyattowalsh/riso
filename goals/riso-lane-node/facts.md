@@ -1,0 +1,21 @@
+# Facts
+
+- NODE exclusive write root is `template/files/node/**` except `template/files/node/saas/**`.
+- NODE never edits `template/files/node/saas/**` or `template/files/saas-starter/**`.
+- NODE never edits `template/copier.yml`, `template/hooks/**`, `template/macros/**`, or `template/files/module_catalog.json.jinja`; contract gaps become COORD handoffs.
+- NODE never edits python/go/rust/frontend/electron/tauri template trees, `src/riso/**`, `web/**`, `samples/*/render/**`, or `samples/*/copier-answers.yml`.
+- NODE does not create branches, worktrees, commits, or pushes unless the human explicitly asks.
+- NODE never hand-edits `uv.lock` or `pnpm-lock.yaml`.
+- NODE does not invent new Copier answer keys; needed prompt/catalog/hook changes are COORD handoffs only.
+- NODE owns Fastify api-node, Fumadocs, Docusaurus, TypeScript MCP, shared-config, node release config, and non-SaaS workspace fragments under the write root.
+- First execution validates Node-oriented samples, fixes defects only under owned NODE paths, and emits COORD handoffs for contract gaps; no dependency modernization unless a gate fails.
+- Fix priority when constrained: Fumadocs, then Docusaurus, then TypeScript MCP, then api-node, then workspace/shared-config/release fragments.
+- `pnpm-workspace.yaml.jinja` may keep a saas package entry for monorepo coherence; NODE never edits saas content and handoffs any conditional/answer-key changes to COORD.
+- `docs_framework` and MCP-related Node gates stay consistent with existing answers (fumadocs/docusaurus/typescript) without inventing new keys.
+- When available, `uv run python scripts/ci/validate_jinja_templates.py` passes for owned Node Jinja templates.
+- `uv run riso validate --answers-file samples/docs-fumadocs/copier-answers.yml --json` succeeds.
+- `uv run riso validate --answers-file samples/docs-docusaurus/copier-answers.yml --json` succeeds.
+- `uv run riso validate --answers-file samples/mcp-typescript/copier-answers.yml --json` succeeds.
+- Python tooling runs via `uv run`; pnpm is used only when exercising Node surfaces that require it.
+- NODE never commits, prints, or persists secrets.
+- Done when the three sample validates (+ Jinja when available) pass, `node/saas/**` remains untouched, no forbidden contract files were edited, and any COORD handoffs are listed.

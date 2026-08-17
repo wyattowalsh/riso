@@ -1,0 +1,65 @@
+W5 LADDER-jinja — validate_jinja_templates.py template/files
+============================================================
+task:     LADDER-jinja
+wave:     LADDER-jinja
+when:     2026-08-14T05:53:19Z
+repo:     /Users/ww/dev/projects/riso
+cwd:      /Users/ww/dev/projects/riso (git rev-parse --show-toplevel)
+branch:   main
+HEAD:     f7951fe62e7c635f3a90d17811d3711c2a2d7c1b
+tags:     git tag -l 'v2.0.0' '2.0.0' → empty (no version tag created)
+render_matrix: no live render_matrix.py process; not started or killed
+write:    this evidence file only
+forbid:   samples/*/render/** not written; uv.lock / pnpm-lock.yaml not written;
+          no commit/tag/push/PyPI; no product-code edit
+secrets:  none present; nothing redacted
+python:   uv run (never bare python/pytest)
+
+Green criteria
+--------------
+- official argv exit 0
+- directory walk (template/files is a directory; validator expands *.jinja)
+
+Command (official ladder argv)
+------------------------------
+uv run python scripts/ci/validate_jinja_templates.py template/files
+
+stdout:
+  Validated 803 Jinja template(s): all OK
+stderr:
+  (empty)
+exit: 0
+
+Directory walk
+--------------
+template/files is_dir=True
+_expand_jinja_paths([Path("template/files")])
+  expanded_count=803
+  all_files=True
+  all_jinja=True
+  nested_ok=True
+  first=template/files/.amazonq/mcp.json.jinja
+  last=template/files/{{ _copier_conf.answers_file }}.jinja
+find template/files -type f -name '*.jinja' | wc -l
+  803
+
+Source (already in tree; not edited this wave)
+----------------------------------------------
+scripts/ci/validate_jinja_templates.py:_expand_jinja_paths
+  if file_path.is_dir(): expand via file_path.rglob("*.jinja")
+tests/unit/ci/test_validate_jinja_templates.py covers directory argv
+
+Historical note
+---------------
+W3-PL-T04 (2026-08-13) official argv failed with "template/files: Not a file"
+because the validator required is_file(). That is stale. Live tree walks dirs
+and this run is exit 0. residuals/PLATFORM.md R3 already marked CLOSED.
+
+Verdict
+-------
+status=green
+official argv exit=0
+directory walk proven (803 nested *.jinja)
+no residuals
+no product edits
+no just quality / ruff format needed (validator green)

@@ -1,0 +1,175 @@
+{
+  "stage": "interview",
+  "title": "Riso Lane PY — Python template payload",
+  "goalSlug": "riso-lane-py",
+  "questions": [
+    {
+      "id": "primary_mission",
+      "prompt": "When this goal is executed via /goal, what is the primary mission?",
+      "description": "Lane ownership is already locked to template/files/python/**. This picks the first-wave intent for agents working the lane.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Baseline health + gate correctness: validate Jinja/feature gates against existing answers, fix payload bugs inside python/, and leave COORD handoffs for any contract gaps. No new features unless they unblock correctness.",
+      "recommendedOptionIds": ["health_gates"],
+      "options": [
+        {
+          "id": "health_gates",
+          "label": "Health + gates first",
+          "description": "Audit/fix Jinja, feature gates, deps, and tests under python/ so renders stay correct for existing answer combos."
+        },
+        {
+          "id": "harden_surfaces",
+          "label": "Harden all PY surfaces",
+          "description": "Broader pass across API, CLI, MCP, GraphQL/WS, Sphinx docs, quality config, and shipped tests—still no contract edits."
+        },
+        {
+          "id": "targeted_features",
+          "label": "Targeted feature work",
+          "description": "Execute specific improvements you name (still exclusive to template/files/python/**)."
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "surface_priority",
+      "prompt": "Within template/files/python/, which surfaces should get priority if time is limited?",
+      "description": "Tree today: pyproject/just/Makefile/ruff; src/{{package}}/{api,cli,codegen,graphql_api,websocket}; mcp/; docs/ (Sphinx); release/; tasks/; tests/. Copier _exclude for whole-tree/subpath gates lives in COORD-owned copier.yml—PY only owns in-file Jinja gates.",
+      "answerMode": "multi-custom",
+      "recommendedAnswer": "Prioritize: (1) pyproject + task runners + quality config, (2) FastAPI api/, (3) Typer cli/, (4) FastMCP mcp/, (5) GraphQL + WebSocket when api_features enable them, (6) Sphinx docs/, (7) shipped tests/. Codegen stays in-scope but lower priority unless broken.",
+      "recommendedOptionIds": [
+        "core_packaging",
+        "api",
+        "cli",
+        "mcp",
+        "graphql_ws",
+        "sphinx_docs",
+        "shipped_tests"
+      ],
+      "options": [
+        {
+          "id": "core_packaging",
+          "label": "Packaging + quality",
+          "description": "pyproject.toml.jinja, justfile/Makefile, ruff, coverage, tasks/"
+        },
+        {
+          "id": "api",
+          "label": "FastAPI (api/)",
+          "description": "REST app factory, routes, middleware, config"
+        },
+        {
+          "id": "cli",
+          "label": "Typer CLI (cli/)",
+          "description": "CLI commands, core, plugins"
+        },
+        {
+          "id": "mcp",
+          "label": "FastMCP (mcp/)",
+          "description": "Python MCP server, tools, resources, prompts"
+        },
+        {
+          "id": "graphql_ws",
+          "label": "GraphQL + WebSocket",
+          "description": "graphql_api/, websocket/, api/websocket_endpoints — gated by api_features / legacy keys"
+        },
+        {
+          "id": "sphinx_docs",
+          "label": "Sphinx/Shibuya docs",
+          "description": "python/docs/ when docs_framework=sphinx-shibuya"
+        },
+        {
+          "id": "shipped_tests",
+          "label": "Shipped tests",
+          "description": "python/tests/ rendered into consumer projects"
+        },
+        {
+          "id": "codegen",
+          "label": "Codegen module",
+          "description": "src/{{package}}/codegen/ and related tests"
+        },
+        {
+          "id": "release",
+          "label": "Release helpers",
+          "description": "python/release/ (changelog helpers when changelog_module enabled)"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "verification_depth",
+      "prompt": "How deep should verification go before calling the lane done?",
+      "description": "Hard rules still apply: no hand-edit of samples/*/render/; uv run only; no commits unless asked. Sample answers are PLATFORM-owned.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Standard lane bar: validate_jinja_templates.py (when available) + riso validate --json on python-heavy samples (api-python, docs-sphinx, changelog-python, full-stack as relevant) + narrowest maintainer pytest if it covers python payload. Do not require full sample re-render unless PLATFORM is co-running.",
+      "recommendedOptionIds": ["standard_validate"],
+      "options": [
+        {
+          "id": "jinja_only",
+          "label": "Jinja syntax only",
+          "description": "validate_jinja_templates.py (or equivalent static checks) only"
+        },
+        {
+          "id": "standard_validate",
+          "label": "Jinja + riso validate + narrow pytest",
+          "description": "Recommended: static Jinja + answer-file validate on python-heavy samples + targeted tests"
+        },
+        {
+          "id": "with_sample_render",
+          "label": "Include sample re-render smoke",
+          "description": "Also run render scripts for python-heavy variants (still no hand-edits of render/). Coordinates with PLATFORM."
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "coord_handoff",
+      "prompt": "Where and how should COORD handoffs for missing keys/defaults/hooks be recorded?",
+      "description": "PY must not invent Copier keys or edit copier.yml, hooks, macros, or module_catalog. Handoffs are the only path for contract changes.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Write COORD handoff notes under goals/riso-lane-py/handoffs/ as markdown files (one topic per file or a running HANDOFFS.md), with: missing key/default/when/hook need, why PY needs it, proposed contract change (non-binding), and which python files would consume it. Never apply the contract change from this lane.",
+      "recommendedOptionIds": ["goal_handoffs_dir"],
+      "options": [
+        {
+          "id": "goal_handoffs_dir",
+          "label": "goals/riso-lane-py/handoffs/",
+          "description": "Markdown handoffs in this goal package (recommended for multi-agent waves)"
+        },
+        {
+          "id": "inline_plan_only",
+          "label": "Plan section only",
+          "description": "List handoffs only in plan.md / goal execution notes; no separate handoff files"
+        },
+        {
+          "id": "shared_coord_inbox",
+          "label": "Shared COORD inbox",
+          "description": "goals/riso-lane-coord/inbox/ (or similar) if COORD goal owns a shared queue"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "out_of_scope_confirm",
+      "prompt": "Confirm out-of-scope boundaries (anything to pull in or push out)?",
+      "description": "Default out of scope: Node/Fumadocs/Docusaurus, node/saas, Go/Rust, Electron/Tauri, frontend, quality/testing trees outside python/, src/riso CLI, web/, sample answers/render, and all COORD contract files. In-file Jinja gates under python/ stay in-scope; copier.yml _exclude rules stay COORD-owned.",
+      "answerMode": "multi-custom",
+      "recommendedAnswer": "Keep defaults: exclusive write template/files/python/** only. QUAL/PLATFORM/COORD stay out of write scope. Reading copier/hooks/samples/tests/docs/scripts is OK. If a fix needs _exclude or a new answer key, hand off to COORD rather than expanding PY ownership.",
+      "recommendedOptionIds": ["keep_defaults"],
+      "options": [
+        {
+          "id": "keep_defaults",
+          "label": "Keep stated boundaries",
+          "description": "No expansion of write ownership or contract files"
+        },
+        {
+          "id": "allow_shared_quality_read",
+          "label": "Explicitly allow reading QUAL templates",
+          "description": "Read template/files/quality/** and testing/** for parity only; still no writes"
+        },
+        {
+          "id": "expand_note",
+          "label": "Custom exception (describe)",
+          "description": "Name a temporary exception if you need one"
+        }
+      ],
+      "required": true
+    }
+  ]
+}

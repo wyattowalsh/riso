@@ -1,0 +1,112 @@
+{
+  "stage": "interview",
+  "title": "Riso Lane DESKTOP — Electron and Tauri scaffolds",
+  "goalSlug": "riso-lane-desktop",
+  "questions": [
+    {
+      "id": "priority-mode",
+      "prompt": "When this lane runs under /goal, what should it prioritize first?",
+      "description": "Repo already has electron-vite + tauri templates gated on desktop_* answers. electron-forge is a Copier choice with no scaffold tree. Prefer a clear default execution posture.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Baseline health: audit electron/ + tauri/ gates against existing desktop_* enums, fix in-tree correctness, validate electron-app and tauri-app answers; emit COORD handoffs for contract/structure gaps (forge, exclusion path shape, non-enum features).",
+      "recommendedOptionIds": ["baseline-health"],
+      "options": [
+        {
+          "id": "baseline-health",
+          "label": "Baseline health + COORD handoffs"
+        },
+        {
+          "id": "implement-forge",
+          "label": "Also implement electron-forge scaffold"
+        },
+        {
+          "id": "deep-feature",
+          "label": "Deep feature work (updater/tray/titlebar) first"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "electron-forge-gap",
+      "prompt": "How should this lane treat the electron-forge gap?",
+      "description": "copier.yml offers desktop_framework=electron-forge and excludes electron/electron-forge/, but template/files/electron/** is a flat electron-vite tree (no electron-forge/ subdirectory). Implementing forge may also need COORD exclusion-path fixes.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Do not invent forge under wrong paths in this pass. Document the gap, keep electron-vite correct, and emit a COORD handoff for exclusion path shape + forge contract before any forge scaffold lands.",
+      "recommendedOptionIds": ["handoff-only"],
+      "options": [
+        {
+          "id": "handoff-only",
+          "label": "COORD handoff only this pass"
+        },
+        {
+          "id": "scaffold-after-coord",
+          "label": "Handoff then scaffold if COORD agrees"
+        },
+        {
+          "id": "scaffold-now",
+          "label": "Scaffold forge now inside electron/"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "non-enum-features",
+      "prompt": "How should non-enum desktop feature gates in Tauri be handled?",
+      "description": "copier desktop_features enums are auto_updater, tray_icon, custom_titlebar. Some tauri templates also gate system_info and menu, which are not in the Copier enum. DESKTOP must not invent new answer keys.",
+      "answerMode": "single-custom",
+      "recommendedAnswer": "Align template gates to the existing enum only where safe; emit COORD handoff for system_info/menu (add to contract or remove). Do not invent new Copier keys in this lane.",
+      "recommendedOptionIds": ["align-and-handoff"],
+      "options": [
+        {
+          "id": "align-and-handoff",
+          "label": "Align to enum + COORD handoff"
+        },
+        {
+          "id": "leave-and-handoff",
+          "label": "Leave gates; COORD handoff only"
+        },
+        {
+          "id": "strip-now",
+          "label": "Strip non-enum gates now"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "verification-bar",
+      "prompt": "What verification is required before calling the lane done?",
+      "description": "Avoid hand-editing samples/*/render/. Prefer answers validation + jinja syntax; full sample render is heavier and PLATFORM-owned for answers files.",
+      "answerMode": "multi-custom",
+      "recommendedAnswer": "Validate electron-app and tauri-app answers JSON; run validate_jinja_templates.py when available; do not hand-edit samples/*/render/.",
+      "recommendedOptionIds": [
+        "validate-electron",
+        "validate-tauri",
+        "jinja-validate",
+        "no-render-handedit"
+      ],
+      "options": [
+        {
+          "id": "validate-electron",
+          "label": "riso validate samples/electron-app"
+        },
+        {
+          "id": "validate-tauri",
+          "label": "riso validate samples/tauri-app"
+        },
+        {
+          "id": "jinja-validate",
+          "label": "scripts/ci/validate_jinja_templates.py"
+        },
+        {
+          "id": "no-render-handedit",
+          "label": "Never hand-edit samples/*/render/"
+        },
+        {
+          "id": "full-render",
+          "label": "Also full sample render smoke"
+        }
+      ],
+      "required": true
+    }
+  ]
+}
