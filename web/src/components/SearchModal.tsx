@@ -243,10 +243,15 @@ export function SearchModal({ isOpen, onClose, onNavigateToStep }: SearchModalPr
         setCurrentStep(step)
         onNavigateToStep?.(step, key)
 
-        // Scroll to wizard
         setTimeout(() => {
-          document.getElementById('wizard')?.scrollIntoView({ behavior: 'smooth' })
-        }, 100)
+          const target = document.querySelector<HTMLElement>(
+            `[data-field-key="${CSS.escape(key)}"]`,
+          )
+          ;(target ?? document.getElementById('wizard'))?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          })
+        }, 400)
 
         // Clear highlight after 3 seconds
         setTimeout(() => {
@@ -277,8 +282,14 @@ export function SearchModal({ isOpen, onClose, onNavigateToStep }: SearchModalPr
         onNavigateToStep?.(recent.step, recent.key)
 
         setTimeout(() => {
-          document.getElementById('wizard')?.scrollIntoView({ behavior: 'smooth' })
-        }, 100)
+          const target = document.querySelector<HTMLElement>(
+            `[data-field-key="${CSS.escape(recent.key)}"]`,
+          )
+          ;(target ?? document.getElementById('wizard'))?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          })
+        }, 400)
 
         setTimeout(() => {
           setHighlightedField(null)
@@ -466,7 +477,7 @@ export function SearchModal({ isOpen, onClose, onNavigateToStep }: SearchModalPr
                               <span className="font-medium truncate font-sans text-gray-900 dark:text-white">
                                 {doc.title}
                               </span>
-                              <span className="flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-riso-blue/10 text-riso-blue dark:bg-riso-blue/20">
+                              <span className="flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-riso-federal-blue/10 text-riso-federal-blue dark:bg-riso-cornflower/20 dark:text-riso-cornflower">
                                 docs
                               </span>
                             </div>

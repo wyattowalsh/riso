@@ -63,7 +63,7 @@ const saasTree: FileTreeNode[] = [
     name: 'apps/web/',
     type: 'folder',
     children: [
-      { name: 'app/', type: 'folder', description: 'Next.js 16 app' },
+      { name: 'app/', type: 'folder', description: 'Next.js 16 app router' },
       { name: 'components/', type: 'folder' },
       { name: 'lib/', type: 'folder', children: [
         { name: 'auth.ts', type: 'file', description: 'Clerk auth' },
@@ -74,6 +74,19 @@ const saasTree: FileTreeNode[] = [
   },
   { name: 'packages/', type: 'folder', description: 'Shared code' },
   { name: 'prisma/schema.prisma', type: 'file' },
+]
+
+export const remixSaasTree: FileTreeNode[] = [
+  {
+    name: 'apps/web/',
+    type: 'folder',
+    children: [
+      { name: 'app/routes/', type: 'folder', description: 'Remix 2 routes' },
+      { name: 'app/root.tsx', type: 'file', description: 'Remix root' },
+      { name: 'components/', type: 'folder' },
+    ],
+  },
+  { name: 'packages/', type: 'folder', description: 'Shared code' },
 ]
 
 export const PRESETS: Preset[] = [

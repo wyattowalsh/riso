@@ -259,6 +259,7 @@ function buildFileTree(config: Partial<RisoConfig>): FileNode[] {
   // Shared config files
   addFile('.gitignore', root)
   addFile('README.md', root)
+  addFile('mise.toml', root)
 
   const taskRunner = config.task_runner || 'just'
   if (taskRunner === 'just' || taskRunner === 'both') {
@@ -309,17 +310,6 @@ function buildFileTree(config: Partial<RisoConfig>): FileNode[] {
       const internal = addFolder('internal', root, 'go')
       const configFolder = addFolder('config', internal, 'go')
       addFile('config.go', configFolder, 'go')
-    }
-    if (cliLangs.includes('typescript')) {
-      if (!cliLangs.includes('python') && !cliLangs.includes('go') && !cliLangs.includes('rust')) {
-        addFile('package.json', root, 'typescript')
-      }
-      addFile('tsconfig.json', root, 'json')
-      const src = addFolder('src-ts', root, 'typescript', 'cli')
-      addFile('index.ts', src, 'typescript')
-      addFile('cli.ts', src, 'typescript')
-      const commands = addFolder('commands', src, 'typescript')
-      addFile('index.ts', commands, 'typescript')
     }
   }
 
@@ -384,12 +374,10 @@ function buildFileTree(config: Partial<RisoConfig>): FileNode[] {
       addFile('__init__.py', resources, 'python')
     }
     if (mcpLangs.includes('typescript')) {
-      const mcp = addFolder('mcp-ts', root, 'typescript', 'mcp')
+      const node = addFolder('node', root, 'typescript')
+      const mcp = addFolder('mcp', node, 'typescript', 'mcp')
+      addFile('package.json', mcp, 'json')
       addFile('server.ts', mcp, 'typescript')
-      const tools = addFolder('tools', mcp, 'typescript')
-      addFile('index.ts', tools, 'typescript')
-      const resources = addFolder('resources', mcp, 'typescript')
-      addFile('index.ts', resources, 'typescript')
     }
     if (mcpLangs.includes('rust')) {
       const mcp = addFolder('mcp-rust', root, 'rust', 'mcp')
@@ -449,9 +437,16 @@ function buildFileTree(config: Partial<RisoConfig>): FileNode[] {
     }
 
     const web = current
-    const app = addFolder('app', web, 'typescript')
-    addFile('layout.tsx', app, 'typescript')
-    addFile('page.tsx', app, 'typescript')
+    if (config.saas_runtime === 'remix-2') {
+      const app = addFolder('app', web, 'typescript')
+      addFile('root.tsx', app, 'typescript')
+      const routes = addFolder('routes', app, 'typescript')
+      addFile('_index.tsx', routes, 'typescript')
+    } else {
+      const app = addFolder('app', web, 'typescript')
+      addFile('layout.tsx', app, 'typescript')
+      addFile('page.tsx', app, 'typescript')
+    }
     const components = addFolder('components', web, 'typescript')
     const ui = addFolder('ui', components, 'typescript')
     addFile('button.tsx', ui, 'typescript')
@@ -471,9 +466,14 @@ function buildFileTree(config: Partial<RisoConfig>): FileNode[] {
     }
   }
 
-  // Tests folder
-  const tests = addFolder('tests', root)
-  addFile('test_main.py', tests, 'python')
+  const hasPython =
+    (config.cli_module === 'enabled' && (config.cli_languages || []).includes('python')) ||
+    (config.api_module === 'enabled' && (config.api_languages || []).includes('python')) ||
+    (config.mcp_module === 'enabled' && (config.mcp_languages || []).includes('python'))
+  if (hasPython) {
+    const tests = addFolder('tests', root)
+    addFile('test_main.py', tests, 'python')
+  }
 
   return [root]
 }

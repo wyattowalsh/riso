@@ -1,3 +1,4 @@
+import { FieldHighlight } from '../FieldHighlight'
 import { useRisoStore } from '../../lib/store'
 import { getPromptDefault, getPromptHelpSummary } from '../../lib/matrixData'
 import { cn } from '../../lib/utils'
@@ -128,35 +129,41 @@ export function ProjectBasics() {
       </div>
 
       {/* Project Name */}
-      <div>
-        <label htmlFor="projectName" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-          Project Name <span className="text-riso-bright-red">*</span>
-        </label>
-        <input
-          type="text"
-          id="projectName"
-          value={config.project_name || ''}
-          onChange={(e) => updateConfig({ project_name: e.target.value })}
-          placeholder="my-awesome-project"
-          className={cn(
-            'input-riso transition-all duration-200 text-lg',
-            validation.valid || !config.project_name
-              ? 'border-gray-300 dark:border-gray-600'
-              : 'border-riso-bright-red dark:border-riso-bright-red'
-          )}
-        />
-        <div className="mt-2">
-          {validation.error && config.project_name ? (
-            <p className="text-sm text-riso-bright-red font-medium">{validation.error}</p>
-          ) : (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Letters, numbers, hyphens, and underscores only
-            </p>
-          )}
+      <FieldHighlight fieldKey="project_name">
+        <div>
+          <label htmlFor="projectName" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            Project Name <span className="text-riso-bright-red">*</span>
+          </label>
+          <input
+            type="text"
+            id="projectName"
+            value={config.project_name || ''}
+            onChange={(e) => updateConfig({ project_name: e.target.value })}
+            placeholder="my-awesome-project"
+            aria-invalid={!validation.valid}
+            aria-required="true"
+            aria-describedby={validation.valid ? 'projectName-help' : 'projectName-error'}
+            className={cn(
+              'input-riso transition-all duration-200 text-lg',
+              validation.valid ? '' : 'error'
+            )}
+          />
+          <div className="mt-2">
+            {validation.valid ? (
+              <p id="projectName-help" className="text-xs text-gray-600 dark:text-gray-400">
+                Letters, numbers, hyphens, and underscores only
+              </p>
+            ) : (
+              <p id="projectName-error" role="alert" className="text-sm text-riso-bright-red font-medium">
+                {validation.error}
+              </p>
+            )}
+          </div>
         </div>
-      </div>
+      </FieldHighlight>
 
       {/* Repository Layout */}
+      <FieldHighlight fieldKey="project_layout">
       <div>
         <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
           Repository Layout
@@ -185,8 +192,10 @@ export function ProjectBasics() {
           </p>
         )}
       </div>
+      </FieldHighlight>
 
       {/* Quality Profile */}
+      <FieldHighlight fieldKey="quality_profile">
       <div>
         <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
           Quality Profile
@@ -215,8 +224,10 @@ export function ProjectBasics() {
           </p>
         )}
       </div>
+      </FieldHighlight>
 
       {/* Task Runner */}
+      <FieldHighlight fieldKey="task_runner">
       <div>
         <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
           Task Runner
@@ -261,8 +272,10 @@ export function ProjectBasics() {
           </p>
         )}
       </div>
+      </FieldHighlight>
 
       {/* CI Platform */}
+      <FieldHighlight fieldKey="ci_platform">
       <div>
         <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
           CI/CD Platform
@@ -307,6 +320,33 @@ export function ProjectBasics() {
           </p>
         )}
       </div>
+      </FieldHighlight>
+
+      <FieldHighlight fieldKey="openspec_extra">
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+          OpenSpec extra
+        </label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <OptionCard
+            value="disabled"
+            label="Off (default)"
+            description="Skip generated OpenSpec files. Used on the maintainer repo only."
+            icon={Shield}
+            selected={(config.openspec_extra || 'disabled') === 'disabled'}
+            onClick={() => updateConfig({ openspec_extra: 'disabled' })}
+          />
+          <OptionCard
+            value="enabled"
+            label="Include OpenSpec"
+            description="Copy optional openspec/** extras into the generated project."
+            icon={Sparkles}
+            selected={config.openspec_extra === 'enabled'}
+            onClick={() => updateConfig({ openspec_extra: 'enabled' })}
+          />
+        </div>
+      </div>
+      </FieldHighlight>
     </div>
   )
 }

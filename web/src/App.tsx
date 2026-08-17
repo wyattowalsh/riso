@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Wizard } from './components/Wizard'
 import { Header } from './components/Header'
 import { Presets } from './components/presets'
@@ -13,14 +13,30 @@ import { parseShareableURL } from './lib/presets'
 import { useRisoStore } from './lib/store'
 import { stepAfterExternalConfigApply } from './lib/wizardGate'
 
+function shareUrlError(href: string): string | null {
+  try {
+    parseShareableURL(href)
+    return null
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error)
+  }
+}
+
 export default function App() {
   const { isDrawerOpen, setDrawerOpen, updateConfig, setStep } = useRisoStore()
+  const [shareError] = useState(() =>
+    typeof window === 'undefined' ? null : shareUrlError(window.location.href),
+  )
 
   useEffect(() => {
-    const presetConfig = parseShareableURL(window.location.href)
-    if (presetConfig) {
-      updateConfig(presetConfig)
-      setStep(stepAfterExternalConfigApply(presetConfig))
+    try {
+      const presetConfig = parseShareableURL(window.location.href)
+      if (presetConfig) {
+        updateConfig(presetConfig)
+        setStep(stepAfterExternalConfigApply(presetConfig))
+      }
+    } catch {
+      // Share-URL parse errors are captured in shareError at first render.
     }
   }, [updateConfig, setStep])
 
@@ -32,6 +48,14 @@ export default function App() {
       <Header />
       <main id="main-content" className="container mx-auto px-4 py-10 max-w-6xl space-y-10">
         <Hero />
+        {shareError ? (
+          <div
+            role="alert"
+            className="rounded-xl border border-riso-bright-red/40 bg-riso-bright-red/10 px-4 py-3 text-sm text-riso-bright-red"
+          >
+            Share URL rejected: {shareError}
+          </div>
+        ) : null}
         <Highlights />
 
         <section id="wizard" aria-labelledby="wizard-heading" className="space-y-6 scroll-mt-24">

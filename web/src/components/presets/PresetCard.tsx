@@ -97,7 +97,7 @@ export function PresetCard({
                   'px-1.5 py-0.5 rounded text-[9px] font-medium',
                   preset.complexity === 'beginner' && 'bg-riso-green/20 text-riso-green',
                   preset.complexity === 'intermediate' && 'bg-riso-sunflower/20 text-riso-orange',
-                  preset.complexity === 'advanced' && 'bg-riso-fluorescent-pink/20 text-riso-fluorescent-pink'
+                  preset.complexity === 'advanced' && 'bg-riso-burgundy/15 text-riso-burgundy dark:text-riso-apricot'
                 )}>
                   {preset.complexity}
                 </span>

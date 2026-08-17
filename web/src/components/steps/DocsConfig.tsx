@@ -1,10 +1,12 @@
+import { FieldHighlight } from '../FieldHighlight'
+import { Switch } from '../modules/Switch'
 import { useRisoStore, type RisoConfig } from '../../lib/store'
 import {
   buildChoiceOptions,
   getPromptDefault,
 } from '../../lib/matrixData'
 import { cn } from '../../lib/utils'
-import { BookOpen, FileText, Code2, Sparkles } from 'lucide-react'
+import { FileText, Code2, Sparkles } from 'lucide-react'
 
 interface FrameworkOption {
   value: string
@@ -35,13 +37,6 @@ const FRAMEWORK_OPTIONS: FrameworkOption[] = [
     description: 'Python ecosystem, mature tooling',
     icon: FileText,
     features: ['Auto-generated API docs', 'MyST Markdown', 'Cross-references', 'Dark mode'],
-  },
-  {
-    value: 'mkdocs',
-    label: 'MkDocs Material',
-    description: 'Markdown-first, Material Design',
-    icon: BookOpen,
-    features: ['Material theme', 'Search', 'Navigation tabs', 'Dark mode'],
   },
 ]
 
@@ -139,7 +134,6 @@ export function DocsConfig() {
   const isFumadocs = selectedFramework === 'fumadocs'
   const isDocusaurus = selectedFramework === 'docusaurus'
   const isSphinxShibuya = selectedFramework === 'sphinx-shibuya'
-  const isMkDocs = selectedFramework === 'mkdocs'
 
   const handleToggleDocs = (enabled: boolean) => {
     updateConfig({ docs_module: enabled ? 'enabled' : 'disabled' })
@@ -155,35 +149,28 @@ export function DocsConfig() {
       </div>
 
       {/* Enable/Disable Toggle */}
+      <FieldHighlight fieldKey="docs_module">
       <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-riso-federal-blue/10 to-riso-cornflower/10 dark:from-riso-federal-blue/5 dark:to-riso-cornflower/5 border border-riso-federal-blue/20 dark:border-riso-federal-blue/10">
         <div>
-          <h3 className="font-semibold text-gray-900 dark:text-white">Enable Documentation</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <h3 id="docs-enable-title" className="font-semibold text-gray-900 dark:text-white">
+            Enable Documentation
+          </h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             Add a documentation site to your project
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => handleToggleDocs(!docsEnabled)}
-          className={cn(
-            'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out',
-            docsEnabled
-              ? 'bg-riso-federal-blue dark:bg-riso-teal'
-              : 'bg-gray-200 dark:bg-gray-600'
-          )}
-        >
-          <span
-            className={cn(
-              'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-              docsEnabled ? 'translate-x-5' : 'translate-x-0'
-            )}
-          />
-        </button>
+        <Switch
+          checked={docsEnabled}
+          onCheckedChange={handleToggleDocs}
+          labelledBy="docs-enable-title"
+        />
       </div>
+      </FieldHighlight>
 
       {docsEnabled && (
         <>
           {/* Docs Framework Selection */}
+          <FieldHighlight fieldKey="docs_framework">
           <div>
             <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3">
               Documentation Framework
@@ -199,6 +186,7 @@ export function DocsConfig() {
                     onClick={() =>
                       updateConfig({ docs_framework: option.value as RisoConfig['docs_framework'] })
                     }
+                    aria-pressed={isSelected}
                     className={cn(
                       'p-4 rounded-xl border-2 text-left transition-all',
                       isSelected
@@ -248,6 +236,7 @@ export function DocsConfig() {
               })}
             </div>
           </div>
+          </FieldHighlight>
 
           {/* Sphinx-Shibuya Info */}
           {isSphinxShibuya && (
@@ -280,36 +269,6 @@ export function DocsConfig() {
             </div>
           )}
 
-          {/* MkDocs Info */}
-          {isMkDocs && (
-            <div className="rounded-xl bg-gray-50/50 dark:bg-gray-800/30 p-4 border border-gray-200 dark:border-gray-700">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">
-                MkDocs Material
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                MkDocs with the Material theme provides a clean, modern documentation experience.
-              </p>
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                {[
-                  'Material Design theme',
-                  'Built-in search',
-                  'Navigation tabs',
-                  'Dark mode support',
-                ].map((feature) => (
-                  <p
-                    key={feature}
-                    className="text-sm text-gray-600 dark:text-gray-400 flex items-start gap-2"
-                  >
-                    <span className="text-riso-green dark:text-riso-mint font-semibold mt-0.5">
-                      ✓
-                    </span>
-                    {feature}
-                  </p>
-                ))}
-              </div>
-            </div>
-          )}
-
       {/* Fumadocs Options */}
       {isFumadocs && (
         <div className="rounded-xl bg-gray-50/50 dark:bg-gray-800/30 p-5 space-y-5">
@@ -320,6 +279,7 @@ export function DocsConfig() {
             <div className="grid gap-4 sm:grid-cols-2">
               <SelectField
                 label="Search Provider"
+                fieldKey="fumadocs_search_provider"
                 value={
                   config.fumadocs_search_provider ||
                   getPromptDefault<RisoConfig['fumadocs_search_provider']>('fumadocs_search_provider', 'orama') ||
@@ -331,6 +291,7 @@ export function DocsConfig() {
 
               <SelectField
                 label="Theme"
+                fieldKey="fumadocs_theme"
                 value={
                   config.fumadocs_theme ||
                   getPromptDefault<RisoConfig['fumadocs_theme']>('fumadocs_theme', 'default') ||
@@ -342,6 +303,7 @@ export function DocsConfig() {
 
               <SelectField
                 label="Code Theme"
+                fieldKey="fumadocs_code_theme"
                 value={
                   config.fumadocs_code_theme ||
                   getPromptDefault<RisoConfig['fumadocs_code_theme']>('fumadocs_code_theme', 'github') ||
@@ -353,6 +315,7 @@ export function DocsConfig() {
 
               <SelectField
                 label="TOC Depth"
+                fieldKey="fumadocs_toc_depth"
                 value={
                   config.fumadocs_toc_depth ||
                   getPromptDefault<RisoConfig['fumadocs_toc_depth']>('fumadocs_toc_depth', '3') ||
@@ -371,6 +334,7 @@ export function DocsConfig() {
             <div className="grid gap-2 sm:grid-cols-3">
               <ToggleCheckbox
                 label="llms.txt"
+                fieldKey="fumadocs_llms_txt"
                 checked={
                   (config.fumadocs_llms_txt ??
                     getPromptDefault<'enabled' | 'disabled'>('fumadocs_llms_txt', 'enabled')) ===
@@ -380,6 +344,7 @@ export function DocsConfig() {
               />
               <ToggleCheckbox
                 label="OpenAPI Docs"
+                fieldKey="fumadocs_openapi"
                 checked={
                   (config.fumadocs_openapi ??
                     getPromptDefault<'enabled' | 'disabled'>('fumadocs_openapi', 'enabled')) ===
@@ -389,6 +354,7 @@ export function DocsConfig() {
               />
               <ToggleCheckbox
                 label="Blog"
+                fieldKey="fumadocs_blog"
                 checked={
                   (config.fumadocs_blog ??
                     getPromptDefault<'enabled' | 'disabled'>('fumadocs_blog', 'disabled')) ===
@@ -398,6 +364,7 @@ export function DocsConfig() {
               />
               <ToggleCheckbox
                 label="Mermaid"
+                fieldKey="fumadocs_mermaid"
                 checked={
                   (config.fumadocs_mermaid ??
                     getPromptDefault<'enabled' | 'disabled'>('fumadocs_mermaid', 'disabled')) ===
@@ -407,6 +374,7 @@ export function DocsConfig() {
               />
               <ToggleCheckbox
                 label="Math (KaTeX)"
+                fieldKey="fumadocs_math"
                 checked={
                   (config.fumadocs_math ??
                     getPromptDefault<'enabled' | 'disabled'>('fumadocs_math', 'disabled')) ===
@@ -416,6 +384,7 @@ export function DocsConfig() {
               />
               <ToggleCheckbox
                 label="Image Zoom"
+                fieldKey="fumadocs_image_zoom"
                 checked={
                   (config.fumadocs_image_zoom ??
                     getPromptDefault<'enabled' | 'disabled'>('fumadocs_image_zoom', 'enabled')) ===
@@ -425,6 +394,7 @@ export function DocsConfig() {
               />
               <ToggleCheckbox
                 label="Last Updated"
+                fieldKey="fumadocs_last_updated"
                 checked={
                   (config.fumadocs_last_updated ??
                     getPromptDefault<'enabled' | 'disabled'>('fumadocs_last_updated', 'enabled')) ===
@@ -434,6 +404,7 @@ export function DocsConfig() {
               />
               <ToggleCheckbox
                 label="Edit on GitHub"
+                fieldKey="fumadocs_edit_on_github"
                 checked={
                   (config.fumadocs_edit_on_github ??
                     getPromptDefault<'enabled' | 'disabled'>('fumadocs_edit_on_github', 'enabled')) ===
@@ -443,6 +414,7 @@ export function DocsConfig() {
               />
               <ToggleCheckbox
                 label="i18n"
+                fieldKey="fumadocs_i18n"
                 checked={
                   (config.fumadocs_i18n ??
                     getPromptDefault<'enabled' | 'disabled'>('fumadocs_i18n', 'disabled')) ===
@@ -465,6 +437,7 @@ export function DocsConfig() {
             <div className="grid gap-4 sm:grid-cols-2">
               <SelectField
                 label="Search Provider"
+                fieldKey="docusaurus_search_provider"
                 value={
                   config.docusaurus_search_provider ||
                   getPromptDefault<RisoConfig['docusaurus_search_provider']>('docusaurus_search_provider', 'local') ||
@@ -476,6 +449,7 @@ export function DocsConfig() {
 
               <SelectField
                 label="Theme"
+                fieldKey="docusaurus_theme"
                 value={
                   config.docusaurus_theme ||
                   getPromptDefault<RisoConfig['docusaurus_theme']>('docusaurus_theme', 'classic') ||
@@ -487,6 +461,7 @@ export function DocsConfig() {
 
               <SelectField
                 label="Analytics"
+                fieldKey="docusaurus_analytics"
                 value={
                   config.docusaurus_analytics ||
                   getPromptDefault<RisoConfig['docusaurus_analytics']>('docusaurus_analytics', 'none') ||
@@ -498,6 +473,7 @@ export function DocsConfig() {
 
               <SelectField
                 label="Comments"
+                fieldKey="docusaurus_comments"
                 value={
                   config.docusaurus_comments ||
                   getPromptDefault<RisoConfig['docusaurus_comments']>('docusaurus_comments', 'none') ||
@@ -516,6 +492,7 @@ export function DocsConfig() {
             <div className="grid gap-2 sm:grid-cols-3">
               <ToggleCheckbox
                 label="llms.txt"
+                fieldKey="docusaurus_llms_txt"
                 checked={
                   (config.docusaurus_llms_txt ??
                     getPromptDefault<'enabled' | 'disabled'>('docusaurus_llms_txt', 'enabled')) ===
@@ -525,6 +502,7 @@ export function DocsConfig() {
               />
               <ToggleCheckbox
                 label="Faster (Rspack)"
+                fieldKey="docusaurus_faster"
                 checked={
                   (config.docusaurus_faster ??
                     getPromptDefault<'enabled' | 'disabled'>('docusaurus_faster', 'enabled')) ===
@@ -534,6 +512,7 @@ export function DocsConfig() {
               />
               <ToggleCheckbox
                 label="Blog"
+                fieldKey="docusaurus_blog"
                 checked={
                   (config.docusaurus_blog ??
                     getPromptDefault<'enabled' | 'disabled'>('docusaurus_blog', 'enabled')) ===
@@ -543,6 +522,7 @@ export function DocsConfig() {
               />
               <ToggleCheckbox
                 label="Mermaid"
+                fieldKey="docusaurus_mermaid"
                 checked={
                   (config.docusaurus_mermaid ??
                     getPromptDefault<'enabled' | 'disabled'>('docusaurus_mermaid', 'enabled')) ===
@@ -552,6 +532,7 @@ export function DocsConfig() {
               />
               <ToggleCheckbox
                 label="Math (KaTeX)"
+                fieldKey="docusaurus_math"
                 checked={
                   (config.docusaurus_math ??
                     getPromptDefault<'enabled' | 'disabled'>('docusaurus_math', 'disabled')) ===
@@ -561,6 +542,7 @@ export function DocsConfig() {
               />
               <ToggleCheckbox
                 label="Versioning"
+                fieldKey="docusaurus_versioning"
                 checked={
                   (config.docusaurus_versioning ??
                     getPromptDefault<'enabled' | 'disabled'>('docusaurus_versioning', 'disabled')) ===
@@ -570,6 +552,7 @@ export function DocsConfig() {
               />
               <ToggleCheckbox
                 label="PWA"
+                fieldKey="docusaurus_pwa"
                 checked={
                   (config.docusaurus_pwa ??
                     getPromptDefault<'enabled' | 'disabled'>('docusaurus_pwa', 'disabled')) ===
@@ -579,6 +562,7 @@ export function DocsConfig() {
               />
               <ToggleCheckbox
                 label="i18n"
+                fieldKey="docusaurus_i18n"
                 checked={
                   (config.docusaurus_i18n ??
                     getPromptDefault<'enabled' | 'disabled'>('docusaurus_i18n', 'disabled')) ===
@@ -588,6 +572,7 @@ export function DocsConfig() {
               />
               <ToggleCheckbox
                 label="Sitemap"
+                fieldKey="docusaurus_sitemap"
                 checked={
                   (config.docusaurus_sitemap ??
                     getPromptDefault<'enabled' | 'disabled'>('docusaurus_sitemap', 'enabled')) ===
@@ -609,19 +594,23 @@ function SelectField({
   label,
   value,
   onChange,
-  options
+  options,
+  fieldKey,
 }: {
   label: string
   value: string
   onChange: (value: string) => void
   options: { value: string; label: string }[]
+  fieldKey?: string
 }) {
-  return (
+  const fieldId = fieldKey ? `${fieldKey}-select` : undefined
+  const body = (
     <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+      <label htmlFor={fieldId} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
         {label}
       </label>
       <select
+        id={fieldId}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-riso-federal-blue dark:focus:border-riso-teal focus:ring-riso-federal-blue dark:focus:ring-riso-teal transition-colors"
@@ -632,18 +621,22 @@ function SelectField({
       </select>
     </div>
   )
+  if (!fieldKey) return body
+  return <FieldHighlight fieldKey={fieldKey}>{body}</FieldHighlight>
 }
 
 function ToggleCheckbox({
   label,
   checked,
-  onChange
+  onChange,
+  fieldKey,
 }: {
   label: string
   checked: boolean
   onChange: (checked: boolean) => void
+  fieldKey?: string
 }) {
-  return (
+  const body = (
     <label className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
       <input
         type="checkbox"
@@ -654,4 +647,6 @@ function ToggleCheckbox({
       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</span>
     </label>
   )
+  if (!fieldKey) return body
+  return <FieldHighlight fieldKey={fieldKey}>{body}</FieldHighlight>
 }

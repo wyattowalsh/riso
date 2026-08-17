@@ -1,4 +1,6 @@
+import { FieldHighlight } from '../FieldHighlight'
 import { cn } from '../../lib/utils'
+import { Switch, type SwitchAccent } from './Switch'
 
 /**
  * Accent color variants for the module card
@@ -25,6 +27,8 @@ export interface ModuleCardProps {
   accentColor?: AccentColor
   /** Optional badge text (e.g., "recommended") */
   badge?: string
+  /** Search / highlight key for Cmd+K navigation */
+  fieldKey?: string
 }
 
 /**
@@ -54,7 +58,8 @@ export function ModuleCard({
   onToggle,
   children,
   accentColor = 'blue',
-  badge
+  badge,
+  fieldKey,
 }: ModuleCardProps) {
   const accentClasses: Record<AccentColor, string> = {
     blue: 'border-riso-federal-blue/30 bg-riso-federal-blue/5',
@@ -72,7 +77,11 @@ export function ModuleCard({
     teal: 'text-riso-teal dark:text-riso-mint',
   }
 
-  return (
+  const titleId = `module-title-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+  const switchAccent: SwitchAccent =
+    accentColor === 'orange' ? 'orange' : accentColor === 'teal' ? 'teal' : 'blue'
+
+  const card = (
     <div
       className={cn(
         'rounded-xl border-2 p-4 transition-all',
@@ -94,13 +103,13 @@ export function ModuleCard({
             <Icon
               className={cn(
                 'h-5 w-5',
-                enabled ? iconClasses[accentColor] : 'text-gray-400'
+                enabled ? iconClasses[accentColor] : 'text-gray-500 dark:text-gray-400'
               )}
             />
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-gray-900 dark:text-white">
+              <h3 id={titleId} className="font-semibold text-gray-900 dark:text-white">
                 {title}
               </h3>
               {badge && (
@@ -109,29 +118,17 @@ export function ModuleCard({
                 </span>
               )}
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
               {description}
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => onToggle(!enabled)}
-          className={cn(
-            'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out',
-            enabled
-              ? 'bg-riso-federal-blue dark:bg-riso-teal'
-              : 'bg-gray-200 dark:bg-gray-600'
-          )}
-          aria-label={`Toggle ${title}`}
-        >
-          <span
-            className={cn(
-              'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-              enabled ? 'translate-x-5' : 'translate-x-0'
-            )}
-          />
-        </button>
+        <Switch
+          checked={enabled}
+          onCheckedChange={onToggle}
+          labelledBy={titleId}
+          accent={switchAccent}
+        />
       </div>
 
       {enabled && children && (
@@ -141,4 +138,7 @@ export function ModuleCard({
       )}
     </div>
   )
+
+  if (!fieldKey) return card
+  return <FieldHighlight fieldKey={fieldKey}>{card}</FieldHighlight>
 }

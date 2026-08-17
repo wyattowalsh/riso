@@ -1,6 +1,9 @@
 import type { RisoConfig } from './store'
 import { stringify, parse } from 'yaml'
-import { formatRemovedAnswerKeyErrors } from './removedAnswerKeys'
+import {
+  applyThenRejectRemovedKeys,
+  formatRemapPreview,
+} from './removedAnswerKeys'
 import {
   parseCustomPresetsStorage,
   parseShareConfigPayload,
@@ -8,12 +11,35 @@ import {
 
 const CUSTOM_PRESETS_KEY = 'riso-custom-presets'
 
+const PRESET_META_KEYS = new Set([
+  'name',
+  'description',
+  'version',
+  'createdAt',
+  'config',
+])
+
 export interface CustomPreset {
   name: string
   description?: string
   config: Partial<RisoConfig>
   createdAt: string
   version: number
+  remapPreview?: string[]
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function omitPresetMeta(parsed: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(parsed)) {
+    if (!PRESET_META_KEYS.has(key)) {
+      out[key] = value
+    }
+  }
+  return out
 }
 
 /**
@@ -71,11 +97,14 @@ export function deleteCustomPreset(name: string): boolean {
  * Export preset to YAML string
  */
 export function exportPresetYAML(preset: CustomPreset): string {
+  const remapped = applyThenRejectRemovedKeys({
+    ...(preset.config as Record<string, unknown>),
+  })
   return stringify({
     name: preset.name,
     description: preset.description,
     version: preset.version,
-    config: preset.config,
+    config: remapped.answers,
   })
 }
 
@@ -83,32 +112,35 @@ export function exportPresetYAML(preset: CustomPreset): string {
  * Import preset from YAML string
  */
 export function importPresetYAML(yamlStr: string): CustomPreset {
-  const parsed = parse(yamlStr) as Record<string, unknown>
-  const removedKeyErrors = formatRemovedAnswerKeyErrors(parsed)
-  if (removedKeyErrors.length > 0) {
-    throw new Error(
-      `Removed Copier answer keys are no longer supported:\n${removedKeyErrors.map((line) => `- ${line}`).join('\n')}`,
-    )
+  const parsed = parse(yamlStr)
+  if (!isRecord(parsed)) {
+    throw new Error('Invalid configuration format')
   }
-  const config = (parsed.config ?? parsed) as Record<string, unknown>
-  const configErrors = formatRemovedAnswerKeyErrors(config)
-  if (configErrors.length > 0) {
-    throw new Error(
-      `Removed Copier answer keys are no longer supported:\n${configErrors.map((line) => `- ${line}`).join('\n')}`,
-    )
+  const configBlock = parsed.config
+  const hasConfigBlock = isRecord(configBlock)
+  const source = hasConfigBlock ? { ...configBlock } : omitPresetMeta(parsed)
+  const remapped = applyThenRejectRemovedKeys(source)
+  if (hasConfigBlock) {
+    applyThenRejectRemovedKeys(omitPresetMeta(parsed))
   }
-  const name = typeof parsed.name === 'string' ? parsed.name : 'Imported Preset'
+  const projectName = remapped.answers.project_name
+  const name =
+    typeof parsed.name === 'string' && parsed.name.trim()
+      ? parsed.name
+      : !hasConfigBlock && typeof projectName === 'string' && projectName.trim()
+        ? projectName
+        : 'Imported Preset'
   const description =
     typeof parsed.description === 'string' ? parsed.description : undefined
   const version = typeof parsed.version === 'number' ? parsed.version : 1
-  const configSource = parsed.config ?? parsed
 
   return {
     name,
     description,
-    config: configSource as CustomPreset['config'],
+    config: remapped.answers as CustomPreset['config'],
     createdAt: new Date().toISOString(),
     version,
+    remapPreview: formatRemapPreview(remapped.ops),
   }
 }
 
@@ -116,7 +148,10 @@ export function importPresetYAML(yamlStr: string): CustomPreset {
  * Generate shareable URL with encoded config
  */
 export function generateShareableURL(config: Partial<RisoConfig>): string {
-  const compressed = btoa(JSON.stringify(config))
+  const remapped = applyThenRejectRemovedKeys({
+    ...(config as Record<string, unknown>),
+  })
+  const compressed = btoa(JSON.stringify(remapped.answers))
   return `${window.location.origin}${window.location.pathname}?preset=${encodeURIComponent(compressed)}`
 }
 
@@ -124,18 +159,23 @@ export function generateShareableURL(config: Partial<RisoConfig>): string {
  * Parse shareable URL to config
  */
 export function parseShareableURL(url: string): Partial<RisoConfig> | null {
+  let urlObj: URL
   try {
-    const urlObj = new URL(url)
-    const preset = urlObj.searchParams.get('preset')
-    if (!preset) return null
-    const raw = JSON.parse(atob(decodeURIComponent(preset))) as unknown
-    const parsed = parseShareConfigPayload(raw)
-    if (!parsed.success) {
-      console.warn('Rejected share URL config:', parsed.error)
-      return null
-    }
-    return parsed.data as Partial<RisoConfig>
+    urlObj = new URL(url)
   } catch {
     return null
   }
+  const preset = urlObj.searchParams.get('preset')
+  if (!preset) return null
+  let raw: unknown
+  try {
+    raw = JSON.parse(atob(decodeURIComponent(preset)))
+  } catch {
+    return null
+  }
+  const parsed = parseShareConfigPayload(raw)
+  if (!parsed.success) {
+    throw new Error(parsed.error)
+  }
+  return parsed.data as Partial<RisoConfig>
 }

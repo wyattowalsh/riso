@@ -1,4 +1,5 @@
-import { useRisoStore } from '../../lib/store'
+import { FieldHighlight } from '../FieldHighlight'
+import { normalizeApiFeatures, useRisoStore } from '../../lib/store'
 import { Terminal, Server, Cpu, Code, Package, GitBranch } from 'lucide-react'
 import {
   ModuleCard,
@@ -12,7 +13,6 @@ const CLI_LANGUAGES: LanguageOption[] = [
   { value: 'python', label: 'Python', description: 'Typer + Rich' },
   { value: 'rust', label: 'Rust', description: 'Clap + colored' },
   { value: 'go', label: 'Go', description: 'Cobra + Viper' },
-  { value: 'typescript', label: 'TypeScript', description: 'Commander.js' },
 ]
 
 const API_LANGUAGES: LanguageOption[] = [
@@ -62,14 +62,17 @@ export function ModulesConfig() {
           enabled={config.cli_module === 'enabled'}
           onToggle={(enabled) => updateConfig({ cli_module: enabled ? 'enabled' : 'disabled' })}
           accentColor="blue"
+          fieldKey="cli_module"
         >
-          <LanguageSelector
-            label="Implementation Languages"
-            helperText="(select multiple)"
-            options={CLI_LANGUAGES}
-            values={config.cli_languages || ['python']}
-            onChange={(v) => updateConfig({ cli_languages: v as ('python' | 'rust' | 'go' | 'typescript')[] })}
-          />
+          <FieldHighlight fieldKey="cli_languages">
+            <LanguageSelector
+              label="Implementation Languages"
+              helperText="(select multiple)"
+              options={CLI_LANGUAGES}
+              values={config.cli_languages || ['python']}
+              onChange={(v) => updateConfig({ cli_languages: v as ('python' | 'rust' | 'go')[] })}
+            />
+          </FieldHighlight>
         </ModuleCard>
 
         {/* API Module */}
@@ -80,23 +83,28 @@ export function ModulesConfig() {
           enabled={config.api_module === 'enabled'}
           onToggle={(enabled) => updateConfig({ api_module: enabled ? 'enabled' : 'disabled' })}
           accentColor="green"
+          fieldKey="api_module"
         >
           <div className="space-y-4">
-            <LanguageSelector
-              label="Implementation Languages"
-              helperText="(select multiple)"
-              options={API_LANGUAGES}
-              values={config.api_languages || ['python']}
-              onChange={(v) => updateConfig({ api_languages: v as ('python' | 'node' | 'rust' | 'go')[] })}
-            />
+            <FieldHighlight fieldKey="api_languages">
+              <LanguageSelector
+                label="Implementation Languages"
+                helperText="(select multiple)"
+                options={API_LANGUAGES}
+                values={config.api_languages || ['python']}
+                onChange={(v) => updateConfig({ api_languages: v as ('python' | 'node' | 'rust' | 'go')[] })}
+              />
+            </FieldHighlight>
 
             {(config.api_languages?.includes('python') || !config.api_languages) && (
-              <FeatureToggleGroup
-                label="API Features (Python only)"
-                options={API_FEATURES}
-                value={config.api_features || 'none'}
-                onChange={(v) => updateConfig({ api_features: v as 'none' | 'graphql' | 'websocket' | 'graphql,websocket' })}
-              />
+              <FieldHighlight fieldKey="api_features">
+                <FeatureToggleGroup
+                  label="API Features (Python only)"
+                  options={API_FEATURES}
+                  value={normalizeApiFeatures(config.api_features)}
+                  onChange={(v) => updateConfig({ api_features: v as 'none' | 'graphql' | 'websocket' | 'graphql,websocket' })}
+                />
+              </FieldHighlight>
             )}
           </div>
         </ModuleCard>
@@ -109,14 +117,17 @@ export function ModulesConfig() {
           enabled={config.mcp_module === 'enabled'}
           onToggle={(enabled) => updateConfig({ mcp_module: enabled ? 'enabled' : 'disabled' })}
           accentColor="purple"
+          fieldKey="mcp_module"
         >
-          <LanguageSelector
-            label="Implementation Languages"
-            helperText="(select multiple)"
-            options={MCP_LANGUAGES}
-            values={config.mcp_languages || ['python']}
-            onChange={(v) => updateConfig({ mcp_languages: v as ('python' | 'typescript' | 'rust' | 'go')[] })}
-          />
+          <FieldHighlight fieldKey="mcp_languages">
+            <LanguageSelector
+              label="Implementation Languages"
+              helperText="(select multiple)"
+              options={MCP_LANGUAGES}
+              values={config.mcp_languages || ['python']}
+              onChange={(v) => updateConfig({ mcp_languages: v as ('python' | 'typescript' | 'rust' | 'go')[] })}
+            />
+          </FieldHighlight>
         </ModuleCard>
 
         {/* Developer Tools Section */}
@@ -127,13 +138,14 @@ export function ModulesConfig() {
 
           <div className="space-y-3">
             {/* Codegen Module */}
+            <FieldHighlight fieldKey="codegen_module">
             <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Code className="h-5 w-5 text-gray-400" />
+                  <Code className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                   <div>
                     <h4 className="font-medium text-gray-900 dark:text-white">Code Generation</h4>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Jinja2 template rendering utilities</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Jinja2 template rendering utilities</p>
                   </div>
                 </div>
                 <FeatureToggleGroup
@@ -144,15 +156,17 @@ export function ModulesConfig() {
                 />
               </div>
             </div>
+            </FieldHighlight>
 
             {/* Changelog Module */}
+            <FieldHighlight fieldKey="changelog_module">
             <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <GitBranch className="h-5 w-5 text-gray-400" />
+                  <GitBranch className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                   <div>
                     <h4 className="font-medium text-gray-900 dark:text-white">Changelog & Releases</h4>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Semantic versioning with git-cliff</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Semantic versioning with git-cliff</p>
                   </div>
                 </div>
                 <FeatureToggleGroup
@@ -163,15 +177,17 @@ export function ModulesConfig() {
                 />
               </div>
             </div>
+            </FieldHighlight>
 
             {/* Shared Logic */}
+            <FieldHighlight fieldKey="shared_logic">
             <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Package className="h-5 w-5 text-gray-400" />
+                  <Package className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                   <div>
                     <h4 className="font-medium text-gray-900 dark:text-white">Shared Logic Package</h4>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Cross-component shared utilities</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Cross-component shared utilities</p>
                   </div>
                 </div>
                 <FeatureToggleGroup
@@ -182,6 +198,7 @@ export function ModulesConfig() {
                 />
               </div>
             </div>
+            </FieldHighlight>
           </div>
         </div>
       </div>

@@ -36,6 +36,7 @@ export function DependencyWarnings({
   const { config, setCurrentStep, updateConfig } = useRisoStore()
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set())
   const [isExpanded, setIsExpanded] = useState(false)
+  const [userToggled, setUserToggled] = useState(false)
 
   // Use validation hook for all validation logic
   const { warnings, errors, warningList, infos, costEstimate } = useValidation(
@@ -61,9 +62,9 @@ export function DependencyWarnings({
     if (showEmpty) {
       return (
         <div className={cn('space-y-3', className)}>
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-riso-green/10 dark:bg-riso-green/5 border border-riso-green/20">
-            <CheckCircle className="h-4 w-4 text-riso-green flex-shrink-0" />
-            <span className="text-sm text-riso-green dark:text-riso-mint">
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-riso-hunter-green/10 dark:bg-riso-mint/10 border border-riso-hunter-green/25 dark:border-riso-mint/20">
+            <CheckCircle className="h-4 w-4 text-riso-hunter-green dark:text-riso-mint flex-shrink-0" />
+            <span className="text-sm text-riso-hunter-green dark:text-riso-mint">
               Configuration is valid. No dependency issues detected.
             </span>
           </div>
@@ -77,34 +78,63 @@ export function DependencyWarnings({
   }
 
   const totalCount = warnings.length
+  const hasErrors = errors.length > 0
+  const expanded = userToggled ? isExpanded : hasErrors || isExpanded
+  const heading =
+    hasErrors
+      ? `${errors.length} ${errors.length === 1 ? 'issue' : 'issues'}`
+      : `${totalCount} ${totalCount === 1 ? 'recommendation' : 'recommendations'}`
 
   return (
-    <div className={cn('space-y-3', className)}>
+    <div
+      className={cn('space-y-3', className)}
+      role={hasErrors ? 'alert' : undefined}
+    >
       {/* Collapsible Header */}
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => {
+          setUserToggled(true)
+          setIsExpanded(!expanded)
+        }}
+        className={cn(
+          'w-full flex items-center justify-between p-3 rounded-xl border transition-colors',
+          hasErrors
+            ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/60 hover:bg-red-100 dark:hover:bg-red-950/50'
+            : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/50 hover:bg-amber-100 dark:hover:bg-amber-900/30',
+        )}
       >
         <div className="flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-          <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
-            {totalCount} {totalCount === 1 ? 'recommendation' : 'recommendations'}
+          <AlertTriangle
+            className={cn(
+              'h-4 w-4',
+              hasErrors ? 'text-red-700 dark:text-red-300' : 'text-amber-600 dark:text-amber-400',
+            )}
+          />
+          <span
+            className={cn(
+              'text-sm font-medium',
+              hasErrors ? 'text-red-800 dark:text-red-200' : 'text-amber-800 dark:text-amber-200',
+            )}
+          >
+            {heading}
           </span>
-          {errors.length > 0 && (
-            <span className="px-1.5 py-0.5 text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded">
-              {errors.length} {errors.length === 1 ? 'issue' : 'issues'}
+          {hasErrors && warningList.length + infos.length > 0 && (
+            <span className="px-1.5 py-0.5 text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 rounded">
+              {warningList.length + infos.length} more
             </span>
           )}
         </div>
-        {isExpanded ? (
-          <ChevronUp className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+        {expanded ? (
+          <ChevronUp className={cn('h-4 w-4', hasErrors ? 'text-red-700 dark:text-red-300' : 'text-amber-600 dark:text-amber-400')} />
         ) : (
-          <ChevronDown className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <ChevronDown className={cn('h-4 w-4', hasErrors ? 'text-red-700 dark:text-red-300' : 'text-amber-600 dark:text-amber-400')} />
         )}
       </button>
 
       {/* Expanded Content */}
-      {isExpanded && (
+      {expanded && (
         <>
           {errors.length > 0 && (
             <div className="space-y-2">

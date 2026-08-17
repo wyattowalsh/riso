@@ -1,6 +1,10 @@
 import { stringify } from 'yaml'
 import { validateProjectName } from '../components/steps/ProjectBasics'
 import type { RisoConfig } from './store'
+import {
+  applyThenRejectRemovedKeys,
+  REMOVED_ANSWER_KEYS,
+} from './removedAnswerKeys'
 
 export type CopierArgs = Record<string, unknown>
 
@@ -93,6 +97,7 @@ function assignDocusaurusOptions(config: Partial<RisoConfig>, args: CopierArgs):
 
 function assignSaasOptions(config: Partial<RisoConfig>, args: CopierArgs): void {
   assignIfPresent(args, 'saas_infra_module', config.saas_infra_module)
+  assignIfPresent(args, 'saas_admin_dashboard', config.saas_admin_dashboard)
 
   if (config.saas_infra_module === 'enabled') {
     assignIfPresent(args, 'saas_runtime', config.saas_runtime)
@@ -151,52 +156,71 @@ function assignAiToolsOptions(config: Partial<RisoConfig>, args: CopierArgs): vo
 /**
  * Map wizard RisoConfig state to Copier answer arguments.
  */
-export function configToCopierArgs(config: Partial<RisoConfig>): CopierArgs {
+export function configToCopierArgs(
+  config: Partial<RisoConfig> | Record<string, unknown>,
+): CopierArgs {
+  const remapped = applyThenRejectRemovedKeys({ ...config })
+  const src = remapped.answers as Partial<RisoConfig>
   const args: CopierArgs = {}
 
   // Project basics
-  if (config.project_name) args.project_name = config.project_name
-  assignIfPresent(args, 'project_layout', config.project_layout)
-  assignIfPresent(args, 'quality_profile', config.quality_profile)
-  assignIfPresent(args, 'task_runner', config.task_runner)
-  assignIfPresent(args, 'ci_platform', config.ci_platform)
+  if (src.project_name) args.project_name = src.project_name
+  assignIfPresent(args, 'project_layout', src.project_layout)
+  assignIfPresent(args, 'quality_profile', src.quality_profile)
+  assignIfPresent(args, 'task_runner', src.task_runner)
+  assignIfPresent(args, 'openspec_extra', src.openspec_extra)
+  assignIfPresent(args, 'ci_platform', src.ci_platform)
 
   // CLI module
-  assignIfPresent(args, 'cli_module', config.cli_module)
-  if (config.cli_module === 'enabled' && config.cli_languages?.length) {
-    args.cli_languages = config.cli_languages
+  assignIfPresent(args, 'cli_module', src.cli_module)
+  if (src.cli_module === 'enabled' && src.cli_languages?.length) {
+    args.cli_languages = src.cli_languages
   }
 
   // API module
-  assignIfPresent(args, 'api_module', config.api_module)
-  if (config.api_module === 'enabled') {
-    if (config.api_languages?.length) args.api_languages = config.api_languages
-    if (config.api_features && config.api_features !== 'none') {
-      args.api_features = config.api_features
+  assignIfPresent(args, 'api_module', src.api_module)
+  if (src.api_module === 'enabled') {
+    if (src.api_languages?.length) args.api_languages = src.api_languages
+    if (src.api_features && src.api_features !== 'none') {
+      args.api_features = String(src.api_features)
+        .split(',')
+        .map((part) => part.trim())
+        .filter((part) => part && part !== 'none')
     }
   }
 
   // MCP module
-  assignIfPresent(args, 'mcp_module', config.mcp_module)
-  if (config.mcp_module === 'enabled' && config.mcp_languages?.length) {
-    args.mcp_languages = config.mcp_languages
+  assignIfPresent(args, 'mcp_module', src.mcp_module)
+  if (src.mcp_module === 'enabled' && src.mcp_languages?.length) {
+    args.mcp_languages = src.mcp_languages
   }
 
   // Documentation module
-  assignIfPresent(args, 'docs_module', config.docs_module)
-  if (config.docs_module === 'enabled' && config.docs_framework) {
-    args.docs_framework = config.docs_framework
+  assignIfPresent(args, 'docs_module', src.docs_module)
+  if (src.docs_module === 'enabled' && src.docs_framework) {
+    args.docs_framework = src.docs_framework
   }
 
   // Shared modules
-  assignIfPresent(args, 'codegen_module', config.codegen_module)
-  assignIfPresent(args, 'changelog_module', config.changelog_module)
-  assignIfPresent(args, 'shared_logic', config.shared_logic)
+  assignIfPresent(args, 'codegen_module', src.codegen_module)
+  assignIfPresent(args, 'changelog_module', src.changelog_module)
+  assignIfPresent(args, 'shared_logic', src.shared_logic)
 
-  assignFumadocsOptions(config, args)
-  assignDocusaurusOptions(config, args)
-  assignSaasOptions(config, args)
-  assignAiToolsOptions(config, args)
+  assignFumadocsOptions(src, args)
+  assignDocusaurusOptions(src, args)
+  assignSaasOptions(src, args)
+  assignAiToolsOptions(src, args)
+
+  for (const op of remapped.ops) {
+    for (const key of op.new_keys) {
+      if (key in remapped.answers && remapped.answers[key] !== undefined && !(key in args)) {
+        args[key] = remapped.answers[key]
+      }
+    }
+  }
+  for (const key of Object.keys(REMOVED_ANSWER_KEYS)) {
+    delete args[key]
+  }
 
   return args
 }
@@ -204,19 +228,6 @@ export function configToCopierArgs(config: Partial<RisoConfig>): CopierArgs {
 /** POSIX-safe single-quoted shell literal. */
 export function shellEscapeString(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`
-}
-
-function formatCliArg(key: string, value: unknown): string {
-  if (Array.isArray(value)) {
-    return `${key}=${shellEscapeString(JSON.stringify(value))}`
-  }
-  if (typeof value === 'boolean') {
-    return `${key}=${value}`
-  }
-  if (typeof value === 'string') {
-    return `${key}=${shellEscapeString(value)}`
-  }
-  return `${key}=${shellEscapeString(String(value))}`
 }
 
 export function resolveExportProjectName(config: Partial<RisoConfig>): string {
@@ -230,23 +241,20 @@ export function resolveExportProjectName(config: Partial<RisoConfig>): string {
 
 export function generateCliCommand(config: Partial<RisoConfig>): string {
   const projectName = resolveExportProjectName(config)
-  const args = configToCopierArgs(config)
-  if (!args.project_name) {
-    args.project_name = projectName
-  }
-  const dataArgs = Object.entries(args)
-    .map(([key, value]) => `  --data ${formatCliArg(key, value)}`)
-    .join(' \\\n')
-
   const dest = shellEscapeString(`./${projectName}`)
-  return `uv run riso copy ${dest} \\\n${dataArgs}`
+  return [
+    `# Download the YAML from this page as copier-answers.yml first.`,
+    `uv run riso copy ${dest} --answers-file copier-answers.yml`,
+  ].join('\n')
 }
 
-export function generateYamlConfig(config: Partial<RisoConfig>): string {
+export function generateYamlConfig(
+  config: Partial<RisoConfig> | Record<string, unknown>,
+): string {
   const yamlObj = configToCopierArgs(config)
   const header = `# Riso Configuration
 # Generated: ${new Date().toISOString()}
-# Usage: copier copy gh:wyattowalsh/riso . --answers-file copier-answers.yml
+# Usage: uv run riso copy --answers-file copier-answers.yml
 
 `
   return header + stringify(yamlObj)

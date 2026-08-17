@@ -66,8 +66,10 @@ export function CustomPresetCard({
       )}
 
       <button
+        type="button"
+        data-testid={`custom-preset-apply-${preset.name}`}
         onClick={(e) => onClick(preset, e)}
-        className="text-left w-full mb-3"
+        className="text-left w-full mb-3 relative z-10"
       >
         <div className="flex items-center gap-3 mb-2">
           <div className="p-2.5 rounded-xl bg-gradient-to-br from-riso-orange/20 to-riso-apricot/20 transition-transform duration-300 group-hover:scale-110">

@@ -54,6 +54,8 @@ export function CustomPresetsSection({
 }: CustomPresetsSectionProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [importError, setImportError] = useState<string | null>(null)
+  const [importPreview, setImportPreview] = useState<string[]>([])
 
   const handleApplyCustomPreset = useCallback((preset: CustomPreset, event: React.MouseEvent) => {
     // Get click coordinates for confetti
@@ -99,12 +101,20 @@ export function CustomPresetsSection({
         const imported = importPresetYAML(content)
         saveCustomPreset(imported.name, imported.config, imported.description)
         setCustomPresets(loadCustomPresets())
+        setImportError(null)
+        setImportPreview(imported.remapPreview ?? [])
       } catch (error) {
         console.error('Failed to import preset:', error)
-        alert('Failed to import preset. Please check the file format.')
+        setImportPreview([])
+        setImportError(
+          error instanceof Error
+            ? error.message
+            : 'Failed to import preset. Please check the file format.',
+        )
       }
     }
     reader.readAsText(file)
+    event.target.value = ''
   }, [setCustomPresets])
 
   const handleSharePreset = useCallback((config: Partial<RisoConfig>) => {
@@ -136,12 +146,37 @@ export function CustomPresetsSection({
             <input
               type="file"
               accept=".yml,.yaml"
+              aria-label="Import preset YAML"
+              data-testid="preset-import-input"
               onChange={handleImportPreset}
               className="sr-only"
             />
           </label>
         </div>
       </div>
+
+      {importError && (
+        <div
+          role="alert"
+          data-testid="preset-import-error"
+          className="rounded-lg border border-red-300/80 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-700 dark:bg-red-950/40 dark:text-red-100"
+        >
+          {importError}
+        </div>
+      )}
+      {importPreview.length > 0 && (
+        <div
+          data-testid="preset-import-preview"
+          className="rounded-lg border border-riso-green/30 bg-riso-green/5 px-4 py-3 text-sm text-gray-800 dark:text-gray-200"
+        >
+          <p className="font-medium">Remapped 1.x answer keys</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {importPreview.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {Object.keys(customPresets).length === 0 ? (
         <div className="p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl">

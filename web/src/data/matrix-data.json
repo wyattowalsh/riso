@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-07-11T06:44:13.467515+00:00",
+  "generated_at": "2026-08-14T05:34:27.952635+00:00",
   "sources": {
     "template": "/Users/ww/dev/projects/riso/template/copier.yml",
-    "render_matrix": null
+    "render_matrix": "/Users/ww/dev/projects/riso/samples/metadata/render_matrix.json"
   },
   "template": {
     "metadata": {
       "name": "riso-template",
       "version": "2.0.0",
-      "description": "Riso is a component-first, polyglot Copier template supporting Python, TypeScript, Rust, and Go. Each component (CLI, API, MCP, Docs, SaaS) can be independently configured with its own language choice, enabling flexible combinations like Rust CLI + Python API + Fumadocs. Features modular SaaS scaffolding with opt-in auth, billing, and infrastructure layers.\n",
+      "description": "Riso is a component-first, polyglot Copier template supporting Python, TypeScript, Rust, and Go. Each component (CLI, API, MCP, Docs, SaaS) can be independently configured with its own language choice, enabling flexible combinations like Rust CLI + Python API + Fumadocs. Features modular SaaS scaffolding with opt-in auth, billing, and infrastructure layers. Riso 2.0 remaps removed 1.x Copier keys via `riso migrate` / `riso update` (then fail-closed), always renders generated mise.toml, and ships an optional OpenSpec extra (`openspec_extra`, default disabled). Typecheck is ty, not mypy.\n",
       "maintainers": [
         "Riso Template Working Group"
       ],
@@ -26,7 +26,10 @@
         "fumadocs",
         "sphinx-shibuya",
         "docusaurus",
-        "saas"
+        "saas",
+        "ty",
+        "mise",
+        "openspec"
       ]
     },
     "_defaults": {
@@ -69,6 +72,7 @@
       "shared_logic": "disabled",
       "codegen_module": "disabled",
       "changelog_module": "disabled",
+      "openspec_extra": "disabled",
       "fumadocs_search_provider": "orama",
       "fumadocs_llms_txt": "enabled",
       "fumadocs_ai_search": "disabled",
@@ -198,6 +202,7 @@
       "shared_logic": "disabled",
       "codegen_module": "disabled",
       "changelog_module": "disabled",
+      "openspec_extra": "disabled",
       "fumadocs_search_provider": "orama",
       "fumadocs_llms_txt": "enabled",
       "fumadocs_ai_search": "disabled",
@@ -1215,7 +1220,7 @@
           "1.23"
         ],
         "default": "1.24",
-        "when": "{{ 'go' in cli_languages or 'go' in api_languages }}",
+        "when": "{{ 'go' in cli_languages or 'go' in api_languages or 'go' in mcp_languages }}",
         "help": "Select Go version (1.24 stable, 1.26 releasing Feb 2026)\n",
         "multiselect": null
       },
@@ -1245,6 +1250,7 @@
         "type": "str",
         "choices": [
           "python",
+          "typescript",
           "rust",
           "go"
         ],
@@ -1278,6 +1284,18 @@
         "default": "stdio",
         "when": "{{ mcp_module == 'enabled' }}",
         "help": "Select default transport protocol:\n- stdio: Standard I/O (default, best for local agents)\n- sse: Server-Sent Events (for web clients)\n- http: HTTP streaming\n",
+        "multiselect": null
+      },
+      {
+        "key": "openspec_extra",
+        "type": "str",
+        "choices": [
+          "disabled",
+          "enabled"
+        ],
+        "default": "disabled",
+        "when": null,
+        "help": "Include optional OpenSpec extra files (`openspec/**`)?\nDefault disabled \u2014 OpenSpec is used on the maintainer repo; generated\nprojects opt in. mise.toml always renders (not gated by this extra).\n\nRiso 2.0 remaps removed Copier keys before fail-closed reject:\napi_language \u2192 api_languages; mcp_language \u2192 mcp_languages;\napi_tracks \u2192 api_module/api_languages; docs_site \u2192 docs_module/docs_framework;\nsaas_starter_module \u2192 saas_infra_module; saas_auth \u2192 saas_auth_module/provider;\nsaas_billing \u2192 saas_billing_module/provider; include_admin \u2192 saas_admin_dashboard.\nUse `riso migrate` or `riso update` (dry-run preview). Leftover 1.x keys\nfail closed. Do not pass dual-path aliases after remap.\n",
         "multiselect": null
       },
       {
@@ -1341,7 +1359,7 @@
         ],
         "default": "standard",
         "when": null,
-        "help": "Select baseline quality suite profile",
+        "help": "Select baseline quality suite profile. Typecheck is ty (not mypy).\n`standard` runs pragmatic linting/type checks; `strict` enables\nextended Ruff rules and pylint. Riso 2.0 always renders mise.toml\n(not an extra). OpenSpec is optional via `openspec_extra` (default\ndisabled). Removed 1.x Copier keys are remapped by `riso migrate` /\n`riso update` before fail-closed reject.\n",
         "multiselect": null
       },
       {
@@ -1450,12 +1468,11 @@
         "type": "str",
         "choices": [
           "clerk",
-          "authjs",
-          "lucia"
+          "authjs"
         ],
         "default": "clerk",
         "when": "{{ saas_auth_module == 'enabled' }}",
-        "help": "Select authentication provider:\n- Clerk: Hosted auth, built-in UI, organizations, passkeys\n- Auth.js: Self-hosted, open-source, full control\n- Lucia: Type-safe sessions, any database, full control\n",
+        "help": "Select authentication provider:\n- Clerk: Hosted auth, built-in UI, organizations, passkeys\n- Auth.js: Self-hosted, open-source, full control\n",
         "multiselect": null
       },
       {
@@ -2037,12 +2054,11 @@
         "type": "str",
         "choices": [
           "clerk",
-          "authjs",
-          "lucia"
+          "authjs"
         ],
         "default": "clerk",
         "when": "{{ saas_auth_module == 'enabled' }}",
-        "help": "Select authentication provider:\n- Clerk: Hosted auth, built-in UI, organizations, passkeys\n- Auth.js: Self-hosted, open-source, full control\n- Lucia: Type-safe sessions, any database, full control\n",
+        "help": "Select authentication provider:\n- Clerk: Hosted auth, built-in UI, organizations, passkeys\n- Auth.js: Self-hosted, open-source, full control\n",
         "multiselect": null
       },
       {
@@ -2479,870 +2495,2931 @@
     ]
   },
   "samples": {
-    "source": "samples/*/copier-answers.yml",
-    "variants": [
-      {
-        "variant": "ai-tools-off",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/ai-tools-off/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "Riso Example",
-          "project_slug": "riso-example",
-          "package_name": "riso_example",
-          "project_layout": "single-package",
-          "quality_profile": "standard",
-          "python_versions": [
-            "3.11",
-            "3.12",
-            "3.13"
-          ],
-          "cli_module": "disabled",
-          "api_module": "disabled",
-          "mcp_module": "disabled",
-          "docs_module": "enabled",
-          "docs_framework": "fumadocs",
-          "shared_logic": "disabled",
-          "codegen_module": "disabled",
-          "changelog_module": "disabled",
-          "ci_platform": "github-actions",
-          "ai_tools_module": "disabled"
+    "source": "/Users/ww/dev/projects/riso/samples/metadata/render_matrix.json",
+    "render_matrix": {
+      "variants": [
+        {
+          "variant": "ai-tools-off",
+          "answers": "/Users/ww/dev/projects/riso/samples/ai-tools-off/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/ai-tools-off/render",
+          "smoke_results": {
+            "variant": "ai-tools-off",
+            "timestamp": "2026-08-13T23:54:09.953300+00:00",
+            "modules": {
+              "cli": {
+                "status": "skipped",
+                "reason": "CLI module disabled or Python project not rendered."
+              },
+              "api_python": {
+                "status": "skipped",
+                "reason": "Python API disabled or Python project not rendered."
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 14.96,
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "returncode": 1,
+                "stdout": "\n> docs-fumadocs@0.0.0 build /Users/ww/dev/projects/riso/samples/ai-tools-off/render/node/docs/fumadocs\n> next build\n\n\u25b2 Next.js 16.3.1 (Turbopack)\n[MDX] generated files in 6.688915999999949ms\n\u2713 Running next.config.ts took 364ms\n\n  Creating an optimized production build ...\n\u2713 Compiled successfully in 11.1s\n  Running TypeScript ...\n\n  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.\n  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n\n  \t- include was updated to add '.next/dev/types/**/*.ts'\n\n  The following mandatory changes were made to your tsconfig.json:\n\n  \t- jsx was set to react-jsx (next.js uses the React automatic runtime)\n\nnext.config.ts(24,24): error TS2345: Argument of type '{ reactStrictMode: boolean; output: string; images: { unoptimized: boolean; }; outputFileTracingRoot: string; turbopack: { root: string; }; }' is not assignable to parameter of type 'NextConfig'.\n  Types of property 'output' are incompatible.\n    Type 'string' is not assignable to type '\"export\" | \"standalone\" | undefined'.\n/Users/ww/dev/projects/riso/samples/ai-tools-off/render/node/docs/fumadocs:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 docs-fumadocs@0.0.0 build: `next build`\nExit status 1\n",
+                "stderr": "\u26a0 The \"middleware\" file convention is deprecated. Please use \"proxy\" instead.\n\n  To migrate automatically, run:\n  npx @next/codemod@canary middleware-to-proxy .\n\n  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy\nFailed to type check.\n\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "skipped",
+                "reason": "Just quality scaffold not rendered for this variant."
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "api-monorepo",
+          "answers": "/Users/ww/dev/projects/riso/samples/api-monorepo/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/api-monorepo/render",
+          "smoke_results": {
+            "variant": "api-monorepo",
+            "timestamp": "2026-08-13T23:55:20.925022+00:00",
+            "modules": {
+              "cli": {
+                "status": "skipped",
+                "reason": "CLI module disabled or Python project not rendered."
+              },
+              "api_python": {
+                "status": "passed",
+                "duration": 4.01
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 33.49,
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "returncode": 1,
+                "stdout": "\n> docs-fumadocs@0.0.0 build /Users/ww/dev/projects/riso/samples/api-monorepo/render/node/docs/fumadocs\n> next build\n\n\u25b2 Next.js 16.3.1 (Turbopack)\n[MDX] generated files in 9.831916999999976ms\n\u2713 Running next.config.ts took 760ms\n\n  Creating an optimized production build ...\n\u2713 Compiled successfully in 25.0s\n  Running TypeScript ...\n\n  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.\n  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n\n  \t- include was updated to add '.next/dev/types/**/*.ts'\n\n  The following mandatory changes were made to your tsconfig.json:\n\n  \t- jsx was set to react-jsx (next.js uses the React automatic runtime)\n\nnext.config.ts(24,24): error TS2345: Argument of type '{ reactStrictMode: boolean; output: string; images: { unoptimized: boolean; }; outputFileTracingRoot: string; turbopack: { root: string; }; }' is not assignable to parameter of type 'NextConfig'.\n  Types of property 'output' are incompatible.\n    Type 'string' is not assignable to type '\"export\" | \"standalone\" | undefined'.\n/Users/ww/dev/projects/riso/samples/api-monorepo/render/node/docs/fumadocs:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 docs-fumadocs@0.0.0 build: `next build`\nExit status 1\n",
+                "stderr": "\u26a0 The \"middleware\" file convention is deprecated. Please use \"proxy\" instead.\n\n  To migrate automatically, run:\n  npx @next/codemod@canary middleware-to-proxy .\n\n  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy\nFailed to type check.\n\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "failed",
+                "duration": 8.05,
+                "command": [
+                  "just",
+                  "quality"
+                ],
+                "returncode": 18,
+                "stdout": "\u001b[1;32mAll checks passed!\u001b[0m\nAll checks passed!\n\u001b[7;33m************* Module riso_api_monorepo.cli.__main__\u001b[0m\nsrc/riso_api_monorepo/cli/__main__.py:3:0: C0301: \u001b[1mLine too long (105/100)\u001b[0m (\u001b[1mline-too-long\u001b[0m)\n\u001b[7;33m************* Module test_cli\u001b[0m\ntests/test_cli.py:19:4: E0611: \u001b[1;31mNo name 'app' in module 'riso_api_monorepo.cli.__main__'\u001b[0m (\u001b[1;31mno-name-in-module\u001b[0m)\ntests/test_cli.py:32:4: E0611: \u001b[1;31mNo name 'discover_commands' in module 'riso_api_monorepo.cli.__main__'\u001b[0m (\u001b[1;31mno-name-in-module\u001b[0m)\ntests/test_cli.py:48:4: E0611: \u001b[1;31mNo name 'BaseCommand' in module 'riso_api_monorepo.cli.core.base'\u001b[0m (\u001b[1;31mno-name-in-module\u001b[0m)\ntests/test_cli.py:63:4: E0611: \u001b[1;31mNo name 'BaseCommand' in module 'riso_api_monorepo.cli.core.base'\u001b[0m (\u001b[1;31mno-name-in-module\u001b[0m)\ntests/test_cli.py:64:4: E0611: \u001b[1;31mNo name 'CLIError' in module 'riso_api_monorepo.cli.core.exceptions'\u001b[0m (\u001b[1;31mno-name-in-module\u001b[0m)\ntests/test_cli.py:78:4: E0611: \u001b[1;31mNo name 'app' in module 'riso_api_monorepo.cli.__main__'\u001b[0m (\u001b[1;31mno-name-in-module\u001b[0m)\ntests/test_cli.py:94:4: E0611: \u001b[1;31mNo name 'app' in module 'riso_api_monorepo.cli.__main__'\u001b[0m (\u001b[1;31mno-name-in-module\u001b[0m)\ntests/test_cli.py:105:4: E0611: \u001b[1;31mNo name 'app' in module 'riso_api_monorepo.cli.__main__'\u001b[0m (\u001b[1;31mno-name-in-module\u001b[0m)\ntests/test_cli.py:125:4: E0611: \u001b[1;31mNo name 'app' in module 'riso_api_monorepo.cli.__main__'\u001b[0m (\u001b[1;31mno-name-in-module\u001b[0m)\ntests/test_cli.py:140:4: E0611: \u001b[1;31mNo name 'CLIError' in module 'riso_api_monorepo.cli.core'\u001b[0m (\u001b[1;31mno-name-in-module\u001b[0m)\n",
+                "stderr": "uv run --group quality --group test ruff check \nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored\nuv run --group quality --group test ty check  src/riso_api_monorepo\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored\nuv run --group quality --group test pylint  --rcfile .pylintrc src/riso_api_monorepo tests\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored\nerror: Recipe `quality-python` failed on line 22 with exit code 18\n"
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "failed",
+                "duration": 4.01,
+                "command": [
+                  "uv",
+                  "run",
+                  "--group",
+                  "quality",
+                  "--group",
+                  "test",
+                  "task",
+                  "quality"
+                ],
+                "returncode": 16,
+                "stdout": "\u001b[1;32mAll checks passed!\u001b[0m\n[quality] ruff completed in 0.06s\nAll checks passed!\n[quality] ty completed in 0.16s\n\u001b[7;33m************* Module riso_api_monorepo.cli.__main__\u001b[0m\nsrc/riso_api_monorepo/cli/__main__.py:3:0: C0301: \u001b[1mLine too long (105/100)\u001b[0m (\u001b[1mline-too-long\u001b[0m)\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\n\n[quality] pylint failed with exit code 16\n"
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "api-python",
+          "answers": "/Users/ww/dev/projects/riso/samples/api-python/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/api-python/render",
+          "smoke_results": {
+            "variant": "api-python",
+            "timestamp": "2026-08-13T23:56:18.897445+00:00",
+            "modules": {
+              "cli": {
+                "status": "skipped",
+                "reason": "CLI module disabled or Python project not rendered."
+              },
+              "api_python": {
+                "status": "passed",
+                "duration": 2.59
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 21.24,
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "returncode": 1,
+                "stdout": "\n> docs-fumadocs@0.0.0 build /Users/ww/dev/projects/riso/samples/api-python/render/node/docs/fumadocs\n> next build\n\n\u25b2 Next.js 16.3.1 (Turbopack)\n[MDX] generated files in 7.2975830000000315ms\n\u2713 Running next.config.ts took 401ms\n\n  Creating an optimized production build ...\n\u2713 Compiled successfully in 16.3s\n  Running TypeScript ...\n\n  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.\n  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n\n  \t- include was updated to add '.next/dev/types/**/*.ts'\n\n  The following mandatory changes were made to your tsconfig.json:\n\n  \t- jsx was set to react-jsx (next.js uses the React automatic runtime)\n\nnext.config.ts(24,24): error TS2345: Argument of type '{ reactStrictMode: boolean; output: string; images: { unoptimized: boolean; }; outputFileTracingRoot: string; turbopack: { root: string; }; }' is not assignable to parameter of type 'NextConfig'.\n  Types of property 'output' are incompatible.\n    Type 'string' is not assignable to type '\"export\" | \"standalone\" | undefined'.\n/Users/ww/dev/projects/riso/samples/api-python/render/node/docs/fumadocs:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 docs-fumadocs@0.0.0 build: `next build`\nExit status 1\n",
+                "stderr": "\u26a0 The \"middleware\" file convention is deprecated. Please use \"proxy\" instead.\n\n  To migrate automatically, run:\n  npx @next/codemod@canary middleware-to-proxy .\n\n  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy\nFailed to type check.\n\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "failed",
+                "duration": 7.87,
+                "command": [
+                  "just",
+                  "quality"
+                ],
+                "returncode": 18,
+                "stdout": "\u001b[1;32mAll checks passed!\u001b[0m\nAll checks passed!\n\u001b[7;33m************* Module riso_api_sample.cli.__main__\u001b[0m\nsrc/riso_api_sample/cli/__main__.py:3:0: C0301: \u001b[1mLine too long (105/100)\u001b[0m (\u001b[1mline-too-long\u001b[0m)\n\u001b[7;33m************* Module test_cli\u001b[0m\ntests/test_cli.py:19:4: E0611: \u001b[1;31mNo name 'app' in module 'riso_api_sample.cli.__main__'\u001b[0m (\u001b[1;31mno-name-in-module\u001b[0m)\ntests/test_cli.py:32:4: E0611: \u001b[1;31mNo name 'discover_commands' in module 'riso_api_sample.cli.__main__'\u001b[0m (\u001b[1;31mno-name-in-module\u001b[0m)\ntests/test_cli.py:48:4: E0611: \u001b[1;31mNo name 'BaseCommand' in module 'riso_api_sample.cli.core.base'\u001b[0m (\u001b[1;31mno-name-in-module\u001b[0m)\ntests/test_cli.py:63:4: E0611: \u001b[1;31mNo name 'BaseCommand' in module 'riso_api_sample.cli.core.base'\u001b[0m (\u001b[1;31mno-name-in-module\u001b[0m)\ntests/test_cli.py:64:4: E0611: \u001b[1;31mNo name 'CLIError' in module 'riso_api_sample.cli.core.exceptions'\u001b[0m (\u001b[1;31mno-name-in-module\u001b[0m)\ntests/test_cli.py:78:4: E0611: \u001b[1;31mNo name 'app' in module 'riso_api_sample.cli.__main__'\u001b[0m (\u001b[1;31mno-name-in-module\u001b[0m)\ntests/test_cli.py:94:4: E0611: \u001b[1;31mNo name 'app' in module 'riso_api_sample.cli.__main__'\u001b[0m (\u001b[1;31mno-name-in-module\u001b[0m)\ntests/test_cli.py:105:4: E0611: \u001b[1;31mNo name 'app' in module 'riso_api_sample.cli.__main__'\u001b[0m (\u001b[1;31mno-name-in-module\u001b[0m)\ntests/test_cli.py:125:4: E0611: \u001b[1;31mNo name 'app' in module 'riso_api_sample.cli.__main__'\u001b[0m (\u001b[1;31mno-name-in-module\u001b[0m)\ntests/test_cli.py:140:4: E0611: \u001b[1;31mNo name 'CLIError' in module 'riso_api_sample.cli.core'\u001b[0m (\u001b[1;31mno-name-in-module\u001b[0m)\n",
+                "stderr": "uv run --group quality --group test ruff check \nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored\nuv run --group quality --group test ty check  src/riso_api_sample\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored\nuv run --group quality --group test pylint  --rcfile .pylintrc src/riso_api_sample tests\nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored\nerror: Recipe `quality-python` failed on line 22 with exit code 18\n"
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "failed",
+                "duration": 4.44,
+                "command": [
+                  "uv",
+                  "run",
+                  "--group",
+                  "quality",
+                  "--group",
+                  "test",
+                  "task",
+                  "quality"
+                ],
+                "returncode": 16,
+                "stdout": "\u001b[1;32mAll checks passed!\u001b[0m\n[quality] ruff completed in 0.06s\nAll checks passed!\n[quality] ty completed in 0.17s\n\u001b[7;33m************* Module riso_api_sample.cli.__main__\u001b[0m\nsrc/riso_api_sample/cli/__main__.py:3:0: C0301: \u001b[1mLine too long (105/100)\u001b[0m (\u001b[1mline-too-long\u001b[0m)\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\n\n[quality] pylint failed with exit code 16\n"
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "changelog-full-stack",
+          "answers": "/Users/ww/dev/projects/riso/samples/changelog-full-stack/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/changelog-full-stack/render",
+          "smoke_results": {
+            "variant": "changelog-full-stack",
+            "timestamp": "2026-08-13T23:57:04.982512+00:00",
+            "modules": {
+              "cli": {
+                "status": "passed",
+                "duration": 4.57
+              },
+              "api_python": {
+                "status": "passed",
+                "duration": 1.26
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 13.56,
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "returncode": 1,
+                "stdout": "\n> docs-fumadocs@0.0.0 build /Users/ww/dev/projects/riso/samples/changelog-full-stack/render/node/docs/fumadocs\n> next build\n\n\u25b2 Next.js 16.3.1 (Turbopack)\n[MDX] generated files in 5.366541999999981ms\n\u2713 Running next.config.ts took 362ms\n\n  Creating an optimized production build ...\n\u2713 Compiled successfully in 9.6s\n  Running TypeScript ...\n\n  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.\n  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n\n  \t- include was updated to add '.next/dev/types/**/*.ts'\n\n  The following mandatory changes were made to your tsconfig.json:\n\n  \t- jsx was set to react-jsx (next.js uses the React automatic runtime)\n\nnext.config.ts(24,24): error TS2345: Argument of type '{ reactStrictMode: boolean; output: string; images: { unoptimized: boolean; }; outputFileTracingRoot: string; turbopack: { root: string; }; }' is not assignable to parameter of type 'NextConfig'.\n  Types of property 'output' are incompatible.\n    Type 'string' is not assignable to type '\"export\" | \"standalone\" | undefined'.\n/Users/ww/dev/projects/riso/samples/changelog-full-stack/render/node/docs/fumadocs:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 docs-fumadocs@0.0.0 build: `next build`\nExit status 1\n",
+                "stderr": "\u26a0 The \"middleware\" file convention is deprecated. Please use \"proxy\" instead.\n\n  To migrate automatically, run:\n  npx @next/codemod@canary middleware-to-proxy .\n\n  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy\nFailed to type check.\n\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "skipped",
+                "reason": "Strict quality profile skips render smoke; run `just quality` locally."
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Strict quality profile skips render smoke; run `make quality` locally."
+              },
+              "quality_uv_task": {
+                "status": "skipped",
+                "reason": "Strict quality profile skips render smoke; run `uv run task quality` locally."
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "changelog-monorepo",
+          "answers": "/Users/ww/dev/projects/riso/samples/changelog-monorepo/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/changelog-monorepo/render",
+          "smoke_results": {
+            "variant": "changelog-monorepo",
+            "timestamp": "2026-08-13T23:57:54.192148+00:00",
+            "modules": {
+              "cli": {
+                "status": "passed",
+                "duration": 4.59
+              },
+              "api_python": {
+                "status": "passed",
+                "duration": 1.18
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 16.15,
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "returncode": 1,
+                "stdout": "\n> docs-fumadocs@0.0.0 build /Users/ww/dev/projects/riso/samples/changelog-monorepo/render/node/docs/fumadocs\n> next build\n\n\u25b2 Next.js 16.3.1 (Turbopack)\n[MDX] generated files in 5.679749999999899ms\n\u2713 Running next.config.ts took 356ms\n\n  Creating an optimized production build ...\n\u2713 Compiled successfully in 11.9s\n  Running TypeScript ...\n\n  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.\n  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n\n  \t- include was updated to add '.next/dev/types/**/*.ts'\n\n  The following mandatory changes were made to your tsconfig.json:\n\n  \t- jsx was set to react-jsx (next.js uses the React automatic runtime)\n\nnext.config.ts(24,24): error TS2345: Argument of type '{ reactStrictMode: boolean; output: string; images: { unoptimized: boolean; }; outputFileTracingRoot: string; turbopack: { root: string; }; }' is not assignable to parameter of type 'NextConfig'.\n  Types of property 'output' are incompatible.\n    Type 'string' is not assignable to type '\"export\" | \"standalone\" | undefined'.\n/Users/ww/dev/projects/riso/samples/changelog-monorepo/render/node/docs/fumadocs:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 docs-fumadocs@0.0.0 build: `next build`\nExit status 1\n",
+                "stderr": "\u26a0 The \"middleware\" file convention is deprecated. Please use \"proxy\" instead.\n\n  To migrate automatically, run:\n  npx @next/codemod@canary middleware-to-proxy .\n\n  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy\nFailed to type check.\n\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "failed",
+                "duration": 0.28,
+                "command": [
+                  "just",
+                  "quality"
+                ],
+                "returncode": 1,
+                "stdout": "\u001b[1m\u001b[91m\u001b]8;;https://docs.astral.sh/ruff/rules/unused-import\u001b\\F401\u001b]8;;\u001b\\\u001b[0m\u001b[1m `typing.Optional` imported but unused\u001b[0m\n  \u001b[1m\u001b[94m--> \u001b[0mrelease/__init__.py:13:32\n   \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[94m12\u001b[0m \u001b[1m\u001b[94m|\u001b[0m import re\n\u001b[1m\u001b[94m13\u001b[0m \u001b[1m\u001b[94m|\u001b[0m from typing import NamedTuple, Optional\n   \u001b[1m\u001b[94m|\u001b[0m                                \u001b[1m\u001b[91m^^^^^^^^\u001b[0m\n\u001b[1m\u001b[96mhelp\u001b[0m\u001b[1m: Remove unused import: `typing.Optional`\u001b[0m\n\n\u001b[1m\u001b[91m\u001b]8;;https://docs.astral.sh/ruff/rules/replace-str-enum\u001b\\UP042\u001b]8;;\u001b\\\u001b[0m\u001b[1m Class CommitType inherits from both `str` and `enum.Enum`\u001b[0m\n  \u001b[1m\u001b[94m--> \u001b[0mrelease/models.py:15:7\n   \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[94m15\u001b[0m \u001b[1m\u001b[94m|\u001b[0m class CommitType(str, Enum):\n   \u001b[1m\u001b[94m|\u001b[0m       \u001b[1m\u001b[91m^^^^^^^^^^\u001b[0m\n\u001b[1m\u001b[94m16\u001b[0m \u001b[1m\u001b[94m|\u001b[0m     \"\"\"Conventional commit types.\"\"\"\n   \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[96mhelp\u001b[0m\u001b[1m: Inherit from `enum.StrEnum`\u001b[0m\n\n\u001b[1m\u001b[91m\u001b]8;;https://docs.astral.sh/ruff/rules/collapsible-if\u001b\\SIM102\u001b]8;;\u001b\\\u001b[0m\u001b[1m Use a single `if` statement instead of nested `if` statements\u001b[0m\n  \u001b[1m\u001b[94m--> \u001b[0mrelease/models.py:65:9\n   \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[94m63\u001b[0m \u001b[1m\u001b[94m|\u001b[0m       def validate_scope(cls, v: str | None) -> str | None:\n\u001b[1m\u001b[94m64\u001b[0m \u001b[1m\u001b[94m|\u001b[0m           \"\"\"Validate scope format.\"\"\"\n\u001b[1m\u001b[94m65\u001b[0m \u001b[1m\u001b[94m|\u001b[0m \u001b[1m\u001b[91m/\u001b[0m         if v is not None:\n\u001b[1m\u001b[94m66\u001b[0m \u001b[1m\u001b[94m|\u001b[0m \u001b[1m\u001b[91m|\u001b[0m             if not v.replace(\"-\", \"\").replace(\"_\", \"\").isalnum():\n   \u001b[1m\u001b[94m|\u001b[0m \u001b[1m\u001b[91m|_________________________________________________________________^\u001b[0m\n\u001b[1m\u001b[94m67\u001b[0m \u001b[1m\u001b[94m|\u001b[0m                   raise ValueError(\"Scope must contain only alphanumeric characters and hyphens\")\n\u001b[1m\u001b[94m68\u001b[0m \u001b[1m\u001b[94m|\u001b[0m           return v\n   \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[96mhelp\u001b[0m\u001b[1m: Combine `if` statements using `and`\u001b[0m\n\n\u001b[1m\u001b[91m\u001b]8;;https://docs.astral.sh/ruff/rules/replace-str-enum\u001b\\UP042\u001b]8;;\u001b\\\u001b[0m\u001b[1m Class ChangelogSection inherits from both `str` and `enum.Enum`\u001b[0m\n   \u001b[1m\u001b[94m--> \u001b[0mrelease/models.py:99:7\n    \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[94m 99\u001b[0m \u001b[1m\u001b[94m|\u001b[0m class ChangelogSection(str, Enum):\n    \u001b[1m\u001b[94m|\u001b[0m       \u001b[1m\u001b[91m^^^^^^^^^^^^^^^^\u001b[0m\n\u001b[1m\u001b[94m100\u001b[0m \u001b[1m\u001b[94m|\u001b[0m     \"\"\"Changelog section categories.\"\"\"\n    \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[96mhelp\u001b[0m\u001b[1m: Inherit from `enum.StrEnum`\u001b[0m\n\n\u001b[1m\u001b[91m\u001b]8;;https://docs.astral.sh/ruff/rules/replace-str-enum\u001b\\UP042\u001b]8;;\u001b\\\u001b[0m\u001b[1m Class VersionBump inherits from both `str` and `enum.Enum`\u001b[0m\n   \u001b[1m\u001b[94m--> \u001b[0mrelease/models.py:184:7\n    \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[94m184\u001b[0m \u001b[1m\u001b[94m|\u001b[0m class VersionBump(str, Enum):\n    \u001b[1m\u001b[94m|\u001b[0m       \u001b[1m\u001b[91m^^^^^^^^^^^\u001b[0m\n\u001b[1m\u001b[94m185\u001b[0m \u001b[1m\u001b[94m|\u001b[0m     \"\"\"Types of version bumps.\"\"\"\n    \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[96mhelp\u001b[0m\u001b[1m: Inherit from `enum.StrEnum`\u001b[0m\n\nFound 5 errors.\nNo fixes available (4 hidden fixes can be enabled with the `--unsafe-fixes` option).\n",
+                "stderr": "uv run --group quality --group test ruff check \nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored\nerror: Recipe `quality-python` failed on line 20 with exit code 1\n"
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "failed",
+                "duration": 6.67,
+                "command": [
+                  "uv",
+                  "run",
+                  "--group",
+                  "quality",
+                  "--group",
+                  "test",
+                  "task",
+                  "quality"
+                ],
+                "returncode": 16,
+                "stdout": "\u001b[1;32mAll checks passed!\u001b[0m\n[quality] ruff completed in 0.06s\nAll checks passed!\n[quality] ty completed in 0.21s\n\u001b[7;33m************* Module changelog_monorepo.cli.core.plugin_manager\u001b[0m\nsrc/changelog_monorepo/cli/core/plugin_manager.py:23:0: C0301: \u001b[1mLine too long (101/100)\u001b[0m (\u001b[1mline-too-long\u001b[0m)\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\n\n[quality] pylint failed with exit code 16\n"
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "changelog-python",
+          "answers": "/Users/ww/dev/projects/riso/samples/changelog-python/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/changelog-python/render",
+          "smoke_results": {
+            "variant": "changelog-python",
+            "timestamp": "2026-08-13T23:58:24.934630+00:00",
+            "modules": {
+              "cli": {
+                "status": "passed",
+                "duration": 4.64
+              },
+              "api_python": {
+                "status": "passed",
+                "duration": 1.15
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 0.04,
+                "command": [
+                  "uv",
+                  "run",
+                  "make",
+                  "linkcheck"
+                ],
+                "returncode": 2,
+                "stdout": "",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nmake: *** No rule to make target 'linkcheck'.  Stop.\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "failed",
+                "duration": 0.14,
+                "command": [
+                  "just",
+                  "quality"
+                ],
+                "returncode": 1,
+                "stdout": "\u001b[1m\u001b[91m\u001b]8;;https://docs.astral.sh/ruff/rules/module-import-not-at-top-of-file\u001b\\E402\u001b]8;;\u001b\\\u001b[0m\u001b[1m Module level import not at top of file\u001b[0m\n  \u001b[1m\u001b[94m--> \u001b[0mdocs/conf.py:20:1\n   \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[94m18\u001b[0m \u001b[1m\u001b[94m|\u001b[0m )\n\u001b[1m\u001b[94m19\u001b[0m \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[94m20\u001b[0m \u001b[1m\u001b[94m|\u001b[0m import yaml\n   \u001b[1m\u001b[94m|\u001b[0m \u001b[1m\u001b[91m^^^^^^^^^^^\u001b[0m\n\u001b[1m\u001b[94m21\u001b[0m \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[94m22\u001b[0m \u001b[1m\u001b[94m|\u001b[0m DOCS_DIR = Path(__file__).resolve().parent\n   \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[96mhelp\u001b[0m\u001b[1m: Move module level imports to top of file\u001b[0m\n\n\u001b[1m\u001b[91m\u001b]8;;https://docs.astral.sh/ruff/rules/unused-import\u001b\\F401\u001b]8;;\u001b\\\u001b[0m\u001b[1m `typing.Optional` imported but unused\u001b[0m\n  \u001b[1m\u001b[94m--> \u001b[0mrelease/__init__.py:13:32\n   \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[94m12\u001b[0m \u001b[1m\u001b[94m|\u001b[0m import re\n\u001b[1m\u001b[94m13\u001b[0m \u001b[1m\u001b[94m|\u001b[0m from typing import NamedTuple, Optional\n   \u001b[1m\u001b[94m|\u001b[0m                                \u001b[1m\u001b[91m^^^^^^^^\u001b[0m\n\u001b[1m\u001b[96mhelp\u001b[0m\u001b[1m: Remove unused import: `typing.Optional`\u001b[0m\n\n\u001b[1m\u001b[91m\u001b]8;;https://docs.astral.sh/ruff/rules/replace-str-enum\u001b\\UP042\u001b]8;;\u001b\\\u001b[0m\u001b[1m Class CommitType inherits from both `str` and `enum.Enum`\u001b[0m\n  \u001b[1m\u001b[94m--> \u001b[0mrelease/models.py:15:7\n   \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[94m15\u001b[0m \u001b[1m\u001b[94m|\u001b[0m class CommitType(str, Enum):\n   \u001b[1m\u001b[94m|\u001b[0m       \u001b[1m\u001b[91m^^^^^^^^^^\u001b[0m\n\u001b[1m\u001b[94m16\u001b[0m \u001b[1m\u001b[94m|\u001b[0m     \"\"\"Conventional commit types.\"\"\"\n   \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[96mhelp\u001b[0m\u001b[1m: Inherit from `enum.StrEnum`\u001b[0m\n\n\u001b[1m\u001b[91m\u001b]8;;https://docs.astral.sh/ruff/rules/collapsible-if\u001b\\SIM102\u001b]8;;\u001b\\\u001b[0m\u001b[1m Use a single `if` statement instead of nested `if` statements\u001b[0m\n  \u001b[1m\u001b[94m--> \u001b[0mrelease/models.py:65:9\n   \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[94m63\u001b[0m \u001b[1m\u001b[94m|\u001b[0m       def validate_scope(cls, v: str | None) -> str | None:\n\u001b[1m\u001b[94m64\u001b[0m \u001b[1m\u001b[94m|\u001b[0m           \"\"\"Validate scope format.\"\"\"\n\u001b[1m\u001b[94m65\u001b[0m \u001b[1m\u001b[94m|\u001b[0m \u001b[1m\u001b[91m/\u001b[0m         if v is not None:\n\u001b[1m\u001b[94m66\u001b[0m \u001b[1m\u001b[94m|\u001b[0m \u001b[1m\u001b[91m|\u001b[0m             if not v.replace(\"-\", \"\").replace(\"_\", \"\").isalnum():\n   \u001b[1m\u001b[94m|\u001b[0m \u001b[1m\u001b[91m|_________________________________________________________________^\u001b[0m\n\u001b[1m\u001b[94m67\u001b[0m \u001b[1m\u001b[94m|\u001b[0m                   raise ValueError(\"Scope must contain only alphanumeric characters and hyphens\")\n\u001b[1m\u001b[94m68\u001b[0m \u001b[1m\u001b[94m|\u001b[0m           return v\n   \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[96mhelp\u001b[0m\u001b[1m: Combine `if` statements using `and`\u001b[0m\n\n\u001b[1m\u001b[91m\u001b]8;;https://docs.astral.sh/ruff/rules/replace-str-enum\u001b\\UP042\u001b]8;;\u001b\\\u001b[0m\u001b[1m Class ChangelogSection inherits from both `str` and `enum.Enum`\u001b[0m\n   \u001b[1m\u001b[94m--> \u001b[0mrelease/models.py:99:7\n    \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[94m 99\u001b[0m \u001b[1m\u001b[94m|\u001b[0m class ChangelogSection(str, Enum):\n    \u001b[1m\u001b[94m|\u001b[0m       \u001b[1m\u001b[91m^^^^^^^^^^^^^^^^\u001b[0m\n\u001b[1m\u001b[94m100\u001b[0m \u001b[1m\u001b[94m|\u001b[0m     \"\"\"Changelog section categories.\"\"\"\n    \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[96mhelp\u001b[0m\u001b[1m: Inherit from `enum.StrEnum`\u001b[0m\n\n\u001b[1m\u001b[91m\u001b]8;;https://docs.astral.sh/ruff/rules/replace-str-enum\u001b\\UP042\u001b]8;;\u001b\\\u001b[0m\u001b[1m Class VersionBump inherits from both `str` and `enum.Enum`\u001b[0m\n   \u001b[1m\u001b[94m--> \u001b[0mrelease/models.py:184:7\n    \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[94m184\u001b[0m \u001b[1m\u001b[94m|\u001b[0m class VersionBump(str, Enum):\n    \u001b[1m\u001b[94m|\u001b[0m       \u001b[1m\u001b[91m^^^^^^^^^^^\u001b[0m\n\u001b[1m\u001b[94m185\u001b[0m \u001b[1m\u001b[94m|\u001b[0m     \"\"\"Types of version bumps.\"\"\"\n    \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[96mhelp\u001b[0m\u001b[1m: Inherit from `enum.StrEnum`\u001b[0m\n\nFound 6 errors.\nNo fixes available (4 hidden fixes can be enabled with the `--unsafe-fixes` option).\n",
+                "stderr": "uv run --group quality --group test ruff check \nwarning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored\nerror: Recipe `quality-python` failed on line 20 with exit code 1\n"
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "passed",
+                "duration": 11.28
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "circleci-node",
+          "answers": "/Users/ww/dev/projects/riso/samples/circleci-node/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/circleci-node/render",
+          "smoke_results": {
+            "variant": "circleci-node",
+            "timestamp": "2026-08-13T23:58:56.341321+00:00",
+            "modules": {
+              "cli": {
+                "status": "skipped",
+                "reason": "CLI module disabled or Python project not rendered."
+              },
+              "api_python": {
+                "status": "skipped",
+                "reason": "Python API disabled or Python project not rendered."
+              },
+              "api_node": {
+                "status": "passed",
+                "duration": 0.23
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 14.43,
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "returncode": 1,
+                "stdout": "\n> docs-fumadocs@0.0.0 build /Users/ww/dev/projects/riso/samples/circleci-node/render/node/docs/fumadocs\n> next build\n\n\u25b2 Next.js 16.3.1 (Turbopack)\n[MDX] generated files in 8.67508399999997ms\n\u2713 Running next.config.ts took 368ms\n\n  Creating an optimized production build ...\n\u2713 Compiled successfully in 10.3s\n  Running TypeScript ...\n\n  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.\n  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n\n  \t- include was updated to add '.next/dev/types/**/*.ts'\n\n  The following mandatory changes were made to your tsconfig.json:\n\n  \t- jsx was set to react-jsx (next.js uses the React automatic runtime)\n\nnext.config.ts(24,24): error TS2345: Argument of type '{ reactStrictMode: boolean; output: string; images: { unoptimized: boolean; }; outputFileTracingRoot: string; turbopack: { root: string; }; }' is not assignable to parameter of type 'NextConfig'.\n  Types of property 'output' are incompatible.\n    Type 'string' is not assignable to type '\"export\" | \"standalone\" | undefined'.\n/Users/ww/dev/projects/riso/samples/circleci-node/render/node/docs/fumadocs:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 docs-fumadocs@0.0.0 build: `next build`\nExit status 1\n",
+                "stderr": "\u26a0 The \"middleware\" file convention is deprecated. Please use \"proxy\" instead.\n\n  To migrate automatically, run:\n  npx @next/codemod@canary middleware-to-proxy .\n\n  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy\nFailed to type check.\n\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "skipped",
+                "reason": "Just quality scaffold not rendered for this variant."
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              }
+            }
+          },
+          "workflow_validation": "skipped",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "cli-docs",
+          "answers": "/Users/ww/dev/projects/riso/samples/cli-docs/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/cli-docs/render",
+          "smoke_results": {
+            "variant": "cli-docs",
+            "timestamp": "2026-08-13T23:59:50.444120+00:00",
+            "modules": {
+              "cli": {
+                "status": "passed",
+                "duration": 4.81
+              },
+              "api_python": {
+                "status": "skipped",
+                "reason": "Python API disabled or Python project not rendered."
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 11.17,
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "returncode": 1,
+                "stdout": "\n> docs-fumadocs@0.0.0 build /Users/ww/dev/projects/riso/samples/cli-docs/render/node/docs/fumadocs\n> next build\n\n\u25b2 Next.js 16.3.1 (Turbopack)\n[MDX] generated files in 6.682999999999993ms\n\u2713 Running next.config.ts took 389ms\n\n  Creating an optimized production build ...\n\u2713 Compiled successfully in 7.9s\n  Running TypeScript ...\n\n  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.\n  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n\n  \t- include was updated to add '.next/dev/types/**/*.ts'\n\n  The following mandatory changes were made to your tsconfig.json:\n\n  \t- jsx was set to react-jsx (next.js uses the React automatic runtime)\n\nnext.config.ts(24,24): error TS2345: Argument of type '{ reactStrictMode: boolean; output: string; images: { unoptimized: boolean; }; outputFileTracingRoot: string; turbopack: { root: string; }; }' is not assignable to parameter of type 'NextConfig'.\n  Types of property 'output' are incompatible.\n    Type 'string' is not assignable to type '\"export\" | \"standalone\" | undefined'.\n/Users/ww/dev/projects/riso/samples/cli-docs/render/node/docs/fumadocs:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 docs-fumadocs@0.0.0 build: `next build`\nExit status 1\n",
+                "stderr": "\u26a0 The \"middleware\" file convention is deprecated. Please use \"proxy\" instead.\n\n  To migrate automatically, run:\n  npx @next/codemod@canary middleware-to-proxy .\n\n  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy\nFailed to type check.\n\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "passed",
+                "duration": 11.62
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "passed",
+                "duration": 9.35
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "default",
+          "answers": "/Users/ww/dev/projects/riso/samples/default/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/default/render",
+          "smoke_results": {
+            "variant": "default",
+            "timestamp": "2026-08-14T00:00:17.176007+00:00",
+            "modules": {
+              "cli": {
+                "status": "skipped",
+                "reason": "CLI module disabled or Python project not rendered."
+              },
+              "api_python": {
+                "status": "skipped",
+                "reason": "Python API disabled or Python project not rendered."
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 11.55,
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "returncode": 1,
+                "stdout": "\n> docs-fumadocs@0.0.0 build /Users/ww/dev/projects/riso/samples/default/render/node/docs/fumadocs\n> next build\n\n\u25b2 Next.js 16.3.1 (Turbopack)\n[MDX] generated files in 6.552666000000045ms\n\u2713 Running next.config.ts took 343ms\n\n  Creating an optimized production build ...\n\u2713 Compiled successfully in 8.0s\n  Running TypeScript ...\n\n  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.\n  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n\n  \t- include was updated to add '.next/dev/types/**/*.ts'\n\n  The following mandatory changes were made to your tsconfig.json:\n\n  \t- jsx was set to react-jsx (next.js uses the React automatic runtime)\n\nnext.config.ts(24,24): error TS2345: Argument of type '{ reactStrictMode: boolean; output: string; images: { unoptimized: boolean; }; outputFileTracingRoot: string; turbopack: { root: string; }; }' is not assignable to parameter of type 'NextConfig'.\n  Types of property 'output' are incompatible.\n    Type 'string' is not assignable to type '\"export\" | \"standalone\" | undefined'.\n/Users/ww/dev/projects/riso/samples/default/render/node/docs/fumadocs:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 docs-fumadocs@0.0.0 build: `next build`\nExit status 1\n",
+                "stderr": "\u26a0 The \"middleware\" file convention is deprecated. Please use \"proxy\" instead.\n\n  To migrate automatically, run:\n  npx @next/codemod@canary middleware-to-proxy .\n\n  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy\nFailed to type check.\n\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "skipped",
+                "reason": "Just quality scaffold not rendered for this variant."
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "docs-docusaurus",
+          "answers": "/Users/ww/dev/projects/riso/samples/docs-docusaurus/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/docs-docusaurus/render",
+          "smoke_results": {
+            "variant": "docs-docusaurus",
+            "timestamp": "2026-08-14T00:01:08.939579+00:00",
+            "modules": {
+              "cli": {
+                "status": "skipped",
+                "reason": "CLI module disabled or Python project not rendered."
+              },
+              "api_python": {
+                "status": "skipped",
+                "reason": "Python API disabled or Python project not rendered."
+              },
+              "api_node": {
+                "status": "passed",
+                "duration": 0.22
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 1.75,
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-docusaurus",
+                  "build"
+                ],
+                "returncode": 1,
+                "stdout": "\n> docs-docusaurus@0.0.0 prebuild /Users/ww/dev/projects/riso/samples/docs-docusaurus/render/node/docs/docusaurus\n> docusaurus gen-api-docs api\n\n\n[INFO] Docusaurus version: 3.10.2\nNode version: v22.23.1\n/Users/ww/dev/projects/riso/samples/docs-docusaurus/render/node/docs/docusaurus:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 docs-docusaurus@0.0.0 prebuild: `docusaurus gen-api-docs api`\nExit status 1\n",
+                "stderr": "[ERROR] Error: These field(s) (\"mermaidThemeByColorMode\",) are not recognized in docusaurus.config.ts.\nIf you still want these fields to be in your configuration, put them in the \"customFields\" field.\nSee https://docusaurus.io/docs/api/docusaurus-config/#customfields\n    at validateConfig (/Users/ww/dev/projects/riso/samples/docs-docusaurus/render/node_modules/.pnpm/@docusaurus+core@3.10.2_@docusaurus+faster@3.10.2_@docusaurus+types@3.10.2_@swc+core@1.15.47__z6cke5orclnhnuya622noidvg4/node_modules/@docusaurus/core/lib/server/configValidation.js:503:15)\n    at loadSiteConfig (/Users/ww/dev/projects/riso/samples/docs-docusaurus/render/node_modules/.pnpm/@docusaurus+core@3.10.2_@docusaurus+faster@3.10.2_@docusaurus+types@3.10.2_@swc+core@1.15.47__z6cke5orclnhnuya622noidvg4/node_modules/@docusaurus/core/lib/server/config.js:40:62)\n    at async Promise.all (index 1)\n    at async loadContext (/Users/ww/dev/projects/riso/samples/docs-docusaurus/render/node_modules/.pnpm/@docusaurus+core@3.10.2_@docusaurus+faster@3.10.2_@docusaurus+types@3.10.2_@swc+core@1.15.47__z6cke5orclnhnuya622noidvg4/node_modules/@docusaurus/core/lib/server/site.js:39:97)\n    at async externalCommand (/Users/ww/dev/projects/riso/samples/docs-docusaurus/render/node_modules/.pnpm/@docusaurus+core@3.10.2_@docusaurus+faster@3.10.2_@docusaurus+types@3.10.2_@swc+core@1.15.47__z6cke5orclnhnuya622noidvg4/node_modules/@docusaurus/core/lib/commands/external.js:16:21)\n    at async createCLIProgram (/Users/ww/dev/projects/riso/samples/docs-docusaurus/render/node_modules/.pnpm/@docusaurus+core@3.10.2_@docusaurus+faster@3.10.2_@docusaurus+types@3.10.2_@swc+core@1.15.47__z6cke5orclnhnuya622noidvg4/node_modules/@docusaurus/core/lib/commands/cli.js:168:9)\n    at async runCLI (/Users/ww/dev/projects/riso/samples/docs-docusaurus/render/node_modules/.pnpm/@docusaurus+core@3.10.2_@docusaurus+faster@3.10.2_@docusaurus+types@3.10.2_@swc+core@1.15.47__z6cke5orclnhnuya622noidvg4/node_modules/@docusaurus/core/lib/commands/cli.js:50:21)\n    at async file:///Users/ww/dev/projects/riso/samples/docs-docusaurus/render/node_modules/.pnpm/@docusaurus+core@3.10.2_@docusaurus+faster@3.10.2_@docusaurus+types@3.10.2_@swc+core@1.15.47__z6cke5orclnhnuya622noidvg4/node_modules/@docusaurus/core/bin/docusaurus.mjs:44:3\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "skipped",
+                "reason": "Just quality scaffold not rendered for this variant."
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "docs-fumadocs",
+          "answers": "/Users/ww/dev/projects/riso/samples/docs-fumadocs/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/docs-fumadocs/render",
+          "smoke_results": {
+            "variant": "docs-fumadocs",
+            "timestamp": "2026-08-14T00:01:38.306564+00:00",
+            "modules": {
+              "cli": {
+                "status": "skipped",
+                "reason": "CLI module disabled or Python project not rendered."
+              },
+              "api_python": {
+                "status": "skipped",
+                "reason": "Python API disabled or Python project not rendered."
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 12.77,
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "returncode": 1,
+                "stdout": "\n> docs-fumadocs@0.0.0 build /Users/ww/dev/projects/riso/samples/docs-fumadocs/render/node/docs/fumadocs\n> next build\n\n\u25b2 Next.js 16.3.1 (Turbopack)\n[MDX] generated files in 16.882833000000005ms\n\u2713 Running next.config.ts took 395ms\n\n  Creating an optimized production build ...\n\u2713 Compiled successfully in 9.1s\n  Running TypeScript ...\n\n  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.\n  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n\n  \t- include was updated to add '.next/dev/types/**/*.ts'\n\n  The following mandatory changes were made to your tsconfig.json:\n\n  \t- jsx was set to react-jsx (next.js uses the React automatic runtime)\n\nnext.config.ts(24,24): error TS2345: Argument of type '{ reactStrictMode: boolean; output: string; images: { unoptimized: boolean; }; outputFileTracingRoot: string; turbopack: { root: string; }; }' is not assignable to parameter of type 'NextConfig'.\n  Types of property 'output' are incompatible.\n    Type 'string' is not assignable to type '\"export\" | \"standalone\" | undefined'.\n/Users/ww/dev/projects/riso/samples/docs-fumadocs/render/node/docs/fumadocs:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 docs-fumadocs@0.0.0 build: `next build`\nExit status 1\n",
+                "stderr": "\u26a0 The \"middleware\" file convention is deprecated. Please use \"proxy\" instead.\n\n  To migrate automatically, run:\n  npx @next/codemod@canary middleware-to-proxy .\n\n  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy\nFailed to type check.\n\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "skipped",
+                "reason": "Just quality scaffold not rendered for this variant."
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "docs-fumadocs-full",
+          "answers": "/Users/ww/dev/projects/riso/samples/docs-fumadocs-full/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/docs-fumadocs-full/render",
+          "smoke_results": {
+            "variant": "docs-fumadocs-full",
+            "timestamp": "2026-08-14T00:02:27.292109+00:00",
+            "modules": {
+              "cli": {
+                "status": "passed",
+                "duration": 4.65
+              },
+              "api_python": {
+                "status": "passed",
+                "duration": 1.17
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 15.99,
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "returncode": 1,
+                "stdout": "\n> docs-fumadocs@0.0.0 build /Users/ww/dev/projects/riso/samples/docs-fumadocs-full/render/node/docs/fumadocs\n> next build\n\n\u25b2 Next.js 16.3.1 (Turbopack)\n[MDX] generated files in 7.0289169999999785ms\n\u2713 Running next.config.ts took 638ms\n\n  Creating an optimized production build ...\n\u2713 Compiled successfully in 11.2s\n  Running TypeScript ...\n\n  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.\n  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n\n  \t- include was updated to add '.next/dev/types/**/*.ts'\n\n  The following mandatory changes were made to your tsconfig.json:\n\n  \t- jsx was set to react-jsx (next.js uses the React automatic runtime)\n\nnext.config.ts(24,24): error TS2345: Argument of type '{ reactStrictMode: boolean; output: string; images: { unoptimized: boolean; }; outputFileTracingRoot: string; turbopack: { root: string; }; }' is not assignable to parameter of type 'NextConfig'.\n  Types of property 'output' are incompatible.\n    Type 'string' is not assignable to type '\"export\" | \"standalone\" | undefined'.\n/Users/ww/dev/projects/riso/samples/docs-fumadocs-full/render/node/docs/fumadocs:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 docs-fumadocs@0.0.0 build: `next build`\nExit status 1\n",
+                "stderr": "\u26a0 The \"middleware\" file convention is deprecated. Please use \"proxy\" instead.\n\n  To migrate automatically, run:\n  npx @next/codemod@canary middleware-to-proxy .\n\n  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy\nFailed to type check.\n\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "failed",
+                "duration": 0.08,
+                "command": [
+                  "just",
+                  "quality"
+                ],
+                "returncode": 1,
+                "stdout": "",
+                "stderr": "mise ERROR error parsing config file: ~/dev/projects/riso/samples/docs-fumadocs-full/render/.mise.toml\nmise ERROR Config files in ~/dev/projects/riso/samples/docs-fumadocs-full/render/.mise.toml are not trusted.\nTrust them with `mise trust`. See https://mise.en.dev/cli/trust.html for more information.\nmise ERROR Version: 2026.7.7 macos-arm64 (2026-07-15)\nmise ERROR Run with --verbose or MISE_VERBOSE=1 for more information\n"
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "failed",
+                "duration": 7.06,
+                "command": [
+                  "uv",
+                  "run",
+                  "--group",
+                  "quality",
+                  "--group",
+                  "test",
+                  "task",
+                  "quality"
+                ],
+                "returncode": 16,
+                "stdout": "\u001b[1;32mAll checks passed!\u001b[0m\n[quality] ruff completed in 0.10s\nAll checks passed!\n[quality] ty completed in 0.19s\n\u001b[7;33m************* Module fumadocs_full_stack.cli.core.plugin_manager\u001b[0m\nsrc/fumadocs_full_stack/cli/core/plugin_manager.py:23:0: C0301: \u001b[1mLine too long (102/100)\u001b[0m (\u001b[1mline-too-long\u001b[0m)\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\n\n[quality] pylint failed with exit code 16\n"
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "docs-sphinx",
+          "answers": "/Users/ww/dev/projects/riso/samples/docs-sphinx/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/docs-sphinx/render",
+          "smoke_results": {
+            "variant": "docs-sphinx",
+            "timestamp": "2026-08-14T00:02:43.660809+00:00",
+            "modules": {
+              "cli": {
+                "status": "skipped",
+                "reason": "CLI module disabled or Python project not rendered."
+              },
+              "api_python": {
+                "status": "passed",
+                "duration": 2.46
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 0.05,
+                "command": [
+                  "uv",
+                  "run",
+                  "make",
+                  "linkcheck"
+                ],
+                "returncode": 2,
+                "stdout": "",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\nmake: *** No rule to make target 'linkcheck'.  Stop.\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "failed",
+                "duration": 0.02,
+                "command": [
+                  "just",
+                  "quality"
+                ],
+                "returncode": 1,
+                "stdout": "",
+                "stderr": "mise ERROR error parsing config file: ~/dev/projects/riso/samples/docs-sphinx/render/.mise.toml\nmise ERROR Config files in ~/dev/projects/riso/samples/docs-sphinx/render/.mise.toml are not trusted.\nTrust them with `mise trust`. See https://mise.en.dev/cli/trust.html for more information.\nmise ERROR Version: 2026.7.7 macos-arm64 (2026-07-15)\nmise ERROR Run with --verbose or MISE_VERBOSE=1 for more information\n"
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "failed",
+                "duration": 4.2,
+                "command": [
+                  "uv",
+                  "run",
+                  "--group",
+                  "quality",
+                  "--group",
+                  "test",
+                  "task",
+                  "quality"
+                ],
+                "returncode": 16,
+                "stdout": "\u001b[1;32mAll checks passed!\u001b[0m\n[quality] ruff completed in 0.06s\nAll checks passed!\n[quality] ty completed in 0.18s\n\u001b[7;33m************* Module riso_docs_sphinx.cli.__main__\u001b[0m\nsrc/riso_docs_sphinx/cli/__main__.py:3:0: C0301: \u001b[1mLine too long (105/100)\u001b[0m (\u001b[1mline-too-long\u001b[0m)\n",
+                "stderr": "warning: `VIRTUAL_ENV=/Users/ww/dev/projects/riso/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead\n\n[quality] pylint failed with exit code 16\n"
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "electron-app",
+          "answers": "/Users/ww/dev/projects/riso/samples/electron-app/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/electron-app/render",
+          "smoke_results": {
+            "variant": "electron-app",
+            "timestamp": "2026-08-14T00:02:51.567773+00:00",
+            "modules": {
+              "cli": {
+                "status": "skipped",
+                "reason": "CLI module disabled or Python project not rendered."
+              },
+              "api_python": {
+                "status": "skipped",
+                "reason": "Python API disabled or Python project not rendered."
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "skipped",
+                "reason": "Documentation scaffolding skipped (`docs_module=disabled`)."
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "skipped",
+                "reason": "Just quality scaffold not rendered for this variant."
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "not_applicable",
+          "render_status": "ok",
+          "render_returncode": 0
+        },
+        {
+          "variant": "full-stack",
+          "answers": "/Users/ww/dev/projects/riso/samples/full-stack/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/full-stack/render",
+          "smoke_results": {
+            "variant": "full-stack",
+            "timestamp": "2026-08-14T00:03:36.082935+00:00",
+            "modules": {
+              "cli": {
+                "status": "passed",
+                "duration": 4.75
+              },
+              "api_python": {
+                "status": "passed",
+                "duration": 1.22
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 16.1,
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "returncode": 1,
+                "stdout": "\n> docs-fumadocs@0.0.0 build /Users/ww/dev/projects/riso/samples/full-stack/render/node/docs/fumadocs\n> next build\n\n\u25b2 Next.js 16.3.1 (Turbopack)\n[MDX] generated files in 5.586708000000044ms\n\u2713 Running next.config.ts took 357ms\n\n  Creating an optimized production build ...\n\u2713 Compiled successfully in 11.6s\n  Running TypeScript ...\n\n  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.\n  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n\n  \t- include was updated to add '.next/dev/types/**/*.ts'\n\n  The following mandatory changes were made to your tsconfig.json:\n\n  \t- jsx was set to react-jsx (next.js uses the React automatic runtime)\n\nnext.config.ts(24,24): error TS2345: Argument of type '{ reactStrictMode: boolean; output: string; images: { unoptimized: boolean; }; outputFileTracingRoot: string; turbopack: { root: string; }; }' is not assignable to parameter of type 'NextConfig'.\n  Types of property 'output' are incompatible.\n    Type 'string' is not assignable to type '\"export\" | \"standalone\" | undefined'.\n/Users/ww/dev/projects/riso/samples/full-stack/render/node/docs/fumadocs:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 docs-fumadocs@0.0.0 build: `next build`\nExit status 1\n",
+                "stderr": "\u26a0 The \"middleware\" file convention is deprecated. Please use \"proxy\" instead.\n\n  To migrate automatically, run:\n  npx @next/codemod@canary middleware-to-proxy .\n\n  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy\nFailed to type check.\n\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "skipped",
+                "reason": "Strict quality profile skips render smoke; run `just quality` locally."
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Strict quality profile skips render smoke; run `make quality` locally."
+              },
+              "quality_uv_task": {
+                "status": "skipped",
+                "reason": "Strict quality profile skips render smoke; run `uv run task quality` locally."
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "gitlab-ci-python",
+          "answers": "/Users/ww/dev/projects/riso/samples/gitlab-ci-python/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/gitlab-ci-python/render",
+          "smoke_results": {
+            "variant": "gitlab-ci-python",
+            "timestamp": "2026-08-14T00:04:19.052496+00:00",
+            "modules": {
+              "cli": {
+                "status": "passed",
+                "duration": 4.93
+              },
+              "api_python": {
+                "status": "passed",
+                "duration": 1.23
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 15.32,
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "returncode": 1,
+                "stdout": "\n> docs-fumadocs@0.0.0 build /Users/ww/dev/projects/riso/samples/gitlab-ci-python/render/node/docs/fumadocs\n> next build\n\n\u25b2 Next.js 16.3.1 (Turbopack)\n[MDX] generated files in 5.770375000000058ms\n\u2713 Running next.config.ts took 397ms\n\n  Creating an optimized production build ...\n\u2713 Compiled successfully in 11.5s\n  Running TypeScript ...\n\n  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.\n  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n\n  \t- include was updated to add '.next/dev/types/**/*.ts'\n\n  The following mandatory changes were made to your tsconfig.json:\n\n  \t- jsx was set to react-jsx (next.js uses the React automatic runtime)\n\nnext.config.ts(24,24): error TS2345: Argument of type '{ reactStrictMode: boolean; output: string; images: { unoptimized: boolean; }; outputFileTracingRoot: string; turbopack: { root: string; }; }' is not assignable to parameter of type 'NextConfig'.\n  Types of property 'output' are incompatible.\n    Type 'string' is not assignable to type '\"export\" | \"standalone\" | undefined'.\n/Users/ww/dev/projects/riso/samples/gitlab-ci-python/render/node/docs/fumadocs:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 docs-fumadocs@0.0.0 build: `next build`\nExit status 1\n",
+                "stderr": "\u26a0 The \"middleware\" file convention is deprecated. Please use \"proxy\" instead.\n\n  To migrate automatically, run:\n  npx @next/codemod@canary middleware-to-proxy .\n\n  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy\nFailed to type check.\n\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "skipped",
+                "reason": "Strict quality profile skips render smoke; run `just quality` locally."
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Strict quality profile skips render smoke; run `make quality` locally."
+              },
+              "quality_uv_task": {
+                "status": "skipped",
+                "reason": "Strict quality profile skips render smoke; run `uv run task quality` locally."
+              }
+            }
+          },
+          "workflow_validation": "skipped",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "go-api",
+          "answers": "/Users/ww/dev/projects/riso/samples/go-api/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/go-api/render",
+          "smoke_results": {
+            "variant": "go-api",
+            "timestamp": "2026-08-14T00:04:47.507219+00:00",
+            "modules": {
+              "cli": {
+                "status": "skipped",
+                "reason": "CLI module disabled or Python project not rendered."
+              },
+              "api_python": {
+                "status": "skipped",
+                "reason": "Python API disabled or Python project not rendered."
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 12.27,
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "returncode": 1,
+                "stdout": "\n> docs-fumadocs@0.0.0 build /Users/ww/dev/projects/riso/samples/go-api/render/node/docs/fumadocs\n> next build\n\n\u25b2 Next.js 16.3.1 (Turbopack)\n[MDX] generated files in 7.2616669999999885ms\n\u2713 Running next.config.ts took 360ms\n\n  Creating an optimized production build ...\n\u2713 Compiled successfully in 8.7s\n  Running TypeScript ...\n\n  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.\n  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n\n  \t- include was updated to add '.next/dev/types/**/*.ts'\n\n  The following mandatory changes were made to your tsconfig.json:\n\n  \t- jsx was set to react-jsx (next.js uses the React automatic runtime)\n\nnext.config.ts(24,24): error TS2345: Argument of type '{ reactStrictMode: boolean; output: string; images: { unoptimized: boolean; }; outputFileTracingRoot: string; turbopack: { root: string; }; }' is not assignable to parameter of type 'NextConfig'.\n  Types of property 'output' are incompatible.\n    Type 'string' is not assignable to type '\"export\" | \"standalone\" | undefined'.\n/Users/ww/dev/projects/riso/samples/go-api/render/node/docs/fumadocs:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 docs-fumadocs@0.0.0 build: `next build`\nExit status 1\n",
+                "stderr": "\u26a0 The \"middleware\" file convention is deprecated. Please use \"proxy\" instead.\n\n  To migrate automatically, run:\n  npx @next/codemod@canary middleware-to-proxy .\n\n  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy\nFailed to type check.\n\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "skipped",
+                "reason": "Just quality scaffold not rendered for this variant."
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              }
+            }
+          },
+          "workflow_validation": "fail",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "go-cli",
+          "answers": "/Users/ww/dev/projects/riso/samples/go-cli/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/go-cli/render",
+          "smoke_results": {
+            "variant": "go-cli",
+            "timestamp": "2026-08-14T00:05:17.368825+00:00",
+            "modules": {
+              "cli": {
+                "status": "skipped",
+                "reason": "CLI module disabled or Python project not rendered."
+              },
+              "api_python": {
+                "status": "skipped",
+                "reason": "Python API disabled or Python project not rendered."
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 13.45,
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "returncode": 1,
+                "stdout": "\n> docs-fumadocs@0.0.0 build /Users/ww/dev/projects/riso/samples/go-cli/render/node/docs/fumadocs\n> next build\n\n\u25b2 Next.js 16.3.1 (Turbopack)\n[MDX] generated files in 8.562708000000043ms\n\u2713 Running next.config.ts took 439ms\n\n  Creating an optimized production build ...\n\u2713 Compiled successfully in 9.8s\n  Running TypeScript ...\n\n  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.\n  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n\n  \t- include was updated to add '.next/dev/types/**/*.ts'\n\n  The following mandatory changes were made to your tsconfig.json:\n\n  \t- jsx was set to react-jsx (next.js uses the React automatic runtime)\n\nnext.config.ts(24,24): error TS2345: Argument of type '{ reactStrictMode: boolean; output: string; images: { unoptimized: boolean; }; outputFileTracingRoot: string; turbopack: { root: string; }; }' is not assignable to parameter of type 'NextConfig'.\n  Types of property 'output' are incompatible.\n    Type 'string' is not assignable to type '\"export\" | \"standalone\" | undefined'.\n/Users/ww/dev/projects/riso/samples/go-cli/render/node/docs/fumadocs:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 docs-fumadocs@0.0.0 build: `next build`\nExit status 1\n",
+                "stderr": "\u26a0 The \"middleware\" file convention is deprecated. Please use \"proxy\" instead.\n\n  To migrate automatically, run:\n  npx @next/codemod@canary middleware-to-proxy .\n\n  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy\nFailed to type check.\n\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "skipped",
+                "reason": "Just quality scaffold not rendered for this variant."
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "go-mcp",
+          "answers": "/Users/ww/dev/projects/riso/samples/go-mcp/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/go-mcp/render",
+          "smoke_results": {
+            "variant": "go-mcp",
+            "timestamp": "2026-08-14T00:05:44.269386+00:00",
+            "modules": {
+              "cli": {
+                "status": "skipped",
+                "reason": "CLI module disabled or Python project not rendered."
+              },
+              "api_python": {
+                "status": "skipped",
+                "reason": "Python API disabled or Python project not rendered."
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 10.31,
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "returncode": 1,
+                "stdout": "\n> docs-fumadocs@0.0.0 build /Users/ww/dev/projects/riso/samples/go-mcp/render/node/docs/fumadocs\n> next build\n\n\u25b2 Next.js 16.3.1 (Turbopack)\n[MDX] generated files in 5.129583000000025ms\n\u2713 Running next.config.ts took 333ms\n\n  Creating an optimized production build ...\n\u2713 Compiled successfully in 7.0s\n  Running TypeScript ...\n\n  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.\n  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n\n  \t- include was updated to add '.next/dev/types/**/*.ts'\n\n  The following mandatory changes were made to your tsconfig.json:\n\n  \t- jsx was set to react-jsx (next.js uses the React automatic runtime)\n\nnext.config.ts(24,24): error TS2345: Argument of type '{ reactStrictMode: boolean; output: string; images: { unoptimized: boolean; }; outputFileTracingRoot: string; turbopack: { root: string; }; }' is not assignable to parameter of type 'NextConfig'.\n  Types of property 'output' are incompatible.\n    Type 'string' is not assignable to type '\"export\" | \"standalone\" | undefined'.\n/Users/ww/dev/projects/riso/samples/go-mcp/render/node/docs/fumadocs:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 docs-fumadocs@0.0.0 build: `next build`\nExit status 1\n",
+                "stderr": "\u26a0 The \"middleware\" file convention is deprecated. Please use \"proxy\" instead.\n\n  To migrate automatically, run:\n  npx @next/codemod@canary middleware-to-proxy .\n\n  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy\nFailed to type check.\n\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "skipped",
+                "reason": "Just quality scaffold not rendered for this variant."
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "makefile-runner",
+          "answers": "/Users/ww/dev/projects/riso/samples/makefile-runner/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/makefile-runner/render",
+          "smoke_results": {
+            "variant": "makefile-runner",
+            "timestamp": "2026-08-14T00:06:09.523841+00:00",
+            "modules": {
+              "cli": {
+                "status": "skipped",
+                "reason": "CLI module disabled or Python project not rendered."
+              },
+              "api_python": {
+                "status": "skipped",
+                "reason": "Python API disabled or Python project not rendered."
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 10.65,
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "returncode": 1,
+                "stdout": "\n> docs-fumadocs@0.0.0 build /Users/ww/dev/projects/riso/samples/makefile-runner/render/node/docs/fumadocs\n> next build\n\n\u25b2 Next.js 16.3.1 (Turbopack)\n[MDX] generated files in 5.955582999999933ms\n\u2713 Running next.config.ts took 324ms\n\n  Creating an optimized production build ...\n\u2713 Compiled successfully in 7.4s\n  Running TypeScript ...\n\n  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.\n  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n\n  \t- include was updated to add '.next/dev/types/**/*.ts'\n\n  The following mandatory changes were made to your tsconfig.json:\n\n  \t- jsx was set to react-jsx (next.js uses the React automatic runtime)\n\nnext.config.ts(24,24): error TS2345: Argument of type '{ reactStrictMode: boolean; output: string; images: { unoptimized: boolean; }; outputFileTracingRoot: string; turbopack: { root: string; }; }' is not assignable to parameter of type 'NextConfig'.\n  Types of property 'output' are incompatible.\n    Type 'string' is not assignable to type '\"export\" | \"standalone\" | undefined'.\n/Users/ww/dev/projects/riso/samples/makefile-runner/render/node/docs/fumadocs:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 docs-fumadocs@0.0.0 build: `next build`\nExit status 1\n",
+                "stderr": "\u26a0 The \"middleware\" file convention is deprecated. Please use \"proxy\" instead.\n\n  To migrate automatically, run:\n  npx @next/codemod@canary middleware-to-proxy .\n\n  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy\nFailed to type check.\n\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "skipped",
+                "reason": "Just quality scaffold not rendered for this variant."
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "mcp-typescript",
+          "answers": "/Users/ww/dev/projects/riso/samples/mcp-typescript/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/mcp-typescript/render",
+          "smoke_results": {
+            "variant": "mcp-typescript",
+            "timestamp": "2026-08-14T00:06:16.796375+00:00",
+            "modules": {
+              "cli": {
+                "status": "skipped",
+                "reason": "CLI module disabled or Python project not rendered."
+              },
+              "api_python": {
+                "status": "skipped",
+                "reason": "Python API disabled or Python project not rendered."
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "skipped",
+                "reason": "Documentation scaffolding skipped (`docs_module=disabled`)."
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "skipped",
+                "reason": "Just quality scaffold not rendered for this variant."
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "not_applicable",
+          "render_status": "ok",
+          "render_returncode": 0
+        },
+        {
+          "variant": "rag-enabled",
+          "answers": "/Users/ww/dev/projects/riso/samples/rag-enabled/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/rag-enabled/render",
+          "smoke_results": {
+            "variant": "rag-enabled",
+            "timestamp": "2026-08-14T00:07:00.436496+00:00",
+            "modules": {
+              "cli": {
+                "status": "skipped",
+                "reason": "CLI module disabled or Python project not rendered."
+              },
+              "api_python": {
+                "status": "skipped",
+                "reason": "Python API disabled or Python project not rendered."
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 11.41,
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "returncode": 1,
+                "stdout": "\n> docs-fumadocs@0.0.0 build /Users/ww/dev/projects/riso/samples/rag-enabled/render/node/docs/fumadocs\n> next build\n\n\u25b2 Next.js 16.3.1 (Turbopack)\n[MDX] generated files in 7.294875000000047ms\n\u2713 Running next.config.ts took 395ms\n\n  Creating an optimized production build ...\n\u2713 Compiled successfully in 8.0s\n  Running TypeScript ...\n\n  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.\n  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n\n  \t- include was updated to add '.next/dev/types/**/*.ts'\n\n  The following mandatory changes were made to your tsconfig.json:\n\n  \t- jsx was set to react-jsx (next.js uses the React automatic runtime)\n\nnext.config.ts(24,24): error TS2345: Argument of type '{ reactStrictMode: boolean; output: string; images: { unoptimized: boolean; }; outputFileTracingRoot: string; turbopack: { root: string; }; }' is not assignable to parameter of type 'NextConfig'.\n  Types of property 'output' are incompatible.\n    Type 'string' is not assignable to type '\"export\" | \"standalone\" | undefined'.\n/Users/ww/dev/projects/riso/samples/rag-enabled/render/node/docs/fumadocs:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 docs-fumadocs@0.0.0 build: `next build`\nExit status 1\n",
+                "stderr": "\u26a0 The \"middleware\" file convention is deprecated. Please use \"proxy\" instead.\n\n  To migrate automatically, run:\n  npx @next/codemod@canary middleware-to-proxy .\n\n  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy\nFailed to type check.\n\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "skipped",
+                "reason": "Just quality scaffold not rendered for this variant."
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "rust-api",
+          "answers": "/Users/ww/dev/projects/riso/samples/rust-api/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/rust-api/render",
+          "smoke_results": {
+            "variant": "rust-api",
+            "timestamp": "2026-08-14T00:07:30.533777+00:00",
+            "modules": {
+              "cli": {
+                "status": "skipped",
+                "reason": "CLI module disabled or Python project not rendered."
+              },
+              "api_python": {
+                "status": "skipped",
+                "reason": "Python API disabled or Python project not rendered."
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 13.51,
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "returncode": 1,
+                "stdout": "\n> docs-fumadocs@0.0.0 build /Users/ww/dev/projects/riso/samples/rust-api/render/node/docs/fumadocs\n> next build\n\n\u25b2 Next.js 16.3.1 (Turbopack)\n[MDX] generated files in 6.828959000000054ms\n\u2713 Running next.config.ts took 376ms\n\n  Creating an optimized production build ...\n\u2713 Compiled successfully in 10.0s\n  Running TypeScript ...\n\n  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.\n  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n\n  \t- include was updated to add '.next/dev/types/**/*.ts'\n\n  The following mandatory changes were made to your tsconfig.json:\n\n  \t- jsx was set to react-jsx (next.js uses the React automatic runtime)\n\nnext.config.ts(24,24): error TS2345: Argument of type '{ reactStrictMode: boolean; output: string; images: { unoptimized: boolean; }; outputFileTracingRoot: string; turbopack: { root: string; }; }' is not assignable to parameter of type 'NextConfig'.\n  Types of property 'output' are incompatible.\n    Type 'string' is not assignable to type '\"export\" | \"standalone\" | undefined'.\n/Users/ww/dev/projects/riso/samples/rust-api/render/node/docs/fumadocs:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 docs-fumadocs@0.0.0 build: `next build`\nExit status 1\n",
+                "stderr": "\u26a0 The \"middleware\" file convention is deprecated. Please use \"proxy\" instead.\n\n  To migrate automatically, run:\n  npx @next/codemod@canary middleware-to-proxy .\n\n  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy\nFailed to type check.\n\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "skipped",
+                "reason": "Just quality scaffold not rendered for this variant."
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              }
+            }
+          },
+          "workflow_validation": "fail",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "rust-cli",
+          "answers": "/Users/ww/dev/projects/riso/samples/rust-cli/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/rust-cli/render",
+          "smoke_results": {
+            "variant": "rust-cli",
+            "timestamp": "2026-08-14T00:07:59.221473+00:00",
+            "modules": {
+              "cli": {
+                "status": "skipped",
+                "reason": "CLI module disabled or Python project not rendered."
+              },
+              "api_python": {
+                "status": "skipped",
+                "reason": "Python API disabled or Python project not rendered."
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 12.49,
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "returncode": 1,
+                "stdout": "\n> docs-fumadocs@0.0.0 build /Users/ww/dev/projects/riso/samples/rust-cli/render/node/docs/fumadocs\n> next build\n\n\u25b2 Next.js 16.3.1 (Turbopack)\n[MDX] generated files in 7.32670799999994ms\n\u2713 Running next.config.ts took 337ms\n\n  Creating an optimized production build ...\n\u2713 Compiled successfully in 8.6s\n  Running TypeScript ...\n\n  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.\n  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n\n  \t- include was updated to add '.next/dev/types/**/*.ts'\n\n  The following mandatory changes were made to your tsconfig.json:\n\n  \t- jsx was set to react-jsx (next.js uses the React automatic runtime)\n\nnext.config.ts(24,24): error TS2345: Argument of type '{ reactStrictMode: boolean; output: string; images: { unoptimized: boolean; }; outputFileTracingRoot: string; turbopack: { root: string; }; }' is not assignable to parameter of type 'NextConfig'.\n  Types of property 'output' are incompatible.\n    Type 'string' is not assignable to type '\"export\" | \"standalone\" | undefined'.\n/Users/ww/dev/projects/riso/samples/rust-cli/render/node/docs/fumadocs:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 docs-fumadocs@0.0.0 build: `next build`\nExit status 1\n",
+                "stderr": "\u26a0 The \"middleware\" file convention is deprecated. Please use \"proxy\" instead.\n\n  To migrate automatically, run:\n  npx @next/codemod@canary middleware-to-proxy .\n\n  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy\nFailed to type check.\n\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "skipped",
+                "reason": "Just quality scaffold not rendered for this variant."
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "rust-mcp",
+          "answers": "/Users/ww/dev/projects/riso/samples/rust-mcp/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/rust-mcp/render",
+          "smoke_results": {
+            "variant": "rust-mcp",
+            "timestamp": "2026-08-14T00:08:29.087056+00:00",
+            "modules": {
+              "cli": {
+                "status": "skipped",
+                "reason": "CLI module disabled or Python project not rendered."
+              },
+              "api_python": {
+                "status": "skipped",
+                "reason": "Python API disabled or Python project not rendered."
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "failed",
+                "duration": 13.8,
+                "command": [
+                  "pnpm",
+                  "--filter",
+                  "docs-fumadocs",
+                  "build"
+                ],
+                "returncode": 1,
+                "stdout": "\n> docs-fumadocs@0.0.0 build /Users/ww/dev/projects/riso/samples/rust-mcp/render/node/docs/fumadocs\n> next build\n\n\u25b2 Next.js 16.3.1 (Turbopack)\n[MDX] generated files in 9.361625000000004ms\n\u2713 Running next.config.ts took 498ms\n\n  Creating an optimized production build ...\n\u2713 Compiled successfully in 9.8s\n  Running TypeScript ...\n\n  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.\n  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n\n  \t- include was updated to add '.next/dev/types/**/*.ts'\n\n  The following mandatory changes were made to your tsconfig.json:\n\n  \t- jsx was set to react-jsx (next.js uses the React automatic runtime)\n\nnext.config.ts(24,24): error TS2345: Argument of type '{ reactStrictMode: boolean; output: string; images: { unoptimized: boolean; }; outputFileTracingRoot: string; turbopack: { root: string; }; }' is not assignable to parameter of type 'NextConfig'.\n  Types of property 'output' are incompatible.\n    Type 'string' is not assignable to type '\"export\" | \"standalone\" | undefined'.\n/Users/ww/dev/projects/riso/samples/rust-mcp/render/node/docs/fumadocs:\n\u2009ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL\u2009 docs-fumadocs@0.0.0 build: `next build`\nExit status 1\n",
+                "stderr": "\u26a0 The \"middleware\" file convention is deprecated. Please use \"proxy\" instead.\n\n  To migrate automatically, run:\n  npx @next/codemod@canary middleware-to-proxy .\n\n  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy\nFailed to type check.\n\n"
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "skipped",
+                "reason": "Just quality scaffold not rendered for this variant."
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "lint_errors",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "saas-starter/all-in-one",
+          "answers": "/Users/ww/dev/projects/riso/samples/saas-starter/all-in-one/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/saas-starter/all-in-one/render",
+          "smoke_results": null,
+          "workflow_validation": "unknown",
+          "container_status": "not_applicable",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "saas-starter/b2b-teams-full",
+          "answers": "/Users/ww/dev/projects/riso/samples/saas-starter/b2b-teams-full/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/saas-starter/b2b-teams-full/render",
+          "smoke_results": null,
+          "workflow_validation": "unknown",
+          "container_status": "not_applicable",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "saas-starter/b2c-consumer-app",
+          "answers": "/Users/ww/dev/projects/riso/samples/saas-starter/b2c-consumer-app/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/saas-starter/b2c-consumer-app/render",
+          "smoke_results": null,
+          "workflow_validation": "unknown",
+          "container_status": "not_applicable",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "saas-starter/edge-optimized",
+          "answers": "/Users/ww/dev/projects/riso/samples/saas-starter/edge-optimized/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/saas-starter/edge-optimized/render",
+          "smoke_results": null,
+          "workflow_validation": "unknown",
+          "container_status": "not_applicable",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "saas-starter/enterprise-ready",
+          "answers": "/Users/ww/dev/projects/riso/samples/saas-starter/enterprise-ready/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/saas-starter/enterprise-ready/render",
+          "smoke_results": null,
+          "workflow_validation": "unknown",
+          "container_status": "not_applicable",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "saas-starter/nextjs-vercel-neon-clerk",
+          "answers": "/Users/ww/dev/projects/riso/samples/saas-starter/nextjs-vercel-neon-clerk/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/saas-starter/nextjs-vercel-neon-clerk/render",
+          "smoke_results": null,
+          "workflow_validation": "unknown",
+          "container_status": "not_applicable",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "saas-starter/nextjs-vercel-neon-clerk-workos",
+          "answers": "/Users/ww/dev/projects/riso/samples/saas-starter/nextjs-vercel-neon-clerk-workos/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/saas-starter/nextjs-vercel-neon-clerk-workos/render",
+          "smoke_results": null,
+          "workflow_validation": "unknown",
+          "container_status": "not_applicable",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "saas-starter/nextjs-vercel-supabase-clerk",
+          "answers": "/Users/ww/dev/projects/riso/samples/saas-starter/nextjs-vercel-supabase-clerk/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/saas-starter/nextjs-vercel-supabase-clerk/render",
+          "smoke_results": null,
+          "workflow_validation": "unknown",
+          "container_status": "not_applicable",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "saas-starter/prelaunch-waitlist",
+          "answers": "/Users/ww/dev/projects/riso/samples/saas-starter/prelaunch-waitlist/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/saas-starter/prelaunch-waitlist/render",
+          "smoke_results": null,
+          "workflow_validation": "unknown",
+          "container_status": "not_applicable",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "saas-starter/remix-cloudflare-neon-drizzle",
+          "answers": "/Users/ww/dev/projects/riso/samples/saas-starter/remix-cloudflare-neon-drizzle/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/saas-starter/remix-cloudflare-neon-drizzle/render",
+          "smoke_results": null,
+          "workflow_validation": "unknown",
+          "container_status": "not_applicable",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "saas-starter/vercel-starter",
+          "answers": "/Users/ww/dev/projects/riso/samples/saas-starter/vercel-starter/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/saas-starter/vercel-starter/render",
+          "smoke_results": null,
+          "workflow_validation": "unknown",
+          "container_status": "not_applicable",
+          "render_status": "failed",
+          "render_returncode": 1
+        },
+        {
+          "variant": "tauri-app",
+          "answers": "/Users/ww/dev/projects/riso/samples/tauri-app/copier-answers.yml",
+          "destination": "/Users/ww/dev/projects/riso/samples/tauri-app/render",
+          "smoke_results": {
+            "variant": "tauri-app",
+            "timestamp": "2026-08-14T00:08:39.902487+00:00",
+            "modules": {
+              "cli": {
+                "status": "skipped",
+                "reason": "CLI module disabled or Python project not rendered."
+              },
+              "api_python": {
+                "status": "skipped",
+                "reason": "Python API disabled or Python project not rendered."
+              },
+              "api_node": {
+                "status": "skipped",
+                "reason": "Node API disabled or pnpm dependencies not installed."
+              },
+              "mcp_module": {
+                "status": "skipped",
+                "reason": "MCP smoke tests pending implementation."
+              },
+              "docs": {
+                "status": "skipped",
+                "reason": "Documentation scaffolding skipped (`docs_module=disabled`)."
+              },
+              "shared_logic": {
+                "status": "skipped",
+                "reason": "Shared logic smoke tests pending implementation."
+              },
+              "quality_just": {
+                "status": "skipped",
+                "reason": "Just quality scaffold not rendered for this variant."
+              },
+              "quality_make": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              },
+              "quality_uv_task": {
+                "status": "skipped",
+                "reason": "Python quality scaffold not rendered for this variant."
+              }
+            }
+          },
+          "workflow_validation": "pass",
+          "container_status": "not_applicable",
+          "render_status": "ok",
+          "render_returncode": 0
         }
-      },
-      {
-        "variant": "api-monorepo",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/api-monorepo/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "Riso API Monorepo",
-          "project_slug": "riso-api-monorepo",
-          "package_name": "riso_api_monorepo",
-          "project_layout": "monorepo",
-          "quality_profile": "standard",
-          "python_versions": [
-            "3.11",
-            "3.12",
-            "3.13"
-          ],
-          "cli_module": "disabled",
-          "api_module": "enabled",
-          "api_languages": [
-            "python"
-          ],
-          "api_features": "none",
-          "mcp_module": "disabled",
-          "docs_module": "enabled",
-          "docs_framework": "fumadocs",
-          "shared_logic": "enabled",
-          "codegen_module": "disabled",
-          "changelog_module": "disabled",
-          "ci_platform": "github-actions",
-          "ai_tools_module": "enabled"
-        }
-      },
-      {
-        "variant": "api-python",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/api-python/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "Riso API Sample",
-          "project_slug": "riso-api-sample",
-          "package_name": "riso_api_sample",
-          "project_layout": "single-package",
-          "quality_profile": "standard",
-          "python_versions": [
-            "3.11",
-            "3.12",
-            "3.13"
-          ],
-          "cli_module": "disabled",
-          "api_module": "enabled",
-          "api_languages": [
-            "python"
-          ],
-          "api_features": "none",
-          "mcp_module": "disabled",
-          "docs_module": "enabled",
-          "docs_framework": "fumadocs",
-          "shared_logic": "enabled",
-          "codegen_module": "disabled",
-          "changelog_module": "disabled",
-          "ci_platform": "github-actions",
-          "ai_tools_module": "enabled"
-        }
-      },
-      {
-        "variant": "changelog-full-stack",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/changelog-full-stack/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "Changelog Full Stack",
-          "project_slug": "changelog-full-stack",
-          "package_name": "changelog_full_stack",
-          "project_layout": "monorepo",
-          "quality_profile": "strict",
-          "python_versions": [
-            "3.11",
-            "3.12",
-            "3.13"
-          ],
-          "cli_module": "enabled",
-          "cli_languages": [
-            "python"
-          ],
-          "api_module": "enabled",
-          "api_languages": [
-            "python"
-          ],
-          "api_features": "graphql,websocket",
-          "mcp_module": "enabled",
-          "mcp_languages": [
-            "python"
-          ],
-          "mcp_transport": "stdio",
-          "mcp_example_tools": true,
-          "docs_module": "enabled",
-          "docs_framework": "fumadocs",
-          "shared_logic": "enabled",
-          "codegen_module": "disabled",
-          "changelog_module": "enabled",
-          "ci_platform": "github-actions",
-          "ai_tools_module": "enabled"
-        }
-      },
-      {
-        "variant": "changelog-monorepo",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/changelog-monorepo/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "Changelog Monorepo",
-          "project_slug": "changelog-monorepo",
-          "package_name": "changelog_monorepo",
-          "project_layout": "monorepo",
-          "quality_profile": "standard",
-          "python_versions": [
-            "3.11",
-            "3.12",
-            "3.13"
-          ],
-          "cli_module": "enabled",
-          "cli_languages": [
-            "python"
-          ],
-          "api_module": "enabled",
-          "api_languages": [
-            "python"
-          ],
-          "api_features": "none",
-          "mcp_module": "disabled",
-          "docs_module": "enabled",
-          "docs_framework": "fumadocs",
-          "shared_logic": "enabled",
-          "codegen_module": "disabled",
-          "changelog_module": "enabled",
-          "ci_platform": "github-actions",
-          "ai_tools_module": "enabled"
-        }
-      },
-      {
-        "variant": "changelog-python",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/changelog-python/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "Changelog Python",
-          "project_slug": "changelog-python",
-          "package_name": "changelog_python",
-          "project_layout": "single-package",
-          "quality_profile": "standard",
-          "python_versions": [
-            "3.11",
-            "3.12",
-            "3.13"
-          ],
-          "cli_module": "enabled",
-          "cli_languages": [
-            "python"
-          ],
-          "api_module": "enabled",
-          "api_languages": [
-            "python"
-          ],
-          "api_features": "none",
-          "mcp_module": "disabled",
-          "docs_module": "enabled",
-          "docs_framework": "sphinx-shibuya",
-          "shared_logic": "enabled",
-          "codegen_module": "disabled",
-          "changelog_module": "enabled",
-          "ci_platform": "github-actions",
-          "ai_tools_module": "enabled"
-        }
-      },
-      {
-        "variant": "circleci-node",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/circleci-node/copier-answers.yml",
-        "answers": {
-          "_src_path": "../..",
-          "project_name": "circleci-example",
-          "project_slug": "circleci-example",
-          "package_name": "circleci_example",
-          "project_layout": "monorepo",
-          "quality_profile": "standard",
-          "cli_module": "disabled",
-          "api_module": "enabled",
-          "api_languages": [
-            "node"
-          ],
-          "api_features": "none",
-          "mcp_module": "disabled",
-          "docs_module": "enabled",
-          "docs_framework": "fumadocs",
-          "desktop_module": "disabled",
-          "shared_logic": "disabled",
-          "codegen_module": "disabled",
-          "changelog_module": "disabled",
-          "ci_platform": "circleci",
-          "ai_tools_module": "enabled",
-          "ai_tools_mcp_thinking": false,
-          "ai_tools_mcp_web": true,
-          "ai_tools_mcp_documents": true,
-          "ai_tools_mcp_utilities": false,
-          "ai_tools_mcp_search": false,
-          "saas_infra_module": "disabled"
-        }
-      },
-      {
-        "variant": "cli-docs",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/cli-docs/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "Riso CLI Docs",
-          "project_slug": "riso-cli-docs",
-          "package_name": "riso_cli_docs",
-          "project_layout": "single-package",
-          "quality_profile": "standard",
-          "python_versions": [
-            "3.11",
-            "3.12",
-            "3.13"
-          ],
-          "cli_module": "enabled",
-          "cli_languages": [
-            "python"
-          ],
-          "api_module": "disabled",
-          "mcp_module": "disabled",
-          "docs_module": "enabled",
-          "docs_framework": "fumadocs",
-          "shared_logic": "enabled",
-          "codegen_module": "disabled",
-          "changelog_module": "disabled",
-          "ci_platform": "github-actions",
-          "ai_tools_module": "enabled"
-        }
-      },
-      {
-        "variant": "default",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/default/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "Riso Example",
-          "project_slug": "riso-example",
-          "package_name": "riso_example",
-          "project_layout": "single-package",
-          "quality_profile": "standard",
-          "python_versions": [
-            "3.11",
-            "3.12",
-            "3.13"
-          ],
-          "cli_module": "disabled",
-          "api_module": "disabled",
-          "mcp_module": "disabled",
-          "docs_module": "enabled",
-          "docs_framework": "fumadocs",
-          "shared_logic": "disabled",
-          "codegen_module": "disabled",
-          "changelog_module": "disabled",
-          "ci_platform": "github-actions",
-          "ai_tools_module": "enabled"
-        }
-      },
-      {
-        "variant": "docs-docusaurus",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/docs-docusaurus/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "Riso Docs Docusaurus",
-          "project_slug": "riso-docs-docusaurus",
-          "package_name": "riso_docs_docusaurus",
-          "project_layout": "monorepo",
-          "quality_profile": "standard",
-          "python_versions": [
-            "3.11",
-            "3.12",
-            "3.13"
-          ],
-          "cli_module": "disabled",
-          "api_module": "enabled",
-          "api_languages": [
-            "node"
-          ],
-          "api_features": "none",
-          "mcp_module": "disabled",
-          "docs_module": "enabled",
-          "docs_framework": "docusaurus",
-          "docusaurus_search_provider": "local",
-          "docusaurus_analytics": "none",
-          "docusaurus_theme": "classic",
-          "docusaurus_llms_txt": "enabled",
-          "docusaurus_i18n": "disabled",
-          "docusaurus_versioning": "disabled",
-          "docusaurus_blog": "enabled",
-          "docusaurus_faster": "enabled",
-          "docusaurus_openapi": "enabled",
-          "docusaurus_mermaid": "enabled",
-          "docusaurus_math": "disabled",
-          "docusaurus_live_codeblock": "disabled",
-          "docusaurus_show_last_update": "enabled",
-          "docusaurus_ideal_images": "enabled",
-          "docusaurus_image_zoom": "disabled",
-          "docusaurus_pwa": "disabled",
-          "docusaurus_comments": "none",
-          "docusaurus_feedback": "disabled",
-          "docusaurus_sitemap": "enabled",
-          "docusaurus_structured_data": "enabled",
-          "docusaurus_redirects": "disabled",
-          "docusaurus_announcement_bar": "disabled",
-          "docusaurus_back_to_top": "enabled",
-          "docusaurus_edit_url": "enabled",
-          "docusaurus_code_tabs": "disabled",
-          "docusaurus_changelog": "disabled",
-          "docusaurus_debug": "disabled",
-          "docusaurus_reading_time": "enabled",
-          "docusaurus_gfm": "enabled",
-          "docusaurus_emoji": "disabled",
-          "docusaurus_github_links": "disabled",
-          "docusaurus_autolink_headings": "enabled",
-          "shared_logic": "enabled",
-          "codegen_module": "disabled",
-          "changelog_module": "disabled",
-          "ci_platform": "github-actions",
-          "ai_tools_module": "enabled"
-        }
-      },
-      {
-        "variant": "docs-fumadocs",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/docs-fumadocs/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "Docs Fumadocs",
-          "project_slug": "docs-fumadocs",
-          "package_name": "docs_fumadocs",
-          "project_layout": "single-package",
-          "quality_profile": "standard",
-          "python_versions": [
-            "3.11",
-            "3.12",
-            "3.13"
-          ],
-          "cli_module": "disabled",
-          "api_module": "disabled",
-          "mcp_module": "disabled",
-          "docs_module": "enabled",
-          "docs_framework": "fumadocs",
-          "fumadocs_search_provider": "orama",
-          "fumadocs_llms_txt": "enabled",
-          "fumadocs_ai_search": "disabled",
-          "fumadocs_openapi": "disabled",
-          "fumadocs_typedoc": "disabled",
-          "fumadocs_theme": "shadcn",
-          "fumadocs_sidebar": "shadcn",
-          "fumadocs_i18n": "disabled",
-          "fumadocs_blog": "disabled",
-          "fumadocs_code_theme": "github",
-          "fumadocs_twoslash": "disabled",
-          "fumadocs_image_zoom": "enabled",
-          "fumadocs_banner": "disabled",
-          "fumadocs_last_updated": "enabled",
-          "fumadocs_edit_on_github": "enabled",
-          "fumadocs_feedback": "disabled",
-          "fumadocs_toc_depth": "3",
-          "fumadocs_mermaid": "disabled",
-          "fumadocs_math": "disabled",
-          "shared_logic": "disabled",
-          "codegen_module": "disabled",
-          "changelog_module": "disabled",
-          "ci_platform": "github-actions",
-          "ai_tools_module": "enabled"
-        }
-      },
-      {
-        "variant": "docs-fumadocs-full",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/docs-fumadocs-full/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "Fumadocs Full Stack",
-          "project_slug": "fumadocs-full-stack",
-          "package_name": "fumadocs_full_stack",
-          "project_layout": "single-package",
-          "quality_profile": "standard",
-          "python_versions": [
-            "3.11",
-            "3.12",
-            "3.13"
-          ],
-          "cli_module": "enabled",
-          "cli_languages": [
-            "python"
-          ],
-          "api_module": "enabled",
-          "api_languages": [
-            "python"
-          ],
-          "api_features": "none",
-          "mcp_module": "enabled",
-          "mcp_languages": [
-            "python"
-          ],
-          "docs_module": "enabled",
-          "docs_framework": "fumadocs",
-          "shared_logic": "disabled",
-          "codegen_module": "disabled",
-          "changelog_module": "disabled",
-          "ci_platform": "github-actions",
-          "ai_tools_module": "enabled",
-          "fumadocs_search_provider": "orama",
-          "fumadocs_llms_txt": "enabled",
-          "fumadocs_ai_search": "disabled",
-          "fumadocs_openapi": "enabled",
-          "fumadocs_typedoc": "disabled",
-          "fumadocs_theme": "shadcn",
-          "fumadocs_sidebar": "shadcn",
-          "fumadocs_i18n": "disabled",
-          "fumadocs_blog": "disabled",
-          "fumadocs_code_theme": "catppuccin",
-          "fumadocs_twoslash": "enabled",
-          "fumadocs_image_zoom": "enabled",
-          "fumadocs_banner": "enabled",
-          "fumadocs_last_updated": "enabled",
-          "fumadocs_edit_on_github": "enabled",
-          "fumadocs_feedback": "enabled",
-          "fumadocs_toc_depth": "3",
-          "fumadocs_mermaid": "enabled",
-          "fumadocs_math": "enabled"
-        }
-      },
-      {
-        "variant": "docs-sphinx",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/docs-sphinx/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "Riso Docs Sphinx",
-          "project_slug": "riso-docs-sphinx",
-          "package_name": "riso_docs_sphinx",
-          "project_layout": "single-package",
-          "quality_profile": "standard",
-          "python_versions": [
-            "3.11",
-            "3.12",
-            "3.13"
-          ],
-          "cli_module": "disabled",
-          "api_module": "enabled",
-          "api_languages": [
-            "python"
-          ],
-          "api_features": "none",
-          "mcp_module": "disabled",
-          "docs_module": "enabled",
-          "docs_framework": "sphinx-shibuya",
-          "shared_logic": "enabled",
-          "codegen_module": "disabled",
-          "changelog_module": "disabled",
-          "ci_platform": "github-actions",
-          "ai_tools_module": "enabled"
-        }
-      },
-      {
-        "variant": "electron-app",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/electron-app/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "Electron Desktop App",
-          "project_slug": "electron-desktop-app",
-          "package_name": "electron_desktop_app",
-          "project_layout": "single-package",
-          "quality_profile": "standard",
-          "python_versions": [
-            "3.11",
-            "3.12",
-            "3.13"
-          ],
-          "cli_module": "disabled",
-          "api_module": "disabled",
-          "mcp_module": "disabled",
-          "desktop_module": "enabled",
-          "desktop_framework": "electron-vite",
-          "desktop_features": "auto_updater,custom_titlebar",
-          "desktop_platforms": "mac,windows,linux",
-          "docs_module": "disabled",
-          "shared_logic": "disabled",
-          "codegen_module": "disabled",
-          "changelog_module": "disabled",
-          "ci_platform": "github-actions",
-          "ai_tools_module": "enabled"
-        }
-      },
-      {
-        "variant": "full-stack",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/full-stack/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "riso-full-stack-example",
-          "project_slug": "riso-full-stack-example",
-          "package_name": "riso_full_stack_example",
-          "project_layout": "monorepo",
-          "quality_profile": "strict",
-          "python_versions": [
-            "3.11",
-            "3.12",
-            "3.13"
-          ],
-          "cli_module": "enabled",
-          "cli_languages": [
-            "python"
-          ],
-          "api_module": "enabled",
-          "api_languages": [
-            "python"
-          ],
-          "api_features": "websocket",
-          "mcp_module": "enabled",
-          "mcp_languages": [
-            "python"
-          ],
-          "mcp_transport": "stdio",
-          "mcp_example_tools": true,
-          "docs_module": "enabled",
-          "docs_framework": "fumadocs",
-          "shared_logic": "enabled",
-          "codegen_module": "disabled",
-          "changelog_module": "enabled",
-          "ci_platform": "github-actions",
-          "ai_tools_module": "enabled"
-        }
-      },
-      {
-        "variant": "gitlab-ci-python",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/gitlab-ci-python/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "GitLab CI Python",
-          "project_slug": "gitlab-ci-python",
-          "package_name": "gitlab_ci_python",
-          "project_layout": "single-package",
-          "quality_profile": "strict",
-          "python_versions": [
-            "3.11",
-            "3.12",
-            "3.13"
-          ],
-          "cli_module": "enabled",
-          "cli_languages": [
-            "python"
-          ],
-          "api_module": "enabled",
-          "api_languages": [
-            "python"
-          ],
-          "api_features": "none",
-          "mcp_module": "disabled",
-          "docs_module": "enabled",
-          "docs_framework": "fumadocs",
-          "shared_logic": "enabled",
-          "codegen_module": "disabled",
-          "changelog_module": "enabled",
-          "ci_platform": "gitlab-ci",
-          "ai_tools_module": "enabled"
-        }
-      },
-      {
-        "variant": "go-api",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/go-api/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "Riso Go API",
-          "project_slug": "riso-go-api",
-          "package_name": "riso_go_api",
-          "project_layout": "single-package",
-          "quality_profile": "standard",
-          "python_versions": [
-            "3.11",
-            "3.12",
-            "3.13"
-          ],
-          "cli_module": "disabled",
-          "api_module": "enabled",
-          "api_languages": [
-            "go"
-          ],
-          "api_features": "none",
-          "mcp_module": "disabled",
-          "docs_module": "enabled",
-          "docs_framework": "fumadocs",
-          "shared_logic": "disabled",
-          "codegen_module": "disabled",
-          "changelog_module": "disabled",
-          "ci_platform": "github-actions",
-          "ai_tools_module": "enabled",
-          "go_framework": "gin",
-          "go_version": "1.24"
-        }
-      },
-      {
-        "variant": "go-cli",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/go-cli/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "Riso Go CLI",
-          "project_slug": "riso-go-cli",
-          "package_name": "riso_go_cli",
-          "project_layout": "single-package",
-          "quality_profile": "standard",
-          "python_versions": [
-            "3.11",
-            "3.12",
-            "3.13"
-          ],
-          "cli_module": "enabled",
-          "cli_languages": [
-            "go"
-          ],
-          "api_module": "disabled",
-          "mcp_module": "disabled",
-          "docs_module": "enabled",
-          "docs_framework": "fumadocs",
-          "shared_logic": "disabled",
-          "codegen_module": "disabled",
-          "changelog_module": "disabled",
-          "ci_platform": "github-actions",
-          "ai_tools_module": "enabled",
-          "go_version": "1.24"
-        }
-      },
-      {
-        "variant": "go-mcp",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/go-mcp/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "Riso Go MCP",
-          "project_slug": "riso-go-mcp",
-          "package_name": "riso_go_mcp",
-          "project_layout": "single-package",
-          "quality_profile": "standard",
-          "python_versions": [
-            "3.11",
-            "3.12",
-            "3.13"
-          ],
-          "cli_module": "disabled",
-          "api_module": "disabled",
-          "mcp_module": "enabled",
-          "mcp_languages": [
-            "go"
-          ],
-          "mcp_transport": "stdio",
-          "mcp_example_tools": true,
-          "docs_module": "enabled",
-          "docs_framework": "fumadocs",
-          "shared_logic": "disabled",
-          "codegen_module": "disabled",
-          "changelog_module": "disabled",
-          "ci_platform": "github-actions",
-          "ai_tools_module": "enabled",
-          "go_version": "1.24"
-        }
-      },
-      {
-        "variant": "makefile-runner",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/makefile-runner/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "Riso Example",
-          "project_slug": "riso-example",
-          "package_name": "riso_example",
-          "project_layout": "single-package",
-          "quality_profile": "standard",
-          "task_runner": "makefile",
-          "python_versions": [
-            "3.11",
-            "3.12",
-            "3.13"
-          ],
-          "cli_module": "disabled",
-          "api_module": "disabled",
-          "mcp_module": "disabled",
-          "docs_module": "enabled",
-          "docs_framework": "fumadocs",
-          "shared_logic": "disabled",
-          "codegen_module": "disabled",
-          "changelog_module": "disabled",
-          "ci_platform": "github-actions",
-          "ai_tools_module": "enabled"
-        }
-      },
-      {
-        "variant": "mcp-typescript",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/mcp-typescript/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "MCP TypeScript",
-          "project_slug": "mcp-typescript",
-          "package_name": "mcp_typescript",
-          "project_layout": "single-package",
-          "quality_profile": "standard",
-          "cli_module": "disabled",
-          "api_module": "disabled",
-          "mcp_module": "enabled",
-          "mcp_languages": [
-            "typescript"
-          ],
-          "mcp_transport": "stdio",
-          "mcp_example_tools": true,
-          "docs_module": "disabled",
-          "shared_logic": "disabled",
-          "codegen_module": "disabled",
-          "changelog_module": "disabled",
-          "ci_platform": "github-actions",
-          "ai_tools_module": "disabled"
-        }
-      },
-      {
-        "variant": "rag-enabled",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/rag-enabled/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "RAG Enabled SaaS",
-          "project_slug": "rag-enabled-saas",
-          "package_name": "rag_enabled_saas",
-          "project_layout": "single-package",
-          "quality_profile": "standard",
-          "python_versions": [
-            "3.11",
-            "3.12",
-            "3.13"
-          ],
-          "cli_module": "disabled",
-          "api_module": "disabled",
-          "mcp_module": "disabled",
-          "docs_module": "enabled",
-          "docs_framework": "fumadocs",
-          "shared_logic": "disabled",
-          "codegen_module": "disabled",
-          "changelog_module": "disabled",
-          "ci_platform": "github-actions",
-          "ai_tools_module": "enabled",
-          "saas_infra_module": "enabled",
-          "saas_runtime": "nextjs-16",
-          "saas_hosting": "vercel",
-          "saas_database": "neon",
-          "saas_orm": "prisma",
-          "saas_auth_module": "enabled",
-          "saas_auth_provider": "clerk",
-          "saas_enterprise_bridge": "none",
-          "saas_billing_module": "enabled",
-          "saas_billing_provider": "stripe",
-          "saas_app_module": "enabled",
-          "saas_jobs": "triggerdev",
-          "saas_email": "resend",
-          "saas_analytics": "posthog",
-          "saas_ai": "openai",
-          "saas_storage": "r2",
-          "saas_cicd": "github-actions",
-          "saas_ai_features": "full",
-          "vector_db_provider": "pinecone",
-          "embedding_provider": "openai",
-          "saas_observability_sentry": true,
-          "saas_observability_datadog": false,
-          "saas_observability_otel": true,
-          "saas_observability_structured_logging": true,
-          "saas_include_fixtures": true,
-          "saas_include_factories": true,
-          "saas_test_suite_level": "standard",
-          "saas_tenancy_model": "b2b-teams",
-          "saas_rbac_system": "basic-roles",
-          "saas_onboarding": "wizard",
-          "saas_admin_dashboard": true,
-          "saas_user_impersonation": true,
-          "saas_notifications": "both",
-          "saas_waitlist": false,
-          "saas_i18n": false,
-          "saas_api_access": "internal-only",
-          "saas_ui_framework": "shadcn-ui",
-          "saas_form_library": "react-hook-form",
-          "saas_realtime": "none",
-          "saas_landing_page": true,
-          "saas_blog": false,
-          "saas_changelog_public": false,
-          "saas_2fa": false,
-          "saas_gdpr_tools": false,
-          "saas_api_docs": false,
-          "saas_rate_limiting": "upstash",
-          "saas_file_upload": "uploadthing"
-        }
-      },
-      {
-        "variant": "tauri-app",
-        "answers_file": "/Users/ww/dev/projects/riso/samples/tauri-app/copier-answers.yml",
-        "answers": {
-          "_commit": "HEAD",
-          "_src_path": "../../template",
-          "project_name": "Tauri Desktop App",
-          "project_slug": "tauri-desktop-app",
-          "package_name": "tauri_desktop_app",
-          "project_layout": "single-package",
-          "quality_profile": "standard",
-          "python_versions": [
-            "3.11",
-            "3.12",
-            "3.13"
-          ],
-          "cli_module": "disabled",
-          "api_module": "disabled",
-          "mcp_module": "disabled",
-          "desktop_module": "enabled",
-          "desktop_framework": "tauri",
-          "desktop_features": "auto_updater,tray_icon,custom_titlebar",
-          "desktop_platforms": "mac,windows,linux",
-          "docs_module": "disabled",
-          "shared_logic": "disabled",
-          "codegen_module": "disabled",
-          "changelog_module": "disabled",
-          "ci_platform": "github-actions",
-          "ai_tools_module": "enabled"
-        }
+      ],
+      "module_success": {
+        "recorded_at": "2026-08-14T00:08:40.045294+00:00",
+        "modules": {
+          "cli": {
+            "passed": 7,
+            "failed": 0,
+            "errored": 0,
+            "skipped": 19,
+            "success_rate": 1.0,
+            "total_recorded": 7
+          },
+          "api_python": {
+            "passed": 9,
+            "failed": 0,
+            "errored": 0,
+            "skipped": 17,
+            "success_rate": 1.0,
+            "total_recorded": 9
+          },
+          "api_node": {
+            "passed": 2,
+            "failed": 0,
+            "errored": 0,
+            "skipped": 24,
+            "success_rate": 1.0,
+            "total_recorded": 2
+          },
+          "mcp_module": {
+            "passed": 0,
+            "failed": 0,
+            "errored": 0,
+            "skipped": 26,
+            "success_rate": 0.0,
+            "total_recorded": 0
+          },
+          "docs": {
+            "passed": 0,
+            "failed": 23,
+            "errored": 0,
+            "skipped": 3,
+            "success_rate": 0.0,
+            "total_recorded": 23
+          },
+          "shared_logic": {
+            "passed": 0,
+            "failed": 0,
+            "errored": 0,
+            "skipped": 26,
+            "success_rate": 0.0,
+            "total_recorded": 0
+          },
+          "quality_just": {
+            "passed": 1,
+            "failed": 6,
+            "errored": 0,
+            "skipped": 19,
+            "success_rate": 0.1429,
+            "total_recorded": 7
+          },
+          "quality_make": {
+            "passed": 0,
+            "failed": 0,
+            "errored": 0,
+            "skipped": 26,
+            "success_rate": 0.0,
+            "total_recorded": 0
+          },
+          "quality_uv_task": {
+            "passed": 2,
+            "failed": 5,
+            "errored": 0,
+            "skipped": 19,
+            "success_rate": 0.2857,
+            "total_recorded": 7
+          }
+        },
+        "workflow_generation": {
+          "passed": 22,
+          "failed": 2,
+          "errored": 0,
+          "skipped": 13,
+          "success_rate": 0.9167,
+          "total_recorded": 24,
+          "ci_cache_performance": {
+            "cache_hit_rate": 0.0,
+            "average_runtime_with_cache_seconds": null,
+            "average_runtime_without_cache_seconds": null,
+            "cache_efficiency_ratio": null,
+            "total_cache_checks": 0,
+            "note": "Cache metrics tracked from GitHub Actions workflow runs when ci_platform=github-actions"
+          },
+          "container_validation": {
+            "total_checked": 37,
+            "files_present": 0,
+            "validated": 0,
+            "lint_errors": 23,
+            "files_missing": 0,
+            "not_applicable": 14,
+            "success_rate": 0.0,
+            "note": "Container metrics tracked from rendered samples with api_languages or docs_framework"
+          }
+        },
+        "variants": [
+          {
+            "variant": "ai-tools-off",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "skipped"
+              }
+            ]
+          },
+          {
+            "variant": "api-monorepo",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "passed"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "failed"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "failed"
+              }
+            ]
+          },
+          {
+            "variant": "api-python",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "passed"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "failed"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "failed"
+              }
+            ]
+          },
+          {
+            "variant": "changelog-full-stack",
+            "results": [
+              {
+                "name": "cli",
+                "status": "passed"
+              },
+              {
+                "name": "api_python",
+                "status": "passed"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "skipped"
+              }
+            ]
+          },
+          {
+            "variant": "changelog-monorepo",
+            "results": [
+              {
+                "name": "cli",
+                "status": "passed"
+              },
+              {
+                "name": "api_python",
+                "status": "passed"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "failed"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "failed"
+              }
+            ]
+          },
+          {
+            "variant": "changelog-python",
+            "results": [
+              {
+                "name": "cli",
+                "status": "passed"
+              },
+              {
+                "name": "api_python",
+                "status": "passed"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "failed"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "passed"
+              }
+            ]
+          },
+          {
+            "variant": "circleci-node",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped"
+              },
+              {
+                "name": "api_node",
+                "status": "passed"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "skipped"
+              }
+            ]
+          },
+          {
+            "variant": "cli-docs",
+            "results": [
+              {
+                "name": "cli",
+                "status": "passed"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "passed"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "passed"
+              }
+            ]
+          },
+          {
+            "variant": "default",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "skipped"
+              }
+            ]
+          },
+          {
+            "variant": "docs-docusaurus",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped"
+              },
+              {
+                "name": "api_node",
+                "status": "passed"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "skipped"
+              }
+            ]
+          },
+          {
+            "variant": "docs-fumadocs",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "skipped"
+              }
+            ]
+          },
+          {
+            "variant": "docs-fumadocs-full",
+            "results": [
+              {
+                "name": "cli",
+                "status": "passed"
+              },
+              {
+                "name": "api_python",
+                "status": "passed"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "failed"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "failed"
+              }
+            ]
+          },
+          {
+            "variant": "docs-sphinx",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "passed"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "failed"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "failed"
+              }
+            ]
+          },
+          {
+            "variant": "electron-app",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "skipped"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "skipped"
+              }
+            ]
+          },
+          {
+            "variant": "full-stack",
+            "results": [
+              {
+                "name": "cli",
+                "status": "passed"
+              },
+              {
+                "name": "api_python",
+                "status": "passed"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "skipped"
+              }
+            ]
+          },
+          {
+            "variant": "gitlab-ci-python",
+            "results": [
+              {
+                "name": "cli",
+                "status": "passed"
+              },
+              {
+                "name": "api_python",
+                "status": "passed"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "skipped"
+              }
+            ]
+          },
+          {
+            "variant": "go-api",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "skipped"
+              }
+            ]
+          },
+          {
+            "variant": "go-cli",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "skipped"
+              }
+            ]
+          },
+          {
+            "variant": "go-mcp",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "skipped"
+              }
+            ]
+          },
+          {
+            "variant": "makefile-runner",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "skipped"
+              }
+            ]
+          },
+          {
+            "variant": "mcp-typescript",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "skipped"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "skipped"
+              }
+            ]
+          },
+          {
+            "variant": "rag-enabled",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "skipped"
+              }
+            ]
+          },
+          {
+            "variant": "rust-api",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "skipped"
+              }
+            ]
+          },
+          {
+            "variant": "rust-cli",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "skipped"
+              }
+            ]
+          },
+          {
+            "variant": "rust-mcp",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "failed"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "skipped"
+              }
+            ]
+          },
+          {
+            "variant": "tauri-app",
+            "results": [
+              {
+                "name": "cli",
+                "status": "skipped"
+              },
+              {
+                "name": "api_python",
+                "status": "skipped"
+              },
+              {
+                "name": "api_node",
+                "status": "skipped"
+              },
+              {
+                "name": "mcp_module",
+                "status": "skipped"
+              },
+              {
+                "name": "docs",
+                "status": "skipped"
+              },
+              {
+                "name": "shared_logic",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_just",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_make",
+                "status": "skipped"
+              },
+              {
+                "name": "quality_uv_task",
+                "status": "skipped"
+              }
+            ]
+          }
+        ]
       }
-    ]
+    }
   }
 }

@@ -21,7 +21,7 @@ const STEPS = [
 ]
 
 export function Wizard() {
-  const { currentStep, setStep, config } = useRisoStore()
+  const { currentStep, setStep, config, highlightedField } = useRisoStore()
   const projectName = config.project_name || ''
   const basicsValid = canProceedFromBasics(projectName)
   const visitStep = (stepId: number) =>
@@ -43,8 +43,27 @@ export function Wizard() {
     }
   }, [currentStep])
 
+  useEffect(() => {
+    if (!highlightedField) return
+    const timer = window.setTimeout(() => {
+      const node = document.querySelector<HTMLElement>(
+        `[data-field-key="${CSS.escape(highlightedField)}"]`,
+      )
+      if (!node) return
+      node.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      node
+        .querySelector<HTMLElement>(
+          'input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [role="switch"]:not([disabled])',
+        )
+        ?.focus({ preventScroll: true })
+    }, 420)
+    return () => window.clearTimeout(timer)
+  }, [highlightedField, currentStep])
+
+  const nextBlockedByName = currentStep === 0 && !basicsValid
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" data-step={currentStep}>
       {/* Step indicator */}
       <nav aria-label="Progress" className="relative">
         {/* Background glow for active area */}
@@ -122,8 +141,8 @@ export function Wizard() {
                     currentStep === step.id
                       ? 'font-bold text-riso-federal-blue dark:text-riso-cornflower scale-105'
                       : currentStep > step.id
-                        ? 'font-semibold text-riso-green dark:text-riso-mint'
-                        : 'font-medium text-gray-400 dark:text-gray-500'
+                        ? 'font-semibold text-riso-hunter-green dark:text-riso-mint'
+                        : 'font-medium text-gray-600 dark:text-gray-400'
                   )}
                 >
                   {step.name}
@@ -152,8 +171,10 @@ export function Wizard() {
       </div>
 
       {/* Navigation buttons */}
+      <div className="space-y-2">
       <div className="flex justify-between items-center">
         <button
+          type="button"
           onClick={() => setStep(Math.max(0, currentStep - 1))}
           disabled={currentStep === 0}
           className={cn(
@@ -191,12 +212,15 @@ export function Wizard() {
         </div>
 
         <button
+          type="button"
           onClick={() => setStep(Math.min(STEPS.length - 1, currentStep + 1))}
           disabled={currentStep === STEPS.length - 1 || !canGoNext}
+          aria-describedby={nextBlockedByName ? 'wizard-next-hint' : undefined}
+          title={nextBlockedByName ? 'Enter a valid project name to continue' : undefined}
           className={cn(
             'group flex items-center gap-2 transition-all duration-300',
             currentStep === STEPS.length - 1 || !canGoNext
-              ? 'px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed'
+              ? 'px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed'
               : 'btn-primary hover:translate-x-1'
           )}
         >
@@ -215,6 +239,16 @@ export function Wizard() {
             </>
           )}
         </button>
+      </div>
+      {nextBlockedByName && (
+        <p
+          id="wizard-next-hint"
+          role="status"
+          className="text-sm text-riso-bright-red text-right"
+        >
+          Enter a valid project name to continue.
+        </p>
+      )}
       </div>
     </div>
   )

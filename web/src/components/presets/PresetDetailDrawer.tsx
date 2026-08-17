@@ -1,4 +1,6 @@
+import { useRef } from 'react'
 import { X, Folder, File, ChevronRight, Check, Sparkles, Clock, Layers } from 'lucide-react'
+import { useFocusTrap } from '../../lib/useFocusTrap'
 import { cn } from '../../lib/utils'
 import { ICON_GRADIENTS, ICON_TEXT, type Preset, type FileTreeNode, type Complexity } from './types'
 
@@ -23,7 +25,7 @@ const complexityConfig: Record<Complexity, { label: string; color: string; descr
   },
   advanced: {
     label: 'Advanced',
-    color: 'bg-riso-fluorescent-pink/20 text-riso-fluorescent-pink',
+    color: 'bg-riso-burgundy/15 text-riso-burgundy dark:text-riso-apricot',
     description: 'Complex setup, multiple languages/services',
   },
 }
@@ -75,9 +77,13 @@ export function PresetDetailDrawer({
   onApply,
   isSelected,
 }: PresetDetailDrawerProps) {
+  const drawerRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(isOpen && Boolean(preset), drawerRef, onClose)
+
   if (!preset) return null
 
   const complexity = complexityConfig[preset.complexity]
+  const titleId = 'preset-detail-title'
 
   return (
     <>
@@ -88,15 +94,21 @@ export function PresetDetailDrawer({
           isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         )}
         onClick={onClose}
+        aria-hidden="true"
       />
 
       {/* Drawer */}
       <div
+        ref={drawerRef}
+        role="dialog"
+        aria-modal={isOpen}
+        aria-labelledby={titleId}
+        aria-hidden={!isOpen}
         className={cn(
           'fixed right-0 top-0 h-full w-full max-w-lg bg-white dark:bg-gray-900 shadow-2xl z-50',
           'transform transition-transform duration-300 ease-out',
           'overflow-y-auto',
-          isOpen ? 'translate-x-0' : 'translate-x-full'
+          isOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
         )}
       >
         {/* Header */}
@@ -112,7 +124,7 @@ export function PresetDetailDrawer({
                 <div className={cn(ICON_TEXT[preset.id])}>{preset.icon}</div>
               </div>
               <div>
-                <h2 className="font-semibold text-lg text-gray-900 dark:text-white">
+                <h2 id={titleId} className="font-semibold text-lg text-gray-900 dark:text-white">
                   {preset.name}
                 </h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -121,9 +133,10 @@ export function PresetDetailDrawer({
               </div>
             </div>
             <button
+              type="button"
               onClick={onClose}
               className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              aria-label="Close"
+              aria-label="Close preset details"
             >
               <X className="h-5 w-5 text-gray-500" />
             </button>
