@@ -51,13 +51,13 @@ Stand up a **serial COORD contract lane** with **massively parallel** recon, ver
 
 ### 2.2 Live inventory (repo-grounded)
 
-- `copier.yml` ~2133 LOC; large defaults + questions surface  
-- Hooks: `pre_gen` ~794, `post_gen` ~598; import `validate_answers_for_generation`  
-- Catalog modules: quality, cli, api_python, api_node, graphql_api, mcp_module, websocket_module, docs_framework, shared_logic, workflow_generation, changelog_release  
-- Macros: `module_flags.jinja`, `agent_commands.jinja`, `ci_paths.jinja`  
-- Context: 9 mirrored files; **parity currently green**  
-- Samples: ~23 `copier-answers.yml` variants  
-- CLI: `riso validate|prompts|catalog`  
+- `copier.yml` ~2133 LOC; large defaults + questions surface
+- Hooks: `pre_gen` ~794, `post_gen` ~598; import `validate_answers_for_generation`
+- Catalog modules: quality, cli, api_python, api_node, graphql_api, mcp_module, websocket_module, docs_framework, shared_logic, workflow_generation, changelog_release
+- Macros: `module_flags.jinja`, `agent_commands.jinja`, `ci_paths.jinja`
+- Context: 9 mirrored files; **parity currently green**
+- Samples: ~23 `copier-answers.yml` variants
+- CLI: `riso validate|prompts|catalog`
 - Tests: large hook suites + `test_verify_context_sync.py`
 
 ### 2.3 Wave topology
@@ -134,9 +134,9 @@ V can also run **after B** (bootstrap dry-run) without C/O/P.
 | B9 | `examples/minimal-handoff.md` worked example (fictional key) | docs | Y | B3 | examples/ | clearly marked example | B-i |
 | B10 | `examples/minimal-outbox.md` worked example delta | docs | Y | B4 | examples/ | marked example | B-j |
 
-**Parallel panels:**  
-- Panel B1: B1∥B2∥B3∥B4∥B5∥B8∥B9∥B10  
-- Panel B2: B6 → B7  
+**Parallel panels:**
+- Panel B1: B1∥B2∥B3∥B4∥B5∥B8∥B9∥B10
+- Panel B2: B6 → B7
 
 ### Wave C — Apply one CID (serial single writer)
 
@@ -318,11 +318,11 @@ human requests batch? → still serial C waves; may pipeline O/V of CID_n with C
 
 ### 6.3 Anti-patterns (do not spawn)
 
-- Two agents editing `copier.yml`  
-- Payload agent “helping” with hooks  
-- COORD agent implementing `template/files/python/**`  
-- Verify agent auto-fixing by editing contracts without claim  
-- Full matrix agent by default  
+- Two agents editing `copier.yml`
+- Payload agent “helping” with hooks
+- COORD agent implementing `template/files/python/**`
+- Verify agent auto-fixing by editing contracts without claim
+- Full matrix agent by default
 
 ---
 
@@ -386,13 +386,13 @@ R1∥R2∥R7          # expect empty inbox on first setup
 
 ## 10. Risks
 
-1. **Serial bottleneck is the product** of multi-agent safety — optimize around it, not through it.  
-2. **Hook/CLI dual validation** until O-CLI lands.  
-3. **Large hook tests** — always prefer `-k` slices.  
-4. **23 samples** — validate affected set only; default on bootstrap.  
-5. **Sibling goals empty** — SSOT outbox must stand alone.  
-6. **Example handoffs** must be marked non-executable so agents don’t apply fiction.  
-7. **PLATFORM answers** may lag new defaults; list explicitly in outbox.  
+1. **Serial bottleneck is the product** of multi-agent safety — optimize around it, not through it.
+2. **Hook/CLI dual validation** until O-CLI lands.
+3. **Large hook tests** — always prefer `-k` slices.
+4. **23 samples** — validate affected set only; default on bootstrap.
+5. **Sibling goals empty** — SSOT outbox must stand alone.
+6. **Example handoffs** must be marked non-executable so agents don’t apply fiction.
+7. **PLATFORM answers** may lag new defaults; list explicitly in outbox.
 
 ---
 
@@ -400,25 +400,25 @@ R1∥R2∥R7          # expect empty inbox on first setup
 
 ### Bootstrap
 
-- [ ] Templates + LANE + APPLY-CHECKLIST + README + examples + inbox/outbox  
-- [ ] V1, V2.default, V3p, V3c green  
-- [ ] V6: no unsolicited `template/**` contract edits  
-- [ ] Evidence in `outbox/bootstrap-verify.md`  
-- [ ] No branch/commit/push unless asked  
+- [ ] Templates + LANE + APPLY-CHECKLIST + README + examples + inbox/outbox
+- [ ] V1, V2.default, V3p, V3c green
+- [ ] V6: no unsolicited `template/**` contract edits
+- [ ] Evidence in `outbox/bootstrap-verify.md`
+- [ ] No branch/commit/push unless asked
 
 ### Apply (later)
 
-- [ ] One CID C0–C10 complete  
-- [ ] Outbox SSOT with payload + CLI sections  
-- [ ] Staged V* green for touched surfaces  
-- [ ] Payload lanes unblocked without COORD re-entry  
+- [ ] One CID C0–C10 complete
+- [ ] Outbox SSOT with payload + CLI sections
+- [ ] Staged V* green for touched surfaces
+- [ ] Payload lanes unblocked without COORD re-entry
 
 ---
 
 ## 12. Non-goals (this package)
 
-- Implementing FastAPI/Node/SaaS/desktop/Go/Rust bodies  
-- Editing `src/riso` generation_gates  
-- Full sample matrix regen by default  
-- Creating git branches/PRs unless human asks  
-- Inventing product prompt keys without a handoff  
+- Implementing FastAPI/Node/SaaS/desktop/Go/Rust bodies
+- Editing `src/riso` generation_gates
+- Full sample matrix regen by default
+- Creating git branches/PRs unless human asks
+- Inventing product prompt keys without a handoff

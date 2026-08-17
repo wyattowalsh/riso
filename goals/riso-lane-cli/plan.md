@@ -1,6 +1,6 @@
 # Plan — Riso Lane CLI
 
-**Status:** execution-ready for parallel subagent teams.  
+**Status:** execution-ready for parallel subagent teams.
 **Companion:** [`tasks.graph.json`](./tasks.graph.json) · [`facts.md`](./facts.md)
 
 ---
@@ -50,10 +50,10 @@ Own maintainer **`riso` CLI** (`src/riso/**`) + **`tests/unit/test_cli/**`**. Ke
 
 ## 4. Boundaries
 
-**Write:** `src/riso/**`, `tests/unit/test_cli/**`, optional `goals/riso-lane-cli/handoffs/**`  
-**Never write:** template files/hooks/copier.yml/macros/module_catalog, web/, samples render/answers, scripts/ci, lockfile hand-edits, secrets, unsolicited git branch/commit/push, riso-mcp  
-**Always:** `uv run`  
-**Out of scope:** PY generated CLI, COORD contracts, PLATFORM CI, web  
+**Write:** `src/riso/**`, `tests/unit/test_cli/**`, optional `goals/riso-lane-cli/handoffs/**`
+**Never write:** template files/hooks/copier.yml/macros/module_catalog, web/, samples render/answers, scripts/ci, lockfile hand-edits, secrets, unsolicited git branch/commit/push, riso-mcp
+**Always:** `uv run`
+**Out of scope:** PY generated CLI, COORD contracts, PLATFORM CI, web
 
 ---
 
@@ -103,7 +103,7 @@ Recipe E:
   S-TPL freeze → 4-way W3 → W3-gate → W6
 ```
 
-**Longest serial chain if everything broken:**  
+**Longest serial chain if everything broken:**
 C1.01→C1.03→C1.04→C1.05→W3→W6 (foundation then mutation). Avoid unless red.
 
 ---
@@ -291,10 +291,10 @@ S-TPL freeze → 4 agents W3 → W3 gate → W6
 
 ### Recovery ladder
 
-1. pytest fail in one shard → fix same shard only  
-2. cross-shard API break → roll back to freeze note; serialize  
-3. forbidden path temptation → H5 handoff; stop  
-4. flaky timeout → mock; do not loosen production kill  
+1. pytest fail in one shard → fix same shard only
+2. cross-shard API break → roll back to freeze note; serialize
+3. forbidden path temptation → H5 handoff; stop
+4. flaky timeout → mock; do not loosen production kill
 
 ---
 
@@ -328,10 +328,10 @@ Prefer Recipe A then C for value.
 
 ## 11. Done
 
-- [ ] Recipe A green (or reds fixed in-lane / handed off)  
-- [ ] If coverage tasked: C4.01–03 landed + V6.03  
-- [ ] Behavior diffs include tests  
-- [ ] No forbidden writes; no riso-mcp; COORD gaps handed off  
+- [ ] Recipe A green (or reds fixed in-lane / handed off)
+- [ ] If coverage tasked: C4.01–03 landed + V6.03
+- [ ] Behavior diffs include tests
+- [ ] No forbidden writes; no riso-mcp; COORD gaps handed off
 
 ---
 

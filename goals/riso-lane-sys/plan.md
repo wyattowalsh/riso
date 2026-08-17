@@ -170,10 +170,10 @@ flowchart TB
   H2 --> Vf
 ```
 
-**Critical path (JSON):**  
+**Critical path (JSON):**
 `W0.T4 → W1.G.T1/T2 → W2.G.T1 → W2.G.T2 → W2.G.T7 → W3.G.T1 → W4.V.T1`
 
-**Largest parallel set (wave 2):**  
+**Largest parallel set (wave 2):**
 `{GA2, GA3, GA4, GC, GM, RA, RC, RM}` under distinct locks — up to **8** theoretical; cap **6** and queue GA4/GM if needed.
 
 ---
@@ -360,16 +360,16 @@ If go-api validate fails only with `api_features` multiselect (C3), **do not** e
 
 ## 9. Orchestration recipes
 
-**Solo sequential:**  
+**Solo sequential:**
 W0 → W1.G → W1.R → W1.H → W2.G (API then CLI then MCP then TOOL) → W2.R (API/CLI/MCP) → W3 → W4.
 
-**Team (preferred, max 6):**  
-1. VERIFY (1)  
-2. GO-CORE + RS-CORE + HANDOFF (3)  
-3. GO-API + GO-CLI + GO-MCP + RS-API + RS-CLI + RS-MCP (6) — GO-API does T1 then T2–T4 serially  
-4. GO-TOOL (1) after API+CLI+MCP  
-5. RS-DOCS + GO-TOOL README (2)  
-6. HANDOFF residual + VERIFY final  
+**Team (preferred, max 6):**
+1. VERIFY (1)
+2. GO-CORE + RS-CORE + HANDOFF (3)
+3. GO-API + GO-CLI + GO-MCP + RS-API + RS-CLI + RS-MCP (6) — GO-API does T1 then T2–T4 serially
+4. GO-TOOL (1) after API+CLI+MCP
+5. RS-DOCS + GO-TOOL README (2)
+6. HANDOFF residual + VERIFY final
 
 **Anti-patterns:** dual writers on `go.mod`; editing `copier.yml` for R4; Axum API migration; fixing C3 via sample answers; refactoring Python/Node for Go/Rust.
 
@@ -377,9 +377,9 @@ W0 → W1.G → W1.R → W1.H → W2.G (API then CLI then MCP then TOOL) → W2.
 
 ## 10. Done condition
 
-- G1 closed (API independent of CLI tree).  
-- Four Go frameworks coherent; CLI/MCP/tooling modernized.  
-- Rust gates/MSRV/layout coherent; API/CLI/MCP polished on Actix/Clap/Tokio; docs match.  
-- Handoffs for C1–C3, R4, T1 filed.  
-- W4.V.T1 green for template-owned failures; path audit clean.  
+- G1 closed (API independent of CLI tree).
+- Four Go frameworks coherent; CLI/MCP/tooling modernized.
+- Rust gates/MSRV/layout coherent; API/CLI/MCP polished on Actix/Clap/Tokio; docs match.
+- Handoffs for C1–C3, R4, T1 filed.
+- W4.V.T1 green for template-owned failures; path audit clean.
 - Equal-effort Go ‖ Rust evidence in completed wave tasks.

@@ -1,7 +1,7 @@
 # Evidence — W2-SAAS full module sweep
 
-**Wave:** W2 · **Lane:** SAAS · **Date:** 2026-07-28  
-**Status:** green  
+**Wave:** W2 · **Lane:** SAAS · **Date:** 2026-07-28
+**Status:** green
 **Commit:** `bfd6f00` `fix(template): runtime-aware SAAS auth/billing and starter alignment`
 
 ## Barrier

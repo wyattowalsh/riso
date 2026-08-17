@@ -2,8 +2,8 @@
 
 ## Summary
 
-Python payload dual-gates + CLI package init finished and committed (`1685488`).  
-Jinja (145) and dual-gate audit (31 GQL/WS files) are green.  
+Python payload dual-gates + CLI package init finished and committed (`1685488`).
+Jinja (145) and dual-gate audit (31 GQL/WS files) are green.
 Empty optional-dir recheck after COORD `exclude-empty-dirs` is green.
 
 Several python-heavy `riso validate` sample checks fail because sample answers still use **scalar** `api_features` strings (`none`, `websocket`, `graphql,websocket`) while CLI validate requires a **list** for multiselect prompts. PY must not edit `samples/*/copier-answers.yml` (PLATFORM lock).

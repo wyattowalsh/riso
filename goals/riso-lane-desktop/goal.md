@@ -18,12 +18,12 @@ Plan gate status: revised repeatedly for massively parallel subagent execution; 
 
 ## Done condition
 
-- Enum deep features coherent on electron-vite and tauri scaffolds  
-- COORD handoffs filed for forge, exclusion-path shape, and non-enum tokens  
-- `uv run riso validate --answers-file samples/electron-app/copier-answers.yml --json` succeeds  
-- `uv run riso validate --answers-file samples/tauri-app/copier-answers.yml --json` succeeds  
-- Jinja validation clean on electron/ and tauri/ when script available  
-- Optional sample render smoke via official scripts only (no hand-edited `samples/*/render/`)  
+- Enum deep features coherent on electron-vite and tauri scaffolds
+- COORD handoffs filed for forge, exclusion-path shape, and non-enum tokens
+- `uv run riso validate --answers-file samples/electron-app/copier-answers.yml --json` succeeds
+- `uv run riso validate --answers-file samples/tauri-app/copier-answers.yml --json` succeeds
+- Jinja validation clean on electron/ and tauri/ when script available
+- Optional sample render smoke via official scripts only (no hand-edited `samples/*/render/`)
 - No writes outside `template/files/electron/**` and `template/files/tauri/**` (plus goal handoff docs)
 
 ## Launch

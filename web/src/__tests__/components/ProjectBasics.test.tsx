@@ -57,4 +57,3 @@ describe('updateConfig api_features coerce', () => {
     expect(useRisoStore.getState().config.api_features).toBe('none')
   })
 })
-
