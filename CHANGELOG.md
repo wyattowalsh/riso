@@ -6,6 +6,83 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [Unreleased] 2.0.0
+
+Draft for the planned 2.0.0 hard major. **No `v2.0.0` git tag** is created by
+this work.
+
+### ⚠ BREAKING CHANGES
+
+* **answers:** eight 1.x Copier keys are removed. `riso migrate` and
+  `riso update` run `apply_removed_key_remaps` first, then reject leftovers.
+  After remap, dual-path aliases are not kept. A destination key that is
+  already set is not overwritten. A second apply is a no-op (idempotent).
+  Unmapped leftover keys or values fail closed with
+  `{key}: removed answer key; use {replacement}`.
+  See [docs/guides/v2-migration.md](docs/guides/v2-migration.md).
+
+| Old key | Operator | Canonical dest |
+| --- | --- | --- |
+| `api_tracks` | derive | `api_module`, `api_languages` |
+| `api_language` | wrap-list | `api_languages` |
+| `docs_site` | derive | `docs_module`, `docs_framework` |
+| `mcp_language` | wrap-list (`node`/`js` → `typescript`) | `mcp_languages` |
+| `saas_starter_module` | rename | `saas_infra_module` |
+| `saas_auth` | split | `saas_auth_module`, `saas_auth_provider` |
+| `saas_billing` | split | `saas_billing_module`, `saas_billing_provider` |
+| `include_admin` | rename-bool | `saas_admin_dashboard` |
+
+Value rules (historical → current Copier):
+
+* `api_tracks` — empty/`none`/`disabled`/`[]` → `api_module=disabled`; else
+  `api_module=enabled` and `api_languages` is the intersection of tokens with
+  `{python,node,rust,go}` (`fastapi`→python, `fastify`→node, `actix`→rust).
+* `api_language` — scalar `python`/`node`/`rust`/`go` → `[that]`; already-list
+  → keep.
+* `docs_site` — `none`/`false`/`disabled`/`off` → `docs_module=disabled`;
+  `sphinx`/`sphinx-shibuya` → enabled + `sphinx-shibuya`; `docusaurus` /
+  `fumadocs` → enabled + that framework.
+* `mcp_language` — scalar `python`/`typescript`/`rust`/`go` → `[that]`;
+  `node`/`js` → `typescript`; already-list → keep the list shape, drop
+  empty items, and still apply `node`/`js` → `typescript`.
+* `saas_starter_module` — copy `enabled`/`disabled` (also common
+  truthy/falsey tokens via `_module_toggle`) → `saas_infra_module`.
+* `saas_auth` — off tokens → `saas_auth_module=disabled`; `clerk`/`authjs`
+  → module enabled + that `saas_auth_provider`. `lucia` has no payload
+  and fail-closes.
+* `saas_billing` — off tokens → `saas_billing_module=disabled`; `stripe`/
+  `paddle`/`lemonsqueezy` → module enabled + that `saas_billing_provider`.
+* `include_admin` — truthy/falsey → `saas_admin_dashboard` bool.
+
+`graphql_api_module` / `websocket_module` are derived Jinja flags, not removed
+user keys. They are not remapped.
+
+Preview then apply (exactly one of `DEST` or `--answers-file`):
+
+```bash
+uv run riso migrate DEST|--answers-file PATH [--dry-run] [--json]
+```
+
+`riso update` remaps `.copier-answers.yml` before Copier, including
+`--dry-run` preview.
+
+### Features
+
+* **cli:** add `riso migrate` to remap 1.x answers in place (dry-run, JSON,
+  idempotent; fail-closed leftovers).
+
+### Bug Fixes
+
+* **template:** mark Fumadocs sitemap/robots as `force-static` for `output: 'export'`.
+* **template:** run dest `just quality` with `cli` / `api_python` extras so pylint can import FastAPI.
+* **ci:** trust dest `mise.toml` and drop parent `VIRTUAL_ENV` during sample smoke.
+
+### Documentation
+
+* **guides:** 1.x → 2.0 remap table and operator path live in
+  [docs/guides/v2-migration.md](docs/guides/v2-migration.md).
+
+
 ## [1.2.11](https://github.com/wyattowalsh/riso/compare/v1.2.10...v1.2.11) (2026-06-26)
 
 ### Bug Fixes

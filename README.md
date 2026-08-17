@@ -45,6 +45,22 @@ To scaffold without cloning the repo, use Copier directly:
 copier copy gh:wyattowalsh/riso my-project
 ```
 
+## 1.x → 2.0 answers
+
+Eight 1.x Copier keys (`api_tracks`, `api_language`, `docs_site`,
+`mcp_language`, `saas_starter_module`, `saas_auth`, `saas_billing`,
+`include_admin`) are remapped then leftovers fail closed. Preview, then write:
+
+```bash
+uv run riso migrate DEST|--answers-file PATH [--dry-run] [--json]
+```
+
+`riso update` remaps `.copier-answers.yml` before Copier. Table and value
+rules: [docs/guides/v2-migration.md](docs/guides/v2-migration.md). Draft notes:
+[CHANGELOG.md](CHANGELOG.md) `## [Unreleased] 2.0.0`. This work does **not**
+create a `v2.0.0` tag. Generated projects always ship `mise.toml` (Python 3.11,
+Node **20**); `openspec_extra` stays off by default.
+
 ## Module Reference
 
 | Module        | Prompt Key                       | Options                                     | Description                      |
@@ -53,12 +69,12 @@ copier copy gh:wyattowalsh/riso my-project
 | **Quality**   | `quality_profile`                | standard, strict                            | Linting strictness               |
 | **CLI**       | `cli_module`                     | disabled, enabled                           | Typer CLI scaffolding            |
 | **API**       | `api_module` + `api_languages`   | python, node, go, rust (multi-select)       | FastAPI/Fastify/Go/Rust services |
-| **GraphQL**   | `graphql_api_module`             | disabled, enabled                           | Strawberry GraphQL               |
-| **WebSocket** | `websocket_module`               | disabled, enabled                           | Real-time communication          |
+| **API extras** | `api_features`                  | graphql, websocket (when `api_module=enabled`) | GraphQL / WebSocket extras. `graphql_api_module` / `websocket_module` are derived Jinja flags, not Copier prompts |
 | **MCP**       | `mcp_module` + `mcp_languages`   | python, typescript, rust, go (multi-select) | Model Context Protocol           |
 | **Docs**      | `docs_module` + `docs_framework` | fumadocs, sphinx-shibuya, docusaurus, none  | Documentation site               |
 | **Changelog** | `changelog_module`               | disabled, enabled                           | Semantic release                 |
 | **SaaS**      | `saas_infra_module`              | disabled, enabled                           | SaaS infrastructure layer        |
+| **OpenSpec**  | `openspec_extra`                 | disabled (default), enabled                 | Optional extra; does not gate mise |
 
 ## Template Matrix Snapshot
 
@@ -108,6 +124,7 @@ See [Testing Strategy](docs/guides/testing-strategy.md) for full documentation.
 ## Documentation
 
 - **[Maintainer Docs](docs/index.md)** - Shibuya-powered documentation
+- **[2.0 answers migration](docs/guides/v2-migration.md)** - eight remaps, `riso migrate`
 - **[Agent Operations](AGENTS.md)** - Development setup and automation
 - **[Feature Specs](specs/)** - Completed feature specifications
 - **[Roadmap](docs/guides/roadmap.md)** - Project roadmap

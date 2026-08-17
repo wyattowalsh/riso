@@ -65,7 +65,11 @@ uv run riso copy ./my-app --answers-file answers.yml --dry-run --json
 uv run riso update ./my-app --json
 uv run riso recopy ./my-app --json
 uv run riso diff ./my-app --operation update --json
+uv run riso migrate DEST|--answers-file PATH [--dry-run] [--json]
 ```
+
+`riso migrate` applies the eight 1.x remaps then fail-closes leftovers. See
+{doc}`../guides/v2-migration`.
 
 ## Export
 

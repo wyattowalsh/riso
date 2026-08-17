@@ -91,28 +91,28 @@
         <div class="featured-card-desc">Blazing fast package manager</div>
       </div>
     </a>
-    <a href="pytest.html" class="featured-card">
+    <a href="../guides/testing-strategy.html" class="featured-card">
       <div class="mini-icon"><iconify-icon icon="simple-icons:pytest" width="18" height="18"></iconify-icon></div>
       <div class="featured-card-content">
         <div class="featured-card-name">pytest</div>
         <div class="featured-card-desc">Python testing framework</div>
       </div>
     </a>
-    <a href="fastapi.html" class="featured-card">
+    <a href="../api/index.html" class="featured-card">
       <div class="mini-icon"><iconify-icon icon="simple-icons:fastapi" width="18" height="18"></iconify-icon></div>
       <div class="featured-card-content">
         <div class="featured-card-name">FastAPI</div>
         <div class="featured-card-desc">Modern async web framework</div>
       </div>
     </a>
-    <a href="riso-tui.html" class="featured-card">
-      <div class="mini-icon"><iconify-icon icon="tabler:terminal-2" width="18" height="18"></iconify-icon></div>
+    <a href="ty.html" class="featured-card">
+      <div class="mini-icon"><iconify-icon icon="tabler:brand-typescript" width="18" height="18"></iconify-icon></div>
       <div class="featured-card-content">
-        <div class="featured-card-name">Riso TUI</div>
-        <div class="featured-card-desc">Interactive generator</div>
+        <div class="featured-card-name">ty</div>
+        <div class="featured-card-desc">Astral Python type checker</div>
       </div>
     </a>
-    <a href="docker.html" class="featured-card">
+    <a href="../guides/ci-platforms.html" class="featured-card">
       <div class="mini-icon"><iconify-icon icon="logos:docker-icon" width="18" height="18"></iconify-icon></div>
       <div class="featured-card-content">
         <div class="featured-card-name">Docker</div>
@@ -194,7 +194,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-agents-md-manager" data-name="agents-md-manager" data-category="ai-skills" data-type="ai-skill" data-tags="agents,claude,copilot,cursor,gemini,sync,ssot" data-popularity="88" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:file-code" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-agents-md-manager"><a href="agents-md-manager.html">agents-md-manager</a></h3>
+      <h3 id="tool-agents-md-manager"><a href="../guides/agent-scaffolding.html">agents-md-manager</a></h3>
     </div>
     <p class="tool-description">AGENTS.md as SSOT with detection, quality analysis, and platform sync</p>
     <div class="tool-meta">
@@ -206,7 +206,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-mcp-installer" data-name="mcp-installer" data-category="ai-skills" data-type="ai-skill" data-tags="mcp,servers,claude,cursor,copilot,sync,install" data-popularity="88" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:plug-connected" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-mcp-installer"><a href="mcp-installer.html">mcp-installer</a></h3>
+      <h3 id="tool-mcp-installer"><a href="../guides/agent-scaffolding.html">mcp-installer</a></h3>
     </div>
     <p class="tool-description">Universal MCP server research, installation, and cross-interface sync</p>
     <div class="tool-meta">
@@ -219,22 +219,22 @@
        Riso Scripts
        ═══════════════════════════════════════════════════════════════════════ -->
 
-  <article class="tool-card" role="article" aria-labelledby="tool-riso-tui" data-name="riso tui" data-category="riso-scripts" data-type="automation" data-tags="tui,textual,generator,interactive,configuration" data-popularity="90" tabindex="0">
+  <article class="tool-card" role="article" aria-labelledby="tool-riso-tui" data-name="riso tui" data-category="riso-scripts" data-type="automation" data-tags="tui,textual,generator,interactive,configuration,absent" data-popularity="40" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:terminal-2" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-riso-tui"><a href="riso-tui.html">Riso TUI</a></h3>
+      <h3 id="tool-riso-tui">Riso TUI <span class="badge">Not shipped</span></h3>
     </div>
-    <p class="tool-description">Interactive Textual-powered terminal UI for configuring and generating projects</p>
+    <p class="tool-description">There is no Riso TUI in this repository. Use the <a href="riso-cli.html">Riso CLI</a> (<code>uv run riso</code>) instead.</p>
     <div class="tool-meta">
       <span class="badge badge-category" data-category="riso-scripts">Riso Scripts</span>
-      <span class="badge badge-type" data-type="automation">Automation</span>
+      <span class="badge badge-type" data-type="automation">Absent</span>
     </div>
   </article>
 
   <article class="tool-card" role="article" aria-labelledby="tool-quality-suite" data-name="quality suite" data-category="riso-scripts" data-type="automation" data-tags="quality,lint,test,typecheck,ci" data-popularity="85" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:shield-check-filled" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-quality-suite"><a href="quality-suite.html">Quality Suite</a></h3>
+      <h3 id="tool-quality-suite"><a href="../guides/testing-strategy.html">Quality Suite</a></h3>
     </div>
     <p class="tool-description">Unified quality pipeline running lint, typecheck, and test in sequence</p>
     <div class="tool-meta">
@@ -246,7 +246,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-render-samples" data-name="render samples" data-category="riso-scripts" data-type="automation" data-tags="samples,rendering,testing,ci,variants" data-popularity="75" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:code-dots" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-render-samples"><a href="render-samples.html">Render Samples</a></h3>
+      <h3 id="tool-render-samples"><a href="../guides/matrix-data.html">Render Samples</a></h3>
     </div>
     <p class="tool-description">Orchestrates rendering of sample project variants with smoke tests</p>
     <div class="tool-meta">
@@ -258,7 +258,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-pre-gen-hook" data-name="pre-generation hook" data-category="riso-scripts" data-type="validator" data-tags="hook,validation,pre-generation,copier" data-popularity="70" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:shield-check" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-pre-gen-hook"><a href="pre-gen-hook.html">Pre-Generation Hook</a></h3>
+      <h3 id="tool-pre-gen-hook"><a href="../guides/implementation-guide.html">Pre-Generation Hook</a></h3>
     </div>
     <p class="tool-description">Validates configuration before template generation begins</p>
     <div class="tool-meta">
@@ -270,7 +270,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-post-gen-hook" data-name="post-generation hook" data-category="riso-scripts" data-type="automation" data-tags="hook,post-generation,setup,copier" data-popularity="70" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:check-list" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-post-gen-hook"><a href="post-gen-hook.html">Post-Generation Hook</a></h3>
+      <h3 id="tool-post-gen-hook"><a href="../guides/implementation-guide.html">Post-Generation Hook</a></h3>
     </div>
     <p class="tool-description">Performs post-processing tasks after template generation completes</p>
     <div class="tool-meta">
@@ -282,7 +282,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-generate-compatibility-matrix" data-name="generate compatibility matrix" data-category="riso-scripts" data-type="automation" data-tags="documentation,compatibility,matrix,mermaid,prompts" data-popularity="65" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:apps" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-generate-compatibility-matrix"><a href="generate-compatibility-matrix.html">Compatibility Matrix</a></h3>
+      <h3 id="tool-generate-compatibility-matrix"><a href="../guides/matrix-data.html">Compatibility Matrix</a></h3>
     </div>
     <p class="tool-description">Generates compatibility documentation from copier.yml prompt definitions</p>
     <div class="tool-meta">
@@ -298,7 +298,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-frontend-validator" data-name="frontend validator" data-category="riso-validators" data-type="validator" data-tags="validation,frontend,react,vue,svelte" data-popularity="60" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" aria-hidden="true"><iconify-icon icon="ph:browser-bold" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-frontend-validator"><a href="frontend-validator.html">Frontend Validator</a></h3>
+      <h3 id="tool-frontend-validator"><a href="../guides/implementation-guide.html">Frontend Validator</a></h3>
     </div>
     <p class="tool-description">Validates frontend framework and component library compatibility</p>
     <div class="tool-meta">
@@ -310,7 +310,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-structure-validator" data-name="structure validator" data-category="riso-validators" data-type="validator" data-tags="validation,structure,layout" data-popularity="60" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" aria-hidden="true"><iconify-icon icon="ph:tree-structure-bold" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-structure-validator"><a href="structure-validator.html">Structure Validator</a></h3>
+      <h3 id="tool-structure-validator"><a href="../guides/implementation-guide.html">Structure Validator</a></h3>
     </div>
     <p class="tool-description">Validates project structure and layout configurations</p>
     <div class="tool-meta">
@@ -322,7 +322,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-tool-validator" data-name="tool validator" data-category="riso-validators" data-type="validator" data-tags="validation,tools,compatibility" data-popularity="60" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" aria-hidden="true"><iconify-icon icon="ph:wrench-bold" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-tool-validator"><a href="tool-validator.html">Tool Validator</a></h3>
+      <h3 id="tool-tool-validator"><a href="../guides/implementation-guide.html">Tool Validator</a></h3>
     </div>
     <p class="tool-description">Validates development tool selections and compatibility</p>
     <div class="tool-meta">
@@ -334,7 +334,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-language-validator" data-name="language validator" data-category="riso-validators" data-type="validator" data-tags="validation,python,node,versions" data-popularity="55" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" aria-hidden="true"><iconify-icon icon="ph:translate-bold" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-language-validator"><a href="language-validator.html">Language Validator</a></h3>
+      <h3 id="tool-language-validator"><a href="../guides/implementation-guide.html">Language Validator</a></h3>
     </div>
     <p class="tool-description">Validates language version and compatibility requirements</p>
     <div class="tool-meta">
@@ -346,7 +346,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-build-tool-validator" data-name="build tool validator" data-category="riso-validators" data-type="validator" data-tags="validation,build,bundler" data-popularity="55" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" aria-hidden="true"><iconify-icon icon="ph:hammer-bold" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-build-tool-validator"><a href="build-tool-validator.html">Build Tool Validator</a></h3>
+      <h3 id="tool-build-tool-validator"><a href="../guides/implementation-guide.html">Build Tool Validator</a></h3>
     </div>
     <p class="tool-description">Validates build tool and bundler configurations</p>
     <div class="tool-meta">
@@ -358,7 +358,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-monorepo-tool-validator" data-name="monorepo tool validator" data-category="riso-validators" data-type="validator" data-tags="validation,monorepo,workspaces" data-popularity="55" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" aria-hidden="true"><iconify-icon icon="ph:folders-bold" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-monorepo-tool-validator"><a href="monorepo-tool-validator.html">Monorepo Validator</a></h3>
+      <h3 id="tool-monorepo-tool-validator"><a href="../guides/implementation-guide.html">Monorepo Validator</a></h3>
     </div>
     <p class="tool-description">Validates monorepo-specific tool configurations</p>
     <div class="tool-meta">
@@ -386,7 +386,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-pytest" data-name="pytest" data-category="quality" data-type="testing" data-tags="python,testing,fixtures,plugins" data-popularity="95" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" data-brand="true" aria-hidden="true"><iconify-icon icon="simple-icons:pytest" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-pytest"><a href="pytest.html">pytest</a></h3>
+      <h3 id="tool-pytest"><a href="../guides/testing-strategy.html">pytest</a></h3>
     </div>
     <p class="tool-description">The de facto Python testing framework with powerful fixtures</p>
     <div class="tool-meta">
@@ -398,7 +398,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-pre-commit" data-name="pre-commit" data-category="quality" data-type="automation" data-tags="git,hooks,automation,quality" data-popularity="90" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:git-commit" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-pre-commit"><a href="pre-commit.html">pre-commit</a></h3>
+      <h3 id="tool-pre-commit"><a href="../guides/testing-strategy.html">pre-commit</a></h3>
     </div>
     <p class="tool-description">Framework for managing and maintaining git hooks</p>
     <div class="tool-meta">
@@ -422,7 +422,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-coverage" data-name="coverage" data-category="quality" data-type="testing" data-tags="python,coverage,testing,metrics" data-popularity="80" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:chart-pie-filled" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-coverage"><a href="coverage.html">Coverage.py</a></h3>
+      <h3 id="tool-coverage"><a href="../guides/testing-strategy.html">Coverage.py</a></h3>
     </div>
     <p class="tool-description">Code coverage measurement and reporting for Python</p>
     <div class="tool-meta">
@@ -434,7 +434,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-pylint" data-name="pylint" data-category="quality" data-type="linter" data-tags="python,linting,static-analysis" data-popularity="70" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" data-brand="true" aria-hidden="true"><iconify-icon icon="simple-icons:pylint" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-pylint"><a href="pylint.html">Pylint</a></h3>
+      <h3 id="tool-pylint"><a href="../guides/testing-strategy.html">Pylint</a></h3>
     </div>
     <p class="tool-description">Comprehensive Python code analyzer and linter</p>
     <div class="tool-meta">
@@ -462,7 +462,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-pnpm" data-name="pnpm" data-category="packages" data-type="package-manager" data-tags="node,package-manager,fast,disk-efficient" data-popularity="90" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" data-brand="true" aria-hidden="true"><iconify-icon icon="simple-icons:pnpm" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-pnpm"><a href="pnpm.html">pnpm</a></h3>
+      <h3 id="tool-pnpm"><a href="../guides/quickstart.html">pnpm</a></h3>
     </div>
     <p class="tool-description">Fast, disk space efficient package manager for Node.js</p>
     <div class="tool-meta">
@@ -474,7 +474,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-copier" data-name="copier" data-category="packages" data-type="automation" data-tags="template,scaffolding,jinja2,generation" data-popularity="85" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:copy" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-copier"><a href="copier.html">Copier</a></h3>
+      <h3 id="tool-copier"><a href="../guides/quickstart.html">Copier</a></h3>
     </div>
     <p class="tool-description">Library and CLI for rendering project templates</p>
     <div class="tool-meta">
@@ -490,7 +490,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-docker" data-name="docker" data-category="container-ci" data-type="container" data-tags="container,devcontainer,deployment" data-popularity="95" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" data-brand="true" aria-hidden="true"><iconify-icon icon="logos:docker-icon" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-docker"><a href="docker.html">Docker</a></h3>
+      <h3 id="tool-docker"><a href="../guides/ci-platforms.html">Docker</a></h3>
     </div>
     <p class="tool-description">Container platform for development and deployment</p>
     <div class="tool-meta">
@@ -502,7 +502,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-github-actions" data-name="github actions" data-category="container-ci" data-type="ci" data-tags="ci,cd,automation,github" data-popularity="95" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" data-brand="true" aria-hidden="true"><iconify-icon icon="simple-icons:githubactions" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-github-actions"><a href="github-actions.html">GitHub Actions</a></h3>
+      <h3 id="tool-github-actions"><a href="../guides/ci-platforms.html">GitHub Actions</a></h3>
     </div>
     <p class="tool-description">CI/CD platform integrated with GitHub repositories</p>
     <div class="tool-meta">
@@ -518,7 +518,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-fastapi" data-name="fastapi" data-category="optional-modules" data-type="framework" data-tags="python,api,async,openapi" data-popularity="95" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" data-brand="true" aria-hidden="true"><iconify-icon icon="simple-icons:fastapi" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-fastapi"><a href="fastapi.html">FastAPI</a></h3>
+      <h3 id="tool-fastapi"><a href="../api/index.html">FastAPI</a></h3>
     </div>
     <p class="tool-description">Modern, fast Python web framework for building APIs</p>
     <div class="tool-meta">
@@ -530,7 +530,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-typer" data-name="typer" data-category="optional-modules" data-type="framework" data-tags="python,cli,typing,click" data-popularity="85" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:terminal-2" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-typer"><a href="typer.html">Typer</a></h3>
+      <h3 id="tool-typer"><a href="riso-cli.html">Typer</a></h3>
     </div>
     <p class="tool-description">Build CLI applications with Python type hints</p>
     <div class="tool-meta">
@@ -542,7 +542,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-fastify" data-name="fastify" data-category="optional-modules" data-type="framework" data-tags="node,api,typescript,fast" data-popularity="85" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" data-brand="true" aria-hidden="true"><iconify-icon icon="simple-icons:fastify" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-fastify"><a href="fastify.html">Fastify</a></h3>
+      <h3 id="tool-fastify"><a href="../api/index.html">Fastify</a></h3>
     </div>
     <p class="tool-description">Fast and low overhead Node.js web framework</p>
     <div class="tool-meta">
@@ -566,7 +566,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-strawberry-graphql" data-name="strawberry graphql" data-category="optional-modules" data-type="framework" data-tags="python,graphql,api,typing" data-popularity="75" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:strawberry" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-strawberry-graphql"><a href="strawberry-graphql.html">Strawberry GraphQL</a></h3>
+      <h3 id="tool-strawberry-graphql"><a href="../api/index.html">Strawberry GraphQL</a></h3>
     </div>
     <p class="tool-description">Python GraphQL library using dataclasses and type hints</p>
     <div class="tool-meta">
@@ -578,7 +578,7 @@
   <article class="tool-card" role="article" aria-labelledby="tool-websockets" data-name="websockets" data-category="optional-modules" data-type="framework" data-tags="python,websocket,async,realtime" data-popularity="75" tabindex="0">
     <div class="tool-card-header">
       <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:plug-connected" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-websockets"><a href="websockets.html">websockets</a></h3>
+      <h3 id="tool-websockets"><a href="../api/index.html">websockets</a></h3>
     </div>
     <p class="tool-description">Library for building WebSocket servers and clients in Python</p>
     <div class="tool-meta">
@@ -607,4 +607,7 @@
 
 riso-cli
 riso-mcp-server
+ruff
+ty
+uv
 ```

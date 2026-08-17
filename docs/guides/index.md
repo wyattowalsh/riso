@@ -15,5 +15,6 @@ Matrix Data <matrix-data>
 CI Platforms <ci-platforms>
 Agent Scaffolding <agent-scaffolding>
 MCP to CLI Migration <mcp-to-cli-migration>
+Riso 2.0 Answers Migration <v2-migration>
 Troubleshooting <troubleshooting>
 :::

@@ -9,13 +9,17 @@ Before working on the template, ensure all required tooling is installed:
 
 ```bash
 # Check what tools are installed (exit 0 if all present)
-make setup-check
+just setup-check
 # or: ./scripts/setup/setup.sh --check-only
 
 # Install missing tools (interactive)
-make bootstrap
+just bootstrap
 # or: ./scripts/setup/setup.sh --install
 ```
+
+`make setup-check` / `make bootstrap` work only as a thin shim to `just` in this
+maintainer repo. Rendered projects get a Makefile when `task_runner` is
+`makefile` or `both`.
 
 The setup script detects your platform (macOS, Linux distros, Windows/WSL) and
 installs: Python 3.11+, uv, Node.js 20 LTS, pnpm, pre-commit, and actionlint.
@@ -25,18 +29,29 @@ installs: Python 3.11+, uv, Node.js 20 LTS, pnpm, pre-commit, and actionlint.
 **CI environments**: Use `./scripts/setup/setup.sh --install --yes` with
 `GITHUB_TOKEN` set to avoid API rate limits.
 
+1.x Copier answers must be remapped before validate/copy/update. Preview:
+
+```bash
+uv run riso migrate --answers-file samples/default/copier-answers.yml --dry-run
+```
+
+See {doc}`v2-migration` for the eight-key apply-then-reject table. Generated
+Node stays on **20**; `openspec_extra` stays off unless you opt in.
+
 ## Render and exercise the baseline
 
 ```bash
 ./scripts/render-samples.sh
 cd samples/default/render
 uv sync
-make quality
+just quality
 ```
 
 The render includes Typer CLI, FastAPI/Fastify tracks, and optional MCP tooling
-behind prompt flags. When `make` is unavailable, run `uv run task quality` to
-mirror the same toolchain with Taskipy.
+behind prompt flags. Default `task_runner` is `just` (Makefile is excluded).
+Use `make quality` only when the sample was rendered with `task_runner=makefile`
+or `both`. When no aggregator is present (`task_runner=none`), run
+`uv run task quality` to mirror the same toolchain with Taskipy.
 
 Run explicit coverage gates before opening a PR:
 
@@ -55,7 +70,7 @@ new defaults to downstream renders.
 
 ```bash
 uv sync --group docs
-uv run sphinx-build docs docs/_build
+uv run --group docs sphinx-build -W -b html docs docs/_build/html
 ```
 
 For projects rendered with `docs_module=enabled` with `docs_framework=sphinx-shibuya`, the CI workflow runs the
@@ -70,8 +85,10 @@ same command (`uv run sphinx-build docs dist/docs`).
 
 ## Coverage and confidence
 
-- Enforce `--cov-fail-under=90` locally to match CI; commits with lower
-  coverage must include offsetting tests or a linked issue.
+- Maintainer CI uses `--cov-fail-under=70` (`just ci-full`). Enforce
+  `--cov-fail-under=90` inside rendered Python packages to match sample
+  quality profiles; commits with lower coverage must include offsetting tests
+  or a linked issue.
 - Ensure integration suites live under `tests/integration/` and are wired into
   CI (no optional skips without issue links). Emit coverage via `coverage run`
   so combined reports include cross-service flows.
@@ -82,6 +99,6 @@ same command (`uv run sphinx-build docs dist/docs`).
 
 ## CI parity
 
-Quality workflows are orchestrated via GitHub Actions, mirroring the `make quality` and Taskipy lanes locally. Branch protection relies on matrix jobs
-across Python 3.11–3.13; keep dependency groups and lockfiles current to
-maintain parity.
+Quality workflows are orchestrated via GitHub Actions, mirroring `just quality`
+(and Taskipy) locally. Branch protection relies on matrix jobs across Python
+3.11–3.13; keep dependency groups and lockfiles current to maintain parity.

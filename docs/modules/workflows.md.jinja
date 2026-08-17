@@ -11,7 +11,7 @@ Runs on every pull request and push to `main`:
 
 **Python Quality Job:**
 - Linting with ruff
-- Type checking with mypy
+- Type checking with ty
 - Static analysis with pylint
 - Unit tests with pytest
 - Coverage reporting
@@ -63,7 +63,7 @@ Runs quality checks across multiple Python versions ({{ python_versions|join(', 
 
 **Per-Version Jobs:**
 - Linting with ruff
-- Type checking with mypy
+- Type checking with ty
 - Unit tests with pytest
 - Coverage reporting
 {% if quality_profile == 'strict' %}
@@ -126,7 +126,7 @@ All artifacts are retained for **90 days** and include:
 
 **Python artifacts:**
 - `test-results-py3.11-{run_id}` - JUnit XML, coverage HTML, `.coverage` file
-- `quality-logs-py3.11-{run_id}` - Ruff, mypy, pylint output, quality durations JSON
+- `quality-logs-py3.11-{run_id}` - Ruff, ty, pylint output, quality durations JSON
 
 {% if api_module == 'enabled' and 'node' in api_languages %}
 **Node.js artifacts:**
@@ -176,7 +176,6 @@ env:
 python-quality:
   env:
     PYTEST_ARGS: "-vv --tb=short"  # Verbose pytest output
-    MYPY_CACHE_DIR: ".mypy_cache"  # Custom mypy cache location
     UV_CACHE_DIR: "/tmp/uv-cache"  # Custom uv cache location
 ```
 
@@ -378,9 +377,8 @@ Runs all versions on merge to main, but only 3.11 on PRs (saves ~60% matrix time
       ~/.cache/pypoetry
       node_modules
       .venv
-      .mypy_cache
-      .pytest_cache
       .ruff_cache
+      .pytest_cache
     key: mega-cache-{% raw %}${{ runner.os }}-${{ hashFiles('**/*.lock', '**/pyproject.toml') }}{% endraw %}
     restore-keys: |
       mega-cache-{% raw %}${{ runner.os }}-{% endraw %}
@@ -466,7 +464,7 @@ copier update
 git diff .github/workflows/
 
 # Test locally before committing
-uv run task quality
+just quality  # or: make quality / uv run task quality per task_runner
 
 # Commit and push
 git add .github/workflows/

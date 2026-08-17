@@ -1,16 +1,19 @@
 # Testing Strategy
 
 This playbook keeps the template and rendered projects aligned on quality
-expectations. The baseline policy is **≥90% unit test coverage** with explicit
-integration and end-to-end (e2e) evidence for every critical surface. Treat the
-coverage floor as non-negotiable—changes that reduce coverage must ship with
-offsetting test cases or written justification in the PR description and code
-comments.
+expectations. Coverage floors are **not** the same in both trees:
+
+- **Maintainer repo** (`riso/`): `--cov-fail-under=70` via `just ci-full`.
+- **Rendered Python packages**: `--cov-fail-under=90` (strict sample profiles).
+
+Treat the floor that applies to the tree you are changing as
+non-negotiable—changes that reduce coverage must ship with offsetting test
+cases or written justification in the PR description and code comments.
 
 ## Targets and thresholds
 
-- **Unit tests:** `pytest --cov --cov-fail-under=90` must report ≥90% line
-  coverage across Python packages (per job in the Python 3.11–3.13 matrix).
+- **Unit tests:** maintainer jobs use `pytest --cov --cov-fail-under=70`.
+  Rendered Python packages use `--cov-fail-under=90` on the 3.11–3.13 matrix.
   Missing lines must be justified in code comments or skipped with explicit
   reasons.
 - **Integration:** Exercise FastAPI/Fastify endpoints, database paths, and
@@ -29,7 +32,7 @@ comments.
 ### Maintainer repo (`riso/` root)
 
 ```bash
-make quality
+just quality
 uv run pytest --cov --cov-report=term-missing --cov-fail-under=70
 ```
 
@@ -42,8 +45,9 @@ cd samples/default/render
 uv sync
 
 # Fast feedback (lint + type + unit tests + coverage)
-make quality
-# or, when make is unavailable
+just quality
+# or `make quality` when task_runner=makefile|both
+# or, when no aggregator is present
 QUALITY_PROFILE=standard uv run task quality
 
 # Explicit coverage visualization with hard gate
@@ -91,9 +95,9 @@ uv run coverage xml
 
 ## Enforcement and dashboards
 
-- Require coverage jobs as mandatory branch protection checks. The default lane
-  already enforces `--cov-fail-under=90`; keep matrix jobs mandatory so
-  cross-version regressions are visible.
+- Require coverage jobs as mandatory branch protection checks. Maintainer CI
+  enforces `--cov-fail-under=70`; rendered packages enforce `--cov-fail-under=90`.
+  Keep matrix jobs mandatory so cross-version regressions are visible.
 - Publish coverage summaries in PR descriptions or status comments (e.g., via
   `python-summarize-coverage` action or `gh api` uploads) so reviewers can act on
   deltas without downloading artifacts.
