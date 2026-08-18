@@ -360,9 +360,7 @@ class TestSaasLemonSqueezyHealthProbe:
 
     def test_health_probe_env_key_matches_canonical(self) -> None:
         """LemonSqueezy health check must not use LEMON_SQUEEZY_API_KEY."""
-        health = _read(
-            SAAS_ROOT / "runtime" / "nextjs" / "lib" / "health.ts.jinja"
-        )
+        health = _read(SAAS_ROOT / "runtime" / "nextjs" / "lib" / "health.ts.jinja")
         assert "LEMONSQUEEZY_API_KEY" in health
         assert "LEMON_SQUEEZY_API_KEY" not in health
 
@@ -383,9 +381,7 @@ class TestSaasGdprDrizzleExtensionPoint:
     def test_no_pending_drizzle_throw(self) -> None:
         """Owned GDPR jinja must not throw a generic pending Error."""
         export = _read(SAAS_ROOT / "compliance" / "gdpr" / "data-export.ts.jinja")
-        deletion = _read(
-            SAAS_ROOT / "compliance" / "gdpr" / "data-deletion.ts.jinja"
-        )
+        deletion = _read(SAAS_ROOT / "compliance" / "gdpr" / "data-deletion.ts.jinja")
         assert "Drizzle implementation pending" not in export
         assert "Drizzle implementation pending" not in deletion
         assert "GdprDrizzleNotImplementedError" in export
