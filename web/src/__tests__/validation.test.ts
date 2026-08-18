@@ -340,6 +340,23 @@ describe('Configuration Validation System', () => {
       expect(infoRule?.severity).toBe('info')
     })
 
+    it('rejects Remix + Auth.js as an error', () => {
+      const rule = VALIDATION_RULES.find((r) => r.id === 'remix-authjs-illegal')
+      expect(rule?.severity).toBe('error')
+      expect(
+        rule?.check({
+          saas_runtime: 'remix-2',
+          saas_auth_provider: 'authjs',
+        })
+      ).toBe(true)
+      expect(
+        rule?.check({
+          saas_runtime: 'remix-2',
+          saas_auth_provider: 'clerk',
+        })
+      ).toBe(false)
+    })
+
     it('should return all violations regardless of severity', () => {
       const config = testConfig({
         saas_billing_module: 'enabled', // Error: needs auth
@@ -625,6 +642,7 @@ describe('Configuration Validation System', () => {
       expect(ruleIds).toContain('billing-requires-auth')
       expect(ruleIds).toContain('auth-requires-infra')
       expect(ruleIds).toContain('stripe-cost-warning')
+      expect(ruleIds).toContain('remix-authjs-illegal')
     })
 
     it('should have valid severity levels', () => {

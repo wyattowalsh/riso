@@ -115,6 +115,22 @@ export const VALIDATION_RULES: ValidationRule[] = [
       "Remix works best on Cloudflare Pages/Workers with edge runtime. For Vercel, consider Next.js.",
   },
 
+  {
+    id: "remix-authjs-illegal",
+    check: (s) =>
+      s.saas_runtime === "remix-2" && s.saas_auth_provider === "authjs",
+    message:
+      "Remix does not support Auth.js; choose Clerk or switch to Next.js",
+    severity: "error",
+    affectedFields: ["saas_runtime", "saas_auth_provider"],
+    quickFix: {
+      label: "Use Clerk",
+      apply: () => ({ saas_auth_provider: "clerk" }),
+    },
+    details:
+      "The Remix Auth.js adapter is not shipped. Official Remix samples use Clerk.",
+  },
+
   // ========================================
   // DEPENDENCIES (HARD REQUIREMENTS)
   // ========================================
