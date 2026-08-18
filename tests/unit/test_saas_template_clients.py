@@ -92,31 +92,19 @@ class TestSaasAuthHelpers:
         assert "export * from '@/integrations/auth/helpers'" in rendered
 
 
-class TestSaasNestedCi:
-    """Nested SaaS ci.yml.jinja pins pnpm 9 and the typecheck script."""
+class TestSaasNestedCiGone:
+    """SaaS GHA lives at dest-root; nested workflow jinja is gone."""
 
-    def test_pnpm_version_nine_and_typecheck_script(self, saas_files_dir: Path) -> None:
-        """PNPM_VERSION is 9; the script name is typecheck, not type-check."""
-        text = _read(saas_files_dir / ".github" / "workflows" / "ci.yml.jinja")
-        assert "PNPM_VERSION: '9'" in text
-        assert "PNPM_VERSION: '8'" not in text
-        assert "pnpm run typecheck" in text
-        assert "pnpm run type-check" not in text
+    def test_nested_saas_workflows_are_gone(self, saas_files_dir: Path) -> None:
+        """ci/database/e2e jinja must not ship under node/saas/.github."""
+        workflows = saas_files_dir / ".github" / "workflows"
+        assert not (workflows / "ci.yml.jinja").is_file()
+        assert not (workflows / "database.yml.jinja").is_file()
+        assert not (workflows / "e2e.yml.jinja").is_file()
 
-    def test_rendered_ci_keeps_pnpm_nine_and_typecheck(
-        self, saas_files_dir: Path
-    ) -> None:
-        """Rendered nested CI keeps pnpm 9 and typecheck."""
-        rendered = _render(
-            saas_files_dir / ".github" / "workflows" / "ci.yml.jinja",
-            saas_infra_module="enabled",
-            saas_cicd="github-actions",
-            saas_orm="prisma",
-            saas_runtime="nextjs-16",
-            saas_hosting="vercel",
-            saas_observability_sentry=False,
-            project_slug="test-project",
-        )
-        assert "PNPM_VERSION: '9'" in rendered
-        assert "pnpm run typecheck" in rendered
-        assert "pnpm run type-check" not in rendered
+    def test_auth_barrel_exists(self, saas_files_dir: Path) -> None:
+        """Auth.js middleware imports @/lib/auth from lib/auth/index.ts."""
+        barrel = saas_files_dir / "lib" / "auth" / "index.ts.jinja"
+        assert barrel.is_file()
+        text = _read(barrel)
+        assert "@/integrations/auth/authjs/auth.config" in text
