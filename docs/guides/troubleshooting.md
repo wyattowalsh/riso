@@ -412,8 +412,9 @@ uv run ruff check --select=F --fix .  # Unused imports
 **Solution:**
 
 ```bash
-# Run tests with coverage
+# Rendered Python package (sample quality profile)
 uv run pytest --cov --cov-report=term-missing --cov-fail-under=90
+# Maintainer repo floor is 70% (`just ci-full`)
 
 # See coverage by file
 uv run coverage report
@@ -788,7 +789,7 @@ NODE_OPTIONS=--max-old-space-size=4096  # Increase memory limit
 | Template timeout    | `copier copy --trust gh:wyattowalsh/riso ...`      |
 | Permission denied   | `chmod +x scripts/setup/setup.sh`                  |
 | Type check fails    | `uv run ty check` then fix errors                  |
-| Coverage too low    | `uv run pytest --cov --cov-fail-under=90`          |
+| Coverage too low    | rendered 90% / maintainer 70% (`just ci-full`)     |
 | Docker not running  | `open /Applications/Docker.app` (macOS)            |
 | Clear Copier cache  | `rm -rf ~/.cache/copier`                           |
 

@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# Riso maintainer repo: do not run the upstream Spec Kit copy of this
+# script here — it rewrites AGENTS.md / CLAUDE.md / copilot-instructions.md
+# and would smash those pointer files. This checkout skips those three
+# basenames in update_agent_file and continues for other agent files.
+
 # Update agent context files with information from plan.md
 #
 # This script maintains AI agent context files by parsing feature specifications
@@ -509,6 +514,17 @@ update_agent_file() {
         log_error "update_agent_file requires target_file and agent_name parameters"
         return 1
     fi
+
+    # Pointer files in this maintainer repo must stay one-liners to AGENTS.md.
+    # Rewriting them would smash the pointer (CLAUDE.md / AGENTS.md / copilot).
+    local base
+    base="$(basename "$target_file")"
+    case "$base" in
+        AGENTS.md|CLAUDE.md|copilot-instructions.md)
+            log_warning "Skipping pointer file $target_file (riso maintainer repo; would smash AGENTS.md / CLAUDE.md / copilot-instructions.md)"
+            return 0
+            ;;
+    esac
 
     log_info "Updating $agent_name context file: $target_file"
 

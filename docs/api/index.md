@@ -7,8 +7,8 @@ uv sync --group docs
 uv run sphinx-build docs docs/_build
 ```
 
-Rendered projects inherit this configuration so `autodoc` can scan packages in
-`apps/` and `packages/` automatically when present.
+Rendered projects inherit this configuration so `autodoc` can import the
+`riso` package from `src/` (`docs/conf.py` puts `src/` on `sys.path`).
 
 ## Modules
 

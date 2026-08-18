@@ -103,7 +103,9 @@ uv run pytest -m integration           # integration only
 | `typecheck` | `ty check scripts template/hooks src`                                           |
 | `test`      | `pytest tests`                                                                  |
 
-Pylint runs via **pre-commit**, not `just quality`. Config: `pyproject.toml` (`[tool.ruff]`, `[tool.ty]`, `[tool.pylint]`).
+Pylint runs via **pre-commit**, not `just quality`. Config: `pyproject.toml`
+(`[tool.ty]`, `[tool.pylint]`; maintainer `[tool.ruff]` already uses
+`select = ["E4", "E7", "E9", "F"]`).
 
 ```bash
 just quality      # full suite
@@ -364,9 +366,11 @@ Invoke by description; read `SKILL.md` when triggered — do not inline here.
 | `riso-scaffold`          | `.agents/skills/riso-scaffold/`          | Scaffold/copy/update via `riso` CLI                                    |
 | `riso-release-readiness` | `.agents/skills/riso-release-readiness/` | Pre-release gates, render validation                                   |
 | `agents-md-manager`      | `.claude/skills/agents-md-manager/`      | AGENTS.md analysis, platform pointer sync (restore payload before use) |
-| `mcp-installer`          | `.claude/skills/mcp-installer/`          | MCP server install/sync across AI tools                                |
+| `mcp-installer`          | `.claude/skills/mcp-installer/`          | Stub — MCP server install/sync (payload not shipped)                   |
 
 `agents-md-manager` scripts run from `.claude/skills/agents-md-manager/` when the skill payload is present. Until restored, maintain pointers manually (this file + `CLAUDE.md` + `.cursor/rules` + `.github/copilot-instructions.md`).
+
+`mcp-installer` is a stub (lockfile only under `.claude/skills/mcp-installer/` until the skill payload is restored). `just tui` is not shipped (`riso tui` is not a CLI command).
 
 Template skill propagation: `template/files/.claude/skills/` when present in payload.
 

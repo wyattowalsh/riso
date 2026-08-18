@@ -6,9 +6,11 @@ Use the `riso` CLI and the `riso-scaffold` agent skill instead of the removed `r
 
 1. Install the skill from `.agents/skills/riso-scaffold/`
 1. Verify environment: `uv run riso doctor --json`
-1. Discover variants: `uv run riso variants list --json`
+1. Discover variants: `uv run riso variants list --json` (one-level today; nested `saas-starter/*` answers are listed via `scripts.lib.paths.iter_sample_answer_files`)
 1. Validate answers before copy: `uv run riso validate --answers-file copier-answers.yml --json`
 1. Scaffold: `uv run riso copy ./dest --answers-file copier-answers.yml --json`
+
+Global `--force-unsafe` runs Copier tasks on `riso update` even when the worker would `skip_tasks`. `--skip-post-gen` skips Riso post-generation hooks. `riso catalog dependencies --json` summarizes lock files.
 
 Agents read `template/` files directly for file content; use CLI for structured introspection and mutations.
 

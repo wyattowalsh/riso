@@ -62,6 +62,19 @@ variants = list_sample_variants(samples_dir)
 catalog = get_module_catalog(template_dir)
 ```
 
+`list_sample_variants` currently lists **one directory level** under `samples/`
+(CLI-owned; do not patch `src/riso` from this lane). Nested presets such as
+`samples/saas-starter/*/copier-answers.yml` are discovered with:
+
+```python
+from scripts.lib.paths import iter_sample_answer_files, samples_dir
+
+answer_files = iter_sample_answer_files(samples_dir())
+```
+
+**NOTE for the CLI team:** recurse `list_sample_variants` the same way so
+`riso variants list` includes nested `saas-starter/*` variants.
+
 ## Integration
 
 The template module integrates with:

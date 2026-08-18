@@ -112,6 +112,19 @@ Records and aggregates module success metrics.
 
 ______________________________________________________________________
 
+## Path helpers (`scripts/lib/paths.py`)
+
+- `repo_root() -> Path` — repository root (`scripts/lib` → `scripts` → repo)
+- `samples_dir() -> Path` — `samples/`
+- `iter_sample_answer_files(samples_root: Path) -> list[Path]` — pruned
+  `os.walk` for `copier-answers.yml` (skips `render/`, `metadata/`,
+  `node_modules`). Use this for nested variants such as
+  `samples/saas-starter/*/copier-answers.yml`. `riso variants list` is still
+  one-level until the CLI team recurses `list_sample_variants`.
+- `template_dir() -> Path` — `template/`
+
+______________________________________________________________________
+
 ## Hook Scripts (`scripts/hooks/`)
 
 ### quality_tool_check.py

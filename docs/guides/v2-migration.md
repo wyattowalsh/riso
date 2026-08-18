@@ -219,8 +219,9 @@ leftovers. Export never emits the old keys.
 
 These are not remaps, but they change with 2.0:
 
-- Generated projects always ship `mise.toml` (Python 3.11, Node **20**, pnpm,
-  uv). Generated Node is not raised to the maintainer Node 22 pin.
+- Dual mise: generated projects always ship `mise.toml` (Python 3.11, Node
+  **20**, pnpm, uv). The maintainer checkout `.mise.toml` pins Node **22**.
+  Do not raise generated Node to the maintainer pin.
 - Optional OpenSpec extra (`openspec_extra`) defaults to off.
 - Type checker is **ty**. Do not restore mypy as the default.
 - Default task runner is `just`.
