@@ -28,6 +28,12 @@ def template_dir() -> Path:
 
 
 @pytest.fixture
+def files_dir(template_dir: Path) -> Path:
+    """Get the Copier files root (dest-root templates)."""
+    return template_dir / "files"
+
+
+@pytest.fixture
 def node_files_dir(template_dir: Path) -> Path:
     """Get the Node template files directory."""
     return template_dir / "files" / "node"
@@ -46,11 +52,50 @@ def _render(template_path: Path, **context: object) -> str:
 
 
 def _jinja_hits(root: Path, needle: str) -> list[str]:
+    """Return jinja paths under root whose text contains needle."""
     hits: list[str] = []
     for path in root.rglob("*.jinja"):
         if needle in _read(path):
             hits.append(str(path.relative_to(root)))
     return hits
+
+
+def _dest_root_context(**overrides: object) -> dict[str, object]:
+    """Minimal Copier context for dest-root package.json and CI templates."""
+    ctx: dict[str, object] = {
+        "project_slug": "test-project",
+        "project_name": "Test Project",
+        "package_name": "test_project",
+        "project_layout": "monorepo",
+        "quality_profile": "standard",
+        "task_runner": "just",
+        "ci_platform": "github-actions",
+        "api_module": "disabled",
+        "api_languages": [],
+        "docs_module": "disabled",
+        "docs_framework": "none",
+        "mcp_module": "disabled",
+        "mcp_languages": [],
+        "saas_infra_module": "disabled",
+        "desktop_module": "disabled",
+        "changelog_module": "disabled",
+        "cli_module": "disabled",
+        "cli_languages": [],
+    }
+    ctx.update(overrides)
+    return ctx
+
+
+def _dest_root_scripts(files_dir: Path, **overrides: object) -> dict[str, str]:
+    """Render dest-root package.json and return its scripts map."""
+    rendered = _render(
+        files_dir / "package.json.jinja",
+        **_dest_root_context(**overrides),
+    )
+    data = json.loads(rendered)
+    scripts = data["scripts"]
+    assert isinstance(scripts, dict)
+    return {str(key): str(value) for key, value in scripts.items()}
 
 
 def _node_engine_major(spec: str) -> int:
@@ -258,3 +303,118 @@ class TestDocusaurusTailwindDeleted:
         """docs/docusaurus/tailwind.config.ts.jinja must not exist."""
         tailwind = node_files_dir / "docs" / "docusaurus" / "tailwind.config.ts.jinja"
         assert not tailwind.exists()
+
+
+_API_NODE_TYPECHECK = "pnpm --filter api-node run typecheck"
+_DEST_ROOT_TYPECHECK = "pnpm run typecheck"
+
+
+class TestDestRootNodeTypecheckAliases:
+    """Dest-root type-check / typecheck aliases delegate to api-node."""
+
+    def test_node_api_scripts_alias_filter_api_node(self, files_dir: Path) -> None:
+        """When Node API is on, both dest-root aliases filter api-node."""
+        scripts = _dest_root_scripts(
+            files_dir,
+            api_module="enabled",
+            api_languages=["node"],
+        )
+        assert scripts["type-check"] == _API_NODE_TYPECHECK
+        assert scripts["typecheck"] == _API_NODE_TYPECHECK
+
+    def test_docs_only_omits_dest_root_typecheck_aliases(self, files_dir: Path) -> None:
+        """Docs-only dest-root package.json has no typecheck aliases."""
+        scripts = _dest_root_scripts(
+            files_dir,
+            docs_module="enabled",
+            docs_framework="fumadocs",
+        )
+        assert "type-check" not in scripts
+        assert "typecheck" not in scripts
+
+
+class TestRisoQualityNodeFilter:
+    """GHA node-quality uses --filter api-node, not dest-root type-check."""
+
+    def test_node_quality_source_uses_api_node_filter(self, files_dir: Path) -> None:
+        """node-quality lint / typecheck / test must filter api-node."""
+        text = _read(files_dir / ".github" / "workflows" / "riso-quality.yml.jinja")
+        match = re.search(
+            r"^  node-quality:.*?(?=^  \{\%)",
+            text,
+            re.M | re.S,
+        )
+        assert match is not None, "node-quality job missing"
+        block = match.group(0)
+        assert "pnpm --filter api-node run lint" in block
+        assert "pnpm --filter api-node run typecheck" in block
+        assert "pnpm --filter api-node test" in block
+        assert "pnpm run type-check" not in block
+        assert "pnpm run lint" not in block
+        assert "pnpm test" not in block
+
+    def test_rendered_node_quality_uses_api_node_filter(self, files_dir: Path) -> None:
+        """Rendered node-quality job keeps the api-node filter commands."""
+        rendered = _render(
+            files_dir / ".github" / "workflows" / "riso-quality.yml.jinja",
+            **_dest_root_context(
+                ci_platform="github-actions",
+                api_module="enabled",
+                api_languages=["node"],
+            ),
+        )
+        assert "pnpm --filter api-node run lint" in rendered
+        assert "pnpm --filter api-node run typecheck" in rendered
+        assert "pnpm --filter api-node test" in rendered
+        assert "pnpm run type-check" not in rendered
+
+
+class TestGitLabNodeTypecheckFilters:
+    """GitLab Node jobs must not call dest-root typecheck unconditionally."""
+
+    def test_source_omits_dest_root_typecheck(self, files_dir: Path) -> None:
+        """gitlab-ci.yml.jinja must not invoke dest-root pnpm run typecheck."""
+        text = _read(files_dir / ".gitlab" / ".gitlab-ci.yml.jinja")
+        assert _DEST_ROOT_TYPECHECK not in text
+
+    def test_fumadocs_only_does_not_call_dest_root_typecheck(
+        self, files_dir: Path
+    ) -> None:
+        """Docs-only GitLab CI typechecks fumadocs, not dest-root scripts."""
+        rendered = _render(
+            files_dir / ".gitlab" / ".gitlab-ci.yml.jinja",
+            **_dest_root_context(
+                ci_platform="gitlab-ci",
+                docs_module="enabled",
+                docs_framework="fumadocs",
+            ),
+        )
+        assert _DEST_ROOT_TYPECHECK not in rendered
+        assert "pnpm --filter docs-fumadocs run typecheck" in rendered
+        assert "pnpm --filter api-node" not in rendered
+
+    def test_node_api_uses_api_node_typecheck_filter(self, files_dir: Path) -> None:
+        """Node API GitLab lint uses --filter api-node typecheck."""
+        rendered = _render(
+            files_dir / ".gitlab" / ".gitlab-ci.yml.jinja",
+            **_dest_root_context(
+                ci_platform="gitlab-ci",
+                api_module="enabled",
+                api_languages=["node"],
+            ),
+        )
+        assert _DEST_ROOT_TYPECHECK not in rendered
+        assert "pnpm --filter api-node run typecheck" in rendered
+
+    def test_saas_only_does_not_call_dest_root_typecheck(self, files_dir: Path) -> None:
+        """SaaS-only GitLab CI typechecks node/saas, not dest-root scripts."""
+        rendered = _render(
+            files_dir / ".gitlab" / ".gitlab-ci.yml.jinja",
+            **_dest_root_context(
+                ci_platform="gitlab-ci",
+                saas_infra_module="enabled",
+            ),
+        )
+        assert _DEST_ROOT_TYPECHECK not in rendered
+        assert "pnpm --dir node/saas run typecheck" in rendered
+        assert "pnpm --filter api-node" not in rendered
