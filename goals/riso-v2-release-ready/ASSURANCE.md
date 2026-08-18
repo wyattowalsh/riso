@@ -1,3 +1,37 @@
+# ASSURANCE — Riso 2.0 release-ready (W10 addendum)
+
+**Generated:** 2026-08-18 (W10 analytics/theme + recopy dry-run)\
+**Status:** **source-green** on dest-root Node CI, SaaS `@/lib` clients/shims, dest-root `saas-quality`, Auth.js barrel, **PostHog/Amplitude providers**, **ThemeToggle**, and recopy/update `--dry-run` (`preview_engine=answers`, no Copier copy). Official dest recopy dry-run integration **passed in \<1s**. `render_matrix` not residualed.
+
+**Evidence:** [`evidence/W10-CLOSE.md`](./evidence/W10-CLOSE.md).
+
+______________________________________________________________________
+
+# ASSURANCE — Riso 2.0 release-ready (W9 addendum)
+
+**Generated:** 2026-08-18 (W9 dest restore + SaaS `@/lib` shims)\
+**Status:** **source-green** on dest-root Node CI, SaaS lib clients, dest-root `saas-quality` / `riso-saas-database.yml`, Auth.js barrel, and `@/lib/{health,env,observability/logger}` re-exports. **Dest-gated green** for official default: `AGENTS.md` present, no leftover `openspec/`, fumadocs smoke passed, `just validate-agents` **0**. `samples/metadata/render_matrix.json` present (37 variants, 30 ok / 7 dest-smoke red). **Do not residual `render_matrix`.**
+
+**W9 commands**
+
+| Command                                         | Result                                                                                                                     |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `./scripts/render-samples.sh --variant default` | **0** — docs smoke passed 19.4s                                                                                            |
+| `just validate-agents`                          | **0** (start + end)                                                                                                        |
+| `just quality`                                  | **1** — lint/ty green; pytest 1 fail / 1145 pass. `test_recopy_dry_run_json` `run_copy` timed out 300s; `ssot` not reached |
+| scoped ruff + ty + 4 unit files                 | **0** — 69 passed                                                                                                          |
+| jinja `template/files`                          | **0** — 805 OK                                                                                                             |
+| `check_removed_key_ssot.py`                     | **0**                                                                                                                      |
+| leftover 8 keys                                 | empty                                                                                                                      |
+| `validate_release_readiness_skill.py`           | **0**                                                                                                                      |
+| `git tag -l v2.0.0 2.0.0`                       | empty                                                                                                                      |
+
+Full exits: [`evidence/W9-LADDER.md`](./evidence/W9-LADDER.md). `quality_green` is **false** until recopy dry-run no longer times out.
+
+**W9 source:** `lib/health.ts.jinja`, `lib/env.ts.jinja`, `lib/observability/logger.ts.jinja` (thin re-exports). Evidence: [`evidence/W9-SAAS-LIB-SHIMS.md`](./evidence/W9-SAAS-LIB-SHIMS.md).
+
+______________________________________________________________________
+
 # ASSURANCE — Riso 2.0 release-ready (W8 addendum)
 
 **Generated:** 2026-08-18 (W8 dest-root SaaS GHA)\
