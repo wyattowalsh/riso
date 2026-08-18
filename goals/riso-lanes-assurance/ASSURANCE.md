@@ -1,9 +1,9 @@
 # ASSURANCE — Riso lanes W4 report
 
 **Generated:** 2026-07-29\
-**Updated:** 2026-08-18 (W0–W4 re-orchestrate; PL-T06 live re-run)\
+**Updated:** 2026-08-18 (W0–W4 re-orchestrate; PL-T06 official run exited)\
 **Branch:** `main` · **Workspace:** `/Users/ww/dev/projects/riso`\
-**Status:** **residualed** (W0–W4 task IDs done except PL-T06; validate 37/37; live `render_matrix` pid 70136; post-fix smoke classes: llms prefix-slug EISDIR + CLI-off pylint — patches landed mid-run)\
+**Status:** **residualed** (official `render_matrix` pid 70136 **exited** 2026-08-18T11:48:24Z with 7 dest fails; JSON rewritten; individual re-smokes in progress — no second matrix)\
 **Report tasks:** A-T01…A-T04
 
 ## Executive summary
@@ -12,7 +12,7 @@
 | ----------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **validate_green**      | **true**  | `evidence/W5-validate-37.json` **37/37 ok** (2026-08-17 in-process `run_validate`); prior `W3-PL-T05-validate-summary.json`                                                                                                                                                                                                                                                                                                           |
 | **quality_green**       | **true**  | Maintainer: ruff check 0; sphinx `-W` 0; CLI/hooks/ci unit **341 passed**; web eslint 0 errors / 308 vitest. Historical dest `just quality`: `W3-PL-T09-just-quality-rerun.log` (877 passed)                                                                                                                                                                                                                                          |
-| **render_matrix_green** | **false** | Official re-run **live** (`evidence/W5-PL-T06-render_matrix.log`, pid 70136). This-run reds (5): prefix-slug EISDIR/EEXIST on `api-monorepo` / `api-python` / `changelog-full-stack` / `changelog-monorepo`; Sphinx linkify on `changelog-python`. Later dests through `mcp-typescript` passed after mid-run patches. Last started dest: `rust-api`. Official JSON still 2026-08-14 until process exit. Do not start a second matrix. |
+| **render_matrix_green** | **false** | Official run **complete** (`evidence/W5-PL-T06-render_matrix.log`; JSON `samples/metadata/render_matrix.json` recorded_at 2026-08-18T11:48:24Z). 30 dests ok / **7 failed**: early fumadocs prefix-slug + CLI-off pylint (`api-monorepo`, `api-python`, `changelog-full-stack`, `changelog-monorepo`); Sphinx dest predates `linkify-it-py` (`changelog-python`); Turbopack MDX timeout (`rust-api`); Remix `@clerk/remix@^5.5.0` unpublished (`saas-starter/edge-optimized`). Individual `render-samples.sh` re-smokes underway. Do **not** start a second official matrix. |
 | **riso_mcp_clean**      | **true**  | `evidence/W4-A-T04-riso-mcp.txt` — no matches under `src/riso` / `template`                                                                                                                                                                                                                                                                                                                                                           |
 | **path_lock**           | **clean** | `evidence/W4-A-T03-pathlock.md` — 93 dirty paths; unowned=0; foreign-tree=0                                                                                                                                                                                                                                                                                                                                                           |
 
