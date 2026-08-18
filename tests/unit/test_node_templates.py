@@ -280,7 +280,7 @@ class TestApiNodePackage:
     def test_package_json_name_engines_fastify_vitest(
         self, node_files_dir: Path
     ) -> None:
-        """Rendered api-node package is named, node>=20, with fastify and vitest."""
+        """Rendered api-node package is named, node>=22, with fastify and vitest."""
         package_json = node_files_dir / "apps" / "api-node" / "package.json.jinja"
         rendered = _render(
             package_json,
@@ -291,7 +291,7 @@ class TestApiNodePackage:
         data = json.loads(rendered)
         assert data["name"] == "api-node"
         node_engine = data["engines"]["node"]
-        assert _node_engine_major(node_engine) >= 20
+        assert _node_engine_major(node_engine) >= 22
         assert "fastify" in data["dependencies"]
         assert "vitest" in data["devDependencies"]
 
@@ -494,12 +494,12 @@ class TestDestLayoutDockerAndMise:
         assert not any(line.startswith("COPY apps/") for line in copy_lines)
 
     def test_canonical_mise_toml_not_dotted(self, files_dir: Path) -> None:
-        """Dest mise config is mise.toml.jinja with Node 20; .mise.toml.jinja is gone."""
+        """Dest mise config is mise.toml.jinja with Node 22; .mise.toml.jinja is gone."""
         assert not (files_dir / ".mise.toml.jinja").exists()
         mise = files_dir / "mise.toml.jinja"
         assert mise.is_file()
         text = _read(mise)
-        assert 'node = "20"' in text
+        assert 'node = "22"' in text
 
 
 class TestNodeMcpHttpSsrf:

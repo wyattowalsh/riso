@@ -253,9 +253,9 @@ class TestDepsUpdateWorkflowTemplate:
         assert "update-python-deps" in jobs
         assert "uv --directory python lock --upgrade" in rendered
         assert "uv --directory python run task quality" in rendered
-        assert "node-version: '20'" not in rendered
+        assert "node-version: '22'" not in rendered
 
-    def test_node_job_stays_on_node_20(self, jinja_env: Environment) -> None:
+    def test_node_job_stays_on_node_22(self, jinja_env: Environment) -> None:
         rendered = _render(
             jinja_env,
             ".github/workflows/riso-deps-update.yml.jinja",
@@ -264,7 +264,7 @@ class TestDepsUpdateWorkflowTemplate:
         )
         jobs = _jobs(rendered)
         assert "update-node-deps" in jobs
-        assert "node-version: '20'" in rendered
+        assert "node-version: '22'" in rendered
 
 
 class TestFumadocsDeployWorkflow:
@@ -283,7 +283,7 @@ class TestFumadocsDeployWorkflow:
         assert "build" in jobs
         assert "working-directory: node/docs/fumadocs" in rendered
         assert "path: node/docs/fumadocs/out" in rendered
-        assert "node-version: '20'" in rendered
+        assert "node-version: '22'" in rendered
         assert "path: ./out" not in rendered
 
     def test_nested_fumadocs_deploy_is_gone(self) -> None:
@@ -316,7 +316,7 @@ class TestSaasDestRootWorkflows:
         assert "working-directory: node/saas" in rendered
         assert "pnpm run typecheck" in rendered
         assert "pnpm run type-check" not in rendered
-        assert "node-version: '20'" in rendered
+        assert "node-version: '22'" in rendered
 
     def test_saas_off_keeps_scaffold_ok(self, jinja_env: Environment) -> None:
         """Default _BASE still emits scaffold-ok and no saas-quality."""

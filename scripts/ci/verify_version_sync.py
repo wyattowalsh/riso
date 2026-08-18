@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Verify version constants stay synchronized within maintainer and generated lanes.
 
-Two lanes are compared independently so generated Node 20 is not failed against
-maintainer Node 22:
+Two lanes are compared independently so generated Node 22 is not failed against
+maintainer Node 22.13.0 (major 22 is enough):
 
 Maintainer
     scripts/setup/lib/versions.sh, .mise.toml, root package.json,
@@ -274,7 +274,10 @@ def main() -> int:
     print(
         "Generated lane:  template/files/mise.toml.jinja, template/files/package.json.jinja"
     )
-    print("Lanes are independent: generated node 20 is not compared to maintainer 22.")
+    print(
+        "Lanes are independent: generated node 22 is not compared to "
+        "maintainer 22.13.0."
+    )
     print()
 
     all_errors = compare_lane("maintainer", maintainer_lane)
@@ -287,7 +290,8 @@ def main() -> int:
             print(error, file=sys.stderr)
         print(file=sys.stderr)
         print(
-            "Update files within the same lane; do not copy maintainer Node 22 onto generated Node 20.",
+            "Update files within the same lane; do not copy maintainer "
+            "Node 22.13.0 onto generated Node 22.",
             file=sys.stderr,
         )
         return 1
