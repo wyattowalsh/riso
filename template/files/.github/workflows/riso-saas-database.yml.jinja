@@ -1,0 +1,147 @@
+{%- if ci_platform == 'github-actions' and saas_infra_module == 'enabled' and saas_cicd == 'github-actions' -%}
+name: SaaS Database
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      {% if saas_orm == "prisma" %}
+      - 'node/saas/integrations/orm/prisma/**'
+      {% elif saas_orm == "drizzle" %}
+      - 'node/saas/integrations/orm/drizzle/**'
+      {% endif %}
+  pull_request:
+    branches: [main, develop]
+    paths:
+      {% if saas_orm == "prisma" %}
+      - 'node/saas/integrations/orm/prisma/**'
+      {% elif saas_orm == "drizzle" %}
+      - 'node/saas/integrations/orm/drizzle/**'
+      {% endif %}
+  workflow_dispatch:
+
+concurrency:
+  group: saas-db-{% raw %}${{ github.workflow }}-${{ github.ref }}{% endraw %}
+  cancel-in-progress: true
+
+jobs:
+  validate-schema:
+    name: Validate Database Schema
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      {% if saas_orm == "prisma" %}
+      - name: Validate Prisma schema
+        working-directory: node/saas
+        run: pnpm exec prisma validate
+
+      - name: Format schema
+        working-directory: node/saas
+        run: pnpm exec prisma format
+
+      - name: Check for schema changes
+        working-directory: node/saas
+        run: |
+          if ! git diff --quiet integrations/orm/prisma/schema.prisma; then
+            echo "Schema is not formatted. Run 'pnpm exec prisma format' locally."
+            exit 1
+          fi
+      {% elif saas_orm == "drizzle" %}
+      - name: Generate Drizzle migrations
+        working-directory: node/saas
+        run: pnpm run db:generate
+
+      - name: Check schema payload
+        run: |
+          if [ ! -f node/saas/integrations/orm/drizzle/schema.ts ]; then
+            echo "Drizzle schema not found at node/saas/integrations/orm/drizzle/schema.ts"
+            exit 1
+          fi
+      {% endif %}
+
+  test-migrations:
+    name: Test Database Migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      {% if saas_orm == "prisma" %}
+      - name: Run migrations
+        working-directory: node/saas
+        run: pnpm exec prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+      {% if saas_include_fixtures %}
+      - name: Seed database
+        working-directory: node/saas
+        run: pnpm run db:seed
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+      {% endif %}
+      - name: Verify database state
+        working-directory: node/saas
+        run: |
+          pnpm exec prisma db pull --schema=./integrations/orm/prisma/schema.prisma
+          pnpm exec prisma validate
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+      {% elif saas_orm == "drizzle" %}
+      - name: Run migrations
+        working-directory: node/saas
+        run: pnpm run db:migrate
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+      {% if saas_include_fixtures %}
+      - name: Seed database
+        working-directory: node/saas
+        run: pnpm run db:seed
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+      {% endif %}
+      {% endif %}
+{%- endif -%}
