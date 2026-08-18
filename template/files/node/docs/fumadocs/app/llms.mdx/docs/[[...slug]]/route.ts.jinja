@@ -22,12 +22,28 @@ export async function GET(_req: Request, { params }: RouteProps) {
   });
 }
 
+function isProperPrefix(prefix: string[], other: string[]): boolean {
+  return (
+    other.length > prefix.length &&
+    prefix.every((segment, index) => other[index] === segment)
+  );
+}
+
 export function generateStaticParams() {
   // Skip the empty slug so static export does not write `docs` as both a
-  // file and a directory.
-  return source.generateParams().filter((entry) => {
+  // file and a directory. Skip any slug that is a proper prefix of another
+  // generated slug so folder+leaf pairs (e.g. `modules` vs `modules/cli`)
+  // do not collide as file vs directory under `out/llms.mdx/docs`.
+  const params = source.generateParams().filter((entry) => {
     const slug = (entry as { slug?: string[] }).slug;
     return Array.isArray(slug) && slug.length > 0;
+  });
+
+  return params.filter((entry) => {
+    const slug = (entry as { slug: string[] }).slug;
+    return !params.some((other) =>
+      isProperPrefix(slug, (other as { slug: string[] }).slug),
+    );
   });
 }
 {%- endif -%}
