@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
-from riso.core.answers import remap_answers_file, serialize_remap_ops
-from riso.core.diff import compute_diff
+from riso.core.answers import (
+    prepare_copier_data,
+    remap_answers_file,
+    serialize_remap_ops,
+)
 from riso.core.errors import (
     CopierOperationError,
     PathNotFoundError,
@@ -17,6 +21,32 @@ from riso.template import run_update as template_run_update
 
 if TYPE_CHECKING:
     from riso.cli.config import CliConfig
+    from riso.core.answers import RemapResult
+
+
+def build_update_preview(
+    *,
+    operation: str,
+    destination: Path,
+    answers: dict[str, Any],
+    remap: RemapResult | None,
+    dest_answers_path: Path | None,
+) -> dict[str, Any]:
+    """Answers-only dry-run preview. Never runs Copier."""
+    return {
+        "operation": operation,
+        "dry_run": True,
+        "destination": str(destination),
+        "preview_engine": "answers",
+        "summary": ("dry-run: remapped answers and generation gates (no Copier copy)"),
+        "answers": prepare_copier_data(answers),
+        "remap": {
+            "answers_file": str(dest_answers_path) if dest_answers_path else None,
+            "changed": bool(remap.ops) if remap is not None else False,
+            "written": False,
+            "ops": serialize_remap_ops(remap.ops) if remap is not None else [],
+        },
+    }
 
 
 def run_update(
@@ -50,17 +80,13 @@ def run_update(
         gate = validate_answers_for_generation(remapped.answers)
         if not gate.ok:
             raise ValidationFailedError(list(gate.errors))
-        diff = compute_diff(
-            answers=remapped.answers,
-            destination=dest_path,
-            template_path=config.template_path,
+        return build_update_preview(
             operation="update",
-            timeout=config.timeout,
-            force_unsafe=config.force_unsafe,
+            destination=dest_path,
+            answers=remapped.answers,
+            remap=remapped,
+            dest_answers_path=answers_file,
         )
-        payload = diff.to_dict()
-        payload["remap"] = remap_payload
-        return payload
 
     try:
         result = template_run_update(
