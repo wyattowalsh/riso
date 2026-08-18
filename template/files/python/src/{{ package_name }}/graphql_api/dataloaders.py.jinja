@@ -1,13 +1,14 @@
 {% if (graphql_api_module == 'enabled' or 'graphql' in api_features) -%}
 """DataLoaders - Batching and caching for efficient data fetching."""
 
+{% if api_module == 'enabled' and 'python' in api_languages %}
+from typing import Any, List, Optional
+{% else %}
 from typing import List, Optional
+{% endif %}
 from dataclasses import dataclass
 
 from aiodataloader import DataLoader
-{% if api_module == 'enabled' and 'python' in api_languages %}
-from sqlalchemy.ext.asyncio import AsyncSession
-{% endif %}
 
 from {{ package_name }}.graphql_api.types.user import User
 from {{ package_name }}.graphql_api.types.post import Post
@@ -30,7 +31,7 @@ class UserDataLoader(DataLoader):
     def __init__(
         self,
         {% if api_module == 'enabled' and 'python' in api_languages %}
-        db: Optional[AsyncSession] = None,
+        db: Optional[Any] = None,
         {% endif %}
     ):
         super().__init__(batch_load_fn=self.batch_load_users)
@@ -81,7 +82,7 @@ class PostsByAuthorDataLoader(DataLoader):
     def __init__(
         self,
         {% if api_module == 'enabled' and 'python' in api_languages %}
-        db: Optional[AsyncSession] = None,
+        db: Optional[Any] = None,
         {% endif %}
     ):
         super().__init__(batch_load_fn=self.batch_load_posts_by_author)
@@ -139,7 +140,7 @@ class DataLoaderContainer:
     """
     
     {% if api_module == 'enabled' and 'python' in api_languages %}
-    db: Optional[AsyncSession] = None
+    db: Optional[Any] = None
     {% endif %}
     
     def __post_init__(self):

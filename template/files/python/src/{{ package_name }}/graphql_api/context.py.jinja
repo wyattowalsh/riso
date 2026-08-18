@@ -1,13 +1,14 @@
 {% if (graphql_api_module == 'enabled' or 'graphql' in api_features) -%}
 """GraphQL Context - Request-scoped data passed to all resolvers."""
 
+{% if api_module == 'enabled' and 'python' in api_languages %}
+from typing import Any, Optional
+{% else %}
 from typing import Optional
+{% endif %}
 from dataclasses import dataclass
 
 from fastapi import Request
-{% if api_module == 'enabled' and 'python' in api_languages %}
-from sqlalchemy.ext.asyncio import AsyncSession
-{% endif %}
 
 from {{ package_name }}.graphql_api.dataloaders import DataLoaderContainer
 
@@ -28,7 +29,7 @@ class GraphQLContext:
     request: Request
     current_user: Optional[dict] = None
     {% if api_module == 'enabled' and 'python' in api_languages %}
-    db: Optional[AsyncSession] = None
+    db: Optional[Any] = None
     {% endif %}
     dataloaders: Optional[DataLoaderContainer] = None
     config: Optional[dict] = None
@@ -37,7 +38,7 @@ class GraphQLContext:
 async def get_graphql_context(
     request: Request,
     {% if api_module == 'enabled' and 'python' in api_languages %}
-    db: Optional[AsyncSession] = None,
+    db: Optional[Any] = None,
     {% endif %}
 ) -> GraphQLContext:
     """

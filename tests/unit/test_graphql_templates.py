@@ -46,6 +46,23 @@ def test_graphql_tests_use_execute_sync_not_base_client() -> None:
     assert execute_hits >= 5
 
 
+def test_graphql_runtime_does_not_import_sqlalchemy() -> None:
+    """SQLAlchemy session wiring is deferred until spec 017."""
+    files = (
+        "python/src/{{ package_name }}/graphql_api/main.py.jinja",
+        "python/src/{{ package_name }}/graphql_api/dataloaders.py.jinja",
+        "python/src/{{ package_name }}/graphql_api/context.py.jinja",
+    )
+    env = _env()
+    ctx = _graphql_context()
+    for rel in files:
+        text = (TEMPLATE_FILES / rel).read_text(encoding="utf-8")
+        assert "sqlalchemy" not in text.lower()
+        rendered = env.get_template(rel).render(**ctx)
+        assert "sqlalchemy" not in rendered.lower()
+        compile(rendered, rel, "exec")
+
+
 def test_schema_attaches_complexity_validators() -> None:
     rendered = (
         _env()
