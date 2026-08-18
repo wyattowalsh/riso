@@ -1,5 +1,13 @@
 {%- set _python = (cli_module == 'enabled' and 'python' in cli_languages) or (api_module == 'enabled' and 'python' in api_languages) or (mcp_module == 'enabled' and 'python' in mcp_languages) or (docs_module == 'enabled' and docs_framework == 'sphinx-shibuya') -%}
 {%- set _node = api_module == 'enabled' and 'node' in api_languages -%}
+{%- set uv_mod_groups -%}
+{%- if cli_module == 'enabled' and 'python' in cli_languages %} --group cli{% endif -%}
+{%- if api_module == 'enabled' and 'python' in api_languages %} --group api_python --group api_python_test{% endif -%}
+{%- if (graphql_api_module|default('disabled')) == 'enabled' or 'graphql' in (api_features|default([])) %} --group graphql_api{% endif -%}
+{%- if (websocket_module|default('disabled')) == 'enabled' or 'websocket' in (api_features|default([])) %} --group websocket{% endif -%}
+{%- if mcp_module == 'enabled' and 'python' in mcp_languages %} --group mcp{% endif -%}
+{%- if (codegen_module|default('disabled')) == 'enabled' %} --group codegen{% endif -%}
+{%- endset %}
 UV ?= uv
 QUALITY_PROFILE ?= {{ quality_profile|default('standard') }}
 PACKAGE_NAME ?= {{ package_name }}
@@ -7,15 +15,16 @@ PYTEST_FLAGS ?= -ra
 TY_FLAGS ?=
 RUFF_FLAGS ?=
 PYLINT_FLAGS ?=
-COVERAGE_RCFILE ?= $(or $(firstword $(wildcard coverage.cfg quality/coverage.cfg ../quality/coverage.cfg)),coverage.cfg)
 PYLINT_RCFILE ?= $(or $(firstword $(wildcard .pylintrc pylintrc quality/.pylintrc quality/pylintrc ../quality/.pylintrc ../quality/pylintrc)))
 PYLINT_RC_FLAG ?= $(if $(PYLINT_RCFILE),--rcfile $(abspath $(PYLINT_RCFILE)),)
-COVERAGE_FLAGS ?= --rcfile $(COVERAGE_RCFILE) -m pytest $(PYTEST_FLAGS)
 ifneq ($(wildcard python/pyproject.toml),)
 UV_DIR := --directory python
+COVERAGE_RCFILE ?= $(or $(if $(wildcard python/coverage.cfg),coverage.cfg),$(if $(wildcard quality/coverage.cfg),../quality/coverage.cfg),coverage.cfg)
 else
 UV_DIR :=
+COVERAGE_RCFILE ?= $(or $(firstword $(wildcard coverage.cfg quality/coverage.cfg ../quality/coverage.cfg)),coverage.cfg)
 endif
+COVERAGE_FLAGS ?= --rcfile $(COVERAGE_RCFILE) -m pytest $(PYTEST_FLAGS)
 
 ifeq ($(QUALITY_PROFILE),strict)
 	TY_FLAGS := --error-on-warning
@@ -23,17 +32,17 @@ ifeq ($(QUALITY_PROFILE),strict)
 	PYLINT_FLAGS := --errors-only
 endif
 
-.PHONY: quality{% if _python %} quality-python coverage-report format lint hooks hooks-run hooks-update{% endif %} \
+.PHONY: quality{% if _python %} quality-python coverage-report format lint typecheck hooks hooks-run hooks-update{% endif %} \
 {% if _node %}quality-node lint-node{% endif %}
 
 {% if _python %}
 quality: quality-python{% if _node %} quality-node{% endif %}
 
 quality-python:
-	$(UV) $(UV_DIR) run --group quality --group test{% if cli_module == 'enabled' and 'python' in cli_languages %} --group cli{% endif %}{% if api_module == 'enabled' and 'python' in api_languages %} --group api_python --group api_python_test{% endif %} ruff check $(RUFF_FLAGS)
-	$(UV) $(UV_DIR) run --group quality --group test{% if cli_module == 'enabled' and 'python' in cli_languages %} --group cli{% endif %}{% if api_module == 'enabled' and 'python' in api_languages %} --group api_python --group api_python_test{% endif %} ty check $(TY_FLAGS) src/$(PACKAGE_NAME)
-	$(UV) $(UV_DIR) run --group quality --group test{% if cli_module == 'enabled' and 'python' in cli_languages %} --group cli{% endif %}{% if api_module == 'enabled' and 'python' in api_languages %} --group api_python --group api_python_test{% endif %} pylint $(PYLINT_FLAGS) $(PYLINT_RC_FLAG) src/$(PACKAGE_NAME) tests
-	$(UV) $(UV_DIR) run --group quality --group test{% if cli_module == 'enabled' and 'python' in cli_languages %} --group cli{% endif %}{% if api_module == 'enabled' and 'python' in api_languages %} --group api_python --group api_python_test{% endif %} coverage run $(COVERAGE_FLAGS)
+	$(UV) $(UV_DIR) run --group quality --group test{{ uv_mod_groups }} ruff check $(RUFF_FLAGS)
+	$(UV) $(UV_DIR) run --group quality --group test{{ uv_mod_groups }} ty check $(TY_FLAGS) src/$(PACKAGE_NAME)
+	$(UV) $(UV_DIR) run --group quality --group test{{ uv_mod_groups }} pylint $(PYLINT_FLAGS) $(PYLINT_RC_FLAG) src/$(PACKAGE_NAME) tests
+	$(UV) $(UV_DIR) run --group quality --group test{{ uv_mod_groups }} coverage run $(COVERAGE_FLAGS)
 	$(UV) $(UV_DIR) run --group quality coverage report --rcfile $(COVERAGE_RCFILE)
 
 coverage-report:
@@ -43,8 +52,11 @@ format:
 	$(UV) $(UV_DIR) run --group quality ruff format src/$(PACKAGE_NAME) tests
 
 lint:
-	$(UV) $(UV_DIR) run --group quality --group test ruff check $(RUFF_FLAGS)
-	$(UV) $(UV_DIR) run --group quality --group test pylint $(PYLINT_FLAGS) $(PYLINT_RC_FLAG) src/$(PACKAGE_NAME) tests
+	$(UV) $(UV_DIR) run --group quality --group test{{ uv_mod_groups }} ruff check $(RUFF_FLAGS)
+	$(UV) $(UV_DIR) run --group quality --group test{{ uv_mod_groups }} pylint $(PYLINT_FLAGS) $(PYLINT_RC_FLAG) src/$(PACKAGE_NAME) tests
+
+typecheck:
+	$(UV) $(UV_DIR) run --group quality --group test{{ uv_mod_groups }} ty check $(TY_FLAGS) src/$(PACKAGE_NAME)
 {% elif _node %}
 quality: quality-node
 {% else %}

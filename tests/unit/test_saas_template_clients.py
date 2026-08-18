@@ -215,6 +215,94 @@ class TestSaasThemeToggle:
         assert _exports_symbol(text, "ThemeToggle")
 
 
+_PRISMA_BASE = {
+    "saas_infra_module": "enabled",
+    "saas_orm": "prisma",
+    "saas_database": "neon",
+    "saas_billing_provider": "stripe",
+    "saas_auth_provider": "authjs",
+    "saas_api_access": "public-api",
+    "saas_notifications": "none",
+    "saas_onboarding": "none",
+    "saas_enterprise_bridge": "none",
+    "saas_rbac_system": "custom-permissions",
+    "saas_waitlist": False,
+    "saas_user_impersonation": False,
+}
+
+
+class TestSaasMultiTenancyLevelGate:
+    """Enterprise isolation uses saas_multi_tenancy_level, not a second prompt."""
+
+    def test_multi_tenant_and_admin_use_level_key(self, saas_files_dir: Path) -> None:
+        """Jinja gates must use saas_multi_tenancy_level == enterprise."""
+        roots = [
+            saas_files_dir / "lib" / "multi-tenant",
+            saas_files_dir / "runtime" / "nextjs" / "app" / "admin" / "tenants",
+        ]
+        jinja_files: list[Path] = []
+        for root in roots:
+            jinja_files.extend(root.glob("*.jinja"))
+        assert jinja_files
+        for path in jinja_files:
+            text = _read(path)
+            assert "saas_multi_tenancy ==" not in text, path
+            assert "saas_multi_tenancy_level == 'enterprise'" in text, path
+
+
+class TestPrismaOrgRelationsGated:
+    """Organization FKs on SaaS models exist only for b2b-teams."""
+
+    def test_b2c_omits_organization_fks(self, saas_files_dir: Path) -> None:
+        """B2C schema has no Organization model or organizationId columns."""
+        rendered = _render(
+            saas_files_dir / "integrations" / "orm" / "prisma" / "schema.prisma.jinja",
+            saas_tenancy_model="b2c-users",
+            **_PRISMA_BASE,
+        )
+        assert "model Organization " not in rendered
+        assert "organizationId" not in rendered
+        assert "model Subscription" in rendered
+        assert "model ApiKey" in rendered
+        assert "model Role" in rendered
+
+    def test_b2b_keeps_organization_fks(self, saas_files_dir: Path) -> None:
+        """B2B schema keeps org FKs on Subscription, ApiKey, webhooks, audit, Role."""
+        rendered = _render(
+            saas_files_dir / "integrations" / "orm" / "prisma" / "schema.prisma.jinja",
+            saas_tenancy_model="b2b-teams",
+            **_PRISMA_BASE,
+        )
+        assert "model Organization " in rendered
+        for model in ("Subscription", "ApiKey", "WebhookEndpoint", "AuditLog", "Role"):
+            assert f"model {model}" in rendered
+        assert "organizationId String?" in rendered
+
+
+class TestSaasCloudflareNextConfig:
+    """SaaS Next config must not static-export on Cloudflare."""
+
+    def test_cloudflare_omits_static_export(self, saas_files_dir: Path) -> None:
+        """Cloudflare render comments adapter requirement, no output export key."""
+        rendered = _render(
+            saas_files_dir / "runtime" / "nextjs" / "next.config.js.jinja",
+            saas_infra_module="enabled",
+            saas_runtime="nextjs-16",
+            saas_hosting="cloudflare",
+            saas_observability_sentry=False,
+            saas_observability_otel=False,
+            saas_auth_provider="clerk",
+            saas_storage="none",
+        )
+        code_lines = [
+            line for line in rendered.splitlines() if not line.strip().startswith("//")
+        ]
+        assert not any("output: 'export'" in line for line in code_lines)
+        assert "Node or edge adapter" in rendered
+        assert "static" in rendered.lower()
+        assert "module.exports = nextConfig" in rendered
+
+
 class TestRecopyIntegrationDest:
     """Recopy dry-run integration must preview official dest without Copier."""
 

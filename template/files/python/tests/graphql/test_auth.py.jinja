@@ -1,22 +1,13 @@
 {% if (graphql_api_module == 'enabled' or 'graphql' in api_features) -%}
 """GraphQL Authentication Tests - Per-field auth and permissions."""
 
-import pytest
-from strawberry.test import BaseGraphQLTestClient
-
 from {{ package_name }}.graphql_api.schema import schema
-
-
-@pytest.fixture
-def graphql_client():
-    """Create GraphQL test client."""
-    return BaseGraphQLTestClient(schema)
 
 
 class TestAuthentication:
     """Test authentication requirements on mutations."""
     
-    def test_public_query_no_auth_required(self, graphql_client):
+    def test_public_query_no_auth_required(self):
         """Test that queries don't require authentication."""
         query = """
             query {
@@ -27,7 +18,7 @@ class TestAuthentication:
             }
         """
         
-        result = graphql_client.query(query)
+        result = schema.execute_sync(query)
         
         # Public queries should work without auth
         assert result.errors is None
@@ -36,7 +27,7 @@ class TestAuthentication:
     # NOTE: These tests would require auth middleware to be implemented
     # For now, they serve as documentation of expected behavior
     
-    # def test_mutation_requires_auth(self, graphql_client):
+    # def test_mutation_requires_auth(self):
     #     """Test that mutations require authentication."""
     #     mutation = """
     #         mutation {
@@ -46,7 +37,7 @@ class TestAuthentication:
     #         }
     #     """
     #     
-    #     result = graphql_client.query(mutation)
+    #     result = schema.execute_sync(mutation)
     #     
     #     # Should return auth error
     #     assert result.errors is not None

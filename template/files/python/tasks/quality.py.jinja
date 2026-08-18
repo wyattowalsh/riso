@@ -13,6 +13,7 @@ from typing import Final
 DEFAULT_PROFILE = "{{ quality_profile|default('standard') }}"
 QUALITY_PROFILE = os.environ.get("QUALITY_PROFILE", DEFAULT_PROFILE).lower()
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DEST_ROOT = PROJECT_ROOT.parent
 
 RUFF_FLAGS: list[str] = []
 TY_FLAGS: list[str] = []
@@ -22,6 +23,40 @@ if QUALITY_PROFILE == "strict":
     RUFF_FLAGS = ["--select", "ALL", "--ignore", "E203,E266,E501"]
     TY_FLAGS = ["--error-on-warning"]
     PYLINT_FLAGS = ["--errors-only"]
+
+_MODULE_GROUPS: list[str] = []
+{% if cli_module == 'enabled' and 'python' in cli_languages %}
+_MODULE_GROUPS.extend(["--group", "cli"])
+{% endif %}
+{% if api_module == 'enabled' and 'python' in api_languages %}
+_MODULE_GROUPS.extend(["--group", "api_python", "--group", "api_python_test"])
+{% endif %}
+{% if (graphql_api_module|default('disabled')) == 'enabled' or 'graphql' in (api_features|default([])) %}
+_MODULE_GROUPS.extend(["--group", "graphql_api"])
+{% endif %}
+{% if (websocket_module|default('disabled')) == 'enabled' or 'websocket' in (api_features|default([])) %}
+_MODULE_GROUPS.extend(["--group", "websocket"])
+{% endif %}
+{% if mcp_module == 'enabled' and 'python' in mcp_languages %}
+_MODULE_GROUPS.extend(["--group", "mcp"])
+{% endif %}
+{% if (codegen_module|default('disabled')) == 'enabled' %}
+_MODULE_GROUPS.extend(["--group", "codegen"])
+{% endif %}
+
+
+def _coverage_rcfile() -> str:
+    """Prefer python/coverage.cfg, else quality/coverage.cfg relative to python/."""
+    python_cfg = PROJECT_ROOT / "coverage.cfg"
+    if python_cfg.is_file():
+        return "coverage.cfg"
+    quality_cfg = DEST_ROOT / "quality" / "coverage.cfg"
+    if quality_cfg.is_file():
+        return "../quality/coverage.cfg"
+    return "coverage.cfg"
+
+
+_COVERAGE_RC = _coverage_rcfile()
 
 COMMANDS: Final[list[tuple[str, list[str]]]] = [
     (
@@ -33,6 +68,7 @@ COMMANDS: Final[list[tuple[str, list[str]]]] = [
             "quality",
             "--group",
             "test",
+            *_MODULE_GROUPS,
             "ruff",
             "check",
             *RUFF_FLAGS,
@@ -50,6 +86,7 @@ COMMANDS: Final[list[tuple[str, list[str]]]] = [
             "quality",
             "--group",
             "test",
+            *_MODULE_GROUPS,
             "ty",
             "check",
             *TY_FLAGS,
@@ -65,6 +102,7 @@ COMMANDS: Final[list[tuple[str, list[str]]]] = [
             "quality",
             "--group",
             "test",
+            *_MODULE_GROUPS,
             "pylint",
             *PYLINT_FLAGS,
             "src/{{ package_name }}",
@@ -79,10 +117,11 @@ COMMANDS: Final[list[tuple[str, list[str]]]] = [
             "quality",
             "--group",
             "test",
+            *_MODULE_GROUPS,
             "coverage",
             "run",
             "--rcfile",
-            "coverage.cfg",
+            _COVERAGE_RC,
             "-m",
             "pytest",
             "-ra",
@@ -98,7 +137,7 @@ COMMANDS: Final[list[tuple[str, list[str]]]] = [
             "coverage",
             "report",
             "--rcfile",
-            "coverage.cfg",
+            _COVERAGE_RC,
         ],
     ),
 ]

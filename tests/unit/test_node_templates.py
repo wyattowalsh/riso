@@ -418,3 +418,106 @@ class TestGitLabNodeTypecheckFilters:
         assert _DEST_ROOT_TYPECHECK not in rendered
         assert "pnpm --dir node/saas run typecheck" in rendered
         assert "pnpm --filter api-node" not in rendered
+
+
+class TestDestRootWorkspaces:
+    """Dest-root package.json / pnpm-workspace list electron, tauri, saas."""
+
+    def test_saas_listed_in_package_json_workspaces(self, files_dir: Path) -> None:
+        """SaaS-enabled dest-root package.json includes node/saas."""
+        rendered = _render(
+            files_dir / "package.json.jinja",
+            **_dest_root_context(saas_infra_module="enabled"),
+        )
+        data = json.loads(rendered)
+        assert "node/saas" in data["workspaces"]
+
+    def test_electron_listed_when_desktop_electron(self, files_dir: Path) -> None:
+        """Electron desktop is a workspace member, not implied under node/*."""
+        rendered = _render(
+            files_dir / "package.json.jinja",
+            **_dest_root_context(
+                desktop_module="enabled",
+                desktop_framework="electron-vite",
+            ),
+        )
+        data = json.loads(rendered)
+        assert "electron" in data["workspaces"]
+        assert "tauri" not in data["workspaces"]
+
+    def test_tauri_listed_when_desktop_tauri(self, files_dir: Path) -> None:
+        """Tauri desktop is a workspace member at dest-root tauri/."""
+        rendered = _render(
+            files_dir / "package.json.jinja",
+            **_dest_root_context(
+                desktop_module="enabled",
+                desktop_framework="tauri",
+            ),
+        )
+        data = json.loads(rendered)
+        assert "tauri" in data["workspaces"]
+        assert "electron" not in data["workspaces"]
+
+    def test_pnpm_workspace_includes_desktop_and_saas(self, files_dir: Path) -> None:
+        """pnpm-workspace.yaml keeps node/saas and adds electron when enabled."""
+        rendered = _render(
+            files_dir / "pnpm-workspace.yaml.jinja",
+            mcp_module="enabled",
+            mcp_languages=["typescript"],
+            saas_infra_module="enabled",
+            desktop_module="enabled",
+            desktop_framework="electron-vite",
+        )
+        assert '  - "node/saas"' in rendered
+        assert '  - "electron"' in rendered
+        assert '  - "tauri"' not in rendered
+
+
+class TestDestLayoutDockerAndMise:
+    """Dest layout prefixes (python/, node/, rust/) and canonical mise.toml."""
+
+    def test_dockerfile_copies_track_prefixes(self, files_dir: Path) -> None:
+        """Production Dockerfile copies python/, node/{apps,docs,saas}, rust/."""
+        text = _read(files_dir / ".docker" / "Dockerfile.jinja")
+        assert "COPY python/pyproject.toml python/uv.lock ./" in text
+        assert "COPY python/src/" in text
+        assert "COPY node/apps/" in text
+        assert "COPY node/docs/" in text
+        assert "COPY node/saas/" in text
+        assert "COPY rust/src/" in text
+        copy_lines = [
+            line.strip()
+            for line in text.splitlines()
+            if line.strip().startswith("COPY ") and "COPY --from=" not in line
+        ]
+        assert not any(line.startswith("COPY src/") for line in copy_lines)
+        assert not any(line.startswith("COPY apps/") for line in copy_lines)
+
+    def test_canonical_mise_toml_not_dotted(self, files_dir: Path) -> None:
+        """Dest mise config is mise.toml.jinja with Node 20; .mise.toml.jinja is gone."""
+        assert not (files_dir / ".mise.toml.jinja").exists()
+        mise = files_dir / "mise.toml.jinja"
+        assert mise.is_file()
+        text = _read(mise)
+        assert 'node = "20"' in text
+
+
+class TestNodeMcpHttpSsrf:
+    """Example HTTP tools must not fetch localhost or link-local addresses."""
+
+    def test_http_fetch_blocks_private_and_localhost(
+        self, node_files_dir: Path
+    ) -> None:
+        """http_get/post require https public hosts and block SSRF targets."""
+        rendered = _render(
+            node_files_dir / "mcp" / "src" / "tools" / "http-fetch.ts.jinja",
+            mcp_module="enabled",
+            mcp_languages=["typescript"],
+            mcp_example_tools=True,
+        )
+        assert "127.0.0.1" in rendered
+        assert "169.254.169.254" in rendered
+        assert "localhost" in rendered
+        assert "only https:// URLs are allowed" in rendered
+        assert 'redirect: "manual"' in rendered
+        assert "assertSafePublicHttpsUrl" in rendered

@@ -969,3 +969,90 @@ class TestGoSharedInternalPackages:
         main = (go_templates_dir / "api" / "main.go.jinja").read_text(encoding="utf-8")
         assert 'internal/config"' in main or "/internal/config" in main
         assert "cli/internal" not in main
+
+
+class TestGoMcpExampleToolsGate:
+    """MCP example tool/resource imports must follow mcp_example_tools."""
+
+    def test_server_imports_tools_when_example_tools_enabled(self) -> None:
+        """Example tools on: import and register internal/tools and resources."""
+        from jinja2 import Environment, FileSystemLoader
+
+        template_dir = (
+            Path(__file__).parents[2]
+            / "template"
+            / "files"
+            / "go"
+            / "mcp"
+            / "internal"
+            / "mcp"
+        )
+        env = Environment(loader=FileSystemLoader(str(template_dir)))
+        rendered = env.get_template("server.go.jinja").render(
+            mcp_module="enabled",
+            mcp_languages=["go"],
+            mcp_example_tools=True,
+            project_slug="test-mcp",
+            project_name="Test MCP",
+        )
+
+        assert "test-mcp/mcp/internal/tools" in rendered
+        assert "test-mcp/mcp/internal/resources" in rendered
+        assert "tools.RegisterEchoTools" in rendered
+        assert "resources.RegisterSystemResources" in rendered
+        assert "HasTools:     true" in rendered
+        assert "HasResources: true" in rendered
+
+    def test_server_omits_tool_imports_when_example_tools_disabled(self) -> None:
+        """Example tools off: no tools/resources imports or registration."""
+        from jinja2 import Environment, FileSystemLoader
+
+        template_dir = (
+            Path(__file__).parents[2]
+            / "template"
+            / "files"
+            / "go"
+            / "mcp"
+            / "internal"
+            / "mcp"
+        )
+        env = Environment(loader=FileSystemLoader(str(template_dir)))
+        rendered = env.get_template("server.go.jinja").render(
+            mcp_module="enabled",
+            mcp_languages=["go"],
+            mcp_example_tools=False,
+            project_slug="test-mcp",
+            project_name="Test MCP",
+        )
+
+        assert "internal/tools" not in rendered
+        assert "internal/resources" not in rendered
+        assert "RegisterEchoTools" not in rendered
+        assert "RegisterSystemResources" not in rendered
+        assert "HasTools:     false" in rendered
+        assert "HasResources: false" in rendered
+
+
+class TestGoDockerfile:
+    """Go Dockerfile copies go.mod from the go/ build context, not go.sum."""
+
+    def test_dockerfile_copies_go_mod_without_go_sum(self) -> None:
+        """No go.sum.jinja exists; COPY go.mod then go mod download."""
+        from jinja2 import Environment, FileSystemLoader
+
+        template_dir = Path(__file__).parents[2] / "template" / "files" / "go"
+        env = Environment(loader=FileSystemLoader(str(template_dir)))
+        rendered = env.get_template("Dockerfile.jinja").render(
+            cli_module="enabled",
+            cli_languages=["go"],
+            api_module="disabled",
+            api_languages=[],
+            project_slug="test-go",
+            go_version="1.24",
+        )
+
+        assert "COPY go.mod ./" in rendered
+        assert "COPY go.mod go.sum" not in rendered
+        assert "COPY go/go.mod" not in rendered
+        assert "go mod download" in rendered
+        assert "go.sum" not in rendered

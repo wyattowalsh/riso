@@ -12,9 +12,11 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+{%- if mcp_example_tools %}
 
 	"{{ project_slug }}/mcp/internal/resources"
 	"{{ project_slug }}/mcp/internal/tools"
+{%- endif %}
 )
 
 // Config holds server configuration.
@@ -50,8 +52,8 @@ func NewServer(cfg Config) (*Server, error) {
 Available capabilities:
 - Tools: Core functionality exposed as MCP tools
 - Resources: Data and configuration access`,
-		HasTools:     true,
-		HasResources: true,
+		HasTools:     {% if mcp_example_tools %}true{% else %}false{% endif %},
+		HasResources: {% if mcp_example_tools %}true{% else %}false{% endif %},
 	}
 
 	srv := mcp.NewServer(impl, opts)
@@ -74,8 +76,6 @@ func (s *Server) registerTools() {
 	tools.RegisterEchoTools(s.mcp, s.logger)
 	tools.RegisterTimestampTools(s.mcp, s.logger)
 	tools.RegisterHTTPTools(s.mcp, s.logger)
-{%- else %}
-	_ = s.mcp
 {%- endif %}
 }
 
@@ -83,8 +83,6 @@ func (s *Server) registerTools() {
 func (s *Server) registerResources() {
 {%- if mcp_example_tools %}
 	resources.RegisterSystemResources(s.mcp, s.logger)
-{%- else %}
-	_ = s.mcp
 {%- endif %}
 }
 

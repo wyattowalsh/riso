@@ -14,6 +14,7 @@ import { BrowserWindow, shell } from 'electron';
 import { join } from 'path';
 import { is } from '@electron-toolkit/utils';
 import log from 'electron-log/main';
+import { isBlockedNavigationUrl } from './url-guard';
 {% if 'tray_icon' in desktop_features %}
 import Store from 'electron-store';
 
@@ -140,10 +141,12 @@ export async function createMainWindow(options: WindowOptions = {}): Promise<Bro
     log.info(`Window '${id}' closed`);
   });
 
-  // Open external links in the default browser
+  // Open external links in the default browser (deny localhost / link-local)
   window.webContents.setWindowOpenHandler((details) => {
-    if (details.url.startsWith('https://') || details.url.startsWith('http://')) {
-      shell.openExternal(details.url);
+    if (!isBlockedNavigationUrl(details.url)) {
+      void shell.openExternal(details.url);
+    } else {
+      log.warn(`Blocked new window request: ${details.url}`);
     }
     return { action: 'deny' };
   });

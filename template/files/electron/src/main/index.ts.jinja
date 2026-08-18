@@ -12,11 +12,12 @@
  * - Only specific APIs exposed via preload script
  */
 
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, shell } from 'electron';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import { createMainWindow, getMainWindow{% if 'tray_icon' in desktop_features %}, markQuitting{% endif %} } from './window';
 import { setupMenu } from './menu';
 import { registerIpcHandlers } from './ipc';
+import { isBlockedNavigationUrl } from './url-guard';
 {% if 'auto_updater' in desktop_features %}
 import { setupAutoUpdater } from './updater';
 {% endif %}
@@ -118,11 +119,10 @@ app.on('before-quit', () => {
  */
 app.on('web-contents-created', (_, contents) => {
   contents.setWindowOpenHandler(({ url }) => {
-    log.warn(`Blocked new window request: ${url}`);
-    // Open external links in the default browser instead
-    if (url.startsWith('https://') || url.startsWith('http://')) {
-      const { shell } = require('electron');
-      shell.openExternal(url);
+    if (!isBlockedNavigationUrl(url)) {
+      void shell.openExternal(url);
+    } else {
+      log.warn(`Blocked new window request: ${url}`);
     }
     return { action: 'deny' };
   });

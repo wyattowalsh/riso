@@ -11,11 +11,16 @@ from {{ package_name }}.websocket.config import get_config
 from {{ package_name }}.websocket.connection import WebSocketConnection
 from {{ package_name }}.websocket.exceptions import (
     ConnectionClosedError,
+    RateLimitError,
     RoomFullError,
     RoomNotFoundError,
 )
 from {{ package_name }}.websocket.middleware import ConnectionMiddleware
-from {{ package_name }}.websocket.utils import validate_websocket_origin
+from {{ package_name }}.websocket.utils import (
+    RateLimiter,
+    idle_timeout_checker,
+    validate_websocket_origin,
+)
 from {{ package_name }}.websocket.models import Room, WebSocketConnectionModel
 
 
@@ -83,6 +88,11 @@ class ConnectionManager:
 
         # Background tasks
         self._idle_timeout_task: Optional[asyncio.Task] = None
+
+        # Per-connection sliding-window limiter (wired when enable_rate_limiting)
+        self._rate_limiter: Optional[RateLimiter] = (
+            RateLimiter() if self.config.enable_rate_limiting else None
+        )
 
         self._initialized = True
 
@@ -155,12 +165,16 @@ class ConnectionManager:
                 )
                 raise ConnectionError("Per-IP connection limit exceeded")
 
+            # Persist client IP so disconnect can decrement the per-IP counter
+            connection_metadata = dict(metadata or {})
+            connection_metadata["ip_address"] = ip_address
+
             # Create connection
             connection = WebSocketConnection(
                 websocket=websocket,
                 connection_id=connection_id,
                 user_id=user_id,
-                metadata=metadata,
+                metadata=connection_metadata,
             )
 
             # Accept WebSocket
@@ -180,6 +194,14 @@ class ConnectionManager:
             # Initialize room tracking
             self._connection_rooms[conn_id] = set()
 
+            if (
+                self.config.enable_idle_timeout
+                and (self._idle_timeout_task is None or self._idle_timeout_task.done())
+            ):
+                self._idle_timeout_task = asyncio.create_task(
+                    idle_timeout_checker(self)
+                )
+
             logger.info(
                 f"Connection registered: {conn_id}",
                 extra={
@@ -190,6 +212,23 @@ class ConnectionManager:
             )
 
             return conn_id
+
+    def check_rate_limit(self, connection_id: str) -> None:
+        """Raise RateLimitError when the connection exceeds the message window."""
+        if not self.config.enable_rate_limiting or self._rate_limiter is None:
+            return
+        if self._rate_limiter.check(connection_id):
+            return
+        raise RateLimitError(
+            message=(
+                f"Rate limit exceeded: {self.config.rate_limit_messages} "
+                f"messages per {self.config.rate_limit_window} seconds"
+            ),
+            current_rate=self._rate_limiter.get_current_rate(connection_id),
+            limit=self.config.rate_limit_messages,
+            window_seconds=self.config.rate_limit_window,
+            retry_after=self._rate_limiter.get_retry_after(connection_id),
+        )
 
     async def disconnect(
         self,
@@ -229,12 +268,14 @@ class ConnectionManager:
                 if not user_conns:
                     del self._user_connections[connection.user_id]
 
-            # Remove from IP tracking
+            # Remove from IP tracking (ip_address stored on connect metadata)
             ip_address = connection.metadata.get("ip_address", "unknown")
             ip_conns = self._ip_connections.get(ip_address, set())
             ip_conns.discard(connection_id)
-            if not ip_conns:
+            if not ip_conns and ip_address in self._ip_connections:
                 del self._ip_connections[ip_address]
+            if self._rate_limiter is not None:
+                self._rate_limiter.reset(connection_id)
 
             # Remove room tracking
             if connection_id in self._connection_rooms:

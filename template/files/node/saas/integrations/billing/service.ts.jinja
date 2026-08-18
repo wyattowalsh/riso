@@ -5,14 +5,13 @@
 
 {% if saas_billing_provider == "stripe" %}
 import * as stripe from './stripe/client';
+import { processWebhook as processStripeWebhook } from './stripe/webhooks';
 {% elif saas_billing_provider == "paddle" %}
 import * as paddle from './paddle/client';
+import { processWebhook as processPaddleWebhook } from './paddle/webhooks';
 {% elif saas_billing_provider == "lemonsqueezy" %}
 import * as lemonsqueezy from './lemonsqueezy/client';
-import {
-  handleLemonSqueezyWebhook,
-  verifyLemonSqueezyWebhook,
-} from './lemonsqueezy/webhooks';
+import { processWebhook as processLemonSqueezyWebhook } from './lemonsqueezy/webhooks';
 {% endif %}
 
 export async function createCustomer(params: {
@@ -117,20 +116,17 @@ export async function createPortalSession(params: {
   {% endif %}
 }
 
-export async function processWebhook(payload: string, signature: string) {
+export async function processWebhook(
+  payload: string,
+  signature: string,
+  timestamp?: string
+) {
   {% if saas_billing_provider == "stripe" %}
-  return await stripe.processWebhook(payload, signature);
+  return await processStripeWebhook(payload, signature);
   {% elif saas_billing_provider == "paddle" %}
-  const isValid = await paddle.verifyWebhookSignature(payload, signature);
-  if (!isValid) throw new Error('Invalid webhook signature');
-  return JSON.parse(payload);
+  return await processPaddleWebhook(payload, signature, timestamp ?? '');
   {% elif saas_billing_provider == "lemonsqueezy" %}
-  if (!verifyLemonSqueezyWebhook(payload, signature)) {
-    throw new Error('Invalid webhook signature');
-  }
-  const event = JSON.parse(payload);
-  await handleLemonSqueezyWebhook(event);
-  return event;
+  return await processLemonSqueezyWebhook(payload, signature);
   {% endif %}
 }
 

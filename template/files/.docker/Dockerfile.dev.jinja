@@ -18,10 +18,19 @@
 #   docker-compose -f docker-compose.dev.yml up
 #
 # Volume mounts (defined in docker-compose.dev.yml):
-#   - ./src:/app/src:ro (Python source, read-only)
-#   - ./apps:/app/apps:ro (Node.js source, read-only)
+#   - ./python/src:/app/src:ro (Python source, read-only)
+#   - ./node:/app/node:ro (Node.js source, read-only)
 
-{%- if (cli_module == "enabled" and "python" in cli_languages) or (api_module == "enabled" and "python" in api_languages) or (mcp_module == "enabled" and "python" in mcp_languages) %}
+{%- set uv_prod_groups -%}
+{%- if cli_module == "enabled" and "python" in (cli_languages|default([])) %} --group cli{% endif -%}
+{%- if api_module == "enabled" and "python" in (api_languages|default([])) %} --group api_python --group api_python_test{% endif -%}
+{%- if (websocket_module|default('disabled')) == "enabled" or "websocket" in (api_features|default([])) %} --group websocket{% endif -%}
+{%- if (graphql_api_module|default('disabled')) == "enabled" or "graphql" in (api_features|default([])) %} --group graphql_api{% endif -%}
+{%- if mcp_module == "enabled" and "python" in (mcp_languages|default([])) %} --group mcp{% endif -%}
+{%- if (codegen_module|default('disabled')) == "enabled" %} --group codegen{% endif -%}
+{%- endset %}
+
+{%- if (cli_module == "enabled" and "python" in (cli_languages|default([]))) or (api_module == "enabled" and "python" in (api_languages|default([]))) or (mcp_module == "enabled" and "python" in (mcp_languages|default([]))) %}
 
 # =============================================================================
 # Python Development Runtime
@@ -56,21 +65,22 @@ RUN groupadd --gid 1000 appuser && \
 WORKDIR /app
 
 # Copy dependency manifests
-COPY --chown=1000:1000 pyproject.toml uv.lock ./
+COPY --chown=1000:1000 python/pyproject.toml python/uv.lock ./
 {%- if project_layout == "single-package" %}
 COPY --chown=1000:1000 README.md ./
 {%- endif %}
 
-# Install ALL dependencies (including dev dependencies)
+# Install ALL dependencies (including dev dependencies) plus enabled module groups
 RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
-    uv sync --frozen
+    uv sync --frozen --group quality --group test{{ uv_prod_groups }}
 
 # NOTE: Source code mounted as volume at runtime for hot reload
 # Mount points (defined in docker-compose.dev.yml):
-#   - ./src:/app/src:ro (read-only source)
-#   - ./tests:/app/tests:ro (read-only tests)
-#   - ./pyproject.toml:/app/pyproject.toml:ro
-#   - ./uv.lock:/app/uv.lock:ro
+#   - ./python/src:/app/src:ro (read-only source)
+#   - ./python/tests:/app/tests:ro (read-only tests)
+#   - ./python/mcp:/app/mcp:ro (read-only MCP package, when enabled)
+#   - ./python/pyproject.toml:/app/pyproject.toml:ro
+#   - ./python/uv.lock:/app/uv.lock:ro
 
 # Environment variables for development
 ENV PATH="/app/.venv/bin:$PATH" \
@@ -81,7 +91,7 @@ ENV PATH="/app/.venv/bin:$PATH" \
 
 USER 1000:1000
 
-{%- if api_module == "enabled" and "python" in api_languages %}
+{%- if api_module == "enabled" and "python" in (api_languages|default([])) %}
 # Expose FastAPI port + debugpy remote debugging port
 EXPOSE 8000 5678
 
@@ -97,19 +107,19 @@ CMD ["python", "-m", "uvicorn", "{{ package_name }}.api.main:app", \
      "--reload", \
      "--log-level", "debug"]
 
-{%- elif cli_module == "enabled" and "python" in cli_languages %}
+{%- elif cli_module == "enabled" and "python" in (cli_languages|default([])) %}
 # Development command: Interactive IPython shell
 CMD ["ipython"]
 
-{%- elif mcp_module == "enabled" and "python" in mcp_languages %}
-# Development command: Run MCP server with debug logging
-CMD ["python", "-m", "{{ package_name }}.mcp", "--log-level", "debug"]
+{%- elif mcp_module == "enabled" and "python" in (mcp_languages|default([])) %}
+# Development command: Run MCP server with debug logging (top-level mcp package)
+CMD ["python", "-m", "mcp", "--log-level", "debug"]
 
 {%- endif %}
 
 {%- endif %}
 
-{%- if (api_module == "enabled" and "node" in api_languages) or (mcp_module == "enabled" and "typescript" in mcp_languages) or (docs_module == "enabled" and docs_framework in ["fumadocs", "docusaurus"]) or saas_infra_module == "enabled" %}
+{%- if (api_module == "enabled" and "node" in (api_languages|default([]))) or (mcp_module == "enabled" and "typescript" in (mcp_languages|default([]))) or (docs_module == "enabled" and docs_framework in ["fumadocs", "docusaurus"]) or saas_infra_module == "enabled" %}
 
 # =============================================================================
 # Node.js Development Runtime
@@ -144,22 +154,20 @@ WORKDIR /app
 
 # Copy dependency manifests
 COPY --chown=1000:1000 package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-{%- if project_layout == "monorepo" %}
-{%- if api_module == "enabled" and "node" in api_languages %}
-COPY --chown=1000:1000 apps/api-node/package.json ./apps/api-node/
+{%- if api_module == "enabled" and "node" in (api_languages|default([])) %}
+COPY --chown=1000:1000 node/apps/api-node/package.json ./node/apps/api-node/
 {%- endif %}
 {%- if docs_module == "enabled" and docs_framework == "fumadocs" %}
-COPY --chown=1000:1000 apps/docs-fumadocs/package.json ./apps/docs-fumadocs/
+COPY --chown=1000:1000 node/docs/fumadocs/package.json ./node/docs/fumadocs/
 {%- endif %}
 {%- if docs_module == "enabled" and docs_framework == "docusaurus" %}
-COPY --chown=1000:1000 apps/docs-docusaurus/package.json ./apps/docs-docusaurus/
+COPY --chown=1000:1000 node/docs/docusaurus/package.json ./node/docs/docusaurus/
 {%- endif %}
 {%- if saas_infra_module == "enabled" %}
-COPY --chown=1000:1000 apps/saas/package.json ./apps/saas/
+COPY --chown=1000:1000 node/saas/package.json ./node/saas/
 {%- endif %}
-{%- if shared_logic == "enabled" %}
-COPY --chown=1000:1000 apps/shared/package.json ./apps/shared/
-{%- endif %}
+{%- if mcp_module == "enabled" and "typescript" in (mcp_languages|default([])) %}
+COPY --chown=1000:1000 node/mcp/package.json ./node/mcp/
 {%- endif %}
 
 # Install ALL dependencies (including dev dependencies)
@@ -168,7 +176,7 @@ RUN --mount=type=cache,target=/root/.pnpm-store,sharing=locked \
 
 # NOTE: Source code mounted as volume at runtime for hot reload
 # Mount points (defined in docker-compose.dev.yml):
-#   - ./apps:/app/apps:ro (read-only source)
+#   - ./node:/app/node:ro (read-only source)
 #   - ./tsconfig.json:/app/tsconfig.json:ro
 #   - ./package.json:/app/package.json:ro
 
@@ -178,7 +186,7 @@ ENV NODE_ENV=development \
 
 USER 1000:1000
 
-{%- if api_module == "enabled" and "node" in api_languages %}
+{%- if api_module == "enabled" and "node" in (api_languages|default([])) %}
 # Expose Fastify port + Node.js inspector debugging port
 EXPOSE 3000 9229
 
@@ -227,7 +235,7 @@ CMD ["pnpm", "--filter", "saas", "dev"]
 
 {%- endif %}
 
-{%- if (cli_module == "enabled" and "rust" in cli_languages) or (api_module == "enabled" and "rust" in api_languages) or (mcp_module == "enabled" and "rust" in mcp_languages) %}
+{%- if (cli_module == "enabled" and "rust" in (cli_languages|default([]))) or (api_module == "enabled" and "rust" in (api_languages|default([]))) or (mcp_module == "enabled" and "rust" in (mcp_languages|default([]))) %}
 
 # =============================================================================
 # Rust Development Runtime
@@ -259,13 +267,13 @@ WORKDIR /app
 
 # NOTE: Source code mounted as volume at runtime for hot reload
 # Mount points (defined in docker-compose.dev.yml):
-#   - ./src:/app/src:ro (read-only source)
-#   - ./Cargo.toml:/app/Cargo.toml:ro
-#   - ./Cargo.lock:/app/Cargo.lock:ro
+#   - ./rust/src:/app/src:ro (read-only source)
+#   - ./rust/Cargo.toml:/app/Cargo.toml:ro
+#   - ./rust/Cargo.lock:/app/Cargo.lock:ro
 
 USER 1000:1000
 
-{%- if api_module == "enabled" and "rust" in api_languages %}
+{%- if api_module == "enabled" and "rust" in (api_languages|default([])) %}
 # Expose Actix-web port
 EXPOSE 8080
 
@@ -276,7 +284,7 @@ HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=2 \
 # Development command with auto-reload using cargo-watch
 CMD ["cargo", "watch", "-x", "run"]
 
-{%- elif cli_module == "enabled" and "rust" in cli_languages %}
+{%- elif cli_module == "enabled" and "rust" in (cli_languages|default([])) %}
 # Development command: Interactive Rust shell
 CMD ["bash"]
 

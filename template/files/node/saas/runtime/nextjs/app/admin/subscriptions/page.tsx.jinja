@@ -10,9 +10,6 @@
  */
 
 import { Suspense } from 'react';
-{% if saas_runtime == 'nextjs-16' %}
-import { redirect } from 'next/navigation';
-{% endif %}
 {% if saas_orm == "prisma" %}
 import { prisma } from '@/lib/database/client';
 {% elif saas_orm == "drizzle" %}
@@ -88,13 +85,8 @@ interface MetricsData {
 // ============================================================================
 
 async function SubscriptionsContent() {
-  // Authentication and authorization
-  const userId = await requireUserId();
-  const isAdmin = await requireAdminRole();
-
-  if (!isAdmin) {
-    redirect('/unauthorized');
-  }
+  await requireUserId();
+  await requireAdminRole();
 
   // Fetch subscriptions
   {% if saas_orm == "prisma" %}

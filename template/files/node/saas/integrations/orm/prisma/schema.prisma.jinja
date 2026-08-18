@@ -38,6 +38,9 @@ model User {
   emailVerified DateTime? @map("email_verified")
   name          String?
   image         String?
+  {% if saas_billing_provider == "lemonsqueezy" %}
+  lemonSqueezyCustomerId String? @unique @map("lemon_squeezy_customer_id")
+  {% endif %}
   
   // Authentication
   {% if saas_auth_provider == "authjs" %}
@@ -259,7 +262,9 @@ model Subscription {
   
   // Ownership (either user or organization)
   userId         String?       @map("user_id")
+  {% if saas_tenancy_model == "b2b-teams" %}
   organizationId String?       @unique @map("organization_id")
+  {% endif %}
   
   // Billing provider IDs
   {% if saas_billing_provider == "stripe" %}
@@ -270,6 +275,10 @@ model Subscription {
   paddleCustomerId      String? @unique @map("paddle_customer_id")
   paddleSubscriptionId  String? @unique @map("paddle_subscription_id")
   paddlePriceId         String? @map("paddle_price_id")
+  {% elif saas_billing_provider == "lemonsqueezy" %}
+  lemonSqueezyCustomerId     String? @unique @map("lemon_squeezy_customer_id")
+  lemonSqueezySubscriptionId String? @unique @map("lemon_squeezy_subscription_id")
+  lemonSqueezyVariantId      String? @map("lemon_squeezy_variant_id")
   {% endif %}
   
   // Subscription details
@@ -291,7 +300,9 @@ model Subscription {
   
   // Relationships
   user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  {% if saas_tenancy_model == "b2b-teams" %}
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  {% endif %}
   usageRecords UsageRecord[]
   invoices     Invoice[]
   
@@ -306,7 +317,9 @@ model Subscription {
   @@index([plan])
   @@index([currentPeriodEnd])
   @@index([userId])
+  {% if saas_tenancy_model == "b2b-teams" %}
   @@index([organizationId])
+  {% endif %}
   @@map("subscriptions")
 }
 
@@ -351,6 +364,8 @@ model Invoice {
   stripeInvoiceId String? @unique @map("stripe_invoice_id")
   {% elif saas_billing_provider == "paddle" %}
   paddleInvoiceId String? @unique @map("paddle_invoice_id")
+  {% elif saas_billing_provider == "lemonsqueezy" %}
+  lemonSqueezyInvoiceId String? @unique @map("lemon_squeezy_invoice_id")
   {% endif %}
   
   // Invoice details
@@ -393,7 +408,9 @@ model ApiKey {
   
   // Ownership
   userId         String?  @map("user_id")
+  {% if saas_tenancy_model == "b2b-teams" %}
   organizationId String?  @map("organization_id")
+  {% endif %}
   
   // Key details
   name           String
@@ -414,7 +431,9 @@ model ApiKey {
   
   // Relationships
   user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  {% if saas_tenancy_model == "b2b-teams" %}
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  {% endif %}
   
   // Metadata
   metadata     Json?    @default("{}")
@@ -425,7 +444,9 @@ model ApiKey {
   
   @@index([keyPrefix])
   @@index([userId])
+  {% if saas_tenancy_model == "b2b-teams" %}
   @@index([organizationId])
+  {% endif %}
   @@index([revokedAt])
   @@map("api_keys")
 }
@@ -440,7 +461,9 @@ model WebhookEndpoint {
   
   // Ownership
   userId         String?  @map("user_id")
+  {% if saas_tenancy_model == "b2b-teams" %}
   organizationId String?  @map("organization_id")
+  {% endif %}
   
   // Endpoint configuration
   url            String   @db.VarChar(2048)
@@ -461,7 +484,9 @@ model WebhookEndpoint {
   
   // Relationships
   user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  {% if saas_tenancy_model == "b2b-teams" %}
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  {% endif %}
   deliveries   WebhookDelivery[]
   
   // Metadata
@@ -473,7 +498,9 @@ model WebhookEndpoint {
   updatedAt    DateTime @updatedAt @map("updated_at")
   
   @@index([userId])
+  {% if saas_tenancy_model == "b2b-teams" %}
   @@index([organizationId])
+  {% endif %}
   @@index([isActive])
   @@map("webhook_endpoints")
 }
@@ -525,7 +552,9 @@ model AuditLog {
   
   // Actor (who performed the action)
   userId         String?  @map("user_id")
+  {% if saas_tenancy_model == "b2b-teams" %}
   organizationId String?  @map("organization_id")
+  {% endif %}
   
   // Action details
   action         String   // user.login, subscription.created, api_key.revoked, etc.
@@ -544,13 +573,17 @@ model AuditLog {
   
   // Relationships
   user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  {% if saas_tenancy_model == "b2b-teams" %}
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  {% endif %}
   
   // Timestamp (immutable)
   timestamp    DateTime @default(now())
   
   @@index([userId])
+  {% if saas_tenancy_model == "b2b-teams" %}
   @@index([organizationId])
+  {% endif %}
   @@index([action])
   @@index([correlationId])
   @@index([timestamp])
@@ -609,22 +642,30 @@ model Permission {
 
 model Role {
   id             String   @id @default(cuid())
+  {% if saas_tenancy_model == "b2b-teams" %}
   organizationId String?  @map("organization_id") // null = system role
+  {% endif %}
   name           String
   description    String?  @db.Text
   isSystem       Boolean  @default(false) @map("is_system") // System roles can't be deleted
   
   // Relationships
   rolePermissions RolePermission[]
+  {% if saas_tenancy_model == "b2b-teams" %}
   memberships     OrganizationMembership[]
   organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  {% endif %}
   
   // Timestamps
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
   
+  {% if saas_tenancy_model == "b2b-teams" %}
   @@unique([organizationId, name])
   @@index([organizationId])
+  {% else %}
+  @@unique([name])
+  {% endif %}
   @@index([isSystem])
   @@map("roles")
 }

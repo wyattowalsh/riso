@@ -33,22 +33,43 @@ async fn main() -> std::io::Result<()> {
     info!("Starting {} API server on {}", "{{ project_name }}", bind_addr);
     info!("Environment: {}", config.environment);
     info!("CORS enabled: {}", config.cors_enabled);
+    info!("CORS origins: {:?}", config.cors_origins);
 
     HttpServer::new(move || {
+        let cors_enabled = config.cors_enabled;
+        let cors_origins = config.cors_origins.clone();
+        let is_production = config.is_production();
+
         let mut app = App::new()
             .app_data(web::Data::new(config.clone()))
             .wrap(middleware::Logger::default())
             .wrap(middleware::Compress::default());
 
-        // Add CORS if enabled
-        if config.cors_enabled {
-            app = app.wrap(
-                actix_cors::Cors::default()
-                    .allow_any_origin()
-                    .allow_any_method()
-                    .allow_any_header()
-                    .max_age(3600),
-            );
+        // CORS: fail-closed allowlist. Production uses CORS_ORIGINS only.
+        if cors_enabled {
+            let mut cors = actix_cors::Cors::default()
+                .allowed_methods(vec![
+                    "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS",
+                ])
+                .allow_any_header()
+                .max_age(3600);
+
+            let origins: Vec<String> = if !cors_origins.is_empty() {
+                cors_origins
+            } else if is_production {
+                Vec::new()
+            } else {
+                vec![
+                    "http://localhost:3000".to_string(),
+                    "http://127.0.0.1:3000".to_string(),
+                ]
+            };
+
+            for origin in &origins {
+                cors = cors.allowed_origin(origin);
+            }
+
+            app = app.wrap(cors);
         }
 
         app.configure(routes::configure)

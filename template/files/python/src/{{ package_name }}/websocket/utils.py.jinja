@@ -12,7 +12,11 @@ from loguru import logger
 from pydantic import ValidationError
 
 from {{ package_name }}.websocket.config import get_config
-from {{ package_name }}.websocket.exceptions import InvalidMessageFormatError, RateLimitError
+from {{ package_name }}.websocket.exceptions import (
+    InvalidMessageFormatError,
+    RateLimitError,
+    WebSocketError,
+)
 from {{ package_name }}.websocket.models import Message
 
 
@@ -37,16 +41,46 @@ def generate_message_id() -> str:
 
 
 def validate_websocket_origin(websocket: WebSocket, allowed_origins: List[str]) -> None:
-    """Reject connections whose Origin header is not in the allowlist."""
-    if not allowed_origins:
-        return
+    """Reject connections whose Origin header is not in the allowlist.
+
+    Production is fail-closed: an empty allowlist, a missing Origin header, or a
+    wildcard entry rejects the handshake. Development may omit Origin when the
+    allowlist is empty.
+    """
+    config = get_config()
+    production = str(config.environment).lower() in {"prod", "production"}
     origin = websocket.headers.get("origin") or websocket.headers.get("Origin")
+    normalized_allowed = {
+        item.rstrip("/")
+        for item in (allowed_origins or [])
+        if item and item != "*"
+    }
+
+    if production:
+        if not normalized_allowed:
+            raise WebSocketError(
+                message="WebSocket origin allowlist is empty in production",
+                code="ORIGIN_FORBIDDEN",
+                details={"origin": origin},
+            )
+        if origin is None:
+            raise WebSocketError(
+                message="WebSocket Origin header required in production",
+                code="ORIGIN_FORBIDDEN",
+            )
+        if origin.rstrip("/") not in normalized_allowed:
+            raise WebSocketError(
+                message="WebSocket origin not allowed",
+                code="ORIGIN_FORBIDDEN",
+                details={"origin": origin},
+            )
+        return
+
+    if not allowed_origins or "*" in allowed_origins:
+        return
     if origin is None:
         return
-    normalized_allowed = {o.rstrip("/") for o in allowed_origins}
     if origin.rstrip("/") not in normalized_allowed:
-        from {{ package_name }}.websocket.exceptions import WebSocketError
-
         raise WebSocketError(
             message="WebSocket origin not allowed",
             code="ORIGIN_FORBIDDEN",

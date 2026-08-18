@@ -1,4 +1,4 @@
-{% if saas_infra_module == "enabled" and saas_multi_tenancy == 'enterprise' %}
+{% if saas_infra_module == "enabled" and saas_multi_tenancy_level == 'enterprise' %}
 /**
  * Multi-Tenancy Data Isolation
  *
@@ -431,22 +431,14 @@ export function createDrizzleHelper<T extends Record<string, any>>(
 }
 
 /**
- * SQL query builder with tenant filtering
+ * Parameterized tenant filter (never interpolate IDs into SQL strings).
+ * Pass `field`/`value` to a parameterized query or ORM `where` clause.
  */
 export function buildTenantQuery(
-  baseQuery: string,
   tenantIdField: string = 'tenant_id'
-): string {
+): { field: string; value: string } {
   const tenant = requireTenant();
-
-  // Check if query already has WHERE clause
-  const hasWhere = /\bWHERE\b/i.test(baseQuery);
-
-  if (hasWhere) {
-    return `${baseQuery} AND ${tenantIdField} = '${tenant.id}'`;
-  } else {
-    return `${baseQuery} WHERE ${tenantIdField} = '${tenant.id}'`;
-  }
+  return { field: tenantIdField, value: tenant.id };
 }
 
 /**

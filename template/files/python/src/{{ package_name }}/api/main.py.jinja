@@ -48,12 +48,15 @@ def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     config = get_config()
 
+    docs_enabled = config.environment != "production"
+
     application = FastAPI(
         title=config.app_name,
         description="FastAPI application scaffolded with Riso template",
         version=config.version,
-        docs_url="/docs",
-        redoc_url="/redoc",
+        docs_url="/docs" if docs_enabled else None,
+        redoc_url="/redoc" if docs_enabled else None,
+        openapi_url="/openapi.json" if docs_enabled else None,
         lifespan=_lifespan,
         redirect_slashes=False,
         openapi_tags=[
@@ -109,11 +112,13 @@ def create_app() -> FastAPI:
 
     @application.get("/", tags=["Root"], summary="API Root")
     async def root() -> dict[str, str]:
-        return {
+        payload = {
             "message": "Welcome to {{ project_name }}",
-            "docs": "/docs",
-            "redoc": "/redoc",
         }
+        if docs_enabled:
+            payload["docs"] = "/docs"
+            payload["redoc"] = "/redoc"
+        return payload
 
     return application
 

@@ -4,7 +4,12 @@
 from typing import Optional
 
 import strawberry
+from strawberry.extensions import AddValidationRules
 
+from {{ package_name }}.graphql_api.complexity import (
+    QueryComplexityValidator,
+    QueryDepthValidator,
+)
 from {{ package_name }}.graphql_api.mutations.user_mutations import UserMutations
 from {{ package_name }}.graphql_api.queries.user_queries import UserQueries
 from {{ package_name }}.graphql_api.subscriptions.user_subscriptions import UserSubscriptions
@@ -94,5 +99,8 @@ schema = strawberry.Schema(
     query=Query,
     mutation=Mutation,
     subscription=Subscription,
+    extensions=[
+        AddValidationRules([QueryComplexityValidator, QueryDepthValidator]),
+    ],
 )
 {% endif -%}

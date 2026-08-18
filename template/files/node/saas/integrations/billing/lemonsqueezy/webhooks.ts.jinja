@@ -371,6 +371,15 @@ export async function handleLemonSqueezyWebhook(payload: LemonSqueezyWebhookPayl
   }
 }
 
+export async function processWebhook(payload: string, signature: string) {
+  if (!verifyLemonSqueezyWebhook(payload, signature)) {
+    throw new Error('Invalid webhook signature');
+  }
+  const event = JSON.parse(payload) as LemonSqueezyWebhookPayload;
+  await handleLemonSqueezyWebhook(event);
+  return event;
+}
+
 // ============================================================================
 // Helpers
 // ============================================================================
