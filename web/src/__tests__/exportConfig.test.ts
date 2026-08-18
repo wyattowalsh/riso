@@ -106,6 +106,48 @@ describe("generateCliCommand", () => {
     ).toThrow(/saas_auth/);
   });
 
+  it("exports saas infra extras when saas_infra_module is enabled", () => {
+    const args = configToCopierArgs({
+      project_name: "saas-extras",
+      saas_infra_module: "enabled",
+      saas_multi_tenancy_level: "enterprise",
+      saas_tenancy_model: "b2c-users",
+      saas_search_provider: "meilisearch",
+      saas_compliance_level: "soc2",
+      saas_ai_features: "rag",
+      vector_db_provider: "qdrant",
+      embedding_provider: "cohere",
+    });
+    expect(args.saas_multi_tenancy_level).toBe("enterprise");
+    expect(args.saas_tenancy_model).toBe("b2c-users");
+    expect(args.saas_search_provider).toBe("meilisearch");
+    expect(args.saas_compliance_level).toBe("soc2");
+    expect(args.saas_ai_features).toBe("rag");
+    expect(args.vector_db_provider).toBe("qdrant");
+    expect(args.embedding_provider).toBe("cohere");
+  });
+
+  it("omits saas infra extras when saas_infra_module is disabled", () => {
+    const args = configToCopierArgs({
+      project_name: "no-saas-extras",
+      saas_infra_module: "disabled",
+      saas_multi_tenancy_level: "enterprise",
+      saas_tenancy_model: "b2c-users",
+      saas_search_provider: "meilisearch",
+      saas_compliance_level: "soc2",
+      saas_ai_features: "rag",
+      vector_db_provider: "qdrant",
+      embedding_provider: "cohere",
+    });
+    expect(args).not.toHaveProperty("saas_multi_tenancy_level");
+    expect(args).not.toHaveProperty("saas_tenancy_model");
+    expect(args).not.toHaveProperty("saas_search_provider");
+    expect(args).not.toHaveProperty("saas_compliance_level");
+    expect(args).not.toHaveProperty("saas_ai_features");
+    expect(args).not.toHaveProperty("vector_db_provider");
+    expect(args).not.toHaveProperty("embedding_provider");
+  });
+
   it("fail-closes unmapped lucia leftover saas_auth and never dest-exports lucia from dest choices", () => {
     expect(() =>
       generateYamlConfig({

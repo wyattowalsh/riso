@@ -35,6 +35,18 @@ export function clampWizardStep(
   return bounded
 }
 
+/**
+ * Hydration clamp: treat persisted Review as a jump from step 0 so an invalid
+ * project_name cannot restore the Review step (canVisitStep would allow it if
+ * currentStep were already Review).
+ */
+export function clampPersistedWizardStep(
+  step: number,
+  projectName: string,
+): number {
+  return clampWizardStep(step, 0, projectName)
+}
+
 /** After applying a preset/history payload, choose review or force basics. */
 export function stepAfterExternalConfigApply(
   config: { project_name?: string },

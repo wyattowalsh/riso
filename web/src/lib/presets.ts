@@ -158,6 +158,15 @@ export function generateShareableURL(config: Partial<RisoConfig>): string {
 /**
  * Parse shareable URL to config
  */
+/** True when the URL carries a share `?preset=` payload (even if invalid). */
+export function urlHasSharePreset(url: string): boolean {
+  try {
+    return new URL(url).searchParams.has('preset')
+  } catch {
+    return false
+  }
+}
+
 export function parseShareableURL(url: string): Partial<RisoConfig> | null {
   let urlObj: URL
   try {

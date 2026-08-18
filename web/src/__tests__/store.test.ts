@@ -58,6 +58,20 @@ describe("Riso Store", () => {
       useRisoStore.getState().resetConfig();
       expect(useRisoStore.getState().config.saas_admin_dashboard).toBe(true);
     });
+
+    it("defaults saas infra extras from copier.yml / matrix", () => {
+      useRisoStore.getState().resetConfig();
+      const { config } = useRisoStore.getState();
+      expect(config.saas_multi_tenancy_level).toBe("teams");
+      expect(config.saas_tenancy_model).toBe("b2b-teams");
+      expect(config.saas_search_provider).toBe("none");
+      expect(config.saas_compliance_level).toBe("basic");
+      expect(config.saas_ai_features).toBe("none");
+      expect(config.vector_db_provider).toBe("none");
+      expect(config.embedding_provider).toBe("openai");
+      expect(defaultRisoConfig.saas_multi_tenancy_level).toBe("teams");
+      expect(defaultRisoConfig.saas_tenancy_model).toBe("b2b-teams");
+    });
   });
 
   describe("updateConfig", () => {

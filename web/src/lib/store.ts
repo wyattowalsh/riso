@@ -150,6 +150,44 @@ export interface RisoConfig {
   saas_include_factories: boolean;
   saas_test_suite_level: "standard" | "comprehensive";
   saas_admin_dashboard: boolean;
+
+  // SaaS product scaffolding (Copier infra-gated unless noted)
+  saas_multi_tenancy_level: "none" | "teams" | "enterprise";
+  saas_tenancy_model: "b2b-teams" | "b2c-users";
+  saas_rbac_system: "basic-roles" | "custom-permissions";
+  saas_onboarding: "wizard" | "checklist" | "none";
+  saas_user_impersonation: boolean;
+  saas_notifications: "both" | "email-only" | "none";
+  saas_waitlist: boolean;
+  saas_search_provider: "none" | "meilisearch" | "algolia";
+  saas_i18n: boolean;
+  saas_api_access: "public-api" | "internal-only";
+  saas_ui_framework: "shadcn-ui" | "radix-primitives" | "headless-ui";
+  saas_form_library: "react-hook-form" | "conform" | "none";
+  saas_realtime: "socketio" | "pusher" | "ably" | "supabase-realtime" | "none";
+  saas_landing_page: boolean;
+  saas_blog: boolean;
+  saas_changelog_public: boolean;
+  saas_2fa: boolean;
+  saas_compliance_level: "basic" | "gdpr" | "hipaa" | "soc2";
+  saas_gdpr_tools: boolean;
+  saas_ai_features: "none" | "basic" | "rag" | "full";
+  saas_api_docs: boolean;
+  saas_rate_limiting: "upstash" | "built-in" | "none";
+  saas_file_upload: "uploadthing" | "react-dropzone" | "none";
+  vector_db_provider: "none" | "pinecone" | "qdrant" | "weaviate";
+  embedding_provider: "openai" | "cohere";
+
+  python_versions: string[];
+  go_version: "1.24" | "1.23";
+  go_framework: "gin" | "fiber" | "echo" | "chi";
+  mcp_transport: "stdio" | "sse" | "http";
+  mcp_example_tools: boolean;
+  desktop_module: "disabled" | "enabled";
+  desktop_framework: "electron-vite" | "electron-forge" | "tauri";
+  desktop_features: string;
+  desktop_platforms: string;
+  include_databases: "no" | "yes";
 }
 
 export interface ConfigHistory {
@@ -346,6 +384,13 @@ export const defaultRisoConfig: Partial<RisoConfig> = {
   saas_database: fromMatrix("saas_database", "neon"),
   saas_orm: fromMatrix("saas_orm", "prisma"),
   saas_cicd: fromMatrix("saas_cicd", "github-actions"),
+  saas_multi_tenancy_level: fromMatrix("saas_multi_tenancy_level", "teams"),
+  saas_tenancy_model: fromMatrix("saas_tenancy_model", "b2b-teams"),
+  saas_search_provider: fromMatrix("saas_search_provider", "none"),
+  saas_compliance_level: fromMatrix("saas_compliance_level", "basic"),
+  saas_ai_features: fromMatrix("saas_ai_features", "none"),
+  vector_db_provider: fromMatrix("vector_db_provider", "none"),
+  embedding_provider: fromMatrix("embedding_provider", "openai"),
 
   // SaaS Auth Layer
   saas_auth_module: fromMatrix("saas_auth_module", "disabled"),
