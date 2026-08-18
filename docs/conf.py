@@ -5,6 +5,7 @@ import os
 import sys
 import warnings
 from datetime import date
+from importlib.metadata import PackageNotFoundError, version as pkg_version
 from pathlib import Path
 
 # Third-party Sphinx extensions may emit deprecation warnings on Sphinx 9+.
@@ -14,38 +15,21 @@ warnings.filterwarnings(
     category=DeprecationWarning,
     module="sphinx_autodoc_typehints",
 )
-from typing import Iterable
-
 import yaml
 
 DOCS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = DOCS_DIR.parent
-PKG_ROOT = REPO_ROOT / "packages"
-APP_ROOT = REPO_ROOT / "apps"
+SRC_ROOT = REPO_ROOT / "src"
 PROJECT_SLUG = "riso"
 ORG_SLUG = "wyattowalsh"
 DEFAULT_BRANCH = os.getenv("DOCS_BRANCH", "main")
 
 
-def _iter_sys_paths(roots: Iterable[Path]) -> list[str]:
-    paths: list[str] = []
-    for root in roots:
-        if not root.exists():
-            continue
-        for child in sorted(root.iterdir()):
-            if not child.is_dir():
-                continue
-            candidate = child / "src" if (child / "src").exists() else child
-            if candidate.exists():
-                paths.append(str(candidate))
-    return paths
-
-
 def _inject_sys_path() -> None:
-    prefixes = _iter_sys_paths([PKG_ROOT, APP_ROOT])
-    for prefix in reversed(prefixes):
-        if prefix not in sys.path:
-            sys.path.insert(0, prefix)
+    """Put ``src/`` on sys.path so autodoc imports ``riso`` (not packages/apps)."""
+    src = str(SRC_ROOT)
+    if SRC_ROOT.exists() and src not in sys.path:
+        sys.path.insert(0, src)
 
 
 def load_tools_frontmatter() -> tuple[list[dict], list[dict]]:
@@ -90,7 +74,11 @@ _inject_sys_path()
 project = "Riso Dev Docs"
 author = "Riso maintainers"
 copyright = f"{date.today().year}, Riso"
-version = os.getenv("RISO_VERSION", "0.1.0")
+try:
+    _pkg_version = pkg_version("riso")
+except PackageNotFoundError:
+    _pkg_version = "1.2.11"
+version = os.getenv("RISO_VERSION", _pkg_version)
 release = version
 
 suppress_warnings = [

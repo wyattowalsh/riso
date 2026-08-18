@@ -7,6 +7,7 @@ Compares ``REMOVED_ANSWER_KEYS`` (replacement prose) and ``ANSWER_KEY_REMAPS``
 * ``src/riso/core/removed_answer_keys.py``
 * ``scripts/lib/removed_answer_keys.py`` (``_FALLBACK_*`` twin)
 * ``web/src/lib/removedAnswerKeys.ts``
+* ``template/prompts/v2.yml.jinja`` ``remap.keys`` (operator + dest)
 
 scripts.lib public names rebind to the packaged SSOT when ``riso`` is
 importable; this gate always reads the local fallback tables.
@@ -26,6 +27,8 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CORE_PATH = REPO_ROOT / "src" / "riso" / "core" / "removed_answer_keys.py"
 _SCRIPTS_DIR = str(REPO_ROOT / "scripts")
@@ -33,7 +36,17 @@ if _SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, _SCRIPTS_DIR)
 LIB_PATH = REPO_ROOT / "scripts" / "lib" / "removed_answer_keys.py"
 TS_PATH = REPO_ROOT / "web" / "src" / "lib" / "removedAnswerKeys.ts"
+V2_PATH = REPO_ROOT / "template" / "prompts" / "v2.yml.jinja"
 TASKGRAPH_PATH = REPO_ROOT / "goals" / "riso-v2-release-ready" / "plan.taskgraph.json"
+ANSWER_SCHEMA_PATH = (
+    REPO_ROOT
+    / "specs"
+    / "016-prod-release-readiness"
+    / "contracts"
+    / "answer-schema.json"
+)
+
+_JINJA_TAG = re.compile(r"\{[{%#].*?[%}#]\}", re.DOTALL)
 
 EXPECTED_KEYS = (
     "api_tracks",
@@ -280,6 +293,108 @@ def compare_three_way(
     return errors
 
 
+def _dest_tuple(dest: Any, key: str) -> tuple[str, ...]:
+    if isinstance(dest, str) and dest:
+        return (dest,)
+    if isinstance(dest, list) and dest and all(isinstance(item, str) for item in dest):
+        return tuple(dest)
+    raise ValueError(
+        f"{_rel(V2_PATH)} remap.keys.{key} dest must be a string or list of strings"
+    )
+
+
+def parse_v2_remap_keys(
+    text: str,
+) -> dict[str, tuple[str, tuple[str, ...], str]]:
+    """Parse ``remap.keys`` from v2.yml.jinja into ``(old, dests, operator)``."""
+    cleaned = _JINJA_TAG.sub("", text)
+    try:
+        payload = yaml.safe_load(cleaned)
+    except yaml.YAMLError as exc:
+        raise ValueError(f"{_rel(V2_PATH)}: cannot parse remap YAML ({exc})") from exc
+    if not isinstance(payload, dict):
+        raise ValueError(f"{_rel(V2_PATH)}: root must be a mapping")
+    remap = payload.get("remap")
+    if not isinstance(remap, dict):
+        raise ValueError(f"{_rel(V2_PATH)}: remap must be a mapping")
+    keys = remap.get("keys")
+    if not isinstance(keys, dict):
+        raise ValueError(f"{_rel(V2_PATH)}: remap.keys must be a mapping")
+    out: dict[str, tuple[str, tuple[str, ...], str]] = {}
+    for key, spec in keys.items():
+        name = str(key)
+        if not isinstance(spec, dict):
+            raise ValueError(f"{_rel(V2_PATH)} remap.keys.{name} must be a mapping")
+        operator = spec.get("operator")
+        if not isinstance(operator, str) or not operator:
+            raise ValueError(f"{_rel(V2_PATH)} remap.keys.{name} missing operator")
+        out[name] = (name, _dest_tuple(spec.get("dest"), name), operator)
+    return out
+
+
+def load_v2() -> dict[str, tuple[str, tuple[str, ...], str]]:
+    return parse_v2_remap_keys(V2_PATH.read_text(encoding="utf-8"))
+
+
+def check_v2_remap_ssot(
+    v2_ops: Mapping[str, tuple[str, tuple[str, ...], str]],
+    removed_keys: Mapping[str, str],
+) -> list[str]:
+    """Require v2.yml remap.keys to match REMOVED_ANSWER_KEYS + CANONICAL_OPS."""
+    errors: list[str] = []
+    label = "v2.yml.jinja"
+    if set(v2_ops) != set(removed_keys):
+        missing = sorted(set(removed_keys) - set(v2_ops))
+        extra = sorted(set(v2_ops) - set(removed_keys))
+        errors.append(
+            f"{label} remap.keys != REMOVED_ANSWER_KEYS missing={missing} extra={extra}"
+        )
+    if dict(v2_ops) != CANONICAL_OPS:
+        errors.append(f"{label} remap ops do not match REMOVED_ANSWER_KEYS contract")
+        errors.append(f"{label} ops:\n{_fmt_ops(dict(v2_ops))}")
+    return errors
+
+
+def load_answer_schema_forbidden_keys(
+    path: Path | None = None,
+) -> list[str]:
+    """Return ``not.anyOf[].required[0]`` keys from the release-readiness schema."""
+    schema_path = path or ANSWER_SCHEMA_PATH
+    payload = json.loads(schema_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"{_rel(schema_path)}: root must be an object")
+    not_block = payload.get("not")
+    if not isinstance(not_block, dict):
+        raise ValueError(f"{_rel(schema_path)}: not must be an object")
+    any_of = not_block.get("anyOf")
+    if not isinstance(any_of, list):
+        raise ValueError(f"{_rel(schema_path)}: not.anyOf must be an array")
+    keys: list[str] = []
+    for item in any_of:
+        if not isinstance(item, dict):
+            continue
+        required = item.get("required")
+        if isinstance(required, list) and required:
+            keys.append(str(required[0]))
+    return keys
+
+
+def check_answer_schema_removed_keys(
+    keys: list[str] | None = None,
+) -> list[str]:
+    """Require answer-schema.json ``not.anyOf`` to list all eight removed keys."""
+    found = set(keys if keys is not None else load_answer_schema_forbidden_keys())
+    expected = set(EXPECTED_KEYS)
+    if found == expected:
+        return []
+    missing = sorted(expected - found)
+    extra = sorted(found - expected)
+    return [
+        "answer-schema.json not.anyOf keys != REMOVED_ANSWER_KEYS "
+        f"missing={missing} extra={extra}"
+    ]
+
+
 def scan_sample_answers_for_removed_keys() -> list[str]:
     """Fail if any official sample answers file still has a removed YAML key."""
     from lib.paths import (  # pylint: disable=import-error
@@ -287,11 +402,6 @@ def scan_sample_answers_for_removed_keys() -> list[str]:
         samples_dir,
     )
     from riso.core.removed_answer_keys import REMOVED_ANSWER_KEYS
-
-    try:
-        import yaml
-    except ModuleNotFoundError:
-        return ["PyYAML is required to scan sample answers"]
 
     errors: list[str] = []
     for path in iter_sample_answer_files(samples_dir()):
@@ -310,13 +420,16 @@ def scan_sample_answers_for_removed_keys() -> list[str]:
 
 
 def main() -> int:
-    print("check_removed_key_ssot: 3-way key+op parity")
+    print("check_removed_key_ssot: 3-way key+op parity + v2.yml remap keys")
     print(f"  core:   {_rel(CORE_PATH)}")
     print(f"  twin:   {_rel(LIB_PATH)} (_FALLBACK_*)")
     print(f"  wizard: {_rel(TS_PATH)}")
+    print(f"  v2:     {_rel(V2_PATH)}")
     print()
 
-    missing = [path for path in (CORE_PATH, LIB_PATH, TS_PATH) if not path.is_file()]
+    missing = [
+        path for path in (CORE_PATH, LIB_PATH, TS_PATH, V2_PATH) if not path.is_file()
+    ]
     if missing:
         for path in missing:
             print(f"error: missing SSOT file {_rel(path)}", file=sys.stderr)
@@ -326,14 +439,17 @@ def main() -> int:
         core_keys, core_ops = load_core()
         lib_keys, lib_ops = load_scripts_fallback()
         ts_keys, ts_ops = load_ts()
+        v2_ops = load_v2()
         plan_keys = load_plan_remap_keys()
         leftover_errors = scan_sample_answers_for_removed_keys()
+        schema_errors = check_answer_schema_removed_keys()
     except (
         OSError,
         ValueError,
         RuntimeError,
         ImportError,
         json.JSONDecodeError,
+        yaml.YAMLError,
     ) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
@@ -345,12 +461,14 @@ def main() -> int:
     errors.extend(
         compare_three_way(core_keys, core_ops, lib_keys, lib_ops, ts_keys, ts_ops)
     )
+    errors.extend(check_v2_remap_ssot(v2_ops, core_keys))
     if plan_keys is not None and tuple(plan_keys) != EXPECTED_KEYS:
         errors.append(
             f"plan.taskgraph.json remap_keys {list(plan_keys)} "
             f"!= expected {list(EXPECTED_KEYS)}"
         )
     errors.extend(leftover_errors)
+    errors.extend(schema_errors)
 
     print(f"keys ({len(core_keys)}): {', '.join(EXPECTED_KEYS)}")
     print("ops (core):")
@@ -364,7 +482,9 @@ def main() -> int:
         return 1
 
     print("ok: 3-way key+op parity (core == scripts.lib fallback == web TS)")
+    print("ok: v2.yml.jinja remap.keys match REMOVED_ANSWER_KEYS")
     print("ok: sample copier-answers.yml files have zero removed keys")
+    print("ok: answer-schema.json not.anyOf lists all eight removed keys")
     return 0
 
 

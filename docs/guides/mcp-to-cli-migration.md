@@ -27,7 +27,7 @@ Remove the `riso` entry entirely.
 | `validate_template_answers` | `riso validate --answers-file ...`                |
 | `list_template_variants`    | `riso variants list`                              |
 | `get_prompts`               | `riso prompts`                                    |
-| `riso://catalog/*`          | `riso catalog modules`                            |
+| `riso://catalog/*`          | `riso catalog modules` / `riso catalog dependencies` |
 | `wizard_*`                  | Skill-guided workflow (see `riso-scaffold` skill) |
 
 ## Install skill

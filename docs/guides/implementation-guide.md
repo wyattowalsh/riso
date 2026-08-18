@@ -19,7 +19,8 @@ Use this checklist when rolling out new modules or refreshing existing ones.
   `docs_module=enabled` with `docs_framework=sphinx-shibuya` template payload.
 - Keep `.github/context/` synchronized with `template/files/.github/context/`
   by running `uv run python scripts/ci/verify_context_sync.py` before commits.
-- Extend tests alongside features: target ≥90% unit coverage, add deterministic
+- Extend tests alongside features: maintainer floor is 70% unit coverage,
+  rendered Python packages 90%; add deterministic
   integration tests for new services, and document any exclusions inline.
 
 ## Validation

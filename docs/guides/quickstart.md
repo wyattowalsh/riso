@@ -1,104 +1,94 @@
 # Maintainer Quickstart
 
-Follow these steps to work on the template and build confidence before opening a
-pull request.
+Work on the Copier template in this checkout. Generated apps live under
+`samples/*/render/` (regenerate only).
 
-## Prerequisites
-
-Before working on the template, ensure all required tooling is installed:
+## Setup
 
 ```bash
-# Check what tools are installed (exit 0 if all present)
+git clone https://github.com/wyattowalsh/riso.git && cd riso
+just setup
 just setup-check
-# or: ./scripts/setup/setup.sh --check-only
-
-# Install missing tools (interactive)
-just bootstrap
-# or: ./scripts/setup/setup.sh --install
+uv run pytest tests/ -x -q
+uv run riso doctor --json
 ```
 
-`make setup-check` / `make bootstrap` work only as a thin shim to `just` in this
-maintainer repo. Rendered projects get a Makefile when `task_runner` is
-`makefile` or `both`.
+`make setup-check` / `make setup` only shim to `just` in this maintainer repo.
+Rendered projects get a Makefile when `task_runner` is `makefile` or `both`.
 
-The setup script detects your platform (macOS, Linux distros, Windows/WSL) and
-installs: Python 3.11+, uv, Node.js 20 LTS, pnpm, pre-commit, and actionlint.
+Windows: `.\scripts\setup\setup.ps1 -Install`. Bootstrap details:
+[scripts/setup/README.md](../../scripts/setup/README.md).
 
-**Windows users**: Run `.\scripts\setup\setup.ps1 -Install` in PowerShell.
-
-**CI environments**: Use `./scripts/setup/setup.sh --install --yes` with
-`GITHUB_TOKEN` set to avoid API rate limits.
-
-1.x Copier answers must be remapped before validate/copy/update. Preview:
+1.x Copier answers must be remapped before validate/copy/update. Preview with
+**exactly one** target:
 
 ```bash
+uv run riso migrate ./existing-project --dry-run
 uv run riso migrate --answers-file samples/default/copier-answers.yml --dry-run
 ```
 
-See {doc}`v2-migration` for the eight-key apply-then-reject table. Generated
-Node stays on **20**; `openspec_extra` stays off unless you opt in.
+See {doc}`guides/v2-migration` for the eight-key apply-then-reject table.
 
-## Render and exercise the baseline
+## Render and exercise a sample
 
 ```bash
-./scripts/render-samples.sh
+just samples
+# or: ./scripts/render-samples.sh
 cd samples/default/render
 uv sync
 just quality
 ```
 
-The render includes Typer CLI, FastAPI/Fastify tracks, and optional MCP tooling
-behind prompt flags. Default `task_runner` is `just` (Makefile is excluded).
-Use `make quality` only when the sample was rendered with `task_runner=makefile`
-or `both`. When no aggregator is present (`task_runner=none`), run
-`uv run task quality` to mirror the same toolchain with Taskipy.
+Use `make quality` only when that sample was rendered with `task_runner=makefile`
+or `both`. When `task_runner=none`, run `uv run task quality`.
 
-Run explicit coverage gates before opening a PR:
+Rendered Python packages enforce `--cov-fail-under=90`. Maintainer CI is 70%
+(`just ci-full`). Do not copy the 90% floor into maintainer `just quality`.
 
 ```bash
+# Inside a rendered Python package
 uv run pytest --cov --cov-report=term-missing --cov-report=xml --cov-fail-under=90
-uv run coverage run -m pytest tests/integration
-uv run coverage run -m pytest tests/e2e
-uv run coverage combine
-uv run coverage xml
+```
+
+## Maintainer smoke (this repo)
+
+```bash
+uv run riso doctor --json
+uv run riso validate --answers-file samples/default/copier-answers.yml --json
+uv run riso catalog dependencies --json
+uv run pytest tests/ -x -q
+just quality
 ```
 
 ## Refresh documentation builds
 
-Use the Shibuya Sphinx site to validate documentation changes before shipping
-new defaults to downstream renders.
-
 ```bash
 uv sync --group docs
-uv run --group docs sphinx-build -W -b html docs docs/_build/html
+just docs-build
+# equivalent: uv run --group docs sphinx-build -W -b html docs docs/_build/html
 ```
 
-For projects rendered with `docs_module=enabled` with `docs_framework=sphinx-shibuya`, the CI workflow runs the
-same command (`uv run sphinx-build docs dist/docs`).
+Do not regenerate `web/public/docs` HTML by hand.
 
-## Smoke-test optional modules
+## Smoke-test optional modules (rendered project)
+
+After a render with the matching modules enabled:
 
 - **CLI**: `uv run python -m <package>.cli --help`
 - **FastAPI**: `uv run uvicorn <package>.api.main:app --reload`
 - **Fastify**: `pnpm --filter api-node run dev`
-- **MCP**: `uv run python -c "from shared.mcp import tooling; print(tooling.list_tools())"`
+- **MCP**: `uv run python -c "from mcp.tooling import list_tools; print(list_tools())"`
 
 ## Coverage and confidence
 
 - Maintainer CI uses `--cov-fail-under=70` (`just ci-full`). Enforce
-  `--cov-fail-under=90` inside rendered Python packages to match sample
-  quality profiles; commits with lower coverage must include offsetting tests
-  or a linked issue.
-- Ensure integration suites live under `tests/integration/` and are wired into
-  CI (no optional skips without issue links). Emit coverage via `coverage run`
-  so combined reports include cross-service flows.
-- Capture CLI and e2e evidence in `tests/e2e/` and combine coverage artifacts
-  before publishing `coverage.xml` to artifacts.
-- Use `scripts/ci/run_quality_suite.py --profile strict` to mirror branch
-  protections locally across Python 3.11–3.13.
+  `--cov-fail-under=90` inside rendered Python packages.
+- Integration suites live under `tests/integration/` and are wired into CI.
+- CLI and e2e evidence live under `tests/e2e/`.
+- `uv run python scripts/ci/run_quality_suite.py --profile strict` mirrors
+  branch protection locally across Python 3.11–3.13.
 
 ## CI parity
 
 Quality workflows are orchestrated via GitHub Actions, mirroring `just quality`
-(and Taskipy) locally. Branch protection relies on matrix jobs across Python
-3.11–3.13; keep dependency groups and lockfiles current to maintain parity.
+locally. Branch protection relies on matrix jobs across Python 3.11–3.13.

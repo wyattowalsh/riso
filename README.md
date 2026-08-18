@@ -6,7 +6,7 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ![Coverage](https://img.shields.io/badge/coverage-70%25-yellow)
-![Tests](https://img.shields.io/badge/tests-398-green)
+![Tests](https://img.shields.io/badge/tests-1163-green)
 ![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)
 
 Riso is a batteries-included template system that scaffolds production-ready projects with optional CLI, API, documentation, and SaaS starter modules. Maintainers use the agent-native `riso` CLI for template operations.
@@ -14,17 +14,18 @@ Riso is a batteries-included template system that scaffolds production-ready pro
 ## Features
 
 - 🐍 **Python Stack**: Python 3.11+ with uv, pytest, ruff, ty, pylint
-- 📦 **Node.js Stack**: Node.js 20 LTS with pnpm, TypeScript, Vitest
+- 📦 **Node.js Stack**: generated projects pin Node.js **20** LTS; the maintainer checkout pins Node.js **22** (dual `mise.toml`)
 - 🔌 **Modular Design**: Mix and match CLI, API, GraphQL, WebSocket, MCP modules
 - 📚 **Documentation**: Choose from Fumadocs, Sphinx Shibuya, or Docusaurus
 - 🚀 **SaaS Starter**: Complete SaaS boilerplate with 14 technology categories
-- ✅ **Quality First**: 90% test coverage requirement, strict linting profiles
+- ✅ **Quality First**: maintainer coverage floor **70%** (`just ci-full`); rendered Python packages may still enforce **90%**
 - 🔄 **CI/CD Ready**: GitHub Actions workflows with matrix testing
 
 ## Prerequisites
 
 - Python ≥3.11 with [uv](https://github.com/astral-sh/uv)
-- Node.js 20 LTS with [pnpm](https://pnpm.io/) ≥8 (for docs/Node tracks)
+- Maintainer checkout: Node.js **22** (root `.mise.toml`) with [pnpm](https://pnpm.io/)
+- Generated projects: Node.js **20** LTS (always-on dest `mise.toml`)
 - [Copier](https://copier.readthedocs.io/) ≥9.1.0
 
 ## Quick Start
@@ -58,8 +59,9 @@ uv run riso migrate DEST|--answers-file PATH [--dry-run] [--json]
 `riso update` remaps `.copier-answers.yml` before Copier. Table and value
 rules: [docs/guides/v2-migration.md](docs/guides/v2-migration.md). Draft notes:
 [CHANGELOG.md](CHANGELOG.md) `## [Unreleased] 2.0.0`. This work does **not**
-create a `v2.0.0` tag. Generated projects always ship `mise.toml` (Python 3.11,
-Node **20**); `openspec_extra` stays off by default.
+create a `v2.0.0` tag. Dual mise: generated `mise.toml` pins Python 3.11 and
+Node **20**; maintainer `.mise.toml` pins Node **22**. `openspec_extra` stays
+off by default.
 
 ## Module Reference
 
