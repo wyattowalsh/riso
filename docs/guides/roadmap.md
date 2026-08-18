@@ -30,14 +30,19 @@ numbers for unshipped ideas.
 | Spec | Feature | Status |
 | ---- | ------- | ------ |
 | 016 | Production release readiness | In `specs/016-prod-release-readiness/` — RC gates, no publish/tag |
+| 017 | SQLModel + Alembic | Draft — Python FastAPI persistence in `specs/017-sqlmodel-alembic/`. GraphQL context `db` session stays an extension point until this ships. |
+| 018 | JWT + Argon2 | Draft — Python API auth in `specs/018-jwt-argon2/` (not SaaS Clerk/Auth.js). |
+| 019 | OpenTelemetry + Prometheus | Draft — Python API tracing and `/metrics` in `specs/019-otel-metrics/`. |
 
 ## Later (exploratory)
 
 Unnumbered ideas live in `specs/ideas.md`. Treat that file as a backlog, not a
-second spec series. Themes still open:
+second spec series. Idea bullets **010–015** in that file are **not** the same
+numbers as shipped `specs/010`–`016` or Wave C `specs/017`–`019`.
 
-- Standalone database / persistence module beyond SaaS extras
-- Deeper auth, observability, and background-job packs
+Themes still open beyond 017–019:
+
+- Background-job and event-bus packs
 - Multi-tenancy, i18n, and search as first-class template modules
 - Compliance, backup, and FinOps kits
 
