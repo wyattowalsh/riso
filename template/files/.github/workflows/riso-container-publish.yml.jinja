@@ -37,12 +37,12 @@ jobs:
 {%- endif %}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Generate image tags
         id: tags
@@ -70,7 +70,7 @@ jobs:
           echo "Generated tags: $TAGS"
 
       - name: Cache Docker layers
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: /tmp/.buildx-cache
           key: {% raw %}${{ runner.os }}-buildx-${{ matrix.target.name }}-${{ hashFiles('**/uv.lock', '**/pnpm-lock.yaml') }}{% endraw %}
@@ -78,7 +78,7 @@ jobs:
             {% raw %}${{ runner.os }}-buildx-${{ matrix.target.name }}-{% endraw %}
 
       - name: Build image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
         with:
           context: .
           file: .docker/Dockerfile
@@ -90,7 +90,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Run Trivy scan
-        uses: aquasecurity/trivy-action@0.20.0
+        uses: aquasecurity/trivy-action@b2933f565dbc598b29947660e66259e3c7bc8561 # 0.20.0
         with:
           image-ref: {% raw %}${{ steps.tags.outputs.scan_tag }}{% endraw %}
           format: 'sarif'
@@ -99,7 +99,7 @@ jobs:
           exit-code: '1'  # Fail if vulnerabilities found
 
       - name: Upload scan results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         if: always()
         with:
           name: trivy-scan-{% raw %}${{ matrix.target.name }}{% endraw %}
@@ -107,14 +107,14 @@ jobs:
           retention-days: 90
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: {% raw %}${{ github.actor }}{% endraw %}
           password: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
 
       - name: Push scanned image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
         with:
           context: .
           file: .docker/Dockerfile
@@ -144,19 +144,19 @@ jobs:
   # {%- endif %}
   #   steps:
   #     - name: Checkout code
-  #       uses: actions/checkout@v6
+  #       uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
   #
   #     - name: Set up Docker Buildx
-  #       uses: docker/setup-buildx-action@v3
+  #       uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
   #
   #     - name: Log in to Docker Hub
-  #       uses: docker/login-action@v3
+  #       uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
   #       with:
   #         username: {% raw %}${{ secrets.DOCKERHUB_USERNAME }}{% endraw %}
   #         password: {% raw %}${{ secrets.DOCKERHUB_TOKEN }}{% endraw %}
   #
   #     - name: Build and push
-  #       uses: docker/build-push-action@v5
+  #       uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
   #       with:
   #         context: .
   #         file: .docker/Dockerfile

@@ -40,15 +40,15 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       
       - name: Set up Python {% raw %}${{ matrix.python-version }}{% endraw %}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: {% raw %}${{ matrix.python-version }}{% endraw %}
       
       - name: Cache dependencies (version-specific)
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: |
             ~/.cache/uv
@@ -59,7 +59,7 @@ jobs:
             {% raw %}${{ runner.os }}-{% endraw %}
       
       - name: Set up uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
         with:
           version: "latest"
           enable-cache: true
@@ -70,7 +70,7 @@ jobs:
         run: uv sync
       
       - name: Run pytest with retry logic
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3
         with:
           timeout_minutes: 12
           max_attempts: 3
@@ -91,7 +91,7 @@ jobs:
       
       - name: Upload test results and coverage
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: matrix-results-py{% raw %}${{ matrix.python-version }}{% endraw %}-{% raw %}${{ github.run_id }}{% endraw %}
           path: |
