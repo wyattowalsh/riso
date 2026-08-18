@@ -1,8 +1,12 @@
 """Integration tests for riso CLI."""
 
+# pylint: disable=missing-function-docstring,consider-using-with
+
 from __future__ import annotations
 
 import json
+import os
+import signal
 import subprocess
 from pathlib import Path
 
@@ -11,14 +15,30 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-def _run_cli(*args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
+def _run_cli(*args: str, timeout: int = 60) -> subprocess.CompletedProcess[str]:
+    proc = subprocess.Popen(
         ["uv", "run", "riso", *args],
         cwd=REPO_ROOT,
-        capture_output=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         text=True,
-        check=False,
+        start_new_session=True,
     )
+    try:
+        stdout, stderr = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            proc.kill()
+        stdout, stderr = proc.communicate()
+        raise subprocess.TimeoutExpired(
+            proc.args,
+            timeout,
+            output=stdout,
+            stderr=stderr,
+        ) from None
+    return subprocess.CompletedProcess(proc.args, proc.returncode, stdout, stderr)
 
 
 @pytest.mark.integration
@@ -101,6 +121,7 @@ def test_copy_dry_run_json(tmp_path: Path) -> None:
         str(answers),
         "--dry-run",
         "--json",
+        timeout=300,
     )
     assert proc.returncode == 0, proc.stderr
     payload = json.loads(proc.stdout)
@@ -121,6 +142,7 @@ def test_diff_copy_json() -> None:
         "--operation",
         "copy",
         "--json",
+        timeout=300,
     )
     assert proc.returncode == 0
     payload = json.loads(proc.stdout)
@@ -133,22 +155,29 @@ def test_update_dry_run_json() -> None:
     dest = REPO_ROOT / "samples/default/render"
     if not dest.exists():
         pytest.skip("default render not present")
-    proc = _run_cli("update", str(dest), "--dry-run", "--json")
+    proc = _run_cli("update", str(dest), "--dry-run", "--json", timeout=300)
     assert proc.returncode == 0
     payload = json.loads(proc.stdout)
     assert payload["ok"] is True
 
 
 @pytest.mark.integration
-@pytest.mark.slow
 def test_recopy_dry_run_json() -> None:
     dest = REPO_ROOT / "samples/default/render"
     if not dest.exists():
         pytest.skip("default render not present")
-    proc = _run_cli("recopy", str(dest), "--dry-run", "--json")
-    assert proc.returncode == 0
+    answers = dest / ".copier-answers.yml"
+    original = answers.read_bytes() if answers.exists() else None
+    proc = _run_cli("recopy", str(dest), "--dry-run", "--json", timeout=60)
+    assert proc.returncode == 0, proc.stderr
     payload = json.loads(proc.stdout)
     assert payload["ok"] is True
+    data = payload["data"]
+    assert data["operation"] == "recopy"
+    assert data["dry_run"] is True
+    assert data["preview_engine"] == "answers"
+    if original is not None:
+        assert answers.read_bytes() == original
 
 
 @pytest.mark.integration

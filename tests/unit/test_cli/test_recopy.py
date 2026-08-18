@@ -43,21 +43,7 @@ def test_recopy_dry_run_returns_diff_dict_without_live_worker(
         encoding="utf-8",
     )
 
-    fake_diff = SimpleNamespace(
-        to_dict=lambda: {
-            "operation": "recopy",
-            "files": [],
-            "summary": {"added": 0, "modified": 0, "deleted": 0},
-        }
-    )
-
-    with (
-        patch(
-            "riso.cli.commands.recopy.compute_diff",
-            return_value=fake_diff,
-        ) as compute,
-        patch("riso.cli.commands.recopy.template_run_recopy") as worker,
-    ):
+    with patch("riso.cli.commands.recopy.template_run_recopy") as worker:
         result = run_recopy(
             config,
             destination=str(dest),
@@ -67,13 +53,10 @@ def test_recopy_dry_run_returns_diff_dict_without_live_worker(
         )
 
     worker.assert_not_called()
-    compute.assert_called_once()
-    kwargs = compute.call_args.kwargs
-    assert kwargs["operation"] == "recopy"
-    assert Path(kwargs["destination"]).resolve() == dest.resolve()
-    assert isinstance(kwargs["answers"], dict)
-    assert kwargs["answers"].get("project_name") == "Demo"
     assert result["operation"] == "recopy"
+    assert result["dry_run"] is True
+    assert result["preview_engine"] == "answers"
+    assert result["answers"].get("project_name") == "Demo"
     assert "summary" in result
 
 
@@ -128,17 +111,8 @@ def test_recopy_dry_run_remaps_existing_answers(tmp_path: Path) -> None:
         "project_name: Demo\napi_language: python\n",
         encoding="utf-8",
     )
-    fake_diff = SimpleNamespace(
-        to_dict=lambda: {"operation": "recopy", "files": [], "summary": {}}
-    )
-
-    with (
-        patch(
-            "riso.cli.commands.recopy.compute_diff", return_value=fake_diff
-        ) as compute,
-        patch("riso.cli.commands.recopy.template_run_recopy") as worker,
-    ):
-        run_recopy(
+    with patch("riso.cli.commands.recopy.template_run_recopy") as worker:
+        result = run_recopy(
             config,
             destination=str(dest),
             answers_file=None,
@@ -147,9 +121,10 @@ def test_recopy_dry_run_remaps_existing_answers(tmp_path: Path) -> None:
         )
 
     worker.assert_not_called()
-    answers = compute.call_args.kwargs["answers"]
+    answers = result["answers"]
     assert answers["api_languages"] == ["python"]
     assert "api_language" not in answers
+    assert result["preview_engine"] == "answers"
 
 
 def test_recopy_live_writes_remapped_dest_answers(tmp_path: Path) -> None:
