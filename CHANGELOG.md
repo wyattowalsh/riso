@@ -55,7 +55,8 @@ Value rules (historical → current Copier):
 * `include_admin` — truthy/falsey → `saas_admin_dashboard` bool.
 
 `graphql_api_module` / `websocket_module` are derived Jinja flags, not removed
-user keys. They are not remapped.
+user keys. They are not remapped. Enable GraphQL/WebSocket with `api_features`
+(`graphql`, `websocket`) when `api_module=enabled`.
 
 Preview then apply (exactly one of `DEST` or `--answers-file`):
 
