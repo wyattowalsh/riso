@@ -11,9 +11,7 @@ pytestmark = pytest.mark.unit
 
 TEMPLATE_FILES = Path(__file__).resolve().parents[2] / "template" / "files"
 
-RATE_LIMIT_REL = (
-    "python/src/{{ package_name }}/api/middleware/rate_limit.py.jinja"
-)
+RATE_LIMIT_REL = "python/src/{{ package_name }}/api/middleware/rate_limit.py.jinja"
 API_TEMPLATE_RELS = (
     RATE_LIMIT_REL,
     "python/src/{{ package_name }}/api/middleware/__init__.py.jinja",
