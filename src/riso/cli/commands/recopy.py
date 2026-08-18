@@ -5,13 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from riso.cli.helpers import parse_data_pairs
+from riso.cli.commands.update import build_update_preview
+from riso.cli.helpers import load_answers_file, parse_data_pairs
 from riso.core.answers import (
     apply_then_reject_removed_keys,
-    prepare_copier_data,
     remap_answers_file,
 )
-from riso.core.diff import compute_diff
 from riso.core.errors import (
     CopierOperationError,
     PathNotFoundError,
@@ -41,8 +40,6 @@ def run_recopy(
 
     provided = parse_data_pairs(data_pairs)
     if answers_file:
-        from riso.cli.helpers import load_answers_file
-
         provided = {**load_answers_file(answers_file), **provided}
     provided = apply_then_reject_removed_keys(provided).answers
     identity_errors = validate_identity_fields(provided)
@@ -50,26 +47,26 @@ def run_recopy(
         raise ValidationFailedError(identity_errors)
 
     dest_answers = dest_path / ".copier-answers.yml"
-    dest_remapped: dict = {}
-    if dest_answers.exists():
-        dest_remapped = remap_answers_file(dest_answers, write=not dry_run).answers
-
-    merged = apply_then_reject_removed_keys({**dest_remapped, **provided}).answers
+    dest_remap = (
+        remap_answers_file(dest_answers, write=not dry_run)
+        if dest_answers.exists()
+        else None
+    )
+    merged = apply_then_reject_removed_keys(
+        {**(dest_remap.answers if dest_remap else {}), **provided}
+    ).answers
     gate = validate_answers_for_generation(merged)
     if not gate.ok:
         raise ValidationFailedError(list(gate.errors))
 
     if dry_run:
-        final_answers = prepare_copier_data(merged)
-        diff = compute_diff(
-            answers=final_answers,
-            destination=dest_path,
-            template_path=config.template_path,
+        return build_update_preview(
             operation="recopy",
-            timeout=config.timeout,
-            force_unsafe=config.force_unsafe,
+            destination=dest_path,
+            answers=merged,
+            remap=dest_remap,
+            dest_answers_path=dest_answers if dest_answers.exists() else None,
         )
-        return diff.to_dict()
 
     try:
         result = template_run_recopy(
