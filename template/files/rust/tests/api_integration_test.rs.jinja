@@ -1,29 +1,22 @@
 {% if api_module == 'enabled' and 'rust' in api_languages %}
 //! API integration tests
+//!
+//! The Actix API is a `[[bin]]` (`api/main.rs`), so this crate cannot import
+//! handlers. Real HTTP assertions live in `api/handlers/*.rs` unit tests.
+//!
+//! EXTENSION POINT: add `src/lib.rs` (or process-spawn `{{ package_name }}-api`)
+//! before enabling the tests below. Do not use `assert!(true)` (dest CI green
+//! on empty tests) or `todo!()` (dest `cargo test` fails).
 
-#[cfg(test)]
-mod tests {
-    use actix_web::{test, App};
+#[test]
+#[ignore = "EXTENSION POINT: import health handler via a library target"]
+fn test_health_endpoint() {}
 
-    // Note: In a real application, you would import your actual app factory
-    // For now, these are placeholder tests
+#[test]
+#[ignore = "EXTENSION POINT: import hello handler via a library target"]
+fn test_api_hello_endpoint() {}
 
-    #[actix_web::test]
-    async fn test_health_endpoint() {
-        // TODO: Import actual health handler and test
-        assert!(true);
-    }
-
-    #[actix_web::test]
-    async fn test_api_hello_endpoint() {
-        // TODO: Import actual hello handler and test
-        assert!(true);
-    }
-
-    #[actix_web::test]
-    async fn test_cors_headers() {
-        // TODO: Test CORS configuration
-        assert!(true);
-    }
-}
+#[test]
+#[ignore = "EXTENSION POINT: assert CORS from CORS_ORIGINS / production fail-closed"]
+fn test_cors_headers() {}
 {% endif %}

@@ -46,3 +46,35 @@ class TestRustApiCors:
         assert "parse_cors_origins" in rendered
         assert '*origin != "*"' in rendered
         assert "cors_origins: Vec<String>" in rendered
+
+
+class TestRustPayloadHonesty:
+    """Dest CI must not go green on empty API tests; uptime 0 is a labeled stub."""
+
+    def test_api_integration_has_no_dummy_pass_or_todo_macro(self) -> None:
+        """Integration tests are ignored EXTENSION POINTs, not assert!(true)."""
+        rendered = _render(
+            "tests/api_integration_test.rs.jinja",
+            api_module="enabled",
+            api_languages=["rust"],
+            package_name="test_api",
+        )
+        assert "EXTENSION POINT" in rendered
+        assert "#[ignore" in rendered
+        code_lines = [line.split("//", 1)[0] for line in rendered.splitlines()]
+        joined = "\n".join(code_lines)
+        assert "assert!(true)" not in joined
+        assert "todo!()" not in joined
+
+    def test_health_uptime_stub_is_extension_point(self) -> None:
+        """Health uptime stays 0 and is labeled EXTENSION POINT, not todo!()."""
+        rendered = _render(
+            "api/models/health.rs.jinja",
+            api_module="enabled",
+            api_languages=["rust"],
+        )
+        assert "uptime: 0" in rendered
+        assert "EXTENSION POINT" in rendered
+        assert "TODO:" not in rendered
+        code_lines = [line.split("//", 1)[0] for line in rendered.splitlines()]
+        assert "todo!()" not in "\n".join(code_lines)
