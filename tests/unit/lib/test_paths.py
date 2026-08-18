@@ -1,10 +1,10 @@
-"""Nested sample discovery via scripts.lib.paths (CLI list_sample_variants is one-level).
+"""Nested sample discovery via scripts.lib.paths and CLI list_sample_variants.
 
-NOTE for the CLI team: ``riso.template.list_sample_variants`` currently scans
-only immediate children of ``samples/``. Nested presets such as
-``samples/saas-starter/*/copier-answers.yml`` are discovered here. Recurse the
-same way as ``iter_sample_answer_files`` so ``riso variants list`` includes them.
-Do not edit ``src/riso`` from the docs/samples lane.
+Both ``scripts.lib.paths.iter_sample_answer_files`` and
+``riso.template.list_sample_variants`` discover nested
+``samples/**/copier-answers.yml`` with a pruned ``os.walk`` that skips
+``render/`` and ``metadata/`` trees (for example
+``samples/saas-starter/*/copier-answers.yml``).
 """
 
 from __future__ import annotations
