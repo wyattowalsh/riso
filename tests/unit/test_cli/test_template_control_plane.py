@@ -14,6 +14,7 @@ from riso.core.errors import (
     ValidationFailedError,
 )
 from riso.template import _evaluate_when, run_generator, run_recopy, run_update
+from riso.template._copier_worker import _run_copy
 
 
 def test_run_generator_blocks_removed_keys_before_copier(tmp_path: Path) -> None:
@@ -78,7 +79,33 @@ def test_run_generator_calls_worker_with_skip_tasks_true(
     assert result.success is True
     assert captured["op"] == "copy"
     assert captured["payload"]["skip_tasks"] is True
+    assert captured["payload"]["defaults"] is True
     post.assert_called_once()
+
+
+def test_run_generator_payload_sets_defaults_true(tmp_path: Path) -> None:
+    """Non-TTY Copier copy needs defaults=True (InteractiveSessionError otherwise)."""
+    dest = tmp_path / "out"
+    captured: dict[str, Any] = {}
+
+    def fake_worker(op: str, payload: dict[str, Any], timeout: int | None) -> None:
+        captured["op"] = op
+        captured["payload"] = payload
+        dest.mkdir()
+
+    with (
+        patch("riso.template._run_copier_worker", side_effect=fake_worker),
+        patch("riso.template._maybe_run_post_gen"),
+    ):
+        run_generator(
+            destination=dest,
+            data={"cli_module": "enabled", "cli_languages": ["python"]},
+            template_path=tmp_path,
+            skip_post_gen=True,
+        )
+    assert captured["op"] == "copy"
+    assert captured["payload"]["defaults"] is True
+    assert captured["payload"]["skip_tasks"] is True
 
 
 def test_run_generator_keeps_empty_lists_for_gates(tmp_path: Path) -> None:
@@ -272,3 +299,22 @@ def test_run_recopy_payload_overwrite_defaults_skip_answered(tmp_path: Path) -> 
     assert payload["skip_answered"] is True
     assert payload["unsafe"] is False
     assert payload["data"]["_src_path"] == str(tmp_path / "template")
+
+
+def test_run_copy_defaults_true_when_payload_omits_defaults() -> None:
+    """Worker copy passes Copier defaults=True when the payload omits defaults."""
+    captured: dict[str, Any] = {}
+    payload: dict[str, Any] = {
+        "template_path": "/tmp/template",
+        "destination": "/tmp/dest",
+        "data": {"project_name": "x"},
+    }
+
+    def fake_run_copy(*_args: Any, **kwargs: Any) -> None:
+        captured["kwargs"] = kwargs
+
+    with patch("riso.template._copier_worker.run_copy", side_effect=fake_run_copy):
+        _run_copy(payload)
+
+    assert "defaults" not in payload
+    assert captured["kwargs"]["defaults"] is True

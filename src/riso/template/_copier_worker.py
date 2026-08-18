@@ -124,7 +124,8 @@ def _run_copy(args: dict[str, Any]) -> None:
         overwrite=bool(args.get("overwrite", False)),
         unsafe=bool(args.get("unsafe", False)),
         skip_tasks=bool(args.get("skip_tasks", True)),
-        defaults=bool(args.get("defaults", False)),
+        # Worker stdin is never a TTY; Copier 9.16 requires defaults.
+        defaults=bool(args.get("defaults", True)),
     )
 
 
