@@ -28,7 +28,11 @@ from riso.core.generation_gates import validate_answers_for_generation
 from riso.core.removed_answer_keys import apply_removed_key_remaps
 from riso.core.names import validate_identity_fields
 from riso.core.paths import is_bundled_template, validate_destination
-from riso.template.hooks_runner import run_post_gen, should_skip_post_gen
+from riso.template.hooks_runner import (
+    run_post_gen,
+    run_pre_gen,
+    should_skip_hooks,
+)
 
 
 @dataclass
@@ -632,8 +636,10 @@ def _maybe_run_post_gen(
     skip_post_gen: bool,
     timeout: int | None = None,
 ) -> None:
-    if should_skip_post_gen(skip_flag=skip_post_gen):
+    """Run bundled pre_gen then post_gen after Copier (skip_tasks stays True)."""
+    if should_skip_hooks(skip_flag=skip_post_gen):
         return
+    run_pre_gen(dest_path, template_hint=template_path, timeout=timeout)
     run_post_gen(dest_path, template_hint=template_path, timeout=timeout)
 
 

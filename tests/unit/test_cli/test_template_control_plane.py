@@ -246,6 +246,41 @@ def test_worker_nonzero_raises_copier_operation_error(tmp_path: Path) -> None:
     assert "boom" in str(exc_info.value)
 
 
+def test_run_generator_runs_pre_then_post_gen_keep_skip_tasks(
+    tmp_path: Path,
+) -> None:
+    dest = tmp_path / "out"
+    captured: dict[str, Any] = {}
+    order: list[str] = []
+
+    def fake_worker(op: str, payload: dict[str, Any], timeout: int | None) -> None:
+        captured["payload"] = payload
+        dest.mkdir()
+
+    def fake_pre(*_args: Any, **_kwargs: Any) -> None:
+        order.append("pre")
+
+    def fake_post(*_args: Any, **_kwargs: Any) -> None:
+        order.append("post")
+
+    with (
+        patch("riso.template._run_copier_worker", side_effect=fake_worker),
+        patch("riso.template.run_pre_gen", side_effect=fake_pre) as pre,
+        patch("riso.template.run_post_gen", side_effect=fake_post) as post,
+    ):
+        result = run_generator(
+            destination=dest,
+            data={"cli_module": "enabled", "cli_languages": ["python"]},
+            template_path=tmp_path,
+            skip_post_gen=False,
+        )
+    assert result.success is True
+    assert captured["payload"]["skip_tasks"] is True
+    pre.assert_called_once()
+    post.assert_called_once()
+    assert order == ["pre", "post"]
+
+
 def test_post_gen_skipped_when_flag_set(tmp_path: Path) -> None:
     dest = tmp_path / "out"
 
@@ -254,6 +289,7 @@ def test_post_gen_skipped_when_flag_set(tmp_path: Path) -> None:
 
     with (
         patch("riso.template._run_copier_worker", side_effect=fake_worker),
+        patch("riso.template.run_pre_gen") as pre,
         patch("riso.template.run_post_gen") as post,
     ):
         run_generator(
@@ -262,6 +298,33 @@ def test_post_gen_skipped_when_flag_set(tmp_path: Path) -> None:
             template_path=tmp_path,
             skip_post_gen=True,
         )
+    pre.assert_not_called()
+    post.assert_not_called()
+
+
+def test_pre_gen_failure_skips_post_gen(tmp_path: Path) -> None:
+    dest = tmp_path / "out"
+
+    def fake_worker(op: str, payload: dict[str, Any], timeout: int | None) -> None:
+        dest.mkdir()
+
+    with (
+        patch("riso.template._run_copier_worker", side_effect=fake_worker),
+        patch(
+            "riso.template.run_pre_gen",
+            side_effect=CopierOperationError("pre_gen", "hook failed"),
+        ),
+        patch("riso.template.run_post_gen") as post,
+    ):
+        with pytest.raises(CopierOperationError, match="pre_gen") as exc_info:
+            run_generator(
+                destination=dest,
+                data={"cli_module": "enabled", "cli_languages": ["python"]},
+                template_path=tmp_path,
+                skip_post_gen=False,
+            )
+    assert exc_info.value.data is not None
+    assert exc_info.value.data["operation"] == "pre_gen"
     post.assert_not_called()
 
 
