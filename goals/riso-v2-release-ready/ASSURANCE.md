@@ -1,3 +1,12 @@
+# ASSURANCE — Riso 2.0 release-ready (W8 addendum)
+
+**Generated:** 2026-08-18 (W8 dest-root SaaS GHA)\
+**Status:** **source-green** on dest-root Node CI filters, SaaS lib clients, Auth.js `@/lib/auth` barrel, dest-root `saas-quality`, and dest-root `riso-saas-database.yml`. Nested SaaS GHA jinja deleted. Official dests stay stale until PLATFORM re-render. `render_matrix` is not residualed.
+
+**Evidence:** [`evidence/W8-SAAS-GHA-DESTROOT.md`](./evidence/W8-SAAS-GHA-DESTROOT.md), [`evidence/W7-*.md`](./evidence/).
+
+______________________________________________________________________
+
 # ASSURANCE — Riso 2.0 release-ready (W6 addendum)
 
 **Generated:** 2026-08-18 (W6 fan-out closeout)\
