@@ -24,6 +24,7 @@ from fastapi import FastAPI
 from .config import get_config
 from .middleware.cors import configure_cors
 from .middleware.errors import configure_error_handlers
+from .middleware.rate_limit import configure_rate_limit
 from .middleware.request_id import configure_request_id
 from .routes import health
 
@@ -72,6 +73,7 @@ def create_app() -> FastAPI:
     )
 
     configure_request_id(application)
+    configure_rate_limit(application, config)
     configure_cors(application, config)
     configure_error_handlers(application)
 

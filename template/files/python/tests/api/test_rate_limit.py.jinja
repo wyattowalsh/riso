@@ -1,0 +1,75 @@
+{%- if api_module != 'enabled' or 'python' not in api_languages %}
+"""Rate-limit tests disabled for this render."""
+
+{%- else %}
+"""Tests for in-memory HTTP sliding-window rate limiting."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import pytest
+from fastapi.testclient import TestClient
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
+
+@pytest.fixture
+def rate_limited_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Generator[TestClient, None, None]:
+    """App with a tiny HTTP window so overflow is cheap to assert."""
+    from {{ package_name }}.api.config import get_config
+    from {{ package_name }}.api.main import create_app
+
+    monkeypatch.setenv("RISO_API_RATE_LIMIT_REQUESTS", "3")
+    monkeypatch.setenv("RISO_API_RATE_LIMIT_WINDOW_SECONDS", "60")
+    get_config.cache_clear()
+    with TestClient(create_app()) as test_client:
+        yield test_client
+    get_config.cache_clear()
+
+
+def test_rate_limit_allows_then_returns_429(
+    rate_limited_client: TestClient,
+) -> None:
+    """Overflow after the configured request count returns HTTP 429."""
+    allowed = [
+        rate_limited_client.get("/health")
+        for _ in range(3)
+    ]
+    for response in allowed:
+        assert response.status_code == 200
+        assert response.headers.get("X-Request-ID")
+        assert response.headers.get("X-RateLimit-Limit") == "3"
+
+    overflow = rate_limited_client.get(
+        "/health",
+        headers={"X-Request-ID": "rate-limit-overflow"},
+    )
+    assert overflow.status_code == 429
+    assert overflow.headers.get("X-Request-ID") == "rate-limit-overflow"
+    assert overflow.headers.get("X-RateLimit-Limit") == "3"
+    assert overflow.headers.get("X-RateLimit-Remaining") == "0"
+    assert overflow.headers.get("Retry-After")
+    assert overflow.json()["detail"] == "Rate limit exceeded"
+
+
+def test_rate_limit_disabled_does_not_reject(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Disabled limiter must not 429 or consume a request budget."""
+    from {{ package_name }}.api.config import get_config
+    from {{ package_name }}.api.main import create_app
+
+    monkeypatch.setenv("RISO_API_RATE_LIMIT_ENABLED", "false")
+    monkeypatch.setenv("RISO_API_RATE_LIMIT_REQUESTS", "1")
+    get_config.cache_clear()
+    with TestClient(create_app()) as client:
+        for _ in range(3):
+            response = client.get("/health")
+            assert response.status_code == 200
+            assert response.headers.get("X-Request-ID")
+    get_config.cache_clear()
+{% endif %}

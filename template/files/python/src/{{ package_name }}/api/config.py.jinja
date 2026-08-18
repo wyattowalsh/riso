@@ -5,14 +5,17 @@
 class ApiConfig:  # pragma: no cover
     """Placeholder configuration when API is disabled."""
 
-    host: str              = "0.0.0.0"
-    port: int              = 8000
-    reload: bool           = False
-    cors_origins: list[str] = []
-    app_name: str          = "FastAPI Application"
-    version: str           = "0.1.0"
-    log_level: str         = "INFO"
-    environment: str       = "development"
+    host: str                      = "0.0.0.0"
+    port: int                      = 8000
+    reload: bool                   = False
+    cors_origins: list[str]        = []
+    app_name: str                  = "FastAPI Application"
+    version: str                   = "0.1.0"
+    log_level: str                 = "INFO"
+    environment: str               = "development"
+    rate_limit_enabled: bool       = True
+    rate_limit_requests: int       = 100
+    rate_limit_window_seconds: int = 60
 
 
 def get_config() -> ApiConfig:
@@ -54,6 +57,9 @@ class ApiConfig(BaseSettings):
         version: Application version (default: "0.1.0")
         log_level: Logging level (default: "INFO", choices: DEBUG, INFO, WARNING, ERROR)
         environment: Deployment environment (development, staging, or production)
+        rate_limit_enabled: Enable in-memory HTTP sliding-window limiting (default: True)
+        rate_limit_requests: Max requests per client IP per window (default: 100, ge=1)
+        rate_limit_window_seconds: Sliding window duration in seconds (default: 60, ge=1)
     """
 
     model_config = SettingsConfigDict(
@@ -98,6 +104,20 @@ class ApiConfig(BaseSettings):
     environment: Literal["development", "staging", "production"] = Field(
         default="development",
         description="Deployment environment",
+    )
+    rate_limit_enabled: bool       = Field(
+        default=True,
+        description="Enable in-memory HTTP sliding-window rate limiting",
+    )
+    rate_limit_requests: int       = Field(
+        default=100,
+        ge=1,
+        description="Maximum requests per client IP per sliding window",
+    )
+    rate_limit_window_seconds: int = Field(
+        default=60,
+        ge=1,
+        description="Sliding window duration in seconds",
     )
 
     @field_validator("reload")
