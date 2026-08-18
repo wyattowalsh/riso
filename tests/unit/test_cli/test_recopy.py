@@ -13,7 +13,11 @@ import yaml
 
 from riso.cli.commands.recopy import run_recopy
 from riso.cli.config import CliConfig
-from riso.core.errors import PathNotFoundError, ValidationFailedError
+from riso.core.errors import (
+    CopierOperationError,
+    PathNotFoundError,
+    ValidationFailedError,
+)
 from riso.core.paths import resolve_template_path
 
 pytestmark = pytest.mark.unit
@@ -127,7 +131,7 @@ def test_recopy_dry_run_remaps_existing_answers(tmp_path: Path) -> None:
     assert result["preview_engine"] == "answers"
 
 
-def test_recopy_live_writes_remapped_dest_answers(tmp_path: Path) -> None:
+def test_recopy_live_writes_remapped_dest_answers_after_copier(tmp_path: Path) -> None:
     config = CliConfig.from_options(template_path=resolve_template_path())
     dest = tmp_path / "proj"
     dest.mkdir()
@@ -137,9 +141,17 @@ def test_recopy_live_writes_remapped_dest_answers(tmp_path: Path) -> None:
         to_dict=lambda: {"success": True, "destination": str(dest)}
     )
 
+    def fake_recopy(**kwargs: object) -> SimpleNamespace:
+        current = yaml.safe_load(answers.read_text(encoding="utf-8"))
+        assert "api_language" in current
+        data = kwargs["data"]
+        assert isinstance(data, dict)
+        assert data["api_languages"] == ["python"]
+        return fake_result
+
     with patch(
         "riso.cli.commands.recopy.template_run_recopy",
-        return_value=fake_result,
+        side_effect=fake_recopy,
     ):
         run_recopy(
             config,
@@ -152,6 +164,30 @@ def test_recopy_live_writes_remapped_dest_answers(tmp_path: Path) -> None:
     written = yaml.safe_load(answers.read_text(encoding="utf-8"))
     assert written["api_languages"] == ["python"]
     assert "api_language" not in written
+
+
+def test_recopy_copier_failure_leaves_dest_answers_unchanged(tmp_path: Path) -> None:
+    config = CliConfig.from_options(template_path=resolve_template_path())
+    dest = tmp_path / "proj"
+    dest.mkdir()
+    answers = dest / ".copier-answers.yml"
+    original = "project_name: Demo\napi_language: python\n"
+    answers.write_text(original, encoding="utf-8")
+
+    with patch(
+        "riso.cli.commands.recopy.template_run_recopy",
+        side_effect=CopierOperationError("recopy", "boom"),
+    ):
+        with pytest.raises(CopierOperationError):
+            run_recopy(
+                config,
+                destination=str(dest),
+                answers_file=None,
+                data_pairs=["project_name=Demo"],
+                dry_run=False,
+            )
+
+    assert answers.read_text(encoding="utf-8") == original
 
 
 def test_recopy_passes_skip_post_gen_to_template_runner(tmp_path: Path) -> None:

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from riso.cli.helpers import resolve_answers, validate_and_raise
 from riso.core.diff import compute_diff
-from riso.core.errors import CopierOperationError
+from riso.core.errors import CopierOperationError, RisoError, ValidationFailedError
 from riso.core.paths import external_template_warning, validate_destination
 from riso.template import run_generator
 
@@ -64,6 +64,10 @@ def run_copy(
             timeout=config.timeout,
             skip_post_gen=config.skip_post_gen,
         )
+    except ValidationFailedError:
+        raise
+    except RisoError:
+        raise
     except Exception as exc:
         raise CopierOperationError("copy", str(exc)) from exc
 

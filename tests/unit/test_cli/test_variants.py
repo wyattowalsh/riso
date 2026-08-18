@@ -4,11 +4,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from riso.cli.commands.variants import run_variants_list, run_variants_show
 from riso.cli.config import CliConfig
 from riso.core.errors import PathNotFoundError
+from riso.template import list_sample_variants
 
 pytestmark = pytest.mark.unit
 
@@ -44,3 +47,27 @@ def test_variants_show_unknown_raises_path_not_found() -> None:
     config = CliConfig.from_options()
     with pytest.raises(PathNotFoundError):
         run_variants_show(config, "__no_such_variant__")
+
+
+def test_list_sample_variants_includes_nested_answers(tmp_path: Path) -> None:
+    nested = tmp_path / "saas-starter" / "nested"
+    nested.mkdir(parents=True)
+    (nested / "copier-answers.yml").write_text("project_name: Nested\n")
+    skipped = tmp_path / "render" / "ignored"
+    skipped.mkdir(parents=True)
+    (skipped / "copier-answers.yml").write_text("project_name: Skip\n")
+    (tmp_path / "metadata").mkdir()
+    (tmp_path / "default").mkdir()
+    (tmp_path / "default" / "copier-answers.yml").write_text("project_name: Default\n")
+
+    variants = list_sample_variants(tmp_path)
+    names = [item["name"] for item in variants]
+    assert "saas-starter/nested" in names
+    assert "default" in names
+    assert "render" not in names
+    assert "render/ignored" not in names
+    assert all("/" not in name or name == "saas-starter/nested" for name in names)
+    nested_item = next(
+        item for item in variants if item["name"] == "saas-starter/nested"
+    )
+    assert nested_item["answers"]["project_name"] == "Nested"

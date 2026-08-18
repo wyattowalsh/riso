@@ -9,11 +9,13 @@ from riso.cli.commands.update import build_update_preview
 from riso.cli.helpers import load_answers_file, parse_data_pairs
 from riso.core.answers import (
     apply_then_reject_removed_keys,
+    persist_remapped_answers,
     remap_answers_file,
 )
 from riso.core.errors import (
     CopierOperationError,
     PathNotFoundError,
+    RisoError,
     ValidationFailedError,
 )
 from riso.core.generation_gates import validate_answers_for_generation
@@ -48,9 +50,7 @@ def run_recopy(
 
     dest_answers = dest_path / ".copier-answers.yml"
     dest_remap = (
-        remap_answers_file(dest_answers, write=not dry_run)
-        if dest_answers.exists()
-        else None
+        remap_answers_file(dest_answers, write=False) if dest_answers.exists() else None
     )
     merged = apply_then_reject_removed_keys(
         {**(dest_remap.answers if dest_remap else {}), **provided}
@@ -71,13 +71,20 @@ def run_recopy(
     try:
         result = template_run_recopy(
             destination=dest_path,
-            data=provided or None,
+            data=merged,
             template_path=config.template_path,
             force_unsafe=config.force_unsafe,
             timeout=config.timeout,
             skip_post_gen=config.skip_post_gen,
         )
+    except ValidationFailedError:
+        raise
+    except RisoError:
+        raise
     except Exception as exc:
         raise CopierOperationError("recopy", str(exc)) from exc
+
+    if dest_remap is not None and dest_answers.exists():
+        persist_remapped_answers(dest_answers, dest_remap.answers)
 
     return result.to_dict()

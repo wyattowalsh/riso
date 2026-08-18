@@ -27,30 +27,41 @@ def run_argv_with_timeout(
     argv: list[str],
     *,
     timeout: int | None,
+    cwd: str | os.PathLike[str] | None = None,
+    env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run argv in a new session; kill the process group on timeout.
 
     Returns a CompletedProcess. Callers map returncode to domain errors.
     """
+    run_kwargs: dict[str, Any] = {
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "text": True,
+        "start_new_session": True,
+    }
+    if cwd is not None:
+        run_kwargs["cwd"] = os.fspath(cwd)
+    if env is not None:
+        run_kwargs["env"] = env
+
     # start_new_session=True => child is session/process group leader (pgid == pid).
     try:
         # pylint: disable-next=consider-using-with
-        proc = subprocess.Popen(
-            argv,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            start_new_session=True,
-        )
+        proc = subprocess.Popen(argv, **run_kwargs)
     except (TypeError, ValueError, OSError):
         # Extremely old platforms: fall back to plain run (no group kill).
-        return subprocess.run(
-            argv,
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=timeout if timeout is not None and timeout > 0 else None,
-        )
+        fallback: dict[str, Any] = {
+            "check": False,
+            "capture_output": True,
+            "text": True,
+            "timeout": timeout if timeout is not None and timeout > 0 else None,
+        }
+        if cwd is not None:
+            fallback["cwd"] = os.fspath(cwd)
+        if env is not None:
+            fallback["env"] = env
+        return subprocess.run(argv, **fallback)
 
     try:
         stdout, stderr = proc.communicate(
@@ -123,6 +134,8 @@ def _run_update(args: dict[str, Any]) -> None:
         "skip_answered": bool(args.get("skip_answered", True)),
         "unsafe": bool(args.get("unsafe", False)),
         "skip_tasks": bool(args.get("skip_tasks", True)),
+        # Copier 9.16 run_update hard-fails without overwrite=True.
+        "overwrite": bool(args.get("overwrite", True)),
     }
     data = args.get("data")
     if data:
@@ -137,6 +150,9 @@ def _run_recopy(args: dict[str, Any]) -> None:
     kwargs: dict[str, Any] = {
         "unsafe": bool(args.get("unsafe", False)),
         "skip_tasks": bool(args.get("skip_tasks", True)),
+        "overwrite": bool(args.get("overwrite", True)),
+        "defaults": bool(args.get("defaults", True)),
+        "skip_answered": bool(args.get("skip_answered", True)),
     }
     data = args.get("data")
     if data:

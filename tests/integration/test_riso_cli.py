@@ -96,6 +96,7 @@ def test_prompts_json() -> None:
 def test_validate_warnings_in_envelope() -> None:
     proc = _run_cli(
         "validate",
+        "--schema-only",
         "--data",
         "project_name=Test",
         "--data",

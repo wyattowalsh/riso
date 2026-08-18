@@ -14,7 +14,11 @@ import ast
 import json
 import os
 
-from riso.core.answers import load_answers_file, prepare_copier_data
+from riso.core.answers import (
+    load_answers_file,
+    prepare_copier_data,
+    strip_empty_lists_for_copier,
+)
 from riso.core.errors import (
     CopierOperationError,
     OperationTimeoutError,
@@ -23,7 +27,7 @@ from riso.core.errors import (
 from riso.core.generation_gates import validate_answers_for_generation
 from riso.core.removed_answer_keys import apply_removed_key_remaps
 from riso.core.names import validate_identity_fields
-from riso.core.paths import validate_destination
+from riso.core.paths import is_bundled_template, validate_destination
 from riso.template.hooks_runner import run_post_gen, should_skip_post_gen
 
 
@@ -342,14 +346,19 @@ def _safe_eval(expr: str, context: dict[str, Any]) -> bool:
 
 
 def _evaluate_when(
-    expr: str | None,
+    expr: str | bool | None,
     context: dict[str, Any],
     warnings: list[str] | None = None,
 ) -> bool:
-    if not expr:
+    # YAML bool False is falsy; handle it before ``if not expr``.
+    if expr is False:
+        return False
+    if expr is True:
+        return True
+    if expr is None or expr == "":
         return True
     try:
-        rendered = _render_template(expr, context).strip()
+        rendered = _render_template(str(expr), context).strip()
     except Exception as exc:
         if warnings is not None:
             warnings.append(f"when expression render failed for {expr!r}: {exc}")
@@ -447,39 +456,46 @@ def validate_answers(
     return ValidationResult(valid=len(errors) == 0, errors=errors, warnings=warnings)
 
 
+_SAMPLE_WALK_SKIP = frozenset(
+    {"render", "metadata", "node_modules", ".venv", ".git", "__pycache__"}
+)
+
+
 def list_sample_variants(samples_path: Path | None = None) -> list[dict[str, Any]]:
-    """List sample variants with answers and render state."""
+    """List sample variants with answers and render state.
+
+    Recurses like ``scripts/lib/paths.iter_sample_answer_files`` (pruned
+    ``os.walk``). Name is the posix path of the parent of
+    ``copier-answers.yml`` relative to *samples_path*.
+    """
     samples_root = samples_path or get_samples_path()
     variants: list[dict[str, Any]] = []
 
-    if not samples_root.exists():
+    if not samples_root.is_dir():
         return variants
 
-    with os.scandir(samples_root) as entries:
-        variant_dirs = sorted(
-            (
-                Path(entry.path)
-                for entry in entries
-                if entry.is_dir(follow_symlinks=False) and entry.name != "metadata"
-            ),
-            key=lambda path: path.name,
-        )
+    found: list[Path] = []
+    for root, dirnames, filenames in os.walk(
+        samples_root, topdown=True, followlinks=False
+    ):
+        dirnames[:] = [name for name in dirnames if name not in _SAMPLE_WALK_SKIP]
+        if "copier-answers.yml" in filenames:
+            found.append(Path(root) / "copier-answers.yml")
+    found.sort()
 
-    for variant_dir in variant_dirs:
-        answers_file = variant_dir / "copier-answers.yml"
+    for answers_file in found:
+        variant_dir = answers_file.parent
+        name = variant_dir.relative_to(samples_root).as_posix()
         render_dir = variant_dir / "render"
-
-        item: dict[str, Any] = {
-            "name": variant_dir.name,
-            "path": str(variant_dir),
-            "has_answers": answers_file.exists(),
-            "has_render": render_dir.exists(),
-        }
-
-        if answers_file.exists():
-            item["answers"] = _load_yaml(answers_file)
-
-        variants.append(item)
+        variants.append(
+            {
+                "name": name,
+                "path": str(variant_dir),
+                "has_answers": True,
+                "has_render": render_dir.exists(),
+                "answers": _load_yaml(answers_file),
+            }
+        )
 
     return variants
 
@@ -583,15 +599,42 @@ def _run_copier_worker(
         )
 
 
+def _copier_data_for_worker(answers: dict[str, Any]) -> dict[str, Any]:
+    """Strip empty lists only at the Copier boundary."""
+    return strip_empty_lists_for_copier(answers)
+
+
+def _answers_data_for_copier(answers: dict[str, Any]) -> dict[str, Any]:
+    """Public answer keys for Copier ``data=`` (keep ``_src_path`` for the caller)."""
+    return {
+        key: value
+        for key, value in _copier_data_for_worker(answers).items()
+        if not str(key).startswith("_")
+    }
+
+
+def _update_unsafe(*, template_path: Path, force_unsafe: bool) -> bool:
+    """Unsafe for bundled UPDATE even when force_unsafe is False.
+
+    Copier 9.16 ``_check_unsafe("update")`` flags ``subproject.template.tasks``
+    without consulting ``skip_tasks``. Copy/recopy honor skip_tasks, so they
+    stay ``force_unsafe``-only (including external ``RISO_TEMPLATE_PATH``).
+    """
+    if force_unsafe:
+        return True
+    return is_bundled_template(template_path)
+
+
 def _maybe_run_post_gen(
     dest_path: Path,
     *,
     template_path: Path,
     skip_post_gen: bool,
+    timeout: int | None = None,
 ) -> None:
     if should_skip_post_gen(skip_flag=skip_post_gen):
         return
-    run_post_gen(dest_path, template_hint=template_path)
+    run_post_gen(dest_path, template_hint=template_path, timeout=timeout)
 
 
 def run_generator(
@@ -620,7 +663,7 @@ def run_generator(
         {
             "template_path": str(template_path),
             "destination": str(dest_path),
-            "data": prepared,
+            "data": _copier_data_for_worker(prepared),
             "vcs_ref": vcs_ref,
             "overwrite": force,
             "unsafe": force_unsafe,
@@ -629,7 +672,10 @@ def run_generator(
         timeout,
     )
     _maybe_run_post_gen(
-        dest_path, template_path=template_path, skip_post_gen=skip_post_gen
+        dest_path,
+        template_path=template_path,
+        skip_post_gen=skip_post_gen,
+        timeout=timeout,
     )
 
     return OperationResult(
@@ -660,23 +706,33 @@ def run_update(
         answers_file = dest_path / ".copier-answers.yml"
         if answers_file.is_file():
             gate_answers = load_answers_file(answers_file)
+    copier_data: dict[str, Any] = {}
     if isinstance(gate_answers, dict):
-        _enforce_generation_gates(gate_answers)
+        prepared = prepare_copier_data(gate_answers)
+        _enforce_generation_gates(prepared)
+        copier_data = _answers_data_for_copier(prepared)
 
+    copier_data = {**copier_data, "_src_path": str(template_path)}
     _run_copier_worker(
         "update",
         {
             "destination": str(dest_path),
             "skip_answered": skip_answered,
-            "unsafe": force_unsafe,
+            "unsafe": _update_unsafe(
+                template_path=template_path, force_unsafe=force_unsafe
+            ),
             "skip_tasks": True,
+            "overwrite": True,
             # Copier expects defaults: bool; template override goes in data.
-            "data": {"_src_path": str(template_path)},
+            "data": copier_data,
         },
         timeout,
     )
     _maybe_run_post_gen(
-        dest_path, template_path=template_path, skip_post_gen=skip_post_gen
+        dest_path,
+        template_path=template_path,
+        skip_post_gen=skip_post_gen,
+        timeout=timeout,
     )
 
     return OperationResult(
@@ -701,15 +757,20 @@ def run_recopy(
     if not dest_path.exists():
         raise FileNotFoundError(dest_path)
 
-    copier_data = prepare_copier_data(data) if data else {}
+    provided = dict(data) if data else {}
+    copier_data = prepare_copier_data(provided) if provided else {}
     # Merge existing answers for gates when partial data provided.
     answers_file = dest_path / ".copier-answers.yml"
     existing: dict[str, Any] = {}
     if answers_file.is_file():
         existing = load_answers_file(answers_file)
-    _enforce_generation_gates({**existing, **copier_data})
+    merged = prepare_copier_data({**existing, **copier_data})
+    _enforce_generation_gates(merged)
 
-    copier_data = {**copier_data, "_src_path": str(template_path)}
+    copier_data = {
+        **_answers_data_for_copier(copier_data),
+        "_src_path": str(template_path),
+    }
     _run_copier_worker(
         "recopy",
         {
@@ -717,11 +778,17 @@ def run_recopy(
             "data": copier_data,
             "unsafe": force_unsafe,
             "skip_tasks": True,
+            "overwrite": True,
+            "defaults": True,
+            "skip_answered": True,
         },
         timeout,
     )
     _maybe_run_post_gen(
-        dest_path, template_path=template_path, skip_post_gen=skip_post_gen
+        dest_path,
+        template_path=template_path,
+        skip_post_gen=skip_post_gen,
+        timeout=timeout,
     )
 
     return OperationResult(

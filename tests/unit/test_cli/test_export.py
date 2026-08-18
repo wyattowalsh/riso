@@ -66,7 +66,10 @@ def test_run_export_cli_includes_data_overrides_with_answers_file(
         destination=str(tmp_path / "out"),
     )
 
-    assert "--answers-file" in result["copier_command"]
+    assert "--data-file" in result["copier_command"]
+    assert "--overwrite" in result["copier_command"]
+    assert "--answers-file" not in result["copier_command"]
+    assert "--answers-file" in result["riso_command"]
     assert "project_name=Override" in result["copier_command"]
     assert "--data" in result["riso_command"]
     assert "project_name=Override" in result["riso_command"]

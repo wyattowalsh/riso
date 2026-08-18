@@ -83,11 +83,11 @@ def test_compute_diff_update_does_not_remerge_removed_keys(tmp_path: Path) -> No
     )
     captured: dict = {}
 
-    def fake_timeout(fn, timeout, *args, **kwargs):
-        captured["data"] = kwargs.get("data")
-        Path(args[1]).mkdir(parents=True, exist_ok=True)
+    def fake_worker(op: str, payload: dict, timeout: int | None) -> None:
+        captured["data"] = payload.get("data")
+        Path(payload["destination"]).mkdir(parents=True, exist_ok=True)
 
-    with patch("riso.template.run_with_timeout", side_effect=fake_timeout):
+    with patch("riso.template._run_copier_worker", side_effect=fake_worker):
         compute_diff(
             answers={"project_name": "Demo", "api_languages": ["python"]},
             destination=dest,

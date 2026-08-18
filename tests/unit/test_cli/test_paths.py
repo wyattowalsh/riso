@@ -7,7 +7,22 @@ from pathlib import Path
 import pytest
 
 from riso.core.errors import PermissionDeniedError, TemplateNotFoundError
-from riso.core.paths import resolve_template_path, validate_destination
+from riso.core.paths import (
+    is_bundled_template,
+    resolve_template_path,
+    validate_destination,
+)
+
+
+def test_is_bundled_template_matches_checkout() -> None:
+    path = resolve_template_path()
+    assert is_bundled_template(path) is True
+    assert path.name == "template"
+    assert (path / "copier.yml").exists()
+
+
+def test_is_bundled_template_rejects_other_path(tmp_path: Path) -> None:
+    assert is_bundled_template(tmp_path) is False
 
 
 def test_resolve_template_from_checkout() -> None:

@@ -26,3 +26,7 @@
 - `--samples-path` / `RISO_SAMPLES_PATH`
 - `--timeout SECONDS` — Copier operation timeout
 - `--quiet` / `--verbose`
+- `--force-unsafe` — Copier `unsafe=True`; on **update**, run Copier tasks even when the worker would pass `skip_tasks=True`
+- `--skip-post-gen` / `RISO_SKIP_POST_GEN=1` — skip Riso post-generation hooks after copy/update/recopy
+
+`riso validate` runs generation combo gates by default. Pass `--schema-only` for Copier prompt-schema checks only.

@@ -177,8 +177,15 @@ def validate_cmd(
         Optional[list[str]],
         typer.Option("--data", "-d", help="Answer key=value pairs."),
     ] = None,
+    schema_only: Annotated[
+        bool,
+        typer.Option(
+            "--schema-only",
+            help="Validate Copier prompt schema only (skip generation combo gates).",
+        ),
+    ] = False,
 ) -> None:
-    """Validate template answers."""
+    """Validate template answers (generation gates; --schema-only for prompts)."""
     if not answers_file and not data:
         handle_exception(
             _cli(ctx, "riso validate"),
@@ -190,6 +197,7 @@ def validate_cmd(
         config=_config(ctx),
         answers_file=answers_file,
         data_pairs=data,
+        schema_only=schema_only,
     )
 
 
@@ -403,7 +411,12 @@ def export_cli_cmd(
         str, typer.Option("--dest", help="Target destination path.")
     ] = "./my-project",
 ) -> None:
-    """Export shell commands for copier/riso copy."""
+    """Export shell commands for copier/riso copy.
+
+    The Copier command uses ``--data-file`` for answer YAML content (Copier's
+    ``--answers-file`` is a destination-relative answers path, not input) and
+    includes ``--overwrite``.
+    """
     _run(
         export.run_export_cli,
         _cli(ctx, "riso export cli"),
@@ -425,7 +438,10 @@ def export_cli_alias_cmd(
         str, typer.Option("--dest", help="Target destination path.")
     ] = "./my-project",
 ) -> None:
-    """Export shell commands for copier/riso copy (alias for export cli)."""
+    """Export shell commands for copier/riso copy (alias for export cli).
+
+    Copier uses ``--data-file`` for answer YAML, not ``--answers-file``.
+    """
     _run(
         export.run_export_cli,
         _cli(ctx, "riso export-cli"),
