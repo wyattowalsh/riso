@@ -12,24 +12,24 @@
 
 ## Phase 2: Parallel Implementation
 
-- [ ] T001 [P] Remove active legacy answer keys from template prompts.
-- [ ] T002 [P] Add fail-fast validation for removed answer keys.
-- [ ] T003 [P] Remove post-gen pre-commit installation side effects.
-- [ ] T004 [P] Migrate checked sample answers to canonical keys.
-- [ ] T005 [P] Update render scripts and metadata to canonical keys.
-- [ ] T006 [P] Update MCP tools/resources/prompts to canonical keys.
-- [ ] T007 [P] Update web wizard/store/presets to canonical keys.
+- [x] T001 [P] Remove active legacy answer keys from template prompts.
+- [x] T002 [P] Add fail-fast validation for removed answer keys.
+- [x] T003 [P] Remove post-gen pre-commit installation side effects.
+- [x] T004 [P] Migrate checked sample answers to canonical keys.
+- [x] T005 [P] Update render scripts and metadata to canonical keys.
+- [x] T006 [P] ~~Update MCP tools/resources/prompts to canonical keys.~~ **Obsolete** (CLI migration; maintainer `riso-mcp` removed — use `src/riso/cli/**`).
+- [x] T007 [P] Update web wizard/store/presets to canonical keys.
 - [ ] T008 [P] Fix docs warnings and stale answer-key examples.
-- [ ] T009 [P] Align pnpm and release workflow blocking gates.
-- [ ] T010 [P] Add maintainer-only release-readiness skill.
+- [x] T009 [P] Align pnpm and release workflow blocking gates.
+- [x] T010 [P] Add maintainer-only release-readiness skill.
 
 ## Phase 3: Validation
 
-- [ ] V001 Validate no active removed-key references remain.
-- [ ] V002 Validate skill mirror and frontmatter.
+- [x] V001 Validate no active removed-key references remain.
+- [x] V002 Validate skill mirror and frontmatter.
 - [ ] V003 Run focused hook/template/render tests.
 - [ ] V004 Run docs `sphinx-build -W`.
-- [ ] V005 Run MCP focused tests.
+- [x] V005 ~~Run MCP focused tests.~~ **Obsolete** (CLI migration; no `src/riso/mcp/**`).
 - [ ] V006 Run web lint/tests/build/e2e.
 - [ ] V007 Run full Python quality and tests.
 - [ ] V008 Run render matrix.

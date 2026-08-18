@@ -6,12 +6,14 @@
 
 ### I. Template Quality First
 
-All template output must be production-ready. Generated projects should:
+Generated projects are production-ready for **enabled modules**: they pass quality checks (ruff, ty, pylint, pytest) for those modules without modification. That claim does not cover every optional track — Remix comparison UI, GraphQL SQL session, and GDPR Drizzle are documented extension points, not complete product surfaces.
 
-- Pass all quality checks (ruff, ty, pylint, pytest) without modification
+Generated projects should:
+
+- Pass quality checks for enabled modules (ruff, ty, pylint, pytest) without modification
 - Include proper documentation and type hints
 - Follow established patterns for the chosen technology stack
-- Be immediately runnable after generation
+- Be immediately runnable after generation for enabled, non-extension-point modules
 
 ### II. Modular Composition
 
@@ -80,4 +82,4 @@ Breaking changes are managed carefully:
 - All PRs must verify compliance with these principles
 - Exceptions must be documented and justified
 
-**Version**: 1.0.1 | **Ratified**: 2024-12-23 | **Last Amended**: 2026-08-18
+**Version**: 1.0.2 | **Ratified**: 2024-12-23 | **Last Amended**: 2026-08-18

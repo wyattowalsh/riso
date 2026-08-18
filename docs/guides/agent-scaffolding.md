@@ -1,6 +1,6 @@
 # Agent Scaffolding with Riso CLI
 
-Use the `riso` CLI and the `riso-scaffold` agent skill instead of the removed `riso-mcp` server.
+Use the `riso` CLI and the `riso-scaffold` agent skill instead of the removed `riso-mcp` server. The `agents-md-manager` and `mcp-installer` skill payloads are not shipped (`agents-md-manager` is absent; `mcp-installer` is `uv.lock` only under `.claude/skills/mcp-installer/`).
 
 ## For AI agents
 
