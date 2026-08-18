@@ -9,19 +9,17 @@ version: 2.1
 # Orbs - CircleCI Reusable Packages
 # ========================================
 
+{%- set _rust_orb = (cli_module == 'enabled' and 'rust' in cli_languages) or (api_module == 'enabled' and 'rust' in api_languages) or (mcp_module == 'enabled' and 'rust' in mcp_languages) %}
+{%- set _go_orb = (cli_module == 'enabled' and 'go' in cli_languages) or (api_module == 'enabled' and 'go' in api_languages) or (mcp_module == 'enabled' and 'go' in mcp_languages) %}
+{% if _rust_orb or _go_orb %}
 orbs:
-  {% if cli_module == 'enabled' and 'python' in cli_languages or api_module == 'enabled' and 'python' in api_languages or mcp_module == 'enabled' and 'python' in mcp_languages -%}
-  python: circleci/python@2.1
-  {% endif -%}
-  {% if api_module == 'enabled' and 'node' in api_languages or docs_module == 'enabled' and docs_framework in ['fumadocs', 'docusaurus'] or saas_infra_module == 'enabled' -%}
-  node: circleci/node@5.2
-  {% endif -%}
-  {% if cli_module == 'enabled' and 'rust' in cli_languages or api_module == 'enabled' and 'rust' in api_languages or mcp_module == 'enabled' and 'rust' in mcp_languages -%}
+  {% if _rust_orb -%}
   rust: circleci/rust@1.6
   {% endif -%}
-  {% if cli_module == 'enabled' and 'go' in cli_languages or api_module == 'enabled' and 'go' in api_languages or mcp_module == 'enabled' and 'go' in mcp_languages -%}
+  {% if _go_orb -%}
   go: circleci/go@1.11
   {% endif -%}
+{% endif %}
 
 # ========================================
 # Executors - Execution Environments
@@ -69,8 +67,8 @@ commands:
       - run:
           name: Install uv
           command: |
-            curl -LsSf https://astral.sh/uv/install.sh | sh
-            echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> $BASH_ENV
+            python -m pip install --user uv
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >> $BASH_ENV
       - restore_cache:
           keys:
             - uv-cache-{{ "{{" }} checksum "python/uv.lock" {{ "}}" }}
@@ -78,7 +76,7 @@ commands:
       - run:
           name: Install Python dependencies
           command: |
-            export PATH="$HOME/.cargo/bin:$PATH"
+            export PATH="$HOME/.local/bin:$PATH"
             uv --directory python sync
       - save_cache:
           key: uv-cache-{{ "{{" }} checksum "python/uv.lock" {{ "}}" }}
@@ -95,7 +93,7 @@ commands:
           name: Enable corepack and pnpm
           command: |
             corepack enable
-            corepack prepare pnpm@latest --activate
+            corepack prepare pnpm@9.15.0 --activate
       - restore_cache:
           keys:
             - pnpm-cache-{{ "{{" }} checksum "pnpm-lock.yaml" {{ "}}" }}
@@ -126,12 +124,12 @@ jobs:
       - run:
           name: Run Ruff linter
           command: |
-            export PATH="$HOME/.cargo/bin:$PATH"
+            export PATH="$HOME/.local/bin:$PATH"
             uv --directory python run ruff check .
       - run:
           name: Check code formatting
           command: |
-            export PATH="$HOME/.cargo/bin:$PATH"
+            export PATH="$HOME/.local/bin:$PATH"
             uv --directory python run ruff format --check .
       {% if quality_profile == 'strict' -%}
       - run:
@@ -140,7 +138,7 @@ jobs:
       - run:
           name: Run Pylint static analysis
           command: |
-            export PATH="$HOME/.cargo/bin:$PATH"
+            export PATH="$HOME/.local/bin:$PATH"
             uv --directory python run pylint src/
       {% endif -%}
 
@@ -155,7 +153,7 @@ jobs:
       - run:
           name: Run pytest with coverage
           command: |
-            export PATH="$HOME/.cargo/bin:$PATH"
+            export PATH="$HOME/.local/bin:$PATH"
             uv --directory python run pytest tests/ -v --cov --cov-report=xml --cov-report=html --junit-xml=test-results.xml
       - store_test_results:
           path: test-results.xml
@@ -174,7 +172,7 @@ jobs:
       - run:
           name: Test CLI module
           command: |
-            export PATH="$HOME/.cargo/bin:$PATH"
+            export PATH="$HOME/.local/bin:$PATH"
             cd python
             uv run pytest tests/test_cli*.py -v
   {% endif -%}
@@ -188,7 +186,7 @@ jobs:
       - run:
           name: Test MCP module
           command: |
-            export PATH="$HOME/.cargo/bin:$PATH"
+            export PATH="$HOME/.local/bin:$PATH"
             cd python
             uv run pytest tests/test_mcp.py -v
   {% endif -%}
@@ -339,7 +337,6 @@ jobs:
       - restore_cache:
           keys:
             - cargo-cache-{{ "{{" }} checksum "rust/Cargo.toml" {{ "}}" }}
-            - cargo-cache-
       - run:
           name: Run tests
           working_directory: rust
@@ -351,7 +348,8 @@ jobs:
       - save_cache:
           key: cargo-cache-{{ "{{" }} checksum "rust/Cargo.toml" {{ "}}" }}
           paths:
-            - ~/.cargo
+            - ~/.cargo/registry
+            - ~/.cargo/git
             - rust/target
 
   build-rust:
@@ -363,7 +361,6 @@ jobs:
       - restore_cache:
           keys:
             - cargo-cache-{{ "{{" }} checksum "rust/Cargo.toml" {{ "}}" }}
-            - cargo-cache-
       - run:
           name: Build release binary
           working_directory: rust
@@ -505,7 +502,7 @@ jobs:
       - run:
           name: Build Sphinx documentation
           command: |
-            export PATH="$HOME/.cargo/bin:$PATH"
+            export PATH="$HOME/.local/bin:$PATH"
             uv --directory python run --group docs sphinx-build docs ../public/
       - store_artifacts:
           path: public

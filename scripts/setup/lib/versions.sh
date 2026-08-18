@@ -5,9 +5,9 @@
 
 # Core tooling versions
 export PYTHON_MIN_VERSION="3.11"
-export UV_MIN_VERSION="0.4.30"
+export UV_MIN_VERSION="0.11.26"
 export NODE_MIN_VERSION="22.13.0"
-export PNPM_MIN_VERSION="11.9.0"
+export PNPM_MIN_VERSION="11.11.0"
 
 # Python quality tools (managed via uv tool install)
 export RUFF_VERSION="0.15.19"

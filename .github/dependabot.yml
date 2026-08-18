@@ -1,10 +1,12 @@
 # Dependabot configuration for automatic dependency updates
 # https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
+# Maintainer-root only. Do not add dest/template jinja directories here.
 
 version: 2
 updates:
-  # Python dependencies (pip/uv)
-  - package-ecosystem: "pip"
+  # pip at / does not read uv.lock and is a weak signal for this repo.
+  # Dependabot's uv ecosystem updates pyproject.toml + uv.lock together.
+  - package-ecosystem: "uv"
     directory: "/"
     schedule:
       interval: "weekly"
@@ -31,21 +33,7 @@ updates:
       prefix: "deps(actions)"
       include: "scope"
 
-  # Web wizard (maintainer configurator)
-  - package-ecosystem: "npm"
-    directory: "/web"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    groups:
-      web-npm:
-        patterns:
-          - "*"
-    commit-message:
-      prefix: "deps(web)"
-      include: "scope"
-
-  # Root package.json if present
+  # Root package.json (semantic-release, commit tooling)
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -58,46 +46,17 @@ updates:
     commit-message:
       prefix: "deps(npm)"
       include: "scope"
-    # Ignore if no lockfile at root — Dependabot no-ops cleanly
 
-  # Maintainer root (semantic-release, commit tooling)
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    groups:
-      root-node-deps:
-        patterns:
-          - "*"
-    commit-message:
-      prefix: "deps(node-root)"
-      include: "scope"
-
-  # Web configurator
+  # Web wizard (maintainer configurator)
   - package-ecosystem: "npm"
     directory: "/web"
     schedule:
       interval: "weekly"
       day: "monday"
     groups:
-      web-deps:
+      web-npm:
         patterns:
           - "*"
     commit-message:
       prefix: "deps(web)"
-      include: "scope"
-
-  # Node.js dependencies (for template files)
-  - package-ecosystem: "npm"
-    directory: "/template/files/node/saas"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    groups:
-      node-deps:
-        patterns:
-          - "*"
-    commit-message:
-      prefix: "deps(node)"
       include: "scope"

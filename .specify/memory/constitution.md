@@ -8,7 +8,7 @@
 
 All template output must be production-ready. Generated projects should:
 
-- Pass all quality checks (ruff, mypy, pylint, pytest) without modification
+- Pass all quality checks (ruff, ty, pylint, pytest) without modification
 - Include proper documentation and type hints
 - Follow established patterns for the chosen technology stack
 - Be immediately runnable after generation
@@ -27,7 +27,7 @@ Features are implemented as composable modules:
 Testing is non-negotiable:
 
 - Template changes require corresponding test updates
-- Rendered projects must achieve ≥90% test coverage
+- Maintainer CI coverage floor is 70% (`just ci-full`); rendered Python packages enforce 90%
 - Integration tests verify module combinations
 - CI must pass before merging
 
@@ -68,9 +68,9 @@ Breaking changes are managed carefully:
 ### Quality Gates
 
 - Ruff check must pass
-- Mypy strict mode must pass
+- ty typecheck must pass (not mypy)
 - Pylint score ≥9.0
-- Test coverage ≥90%
+- Maintainer test coverage ≥70%; rendered Python packages ≥90%
 - No security vulnerabilities (pip-audit)
 
 ## Governance
@@ -80,4 +80,4 @@ Breaking changes are managed carefully:
 - All PRs must verify compliance with these principles
 - Exceptions must be documented and justified
 
-**Version**: 1.0.0 | **Ratified**: 2024-12-23 | **Last Amended**: 2024-12-23
+**Version**: 1.0.1 | **Ratified**: 2024-12-23 | **Last Amended**: 2026-08-18
