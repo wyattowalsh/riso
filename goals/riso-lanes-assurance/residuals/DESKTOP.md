@@ -2,26 +2,29 @@
 
 ## Not a DESKTOP product residual
 
-DESKTOP W2 payload + electron unit tests are green. The following failure was observed while scanning modified tests and is **owned by PLATFORM** (exclusive roots: `scripts/hooks/**`, `tests/unit/ci/**`). DESKTOP does not cross-lane edit those paths.
+DESKTOP W2 payload + electron unit tests are green. The foreign `quality_tool_check` ImportError observed while scanning modified tests is **historical / closed**. PLATFORM restored `_subprocess_env` and closed maintainer `just quality` (quality_green). DESKTOP did not cross-lane edit those paths.
+
+**Active bar residual (not DESKTOP-owned):** PLATFORM R1 full `render_matrix` — [`PLATFORM.md`](./PLATFORM.md). See [`ASSURANCE.md`](../ASSURANCE.md). PLATFORM R2 `just quality` is closed green.
+
+### Foreign: `tests/unit/ci/test_quality_tool_check.py` — **CLOSED (W3)**
 
 | Field               | Value                                                                                                                                                                                                       |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **status**          | historical / closed                                                                                                                                                                                         |
 | **owner**           | PLATFORM                                                                                                                                                                                                    |
-| **task**            | Foreign: `tests/unit/ci/test_quality_tool_check.py`                                                                                                                                                         |
+| **task**            | PL-T07 helper + PL-T09 `just quality`                                                                                                                                                                       |
 | **command**         | `uv run pytest tests/unit/ci/test_quality_tool_check.py -q --tb=line -n0`                                                                                                                                   |
-| **status**          | failing (ImportError)                                                                                                                                                                                       |
-| **blocking reason** | Test imports `_subprocess_env` from `hooks.quality_tool_check`, but `scripts/hooks/quality_tool_check.py` has no such symbol. Incomplete PLATFORM/CLI affinity work on mise-trusted env for uv tool probes. |
+| **applied**         | `scripts/hooks/quality_tool_check.py` defines `_subprocess_env` and `_run()` uses it. `test_subprocess_env_trusts_cwd_for_mise` passed.                                                                     |
+| **evidence**        | [`ASSURANCE.md`](../ASSURANCE.md) fact #11 quality_green · `evidence/W3-PL-T07-quality-tool-fix.txt` · `evidence/W3-PL-T09-just-quality-rerun.log` · [`PLATFORM.md`](./PLATFORM.md) R2 closed |
 
-### Redacted log
+### Historical W2 log (superseded)
 
 ```
 FAILED tests/unit/ci/test_quality_tool_check.py::test_subprocess_env_trusts_cwd_for_mise
 ImportError: cannot import name '_subprocess_env' from 'hooks.quality_tool_check'
 ```
 
-### Suggested PLATFORM fix
-
-Either implement `_subprocess_env()` in `scripts/hooks/quality_tool_check.py` (set `MISE_TRUSTED_CONFIG_PATHS` to include cwd + parent) and use it from `_run()`, or delete/adjust the untracked test until the helper lands.
+W3 evidence shows the same test **PASSED** after the helper landed.
 
 ### DESKTOP green evidence
 

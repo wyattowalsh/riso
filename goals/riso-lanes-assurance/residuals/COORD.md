@@ -1,38 +1,42 @@
 # Residuals — COORD (W1)
 
-## W1-H06 `graphql-sample-coverage`
+## W1-H06 `graphql-sample-coverage` — **CLOSED (W3)**
 
 | Field         | Value                                            |
 | ------------- | ------------------------------------------------ |
-| **task_id**   | W1-H06                                           |
+| **task_id**   | W1-H06 / PL-T02                                  |
 | **owner**     | PLATFORM                                         |
-| **status**    | residualed (no COORD contract change)            |
-| **blocking?** | No for W1 join — sample matrix coverage gap only |
+| **status**    | historical / closed (no COORD contract change)   |
+| **blocking?** | No                                               |
 
-### Policy decision
+### Policy decision (unchanged)
 
-GraphQL is already a valid `api_features` multiselect choice and dual-gated in hooks/`_exclude`. No `copier.yml` / hooks / catalog change is required for coverage.
+GraphQL is already a valid `api_features` multiselect choice and dual-gated in hooks/`_exclude`. No `copier.yml` / hooks / catalog change was required for coverage.
 
-Only `samples/changelog-full-stack/copier-answers.yml` currently selects `graphql`. Core python-heavy samples (`api-python`, `full-stack`, `cli-docs`, `docs-sphinx`, `changelog-python`) do not.
+### Owner action (PLATFORM — W3 / PL-T02) — applied
 
-### Owner action (PLATFORM — W3 / PL-T02\*)
+PLATFORM enabled GraphQL on a primary matrix sample:
 
-Extend or add a sample answers file so primary matrix smokes exercise Python GraphQL, e.g.:
+- `samples/full-stack/copier-answers.yml` → `api_features: [graphql, websocket]`
+- `samples/changelog-full-stack/copier-answers.yml` already had GraphQL (now list form)
 
-- enable `graphql` on an existing combo (`full-stack` or `api-python`), **or**
-- add `samples/api-python-graphql/copier-answers.yml`
+Rechecked 2026-08-18. Handoff `graphql-sample-coverage` is **applied** on the board.
 
 Never hand-edit `samples/*/render/`; regenerate via official scripts after answers land.
 
 ### Evidence
 
-| command                                                                                      | result                      |
-| -------------------------------------------------------------------------------------------- | --------------------------- |
-| `rg -n 'graphql' samples/*/copier-answers.yml`                                               | only `changelog-full-stack` |
-| `uv run riso validate --answers-file samples/changelog-full-stack/copier-answers.yml --json` | `ok: true`                  |
+| source | result |
+| ------ | ------ |
+| [`ASSURANCE.md`](../ASSURANCE.md) A-T02 | handoff applied; validate_green |
+| `evidence/W5-validate-37.json` | 37/37 ok |
+| `evidence/W3-PL-T05-validate-summary.json` | 37/37; full-stack + changelog-full-stack ok |
+| `evidence/W3-PL-T01-answers-diff.md` | full-stack GraphQL coverage |
+| `rg -n 'graphql' samples/*/copier-answers.yml` | `full-stack` and `changelog-full-stack` |
+| Historical W1: `evidence/W1-H06-changelog-full-stack.json` | changelog-full-stack already ok |
 
-Log: `goals/riso-lanes-assurance/evidence/W1-H06-changelog-full-stack.json`
+### Ownership note
 
-### Blocking reason (human)
+Sample **answers** ownership is PLATFORM exclusive (`samples/*/copier-answers.yml`). COORD did not invent or edit sample answers. W1 residual was an ownership handoff, not a contract defect; W3 closed the answers follow-through.
 
-Sample **answers** ownership is PLATFORM exclusive (`samples/*/copier-answers.yml`). COORD must not invent or edit sample answers. Residual is intentional ownership handoff, not a contract defect.
+**Active bar residual (not COORD-owned):** PLATFORM R1 full `render_matrix` — [`PLATFORM.md`](./PLATFORM.md).
