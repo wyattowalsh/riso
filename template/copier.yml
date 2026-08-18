@@ -361,14 +361,16 @@ api_features:
   type: str
   multiselect: true
   help: |
-    Select additional API features (multiselect):
-    - graphql: GraphQL endpoint (Strawberry/Apollo/async-graphql)
-    - websocket: WebSocket real-time communication
+    Select additional Python FastAPI features (multiselect). Payload is
+    Python-only: these options do not scaffold Apollo, async-graphql, Node,
+    Rust, or Go GraphQL/WebSocket.
+    - graphql: Strawberry GraphQL mounted on the Python FastAPI app
+    - websocket: FastAPI WebSocket real-time endpoints (Python API only)
   choices:
     - graphql
     - websocket
   default: []
-  when: "{{ api_module == 'enabled' }}"
+  when: "{{ api_module == 'enabled' and 'python' in api_languages }}"
 
 
 # ========================================
@@ -2047,8 +2049,8 @@ _exclude:
   - "{% if api_module != 'enabled' %}docs/modules/api-fastapi.md{% endif %}"
   - "{% if api_module != 'enabled' %}docs/modules/api-node.md{% endif %}"
   - "{% if api_module != 'enabled' %}docs/modules/api-python.md{% endif %}"
-  - "{% if not (api_module == 'enabled' and ('graphql' in api_features or graphql_api_module == 'enabled')) %}docs/modules/graphql.md{% endif %}"
-  - "{% if not (api_module == 'enabled' and ('websocket' in api_features or websocket_module == 'enabled')) %}docs/modules/websockets.md{% endif %}"
+  - "{% if not (api_module == 'enabled' and 'python' in api_languages and ('graphql' in api_features or graphql_api_module == 'enabled')) %}docs/modules/graphql.md{% endif %}"
+  - "{% if not (api_module == 'enabled' and 'python' in api_languages and ('websocket' in api_features or websocket_module == 'enabled')) %}docs/modules/websockets.md{% endif %}"
   - "{% if mcp_module != 'enabled' %}docs/modules/mcp.md{% endif %}"
   - "{% if shared_logic != 'enabled' %}docs/modules/shared-logic.md{% endif %}"
   - "{% if codegen_module != 'enabled' %}docs/modules/codegen-scaffolding.md{% endif %}"

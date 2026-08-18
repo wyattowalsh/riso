@@ -201,3 +201,40 @@ def test_forbidden_dead_exclude_paths_are_absent() -> None:
         assert path not in joined, f"dead exclude {path!r} still present"
     assert "electron-forge" not in joined
     assert '"frontend/"' not in joined
+
+
+def test_api_features_graphql_websocket_are_python_fastapi_only() -> None:
+    data = _load_copier()
+    prompt = data["api_features"]
+    assert isinstance(prompt, dict)
+    assert prompt["when"] == (
+        "{{ api_module == 'enabled' and 'python' in api_languages }}"
+    )
+    help_text = str(prompt["help"])
+    assert "Python-only" in help_text
+    assert "Strawberry GraphQL" in help_text
+    assert "do not scaffold Apollo, async-graphql" in help_text
+    assert "GraphQL endpoint (Strawberry/Apollo/async-graphql)" not in help_text
+
+    excludes = data.get("_exclude", [])
+    assert isinstance(excludes, list)
+    graphql_docs = [
+        rule
+        for rule in excludes
+        if isinstance(rule, str) and "docs/modules/graphql.md" in rule
+    ]
+    websocket_docs = [
+        rule
+        for rule in excludes
+        if isinstance(rule, str) and "docs/modules/websockets.md" in rule
+    ]
+    assert graphql_docs == [
+        "{% if not (api_module == 'enabled' and 'python' in api_languages "
+        "and ('graphql' in api_features or graphql_api_module == 'enabled')) %}"
+        "docs/modules/graphql.md{% endif %}"
+    ]
+    assert websocket_docs == [
+        "{% if not (api_module == 'enabled' and 'python' in api_languages "
+        "and ('websocket' in api_features or websocket_module == 'enabled')) %}"
+        "docs/modules/websockets.md{% endif %}"
+    ]
