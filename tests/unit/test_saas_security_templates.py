@@ -114,6 +114,29 @@ class TestSaasAdminAuthz:
             assert "await requireAdminRole();" in text
             assert "const isAdmin = await requireAdminRole()" not in text
 
+    def test_users_admin_splits_server_page_and_client(self) -> None:
+        """Users admin auth stays on the server page; UI is a client module."""
+        users_dir = SAAS_ROOT / "runtime" / "nextjs" / "app" / "admin" / "users"
+        page = _read(users_dir / "page.tsx.jinja")
+        client = _read(users_dir / "client.tsx.jinja")
+
+        assert "'use client'" not in page
+        assert "import UsersClient from './client'" in page
+        assert "await requireUserId();" in page
+        assert "await requireAdminRole();" in page
+        assert "return <UsersClient />;" in page
+
+        assert client.lstrip().startswith("{% if saas_infra_module")
+        assert "'use client'" in client
+        assert client.find("'use client'") < client.find(
+            "export default function UsersClient"
+        )
+        assert "requireUserId" not in client
+        assert "requireAdminRole" not in client
+        assert "@/lib/auth/helpers" not in client
+        assert "fetch(`/api/admin/users/${userId}`" in client
+        assert "fetch(`/api/admin/users/${userToDelete.id}`" in client
+
 
 class TestSaasClerkMiddleware:
     """Clerk ^5.5.0 uses clerkMiddleware, not deprecated authMiddleware."""
