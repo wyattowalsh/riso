@@ -1,0 +1,25 @@
+{%- if saas_infra_module == "enabled" and saas_analytics == "amplitude" -%}
+'use client';
+
+import type { ReactNode } from 'react';
+{% if saas_app_module == "enabled" %}
+import { useEffect } from 'react';
+import * as amplitude from '@amplitude/analytics-browser';
+
+export function AmplitudeProvider({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    const apiKey = process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY;
+    if (!apiKey) {
+      return;
+    }
+    amplitude.init(apiKey);
+  }, []);
+
+  return children;
+}
+{% else %}
+export function AmplitudeProvider({ children }: { children: ReactNode }) {
+  return children;
+}
+{% endif %}
+{%- endif -%}

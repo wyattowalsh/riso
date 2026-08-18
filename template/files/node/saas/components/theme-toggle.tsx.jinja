@@ -1,0 +1,57 @@
+{%- if saas_infra_module == "enabled" and saas_ui_framework == "shadcn-ui" -%}
+{% if saas_runtime == 'nextjs-16' %}
+'use client';
+{% endif %}
+
+import * as React from 'react';
+
+const STORAGE_KEY = 'theme';
+
+function applyTheme(theme: 'light' | 'dark') {
+  document.documentElement.classList.toggle('dark', theme === 'dark');
+  try {
+    localStorage.setItem(STORAGE_KEY, theme);
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+export function ThemeToggle() {
+  React.useEffect(() => {
+    let stored: string | null = null;
+    try {
+      stored = localStorage.getItem(STORAGE_KEY);
+    } catch {
+      stored = null;
+    }
+    if (stored === 'dark' || stored === 'light') {
+      applyTheme(stored);
+      return;
+    }
+    applyTheme(
+      window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+    );
+  }, []);
+
+  return (
+    <button
+      type="button"
+      aria-label="Toggle theme"
+      className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+      onClick={() => {
+        const next = document.documentElement.classList.contains('dark')
+          ? 'light'
+          : 'dark';
+        applyTheme(next);
+      }}
+    >
+      <span className="dark:hidden" aria-hidden="true">
+        ☾
+      </span>
+      <span className="hidden dark:inline" aria-hidden="true">
+        ☀
+      </span>
+    </button>
+  );
+}
+{%- endif -%}
