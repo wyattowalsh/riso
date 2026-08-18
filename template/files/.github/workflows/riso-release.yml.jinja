@@ -43,6 +43,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      {% if (cli_module == 'enabled' and 'python' in cli_languages) or (api_module == 'enabled' and 'python' in api_languages) or (mcp_module == 'enabled' and 'python' in mcp_languages) or (docs_module == 'enabled' and docs_framework == 'sphinx-shibuya') %}
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -56,10 +57,15 @@ jobs:
           cache-dependency-glob: "**/uv.lock"
 
       - name: Install dependencies
+        working-directory: python
         run: uv sync
 
       - name: Run quality checks
-        run: QUALITY_PROFILE={{ quality_profile }} uv run task quality
+        run: QUALITY_PROFILE={{ quality_profile }} uv --directory python run task quality
+      {% else %}
+      - name: No Python track on this dest
+        run: echo "Release quality has no Python uv steps when python/ is excluded."
+      {% endif %}
 
   release:
     name: Semantic Release
@@ -97,6 +103,7 @@ jobs:
           cache-dependency-glob: "**/uv.lock"
 
       - name: Install Python dependencies
+        working-directory: python
         run: uv sync
 {% endif %}
 
@@ -121,8 +128,8 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 {% if api_module == 'enabled' and 'python' in api_languages %}
           echo "Verifying Python environment..."
-          uv run python --version
-          uv run python -c "import sys; print(f'Python {sys.version}')"
+          uv --directory python run python --version
+          uv --directory python run python -c "import sys; print(f'Python {sys.version}')"
 {% endif %}
           echo "Verifying semantic-release installation..."
 {% if api_module == 'enabled' and 'node' in api_languages %}
