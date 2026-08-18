@@ -5,12 +5,16 @@ import { createFromSource } from 'fumadocs-core/search/server';
 export const dynamic = 'force-static';
 export const revalidate = false;
 
-const search = createFromSource(source, {
+const { staticGET } = createFromSource(source, {
   // Add tag support for filtering
   // tag: (page) => page.data.tags ?? [],
 });
 
-export const GET = search.staticGET;
+// Named GET() with no Request param so Next static export does not
+// treat the handler as using request.url (search.GET does).
+export async function GET() {
+  return staticGET();
+}
 {%- elif docs_module == 'enabled' and docs_framework == 'fumadocs' and fumadocs_search_provider == 'orama-cloud' -%}
 import { source } from '@/lib/source';
 import { createFromSource } from 'fumadocs-core/search/server';
@@ -18,9 +22,11 @@ import { createFromSource } from 'fumadocs-core/search/server';
 export const dynamic = 'force-static';
 export const revalidate = false;
 
-const search = createFromSource(source, {
+const { staticGET } = createFromSource(source, {
   // Orama Cloud configuration
 });
 
-export const GET = search.staticGET;
+export async function GET() {
+  return staticGET();
+}
 {%- endif -%}
