@@ -91,7 +91,9 @@ def resolve_answers(
         config=copier_config,
         provided_answers=provided,
     )
-    return prepare_copier_data(merged)
+    # Defaults can reintroduce removed keys after the provided-only remap.
+    remapped = apply_then_reject_removed_keys(merged).answers
+    return prepare_copier_data(remapped)
 
 
 def validate_and_raise(
