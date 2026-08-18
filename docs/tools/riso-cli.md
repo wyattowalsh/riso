@@ -55,7 +55,7 @@ These flags may appear before or after the subcommand (`uv run riso update DEST 
 | `--samples-path` / `RISO_SAMPLES_PATH` | Samples root |
 | `--timeout SECONDS` | Copier operation timeout (default 300) |
 | `--force-unsafe` | Copier `unsafe=True`. On `riso update`, this is how Copier **tasks** run even when the worker would otherwise pass `skip_tasks=True`. Required for Jinja extensions and `_tasks`. |
-| `--skip-post-gen` / `RISO_SKIP_POST_GEN=1` | Skip Riso **post-generation hooks** after copy / update / recopy. Does not replace Copier `skip_tasks`. Agent and test escape hatch only. |
+| `--skip-post-gen` / `RISO_SKIP_POST_GEN=1` | Skip Riso **pre-generation and post-generation hooks** after copy / update / recopy. Copier `skip_tasks` stays true; this flag is the agent/test escape hatch for the hooks_runner replacements. |
 
 Example:
 

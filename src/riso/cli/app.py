@@ -116,7 +116,7 @@ def global_options(
         bool,
         typer.Option(
             "--skip-post-gen",
-            help="Skip post-generation hooks after copy/update/recopy.",
+            help="Skip pre-generation and post-generation hooks after copy/update/recopy.",
             envvar="RISO_SKIP_POST_GEN",
         ),
     ] = False,

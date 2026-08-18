@@ -135,6 +135,7 @@ exclude_patterns = [
     "**/*.jinja",
     "modules/**",
     "upgrade-guide/**",
+    "archive/**",
 ]
 source_suffix = {
     ".rst": "restructuredtext",
