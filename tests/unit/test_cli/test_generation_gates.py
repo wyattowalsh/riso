@@ -67,6 +67,50 @@ def test_ok_when_languages_present() -> None:
     assert result.errors == ()
 
 
+def test_docs_module_does_not_require_docs_languages() -> None:
+    result = validate_answers_for_generation(
+        {"docs_module": "enabled", "docs_languages": []}
+    )
+    assert result.ok is True
+
+
+def test_saas_billing_requires_auth_module() -> None:
+    result = validate_answers_for_generation(
+        {
+            "saas_infra_module": "enabled",
+            "saas_billing_module": "enabled",
+            "saas_auth_module": "disabled",
+        }
+    )
+    assert result.ok is False
+    assert any("saas_auth_module" in e for e in result.errors)
+
+
+def test_saas_app_requires_auth_and_billing() -> None:
+    result = validate_answers_for_generation(
+        {
+            "saas_infra_module": "enabled",
+            "saas_app_module": "enabled",
+            "saas_auth_module": "enabled",
+            "saas_billing_module": "disabled",
+        }
+    )
+    assert result.ok is False
+    assert any("saas_app_module" in e for e in result.errors)
+
+
+def test_remix_authjs_is_illegal_combo() -> None:
+    result = validate_answers_for_generation(
+        {
+            "saas_infra_module": "enabled",
+            "saas_runtime": "remix-2",
+            "saas_auth_provider": "authjs",
+        }
+    )
+    assert result.ok is False
+    assert any("Remix" in e or "Auth.js" in e for e in result.errors)
+
+
 def test_collect_saas_selected_does_not_read_saas_auth() -> None:
     selected = _collect_saas_selected(
         {

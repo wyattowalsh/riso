@@ -135,6 +135,8 @@ def test_copy_dry_run_json(tmp_path: Path) -> None:
 def test_diff_copy_json() -> None:
     answers = REPO_ROOT / "samples/default/copier-answers.yml"
     dest = REPO_ROOT / "samples/default/render"
+    if not dest.exists():
+        pytest.skip("default render not present")
     proc = _run_cli(
         "diff",
         str(dest),

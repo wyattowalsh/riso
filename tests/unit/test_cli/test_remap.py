@@ -277,6 +277,14 @@ def test_idempotent_second_apply_is_noop() -> None:
     assert second.ops == ()
 
 
+def test_wrap_api_language_unknown_sequence_token_fail_closed() -> None:
+    result = _apply({"api_language": ["python", "fortran"]})
+    assert result.ops == ()
+    assert result.answers["api_language"] == ["python", "fortran"]
+    with pytest.raises(ValidationFailedError):
+        _apply_then_reject({"api_language": ["python", "fortran"]})
+
+
 def test_do_not_overwrite_dest_wrap_list() -> None:
     result = _apply({"api_language": "python", "api_languages": ["go"]})
     assert result.answers["api_languages"] == ["go"]

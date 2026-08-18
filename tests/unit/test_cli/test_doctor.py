@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 
@@ -128,6 +129,29 @@ def test_doctor_reports_min_copier_when_ready() -> None:
     assert result["checks"]["copier"]["meets_min"] is True
     assert result["checks"]["git"]["available"] is True
     assert result["ready"] is True
+
+
+def test_doctor_cli_exits_nonzero_when_not_ready(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from typer.testing import CliRunner
+
+    from riso.cli.app import app
+
+    monkeypatch.setattr(
+        "riso.cli.app.doctor.run_doctor",
+        lambda *, config: {
+            "checks": {"uv": {"available": False}},
+            "ready": False,
+            "warnings": [],
+        },
+    )
+    result = CliRunner().invoke(app, ["--json", "doctor"])
+    assert result.exit_code == 1
+    payload = json.loads(result.stdout)
+    assert payload["ok"] is False
+    assert payload["data"]["ready"] is False
+    assert any("not ready" in err.lower() for err in payload["errors"])
 
 
 def test_doctor_result_includes_envelope_friendly_top_level_keys() -> None:

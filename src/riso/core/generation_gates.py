@@ -25,7 +25,6 @@ _MODULE_LANGUAGE_PAIRS: tuple[tuple[str, str], ...] = (
     ("cli_module", "cli_languages"),
     ("api_module", "api_languages"),
     ("mcp_module", "mcp_languages"),
-    ("docs_module", "docs_languages"),
 )
 
 
@@ -92,6 +91,32 @@ def _saas_errors(answers: Mapping[str, Any]) -> list[str]:
         errors.append(
             "Supabase Realtime requires saas_database='supabase' "
             "(or choose another realtime provider)."
+        )
+
+    if _as_enabled(answers.get("saas_billing_module")) and not _as_enabled(
+        answers.get("saas_auth_module")
+    ):
+        errors.append(
+            "saas_billing_module requires saas_auth_module='enabled' "
+            "(enable auth before billing)."
+        )
+
+    if _as_enabled(answers.get("saas_app_module")) and not (
+        _as_enabled(answers.get("saas_auth_module"))
+        and _as_enabled(answers.get("saas_billing_module"))
+    ):
+        errors.append(
+            "saas_app_module requires saas_auth_module and saas_billing_module "
+            "to be enabled."
+        )
+
+    if (
+        answers.get("saas_runtime") == "remix-2"
+        and answers.get("saas_auth_provider") == "authjs"
+    ):
+        errors.append(
+            "Remix runtime does not support Auth.js; choose "
+            "saas_auth_provider='clerk' or saas_runtime='nextjs-16'."
         )
 
     return errors

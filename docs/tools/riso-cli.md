@@ -68,6 +68,7 @@ uv run riso --skip-post-gen copy ./my-app --answers-file answers.yml --json
 
 ```bash
 uv run riso doctor --json
+uv run riso check-update ./my-app --json
 uv run riso template path --json
 uv run riso prompts --json
 uv run riso prompts show project_name --json
@@ -185,3 +186,17 @@ the following hold:
 `checks.git`, `checks.min_copier_version`, and `checks.copier.meets_min`
 surface those gates. `checks.bundled_update_unsafe` records the bundled-update
 `unsafe=True` policy above.
+
+When `ready` is false, `riso doctor` still prints the checks payload (including
+`--json`) and exits `1`.
+
+### `riso check-update`
+
+Wraps `copier check-update --output-format json` in an existing destination:
+
+```bash
+uv run riso check-update ./my-app --json
+```
+
+`data.update_available` is informational; Riso exits `0` when Copier JSON
+parses even if a newer template version exists.
