@@ -1051,8 +1051,23 @@ class TestGoDockerfile:
             go_version="1.24",
         )
 
+        copy_lines = [
+            line.strip()
+            for line in rendered.splitlines()
+            if line.lstrip().startswith("COPY ")
+        ]
         assert "COPY go.mod ./" in rendered
         assert "COPY go.mod go.sum" not in rendered
         assert "COPY go/go.mod" not in rendered
         assert "go mod download" in rendered
-        assert "go.sum" not in rendered
+        assert copy_lines, "expected COPY instructions in Dockerfile"
+        assert all("go.sum" not in line for line in copy_lines)
+
+    def test_template_has_no_go_sum_lockfile(self, go_templates_dir: Path) -> None:
+        """Copier payload must not ship go.sum; Dockerfiles must not COPY it."""
+        assert not list(go_templates_dir.rglob("go.sum*"))
+        dockerfile = (go_templates_dir / "Dockerfile.jinja").read_text(encoding="utf-8")
+        assert "COPY go.mod go.sum" not in dockerfile
+        assert "COPY go.sum" not in dockerfile
+        assert "COPY go.mod ./" in dockerfile
+        assert "go mod download" in dockerfile

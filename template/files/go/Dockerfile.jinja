@@ -12,8 +12,9 @@ RUN apk add --no-cache git ca-certificates tzdata
 # Set working directory
 WORKDIR /build
 
-# Copy go.mod first for better caching. The template does not ship a
-# lockfile; download modules from go.mod alone.
+# Copy go.mod first for layer caching. The Copier payload has no go.sum;
+# do not `COPY go.mod go.sum` (docker build would fail on a missing lockfile).
+# `go mod download` resolves modules from go.mod and writes go.sum in the image.
 COPY go.mod ./
 RUN go mod download
 
