@@ -1,9 +1,9 @@
 # ASSURANCE — Riso lanes W4 report
 
 **Generated:** 2026-07-29\
-**Updated:** 2026-08-17 (finalize/assure close-out)\
+**Updated:** 2026-08-18 (W0–W4 re-orchestrate; PL-T06 live re-run)\
 **Branch:** `main` · **Workspace:** `/Users/ww/dev/projects/riso`\
-**Status:** **residualed** (validate 37/37 green; maintainer unit+docs green; full `render_matrix` needs one more pass after fumadocs/quality smoke fixes)\
+**Status:** **residualed** (W0–W4 task IDs done except PL-T06; validate 37/37; live `render_matrix` pid 70136; post-fix smoke classes: llms prefix-slug EISDIR + CLI-off pylint — patches landed mid-run)\
 **Report tasks:** A-T01…A-T04
 
 ## Executive summary
@@ -12,7 +12,7 @@
 | ----------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | **validate_green**      | **true**  | `evidence/W5-validate-37.json` **37/37 ok** (2026-08-17 in-process `run_validate`); prior `W3-PL-T05-validate-summary.json`               |
 | **quality_green**       | **true**  | Maintainer: ruff check 0; sphinx `-W` 0; CLI/hooks/ci unit **341 passed**; web eslint 0 errors / 308 vitest. Historical dest `just quality`: `W3-PL-T09-just-quality-rerun.log` (877 passed) |
-| **render_matrix_green** | **false** | Re-run finished 2026-08-14 (`samples/metadata/render_matrix.json`): **4/37** `render_status=ok`. Dominant fail: Fumadocs `output:'export'` missing `dynamic='force-static'` on sitemap/robots (32 docs smokes). Secondary: dest `just quality` missing `api_python` extras + untrusted dest `mise.toml`. Fixes landed 2026-08-17; full matrix not re-run this session (wall-clock). |
+| **render_matrix_green** | **false** | Official re-run **live** (`evidence/W5-PL-T06-render_matrix.log`, pid 70136). Early dests: `ai-tools-off` docs passed (export-meta fix holds). `api-monorepo` / `api-python` failed on **llms.mdx prefix-slug EISDIR** + **pylint E0611** on CLI-off `test_cli.py`. Mid-run patches: prefix-skip `generateStaticParams`, Jinja-gate CLI tests. Remaining dests in this run pick up those templates. Do not start a second matrix. |
 | **riso_mcp_clean**      | **true**  | `evidence/W4-A-T04-riso-mcp.txt` — no matches under `src/riso` / `template`                                                               |
 | **path_lock**           | **clean** | `evidence/W4-A-T03-pathlock.md` — 93 dirty paths; unowned=0; foreign-tree=0                                                               |
 
@@ -39,7 +39,7 @@ All **22** umbrella facts from [`facts.md`](./facts.md) are mapped.\
 | 10  | PLATFORM answers after outbox; no invented keys; official render scripts                 | **green**            | `W3-PL-T01-answers-diff.md` (no invented keys); answers normalize commit `0327b1b`; rust samples commit `c130324`                                                                                                                                                                          |
 | 11  | Maintainer `just quality` passes before done                                             | **green**            | Owner **PLATFORM** residual close-out · cmd `just quality` · log `W3-PL-T09-just-quality-rerun.log` · **877 passed, 17 skipped** · fixes: rename hooks `test_hooks_quality_tool_check.py`, move `tests/unit/scripts`→`setup_scripts` (avoid `scripts` package clash); historical fail log `W3-PL-T09-just-quality.log`                                                                                 |
 | 12  | Every `samples/*/copier-answers.yml` validates                                           | **green**            | `W3-PL-T05-validate-summary.json` **37/37** (26 top-level + 11 saas-starter); W4 spot: full-stack/go-api/rust-api/docs-docusaurus `ok:true` (`evidence/W4-A-T01-validate-spot.json`)                                                                                                       |
-| 13  | Full `render_matrix.py` completes; never hand-edit renders                               | **residual**         | Owner **PLATFORM** · matrix file exists; 33/37 variants failed smoke (Fumadocs static export + quality extras/mise). Fixes: `sitemap.ts`/`robots.ts` `dynamic='force-static'`; bootstrap `--group api_python`; dest-dir `mise trust`; unset parent `VIRTUAL_ENV`. Residual `residuals/PLATFORM.md` R1. Do not hand-edit `samples/*/render/`. |
+| 13  | Full `render_matrix.py` completes; never hand-edit renders                               | **residual**         | Owner **PLATFORM** · live W5 re-run (`evidence/W5-PL-T06-render_matrix.log`, pid 70136) — **not green**. Early dests: `ai-tools-off` docs passed (export-meta/`force-static` holds); `api-monorepo` / `api-python` failed on **llms.mdx prefix-slug EISDIR** + **pylint E0611** on CLI-off `test_cli.py`. Mid-run patches: prefix-skip `generateStaticParams`, Jinja-gate CLI tests; later dests in this run pick those up. Residual `residuals/PLATFORM.md` R1. Do not hand-edit `samples/*/render/`. |
 | 14  | `validate_jinja_templates.py` for owned trees                                            | **green**            | PY `W2-PY-jinja-validate.txt` (145); NODE `W2-NODE-jinja*.txt` (129); SAAS `W2-SAAS-jinja.txt` (196); SYS `W2-SYS-jinja-validate.txt` (79); DESKTOP `W2-DESKTOP-jinja.txt` (63); PLATFORM `W3-PL-T10-jinja-validate.txt`                                                                   |
 | 15  | Lane-targeted pytest where surfaces change                                               | **green** (targeted) | CLI 78 pass `W2-CLI-pytest.txt`; go templates 42–45 pass `W2-SYS-pytest-go-templates.txt` / `W3-PL-T04-go-templates.txt`; electron 42 pass `W2-DESKTOP-pytest-electron.txt`; CI suite pass `W3-PL-T07-ci-pytest.txt`. Full suite residual under fact #11                                   |
 | 16  | Context/agents validators when those surfaces change                                     | **green**            | COORD `W1-H08-context-sync.txt`; PLATFORM PL-T10 N/A (no context/agents edits)                                                                                                                                                                                                             |
@@ -130,16 +130,16 @@ ______________________________________________________________________
 
 ## Residual ledger (active blockers only)
 
-### PLATFORM R1 — `render_matrix` smoke red after complete run (active)
+### PLATFORM R1 — `render_matrix` live W5 re-run (active)
 
 | Field           | Value                                                                                                                                                                           |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | owner           | PLATFORM                                                                                                                                                                        |
 | command         | `uv run python scripts/ci/render_matrix.py`                                                                                                                                     |
-| evidence        | Re-run complete: `samples/metadata/render_matrix.json` (gitignored) · log `evidence/W3-PL-T06-render_matrix-rerun.log` · validate `evidence/W5-validate-37.json`                 |
-| redacted log    | Matrix wrote metadata then exited 1. 4 ok (docs-docusaurus, electron-app, mcp-typescript, tauri-app). 32 docs smokes: Next `output:'export'` required `dynamic='force-static'` on `/sitemap.xml` and `/robots.txt`. quality_just: pylint E0401 without `api_python` group; mise dest config untrusted when `just` loads parent `mise.toml`. |
-| blocking reason | Full 37-variant matrix not re-run after 2026-08-17 smoke-root-cause fixes (wall-clock). Answers validate is 37/37.                                                              |
-| fix             | Re-run `uv run python scripts/ci/render_matrix.py` after the fumadocs/quality/mise patches. Never hand-edit `samples/*/render/`.                                                |
+| evidence        | Live: `evidence/W5-PL-T06-render_matrix.log` · pid `evidence/W5-PL-T06-render_matrix.pid` (70136) · validate `evidence/W5-validate-37.json`. Prior complete red run: `evidence/W3-PL-T06-render_matrix-rerun.log` |
+| redacted log    | Official re-run **in_progress**. Early dests: `ai-tools-off` docs passed (2026-08-17 export-meta/`force-static` holds). `api-monorepo` / `api-python` failed on **llms.mdx prefix-slug EISDIR** + **pylint E0611** on CLI-off `test_cli.py`. Mid-run template patches landed (prefix-skip `generateStaticParams`; Jinja-gate CLI tests). Remaining dests in this run use those templates. Do not start a second matrix. No full-matrix score until the run exits. |
+| blocking reason | 37-variant matrix still running; `render_matrix_green` stays false until exit 0. Answers validate is 37/37.                                                              |
+| fix             | Let pid 70136 finish. Never hand-edit `samples/*/render/`.                                                |
 
 ### PLATFORM R2 — `just quality` — **CLOSED green**
 
@@ -184,4 +184,4 @@ git rev-parse --show-toplevel   # /Users/ww/dev/projects/riso
 rg -n 'riso-mcp' src/riso template   # only migration/do-not-document mentions
 ```
 
-**Fail-closed notes:** `render_matrix_green` stays false until a post-fix 37-variant matrix exits 0. Do not infer green from validate-only or a 4/37 matrix file.
+**Fail-closed notes:** `render_matrix_green` stays false until the live W5 37-variant matrix (pid 70136) exits 0. Do not infer green from validate-only, mid-run dests, or the historical 4/37 matrix file.
