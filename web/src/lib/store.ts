@@ -184,7 +184,7 @@ export interface RisoConfig {
   mcp_transport: "stdio" | "sse" | "http";
   mcp_example_tools: boolean;
   desktop_module: "disabled" | "enabled";
-  desktop_framework: "electron-vite" | "electron-forge" | "tauri";
+  desktop_framework: "electron-vite" | "tauri";
   desktop_features: string;
   desktop_platforms: string;
   include_databases: "no" | "yes";
