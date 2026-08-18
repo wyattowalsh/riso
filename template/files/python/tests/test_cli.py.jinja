@@ -7,6 +7,7 @@ CLI_DISABLED = {{ "True" if cli_module | lower != "enabled" or "python" not in c
 if CLI_DISABLED:
     pytest.skip("CLI module disabled", allow_module_level=True)
 
+{% if cli_module == 'enabled' and 'python' in cli_languages %}
 typer_testing = pytest.importorskip(
     "typer.testing",
     reason="Typer CLI dependencies not installed",
@@ -149,3 +150,4 @@ def test_main_handles_cli_error() -> None:
     ):
         main()
     assert exc_info.value.code == 7
+{% endif %}
