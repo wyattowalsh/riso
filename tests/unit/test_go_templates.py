@@ -1067,7 +1067,12 @@ class TestGoDockerfile:
         """Copier payload must not ship go.sum; Dockerfiles must not COPY it."""
         assert not list(go_templates_dir.rglob("go.sum*"))
         dockerfile = (go_templates_dir / "Dockerfile.jinja").read_text(encoding="utf-8")
-        assert "COPY go.mod go.sum" not in dockerfile
-        assert "COPY go.sum" not in dockerfile
-        assert "COPY go.mod ./" in dockerfile
+        copy_lines = [
+            line.strip()
+            for line in dockerfile.splitlines()
+            if line.lstrip().startswith("COPY ")
+        ]
+        assert copy_lines, "expected COPY instructions in Dockerfile.jinja"
+        assert all("go.sum" not in line for line in copy_lines)
+        assert any(line.startswith("COPY go.mod") for line in copy_lines)
         assert "go mod download" in dockerfile
