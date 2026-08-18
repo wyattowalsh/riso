@@ -4,7 +4,7 @@
 
 PLATFORM W3 applied COORD outbox answer follow-through (`api_features` list shape, GraphQL coverage on full-stack, rust sample answers), restored post_gen hook helpers, and QUAL go asserts. Full validate loop is green (37/37 including saas-starter + rust).
 
-**Close-out (2026-08-18, resumed):** R2 `just quality` remains **green** historically. R1 is **in_progress** — live official re-run (`evidence/W5-PL-T06-render_matrix.log`, pid 70136). This-run smoke **fails (5, early dests only):** `api-monorepo` / `api-python` / `changelog-full-stack` / `changelog-monorepo` (fumadocs `llms.mdx` prefix-slug EISDIR/EEXIST) plus `changelog-python` (Sphinx linkify missing). Mid-run patches landed; dests from `circleci-node` through `mcp-typescript` passed this run. Last started dest: `rust-api`. Do not start a second matrix. `render_matrix_green` stays false until this run exits 0. Official JSON stays stale (2026-08-14) until process exit.
+**Close-out (2026-08-18, matrix exit):** Official W5 `render_matrix` **exited** (`evidence/W5-PL-T06-render_matrix.log`; JSON `samples/metadata/render_matrix.json` 2026-08-18T11:48:24Z). 30 dests ok / 7 failed. Individual `render-samples.sh` re-smokes are the remaining R1 path. Do **not** start a second official matrix. `render_matrix_green` stays false until those 7 dests are green (or residualed with owner).
 
 ## Residuals
 
