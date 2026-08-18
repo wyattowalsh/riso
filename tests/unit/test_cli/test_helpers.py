@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
+from unittest.mock import patch
 
 import pytest
 
 from riso.cli.helpers import load_answers_file, resolve_answers, validate_and_raise
 from riso.core.errors import ValidationFailedError
 from riso.core.paths import resolve_template_path
+from riso.template import merge_answers_with_defaults
 
 pytestmark = pytest.mark.unit
 
@@ -69,6 +72,30 @@ def test_resolve_answers_rejects_leftover_removed_keys(tmp_path: Path) -> None:
             data_pairs=None,
             template_path=resolve_template_path(),
         )
+    assert exc.value.data is not None
+    assert any("saas_auth" in err for err in exc.value.data["errors"])
+
+
+def test_resolve_answers_rejects_removed_keys_reintroduced_after_merge(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "answers.yml"
+    path.write_text("project_name: Demo\n", encoding="utf-8")
+
+    def _merge_then_inject(**kwargs: Any) -> dict[str, Any]:
+        merged = merge_answers_with_defaults(**kwargs)
+        return {**merged, "saas_auth": "firebase"}
+
+    with patch(
+        "riso.cli.helpers.merge_answers_with_defaults",
+        side_effect=_merge_then_inject,
+    ):
+        with pytest.raises(ValidationFailedError) as exc:
+            resolve_answers(
+                answers_file=path,
+                data_pairs=None,
+                template_path=resolve_template_path(),
+            )
     assert exc.value.data is not None
     assert any("saas_auth" in err for err in exc.value.data["errors"])
 
