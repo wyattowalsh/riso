@@ -388,6 +388,23 @@ class TestJustfileIntegration:
             "hooks recipe should run pre-commit"
         )
 
+    def test_root_justfile_drops_tui_and_uses_riso_copy(
+        self, justfile_path: Path
+    ) -> None:
+        """Maintainer generate recipes use riso copy; tui recipe is gone."""
+        content = justfile_path.read_text(encoding="utf-8")
+        assert "riso tui" not in content
+        assert not any(
+            line.startswith("tui ") or line.startswith("tui dest")
+            for line in content.splitlines()
+        )
+        assert 'uv run riso copy "$1" --answers-file "$2" --force' in content
+        assert 'uv run copier copy . "$1"' in content
+        assert (
+            "uv run riso copy {{ dest }} --answers-file "
+            "samples/default/copier-answers.yml --force"
+        ) in content
+
     def test_root_justfile_setup_installs_all_hook_types(
         self, justfile_path: Path
     ) -> None:

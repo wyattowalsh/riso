@@ -7,6 +7,9 @@ on:
     - cron: '0 9 * * 1'
   workflow_dispatch:  # Allow manual triggering
 
+permissions:
+  contents: read
+
 env:
   PACKAGE_NAME: {{ package_name }}
 
@@ -16,6 +19,9 @@ jobs:
     name: Update Python Dependencies
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout repository
@@ -28,17 +34,18 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install uv
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+          enable-cache: true
+          cache-dependency-glob: "**/uv.lock"
 
       - name: Update Python dependencies
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          uv --directory python lock --upgrade
+        run: uv --directory python lock --upgrade
 
       - name: Test with updated dependencies
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
           uv --directory python sync
           QUALITY_PROFILE={{ quality_profile }} uv --directory python run task quality
 
@@ -72,6 +79,9 @@ jobs:
     name: Update Node.js Dependencies
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout repository

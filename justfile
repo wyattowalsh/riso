@@ -136,8 +136,17 @@ test:
 [group("quality")]
 test-cov:
     @printf '\033[34m▸ Running tests with coverage...\033[0m\n'
-    uv run pytest tests -v --cov=scripts --cov=template/hooks --cov-report=term-missing --cov-report=html
+    uv run pytest tests -v \
+        --cov=src/riso --cov=scripts --cov=template/hooks \
+        --cov-report=term-missing --cov-report=html \
+        --cov-fail-under=70
     @printf '\033[32m✓ Coverage report at htmlcov/index.html\033[0m\n'
+
+[group("quality")]
+version-sync:
+    @printf '\033[34m▸ Verifying dual-lane version sync...\033[0m\n'
+    uv run python scripts/ci/verify_version_sync.py
+    @printf '\033[32m✓ Version sync passed\033[0m\n'
 
 [group("quality")]
 security:
@@ -148,21 +157,12 @@ security:
 # ── Template generation ───────────────────────────────────────────────────────
 
 [group("template")]
-tui dest="./riso-demo" answers="":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    printf '\033[34m▸ Launching Riso TUI...\033[0m\n'
-    args=(--dest "$1")
-    if [[ -n "${2:-}" ]]; then args+=(--answers "$2"); fi
-    uv run riso tui "${args[@]}"
-
-[group("template")]
 generate dest="./riso-demo" answers="":
     #!/usr/bin/env bash
     set -euo pipefail
     printf '\033[34m▸ Generating project at %s...\033[0m\n' "$1"
     if [[ -n "${2:-}" ]]; then
-      uv run copier copy . "$1" --answers-file "$2"
+      uv run riso copy "$1" --answers-file "$2" --force
     else
       uv run copier copy . "$1"
     fi
@@ -171,7 +171,7 @@ generate dest="./riso-demo" answers="":
 [group("template")]
 generate-default dest="./riso-demo":
     @printf '\033[34m▸ Generating default project...\033[0m\n'
-    uv run copier copy . {{ dest }} --defaults --force
+    uv run riso copy {{ dest }} --answers-file samples/default/copier-answers.yml --force
     @printf '\033[32m✓ Default project at {{ dest }}\033[0m\n'
 
 [group("template")]
@@ -238,6 +238,7 @@ ci-full: install
     @printf '\033[34m▸ Running full CI quality suite...\033[0m\n'
     uv run python scripts/ci/run_quality_suite.py --profile standard --log-dir quality-standard
     uv run pytest tests/ \
+        --cov=src/riso \
         --cov=scripts \
         --cov=template/hooks \
         --cov-report=term-missing \

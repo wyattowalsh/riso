@@ -45,7 +45,6 @@ class TestCircleCITemplate:
         )
         assert result.strip(), "Should render content when ci_platform is circleci"
         assert "version: 2.1" in result
-        assert "orbs:" in result
 
         # Should not render when ci_platform is different
         result = template.render(
@@ -72,12 +71,15 @@ class TestCircleCITemplate:
             changelog_module="disabled",
         )
 
-        assert "python: circleci/python@2.1" in result
+        assert "python: circleci/python@" not in result
         assert "python-executor:" in result
         assert "lint-python:" in result
         assert "test-python:" in result
         assert "setup-uv:" in result
         assert "uv --directory python sync" in result
+        assert "astral.sh/uv/install.sh" not in result
+        assert "$HOME/.cargo/bin" not in result
+        assert "$HOME/.local/bin" in result
 
     def test_node_orb_and_jobs(self, jinja_env):
         """Node orb and jobs should render when Node components are enabled."""
@@ -97,12 +99,14 @@ class TestCircleCITemplate:
             changelog_module="disabled",
         )
 
-        assert "node: circleci/node@5.2" in result
+        assert "node: circleci/node@" not in result
         assert "node-executor:" in result
         assert "lint-node:" in result
         assert "test-node:" in result
         assert "build-node:" in result
         assert "setup-pnpm:" in result
+        assert "pnpm@9.15.0" in result
+        assert "pnpm@latest" not in result
 
     def test_rust_orb_and_jobs(self, jinja_env):
         """Rust orb and jobs should render when Rust components are enabled."""
@@ -127,6 +131,8 @@ class TestCircleCITemplate:
         assert "lint-rust:" in result
         assert "test-rust:" in result
         assert "build-rust:" in result
+        assert 'checksum "rust/Cargo.toml"' in result
+        assert "- cargo-cache-\n" not in result
 
     def test_go_orb_and_jobs(self, jinja_env):
         """Go orb and jobs should render when Go components are enabled."""

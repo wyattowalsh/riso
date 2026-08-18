@@ -21,14 +21,10 @@ on:
 
 concurrency:
   group: {% raw %}${{ github.workflow }}-${{ github.ref }}{% endraw %}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
-  contents: write
-  issues: write
-  pull-requests: write
-  packages: write
-  id-token: write
+  contents: read
 
 env:
   QUALITY_PROFILE: {{ quality_profile }}
@@ -73,6 +69,12 @@ jobs:
     needs: [quality]
     timeout-minutes: 20
     if: {% raw %}github.ref == 'refs/heads/main' || github.ref == 'refs/heads/beta' || github.ref == 'refs/heads/alpha'{% endraw %}
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      packages: write
+      id-token: write
 
     steps:
       - name: Checkout code

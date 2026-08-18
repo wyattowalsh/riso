@@ -45,9 +45,9 @@ cache:
 .python-base:
   image: python:3.12-slim
   before_script:
-    - apt-get update && apt-get install -y curl git
-    - curl -LsSf https://astral.sh/uv/install.sh | sh
-    - export PATH="$HOME/.cargo/bin:$PATH"
+    - apt-get update && apt-get install -y git
+    - python -m pip install --user uv
+    - export PATH="$HOME/.local/bin:$PATH"
     - uv --directory python sync
   cache:
     key: python-${CI_COMMIT_REF_SLUG}
@@ -60,7 +60,7 @@ lint:python:
   extends: .python-base
   stage: lint
   script:
-    - export PATH="$HOME/.cargo/bin:$PATH"
+    - export PATH="$HOME/.local/bin:$PATH"
     - uv --directory python run ruff check .
     - uv --directory python run ruff format --check .
 {% if quality_profile == 'strict' %}
@@ -79,7 +79,7 @@ test:python:
   extends: .python-base
   stage: test
   script:
-    - export PATH="$HOME/.cargo/bin:$PATH"
+    - export PATH="$HOME/.local/bin:$PATH"
     - uv --directory python run pytest tests/ -v --cov --cov-report=xml --cov-report=html --junit-xml=test-results.xml
   coverage: '/TOTAL.*\s+(\d+%)/'
   artifacts:
@@ -106,7 +106,7 @@ test:cli:
   extends: .python-base
   stage: test
   script:
-    - export PATH="$HOME/.cargo/bin:$PATH"
+    - export PATH="$HOME/.local/bin:$PATH"
     - cd python
     - uv run pytest tests/test_cli*.py -v
   artifacts:
@@ -121,7 +121,7 @@ test:mcp:
   extends: .python-base
   stage: test
   script:
-    - export PATH="$HOME/.cargo/bin:$PATH"
+    - export PATH="$HOME/.local/bin:$PATH"
     - cd python
     - uv run pytest tests/test_mcp.py -v
   artifacts:
@@ -381,11 +381,12 @@ pages:
   stage: deploy
   image: python:3.12-slim
   before_script:
-    - curl -LsSf https://astral.sh/uv/install.sh | sh
-    - export PATH="$HOME/.cargo/bin:$PATH"
+    - apt-get update && apt-get install -y git
+    - python -m pip install --user uv
+    - export PATH="$HOME/.local/bin:$PATH"
     - uv --directory python sync
   script:
-    - export PATH="$HOME/.cargo/bin:$PATH"
+    - export PATH="$HOME/.local/bin:$PATH"
     - uv --directory python run --group docs sphinx-build docs ../public/
   artifacts:
     paths:

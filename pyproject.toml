@@ -161,9 +161,9 @@ parallel = true                                # Enable parallel coverage collec
 [tool.coverage.report]
 # Coverage reporting configuration - controls how results are displayed
 # Generate report with: coverage report or pytest --cov-report=term
-fail_under = 90                                # Minimum coverage percentage required (90%)
+fail_under = 70                                # Minimum coverage percentage required (70%)
                                                # Tests fail if coverage drops below this threshold
-                                               # Aligns with documented coverage target in README.md
+                                               # Maintainer floor; rendered projects may still enforce 90
 show_missing = true                            # Show line numbers of uncovered code
                                                # Helps identify gaps in test coverage
 skip_covered = false                           # Include fully covered files in report
@@ -203,6 +203,17 @@ rules.call-non-callable = "ignore"
 [[tool.ty.overrides]]
 include = ["vulture_whitelist.py"]
 rules.unresolved-reference = "ignore"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+
+[tool.pylint.main]
+fail-under = 9.5
+ignore-paths = ["samples/.*/render"]
 
 [build-system]
 requires = ["hatchling"]

@@ -142,11 +142,39 @@ class TestContainerWorkflowTemplates:
             api_languages=["python", "node"],
         )
         jobs = _jobs(publish)
+        assert jobs["publish-ghcr"]["strategy"]["matrix"]["target"]
         names = {
             row["name"] for row in jobs["publish-ghcr"]["strategy"]["matrix"]["target"]
         }
         assert names == {"python", "node"}
         assert jobs["summary"]["needs"] == ["publish-ghcr"]
+
+    def test_publish_uses_docker_dir_dockerfile(self, jinja_env: Environment) -> None:
+        publish = _render(
+            jinja_env,
+            ".github/workflows/riso-container-publish.yml.jinja",
+            api_module="enabled",
+            api_languages=["python"],
+        )
+        assert "file: .docker/Dockerfile" in publish
+        assert "file: Dockerfile\n" not in publish
+        assert "github.ref_type" in publish
+        trivy_at = publish.index("Run Trivy scan")
+        login_at = publish.index("Log in to GitHub Container Registry")
+        push_at = publish.index("Push scanned image")
+        assert trivy_at < login_at < push_at
+
+    def test_container_build_path_filters_omit_root_dockerfile(
+        self, jinja_env: Environment
+    ) -> None:
+        build = _render(
+            jinja_env,
+            ".github/workflows/riso-container-build.yml.jinja",
+            api_module="enabled",
+            api_languages=["python"],
+        )
+        assert "'.docker/**'" in build
+        assert "\n      - 'Dockerfile'\n" not in build
 
 
 class TestQualityWorkflowTemplate:
@@ -348,3 +376,129 @@ class TestSaasDestRootWorkflows:
             ".github/workflows/riso-saas-database.yml.jinja",
         )
         assert rendered.strip() == ""
+
+
+class TestWorkflowPermissionsAndInstallHardening:
+    """Dest workflows declare contents: read and never curl|sh uv."""
+
+    def test_dest_github_workflows_omit_uv_install_sh(self) -> None:
+        workflows = TEMPLATE_ROOT / ".github" / "workflows"
+        for path in workflows.glob("*.yml.jinja"):
+            text = path.read_text(encoding="utf-8")
+            assert "astral.sh/uv/install.sh" not in text, path.name
+
+    def test_quality_workflow_has_contents_read(self, jinja_env: Environment) -> None:
+        rendered = _render(
+            jinja_env,
+            ".github/workflows/riso-quality.yml.jinja",
+            cli_module="enabled",
+            cli_languages=["python"],
+        )
+        data = yaml.safe_load(rendered)
+        assert data["permissions"]["contents"] == "read"
+        assert "$HOME/.cargo/bin" not in rendered
+
+    def test_matrix_workflow_has_contents_read(self, jinja_env: Environment) -> None:
+        rendered = _render(
+            jinja_env,
+            ".github/workflows/riso-matrix.yml.jinja",
+            cli_module="enabled",
+            cli_languages=["python"],
+            python_versions=["3.11", "3.12"],
+        )
+        data = yaml.safe_load(rendered)
+        assert data["permissions"]["contents"] == "read"
+        assert "$HOME/.cargo/bin" not in rendered
+
+    def test_deps_update_uses_setup_uv_and_job_pr_write(
+        self, jinja_env: Environment
+    ) -> None:
+        rendered = _render(
+            jinja_env,
+            ".github/workflows/riso-deps-update.yml.jinja",
+            cli_module="enabled",
+            cli_languages=["python"],
+        )
+        data = yaml.safe_load(rendered)
+        assert data["permissions"]["contents"] == "read"
+        jobs = _jobs(rendered)
+        assert jobs["update-python-deps"]["permissions"]["pull-requests"] == "write"
+        assert "astral-sh/setup-uv@" in rendered
+        assert "astral.sh/uv/install.sh" not in rendered
+        assert "$HOME/.cargo/bin" not in rendered
+
+    def test_saas_database_workflow_has_contents_read(
+        self, jinja_env: Environment
+    ) -> None:
+        rendered = _render(
+            jinja_env,
+            ".github/workflows/riso-saas-database.yml.jinja",
+            saas_infra_module="enabled",
+            saas_cicd="github-actions",
+            saas_orm="prisma",
+            saas_include_fixtures=False,
+        )
+        data = yaml.safe_load(rendered)
+        assert data["permissions"]["contents"] == "read"
+
+    def test_rust_quality_job_does_not_cache_cargo_bin(
+        self, jinja_env: Environment
+    ) -> None:
+        rendered = _render(
+            jinja_env,
+            ".github/workflows/riso-quality.yml.jinja",
+            mcp_module="enabled",
+            mcp_languages=["rust"],
+        )
+        assert "rust-quality" in rendered
+        assert "~/.cargo/bin/" not in rendered
+        assert "~/.cargo/registry/index/" in rendered
+
+    def test_tauri_ci_has_contents_read(self, jinja_env: Environment) -> None:
+        rendered = jinja_env.get_template(
+            "tauri/.github/workflows/ci.yml.jinja"
+        ).render(
+            **{
+                **_BASE,
+                "desktop_module": "enabled",
+                "desktop_framework": "tauri",
+                "project_slug": "test-project",
+            }
+        )
+        data = yaml.safe_load(rendered)
+        assert data["permissions"]["contents"] == "read"
+
+    def test_docusaurus_docs_build_has_contents_read(
+        self, jinja_env: Environment
+    ) -> None:
+        rendered = jinja_env.get_template(
+            "node/docs/docusaurus/.github/workflows/docs-build.yml.jinja"
+        ).render(
+            **{
+                **_BASE,
+                "docs_module": "enabled",
+                "docs_framework": "docusaurus",
+            }
+        )
+        data = yaml.safe_load(rendered)
+        assert data["permissions"]["contents"] == "read"
+
+
+class TestReleaseWorkflowTemplate:
+    """Dest release must not cancel in-progress runs; write perms stay on the job."""
+
+    def test_cancel_in_progress_false_and_least_privilege(
+        self, jinja_env: Environment
+    ) -> None:
+        rendered = _render(
+            jinja_env,
+            ".github/workflows/riso-release.yml.jinja",
+            changelog_module="enabled",
+            python_versions=["3.11"],
+        )
+        data = yaml.safe_load(rendered)
+        assert data["concurrency"]["cancel-in-progress"] is False
+        assert data["permissions"]["contents"] == "read"
+        release_perms = data["jobs"]["release"]["permissions"]
+        assert release_perms["contents"] == "write"
+        assert release_perms["pull-requests"] == "write"
