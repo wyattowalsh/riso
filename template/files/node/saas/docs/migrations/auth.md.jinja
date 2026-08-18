@@ -62,7 +62,7 @@ pnpm add next-auth@5 @auth/prisma-adapter @auth/drizzle-adapter
 ```
 
 {% if saas_orm == "prisma" %}
-Update `prisma/schema.prisma` to include Auth.js tables:
+Update `integrations/orm/prisma/schema.prisma` to include Auth.js tables:
 
 ```prisma
 // Add these models for Auth.js
@@ -114,7 +114,7 @@ pnpm exec prisma generate
 Update your Drizzle schema to include Auth.js tables:
 
 ```typescript
-// db/schema.ts
+// integrations/orm/drizzle/schema.ts
 import { pgTable, text, integer, timestamp, primaryKey } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -237,7 +237,7 @@ import { handlers } from '@/lib/auth/authjs/auth.config';
 export const { GET, POST } = handlers;
 ```
 
-Create middleware at `/middleware.ts`:
+Create middleware at `runtime/nextjs/middleware.ts`:
 
 ```typescript
 import { auth } from '@/lib/auth/authjs/auth.config';
@@ -395,7 +395,7 @@ import { clerkClient } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/database/client';
 {% elif saas_orm == "drizzle" %}
 import { db } from '@/lib/database/client';
-import { users } from '@/db/schema';
+import { users } from '@/integrations/orm/drizzle/schema';
 {% endif %}
 
 async function migrateUsers() {
@@ -572,7 +572,7 @@ export default function RootLayout({
 
 ### Step 4: Create Clerk Middleware
 
-Create `/middleware.ts`:
+Create `runtime/nextjs/middleware.ts`:
 
 ```typescript
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
@@ -686,7 +686,7 @@ import { clerkClient } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/database/client';
 {% elif saas_orm == "drizzle" %}
 import { db } from '@/lib/database/client';
-import { users } from '@/db/schema';
+import { users } from '@/integrations/orm/drizzle/schema';
 {% endif %}
 
 async function syncUsers() {
@@ -750,7 +750,7 @@ import { headers } from 'next/headers';
 import { prisma } from '@/lib/database/client';
 {% elif saas_orm == "drizzle" %}
 import { db } from '@/lib/database/client';
-import { users } from '@/db/schema';
+import { users } from '@/integrations/orm/drizzle/schema';
 {% endif %}
 
 export async function POST(req: Request) {
@@ -1330,7 +1330,7 @@ pnpm run dev
 {% endif %}
 
 ### "Middleware not protecting routes"
-- Ensure middleware.ts is in project root
+- Ensure `runtime/nextjs/middleware.ts` exists (Next middleware lives next to the Next app)
 - Check matcher pattern includes your protected routes
 - Verify condition logic is correct
 - Clear Next.js cache: `rm -rf .next`

@@ -106,7 +106,7 @@ Update `package.json` scripts:
     "db:studio": "drizzle-kit studio",
     "db:migrate": "drizzle-kit migrate",
     "db:drop": "drizzle-kit drop",
-    "db:seed": "tsx db/seed.ts"
+    "db:seed": "tsx integrations/orm/drizzle/seed.ts"
   }
 }
 ```
@@ -124,25 +124,23 @@ prisma/dev.db
 Change from:
 ```
 project/
-  prisma/
+  integrations/orm/prisma/
     schema.prisma
-    migrations/
     seed.ts
 ```
 
 To:
 ```
 project/
-  db/
+  integrations/orm/drizzle/
     schema.ts
-    migrations/
     seed.ts
 ```
 
 #### Schema File Location
 
-1. Create `db/schema.ts` (TypeScript file instead of `.prisma`)
-2. Delete `prisma/schema.prisma`
+1. Create `integrations/orm/drizzle/schema.ts` (TypeScript file instead of `.prisma`)
+2. Delete dest-root `prisma/schema.prisma` if present (live payload is `integrations/orm/prisma/schema.prisma`)
 3. Create `drizzle.config.ts` in project root:
 
 ```typescript
@@ -150,8 +148,8 @@ import type { Config } from 'drizzle-kit';
 import { env } from '@/lib/env';
 
 export default {
-  schema: './db/schema.ts',
-  out: './db/migrations',
+  schema: './integrations/orm/drizzle/schema.ts',
+  out: './integrations/orm/drizzle/migrations',
   driver: 'postgresql',
   dbCredentials: {
     connectionString: env.DATABASE_URL,
@@ -241,7 +239,7 @@ export { prisma as db };
 ```typescript
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
-import * as schema from '@/db/schema';
+import * as schema from '@/integrations/orm/drizzle/schema';
 import { env } from '@/lib/env';
 
 const sql = neon(env.DATABASE_URL);
@@ -252,7 +250,7 @@ export const db = drizzle(sql, { schema });
 ```typescript
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import * as schema from '@/db/schema';
+import * as schema from '@/integrations/orm/drizzle/schema';
 import { env } from '@/lib/env';
 
 const client = postgres(env.DATABASE_URL);
@@ -338,7 +336,7 @@ await db.delete(users).where(eq(users.id, id));
 **Generate the initial migration:**
 ```bash
 pnpm run db:generate
-# Creates: db/migrations/0001_initial.sql
+# Creates: integrations/orm/drizzle/migrations/0001_initial.sql
 ```
 
 **Deploy migration to production database:**
@@ -356,7 +354,7 @@ pnpm run db:studio
 
 ### Step 7: Update Seed File
 
-If you have a `prisma/seed.ts`:
+If you have a seed file (`integrations/orm/prisma/seed.ts`, or dest-root `prisma/seed.ts` from an older flatten layout):
 
 **Before:**
 ```typescript
@@ -379,7 +377,7 @@ main()
 **After:**
 ```typescript
 import { db } from '@/lib/db';
-import { users } from '@/db/schema';
+import { users } from '@/integrations/orm/drizzle/schema';
 
 async function main() {
   const user = await db.insert(users).values({
@@ -484,7 +482,7 @@ vi.mock('@/lib/db', () => ({
    import type { User, Subscription } from '@prisma/client';
 
    // Drizzle
-   import type { users, subscriptions } from '@/db/schema';
+   import type { users, subscriptions } from '@/integrations/orm/drizzle/schema';
    type User = typeof users.$inferSelect;
    type Subscription = typeof subscriptions.$inferSelect;
    ```
@@ -516,7 +514,7 @@ Update `package.json` scripts:
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:reset": "prisma migrate reset",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx integrations/orm/prisma/seed.ts"
   }
 }
 ```
@@ -528,18 +526,17 @@ Update `package.json` scripts:
 Change from:
 ```
 project/
-  db/
+  integrations/orm/drizzle/
     schema.ts
-    migrations/
+    seed.ts
   drizzle.config.ts
 ```
 
 To:
 ```
 project/
-  prisma/
+  integrations/orm/prisma/
     schema.prisma
-    migrations/
     seed.ts
 ```
 
@@ -639,14 +636,14 @@ model Subscription {
 ### Step 3: Initialize Prisma and Generate Migration
 
 ```bash
-# Create prisma/schema.prisma with your converted schema
+# Create integrations/orm/prisma/schema.prisma with your converted schema
 # Then:
 
 pnpm prisma migrate dev --name initial
 ```
 
 This will:
-1. Create the migration file in `prisma/migrations/`
+1. Create the migration file next to the Prisma schema (`integrations/orm/prisma/`)
 2. Run the migration on your development database
 3. Generate the Prisma client
 
@@ -658,7 +655,7 @@ Update `lib/database/index.ts` or similar:
 ```typescript
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
-import * as schema from '@/db/schema';
+import * as schema from '@/integrations/orm/drizzle/schema';
 
 const sql = neon(env.DATABASE_URL);
 export const db = drizzle(sql, { schema });
@@ -689,7 +686,7 @@ export { prisma as db };
 
 **Find all Drizzle imports:**
 ```bash
-grep -r "import.*drizzle\|from 'drizzle\|from '@/db" src lib integrations --include="*.ts" --include="*.tsx"
+grep -r "import.*drizzle\|from 'drizzle\|from '@/integrations/orm/drizzle" src lib integrations --include="*.ts" --include="*.tsx"
 ```
 
 **Replace patterns:**
@@ -706,7 +703,7 @@ grep -r "import.*drizzle\|from 'drizzle\|from '@/db" src lib integrations --incl
 ```typescript
 import { db } from '@/lib/db';
 import { eq } from 'drizzle-orm';
-import { users } from '@/db/schema';
+import { users } from '@/integrations/orm/drizzle/schema';
 
 const user = await db.query.users.findFirst({
   where: eq(users.id, id),
@@ -769,12 +766,12 @@ vi.mock('@prisma/client', () => ({
 
 ### Step 7: Update Seed File
 
-If you have a `db/seed.ts`:
+If you have a seed file (`integrations/orm/drizzle/seed.ts`, or dest-root `db/seed.ts` from an older flatten layout):
 
 **Before (Drizzle):**
 ```typescript
 import { db } from '@/lib/db';
-import { users } from '@/db/schema';
+import { users } from '@/integrations/orm/drizzle/schema';
 
 async function main() {
   const user = await db.insert(users).values({
@@ -805,7 +802,7 @@ main()
 Remove Drizzle-specific files:
 
 ```bash
-rm -rf db/migrations drizzle.config.ts
+rm -rf integrations/orm/drizzle/migrations drizzle.config.ts
 ```
 
 Update `.gitignore`:
@@ -846,7 +843,7 @@ prisma/dev.db
 3. **Generated Type Imports**: Import from `@prisma/client`
    ```typescript
    // Before (Drizzle)
-   import type { users } from '@/db/schema';
+   import type { users } from '@/integrations/orm/drizzle/schema';
    type User = typeof users.$inferSelect;
 
    // After (Prisma)
@@ -1016,7 +1013,7 @@ Create `test-migration.ts` in your scripts folder:
 
 ```typescript
 import { db } from '@/lib/db';
-import { users, subscriptions } from '@/db/schema'; // Or Prisma import
+import { users, subscriptions } from '@/integrations/orm/drizzle/schema'; // Or Prisma import
 
 export async function testMigration() {
   try {
@@ -1111,8 +1108,8 @@ After deploying to production:
 
 ### Common Issues
 
-**Issue: "Cannot find module '@/db/schema'"**
-- Solution: Ensure `db/schema.ts` exists and path alias is configured in `tsconfig.json`
+**Issue: "Cannot find module '@/integrations/orm/drizzle/schema'"**
+- Solution: Ensure `integrations/orm/drizzle/schema.ts` exists and path alias is configured in `tsconfig.json`
 
 **Issue: "Prisma schema validation error"**
 - Solution: Check for syntax errors in `.prisma` file, run `pnpm prisma validate`
