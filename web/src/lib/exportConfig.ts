@@ -105,6 +105,13 @@ function assignSaasOptions(config: Partial<RisoConfig>, args: CopierArgs): void 
     assignIfPresent(args, 'saas_database', config.saas_database)
     assignIfPresent(args, 'saas_orm', config.saas_orm)
     assignIfPresent(args, 'saas_cicd', config.saas_cicd)
+    assignIfPresent(args, 'saas_multi_tenancy_level', config.saas_multi_tenancy_level)
+    assignIfPresent(args, 'saas_tenancy_model', config.saas_tenancy_model)
+    assignIfPresent(args, 'saas_search_provider', config.saas_search_provider)
+    assignIfPresent(args, 'saas_compliance_level', config.saas_compliance_level)
+    assignIfPresent(args, 'saas_ai_features', config.saas_ai_features)
+    assignIfPresent(args, 'vector_db_provider', config.vector_db_provider)
+    assignIfPresent(args, 'embedding_provider', config.embedding_provider)
   }
 
   assignIfPresent(args, 'saas_auth_module', config.saas_auth_module)
