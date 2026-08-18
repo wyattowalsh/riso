@@ -1,6 +1,9 @@
 import { useState, type KeyboardEvent } from 'react'
 import { useRisoStore, type RisoConfig } from '../../lib/store'
-import { generateCliCommand, generateYamlConfig } from '../../lib/exportConfig'
+import {
+  tryGenerateCliCommand,
+  tryGenerateYamlConfig,
+} from '../../lib/exportConfig'
 import { useValidation } from '../../lib/useValidation'
 import { Copy, Check, Download, Terminal, FileCode, Settings2, FolderTree } from 'lucide-react'
 import { cn, copyToClipboard, downloadFile } from '../../lib/utils'
@@ -30,8 +33,15 @@ export function ReviewOutput() {
   const [copied, setCopied] = useState(false)
   const [saveName, setSaveName] = useState('')
 
-  const cliCommand = generateCliCommand(config)
-  const yamlConfig = generateYamlConfig(config)
+  const cliResult = tryGenerateCliCommand(config)
+  const yamlResult = tryGenerateYamlConfig(config)
+  const cliCommand = cliResult.ok ? cliResult.value : `# ${cliResult.error}`
+  const yamlConfig = yamlResult.ok ? yamlResult.value : `# ${yamlResult.error}`
+  const exportError = !cliResult.ok
+    ? cliResult.error
+    : !yamlResult.ok
+      ? yamlResult.error
+      : null
 
   const handleCopy = async () => {
     const text = mode === 'cli' ? cliCommand : yamlConfig
@@ -81,6 +91,16 @@ export function ReviewOutput() {
           </p>
         </div>
       )}
+
+      {exportError ? (
+        <div
+          role="status"
+          className="rounded-lg border border-amber-300/80 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100"
+        >
+          <p className="font-medium">Could not generate CLI/YAML export.</p>
+          <p className="mt-1">{exportError}</p>
+        </div>
+      ) : null}
 
       {/* Tabbed Interface */}
       <div className="riso-card rounded-xl overflow-hidden">

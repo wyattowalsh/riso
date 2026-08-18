@@ -97,41 +97,17 @@ function assignDocusaurusOptions(config: Partial<RisoConfig>, args: CopierArgs):
 
 function assignSaasOptions(config: Partial<RisoConfig>, args: CopierArgs): void {
   assignIfPresent(args, 'saas_infra_module', config.saas_infra_module)
-  assignIfPresent(args, 'saas_admin_dashboard', config.saas_admin_dashboard)
+  const infraOn = config.saas_infra_module === 'enabled'
 
-  if (config.saas_infra_module === 'enabled') {
+  if (infraOn) {
     assignIfPresent(args, 'saas_runtime', config.saas_runtime)
     assignIfPresent(args, 'saas_hosting', config.saas_hosting)
     assignIfPresent(args, 'saas_database', config.saas_database)
     assignIfPresent(args, 'saas_orm', config.saas_orm)
     assignIfPresent(args, 'saas_cicd', config.saas_cicd)
-    assignIfPresent(args, 'saas_multi_tenancy_level', config.saas_multi_tenancy_level)
-    assignIfPresent(args, 'saas_tenancy_model', config.saas_tenancy_model)
-    assignIfPresent(args, 'saas_search_provider', config.saas_search_provider)
-    assignIfPresent(args, 'saas_compliance_level', config.saas_compliance_level)
-    assignIfPresent(args, 'saas_ai_features', config.saas_ai_features)
-    assignIfPresent(args, 'vector_db_provider', config.vector_db_provider)
-    assignIfPresent(args, 'embedding_provider', config.embedding_provider)
-  }
-
-  assignIfPresent(args, 'saas_auth_module', config.saas_auth_module)
-  if (config.saas_auth_module === 'enabled') {
-    assignIfPresent(args, 'saas_auth_provider', config.saas_auth_provider)
-    assignIfPresent(args, 'saas_enterprise_bridge', config.saas_enterprise_bridge)
-  }
-
-  assignIfPresent(args, 'saas_billing_module', config.saas_billing_module)
-  if (config.saas_billing_module === 'enabled') {
-    assignIfPresent(args, 'saas_billing_provider', config.saas_billing_provider)
-  }
-
-  assignIfPresent(args, 'saas_app_module', config.saas_app_module)
-  if (config.saas_app_module === 'enabled') {
-    assignIfPresent(args, 'saas_jobs', config.saas_jobs)
-    assignIfPresent(args, 'saas_email', config.saas_email)
-    assignIfPresent(args, 'saas_analytics', config.saas_analytics)
-    assignIfPresent(args, 'saas_ai', config.saas_ai)
+    assignIfPresent(args, 'saas_admin_dashboard', config.saas_admin_dashboard)
     assignIfPresent(args, 'saas_storage', config.saas_storage)
+    assignIfPresent(args, 'saas_ai', config.saas_ai)
     assignIfPresent(args, 'saas_observability_sentry', config.saas_observability_sentry)
     assignIfPresent(args, 'saas_observability_datadog', config.saas_observability_datadog)
     assignIfPresent(args, 'saas_observability_otel', config.saas_observability_otel)
@@ -143,6 +119,114 @@ function assignSaasOptions(config: Partial<RisoConfig>, args: CopierArgs): void 
     assignIfPresent(args, 'saas_include_fixtures', config.saas_include_fixtures)
     assignIfPresent(args, 'saas_include_factories', config.saas_include_factories)
     assignIfPresent(args, 'saas_test_suite_level', config.saas_test_suite_level)
+
+    const infraKeys = [
+      'saas_multi_tenancy_level',
+      'saas_tenancy_model',
+      'saas_rbac_system',
+      'saas_onboarding',
+      'saas_notifications',
+      'saas_waitlist',
+      'saas_search_provider',
+      'saas_i18n',
+      'saas_api_access',
+      'saas_ui_framework',
+      'saas_form_library',
+      'saas_realtime',
+      'saas_landing_page',
+      'saas_blog',
+      'saas_changelog_public',
+      'saas_compliance_level',
+      'saas_gdpr_tools',
+      'saas_ai_features',
+      'saas_rate_limiting',
+      'saas_file_upload',
+    ] as const
+    for (const key of infraKeys) {
+      assignIfPresent(args, key, config[key])
+    }
+
+    assignIfPresent(args, 'saas_auth_module', config.saas_auth_module)
+  }
+
+  if (infraOn && config.saas_auth_module === 'enabled') {
+    assignIfPresent(args, 'saas_auth_provider', config.saas_auth_provider)
+    assignIfPresent(args, 'saas_enterprise_bridge', config.saas_enterprise_bridge)
+    if (config.saas_auth_provider === 'authjs') {
+      assignIfPresent(args, 'saas_2fa', config.saas_2fa)
+    }
+    assignIfPresent(args, 'saas_billing_module', config.saas_billing_module)
+  }
+
+  if (
+    infraOn &&
+    config.saas_auth_module === 'enabled' &&
+    config.saas_billing_module === 'enabled'
+  ) {
+    assignIfPresent(args, 'saas_billing_provider', config.saas_billing_provider)
+    assignIfPresent(args, 'saas_app_module', config.saas_app_module)
+  }
+
+  if (config.saas_app_module === 'enabled') {
+    assignIfPresent(args, 'saas_jobs', config.saas_jobs)
+    assignIfPresent(args, 'saas_email', config.saas_email)
+    assignIfPresent(args, 'saas_analytics', config.saas_analytics)
+    if (config.saas_admin_dashboard) {
+      assignIfPresent(args, 'saas_user_impersonation', config.saas_user_impersonation)
+    }
+    if (config.saas_api_access === 'public-api') {
+      assignIfPresent(args, 'saas_api_docs', config.saas_api_docs)
+    }
+  }
+
+  if (
+    infraOn &&
+    (config.saas_ai_features === 'rag' || config.saas_ai_features === 'full')
+  ) {
+    assignIfPresent(args, 'vector_db_provider', config.vector_db_provider)
+    if (config.vector_db_provider && config.vector_db_provider !== 'none') {
+      assignIfPresent(args, 'embedding_provider', config.embedding_provider)
+    }
+  }
+}
+
+function usesGo(config: Partial<RisoConfig>): boolean {
+  return Boolean(
+    config.cli_languages?.includes('go') ||
+      config.api_languages?.includes('go') ||
+      config.mcp_languages?.includes('go'),
+  )
+}
+
+function assignDesktopGoMcpOptions(
+  config: Partial<RisoConfig>,
+  args: CopierArgs,
+): void {
+  assignIfPresent(args, 'desktop_module', config.desktop_module)
+  if (config.desktop_module === 'enabled') {
+    assignIfPresent(args, 'desktop_framework', config.desktop_framework)
+    assignIfPresent(args, 'desktop_features', config.desktop_features)
+    assignIfPresent(args, 'desktop_platforms', config.desktop_platforms)
+  }
+
+  if (usesGo(config)) {
+    assignIfPresent(args, 'go_version', config.go_version)
+  }
+  if (config.api_module === 'enabled' && config.api_languages?.includes('go')) {
+    assignIfPresent(args, 'go_framework', config.go_framework)
+  }
+
+  if (config.mcp_module === 'enabled') {
+    assignIfPresent(args, 'mcp_transport', config.mcp_transport)
+    assignIfPresent(args, 'mcp_example_tools', config.mcp_example_tools)
+  }
+
+  if (config.api_module === 'enabled') {
+    assignIfPresent(args, 'include_databases', config.include_databases)
+  }
+
+  if ((config.ci_platform ?? 'github-actions') === 'github-actions') {
+    assignIfPresent(args, 'python_versions', config.python_versions)
   }
 }
 
@@ -217,6 +301,7 @@ export function configToCopierArgs(
   assignDocusaurusOptions(src, args)
   assignSaasOptions(src, args)
   assignAiToolsOptions(src, args)
+  assignDesktopGoMcpOptions(src, args)
 
   for (const op of remapped.ops) {
     for (const key of op.new_keys) {
@@ -265,4 +350,36 @@ export function generateYamlConfig(
 
 `
   return header + stringify(yamlObj)
+}
+
+export type GenerateResult =
+  | { ok: true; value: string }
+  | { ok: false; error: string }
+
+function catchGenerate(err: unknown): GenerateResult {
+  return {
+    ok: false,
+    error: err instanceof Error ? err.message : String(err),
+  }
+}
+
+/** Soft-fail wrapper so Review cannot crash the wizard on invalid names. */
+export function tryGenerateCliCommand(
+  config: Partial<RisoConfig>,
+): GenerateResult {
+  try {
+    return { ok: true, value: generateCliCommand(config) }
+  } catch (err) {
+    return catchGenerate(err)
+  }
+}
+
+export function tryGenerateYamlConfig(
+  config: Partial<RisoConfig> | Record<string, unknown>,
+): GenerateResult {
+  try {
+    return { ok: true, value: generateYamlConfig(config) }
+  } catch (err) {
+    return catchGenerate(err)
+  }
 }
