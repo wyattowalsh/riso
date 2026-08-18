@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { defaultRisoConfig, useRisoStore } from "../lib/store";
+import {
+  defaultRisoConfig,
+  mergePersistedWizardState,
+  useRisoStore,
+  type RisoStore,
+} from "../lib/store";
 
 describe("Riso Store", () => {
   beforeEach(() => {
@@ -71,6 +76,116 @@ describe("Riso Store", () => {
       expect(config.embedding_provider).toBe("openai");
       expect(defaultRisoConfig.saas_multi_tenancy_level).toBe("teams");
       expect(defaultRisoConfig.saas_tenancy_model).toBe("b2b-teams");
+      expect(defaultRisoConfig).toHaveProperty("saas_rbac_system");
+      expect(defaultRisoConfig).toHaveProperty("saas_ui_framework");
+      expect(defaultRisoConfig).toHaveProperty("mcp_example_tools");
+      expect(defaultRisoConfig).toHaveProperty("desktop_module");
+      expect(defaultRisoConfig).toHaveProperty("go_version");
+      expect(defaultRisoConfig.saas_rbac_system).toBe("basic-roles");
+      expect(defaultRisoConfig.saas_ui_framework).toBe("shadcn-ui");
+      expect(defaultRisoConfig.mcp_example_tools).toBe(true);
+      expect(defaultRisoConfig.desktop_module).toBe("disabled");
+      expect(defaultRisoConfig.go_version).toBe("1.24");
+      expect(config.saas_rbac_system).toBe("basic-roles");
+      expect(config.saas_ui_framework).toBe("shadcn-ui");
+      expect(config.mcp_example_tools).toBe(true);
+      expect(config.desktop_module).toBe("disabled");
+      expect(config.go_version).toBe("1.24");
+    });
+  });
+
+  describe("mergePersistedWizardState", () => {
+    const persistedHistory = [
+      {
+        id: "hist-1",
+        name: "Saved",
+        config: { project_name: "historic-app" },
+        timestamp: new Date("2026-01-01T00:00:00.000Z"),
+      },
+    ];
+
+    function currentWizardState(): RisoStore {
+      return {
+        config: { project_name: "live-app", saas_infra_module: "disabled" },
+        history: [],
+        currentStep: 0,
+        highlightedField: null,
+        isDrawerOpen: false,
+      } as RisoStore;
+    }
+
+    it("merges persisted config when href has no share preset", () => {
+      const merged = mergePersistedWizardState(
+        {
+          config: {
+            project_name: "persisted-app",
+            saas_rbac_system: "custom-permissions",
+          },
+          history: persistedHistory,
+          currentStep: 2,
+          highlightedField: "api_module",
+        },
+        currentWizardState(),
+        { href: "https://example.com/wizard" },
+      );
+      expect(merged.config.project_name).toBe("persisted-app");
+      expect(merged.config.saas_rbac_system).toBe("custom-permissions");
+      expect(merged.config.saas_infra_module).toBe("disabled");
+      expect(merged.history).toHaveLength(1);
+      expect(merged.history[0].id).toBe("hist-1");
+      expect(merged.currentStep).toBe(2);
+      expect(merged.highlightedField).toBe("api_module");
+    });
+
+    it("ignores persisted config when href has a share preset", () => {
+      const current = currentWizardState();
+      const merged = mergePersistedWizardState(
+        {
+          config: {
+            project_name: "persisted-app",
+            saas_rbac_system: "custom-permissions",
+          },
+          history: persistedHistory,
+          currentStep: 4,
+          highlightedField: "api_module",
+        },
+        current,
+        { href: "https://example.com/wizard?preset=" },
+      );
+      expect(merged.config).toEqual(current.config);
+      expect(merged.config.project_name).toBe("live-app");
+      expect(merged.config).not.toHaveProperty("saas_rbac_system");
+      expect(merged.history).toHaveLength(1);
+      expect(merged.history[0].id).toBe("hist-1");
+      expect(merged.history[0].config.project_name).toBe("historic-app");
+      expect(merged.currentStep).toBe(current.currentStep);
+      expect(merged.highlightedField).toBe("api_module");
+    });
+
+    it("clamps persisted Review step when project_name is invalid", () => {
+      const merged = mergePersistedWizardState(
+        {
+          config: { project_name: "bad name" },
+          history: [],
+          currentStep: 5,
+        },
+        currentWizardState(),
+      );
+      expect(merged.currentStep).toBe(0);
+      expect(merged.config.project_name).toBe("bad name");
+    });
+  });
+
+  describe("replaceConfig", () => {
+    it("replaces dirty local state instead of merging onto it", () => {
+      const { updateConfig, replaceConfig } = useRisoStore.getState();
+      updateConfig({ project_name: "dirty-app", api_module: "enabled" });
+      expect(useRisoStore.getState().config.api_module).toBe("enabled");
+
+      replaceConfig({ project_name: "preset-app" });
+      const { config } = useRisoStore.getState();
+      expect(config.project_name).toBe("preset-app");
+      expect(config.api_module).toBe(defaultRisoConfig.api_module);
     });
   });
 

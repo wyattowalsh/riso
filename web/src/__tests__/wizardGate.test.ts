@@ -3,6 +3,7 @@ import {
   canVisitStep,
   canProceedFromBasics,
   clampWizardStep,
+  clampPersistedWizardStep,
   stepAfterExternalConfigApply,
   REVIEW_STEP_ID,
 } from '../lib/wizardGate'
@@ -38,5 +39,14 @@ describe('wizardGate', () => {
   it('canProceedFromBasics matches project name validation', () => {
     expect(canProceedFromBasics('')).toBe(false)
     expect(canProceedFromBasics('good-project')).toBe(true)
+  })
+
+  it('clampPersistedWizardStep does not keep Review when project_name is invalid', () => {
+    expect(canVisitStep(REVIEW_STEP_ID, REVIEW_STEP_ID, 'bad name')).toBe(true)
+    expect(clampPersistedWizardStep(REVIEW_STEP_ID, 'bad name')).toBe(0)
+    expect(clampPersistedWizardStep(REVIEW_STEP_ID, 'a')).toBe(0)
+    expect(clampPersistedWizardStep(REVIEW_STEP_ID, 'good-project')).toBe(
+      REVIEW_STEP_ID,
+    )
   })
 })

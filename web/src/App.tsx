@@ -23,7 +23,7 @@ function shareUrlError(href: string): string | null {
 }
 
 export default function App() {
-  const { isDrawerOpen, setDrawerOpen, updateConfig, setStep } = useRisoStore()
+  const { isDrawerOpen, setDrawerOpen, replaceConfig, setStep } = useRisoStore()
   const [shareError] = useState(() =>
     typeof window === 'undefined' ? null : shareUrlError(window.location.href),
   )
@@ -32,13 +32,13 @@ export default function App() {
     try {
       const presetConfig = parseShareableURL(window.location.href)
       if (presetConfig) {
-        updateConfig(presetConfig)
+        replaceConfig(presetConfig)
         setStep(stepAfterExternalConfigApply(presetConfig))
       }
     } catch {
       // Share-URL parse errors are captured in shareError at first render.
     }
-  }, [updateConfig, setStep])
+  }, [replaceConfig, setStep])
 
   return (
     <div className="min-h-screen riso-backdrop">
