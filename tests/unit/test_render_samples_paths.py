@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import subprocess
 from pathlib import Path
 
@@ -14,19 +13,13 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 RENDER_SCRIPT = REPO_ROOT / "scripts" / "render-samples.sh"
 
 
-def _run_render_samples(
-    *args: str, env: dict[str, str] | None = None
-) -> subprocess.CompletedProcess[str]:
-    merged = {**os.environ, **(env or {})}
-    return subprocess.run(
-        [str(RENDER_SCRIPT), *args],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        timeout=15,
-        check=False,
-        env=merged,
-    )
+def _extract_bash_function(name: str) -> str:
+    """Return a top-level `name() { ... }` body from render-samples.sh."""
+    text = RENDER_SCRIPT.read_text(encoding="utf-8")
+    header = f"{name}() {{"
+    start = text.index(header)
+    end = text.index("\n}\n", start) + 2
+    return text[start:end]
 
 
 def test_canonicalize_relative_answers_under_samples_dir() -> None:
@@ -67,15 +60,22 @@ echo "ok:${{answers}}"
 
 
 def test_copier_cmd_rejects_non_copier_executable() -> None:
-    proc = _run_render_samples(
-        "--variant",
-        "default",
-        "--answers",
-        "samples/default/copier-answers.yml",
-        env={"COPIER_CMD": "/bin/echo"},
+    """Non-copier COPIER_CMD binaries fail in resolve_copier_cmd (no render)."""
+    bash = f"""
+set -euo pipefail
+REPO_ROOT="{REPO_ROOT}"
+COPIER_CMD="/bin/echo"
+COPIER_CMD_ARR=()
+{_extract_bash_function("resolve_copier_cmd")}
+resolve_copier_cmd
+"""
+    proc = subprocess.run(
+        ["bash", "-c", bash],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=5,
     )
-    assert proc.returncode != 0
-    assert (
-        "copier binary" in proc.stderr.lower()
-        or "invalid copier_cmd" in proc.stderr.lower()
-    )
+    assert proc.returncode != 0, proc.stderr
+    combined = proc.stderr.lower()
+    assert "copier binary" in combined or "invalid copier_cmd" in combined
