@@ -6,17 +6,17 @@ on:
     branches: [main, develop]
     paths:
       {% if saas_orm == "prisma" %}
-      - 'prisma/**'
+      - 'integrations/orm/prisma/**'
       {% elif saas_orm == "drizzle" %}
-      - 'db/**'
+      - 'integrations/orm/drizzle/**'
       {% endif %}
   pull_request:
     branches: [main, develop]
     paths:
       {% if saas_orm == "prisma" %}
-      - 'prisma/**'
+      - 'integrations/orm/prisma/**'
       {% elif saas_orm == "drizzle" %}
-      - 'db/**'
+      - 'integrations/orm/drizzle/**'
       {% endif %}
 
 concurrency:
@@ -63,7 +63,7 @@ jobs:
       
       - name: Check for schema changes
         run: |
-          if ! git diff --quiet prisma/schema.prisma; then
+          if ! git diff --quiet integrations/orm/prisma/schema.prisma; then
             echo "? Schema is not formatted. Run 'pnpm exec prisma format' locally."
             exit 1
           fi
@@ -71,13 +71,14 @@ jobs:
       - name: Generate Drizzle migrations
         run: pnpm run db:generate
       
-      - name: Check migration files
+      - name: Check schema payload
         run: |
-          if [ -z "$(ls -A db/migrations)" ]; then
-            echo "??  No migration files found"
+          if [ ! -f integrations/orm/drizzle/schema.ts ]; then
+            echo "??  Drizzle schema not found at integrations/orm/drizzle/schema.ts"
+            exit 1
           else
-            echo "? Migration files exist"
-            ls -lah db/migrations
+            echo "? Drizzle schema exists"
+            ls -lah integrations/orm/drizzle
           fi
       {% endif %}
   
@@ -135,7 +136,7 @@ jobs:
       
       - name: Verify database state
         run: |
-          pnpm exec prisma db pull --schema=./prisma/schema.prisma
+          pnpm exec prisma db pull --schema=./integrations/orm/prisma/schema.prisma
           pnpm exec prisma validate
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/test
@@ -183,20 +184,20 @@ jobs:
       {% if saas_orm == "prisma" %}
       - name: Detect schema changes
         run: |
-          if git diff --name-only origin/main...HEAD | grep -q 'prisma/schema.prisma'; then
+          if git diff --name-only origin/main...HEAD | grep -q 'integrations/orm/prisma/schema.prisma'; then
             echo "?? Prisma schema has changed"
-            git diff origin/main...HEAD prisma/schema.prisma
+            git diff origin/main...HEAD integrations/orm/prisma/schema.prisma
           else
             echo "? No schema changes detected"
           fi
       {% elif saas_orm == "drizzle" %}
       - name: Detect migration changes
         run: |
-          if git diff --name-only origin/main...HEAD | grep -q 'db/migrations'; then
-            echo "?? New migrations detected"
-            ls -lah db/migrations
+          if git diff --name-only origin/main...HEAD | grep -q 'integrations/orm/drizzle'; then
+            echo "?? Drizzle schema or seed changed"
+            ls -lah integrations/orm/drizzle
           else
-            echo "? No new migrations detected"
+            echo "? No Drizzle schema changes detected"
           fi
       {% endif %}
       
@@ -206,7 +207,7 @@ jobs:
           script: |
             const fs = require('fs');
             {% if saas_orm == "prisma" %}
-            const schemaChanged = fs.existsSync('prisma/schema.prisma');
+            const schemaChanged = fs.existsSync('integrations/orm/prisma/schema.prisma');
             if (schemaChanged) {
               github.rest.issues.createComment({
                 issue_number: context.issue.number,
@@ -216,7 +217,7 @@ jobs:
               });
             }
             {% elif saas_orm == "drizzle" %}
-            const migrationsExist = fs.existsSync('db/migrations') && fs.readdirSync('db/migrations').length > 0;
+            const migrationsExist = fs.existsSync('integrations/orm/drizzle/schema.ts');
             if (migrationsExist) {
               github.rest.issues.createComment({
                 issue_number: context.issue.number,
