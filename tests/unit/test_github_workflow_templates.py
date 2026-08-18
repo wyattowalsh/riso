@@ -1,5 +1,7 @@
 """Tests for generated GitHub Actions workflow templates."""
 
+# pylint: disable=redefined-outer-name,missing-function-docstring,too-few-public-methods
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -37,12 +39,17 @@ def _render(jinja_env: Environment, name: str, **overrides: object) -> str:
     return jinja_env.get_template(name).render(**ctx)
 
 
-def _jobs(rendered: str) -> dict[str, object]:
+def _jobs(rendered: str) -> dict[str, dict[str, object]]:
     data = yaml.safe_load(rendered)
     assert isinstance(data, dict)
     jobs = data.get("jobs")
     assert isinstance(jobs, dict)
-    return jobs
+    typed: dict[str, dict[str, object]] = {}
+    for name, job in jobs.items():
+        assert isinstance(name, str)
+        assert isinstance(job, dict)
+        typed[name] = job
+    return typed
 
 
 class TestContainerWorkflowTemplates:
@@ -262,3 +269,82 @@ class TestFumadocsDeployWorkflow:
             / "deploy.yml.jinja"
         )
         assert not nested.is_file()
+
+
+class TestSaasDestRootWorkflows:
+    """SaaS quality and database jobs load from dest-root .github/workflows."""
+
+    def test_saas_quality_job_on_github_cicd(self, jinja_env: Environment) -> None:
+        """saas-quality uses node/saas working-directory and typecheck."""
+        rendered = _render(
+            jinja_env,
+            ".github/workflows/riso-quality.yml.jinja",
+            saas_infra_module="enabled",
+            saas_cicd="github-actions",
+        )
+        jobs = _jobs(rendered)
+        assert "saas-quality" in jobs
+        assert "scaffold-ok" not in jobs
+        assert "working-directory: node/saas" in rendered
+        assert "pnpm run typecheck" in rendered
+        assert "pnpm run type-check" not in rendered
+        assert "node-version: '20'" in rendered
+
+    def test_saas_off_keeps_scaffold_ok(self, jinja_env: Environment) -> None:
+        """Default _BASE still emits scaffold-ok and no saas-quality."""
+        rendered = _render(jinja_env, ".github/workflows/riso-quality.yml.jinja")
+        jobs = _jobs(rendered)
+        assert "saas-quality" not in jobs
+        assert "scaffold-ok" in jobs
+
+    def test_saas_cloudflare_ci_omits_saas_quality(
+        self, jinja_env: Environment
+    ) -> None:
+        """Non-GHA saas_cicd does not emit saas-quality."""
+        rendered = _render(
+            jinja_env,
+            ".github/workflows/riso-quality.yml.jinja",
+            saas_infra_module="enabled",
+            saas_cicd="cloudflare-ci",
+        )
+        jobs = _jobs(rendered)
+        assert "saas-quality" not in jobs
+
+    def test_database_workflow_prisma_paths(self, jinja_env: Environment) -> None:
+        """Dest-root database workflow prefixes ORM paths with node/saas."""
+        rendered = _render(
+            jinja_env,
+            ".github/workflows/riso-saas-database.yml.jinja",
+            saas_infra_module="enabled",
+            saas_cicd="github-actions",
+            saas_orm="prisma",
+            saas_include_fixtures=False,
+        )
+        jobs = _jobs(rendered)
+        assert "validate-schema" in jobs
+        assert "node/saas/integrations/orm/prisma/**" in rendered
+        assert "working-directory: node/saas" in rendered
+        assert "PNPM_VERSION: '8'" not in rendered
+
+    def test_database_workflow_drizzle_paths(self, jinja_env: Environment) -> None:
+        """Drizzle dest-root paths point at node/saas integrations."""
+        rendered = _render(
+            jinja_env,
+            ".github/workflows/riso-saas-database.yml.jinja",
+            saas_infra_module="enabled",
+            saas_cicd="github-actions",
+            saas_orm="drizzle",
+            saas_include_fixtures=False,
+        )
+        assert "node/saas/integrations/orm/drizzle/**" in rendered
+        assert "node/saas/integrations/orm/drizzle/schema.ts" in rendered
+
+    def test_database_workflow_omitted_when_saas_off(
+        self, jinja_env: Environment
+    ) -> None:
+        """Non-SaaS dests render an empty dest-root database workflow."""
+        rendered = _render(
+            jinja_env,
+            ".github/workflows/riso-saas-database.yml.jinja",
+        )
+        assert rendered.strip() == ""
