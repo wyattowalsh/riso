@@ -134,6 +134,11 @@ test:mcp:
 {% endif -%}
 
 {% if api_module == 'enabled' and 'node' in api_languages or docs_module == 'enabled' and docs_framework in ['fumadocs', 'docusaurus'] or saas_infra_module == 'enabled' -%}
+{%- set _node_api = api_module == 'enabled' and 'node' in api_languages -%}
+{%- set _fumadocs = docs_module == 'enabled' and docs_framework == 'fumadocs' -%}
+{%- set _docusaurus = docs_module == 'enabled' and docs_framework == 'docusaurus' -%}
+{%- set _saas = saas_infra_module == 'enabled' -%}
+{%- set _node_pkg = _node_api or _saas -%}
 # ========================================
 # Node.js Jobs
 # ========================================
@@ -153,19 +158,39 @@ lint:node:
   extends: .node-base
   stage: lint
   script:
-    - pnpm run lint
-    - pnpm run typecheck
+{% if _node_api %}
+    - pnpm --filter api-node run lint
+    - pnpm --filter api-node run typecheck
+{% endif %}
+{% if _fumadocs %}
+    - pnpm --filter docs-fumadocs run lint
+    - pnpm --filter docs-fumadocs run typecheck
+{% endif %}
+{% if _docusaurus %}
+    - pnpm --filter docs-docusaurus run lint
+    - pnpm --filter docs-docusaurus run typecheck
+{% endif %}
+{% if _saas %}
+    - pnpm --dir node/saas run lint
+    - pnpm --dir node/saas run typecheck
+{% endif %}
   artifacts:
     when: on_failure
     paths:
       - eslint-report.json
     expire_in: 1 week
 
+{% if _node_pkg %}
 test:node:
   extends: .node-base
   stage: test
   script:
-    - pnpm run test --coverage
+{% if _node_api %}
+    - pnpm --filter api-node test
+{% endif %}
+{% if _saas %}
+    - pnpm --dir node/saas test
+{% endif %}
   artifacts:
     when: always
     paths:
@@ -179,11 +204,16 @@ build:node:
   extends: .node-base
   stage: build
   script:
-    - pnpm run build
+{% if _node_api %}
+    - pnpm --filter api-node run build
+{% endif %}
+{% if _saas %}
+    - pnpm --dir node/saas run build
+{% endif %}
   artifacts:
     paths:
       - dist/
-{% if saas_infra_module == 'enabled' %}
+{% if _saas %}
       - .next/
 {% endif %}
     expire_in: 7 days
@@ -192,6 +222,8 @@ build:node:
     matrix:
       - NODE_VERSION: ['20', '22']
   image: node:${NODE_VERSION}-alpine
+{% endif %}
+
 {% endif %}
 
 {% if saas_infra_module == 'enabled' -%}

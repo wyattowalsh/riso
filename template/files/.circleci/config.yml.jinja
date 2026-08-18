@@ -196,6 +196,11 @@ jobs:
   {% endif -%}
 
   {% if api_module == 'enabled' and 'node' in api_languages or docs_module == 'enabled' and docs_framework in ['fumadocs', 'docusaurus'] or saas_infra_module == 'enabled' -%}
+  {%- set _node_api = api_module == 'enabled' and 'node' in api_languages -%}
+  {%- set _fumadocs = docs_module == 'enabled' and docs_framework == 'fumadocs' -%}
+  {%- set _docusaurus = docs_module == 'enabled' and docs_framework == 'docusaurus' -%}
+  {%- set _saas = saas_infra_module == 'enabled' -%}
+  {%- set _node_pkg = _node_api or _saas -%}
   # ---------- Node.js Jobs ----------
 
   lint-node:
@@ -203,21 +208,55 @@ jobs:
     steps:
       - checkout
       - setup-pnpm
+{% if _node_api %}
       - run:
-          name: Run ESLint
-          command: pnpm run lint
+          name: Lint Node API
+          command: pnpm --filter api-node run lint
       - run:
-          name: Run TypeScript type check
-          command: pnpm run typecheck
+          name: Typecheck Node API
+          command: pnpm --filter api-node run typecheck
+{% endif %}
+{% if _fumadocs %}
+      - run:
+          name: Lint Fumadocs
+          command: pnpm --filter docs-fumadocs run lint
+      - run:
+          name: Typecheck Fumadocs
+          command: pnpm --filter docs-fumadocs run typecheck
+{% endif %}
+{% if _docusaurus %}
+      - run:
+          name: Lint Docusaurus
+          command: pnpm --filter docs-docusaurus run lint
+      - run:
+          name: Typecheck Docusaurus
+          command: pnpm --filter docs-docusaurus run typecheck
+{% endif %}
+{% if _saas %}
+      - run:
+          name: Lint SaaS
+          command: pnpm --dir node/saas run lint
+      - run:
+          name: Typecheck SaaS
+          command: pnpm --dir node/saas run typecheck
+{% endif %}
 
+{% if _node_pkg %}
   test-node:
     executor: node-executor
     steps:
       - checkout
       - setup-pnpm
+{% if _node_api %}
       - run:
-          name: Run tests with coverage
-          command: pnpm run test --coverage
+          name: Test Node API
+          command: pnpm --filter api-node test
+{% endif %}
+{% if _saas %}
+      - run:
+          name: Test SaaS
+          command: pnpm --dir node/saas test
+{% endif %}
       - store_test_results:
           path: coverage
       - store_artifacts:
@@ -229,19 +268,28 @@ jobs:
     steps:
       - checkout
       - setup-pnpm
+{% if _node_api %}
       - run:
-          name: Build application
-          command: pnpm run build
+          name: Build Node API
+          command: pnpm --filter api-node run build
+{% endif %}
+{% if _saas %}
+      - run:
+          name: Build SaaS
+          command: pnpm --dir node/saas run build
+{% endif %}
       - persist_to_workspace:
           root: .
           paths:
             - dist/
-            {% if saas_infra_module == 'enabled' -%}
+{% if _saas %}
             - .next/
-            {% endif -%}
+{% endif %}
       - store_artifacts:
           path: dist
           destination: build-output
+
+{% endif %}
 
   {% if saas_infra_module == 'enabled' -%}
   test-e2e:
@@ -514,12 +562,14 @@ workflows:
       {% if api_module == 'enabled' and 'node' in api_languages or docs_module == 'enabled' and docs_framework in ['fumadocs', 'docusaurus'] or saas_infra_module == 'enabled' -%}
       # Node.js workflow
       - lint-node
+{% if api_module == 'enabled' and 'node' in api_languages or saas_infra_module == 'enabled' %}
       - test-node:
           requires:
             - lint-node
       - build-node:
           requires:
             - test-node
+{% endif %}
       {% if saas_infra_module == 'enabled' -%}
       - test-e2e:
           requires:
