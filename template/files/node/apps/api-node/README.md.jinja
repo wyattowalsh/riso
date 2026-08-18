@@ -1,0 +1,34 @@
+{%- if api_module != 'enabled' or 'node' not in api_languages %}
+# api-node (disabled)
+
+This Fastify package is not in the current render. Enable with
+`api_module=enabled` and `api_languages` including `node`.
+{%- else %}
+# api-node
+
+Health-only Fastify HTTP service for {{ project_name }}. This package is **not**
+a SaaS BFF: it does not implement auth, billing, tenancy, or couple to
+`node/saas`.
+
+## What ships
+
+- `GET /health` — liveness for Docker, Kubernetes, and load balancers (no auth)
+- Config via `RISO_API_NODE_HOST` (default `0.0.0.0`) and `RISO_API_NODE_PORT`
+  (default `3000`)
+- Vitest smoke tests for `/health` and those env overrides
+
+## What does not ship
+
+- Session/JWT auth, Clerk, Auth.js, or billing (Stripe/Paddle/Lemon Squeezy)
+- GraphQL or WebSocket scaffolds (`api_features` payload is Python/FastAPI only)
+- A backend-for-frontend for the SaaS Next.js app
+
+SaaS auth and billing live under `node/saas/` when `saas_infra_module=enabled`.
+
+## Run
+
+```bash
+pnpm --filter api-node run dev
+pnpm --filter api-node test
+```
+{%- endif %}
