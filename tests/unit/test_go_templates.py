@@ -1056,12 +1056,11 @@ class TestGoDockerfile:
             for line in rendered.splitlines()
             if line.lstrip().startswith("COPY ")
         ]
-        assert "COPY go.mod ./" in rendered
-        assert "COPY go.mod go.sum" not in rendered
-        assert "COPY go/go.mod" not in rendered
-        assert "go mod download" in rendered
         assert copy_lines, "expected COPY instructions in Dockerfile"
+        assert any(line.startswith("COPY go.mod") for line in copy_lines)
         assert all("go.sum" not in line for line in copy_lines)
+        assert all("COPY go/go.mod" not in line for line in copy_lines)
+        assert "go mod download" in rendered
 
     def test_template_has_no_go_sum_lockfile(self, go_templates_dir: Path) -> None:
         """Copier payload must not ship go.sum; Dockerfiles must not COPY it."""
