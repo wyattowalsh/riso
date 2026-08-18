@@ -24,7 +24,7 @@ Open [http://localhost:3000](http://localhost:3000) to view the documentation.
 - 🤖 **AI-Ready** - llms.txt endpoints for LLM consumption
 {%- endif %}
 {%- if fumadocs_ai_search == 'enabled' %}
-- 💬 **AI Search** - Chat with your documentation using AI
+- 💬 **AI Search** - Ask-AI extra (dynamic-only; not served on static export)
 {%- endif %}
 {%- if fumadocs_openapi == 'enabled' and api_module == 'enabled' and api_languages %}
 - 📖 **OpenAPI Docs** - Interactive API documentation
@@ -97,6 +97,14 @@ ALGOLIA_ADMIN_API_KEY=your-admin-key  # For syncing
 {%- if fumadocs_ai_search == 'enabled' %}
 
 ### AI Search
+
+This extra is **dynamic-only**. The docs site always uses Next.js
+`output: 'export'` and cannot prerender a POST `/api/chat` handler
+(Vercel AI SDK `streamText` + request body).
+
+`/api/chat` is a static GET that reports the extra is unavailable on
+the exported site. Live chat would need a server runtime; do not restore
+middleware or `rewrites()`.
 
 ```bash
 OPENAI_API_KEY=your-openai-key
