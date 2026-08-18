@@ -1,20 +1,19 @@
 {%- if docs_module == 'enabled' and docs_framework == 'fumadocs' and fumadocs_ai_search == 'enabled' -%}
-import { openai } from '@ai-sdk/openai';
-import { streamText } from 'ai';
+export const dynamic = 'force-static';
+export const revalidate = false;
 
-export const maxDuration = 30;
-
-export async function POST(req: Request) {
-  const { messages } = await req.json();
-
-  const result = streamText({
-    model: openai('gpt-4o'),
-    system: `You are a helpful documentation assistant for {{ project_name }}.
-Answer questions based on the documentation. Be concise and helpful.
-If you don't know the answer, say so and suggest where to find more information.`,
-    messages,
-  });
-
-  return result.toDataStreamResponse();
+// Extra-only: Vercel AI SDK chat is a request-body POST. This dest
+// always uses `output: 'export'`, which cannot prerender POST.
+export async function GET() {
+  return new Response(
+    JSON.stringify({
+      error: 'AI chat is not available on the statically exported docs site.',
+    }),
+    {
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+    },
+  );
 }
 {%- endif -%}
