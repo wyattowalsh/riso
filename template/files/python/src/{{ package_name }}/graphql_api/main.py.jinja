@@ -1,6 +1,8 @@
 {% if (graphql_api_module == 'enabled' or 'graphql' in api_features) -%}
 """FastAPI Integration for GraphQL API."""
 
+import os
+
 from fastapi import FastAPI, Request
 from strawberry.fastapi import GraphQLRouter
 {% if api_module == 'enabled' and 'python' in api_languages %}
@@ -11,11 +13,19 @@ from {{ package_name }}.graphql_api.schema import schema
 from {{ package_name }}.graphql_api.context import get_graphql_context, GraphQLContext
 
 
+_production = os.environ.get("ENV", os.environ.get("ENVIRONMENT", "development")).lower() in {
+    "prod",
+    "production",
+}
+
 # Create FastAPI app for GraphQL
 app = FastAPI(
     title="{{ project_name }} GraphQL API",
     description="GraphQL API built with Strawberry and FastAPI",
     version="1.0.0",
+    docs_url=None if _production else "/docs",
+    redoc_url=None if _production else "/redoc",
+    openapi_url=None if _production else "/openapi.json",
 )
 
 
@@ -45,12 +55,7 @@ async def get_context(
 
 # Create GraphQL router with Strawberry
 # GraphiQL is development-only; never enable the playground in production.
-import os
-
-_graphiql = os.environ.get("GRAPHIQL", "").lower() in {"1", "true", "yes"} and (
-    os.environ.get("ENV", os.environ.get("ENVIRONMENT", "development")).lower()
-    not in {"prod", "production"}
-)
+_graphiql = os.environ.get("GRAPHIQL", "").lower() in {"1", "true", "yes"} and not _production
 graphql_app = GraphQLRouter(
     schema=schema,
     context_getter=get_context,

@@ -10,7 +10,6 @@
 {%- set _ = servers.append('"cascade-thinking": {"command": "npx", "args": ["-y", "cascade-thinking-mcp"]}') %}
 {%- set _ = servers.append('"shannon-thinking": {"command": "npx", "args": ["-y", "server-shannon-thinking@latest"]}') %}
 {%- set _ = servers.append('"lotus-wisdom-mcp": {"command": "npx", "args": ["-y", "lotus-wisdom-mcp"]}') %}
-{%- set _ = servers.append('"think-strategies": {"command": "npx", "args": ["-y", "github:aaronsb/think-strategies"]}') %}
 {%- set _ = servers.append('"crash": {"command": "npx", "args": ["-y", "crash-mcp"]}') %}
 {%- endif %}
 {%- if ai_tools_mcp_web | default(true) %}
@@ -32,7 +31,24 @@
 {%- set _ = servers.append('"context7": {"command": "npx", "args": ["-y", "@upstash/context7-mcp"], "env": {"CONTEXT7_API_KEY": "${CONTEXT7_API_KEY}"}}') %}
 {%- endif %}
 {%- if mcp_module == 'enabled' %}
-{%- set _ = servers.append('"' ~ project_slug ~ '": {"command": "uv", "args": ["run", "--group", "mcp", "python", "-m", "' ~ package_name ~ '.mcp"], "working_directory": "."}') %}
+{%- set _langs = mcp_languages | default([]) %}
+{%- set _multi = _langs | length > 1 %}
+{%- if 'python' in _langs %}
+{%- set _key = project_slug ~ ('-python' if _multi else '') %}
+{%- set _ = servers.append('"' ~ _key ~ '": {"command": "uv", "args": ["run", "python", "-m", "mcp"], "working_directory": "."}') %}
+{%- endif %}
+{%- if 'typescript' in _langs or 'node' in _langs %}
+{%- set _key = project_slug ~ ('-typescript' if _multi else '') %}
+{%- set _ = servers.append('"' ~ _key ~ '": {"command": "node", "args": ["node/mcp/dist/index.js"], "working_directory": "."}') %}
+{%- endif %}
+{%- if 'rust' in _langs %}
+{%- set _key = project_slug ~ ('-rust' if _multi else '') %}
+{%- set _ = servers.append('"' ~ _key ~ '": {"command": "cargo", "args": ["run", "--quiet", "--manifest-path", "rust/mcp/Cargo.toml"], "working_directory": "."}') %}
+{%- endif %}
+{%- if 'go' in _langs %}
+{%- set _key = project_slug ~ ('-go' if _multi else '') %}
+{%- set _ = servers.append('"' ~ _key ~ '": {"command": "go", "args": ["run", "./go/mcp/cmd/server"], "working_directory": "."}') %}
+{%- endif %}
 {%- endif %}
     {{ servers | join(',\n    ') }}
   }

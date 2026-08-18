@@ -2,7 +2,7 @@
 # WebSocket Module
 
 **Status**: ? Enabled | **Track**: Python API  
-**Dependencies**: FastAPI ?0.104.0, websockets ?14.0, python-jose ?3.3.0
+**Dependencies**: FastAPI >=0.104.0, websockets >=14.0, python-jose[cryptography] >=3.4.0
 
 ## Overview
 
@@ -126,7 +126,8 @@ WS_RATE_LIMIT_MESSAGES=100           # Max messages per window
 WS_RATE_LIMIT_WINDOW=60              # Rate limit window (seconds)
 
 WS_BROADCAST_TIMEOUT=5.0             # Broadcast timeout (seconds)
-WS_WEBSOCKET_ORIGINS=["*"]           # Allowed CORS origins
+WS_ENVIRONMENT=production            # Fail-closed Origin allowlist when production
+WS_WEBSOCKET_ORIGINS=["https://app.example.com"]  # Explicit origins only (never *)
 ```
 
 ## Room-Based Broadcasting
@@ -186,11 +187,7 @@ async def protected_endpoint(
     websocket: WebSocket,
     user_id: str = Depends(get_current_user_websocket)
 ):
-    # user_id is None for anonymous, str for authenticated
-    if user_id is None:
-        await websocket.close(code=1008, reason="Authentication required")
-        return
-    
+    # Token present without a configured JWT secret is rejected (fail-closed)
     connection_id = await manager.connect(websocket, user_id=user_id)
     # ... rest of handler
 ```

@@ -10,6 +10,8 @@ import shutil
 import os
 from loguru import logger
 
+from ..utils.validation import PathValidator, ValidationError
+
 
 class AtomicFileWriter:
     """Atomic file operations with rollback support."""
@@ -71,13 +73,19 @@ class AtomicFileWriter:
         """
         if not self.temp_dir:
             raise RuntimeError("AtomicFileWriter must be used as context manager")
+
+        target_file = self.target_dir / relative_path
+        ok, error_message = PathValidator.validate_output_path(target_file)
+        if not ok:
+            raise ValidationError(error_message)
+        if not PathValidator.is_safe_path(self.target_dir, target_file):
+            raise ValidationError(f"Unsafe output path: {relative_path}")
         
         # Create path in temp directory
         temp_file = self.temp_dir / relative_path
         temp_file.parent.mkdir(parents=True, exist_ok=True)
         
         # Backup existing file if overwriting
-        target_file = self.target_dir / relative_path
         if target_file.exists():
             logger.debug(f"Backing up existing file: {relative_path}")
             self.original_files[target_file] = target_file.read_bytes()

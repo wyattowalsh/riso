@@ -1,19 +1,11 @@
 {% if (graphql_api_module == 'enabled' or 'graphql' in api_features) -%}
 """GraphQL Query Tests - Field selection and flexible querying."""
 
-import pytest
-from strawberry.test import BaseGraphQLTestClient
-
 from {{ package_name }}.graphql_api.schema import schema
 
 
-@pytest.fixture
-def graphql_client():
-    return BaseGraphQLTestClient(schema)
-
-
 class TestUserQueries:
-    def test_query_user_minimal_fields(self, graphql_client):
+    def test_query_user_minimal_fields(self):
         query = """
             query {
                 user(id: "1") {
@@ -22,11 +14,11 @@ class TestUserQueries:
                 }
             }
         """
-        result = graphql_client.query(query)
+        result = schema.execute_sync(query)
         assert result.errors is None
         assert result.data["user"]["id"] == "1"
 
-    def test_query_user_not_found(self, graphql_client):
+    def test_query_user_not_found(self):
         query = """
             query {
                 user(id: "99999") {
@@ -34,7 +26,7 @@ class TestUserQueries:
                 }
             }
         """
-        result = graphql_client.query(query)
+        result = schema.execute_sync(query)
         assert result.errors is None
         assert result.data["user"] is None
 {% endif -%}

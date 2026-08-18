@@ -66,8 +66,9 @@ def setup_websocket_routes(app: FastAPI) -> None:
             # Message handling loop
             while True:
                 try:
-                    # Receive message
+                    # Receive message and enforce per-connection rate limit
                     data = await websocket.receive_json()
+                    manager.check_rate_limit(connection_id)
 
                     # Handle different message types
                     message_type = data.get("type")

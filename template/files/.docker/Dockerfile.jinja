@@ -23,8 +23,19 @@
 #   python:3.12-slim-bookworm@sha256:abc123...
 #   node:20-alpine@sha256:def456...
 # Find digests: docker pull <image> && docker inspect <image> | grep -A1 RepoDigests
+#
+# Source paths are dest-layout prefixes (python/, node/, rust/) — never dest-root src/ or apps/.
 
-{%- if (cli_module == "enabled" and "python" in cli_languages) or (api_module == "enabled" and "python" in api_languages) or (mcp_module == "enabled" and "python" in mcp_languages) %}
+{%- set uv_prod_groups -%}
+{%- if cli_module == "enabled" and "python" in (cli_languages|default([])) %} --group cli{% endif -%}
+{%- if api_module == "enabled" and "python" in (api_languages|default([])) %} --group api_python{% endif -%}
+{%- if (websocket_module|default('disabled')) == "enabled" or "websocket" in (api_features|default([])) %} --group websocket{% endif -%}
+{%- if (graphql_api_module|default('disabled')) == "enabled" or "graphql" in (api_features|default([])) %} --group graphql_api{% endif -%}
+{%- if mcp_module == "enabled" and "python" in (mcp_languages|default([])) %} --group mcp{% endif -%}
+{%- if (codegen_module|default('disabled')) == "enabled" %} --group codegen{% endif -%}
+{%- endset %}
+
+{%- if (cli_module == "enabled" and "python" in (cli_languages|default([]))) or (api_module == "enabled" and "python" in (api_languages|default([]))) or (mcp_module == "enabled" and "python" in (mcp_languages|default([]))) %}
 
 # =============================================================================
 # Python Builder Stage
@@ -52,7 +63,7 @@ RUN pip install --no-cache-dir uv==0.5.15
 WORKDIR /build
 
 # Copy dependency manifests first for optimal layer caching
-COPY pyproject.toml uv.lock ./
+COPY python/pyproject.toml python/uv.lock ./
 {%- if project_layout == "single-package" %}
 COPY README.md ./
 {%- endif %}
@@ -60,17 +71,20 @@ COPY README.md ./
 # Install dependencies with uv (production only, frozen lockfile)
 # BuildKit cache mount accelerates repeated builds
 RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
-    uv sync --frozen --no-dev --no-install-project
+    uv sync --frozen --no-dev --no-install-project{{ uv_prod_groups }}
 
-# Copy application source
-COPY src/ ./src/
-{%- if cli_module == "enabled" and "python" in cli_languages %}
-COPY tests/ ./tests/
+# Copy application source from the python/ track
+COPY python/src/ ./src/
+{%- if mcp_module == "enabled" and "python" in (mcp_languages|default([])) %}
+COPY python/mcp/ ./mcp/
+{%- endif %}
+{%- if cli_module == "enabled" and "python" in (cli_languages|default([])) %}
+COPY python/tests/ ./tests/
 {%- endif %}
 
 # Install the project itself
 RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
-    uv sync --frozen --no-dev
+    uv sync --frozen --no-dev{{ uv_prod_groups }}
 
 # =============================================================================
 # Python Runtime Stage
@@ -99,7 +113,10 @@ WORKDIR /app
 # Copy virtual environment and source from builder
 COPY --from=builder-python --chown=1000:1000 /build/.venv /app/.venv
 COPY --from=builder-python --chown=1000:1000 /build/src /app/src
-{%- if cli_module == "enabled" and "python" in cli_languages %}
+{%- if mcp_module == "enabled" and "python" in (mcp_languages|default([])) %}
+COPY --from=builder-python --chown=1000:1000 /build/mcp /app/mcp
+{%- endif %}
+{%- if cli_module == "enabled" and "python" in (cli_languages|default([])) %}
 COPY --from=builder-python --chown=1000:1000 /build/tests /app/tests
 {%- endif %}
 
@@ -112,7 +129,7 @@ ENV PATH="/app/.venv/bin:$PATH" \
 # Switch to non-root user
 USER 1000:1000
 
-{%- if api_module == "enabled" and "python" in api_languages %}
+{%- if api_module == "enabled" and "python" in (api_languages|default([])) %}
 # Expose FastAPI port
 EXPOSE 8000
 
@@ -128,7 +145,7 @@ CMD ["python", "-m", "uvicorn", "{{ package_name }}.api.main:app", \
      "--workers", "4", \
      "--log-level", "info"]
 
-{%- elif cli_module == "enabled" and "python" in cli_languages %}
+{%- elif cli_module == "enabled" and "python" in (cli_languages|default([])) %}
 # CLI application - no exposed ports
 # Health check verifies CLI binary is functional
 HEALTHCHECK --interval=60s --timeout=5s --retries=2 \
@@ -137,20 +154,19 @@ HEALTHCHECK --interval=60s --timeout=5s --retries=2 \
 # Default command: Show CLI help
 CMD ["python", "-m", "{{ package_name }}.cli", "--help"]
 
-{%- elif mcp_module == "enabled" and "python" in mcp_languages %}
-# MCP server - stdio mode (no HTTP ports)
-# Health check verifies Python environment
+{%- elif mcp_module == "enabled" and "python" in (mcp_languages|default([])) %}
+# MCP server - stdio mode (no HTTP ports); top-level mcp package
 HEALTHCHECK --interval=60s --timeout=5s --retries=2 \
-    CMD python --version || exit 1
+    CMD python -m mcp --help || exit 1
 
 # Default command: Run MCP server
-CMD ["python", "-m", "{{ package_name }}.mcp"]
+CMD ["python", "-m", "mcp"]
 
 {%- endif %}
 
 {%- endif %}
 
-{%- if (api_module == "enabled" and "node" in api_languages) or (mcp_module == "enabled" and "typescript" in mcp_languages) or (docs_module == "enabled" and docs_framework in ["fumadocs", "docusaurus"]) or saas_infra_module == "enabled" %}
+{%- if (api_module == "enabled" and "node" in (api_languages|default([]))) or (mcp_module == "enabled" and "typescript" in (mcp_languages|default([]))) or (docs_module == "enabled" and docs_framework in ["fumadocs", "docusaurus"]) or saas_infra_module == "enabled" %}
 
 # =============================================================================
 # Node.js Builder Stage
@@ -167,22 +183,20 @@ WORKDIR /build
 
 # Copy dependency manifests first for optimal layer caching
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-{%- if project_layout == "monorepo" %}
-{%- if api_module == "enabled" and "node" in api_languages %}
-COPY apps/api-node/package.json ./apps/api-node/
+{%- if api_module == "enabled" and "node" in (api_languages|default([])) %}
+COPY node/apps/api-node/package.json ./node/apps/api-node/
 {%- endif %}
 {%- if docs_module == "enabled" and docs_framework == "fumadocs" %}
-COPY apps/docs-fumadocs/package.json ./apps/docs-fumadocs/
+COPY node/docs/fumadocs/package.json ./node/docs/fumadocs/
 {%- endif %}
 {%- if docs_module == "enabled" and docs_framework == "docusaurus" %}
-COPY apps/docs-docusaurus/package.json ./apps/docs-docusaurus/
+COPY node/docs/docusaurus/package.json ./node/docs/docusaurus/
 {%- endif %}
 {%- if saas_infra_module == "enabled" %}
-COPY apps/saas/package.json ./apps/saas/
+COPY node/saas/package.json ./node/saas/
 {%- endif %}
-{%- if shared_logic == "enabled" %}
-COPY apps/shared/package.json ./apps/shared/
-{%- endif %}
+{%- if mcp_module == "enabled" and "typescript" in (mcp_languages|default([])) %}
+COPY node/mcp/package.json ./node/mcp/
 {%- endif %}
 
 # Install dependencies with pnpm (production only)
@@ -190,12 +204,23 @@ COPY apps/shared/package.json ./apps/shared/
 RUN --mount=type=cache,target=/root/.pnpm-store,sharing=locked \
     pnpm install --frozen-lockfile --prod=false
 
-# Copy application source and config
-COPY apps/ ./apps/
+# Copy application source and config (node/ prefix — never dest-root apps/)
+{%- if api_module == "enabled" and "node" in (api_languages|default([])) %}
+COPY node/apps/ ./node/apps/
+{%- endif %}
+{%- if docs_module == "enabled" and docs_framework in ["fumadocs", "docusaurus"] %}
+COPY node/docs/ ./node/docs/
+{%- endif %}
+{%- if saas_infra_module == "enabled" %}
+COPY node/saas/ ./node/saas/
+{%- endif %}
+{%- if mcp_module == "enabled" and "typescript" in (mcp_languages|default([])) %}
+COPY node/mcp/ ./node/mcp/
+{%- endif %}
 COPY tsconfig.json ./
 
 # Build TypeScript applications
-{%- if api_module == "enabled" and "node" in api_languages %}
+{%- if api_module == "enabled" and "node" in (api_languages|default([])) %}
 RUN pnpm --filter api-node build
 {%- endif %}
 {%- if docs_module == "enabled" and docs_framework == "fumadocs" %}
@@ -238,37 +263,42 @@ RUN corepack enable
 # Copy built artifacts and production dependencies from builder
 COPY --from=builder-node --chown=1000:1000 /build/package.json /build/pnpm-workspace.yaml /build/pnpm-lock.yaml ./
 COPY --from=builder-node --chown=1000:1000 /build/node_modules ./node_modules
-{%- if api_module == "enabled" and "node" in api_languages %}
-COPY --from=builder-node --chown=1000:1000 /build/apps/api-node/dist ./apps/api-node/dist
-COPY --from=builder-node --chown=1000:1000 /build/apps/api-node/package.json ./apps/api-node/
+{%- if api_module == "enabled" and "node" in (api_languages|default([])) %}
+COPY --from=builder-node --chown=1000:1000 /build/node/apps/api-node/dist ./node/apps/api-node/dist
+COPY --from=builder-node --chown=1000:1000 /build/node/apps/api-node/package.json ./node/apps/api-node/
 {%- endif %}
 {%- if docs_module == "enabled" and docs_framework == "fumadocs" %}
-COPY --from=builder-node --chown=1000:1000 /build/apps/docs-fumadocs/.next ./apps/docs-fumadocs/.next
-COPY --from=builder-node --chown=1000:1000 /build/apps/docs-fumadocs/public ./apps/docs-fumadocs/public
-COPY --from=builder-node --chown=1000:1000 /build/apps/docs-fumadocs/package.json ./apps/docs-fumadocs/
-COPY --from=builder-node --chown=1000:1000 /build/apps/docs-fumadocs/next.config.mjs ./apps/docs-fumadocs/
+COPY --from=builder-node --chown=1000:1000 /build/node/docs/fumadocs/.next ./node/docs/fumadocs/.next
+COPY --from=builder-node --chown=1000:1000 /build/node/docs/fumadocs/public ./node/docs/fumadocs/public
+COPY --from=builder-node --chown=1000:1000 /build/node/docs/fumadocs/package.json ./node/docs/fumadocs/
+COPY --from=builder-node --chown=1000:1000 /build/node/docs/fumadocs/next.config.mjs ./node/docs/fumadocs/
 {%- endif %}
 {%- if docs_module == "enabled" and docs_framework == "docusaurus" %}
-COPY --from=builder-node --chown=1000:1000 /build/apps/docs-docusaurus/build ./apps/docs-docusaurus/build
-COPY --from=builder-node --chown=1000:1000 /build/apps/docs-docusaurus/package.json ./apps/docs-docusaurus/
+COPY --from=builder-node --chown=1000:1000 /build/node/docs/docusaurus/build ./node/docs/docusaurus/build
+COPY --from=builder-node --chown=1000:1000 /build/node/docs/docusaurus/package.json ./node/docs/docusaurus/
 {%- endif %}
 {%- if saas_infra_module == "enabled" %}
-COPY --from=builder-node --chown=1000:1000 /build/apps/saas/.next ./apps/saas/.next
-COPY --from=builder-node --chown=1000:1000 /build/apps/saas/public ./apps/saas/public
-COPY --from=builder-node --chown=1000:1000 /build/apps/saas/package.json ./apps/saas/
+COPY --from=builder-node --chown=1000:1000 /build/node/saas/.next ./node/saas/.next
+COPY --from=builder-node --chown=1000:1000 /build/node/saas/public ./node/saas/public
+COPY --from=builder-node --chown=1000:1000 /build/node/saas/package.json ./node/saas/
 {%- endif %}
-{%- if shared_logic == "enabled" %}
-COPY --from=builder-node --chown=1000:1000 /build/apps/shared ./apps/shared
+{%- if mcp_module == "enabled" and "typescript" in (mcp_languages|default([])) %}
+COPY --from=builder-node --chown=1000:1000 /build/node/mcp ./node/mcp
 {%- endif %}
 
 # Environment variables
 ENV NODE_ENV=production \
     NODE_OPTIONS="--max-old-space-size=2048"
 
+{%- if docs_module == "enabled" and docs_framework == "docusaurus" %}
+# Install serve for static hosting (must run as root, before USER)
+RUN npm install -g serve
+{%- endif %}
+
 # Switch to non-root user
 USER 1000:1000
 
-{%- if api_module == "enabled" and "node" in api_languages %}
+{%- if api_module == "enabled" and "node" in (api_languages|default([])) %}
 # Expose Fastify port
 EXPOSE 3000
 
@@ -278,7 +308,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 
 # Default command: Run Fastify API with dumb-init for proper signal handling
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-CMD ["node", "apps/api-node/dist/main.js"]
+CMD ["node", "node/apps/api-node/dist/main.js"]
 
 {%- elif docs_module == "enabled" and docs_framework == "fumadocs" %}
 # Expose Next.js port
@@ -300,12 +330,9 @@ EXPOSE 3002
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
     CMD curl -f http://localhost:3002 || exit 1
 
-# Install serve for static hosting
-RUN npm install -g serve
-
 # Default command: Serve Docusaurus static build
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-CMD ["serve", "-s", "apps/docs-docusaurus/build", "-l", "3002"]
+CMD ["serve", "-s", "node/docs/docusaurus/build", "-l", "3002"]
 
 {%- elif saas_infra_module == "enabled" %}
 # Expose SaaS app port
@@ -323,7 +350,7 @@ CMD ["pnpm", "--filter", "saas", "start"]
 
 {%- endif %}
 
-{%- if (cli_module == "enabled" and "rust" in cli_languages) or (api_module == "enabled" and "rust" in api_languages) or (mcp_module == "enabled" and "rust" in mcp_languages) %}
+{%- if (cli_module == "enabled" and "rust" in (cli_languages|default([]))) or (api_module == "enabled" and "rust" in (api_languages|default([]))) or (mcp_module == "enabled" and "rust" in (mcp_languages|default([]))) %}
 
 # =============================================================================
 # Rust Builder Stage
@@ -343,10 +370,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /build
 
 # Copy dependency manifests for layer caching
-COPY Cargo.toml Cargo.lock ./
-{%- if project_layout == "monorepo" %}
-COPY apps/ ./apps/
-{%- endif %}
+COPY rust/Cargo.toml rust/Cargo.lock ./
 
 # Create dummy main.rs for dependency caching
 RUN mkdir -p src && \
@@ -354,8 +378,8 @@ RUN mkdir -p src && \
     cargo build --release && \
     rm -rf src
 
-# Copy actual source code
-COPY src/ ./src/
+# Copy actual source code from the rust/ track
+COPY rust/src/ ./src/
 
 # Build release binary with optimizations
 RUN cargo build --release --locked
@@ -390,7 +414,7 @@ COPY --from=builder-rust --chown=1000:1000 /build/target/release/{{ project_slug
 # Switch to non-root user
 USER 1000:1000
 
-{%- if api_module == "enabled" and "rust" in api_languages %}
+{%- if api_module == "enabled" and "rust" in (api_languages|default([])) %}
 # Expose Actix-web port
 EXPOSE 8080
 
@@ -401,7 +425,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 # Default command: Run Actix-web server
 CMD ["/app/{{ project_slug }}"]
 
-{%- elif cli_module == "enabled" and "rust" in cli_languages %}
+{%- elif cli_module == "enabled" and "rust" in (cli_languages|default([])) %}
 # CLI application - health check verifies binary
 HEALTHCHECK --interval=60s --timeout=5s --retries=2 \
     CMD /app/{{ project_slug }} --version || exit 1

@@ -3,7 +3,7 @@
 
 > Production-ready SaaS application built with the Riso SaaS Starter
 
-**Stack**: {% if saas_runtime == "nextjs-16" %}Next.js 16{% else %}Remix 2.x{% endif %} ? {% if saas_database == "neon" %}Neon{% else %}Supabase{% endif %} ? {% if saas_orm == "prisma" %}Prisma{% else %}Drizzle{% endif %} ? {% if saas_auth_provider == "clerk" %}Clerk{% else %}Auth.js{% endif %} ? {% if saas_billing_provider == "stripe" %}Stripe{% else %}Paddle{% endif %}
+**Stack**: {% if saas_runtime == "nextjs-16" %}Next.js 16{% else %}Remix 2.x{% endif %} ? {% if saas_database == "neon" %}Neon{% else %}Supabase{% endif %} ? {% if saas_orm == "prisma" %}Prisma{% else %}Drizzle{% endif %} ? {% if saas_auth_provider == "clerk" %}Clerk{% else %}Auth.js{% endif %} ? {% if saas_billing_provider == "stripe" %}Stripe{% elif saas_billing_provider == "paddle" %}Paddle{% elif saas_billing_provider == "lemonsqueezy" %}LemonSqueezy{% else %}{{ saas_billing_provider }}{% endif %}
 
 [![CI](https://github.com/your-org/{{ project_slug }}/workflows/CI/badge.svg)](https://github.com/your-org/{{ project_slug }}/actions)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -14,7 +14,7 @@
 
 - ? **Authentication**: {% if saas_auth_provider == "clerk" %}Clerk{% else %}Auth.js{% endif %} with {% if saas_auth_provider == "clerk" %}organizations{% else %}OAuth providers{% endif %}
 - ? **Multi-Tenancy**: Organization-based access control
-- ? **Subscriptions**: {% if saas_billing_provider == "stripe" %}Stripe Billing{% else %}Paddle{% endif %} with webhooks
+- ? **Subscriptions**: {% if saas_billing_provider == "stripe" %}Stripe Billing{% elif saas_billing_provider == "paddle" %}Paddle{% elif saas_billing_provider == "lemonsqueezy" %}LemonSqueezy{% else %}{{ saas_billing_provider }}{% endif %} with webhooks
 - ? **Background Jobs**: {% if saas_jobs == "triggerdev" %}Trigger.dev{% else %}Inngest{% endif %} for async tasks
 - ? **Emails**: {% if saas_email == "resend" %}Resend{% else %}Postmark{% endif %} transactional emails
 - ? **Analytics**: {% if saas_analytics == "posthog" %}PostHog{% else %}Amplitude{% endif %} event tracking
@@ -35,7 +35,7 @@
 - Node.js 20+ and pnpm 8+
 - {% if saas_database == "neon" %}Neon{% else %}Supabase{% endif %} account
 - {% if saas_auth_provider == "clerk" %}Clerk{% else %}OAuth provider{% endif %} credentials
-- {% if saas_billing_provider == "stripe" %}Stripe{% else %}Paddle{% endif %} account
+- {% if saas_billing_provider == "stripe" %}Stripe{% elif saas_billing_provider == "paddle" %}Paddle{% elif saas_billing_provider == "lemonsqueezy" %}LemonSqueezy{% else %}{{ saas_billing_provider }}{% endif %} account
 
 ### Installation
 
@@ -90,8 +90,8 @@ DIRECT_URL="your-direct-url"  # For migrations
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_..."
 CLERK_SECRET_KEY="sk_test_..."
 {% else %}
-NEXTAUTH_SECRET="your-secret-min-32-chars"
-NEXTAUTH_URL="http://localhost:3000"
+AUTH_SECRET="your-secret-min-32-chars"
+AUTH_URL="http://localhost:3000"
 GOOGLE_CLIENT_ID="your-google-client-id"
 GOOGLE_CLIENT_SECRET="your-google-client-secret"
 {% endif %}
@@ -101,9 +101,14 @@ GOOGLE_CLIENT_SECRET="your-google-client-secret"
 STRIPE_SECRET_KEY="sk_test_..."
 STRIPE_WEBHOOK_SECRET="whsec_..."
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_..."
-{% else %}
+{% elif saas_billing_provider == "paddle" %}
 PADDLE_API_KEY="your-paddle-api-key"
 PADDLE_WEBHOOK_SECRET="your-webhook-secret"
+{% elif saas_billing_provider == "lemonsqueezy" %}
+LEMONSQUEEZY_API_KEY="your-api-key"
+LEMONSQUEEZY_STORE_ID="your-store-id"
+LEMONSQUEEZY_WEBHOOK_SECRET="your-webhook-secret"
+NEXT_PUBLIC_LEMONSQUEEZY_STORE_ID="your-store-id"
 {% endif %}
 
 # Other services
@@ -284,7 +289,7 @@ Built with:
 - [{% if saas_runtime == "nextjs-16" %}Next.js{% else %}Remix{% endif %}](https://{% if saas_runtime == "nextjs-16" %}nextjs.org{% else %}remix.run{% endif %}) - Web framework
 - [{% if saas_database == "neon" %}Neon{% else %}Supabase{% endif %}](https://{% if saas_database == "neon" %}neon.tech{% else %}supabase.com{% endif %}) - Database
 - [{% if saas_auth_provider == "clerk" %}Clerk{% else %}Auth.js{% endif %}](https://{% if saas_auth_provider == "clerk" %}clerk.com{% else %}authjs.dev{% endif %}) - Authentication
-- [{% if saas_billing_provider == "stripe" %}Stripe{% else %}Paddle{% endif %}](https://{% if saas_billing_provider == "stripe" %}stripe.com{% else %}paddle.com{% endif %}) - Payments
+- [{% if saas_billing_provider == "stripe" %}Stripe{% elif saas_billing_provider == "paddle" %}Paddle{% elif saas_billing_provider == "lemonsqueezy" %}LemonSqueezy{% else %}{{ saas_billing_provider }}{% endif %}](https://{% if saas_billing_provider == "stripe" %}stripe.com{% elif saas_billing_provider == "paddle" %}paddle.com{% elif saas_billing_provider == "lemonsqueezy" %}lemonsqueezy.com{% else %}stripe.com{% endif %}) - Payments
 - And many more amazing tools!
 
 ---

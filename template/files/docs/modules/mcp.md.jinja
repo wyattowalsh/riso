@@ -19,9 +19,9 @@ When generating a project with MCP enabled, you can configure:
 ### Python (FastMCP v2)
 
 ```
-src/{{ package_name }}/mcp/
+python/mcp/
 ├── __init__.py          # Package exports
-├── __main__.py          # Module entry point
+├── __main__.py          # Module entry point (`python -m mcp`)
 ├── server.py            # FastMCP server initialization
 ├── config.py            # Pydantic configuration
 ├── errors.py            # MCP error types
@@ -38,16 +38,16 @@ src/{{ package_name }}/mcp/
 
 ```bash
 # stdio mode (default, for Claude Desktop)
-uv run python -m {{ package_name }}.mcp
+uv run python -m mcp
 
 # SSE mode (for web clients)
-uv run python -m {{ package_name }}.mcp --transport sse --port 3000
+uv run python -m mcp --transport sse --port 3000
 
 # HTTP streaming mode
-uv run python -m {{ package_name }}.mcp --transport http --port 3000
+uv run python -m mcp --transport http --port 3000
 
 # With MCP Inspector
-npx @modelcontextprotocol/inspector uv run python -m {{ package_name }}.mcp
+npx @modelcontextprotocol/inspector uv run python -m mcp
 ```
 
 {% elif 'typescript' in mcp_languages %}
@@ -166,7 +166,7 @@ Add to your `mcp.json`:
 {% if 'python' in mcp_languages %}
       "type": "stdio",
       "command": "uv",
-      "args": ["run", "python", "-m", "{{ package_name }}.mcp"],
+      "args": ["run", "python", "-m", "mcp"],
 {% elif 'typescript' in mcp_languages %}
       "type": "stdio",
       "command": "pnpm",
@@ -190,7 +190,7 @@ Add to your `mcp.json`:
 
 {% if 'python' in mcp_languages %}
 ```python
-# In src/{{ package_name }}/mcp/tools/my_tool.py
+# In python/mcp/tools/my_tool.py
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:

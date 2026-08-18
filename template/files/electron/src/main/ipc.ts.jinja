@@ -16,6 +16,7 @@ import { ipcMain, app, dialog, shell, BrowserWindow, nativeTheme } from 'electro
 import { is } from '@electron-toolkit/utils';
 import log from 'electron-log/main';
 import Store from 'electron-store';
+import { navigationBlockReason } from './url-guard';
 
 // Type-safe store for persistent data
 interface StoreSchema {
@@ -227,27 +228,16 @@ export function registerIpcHandlers(): void {
   // ============================================
 
   ipcMain.handle(IPC_CHANNELS.OPEN_EXTERNAL, async (_, url: string) => {
-    // Security: HTTPS preferred; block non-http(s) and common internal targets
-    let parsed: URL;
-    try {
-      parsed = new URL(url);
-    } catch {
+    const reason = navigationBlockReason(url);
+    if (reason === 'invalid') {
       log.warn(`Blocked invalid URL: ${url}`);
       return { success: false, error: 'Invalid URL' };
     }
-    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    if (reason === 'scheme') {
       log.warn(`Blocked non-http(s) URL: ${url}`);
       return { success: false, error: 'Only HTTP(S) URLs are allowed' };
     }
-    const host = parsed.hostname.toLowerCase();
-    if (
-      host === 'localhost' ||
-      host === '127.0.0.1' ||
-      host === '0.0.0.0' ||
-      host === '::1' ||
-      host.endsWith('.local') ||
-      host === '169.254.169.254'
-    ) {
+    if (reason === 'internal') {
       log.warn(`Blocked internal host URL: ${url}`);
       return { success: false, error: 'Internal hosts are not allowed' };
     }

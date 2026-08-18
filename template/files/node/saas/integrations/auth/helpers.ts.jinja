@@ -57,13 +57,13 @@ export async function hasPermission(permission: string) {
   return has({ permission });
 }
 
-export async function hasRole(role: 'admin' | 'org:member') {
+export async function hasRole(role: 'org:admin' | 'admin' | 'org:member') {
   const { has } = await auth();
   return has({ role });
 }
 
-export async function requireAdminRole() {
-  const allowed = await hasRole('admin');
+export async function requireAdminRole(): Promise<void> {
+  const allowed = (await hasRole('org:admin')) || (await hasRole('admin'));
   if (!allowed) {
     throw new ForbiddenError('Admin role required');
   }
@@ -147,8 +147,9 @@ export async function hasRole(args: ClerkArgs, role: string) {
   return orgRole === role;
 }
 
-export async function requireAdminRole(args: ClerkArgs) {
-  const allowed = await hasRole(args, 'org:admin') || await hasRole(args, 'admin');
+export async function requireAdminRole(args: ClerkArgs): Promise<void> {
+  const allowed =
+    (await hasRole(args, 'org:admin')) || (await hasRole(args, 'admin'));
   if (!allowed) {
     throw new ForbiddenError('Admin role required');
   }
@@ -225,7 +226,7 @@ export async function hasRole(role: string) {
   return userRole === role;
 }
 
-export async function requireAdminRole() {
+export async function requireAdminRole(): Promise<void> {
   const allowed = await hasRole('admin');
   if (!allowed) {
     throw new ForbiddenError('Admin role required');

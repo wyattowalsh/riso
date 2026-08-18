@@ -1,22 +1,13 @@
 {% if (graphql_api_module == 'enabled' or 'graphql' in api_features) -%}
 """GraphQL DataLoader Tests - N+1 query prevention."""
 
-import pytest
-from strawberry.test import BaseGraphQLTestClient
-
 from {{ package_name }}.graphql_api.schema import schema
-
-
-@pytest.fixture
-def graphql_client():
-    """Create GraphQL test client."""
-    return BaseGraphQLTestClient(schema)
 
 
 class TestDataLoaders:
     """Test DataLoader batching and caching."""
     
-    def test_user_dataloader_batches_requests(self, graphql_client):
+    def test_user_dataloader_batches_requests(self):
         """Test that DataLoader batches multiple user requests."""
         query = """
             query {
@@ -39,11 +30,11 @@ class TestDataLoaders:
             }
         """
         
-        result = graphql_client.query(query)
+        result = schema.execute_sync(query)
         
         assert result.errors is None
     
-    def test_dataloader_caches_within_request(self, graphql_client):
+    def test_dataloader_caches_within_request(self):
         """Test that DataLoader caches results within a single request."""
         query = """
             query {
@@ -58,7 +49,7 @@ class TestDataLoaders:
             }
         """
         
-        result = graphql_client.query(query)
+        result = schema.execute_sync(query)
         
         assert result.errors is None
         assert result.data["user1"]["id"] == result.data["user1Again"]["id"]

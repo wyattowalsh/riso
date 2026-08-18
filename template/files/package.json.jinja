@@ -4,7 +4,6 @@
   "version": "0.1.0",
   "description": "{{ project_name }}",
   "private": true,
-{% if project_layout == "monorepo" or (mcp_module == "enabled" and "typescript" in mcp_languages) %}
 {%- set _ws = [] -%}
 {%- if api_module == 'enabled' and 'node' in api_languages -%}
 {%- set _ = _ws.append("node/apps/api-node") -%}
@@ -18,9 +17,19 @@
 {%- if mcp_module == "enabled" and "typescript" in mcp_languages -%}
 {%- set _ = _ws.append("node/mcp") -%}
 {%- endif -%}
+{%- if saas_infra_module == "enabled" -%}
+{%- set _ = _ws.append("node/saas") -%}
+{%- endif -%}
 {%- if project_layout == "monorepo" -%}
 {%- set _ = _ws.append("node/packages/*") -%}
+{%- endif -%}
+{%- if desktop_module == "enabled" and desktop_framework == "electron-vite" -%}
+{%- set _ = _ws.append("electron") -%}
+{%- endif -%}
+{%- if desktop_module == "enabled" and desktop_framework == "tauri" -%}
+{%- set _ = _ws.append("tauri") -%}
 {%- endif %}
+{% if _ws %}
   "workspaces": [
 {%- for member in _ws %}
     "{{ member }}"{% if not loop.last %},{% endif %}

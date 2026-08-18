@@ -1,23 +1,115 @@
 {%- if mcp_module == 'enabled' and 'typescript' in mcp_languages and mcp_example_tools -%}
 /**
- * HTTP fetch tool - web content retrieval
+ * HTTP fetch tool - web content retrieval (https public hosts only).
  *
  * Demonstrates async tools with external dependencies.
+ * SSRF guard: HTTPS only, block localhost / private / link-local / metadata IPs.
  */
 
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import type { FastMCP } from "fastmcp";
 import { z } from "zod";
+
+function isBlockedIp(ip: string): boolean {
+  const value = ip.toLowerCase();
+  if (value === "::1" || value === "0.0.0.0" || value === "::") {
+    return true;
+  }
+  if (value.startsWith("::ffff:")) {
+    return isBlockedIp(value.slice(7));
+  }
+  const head = value.split(":", 1)[0] ?? "";
+  if (
+    head.startsWith("fe8") ||
+    head.startsWith("fe9") ||
+    head.startsWith("fea") ||
+    head.startsWith("feb")
+  ) {
+    return true;
+  }
+  if (head.startsWith("fc") || head.startsWith("fd")) {
+    return true;
+  }
+  const parts = value.split(".").map(Number);
+  if (
+    parts.length === 4 &&
+    parts.every((octet) => Number.isInteger(octet) && octet >= 0 && octet <= 255)
+  ) {
+    const [first, second] = parts;
+    if (first === 0 || first === 10 || first === 127) {
+      return true;
+    }
+    if (first === 169 && second === 254) {
+      return true;
+    }
+    if (first === 192 && second === 168) {
+      return true;
+    }
+    if (first === 172 && second >= 16 && second <= 31) {
+      return true;
+    }
+    if (first === 100 && second >= 64 && second <= 127) {
+      return true;
+    }
+  }
+  return false;
+}
+
+async function assertSafePublicHttpsUrl(urlString: string): Promise<string | null> {
+  let parsed: URL;
+  try {
+    parsed = new URL(urlString);
+  } catch {
+    return "Invalid URL";
+  }
+  if (parsed.protocol !== "https:") {
+    return "only https:// URLs are allowed";
+  }
+  const host = parsed.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  if (
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host === "0.0.0.0" ||
+    host === "::1" ||
+    host === "169.254.169.254" ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".local") ||
+    host === "metadata.google.internal" ||
+    host === "metadata"
+  ) {
+    return "URL host is not allowed (SSRF protection)";
+  }
+  if (isIP(host) && isBlockedIp(host)) {
+    return "URL host is not allowed (SSRF protection)";
+  }
+  if (!isIP(host)) {
+    try {
+      const records = await lookup(host, { all: true });
+      if (records.some((record) => isBlockedIp(record.address))) {
+        return "URL host is not allowed (SSRF protection)";
+      }
+    } catch {
+      return `Could not resolve host: ${host}`;
+    }
+  }
+  return null;
+}
 
 export function registerHttpTools(mcp: FastMCP): void {
   mcp.addTool({
     name: "http_get",
-    description: "Fetch content from a URL via HTTP GET",
+    description: "Fetch content from a public HTTPS URL via HTTP GET",
     parameters: z.object({
-      url: z.string().url().describe("The URL to fetch"),
+      url: z.string().url().describe("The HTTPS URL to fetch"),
       headers: z.record(z.string(), z.string()).optional().describe("Request headers"),
       timeout: z.number().int().min(1).max(120).default(30).describe("Timeout in seconds"),
     }),
     execute: async ({ url, headers, timeout }) => {
+      const blocked = await assertSafePublicHttpsUrl(url);
+      if (blocked) {
+        return { success: false, error: blocked };
+      }
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout * 1000);
@@ -26,6 +118,7 @@ export function registerHttpTools(mcp: FastMCP): void {
           method: "GET",
           headers,
           signal: controller.signal,
+          redirect: "manual",
         });
 
         clearTimeout(timeoutId);
@@ -37,7 +130,7 @@ export function registerHttpTools(mcp: FastMCP): void {
           statusCode: response.status,
           headers: Object.fromEntries(response.headers.entries()),
           contentType: response.headers.get("content-type") ?? "",
-          content: content.slice(0, 10000), // Limit content size
+          content: content.slice(0, 10000),
           contentLength: content.length,
         };
       } catch (error) {
@@ -58,15 +151,19 @@ export function registerHttpTools(mcp: FastMCP): void {
 
   mcp.addTool({
     name: "http_post",
-    description: "Send data to a URL via HTTP POST",
+    description: "Send data to a public HTTPS URL via HTTP POST",
     parameters: z.object({
-      url: z.string().url().describe("The URL to post to"),
+      url: z.string().url().describe("The HTTPS URL to post to"),
       data: z.record(z.string(), z.unknown()).optional().describe("Form data to send"),
       jsonBody: z.record(z.string(), z.unknown()).optional().describe("JSON body to send"),
       headers: z.record(z.string(), z.string()).optional().describe("Request headers"),
       timeout: z.number().int().min(1).max(120).default(30).describe("Timeout in seconds"),
     }),
     execute: async ({ url, data, jsonBody, headers, timeout }) => {
+      const blocked = await assertSafePublicHttpsUrl(url);
+      if (blocked) {
+        return { success: false, error: blocked };
+      }
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout * 1000);
@@ -80,7 +177,7 @@ export function registerHttpTools(mcp: FastMCP): void {
         } else if (data) {
           requestHeaders["Content-Type"] = "application/x-www-form-urlencoded";
           body = new URLSearchParams(
-            Object.entries(data).map(([k, v]) => [k, String(v)])
+            Object.entries(data).map(([key, value]) => [key, String(value)])
           );
         }
 
@@ -89,6 +186,7 @@ export function registerHttpTools(mcp: FastMCP): void {
           headers: requestHeaders,
           body,
           signal: controller.signal,
+          redirect: "manual",
         });
 
         clearTimeout(timeoutId);
@@ -118,13 +216,17 @@ export function registerHttpTools(mcp: FastMCP): void {
 
   mcp.addTool({
     name: "http_head",
-    description: "Get headers from a URL without downloading content",
+    description: "Get headers from a public HTTPS URL without downloading content",
     parameters: z.object({
-      url: z.string().url().describe("The URL to check"),
+      url: z.string().url().describe("The HTTPS URL to check"),
       headers: z.record(z.string(), z.string()).optional().describe("Request headers"),
       timeout: z.number().int().min(1).max(120).default(30).describe("Timeout in seconds"),
     }),
     execute: async ({ url, headers, timeout }) => {
+      const blocked = await assertSafePublicHttpsUrl(url);
+      if (blocked) {
+        return { success: false, error: blocked };
+      }
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout * 1000);
@@ -133,6 +235,7 @@ export function registerHttpTools(mcp: FastMCP): void {
           method: "HEAD",
           headers,
           signal: controller.signal,
+          redirect: "manual",
         });
 
         clearTimeout(timeoutId);

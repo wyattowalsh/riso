@@ -55,6 +55,9 @@ export const users = pgTable('users', {
   emailVerified: timestamp('email_verified', { mode: 'date' }),
   name: text('name'),
   image: text('image'),
+  {% if saas_billing_provider == "lemonsqueezy" %}
+  lemonSqueezyCustomerId: text('lemon_squeezy_customer_id').unique(),
+  {% endif %}
   
   // Metadata
   metadata: json('metadata').$type<Record<string, unknown>>().default({}),
@@ -205,7 +208,9 @@ export const subscriptions = pgTable('subscriptions', {
   
   // Ownership (either user or organization)
   userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
+  {% if saas_tenancy_model == "b2b-teams" %}
   organizationId: text('organization_id').unique().references(() => organizations.id, { onDelete: 'cascade' }),
+  {% endif %}
   
   // Billing provider IDs
   {% if saas_billing_provider == "stripe" %}
@@ -216,6 +221,10 @@ export const subscriptions = pgTable('subscriptions', {
   paddleCustomerId: text('paddle_customer_id').unique(),
   paddleSubscriptionId: text('paddle_subscription_id').unique(),
   paddlePriceId: text('paddle_price_id'),
+  {% elif saas_billing_provider == "lemonsqueezy" %}
+  lemonSqueezyCustomerId: text('lemon_squeezy_customer_id').unique(),
+  lemonSqueezySubscriptionId: text('lemon_squeezy_subscription_id').unique(),
+  lemonSqueezyVariantId: text('lemon_squeezy_variant_id'),
   {% endif %}
   
   // Subscription details
@@ -244,7 +253,9 @@ export const subscriptions = pgTable('subscriptions', {
   planIdx: index('subscriptions_plan_idx').on(table.plan),
   periodEndIdx: index('subscriptions_period_end_idx').on(table.currentPeriodEnd),
   userIdx: index('subscriptions_user_idx').on(table.userId),
+  {% if saas_tenancy_model == "b2b-teams" %}
   orgIdx: index('subscriptions_org_idx').on(table.organizationId),
+  {% endif %}
 }));
 
 export const usageRecords = pgTable('usage_records', {
@@ -283,6 +294,8 @@ export const invoices = pgTable('invoices', {
   stripeInvoiceId: text('stripe_invoice_id').unique(),
   {% elif saas_billing_provider == "paddle" %}
   paddleInvoiceId: text('paddle_invoice_id').unique(),
+  {% elif saas_billing_provider == "lemonsqueezy" %}
+  lemonSqueezyInvoiceId: text('lemon_squeezy_invoice_id').unique(),
   {% endif %}
   
   // Invoice details
@@ -319,7 +332,9 @@ export const apiKeys = pgTable('api_keys', {
   
   // Ownership
   userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  {% if saas_tenancy_model == "b2b-teams" %}
   organizationId: text('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
+  {% endif %}
   
   // Key details
   name: text('name').notNull(),
@@ -345,7 +360,9 @@ export const apiKeys = pgTable('api_keys', {
 }, (table) => ({
   prefixIdx: index('api_keys_prefix_idx').on(table.keyPrefix),
   userIdx: index('api_keys_user_idx').on(table.userId),
+  {% if saas_tenancy_model == "b2b-teams" %}
   orgIdx: index('api_keys_org_idx').on(table.organizationId),
+  {% endif %}
   revokedIdx: index('api_keys_revoked_idx').on(table.revokedAt),
 }));
 
@@ -359,7 +376,9 @@ export const webhookEndpoints = pgTable('webhook_endpoints', {
   
   // Ownership
   userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  {% if saas_tenancy_model == "b2b-teams" %}
   organizationId: text('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
+  {% endif %}
   
   // Endpoint configuration
   url: varchar('url', { length: 2048 }).notNull(),
@@ -385,7 +404,9 @@ export const webhookEndpoints = pgTable('webhook_endpoints', {
   ...timestamps,
 }, (table) => ({
   userIdx: index('webhook_endpoints_user_idx').on(table.userId),
+  {% if saas_tenancy_model == "b2b-teams" %}
   orgIdx: index('webhook_endpoints_org_idx').on(table.organizationId),
+  {% endif %}
   activeIdx: index('webhook_endpoints_active_idx').on(table.isActive),
 }));
 
@@ -429,10 +450,12 @@ export const webhookEndpointRelations = relations(webhookEndpoints, ({ one, many
     fields: [webhookEndpoints.userId],
     references: [users.id],
   }),
+  {% if saas_tenancy_model == "b2b-teams" %}
   organization: one(organizations, {
     fields: [webhookEndpoints.organizationId],
     references: [organizations.id],
   }),
+  {% endif %}
   deliveries: many(webhookDeliveries),
 }));
 
@@ -453,7 +476,9 @@ export const auditLogs = pgTable('audit_logs', {
   
   // Actor
   userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
+  {% if saas_tenancy_model == "b2b-teams" %}
   organizationId: text('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
+  {% endif %}
   
   // Action details
   action: text('action').notNull(),
@@ -474,7 +499,9 @@ export const auditLogs = pgTable('audit_logs', {
   timestamp: timestamp('timestamp', { mode: 'date' }).defaultNow().notNull(),
 }, (table) => ({
   userIdx: index('audit_logs_user_idx').on(table.userId),
+  {% if saas_tenancy_model == "b2b-teams" %}
   orgIdx: index('audit_logs_org_idx').on(table.organizationId),
+  {% endif %}
   actionIdx: index('audit_logs_action_idx').on(table.action),
   correlationIdx: index('audit_logs_correlation_idx').on(table.correlationId),
   timestampIdx: index('audit_logs_timestamp_idx').on(table.timestamp),
@@ -563,10 +590,12 @@ export const subscriptionsRelations = relations(subscriptions, ({ one, many }) =
     fields: [subscriptions.userId],
     references: [users.id],
   }),
+  {% if saas_tenancy_model == "b2b-teams" %}
   organization: one(organizations, {
     fields: [subscriptions.organizationId],
     references: [organizations.id],
   }),
+  {% endif %}
   usageRecords: many(usageRecords),
   invoices: many(invoices),
 }));
@@ -610,15 +639,21 @@ export const permissions = pgTable('permissions', {
 
 export const roles = pgTable('roles', {
   id: id(),
+  {% if saas_tenancy_model == "b2b-teams" %}
   organizationId: text('organization_id').references(() => organizations.id, { onDelete: 'cascade' }),
+  {% endif %}
   name: text('name').notNull(),
   description: text('description'),
   isSystem: boolean('is_system').default(false).notNull(),
   
   ...timestamps,
 }, (table) => ({
+  {% if saas_tenancy_model == "b2b-teams" %}
   orgNameIdx: uniqueIndex('roles_org_name_idx').on(table.organizationId, table.name),
   orgIdx: index('roles_org_idx').on(table.organizationId),
+  {% else %}
+  nameIdx: uniqueIndex('roles_name_idx').on(table.name),
+  {% endif %}
   systemIdx: index('roles_system_idx').on(table.isSystem),
 }));
 
@@ -635,12 +670,14 @@ export const rolePermissions = pgTable('role_permissions', {
 }));
 
 export const rolesRelations = relations(roles, ({ one, many }) => ({
+  {% if saas_tenancy_model == "b2b-teams" %}
   organization: one(organizations, {
     fields: [roles.organizationId],
     references: [organizations.id],
   }),
-  rolePermissions: many(rolePermissions),
   memberships: many(organizationMemberships),
+  {% endif %}
+  rolePermissions: many(rolePermissions),
 }));
 
 export const permissionsRelations = relations(permissions, ({ many }) => ({

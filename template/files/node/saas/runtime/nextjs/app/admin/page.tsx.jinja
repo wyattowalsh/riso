@@ -1,7 +1,7 @@
 {% if saas_infra_module == "enabled" and saas_admin_dashboard and saas_runtime == "nextjs-16" %}
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { requireUserId } from '@/lib/auth/helpers';
+import { requireUserId, requireAdminRole } from '@/lib/auth/helpers';
 {% if saas_orm == "prisma" %}
 import { prisma } from '@/lib/database/client';
 {% elif saas_orm == "drizzle" %}
@@ -276,12 +276,8 @@ function RecentSignupsCard({ signups }: RecentSignupsProps) {
 // ============================================================================
 
 export default async function AdminDashboardPage() {
-  // Verify admin access
   await requireUserId();
-
-  // TODO: Add proper admin role verification
-  // For now, access is granted to any authenticated user
-  // Implement role-based access control in production
+  await requireAdminRole();
 
   const stats = await getDashboardStats();
 
@@ -418,14 +414,6 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Footer Info */}
-      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
-        <p className="font-medium mb-2">Admin Access Note</p>
-        <p>
-          This dashboard is currently accessible to all authenticated users. For production environments,
-          implement proper role-based access control (RBAC) to restrict access to authorized administrators only.
-        </p>
-      </div>
     </div>
   );
 }

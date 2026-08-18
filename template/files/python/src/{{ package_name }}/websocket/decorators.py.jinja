@@ -175,28 +175,48 @@ async def get_current_user_websocket(
     if token is None:
         return None
 
-    # Validate token (integrate with your auth system here)
+    # Token present: fail closed unless JWT decode succeeds
+    import os
+
     try:
-        # This is a placeholder - replace with actual JWT validation
         from jose import JWTError, jwt
+    except ImportError as e:
+        raise AuthenticationError(
+            message="JWT library unavailable; refusing authenticated WebSocket",
+            code="AUTH_FAILED",
+            details={"error": str(e)},
+        ) from e
 
-        # Example JWT decode (replace SECRET_KEY and ALGORITHM with your config)
-        # payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        # user_id = payload.get("sub")
-
-        # For now, return None to indicate auth integration is needed
-        logger.warning(
-            "WebSocket authentication not fully implemented - "
-            "integrate with your JWT/OAuth2 system"
+    secret = (
+        os.environ.get("WS_JWT_SECRET")
+        or os.environ.get("JWT_SECRET")
+        or os.environ.get("SECRET_KEY")
+    )
+    algorithm = os.environ.get("WS_JWT_ALGORITHM") or os.environ.get(
+        "JWT_ALGORITHM", "HS256"
+    )
+    if not secret:
+        raise AuthenticationError(
+            message="Authentication token provided but JWT secret is not configured",
+            code="AUTH_FAILED",
         )
-        return None
 
-    except Exception as e:
+    try:
+        payload = jwt.decode(token, secret, algorithms=[algorithm])
+    except JWTError as e:
         raise AuthenticationError(
             message="Invalid or expired authentication token",
             code="AUTH_FAILED",
             details={"error": str(e)},
         ) from e
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise AuthenticationError(
+            message="Authentication token missing subject",
+            code="AUTH_FAILED",
+        )
+    return str(user_id)
 
 
 def require_authentication(func: Callable) -> Callable:

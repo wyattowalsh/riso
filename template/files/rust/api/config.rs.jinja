@@ -9,6 +9,8 @@ pub struct Config {
     pub port: u16,
     pub environment: String,
     pub cors_enabled: bool,
+    /// Comma-separated `CORS_ORIGINS` allowlist (`*` is ignored).
+    pub cors_origins: Vec<String>,
     pub log_level: String,
 }
 
@@ -25,6 +27,7 @@ impl Config {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(true),
+            cors_origins: parse_cors_origins(&env::var("CORS_ORIGINS").unwrap_or_default()),
             log_level: env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string()),
         }
     }
@@ -38,6 +41,14 @@ impl Config {
     }
 }
 
+fn parse_cors_origins(raw: &str) -> Vec<String> {
+    raw.split(',')
+        .map(str::trim)
+        .filter(|origin| !origin.is_empty() && *origin != "*")
+        .map(ToOwned::to_owned)
+        .collect()
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -45,6 +56,7 @@ impl Default for Config {
             port: 8080,
             environment: "development".to_string(),
             cors_enabled: true,
+            cors_origins: Vec::new(),
             log_level: "info".to_string(),
         }
     }
@@ -68,6 +80,20 @@ mod tests {
         config.environment = "production".to_string();
         assert!(config.is_production());
         assert!(!config.is_development());
+    }
+
+    #[test]
+    fn test_parse_cors_origins_allowlist() {
+        let origins = parse_cors_origins("https://app.example.com, http://localhost:3000, *");
+        assert_eq!(
+            origins,
+            vec![
+                "https://app.example.com".to_string(),
+                "http://localhost:3000".to_string()
+            ]
+        );
+        assert!(parse_cors_origins("").is_empty());
+        assert!(parse_cors_origins("*").is_empty());
     }
 }
 {% endif %}

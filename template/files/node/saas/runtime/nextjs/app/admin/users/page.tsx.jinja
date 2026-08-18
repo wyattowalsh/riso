@@ -16,6 +16,7 @@
  * - Responsive design for mobile and desktop
  */
 
+import { requireUserId, requireAdminRole } from '@/lib/auth/helpers';
 {% if saas_runtime == 'nextjs-16' %}
 import { Suspense } from 'react';
 import Link from 'next/link';
@@ -521,6 +522,8 @@ async function getUsersData(page: number = 1): Promise<UsersResponse> {
 
 export default async function AdminUsersPage() {
   try {
+    await requireUserId();
+    await requireAdminRole();
     const { users, pagination } = await getUsersData();
 
     return (

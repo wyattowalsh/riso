@@ -116,7 +116,7 @@ class TestElectronTemplateRendering:
         data = json.loads(result)
 
         # Check basic metadata
-        assert data["name"] == "test-electron-app"
+        assert data["name"] == "test-electron-app-electron"
         assert data["version"] == "0.1.0"
         assert data["main"] == "./out/main/index.js"
 
@@ -675,3 +675,61 @@ class TestElectronTemplateIntegration:
             assert result.strip() == "", (
                 f"{template_name} should be empty when disabled"
             )
+
+
+class TestElectronCspAndNavigation:
+    """CSP must not rely on inline scripts; window-open uses the IPC denylist."""
+
+    def test_index_html_loads_theme_init_file(
+        self, electron_files_dir: Path, base_electron_context: dict[str, Any]
+    ) -> None:
+        """Theme bootstrap lives in theme-init.js, not an inline script."""
+        env = create_jinja_env(electron_files_dir)
+        html = env.get_template("src/renderer/index.html.jinja").render(
+            base_electron_context
+        )
+        assert "script-src 'self'" in html
+        assert "theme-init.js" in html
+        assert "localStorage.getItem('theme')" not in html
+
+    def test_theme_init_script_exists(
+        self, electron_files_dir: Path, base_electron_context: dict[str, Any]
+    ) -> None:
+        """External theme-init.js applies the saved theme before paint."""
+        env = create_jinja_env(electron_files_dir)
+        script = env.get_template("src/renderer/theme-init.js.jinja").render(
+            base_electron_context
+        )
+        assert "localStorage.getItem('theme')" in script
+        assert "classList.toggle('dark'" in script
+
+    def test_url_guard_blocks_localhost_and_link_local(
+        self, electron_files_dir: Path, base_electron_context: dict[str, Any]
+    ) -> None:
+        """Shared denylist covers localhost, loopback, and 169.254.0.0/16."""
+        env = create_jinja_env(electron_files_dir)
+        guard = env.get_template("src/main/url-guard.ts.jinja").render(
+            base_electron_context
+        )
+        assert "169.254.169.254" in guard
+        assert "localhost" in guard
+        assert "169 && second === 254" in guard
+        assert "isBlockedNavigationUrl" in guard
+
+    def test_set_window_open_handler_uses_url_guard(
+        self, electron_files_dir: Path, base_electron_context: dict[str, Any]
+    ) -> None:
+        """Both window-open handlers deny blocked hosts via url-guard."""
+        env = create_jinja_env(electron_files_dir)
+        window = env.get_template("src/main/window.ts.jinja").render(
+            base_electron_context
+        )
+        index = env.get_template("src/main/index.ts.jinja").render(
+            base_electron_context
+        )
+        ipc = env.get_template("src/main/ipc.ts.jinja").render(base_electron_context)
+        for source in (window, index):
+            assert "setWindowOpenHandler" in source
+            assert "isBlockedNavigationUrl" in source
+        assert "navigationBlockReason" in ipc
+        assert "Internal hosts are not allowed" in ipc

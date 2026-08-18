@@ -1,9 +1,6 @@
 {% if (graphql_api_module == 'enabled' or 'graphql' in api_features) -%}
 """GraphQL Error Handling Tests - Validation and error messages."""
 
-import pytest
-from strawberry.test import BaseGraphQLTestClient
-
 from {{ package_name }}.graphql_api.schema import schema
 from {{ package_name }}.graphql_api.errors import (
     ValidationError,
@@ -13,16 +10,10 @@ from {{ package_name }}.graphql_api.errors import (
 )
 
 
-@pytest.fixture
-def graphql_client():
-    """Create GraphQL test client."""
-    return BaseGraphQLTestClient(schema)
-
-
 class TestErrorHandling:
     """Test error handling and error messages."""
     
-    def test_query_syntax_error(self, graphql_client):
+    def test_query_syntax_error(self):
         """Test that syntax errors return clear messages."""
         query = """
             query {
@@ -32,11 +23,11 @@ class TestErrorHandling:
                 }
         """
         
-        result = graphql_client.query(query)
+        result = schema.execute_sync(query)
         
         assert result.errors is not None
     
-    def test_invalid_field_error(self, graphql_client):
+    def test_invalid_field_error(self):
         """Test that invalid field requests return clear errors."""
         query = """
             query {
@@ -47,7 +38,7 @@ class TestErrorHandling:
             }
         """
         
-        result = graphql_client.query(query)
+        result = schema.execute_sync(query)
         
         assert result.errors is not None
         assert any("invalidField" in str(error) for error in result.errors)

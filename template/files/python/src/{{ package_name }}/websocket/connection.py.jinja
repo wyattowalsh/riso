@@ -148,6 +148,10 @@ class WebSocketConnection:
 
         # Start background tasks
         self._send_task = asyncio.create_task(self._send_loop())
+        if self.config.enable_heartbeat:
+            from {{ package_name }}.websocket.utils import heartbeat_loop
+
+            self._heartbeat_task = asyncio.create_task(heartbeat_loop(self))
 
         logger.info(
             f"WebSocket connected: {self._connection_id}",
