@@ -327,6 +327,72 @@ class TestSaasAuthSecretAndValidateEnv:
         assert "validate:env" in package
         assert "from '../config/env'" in _read(script)
 
+    def test_env_example_uses_auth_js_v5_names(self) -> None:
+        """.env.example documents AUTH_SECRET/AUTH_URL and omits NEXTAUTH_*."""
+        env_example = _read(SAAS_ROOT / ".env.example.jinja")
+        assert "AUTH_SECRET" in env_example
+        assert "AUTH_URL" in env_example
+        assert "NEXTAUTH_SECRET" not in env_example
+        assert "NEXTAUTH_URL" not in env_example
+
+    def test_authjs_app_router_route_exports_handlers(self) -> None:
+        """Next App Router catch-all re-exports Auth.js GET/POST handlers."""
+        route = (
+            SAAS_ROOT
+            / "runtime"
+            / "nextjs"
+            / "app"
+            / "api"
+            / "auth"
+            / "[...nextauth]"
+            / "route.ts.jinja"
+        )
+        assert route.is_file()
+        text = _read(route)
+        assert "import { handlers } from '@/lib/auth'" in text
+        assert "export const { GET, POST } = handlers" in text
+        assert 'saas_auth_provider == "authjs"' in text
+        assert 'saas_runtime == "nextjs-16"' in text
+
+
+class TestSaasLemonSqueezyHealthProbe:
+    """Health probe uses the same LEMONSQUEEZY_API_KEY name as env.ts."""
+
+    def test_health_probe_env_key_matches_canonical(self) -> None:
+        """LemonSqueezy health check must not use LEMON_SQUEEZY_API_KEY."""
+        health = _read(
+            SAAS_ROOT / "runtime" / "nextjs" / "lib" / "health.ts.jinja"
+        )
+        assert "LEMONSQUEEZY_API_KEY" in health
+        assert "LEMON_SQUEEZY_API_KEY" not in health
+
+
+class TestSaasPackageNameDisambiguated:
+    """Workspace package name must not collide with dest-root project_slug."""
+
+    def test_saas_package_name_suffix(self) -> None:
+        """SaaS package.json uses {{ project_slug }}-saas."""
+        package = _read(SAAS_ROOT / "package.json.jinja")
+        assert '"name": "{{ project_slug }}-saas"' in package
+        assert '"name": "{{ project_slug }}"' not in package
+
+
+class TestSaasGdprDrizzleExtensionPoint:
+    """Drizzle GDPR paths fail closed with a named extension-point error."""
+
+    def test_no_pending_drizzle_throw(self) -> None:
+        """Owned GDPR jinja must not throw a generic pending Error."""
+        export = _read(SAAS_ROOT / "compliance" / "gdpr" / "data-export.ts.jinja")
+        deletion = _read(
+            SAAS_ROOT / "compliance" / "gdpr" / "data-deletion.ts.jinja"
+        )
+        assert "Drizzle implementation pending" not in export
+        assert "Drizzle implementation pending" not in deletion
+        assert "GdprDrizzleNotImplementedError" in export
+        assert "GdprDrizzleNotImplementedError" in deletion
+        assert "EXTENSION POINT" in export
+        assert "EXTENSION POINT" in deletion
+
 
 class TestSaasImpersonationGated:
     """Impersonation tables are not always-on."""
@@ -362,3 +428,36 @@ class TestSaasLemonSqueezyWebhookSecret:
         csp = _read(SAAS_ROOT / "config" / "security-headers.ts.jinja")
         assert "lemonsqueezy.com" in csp
         assert "saas_billing_provider == 'lemonsqueezy'" in csp
+
+
+class TestSaasSqlInjectionBoundWhere:
+    """Dynamic WHERE clauses must bind values; never sql.raw(whereClause)."""
+
+    def test_no_sql_raw_where_clause_in_saas_jinja(self) -> None:
+        """Owned jinja must not inject concatenated WHERE via sql.raw."""
+        assert _jinja_hits(SAAS_ROOT, "sql.raw(whereClause)") == []
+
+    def test_token_tracking_no_interpolated_dates_or_operation(self) -> None:
+        """token-tracking must not interpolate dates or operation into SQL."""
+        text = _read(SAAS_ROOT / "lib" / "ai" / "token-tracking.ts.jinja")
+        assert "created_at >= '${" not in text
+        assert "operation = '${" not in text
+
+    def test_token_tracking_operation_allowlist(self) -> None:
+        """operation is validated against a frozen embedding/generation/rerank list."""
+        text = _read(SAAS_ROOT / "lib" / "ai" / "token-tracking.ts.jinja")
+        assert "Object.freeze" in text
+        assert "assertTokenOperation" in text
+        assert "'embedding'" in text
+        assert "'generation'" in text
+        assert "'rerank'" in text
+
+    def test_vector_store_no_raw_where_interpolation(self) -> None:
+        """vector-store must not inject whereClause via sql.raw or prisma."""
+        text = _read(
+            SAAS_ROOT / "integrations" / "ai" / "rag" / "vector-store.ts.jinja"
+        )
+        assert "${sql.raw(whereClause)}" not in text
+        assert "${whereClause}" not in text
+        assert "user_id = '${filter.userId}'" not in text
+        assert "organization_id = '${filter.organizationId}'" not in text
