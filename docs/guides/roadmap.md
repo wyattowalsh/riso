@@ -19,7 +19,7 @@ numbers for unshipped ideas.
 | 008 | WebSocket scaffold | Real-time Python track |
 | 009 | Typer CLI scaffold | Optional CLI module |
 | 010 | API versioning | Version strategy |
-| 011 | API rate limiting | Throttle helpers |
+| 011 | API rate limiting | FastAPI in-memory HTTP limiter shipped (`RISO_API_RATE_LIMIT_*`). Redis/Sentinel remain residual in spec 011. |
 | 012 | SaaS starter | Optional SaaS infrastructure |
 | 013 | MCP servers | Python, TypeScript, Rust, Go tracks |
 | 014 | Changelog & release | Semantic-release / commitlint |
