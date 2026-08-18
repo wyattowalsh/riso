@@ -12,10 +12,11 @@ _metadata:
     Rust, and Go. Each component (CLI, API, MCP, Docs, SaaS) can be independently
     configured with its own language choice, enabling flexible combinations like
     Rust CLI + Python API + Fumadocs. Features modular SaaS scaffolding with
-    opt-in auth, billing, and infrastructure layers. Riso 2.0 remaps removed 1.x
-    Copier keys via `riso migrate` / `riso update` (then fail-closed), always
-    renders generated mise.toml, and ships an optional OpenSpec extra
-    (`openspec_extra`, default disabled). Typecheck is ty, not mypy.
+    opt-in auth, billing, and infrastructure layers. Riso 2.0 does not use Copier
+    `_migrations`; removed 1.x Copier keys are remapped via `riso migrate` /
+    `riso update` (then fail-closed). Always renders generated mise.toml, and
+    ships an optional OpenSpec extra (`openspec_extra`, default disabled).
+    Typecheck is ty, not mypy.
   maintainers:
     - "Riso Template Working Group"
   tags:
@@ -262,6 +263,21 @@ task_runner:
     - both
     - none
 
+ci_platform:
+  type: str
+  help: |
+    Select CI/CD platform:
+    - github-actions: GitHub Actions with matrix builds, caching, artifacts
+    - gitlab-ci: GitLab CI with parallel.matrix, Docker-in-Docker, GitLab Pages
+    - circleci: CircleCI 2.1 with orbs, workspaces, parallelism
+    - none: Skip CI configuration
+  default: github-actions
+  choices:
+    - github-actions
+    - gitlab-ci
+    - circleci
+    - none
+
 python_versions:
   type: json
   help: "Python versions to test in CI matrix"
@@ -341,16 +357,6 @@ go_framework:
   default: gin
   when: "{{ api_module == 'enabled' and 'go' in api_languages }}"
 
-go_version:
-  type: str
-  help: |
-    Select Go version (1.24 stable, 1.26 releasing Feb 2026)
-  choices:
-    - "1.24"
-    - "1.23"
-  default: "1.24"
-  when: "{{ 'go' in cli_languages or 'go' in api_languages or 'go' in mcp_languages }}"
-
 api_features:
   type: str
   multiselect: true
@@ -394,6 +400,16 @@ mcp_languages:
     - python
   when: "{{ mcp_module == 'enabled' }}"
 
+go_version:
+  type: str
+  help: |
+    Select Go version (1.24 stable, 1.26 releasing Feb 2026)
+  choices:
+    - "1.24"
+    - "1.23"
+  default: "1.24"
+  when: "{{ 'go' in cli_languages or 'go' in api_languages or 'go' in mcp_languages }}"
+
 mcp_transport:
   type: str
   help: |
@@ -430,11 +446,9 @@ desktop_framework:
   help: |
     Select desktop framework:
     - electron-vite: Electron 34.x with electron-vite for optimal dev experience
-    - electron-forge: Electron Forge for alternative build setup
     - tauri: Rust-based lightweight alternative to Electron
   choices:
     - electron-vite
-    - electron-forge
     - tauri
   default: electron-vite
   when: "{{ desktop_module == 'enabled' }}"
@@ -1236,20 +1250,6 @@ include_databases:
     - "yes"
   default: "no"
   when: "{{ api_module == 'enabled' }}"
-ci_platform:
-  type: str
-  help: |
-    Select CI/CD platform:
-    - github-actions: GitHub Actions with matrix builds, caching, artifacts
-    - gitlab-ci: GitLab CI with parallel.matrix, Docker-in-Docker, GitLab Pages
-    - circleci: CircleCI 2.1 with orbs, workspaces, parallelism
-    - none: Skip CI configuration
-  default: github-actions
-  choices:
-    - github-actions
-    - gitlab-ci
-    - circleci
-    - none
 
 # ========================================
 # SaaS Modular Architecture
@@ -1896,7 +1896,6 @@ _exclude:
   # patterns drop dest files such as electron/README.md, openspec/specs/**,
   # go/internal/config/**, node/saas/config/**, and scripts/hooks/**.
   - ".git"
-  - "COMPARISON_PAGE.md"
   - ".DS_Store"
   # Note: .github/ and scripts/ are now at template/files/ root and SHOULD be
   # copied to generated projects (they contain workflows and setup scripts)
@@ -1947,29 +1946,13 @@ _exclude:
   # Go 1.24+ with Cobra CLI, Gin/Fiber/Echo/Chi API, koanf config, slog logging
   - "{% if not ((cli_module == 'enabled' and 'go' in cli_languages) or (api_module == 'enabled' and 'go' in api_languages) or (mcp_module == 'enabled' and 'go' in mcp_languages)) %}go/{% endif %}"
 
-  # Frontend directory - include only if SaaS enabled
-  - "frontend/"
-
-  # Electron directory - include only if desktop module enabled
-  - "{% if desktop_module != 'enabled' %}electron/{% endif %}"
+  # Electron directory — flat electron-vite payload only. Include electron/
+  # when desktop_module is enabled and desktop_framework is electron-vite.
+  # Tauri uses template/files/tauri/ (not electron/); forge is not a payload.
+  - "{% if not (desktop_module == 'enabled' and desktop_framework == 'electron-vite') %}electron/{% endif %}"
 
   # Tauri directory - include only for Tauri desktop projects
   - "{% if not (desktop_module == 'enabled' and desktop_framework == 'tauri') %}tauri/{% endif %}"
-
-  # Shared build configs - include only when a JS-facing surface is enabled
-  - "{% if not (saas_infra_module == 'enabled' or desktop_module == 'enabled' or (docs_module == 'enabled' and docs_framework in ['fumadocs', 'docusaurus'])) %}build/{% endif %}"
-
-  # E2E testing scaffold - include only when a generated runtime needs it
-  - "{% if not (api_module == 'enabled' or saas_app_module == 'enabled' or desktop_module == 'enabled' or docs_module == 'enabled') %}testing/{% endif %}"
-
-  # ========================================
-  # Desktop Framework Exclusions
-  # ========================================
-
-  # Exclude specific desktop framework implementations
-  - "{% if not (desktop_module == 'enabled' and desktop_framework == 'electron-vite') %}electron/electron-vite/{% endif %}"
-  - "{% if not (desktop_module == 'enabled' and desktop_framework == 'electron-forge') %}electron/electron-forge/{% endif %}"
-  - "{% if not (desktop_module == 'enabled' and desktop_framework == 'tauri') %}electron/tauri/{% endif %}"
 
   # ========================================
   # Documentation Framework Exclusions
@@ -1983,9 +1966,6 @@ _exclude:
 
   # Sphinx - exclude if not using sphinx-shibuya
   - "{% if not (docs_module == 'enabled' and docs_framework == 'sphinx-shibuya') %}python/docs/{% endif %}"
-
-  # MkDocs - exclude if not using mkdocs (placeholder for future mkdocs templates)
-  - "{% if not (docs_module == 'enabled' and docs_framework == 'mkdocs') %}python/mkdocs/{% endif %}"
 
   # ========================================
   # Component-Specific Subdirectory Exclusions
@@ -2015,6 +1995,10 @@ _exclude:
   # Rust API - exclude if not using Rust API
   - "{% if not (api_module == 'enabled' and 'rust' in api_languages) %}rust/api/{% endif %}"
 
+  # GraphQL / WebSocket `_exclude` must use api_features at Copier render time.
+  # pre_gen-derived graphql_api_module / websocket_module cannot change excludes
+  # (Copier evaluates `_exclude` before hooks). Leftover derived flags in
+  # answers are OR'd only as a recopy compatibility fallback.
   # Python WebSocket - exclude if not using WebSocket with Python API
   - "{% if not (api_module == 'enabled' and 'python' in api_languages and ('websocket' in api_features or websocket_module == 'enabled')) %}python/src/{{ package_name }}/websocket/{% endif %}"
   - "{% if not (api_module == 'enabled' and 'python' in api_languages and ('websocket' in api_features or websocket_module == 'enabled')) %}python/tests/websocket/{% endif %}"
@@ -2045,10 +2029,6 @@ _exclude:
   - "{% if not ((api_module == 'enabled' and 'node' in api_languages) or (mcp_module == 'enabled' and 'typescript' in mcp_languages) or (docs_module == 'enabled' and docs_framework in ['fumadocs', 'docusaurus']) or saas_infra_module == 'enabled' or desktop_module == 'enabled' or changelog_module == 'enabled') %}package.json{% endif %}"
   - "{% if not ((api_module == 'enabled' and 'node' in api_languages) or (mcp_module == 'enabled' and 'typescript' in mcp_languages) or (docs_module == 'enabled' and docs_framework in ['fumadocs', 'docusaurus']) or saas_infra_module == 'enabled' or desktop_module == 'enabled' or changelog_module == 'enabled') %}pnpm-workspace.yaml{% endif %}"
   - "{% if not ((api_module == 'enabled' and 'node' in api_languages) or (mcp_module == 'enabled' and 'typescript' in mcp_languages) or (docs_module == 'enabled' and docs_framework in ['fumadocs', 'docusaurus']) or saas_infra_module == 'enabled' or desktop_module == 'enabled' or changelog_module == 'enabled') %}node/pnpm-workspace.yaml{% endif %}"
-
-  # Maintainer-only workflows (riso repo template CI — never ship to rendered projects)
-  - ".github/workflows/template-ci.yml"
-  - ".github/workflows/quality-matrix.yml"
 
   # Container workflows - exclude unless API module enabled (Docker scaffold)
   - "{% if api_module != 'enabled' %}.github/workflows/riso-container-build.yml{% endif %}"
@@ -2090,7 +2070,6 @@ _exclude:
   - "{% if ai_tools_module != 'enabled' %}mcp.json{% endif %}"
   - "{% if ai_tools_module != 'enabled' %}.copilot/{% endif %}"
   - "{% if ai_tools_module != 'enabled' %}.amazonq/{% endif %}"
-  - "{% if ai_tools_module != 'enabled' %}.codex/{% endif %}"
   - "{% if ai_tools_module != 'enabled' %}.claude/{% endif %}"
   - "{% if ai_tools_module != 'enabled' %}docs/ai-tools.md{% endif %}"
 
