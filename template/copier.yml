@@ -2144,10 +2144,25 @@ _tasks:
       - "{{ _copier_python }}"
       - "-c"
       - |
+        import json
+        import os
         import pathlib
         import runpy
 
         src_path = pathlib.Path({{ _copier_conf.src_path | to_json }})
+        dst_path = pathlib.Path({{ _copier_conf.dst_path | to_json }})
+        if dst_path.is_dir():
+            os.chdir(dst_path)
+            answers_file = dst_path / ".copier-answers.yml"
+            if answers_file.is_file() and not os.environ.get("COPIER_ANSWERS"):
+                try:
+                    import yaml
+                except ImportError:
+                    yaml = None
+                if yaml is not None:
+                    data = yaml.safe_load(answers_file.read_text(encoding="utf-8")) or {}
+                    if isinstance(data, dict):
+                        os.environ["COPIER_ANSWERS"] = json.dumps(data)
         candidates = (
             src_path / "hooks" / "pre_gen_project.py",
             src_path / "template" / "hooks" / "pre_gen_project.py",
