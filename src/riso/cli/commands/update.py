@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from riso.core.answers import (
+    persist_remapped_answers,
     prepare_copier_data,
     remap_answers_file,
     serialize_remap_ops,
@@ -13,6 +14,7 @@ from riso.core.answers import (
 from riso.core.errors import (
     CopierOperationError,
     PathNotFoundError,
+    RisoError,
     ValidationFailedError,
 )
 from riso.core.generation_gates import validate_answers_for_generation
@@ -68,11 +70,11 @@ def run_update(
             f"No .copier-answers.yml found at {dest_path}",
         )
 
-    remapped = remap_answers_file(answers_file, write=not dry_run)
+    remapped = remap_answers_file(answers_file, write=False)
     remap_payload = {
         "answers_file": str(answers_file),
         "changed": bool(remapped.ops),
-        "written": bool(remapped.ops) and not dry_run,
+        "written": False,
         "ops": serialize_remap_ops(remapped.ops),
     }
 
@@ -96,9 +98,17 @@ def run_update(
             force_unsafe=config.force_unsafe,
             timeout=config.timeout,
             skip_post_gen=config.skip_post_gen,
+            answers=remapped.answers,
         )
+    except ValidationFailedError:
+        raise
+    except RisoError:
+        raise
     except Exception as exc:
         raise CopierOperationError("update", str(exc)) from exc
+
+    persist_remapped_answers(answers_file, remapped.answers)
+    remap_payload["written"] = bool(remapped.ops)
 
     payload = result.to_dict()
     payload["remap"] = remap_payload

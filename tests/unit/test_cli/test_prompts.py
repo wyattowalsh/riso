@@ -22,6 +22,7 @@ def test_prompts_list_includes_prompts_and_defaults() -> None:
     assert "project_name" in result["prompts"]
     assert "project_name" in result["defaults"]
     assert "metadata" in result
+    assert result["metadata"].get("name") == "riso-template"
 
 
 def test_prompts_show_returns_key_prompt_and_default() -> None:

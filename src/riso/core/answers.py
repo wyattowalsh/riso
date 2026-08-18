@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from riso.core.errors import ValidationFailedError
+from riso.core.generation_gates import normalize_api_features
 from riso.core.removed_answer_keys import (
     REMOVED_ANSWER_KEYS,
     RemapOp,
@@ -19,10 +20,13 @@ __all__ = [
     "apply_then_reject_removed_keys",
     "dump_answers_file",
     "load_answers_file",
+    "normalize_api_feature_modules",
+    "persist_remapped_answers",
     "prepare_copier_data",
     "reject_removed_answer_keys",
     "remap_answers_file",
     "serialize_remap_ops",
+    "strip_empty_lists_for_copier",
 ]
 
 
@@ -57,8 +61,47 @@ def load_answers_file(path: Path) -> dict[str, Any]:
     return data
 
 
+def normalize_api_feature_modules(context: Mapping[str, Any]) -> dict[str, Any]:
+    """Derive graphql/websocket flags and token-list api_features.
+
+    Explicit ``graphql_api_module`` / ``websocket_module`` answers win when set
+    to ``enabled``; otherwise ``api_features`` drives the derived state.
+    Rewrites ``api_features`` to a sorted token list so Jinja membership tests
+    are token-safe.
+    """
+    tokens = sorted(normalize_api_features(context.get("api_features")))
+    graphql = context.get("graphql_api_module", "disabled")
+    websocket = context.get("websocket_module", "disabled")
+
+    if graphql != "enabled" and "graphql" in tokens:
+        graphql = "enabled"
+    if websocket != "enabled" and "websocket" in tokens:
+        websocket = "enabled"
+
+    return {
+        "api_features": tokens,
+        "graphql_api_module": graphql,
+        "websocket_module": websocket,
+    }
+
+
 def prepare_copier_data(answers: dict[str, Any]) -> dict[str, Any]:
-    """Strip values Copier cannot consume (e.g. empty list defaults)."""
+    """Normalize API feature flags; keep empty lists for generation gates.
+
+    Call :func:`strip_empty_lists_for_copier` only when sending the mapping
+    to Copier.
+    """
+    prepared = dict(answers)
+    if any(
+        key in prepared
+        for key in ("api_features", "graphql_api_module", "websocket_module")
+    ):
+        prepared.update(normalize_api_feature_modules(prepared))
+    return prepared
+
+
+def strip_empty_lists_for_copier(answers: Mapping[str, Any]) -> dict[str, Any]:
+    """Drop empty list values Copier cannot consume as ``data=`` overrides."""
     return {
         key: value
         for key, value in answers.items()
@@ -124,3 +167,21 @@ def remap_answers_file(path: Path, *, write: bool) -> RemapResult:
     if write and result.ops:
         dump_answers_file(path, result.answers)
     return result
+
+
+def persist_remapped_answers(path: Path, remapped: Mapping[str, Any]) -> None:
+    """Write remaps into dest answers after Copier succeeds.
+
+    Merges *remapped* over the dest file (preserving Copier-managed keys
+    such as ``_src_path``) and drops :data:`REMOVED_ANSWER_KEYS`.
+    """
+    existing: dict[str, Any] = {}
+    if path.is_file():
+        try:
+            existing = load_answers_file(path)
+        except ValidationFailedError:
+            existing = {}
+    merged = {**existing, **dict(remapped)}
+    for key in REMOVED_ANSWER_KEYS:
+        merged.pop(key, None)
+    dump_answers_file(path, merged)

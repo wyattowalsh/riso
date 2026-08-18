@@ -13,13 +13,36 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parents[3]
 
 
+BUNDLED_UPDATE_UNSAFE_POLICY = (
+    "Copier 9.16 _check_unsafe('update') flags subproject.template.tasks "
+    "without consulting skip_tasks. Bundled-template UPDATE sets unsafe=True. "
+    "External RISO_TEMPLATE_PATH still requires --force-unsafe. "
+    "skip_tasks remains True for copy/update/recopy."
+)
+
+
+def bundled_template_path() -> Path:
+    """Return this checkout's template/ directory (may not exist)."""
+    return repo_root() / "template"
+
+
+def is_bundled_template(path: Path) -> bool:
+    """Return True when *path* is this repository's bundled template root."""
+    bundled = bundled_template_path()
+    if not bundled.exists():
+        return False
+    try:
+        return path.resolve() == bundled.resolve()
+    except OSError:
+        return False
+
+
 def external_template_warning(path: Path) -> str | None:
     """Return a warning when using a template outside this repository checkout."""
-    bundled = repo_root() / "template"
-    if not bundled.exists():
+    if not bundled_template_path().exists():
         return None
     try:
-        if path.resolve() != bundled.resolve():
+        if not is_bundled_template(path):
             return (
                 f"Template path {path} is outside this repository. "
                 "Only use templates from sources you trust."

@@ -3,17 +3,28 @@
 from __future__ import annotations
 
 import os
-import runpy
+import subprocess
+import sys
 from collections.abc import Mapping
 from pathlib import Path
 
-from riso.core.errors import CopierOperationError
+from riso.core.errors import CopierOperationError, OperationTimeoutError
+from riso.core.paths import is_bundled_template
+
+
+def _bundled_post_gen_script() -> Path:
+    pkg_root = Path(__file__).resolve().parents[3]
+    return pkg_root / "template" / "hooks" / "post_gen_project.py"
 
 
 def _candidate_post_gen_paths(template_hint: Path | None = None) -> list[Path]:
-    """Resolve possible post_gen_project.py locations."""
+    """Resolve possible post_gen_project.py locations.
+
+    Untrusted external ``template_hint`` paths are ignored; only the bundled
+    template hook is eligible unless the hint itself is the bundled template.
+    """
     candidates: list[Path] = []
-    if template_hint is not None:
+    if template_hint is not None and is_bundled_template(template_hint):
         root = template_hint.resolve()
         candidates.extend(
             [
@@ -22,9 +33,7 @@ def _candidate_post_gen_paths(template_hint: Path | None = None) -> list[Path]:
                 root.parent / "hooks" / "post_gen_project.py",
             ]
         )
-    # Bundled relative to this package: repo template/hooks when developing.
-    pkg_root = Path(__file__).resolve().parents[3]
-    candidates.append(pkg_root / "template" / "hooks" / "post_gen_project.py")
+    candidates.append(_bundled_post_gen_script())
     return candidates
 
 
@@ -41,11 +50,13 @@ def run_post_gen(
     *,
     template_hint: Path | None = None,
     extra_env: Mapping[str, str] | None = None,
+    timeout: int | None = None,
 ) -> None:
-    """Execute post_gen_project.py with ``cwd=destination``.
+    """Execute post_gen_project.py with ``cwd=destination`` via subprocess.
 
     Raises:
         CopierOperationError: if the script is missing or exits non-zero.
+        OperationTimeoutError: if the hook exceeds *timeout*.
         FileNotFoundError: if destination does not exist.
     """
     dest = destination.resolve()
@@ -59,28 +70,33 @@ def run_post_gen(
             "Riso post-generation hook not found",
         )
 
-    env_backup = os.environ.copy()
-    cwd_backup = Path.cwd()
+    env = os.environ.copy()
+    if extra_env:
+        env.update({str(k): str(v) for k, v in extra_env.items()})
+
+    from riso.template._copier_worker import run_argv_with_timeout
+
+    argv = [sys.executable, str(script)]
     try:
-        if extra_env:
-            os.environ.update({str(k): str(v) for k, v in extra_env.items()})
-        os.chdir(dest)
-        try:
-            runpy.run_path(str(script), run_name="__main__")
-        except SystemExit as exc:
-            code = exc.code
-            if code in (None, 0):
-                return
-            if isinstance(code, int) and code == 0:
-                return
-            raise CopierOperationError(
-                "post_gen",
-                f"post_gen exited with code {code}",
-            ) from exc
-    finally:
-        os.chdir(cwd_backup)
-        os.environ.clear()
-        os.environ.update(env_backup)
+        completed = run_argv_with_timeout(
+            argv,
+            timeout=timeout,
+            cwd=dest,
+            env=env,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise OperationTimeoutError(
+            operation="post_gen",
+            timeout_seconds=int(timeout or 0),
+            details=f"post_gen exceeded {timeout}s timeout",
+        ) from exc
+
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout or "").strip()
+        raise CopierOperationError(
+            "post_gen",
+            detail or f"post_gen exited with code {completed.returncode}",
+        )
 
 
 def should_skip_post_gen(

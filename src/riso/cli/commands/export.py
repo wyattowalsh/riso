@@ -36,7 +36,12 @@ def run_export_cli(
     data_pairs: list[str] | None,
     destination: str = "./my-project",
 ) -> dict:
-    """Export a human-readable copier copy command."""
+    """Export a human-readable copier copy command.
+
+    Copier ``--answers-file`` names the destination-relative answers path.
+    Answer YAML content is passed with ``--data-file``. The command includes
+    ``--overwrite``.
+    """
     validate_destination(destination)
     answers = resolve_answers(
         answers_file=answers_file,
@@ -49,9 +54,10 @@ def run_export_cli(
     overrides = {
         key: value for key, value in overrides.items() if key not in REMOVED_ANSWER_KEYS
     }
-    cmd_parts = ["copier", "copy", template_q, dest_q]
+    cmd_parts = ["copier", "copy", "--overwrite", template_q, dest_q]
     if answers_file:
-        cmd_parts.extend(["--answers-file", shlex.quote(str(answers_file))])
+        # Copier --answers-file is dest-relative; --data-file loads YAML content.
+        cmd_parts.extend(["--data-file", shlex.quote(str(answers_file))])
     if overrides:
         for key, value in sorted(overrides.items()):
             cmd_parts.append(

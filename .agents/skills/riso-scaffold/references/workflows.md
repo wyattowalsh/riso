@@ -5,6 +5,8 @@
 ```bash
 uv run riso variants show default --json
 uv run riso validate --answers-file samples/default/copier-answers.yml --json
+# Prompt schema only (skip generation combo gates):
+uv run riso validate --answers-file samples/default/copier-answers.yml --schema-only --json
 uv run riso copy ./my-app --answers-file samples/default/copier-answers.yml --json
 ```
 
@@ -15,6 +17,7 @@ uv run riso prompts --json
 uv run riso export yaml --data project_name=MyApp --data cli_module=enabled
 # Save YAML, then:
 uv run riso validate --answers-file copier-answers.yml --json
+# Default validate runs generation gates; --schema-only is prompt schema only.
 uv run riso copy ./my-app --answers-file copier-answers.yml --json
 ```
 
@@ -37,4 +40,5 @@ uv run riso recopy ./my-app --json
 
 ```bash
 uv run riso catalog modules --json
+uv run riso catalog dependencies --json
 ```

@@ -11,5 +11,7 @@ These keys are rejected by `riso validate` and all mutation commands:
 | `saas_starter_module` | `saas_infra_module`                             |
 | `saas_auth`           | `saas_auth_module` + `saas_auth_provider`       |
 | `saas_billing`        | `saas_billing_module` + `saas_billing_provider` |
+| `include_admin`       | `saas_admin_dashboard`                          |
 
-Synced with `web/src/lib/removedAnswerKeys.ts`.
+Eight keys. Synced with `web/src/lib/removedAnswerKeys.ts` and
+`scripts/ci/check_removed_key_ssot.py` `EXPECTED_KEYS`.

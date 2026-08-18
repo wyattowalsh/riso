@@ -17,7 +17,7 @@ def run_prompts_list(config: CliConfig) -> dict:
     return {
         "prompts": get_prompts(config.template_path),
         "defaults": get_defaults(config.template_path),
-        "metadata": full_config.get("metadata", {}),
+        "metadata": full_config.get("_metadata") or full_config.get("metadata") or {},
     }
 
 
