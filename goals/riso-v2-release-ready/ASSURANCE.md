@@ -1,9 +1,19 @@
+# ASSURANCE — Riso 2.0 release-ready (W6 addendum)
+
+**Generated:** 2026-08-18 (W6 fan-out closeout)\
+**Status:** **residualed** — source reviews dry (W6-R04 + W6-R05); dest-gated ladder red while official `render_matrix.py` is live and `samples/default/render` is absent\
+**Companion:** [`evidence/W6-CLOSE.md`](./evidence/W6-CLOSE.md)
+
+W5-R2 text below claimed agents/refine green against a dest that a later official matrix `rm -rf`'d. Treat dest-gated rows as **stale** until that matrix exits and default is officially restored. `just quality` was re-run this session: **1118 passed / 14 skipped**.
+
+______________________________________________________________________
+
 # ASSURANCE — Riso 2.0 release-ready (W5-R2 closeout)
 
 **Generated:** 2026-08-18T07:36:00Z\
 **Branch:** `main` · **HEAD at verify:** `ddc50a0`\
 **Workspace:** `/Users/ww/dev/projects/riso`\
-**Status:** **green** (two consecutive dry reviews; official ladder green)\
+**Status:** **stale-doc vs W6** (kept for history)\
 **Task:** W5-R2 closeout
 
 Companion fact table: [`evidence/W5-CLOSE-fact-map.md`](./evidence/W5-CLOSE-fact-map.md) · reviews: [`evidence/W5-R1-*.md`](./evidence/) + [`evidence/W5-R2-*.md`](./evidence/)
