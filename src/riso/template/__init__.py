@@ -668,6 +668,9 @@ def run_generator(
             "overwrite": force,
             "unsafe": force_unsafe,
             "skip_tasks": True,
+            # Copier 9.16 raises InteractiveSessionError on a non-TTY unless
+            # defaults=True fills prompts missing from answers/data.
+            "defaults": True,
         },
         timeout,
     )
