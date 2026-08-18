@@ -32,7 +32,7 @@ cache:
       - pnpm-lock.yaml
       {% endif -%}
       {% if cli_module == 'enabled' and 'rust' in cli_languages or api_module == 'enabled' and 'rust' in api_languages or mcp_module == 'enabled' and 'rust' in mcp_languages -%}
-      - Cargo.lock
+      - rust/Cargo.lock
       {% endif %}
   paths:
     - .cache/
@@ -222,11 +222,12 @@ test:e2e:
   before_script:
     - apt-get update && apt-get install -y git pkg-config libssl-dev
     - rustup component add clippy rustfmt
+    - cd rust
   cache:
     key: rust-${CI_COMMIT_REF_SLUG}
     paths:
       - .cache/cargo/
-      - target/
+      - rust/target/
 
 lint:rust:
   extends: .rust-base
@@ -247,7 +248,7 @@ test:rust:
   artifacts:
     when: on_failure
     paths:
-      - target/debug/
+      - rust/target/debug/
     expire_in: 1 week
 
 build:rust:
@@ -257,12 +258,16 @@ build:rust:
     - cargo build --release
   artifacts:
     paths:
-      - target/release/{{ package_name | replace('_', '-') }}
+      - rust/target/release/{{ package_name | replace('_', '-') }}
     expire_in: 7 days
 
 {% endif -%}
 
 {% if cli_module == 'enabled' and 'go' in cli_languages or api_module == 'enabled' and 'go' in api_languages or mcp_module == 'enabled' and 'go' in mcp_languages -%}
+{%- set _go_cli = cli_module == 'enabled' and 'go' in cli_languages -%}
+{%- set _go_api = api_module == 'enabled' and 'go' in api_languages -%}
+{%- set _go_mcp = mcp_module == 'enabled' and 'go' in mcp_languages -%}
+{%- set _go_root = _go_cli or _go_api -%}
 # ========================================
 # Go Jobs
 # ========================================
@@ -271,6 +276,7 @@ build:rust:
   image: golang:{{ go_version }}-alpine
   before_script:
     - apk add --no-cache git make
+    - cd go
   cache:
     key: go-${CI_COMMIT_REF_SLUG}
     paths:
@@ -281,9 +287,16 @@ lint:go:
   extends: .go-base
   stage: lint
   script:
+{% if _go_root %}
     - go fmt ./...
     - go vet ./...
     - if [ "$(gofmt -l . | wc -l)" -gt 0 ]; then exit 1; fi
+{% endif %}
+{% if _go_mcp %}
+    - go -C mcp fmt ./...
+    - go -C mcp vet ./...
+    - if [ "$(gofmt -l mcp | wc -l)" -gt 0 ]; then exit 1; fi
+{% endif %}
   artifacts:
     when: on_failure
     expire_in: 1 week
@@ -292,22 +305,36 @@ test:go:
   extends: .go-base
   stage: test
   script:
+{% if _go_root %}
     - go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+{% endif %}
+{% if _go_mcp %}
+    - go -C mcp test -v ./...
+{% endif %}
   coverage: '/coverage: (\d+\.\d+)% of statements/'
   artifacts:
     when: always
     paths:
-      - coverage.txt
+      - go/coverage.txt
     expire_in: 30 days
 
 build:go:
   extends: .go-base
   stage: build
   script:
-    - go build -o {{ package_name | replace('_', '-') }} ./cmd/...
+    - mkdir -p bin
+{% if _go_cli %}
+    - go build -ldflags "-s -w" -o bin/{{ package_name | replace('_', '-') }} ./cli
+{% endif %}
+{% if _go_api %}
+    - go build -ldflags "-s -w" -o bin/{{ package_name | replace('_', '-') }}-api ./api
+{% endif %}
+{% if _go_mcp %}
+    - go -C mcp build -ldflags "-s -w" -o ../bin/{{ package_name | replace('_', '-') }}-mcp ./cmd/server
+{% endif %}
   artifacts:
     paths:
-      - {{ package_name | replace('_', '-') }}
+      - go/bin/
     expire_in: 7 days
 
 {% endif -%}

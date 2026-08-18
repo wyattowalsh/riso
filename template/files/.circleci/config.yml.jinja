@@ -275,9 +275,11 @@ jobs:
           version: stable
       - run:
           name: Check formatting
+          working_directory: rust
           command: cargo fmt -- --check
       - run:
           name: Run clippy linter
+          working_directory: rust
           command: cargo clippy --all-targets --all-features -- -D warnings
 
   test-rust:
@@ -288,19 +290,21 @@ jobs:
           version: stable
       - restore_cache:
           keys:
-            - cargo-cache-{{ "{{" }} checksum "Cargo.lock" {{ "}}" }}
+            - cargo-cache-{{ "{{" }} checksum "rust/Cargo.toml" {{ "}}" }}
             - cargo-cache-
       - run:
           name: Run tests
+          working_directory: rust
           command: cargo test --all-features --verbose
       - run:
           name: Run doc tests
+          working_directory: rust
           command: cargo test --doc
       - save_cache:
-          key: cargo-cache-{{ "{{" }} checksum "Cargo.lock" {{ "}}" }}
+          key: cargo-cache-{{ "{{" }} checksum "rust/Cargo.toml" {{ "}}" }}
           paths:
             - ~/.cargo
-            - target
+            - rust/target
 
   build-rust:
     executor: rust-executor
@@ -310,18 +314,23 @@ jobs:
           version: stable
       - restore_cache:
           keys:
-            - cargo-cache-{{ "{{" }} checksum "Cargo.lock" {{ "}}" }}
+            - cargo-cache-{{ "{{" }} checksum "rust/Cargo.toml" {{ "}}" }}
             - cargo-cache-
       - run:
           name: Build release binary
+          working_directory: rust
           command: cargo build --release
       - store_artifacts:
-          path: target/release/{{ package_name | replace('_', '-') }}
+          path: rust/target/release/{{ package_name | replace('_', '-') }}
           destination: {{ package_name | replace('_', '-') }}
 
   {% endif -%}
 
   {% if cli_module == 'enabled' and 'go' in cli_languages or api_module == 'enabled' and 'go' in api_languages or mcp_module == 'enabled' and 'go' in mcp_languages -%}
+  {%- set _go_cli = cli_module == 'enabled' and 'go' in cli_languages -%}
+  {%- set _go_api = api_module == 'enabled' and 'go' in api_languages -%}
+  {%- set _go_mcp = mcp_module == 'enabled' and 'go' in mcp_languages -%}
+  {%- set _go_root = _go_cli or _go_api -%}
   # ---------- Go Jobs ----------
 
   lint-go:
@@ -329,18 +338,44 @@ jobs:
     steps:
       - checkout
       - go/load-cache
-      - go/mod-download
+      - run:
+          name: Download Go modules
+          working_directory: go
+          command: |
+{% if _go_root %}
+            go mod download
+{% endif %}
+{% if _go_mcp %}
+            go -C mcp mod download
+{% endif %}
       - run:
           name: Check formatting
+          working_directory: go
           command: |
+{% if _go_root %}
             if [ "$(gofmt -l . | wc -l)" -gt 0 ]; then
               echo "Go files are not formatted:"
               gofmt -l .
               exit 1
             fi
+{% endif %}
+{% if _go_mcp %}
+            if [ "$(gofmt -l mcp | wc -l)" -gt 0 ]; then
+              echo "Go MCP files are not formatted:"
+              gofmt -l mcp
+              exit 1
+            fi
+{% endif %}
       - run:
           name: Run go vet
-          command: go vet ./...
+          working_directory: go
+          command: |
+{% if _go_root %}
+            go vet ./...
+{% endif %}
+{% if _go_mcp %}
+            go -C mcp vet ./...
+{% endif %}
       - go/save-cache
 
   test-go:
@@ -348,14 +383,30 @@ jobs:
     steps:
       - checkout
       - go/load-cache
-      - go/mod-download
+      - run:
+          name: Download Go modules
+          working_directory: go
+          command: |
+{% if _go_root %}
+            go mod download
+{% endif %}
+{% if _go_mcp %}
+            go -C mcp mod download
+{% endif %}
       - run:
           name: Run tests with race detector
-          command: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+          working_directory: go
+          command: |
+{% if _go_root %}
+            go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+{% endif %}
+{% if _go_mcp %}
+            go -C mcp test -v ./...
+{% endif %}
       - store_test_results:
-          path: coverage.txt
+          path: go/coverage.txt
       - store_artifacts:
-          path: coverage.txt
+          path: go/coverage.txt
           destination: coverage.txt
       - go/save-cache
 
@@ -364,12 +415,32 @@ jobs:
     steps:
       - checkout
       - go/load-cache
-      - go/mod-download
+      - run:
+          name: Download Go modules
+          working_directory: go
+          command: |
+{% if _go_root %}
+            go mod download
+{% endif %}
+{% if _go_mcp %}
+            go -C mcp mod download
+{% endif %}
       - run:
           name: Build binary
-          command: go build -o {{ package_name | replace('_', '-') }} ./cmd/...
+          working_directory: go
+          command: |
+            mkdir -p bin
+{% if _go_cli %}
+            go build -ldflags "-s -w" -o bin/{{ package_name | replace('_', '-') }} ./cli
+{% endif %}
+{% if _go_api %}
+            go build -ldflags "-s -w" -o bin/{{ package_name | replace('_', '-') }}-api ./api
+{% endif %}
+{% if _go_mcp %}
+            go -C mcp build -ldflags "-s -w" -o ../bin/{{ package_name | replace('_', '-') }}-mcp ./cmd/server
+{% endif %}
       - store_artifacts:
-          path: {{ package_name | replace('_', '-') }}
+          path: go/bin
           destination: {{ package_name | replace('_', '-') }}
 
   {% endif -%}
