@@ -41,28 +41,16 @@ def test_update_dry_run_remaps_without_writing(tmp_path: Path) -> None:
     dest = tmp_path / "proj"
     answers = _write_fixture(dest, "api_language.yml")
     original = answers.read_text(encoding="utf-8")
-    fake_diff = SimpleNamespace(
-        to_dict=lambda: {
-            "operation": "update",
-            "files": [],
-            "summary": {"added": 0, "modified": 0, "deleted": 0},
-        }
-    )
-
-    with (
-        patch(
-            "riso.cli.commands.update.compute_diff", return_value=fake_diff
-        ) as compute,
-        patch("riso.cli.commands.update.template_run_update") as worker,
-    ):
+    with patch("riso.cli.commands.update.template_run_update") as worker:
         result = run_update(_config(), destination=str(dest), dry_run=True)
 
     worker.assert_not_called()
-    compute.assert_called_once()
-    remapped = compute.call_args.kwargs["answers"]
+    remapped = result["answers"]
     assert remapped["api_languages"] == ["python"]
     assert "api_language" not in remapped
     assert answers.read_text(encoding="utf-8") == original
+    assert result["preview_engine"] == "answers"
+    assert result["dry_run"] is True
     assert result["remap"]["changed"] is True
     assert result["remap"]["written"] is False
     assert any(op["old"] == "api_language" for op in result["remap"]["ops"])
@@ -80,15 +68,11 @@ def test_update_dry_run_runs_generation_gates_without_writing(tmp_path: Path) ->
     )
     original = (dest / ".copier-answers.yml").read_text(encoding="utf-8")
 
-    with (
-        patch("riso.cli.commands.update.compute_diff") as compute,
-        patch("riso.cli.commands.update.template_run_update") as worker,
-    ):
+    with patch("riso.cli.commands.update.template_run_update") as worker:
         with pytest.raises(ValidationFailedError) as exc:
             run_update(_config(), destination=str(dest), dry_run=True)
 
     worker.assert_not_called()
-    compute.assert_not_called()
     assert (dest / ".copier-answers.yml").read_text(encoding="utf-8") == original
     assert exc.value.data is not None
     assert any("Neon" in err or "neon" in err for err in exc.value.data["errors"])
@@ -120,15 +104,11 @@ def test_update_leftover_fails_closed_without_write(tmp_path: Path) -> None:
     answers = _write_fixture(dest, "leftover.yml")
     original = answers.read_text(encoding="utf-8")
 
-    with (
-        patch("riso.cli.commands.update.compute_diff") as compute,
-        patch("riso.cli.commands.update.template_run_update") as worker,
-    ):
+    with patch("riso.cli.commands.update.template_run_update") as worker:
         with pytest.raises(ValidationFailedError) as exc:
             run_update(_config(), destination=str(dest), dry_run=True)
 
     worker.assert_not_called()
-    compute.assert_not_called()
     assert answers.read_text(encoding="utf-8") == original
     assert exc.value.data is not None
     assert any("saas_auth" in err for err in exc.value.data["errors"])
@@ -138,15 +118,11 @@ def test_update_idempotent_canonical_is_noop_write(tmp_path: Path) -> None:
     dest = tmp_path / "proj"
     answers = _write_fixture(dest, "already_canonical.yml")
     original = answers.read_text(encoding="utf-8")
-    fake_diff = SimpleNamespace(to_dict=lambda: {"operation": "update", "files": []})
-
-    with (
-        patch("riso.cli.commands.update.compute_diff", return_value=fake_diff),
-        patch("riso.cli.commands.update.template_run_update") as worker,
-    ):
+    with patch("riso.cli.commands.update.template_run_update") as worker:
         result = run_update(_config(), destination=str(dest), dry_run=True)
 
     worker.assert_not_called()
+    assert result["preview_engine"] == "answers"
     assert result["remap"]["changed"] is False
     assert result["remap"]["ops"] == []
     assert answers.read_text(encoding="utf-8") == original
