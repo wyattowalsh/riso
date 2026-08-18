@@ -649,6 +649,12 @@ render_variant() {
   rm -rf "${destination}"
   mkdir -p "$(dirname "${destination}")"
   resolve_copier_cmd || exit 1
+  # Copier tasks do not always export COPIER_ANSWERS; pre_gen fail-closes without it.
+  export COPIER_ANSWERS
+  COPIER_ANSWERS="$(
+    uv run python -c 'import json, sys, yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1], encoding="utf-8")) or {}))' \
+      "${answers_file}"
+  )"
   "${COPIER_CMD_ARR[@]}" copy \
     --trust \
     --vcs-ref=HEAD \
