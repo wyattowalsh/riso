@@ -532,7 +532,23 @@ doc_publish = {
     "recorded_at": completed_at,
 }
 
-write_json(variant_dir / "metadata.json", metadata)
+meta_path = variant_dir / "metadata.json"
+catalog_preserve = False
+if meta_path.exists():
+    try:
+        existing = json.loads(meta_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        existing = None
+    else:
+        catalog_preserve = (
+            isinstance(existing, dict)
+            and "stack" in existing
+            and "render_duration_seconds" not in existing
+        )
+if catalog_preserve:
+    write_json(variant_dir / "render-metadata.json", metadata)
+else:
+    write_json(meta_path, metadata)
 write_json(variant_dir / "doc-publish.json", doc_publish)
 PY
 }
