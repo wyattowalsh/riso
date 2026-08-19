@@ -17,7 +17,7 @@ uv run riso doctor --json
 Rendered projects get a Makefile when `task_runner` is `makefile` or `both`.
 
 Windows: `.\scripts\setup\setup.ps1 -Install`. Bootstrap details:
-[scripts/setup/README.md](../../scripts/setup/README.md).
+[scripts/setup/README.md](https://github.com/wyattowalsh/riso/blob/main/scripts/setup/README.md).
 
 1.x Copier answers must be remapped before validate/copy/update. Preview with
 **exactly one** target:
@@ -27,7 +27,7 @@ uv run riso migrate ./existing-project --dry-run
 uv run riso migrate --answers-file samples/default/copier-answers.yml --dry-run
 ```
 
-See {doc}`guides/v2-migration` for the eight-key apply-then-reject table.
+See {doc}`v2-migration` for the eight-key apply-then-reject table.
 
 ## Render and exercise a sample
 
