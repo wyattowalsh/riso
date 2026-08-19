@@ -60,8 +60,8 @@ uv run riso migrate DEST|--answers-file PATH [--dry-run] [--json]
 rules: [docs/guides/v2-migration.md](docs/guides/v2-migration.md). Draft notes:
 [CHANGELOG.md](CHANGELOG.md) `## [Unreleased] 2.0.0`. This work does **not**
 create a `v2.0.0` tag. Dual mise: generated `mise.toml` pins Python 3.11 and
-Node **20**; maintainer `.mise.toml` pins Node **22**. `openspec_extra` stays
-off by default.
+Node **22**; maintainer `.mise.toml` pins a Node **22** patch. `openspec_extra`
+stays off by default.
 
 ## Module Reference
 

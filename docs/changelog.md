@@ -1,7 +1,7 @@
 # Changelog
 
-- **Unreleased 2.0.0** — Dual mise: generated `mise.toml` pins Node **20**;
-  maintainer `.mise.toml` pins Node **22**. Maintainer coverage floor is 70%;
+- **Unreleased 2.0.0** — Dual mise: generated `mise.toml` pins Node **22**;
+  maintainer `.mise.toml` pins a Node **22** patch. Maintainer coverage floor is 70%;
   rendered Python packages may still enforce 90%.
 - **Unreleased 2.0.0** — **Breaking remaps:** eight 1.x Copier keys
   (`api_tracks`, `api_language`, `docs_site`, `mcp_language`,

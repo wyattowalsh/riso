@@ -501,6 +501,19 @@ class TestDestLayoutDockerAndMise:
         text = _read(mise)
         assert 'node = "22"' in text
 
+    def test_generated_docs_state_node_22_floor(self, files_dir: Path) -> None:
+        """Live generated prose must not still claim a Node 20 floor."""
+        agents = _read(files_dir / "AGENTS.md.jinja")
+        assert "Node **22**" in agents
+        assert "Node **20**" not in agents
+        assert "Node.js**: 22 LTS" in agents
+        design = _read(files_dir / "DESIGN.md.jinja")
+        assert "Node **22**" in design
+        assert "Node **20**" not in design
+        prompt_ref = _read(files_dir / "docs" / "modules" / "prompt-reference.md.jinja")
+        assert "Node **22**" in prompt_ref
+        assert "Node **20**" not in prompt_ref
+
 
 class TestNodeMcpHttpSsrf:
     """Example HTTP tools must not fetch localhost or link-local addresses."""
