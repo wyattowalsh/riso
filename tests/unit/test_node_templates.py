@@ -513,6 +513,14 @@ class TestDestLayoutDockerAndMise:
         prompt_ref = _read(files_dir / "docs" / "modules" / "prompt-reference.md.jinja")
         assert "Node **22**" in prompt_ref
         assert "Node **20**" not in prompt_ref
+        upgrade = _read(files_dir / "docs" / "upgrade-guide.md.jinja")
+        assert "| Node | `22` |" in upgrade
+        assert "Generated Node floor is **22**" in upgrade
+        dockerfile = _read(files_dir / ".docker" / "Dockerfile.jinja")
+        assert "FROM node:22-alpine" in dockerfile
+        assert "FROM node:20-alpine" not in dockerfile
+        versions = _read(files_dir / "scripts" / "setup" / "lib" / "versions.sh.jinja")
+        assert 'NODE_MIN_VERSION="22"' in versions
 
 
 class TestNodeMcpHttpSsrf:

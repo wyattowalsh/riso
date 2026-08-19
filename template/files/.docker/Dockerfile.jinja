@@ -3,7 +3,7 @@
 # =============================================================================
 # Multi-stage Production Dockerfile for Riso-generated projects
 # =============================================================================
-# Supports: Python 3.11+, Node.js 20+, Rust 1.80+
+# Supports: Python 3.11+, Node.js 22+, Rust 1.80+
 # Security: Non-root users, health checks, minimal attack surface
 # Performance: Multi-stage builds, layer caching, BuildKit optimizations
 #
@@ -21,7 +21,7 @@
 #
 # PRODUCTION NOTE: Pin base images with SHA256 digests for reproducibility:
 #   python:3.12-slim-bookworm@sha256:abc123...
-#   node:20-alpine@sha256:def456...
+#   node:22-alpine@sha256:def456...
 # Find digests: docker pull <image> && docker inspect <image> | grep -A1 RepoDigests
 #
 # Source paths are dest-layout prefixes (python/, node/, rust/) — never dest-root src/ or apps/.
@@ -171,7 +171,7 @@ CMD ["python", "-m", "mcp"]
 # =============================================================================
 # Node.js Builder Stage
 # =============================================================================
-FROM node:20-alpine AS builder-node
+FROM node:22-alpine AS builder-node
 
 # Metadata labels
 LABEL org.opencontainers.image.title="{{ project_name }} - Node.js Builder"
@@ -239,7 +239,7 @@ RUN pnpm prune --prod
 # =============================================================================
 # Node.js Runtime Stage
 # =============================================================================
-FROM node:20-alpine AS runtime-node
+FROM node:22-alpine AS runtime-node
 
 # Metadata labels
 LABEL org.opencontainers.image.title="{{ project_name }} - Node.js Runtime"
