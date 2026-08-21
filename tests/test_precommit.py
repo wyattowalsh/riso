@@ -6,6 +6,7 @@ based on the template options (quality profile, API languages, etc.).
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -149,6 +150,47 @@ class TestRootPrecommitConfig:
             r for r in repos if "check-jsonschema" in str(r.get("repo", ""))
         ]
         assert len(jsonschema_repos) > 0, "Should have check-jsonschema pre-commit repo"
+
+    def test_root_config_excludes_goals(self, root_config_path: Path) -> None:
+        """Verify goals/ working papers are skipped by formatting/spelling hooks.
+
+        Only cosmetic hooks opt out: safety hooks (detect-private-key,
+        check-added-large-files, check-merge-conflict) must still scan goals/.
+        """
+        content = root_config_path.read_text(encoding="utf-8")
+        config = yaml.safe_load(content)
+
+        hooks = {
+            hook.get("id"): hook
+            for repo in config.get("repos", [])
+            for hook in repo.get("hooks", [])
+        }
+
+        samples = ("goals/riso-lane-cli/facts.md", "goals/riso-lane-cli/interview.json")
+        for hook_id in ("codespell", "mdformat", "check-json"):
+            assert hook_id in hooks, f"Root config should define {hook_id}"
+            exclude = hooks[hook_id].get("exclude", "")
+            assert "goals/" in exclude, (
+                f"{hook_id} exclude should skip goals/, got {exclude!r}"
+            )
+            pattern = re.compile(exclude)
+            for path in samples:
+                assert pattern.search(path), (
+                    f"{hook_id} exclude {exclude!r} should match {path}"
+                )
+
+        assert "exclude" not in config, (
+            "goals/ must not be excluded globally; safety hooks need to scan it"
+        )
+        for hook_id in (
+            "detect-private-key",
+            "check-added-large-files",
+            "check-merge-conflict",
+        ):
+            assert hook_id in hooks, f"Root config should define {hook_id}"
+            assert "goals/" not in hooks[hook_id].get("exclude", ""), (
+                f"{hook_id} must still scan goals/"
+            )
 
 
 class TestTemplatePrecommitConfig:
