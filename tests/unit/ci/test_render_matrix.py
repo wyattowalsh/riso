@@ -558,3 +558,146 @@ class TestMain:
         result = json.loads((metadata_dir / "render_matrix.json").read_text())
         assert "quality_runs" in result
         assert result["quality_retention_days"] == 30
+
+    def test_main_skip_render_without_existing_does_not_render(
+        self, temp_dir, monkeypatch
+    ):
+        """--skip-render must never fall back to rendering the full matrix."""
+        from unittest.mock import patch
+        import render_matrix
+
+        metadata_dir = temp_dir / "metadata"
+        samples_dir = temp_dir / "samples"
+        variant_dir = samples_dir / "test"
+        variant_dir.mkdir(parents=True)
+        (variant_dir / "copier-answers.yml").write_text("name: Test\n")
+
+        monkeypatch.setattr(render_matrix, "METADATA_DIR", metadata_dir)
+        monkeypatch.setattr(render_matrix, "SAMPLES_DIR", samples_dir)
+
+        with (
+            patch("sys.argv", ["render_matrix.py", "--skip-render"]),
+            patch.object(render_matrix, "render_variant") as mock_render,
+        ):
+            render_matrix.main()
+
+        mock_render.assert_not_called()
+
+        result = json.loads((metadata_dir / "render_matrix.json").read_text())
+        assert result["variants"] == []
+        assert "module_success" in result
+
+    def test_main_skip_render_without_existing_merges_quality_artifacts(
+        self, temp_dir, monkeypatch
+    ):
+        """Quality artifacts still land in the summary when no prior matrix exists."""
+        from unittest.mock import patch
+        import render_matrix
+
+        metadata_dir = temp_dir / "metadata"
+        samples_dir = temp_dir / "samples"
+        variant_dir = samples_dir / "test"
+        variant_dir.mkdir(parents=True)
+        (variant_dir / "copier-answers.yml").write_text("name: Test\n")
+
+        artifact_file = temp_dir / "quality-standard.json"
+        artifact_file.write_text(json.dumps({"profile": "standard", "lint": "passed"}))
+
+        monkeypatch.setattr(render_matrix, "METADATA_DIR", metadata_dir)
+        monkeypatch.setattr(render_matrix, "SAMPLES_DIR", samples_dir)
+
+        with (
+            patch(
+                "sys.argv",
+                [
+                    "render_matrix.py",
+                    "--skip-render",
+                    "--quality-artifacts",
+                    str(artifact_file),
+                    "--retention-days",
+                    "90",
+                ],
+            ),
+            patch.object(render_matrix, "render_variant") as mock_render,
+        ):
+            render_matrix.main()
+
+        mock_render.assert_not_called()
+
+        result = json.loads((metadata_dir / "render_matrix.json").read_text())
+        assert result["variants"] == []
+        assert result["quality_runs"] == [{"profile": "standard", "lint": "passed"}]
+        assert result["quality_retention_days"] == 90
+
+    def test_main_skip_render_tolerates_failed_variants(self, temp_dir, monkeypatch):
+        """Consolidation does not own render outcomes, so failures do not exit 1."""
+        from unittest.mock import patch
+        import render_matrix
+
+        metadata_dir = temp_dir / "metadata"
+        metadata_dir.mkdir()
+        (metadata_dir / "render_matrix.json").write_text(
+            json.dumps(
+                {
+                    "variants": [
+                        {"variant": "default", "render_status": "ok"},
+                        {
+                            "variant": "saas-starter/vercel-starter",
+                            "render_status": "failed",
+                            "render_returncode": 1,
+                        },
+                    ]
+                }
+            )
+        )
+
+        monkeypatch.setattr(render_matrix, "METADATA_DIR", metadata_dir)
+
+        with (
+            patch("sys.argv", ["render_matrix.py", "--skip-render"]),
+            patch.object(render_matrix, "render_variant") as mock_render,
+        ):
+            render_matrix.main()
+
+        mock_render.assert_not_called()
+
+        result = json.loads((metadata_dir / "render_matrix.json").read_text())
+        assert [v["variant"] for v in result["variants"]] == [
+            "default",
+            "saas-starter/vercel-starter",
+        ]
+
+    def test_main_exits_nonzero_on_failed_render(self, temp_dir, monkeypatch):
+        """The live render path still fails the job when a variant fails."""
+        from unittest.mock import patch
+        import render_matrix
+
+        metadata_dir = temp_dir / "metadata"
+        samples_dir = temp_dir / "samples"
+        variant_dir = samples_dir / "test"
+        variant_dir.mkdir(parents=True)
+        (variant_dir / "copier-answers.yml").write_text("name: Test\n")
+
+        monkeypatch.setattr(render_matrix, "METADATA_DIR", metadata_dir)
+        monkeypatch.setattr(render_matrix, "SAMPLES_DIR", samples_dir)
+
+        with (
+            patch("sys.argv", ["render_matrix.py"]),
+            patch.object(render_matrix, "render_variant") as mock_render,
+        ):
+            mock_render.return_value = {
+                "variant": "test",
+                "answers": str(variant_dir / "copier-answers.yml"),
+                "destination": str(variant_dir / "render"),
+                "smoke_results": None,
+                "workflow_validation": "unknown",
+                "container_status": "not_applicable",
+                "render_status": "failed",
+                "render_returncode": 1,
+            }
+
+            with pytest.raises(SystemExit) as excinfo:
+                render_matrix.main()
+
+        assert excinfo.value.code == 1
+        mock_render.assert_called_once()

@@ -265,7 +265,7 @@ def main() -> None:
     """Orchestrate rendering of all discovered variants and aggregate metadata.
 
     Command-line arguments:
-        --skip-render: Skip rendering and reuse existing render_matrix.json if available.
+        --skip-render: Consolidate an existing render_matrix.json without rendering.
         --quality-artifacts: List of paths to quality run artifact JSON files.
         --retention-days: Number of days to retain quality artifacts (default: 90).
     """
@@ -278,8 +278,19 @@ def main() -> None:
     METADATA_DIR.mkdir(parents=True, exist_ok=True)
     output_file = METADATA_DIR / "render_matrix.json"
 
-    if args.skip_render and output_file.exists():
-        summary: RenderSummary = json.loads(output_file.read_text(encoding="utf-8"))
+    summary: RenderSummary
+    if args.skip_render:
+        if output_file.exists():
+            summary = json.loads(output_file.read_text(encoding="utf-8"))
+        else:
+            # samples/metadata/ is gitignored, so a consolidate-only job that never
+            # downloaded a render artifact has no prior summary to reuse.
+            logger.warning(
+                "--skip-render requested but {} is missing; recording an empty "
+                "variant summary instead of rendering the matrix.",
+                output_file,
+            )
+            summary = {"variants": []}
         recorder = ModuleSuccessRecorder()
         for variant_entry in summary.get("variants", []):
             results = variant_entry.get("smoke_results", {})
@@ -291,7 +302,7 @@ def main() -> None:
         module_metrics = recorder.write(METADATA_DIR / "module_success.json")
         summary["module_success"] = module_metrics
     else:
-        summary: RenderSummary = {"variants": []}
+        summary = {"variants": []}
         recorder = ModuleSuccessRecorder()
 
         for variant, answers_file in discover_variants():
@@ -335,9 +346,20 @@ def main() -> None:
         for v in summary.get("variants", [])
         if v.get("render_status") == "failed"
     ]
-    if failed:
-        logger.error("Matrix completed with render failures: {}", ", ".join(failed))
-        raise SystemExit(1)
+    if not failed:
+        return
+
+    if args.skip_render:
+        # Consolidation reports on renders it did not perform; the render job that
+        # produced these rows already failed on its own.
+        logger.warning(
+            "Consolidated summary carries render failures from a prior job: {}",
+            ", ".join(failed),
+        )
+        return
+
+    logger.error("Matrix completed with render failures: {}", ", ".join(failed))
+    raise SystemExit(1)
 
 
 if __name__ == "__main__":
