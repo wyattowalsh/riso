@@ -13,15 +13,14 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from riso.core.errors import CopierOperationError, OperationTimeoutError
-from riso.core.paths import is_bundled_template
+from riso.core.paths import bundled_template_path, is_bundled_template
 
 _PRE_GEN_FILENAME = "pre_gen_project.py"
 _POST_GEN_FILENAME = "post_gen_project.py"
 
 
 def _bundled_hook_script(filename: str) -> Path:
-    pkg_root = Path(__file__).resolve().parents[3]
-    return pkg_root / "template" / "hooks" / filename
+    return bundled_template_path() / "hooks" / filename
 
 
 def _candidate_hook_paths(

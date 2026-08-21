@@ -27,7 +27,12 @@ from riso.core.errors import (
 from riso.core.generation_gates import validate_answers_for_generation
 from riso.core.removed_answer_keys import apply_removed_key_remaps
 from riso.core.names import validate_identity_fields
-from riso.core.paths import is_bundled_template, validate_destination
+from riso.core.paths import (
+    is_bundled_template,
+    resolve_samples_path,
+    resolve_template_path,
+    validate_destination,
+)
 from riso.template.hooks_runner import (
     run_post_gen,
     run_pre_gen,
@@ -71,18 +76,14 @@ class ValidationResult:
         }
 
 
-def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[3]
-
-
 def get_template_path() -> Path:
-    """Return the local template path."""
-    return (_repo_root() / "template").resolve()
+    """Return the bundled Copier template path (checkout or wheel)."""
+    return resolve_template_path()
 
 
 def get_samples_path() -> Path:
-    """Return the local samples path."""
-    return (_repo_root() / "samples").resolve()
+    """Return the samples path."""
+    return resolve_samples_path()
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:

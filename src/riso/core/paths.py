@@ -7,11 +7,8 @@ from pathlib import Path
 
 from riso.core.errors import PermissionDeniedError, TemplateNotFoundError
 
-
-def repo_root() -> Path:
-    """Return the repository root when running from a checkout."""
-    return Path(__file__).resolve().parents[3]
-
+# Hatch force-include maps repo ``template/`` → ``riso/copier_template`` in wheels.
+PACKAGED_TEMPLATE_DIRNAME = "copier_template"
 
 BUNDLED_UPDATE_UNSAFE_POLICY = (
     "Copier 9.16 _check_unsafe('update') flags subproject.template.tasks "
@@ -21,8 +18,38 @@ BUNDLED_UPDATE_UNSAFE_POLICY = (
 )
 
 
+def repo_root() -> Path:
+    """Return the src-layout parent (checkout root, or site-packages parent)."""
+    return Path(__file__).resolve().parents[3]
+
+
+def checkout_root() -> Path | None:
+    """Return the git checkout root when this module is loaded from ``src/``."""
+    candidate = Path(__file__).resolve().parents[3]
+    if (candidate / "pyproject.toml").is_file() and (
+        candidate / "template" / "copier.yml"
+    ).is_file():
+        return candidate
+    return None
+
+
+def packaged_template_path() -> Path | None:
+    """Return the Copier template shipped inside the installed wheel, if present."""
+    package_dir = Path(__file__).resolve().parents[1]
+    candidate = package_dir / PACKAGED_TEMPLATE_DIRNAME
+    if (candidate / "copier.yml").is_file():
+        return candidate.resolve()
+    return None
+
+
 def bundled_template_path() -> Path:
-    """Return this checkout's template/ directory (may not exist)."""
+    """Return the checkout or wheel-bundled Copier template directory."""
+    checkout = checkout_root()
+    if checkout is not None:
+        return checkout / "template"
+    packaged = packaged_template_path()
+    if packaged is not None:
+        return packaged
     return repo_root() / "template"
 
 
@@ -53,7 +80,7 @@ def external_template_warning(path: Path) -> str | None:
 
 
 def resolve_template_path(explicit: Path | None = None) -> Path:
-    """Resolve template directory from explicit path, env, or checkout."""
+    """Resolve template directory from explicit path, env, checkout, or wheel."""
     if explicit is not None:
         path = Path(os.path.expandvars(str(explicit))).expanduser().resolve()
         if not path.exists():
@@ -67,9 +94,9 @@ def resolve_template_path(explicit: Path | None = None) -> Path:
             raise TemplateNotFoundError(str(path))
         return path
 
-    checkout = repo_root() / "template"
-    if checkout.exists() and (checkout / "copier.yml").exists():
-        return checkout.resolve()
+    bundled = bundled_template_path()
+    if bundled.exists() and (bundled / "copier.yml").exists():
+        return bundled.resolve()
 
     raise TemplateNotFoundError("clone the riso repository or pass --template-path")
 
@@ -83,6 +110,9 @@ def resolve_samples_path(explicit: Path | None = None) -> Path:
     if env_path:
         return Path(env_path).expanduser().resolve()
 
+    checkout = checkout_root()
+    if checkout is not None:
+        return (checkout / "samples").resolve()
     return (repo_root() / "samples").resolve()
 
 
