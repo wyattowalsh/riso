@@ -35,13 +35,13 @@ This document does **not** implement template or runtime code.
 
 ## Constitution Check
 
-| Principle | Assessment |
-| --------- | ---------- |
-| Template quality first | Auth code must pass quality suite when enabled |
-| Modular composition | Independent of SaaS auth; optional on Python API |
-| Test-driven development | Negative 401 tests required |
-| Documentation parity | Warn that this is not Clerk/Auth.js |
-| Backwards compatibility | Additive; do not reuse spec numbers 010–016 |
+| Principle               | Assessment                                       |
+| ----------------------- | ------------------------------------------------ |
+| Template quality first  | Auth code must pass quality suite when enabled   |
+| Modular composition     | Independent of SaaS auth; optional on Python API |
+| Test-driven development | Negative 401 tests required                      |
+| Documentation parity    | Warn that this is not Clerk/Auth.js              |
+| Backwards compatibility | Additive; do not reuse spec numbers 010–016      |
 
 **GATE**: Pass for Draft. Implementation blocked on 017 shipping (or a documented thin in-memory exception — default is 017 required).
 

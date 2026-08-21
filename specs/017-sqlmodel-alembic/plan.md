@@ -36,13 +36,13 @@ This document does **not** implement template or runtime code.
 
 ## Constitution Check
 
-| Principle | Assessment |
-| --------- | ---------- |
-| Template quality first | Generated persistence code must pass ruff/ty/pylint/pytest when enabled |
-| Modular composition | Opt-in; FastAPI baseline unchanged when off |
-| Test-driven development | Maintainer tests for include/exclude + rendered persistence tests |
-| Documentation parity | Module guide + in-project README when implemented |
-| Backwards compatibility | Additive prompt; no reuse of shipped spec numbers 010–016 |
+| Principle               | Assessment                                                              |
+| ----------------------- | ----------------------------------------------------------------------- |
+| Template quality first  | Generated persistence code must pass ruff/ty/pylint/pytest when enabled |
+| Modular composition     | Opt-in; FastAPI baseline unchanged when off                             |
+| Test-driven development | Maintainer tests for include/exclude + rendered persistence tests       |
+| Documentation parity    | Module guide + in-project README when implemented                       |
+| Backwards compatibility | Additive prompt; no reuse of shipped spec numbers 010–016               |
 
 **GATE**: Pass for Draft. Implementation must re-check before prompt changes.
 

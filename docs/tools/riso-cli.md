@@ -47,14 +47,14 @@ On failure: non-zero exit, `"ok": false`, populated `errors`, no stack traces in
 
 These flags may appear before or after the subcommand (`uv run riso update DEST --force-unsafe` is valid).
 
-| Flag / env | Purpose |
-| ---- | ------ |
-| `--json` | Machine-readable envelope |
-| `--quiet` / `-q`, `--verbose` / `-v` | Log volume |
-| `--template-path` / `RISO_TEMPLATE_PATH` | Template root |
-| `--samples-path` / `RISO_SAMPLES_PATH` | Samples root |
-| `--timeout SECONDS` | Copier operation timeout (default 300) |
-| `--force-unsafe` | Copier `unsafe=True`. On `riso update`, this is how Copier **tasks** run even when the worker would otherwise pass `skip_tasks=True`. Required for Jinja extensions and `_tasks`. |
+| Flag / env                                 | Purpose                                                                                                                                                                                          |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--json`                                   | Machine-readable envelope                                                                                                                                                                        |
+| `--quiet` / `-q`, `--verbose` / `-v`       | Log volume                                                                                                                                                                                       |
+| `--template-path` / `RISO_TEMPLATE_PATH`   | Template root                                                                                                                                                                                    |
+| `--samples-path` / `RISO_SAMPLES_PATH`     | Samples root                                                                                                                                                                                     |
+| `--timeout SECONDS`                        | Copier operation timeout (default 300)                                                                                                                                                           |
+| `--force-unsafe`                           | Copier `unsafe=True`. On `riso update`, this is how Copier **tasks** run even when the worker would otherwise pass `skip_tasks=True`. Required for Jinja extensions and `_tasks`.                |
 | `--skip-post-gen` / `RISO_SKIP_POST_GEN=1` | Skip Riso **pre-generation and post-generation hooks** after copy / update / recopy. Copier `skip_tasks` stays true; this flag is the agent/test escape hatch for the hooks_runner replacements. |
 
 Example:
@@ -136,11 +136,11 @@ consulting `skip_tasks`, so **bundled-template `riso update` sets
 `unsafe=True`** even without `--force-unsafe`. External
 `RISO_TEMPLATE_PATH` still requires `--force-unsafe` for update.
 
-| Operation | `overwrite` | `unsafe` |
-| --------- | ----------- | -------- |
-| `copy` | `--force` only | `--force-unsafe` only |
-| `update` | always `True` (Copier 9.16) | `True` for this repo's `template/`; else `--force-unsafe` |
-| `recopy` | always `True` | `--force-unsafe` only |
+| Operation | `overwrite`                 | `unsafe`                                                  |
+| --------- | --------------------------- | --------------------------------------------------------- |
+| `copy`    | `--force` only              | `--force-unsafe` only                                     |
+| `update`  | always `True` (Copier 9.16) | `True` for this repo's `template/`; else `--force-unsafe` |
+| `recopy`  | always `True`               | `--force-unsafe` only                                     |
 
 `riso export cli` includes Copier `--overwrite` on the emitted `copier copy`
 string.
@@ -156,11 +156,11 @@ uv run riso export-cli --answers-file answers.yml
 uv run riso export-yaml --answers-file answers.yml
 ```
 
-| Flag | Owner | Meaning |
-| ---- | ----- | ------- |
-| `--answers-file` / `-f` | Riso | Path to a Copier **answers** YAML. Canonical input for validate / copy / export / migrate. |
-| `--data KEY=VALUE` | Riso | Repeatable inline answer override. |
-| `--data-file` | Copier | Copier's native extra-data file (`copier copy --data-file`). **Not** a Riso export flag today. Do not pass it to `riso export`. If the CLI team adds `--data-file`, treat it as Copier extra data layered on answers, not a substitute for `--answers-file`. |
+| Flag                    | Owner  | Meaning                                                                                                                                                                                                                                                      |
+| ----------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--answers-file` / `-f` | Riso   | Path to a Copier **answers** YAML. Canonical input for validate / copy / export / migrate.                                                                                                                                                                   |
+| `--data KEY=VALUE`      | Riso   | Repeatable inline answer override.                                                                                                                                                                                                                           |
+| `--data-file`           | Copier | Copier's native extra-data file (`copier copy --data-file`). **Not** a Riso export flag today. Do not pass it to `riso export`. If the CLI team adds `--data-file`, treat it as Copier extra data layered on answers, not a substitute for `--answers-file`. |
 
 `riso export` emits Copier/Riso command strings and YAML. It does not run Copier.
 

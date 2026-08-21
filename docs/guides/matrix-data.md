@@ -6,10 +6,10 @@ one is committed.
 
 ## What is gitignored vs committed
 
-| Path | Git | Role |
-| ---- | --- | ---- |
+| Path                                                                        | Git                                                  | Role                                                                       |
+| --------------------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------- |
 | `samples/metadata/` (including `matrix-data.json` and `render_matrix.json`) | **Gitignored** (`samples/metadata/` in `.gitignore`) | Local / CI scratch. Do not commit. Do not treat as the published consumer. |
-| `web/src/data/matrix-data.json` | **Committed** | The configurator consumer. This is the snapshot the web app loads. |
+| `web/src/data/matrix-data.json`                                             | **Committed**                                        | The configurator consumer. This is the snapshot the web app loads.         |
 
 Avoid hand-editing either JSON file. Regenerate, then commit only
 `web/src/data/matrix-data.json` when the wizard must pick up prompt or sample

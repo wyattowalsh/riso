@@ -35,13 +35,13 @@ This document does **not** implement template or runtime code.
 
 ## Constitution Check
 
-| Principle | Assessment |
-| --------- | ---------- |
-| Template quality first | Observability code must pass the quality suite when enabled |
-| Modular composition | Independent of SaaS OTEL; optional on Python API |
-| Test-driven development | Scrape + span tests required |
-| Documentation parity | Document env vars and `/metrics` vs `/health` |
-| Backwards compatibility | Additive; do not reuse spec numbers 010–016 |
+| Principle               | Assessment                                                  |
+| ----------------------- | ----------------------------------------------------------- |
+| Template quality first  | Observability code must pass the quality suite when enabled |
+| Modular composition     | Independent of SaaS OTEL; optional on Python API            |
+| Test-driven development | Scrape + span tests required                                |
+| Documentation parity    | Document env vars and `/metrics` vs `/health`               |
+| Backwards compatibility | Additive; do not reuse spec numbers 010–016                 |
 
 **GATE**: Pass for Draft.
 

@@ -16,7 +16,7 @@ Every answers path uses the same contract. Do not invert the order.
 
 1. `apply_removed_key_remaps` remaps every known removed key that has a mapped
    value.
-2. `reject_removed_answer_keys` fail-closes leftovers (unknown removed keys, or
+1. `reject_removed_answer_keys` fail-closes leftovers (unknown removed keys, or
    known keys whose values could not be remapped).
 
 Rules:
@@ -36,16 +36,16 @@ SSOT: `src/riso/core/removed_answer_keys.py` (twins in `scripts/lib` and
 
 These are the only remappable removed keys.
 
-| Old key | Operator | Canonical dest |
-| --- | --- | --- |
-| `api_tracks` | derive | `api_module`, `api_languages` |
-| `api_language` | wrap-list | `api_languages` |
-| `docs_site` | derive | `docs_module`, `docs_framework` |
-| `mcp_language` | wrap-list (`node` / `js` → `typescript`) | `mcp_languages` |
-| `saas_starter_module` | rename | `saas_infra_module` |
-| `saas_auth` | split | `saas_auth_module`, `saas_auth_provider` |
-| `saas_billing` | split | `saas_billing_module`, `saas_billing_provider` |
-| `include_admin` | rename-bool | `saas_admin_dashboard` |
+| Old key               | Operator                                 | Canonical dest                                 |
+| --------------------- | ---------------------------------------- | ---------------------------------------------- |
+| `api_tracks`          | derive                                   | `api_module`, `api_languages`                  |
+| `api_language`        | wrap-list                                | `api_languages`                                |
+| `docs_site`           | derive                                   | `docs_module`, `docs_framework`                |
+| `mcp_language`        | wrap-list (`node` / `js` → `typescript`) | `mcp_languages`                                |
+| `saas_starter_module` | rename                                   | `saas_infra_module`                            |
+| `saas_auth`           | split                                    | `saas_auth_module`, `saas_auth_provider`       |
+| `saas_billing`        | split                                    | `saas_billing_module`, `saas_billing_provider` |
+| `include_admin`       | rename-bool                              | `saas_admin_dashboard`                         |
 
 `graphql_api_module` and `websocket_module` are derived Jinja flags, not
 removed user keys. They are not remapped. Enable GraphQL/WebSocket with
@@ -57,16 +57,16 @@ the Copier prompt `api_features` (`graphql`, `websocket`) when
 Historical values map to current Copier answers as follows. Anything else is
 unmapped and fail-closes.
 
-| Old key | Mapped values |
-| --- | --- |
-| `api_tracks` | empty / `none` / `disabled` / `[]` → `api_module=disabled`. Otherwise `api_module=enabled` and `api_languages` is the intersection of tokens with `python`, `node`, `rust`, `go`. Also accept `fastapi` → `python`, `fastify` → `node`, `actix` → `rust`. |
-| `api_language` | scalar `python` / `node` / `rust` / `go` → a one-item list. Already a list → keep (empty items dropped). |
-| `docs_site` | `none` / `false` / `disabled` / `off` → `docs_module=disabled`. `sphinx` / `sphinx-shibuya` → enabled + `sphinx-shibuya`. `docusaurus` / `fumadocs` → enabled + that framework. |
-| `mcp_language` | scalar `python` / `typescript` / `rust` / `go` → a one-item list. `node` / `js` → `typescript`. Already a list → keep the list shape, drop empty items, and still apply `node`/`js` → `typescript`. |
-| `saas_starter_module` | copy `enabled` / `disabled` (also common truthy/falsey tokens) → `saas_infra_module`. |
-| `saas_auth` | `none` / `disabled` / `false` / `off` → `saas_auth_module=disabled`. `clerk` / `authjs` → module enabled + that `saas_auth_provider`. `lucia` has no payload and fail-closes. |
-| `saas_billing` | `none` / `disabled` / `false` / `off` → `saas_billing_module=disabled`. `stripe` / `paddle` / `lemonsqueezy` → module enabled + that `saas_billing_provider`. |
-| `include_admin` | truthy/falsey → `saas_admin_dashboard` bool. |
+| Old key               | Mapped values                                                                                                                                                                                                                                             |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `api_tracks`          | empty / `none` / `disabled` / `[]` → `api_module=disabled`. Otherwise `api_module=enabled` and `api_languages` is the intersection of tokens with `python`, `node`, `rust`, `go`. Also accept `fastapi` → `python`, `fastify` → `node`, `actix` → `rust`. |
+| `api_language`        | scalar `python` / `node` / `rust` / `go` → a one-item list. Already a list → keep (empty items dropped).                                                                                                                                                  |
+| `docs_site`           | `none` / `false` / `disabled` / `off` → `docs_module=disabled`. `sphinx` / `sphinx-shibuya` → enabled + `sphinx-shibuya`. `docusaurus` / `fumadocs` → enabled + that framework.                                                                           |
+| `mcp_language`        | scalar `python` / `typescript` / `rust` / `go` → a one-item list. `node` / `js` → `typescript`. Already a list → keep the list shape, drop empty items, and still apply `node`/`js` → `typescript`.                                                       |
+| `saas_starter_module` | copy `enabled` / `disabled` (also common truthy/falsey tokens) → `saas_infra_module`.                                                                                                                                                                     |
+| `saas_auth`           | `none` / `disabled` / `false` / `off` → `saas_auth_module=disabled`. `clerk` / `authjs` → module enabled + that `saas_auth_provider`. `lucia` has no payload and fail-closes.                                                                             |
+| `saas_billing`        | `none` / `disabled` / `false` / `off` → `saas_billing_module=disabled`. `stripe` / `paddle` / `lemonsqueezy` → module enabled + that `saas_billing_provider`.                                                                                             |
+| `include_admin`       | truthy/falsey → `saas_admin_dashboard` bool.                                                                                                                                                                                                              |
 
 Do not guess unmapped historical values (for example `saas_auth: firebase` or
 `docs_site: mkdocs`). Fix the answers to a mapped value, then remigrate.
@@ -208,8 +208,8 @@ when you are ready to pull 2.0 template files into an existing project.
 ## After migrate
 
 1. Confirm the answers file has none of the eight old keys.
-2. Validate: `uv run riso validate --answers-file path.yml --json`
-3. Update the project when you want the 2.0 payload:
+1. Validate: `uv run riso validate --answers-file path.yml --json`
+1. Update the project when you want the 2.0 payload:
    `uv run riso update DEST`
 
 The web wizard import/paste path remaps 1.x YAML the same way, then fail-closes

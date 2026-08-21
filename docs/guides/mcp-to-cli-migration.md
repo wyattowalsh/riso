@@ -18,17 +18,17 @@ Remove the `riso` entry entirely.
 
 ## Replacement mapping
 
-| Old MCP tool                | New CLI command                                   |
-| --------------------------- | ------------------------------------------------- |
-| `copier_copy`               | `riso copy DEST --answers-file ...`               |
-| `copier_update`             | `riso update DEST`                                |
-| `copier_recopy`             | `riso recopy DEST`                                |
-| `copier_diff`               | `riso diff DEST --operation copy`                 |
-| `validate_template_answers` | `riso validate --answers-file ...`                |
-| `list_template_variants`    | `riso variants list`                              |
-| `get_prompts`               | `riso prompts`                                    |
+| Old MCP tool                | New CLI command                                      |
+| --------------------------- | ---------------------------------------------------- |
+| `copier_copy`               | `riso copy DEST --answers-file ...`                  |
+| `copier_update`             | `riso update DEST`                                   |
+| `copier_recopy`             | `riso recopy DEST`                                   |
+| `copier_diff`               | `riso diff DEST --operation copy`                    |
+| `validate_template_answers` | `riso validate --answers-file ...`                   |
+| `list_template_variants`    | `riso variants list`                                 |
+| `get_prompts`               | `riso prompts`                                       |
 | `riso://catalog/*`          | `riso catalog modules` / `riso catalog dependencies` |
-| `wizard_*`                  | Skill-guided workflow (see `riso-scaffold` skill) |
+| `wizard_*`                  | Skill-guided workflow (see `riso-scaffold` skill)    |
 
 ## Install skill
 

@@ -65,18 +65,18 @@ stays off by default.
 
 ## Module Reference
 
-| Module        | Prompt Key                       | Options                                     | Description                      |
-| ------------- | -------------------------------- | ------------------------------------------- | -------------------------------- |
-| **Layout**    | `project_layout`                 | single-package, monorepo                    | Repository structure             |
-| **Quality**   | `quality_profile`                | standard, strict                            | Linting strictness               |
-| **CLI**       | `cli_module`                     | disabled, enabled                           | Typer CLI scaffolding            |
-| **API**       | `api_module` + `api_languages`   | python, node, go, rust (multi-select)       | FastAPI/Fastify/Go/Rust services |
-| **API extras** | `api_features`                  | graphql, websocket (when `api_module=enabled`) | GraphQL / WebSocket extras. `graphql_api_module` / `websocket_module` are derived Jinja flags, not Copier prompts |
-| **MCP**       | `mcp_module` + `mcp_languages`   | python, typescript, rust, go (multi-select) | Model Context Protocol           |
-| **Docs**      | `docs_module` + `docs_framework` | fumadocs, sphinx-shibuya, docusaurus, none  | Documentation site               |
-| **Changelog** | `changelog_module`               | disabled, enabled                           | Semantic release                 |
-| **SaaS**      | `saas_infra_module`              | disabled, enabled                           | SaaS infrastructure layer        |
-| **OpenSpec**  | `openspec_extra`                 | disabled (default), enabled                 | Optional extra; does not gate mise |
+| Module         | Prompt Key                       | Options                                        | Description                                                                                                       |
+| -------------- | -------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| **Layout**     | `project_layout`                 | single-package, monorepo                       | Repository structure                                                                                              |
+| **Quality**    | `quality_profile`                | standard, strict                               | Linting strictness                                                                                                |
+| **CLI**        | `cli_module`                     | disabled, enabled                              | Typer CLI scaffolding                                                                                             |
+| **API**        | `api_module` + `api_languages`   | python, node, go, rust (multi-select)          | FastAPI/Fastify/Go/Rust services                                                                                  |
+| **API extras** | `api_features`                   | graphql, websocket (when `api_module=enabled`) | GraphQL / WebSocket extras. `graphql_api_module` / `websocket_module` are derived Jinja flags, not Copier prompts |
+| **MCP**        | `mcp_module` + `mcp_languages`   | python, typescript, rust, go (multi-select)    | Model Context Protocol                                                                                            |
+| **Docs**       | `docs_module` + `docs_framework` | fumadocs, sphinx-shibuya, docusaurus, none     | Documentation site                                                                                                |
+| **Changelog**  | `changelog_module`               | disabled, enabled                              | Semantic release                                                                                                  |
+| **SaaS**       | `saas_infra_module`              | disabled, enabled                              | SaaS infrastructure layer                                                                                         |
+| **OpenSpec**   | `openspec_extra`                 | disabled (default), enabled                    | Optional extra; does not gate mise                                                                                |
 
 ## Template Matrix Snapshot
 
