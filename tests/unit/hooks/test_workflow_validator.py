@@ -107,21 +107,40 @@ class TestValidateWorkflowFile:
 class TestValidateWorkflowsDirectory:
     """Tests for validate_workflows_directory function."""
 
-    def test_returns_zero_when_actionlint_not_available_non_strict(self):
+    def test_returns_zero_when_actionlint_not_available_non_strict(
+        self, tmp_path: Path
+    ):
         """Test returns 0 when actionlint not available in non-strict mode."""
+        workflows_dir = tmp_path / "workflows"
+        workflows_dir.mkdir()
+
         with patch("workflow_validator.check_actionlint_available") as mock_check:
             mock_check.return_value = False
-            code, status = validate_workflows_directory(Path("/fake"), strict=False)
+            code, status = validate_workflows_directory(workflows_dir, strict=False)
             assert code == 0
             assert status == "tool_missing"
 
-    def test_returns_one_when_actionlint_not_available_strict(self):
+    def test_returns_one_when_actionlint_not_available_strict(self, tmp_path: Path):
         """Test returns 1 when actionlint not available in strict mode."""
+        workflows_dir = tmp_path / "workflows"
+        workflows_dir.mkdir()
+
         with patch("workflow_validator.check_actionlint_available") as mock_check:
             mock_check.return_value = False
-            code, status = validate_workflows_directory(Path("/fake"), strict=True)
+            code, status = validate_workflows_directory(workflows_dir, strict=True)
             assert code == 1
             assert status == "tool_missing"
+
+    def test_missing_dir_skips_without_actionlint_strict(self, tmp_path: Path):
+        """Test a missing workflows directory skips even in strict mode."""
+        with patch("workflow_validator.check_actionlint_available") as mock_check:
+            mock_check.return_value = False
+            code, status = validate_workflows_directory(
+                tmp_path / "nonexistent", strict=True
+            )
+            assert code == 0
+            assert status == "skipped"
+            mock_check.assert_not_called()
 
     def test_returns_zero_when_directory_not_exists(self, tmp_path: Path):
         """Test returns 0 when workflows directory doesn't exist."""
