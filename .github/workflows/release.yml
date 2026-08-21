@@ -11,7 +11,7 @@ on:
       dry_run:
         description: "Run in dry-run mode (no actual release)"
         required: false
-        default: false
+        default: true
         type: boolean
 
 concurrency:
@@ -63,9 +63,10 @@ jobs:
     name: Semantic Release
     needs: quality
     if: >-
-      github.ref == 'refs/heads/main' ||
+      needs.quality.result == 'success' &&
+      (github.ref == 'refs/heads/main' ||
       github.ref == 'refs/heads/beta' ||
-      github.ref == 'refs/heads/alpha'
+      github.ref == 'refs/heads/alpha')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -121,14 +122,18 @@ jobs:
       - name: Rehearse PyPI Trusted Publishing
         run: uv publish --dry-run --trusted-publishing automatic dist/*
 
+      # Pushes are always rehearsals; publishing requires an explicit dispatch.
       - name: Run Semantic Release (Dry Run)
-        if: github.event.inputs.dry_run == 'true'
+        if: >-
+          github.event_name == 'push' ||
+          (github.event_name == 'workflow_dispatch' && inputs.dry_run == true)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm run release:dry
 
       - name: Run Semantic Release
-        if: github.event.inputs.dry_run != 'true'
+        if: >-
+          github.event_name == 'workflow_dispatch' && inputs.dry_run == false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm run release
@@ -145,7 +150,9 @@ jobs:
           retention-days: 90
 
       - name: Post release summary
-        if: success() && github.event.inputs.dry_run != 'true'
+        if: >-
+          success() && github.event_name == 'workflow_dispatch' &&
+          inputs.dry_run == false
         run: |
           {
             echo "## Release Summary"
