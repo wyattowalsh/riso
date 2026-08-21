@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -34,8 +35,20 @@ EXPECTED_FIXTURES = {
 }
 
 
+_ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
+
+
 def _config() -> CliConfig:
     return CliConfig.from_options(template_path=resolve_template_path())
+
+
+def _plain(text: str) -> str:
+    """Drop ANSI styling so help assertions hold when Rich forces a terminal.
+
+    Typer treats ``GITHUB_ACTIONS``/``FORCE_COLOR`` as force-terminal, and Rich
+    then splits flags such as ``--dry-run`` into separately styled fragments.
+    """
+    return _ANSI_ESCAPE_RE.sub("", text)
 
 
 def test_remap_fixtures_cover_eight_keys_mixed_and_leftover() -> None:
@@ -198,6 +211,7 @@ def test_migrate_help_lists_flags() -> None:
 
     result = CliRunner().invoke(app, ["migrate", "--help"])
     assert result.exit_code == 0
-    assert "--dry-run" in result.stdout
-    assert "--answers-file" in result.stdout
-    assert "--json" not in result.stdout or "json" in result.stdout.lower()
+    help_text = _plain(result.stdout)
+    assert "--dry-run" in help_text
+    assert "--answers-file" in help_text
+    assert "--json" not in help_text or "json" in help_text.lower()
