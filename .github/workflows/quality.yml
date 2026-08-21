@@ -376,7 +376,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Install system dependencies
         run: |
@@ -498,7 +498,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-  # web-tests pins pnpm 11.11.0 to match root packageManager; dest CI stays in template/files/.github.
+  # web-tests pins pnpm 11.11.0 + Node 22 (pnpm 11 needs node:sqlite).
   web-tests:
     name: Web UI Tests
     runs-on: ubuntu-latest
@@ -509,7 +509,7 @@ jobs:
           version: 11.11.0
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "pnpm"
           cache-dependency-path: web/pnpm-lock.yaml
       - name: Install dependencies
