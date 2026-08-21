@@ -361,12 +361,12 @@ Brief conventions — examples in existing code:
 
 Invoke by description; read `SKILL.md` when triggered — do not inline here.
 
-| Skill                    | Location                                 | When to use                                                            |
-| ------------------------ | ---------------------------------------- | ---------------------------------------------------------------------- |
-| `riso-scaffold`          | `.agents/skills/riso-scaffold/`          | Scaffold/copy/update via `riso` CLI                                    |
-| `riso-release-readiness` | `.agents/skills/riso-release-readiness/` | Pre-release gates, render validation                                   |
-| `agents-md-manager`      | `.claude/skills/agents-md-manager/`      | AGENTS.md analysis, platform pointer sync (restore payload before use) |
-| `mcp-installer`          | `.claude/skills/mcp-installer/`          | Stub — MCP server install/sync (payload not shipped)                   |
+| Skill                    | Location                                 | When to use                                                               |
+| ------------------------ | ---------------------------------------- | ------------------------------------------------------------------------- |
+| `riso-scaffold`          | `.agents/skills/riso-scaffold/`          | Scaffold/copy/update via `riso` CLI                                       |
+| `riso-release-readiness` | `.agents/skills/riso-release-readiness/` | Pre-release gates, render validation                                      |
+| `agents-md-manager`      | `.claude/skills/agents-md-manager/`      | AGENTS.md analysis, platform pointer sync (restore payload before use)    |
+| `mcp-installer`          | `.claude/skills/mcp-installer/`          | Stub — MCP server install/sync (payload not shipped)                      |
 | `agents` plugin          | `github.com/wyattowalsh/agents`          | Portable skills/subagents via `/add-plugin github.com/wyattowalsh/agents` |
 
 Enable the Agents plugin in project settings (do not vendor skill bodies):
