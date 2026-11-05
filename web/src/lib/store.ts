@@ -1,16 +1,16 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { matrixDefaults } from "./matrixData";
-import {
-  applyThenRejectRemovedKeys,
-  dropLeftoverRemovedKeys,
-} from "./removedAnswerKeys";
+import { parseConfigOrThrow, parseShareConfigPayload } from "./configSchemas";
+import { parseShareableURL } from "./presets";
 import { clampWizardStep } from "./wizardGate";
 
 // Configuration interface aligned with template/copier.yml v2.0 (component-first)
 export interface RisoConfig {
   // Project basics
   project_name: string;
+  project_slug: string;
+  package_name: string;
   project_layout: "single-package" | "monorepo";
   quality_profile: "standard" | "strict";
   task_runner: "just" | "makefile" | "both" | "none";
@@ -150,6 +150,44 @@ export interface RisoConfig {
   saas_include_factories: boolean;
   saas_test_suite_level: "standard" | "comprehensive";
   saas_admin_dashboard: boolean;
+
+  // SaaS product scaffolding (Copier infra-gated unless noted)
+  saas_multi_tenancy_level: "none" | "teams" | "enterprise";
+  saas_tenancy_model: "b2b-teams" | "b2c-users";
+  saas_rbac_system: "basic-roles" | "custom-permissions";
+  saas_onboarding: "wizard" | "checklist" | "none";
+  saas_user_impersonation: boolean;
+  saas_notifications: "both" | "email-only" | "none";
+  saas_waitlist: boolean;
+  saas_search_provider: "none" | "meilisearch" | "algolia";
+  saas_i18n: boolean;
+  saas_api_access: "public-api" | "internal-only";
+  saas_ui_framework: "shadcn-ui" | "radix-primitives" | "headless-ui";
+  saas_form_library: "react-hook-form" | "conform" | "none";
+  saas_realtime: "socketio" | "pusher" | "ably" | "supabase-realtime" | "none";
+  saas_landing_page: boolean;
+  saas_blog: boolean;
+  saas_changelog_public: boolean;
+  saas_2fa: boolean;
+  saas_compliance_level: "basic" | "gdpr" | "hipaa" | "soc2";
+  saas_gdpr_tools: boolean;
+  saas_ai_features: "none" | "basic" | "rag" | "full";
+  saas_api_docs: boolean;
+  saas_rate_limiting: "upstash" | "built-in" | "none";
+  saas_file_upload: "uploadthing" | "react-dropzone" | "none";
+  vector_db_provider: "none" | "pinecone" | "qdrant" | "weaviate";
+  embedding_provider: "openai" | "cohere";
+
+  python_versions: string[];
+  go_version: "1.24" | "1.23";
+  go_framework: "gin" | "fiber" | "echo" | "chi";
+  mcp_transport: "stdio" | "sse" | "http";
+  mcp_example_tools: boolean;
+  desktop_module: "disabled" | "enabled";
+  desktop_framework: "electron-vite" | "electron-forge" | "tauri";
+  desktop_features: string;
+  desktop_platforms: string;
+  include_databases: "no" | "yes";
 }
 
 export interface ConfigHistory {
@@ -168,6 +206,7 @@ export interface RisoStore {
 
   // Actions
   updateConfig: (config: Partial<RisoConfig>) => void;
+  replaceConfig: (config: Partial<RisoConfig>) => void;
   resetConfig: () => void;
   setStep: (step: number) => void;
   setCurrentStep: (step: number) => void; // Alias for setStep
@@ -346,6 +385,13 @@ export const defaultRisoConfig: Partial<RisoConfig> = {
   saas_database: fromMatrix("saas_database", "neon"),
   saas_orm: fromMatrix("saas_orm", "prisma"),
   saas_cicd: fromMatrix("saas_cicd", "github-actions"),
+  saas_multi_tenancy_level: fromMatrix("saas_multi_tenancy_level", "teams"),
+  saas_tenancy_model: fromMatrix("saas_tenancy_model", "b2b-teams"),
+  saas_search_provider: fromMatrix("saas_search_provider", "none"),
+  saas_compliance_level: fromMatrix("saas_compliance_level", "basic"),
+  saas_ai_features: fromMatrix("saas_ai_features", "none"),
+  vector_db_provider: fromMatrix("vector_db_provider", "none"),
+  embedding_provider: fromMatrix("embedding_provider", "openai"),
 
   // SaaS Auth Layer
   saas_auth_module: fromMatrix("saas_auth_module", "disabled"),
@@ -378,6 +424,34 @@ export const defaultRisoConfig: Partial<RisoConfig> = {
   saas_include_factories: fromMatrix("saas_include_factories", true),
   saas_test_suite_level: fromMatrix("saas_test_suite_level", "standard"),
   saas_admin_dashboard: fromMatrix("saas_admin_dashboard", true),
+  saas_rbac_system: fromMatrix("saas_rbac_system", "basic-roles"),
+  saas_onboarding: fromMatrix("saas_onboarding", "wizard"),
+  saas_user_impersonation: fromMatrix("saas_user_impersonation", true),
+  saas_notifications: fromMatrix("saas_notifications", "both"),
+  saas_waitlist: fromMatrix("saas_waitlist", false),
+  saas_i18n: fromMatrix("saas_i18n", false),
+  saas_api_access: fromMatrix("saas_api_access", "internal-only"),
+  saas_ui_framework: fromMatrix("saas_ui_framework", "shadcn-ui"),
+  saas_form_library: fromMatrix("saas_form_library", "react-hook-form"),
+  saas_realtime: fromMatrix("saas_realtime", "none"),
+  saas_landing_page: fromMatrix("saas_landing_page", true),
+  saas_blog: fromMatrix("saas_blog", false),
+  saas_changelog_public: fromMatrix("saas_changelog_public", false),
+  saas_2fa: fromMatrix("saas_2fa", false),
+  saas_gdpr_tools: fromMatrix("saas_gdpr_tools", false),
+  saas_api_docs: fromMatrix("saas_api_docs", false),
+  saas_rate_limiting: fromMatrix("saas_rate_limiting", "upstash"),
+  saas_file_upload: fromMatrix("saas_file_upload", "uploadthing"),
+  python_versions: fromMatrix("python_versions", ["3.11", "3.12", "3.13"]),
+  go_version: fromMatrix("go_version", "1.24"),
+  go_framework: fromMatrix("go_framework", "gin"),
+  mcp_transport: fromMatrix("mcp_transport", "stdio"),
+  mcp_example_tools: fromMatrix("mcp_example_tools", true),
+  desktop_module: fromMatrix("desktop_module", "disabled"),
+  desktop_framework: fromMatrix("desktop_framework", "electron-vite"),
+  desktop_features: fromMatrix("desktop_features", "auto_updater"),
+  desktop_platforms: fromMatrix("desktop_platforms", "mac,windows,linux"),
+  include_databases: fromMatrix("include_databases", "no"),
 };
 
 /** Align OpenAPI toggles with Copier `when` clauses (docs + framework + API). */
@@ -406,10 +480,77 @@ export function normalizeCopierWhenDefaults(
   return next;
 }
 
-function canonicalizeConfig(
-  config: Partial<RisoConfig> | Record<string, unknown>,
-): Partial<RisoConfig> {
-  return dropLeftoverRemovedKeys({ ...config }) as Partial<RisoConfig>;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** Validate persisted data before it can reach typed UI code. */
+export function mergePersistedWizardState(
+  persistedState: unknown,
+  currentState: RisoStore,
+  options?: { href?: string },
+): RisoStore {
+  if (!isRecord(persistedState)) return currentState;
+  const persisted = persistedState;
+  const history: ConfigHistory[] = [];
+  if (Array.isArray(persisted.history)) {
+    for (const item of persisted.history) {
+      if (
+        !isRecord(item) ||
+        typeof item.id !== "string" ||
+        typeof item.name !== "string"
+      )
+        continue;
+      const parsed = parseShareConfigPayload(item.config);
+      const timestamp =
+        typeof item.timestamp === "string" ||
+        typeof item.timestamp === "number" ||
+        item.timestamp instanceof Date
+          ? new Date(item.timestamp)
+          : new Date(NaN);
+      if (!parsed.success || Number.isNaN(timestamp.getTime())) continue;
+      history.push({
+        id: item.id,
+        name: item.name,
+        timestamp,
+        config: parsed.data as Partial<RisoConfig>,
+      });
+      if (history.length === 10) break;
+    }
+  }
+  const href =
+    options?.href ??
+    (typeof window !== "undefined" ? window.location.href : "");
+  let hasSharePreset = false;
+  try {
+    hasSharePreset = parseShareableURL(href) !== null;
+  } catch {
+    /* An invalid share must not discard a valid persisted configuration. */
+  }
+  const parsed = parseShareConfigPayload(persisted.config);
+  const config = normalizeCopierWhenDefaults({
+    ...defaultRisoConfig,
+    ...(!hasSharePreset && parsed.success
+      ? (parsed.data as Partial<RisoConfig>)
+      : {}),
+  });
+  const step =
+    typeof persisted.currentStep === "number" &&
+    Number.isInteger(persisted.currentStep)
+      ? persisted.currentStep
+      : 0;
+  return {
+    ...currentState,
+    config,
+    history,
+    currentStep: hasSharePreset
+      ? 0
+      : clampWizardStep(step, 0, config.project_name ?? ""),
+    highlightedField:
+      typeof persisted.highlightedField === "string"
+        ? persisted.highlightedField
+        : null,
+  };
 }
 
 const initialConfig = normalizeCopierWhenDefaults(defaultRisoConfig);
@@ -427,11 +568,20 @@ export const useRisoStore = create<RisoStore>()(
         set((state) => ({
           config: normalizeCopierWhenDefaults({
             ...state.config,
-            ...(applyThenRejectRemovedKeys({
-              ...(config as Record<string, unknown>),
-            }).answers as Partial<RisoConfig>),
+            ...(parseConfigOrThrow(config) as Partial<RisoConfig>),
           }),
         })),
+
+      replaceConfig: (config) => {
+        const parsed = parseConfigOrThrow(config) as Partial<RisoConfig>;
+        set({
+          config: normalizeCopierWhenDefaults({
+            ...structuredClone(defaultRisoConfig),
+            ...parsed,
+          }),
+          currentStep: 0,
+        });
+      },
 
       resetConfig: () =>
         set({
@@ -481,9 +631,10 @@ export const useRisoStore = create<RisoStore>()(
         const history = get().history.find((h) => h.id === id);
         if (history) {
           set({
-            config: normalizeCopierWhenDefaults(
-              canonicalizeConfig(structuredClone(history.config)),
-            ),
+            config: normalizeCopierWhenDefaults({
+              ...structuredClone(defaultRisoConfig),
+              ...(parseConfigOrThrow(history.config) as Partial<RisoConfig>),
+            }),
           });
         }
       },
@@ -503,30 +654,7 @@ export const useRisoStore = create<RisoStore>()(
         currentStep: state.currentStep,
         highlightedField: state.highlightedField,
       }),
-      merge: (persistedState, currentState) => {
-        const persisted = (persistedState ?? {}) as Partial<
-          Pick<
-            RisoStore,
-            "config" | "history" | "currentStep" | "highlightedField"
-          >
-        >;
-        return {
-          ...currentState,
-          config: normalizeCopierWhenDefaults({
-            ...currentState.config,
-            ...canonicalizeConfig(persisted.config ?? {}),
-          }),
-          history: (persisted.history ?? currentState.history).map((item) => ({
-            ...item,
-            config: canonicalizeConfig(item.config),
-          })),
-          currentStep: persisted.currentStep ?? currentState.currentStep,
-          highlightedField:
-            persisted.highlightedField !== undefined
-              ? persisted.highlightedField
-              : currentState.highlightedField,
-        };
-      },
+      merge: mergePersistedWizardState,
     },
   ),
 );

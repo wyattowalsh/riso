@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify version constants are synchronized across all configuration files.
+"""Verify versions within maintainer, generated, and quality-tool scopes.
 
 This script ensures that version requirements in:
 - scripts/setup/lib/versions.sh (source of truth)
@@ -7,7 +7,8 @@ This script ensures that version requirements in:
 - template/files/python/pyproject.toml.jinja (quality tool versions)
 - template/files/.mise.toml.jinja (mise tool versions)
 
-are all consistent.
+are consistent within their owning scope. Generated projects intentionally have
+different runtime requirements from the template maintainer repository.
 
 Exit codes:
 - 0: All versions synchronized
@@ -18,6 +19,7 @@ from __future__ import annotations
 
 import re
 import sys
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -143,7 +145,63 @@ def normalize_version(version: str) -> str:
     - "3.0" -> "3.0"
     - "latest" -> "latest"
     """
-    return version.strip()
+    return re.sub(r"^(?:>=|<=|~=|==|~|\^|>|<|=)\s*", "", version.strip())
+
+
+def parse_package_json(path: Path) -> dict[str, str]:
+    """Read Node/pnpm requirements from JSON or its Jinja-wrapped template."""
+    content = path.read_text(encoding="utf-8")
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError:
+        data = None
+    if isinstance(data, dict):
+        engines = data.get("engines", {})
+        node = engines.get("node") if isinstance(engines, dict) else None
+        manager = data.get("packageManager")
+    else:
+        engines_match = re.search(r'"engines"\s*:\s*\{([^}]+)\}', content)
+        node_match = (
+            re.search(r'"node"\s*:\s*"([^"]+)"', engines_match.group(1))
+            if engines_match
+            else None
+        )
+        manager_match = re.search(r'"packageManager"\s*:\s*"([^"]+)"', content)
+        node = node_match.group(1) if node_match else None
+        manager = manager_match.group(1) if manager_match else None
+    result = {}
+    if isinstance(node, str):
+        result["node"] = node
+    if isinstance(manager, str) and manager.startswith("pnpm@"):
+        result["pnpm"] = manager.removeprefix("pnpm@")
+    return result
+
+
+def versions_compatible(required: str, configured: str, tool: str) -> bool:
+    """Compare exact pins, dotted prefixes, and an allowed Node major floor."""
+    if tool == "node" and "||" in configured:
+        return any(
+            versions_compatible(required, part.strip(), tool)
+            for part in configured.split("||")
+        )
+    required = normalize_version(required)
+    configured = normalize_version(configured)
+    if required == configured:
+        return True
+    left = required.split(".")
+    right = configured.split(".")
+    if not all(part.isdigit() for part in (*left, *right)):
+        return False
+    shared = min(len(left), len(right))
+    if left[:shared] == right[:shared]:
+        return True
+    # versions.sh declares a minimum; a more recent pin within its Node major
+    # satisfies that minimum. A lower pin must still fail.
+    return (
+        tool == "node"
+        and left[0] == right[0]
+        and tuple(map(int, right)) >= tuple(map(int, left))
+    )
 
 
 def compare_versions(
@@ -167,9 +225,10 @@ def compare_versions(
             continue
 
         # Compare versions
-        if source_version != other_version:
+        if not versions_compatible(source_version, other_version, tool):
             errors.append(
-                f"  {tool}: versions.sh={source_version} vs {other.file.name}={other_version}"
+                f"  {tool}: {source.file.name}={source_version} vs "
+                f"{other.file.name}={other_version}"
             )
 
     return errors
@@ -182,14 +241,27 @@ def main() -> int:
     # Define all version sources
     versions_sh_path = repo_root / "scripts" / "setup" / "lib" / "versions.sh"
     pre_gen_path = repo_root / "template" / "hooks" / "pre_gen_project.py"
+    maintainer_mise = repo_root / ".mise.toml"
+    maintainer_package = repo_root / "package.json"
     pyproject_path = (
         repo_root / "template" / "files" / "python" / "pyproject.toml.jinja"
     )
     mise_path = repo_root / "template" / "files" / ".mise.toml.jinja"
+    generated_mise = repo_root / "template" / "files" / "mise.toml.jinja"
+    generated_package = repo_root / "template" / "files" / "package.json.jinja"
 
     # Verify all files exist
     missing_files = []
-    for path in [versions_sh_path, pre_gen_path, pyproject_path, mise_path]:
+    for path in [
+        versions_sh_path,
+        pre_gen_path,
+        pyproject_path,
+        mise_path,
+        maintainer_mise,
+        maintainer_package,
+        generated_mise,
+        generated_package,
+    ]:
         if not path.exists():
             missing_files.append(str(path))
 
@@ -209,10 +281,15 @@ def main() -> int:
         VersionSource(
             file=pyproject_path, versions=parse_pyproject_jinja(pyproject_path)
         ),
-        VersionSource(file=mise_path, versions=parse_mise_toml(mise_path)),
+        VersionSource(file=maintainer_mise, versions=parse_mise_toml(maintainer_mise)),
+        VersionSource(
+            file=maintainer_package, versions=parse_package_json(maintainer_package)
+        ),
     ]
 
-    print("Verifying version synchronization...")
+    print(
+        "Verifying maintainer, generated runtime, and quality-tool version synchronization..."
+    )
     print(f"Source of truth: {versions_sh_path.relative_to(repo_root)}")
     print()
 
@@ -222,6 +299,24 @@ def main() -> int:
         errors = compare_versions(source_of_truth, other_sources, tool)
         all_errors.extend(errors)
 
+    generated_source = VersionSource(
+        file=generated_mise, versions=parse_mise_toml(generated_mise)
+    )
+    for tool in generated_source.versions:
+        all_errors.extend(
+            compare_versions(
+                generated_source,
+                [
+                    VersionSource(file=mise_path, versions=parse_mise_toml(mise_path)),
+                    VersionSource(
+                        file=generated_package,
+                        versions=parse_package_json(generated_package),
+                    ),
+                ],
+                tool,
+            )
+        )
+
     if all_errors:
         print("❌ Version mismatches detected:", file=sys.stderr)
         print(file=sys.stderr)
@@ -229,7 +324,9 @@ def main() -> int:
             print(error, file=sys.stderr)
         print(file=sys.stderr)
         print(
-            "Please update the mismatched files to match versions.sh", file=sys.stderr
+            "Update versions within their owning scope; generated runtime floors "
+            "are independent of maintainer pins.",
+            file=sys.stderr,
         )
         return 1
 

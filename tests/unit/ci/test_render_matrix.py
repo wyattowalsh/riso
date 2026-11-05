@@ -1,5 +1,8 @@
 """Unit tests for render_matrix.py"""
 
+# The ci_scripts_path fixture must configure sys.path before script imports.
+# pylint: disable=import-outside-toplevel
+
 import json
 import pytest
 
@@ -287,7 +290,7 @@ class TestPostGenMetadataLoading:
 
 
 @pytest.mark.unit
-class TestIntegration:
+class TestIntegration:  # pylint: disable=too-few-public-methods
     """Integration tests for the complete workflow."""
 
     def test_discovers_and_loads_complete_variant(self, temp_dir, monkeypatch):
@@ -462,6 +465,25 @@ class TestRenderVariant:
 @pytest.mark.unit
 class TestMain:
     """Tests for main function."""
+
+    def test_skip_render_missing_metadata_never_starts_render(
+        self, temp_dir, monkeypatch
+    ):
+        """Verify skip render missing metadata never starts render."""
+        from unittest.mock import patch
+        import render_matrix
+
+        metadata_dir = temp_dir / "absent-metadata"
+        monkeypatch.setattr(render_matrix, "METADATA_DIR", metadata_dir)
+        with (
+            patch("sys.argv", ["render_matrix.py", "--skip-render"]),
+            patch.object(render_matrix, "render_variant") as render,
+            pytest.raises(SystemExit) as exc,
+        ):
+            render_matrix.main()
+        assert exc.value.code == 2
+        render.assert_not_called()
+        assert not metadata_dir.exists()
 
     def test_main_skip_render_with_existing(self, temp_dir, monkeypatch):
         """Should skip rendering when --skip-render and file exists."""

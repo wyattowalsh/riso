@@ -248,6 +248,32 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed instructions.
 
 ---
 
+{% if saas_auth_module == 'enabled' and saas_admin_dashboard %}
+## Platform Administration
+
+`/admin` queries application-wide users, subscriptions, and tenants. Access
+requires a platform administrator; owning an organization does not grant it.
+
+{% if saas_auth_provider == 'clerk' %}
+Provision administrators using Clerk's Dashboard or a trusted backend with
+`publicMetadata.role` set to `"admin"`. The server checks that metadata using
+the authenticated Clerk user on both Next.js and Remix. Organization roles
+such as `org:admin`, client-submitted values, and `unsafeMetadata` never grant
+platform access. Missing or differently valued metadata is denied.
+{% elif saas_auth_provider == 'authjs' %}
+Provision an application-owned administrator role in your database, and expose
+that trusted role as `session.user.role` from the server-side Auth.js session
+callback. The guard requires the exact value `"admin"` and denies sessions
+without it. Never populate the role from a client request or untrusted profile
+field. The starter grants no platform administrator automatically.
+{% endif %}
+
+The `hasRole` helper remains available for organization-level authorization;
+it is separate from `requireAdminRole`, which protects platform operations.
+
+---
+{% endif %}
+
 ## ?? Documentation
 
 - [Architecture Overview](docs/ARCHITECTURE.md)

@@ -1,4 +1,4 @@
-{% if saas_infra_module == "enabled" and saas_multi_tenancy == 'enterprise' %}
+{% if saas_infra_module == "enabled" and saas_multi_tenancy_level == 'enterprise' %}
 # Multi-Tenancy Module
 
 Enterprise-grade multi-tenancy implementation with tenant isolation, resolution, and comprehensive management features.
@@ -6,7 +6,7 @@ Enterprise-grade multi-tenancy implementation with tenant isolation, resolution,
 ## Features
 
 - **Multiple Resolution Strategies**: Subdomain, path, header, or JWT-based tenant identification
-- **Row-Level Security**: Automatic data isolation with Prisma/Drizzle extensions
+- **Tenant Query Scoping**: Request-scoped Prisma model queries with strict missing-context rejection
 - **React Context**: Easy tenant access in client components with hooks
 - **Tenant Management**: Full CRUD operations with usage tracking
 - **Feature Flags**: Per-tenant feature toggles and tier-based access
@@ -23,7 +23,7 @@ Configure tenant resolution in your Next.js middleware:
 
 ```typescript
 // middleware.ts
-import { createTenantMiddleware } from '@/lib/multi-tenant';
+import { createTenantMiddleware } from '@/lib/multi-tenant/middleware';
 
 export const middleware = createTenantMiddleware({
   strategy: 'subdomain',
@@ -40,7 +40,7 @@ export const config = {
 
 ```tsx
 // app/layout.tsx
-import { TenantProvider } from '@/lib/multi-tenant';
+import { TenantProvider } from '@/lib/multi-tenant/context';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -56,7 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 ### 3. Use Tenant Context in Components
 
 ```tsx
-import { useTenant, FeatureGate } from '@/lib/multi-tenant';
+import { useTenant, FeatureGate } from '@/lib/multi-tenant/context';
 
 export function Dashboard() {
   const { tenant, hasFeature } = useTenant();
@@ -78,17 +78,78 @@ export function Dashboard() {
 ```typescript
 // lib/db.ts
 import { PrismaClient } from '@prisma/client';
-import { createPrismaExtension } from '@/lib/multi-tenant';
+import { createPrismaExtension, initTenantIsolation } from '@/lib/multi-tenant/isolation';
 
-export const db = new PrismaClient().$extends(createPrismaExtension);
+// Generated B2B models use organizationId, rather than the generic tenantId default.
+initTenantIsolation({ tenantIdField: 'organizationId' });
+export const db = createPrismaExtension(new PrismaClient());
 ```
 
-Now all queries are automatically scoped to the current tenant:
+Establish a request scope after resolving and authorizing the tenant on the server:
 
 ```typescript
-// This automatically filters by tenantId
-const posts = await db.post.findMany();
+import { withTenant } from '@/lib/multi-tenant/isolation';
+
+const posts = await withTenant(authorizedTenant, () => db.post.findMany());
 ```
+
+`withTenant` uses Node.js `AsyncLocalStorage`: concurrent requests and nested
+scopes keep separate tenant values, including when a callback throws. Without
+a tenant, strict mode rejects protected model operations before querying.
+Only explicitly excluded models bypass scoping. `setCurrentTenant` may update
+an existing scope; it cannot establish an ambient process-wide tenant.
+
+`excludedTables` contains exact Prisma model names, not SQL table names. Its
+defaults are `User` (global authentication identity) and `Tenant` (a generic
+tenant registry). A Prisma operation reports `model: 'User'`, not `'users'`.
+Excluded model access still requires application authorization; exclusion does
+not grant a user permission to read or modify those records.
+
+The generic isolation field defaults to `tenantId`. Generated B2B Prisma
+models instead use `organizationId` (mapped to SQL `organization_id`), so
+configure the field with `initTenantIsolation` before creating the extension
+or accessing its context. Apply the extension only to a schema whose protected
+models contain that field. Models scoped through relations or global catalogs
+need explicit, separately authorized query handling; the helper does not add
+model exemptions or infer a different field automatically.
+
+The Prisma extension scopes top-level model operations, including unique
+lookups, aggregates, updates, and upserts. It does not implement database RLS
+or secure Prisma nested relation operations or direct `$queryRaw` calls. Use
+database policies and resource authorization for those paths. The Drizzle
+helper remains a scaffold: adapt its predicates to your application and ORM
+schema before use. Its filters, ordering, pagination, and count reject with an
+explicit unsupported-operation error until implemented; they never return
+fabricated counts or silently ignore requested query constraints.
+
+### 5. Parameterized PostgreSQL SELECTs
+
+`buildTenantQuery` returns `{ sql, params }`, not a SQL string. It wraps a
+caller-owned SELECT so every result is filtered even when the inner predicate
+contains `OR`, and binds the tenant ID as the last PostgreSQL `$n` parameter.
+
+```typescript
+import { buildTenantQuery, withTenant } from '@/lib/multi-tenant/isolation';
+
+await withTenant(authorizedTenant, async () => {
+  const { sql, params } = buildTenantQuery(
+    'SELECT * FROM invoices WHERE status = $1 OR status = $2',
+    'tenant_id',
+    ['open', 'overdue'],
+  );
+  return postgresClient.query(sql, params);
+});
+```
+
+The SELECT must project the tenant column. This helper supports one SELECT
+statement, a simple SQL column identifier, and PostgreSQL positional parameters;
+it rejects multiple statements and semicolons inside the SELECT. It is not a
+general SQL parser. Never pass user-supplied SQL or interpolate parameter values.
+
+Import React hooks from `multi-tenant/context`, API clients from
+`multi-tenant/api`, and server isolation from `multi-tenant/isolation`.
+Client components must not import the mixed `multi-tenant` barrel, which also
+exports Node-only server helpers.
 
 ## Resolution Strategies
 

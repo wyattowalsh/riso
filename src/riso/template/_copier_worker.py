@@ -27,6 +27,8 @@ def run_argv_with_timeout(
     argv: list[str],
     *,
     timeout: int | None,
+    cwd: Path | None = None,
+    env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run argv in a new session; kill the process group on timeout.
 
@@ -41,6 +43,8 @@ def run_argv_with_timeout(
             stderr=subprocess.PIPE,
             text=True,
             start_new_session=True,
+            cwd=cwd,
+            env=env,
         )
     except (TypeError, ValueError, OSError):
         # Extremely old platforms: fall back to plain run (no group kill).
@@ -50,6 +54,8 @@ def run_argv_with_timeout(
             capture_output=True,
             text=True,
             timeout=timeout if timeout is not None and timeout > 0 else None,
+            cwd=cwd,
+            env=env,
         )
 
     try:
@@ -91,9 +97,10 @@ def _kill_process_group(proc: subprocess.Popen[str]) -> None:
         return
     try:
         proc.wait(timeout=2)
-        return
     except (OSError, subprocess.SubprocessError, TimeoutError):
         pass
+    # A parent can exit while a descendant ignores SIGTERM. Kill the group even
+    # after the parent has been reaped so timed-out hooks cannot leave work alive.
     try:
         os.killpg(proc.pid, signal.SIGKILL)
     except (ProcessLookupError, PermissionError, OSError):
@@ -120,6 +127,7 @@ def _run_copy(args: dict[str, Any]) -> None:
 def _run_update(args: dict[str, Any]) -> None:
     """Execute Copier update with worker payload."""
     kwargs: dict[str, Any] = {
+        "overwrite": True,
         "skip_answered": bool(args.get("skip_answered", True)),
         "unsafe": bool(args.get("unsafe", False)),
         "skip_tasks": bool(args.get("skip_tasks", True)),

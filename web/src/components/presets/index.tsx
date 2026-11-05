@@ -5,7 +5,7 @@ import {
   saveCustomPreset,
   loadCustomPresets,
   generateShareableURL,
-  type CustomPreset
+  type CustomPreset,
 } from '../../lib/presets'
 import { PresetsGrid } from './PresetsGrid'
 import { CustomPresetsSection } from './CustomPresetsSection'
@@ -19,48 +19,58 @@ import { stepAfterExternalConfigApply } from '../../lib/wizardGate'
  * Provides both built-in quick-start presets and custom preset functionality
  */
 export function Presets() {
-  const { config, resetConfig, updateConfig, setStep } = useRisoStore()
+  const { config, replaceConfig, setStep } = useRisoStore()
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null)
-  const [celebratingPreset, setCelebratingPreset] = useState<string | null>(null)
-  const [customPresets, setCustomPresets] = useState<Record<string, CustomPreset>>(
-    () => loadCustomPresets()
+  const [celebratingPreset, setCelebratingPreset] = useState<string | null>(
+    null,
   )
+  const [customPresets, setCustomPresets] = useState<
+    Record<string, CustomPreset>
+  >(() => loadCustomPresets())
   const [showSaveModal, setShowSaveModal] = useState(false)
 
-  const applyPreset = useCallback((preset: Preset, _event: React.MouseEvent) => {
-    // Reset config first to clear any existing selections, then apply preset
-    resetConfig()
-    updateConfig(preset.config)
+  const applyPreset = useCallback(
+    (preset: Preset, _event: React.MouseEvent) => {
+      replaceConfig(preset.config)
 
-    // Navigate to review after a brief delay for the animation
-    setTimeout(() => {
-      setStep(stepAfterExternalConfigApply(preset.config))
-      setCelebratingPreset(null)
-    }, 400)
-  }, [resetConfig, updateConfig, setStep])
+      // Navigate to review after a brief delay for the animation
+      setTimeout(() => {
+        setStep(stepAfterExternalConfigApply(preset.config))
+        setCelebratingPreset(null)
+      }, 400)
+    },
+    [replaceConfig, setStep],
+  )
 
-  const applyCustomPreset = useCallback((preset: CustomPreset, _event: React.MouseEvent) => {
-    // Reset config first to clear any existing selections, then apply preset
-    resetConfig()
-    updateConfig(preset.config)
+  const applyCustomPreset = useCallback(
+    (preset: CustomPreset, _event: React.MouseEvent) => {
+      replaceConfig(preset.config)
 
-    // Navigate to review after a brief delay for the animation
-    setTimeout(() => {
-      setStep(stepAfterExternalConfigApply(preset.config))
-      setCelebratingPreset(null)
-    }, 400)
-  }, [resetConfig, updateConfig, setStep])
+      // Navigate to review after a brief delay for the animation
+      setTimeout(() => {
+        setStep(stepAfterExternalConfigApply(preset.config))
+        setCelebratingPreset(null)
+      }, 400)
+    },
+    [replaceConfig, setStep],
+  )
 
-  const handleSavePreset = useCallback((name: string, description: string) => {
-    saveCustomPreset(name, config, description)
-    setCustomPresets(loadCustomPresets())
-    setShowSaveModal(false)
-  }, [config])
+  const handleSavePreset = useCallback(
+    (name: string, description: string) => {
+      saveCustomPreset(name, config, description)
+      setCustomPresets(loadCustomPresets())
+      setShowSaveModal(false)
+    },
+    [config],
+  )
 
-  const handleSharePreset = useCallback(async (presetConfig: Partial<RisoConfig>) => {
-    const url = generateShareableURL(presetConfig)
-    await copyToClipboard(url)
-  }, [])
+  const handleSharePreset = useCallback(
+    async (presetConfig: Partial<RisoConfig>) => {
+      const url = generateShareableURL(presetConfig)
+      await copyToClipboard(url)
+    },
+    [],
+  )
 
   return (
     <div className="space-y-8">

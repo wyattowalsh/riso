@@ -22,12 +22,12 @@ if str(_REPO) not in sys.path:
     sys.path.insert(0, str(_REPO))
 
 try:
-    from scripts.lib.paths import repo_root  # noqa: E402
+    from scripts.lib.paths import iter_sample_answer_files, repo_root  # noqa: E402
 except ModuleNotFoundError:  # pragma: no cover
     scripts_dir = _REPO / "scripts"
     if str(scripts_dir) not in sys.path:
         sys.path.insert(0, str(scripts_dir))
-    from lib.paths import repo_root  # type: ignore[no-redef]  # noqa: E402
+    from lib.paths import iter_sample_answer_files, repo_root  # type: ignore[no-redef]  # noqa: E402
 
 REPO_ROOT = repo_root()
 
@@ -48,10 +48,7 @@ try:  # pragma: no cover - import behaviour depends on invocation style
 except (
     ModuleNotFoundError
 ):  # pragma: no cover - fallback for `python path/to/script.py`
-    import sys as _sys
-    from pathlib import Path as _Path
-
-    _sys.path.append(str(_Path(__file__).resolve().parent))
+    sys.path.append(str(Path(__file__).resolve().parent))
     from record_module_success import (
         ModuleResult,
         ModuleSuccessRecorder,
@@ -111,11 +108,6 @@ def discover_variants() -> list[tuple[str, Path]]:
     variants: list[tuple[str, Path]] = []
     if not SAMPLES_DIR.is_dir():
         return variants
-    try:
-        from scripts.lib.paths import iter_sample_answer_files
-    except ModuleNotFoundError:  # pragma: no cover
-        from lib.paths import iter_sample_answer_files  # type: ignore[no-redef]
-
     for answers_file in iter_sample_answer_files(SAMPLES_DIR):
         if not _is_discoverable_answers(answers_file):
             continue
@@ -275,8 +267,13 @@ def main() -> None:
     parser.add_argument("--retention-days", type=int, default=90)
     args = parser.parse_args()
 
-    METADATA_DIR.mkdir(parents=True, exist_ok=True)
     output_file = METADATA_DIR / "render_matrix.json"
+
+    if args.skip_render and not output_file.is_file():
+        parser.error(
+            "--skip-render requires existing render_matrix.json; no render was started"
+        )
+    METADATA_DIR.mkdir(parents=True, exist_ok=True)
 
     if args.skip_render and output_file.exists():
         summary: RenderSummary = json.loads(output_file.read_text(encoding="utf-8"))

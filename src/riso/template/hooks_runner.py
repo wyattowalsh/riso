@@ -1,35 +1,30 @@
-"""Run Riso post-generation hooks outside Copier ``_tasks``."""
+"""Run the bundled Riso post-generation hook in an isolated subprocess."""
 
 from __future__ import annotations
 
 import os
-import runpy
+import subprocess
+import sys
 from collections.abc import Mapping
 from pathlib import Path
 
-from riso.core.errors import CopierOperationError
+from riso.core.errors import CopierOperationError, OperationTimeoutError
+from riso.core.paths import bundled_template_path
 
 
 def _candidate_post_gen_paths(template_hint: Path | None = None) -> list[Path]:
-    """Resolve possible post_gen_project.py locations."""
-    candidates: list[Path] = []
-    if template_hint is not None:
-        root = template_hint.resolve()
-        candidates.extend(
-            [
-                root / "hooks" / "post_gen_project.py",
-                root / "template" / "hooks" / "post_gen_project.py",
-                root.parent / "hooks" / "post_gen_project.py",
-            ]
-        )
-    # Bundled relative to this package: repo template/hooks when developing.
-    pkg_root = Path(__file__).resolve().parents[3]
-    candidates.append(pkg_root / "template" / "hooks" / "post_gen_project.py")
-    return candidates
+    """Only select the hook belonging to Riso's bundled template."""
+    bundled = bundled_template_path()
+    if template_hint is not None and template_hint.resolve() != bundled:
+        return []
+    script = bundled / "hooks" / "post_gen_project.py"
+    if script.resolve().parent != bundled / "hooks":
+        return []
+    return [script]
 
 
 def find_post_gen_script(template_hint: Path | None = None) -> Path | None:
-    """Return first existing post_gen script path, or None."""
+    """Return the bundled hook, never one from an external template."""
     for path in _candidate_post_gen_paths(template_hint):
         if path.is_file():
             return path
@@ -41,13 +36,9 @@ def run_post_gen(
     *,
     template_hint: Path | None = None,
     extra_env: Mapping[str, str] | None = None,
+    timeout: int | None = None,
 ) -> None:
-    """Execute post_gen_project.py with ``cwd=destination``.
-
-    Raises:
-        CopierOperationError: if the script is missing or exits non-zero.
-        FileNotFoundError: if destination does not exist.
-    """
+    """Run the bundled hook with child-only environment, argv, and cwd."""
     dest = destination.resolve()
     if not dest.is_dir():
         raise FileNotFoundError(dest)
@@ -55,32 +46,33 @@ def run_post_gen(
     script = find_post_gen_script(template_hint)
     if script is None:
         raise CopierOperationError(
-            "post_gen",
-            "Riso post-generation hook not found",
+            "post_gen", "Trusted Riso post-generation hook not found"
         )
 
-    env_backup = os.environ.copy()
-    cwd_backup = Path.cwd()
+    from riso.template._copier_worker import run_argv_with_timeout
+
+    child_env = os.environ.copy()
+    if extra_env:
+        child_env.update({str(key): str(value) for key, value in extra_env.items()})
     try:
-        if extra_env:
-            os.environ.update({str(k): str(v) for k, v in extra_env.items()})
-        os.chdir(dest)
-        try:
-            runpy.run_path(str(script), run_name="__main__")
-        except SystemExit as exc:
-            code = exc.code
-            if code in (None, 0):
-                return
-            if isinstance(code, int) and code == 0:
-                return
-            raise CopierOperationError(
-                "post_gen",
-                f"post_gen exited with code {code}",
-            ) from exc
-    finally:
-        os.chdir(cwd_backup)
-        os.environ.clear()
-        os.environ.update(env_backup)
+        completed = run_argv_with_timeout(
+            [sys.executable, str(script)],
+            timeout=timeout,
+            cwd=dest,
+            env=child_env,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise OperationTimeoutError(
+            operation="post_gen",
+            timeout_seconds=int(timeout or 0),
+            details=f"post_gen exceeded {timeout}s timeout",
+        ) from exc
+
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout or "").strip()
+        raise CopierOperationError(
+            "post_gen", detail or f"post_gen exited with code {completed.returncode}"
+        )
 
 
 def should_skip_post_gen(
@@ -96,8 +88,4 @@ def should_skip_post_gen(
     return value in {"1", "true", "yes", "on"}
 
 
-__all__ = [
-    "find_post_gen_script",
-    "run_post_gen",
-    "should_skip_post_gen",
-]
+__all__ = ["find_post_gen_script", "run_post_gen", "should_skip_post_gen"]

@@ -9,11 +9,12 @@ from unittest.mock import patch
 from riso.template import run_update
 
 
-def test_update_worker_payload_includes_src_path_and_skip_tasks(tmp_path: Path) -> None:
-    """Ensure update dispatches skip_tasks and template path via data."""
+def test_update_worker_preserves_saved_source_and_skip_tasks(tmp_path: Path) -> None:
+    """Source metadata is validated, not passed as a pretend Copier override."""
     dest = tmp_path / "proj"
     dest.mkdir()
     (dest / ".copier-answers.yml").write_text(
+        f"_src_path: {tmp_path / 'template-root'}\n"
         "cli_module: enabled\ncli_languages: [python]\n",
         encoding="utf-8",
     )
@@ -38,4 +39,7 @@ def test_update_worker_payload_includes_src_path_and_skip_tasks(tmp_path: Path) 
 
     assert captured["op"] == "update"
     assert captured["payload"]["skip_tasks"] is True
-    assert captured["payload"]["data"] == {"_src_path": str(template)}
+    assert captured["payload"]["data"] == {
+        "cli_module": "enabled",
+        "cli_languages": ["python"],
+    }

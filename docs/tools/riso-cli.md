@@ -11,7 +11,10 @@ uv sync
 uv run riso doctor --json
 ```
 
-From PyPI (`pip install riso` or `uv tool install riso`), pass `--template-path` when not in a checkout.
+Installed wheels include the Copier template, so `pip install riso` or
+`uv tool install riso` can resolve it without a checkout. Use `--template-path`
+to select another trusted template explicitly. Sample variant discovery still
+uses a repository checkout or an explicit `--samples-path`.
 
 ## JSON envelope
 
@@ -86,4 +89,20 @@ uv run riso export-yaml --data project_name=MyApp
 - `--template-path` or `RISO_TEMPLATE_PATH`
 - `--samples-path` or `RISO_SAMPLES_PATH`
 
-Without a checkout, pass `--template-path` explicitly.
+Resolution uses the explicit path, the environment override, then the checkout
+or packaged template. Riso-managed post-generation hooks run only for the bundled
+template, in a child process bounded by the operation timeout. External templates
+cannot select a Riso-managed hook; their Copier tasks require the explicit unsafe
+opt-in.
+
+Update and recopy validate canonical answers before generation and persist Riso's
+answer remaps only after success. This preserves existing answers when validation
+or worker startup fails; it does not roll back arbitrary files that Copier itself
+has already modified during a failing operation. Dry-run previews do not write
+destination answers.
+
+Update and recopy follow `_src_path` in the destination's saved Copier answers.
+An explicit `--template-path` or `RISO_TEMPLATE_PATH` must match that source;
+passing `_src_path` as ordinary answer data cannot switch it. A conflicting source
+selection is rejected before generation. Copier's versioned update still requires
+a Git-backed source, and any required unsafe opt-in remains explicit.

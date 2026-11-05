@@ -14,7 +14,11 @@ import ast
 import json
 import os
 
-from riso.core.answers import load_answers_file, prepare_copier_data
+from riso.core.answers import (
+    load_answers_file,
+    prepare_copier_data,
+    strip_empty_lists_for_copier,
+)
 from riso.core.errors import (
     CopierOperationError,
     OperationTimeoutError,
@@ -23,7 +27,12 @@ from riso.core.errors import (
 from riso.core.generation_gates import validate_answers_for_generation
 from riso.core.removed_answer_keys import apply_removed_key_remaps
 from riso.core.names import validate_identity_fields
-from riso.core.paths import validate_destination
+from riso.core.paths import (
+    bundled_template_path,
+    is_bundled_template,
+    resolve_project_template_path,
+    validate_destination,
+)
 from riso.template.hooks_runner import run_post_gen, should_skip_post_gen
 
 
@@ -69,7 +78,7 @@ def _repo_root() -> Path:
 
 def get_template_path() -> Path:
     """Return the local template path."""
-    return (_repo_root() / "template").resolve()
+    return bundled_template_path()
 
 
 def get_samples_path() -> Path:
@@ -583,15 +592,29 @@ def _run_copier_worker(
         )
 
 
+def _public_copier_answers(answers: dict[str, Any]) -> dict[str, Any]:
+    """Send validated public answers without stale Copier source metadata."""
+    return {
+        key: value
+        for key, value in strip_empty_lists_for_copier(answers).items()
+        if not str(key).startswith("_")
+    }
+
+
 def _maybe_run_post_gen(
     dest_path: Path,
     *,
-    template_path: Path,
+    template_path: Path | None,
     skip_post_gen: bool,
+    timeout: int | None,
 ) -> None:
-    if should_skip_post_gen(skip_flag=skip_post_gen):
+    if (
+        should_skip_post_gen(skip_flag=skip_post_gen)
+        or template_path is None
+        or not is_bundled_template(template_path)
+    ):
         return
-    run_post_gen(dest_path, template_hint=template_path)
+    run_post_gen(dest_path, template_hint=template_path, timeout=timeout)
 
 
 def run_generator(
@@ -620,7 +643,7 @@ def run_generator(
         {
             "template_path": str(template_path),
             "destination": str(dest_path),
-            "data": prepared,
+            "data": strip_empty_lists_for_copier(prepared),
             "vcs_ref": vcs_ref,
             "overwrite": force,
             "unsafe": force_unsafe,
@@ -629,7 +652,10 @@ def run_generator(
         timeout,
     )
     _maybe_run_post_gen(
-        dest_path, template_path=template_path, skip_post_gen=skip_post_gen
+        dest_path,
+        template_path=template_path,
+        skip_post_gen=skip_post_gen,
+        timeout=timeout,
     )
 
     return OperationResult(
@@ -643,7 +669,7 @@ def run_generator(
 def run_update(
     *,
     destination: Path,
-    template_path: Path,
+    template_path: Path | None = None,
     skip_answered: bool = True,
     force_unsafe: bool = False,
     timeout: int | None = None,
@@ -655,13 +681,16 @@ def run_update(
     if not dest_path.exists():
         raise FileNotFoundError(dest_path)
 
-    gate_answers = answers
-    if gate_answers is None:
-        answers_file = dest_path / ".copier-answers.yml"
-        if answers_file.is_file():
-            gate_answers = load_answers_file(answers_file)
-    if isinstance(gate_answers, dict):
-        _enforce_generation_gates(gate_answers)
+    answers_file = dest_path / ".copier-answers.yml"
+    saved_answers = load_answers_file(answers_file) if answers_file.is_file() else {}
+    gate_answers = dict(answers) if answers is not None else dict(saved_answers)
+    _enforce_generation_gates(gate_answers)
+    actual_template = resolve_project_template_path(
+        saved_answers,
+        operation="update",
+        explicit=template_path,
+        supplied=answers,
+    )
 
     _run_copier_worker(
         "update",
@@ -670,13 +699,15 @@ def run_update(
             "skip_answered": skip_answered,
             "unsafe": force_unsafe,
             "skip_tasks": True,
-            # Copier expects defaults: bool; template override goes in data.
-            "data": {"_src_path": str(template_path)},
+            "data": _public_copier_answers(gate_answers),
         },
         timeout,
     )
     _maybe_run_post_gen(
-        dest_path, template_path=template_path, skip_post_gen=skip_post_gen
+        dest_path,
+        template_path=actual_template,
+        skip_post_gen=skip_post_gen,
+        timeout=timeout,
     )
 
     return OperationResult(
@@ -691,7 +722,7 @@ def run_recopy(
     *,
     destination: Path,
     data: dict[str, Any] | None,
-    template_path: Path,
+    template_path: Path | None = None,
     force_unsafe: bool = False,
     timeout: int | None = None,
     skip_post_gen: bool = False,
@@ -707,9 +738,16 @@ def run_recopy(
     existing: dict[str, Any] = {}
     if answers_file.is_file():
         existing = load_answers_file(answers_file)
-    _enforce_generation_gates({**existing, **copier_data})
+    merged = {**existing, **copier_data}
+    _enforce_generation_gates(merged)
+    actual_template = resolve_project_template_path(
+        existing,
+        operation="recopy",
+        explicit=template_path,
+        supplied=data,
+    )
 
-    copier_data = {**copier_data, "_src_path": str(template_path)}
+    copier_data = _public_copier_answers(merged)
     _run_copier_worker(
         "recopy",
         {
@@ -721,7 +759,10 @@ def run_recopy(
         timeout,
     )
     _maybe_run_post_gen(
-        dest_path, template_path=template_path, skip_post_gen=skip_post_gen
+        dest_path,
+        template_path=actual_template,
+        skip_post_gen=skip_post_gen,
+        timeout=timeout,
     )
 
     return OperationResult(

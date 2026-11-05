@@ -4,17 +4,19 @@ import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 import fs from 'fs'
 
-const docsSource = path.resolve(__dirname, '../docs/_build')
+const docsSource = path.resolve(import.meta.dirname, '../docs/_build')
 
 function copyDocsPlugin() {
   return {
     name: 'copy-docs',
+    apply: 'build' as const,
     closeBundle() {
-      if (!fs.existsSync(docsSource)) {
-        console.warn('[copy-docs] docs/_build not found, skipping docs copy.')
-        return
+      if (!fs.existsSync(path.join(docsSource, 'index.html'))) {
+        throw new Error(
+          '[copy-docs] Built documentation is required. Run pnpm build to generate docs/_build first.',
+        )
       }
-      const docsDest = path.resolve(__dirname, 'dist/docs')
+      const docsDest = path.resolve(import.meta.dirname, 'dist/docs')
       fs.rmSync(docsDest, { recursive: true, force: true })
       fs.mkdirSync(docsDest, { recursive: true })
       fs.cpSync(docsSource, docsDest, { recursive: true })
@@ -27,14 +29,14 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), copyDocsPlugin()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(import.meta.dirname, './src'),
     },
   },
   server: {
     port: 5173,
     open: true,
     fs: {
-      allow: [path.resolve(__dirname, '..')],
+      allow: [path.resolve(import.meta.dirname, '..')],
     },
   },
   build: {

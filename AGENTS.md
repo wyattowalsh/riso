@@ -95,13 +95,14 @@ uv run pytest -m integration           # integration only
 
 <!-- agents-md:auto -->
 
-`just quality` runs **lint → typecheck → test** per `justfile`:
+`just quality` runs **lint → typecheck → test → ssot** per `justfile`:
 
-| Target      | Command scope                                                                   |
-| ----------- | ------------------------------------------------------------------------------- |
-| `lint`      | `ruff check` + `ruff format --check` on `scripts/`, `template/hooks/`, `tests/` |
-| `typecheck` | `ty check scripts template/hooks src`                                           |
-| `test`      | `pytest tests`                                                                  |
+| Target      | Command scope                                                                                  |
+| ----------- | ---------------------------------------------------------------------------------------------- |
+| `lint`      | `ruff check` + `ruff format --check` on `scripts/`, `template/hooks/`, `src/`, `tests/`        |
+| `typecheck` | `ty check --extra-search-path scripts --extra-search-path template scripts template/hooks src` |
+| `test`      | `pytest tests`                                                                                 |
+| `ssot`      | Removed-answer remap parity and sample leftover-key validation                                 |
 
 Pylint runs via **pre-commit**, not `just quality`. Config: `pyproject.toml` (`[tool.ruff]`, `[tool.ty]`, `[tool.pylint]`).
 

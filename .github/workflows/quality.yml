@@ -375,7 +375,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Install system dependencies
         run: |
@@ -495,7 +495,6 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-  # web-tests pins pnpm 9.15.0; validate-agents/saas matrix jobs use pnpm/action-setup default — align when touching those jobs.
   web-tests:
     name: Web UI Tests
     runs-on: ubuntu-latest
@@ -503,15 +502,19 @@ jobs:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
         with:
-          version: 9.15.0
+          version: 11.11.0
       - uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "pnpm"
           cache-dependency-path: web/pnpm-lock.yaml
       - name: Install dependencies
         working-directory: web
         run: pnpm install --frozen-lockfile
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
       - name: Audit production dependencies
         working-directory: web
         run: pnpm audit --prod

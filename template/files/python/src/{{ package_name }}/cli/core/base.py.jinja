@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import inspect
 from typing import Any, Callable, ParamSpec, TypeVar, cast
 
 import typer
@@ -128,7 +129,7 @@ def command(
         setattr(func, "_cli_hidden", hidden)
         
         # Wrap async functions to run in event loop
-        if asyncio.iscoroutinefunction(func):
+        if inspect.iscoroutinefunction(func):
             @functools.wraps(func)
             def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
                 """Run async command in event loop."""

@@ -13,7 +13,11 @@ import yaml
 
 from riso.cli.commands.update import run_update
 from riso.cli.config import CliConfig
-from riso.core.errors import PathNotFoundError, ValidationFailedError
+from riso.core.errors import (
+    CopierOperationError,
+    PathNotFoundError,
+    ValidationFailedError,
+)
 from riso.core.paths import resolve_template_path
 
 pytestmark = pytest.mark.unit
@@ -78,16 +82,27 @@ def test_update_dry_run_runs_generation_gates_without_writing(tmp_path: Path) ->
     assert any("Neon" in err or "neon" in err for err in exc.value.data["errors"])
 
 
-def test_update_live_writes_remapped_answers_then_copier(tmp_path: Path) -> None:
+def test_update_live_persists_remaps_after_copier_success(tmp_path: Path) -> None:
     dest = tmp_path / "proj"
     answers = _write_fixture(dest, "api_language.yml")
+    original = answers.read_bytes()
     fake_result = SimpleNamespace(
         to_dict=lambda: {"success": True, "destination": str(dest)}
     )
 
+    def succeed(**kwargs):
+        assert answers.read_bytes() == original
+        assert kwargs["answers"]["api_languages"] == ["python"]
+        generated = {
+            "_commit": "new-commit",
+            "_src_path": "new-source",
+            "project_name": "Demo",
+        }
+        answers.write_text(yaml.safe_dump(generated), encoding="utf-8")
+        return fake_result
+
     with patch(
-        "riso.cli.commands.update.template_run_update",
-        return_value=fake_result,
+        "riso.cli.commands.update.template_run_update", side_effect=succeed
     ) as worker:
         result = run_update(_config(), destination=str(dest), dry_run=False)
 
@@ -95,8 +110,41 @@ def test_update_live_writes_remapped_answers_then_copier(tmp_path: Path) -> None
     written = yaml.safe_load(answers.read_text(encoding="utf-8"))
     assert written["api_languages"] == ["python"]
     assert "api_language" not in written
+    assert written["_commit"] == "new-commit"
+    assert written["_src_path"] == "new-source"
     assert result["remap"]["written"] is True
     assert result["success"] is True
+
+
+def test_failed_update_worker_does_not_persist_remaps(tmp_path: Path) -> None:
+    dest = tmp_path / "proj"
+    answers = _write_fixture(dest, "api_language.yml")
+    original = answers.read_bytes()
+    with patch(
+        "riso.cli.commands.update.template_run_update",
+        side_effect=CopierOperationError("update", "worker rejected source"),
+    ):
+        with pytest.raises(CopierOperationError, match="worker rejected source"):
+            run_update(_config(), destination=str(dest))
+    assert answers.read_bytes() == original
+
+
+@pytest.mark.parametrize("dry_run", [False, True])
+def test_update_validation_failure_preserves_unmapped_file(
+    tmp_path: Path, dry_run: bool
+) -> None:
+    dest = tmp_path / "proj"
+    answers = _write_fixture(dest, "api_language.yml")
+    with answers.open("a", encoding="utf-8") as stream:
+        stream.write(
+            "saas_infra_module: enabled\nsaas_database: neon\nsaas_storage: supabase-storage\n"
+        )
+    original = answers.read_bytes()
+    with patch("riso.cli.commands.update.template_run_update") as worker:
+        with pytest.raises(ValidationFailedError):
+            run_update(_config(), destination=str(dest), dry_run=dry_run)
+    worker.assert_not_called()
+    assert answers.read_bytes() == original
 
 
 def test_update_leftover_fails_closed_without_write(tmp_path: Path) -> None:

@@ -57,14 +57,14 @@ export async function hasPermission(permission: string) {
   return has({ permission });
 }
 
-export async function hasRole(role: 'admin' | 'org:member') {
+export async function hasRole(role: 'org:admin' | 'org:member') {
   const { has } = await auth();
   return has({ role });
 }
 
 export async function requireAdminRole() {
-  const allowed = await hasRole('admin');
-  if (!allowed) {
+  const user = await currentUser();
+  if (user?.publicMetadata?.role !== 'admin') {
     throw new ForbiddenError('Admin role required');
   }
 }
@@ -148,8 +148,8 @@ export async function hasRole(args: ClerkArgs, role: string) {
 }
 
 export async function requireAdminRole(args: ClerkArgs) {
-  const allowed = await hasRole(args, 'org:admin') || await hasRole(args, 'admin');
-  if (!allowed) {
+  const user = await getUser(args);
+  if (user?.publicMetadata?.role !== 'admin') {
     throw new ForbiddenError('Admin role required');
   }
 }

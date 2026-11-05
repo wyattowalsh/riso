@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from riso.core.answers import (
+    persist_remapped_answers,
     prepare_copier_data,
     remap_answers_file,
     serialize_remap_ops,
@@ -13,6 +14,7 @@ from riso.core.answers import (
 from riso.core.errors import (
     CopierOperationError,
     PathNotFoundError,
+    RisoError,
     ValidationFailedError,
 )
 from riso.core.generation_gates import validate_answers_for_generation
@@ -68,18 +70,19 @@ def run_update(
             f"No .copier-answers.yml found at {dest_path}",
         )
 
-    remapped = remap_answers_file(answers_file, write=not dry_run)
+    remapped = remap_answers_file(answers_file, write=False)
     remap_payload = {
         "answers_file": str(answers_file),
         "changed": bool(remapped.ops),
-        "written": bool(remapped.ops) and not dry_run,
+        "written": False,
         "ops": serialize_remap_ops(remapped.ops),
     }
 
+    gate = validate_answers_for_generation(remapped.answers)
+    if not gate.ok:
+        raise ValidationFailedError(list(gate.errors))
+
     if dry_run:
-        gate = validate_answers_for_generation(remapped.answers)
-        if not gate.ok:
-            raise ValidationFailedError(list(gate.errors))
         return build_update_preview(
             operation="update",
             destination=dest_path,
@@ -91,14 +94,21 @@ def run_update(
     try:
         result = template_run_update(
             destination=dest_path,
-            template_path=config.template_path,
+            template_path=config.explicit_template_path,
             skip_answered=skip_answered,
             force_unsafe=config.force_unsafe,
             timeout=config.timeout,
             skip_post_gen=config.skip_post_gen,
+            answers=remapped.answers,
         )
+    except RisoError:
+        raise
     except Exception as exc:
         raise CopierOperationError("update", str(exc)) from exc
+
+    if remapped.ops:
+        persist_remapped_answers(answers_file, remapped.answers)
+        remap_payload["written"] = True
 
     payload = result.to_dict()
     payload["remap"] = remap_payload

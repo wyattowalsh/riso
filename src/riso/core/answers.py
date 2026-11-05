@@ -19,10 +19,12 @@ __all__ = [
     "apply_then_reject_removed_keys",
     "dump_answers_file",
     "load_answers_file",
+    "persist_remapped_answers",
     "prepare_copier_data",
     "reject_removed_answer_keys",
     "remap_answers_file",
     "serialize_remap_ops",
+    "strip_empty_lists_for_copier",
 ]
 
 
@@ -58,7 +60,12 @@ def load_answers_file(path: Path) -> dict[str, Any]:
 
 
 def prepare_copier_data(answers: dict[str, Any]) -> dict[str, Any]:
-    """Strip values Copier cannot consume (e.g. empty list defaults)."""
+    """Copy answers without dropping explicit selections before validation."""
+    return dict(answers)
+
+
+def strip_empty_lists_for_copier(answers: Mapping[str, Any]) -> dict[str, Any]:
+    """Remove unsupported empty-list overrides only at the Copier boundary."""
     return {
         key: value
         for key, value in answers.items()
@@ -124,3 +131,17 @@ def remap_answers_file(path: Path, *, write: bool) -> RemapResult:
     if write and result.ops:
         dump_answers_file(path, result.answers)
     return result
+
+
+def persist_remapped_answers(path: Path, answers: Mapping[str, Any]) -> None:
+    """Persist canonical public answers after generation has succeeded.
+
+    Keep Copier-managed metadata from the generated file, such as its current
+    source and commit, rather than overwriting it with the original answers.
+    """
+    existing = load_answers_file(path) if path.is_file() else {}
+    public_answers = {
+        key: value for key, value in answers.items() if not str(key).startswith("_")
+    }
+    remapped = apply_then_reject_removed_keys({**existing, **public_answers})
+    dump_answers_file(path, remapped.answers)

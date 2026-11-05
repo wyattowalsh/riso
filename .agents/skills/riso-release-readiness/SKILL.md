@@ -38,5 +38,5 @@ uv run python scripts/ci/validate_workflows.py
 uv run python scripts/ci/validate_release_configs.py
 ```
 
-Use `scripts/collect_release_evidence.py` when a compact JSON summary of
+Use `.agents/skills/riso-release-readiness/scripts/collect_release_evidence.py` when a compact JSON summary of
 evidence files is useful.

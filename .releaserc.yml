@@ -109,11 +109,16 @@ plugins:
   # 4. Run custom commands (update pyproject.toml version)
   - - "@semantic-release/exec"
     - prepareCmd: |
+        set -eu
         # Update version in pyproject.toml
         if [ -f pyproject.toml ]; then
           sed -i.bak 's/^version = .*/version = "${nextRelease.version}"/' pyproject.toml
           rm -f pyproject.toml.bak
         fi
+        # Build the final assets only after the release version is applied.
+        # Clearing generated distributions prevents attaching an earlier version.
+        uv build --no-sources --clear
+        uv run --with twine twine check dist/*
       publishCmd: |
         echo "Release ${nextRelease.version} published successfully"
       successCmd: |

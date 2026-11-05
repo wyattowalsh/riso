@@ -7,6 +7,7 @@ type MatrixPrompt = {
   default: unknown
   when: string | null
   help: string | null
+  multiselect?: boolean | null
 }
 
 type MatrixData = {
@@ -66,7 +67,10 @@ export function getPrompt(key: string): MatrixPrompt | undefined {
   return promptMap.get(key)
 }
 
-export function getPromptChoices(key: string, fallback: string[] = []): string[] {
+export function getPromptChoices(
+  key: string,
+  fallback: string[] = [],
+): string[] {
   const choices = promptMap.get(key)?.choices
   if (Array.isArray(choices) && choices.length > 0) {
     return choices

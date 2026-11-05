@@ -584,9 +584,6 @@ bootstrap_render_dependencies() {
 
   if [[ -n "${node_dir}" ]]; then
     log "Bootstrapping Node dependencies in ${node_dir}"
-    if command -v corepack >/dev/null 2>&1; then
-      corepack enable >/dev/null 2>&1 || true
-    fi
     if ! (cd "${node_dir}" && pnpm install); then
       log "ERROR: pnpm install failed for ${node_dir}"
       write_bootstrap_error "${status_file}" "node_bootstrap" "pnpm install failed for ${node_dir}"
@@ -611,23 +608,31 @@ validate_render_paths() {
     log "ERROR: Answers file not found: ${answers_file}"
     exit 1
   fi
-  if ! uv run python - "${REPO_ROOT}" "${answers_file}" <<'PY'
+  if ! uv run python - "${REPO_ROOT}" "${variant}" "${answers_file}" "${destination}" <<'PY'
 import sys
 from pathlib import Path
 
 repo = Path(sys.argv[1]).resolve()
-answers = Path(sys.argv[2]).resolve()
-samples = (repo / "samples").resolve()
-if not answers.is_file() or samples not in answers.parents:
-    raise SystemExit(1)
+variant, answers_arg, destination_arg = sys.argv[2:5]
+parts = variant.split("/")
+if any(part in {"", ".", ".."} for part in parts):
+    raise SystemExit("Variant must not contain empty, '.' or '..' components")
+samples = repo / "samples"
+if samples.is_symlink():
+    raise SystemExit("Sample root must not be a symlink")
+variant_dir = samples.joinpath(*parts)
+if variant_dir.resolve() != variant_dir or samples not in variant_dir.parents:
+    raise SystemExit("Variant must resolve to its own directory under samples")
+answers = Path(answers_arg).resolve()
+if not answers.is_file() or answers != variant_dir / "copier-answers.yml":
+    raise SystemExit("Answers must be the selected variant's copier-answers.yml")
+destination = Path(destination_arg)
+expected = variant_dir / "render"
+if destination != expected or destination.resolve() != expected:
+    raise SystemExit("Destination must be the selected variant's render directory")
 PY
   then
-    log "ERROR: Answers file must resolve under ${SAMPLES_DIR}: ${answers_file}"
-    exit 1
-  fi
-
-  if [[ "${destination}" != "${SAMPLES_DIR}/"*"/render" ]]; then
-    log "ERROR: Destination must be samples/<variant>/render (got ${destination})"
+    log "ERROR: Unsafe sample paths for variant '${variant}'"
     exit 1
   fi
 }
@@ -642,6 +647,11 @@ render_variant() {
 
   answers_file="$(canonicalize_answers_path "${answers_file}")"
   validate_render_paths "${variant}" "${answers_file}" "${destination}"
+
+  # Scope generated configuration trust to this script process and its children.
+  # Toolchain installation stays an explicit maintainer action.
+  export MISE_TRUSTED_CONFIG_PATHS="${destination}${MISE_TRUSTED_CONFIG_PATHS:+:${MISE_TRUSTED_CONFIG_PATHS}}"
+  export MISE_AUTO_INSTALL=false
 
   log "Rendering variant '${variant}' using answers '${answers_file}'"
   log "Removing existing render directory: ${destination}"
@@ -662,19 +672,18 @@ render_variant() {
     --force \
     "${REPO_ROOT}/template" \
     "${destination}"
-  if [[ -f "${destination}/mise.toml" ]] && command -v mise >/dev/null 2>&1; then
-    if ! mise trust "${destination}/mise.toml"; then
-      log "WARNING: mise trust failed for ${destination}/mise.toml"
+  # Trust only this freshly generated destination for the duration of bootstrap
+  # and smoke checks. Do not persist changes to the global mise configuration.
+  if ! (
+    if ! bootstrap_render_dependencies "${destination}" "${answers_file}"; then
+      log "ERROR: bootstrap failed for variant '${variant}'"
+      exit 1
     fi
-    # Directory-level trust so `just`/`uv` launched from python/ still accept dest mise.toml.
-    mise trust "${destination}" >/dev/null 2>&1 || true
-  fi
-  if ! bootstrap_render_dependencies "${destination}" "${answers_file}"; then
-    log "ERROR: bootstrap failed for variant '${variant}'"
-    exit 1
-  fi
-  if ! run_module_smoke_tests "${variant}" "${answers_file}" "${destination}"; then
-    log "Smoke tests failed for variant '${variant}'"
+    if ! run_module_smoke_tests "${variant}" "${answers_file}" "${destination}"; then
+      log "Smoke tests failed for variant '${variant}'"
+      exit 1
+    fi
+  ); then
     exit 1
   fi
   end_ts=$(date +%s)

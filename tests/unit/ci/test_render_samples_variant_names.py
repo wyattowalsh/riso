@@ -30,11 +30,12 @@ def test_render_samples_exports_copier_answers_json() -> None:
     assert "json.dumps(yaml.safe_load" in text
 
 
-def test_render_samples_trusts_dest_mise_toml() -> None:
-    """Official dest writer must trust generated mise.toml before bootstrap."""
+def test_render_samples_scopes_mise_trust_to_child_processes() -> None:
+    """Render bootstrap must not mutate global trust or install toolchains."""
     text = RENDER_SAMPLES.read_text(encoding="utf-8")
-    assert 'mise trust "${destination}/mise.toml"' in text
-    assert 'mise trust "${destination}"' in text
+    assert 'export MISE_TRUSTED_CONFIG_PATHS="${destination}' in text
+    assert "export MISE_AUTO_INSTALL=false" in text
+    assert "mise trust " not in text
 
 
 def test_render_samples_syncs_api_python_quality_groups() -> None:

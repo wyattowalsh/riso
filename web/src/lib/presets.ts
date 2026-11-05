@@ -6,6 +6,7 @@ import {
 } from './removedAnswerKeys'
 import {
   parseCustomPresetsStorage,
+  parseConfigOrThrow,
   parseShareConfigPayload,
 } from './configSchemas'
 
@@ -32,7 +33,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function omitPresetMeta(parsed: Record<string, unknown>): Record<string, unknown> {
+function omitPresetMeta(
+  parsed: Record<string, unknown>,
+): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(parsed)) {
     if (!PRESET_META_KEYS.has(key)) {
@@ -48,13 +51,13 @@ function omitPresetMeta(parsed: Record<string, unknown>): Record<string, unknown
 export function saveCustomPreset(
   name: string,
   config: Partial<RisoConfig>,
-  description?: string
+  description?: string,
 ): void {
   const presets = loadCustomPresets()
   const preset: CustomPreset = {
     name,
     description,
-    config,
+    config: parseConfigOrThrow(config) as Partial<RisoConfig>,
     createdAt: new Date().toISOString(),
     version: 1,
   }
@@ -104,7 +107,7 @@ export function exportPresetYAML(preset: CustomPreset): string {
     name: preset.name,
     description: preset.description,
     version: preset.version,
-    config: remapped.answers,
+    config: parseConfigOrThrow(remapped.answers),
   })
 }
 
@@ -117,6 +120,9 @@ export function importPresetYAML(yamlStr: string): CustomPreset {
     throw new Error('Invalid configuration format')
   }
   const configBlock = parsed.config
+  if ('config' in parsed && !isRecord(configBlock)) {
+    throw new Error('Invalid configuration format: config must be a mapping')
+  }
   const hasConfigBlock = isRecord(configBlock)
   const source = hasConfigBlock ? { ...configBlock } : omitPresetMeta(parsed)
   const remapped = applyThenRejectRemovedKeys(source)
@@ -137,7 +143,7 @@ export function importPresetYAML(yamlStr: string): CustomPreset {
   return {
     name,
     description,
-    config: remapped.answers as CustomPreset['config'],
+    config: parseConfigOrThrow(remapped.answers) as CustomPreset['config'],
     createdAt: new Date().toISOString(),
     version,
     remapPreview: formatRemapPreview(remapped.ops),
@@ -151,7 +157,7 @@ export function generateShareableURL(config: Partial<RisoConfig>): string {
   const remapped = applyThenRejectRemovedKeys({
     ...(config as Record<string, unknown>),
   })
-  const compressed = btoa(JSON.stringify(remapped.answers))
+  const compressed = btoa(JSON.stringify(parseConfigOrThrow(remapped.answers)))
   return `${window.location.origin}${window.location.pathname}?preset=${encodeURIComponent(compressed)}`
 }
 

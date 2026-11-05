@@ -23,7 +23,7 @@ function shareUrlError(href: string): string | null {
 }
 
 export default function App() {
-  const { isDrawerOpen, setDrawerOpen, updateConfig, setStep } = useRisoStore()
+  const { isDrawerOpen, setDrawerOpen, replaceConfig, setStep } = useRisoStore()
   const [shareError] = useState(() =>
     typeof window === 'undefined' ? null : shareUrlError(window.location.href),
   )
@@ -32,13 +32,13 @@ export default function App() {
     try {
       const presetConfig = parseShareableURL(window.location.href)
       if (presetConfig) {
-        updateConfig(presetConfig)
+        replaceConfig(presetConfig)
         setStep(stepAfterExternalConfigApply(presetConfig))
       }
     } catch {
       // Share-URL parse errors are captured in shareError at first render.
     }
-  }, [updateConfig, setStep])
+  }, [replaceConfig, setStep])
 
   return (
     <div className="min-h-screen riso-backdrop">
@@ -46,7 +46,10 @@ export default function App() {
         Skip to main content
       </a>
       <Header />
-      <main id="main-content" className="container mx-auto px-4 py-10 max-w-6xl space-y-10">
+      <main
+        id="main-content"
+        className="container mx-auto px-4 py-10 max-w-6xl space-y-10"
+      >
         <Hero />
         {shareError ? (
           <div
@@ -58,8 +61,14 @@ export default function App() {
         ) : null}
         <Highlights />
 
-        <section id="wizard" aria-labelledby="wizard-heading" className="space-y-6 scroll-mt-24">
-          <h2 id="wizard-heading" className="sr-only">Template Configuration Wizard</h2>
+        <section
+          id="wizard"
+          aria-labelledby="wizard-heading"
+          className="space-y-6 scroll-mt-24"
+        >
+          <h2 id="wizard-heading" className="sr-only">
+            Template Configuration Wizard
+          </h2>
           <History />
           <Presets />
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
@@ -78,7 +87,10 @@ export default function App() {
       <Footer />
 
       {/* Mobile drawer for SidebarSummary - only rendered on screens < 1024px */}
-      <MobileDrawer isOpen={isDrawerOpen} onClose={() => setDrawerOpen(false)} />
+      <MobileDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      />
     </div>
   )
 }

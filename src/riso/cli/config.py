@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -47,6 +48,15 @@ class CliConfig:
     def template_path(self) -> Path:
         """Resolve template path or raise TemplateNotFoundError."""
         return resolve_template_path(self.template_path_override)
+
+    @property
+    def explicit_template_path(self) -> Path | None:
+        """Return a flag/env override without treating the bundled default as one."""
+        if self.template_path_override is not None or os.environ.get(
+            "RISO_TEMPLATE_PATH"
+        ):
+            return self.template_path
+        return None
 
     @property
     def samples_path(self) -> Path:
