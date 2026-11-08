@@ -220,6 +220,7 @@ def _has_unconditional_patterns(text: str, patterns: list[str]) -> bool:
 
 
 def assert_contains(path: Path, fragments: list[str]) -> list[str]:
+    """Return the required command fragments missing from a generated file."""
     missing: list[str] = []
     text = path.read_text(encoding="utf-8")
     for fragment in fragments:
@@ -233,6 +234,7 @@ def _missing_patterns(text: str, patterns: list[str]) -> list[str]:
 
 
 def main() -> int:
+    """Check that generated quality commands agree across task runners."""
     task_text = PYTHON_TASK.read_text(encoding="utf-8")
     task_missing = [p for p in TASK_PATTERNS if p not in task_text]
 

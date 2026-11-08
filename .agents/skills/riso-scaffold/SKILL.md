@@ -14,11 +14,12 @@ Use the `riso` CLI with `--json` output. Read `template/` files directly for fil
 
 ## Workflow
 
-1. `uv run riso doctor --json` — verify copier, template path, uv
+1. `uv run riso doctor --json` — verify copier, template path, uv, git, min Copier
 1. `uv run riso variants list --json` — discover sample configurations
 1. `uv run riso prompts --json` — inspect copier.yml questions
 1. Build or load `copier-answers.yml`
-1. `uv run riso validate --answers-file copier-answers.yml --json`
+1. `uv run riso validate --answers-file copier-answers.yml --json` — generation combo gates run by default
+1. Optional prompt-schema only: `uv run riso validate --answers-file copier-answers.yml --schema-only --json`
 1. `uv run riso copy ./dest --answers-file copier-answers.yml --json`
 1. Optional dry-run: add `--dry-run` to copy/update/recopy
 

@@ -24,18 +24,18 @@ from fastapi import FastAPI
 from .config import get_config
 from .middleware.cors import configure_cors
 from .middleware.errors import configure_error_handlers
+from .middleware.rate_limit import configure_rate_limit
 from .middleware.request_id import configure_request_id
 from .routes import health
+{%- if websocket_module == "enabled" or "websocket" in api_features %}
+from .websocket_endpoints import setup_websocket_routes
+{%- endif %}
 
 try:
     from .routes import examples
     EXAMPLES_ENABLED = True
 except ImportError:
     EXAMPLES_ENABLED = False
-
-{% if websocket_module == "enabled" or "websocket" in api_features %}
-from .websocket_endpoints import setup_websocket_routes
-{% endif %}
 
 
 @asynccontextmanager
@@ -48,12 +48,15 @@ def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     config = get_config()
 
+    docs_enabled = config.environment != "production"
+
     application = FastAPI(
         title=config.app_name,
         description="FastAPI application scaffolded with Riso template",
         version=config.version,
-        docs_url="/docs",
-        redoc_url="/redoc",
+        docs_url="/docs" if docs_enabled else None,
+        redoc_url="/redoc" if docs_enabled else None,
+        openapi_url="/openapi.json" if docs_enabled else None,
         lifespan=_lifespan,
         redirect_slashes=False,
         openapi_tags=[
@@ -69,6 +72,7 @@ def create_app() -> FastAPI:
     )
 
     configure_request_id(application)
+    configure_rate_limit(application, config)
     configure_cors(application, config)
     configure_error_handlers(application)
 
@@ -77,30 +81,24 @@ def create_app() -> FastAPI:
         application.include_router(examples.router)
 
 {% if graphql_api_module == 'enabled' or 'graphql' in api_features %}
-    try:
-        from strawberry.fastapi import GraphQLRouter
+    import os
 
-        from {{ package_name }}.graphql_api.context import get_graphql_context
-        from {{ package_name }}.graphql_api.schema import schema
+    from strawberry.fastapi import GraphQLRouter
 
-        async def _graphql_context(request):
-            return await get_graphql_context(request=request)
+    from {{ package_name }}.graphql_api.context import get_router_context
+    from {{ package_name }}.graphql_api.schema import schema
 
-        import os
-
-        _graphiql = os.environ.get("GRAPHIQL", "").lower() in {"1", "true", "yes"} and (
-            config.environment != "production"
-        )
-        application.include_router(
-            GraphQLRouter(
-                schema,
-                context_getter=_graphql_context,
-                graphiql=_graphiql,
-            ),
-            prefix="/graphql",
-        )
-    except ImportError:
-        pass
+    graphiql = os.environ.get("GRAPHIQL", "").lower() in {"1", "true", "yes"} and (
+        config.environment != "production"
+    )
+    application.include_router(
+        GraphQLRouter(
+            schema,
+            context_getter=get_router_context,
+            graphql_ide="graphiql" if graphiql else None,
+        ),
+        prefix="/graphql",
+    )
 {% endif %}
 
 {% if websocket_module == "enabled" or "websocket" in api_features %}
@@ -109,11 +107,13 @@ def create_app() -> FastAPI:
 
     @application.get("/", tags=["Root"], summary="API Root")
     async def root() -> dict[str, str]:
-        return {
+        payload = {
             "message": "Welcome to {{ project_name }}",
-            "docs": "/docs",
-            "redoc": "/redoc",
         }
+        if docs_enabled:
+            payload["docs"] = "/docs"
+            payload["redoc"] = "/redoc"
+        return payload
 
     return application
 

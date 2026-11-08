@@ -1,3 +1,14 @@
+# ASSURANCE — Riso 2.0 release-ready (2026-11-08 finish)
+
+**Generated:** 2026-11-08\
+**Status:** this run is green. `quality_green` **true**. `render_matrix_green` **true**.
+
+**Evidence:** [`evidence/2026-11-08-finish.md`](./evidence/2026-11-08-finish.md).
+
+No new Copier keys. No tag. No registry publish. No force-push. `docker_execution` is **false** because `docker info` exited 1, and that is not a push blocker. August sections below stay as they were.
+
+______________________________________________________________________
+
 # ASSURANCE — Riso 2.0 release-ready (W10 addendum)
 
 **Generated:** 2026-08-18 (W10 analytics/theme + recopy dry-run)\

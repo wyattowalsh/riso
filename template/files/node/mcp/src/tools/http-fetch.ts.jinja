@@ -1,156 +1,239 @@
 {%- if mcp_module == 'enabled' and 'typescript' in mcp_languages and mcp_example_tools -%}
-/**
- * HTTP fetch tool - web content retrieval
- *
- * Demonstrates async tools with external dependencies.
- */
+/** Public HTTPS tools with connection-time address checks and a total deadline. */
 
+import { lookup } from "node:dns/promises";
+import { type LookupFunction, isIP } from "node:net";
 import type { FastMCP } from "fastmcp";
+import ipaddr from "ipaddr.js";
+import { Agent, type RequestInit, fetch } from "undici";
 import { z } from "zod";
+
+const BLOCKED_HOST = "URL host is not allowed (SSRF protection)";
+
+export function isPublicAddress(value: string): boolean {
+  if (!isIP(value)) {
+    return false;
+  }
+  const address = ipaddr.process(value);
+  if (address.range() !== "unicast") {
+    return false;
+  }
+  if (address instanceof ipaddr.IPv4) {
+    // Azure's platform virtual IP is publicly numbered but exposes host services.
+    return address.toString() !== "168.63.129.16";
+  }
+  // Only the global-unicast allocation is eligible; exclude future/reserved space.
+  const [firstByte, secondByte] = address.toByteArray();
+  return firstByte >= 0x20 && firstByte <= 0x3f && !(firstByte === 0x3f && secondByte === 0xfe);
+}
+
+function publicHttpsUrl(value: string): URL {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("Invalid URL");
+  }
+  if (url.protocol !== "https:") {
+    throw new Error("only https:// URLs are allowed");
+  }
+  if (url.username || url.password) {
+    throw new Error("URL credentials are not allowed");
+  }
+  const host = url.hostname
+    .replace(/^\[|\]$/g, "")
+    .replace(/\.$/, "")
+    .toLowerCase();
+  const blockedName =
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".local") ||
+    host === "metadata.google.internal" ||
+    host === "metadata";
+  if (blockedName || (isIP(host) && !isPublicAddress(host))) {
+    throw new Error(BLOCKED_HOST);
+  }
+  return url;
+}
+
+export function createPublicLookup(signal: AbortSignal): LookupFunction {
+  return (hostname, options, callback) => {
+    // This is the socket's resolver, not a preliminary check followed by a second lookup.
+    lookup(hostname, { all: true, verbatim: true }).then(
+      (records) => {
+        if (signal.aborted) {
+          callback(new Error("Request timed out"), "");
+          return;
+        }
+        if (records.length === 0 || records.some(({ address }) => !isPublicAddress(address))) {
+          callback(new Error(BLOCKED_HOST), "");
+          return;
+        }
+        const family = options.family;
+        const matching = records.filter((record) => !family || record.family === family);
+        const first = matching[0];
+        if (!first) {
+          callback(new Error(`Could not resolve host: ${hostname}`), "");
+        } else if (options.all) {
+          callback(null, matching);
+        } else {
+          callback(null, first.address, first.family);
+        }
+      },
+      () => callback(new Error(`Could not resolve host: ${hostname}`), ""),
+    );
+  };
+}
+
+type RequestParameters = {
+  url: string;
+  headers?: Record<string, string>;
+  timeout: number;
+};
+
+async function requestPublicHttps(
+  parameters: RequestParameters,
+  method: "GET" | "POST" | "HEAD",
+  body?: RequestInit["body"],
+) {
+  const url = publicHttpsUrl(parameters.url);
+  if (Object.keys(parameters.headers ?? {}).some((name) => name.toLowerCase() === "host")) {
+    throw new Error("Host header overrides are not allowed");
+  }
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), parameters.timeout * 1000);
+  // A request-local agent cannot reuse an unchecked connection or an environment proxy.
+  const dispatcher = new Agent({ connect: { lookup: createPublicLookup(controller.signal) } });
+  try {
+    const response = await fetch(url, {
+      method,
+      headers: parameters.headers,
+      body,
+      signal: controller.signal,
+      redirect: "manual",
+      dispatcher,
+    });
+    const content = method === "HEAD" ? "" : await response.text();
+    return { response, content };
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error("Request timed out");
+    }
+    // Fetch wraps connection failures in TypeError; retain the resolver's safe error.
+    if (error instanceof Error && error.cause instanceof Error) {
+      throw error.cause;
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+    await dispatcher.destroy();
+  }
+}
+
+function failure(error: unknown) {
+  return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+}
+
+export async function httpGet(parameters: RequestParameters) {
+  try {
+    const { response, content } = await requestPublicHttps(parameters, "GET");
+    return {
+      success: true,
+      statusCode: response.status,
+      headers: Object.fromEntries(response.headers.entries()),
+      contentType: response.headers.get("content-type") ?? "",
+      content: content.slice(0, 10000),
+      contentLength: content.length,
+    };
+  } catch (error) {
+    const result = failure(error);
+    return result.error === "Request timed out"
+      ? { ...result, timeout: parameters.timeout }
+      : result;
+  }
+}
+
+export async function httpPost(
+  parameters: RequestParameters & {
+    data?: Record<string, unknown>;
+    jsonBody?: Record<string, unknown>;
+  },
+) {
+  try {
+    const headers = { ...parameters.headers };
+    let body: string | URLSearchParams | undefined;
+    if (parameters.jsonBody) {
+      headers["Content-Type"] = "application/json";
+      body = JSON.stringify(parameters.jsonBody);
+    } else if (parameters.data) {
+      headers["Content-Type"] = "application/x-www-form-urlencoded";
+      body = new URLSearchParams();
+      for (const [key, value] of Object.entries(parameters.data)) {
+        body.append(key, String(value));
+      }
+    }
+    const { response, content } = await requestPublicHttps(
+      { ...parameters, headers },
+      "POST",
+      body,
+    );
+    return {
+      success: true,
+      statusCode: response.status,
+      headers: Object.fromEntries(response.headers.entries()),
+      content: content.slice(0, 10000),
+    };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function httpHead(parameters: RequestParameters) {
+  try {
+    const { response } = await requestPublicHttps(parameters, "HEAD");
+    return {
+      success: true,
+      statusCode: response.status,
+      headers: Object.fromEntries(response.headers.entries()),
+      contentType: response.headers.get("content-type") ?? "",
+      contentLength: response.headers.get("content-length") ?? "unknown",
+    };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+const commonParameters = {
+  url: z.string().url().describe("The public HTTPS URL to request"),
+  headers: z
+    .record(z.string(), z.string())
+    .optional()
+    .describe("Request headers (Host overrides are not allowed)"),
+  timeout: z.number().int().min(1).max(120).default(30).describe("Timeout in seconds"),
+};
 
 export function registerHttpTools(mcp: FastMCP): void {
   mcp.addTool({
     name: "http_get",
-    description: "Fetch content from a URL via HTTP GET",
-    parameters: z.object({
-      url: z.string().url().describe("The URL to fetch"),
-      headers: z.record(z.string(), z.string()).optional().describe("Request headers"),
-      timeout: z.number().int().min(1).max(120).default(30).describe("Timeout in seconds"),
-    }),
-    execute: async ({ url, headers, timeout }) => {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeout * 1000);
-
-        const response = await fetch(url, {
-          method: "GET",
-          headers,
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        const content = await response.text();
-
-        return {
-          success: true,
-          statusCode: response.status,
-          headers: Object.fromEntries(response.headers.entries()),
-          contentType: response.headers.get("content-type") ?? "",
-          content: content.slice(0, 10000), // Limit content size
-          contentLength: content.length,
-        };
-      } catch (error) {
-        if (error instanceof Error && error.name === "AbortError") {
-          return {
-            success: false,
-            error: "Request timed out",
-            timeout,
-          };
-        }
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-        };
-      }
-    },
+    description: "Fetch content from a public HTTPS URL via HTTP GET",
+    parameters: z.object(commonParameters),
+    execute: httpGet,
   });
-
   mcp.addTool({
     name: "http_post",
-    description: "Send data to a URL via HTTP POST",
+    description: "Send data to a public HTTPS URL via HTTP POST",
     parameters: z.object({
-      url: z.string().url().describe("The URL to post to"),
+      ...commonParameters,
       data: z.record(z.string(), z.unknown()).optional().describe("Form data to send"),
       jsonBody: z.record(z.string(), z.unknown()).optional().describe("JSON body to send"),
-      headers: z.record(z.string(), z.string()).optional().describe("Request headers"),
-      timeout: z.number().int().min(1).max(120).default(30).describe("Timeout in seconds"),
     }),
-    execute: async ({ url, data, jsonBody, headers, timeout }) => {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeout * 1000);
-
-        const requestHeaders: Record<string, string> = { ...headers };
-        let body: string | URLSearchParams | undefined;
-
-        if (jsonBody) {
-          requestHeaders["Content-Type"] = "application/json";
-          body = JSON.stringify(jsonBody);
-        } else if (data) {
-          requestHeaders["Content-Type"] = "application/x-www-form-urlencoded";
-          body = new URLSearchParams(
-            Object.entries(data).map(([k, v]) => [k, String(v)])
-          );
-        }
-
-        const response = await fetch(url, {
-          method: "POST",
-          headers: requestHeaders,
-          body,
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        const content = await response.text();
-
-        return {
-          success: true,
-          statusCode: response.status,
-          headers: Object.fromEntries(response.headers.entries()),
-          content: content.slice(0, 10000),
-        };
-      } catch (error) {
-        if (error instanceof Error && error.name === "AbortError") {
-          return {
-            success: false,
-            error: "Request timed out",
-          };
-        }
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-        };
-      }
-    },
+    execute: httpPost,
   });
-
   mcp.addTool({
     name: "http_head",
-    description: "Get headers from a URL without downloading content",
-    parameters: z.object({
-      url: z.string().url().describe("The URL to check"),
-      headers: z.record(z.string(), z.string()).optional().describe("Request headers"),
-      timeout: z.number().int().min(1).max(120).default(30).describe("Timeout in seconds"),
-    }),
-    execute: async ({ url, headers, timeout }) => {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeout * 1000);
-
-        const response = await fetch(url, {
-          method: "HEAD",
-          headers,
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        return {
-          success: true,
-          statusCode: response.status,
-          headers: Object.fromEntries(response.headers.entries()),
-          contentType: response.headers.get("content-type") ?? "",
-          contentLength: response.headers.get("content-length") ?? "unknown",
-        };
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-        };
-      }
-    },
+    description: "Get headers from a public HTTPS URL without downloading content",
+    parameters: z.object(commonParameters),
+    execute: httpHead,
   });
 }
-{%- endif %}
+{% endif -%}

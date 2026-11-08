@@ -49,6 +49,7 @@ def _run(cmd: list[str], *, cwd: Path) -> None:
 
 
 def sync(*, dry_run: bool) -> int:
+    """Refresh shadcn components in the probe and copy requested template files."""
     if not PROBE_DIR.exists():
         print(f"Probe directory missing: {PROBE_DIR}", file=sys.stderr)
         print(
@@ -91,6 +92,7 @@ def sync(*, dry_run: bool) -> int:
 
 
 def main() -> int:
+    """Refresh template UI components or preview the files that would change."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--dry-run", action="store_true", help="Show copies without writing."

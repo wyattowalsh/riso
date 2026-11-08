@@ -31,8 +31,10 @@ a normal merge; no reset, rebase, new branch, or forced push is needed.
 - Validate external wizard configuration after removed-key remapping and before
   state mutation. Apply imported/shared selections atomically over defaults.
 - Defer answer persistence until validation and template operations succeed.
-- Use existing focused upstream fixes as evidence, without importing unrelated
-  source changes or Git history.
+- Reconcile both main histories using shared historical file contents where
+  available and review semantic conflicts against the hardened contracts.
+- Bound source archives to installable package assets, and test actual copy and
+  recopy from a wheel outside the checkout so bundled hooks resolve their helpers.
 - Keep workflow and generation-hook changes reviewable before asking for their
   repository-required approval. No gate becomes advisory merely to pass.
 

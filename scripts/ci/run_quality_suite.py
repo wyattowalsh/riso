@@ -12,6 +12,8 @@ from pathlib import Path
 _REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_REPO))
 
+# Resolve repository modules only after the import-path bootstrap above.
+# pylint: disable-next=wrong-import-position
 from scripts.lib.paths import repo_root  # noqa: E402
 
 REPO_ROOT = repo_root()

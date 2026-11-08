@@ -1,0 +1,317 @@
+{%- if mcp_module == 'enabled' and 'python' in mcp_languages and mcp_example_tools -%}
+"""Fetch public web resources with a checked connection and a total timeout."""
+
+from __future__ import annotations
+
+import asyncio
+import ipaddress
+import os
+import re
+import socket
+from typing import TYPE_CHECKING, Any, TypeAlias
+from urllib.parse import urlsplit
+
+if TYPE_CHECKING:
+    import httpx
+    from fastmcp import FastMCP
+
+_IPAddress: TypeAlias = ipaddress.IPv4Address | ipaddress.IPv6Address
+
+# is_global alone does not exclude all multicast, platform, and transition IPs.
+_BLOCKED_NETWORKS = tuple(
+    ipaddress.ip_network(network)
+    for network in (
+        "0.0.0.0/8",
+        "10.0.0.0/8",
+        "100.64.0.0/10",
+        "127.0.0.0/8",
+        "168.63.129.16/32",  # Azure platform services
+        "169.254.0.0/16",
+        "172.16.0.0/12",
+        "192.0.0.0/24",
+        "192.0.2.0/24",
+        "192.31.196.0/24",
+        "192.52.193.0/24",
+        "192.88.99.0/24",
+        "192.168.0.0/16",
+        "192.175.48.0/24",
+        "198.18.0.0/15",
+        "198.51.100.0/24",
+        "203.0.113.0/24",
+        "224.0.0.0/4",
+        "240.0.0.0/4",
+        "2001::/23",
+        "2001:db8::/32",
+        "2002::/16",
+        "2620:4f:8000::/48",
+        "3ffe::/16",
+        "3fff::/20",
+    )
+)
+_PUBLIC_IPV6 = ipaddress.IPv6Network("2000::/3")
+_LOCAL_NAMES = (
+    "localhost",
+    "local",
+    "internal",
+    "home.arpa",
+    "test",
+    "invalid",
+    "onion",
+    "metadata",
+)
+_DNS_LABEL = re.compile(r"(?!-)[a-z0-9-]{1,63}(?<!-)")
+_NUMERIC_LABEL = re.compile(r"[0-9]+|0x[0-9a-f]+")
+
+
+def _public_address(address: _IPAddress) -> _IPAddress:
+    """Return an unscoped public IP, unmapping IPv4 before applying policy."""
+    if isinstance(address, ipaddress.IPv6Address):
+        if address.scope_id is not None:
+            raise ValueError("Scoped IPv6 addresses are not allowed")
+        address = address.ipv4_mapped or address
+    if (
+        not address.is_global
+        or address.is_multicast
+        or (address.version == 6 and address not in _PUBLIC_IPV6)
+        or any(address in network for network in _BLOCKED_NETWORKS)
+    ):
+        raise ValueError(f"Blocked private or reserved address: {address}")
+    return address
+
+
+def _literal_address(host: str) -> _IPAddress | None:
+    """Validate a canonical host and distinguish an IP literal from a DNS name."""
+    name = host.lower().removesuffix(".")
+    try:
+        address = ipaddress.ip_address(name)
+    except ValueError:
+        labels = name.split(".")
+        if any(
+            name == blocked or name.endswith(f".{blocked}") for blocked in _LOCAL_NAMES
+        ):
+            raise ValueError(f"Blocked host: {name}") from None
+        if len(name) > 253 or not all(_DNS_LABEL.fullmatch(label) for label in labels):
+            raise ValueError("Invalid hostname") from None
+        # Do not let an OS resolver reinterpret a short, octal, or hex IPv4 alias.
+        if all(_NUMERIC_LABEL.fullmatch(label) for label in labels):
+            raise ValueError("Noncanonical numeric hostname is not allowed") from None
+        return None
+    return _public_address(address)
+
+
+def _validate_fetch_url(raw: str, *, allow_http: bool) -> httpx.URL:
+    """Parse the URL using the same canonical host the HTTP client will use."""
+    import httpx
+
+    try:
+        # HTTPX normalizes an empty userinfo segment away.
+        has_userinfo = "@" in urlsplit(raw).netloc
+        url = httpx.URL(raw)
+    except (ValueError, httpx.InvalidURL) as exc:
+        raise ValueError("Invalid HTTP URL") from exc
+    if url.scheme not in {"https", "http"}:
+        raise ValueError("URL must use http or https")
+    if url.scheme == "http" and not allow_http:
+        raise ValueError(
+            "HTTP URLs are blocked; use HTTPS or set MCP_HTTP_ALLOW_INSECURE=1"
+        )
+    if not url.is_absolute_url or not url.raw_host:
+        raise ValueError("URL must include a hostname")
+    if has_userinfo or url.userinfo:
+        raise ValueError("URL credentials are not allowed")
+    return url
+
+
+async def _resolve_public_addresses(url: httpx.URL) -> tuple[_IPAddress, ...]:
+    """Resolve once and reject the entire answer if any address is unsafe."""
+    host = url.raw_host.decode("ascii")
+    if (literal := _literal_address(host)) is not None:
+        return (literal,)
+    port = url.port if url.port is not None else (443 if url.scheme == "https" else 80)
+    try:
+        answers = await asyncio.get_running_loop().getaddrinfo(
+            host, port, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP
+        )
+    except OSError as exc:
+        raise ValueError(f"Could not resolve host: {host}") from exc
+    if not answers:
+        raise ValueError(f"No IP addresses for host: {host}")
+
+    addresses = []
+    for family, _, _, _, sockaddr in answers:
+        match sockaddr:
+            case (str() as address, _) if family == socket.AF_INET:
+                pass
+            case (str() as address, _, _, 0) if family == socket.AF_INET6:
+                pass
+            case _:
+                raise ValueError("Resolver returned a non-IP or scoped address")
+        addresses.append(_public_address(ipaddress.ip_address(address)))
+    return tuple(dict.fromkeys(addresses))
+
+
+async def _request_public_url(
+    method: str,
+    raw_url: str,
+    headers: dict[str, str] | None,
+    *,
+    timeout_seconds: int,
+    data: dict[str, Any] | None,
+    json_body: dict[str, Any] | None,
+) -> httpx.Response:
+    """Dial only IPs from a single checked snapshot, keeping the original TLS name."""
+    import httpx
+
+    allow_http = os.environ.get("MCP_HTTP_ALLOW_INSECURE", "").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+    url = _validate_fetch_url(raw_url, allow_http=allow_http)
+    request_headers = httpx.Headers(headers)
+    if "Host" in request_headers:
+        raise ValueError("Host header overrides are not allowed")
+    request_headers["Host"] = url.netloc.decode("ascii")
+    extensions = (
+        {"sni_hostname": url.raw_host.decode("ascii")} if url.scheme == "https" else {}
+    )
+    addresses = await _resolve_public_addresses(url)
+
+    # HTTPX bounds each I/O operation. The outer deadline covers DNS and all
+    # attempts together. Only the checked destination can receive the request.
+    async with httpx.AsyncClient(
+        timeout=timeout_seconds, trust_env=False, follow_redirects=False
+    ) as client:
+        for index, address in enumerate(addresses):
+            try:
+                return await client.request(
+                    method,
+                    url.copy_with(host=str(address)),
+                    headers=request_headers,
+                    extensions=extensions,
+                    json=json_body if json_body else None,
+                    data=data if not json_body else None,
+                )
+            except (httpx.ConnectError, httpx.ConnectTimeout):
+                # Safe to try the next vetted IP only before sending the request.
+                if index == len(addresses) - 1:
+                    raise
+    raise AssertionError("A validated resolution must contain an address")
+
+
+async def _fetch(
+    method: str,
+    url: str,
+    headers: dict[str, str] | None,
+    timeout_seconds: int,
+    *,
+    data: dict[str, Any] | None = None,
+    json_body: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Fetch under one deadline and preserve each tool's response fields."""
+    import httpx
+
+    if (
+        not isinstance(timeout_seconds, int)
+        or isinstance(timeout_seconds, bool)
+        or not 1 <= timeout_seconds <= 120
+    ):
+        return {"success": False, "error": "timeout must be between 1 and 120 seconds"}
+    try:
+        async with asyncio.timeout(timeout_seconds):
+            response = await _request_public_url(
+                method, url, headers, timeout_seconds=timeout_seconds, data=data, json_body=json_body
+            )
+    except (TimeoutError, httpx.TimeoutException):
+        failure: dict[str, Any] = {"success": False, "error": "Request timed out"}
+        if method == "GET":
+            failure["timeout"] = timeout_seconds
+        return failure
+    except (ValueError, httpx.RequestError) as exc:
+        return {"success": False, "error": str(exc)}
+
+    result: dict[str, Any] = {
+        "success": True,
+        "status_code": response.status_code,
+        "headers": dict(response.headers),
+    }
+    if method != "HEAD":
+        result["content"] = response.text[:10000]
+    if method in {"GET", "HEAD"}:
+        result["content_type"] = response.headers.get("content-type", "")
+    if method == "GET":
+        result["content_length"] = len(response.content)
+    if method == "HEAD":
+        result["content_length"] = response.headers.get("content-length", "unknown")
+    return result
+
+
+def register_http_tools(mcp: FastMCP) -> None:
+    """Register GET, POST, and HEAD tools for public URLs."""
+
+    # The published timeout arguments are durations in seconds. _fetch owns the deadline.
+    @mcp.tool()
+    async def http_get(
+        url: str,
+        headers: dict[str, str] | None = None,
+        timeout: int = 30,  # noqa: ASYNC109
+    ) -> dict[str, Any]:
+        """Fetch content from a public URL via HTTP GET.
+
+        Parameters
+        ----------
+        url
+            The HTTPS URL to fetch
+        headers
+            Optional request headers, excluding Host
+        timeout
+            Total request timeout in seconds, from 1 to 120
+        """
+        return await _fetch("GET", url, headers, timeout)
+
+    @mcp.tool()
+    async def http_post(
+        url: str,
+        data: dict[str, Any] | None = None,
+        json_body: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        timeout: int = 30,  # noqa: ASYNC109
+    ) -> dict[str, Any]:
+        """Send data to a public URL via HTTP POST.
+
+        Parameters
+        ----------
+        url
+            The HTTPS URL to post to
+        data
+            Optional form data
+        json_body
+            Optional JSON body, used in place of form data when nonempty
+        headers
+            Optional request headers, excluding Host
+        timeout
+            Total request timeout in seconds, from 1 to 120
+        """
+        return await _fetch(
+            "POST", url, headers, timeout, data=data, json_body=json_body
+        )
+
+    @mcp.tool()
+    async def http_head(
+        url: str,
+        headers: dict[str, str] | None = None,
+        timeout: int = 30,  # noqa: ASYNC109
+    ) -> dict[str, Any]:
+        """Get headers from a public URL without downloading content.
+
+        Parameters
+        ----------
+        url
+            The HTTPS URL to check
+        headers
+            Optional request headers, excluding Host
+        timeout
+            Total request timeout in seconds, from 1 to 120
+        """
+        return await _fetch("HEAD", url, headers, timeout)
+{% endif -%}

@@ -21,7 +21,10 @@ import re
 import sys
 import json
 from dataclasses import dataclass, field
+from itertools import product
 from pathlib import Path
+
+from jinja2 import Environment, StrictUndefined, TemplateError
 
 
 @dataclass
@@ -74,7 +77,7 @@ def parse_pre_gen_project(path: Path) -> dict[str, str]:
     content = path.read_text()
 
     # Find the tool_matrix list
-    pattern = r'\("([^"]+)",\s*"([^"]+)",\s*[^)]*\)'
+    pattern = r'\("(uv|node|pnpm|python)",\s*"([^"]+)"'
     matches = re.findall(pattern, content)
 
     for tool, version in matches:
@@ -145,36 +148,89 @@ def normalize_version(version: str) -> str:
     - "3.0" -> "3.0"
     - "latest" -> "latest"
     """
-    return re.sub(r"^(?:>=|<=|~=|==|~|\^|>|<|=)\s*", "", version.strip())
+    text = version.strip()
+    if "@" in text and text[0].isalpha():
+        text = text.split("@", 1)[1]
+    return re.sub(r"^(?:>=|<=|~=|==|~|\^|>|<|=)\s*", "", text)
 
 
-def parse_package_json(path: Path) -> dict[str, str]:
-    """Read Node/pnpm requirements from JSON or its Jinja-wrapped template."""
-    content = path.read_text(encoding="utf-8")
-    try:
-        data = json.loads(content)
-    except json.JSONDecodeError:
-        data = None
+def _package_versions(content: str) -> dict[str, str]:
+    """Read Node and pnpm versions from emitted JSON."""
+    if not content.strip():
+        return {}
+    data = json.loads(content)
     if isinstance(data, dict):
         engines = data.get("engines", {})
         node = engines.get("node") if isinstance(engines, dict) else None
         manager = data.get("packageManager")
     else:
-        engines_match = re.search(r'"engines"\s*:\s*\{([^}]+)\}', content)
-        node_match = (
-            re.search(r'"node"\s*:\s*"([^"]+)"', engines_match.group(1))
-            if engines_match
-            else None
-        )
-        manager_match = re.search(r'"packageManager"\s*:\s*"([^"]+)"', content)
-        node = node_match.group(1) if node_match else None
-        manager = manager_match.group(1) if manager_match else None
+        raise ValueError("Package manifest must be a JSON object")
     result = {}
     if isinstance(node, str):
         result["node"] = node
     if isinstance(manager, str) and manager.startswith("pnpm@"):
         result["pnpm"] = manager.removeprefix("pnpm@")
     return result
+
+
+def parse_package_json(
+    path: Path, *, context: dict[str, object] | None = None
+) -> dict[str, str]:
+    """Read JSON, rendering an explicitly supplied template context first."""
+    content = path.read_text(encoding="utf-8")
+    if path.suffix == ".jinja":
+        content = (
+            Environment(undefined=StrictUndefined)
+            .from_string(content)
+            .render(**(context or {}))
+        )
+    return _package_versions(content)
+
+
+def generated_package_profiles(path: Path) -> list[VersionSource]:
+    """Render all feature intersections that affect the root Node manifest."""
+    template = Environment(undefined=StrictUndefined).from_string(
+        path.read_text(encoding="utf-8")
+    )
+    enabled = ("disabled", "enabled")
+    profiles = []
+    for api, docs, mcp, desktop, release, saas in product(
+        enabled,
+        (None, "fumadocs", "docusaurus"),
+        enabled,
+        (None, "electron-vite", "tauri"),
+        enabled,
+        enabled,
+    ):
+        content = template.render(
+            project_name="Version check",
+            project_slug="version-check",
+            package_name="version_check",
+            project_layout="single-package",
+            task_runner="just",
+            api_module=api,
+            api_languages=["node"],
+            docs_module="enabled" if docs else "disabled",
+            docs_framework=docs,
+            docusaurus_openapi="enabled",
+            mcp_module=mcp,
+            mcp_languages=["typescript"],
+            desktop_module="enabled" if desktop else "disabled",
+            desktop_framework=desktop,
+            changelog_module=release,
+            saas_infra_module=saas,
+        )
+        if not content.strip():
+            continue
+        versions = _package_versions(content)
+        if set(versions) != {"node", "pnpm"}:
+            raise ValueError(
+                f"Generated manifest missing runtime declarations: {versions}"
+            )
+        profiles.append(VersionSource(file=path, versions=versions))
+    if not profiles:
+        raise ValueError("Generated manifest emitted no Node package profiles")
+    return profiles
 
 
 def versions_compatible(required: str, configured: str, tool: str) -> bool:
@@ -234,6 +290,18 @@ def compare_versions(
     return errors
 
 
+def compare_lane(label: str, sources: list[VersionSource]) -> list[str]:
+    """Compare configured versions within one independent runtime scope."""
+    if not sources:
+        return []
+    source, *others = sources
+    return [
+        f"[{label}] {error.strip()}"
+        for tool in sorted(source.versions)
+        for error in compare_versions(source, others, tool)
+    ]
+
+
 def main() -> int:
     """Check version synchronization and report mismatches."""
     repo_root = Path(__file__).resolve().parents[2]
@@ -246,7 +314,6 @@ def main() -> int:
     pyproject_path = (
         repo_root / "template" / "files" / "python" / "pyproject.toml.jinja"
     )
-    mise_path = repo_root / "template" / "files" / ".mise.toml.jinja"
     generated_mise = repo_root / "template" / "files" / "mise.toml.jinja"
     generated_package = repo_root / "template" / "files" / "package.json.jinja"
 
@@ -256,7 +323,6 @@ def main() -> int:
         versions_sh_path,
         pre_gen_path,
         pyproject_path,
-        mise_path,
         maintainer_mise,
         maintainer_package,
         generated_mise,
@@ -302,20 +368,13 @@ def main() -> int:
     generated_source = VersionSource(
         file=generated_mise, versions=parse_mise_toml(generated_mise)
     )
+    try:
+        generated_profiles = generated_package_profiles(generated_package)
+    except (ValueError, TemplateError) as exc:
+        print(f"ERROR: Generated package profile: {exc}", file=sys.stderr)
+        return 1
     for tool in generated_source.versions:
-        all_errors.extend(
-            compare_versions(
-                generated_source,
-                [
-                    VersionSource(file=mise_path, versions=parse_mise_toml(mise_path)),
-                    VersionSource(
-                        file=generated_package,
-                        versions=parse_package_json(generated_package),
-                    ),
-                ],
-                tool,
-            )
-        )
+        all_errors.extend(compare_versions(generated_source, generated_profiles, tool))
 
     if all_errors:
         print("❌ Version mismatches detected:", file=sys.stderr)

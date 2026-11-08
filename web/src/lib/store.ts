@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { matrixDefaults } from "./matrixData";
 import { parseConfigOrThrow, parseShareConfigPayload } from "./configSchemas";
 import { parseShareableURL } from "./presets";
-import { clampWizardStep } from "./wizardGate";
+import { clampPersistedWizardStep, clampWizardStep } from "./wizardGate";
 
 // Configuration interface aligned with template/copier.yml v2.0 (component-first)
 export interface RisoConfig {
@@ -179,12 +179,12 @@ export interface RisoConfig {
   embedding_provider: "openai" | "cohere";
 
   python_versions: string[];
-  go_version: "1.24" | "1.23";
+  go_version: "1.27" | "1.26";
   go_framework: "gin" | "fiber" | "echo" | "chi";
   mcp_transport: "stdio" | "sse" | "http";
   mcp_example_tools: boolean;
   desktop_module: "disabled" | "enabled";
-  desktop_framework: "electron-vite" | "electron-forge" | "tauri";
+  desktop_framework: "electron-vite" | "tauri";
   desktop_features: string;
   desktop_platforms: string;
   include_databases: "no" | "yes";
@@ -443,7 +443,7 @@ export const defaultRisoConfig: Partial<RisoConfig> = {
   saas_rate_limiting: fromMatrix("saas_rate_limiting", "upstash"),
   saas_file_upload: fromMatrix("saas_file_upload", "uploadthing"),
   python_versions: fromMatrix("python_versions", ["3.11", "3.12", "3.13"]),
-  go_version: fromMatrix("go_version", "1.24"),
+  go_version: fromMatrix("go_version", "1.27"),
   go_framework: fromMatrix("go_framework", "gin"),
   mcp_transport: fromMatrix("mcp_transport", "stdio"),
   mcp_example_tools: fromMatrix("mcp_example_tools", true),
@@ -528,12 +528,12 @@ export function mergePersistedWizardState(
     /* An invalid share must not discard a valid persisted configuration. */
   }
   const parsed = parseShareConfigPayload(persisted.config);
-  const config = normalizeCopierWhenDefaults({
-    ...defaultRisoConfig,
-    ...(!hasSharePreset && parsed.success
-      ? (parsed.data as Partial<RisoConfig>)
-      : {}),
-  });
+  const config = hasSharePreset
+    ? currentState.config
+    : normalizeCopierWhenDefaults({
+        ...defaultRisoConfig,
+        ...(parsed.success ? (parsed.data as Partial<RisoConfig>) : {}),
+      });
   const step =
     typeof persisted.currentStep === "number" &&
     Number.isInteger(persisted.currentStep)
@@ -544,8 +544,8 @@ export function mergePersistedWizardState(
     config,
     history,
     currentStep: hasSharePreset
-      ? 0
-      : clampWizardStep(step, 0, config.project_name ?? ""),
+      ? currentState.currentStep
+      : clampPersistedWizardStep(step, config.project_name ?? ""),
     highlightedField:
       typeof persisted.highlightedField === "string"
         ? persisted.highlightedField

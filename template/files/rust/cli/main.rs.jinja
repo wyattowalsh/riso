@@ -1,4 +1,4 @@
-{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+{% if cli_module == 'enabled' and 'rust' in cli_languages -%}
 //! {{ project_name }} CLI
 //!
 //! A command-line interface built with Clap and Tokio.
@@ -30,10 +30,7 @@ fn init_logging(verbose: bool) {
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"))
     };
 
-    tracing_subscriber::registry()
-        .with(fmt::layer())
-        .with(filter)
-        .init();
+    tracing_subscriber::registry().with(fmt::layer()).with(filter).init();
 }
 
 #[tokio::main]
@@ -45,11 +42,11 @@ async fn main() -> Result<()> {
 
     cli.command.execute().await
 }
-{% else %}
+{% else -%}
 // CLI module is disabled
 // Re-render the template with `cli_module=enabled` and `cli_language=rust` to scaffold the Rust CLI.
 fn main() {
     eprintln!("CLI module is disabled for this render.");
     std::process::exit(1);
 }
-{% endif %}
+{% endif -%}

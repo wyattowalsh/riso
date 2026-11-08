@@ -4,10 +4,11 @@
 //! Exposes {{ project_name }} functionality as MCP tools.
 
 use clap::Parser;
-use {{ package_name }}_mcp::{config::Config, server::McpServer, SERVER_NAME, VERSION};
-use rmcp::{ServiceExt, transport::stdio};
+use rmcp::{transport::stdio, ServiceExt};
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+
+use {{ package_name }}_mcp::{config::Config, server::McpServer, SERVER_NAME, VERSION};
 
 #[derive(Parser, Debug)]
 #[command(name = SERVER_NAME, version = VERSION, about = "{{ project_name }} MCP Server")]
@@ -40,10 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let _config = Config::load()?;
 
-    info!(
-        "Starting {} v{} with {} transport",
-        SERVER_NAME, VERSION, args.transport
-    );
+    info!("Starting {} v{} with {} transport", SERVER_NAME, VERSION, args.transport);
 
     match args.transport.as_str() {
         "stdio" => run_stdio().await,

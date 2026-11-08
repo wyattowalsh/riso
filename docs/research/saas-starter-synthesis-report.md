@@ -455,7 +455,11 @@ ______________________________________________________________________
 - [SaaS Pegasus](https://www.saaspegasus.com/) - Django reference
 - [OpenSaaS Incident Report Feb 2025](https://docs.opensaas.sh/blog/2025-02-26-incident-report-vulnerability-in-open-saas/)
 - [HackerNews SaaS Boilerplate Discussions](https://news.ycombinator.com/item?id=41521485)
-- [useSAASkit Best Boilerplates 2025](https://www.usesaaskit.com/blog/best-saas-boilerplates)
+- [useSAASkit product reference](https://www.usesaaskit.com/) — the original
+  “Best Boilerplates 2025” article at
+  `https://www.usesaaskit.com/blog/best-saas-boilerplates` returned HTTP 404 when
+  checked on 2026-11-05. The product page provides current vendor context; the
+  unavailable comparison is retained here as a historical source gap.
 
 ______________________________________________________________________
 

@@ -1,0 +1,326 @@
+{%- if mcp_module == 'enabled' and 'typescript' in mcp_languages and mcp_example_tools -%}
+import type { LookupAddress } from "node:dns";
+import type { LookupFunction } from "node:net";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  createPublicLookup,
+  httpGet,
+  httpHead,
+  httpPost,
+  isPublicAddress,
+} from "../src/tools/http-fetch.js";
+
+const network = vi.hoisted(() => {
+  const agents: { lookup: LookupFunction; destroy: ReturnType<typeof vi.fn> }[] = [];
+  return { lookup: vi.fn(), fetch: vi.fn(), agents };
+});
+
+vi.mock("node:dns/promises", () => ({ lookup: network.lookup }));
+vi.mock("undici", () => ({
+  Agent: class {
+    destroy = vi.fn(async () => {});
+    constructor(options: { connect: { lookup: LookupFunction } }) {
+      network.agents.push({ lookup: options.connect.lookup, destroy: this.destroy });
+    }
+  },
+  fetch: network.fetch,
+}));
+
+const PUBLIC_ADDRESS = { address: "93.184.215.14", family: 4 };
+
+function connectedAddresses(resolve: LookupFunction, all = true, family = 0) {
+  return new Promise<string | LookupAddress[]>((accept, reject) => {
+    resolve("example.com", { all, family }, (error, address) => {
+      if (error) reject(error);
+      else accept(address);
+    });
+  });
+}
+
+function abortable<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+  return Promise.race([
+    work,
+    new Promise<T>((_resolve, reject) => {
+      signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+    }),
+  ]);
+}
+
+function activeAgent() {
+  const agent = network.agents.at(-1);
+  if (!agent) throw new Error("Request did not create its own agent");
+  return agent;
+}
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  network.lookup.mockReset().mockResolvedValue([PUBLIC_ADDRESS]);
+  network.fetch.mockReset().mockImplementation(async (_url, options) => {
+    await abortable(connectedAddresses(activeAgent().lookup), options.signal);
+    return new Response("response", { headers: { "content-type": "text/plain" } });
+  });
+  network.agents.length = 0;
+});
+
+afterEach(() => {
+  expect(vi.getTimerCount()).toBe(0);
+  vi.useRealTimers();
+});
+
+describe("public address policy", () => {
+  it.each([
+    "0.0.0.0",
+    "0.1.2.3",
+    "10.0.0.1",
+    "127.0.0.1",
+    "169.254.169.254",
+    "172.16.0.1",
+    "192.168.0.1",
+    "100.64.0.1",
+    "100.100.100.200",
+    "168.63.129.16",
+    "192.0.0.8",
+    "192.0.2.1",
+    "192.88.99.1",
+    "192.31.196.1",
+    "192.52.193.1",
+    "192.175.48.1",
+    "198.18.0.1",
+    "198.51.100.1",
+    "203.0.113.1",
+    "224.0.0.1",
+    "240.0.0.1",
+    "255.255.255.255",
+    "::",
+    "::1",
+    "fe80::1",
+    "fec0::1",
+    "fc00::1",
+    "ff02::1",
+    "2001:db8::1",
+    "3fff::1",
+    "3ffe::1",
+    "2620:4f:8000::1",
+    "2001::1",
+    "2001:20::1",
+    "2002:7f00:1::",
+    "64:ff9b::7f00:1",
+    "4000::1",
+    "::ffff:127.0.0.1",
+    "::ffff:7f00:1",
+    "::ffff:a00:1",
+    "::ffff:a9fe:a9fe",
+    "invalid",
+  ])("rejects private, metadata, reserved, or malformed address %s", (address) => {
+    expect(isPublicAddress(address)).toBe(false);
+  });
+
+  it.each(["93.184.215.14", "8.8.8.8", "2606:4700:4700::1111", "::ffff:808:808"])(
+    "allows public address %s",
+    (address) => expect(isPublicAddress(address)).toBe(true),
+  );
+});
+
+describe("connection resolver", () => {
+  it("returns the checked DNS records directly to the socket with one lookup", async () => {
+    const resolver = createPublicLookup(new AbortController().signal);
+    await expect(connectedAddresses(resolver)).resolves.toEqual([PUBLIC_ADDRESS]);
+    expect(network.lookup).toHaveBeenCalledExactlyOnceWith("example.com", {
+      all: true,
+      verbatim: true,
+    });
+  });
+
+  it("supports the single-address lookup callback", async () => {
+    await expect(
+      connectedAddresses(createPublicLookup(new AbortController().signal), false, 4),
+    ).resolves.toBe(PUBLIC_ADDRESS.address);
+  });
+
+  it.each([
+    [{ address: "127.0.0.1", family: 4 }],
+    [PUBLIC_ADDRESS, { address: "::ffff:7f00:1", family: 6 }],
+    [],
+  ])("rejects all answers if any address is not public (%j)", async (...records) => {
+    network.lookup.mockResolvedValue(records);
+    await expect(
+      connectedAddresses(createPublicLookup(new AbortController().signal)),
+    ).rejects.toThrow("SSRF protection");
+  });
+
+  it("checks a new connection's answer when DNS rebinds", async () => {
+    network.lookup
+      .mockResolvedValueOnce([PUBLIC_ADDRESS])
+      .mockResolvedValueOnce([{ address: "127.0.0.1", family: 4 }]);
+    expect(await httpGet({ url: "https://example.com", timeout: 1 })).toMatchObject({
+      success: true,
+    });
+    expect(await httpGet({ url: "https://example.com", timeout: 1 })).toMatchObject({
+      success: false,
+      error: expect.stringContaining("SSRF protection"),
+    });
+    expect(network.agents).toHaveLength(2);
+    expect(network.lookup).toHaveBeenCalledTimes(2);
+    for (const agent of network.agents) expect(agent.destroy).toHaveBeenCalledOnce();
+  });
+
+  it("does not release late DNS results after the total deadline", async () => {
+    const controller = new AbortController();
+    const resolver = createPublicLookup(controller.signal);
+    let finish: (records: LookupAddress[]) => void = () => {};
+    network.lookup.mockReturnValue(
+      new Promise<LookupAddress[]>((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const result = connectedAddresses(resolver);
+    controller.abort();
+    finish([PUBLIC_ADDRESS]);
+    await expect(result).rejects.toThrow("Request timed out");
+  });
+});
+
+describe("HTTP tools", () => {
+  it.each([
+    "http://example.com",
+    "https://localhost./",
+    "https://test.localhost./",
+    "https://host.local/",
+    "https://metadata.google.internal./",
+    "https://metadata/",
+    "https://127.1/",
+    "https://0x7f000001/",
+    "https://[::ffff:7f00:1]/",
+    "https://168.63.129.16/",
+  ])("rejects unsafe URL %s before creating a connection", async (url) => {
+    expect(await httpGet({ url, timeout: 1 })).toMatchObject({ success: false });
+    expect(network.fetch).not.toHaveBeenCalled();
+    expect(network.agents).toHaveLength(0);
+  });
+
+  it("preserves GET truncation, full character count, and manual redirects", async () => {
+    const content = "é".repeat(10001);
+    network.fetch.mockResolvedValue(
+      new Response(content, {
+        status: 302,
+        headers: { "content-type": "text/plain", location: "https://127.0.0.1/" },
+      }),
+    );
+    const result = await httpGet({
+      url: "https://example.com",
+      headers: { Accept: "text/plain" },
+      timeout: 1,
+    });
+    expect(result).toMatchObject({
+      success: true,
+      statusCode: 302,
+      content: content.slice(0, 10000),
+      contentLength: 10001,
+    });
+    expect(network.fetch).toHaveBeenCalledOnce();
+    expect(network.fetch.mock.calls[0][1]).toMatchObject({
+      method: "GET",
+      redirect: "manual",
+      headers: { Accept: "text/plain" },
+    });
+    expect(activeAgent().destroy).toHaveBeenCalledOnce();
+  });
+
+  it.each([{ Host: "metadata" }, { host: "metadata" }, { hOsT: "metadata" }])(
+    "rejects caller Host overrides for GET, POST, and HEAD (%j)",
+    async (headers) => {
+      for (const tool of [httpGet, httpPost, httpHead]) {
+        expect(await tool({ url: "https://example.com", timeout: 1, headers })).toEqual({
+          success: false,
+          error: "Host header overrides are not allowed",
+        });
+      }
+      expect(network.fetch).not.toHaveBeenCalled();
+      expect(network.agents).toHaveLength(0);
+    },
+  );
+
+  it("rejects URL userinfo without returning credentials in errors", async () => {
+    expect(await httpGet({ url: "https://user:example@example.com/", timeout: 1 })).toEqual({
+      success: false,
+      error: "URL credentials are not allowed",
+    });
+    expect(network.fetch).not.toHaveBeenCalled();
+  });
+
+  it("sends JSON in preference to form data and preserves the POST result", async () => {
+    expect(
+      await httpPost({
+        url: "https://example.com",
+        timeout: 1,
+        data: { x: 1 },
+        jsonBody: { ok: true },
+      }),
+    ).toMatchObject({ success: true, statusCode: 200, content: "response" });
+    expect(network.fetch.mock.calls[0][1]).toMatchObject({
+      method: "POST",
+      body: '{"ok":true}',
+      headers: { "Content-Type": "application/json" },
+    });
+  });
+
+  it("encodes form values without widening URLSearchParams tuples", async () => {
+    await httpPost({ url: "https://example.com", timeout: 1, data: { text: "a b&c", count: 2 } });
+    expect(network.fetch.mock.calls[0][1].body.toString()).toBe("text=a+b%26c&count=2");
+  });
+
+  it("returns HEAD headers without consuming a response body", async () => {
+    const text = vi.fn();
+    network.fetch.mockResolvedValue({
+      status: 204,
+      headers: new Headers({ "content-length": "123" }),
+      text,
+    });
+    expect(await httpHead({ url: "https://example.com", timeout: 1 })).toMatchObject({
+      success: true,
+      statusCode: 204,
+      contentType: "",
+      contentLength: "123",
+    });
+    expect(text).not.toHaveBeenCalled();
+    expect(network.fetch.mock.calls[0][1].method).toBe("HEAD");
+  });
+
+  it.each([httpGet, httpPost, httpHead])(
+    "keeps the deadline during DNS/connection waits",
+    async (tool) => {
+      network.lookup.mockReturnValue(new Promise(() => {}));
+      const result = tool({ url: "https://example.com", timeout: 1 });
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(await result).toMatchObject({ success: false, error: "Request timed out" });
+      expect(activeAgent().destroy).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each([httpGet, httpPost])(
+    "keeps the deadline after headers until body completion",
+    async (tool) => {
+      network.fetch.mockImplementation(async (_url, options) => ({
+        status: 200,
+        headers: new Headers(),
+        text: () => abortable(new Promise<string>(() => {}), options.signal),
+      }));
+      const result = tool({ url: "https://example.com", timeout: 1 });
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(await result).toMatchObject({ success: false, error: "Request timed out" });
+      expect(activeAgent().destroy).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("cleans up the timer and agent when fetch fails", async () => {
+    network.fetch.mockRejectedValue(
+      new TypeError("fetch failed", { cause: new Error("TLS failed") }),
+    );
+    expect(await httpGet({ url: "https://example.com", timeout: 1 })).toEqual({
+      success: false,
+      error: "TLS failed",
+    });
+    expect(activeAgent().destroy).toHaveBeenCalledOnce();
+  });
+});
+{%- endif %}

@@ -11,8 +11,8 @@ if str(scripts_path) not in sys.path:
     sys.path.insert(0, str(scripts_path))
 
 
-@pytest.fixture
-def scripts_dir():
+@pytest.fixture(name="scripts_dir")
+def _scripts_dir_fixture():
     """Return the scripts directory path."""
     return scripts_path
 

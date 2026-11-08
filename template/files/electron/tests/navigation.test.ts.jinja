@@ -1,0 +1,33 @@
+{% if desktop_module == "enabled" and desktop_framework == "electron-vite" %}
+import { expect, it } from 'vitest';
+import { isBlockedNavigationUrl, navigationBlockReason } from '../src/main/url-guard';
+
+it.each([
+  'http://localhost./',
+  'https://preview.localhost./',
+  'http://machine.local./',
+  'http://127.1/',
+  'http://0x7f000001/',
+  'http://0.0.0.0/',
+  'http://169.254.169.254/',
+  'http://[::1]/',
+  'http://[fe80::1]/',
+  'http://[::ffff:127.0.0.1]/',
+  'http://[::ffff:7f00:1]/',
+  'http://[::ffff:a9fe:a9fe]/',
+])('rejects the loopback or link-local URL %s after canonicalization', (url) => {
+  expect(navigationBlockReason(url)).toBe('internal');
+  expect(isBlockedNavigationUrl(url)).toBe(true);
+});
+
+it.each(['file:///example', 'javascript:alert(1)', 'data:text/plain,example'])(
+  'rejects non-web scheme %s',
+  (url) => expect(navigationBlockReason(url)).toBe('scheme'),
+);
+
+it('allows external web navigation while rejecting malformed inputs', () => {
+  expect(navigationBlockReason('https://example.com/')).toBeNull();
+  expect(navigationBlockReason('http://example.com/')).toBeNull();
+  expect(navigationBlockReason('not a URL')).toBe('invalid');
+});
+{% endif %}

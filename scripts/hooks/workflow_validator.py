@@ -84,6 +84,12 @@ def validate_workflows_directory(
         Tuple of (exit code, status) where status is one of
         ``pass``, ``fail``, ``tool_missing``, or ``skipped``.
     """
+    # Nothing to validate: skip before probing for actionlint so a missing tool
+    # never fails a render that generated no workflows.
+    if not workflows_dir.is_dir():
+        logger.info(f"No workflows directory found at {workflows_dir}")
+        return 0, "skipped"
+
     # Check if actionlint is available
     if not check_actionlint_available():
         logger.warning("actionlint not found - skipping workflow validation")
@@ -91,11 +97,6 @@ def validate_workflows_directory(
         logger.info("Or see: https://github.com/rhysd/actionlint")
         code = 1 if strict else 0
         return code, "tool_missing"
-
-    # Check if workflows directory exists
-    if not workflows_dir.exists():
-        logger.info(f"No workflows directory found at {workflows_dir}")
-        return 0, "skipped"
 
     # Find all workflow files (not only riso-* — catches leaks and satellite workflows)
     workflow_files = sorted(

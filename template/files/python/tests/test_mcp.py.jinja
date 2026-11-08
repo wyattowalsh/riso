@@ -1,19 +1,359 @@
 {%- if mcp_module == 'enabled' and 'python' in mcp_languages -%}
-"""Smoke test that the generated Python MCP package imports."""
+"""Test the generated Python MCP server without contacting external services."""
 
 from __future__ import annotations
 
-import importlib
+import asyncio
+{%- if mcp_example_tools %}
+import json
+{%- endif %}
+import runpy
+{%- if mcp_example_tools %}
+import socket
+{%- endif %}
+import sys
+from collections.abc import Awaitable, Callable
+{%- if mcp_example_tools %}
+from datetime import UTC, datetime
+{%- endif %}
+from typing import TypeVar
 
+{% if mcp_example_tools -%}
+import httpx
+{% endif -%}
 import pytest
+from fastmcp import Client, FastMCP
+from fastmcp.exceptions import ToolError
+
+from {{ package_name }}.mcp import __version__, mcp, run_server
+from {{ package_name }}.mcp.errors import (
+    MCPError,
+    NotFoundError,
+    OperationError,
+    ValidationError,
+)
+
+_Result = TypeVar("_Result")
+
+
+def _in_session(check: Callable[[Client], Awaitable[_Result]]) -> _Result:
+    """Exercise the real MCP server in memory under a deadline."""
+
+    async def run() -> _Result:
+        async with asyncio.timeout(10), Client(mcp) as client:
+            return await check(client)
+
+    return asyncio.run(run())
 
 
 def test_mcp_package_exports_server() -> None:
-    """Top-level ``mcp`` package is wired in generated pyproject package-dir."""
-    try:
-        mod = importlib.import_module("mcp")
-    except ImportError as exc:
-        pytest.skip(f"mcp package not importable: {exc}")
-    assert hasattr(mod, "run_server")
-    assert hasattr(mod, "mcp")
-{%- endif -%}
+    """The project's package exposes the server, runner, and version."""
+    assert isinstance(mcp, FastMCP)
+    assert callable(run_server)
+    assert __version__
+
+
+@pytest.mark.parametrize(
+    ("error", "payload"),
+    [
+        (MCPError("Unexpected failure"), {"code": -32603, "message": "Unexpected failure"}),
+        (
+            OperationError("fetch", "request refused"),
+            {
+                "code": -32001,
+                "message": "fetch failed: request refused",
+                "data": {"operation": "fetch", "details": "request refused"},
+            },
+        ),
+        (
+            ValidationError(["name is required"]),
+            {
+                "code": -32002,
+                "message": "Validation failed with 1 error(s)",
+                "data": {"errors": ["name is required"]},
+            },
+        ),
+        (
+            NotFoundError("Document", "doc-1"),
+            {
+                "code": -32003,
+                "message": "Document not found: doc-1",
+                "data": {"resource": "Document", "identifier": "doc-1"},
+            },
+        ),
+    ],
+)
+def test_mcp_error_payloads(error: MCPError, payload: dict[str, object]) -> None:
+    """The generated error helpers expose stable codes and structured details."""
+    assert str(error) == payload["message"]
+    assert error.to_dict() == payload
+
+
+def test_mcp_session_lists_selected_tools() -> None:
+    """Start the real server in memory with no network or external tools."""
+
+    async def list_names(client: Client) -> set[str]:
+        return {tool.name for tool in await client.list_tools()}
+
+    names = _in_session(list_names)
+{%- if mcp_example_tools %}
+    assert {"http_get", "http_post", "http_head"} <= names
+{%- else %}
+    assert not names
+{%- endif %}
+
+
+@pytest.mark.parametrize(
+    ("transport", "sdk_transport"),
+    [("stdio", None), ("sse", "sse"), ("http", "streamable-http")],
+)
+def test_mcp_module_launch(
+    monkeypatch: pytest.MonkeyPatch, transport: str, sdk_transport: str | None
+) -> None:
+    """The installed module passes its CLI selection to the SDK launcher."""
+    launches = []
+    monkeypatch.setattr(mcp, "run", lambda **options: launches.append(options))
+    monkeypatch.setattr(
+        sys, "argv", ["mcp", "--transport", transport, "--host", "127.0.0.1", "--port", "8093"]
+    )
+    runpy.run_module("{{ package_name }}.mcp", run_name="__main__")
+    if sdk_transport is None:
+        assert launches == [{}]
+    else:
+        assert launches == [{"transport": sdk_transport, "host": "127.0.0.1", "port": 8093}]
+
+
+def test_mcp_runner_rejects_unknown_transport(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An invalid programmatic launch cannot silently select an SDK transport."""
+    launches = []
+    monkeypatch.setattr(mcp, "run", lambda **options: launches.append(options))
+
+    with pytest.raises(ValueError, match="Unknown transport: fixture-transport"):
+        run_server(transport="fixture-transport")
+
+    assert not launches
+
+
+def test_mcp_unknown_tool_returns_protocol_error() -> None:
+    """The client receives a tool error and can continue using the same session."""
+    async def check(client: Client) -> None:
+        available = {tool.name for tool in await client.list_tools()}
+        with pytest.raises(ToolError, match="Unknown tool.*fixture_missing"):
+            await client.call_tool("fixture_missing")
+        assert {tool.name for tool in await client.list_tools()} == available
+
+    _in_session(check)
+
+{% if mcp_example_tools %}
+_PUBLIC_URL = "https://public.example/"
+_PUBLIC_IPV4 = "93.184.216.34"
+_PUBLIC_IPV6 = "2606:4700:4700::1111"
+
+
+@pytest.fixture
+def public_http(monkeypatch: pytest.MonkeyPatch) -> list[httpx.Request]:
+    """Intercept resolution and I/O while retaining actual HTTPX request construction."""
+    requests: list[httpx.Request] = []
+
+    async def lookup(_loop: object, host: str, port: int, **_options: object) -> list[tuple]:
+        if host == "missing.example":
+            raise socket.gaierror("fixture name does not resolve")
+        if host == "empty.example":
+            return []
+        assert host in {"public.example", "mixed.example", "scoped.example"}
+        scope = int(host == "scoped.example")
+        address = "127.0.0.1" if host == "mixed.example" else _PUBLIC_IPV4
+        return [
+            (
+                socket.AF_INET6,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "",
+                (_PUBLIC_IPV6, port, 0, scope),
+            ),
+            (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", (address, port)),
+        ]
+
+    async def send(_transport: object, request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.host == _PUBLIC_IPV6:
+            raise httpx.ConnectError("fixture IPv6 connection refused", request=request)
+        if request.url.path == "/timeout":
+            raise httpx.ReadTimeout("fixture response stalled", request=request)
+        content = b"" if request.method == "HEAD" else b"fixture response"
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/plain", "content-length": "16"},
+            content=content,
+            request=request,
+        )
+
+    monkeypatch.delenv("MCP_HTTP_ALLOW_INSECURE", raising=False)
+    monkeypatch.setattr(asyncio.BaseEventLoop, "getaddrinfo", lookup)
+    monkeypatch.setattr(httpx.AsyncHTTPTransport, "handle_async_request", send)
+    return requests
+
+
+@pytest.mark.parametrize("method", ["GET", "POST", "HEAD"])
+def test_http_tools_pin_public_connection(public_http: list[httpx.Request], method: str) -> None:
+    """A validated fallback address receives the request with the original TLS identity."""
+
+    async def invoke(client: Client) -> dict:
+        arguments: dict[str, object] = {"url": _PUBLIC_URL}
+        if method == "POST":
+            arguments["json_body"] = {"hello": "world"}
+        return (await client.call_tool(f"http_{method.lower()}", arguments)).data
+
+    response = _in_session(invoke)
+    assert response["success"] and response["status_code"] == 200
+    assert [request.url.host for request in public_http] == [_PUBLIC_IPV6, _PUBLIC_IPV4]
+    request = public_http[-1]
+    assert request.method == method
+    assert request.headers["host"] == request.extensions["sni_hostname"] == "public.example"
+    if method == "HEAD":
+        assert "content" not in response and response["content_length"] == "16"
+    else:
+        assert response["content"] == "fixture response"
+    if method == "POST":
+        assert json.loads(request.content) == {"hello": "world"}
+
+
+@pytest.mark.parametrize(
+    ("arguments", "error"),
+    [
+        ({"url": "http://public.example/"}, "HTTP URLs are blocked"),
+        ({"url": "ftp://public.example/"}, "URL must use http or https"),
+        ({"url": "https:/path"}, "URL must include a hostname"),
+        ({"url": "https://public.example:bad/"}, "Invalid HTTP URL"),
+        ({"url": "https://user@public.example/"}, "URL credentials are not allowed"),
+        ({"url": _PUBLIC_URL, "headers": {"Host": "private.example"}}, "Host header overrides"),
+        ({"url": "https://localhost/"}, "Blocked host"),
+        ({"url": "https://127.1/"}, "Noncanonical numeric hostname"),
+        ({"url": "https://host_name.example/"}, "Invalid hostname"),
+        ({"url": "https://[2606:4700:4700::1111%25fixture]/"}, "Scoped IPv6 addresses"),
+        ({"url": "https://mixed.example/"}, "Blocked private or reserved address"),
+        ({"url": "https://missing.example/"}, "Could not resolve host"),
+        ({"url": "https://empty.example/"}, "No IP addresses"),
+        ({"url": "https://scoped.example/"}, "scoped address"),
+        ({"url": _PUBLIC_URL, "timeout": 0}, "timeout must be between 1 and 120 seconds"),
+    ],
+)
+def test_http_tool_blocks_untrusted_input(
+    public_http: list[httpx.Request], arguments: dict[str, object], error: str
+) -> None:
+    """An invalid or unsafe destination never reaches HTTP transport."""
+
+    async def invoke(client: Client) -> dict:
+        return (await client.call_tool("http_get", arguments)).data
+
+    response = _in_session(invoke)
+    assert not response["success"] and error in response["error"]
+    assert not public_http
+
+
+def test_http_tool_reports_timeout(public_http: list[httpx.Request]) -> None:
+    """A timeout during HTTP I/O surfaces in the MCP result."""
+
+    async def invoke(client: Client) -> dict:
+        result = await client.call_tool(
+            "http_get", {"url": f"https://{_PUBLIC_IPV4}/timeout", "timeout": 4}
+        )
+        return result.data
+
+    assert _in_session(invoke) == {"success": False, "error": "Request timed out", "timeout": 4}
+    assert len(public_http) == 1
+    assert public_http[0].extensions["timeout"] == dict.fromkeys(
+        ("connect", "read", "write", "pool"), 4
+    )
+
+
+def test_http_tool_deadline_includes_dns(
+    monkeypatch: pytest.MonkeyPatch, public_http: list[httpx.Request]
+) -> None:
+    """A stalled resolver exhausts the tool deadline without starting an HTTP request."""
+    resolved_hosts = []
+
+    async def stall_dns(_loop: object, host: str, _port: int, **_options: object) -> None:
+        resolved_hosts.append(host)
+        await asyncio.Event().wait()
+
+    async def invoke(client: Client) -> dict:
+        return (await client.call_tool("http_get", {"url": _PUBLIC_URL, "timeout": 1})).data
+
+    monkeypatch.setattr(asyncio.BaseEventLoop, "getaddrinfo", stall_dns)
+    assert _in_session(invoke) == {"success": False, "error": "Request timed out", "timeout": 1}
+    assert resolved_hosts == ["public.example"]
+    assert not public_http
+
+
+def test_http_tool_opt_in_preserves_public_address_pinning(
+    monkeypatch: pytest.MonkeyPatch, public_http: list[httpx.Request]
+) -> None:
+    """Explicit HTTP opt-in still requires a public DNS result and a pinned connection."""
+    async def invoke(client: Client) -> dict:
+        return (await client.call_tool("http_get", {"url": "http://public.example/"})).data
+
+    monkeypatch.setenv("MCP_HTTP_ALLOW_INSECURE", "yes")
+    assert _in_session(invoke)["success"]
+    assert [request.url.host for request in public_http] == [_PUBLIC_IPV6, _PUBLIC_IPV4]
+    assert all(
+        request.headers["host"] == "public.example" and "sni_hostname" not in request.extensions
+        for request in public_http
+    )
+
+
+def test_http_tool_reports_exhausted_connection(public_http: list[httpx.Request]) -> None:
+    """A refused connection with no other vetted address fails without retrying DNS."""
+
+    async def invoke(client: Client) -> dict:
+        return (await client.call_tool("http_head", {"url": f"https://[{_PUBLIC_IPV6}]/"})).data
+
+    assert _in_session(invoke) == {"success": False, "error": "fixture IPv6 connection refused"}
+    assert [request.url.host for request in public_http] == [_PUBLIC_IPV6]
+
+
+def test_mcp_examples_work_through_the_protocol() -> None:
+    """The sample tools, resource and prompt return usable values."""
+
+    async def check(client: Client) -> None:
+        echoes = [("echo", "Test"), ("echo_reverse", "tseT"), ("echo_uppercase", "TEST")]
+        for tool, expected in echoes:
+            result = await client.call_tool(tool, {"message": "Test"})
+            assert result.data == expected
+        current = await client.call_tool("get_current_time", {"format": "unix"})
+        assert isinstance(current.data["timestamp"], int)
+        parsed = await client.call_tool(
+            "parse_timestamp", {"timestamp": "0", "input_format": "unix"}
+        )
+        assert parsed.data["success"] and parsed.data["year"] == 1970
+        invalid = await client.call_tool("parse_timestamp", {"timestamp": "not a timestamp"})
+        assert not invalid.data["success"]
+        difference = await client.call_tool(
+            "time_difference", {"start": "2025-01-01T00:00:00Z", "end": "2025-01-01T01:00:00Z"}
+        )
+        assert difference.data["seconds"] == 3600
+        resource = await client.read_resource("system://info")
+        assert json.loads(resource[0].text)["python_version"]
+        prompt = await client.get_prompt("review_code", {"code": "print(1)"})
+        assert "print(1)" in prompt.messages[0].content.text
+
+    _in_session(check)
+
+
+def test_mcp_time_difference_validates_end_and_defaults_to_now() -> None:
+    """An invalid end produces an error, while omitting it compares with the current time."""
+    async def check(client: Client) -> None:
+        start = "1970-01-01T00:00:00Z"
+        invalid = await client.call_tool("time_difference", {"start": start, "end": "invalid"})
+        assert invalid.data["success"] is False
+        assert "isoformat" in invalid.data["error"].lower()
+
+        before = int(datetime.now(UTC).timestamp())
+        current = await client.call_tool("time_difference", {"start": start})
+        after = int(datetime.now(UTC).timestamp())
+        assert current.data["success"] is True
+        assert before <= current.data["seconds"] <= after
+
+    _in_session(check)
+{% endif -%}
+{% endif -%}

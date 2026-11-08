@@ -1,14 +1,16 @@
 {%- if api_module == 'enabled' and 'node' in api_languages -%}
+{%- set _entry = 'dist/apps/api-node/src/main.js' if shared_logic | lower == 'enabled' else 'dist/main.js' -%}
 {
   "name": "api-node",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "{{ project_name }} Node.js API",
-  "main": "dist/main.js",
+  "main": "{{ _entry }}",
+  "files": ["dist"],
   "scripts": {
     "dev": "tsx watch src/main.ts",
-    "start": "node dist/main.js",
+    "start": "node {{ _entry }}",
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -26,7 +28,7 @@
     "vitest": "^4.0.17"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": "^22.12.0 || >=24.0.0"
   }
 }
 {%- endif -%}

@@ -116,12 +116,10 @@ def test_real_recopy_uses_saved_template_without_config_default(tmp_path: Path) 
     dest = tmp_path / "project"
     run_copy(str(template), str(dest), defaults=True, skip_tasks=True)
 
-    # Recopy the real persisted source without changing any existing file, so
-    # this verifies source resolution independently of overwrite UX.
-    result = run_recopy(destination=dest, data=None, timeout=10)
+    result = run_recopy(destination=dest, data={"project_name": "Renamed"}, timeout=10)
 
     assert result.success
-    assert (dest / "message.txt").read_text() == "Original Demo\n"
+    assert (dest / "message.txt").read_text() == "Original Renamed\n"
     assert yaml.safe_load((dest / ".copier-answers.yml").read_text())[
         "_src_path"
     ] == str(template)

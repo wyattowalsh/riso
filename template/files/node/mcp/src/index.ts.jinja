@@ -1,5 +1,4 @@
 {%- if mcp_module == 'enabled' and 'typescript' in mcp_languages -%}
-#!/usr/bin/env node
 /**
  * {{ project_name }} MCP Server
  *
@@ -8,9 +7,10 @@
 
 import { FastMCP } from "fastmcp";
 import { getConfig } from "./config.js";
-import { registerTools } from "./tools/index.js";
-import { registerResources } from "./resources/index.js";
 import { registerPrompts } from "./prompts/index.js";
+import { registerResources } from "./resources/index.js";
+import { registerTools } from "./tools/index.js";
+import { parseArgs, transportOptions } from "./transport.js";
 
 const VERSION = "1.0.0";
 const SERVER_NAME = "{{ package_name }}-mcp";
@@ -29,53 +29,18 @@ registerTools(mcp);
 registerResources(mcp);
 registerPrompts(mcp);
 
-// Parse CLI arguments
-function parseArgs(): { transport: string; host: string; port: number } {
-  const args = process.argv.slice(2);
-  let transport = config.transport;
-  let host = config.host;
-  let port = config.port;
-
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === "--transport" || args[i] === "-t") {
-      transport = args[++i] || transport;
-    } else if (args[i] === "--host" || args[i] === "-H") {
-      host = args[++i] || host;
-    } else if (args[i] === "--port" || args[i] === "-p") {
-      port = parseInt(args[++i], 10) || port;
-    }
-  }
-
-  return { transport, host, port };
-}
-
 // Main entry point
 async function main() {
-  const { transport, host, port } = parseArgs();
+  const { transport, host, port } = parseArgs(config);
 
   console.error(`Starting ${SERVER_NAME} v${VERSION} with ${transport} transport`);
 
-  if (transport === "stdio") {
-    await mcp.start({
-      transportType: "stdio",
-    });
-  } else if (transport === "sse" || transport === "http") {
-    // FastMCP serves HTTP streaming at `endpoint` and SSE at /sse when httpStream starts.
+  await mcp.start(transportOptions(transport, host, port));
+  if (transport !== "stdio") {
     const endpoint = transport === "sse" ? "/sse" : "/mcp";
-    await mcp.start({
-      transportType: "httpStream",
-      httpStream: {
-        host,
-        port,
-        endpoint: endpoint as `/${string}`,
-      },
-    });
     console.error(
-      `MCP server listening on http://${host}:${port}${endpoint} (SSE also at /sse)`
+      `MCP server listening on http://${host}:${port}${endpoint} (HTTP at /mcp; SSE at /sse)`,
     );
-  } else {
-    console.error(`Unknown transport: ${transport}`);
-    process.exit(1);
   }
 }
 

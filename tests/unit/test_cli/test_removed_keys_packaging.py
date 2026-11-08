@@ -1,5 +1,8 @@
 """Packaging tests: removed keys must work without checkout scripts/ on path."""
 
+# Parity tests deliberately inspect the fallback implementation's private SSOT.
+# pylint: disable=protected-access
+
 from __future__ import annotations
 
 import importlib
@@ -13,6 +16,8 @@ from typing import Any
 
 import pytest
 
+from riso.core import removed_answer_keys as core
+from riso.core.answers import REMOVED_ANSWER_KEYS as ANSWERS_KEYS
 from riso.core.removed_answer_keys import (
     ANSWER_KEY_REMAPS as CORE_REMAPS,
 )
@@ -147,12 +152,9 @@ def _import_scripts_lib_fallback() -> ModuleType:
 
 def test_core_removed_keys_import_without_scripts_on_path() -> None:
     """Wheel-style import must not require repo scripts/ on sys.path."""
-    from riso.core.removed_answer_keys import REMOVED_ANSWER_KEYS as core_keys
-    from riso.core.answers import REMOVED_ANSWER_KEYS as answers_keys
-
-    assert len(core_keys) == 8
-    assert answers_keys == core_keys
-    assert "api_tracks" in core_keys
+    assert len(CORE_KEYS) == 8
+    assert ANSWERS_KEYS == CORE_KEYS
+    assert "api_tracks" in CORE_KEYS
 
 
 def test_scripts_lib_reexport_matches_core() -> None:
@@ -166,8 +168,6 @@ def test_scripts_lib_reexport_matches_core() -> None:
 
 def test_scripts_lib_prefers_packaged_import() -> None:
     """When riso is importable, public names are the packaged objects."""
-    from riso.core import removed_answer_keys as core
-
     mod = _import_scripts_lib()
     assert mod.REMOVED_ANSWER_KEYS is core.REMOVED_ANSWER_KEYS
     assert mod.ANSWER_KEY_REMAPS is core.ANSWER_KEY_REMAPS
@@ -178,6 +178,7 @@ def test_scripts_lib_prefers_packaged_import() -> None:
 
 
 def test_fallback_keys_match_core() -> None:
+    """The checkout fallback retains exactly the packaged removed-key contract."""
     mod = _import_scripts_lib()
     assert dict(mod._FALLBACK_REMOVED_ANSWER_KEYS) == dict(CORE_KEYS)
     assert set(mod._FALLBACK_REMOVED_ANSWER_KEYS) == set(CORE_KEYS)
@@ -185,6 +186,7 @@ def test_fallback_keys_match_core() -> None:
 
 
 def test_fallback_remap_table_matches_core() -> None:
+    """Fallback remap operators match the packaged SSOT table."""
     mod = _import_scripts_lib()
     assert _remap_table_payload(
         mod._FALLBACK_ANSWER_KEY_REMAPS
@@ -198,16 +200,18 @@ def _case_id(case: dict[str, Any]) -> str:
 
 @pytest.mark.parametrize("answers", _PARITY_CASES, ids=_case_id)
 def test_fallback_apply_matches_core(answers: dict[str, Any]) -> None:
+    """Fallback and package remaps produce the same answers and audit operations."""
     mod = _import_scripts_lib()
     original = dict(answers)
-    core = core_apply(answers)
+    core_result = core_apply(answers)
     fallback = mod._fallback_apply_removed_key_remaps(answers)
     assert answers == original
-    assert fallback.answers == core.answers
-    assert _ops_payload(fallback.ops) == _ops_payload(core.ops)
+    assert fallback.answers == core_result.answers
+    assert _ops_payload(fallback.ops) == _ops_payload(core_result.ops)
 
 
 def test_fallback_apply_idempotent_matches_core() -> None:
+    """Fallback and packaged remaps both become no-ops on canonical answers."""
     mod = _import_scripts_lib()
     first_core = core_apply({"api_language": "python", "mcp_language": "node"})
     first_fb = mod._fallback_apply_removed_key_remaps(

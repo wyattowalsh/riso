@@ -1,22 +1,22 @@
-{% if api_module == 'enabled' and 'go' in api_languages %}
+{% if api_module == 'enabled' and 'go' in api_languages -%}
 package middleware
 
 import (
 	"fmt"
-{% if go_framework | default('gin') == 'gin' %}
+{%- if go_framework | default('gin') == 'gin' %}
 
 	"github.com/gin-gonic/gin"
-{% elif go_framework == 'fiber' %}
+{%- elif go_framework == 'fiber' %}
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-{% elif go_framework == 'echo' %}
+{%- elif go_framework == 'echo' %}
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-{% elif go_framework == 'chi' %}
+{%- elif go_framework == 'chi' %}
 	"net/http"
 
 	"github.com/go-chi/cors"
-{% endif %}
+{%- endif %}
 )
 
 // CORSConfig holds CORS configuration options.
@@ -56,17 +56,18 @@ func ProductionCORSConfig(allowedOrigins []string) CORSConfig {
 		origins = []string{}
 	}
 	return CORSConfig{
-		AllowOrigins:     origins,
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
-		AllowHeaders:     []string{"Accept", "Authorization", "Content-Type", "X-Request-ID"},
-		ExposeHeaders:    []string{"X-Request-ID"},
+		AllowOrigins:  origins,
+		AllowMethods:  []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
+		AllowHeaders:  []string{"Accept", "Authorization", "Content-Type", "X-Request-ID"},
+		ExposeHeaders: []string{"X-Request-ID"},
 		// Only enable credentials when an explicit allowlist is configured.
 		AllowCredentials: len(origins) > 0,
 		MaxAge:           3600, // 1 hour
 	}
 }
 
-{% if go_framework | default('gin') == 'gin' %}
+{%- if go_framework | default('gin') == 'gin' %}
+
 // CORS returns a Gin CORS middleware with the given configuration.
 func CORS(cfg CORSConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -110,7 +111,8 @@ func CORS(cfg CORSConfig) gin.HandlerFunc {
 	}
 }
 
-{% elif go_framework == 'fiber' %}
+{%- elif go_framework == 'fiber' %}
+
 // CORS returns a Fiber CORS middleware with the given configuration.
 func CORS(cfg CORSConfig) fiber.Handler {
 	return cors.New(cors.Config{
@@ -123,7 +125,8 @@ func CORS(cfg CORSConfig) fiber.Handler {
 	})
 }
 
-{% elif go_framework == 'echo' %}
+{%- elif go_framework == 'echo' %}
+
 // CORS returns an Echo CORS middleware with the given configuration.
 func CORS(cfg CORSConfig) echo.MiddlewareFunc {
 	return middleware.CORSWithConfig(middleware.CORSConfig{
@@ -136,7 +139,8 @@ func CORS(cfg CORSConfig) echo.MiddlewareFunc {
 	})
 }
 
-{% elif go_framework == 'chi' %}
+{%- elif go_framework == 'chi' %}
+
 // CORS returns a Chi CORS middleware with the given configuration.
 func CORS(cfg CORSConfig) func(next http.Handler) http.Handler {
 	return cors.Handler(cors.Options{
@@ -148,7 +152,7 @@ func CORS(cfg CORSConfig) func(next http.Handler) http.Handler {
 		MaxAge:           cfg.MaxAge,
 	})
 }
-{% endif %}
+{%- endif %}
 
 // Helper functions
 func joinStrings(strs []string, sep string) string {
@@ -165,4 +169,4 @@ func joinStrings(strs []string, sep string) string {
 func formatInt(n int) string {
 	return fmt.Sprintf("%d", n)
 }
-{% endif %}
+{% endif -%}

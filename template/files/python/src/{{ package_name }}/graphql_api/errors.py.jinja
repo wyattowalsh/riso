@@ -1,41 +1,43 @@
 {% if (graphql_api_module == 'enabled' or 'graphql' in api_features) -%}
 """GraphQL Error Handling - Custom error classes and formatters."""
 
-from typing import Any, Dict, Optional
-import strawberry
+from typing import Any
+
+from strawberry.extensions import MaskErrors
+
+from graphql import GraphQLError as CoreGraphQLError
 
 
 class GraphQLError(Exception):
     """Base class for all GraphQL errors."""
-    
+
     code: str = "GRAPHQL_ERROR"
-    
-    def __init__(self, message: str, extensions: Optional[Dict[str, Any]] = None):
+
+    def __init__(self, message: str, extensions: dict[str, Any] | None = None):
         super().__init__(message)
         self.message = message
         self.extensions = extensions or {}
         self.extensions["code"] = self.code
 
 
-@strawberry.type
 class ValidationError(GraphQLError):
     """
     Validation error for field-level validation failures.
-    
+
     Examples:
         - Invalid email format
         - Required field missing
         - Field value out of range
         - Type mismatch
     """
-    
+
     code: str = "VALIDATION_ERROR"
-    
+
     def __init__(
         self,
         message: str,
-        field: Optional[str] = None,
-        extensions: Optional[Dict[str, Any]] = None
+        field: str | None = None,
+        extensions: dict[str, Any] | None = None
     ):
         extensions = extensions or {}
         if field:
@@ -43,89 +45,82 @@ class ValidationError(GraphQLError):
         super().__init__(message, extensions)
 
 
-@strawberry.type
 class AuthError(GraphQLError):
     """
     Authentication/authorization error.
-    
+
     Examples:
         - No authentication token provided
         - Invalid or expired token
         - Insufficient permissions for operation
         - User not found
     """
-    
+
     code: str = "AUTH_ERROR"
 
 
-@strawberry.type  
 class SystemError(GraphQLError):
     """
     System-level error (database, network, external services).
-    
+
     Examples:
         - Database connection failure
         - Network timeout
         - External API error
         - Resource not available
-    
+
     Note: In production, system errors should be sanitized
     to avoid leaking internal details.
     """
-    
+
     code: str = "SYSTEM_ERROR"
 
 
-@strawberry.type
 class QueryError(GraphQLError):
     """
     Query validation error.
-    
+
     Examples:
         - Query syntax error
         - Invalid field requested
         - Query depth exceeded
         - Query complexity exceeded
     """
-    
+
     code: str = "QUERY_ERROR"
 
 
-def format_graphql_error(error: Exception, debug: bool = False) -> Dict[str, Any]:
+def format_graphql_error(error: Exception, debug: bool = False) -> dict[str, Any]:
     """
     Format GraphQL errors for response.
-    
+
     In production (debug=False):
         - Sanitize system errors (no stack traces)
         - Include error codes and messages
         - Remove sensitive information
-    
-    In development (debug=True):
-        - Include full error details
-        - Include stack traces
-        - Include error extensions
-    
+
+    With debug=True, include original messages and exception types.
+
     Args:
         error: Exception that occurred
         debug: Whether to include debug information
-    
+
     Returns:
         Formatted error dictionary
     """
-    if isinstance(error, GraphQLError):
+    if isinstance(error, GraphQLError) and (debug or not isinstance(error, SystemError)):
         formatted = {
             "message": error.message,
-            "extensions": error.extensions,
+            "extensions": dict(error.extensions),
         }
-        
+
         if debug:
             formatted["extensions"]["debug"] = {
                 "exception_type": type(error).__name__,
             }
-        
-        return formatted
-    
-    # Unknown error - sanitize in production
+
+        return formatted if debug else sanitize_error_for_production(formatted)
+
     if debug:
         return {
             "message": str(error),
@@ -134,29 +129,26 @@ def format_graphql_error(error: Exception, debug: bool = False) -> Dict[str, Any
                 "exception_type": type(error).__name__,
             },
         }
-    else:
-        return {
-            "message": "An internal error occurred",
-            "extensions": {
-                "code": "SYSTEM_ERROR",
-            },
-        }
+    return {
+        "message": "An internal error occurred",
+        "extensions": {"code": SystemError.code},
+    }
 
 
-def sanitize_error_for_production(error: Dict[str, Any]) -> Dict[str, Any]:
+def sanitize_error_for_production(error: dict[str, Any]) -> dict[str, Any]:
     """
     Sanitize error for production by removing sensitive information.
-    
+
     Removes:
         - Stack traces
         - Internal paths
         - Database queries
         - Environment variables
         - Other sensitive debug information
-    
+
     Args:
         error: Error dictionary
-    
+
     Returns:
         Sanitized error dictionary
     """
@@ -166,10 +158,30 @@ def sanitize_error_for_production(error: Dict[str, Any]) -> Dict[str, Any]:
             "code": error.get("extensions", {}).get("code", "UNKNOWN_ERROR"),
         },
     }
-    
+
     # Preserve field information for validation errors (helpful for clients)
     if error.get("extensions", {}).get("field"):
         sanitized["extensions"]["field"] = error["extensions"]["field"]
-    
+
     return sanitized
+
+
+class FormatExecutionErrors(MaskErrors):
+    """Format resolver failures without hiding GraphQL document validation."""
+
+    def __init__(self) -> None:
+        """Use Strawberry's response hook for execution errors with a field path."""
+        super().__init__(should_mask_error=lambda error: error.path is not None)
+
+    def anonymise_error(self, error: CoreGraphQLError) -> CoreGraphQLError:
+        """Return public details and keep GraphQL source and field coordinates."""
+        formatted = format_graphql_error(error.original_error or error)
+        return CoreGraphQLError(
+            message=formatted["message"],
+            nodes=error.nodes,
+            source=error.source,
+            positions=error.positions,
+            path=error.path,
+            extensions=formatted["extensions"],
+        )
 {% endif %}

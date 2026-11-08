@@ -1,4 +1,4 @@
-{% if api_module == 'enabled' and 'rust' in api_languages %}
+{% if api_module == 'enabled' and 'rust' in api_languages -%}
 //! {{ project_name }} API Server
 //!
 //! A high-performance REST API built with Actix-web and Tokio.
@@ -7,61 +7,132 @@ use actix_web::{middleware, web, App, HttpServer};
 use tracing::info;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
-mod config;
+pub mod config;
 mod handlers;
-mod models;
+pub mod models;
 mod routes;
 
 use config::Config;
 
-fn init_logging() {
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+fn init_logging(config: &Config) {
+    let filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(&config.log_level));
 
-    tracing_subscriber::registry()
-        .with(fmt::layer())
-        .with(filter)
-        .init();
+    tracing_subscriber::registry().with(fmt::layer()).with(filter).init();
+}
+
+fn cors_policy(config: &Config) -> actix_cors::Cors {
+    // Production grants browser access only to the explicit allowlist.
+    let mut cors = actix_cors::Cors::default()
+        .allowed_methods(vec!["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
+        .allow_any_header()
+        .max_age(3600);
+
+    let origins = if !config.cors_origins.is_empty() {
+        config.cors_origins.clone()
+    } else if config.is_production() {
+        Vec::new()
+    } else {
+        vec!["http://localhost:3000".to_string(), "http://127.0.0.1:3000".to_string()]
+    };
+
+    for origin in &origins {
+        cors = cors.allowed_origin(origin);
+    }
+
+    cors
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    init_logging();
-
     let config = Config::from_env();
+    init_logging(&config);
     let bind_addr = format!("{}:{}", config.host, config.port);
 
     info!("Starting {} API server on {}", "{{ project_name }}", bind_addr);
     info!("Environment: {}", config.environment);
     info!("CORS enabled: {}", config.cors_enabled);
+    info!("CORS origins: {:?}", config.cors_origins);
 
     HttpServer::new(move || {
-        let mut app = App::new()
+        App::new()
             .app_data(web::Data::new(config.clone()))
             .wrap(middleware::Logger::default())
-            .wrap(middleware::Compress::default());
-
-        // Add CORS if enabled
-        if config.cors_enabled {
-            app = app.wrap(
-                actix_cors::Cors::default()
-                    .allow_any_origin()
-                    .allow_any_method()
-                    .allow_any_header()
-                    .max_age(3600),
-            );
-        }
-
-        app.configure(routes::configure)
+            .wrap(middleware::Compress::default())
+            .wrap(middleware::Condition::new(config.cors_enabled, cors_policy(&config)))
+            .configure(routes::configure)
     })
     .bind(&bind_addr)?
     .run()
     .await
 }
-{% else %}
+
+#[cfg(test)]
+mod cors_tests {
+    use super::*;
+    use actix_web::{
+        http::{header, StatusCode},
+        test, HttpResponse,
+    };
+
+    async fn request_origin(config: Config, origin: &str) -> (StatusCode, Option<String>) {
+        let app = test::init_service(
+            App::new()
+                .wrap(middleware::Condition::new(config.cors_enabled, cors_policy(&config)))
+                .route("/", web::get().to(|| async { HttpResponse::Ok().finish() })),
+        )
+        .await;
+        let request =
+            test::TestRequest::get().uri("/").insert_header((header::ORIGIN, origin)).to_request();
+        let response = test::call_service(&app, request).await;
+        let allowed_origin = response
+            .headers()
+            .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+            .map(|value| value.to_str().unwrap().to_owned());
+        (response.status(), allowed_origin)
+    }
+
+    #[actix_web::test]
+    async fn production_only_grants_configured_origins() {
+        let config = Config {
+            environment: "production".to_string(),
+            cors_origins: vec!["https://app.example.com".to_string()],
+            ..Config::default()
+        };
+        let (_, allowed) = request_origin(config.clone(), "https://app.example.com").await;
+        assert_eq!(allowed.as_deref(), Some("https://app.example.com"));
+        let (_, denied) = request_origin(config, "https://unlisted.example.com").await;
+        assert!(denied.is_none());
+    }
+
+    #[actix_web::test]
+    async fn empty_production_allowlist_grants_no_origin() {
+        let config = Config { environment: "production".to_string(), ..Config::default() };
+        let (_, allowed) = request_origin(config, "http://localhost:3000").await;
+        assert!(allowed.is_none());
+    }
+
+    #[actix_web::test]
+    async fn development_defaults_only_grant_local_origins() {
+        let (_, allowed) = request_origin(Config::default(), "http://localhost:3000").await;
+        assert_eq!(allowed.as_deref(), Some("http://localhost:3000"));
+        let (_, denied) = request_origin(Config::default(), "https://unlisted.example.com").await;
+        assert!(denied.is_none());
+    }
+
+    #[actix_web::test]
+    async fn disabled_cors_leaves_response_unmodified() {
+        let config = Config { cors_enabled: false, ..Config::default() };
+        let (status, allowed) = request_origin(config, "https://unlisted.example.com").await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(allowed.is_none());
+    }
+}
+{% else -%}
 // API module is disabled
 // Re-render the template with `api_module=enabled` and `api_languages=[rust]` to scaffold the Rust API.
 fn main() {
     eprintln!("API module is disabled for this render.");
     std::process::exit(1);
 }
-{% endif %}
+{% endif -%}

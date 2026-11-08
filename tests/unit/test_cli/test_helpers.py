@@ -19,6 +19,7 @@ FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "remap"
 
 
 def test_load_answers_file_rejects_non_mapping(tmp_path: Path) -> None:
+    """Answer files reject sequences instead of treating them as mappings."""
     path = tmp_path / "bad.yml"
     path.write_text("- item\n", encoding="utf-8")
     with pytest.raises(ValidationFailedError) as exc:
@@ -28,12 +29,14 @@ def test_load_answers_file_rejects_non_mapping(tmp_path: Path) -> None:
 
 
 def test_load_answers_file_loads_mapping(tmp_path: Path) -> None:
+    """Valid YAML answer mappings retain their key and value."""
     path = tmp_path / "answers.yml"
     path.write_text("project_name: demo\n", encoding="utf-8")
     assert load_answers_file(path) == {"project_name": "demo"}
 
 
 def test_load_answers_file_rejects_invalid_yaml(tmp_path: Path) -> None:
+    """Malformed YAML produces a structured validation error."""
     path = tmp_path / "bad.yml"
     path.write_text("project_name: [unterminated\n", encoding="utf-8")
     with pytest.raises(ValidationFailedError) as exc:
@@ -45,12 +48,14 @@ def test_load_answers_file_rejects_invalid_yaml(tmp_path: Path) -> None:
 
 
 def test_load_answers_file_empty_returns_empty_dict(tmp_path: Path) -> None:
+    """An empty answer document resolves to an empty mapping."""
     path = tmp_path / "empty.yml"
     path.write_text("", encoding="utf-8")
     assert load_answers_file(path) == {}
 
 
 def test_resolve_answers_applies_then_rejects_remappable_keys(tmp_path: Path) -> None:
+    """Known removed keys become canonical before leftover-key rejection."""
     path = tmp_path / "answers.yml"
     path.write_text((FIXTURE_DIR / "api_language.yml").read_text(encoding="utf-8"))
     answers = resolve_answers(
@@ -64,6 +69,7 @@ def test_resolve_answers_applies_then_rejects_remappable_keys(tmp_path: Path) ->
 
 
 def test_resolve_answers_rejects_leftover_removed_keys(tmp_path: Path) -> None:
+    """Unknown removed-key values fail closed during answer resolution."""
     path = tmp_path / "answers.yml"
     path.write_text((FIXTURE_DIR / "leftover.yml").read_text(encoding="utf-8"))
     with pytest.raises(ValidationFailedError) as exc:
@@ -79,6 +85,7 @@ def test_resolve_answers_rejects_leftover_removed_keys(tmp_path: Path) -> None:
 def test_resolve_answers_rejects_removed_keys_reintroduced_after_merge(
     tmp_path: Path,
 ) -> None:
+    """Default merging cannot reintroduce removed keys after initial remapping."""
     path = tmp_path / "answers.yml"
     path.write_text("project_name: Demo\n", encoding="utf-8")
 
@@ -101,6 +108,7 @@ def test_resolve_answers_rejects_removed_keys_reintroduced_after_merge(
 
 
 def test_validate_and_raise_remaps_then_validates() -> None:
+    """Validation canonicalizes the caller mapping before checking its schema."""
     answers = {"project_name": "Demo App", "api_tracks": "python"}
     result = validate_and_raise(answers, resolve_template_path())
     assert result["valid"] is True
@@ -110,6 +118,7 @@ def test_validate_and_raise_remaps_then_validates() -> None:
 
 
 def test_validate_and_raise_rejects_leftover() -> None:
+    """Validation rejects removed keys that have no supported remap."""
     answers = {"project_name": "Demo App", "saas_auth": "firebase"}
     with pytest.raises(ValidationFailedError) as exc:
         validate_and_raise(answers, resolve_template_path())

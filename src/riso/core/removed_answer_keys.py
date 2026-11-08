@@ -149,11 +149,12 @@ def _wrap_list(
             if not raw:
                 continue
             mapped = alias_map.get(raw.lower(), raw.lower())
-            token = mapped if mapped in allowed else raw
-            if token in seen:
+            if mapped not in allowed:
+                return None
+            if mapped in seen:
                 continue
-            seen.add(token)
-            out.append(token)
+            seen.add(mapped)
+            out.append(mapped)
         return out
     if isinstance(value, str):
         raw = value.strip()

@@ -14,30 +14,54 @@ from riso.core.errors import (
 )
 
 
-def packaged_template_path() -> Path | None:
-    """Return the template shipped inside an installed Riso wheel, if present."""
-    candidate = Path(__file__).resolve().parents[1] / "copier_template"
-    return candidate.resolve() if (candidate / "copier.yml").is_file() else None
-
-
-def bundled_template_path() -> Path:
-    """Resolve the trusted template from the source checkout or installed wheel."""
-    root = repo_root()
-    checkout = root / "template"
-    if (root / "pyproject.toml").is_file() and (checkout / "copier.yml").is_file():
-        return checkout.resolve()
-    return packaged_template_path() or checkout.resolve()
-
-
-def is_bundled_template(path: Path) -> bool:
-    """Whether a template is the verified template shipped with this Riso."""
-    bundled = bundled_template_path()
-    return (bundled / "copier.yml").is_file() and path.resolve() == bundled
+# Hatch force-include maps repo ``template/`` → ``riso/copier_template`` in wheels.
+PACKAGED_TEMPLATE_DIRNAME = "copier_template"
 
 
 def repo_root() -> Path:
-    """Return the repository root when running from a checkout."""
+    """Return the src-layout parent (checkout root, or site-packages parent)."""
     return Path(__file__).resolve().parents[3]
+
+
+def checkout_root() -> Path | None:
+    """Return the git checkout root when this module is loaded from ``src/``."""
+    candidate = repo_root()
+    if (candidate / "pyproject.toml").is_file() and (
+        candidate / "template" / "copier.yml"
+    ).is_file():
+        return candidate
+    return None
+
+
+def packaged_template_path() -> Path | None:
+    """Return the Copier template shipped inside the installed wheel, if present."""
+    package_dir = Path(__file__).resolve().parents[1]
+    candidate = package_dir / PACKAGED_TEMPLATE_DIRNAME
+    if (candidate / "copier.yml").is_file():
+        return candidate.resolve()
+    return None
+
+
+def bundled_template_path() -> Path:
+    """Return the checkout or wheel-bundled Copier template directory."""
+    checkout = checkout_root()
+    if checkout is not None:
+        return (checkout / "template").resolve()
+    packaged = packaged_template_path()
+    if packaged is not None:
+        return packaged
+    return (repo_root() / "template").resolve()
+
+
+def is_bundled_template(path: Path) -> bool:
+    """Return True when *path* is this repository's bundled template root."""
+    bundled = bundled_template_path()
+    if not (bundled / "copier.yml").is_file():
+        return False
+    try:
+        return path.resolve() == bundled.resolve()
+    except OSError:
+        return False
 
 
 def external_template_warning(path: Path) -> str | None:
@@ -46,7 +70,7 @@ def external_template_warning(path: Path) -> str | None:
     if not bundled.exists():
         return None
     try:
-        if path.resolve() != bundled.resolve():
+        if not is_bundled_template(path):
             return (
                 f"Template path {path} is outside this repository. "
                 "Only use templates from sources you trust."
@@ -87,6 +111,9 @@ def resolve_samples_path(explicit: Path | None = None) -> Path:
     if env_path:
         return Path(env_path).expanduser().resolve()
 
+    checkout = checkout_root()
+    if checkout is not None:
+        return (checkout / "samples").resolve()
     return (repo_root() / "samples").resolve()
 
 

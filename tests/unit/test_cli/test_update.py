@@ -129,6 +129,19 @@ def test_failed_update_worker_does_not_persist_remaps(tmp_path: Path) -> None:
     assert answers.read_bytes() == original
 
 
+def test_update_does_not_wrap_validation_failed_as_copier_error(tmp_path: Path) -> None:
+    dest = tmp_path / "proj"
+    _write_fixture(dest, "already_canonical.yml")
+    with patch(
+        "riso.cli.commands.update.template_run_update",
+        side_effect=ValidationFailedError(["blocked"]),
+    ):
+        with pytest.raises(ValidationFailedError) as exc:
+            run_update(_config(), destination=str(dest))
+    assert exc.value.data is not None
+    assert "blocked" in exc.value.data["errors"]
+
+
 @pytest.mark.parametrize("dry_run", [False, True])
 def test_update_validation_failure_preserves_unmapped_file(
     tmp_path: Path, dry_run: bool

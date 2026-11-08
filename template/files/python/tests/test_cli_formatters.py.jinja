@@ -6,20 +6,27 @@
 from __future__ import annotations
 
 import json
+import sys
 from io import StringIO
 
 import pytest
 from rich.console import Console
 
+from {{ package_name }}.cli.core import ValidationError
 from {{ package_name }}.cli.core.formatter import OutputFormat, OutputFormatter
 
 
+@pytest.fixture(name="output_buffer")
+def _output_buffer() -> StringIO:
+    """Capture the formatter's rendered output."""
+    return StringIO()
+
+
 @pytest.fixture
-def formatter() -> OutputFormatter:
-    """Create an output formatter with string buffer."""
-    string_buffer = StringIO()
+def formatter(output_buffer: StringIO) -> OutputFormatter:
+    """Create a formatter that writes to the test buffer."""
     console = Console(
-        file=string_buffer,
+        file=output_buffer,
         force_terminal=False,
         no_color=True,
         highlight=False,
@@ -29,114 +36,154 @@ def formatter() -> OutputFormatter:
 
 class TestTableFormatting:
     """Tests for table output formatting."""
-    
-    def test_format_table_with_list_of_dicts(self, formatter: OutputFormatter) -> None:
+
+    def test_format_table_with_list_of_dicts(
+        self, formatter: OutputFormatter, output_buffer: StringIO
+    ) -> None:
         """Test table formatting with list of dictionaries."""
         data = [
             {"name": "Alice", "age": 30},
             {"name": "Bob", "age": 25},
         ]
-        
+
         formatter.format(data, format=OutputFormat.TABLE)
-        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
-        
+        output = output_buffer.getvalue()
+
         assert "Alice" in output
         assert "Bob" in output
         assert "30" in output
         assert "25" in output
-    
-    def test_format_table_with_single_dict(self, formatter: OutputFormatter) -> None:
+
+    def test_format_table_with_single_dict(
+        self, formatter: OutputFormatter, output_buffer: StringIO
+    ) -> None:
         """Test table formatting with single dictionary."""
         data = {"name": "Alice", "age": 30}
-        
+
         formatter.format(data, format=OutputFormat.TABLE)
-        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
-        
+        output = output_buffer.getvalue()
+
         assert "Alice" in output
         assert "30" in output
-    
-    def test_format_table_with_empty_data(self, formatter: OutputFormatter) -> None:
+
+    def test_format_table_with_empty_data(
+        self, formatter: OutputFormatter, output_buffer: StringIO
+    ) -> None:
         """Test table formatting with empty data."""
         formatter.format([], format=OutputFormat.TABLE)
-        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
-        
+        output = output_buffer.getvalue()
+
         assert "no data" in output.lower()
-    
-    def test_format_table_with_title(self, formatter: OutputFormatter) -> None:
+
+    def test_format_table_with_title(
+        self, formatter: OutputFormatter, output_buffer: StringIO
+    ) -> None:
         """Test table formatting with custom title."""
         data = [{"name": "Alice"}]
-        
+
         formatter.format(data, format=OutputFormat.TABLE, title="Users")
-        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
-        
+        output = output_buffer.getvalue()
+
         assert "Users" in output
+
+    @pytest.mark.parametrize("data", ["item", ["item"]])
+    def test_format_table_with_scalar_values(
+        self, formatter: OutputFormatter, output_buffer: StringIO, data: str | list[str]
+    ) -> None:
+        """A scalar or list of scalars can be shown in an explicitly named column."""
+        formatter.format(data, format=OutputFormat.TABLE, columns=["value"])
+        output = output_buffer.getvalue()
+        assert "Value" in output
+        assert "item" in output
 
 
 class TestJSONFormatting:
     """Tests for JSON output formatting."""
-    
-    def test_format_json_with_dict(self, formatter: OutputFormatter) -> None:
+
+    def test_format_json_with_dict(
+        self, formatter: OutputFormatter, output_buffer: StringIO
+    ) -> None:
         """Test JSON formatting with dictionary."""
         data = {"name": "Alice", "age": 30}
-        
+
         formatter.format(data, format=OutputFormat.JSON)
-        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
-        
+        output = output_buffer.getvalue()
+
         # Should be valid JSON
         parsed = json.loads(output.strip())
         assert parsed["name"] == "Alice"
         assert parsed["age"] == 30
-    
-    def test_format_json_with_list(self, formatter: OutputFormatter) -> None:
+
+    def test_format_json_with_list(
+        self, formatter: OutputFormatter, output_buffer: StringIO
+    ) -> None:
         """Test JSON formatting with list."""
         data = [{"name": "Alice"}, {"name": "Bob"}]
-        
+
         formatter.format(data, format=OutputFormat.JSON)
-        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
-        
+        output = output_buffer.getvalue()
+
         parsed = json.loads(output.strip())
         assert len(parsed) == 2
         assert parsed[0]["name"] == "Alice"
-    
-    def test_format_json_with_indent(self, formatter: OutputFormatter) -> None:
+
+    def test_format_json_with_indent(
+        self, formatter: OutputFormatter, output_buffer: StringIO
+    ) -> None:
         """Test JSON formatting with custom indent."""
         data = {"name": "Alice"}
-        
+
         formatter.format(data, format=OutputFormat.JSON, indent=4)
-        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
-        
+        output = output_buffer.getvalue()
+
         # Should have indentation
         assert "    " in output
+
+    def test_format_json_rejects_circular_data(
+        self, formatter: OutputFormatter, output_buffer: StringIO
+    ) -> None:
+        """A circular object fails without emitting a partial JSON document."""
+        items: list[object] = []
+        items.append(items)
+        with pytest.raises(ValidationError, match="Cannot serialize data to JSON"):
+            formatter.format(items, format=OutputFormat.JSON)
+        assert output_buffer.getvalue() == ""
 
 
 class TestTextFormatting:
     """Tests for plain text output formatting."""
-    
-    def test_format_text_with_string(self, formatter: OutputFormatter) -> None:
+
+    def test_format_text_with_string(
+        self, formatter: OutputFormatter, output_buffer: StringIO
+    ) -> None:
         """Test text formatting with string."""
         formatter.format("Hello, World!", format=OutputFormat.TEXT)
-        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
-        
+        output = output_buffer.getvalue()
+
         assert "Hello, World!" in output
-    
-    def test_format_text_with_list(self, formatter: OutputFormatter) -> None:
+
+    def test_format_text_with_list(
+        self, formatter: OutputFormatter, output_buffer: StringIO
+    ) -> None:
         """Test text formatting with list."""
         data = ["Line 1", "Line 2", "Line 3"]
-        
+
         formatter.format(data, format=OutputFormat.TEXT)
-        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
-        
+        output = output_buffer.getvalue()
+
         assert "Line 1" in output
         assert "Line 2" in output
         assert "Line 3" in output
-    
-    def test_format_text_with_dict(self, formatter: OutputFormatter) -> None:
+
+    def test_format_text_with_dict(
+        self, formatter: OutputFormatter, output_buffer: StringIO
+    ) -> None:
         """Test text formatting with dictionary."""
         data = {"name": "Alice", "age": 30}
-        
+
         formatter.format(data, format=OutputFormat.TEXT)
-        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
-        
+        output = output_buffer.getvalue()
+
         assert "name:" in output.lower()
         assert "Alice" in output
 
@@ -144,73 +191,103 @@ class TestTextFormatting:
 class TestYAMLFormatting:
     """Tests for YAML output formatting."""
 
-    def test_format_yaml_with_dict(self, formatter: OutputFormatter) -> None:
+    def test_format_yaml_with_dict(
+        self, formatter: OutputFormatter, output_buffer: StringIO
+    ) -> None:
         """Test YAML formatting with dictionary."""
         pytest.importorskip("yaml")
         data = {"name": "Alice", "active": True}
 
         formatter.format(data, format=OutputFormat.YAML)
-        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
+        output = output_buffer.getvalue()
 
         assert "name:" in output
         assert "Alice" in output
 
+    def test_format_yaml_rejects_unportable_python_objects(
+        self, formatter: OutputFormatter, output_buffer: StringIO
+    ) -> None:
+        """Machine YAML does not encode Python-specific objects."""
+        with pytest.raises(ValidationError, match="Cannot serialize data to YAML"):
+            formatter.format({"item": object()}, format=OutputFormat.YAML)
+        assert output_buffer.getvalue() == ""
+
+    def test_format_yaml_reports_missing_dependency(
+        self,
+        formatter: OutputFormatter,
+        output_buffer: StringIO,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """An unavailable YAML writer is a formatting failure."""
+        monkeypatch.setitem(sys.modules, "yaml", None)
+        with pytest.raises(ValidationError, match="YAML support not available"):
+            formatter.format({"item": "sample"}, format=OutputFormat.YAML)
+        assert output_buffer.getvalue() == ""
+
 
 class TestHelperMethods:
     """Tests for formatter helper methods."""
-    
-    def test_print_error(self, formatter: OutputFormatter) -> None:
+
+    def test_print_error(
+        self, formatter: OutputFormatter, output_buffer: StringIO
+    ) -> None:
         """Test error message printing."""
         formatter.print_error("Something went wrong")
-        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
-        
+        output = output_buffer.getvalue()
+
         assert "Something went wrong" in output
-    
-    def test_print_success(self, formatter: OutputFormatter) -> None:
+
+    def test_print_success(
+        self, formatter: OutputFormatter, output_buffer: StringIO
+    ) -> None:
         """Test success message printing."""
         formatter.print_success("Operation completed")
-        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
-        
+        output = output_buffer.getvalue()
+
         assert "Operation completed" in output
-    
-    def test_print_warning(self, formatter: OutputFormatter) -> None:
+
+    def test_print_warning(
+        self, formatter: OutputFormatter, output_buffer: StringIO
+    ) -> None:
         """Test warning message printing."""
         formatter.print_warning("Be careful")
-        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
-        
+        output = output_buffer.getvalue()
+
         assert "Be careful" in output
-    
-    def test_print_info(self, formatter: OutputFormatter) -> None:
+
+    def test_print_info(
+        self, formatter: OutputFormatter, output_buffer: StringIO
+    ) -> None:
         """Test info message printing."""
         formatter.print_info("For your information")
-        output = formatter.console.file.getvalue()  # type: ignore[union-attr]
-        
+        output = output_buffer.getvalue()
+
         assert "For your information" in output
 
 
 class TestTerminalCapabilityFallback:
     """Tests for terminal capability detection and fallback."""
-    
+
     def test_formatter_works_without_terminal(self) -> None:
         """Test that formatter works in non-terminal environments."""
         # Create formatter with non-terminal console
         string_buffer = StringIO()
         console = Console(file=string_buffer, force_terminal=False)
         formatter = OutputFormatter(console=console)
-        
+
         data = [{"name": "Alice"}]
         formatter.format(data, format=OutputFormat.TABLE)
-        
+
         # Should still produce output
         output = string_buffer.getvalue()
         assert "Alice" in output
-    
+
     def test_formatter_handles_color_disabled(self) -> None:
         """Test formatter with colors disabled."""
         string_buffer = StringIO()
         console = Console(file=string_buffer, force_terminal=True, no_color=True)
         formatter = OutputFormatter(console=console)
-        
+
         formatter.print_success("Success!")
         output = string_buffer.getvalue()
 

@@ -58,3 +58,34 @@ export function generateYamlConfig(
 `
   return header + stringify(yamlObj)
 }
+
+export type GenerateResult =
+  { ok: true; value: string } | { ok: false; error: string }
+
+function catchGenerate(err: unknown): GenerateResult {
+  return {
+    ok: false,
+    error: err instanceof Error ? err.message : String(err),
+  }
+}
+
+/** Soft-fail wrapper so Review cannot crash the wizard on invalid names. */
+export function tryGenerateCliCommand(
+  config: Partial<RisoConfig>,
+): GenerateResult {
+  try {
+    return { ok: true, value: generateCliCommand(config) }
+  } catch (err) {
+    return catchGenerate(err)
+  }
+}
+
+export function tryGenerateYamlConfig(
+  config: Partial<RisoConfig> | Record<string, unknown>,
+): GenerateResult {
+  try {
+    return { ok: true, value: generateYamlConfig(config) }
+  } catch (err) {
+    return catchGenerate(err)
+  }
+}

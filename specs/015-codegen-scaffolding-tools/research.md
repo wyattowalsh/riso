@@ -223,25 +223,15 @@ def merge_template_update(base: str, user: str, template: str) -> tuple[str, boo
 
 **Standard Git diff3 style:**
 
-```text
-<<<<<<< USER
-user's modified code
-||||||| ORIGINAL
-original template code
-=======
-new template code
->>>>>>> TEMPLATE
-```
+The `<<<<<<< USER` marker starts the user's modified code. The
+`||||||| ORIGINAL` marker introduces the original template code, `=======`
+introduces the new template code, and `>>>>>>> TEMPLATE` closes the conflict.
 
 **Simpler merge style (without base):**
 
-```text
-<<<<<<< USER
-user's modified code
-=======
-new template code
->>>>>>> TEMPLATE
-```
+The `<<<<<<< USER` marker starts the user's modified code, `=======` introduces
+the new template code, and `>>>>>>> TEMPLATE` closes the conflict. This format
+omits the original template section.
 
 ### Conflict Detection
 

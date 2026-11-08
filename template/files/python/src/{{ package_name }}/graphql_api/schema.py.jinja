@@ -1,98 +1,41 @@
 {% if (graphql_api_module == 'enabled' or 'graphql' in api_features) -%}
 """GraphQL Schema - Root Query, Mutation, and Subscription types."""
 
-from typing import Optional
+from functools import partial
 
 import strawberry
+from strawberry.extensions import AddValidationRules
 
+from {{ package_name }}.graphql_api.complexity import QueryLimitsValidator
+from {{ package_name }}.graphql_api.errors import FormatExecutionErrors
 from {{ package_name }}.graphql_api.mutations.user_mutations import UserMutations
 from {{ package_name }}.graphql_api.queries.user_queries import UserQueries
 from {{ package_name }}.graphql_api.subscriptions.user_subscriptions import UserSubscriptions
-from {{ package_name }}.graphql_api.types.user import (
-    CreateUserInput,
-    UpdateUserInput,
-    User,
-    UserConnection,
-)
 
 
 @strawberry.type
-class Query:
+class Query(UserQueries):
     """Root Query type - entry point for all read operations."""
 
     @strawberry.field
     async def hello(self) -> str:
         return "Hello from GraphQL!"
 
-    @strawberry.field
-    async def user(
-        self,
-        info: strawberry.Info,
-        id: strawberry.ID,
-    ) -> Optional[User]:
-        user_queries = UserQueries()
-        return await user_queries.user(info, id)
-
-    @strawberry.field
-    async def users(
-        self,
-        info: strawberry.Info,
-        first: Optional[int] = 20,
-        after: Optional[str] = None,
-        offset: Optional[int] = None,
-        limit: Optional[int] = None,
-    ) -> UserConnection:
-        user_queries = UserQueries()
-        return await user_queries.users(info, first, after, offset, limit)
-
 
 @strawberry.type
-class Mutation:
+class Mutation(UserMutations):
     """Root Mutation type - entry point for all write operations."""
 
-    @strawberry.mutation
-    async def create_user(
-        self,
-        info: strawberry.Info,
-        input: CreateUserInput,
-    ) -> User:
-        user_mutations = UserMutations()
-        return await user_mutations.create_user(info, input)
-
-    @strawberry.mutation
-    async def update_user(
-        self,
-        info: strawberry.Info,
-        id: strawberry.ID,
-        input: UpdateUserInput,
-    ) -> Optional[User]:
-        user_mutations = UserMutations()
-        return await user_mutations.update_user(info, id, input)
-
-    @strawberry.mutation
-    async def delete_user(
-        self,
-        info: strawberry.Info,
-        id: strawberry.ID,
-    ) -> bool:
-        user_mutations = UserMutations()
-        return await user_mutations.delete_user(info, id)
-
 
 @strawberry.type
-class Subscription:
+class Subscription(UserSubscriptions):
     """Root Subscription type - entry point for real-time operations."""
-
-    @strawberry.subscription
-    async def user_created(self, info: strawberry.Info):
-        user_subscriptions = UserSubscriptions()
-        async for user in user_subscriptions.user_created(info):
-            yield user
 
 
 schema = strawberry.Schema(
     query=Query,
     mutation=Mutation,
     subscription=Subscription,
+    extensions=[partial(AddValidationRules, [QueryLimitsValidator]), FormatExecutionErrors],
 )
 {% endif -%}

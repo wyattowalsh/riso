@@ -215,8 +215,8 @@ select = ["E4", "E7", "E9", "F"]
 [tool.pylint.main]
 fail-under = 9.5
 ignore-paths = ["samples/.*/render"]
-# CI tests import scripts after their pytest fixture configures these paths.
-init-hook = "import sys; sys.path[:0] = ['scripts', 'scripts/ci']"
+# Match the import roots configured by the pytest script/hook fixtures.
+init-hook = "import sys; sys.path[:0] = ['.', 'scripts', 'scripts/ci', 'scripts/lib', 'scripts/hooks', 'template/hooks']"
 
 [build-system]
 requires = ["hatchling"]
@@ -224,6 +224,19 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/riso"]
+
+# Keep source archives bounded to installable assets. Walking the maintainer
+# checkout otherwise traverses dependency/build trees before applying ignores.
+[tool.hatch.build.targets.sdist]
+only-include = [
+    "src/riso",
+    "template",
+    "scripts/lib",
+    "scripts/hooks",
+    "README.md",
+    "LICENSE",
+    "pyproject.toml",
+]
 
 # Installed CLI operations need the same template shipped by the source checkout.
 [tool.hatch.build.targets.wheel.force-include]

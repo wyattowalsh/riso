@@ -1,4 +1,4 @@
-{% if api_module == 'enabled' and 'rust' in api_languages %}
+{% if api_module == 'enabled' and 'rust' in api_languages -%}
 //! Hello endpoint handler
 
 use actix_web::{get, web, HttpResponse, Responder};
@@ -60,11 +60,9 @@ mod tests {
     #[actix_web::test]
     async fn test_hello_with_name() {
         let app = test::init_service(App::new().service(hello)).await;
-        let req = test::TestRequest::get()
-            .uri("/api/v1/hello?name=Rust")
-            .to_request();
+        let req = test::TestRequest::get().uri("/api/v1/hello?name=Rust").to_request();
         let resp = test::call_service(&app, req).await;
         assert!(resp.status().is_success());
     }
 }
-{% endif %}
+{% endif -%}

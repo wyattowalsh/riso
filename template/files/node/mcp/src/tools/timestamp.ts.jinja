@@ -13,10 +13,7 @@ export function registerTimestampTools(mcp: FastMCP): void {
     name: "get_current_time",
     description: "Get the current time in various formats",
     parameters: z.object({
-      format: z
-        .enum(["iso", "unix", "rfc2822", "human"])
-        .default("iso")
-        .describe("Output format"),
+      format: z.enum(["iso", "unix", "rfc2822", "human"]).default("iso").describe("Output format"),
       timezone: z.string().default("UTC").describe("Timezone name"),
     }),
     execute: async ({ format, timezone }) => {
@@ -43,22 +40,19 @@ export function registerTimestampTools(mcp: FastMCP): void {
     description: "Parse a timestamp string into components",
     parameters: z.object({
       timestamp: z.string().describe("The timestamp string to parse"),
-      inputFormat: z
-        .enum(["iso", "unix"])
-        .default("iso")
-        .describe("Format of the input"),
+      inputFormat: z.enum(["iso", "unix"]).default("iso").describe("Format of the input"),
     }),
     execute: async ({ timestamp, inputFormat }) => {
       try {
         let date: Date;
 
         if (inputFormat === "unix") {
-          date = new Date(parseInt(timestamp, 10) * 1000);
+          date = new Date(Number.parseInt(timestamp, 10) * 1000);
         } else {
           date = new Date(timestamp);
         }
 
-        if (isNaN(date.getTime())) {
+        if (Number.isNaN(date.getTime())) {
           throw new Error("Invalid date");
         }
 
@@ -94,7 +88,7 @@ export function registerTimestampTools(mcp: FastMCP): void {
         const startDate = new Date(start);
         const endDate = end ? new Date(end) : new Date();
 
-        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
           throw new Error("Invalid date");
         }
 
@@ -118,4 +112,4 @@ export function registerTimestampTools(mcp: FastMCP): void {
     },
   });
 }
-{%- endif %}
+{% endif -%}

@@ -83,6 +83,8 @@ uv run riso migrate DEST|--answers-file PATH [--dry-run] [--json]
 
 * **guides:** 1.x → 2.0 remap table and operator path live in
   [docs/guides/v2-migration.md](docs/guides/v2-migration.md).
+* **mise:** generated `mise.toml` pins Node **22**; maintainer `.mise.toml`
+  stays on a Node 22 patch pin.
 
 
 ## [1.2.11](https://github.com/wyattowalsh/riso/compare/v1.2.10...v1.2.11) (2026-06-26)

@@ -1,19 +1,11 @@
 {% if (graphql_api_module == 'enabled' or 'graphql' in api_features) -%}
 """GraphQL Playground Integration Tests - Schema exploration and documentation."""
 
-import pytest
-from strawberry.test import BaseGraphQLTestClient
-
 from {{ package_name }}.graphql_api.schema import schema
 
 
-@pytest.fixture
-def graphql_client():
-    return BaseGraphQLTestClient(schema)
-
-
 class TestPlaygroundIntegration:
-    def test_schema_introspection(self, graphql_client):
+    def test_schema_introspection(self):
         query = """
             {
                 __schema {
@@ -22,7 +14,7 @@ class TestPlaygroundIntegration:
                 }
             }
         """
-        result = graphql_client.query(query)
+        result = schema.execute_sync(query)
         assert result.errors is None
         assert result.data["__schema"]["queryType"]["name"] == "Query"
 {% endif -%}

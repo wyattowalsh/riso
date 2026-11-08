@@ -131,7 +131,7 @@ def test_recopy_dry_run_remaps_existing_answers(tmp_path: Path) -> None:
     assert result["preview_engine"] == "answers"
 
 
-def test_recopy_live_writes_remapped_dest_answers(tmp_path: Path) -> None:
+def test_recopy_live_writes_remapped_dest_answers_after_copier(tmp_path: Path) -> None:
     config = CliConfig.from_options(template_path=resolve_template_path())
     dest = tmp_path / "proj"
     dest.mkdir()
@@ -191,6 +191,30 @@ def test_recopy_failure_does_not_persist_remaps(tmp_path: Path, failure: str) ->
     if failure == "gate":
         worker.assert_not_called()
     assert answers.read_bytes() == original
+
+
+def test_recopy_copier_failure_leaves_dest_answers_unchanged(tmp_path: Path) -> None:
+    config = CliConfig.from_options(template_path=resolve_template_path())
+    dest = tmp_path / "proj"
+    dest.mkdir()
+    answers = dest / ".copier-answers.yml"
+    original = "project_name: Demo\napi_language: python\n"
+    answers.write_text(original, encoding="utf-8")
+
+    with patch(
+        "riso.cli.commands.recopy.template_run_recopy",
+        side_effect=CopierOperationError("recopy", "boom"),
+    ):
+        with pytest.raises(CopierOperationError):
+            run_recopy(
+                config,
+                destination=str(dest),
+                answers_file=None,
+                data_pairs=["project_name=Demo"],
+                dry_run=False,
+            )
+
+    assert answers.read_text(encoding="utf-8") == original
 
 
 def test_recopy_passes_skip_post_gen_to_template_runner(tmp_path: Path) -> None:

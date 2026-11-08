@@ -190,6 +190,7 @@ class TestNodeParityDetection:
         assert not _has_unconditional_patterns(text, NODE_MAKEFILE_PATTERNS)
 
     def test_node_patterns_outside_jinja_block_require_parity(self):
+        """Node commands outside the language gate still require task parity."""
         text = "\n".join(MAKEFILE_PATTERNS + NODE_MAKEFILE_PATTERNS)
         assert _has_unconditional_patterns(text, NODE_MAKEFILE_PATTERNS)
 
@@ -225,6 +226,7 @@ class TestConstantsAndPaths:
         assert "uv_tasks" in UV_TASK.parts
 
     def test_command_present_treats_split_argv_as_ty_check(self):
+        """Split command arguments are recognized as a ty check invocation."""
         text = '            "ty",\n            "check",\n            "src/{{ package_name }}",\n'
         assert _command_present(text, "ty check")
 

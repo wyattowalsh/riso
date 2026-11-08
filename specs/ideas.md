@@ -1,8 +1,14 @@
 # Riso: Next Features Ideas
 
-**Last Updated**: 2025-11-02\
+**Last Updated**: 2026-08-18\
 **Status**: Active\
 **Context**: After completing features 001-006 (template foundation, docs, quality, CI/CD, containers, FastAPI)
+
+> **Numbering is not shared.** Shipped spec directories `specs/010-*` through
+> `specs/016-*` and Wave C drafts `specs/017-sqlmodel-alembic`,
+> `specs/018-jwt-argon2`, and `specs/019-otel-metrics` are **not** the same
+> series as the idea bullets **010–015** later in this file. Do not reuse those
+> idea numbers for spec directories.
 
 ## Completed Features
 

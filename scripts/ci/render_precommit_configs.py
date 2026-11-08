@@ -27,6 +27,7 @@ PYTHON_VARIANTS = (
 
 
 def python_enabled(answers: dict[str, object]) -> bool:
+    """Determine whether any enabled component includes the Python track."""
     cli = str(answers.get("cli_module", "disabled")).lower() == "enabled"
     cli_langs = answers.get("cli_languages", [])
     api = str(answers.get("api_module", "disabled")).lower() == "enabled"
@@ -47,6 +48,7 @@ def python_enabled(answers: dict[str, object]) -> bool:
 
 
 def load_answers(variant_dir: Path) -> dict[str, object]:
+    """Read sample answers, returning an empty mapping when absent."""
     answers_path = variant_dir / "copier-answers.yml"
     if not answers_path.exists():
         return {}
@@ -55,6 +57,7 @@ def load_answers(variant_dir: Path) -> dict[str, object]:
 
 
 def validate_render(render_dir: Path, answers: dict[str, object]) -> list[str]:
+    """Report pre-commit and Python layout inconsistencies in a render."""
     errors: list[str] = []
     precommit = render_dir / ".pre-commit-config.yaml"
     if not precommit.exists():
@@ -128,6 +131,7 @@ def validate_render(render_dir: Path, answers: dict[str, object]) -> list[str]:
 
 
 def discover_variants() -> list[str]:
+    """Discover sample variants with existing render directories."""
     variants: list[str] = []
     if not SAMPLES_DIR.is_dir():
         return variants
@@ -142,6 +146,7 @@ def discover_variants() -> list[str]:
 
 
 def main() -> int:
+    """Validate pre-commit layouts for requested sample variants."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--all",

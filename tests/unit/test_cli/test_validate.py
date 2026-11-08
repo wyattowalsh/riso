@@ -48,6 +48,42 @@ def test_validate_strict_true_accepts_minimal_data_pairs() -> None:
     assert isinstance(result["warnings"], list)
 
 
+def test_validate_default_runs_generation_gates(tmp_path: Path) -> None:
+    config = CliConfig.from_options(template_path=resolve_template_path())
+    answers = tmp_path / "answers.yml"
+    answers.write_text(
+        "project_name: Demo\n"
+        "saas_infra_module: enabled\n"
+        "saas_database: neon\n"
+        "saas_storage: supabase-storage\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValidationFailedError) as exc:
+        run_validate(config, answers_file=answers, data_pairs=None, strict=True)
+    assert exc.value.data is not None
+    assert any("Neon" in err or "neon" in err for err in exc.value.data["errors"])
+
+
+def test_validate_schema_only_skips_generation_gates(tmp_path: Path) -> None:
+    config = CliConfig.from_options(template_path=resolve_template_path())
+    answers = tmp_path / "answers.yml"
+    answers.write_text(
+        "project_name: Demo\n"
+        "saas_infra_module: enabled\n"
+        "saas_database: neon\n"
+        "saas_storage: supabase-storage\n",
+        encoding="utf-8",
+    )
+    result = run_validate(
+        config,
+        answers_file=answers,
+        data_pairs=None,
+        strict=True,
+        schema_only=True,
+    )
+    assert result["valid"] is True
+
+
 def test_validate_remaps_removed_answer_keys(tmp_path: Path) -> None:
     config = CliConfig.from_options(template_path=resolve_template_path())
     answers = tmp_path / "answers.yml"
@@ -81,6 +117,7 @@ def test_validate_strict_false_returns_invalid_payload_without_raise(
         answers_file=answers,
         data_pairs=None,
         strict=False,
+        schema_only=True,
     )
     assert result["valid"] is False
     assert isinstance(result["errors"], list)

@@ -10,6 +10,8 @@ from pathlib import Path
 _REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_REPO))
 
+# Resolve repository modules only after the import-path bootstrap above.
+# pylint: disable-next=wrong-import-position
 from scripts.lib.paths import repo_root  # noqa: E402
 
 REPO_ROOT = repo_root()
@@ -27,11 +29,13 @@ TEMPLATE_DIR = REPO_ROOT / "template" / "files" / ".github" / "context"
 
 
 def file_digest(path: Path) -> str:
+    """Return the SHA-256 digest of a context file."""
     data = path.read_bytes()
     return hashlib.sha256(data).hexdigest()
 
 
 def collect_digests(directory: Path) -> dict[str, str]:
+    """Map context filenames to their content digests."""
     digests: dict[str, str] = {}
     for file in sorted(directory.glob("*")):
         if file.is_file():
@@ -40,6 +44,7 @@ def collect_digests(directory: Path) -> dict[str, str]:
 
 
 def main() -> None:
+    """Compare canonical context snippets with their template counterparts."""
     configure_logging()
 
     if not SOURCE_DIR.exists():

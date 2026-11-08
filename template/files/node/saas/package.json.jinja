@@ -1,18 +1,18 @@
 {% if saas_infra_module == "enabled" %}
 {
-  "name": "{{ project_slug }}",
+  "name": "{{ project_slug }}-saas",
   "version": "0.1.0",
   "private": true,
   "description": "{{ project_name }} - Production-ready SaaS application",
   "engines": {
-    "node": ">=20.0.0",
+    "node": ">=22.0.0",
     "pnpm": ">=9.0.0"
   },
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     {# Development #}
-    "dev": "{% if saas_runtime == 'nextjs-16' %}next dev --turbo runtime/nextjs{% else %}remix dev runtime/remix{% endif %}",
-    "build": "{% if saas_runtime == 'nextjs-16' %}next build runtime/nextjs{% else %}remix build runtime/remix{% endif %}",
+    "dev": "{% if saas_runtime == 'nextjs-16' %}next dev --turbo runtime/nextjs{% else %}remix dev{% endif %}",
+    "build": "{% if saas_runtime == 'nextjs-16' %}next build runtime/nextjs{% else %}remix build{% endif %}",
     "start": "{% if saas_runtime == 'nextjs-16' %}next start runtime/nextjs{% else %}remix-serve runtime/remix/build/index.js{% endif %}",
     "setup": "tsx scripts/setup-wizard.ts",
 
@@ -74,6 +74,7 @@
     "@remix-run/node": "^2.12.0",
     "@remix-run/react": "^2.12.0",
     "@remix-run/serve": "^2.12.0",
+    "isbot": "^4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     {% endif %}
@@ -255,7 +256,7 @@
     {% endif %}
     
     {# File Upload #}
-    {% if saas_file_upload == 'uploadthing' %}
+    {% if saas_file_upload == 'uploadthing' and saas_auth_module == 'enabled' and saas_runtime == 'nextjs-16' %}
     ,"uploadthing": "^7.0.2"
     ,"@uploadthing/react": "^7.0.2"
     {% elif saas_file_upload == 'react-dropzone' %}

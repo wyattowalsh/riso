@@ -10,6 +10,8 @@ scripts_lib = Path(__file__).resolve().parents[3] / "scripts" / "lib"
 if str(scripts_lib) not in sys.path:
     sys.path.insert(0, str(scripts_lib))
 
+# Resolve repository modules only after the import-path bootstrap above.
+# pylint: disable-next=wrong-import-position
 from logger import configure_logging, get_logger, logger  # noqa: E402
 
 

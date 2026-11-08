@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -13,6 +14,7 @@ from riso.template import run_generator, run_update
 
 @pytest.mark.unit
 def test_run_generator_rejects_removed_keys_before_worker(tmp_path: Path) -> None:
+    """Generation rejects unsupported removed answers before any Copier work."""
     with patch("riso.template._run_copier_worker") as worker:
         with pytest.raises(ValidationFailedError):
             run_generator(
@@ -26,6 +28,7 @@ def test_run_generator_rejects_removed_keys_before_worker(tmp_path: Path) -> Non
 
 @pytest.mark.unit
 def test_run_update_rejects_saas_incompat_before_worker(tmp_path: Path) -> None:
+    """Update rejects incompatible stored SaaS answers before any Copier work."""
     dest = tmp_path / "proj"
     dest.mkdir()
     (dest / ".copier-answers.yml").write_text(
@@ -46,11 +49,12 @@ def test_run_update_rejects_saas_incompat_before_worker(tmp_path: Path) -> None:
 
 @pytest.mark.unit
 def test_smoke_schema_failure_count_integration() -> None:
-    import sys
-
+    """The checkout smoke loader counts recorded failures across import layouts."""
     repo = Path(__file__).resolve().parents[2]
     if str(repo) not in sys.path:
         sys.path.insert(0, str(repo))
+    # Both imports must follow this test's checkout-specific sys.path setup.
+    # pylint: disable=import-outside-toplevel
     try:
         from scripts.lib.smoke_schema import failure_count, load_smoke
     except ModuleNotFoundError:

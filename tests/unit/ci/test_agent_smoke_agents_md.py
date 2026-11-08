@@ -39,9 +39,9 @@ class TestAgentSmokeEvaluate:
         text = "# AGENTS.md\n\nREADME.md\n\n| Task | Command |\n"
         result = evaluate(text)
         assert result["overall_passed"] is False
-        boundaries = next(
-            c for c in result["checks"] if c["id"] == "boundaries_section"
-        )
+        checks = result["checks"]
+        assert isinstance(checks, list)
+        boundaries = next(c for c in checks if c["id"] == "boundaries_section")
         assert boundaries["passed"] is False
 
     def test_merged_table_rows_fail(self):
@@ -51,5 +51,7 @@ class TestAgentSmokeEvaluate:
             "| ---- | ------- || Install | `uv sync` |",
         )
         result = evaluate(text)
-        merged = next(c for c in result["checks"] if c["id"] == "table_rows_not_merged")
+        checks = result["checks"]
+        assert isinstance(checks, list)
+        merged = next(c for c in checks if c["id"] == "table_rows_not_merged")
         assert merged["passed"] is False

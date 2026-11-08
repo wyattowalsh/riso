@@ -3,7 +3,7 @@
 # =============================================================================
 # Multi-stage Production Dockerfile for Riso-generated projects
 # =============================================================================
-# Supports: Python 3.11+, Node.js 20+, Rust 1.80+
+# Supports: Python 3.11+, Node.js 22+, Rust 1.89+
 # Security: Non-root users, health checks, minimal attack surface
 # Performance: Multi-stage builds, layer caching, BuildKit optimizations
 #
@@ -21,10 +21,21 @@
 #
 # PRODUCTION NOTE: Pin base images with SHA256 digests for reproducibility:
 #   python:3.12-slim-bookworm@sha256:abc123...
-#   node:20-alpine@sha256:def456...
+#   node:22-alpine@sha256:def456...
 # Find digests: docker pull <image> && docker inspect <image> | grep -A1 RepoDigests
+#
+# Source paths are dest-layout prefixes (python/, node/, rust/) — never dest-root src/ or apps/.
 
-{%- if (cli_module == "enabled" and "python" in cli_languages) or (api_module == "enabled" and "python" in api_languages) or (mcp_module == "enabled" and "python" in mcp_languages) %}
+{%- set uv_prod_groups -%}
+{%- if cli_module == "enabled" and "python" in (cli_languages|default([])) %} --group cli{% endif -%}
+{%- if api_module == "enabled" and "python" in (api_languages|default([])) %} --group api_python{% endif -%}
+{%- if (websocket_module|default('disabled')) == "enabled" or "websocket" in (api_features|default([])) %} --group websocket{% endif -%}
+{%- if (graphql_api_module|default('disabled')) == "enabled" or "graphql" in (api_features|default([])) %} --group graphql_api{% endif -%}
+{%- if mcp_module == "enabled" and "python" in (mcp_languages|default([])) %} --group mcp{% endif -%}
+{%- if (codegen_module|default('disabled')) == "enabled" %} --group codegen{% endif -%}
+{%- endset %}
+
+{%- if (cli_module == "enabled" and "python" in (cli_languages|default([]))) or (api_module == "enabled" and "python" in (api_languages|default([]))) or (mcp_module == "enabled" and "python" in (mcp_languages|default([]))) %}
 
 # =============================================================================
 # Python Builder Stage
@@ -52,7 +63,7 @@ RUN pip install --no-cache-dir uv==0.5.15
 WORKDIR /build
 
 # Copy dependency manifests first for optimal layer caching
-COPY pyproject.toml uv.lock ./
+COPY python/pyproject.toml python/uv.lock ./
 {%- if project_layout == "single-package" %}
 COPY README.md ./
 {%- endif %}
@@ -60,17 +71,17 @@ COPY README.md ./
 # Install dependencies with uv (production only, frozen lockfile)
 # BuildKit cache mount accelerates repeated builds
 RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
-    uv sync --frozen --no-dev --no-install-project
+    uv sync --frozen --no-dev --no-install-project{{ uv_prod_groups }}
 
-# Copy application source
-COPY src/ ./src/
-{%- if cli_module == "enabled" and "python" in cli_languages %}
-COPY tests/ ./tests/
+# Copy application source from the python/ track
+COPY python/src/ ./src/
+{%- if cli_module == "enabled" and "python" in (cli_languages|default([])) %}
+COPY python/tests/ ./tests/
 {%- endif %}
 
 # Install the project itself
 RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
-    uv sync --frozen --no-dev
+    uv sync --frozen --no-dev{% if mcp_module == "enabled" and "python" in (mcp_languages|default([])) %} --no-editable{% endif %}{{ uv_prod_groups }}
 
 # =============================================================================
 # Python Runtime Stage
@@ -99,7 +110,7 @@ WORKDIR /app
 # Copy virtual environment and source from builder
 COPY --from=builder-python --chown=1000:1000 /build/.venv /app/.venv
 COPY --from=builder-python --chown=1000:1000 /build/src /app/src
-{%- if cli_module == "enabled" and "python" in cli_languages %}
+{%- if cli_module == "enabled" and "python" in (cli_languages|default([])) %}
 COPY --from=builder-python --chown=1000:1000 /build/tests /app/tests
 {%- endif %}
 
@@ -112,7 +123,7 @@ ENV PATH="/app/.venv/bin:$PATH" \
 # Switch to non-root user
 USER 1000:1000
 
-{%- if api_module == "enabled" and "python" in api_languages %}
+{%- if api_module == "enabled" and "python" in (api_languages|default([])) %}
 # Expose FastAPI port
 EXPOSE 8000
 
@@ -128,7 +139,7 @@ CMD ["python", "-m", "uvicorn", "{{ package_name }}.api.main:app", \
      "--workers", "4", \
      "--log-level", "info"]
 
-{%- elif cli_module == "enabled" and "python" in cli_languages %}
+{%- elif cli_module == "enabled" and "python" in (cli_languages|default([])) %}
 # CLI application - no exposed ports
 # Health check verifies CLI binary is functional
 HEALTHCHECK --interval=60s --timeout=5s --retries=2 \
@@ -137,11 +148,10 @@ HEALTHCHECK --interval=60s --timeout=5s --retries=2 \
 # Default command: Show CLI help
 CMD ["python", "-m", "{{ package_name }}.cli", "--help"]
 
-{%- elif mcp_module == "enabled" and "python" in mcp_languages %}
+{%- elif mcp_module == "enabled" and "python" in (mcp_languages|default([])) %}
 # MCP server - stdio mode (no HTTP ports)
-# Health check verifies Python environment
 HEALTHCHECK --interval=60s --timeout=5s --retries=2 \
-    CMD python --version || exit 1
+    CMD python -m {{ package_name }}.mcp --help || exit 1
 
 # Default command: Run MCP server
 CMD ["python", "-m", "{{ package_name }}.mcp"]
@@ -150,53 +160,68 @@ CMD ["python", "-m", "{{ package_name }}.mcp"]
 
 {%- endif %}
 
-{%- if (api_module == "enabled" and "node" in api_languages) or (mcp_module == "enabled" and "typescript" in mcp_languages) or (docs_module == "enabled" and docs_framework in ["fumadocs", "docusaurus"]) or saas_infra_module == "enabled" %}
+{%- if (api_module == "enabled" and "node" in (api_languages|default([]))) or (mcp_module == "enabled" and "typescript" in (mcp_languages|default([]))) or (docs_module == "enabled" and docs_framework in ["fumadocs", "docusaurus"]) or saas_infra_module == "enabled" %}
 
 # =============================================================================
 # Node.js Builder Stage
 # =============================================================================
-FROM node:20-alpine AS builder-node
+FROM node:22-alpine AS builder-node
 
 # Metadata labels
 LABEL org.opencontainers.image.title="{{ project_name }} - Node.js Builder"
 
-# Install pnpm using Corepack (built into Node 20+)
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Activate the pnpm version declared by the generated workspace.
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 
 WORKDIR /build
 
 # Copy dependency manifests first for optimal layer caching
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-{%- if project_layout == "monorepo" %}
-{%- if api_module == "enabled" and "node" in api_languages %}
-COPY apps/api-node/package.json ./apps/api-node/
+{%- if api_module == "enabled" and "node" in (api_languages|default([])) %}
+COPY node/apps/api-node/package.json ./node/apps/api-node/
 {%- endif %}
 {%- if docs_module == "enabled" and docs_framework == "fumadocs" %}
-COPY apps/docs-fumadocs/package.json ./apps/docs-fumadocs/
+COPY node/docs/fumadocs/package.json ./node/docs/fumadocs/
 {%- endif %}
 {%- if docs_module == "enabled" and docs_framework == "docusaurus" %}
-COPY apps/docs-docusaurus/package.json ./apps/docs-docusaurus/
+COPY node/docs/docusaurus/package.json ./node/docs/docusaurus/
 {%- endif %}
 {%- if saas_infra_module == "enabled" %}
-COPY apps/saas/package.json ./apps/saas/
+COPY node/saas/package.json ./node/saas/
+{%- if saas_orm == "prisma" %}
+# The SaaS package generates its Prisma client during install.
+COPY node/saas/integrations/orm/prisma/schema.prisma ./node/saas/integrations/orm/prisma/
 {%- endif %}
-{%- if shared_logic == "enabled" %}
-COPY apps/shared/package.json ./apps/shared/
 {%- endif %}
+{%- if mcp_module == "enabled" and "typescript" in (mcp_languages|default([])) %}
+COPY node/mcp/package.json ./node/mcp/
 {%- endif %}
 
 # Install dependencies with pnpm (production only)
 # BuildKit cache mount for pnpm store
 RUN --mount=type=cache,target=/root/.pnpm-store,sharing=locked \
-    pnpm install --frozen-lockfile --prod=false
+    pnpm{% if docs_module == 'enabled' and docs_framework == 'docusaurus' and docusaurus_openapi | default('disabled') == 'enabled' and api_module == 'enabled' and api_languages %} --config.side-effects-cache=false{% endif %} install --frozen-lockfile --prod=false
 
-# Copy application source and config
-COPY apps/ ./apps/
-COPY tsconfig.json ./
-
+# Copy application source and config (node/ prefix — never dest-root apps/)
+{%- if api_module == "enabled" and "node" in (api_languages|default([])) %}
+COPY node/apps/ ./node/apps/
+{%- if shared_logic | lower == 'enabled' %}
+COPY node/shared-config/ ./node/shared-config/
+{%- endif %}
+{%- endif %}
+{%- if docs_module == "enabled" and docs_framework in ["fumadocs", "docusaurus"] %}
+COPY node/docs/ ./node/docs/
+{%- endif %}
+{%- if saas_infra_module == "enabled" %}
+COPY node/saas/ ./node/saas/
+{%- endif %}
+{%- if mcp_module == "enabled" and "typescript" in (mcp_languages|default([])) %}
+COPY node/mcp/ ./node/mcp/
+{%- endif %}
 # Build TypeScript applications
-{%- if api_module == "enabled" and "node" in api_languages %}
+{%- if api_module == "enabled" and "node" in (api_languages|default([])) %}
 RUN pnpm --filter api-node build
+RUN pnpm --filter api-node --prod deploy /out/api-node
 {%- endif %}
 {%- if docs_module == "enabled" and docs_framework == "fumadocs" %}
 RUN pnpm --filter docs-fumadocs build
@@ -205,16 +230,23 @@ RUN pnpm --filter docs-fumadocs build
 RUN pnpm --filter docs-docusaurus build
 {%- endif %}
 {%- if saas_infra_module == "enabled" %}
-RUN pnpm --filter saas build
+{%- if saas_runtime == "nextjs-16" %}
+RUN mkdir -p node/saas/runtime/nextjs/public
+{%- endif %}
+RUN pnpm --dir node/saas run build
 {%- endif %}
 
+{%- if saas_infra_module == "enabled" %}
+# Keep the workspace links and generated SaaS client from the build.
+{%- else %}
 # Prune dev dependencies for smaller runtime image
 RUN pnpm prune --prod
+{%- endif %}
 
 # =============================================================================
 # Node.js Runtime Stage
 # =============================================================================
-FROM node:20-alpine AS runtime-node
+FROM node:22-alpine AS runtime-node
 
 # Metadata labels
 LABEL org.opencontainers.image.title="{{ project_name }} - Node.js Runtime"
@@ -226,10 +258,6 @@ RUN apk add --no-cache \
     ca-certificates \
     dumb-init
 
-# Create non-root user with explicit UID/GID
-RUN addgroup -g 1000 appuser && \
-    adduser -u 1000 -G appuser -s /bin/sh -D appuser
-
 WORKDIR /app
 
 # Enable pnpm via Corepack
@@ -238,37 +266,44 @@ RUN corepack enable
 # Copy built artifacts and production dependencies from builder
 COPY --from=builder-node --chown=1000:1000 /build/package.json /build/pnpm-workspace.yaml /build/pnpm-lock.yaml ./
 COPY --from=builder-node --chown=1000:1000 /build/node_modules ./node_modules
-{%- if api_module == "enabled" and "node" in api_languages %}
-COPY --from=builder-node --chown=1000:1000 /build/apps/api-node/dist ./apps/api-node/dist
-COPY --from=builder-node --chown=1000:1000 /build/apps/api-node/package.json ./apps/api-node/
+{%- if api_module == "enabled" and "node" in (api_languages|default([])) %}
+COPY --from=builder-node --chown=1000:1000 /out/api-node ./node/apps/api-node
 {%- endif %}
 {%- if docs_module == "enabled" and docs_framework == "fumadocs" %}
-COPY --from=builder-node --chown=1000:1000 /build/apps/docs-fumadocs/.next ./apps/docs-fumadocs/.next
-COPY --from=builder-node --chown=1000:1000 /build/apps/docs-fumadocs/public ./apps/docs-fumadocs/public
-COPY --from=builder-node --chown=1000:1000 /build/apps/docs-fumadocs/package.json ./apps/docs-fumadocs/
-COPY --from=builder-node --chown=1000:1000 /build/apps/docs-fumadocs/next.config.mjs ./apps/docs-fumadocs/
+COPY --from=builder-node --chown=1000:1000 /build/node/docs/fumadocs/out ./node/docs/fumadocs/out
 {%- endif %}
 {%- if docs_module == "enabled" and docs_framework == "docusaurus" %}
-COPY --from=builder-node --chown=1000:1000 /build/apps/docs-docusaurus/build ./apps/docs-docusaurus/build
-COPY --from=builder-node --chown=1000:1000 /build/apps/docs-docusaurus/package.json ./apps/docs-docusaurus/
+COPY --from=builder-node --chown=1000:1000 /build/node/docs/docusaurus/build ./node/docs/docusaurus/build
 {%- endif %}
 {%- if saas_infra_module == "enabled" %}
-COPY --from=builder-node --chown=1000:1000 /build/apps/saas/.next ./apps/saas/.next
-COPY --from=builder-node --chown=1000:1000 /build/apps/saas/public ./apps/saas/public
-COPY --from=builder-node --chown=1000:1000 /build/apps/saas/package.json ./apps/saas/
+COPY --from=builder-node --chown=1000:1000 /build/node/saas/package.json ./node/saas/
+COPY --from=builder-node --chown=1000:1000 /build/node/saas/node_modules ./node/saas/node_modules
+{%- if saas_runtime == "nextjs-16" %}
+COPY --from=builder-node --chown=1000:1000 /build/node/saas/runtime/nextjs/next.config.js ./node/saas/runtime/nextjs/
+COPY --from=builder-node --chown=1000:1000 /build/node/saas/runtime/nextjs/.next ./node/saas/runtime/nextjs/.next
+COPY --from=builder-node --chown=1000:1000 /build/node/saas/runtime/nextjs/public ./node/saas/runtime/nextjs/public
+{%- else %}
+COPY --from=builder-node --chown=1000:1000 /build/node/saas/runtime/remix/build ./node/saas/runtime/remix/build
+COPY --from=builder-node --chown=1000:1000 /build/node/saas/runtime/remix/public/build ./node/saas/runtime/remix/public/build
 {%- endif %}
-{%- if shared_logic == "enabled" %}
-COPY --from=builder-node --chown=1000:1000 /build/apps/shared ./apps/shared
+{%- endif %}
+{%- if mcp_module == "enabled" and "typescript" in (mcp_languages|default([])) %}
+COPY --from=builder-node --chown=1000:1000 /build/node/mcp ./node/mcp
 {%- endif %}
 
 # Environment variables
 ENV NODE_ENV=production \
     NODE_OPTIONS="--max-old-space-size=2048"
 
-# Switch to non-root user
+{%- if docs_module == "enabled" and docs_framework in ["fumadocs", "docusaurus"] %}
+# Install the static server before switching to the image's node user.
+RUN npm install -g serve@14.2.6
+{%- endif %}
+
+# The official Node image provides UID/GID 1000.
 USER 1000:1000
 
-{%- if api_module == "enabled" and "node" in api_languages %}
+{%- if api_module == "enabled" and "node" in (api_languages|default([])) %}
 # Expose Fastify port
 EXPOSE 3000
 
@@ -278,19 +313,19 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 
 # Default command: Run Fastify API with dumb-init for proper signal handling
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-CMD ["node", "apps/api-node/dist/main.js"]
+CMD ["node", "node/apps/api-node/{% if shared_logic | lower == 'enabled' %}dist/apps/api-node/src/main.js{% else %}dist/main.js{% endif %}"]
 
 {%- elif docs_module == "enabled" and docs_framework == "fumadocs" %}
-# Expose Next.js port
+# Expose the Fumadocs static server.
 EXPOSE 3001
 
 # Health check for Fumadocs
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-    CMD curl -f http://localhost:3001/api/health || exit 1
+    CMD curl -f http://localhost:3001/ || exit 1
 
-# Default command: Serve Fumadocs with Next.js
+# Default command: Serve the Fumadocs static export.
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-CMD ["pnpm", "--filter", "docs-fumadocs", "start"]
+CMD ["serve", "node/docs/fumadocs/out", "-l", "3001"]
 
 {%- elif docs_module == "enabled" and docs_framework == "docusaurus" %}
 # Expose Docusaurus port
@@ -298,37 +333,36 @@ EXPOSE 3002
 
 # Health check for Docusaurus
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-    CMD curl -f http://localhost:3002 || exit 1
-
-# Install serve for static hosting
-RUN npm install -g serve
+    CMD curl -f http://localhost:3002/ || exit 1
 
 # Default command: Serve Docusaurus static build
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-CMD ["serve", "-s", "apps/docs-docusaurus/build", "-l", "3002"]
+CMD ["serve", "-s", "node/docs/docusaurus/build", "-l", "3002"]
 
 {%- elif saas_infra_module == "enabled" %}
-# Expose SaaS app port
+WORKDIR /app/node/saas
 EXPOSE 3000
 
-# Health check for Next.js SaaS app
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-    CMD curl -f http://localhost:3000/api/health || exit 1
+    CMD curl -f http://localhost:3000{{ '/api/health' if saas_runtime == 'nextjs-16' else '/comparison' }} || exit 1
 
-# Default command: Serve Next.js SaaS app
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-CMD ["pnpm", "--filter", "saas", "start"]
-
+{%- if saas_runtime == "nextjs-16" %}
+CMD ["./node_modules/.bin/next", "start", "runtime/nextjs"]
+{%- else %}
+CMD ["./node_modules/.bin/remix-serve", "runtime/remix/build/index.js"]
 {%- endif %}
 
 {%- endif %}
 
-{%- if (cli_module == "enabled" and "rust" in cli_languages) or (api_module == "enabled" and "rust" in api_languages) or (mcp_module == "enabled" and "rust" in mcp_languages) %}
+{%- endif %}
+
+{%- if (cli_module == "enabled" and "rust" in (cli_languages|default([]))) or (api_module == "enabled" and "rust" in (api_languages|default([]))) or (mcp_module == "enabled" and "rust" in (mcp_languages|default([]))) %}
 
 # =============================================================================
 # Rust Builder Stage
 # =============================================================================
-FROM rust:1.80-slim-bookworm AS builder-rust
+FROM rust:1.99.1-slim-bookworm AS builder-rust
 
 # Metadata labels
 LABEL org.opencontainers.image.title="{{ project_name }} - Rust Builder"
@@ -343,10 +377,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /build
 
 # Copy dependency manifests for layer caching
-COPY Cargo.toml Cargo.lock ./
-{%- if project_layout == "monorepo" %}
-COPY apps/ ./apps/
-{%- endif %}
+COPY rust/Cargo.toml rust/Cargo.lock ./
 
 # Create dummy main.rs for dependency caching
 RUN mkdir -p src && \
@@ -354,8 +385,8 @@ RUN mkdir -p src && \
     cargo build --release && \
     rm -rf src
 
-# Copy actual source code
-COPY src/ ./src/
+# Copy actual source code from the rust/ track
+COPY rust/src/ ./src/
 
 # Build release binary with optimizations
 RUN cargo build --release --locked
@@ -390,7 +421,7 @@ COPY --from=builder-rust --chown=1000:1000 /build/target/release/{{ project_slug
 # Switch to non-root user
 USER 1000:1000
 
-{%- if api_module == "enabled" and "rust" in api_languages %}
+{%- if api_module == "enabled" and "rust" in (api_languages|default([])) %}
 # Expose Actix-web port
 EXPOSE 8080
 
@@ -401,7 +432,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 # Default command: Run Actix-web server
 CMD ["/app/{{ project_slug }}"]
 
-{%- elif cli_module == "enabled" and "rust" in cli_languages %}
+{%- elif cli_module == "enabled" and "rust" in (cli_languages|default([])) %}
 # CLI application - health check verifies binary
 HEALTHCHECK --interval=60s --timeout=5s --retries=2 \
     CMD /app/{{ project_slug }} --version || exit 1

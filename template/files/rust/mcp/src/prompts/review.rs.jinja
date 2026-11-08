@@ -26,9 +26,7 @@ pub fn review_code(params: &ReviewParams) -> GetPromptResult {
         language, language, params.code
     );
 
-    GetPromptResult {
-        description: Some(format!("Code review prompt for {language}")),
-        messages: vec![PromptMessage::new_text(PromptMessageRole::User, text)],
-    }
+    GetPromptResult::new(vec![PromptMessage::new_text(Role::User, text)])
+        .with_description(format!("Code review prompt for {language}"))
 }
 {%- endif %}

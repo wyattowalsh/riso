@@ -1,5 +1,8 @@
 """Unit tests for record_module_success.py"""
 
+# Imports stay local until pytest fixtures establish the script or hook paths.
+# pylint: disable=import-outside-toplevel
+
 import json
 import pytest
 
@@ -154,8 +157,9 @@ class TestModuleSuccessRecorder:
         assert data["modules"]["mod"]["success_rate"] == 1.0
 
 
+# Pytest groups this behavior in a focused test class.
 @pytest.mark.unit
-class TestSmokeLogIteration:
+class TestSmokeLogIteration:  # pylint: disable=too-few-public-methods
     """Tests for smoke-results.json ingestion via smoke_schema."""
 
     def test_iter_smoke_logs_reads_modules_shape(self, tmp_path):

@@ -1,4 +1,4 @@
-{% if api_module == 'enabled' and 'go' in api_languages %}
+{% if api_module == 'enabled' and 'go' in api_languages -%}
 package middleware
 
 import (
@@ -6,13 +6,16 @@ import (
 	"log/slog"
 	"net/http"
 	"runtime/debug"
-{% if go_framework | default('gin') == 'gin' %}
+{%- if go_framework | default('gin') == 'gin' %}
+
 	"github.com/gin-gonic/gin"
-{% elif go_framework == 'fiber' %}
+{%- elif go_framework == 'fiber' %}
+
 	"github.com/gofiber/fiber/v2"
-{% elif go_framework == 'echo' %}
+{%- elif go_framework == 'echo' %}
+
 	"github.com/labstack/echo/v4"
-{% endif %}
+{%- endif %}
 )
 
 // ErrorResponse represents an error response.
@@ -22,7 +25,8 @@ type ErrorResponse struct {
 	Code    int    `json:"code"`
 }
 
-{% if go_framework | default('gin') == 'gin' %}
+{%- if go_framework | default('gin') == 'gin' %}
+
 // Recovery returns a Gin middleware that recovers from panics.
 func Recovery() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -50,7 +54,8 @@ func Recovery() gin.HandlerFunc {
 	}
 }
 
-{% elif go_framework == 'fiber' %}
+{%- elif go_framework == 'fiber' %}
+
 // Recovery returns a Fiber middleware that recovers from panics.
 func Recovery() fiber.Handler {
 	return func(c *fiber.Ctx) error {
@@ -78,7 +83,8 @@ func Recovery() fiber.Handler {
 	}
 }
 
-{% elif go_framework == 'echo' %}
+{%- elif go_framework == 'echo' %}
+
 // Recovery returns an Echo middleware that recovers from panics.
 func Recovery() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -108,7 +114,8 @@ func Recovery() echo.MiddlewareFunc {
 	}
 }
 
-{% elif go_framework == 'chi' %}
+{%- elif go_framework == 'chi' %}
+
 // Recovery returns a Chi middleware that recovers from panics.
 func Recovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -133,5 +140,5 @@ func Recovery(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
-{% endif %}
-{% endif %}
+{%- endif %}
+{% endif -%}

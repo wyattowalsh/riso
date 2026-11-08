@@ -9,13 +9,13 @@
       Explore the Toolkit
     </h2>
     <p class="hero-description">
-      Discover 32 carefully curated tools powering Riso templates — from blazing-fast linters to intelligent validators, AI agent skills, and production-ready frameworks.
+      Discover 33 carefully curated tools powering Riso templates — from blazing-fast linters to intelligent validators, AI agent skills, and production-ready frameworks.
     </p>
 
     <!-- Stats Grid -->
     <div class="tool-stats">
       <div class="stat-card">
-        <div class="stat-number">32</div>
+        <div class="stat-number">33</div>
         <div class="stat-label">Tools</div>
       </div>
       <div class="stat-card">
@@ -36,11 +36,11 @@
     <div class="quick-filters" role="group" aria-label="Quick category filters">
       <button class="filter-pill" data-category="" onclick="setQuickFilter('')">
         <iconify-icon icon="tabler:apps" width="16" height="16"></iconify-icon>
-        All <span class="pill-count">32</span>
+        All <span class="pill-count">33</span>
       </button>
       <button class="filter-pill" data-category="ai-skills" onclick="setQuickFilter('ai-skills')">
         <iconify-icon icon="tabler:brain" width="16" height="16"></iconify-icon>
-        AI Skills <span class="pill-count">2</span>
+        AI Skills <span class="pill-count">4</span>
       </button>
       <button class="filter-pill" data-category="riso-scripts" onclick="setQuickFilter('riso-scripts')">
         <iconify-icon icon="tabler:terminal-2" width="16" height="16"></iconify-icon>
@@ -173,7 +173,7 @@
 
 <!-- Results Bar -->
 <div class="tool-results-bar">
-  <span id="results-count" class="tool-results-count" aria-live="polite">Showing <strong>32</strong> tools</span>
+  <span id="results-count" class="tool-results-count" aria-live="polite">Showing <strong>33</strong> tools</span>
   <div class="tool-view-toggle" role="group" aria-label="View mode">
     <button id="grid-view-btn" class="view-btn active" aria-label="Grid view" title="Grid view">
       <iconify-icon icon="tabler:layout-grid" width="18" height="18"></iconify-icon>
@@ -191,27 +191,51 @@
        AI Skills
        ═══════════════════════════════════════════════════════════════════════ -->
 
-  <article class="tool-card" role="article" aria-labelledby="tool-agents-md-manager" data-name="agents-md-manager" data-category="ai-skills" data-type="ai-skill" data-tags="agents,claude,copilot,cursor,gemini,sync,ssot" data-popularity="88" tabindex="0">
+  <article class="tool-card" role="article" aria-labelledby="tool-riso-scaffold" data-name="riso-scaffold" data-category="ai-skills" data-type="ai-skill" data-tags="scaffold,copier,cli,agents,validate,copy" data-popularity="90" tabindex="0">
     <div class="tool-card-header">
-      <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:file-code" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-agents-md-manager"><a href="../guides/agent-scaffolding.html">agents-md-manager</a></h3>
+      <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:stack-2" width="28" height="28"></iconify-icon></span>
+      <h3 id="tool-riso-scaffold"><a href="../guides/agent-scaffolding.html">riso-scaffold</a></h3>
     </div>
-    <p class="tool-description">AGENTS.md as SSOT with detection, quality analysis, and platform sync</p>
+    <p class="tool-description">Scaffold, validate, and copy Riso projects via the <code>riso</code> CLI (<code>.agents/skills/riso-scaffold/</code>)</p>
     <div class="tool-meta">
       <span class="badge badge-category" data-category="ai-skills">AI Skills</span>
       <span class="badge badge-type" data-type="ai-skill">AI Skill</span>
     </div>
   </article>
 
-  <article class="tool-card" role="article" aria-labelledby="tool-mcp-installer" data-name="mcp-installer" data-category="ai-skills" data-type="ai-skill" data-tags="mcp,servers,claude,cursor,copilot,sync,install" data-popularity="88" tabindex="0">
+  <article class="tool-card" role="article" aria-labelledby="tool-riso-release-readiness" data-name="riso-release-readiness" data-category="ai-skills" data-type="ai-skill" data-tags="release,gates,maintainer,skills,canonical" data-popularity="85" tabindex="0">
     <div class="tool-card-header">
-      <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:plug-connected" width="28" height="28"></iconify-icon></span>
-      <h3 id="tool-mcp-installer"><a href="../guides/agent-scaffolding.html">mcp-installer</a></h3>
+      <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:flag" width="28" height="28"></iconify-icon></span>
+      <h3 id="tool-riso-release-readiness"><a href="../guides/agent-scaffolding.html">riso-release-readiness</a></h3>
     </div>
-    <p class="tool-description">Universal MCP server research, installation, and cross-interface sync</p>
+    <p class="tool-description">Maintainer-only release gates, no-legacy-answer policy, and evidence capture (<code>.agents/skills/riso-release-readiness/</code>)</p>
     <div class="tool-meta">
       <span class="badge badge-category" data-category="ai-skills">AI Skills</span>
       <span class="badge badge-type" data-type="ai-skill">AI Skill</span>
+    </div>
+  </article>
+
+  <article class="tool-card" role="article" aria-labelledby="tool-agents-md-manager" data-name="agents-md-manager" data-category="ai-skills" data-type="ai-skill" data-tags="agents,claude,copilot,cursor,gemini,sync,ssot,absent" data-popularity="40" tabindex="0">
+    <div class="tool-card-header">
+      <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:file-code" width="28" height="28"></iconify-icon></span>
+      <h3 id="tool-agents-md-manager">agents-md-manager <span class="badge">Not shipped</span></h3>
+    </div>
+    <p class="tool-description">There is no <code>agents-md-manager</code> skill payload in this repository. Keep AGENTS.md platform pointers in sync manually.</p>
+    <div class="tool-meta">
+      <span class="badge badge-category" data-category="ai-skills">AI Skills</span>
+      <span class="badge badge-type" data-type="ai-skill">Absent</span>
+    </div>
+  </article>
+
+  <article class="tool-card" role="article" aria-labelledby="tool-mcp-installer" data-name="mcp-installer" data-category="ai-skills" data-type="ai-skill" data-tags="mcp,servers,claude,cursor,copilot,sync,install,absent" data-popularity="40" tabindex="0">
+    <div class="tool-card-header">
+      <span class="tool-icon" aria-hidden="true"><iconify-icon icon="tabler:plug-connected" width="28" height="28"></iconify-icon></span>
+      <h3 id="tool-mcp-installer">mcp-installer <span class="badge">Not shipped</span></h3>
+    </div>
+    <p class="tool-description">Not a shipped skill payload — only <code>uv.lock</code> exists under <code>.claude/skills/mcp-installer/</code>.</p>
+    <div class="tool-meta">
+      <span class="badge badge-category" data-category="ai-skills">AI Skills</span>
+      <span class="badge badge-type" data-type="ai-skill">Absent</span>
     </div>
   </article>
 

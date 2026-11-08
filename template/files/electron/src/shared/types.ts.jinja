@@ -6,6 +6,15 @@
  * Keep shared types here to ensure type safety across process boundaries.
  */
 
+import type {
+  MessageBoxOptions,
+  MessageBoxReturnValue,
+  OpenDialogOptions as ElectronOpenDialogOptions,
+  OpenDialogReturnValue,
+  SaveDialogOptions as ElectronSaveDialogOptions,
+  SaveDialogReturnValue,
+} from 'electron';
+
 /**
  * Application metadata
  */
@@ -132,6 +141,58 @@ export interface UpdateCheckResult {
   error?: string;
 }
 {% endif %}
+
+/** Named renderer bridge shared by preload and the renderer type declaration. */
+export interface ElectronAPI {
+  // App information
+  getVersion: () => Promise<string>;
+  getAppInfo: () => Promise<AppInfo>;
+  getPlatform: () => Promise<NodeJS.Platform>;
+
+  // Theme
+  getTheme: () => Promise<ThemeInfo>;
+  setTheme: (theme: ThemeSource) => Promise<{ success: boolean }>;
+  onThemeChanged: (callback: (theme: ThemeInfo) => void) => () => void;
+
+  // Window management
+  minimizeWindow: () => Promise<void>;
+  maximizeWindow: () => Promise<boolean>;
+  closeWindow: () => Promise<void>;
+  isMaximized: () => Promise<boolean>;
+
+  // Dialogs
+  showOpenDialog: (options: ElectronOpenDialogOptions) => Promise<OpenDialogReturnValue>;
+  showSaveDialog: (options: ElectronSaveDialogOptions) => Promise<SaveDialogReturnValue>;
+  showMessageBox: (options: MessageBoxOptions) => Promise<MessageBoxReturnValue>;
+
+  // Shell
+  openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
+  showItemInFolder: (path: string) => Promise<{ success: boolean }>;
+
+  // Store
+  storeGet: <T>(key: string) => Promise<T>;
+  storeSet: <T>(key: string, value: T) => Promise<{ success: boolean }>;
+  storeDelete: (key: string) => Promise<{ success: boolean }>;
+
+  // Event listeners
+  onOpenSettings: (callback: () => void) => () => void;
+  onShowAbout: (callback: () => void) => () => void;
+  {% if 'auto_updater' in desktop_features %}
+  onCheckForUpdates: (callback: () => void) => () => void;
+  onUpdateAvailable: (
+    callback: (info: { version: string; releaseDate: string }) => void
+  ) => () => void;
+  onUpdateProgress: (
+    callback: (progress: { percent: number; bytesPerSecond: number }) => void
+  ) => () => void;
+  onUpdateDownloaded: (
+    callback: (info: { version: string }) => void
+  ) => () => void;
+  onUpdateError: (callback: (error: { message: string }) => void) => () => void;
+  checkForUpdates: () => Promise<{ success: boolean; updateInfo?: unknown }>;
+  quitAndInstall: () => Promise<void>;
+  {% endif %}
+}
 
 /**
  * Store schema for persistent data

@@ -1,19 +1,22 @@
 {% if (graphql_api_module == 'enabled' or 'graphql' in api_features) -%}
 """GraphQL Query Tests - Field selection and flexible querying."""
 
+from datetime import datetime, timedelta
+
 import pytest
-from strawberry.test import BaseGraphQLTestClient
 
 from {{ package_name }}.graphql_api.schema import schema
 
-
-@pytest.fixture
-def graphql_client():
-    return BaseGraphQLTestClient(schema)
+_PAGE_FIELDS = """
+    edges { cursor node { id } }
+    pageInfo { hasNextPage hasPreviousPage startCursor endCursor }
+    totalCount
+"""
 
 
 class TestUserQueries:
-    def test_query_user_minimal_fields(self, graphql_client):
+    @pytest.mark.asyncio
+    async def test_query_user_minimal_fields(self):
         query = """
             query {
                 user(id: "1") {
@@ -22,11 +25,12 @@ class TestUserQueries:
                 }
             }
         """
-        result = graphql_client.query(query)
+        result = await schema.execute(query)
         assert result.errors is None
         assert result.data["user"]["id"] == "1"
 
-    def test_query_user_not_found(self, graphql_client):
+    @pytest.mark.asyncio
+    async def test_query_user_not_found(self):
         query = """
             query {
                 user(id: "99999") {
@@ -34,7 +38,119 @@ class TestUserQueries:
                 }
             }
         """
-        result = graphql_client.query(query)
+        result = await schema.execute(query)
         assert result.errors is None
         assert result.data["user"] is None
+
+    @pytest.mark.asyncio
+    async def test_user_cursor_advances_to_next_record(self):
+        """Follow the returned cursors through a final page and past its last edge."""
+        query = (
+            "query Users($after: String) { users(first: 3, after: $after) {"
+            + _PAGE_FIELDS
+            + "} }"
+        )
+        first = await schema.execute(query)
+        assert first.errors is None
+        page = first.data["users"]
+        assert [edge["node"]["id"] for edge in page["edges"]] == ["1", "2", "3"]
+        assert page["pageInfo"] == {
+            "hasNextPage": True,
+            "hasPreviousPage": False,
+            "startCursor": page["edges"][0]["cursor"],
+            "endCursor": page["edges"][-1]["cursor"],
+        }
+
+        next_page = await schema.execute(
+            query, variable_values={"after": page["pageInfo"]["endCursor"]}
+        )
+        assert next_page.errors is None
+        final = next_page.data["users"]
+        assert [edge["node"]["id"] for edge in final["edges"]] == ["4", "5"]
+        assert final["totalCount"] == page["totalCount"] == 5
+        assert final["pageInfo"]["hasPreviousPage"] and not final["pageInfo"]["hasNextPage"]
+
+        exhausted = await schema.execute(
+            query, variable_values={"after": final["pageInfo"]["endCursor"]}
+        )
+        assert exhausted.errors is None
+        assert exhausted.data["users"] == {
+            "edges": [],
+            "pageInfo": {
+                "hasNextPage": False,
+                "hasPreviousPage": True,
+                "startCursor": None,
+                "endCursor": None,
+            },
+            "totalCount": 5,
+        }
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("arguments", "ids", "has_previous", "has_next"),
+        [
+            ("offset: 2, limit: 2", ["3", "4"], True, True),
+            ("offset: 4", ["5"], True, False),
+            ("limit: 0", [], False, True),
+        ],
+    )
+    async def test_user_offset_window(self, arguments, ids, has_previous, has_next):
+        """Offset pagination preserves record order and flags the surrounding pages."""
+        result = await schema.execute("{ users(" + arguments + ") {" + _PAGE_FIELDS + "} }")
+
+        assert result.errors is None
+        page = result.data["users"]
+        assert [edge["node"]["id"] for edge in page["edges"]] == ids
+        assert page["totalCount"] == 5
+        assert page["pageInfo"]["hasPreviousPage"] is has_previous
+        assert page["pageInfo"]["hasNextPage"] is has_next
+        assert page["pageInfo"]["startCursor"] == (
+            page["edges"][0]["cursor"] if ids else None
+        )
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("arguments", "field"),
+        [
+            ('after: "malformed-cursor"', "after"),
+            ('after: ""', "after"),
+            ('after: "eyJ2YWx1ZSI6MX0="', "after"),  # {"value":1} is an invalid cursor.
+            ("first: -1", "first"),
+            ("offset: -1", "offset"),
+            ("limit: -1", "limit"),
+        ],
+    )
+    async def test_bad_pagination_arguments_are_field_errors(self, arguments, field):
+        """Invalid pagination is a client error without reflecting the submitted value."""
+        result = await schema.execute("{ users(" + arguments + ") { totalCount } }")
+
+        assert result.data is None
+        error = result.errors[0].formatted
+        assert error["path"] == ["users"]
+        assert error["extensions"] == {"code": "VALIDATION_ERROR", "field": field}
+        expected = "Invalid pagination cursor" if field == "after" else f"{field} must be non-negative"
+        assert error["message"] == expected
+
+    @pytest.mark.asyncio
+    async def test_nested_posts_paginate_and_serialize_utc(self):
+        """The nested connection resumes from its own cursor and returns UTC timestamps."""
+        query = """
+            query Posts($after: String) {
+                user(id: "1") {
+                    posts(first: 1, after: $after) {
+                        edges { cursor node { id authorId createdAt } }
+                    }
+                }
+            }
+        """
+        first = await schema.execute(query)
+        assert first.errors is None
+        edge = first.data["user"]["posts"]["edges"][0]
+        assert edge["node"]["id"] == "post-1"
+
+        second = await schema.execute(query, variable_values={"after": edge["cursor"]})
+        assert second.errors is None
+        node = second.data["user"]["posts"]["edges"][0]["node"]
+        assert (node["id"], node["authorId"]) == ("post-2", "1")
+        assert datetime.fromisoformat(node["createdAt"]).utcoffset() == timedelta(0)
 {% endif -%}

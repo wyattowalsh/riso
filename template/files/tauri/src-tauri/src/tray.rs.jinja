@@ -1,4 +1,4 @@
-{% if desktop_module == "enabled" and desktop_framework == "tauri" and desktop_features is defined and 'tray_icon' in desktop_features %}
+{%- if desktop_module == "enabled" and desktop_framework == "tauri" and desktop_features is defined and 'tray_icon' in desktop_features -%}
 //! System Tray Icon Management
 //!
 //! Tray is created here only (not also via `app.trayIcon` in tauri.conf.json)
@@ -27,10 +27,10 @@ pub fn init_tray(app: &App) -> Result<()> {
     let _tray = TrayIconBuilder::with_id("main-tray")
         .icon(icon)
         .menu(&menu)
-        .menu_on_left_click(false)
+        .show_menu_on_left_click(false)
         .tooltip("{{ project_name }}")
-        .on_menu_event(|app, event| handle_menu_event(app, event))
-        .on_tray_icon_event(|tray, event| handle_tray_event(tray, event))
+        .on_menu_event(handle_menu_event)
+        .on_tray_icon_event(handle_tray_event)
         .build(app)?;
 
     Ok(())
@@ -80,4 +80,4 @@ fn handle_tray_event(tray: &tauri::tray::TrayIcon, event: TrayIconEvent) {
         _ => {}
     }
 }
-{% endif %}
+{% endif -%}

@@ -1,10 +1,17 @@
 {% if (websocket_module == "enabled" or "websocket" in api_features) -%}
 """Tests for WebSocket connection lifecycle management."""
 
-import pytest
-from fastapi import FastAPI, WebSocket
+import asyncio
+import sys
+from types import SimpleNamespace
 
-from {{ package_name }}.websocket import ConnectionManager, WebSocketConnection
+import pytest
+from fastapi import WebSocket
+from starlette.types import Message as ASGIMessage
+from starlette.types import Scope
+
+from {{ package_name }}.websocket import ConnectionManager, utils
+from {{ package_name }}.websocket.middleware import MetricsMiddleware
 from {{ package_name }}.websocket.models import ConnectionState
 
 
@@ -42,14 +49,50 @@ async def test_connection_state_transitions(manager):
     assert conn_model.state == ConnectionState.CLOSED
 
 
-@pytest.mark.asyncio
-async def test_manager_singleton():
-    """Test ConnectionManager singleton pattern."""
+def test_manager_singleton(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Repeated access keeps the singleton's active configuration."""
     manager1 = ConnectionManager()
+    config = manager1.config.model_copy()
+    monkeypatch.setattr(manager1, "config", config)
     manager2 = ConnectionManager()
 
-    # Should be the same instance
     assert manager1 is manager2
+    assert manager2.config is config
+
+
+@pytest.mark.asyncio
+async def test_cancelled_close_unregisters_connection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ASGI cancellation releases the registry and connection capacity."""
+    monkeypatch.setattr(ConnectionManager, "_instance", None)
+    manager = ConnectionManager()
+    monkeypatch.setattr(manager.config, "environment", "development")
+    monkeypatch.setattr(manager.config, "enable_heartbeat", False)
+    monkeypatch.setattr(manager.config, "enable_idle_timeout", False)
+    monkeypatch.setattr(manager.config, "max_connections_per_ip", 1)
+
+    async def receive() -> ASGIMessage:
+        return {"type": "websocket.connect"}
+
+    async def send(message: ASGIMessage) -> None:
+        if message["type"] == "websocket.close":
+            raise asyncio.CancelledError
+
+    scope: Scope = {"type": "websocket", "headers": [], "client": ("127.0.0.1", 1234)}
+    connection_id = await manager.connect(WebSocket(scope, receive, send), user_id="user")
+    await manager.join_room(connection_id, "room")
+    with pytest.raises(asyncio.CancelledError):
+        await manager.disconnect(connection_id)
+
+    assert manager.get_connection_count() == 0
+    assert manager.get_connections_by_user("user") == []
+    assert manager.get_connections_by_room("room") == []
+
+    # The same IP can connect again despite the per-IP limit of one.
+    new_id = await manager.connect(WebSocket(scope, receive, send), user_id="user")
+    with pytest.raises(asyncio.CancelledError):
+        await manager.disconnect(new_id)
 
 
 @pytest.mark.asyncio
@@ -139,4 +182,27 @@ def test_error_formatting():
     assert error_msg["payload"]["message"] == "Test error message"
     assert error_msg["payload"]["details"]["foo"] == "bar"
     assert error_msg["payload"]["retry_after"] == 30
+
+
+def test_rate_limit_retry_after_expired_window(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Return zero if the last rate-limit entry expires during error handling."""
+    now = 100.0
+    monkeypatch.setattr(utils, "time", SimpleNamespace(time=lambda: now))
+    limiter = utils.RateLimiter(max_messages=1, window=1)
+
+    assert limiter.check("connection")
+    now = 100.99
+    assert not limiter.check("connection")
+    now = 101.0
+    assert limiter.get_retry_after("connection") == 0
+
+
+def test_metrics_middleware_works_without_prometheus(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The default scaffold can construct middleware without optional metrics."""
+    monkeypatch.setitem(sys.modules, "prometheus_client", None)
+
+    middleware = MetricsMiddleware()
+
+    assert middleware.connections_total is None
+    assert middleware.connection_duration is None
 {% endif -%}

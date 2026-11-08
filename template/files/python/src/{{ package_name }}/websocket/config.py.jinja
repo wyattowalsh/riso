@@ -1,7 +1,6 @@
 {% if (websocket_module == "enabled" or "websocket" in api_features) -%}
 """WebSocket configuration with environment variable support."""
 
-from typing import List
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -108,7 +107,7 @@ class WebSocketConfig(BaseSettings):
     )
 
     # Origin allowlist (never use wildcard in production)
-    websocket_origins: List[str] = Field(
+    websocket_origins: list[str] = Field(
         default_factory=lambda: ["http://localhost:3000"],
         description="Allowed WebSocket Origin header values",
     )
@@ -151,7 +150,7 @@ def get_config() -> WebSocketConfig:
     global _config
     if _config is None:
         _config = WebSocketConfig()
-        if _config.environment == "production":
+        if _config.environment.casefold() in {"production", "prod"}:
             _config.enable_demo_endpoints = False
             if _config.websocket_origins == ["http://localhost:3000"]:
                 _config.websocket_origins = []

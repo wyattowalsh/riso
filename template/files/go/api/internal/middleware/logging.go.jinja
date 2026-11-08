@@ -1,22 +1,27 @@
-{% if api_module == 'enabled' and 'go' in api_languages %}
+{% if api_module == 'enabled' and 'go' in api_languages -%}
 // Package middleware provides HTTP middleware for the API server.
 package middleware
 
 import (
 	"log/slog"
-	"time"
-{% if go_framework | default('gin') == 'gin' %}
-	"github.com/gin-gonic/gin"
-{% elif go_framework == 'fiber' %}
-	"github.com/gofiber/fiber/v2"
-{% elif go_framework == 'echo' %}
-	"github.com/labstack/echo/v4"
-{% elif go_framework == 'chi' %}
+{%- if go_framework == 'chi' %}
 	"net/http"
-{% endif %}
+{%- endif %}
+	"time"
+{%- if go_framework | default('gin') == 'gin' %}
+
+	"github.com/gin-gonic/gin"
+{%- elif go_framework == 'fiber' %}
+
+	"github.com/gofiber/fiber/v2"
+{%- elif go_framework == 'echo' %}
+
+	"github.com/labstack/echo/v4"
+{%- endif %}
 )
 
-{% if go_framework | default('gin') == 'gin' %}
+{%- if go_framework | default('gin') == 'gin' %}
+
 // Logger returns a Gin middleware that logs HTTP requests using slog.
 func Logger() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -64,7 +69,8 @@ func Logger() gin.HandlerFunc {
 	}
 }
 
-{% elif go_framework == 'fiber' %}
+{%- elif go_framework == 'fiber' %}
+
 // Logger returns a Fiber middleware that logs HTTP requests using slog.
 func Logger() fiber.Handler {
 	return func(c *fiber.Ctx) error {
@@ -114,7 +120,8 @@ func Logger() fiber.Handler {
 	}
 }
 
-{% elif go_framework == 'echo' %}
+{%- elif go_framework == 'echo' %}
+
 // Logger returns an Echo middleware that logs HTTP requests using slog.
 func Logger() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -168,7 +175,8 @@ func Logger() echo.MiddlewareFunc {
 	}
 }
 
-{% elif go_framework == 'chi' %}
+{%- elif go_framework == 'chi' %}
+
 // responseWriter wraps http.ResponseWriter to capture status code.
 type responseWriter struct {
 	http.ResponseWriter
@@ -225,5 +233,5 @@ func Logger(next http.Handler) http.Handler {
 		}
 	})
 }
-{% endif %}
-{% endif %}
+{%- endif %}
+{% endif -%}

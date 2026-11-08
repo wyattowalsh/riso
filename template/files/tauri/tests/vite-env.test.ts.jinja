@@ -1,0 +1,13 @@
+{% if desktop_module == "enabled" and desktop_framework == "tauri" %}
+import { expect, it } from 'vitest';
+import config from '../vite.config';
+
+it('exposes platform metadata without admitting updater signing variables', () => {
+  const prefixes = [config.envPrefix ?? []].flat();
+  const exposed = (key: string) => prefixes.some((prefix) => key.startsWith(prefix));
+  expect(exposed('VITE_PUBLIC_LABEL')).toBe(true);
+  expect(exposed('TAURI_ENV_PLATFORM')).toBe(true);
+  expect(exposed('TAURI_SIGNING_PRIVATE_KEY')).toBe(false);
+  expect(exposed('TAURI_SIGNING_PRIVATE_KEY_PASSWORD')).toBe(false);
+});
+{% endif %}

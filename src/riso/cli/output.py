@@ -31,6 +31,7 @@ class Envelope:
     warnings: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
+        """Return the stable, JSON-serializable response fields."""
         return {
             "ok": self.ok,
             "command": self.command,

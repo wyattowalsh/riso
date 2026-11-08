@@ -20,6 +20,7 @@ REQUIRED_FILES = {
 
 
 def relative_files(directory: Path) -> set[str]:
+    """List files under a skill directory using relative paths."""
     return {
         str(path.relative_to(directory))
         for path in directory.rglob("*")
@@ -28,6 +29,7 @@ def relative_files(directory: Path) -> set[str]:
 
 
 def validate_frontmatter(skill_path: Path) -> list[str]:
+    """Report missing or incorrect release-readiness skill frontmatter."""
     errors: list[str] = []
     text = skill_path.read_text()
     if not text.startswith("---\n"):
@@ -51,6 +53,7 @@ def validate_skill_mirror(
     source_dir: Path = SOURCE_DIR,
     mirror_dir: Path = MIRROR_DIR,
 ) -> list[str]:
+    """Compare mirrored skill files, frontmatter, and release policy."""
     errors: list[str] = []
     if not source_dir.exists():
         return [f"Source skill directory missing: {source_dir}"]
@@ -126,6 +129,7 @@ def validate_policy_contract(policy_path: Path) -> list[str]:
 
 
 def main() -> None:
+    """Report release-readiness skill mirror errors and return a CI exit code."""
     errors = validate_skill_mirror()
     if errors:
         for error in errors:

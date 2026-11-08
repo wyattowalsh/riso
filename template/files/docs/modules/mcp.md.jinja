@@ -16,12 +16,12 @@ When generating a project with MCP enabled, you can configure:
 ## Generated Structure
 
 {% if 'python' in mcp_languages %}
-### Python (FastMCP v2)
+### Python (FastMCP)
 
 ```
-src/{{ package_name }}/mcp/
+python/src/{{ package_name }}/mcp/
 ├── __init__.py          # Package exports
-├── __main__.py          # Module entry point
+├── __main__.py          # Module entry point (`python -m {{ package_name }}.mcp`)
 ├── server.py            # FastMCP server initialization
 ├── config.py            # Pydantic configuration
 ├── errors.py            # MCP error types
@@ -36,20 +36,26 @@ src/{{ package_name }}/mcp/
 
 ### Running the Server
 
+Run these commands from the generated project root:
+
 ```bash
 # stdio mode (default, for Claude Desktop)
-uv run python -m {{ package_name }}.mcp
+uv run --directory python --group mcp python -m {{ package_name }}.mcp
 
 # SSE mode (for web clients)
-uv run python -m {{ package_name }}.mcp --transport sse --port 3000
+uv run --directory python --group mcp python -m {{ package_name }}.mcp --transport sse --port 3000
 
 # HTTP streaming mode
-uv run python -m {{ package_name }}.mcp --transport http --port 3000
+uv run --directory python --group mcp python -m {{ package_name }}.mcp --transport http --port 3000
 
 # With MCP Inspector
-npx @modelcontextprotocol/inspector uv run python -m {{ package_name }}.mcp
+npx @modelcontextprotocol/inspector uv run --directory python --group mcp python -m {{ package_name }}.mcp
 ```
 
+{% if mcp_example_tools %}
+The example HTTP tools accept public HTTPS destinations and do not follow redirects. Set `MCP_HTTP_ALLOW_INSECURE=1` to allow public HTTP. Requests reject URL credentials and `Host` overrides. The timeout covers DNS, connection, and response body and accepts 1–120 seconds (default 30).
+
+{% endif %}
 {% elif 'typescript' in mcp_languages %}
 ### TypeScript (FastMCP)
 
@@ -158,6 +164,9 @@ npx @modelcontextprotocol/inspector ./target/release/{{ package_name }}-mcp
 ## Claude Desktop Integration
 
 Add to your `mcp.json`:
+{% if 'python' in mcp_languages %}
+For Python, replace `/absolute/path/to/project/python` with your generated Python directory.
+{% endif %}
 
 ```json
 {
@@ -166,7 +175,7 @@ Add to your `mcp.json`:
 {% if 'python' in mcp_languages %}
       "type": "stdio",
       "command": "uv",
-      "args": ["run", "python", "-m", "{{ package_name }}.mcp"],
+      "args": ["run", "--directory", "/absolute/path/to/project/python", "--group", "mcp", "python", "-m", "{{ package_name }}.mcp"],
 {% elif 'typescript' in mcp_languages %}
       "type": "stdio",
       "command": "pnpm",
@@ -190,7 +199,7 @@ Add to your `mcp.json`:
 
 {% if 'python' in mcp_languages %}
 ```python
-# In src/{{ package_name }}/mcp/tools/my_tool.py
+# In python/src/{{ package_name }}/mcp/tools/my_tool.py
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:

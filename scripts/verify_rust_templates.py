@@ -5,9 +5,10 @@ Verification script for Rust templates.
 Tests that all Rust templates render correctly and produce valid Rust code.
 """
 
-from jinja2 import Environment, FileSystemLoader
 from pathlib import Path
 import sys
+
+from jinja2 import Environment, FileSystemLoader
 
 
 def test_template_syntax():

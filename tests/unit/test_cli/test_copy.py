@@ -92,6 +92,26 @@ def test_copy_rejects_leftover_saas_auth_without_worker(tmp_path: Path) -> None:
     assert any("saas_auth" in err for err in exc.value.data["errors"])
 
 
+def test_copy_does_not_wrap_validation_failed_as_copier_error(tmp_path: Path) -> None:
+    dest = tmp_path / "out"
+
+    with patch(
+        "riso.cli.commands.copy.run_generator",
+        side_effect=ValidationFailedError(["blocked"]),
+    ) as worker:
+        with pytest.raises(ValidationFailedError) as exc:
+            run_copy(
+                _config(),
+                destination=str(dest),
+                answers_file=None,
+                data_pairs=["project_name=Demo"],
+            )
+
+    worker.assert_called_once()
+    assert exc.value.data is not None
+    assert "blocked" in exc.value.data["errors"]
+
+
 def test_copy_does_not_overwrite_dest_already_set(tmp_path: Path) -> None:
     dest = tmp_path / "out"
     fake_result = SimpleNamespace(

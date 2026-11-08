@@ -6,13 +6,16 @@ for parsing copier.yml, defaults, sample variants, and module catalogs.
 
 from __future__ import annotations
 
+import ast
+import inspect
+import json
+import os
+import subprocess
+import sys
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
-
-import ast
-import json
-import os
 
 from riso.core.answers import (
     load_answers_file,
@@ -31,6 +34,7 @@ from riso.core.paths import (
     bundled_template_path,
     is_bundled_template,
     resolve_project_template_path,
+    resolve_samples_path,
     validate_destination,
 )
 from riso.template.hooks_runner import run_post_gen, should_skip_post_gen
@@ -72,25 +76,22 @@ class ValidationResult:
         }
 
 
-def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[3]
-
-
 def get_template_path() -> Path:
     """Return the local template path."""
     return bundled_template_path()
 
 
 def get_samples_path() -> Path:
-    """Return the local samples path."""
-    return (_repo_root() / "samples").resolve()
+    """Return the samples path."""
+    return resolve_samples_path()
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(path)
     try:
-        import yaml
+        # Retain the configuration-specific dependency error below.
+        import yaml  # pylint: disable=import-outside-toplevel
     except ModuleNotFoundError as exc:
         raise RuntimeError("PyYAML is required to load Copier configuration.") from exc
     return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
@@ -295,7 +296,8 @@ def merge_answers_with_defaults(
 
 def _render_template(text: str, context: dict[str, Any]) -> str:
     try:
-        from jinja2 import Environment, StrictUndefined
+        # The plain-text fallback deliberately works without Jinja installed.
+        from jinja2 import Environment, StrictUndefined  # pylint: disable=import-outside-toplevel
     except ImportError:
         return text
 
@@ -351,14 +353,19 @@ def _safe_eval(expr: str, context: dict[str, Any]) -> bool:
 
 
 def _evaluate_when(
-    expr: str | None,
+    expr: str | bool | None,
     context: dict[str, Any],
     warnings: list[str] | None = None,
 ) -> bool:
-    if not expr:
+    # YAML bool False is falsy; handle it before ``if not expr``.
+    if expr is False:
+        return False
+    if expr is True:
+        return True
+    if expr is None or expr == "":
         return True
     try:
-        rendered = _render_template(expr, context).strip()
+        rendered = _render_template(str(expr), context).strip()
     except Exception as exc:
         if warnings is not None:
             warnings.append(f"when expression render failed for {expr!r}: {exc}")
@@ -456,39 +463,46 @@ def validate_answers(
     return ValidationResult(valid=len(errors) == 0, errors=errors, warnings=warnings)
 
 
+_SAMPLE_WALK_SKIP = frozenset(
+    {"render", "metadata", "node_modules", ".venv", ".git", "__pycache__"}
+)
+
+
 def list_sample_variants(samples_path: Path | None = None) -> list[dict[str, Any]]:
-    """List sample variants with answers and render state."""
+    """List sample variants with answers and render state.
+
+    Recurses like ``scripts/lib/paths.iter_sample_answer_files`` (pruned
+    ``os.walk``). Name is the posix path of the parent of
+    ``copier-answers.yml`` relative to *samples_path*.
+    """
     samples_root = samples_path or get_samples_path()
     variants: list[dict[str, Any]] = []
 
-    if not samples_root.exists():
+    if not samples_root.is_dir():
         return variants
 
-    with os.scandir(samples_root) as entries:
-        variant_dirs = sorted(
-            (
-                Path(entry.path)
-                for entry in entries
-                if entry.is_dir(follow_symlinks=False) and entry.name != "metadata"
-            ),
-            key=lambda path: path.name,
-        )
+    found: list[Path] = []
+    for root, dirnames, filenames in os.walk(
+        samples_root, topdown=True, followlinks=False
+    ):
+        dirnames[:] = [name for name in dirnames if name not in _SAMPLE_WALK_SKIP]
+        if "copier-answers.yml" in filenames:
+            found.append(Path(root) / "copier-answers.yml")
+    found.sort()
 
-    for variant_dir in variant_dirs:
-        answers_file = variant_dir / "copier-answers.yml"
+    for answers_file in found:
+        variant_dir = answers_file.parent
+        name = variant_dir.relative_to(samples_root).as_posix()
         render_dir = variant_dir / "render"
-
-        item: dict[str, Any] = {
-            "name": variant_dir.name,
-            "path": str(variant_dir),
-            "has_answers": answers_file.exists(),
-            "has_render": render_dir.exists(),
-        }
-
-        if answers_file.exists():
-            item["answers"] = _load_yaml(answers_file)
-
-        variants.append(item)
+        variants.append(
+            {
+                "name": name,
+                "path": str(variant_dir),
+                "has_answers": True,
+                "has_render": render_dir.exists(),
+                "answers": _load_yaml(answers_file),
+            }
+        )
 
     return variants
 
@@ -532,8 +546,6 @@ def get_module_catalog(
 
 def _filter_kwargs(func: Any, kwargs: dict[str, Any]) -> dict[str, Any]:
     try:
-        import inspect
-
         params = inspect.signature(func).parameters
     except Exception:
         return kwargs
@@ -561,11 +573,8 @@ def _run_copier_worker(
     timeout: int | None,
 ) -> None:
     """Run Copier in a subprocess so timeouts can kill the work."""
-    import json
-    import subprocess
-    import sys
-
-    from riso.template._copier_worker import run_argv_with_timeout
+    # Defer the worker's Copier imports until a generation operation runs.
+    from riso.template._copier_worker import run_argv_with_timeout  # pylint: disable=import-outside-toplevel
 
     cmd = [
         sys.executable,
@@ -648,6 +657,9 @@ def run_generator(
             "overwrite": force,
             "unsafe": force_unsafe,
             "skip_tasks": True,
+            # Copier 9.16 raises InteractiveSessionError on a non-TTY unless
+            # defaults=True fills prompts missing from answers/data.
+            "defaults": True,
         },
         timeout,
     )
@@ -683,7 +695,9 @@ def run_update(
 
     answers_file = dest_path / ".copier-answers.yml"
     saved_answers = load_answers_file(answers_file) if answers_file.is_file() else {}
-    gate_answers = dict(answers) if answers is not None else dict(saved_answers)
+    gate_answers = prepare_copier_data(
+        dict(answers) if answers is not None else dict(saved_answers)
+    )
     _enforce_generation_gates(gate_answers)
     actual_template = resolve_project_template_path(
         saved_answers,
@@ -699,6 +713,7 @@ def run_update(
             "skip_answered": skip_answered,
             "unsafe": force_unsafe,
             "skip_tasks": True,
+            "overwrite": True,
             "data": _public_copier_answers(gate_answers),
         },
         timeout,
@@ -732,13 +747,14 @@ def run_recopy(
     if not dest_path.exists():
         raise FileNotFoundError(dest_path)
 
-    copier_data = prepare_copier_data(data) if data else {}
+    provided = dict(data) if data else {}
+    copier_data = prepare_copier_data(provided) if provided else {}
     # Merge existing answers for gates when partial data provided.
     answers_file = dest_path / ".copier-answers.yml"
     existing: dict[str, Any] = {}
     if answers_file.is_file():
         existing = load_answers_file(answers_file)
-    merged = {**existing, **copier_data}
+    merged = prepare_copier_data({**existing, **copier_data})
     _enforce_generation_gates(merged)
     actual_template = resolve_project_template_path(
         existing,
@@ -755,6 +771,9 @@ def run_recopy(
             "data": copier_data,
             "unsafe": force_unsafe,
             "skip_tasks": True,
+            "overwrite": True,
+            "defaults": True,
+            "skip_answered": True,
         },
         timeout,
     )
@@ -780,11 +799,6 @@ def _run_with_timeout(func: Any, timeout: int | None, *args: Any, **kwargs: Any)
     """
     if timeout is None or timeout <= 0:
         return func(*args, **kwargs)
-
-    from concurrent.futures import (
-        ThreadPoolExecutor,
-        TimeoutError as FutureTimeoutError,
-    )
 
     with ThreadPoolExecutor(max_workers=1) as executor:
         future = executor.submit(func, *args, **kwargs)

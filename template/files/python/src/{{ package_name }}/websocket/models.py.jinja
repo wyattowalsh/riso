@@ -2,14 +2,14 @@
 """WebSocket data models with Pydantic validation."""
 
 import uuid
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Any, Dict, Optional, Set
+from datetime import UTC, datetime
+from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
 
-class ConnectionState(str, Enum):
+class ConnectionState(StrEnum):
     """WebSocket connection lifecycle states."""
 
     CONNECTING = "connecting"
@@ -18,7 +18,7 @@ class ConnectionState(str, Enum):
     CLOSED     = "closed"
 
 
-class MessageType(str, Enum):
+class MessageType(StrEnum):
     """Standard WebSocket message types."""
 
     # Connection lifecycle
@@ -73,26 +73,26 @@ class Message(BaseModel):
         description="Message type discriminator",
     )
     timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         description="Message creation time (UTC)",
     )
     sender_id: str = Field(
         ...,
         description="Connection ID of sender",
     )
-    payload: Dict[str, Any] = Field(
+    payload: dict[str, Any] = Field(
         default_factory=dict,
         description="Message content",
     )
-    room_id: Optional[str] = Field(
+    room_id: str | None = Field(
         default=None,
         description="Target room for broadcasts",
     )
-    correlation_id: Optional[str] = Field(
+    correlation_id: str | None = Field(
         default=None,
         description="For request-response correlation",
     )
-    metadata: Dict[str, Any] = Field(
+    metadata: dict[str, Any] = Field(
         default_factory=dict,
         description="Custom message attributes",
     )
@@ -112,7 +112,7 @@ class Message(BaseModel):
     @classmethod
     def timestamp_not_future(cls, v: datetime) -> datetime:
         """Ensure timestamp is not in the future."""
-        if v > datetime.now(timezone.utc):
+        if v > datetime.now(UTC):
             raise ValueError("timestamp cannot be in future")
         return v
 
@@ -136,23 +136,23 @@ class WebSocketConnectionModel(BaseModel):
         default_factory=lambda: str(uuid.uuid4()),
         description="Unique connection identifier",
     )
-    user_id: Optional[str] = Field(
+    user_id: str | None = Field(
         default=None,
         description="Authenticated user ID (None for anonymous)",
     )
     connected_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         description="Connection establishment time",
     )
     last_activity_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         description="Last message send/receive time",
     )
-    metadata: Dict[str, Any] = Field(
+    metadata: dict[str, Any] = Field(
         default_factory=dict,
         description="Custom connection attributes",
     )
-    rooms: Set[str] = Field(
+    rooms: set[str] = Field(
         default_factory=set,
         description="Room memberships",
     )
@@ -196,25 +196,25 @@ class ConnectionMetadata(BaseModel):
         ...,
         description="Client IP address",
     )
-    user_agent: Optional[str] = Field(
+    user_agent: str | None = Field(
         default=None,
         max_length=500,
         description="Client user agent string",
     )
-    platform: Optional[str] = Field(
+    platform: str | None = Field(
         default=None,
         pattern=r"^(mobile|desktop|bot)$",
         description="Client platform type",
     )
-    session_id: Optional[str] = Field(
+    session_id: str | None = Field(
         default=None,
         description="Browser session identifier",
     )
-    referrer: Optional[str] = Field(
+    referrer: str | None = Field(
         default=None,
         description="Connection origin URL",
     )
-    custom: Dict[str, Any] = Field(
+    custom: dict[str, Any] = Field(
         default_factory=dict,
         description="Application-specific metadata",
     )
@@ -251,24 +251,24 @@ class Room(BaseModel):
         max_length=100,
         description="Unique room identifier",
     )
-    name: Optional[str] = Field(
+    name: str | None = Field(
         default=None,
         max_length=200,
         description="Human-readable room name",
     )
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         description="Room creation time",
     )
-    connection_ids: Set[str] = Field(
+    connection_ids: set[str] = Field(
         default_factory=set,
         description="Set of connection IDs in room",
     )
-    metadata: Dict[str, Any] = Field(
+    metadata: dict[str, Any] = Field(
         default_factory=dict,
         description="Custom room attributes",
     )
-    max_connections: Optional[int] = Field(
+    max_connections: int | None = Field(
         default=None,
         gt=0,
         description="Connection limit (None = unlimited)",

@@ -42,8 +42,9 @@ def _render_root(variant: str) -> Path:
     return REPO_ROOT / "samples" / variant / "render"
 
 
-@pytest.fixture(scope="module")
-def require_actionlint() -> None:
+@pytest.fixture(scope="module", name="require_actionlint")
+def _require_actionlint() -> None:
+    """Skip lint-dependent cases when the actionlint binary is unavailable."""
     if not _actionlint_available():
         pytest.skip("actionlint not installed")
 
@@ -52,6 +53,7 @@ def require_actionlint() -> None:
 def test_rendered_workflows_exclude_maintainer_leaks(
     variant: str,
 ) -> None:
+    """Generated workflows exclude maintainer-only quality workflow names."""
     workflows_dir = _render_root(variant) / ".github" / "workflows"
     if not workflows_dir.is_dir():
         pytest.skip(f"{variant} render missing; run ./scripts/render-samples.sh")
@@ -63,6 +65,7 @@ def test_rendered_workflows_exclude_maintainer_leaks(
 
 @pytest.mark.parametrize("variant", GITHUB_ACTION_VARIANTS)
 def test_rendered_workflows_have_no_jinja_remnants(variant: str) -> None:
+    """Existing generated workflow files contain no unevaluated Jinja blocks."""
     workflows_dir = _render_root(variant) / ".github" / "workflows"
     if not workflows_dir.is_dir():
         pytest.skip(f"{variant} render missing; run ./scripts/render-samples.sh")
@@ -76,11 +79,12 @@ def test_rendered_workflows_have_no_jinja_remnants(variant: str) -> None:
 
 
 @pytest.mark.xdist_group("actionlint")
+@pytest.mark.usefixtures("require_actionlint")
 @pytest.mark.parametrize("variant", GITHUB_ACTION_VARIANTS)
 def test_rendered_workflows_pass_actionlint(
     variant: str,
-    require_actionlint: None,
 ) -> None:
+    """Every existing variant workflow passes the installed actionlint checker."""
     workflows_dir = _render_root(variant) / ".github" / "workflows"
     if not workflows_dir.is_dir():
         pytest.skip(f"{variant} render missing; run ./scripts/render-samples.sh")
@@ -102,6 +106,7 @@ def test_rendered_workflows_pass_actionlint(
 
 
 def test_changelog_release_workflow_has_quality_job() -> None:
+    """The generated release workflow waits for its quality gate."""
     release_workflow = (
         _render_root("changelog-python") / ".github" / "workflows" / "riso-release.yml"
     )
@@ -114,6 +119,7 @@ def test_changelog_release_workflow_has_quality_job() -> None:
 
 
 def test_validate_release_configs_passes_changelog_render() -> None:
+    """The release validator accepts the existing changelog render configuration."""
     render_dir = _render_root("changelog-python")
     if not render_dir.is_dir():
         pytest.skip("changelog-python render missing; run ./scripts/render-samples.sh")

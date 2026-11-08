@@ -1,0 +1,56 @@
+{% if desktop_module == "enabled" and desktop_framework == "electron-vite" %}
+import { beforeEach, expect, it, vi } from 'vitest';
+import type { ElectronAPI } from '../src/shared/types';
+
+const electron = vi.hoisted(() => ({
+  expose: vi.fn<(name: string, api: ElectronAPI) => void>(),
+  invoke: vi.fn(),
+  on: vi.fn(),
+  removeListener: vi.fn(),
+}));
+
+vi.mock('electron', () => ({
+  contextBridge: { exposeInMainWorld: electron.expose },
+  ipcRenderer: { invoke: electron.invoke, on: electron.on, removeListener: electron.removeListener },
+}));
+
+beforeEach(async () => {
+  electron.expose.mockClear();
+  electron.invoke.mockReset();
+  electron.on.mockReset();
+  electron.removeListener.mockReset();
+  vi.resetModules();
+  await import('../src/preload');
+});
+
+function exposedApi(): ElectronAPI {
+  const call = electron.expose.mock.calls[0];
+  if (!call) throw new Error('The isolated preload did not expose its app API');
+  return call[1];
+}
+
+it('exposes only the named app bridge with no generic IPC or process environment', async () => {
+  expect(electron.expose.mock.calls.map(([name]) => name)).toEqual(['api']);
+  const api = exposedApi();
+  expect(api).not.toHaveProperty('ipcRenderer');
+  expect(api).not.toHaveProperty('process');
+
+  const theme = { source: 'dark', shouldUseDarkColors: true };
+  electron.invoke.mockResolvedValue(theme);
+  await expect(api.getTheme()).resolves.toEqual(theme);
+  expect(electron.invoke).toHaveBeenCalledWith('get-theme');
+});
+
+it('delivers only the theme payload to a renderer callback and supports unsubscribe', () => {
+  const callback = vi.fn();
+  const unsubscribe = exposedApi().onThemeChanged(callback);
+  const listener = electron.on.mock.calls[0]?.[1];
+  if (typeof listener !== 'function') throw new Error('No theme listener registered');
+  const theme = { source: 'light', shouldUseDarkColors: false };
+  listener({ sender: 'must not be exposed' }, theme);
+  expect(callback).toHaveBeenCalledExactlyOnceWith(theme);
+
+  unsubscribe();
+  expect(electron.removeListener).toHaveBeenCalledWith('theme-changed', listener);
+});
+{% endif %}

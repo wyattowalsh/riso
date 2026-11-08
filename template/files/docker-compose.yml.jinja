@@ -23,7 +23,8 @@
 # - docs-docusaurus: Docusaurus documentation on port 3002
 {%- endif %}
 {%- if saas_infra_module == "enabled" %}
-# - saas: Next.js SaaS application on port 3000
+{%- set _saas_host_port = 3003 if api_module == "enabled" and "node" in (api_languages|default([])) else 3000 %}
+# - saas: {{ 'Next.js' if saas_runtime == 'nextjs-16' else 'Remix' }} application on port {{ _saas_host_port }}
 {%- endif %}
 {%- if include_databases == "yes" %}
 # - postgres: PostgreSQL 16 database on port 5432
@@ -42,7 +43,7 @@
 #   - POSTGRES_PASSWORD (development default: dev_password — set a strong secret for real deployments)
 #   - REDIS_PASSWORD (development default: dev_password — set a strong secret for real deployments)
 
-services:
+{% set _service_models -%}
 {%- if api_module == "enabled" and "python" in api_languages %}
 
   api-python:
@@ -65,8 +66,8 @@ services:
 {%- endif %}
     # For production: comment out volume mounts
     # volumes:
-    #   - ./src:/app/src:ro
-    #   - ./tests:/app/tests:ro
+    #   - ./python/src:/app/src:ro
+    #   - ./python/tests:/app/tests:ro
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()\""]
       interval: 30s
@@ -110,7 +111,7 @@ services:
 {%- endif %}
     # For production: comment out volume mounts
     # volumes:
-    #   - ./apps:/app/apps:ro
+    #   - ./node:/app/node:ro
     #   - ./tsconfig.json:/app/tsconfig.json:ro
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
@@ -185,16 +186,16 @@ services:
         - {{ project_slug }}/docs-fumadocs:latest
     image: {{ project_slug }}/docs-fumadocs:latest
     container_name: {{ project_slug }}-docs-fumadocs
+    command: ["serve", "node/docs/fumadocs/out", "-l", "3001"]
     ports:
       - "3001:3001"
     environment:
       - NODE_ENV=production
-      - PORT=3001
     # For production: comment out volume mounts
     # volumes:
-    #   - ./apps/docs-fumadocs:/app/apps/docs-fumadocs:ro
+    #   - ./node/docs/fumadocs:/app/node/docs/fumadocs:ro
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3001 || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:3001/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -218,12 +219,13 @@ services:
         - {{ project_slug }}/docs-docusaurus:latest
     image: {{ project_slug }}/docs-docusaurus:latest
     container_name: {{ project_slug }}-docs-docusaurus
+    command: ["serve", "-s", "node/docs/docusaurus/build", "-l", "3002"]
     ports:
       - "3002:3002"
     environment:
       - NODE_ENV=production
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3002 || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:3002/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -247,8 +249,14 @@ services:
         - {{ project_slug }}/saas:latest
     image: {{ project_slug }}/saas:latest
     container_name: {{ project_slug }}-saas
+    working_dir: /app/node/saas
+{%- if saas_runtime == "nextjs-16" %}
+    command: ["./node_modules/.bin/next", "start", "runtime/nextjs"]
+{%- else %}
+    command: ["./node_modules/.bin/remix-serve", "runtime/remix/build/index.js"]
+{%- endif %}
     ports:
-      - "3000:3000"
+      - "{{ _saas_host_port }}:3000"
     environment:
       - NODE_ENV=production
 {%- if include_databases == "yes" %}
@@ -256,14 +264,14 @@ services:
       - REDIS_URL=redis://:$${REDIS_PASSWORD:-dev_password}@redis:6379/0
 {%- endif %}
 {%- if saas_auth_module == "enabled" %}
-      - NEXTAUTH_URL=http://localhost:3000
-      - NEXTAUTH_SECRET=$${NEXTAUTH_SECRET}
+      - AUTH_URL=http://localhost:{{ _saas_host_port }}
+      - AUTH_SECRET=$${AUTH_SECRET}
 {%- endif %}
     # For production: comment out volume mounts
     # volumes:
-    #   - ./apps/saas:/app/apps/saas:ro
+    #   - ./node/saas:/app/node/saas:ro
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:3000{{ '/api/health' if saas_runtime == 'nextjs-16' else '/comparison' }} || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -341,6 +349,8 @@ services:
       - "com.{{ project_slug }}.environment=development"
       - "com.{{ project_slug }}.credentials=dev-only"
 {%- endif %}
+{%- endset -%}
+services:{% if _service_models|trim %}{{ _service_models }}{% else %} {}{% endif %}
 
 # =============================================================================
 # Networks

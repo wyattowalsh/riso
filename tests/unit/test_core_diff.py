@@ -10,11 +10,13 @@ pytestmark = pytest.mark.unit
 
 
 def test_filediff_added_empty() -> None:
+    """Describe added files without content as empty."""
     diff = FileDiff(path="new.txt", status=FileStatus.ADDED, new_content=None)
     assert "New file: new.txt (empty)" in diff.get_unified_diff()
 
 
 def test_filediff_added_with_content() -> None:
+    """Include the new file name and content in an added-file diff."""
     diff = FileDiff(
         path="new.txt",
         status=FileStatus.ADDED,
@@ -26,6 +28,7 @@ def test_filediff_added_with_content() -> None:
 
 
 def test_filediff_modified_unified_diff() -> None:
+    """Include unified diff headers and changed lines for modified files."""
     diff = FileDiff(
         path="app.py",
         status=FileStatus.MODIFIED,
@@ -39,6 +42,7 @@ def test_filediff_modified_unified_diff() -> None:
 
 
 def test_filediff_deleted() -> None:
+    """Include the removed file name and its previous content."""
     diff = FileDiff(
         path="gone.txt",
         status=FileStatus.DELETED,
@@ -50,6 +54,7 @@ def test_filediff_deleted() -> None:
 
 
 def test_filediff_binary() -> None:
+    """Describe binary additions without attempting a textual diff."""
     diff = FileDiff(
         path="image.png",
         status=FileStatus.ADDED,
@@ -59,5 +64,6 @@ def test_filediff_binary() -> None:
 
 
 def test_filediff_unchanged() -> None:
+    """Report an unchanged file without a patch."""
     diff = FileDiff(path="same.txt", status=FileStatus.UNCHANGED)
     assert diff.get_unified_diff() == "Unchanged: same.txt"

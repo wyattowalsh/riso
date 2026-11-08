@@ -1,35 +1,39 @@
 {% if (graphql_api_module == 'enabled' or 'graphql' in api_features) -%}
 """User Query Resolvers - Fetch user data."""
 
-from typing import Optional
+
 import strawberry
 
-from {{ package_name }}.graphql_api.types.user import User, UserConnection
-from {{ package_name }}.graphql_api.pagination import create_connection, Edge, PageInfo
+from {{ package_name }}.graphql_api.pagination import (
+    OffsetPagination,
+    PageInfo,
+    create_connection,
+)
+from {{ package_name }}.graphql_api.types.user import User, UserConnection, UserEdge
 
 
 @strawberry.type
 class UserQueries:
     """User-related query operations."""
-    
+
     @strawberry.field
     async def user(
         self,
         info: strawberry.Info,
         id: strawberry.ID,
-    ) -> Optional[User]:
+    ) -> User | None:
         """
         Fetch a single user by ID.
-        
+
         Demonstrates:
         - Simple field resolution
         - Flexible field selection (client chooses fields)
         - DataLoader optimization (when implemented)
-        
+
         Args:
             info: GraphQL context with request data
             id: User ID
-        
+
         Returns:
             User if found, None otherwise
         """
@@ -37,115 +41,100 @@ class UserQueries:
         # In a real app, this would use DataLoader:
         # user_loader = info.context.dataloaders.user_loader
         # return await user_loader.load(id)
-        
+
         # Mock data for demonstration
         mock_users = {
             "1": User(
-                id="1",
+                id=strawberry.ID("1"),
                 name="Alice Johnson",
                 email="alice@example.com",
                 avatar="https://example.com/alice.jpg",
             ),
             "2": User(
-                id="2",
+                id=strawberry.ID("2"),
                 name="Bob Smith",
                 email="bob@example.com",
                 avatar=None,
             ),
         }
-        
+
         return mock_users.get(id)
-    
+
     @strawberry.field
     async def users(
         self,
         info: strawberry.Info,
-        first: Optional[int] = 20,
-        after: Optional[str] = None,
-        offset: Optional[int] = None,
-        limit: Optional[int] = None,
+        first: int | None = 20,
+        after: str | None = None,
+        offset: int | None = None,
+        limit: int | None = None,
     ) -> UserConnection:
         """
         Fetch a paginated list of users.
-        
+
         Supports both cursor-based and offset-based pagination:
         - Cursor-based (recommended): Use first/after parameters
         - Offset-based (simple): Use offset/limit parameters
-        
+
         Args:
             info: GraphQL context
             first: Number of users to fetch (cursor pagination)
             after: Cursor to start from (cursor pagination)
             offset: Number of users to skip (offset pagination)
             limit: Number of users to fetch (offset pagination)
-        
+
         Returns:
             UserConnection with edges, pageInfo, and totalCount
         """
         # This is a placeholder implementation
         # In a real app, this would query the database
-        
+
         # Mock data
         mock_users = [
-            User(id="1", name="Alice Johnson", email="alice@example.com", avatar="https://example.com/alice.jpg"),
-            User(id="2", name="Bob Smith", email="bob@example.com", avatar=None),
-            User(id="3", name="Carol Williams", email="carol@example.com", avatar="https://example.com/carol.jpg"),
-            User(id="4", name="David Brown", email="david@example.com", avatar=None),
-            User(id="5", name="Eve Davis", email="eve@example.com", avatar="https://example.com/eve.jpg"),
+            User(id=strawberry.ID("1"), name="Alice Johnson", email="alice@example.com", avatar="https://example.com/alice.jpg"),
+            User(id=strawberry.ID("2"), name="Bob Smith", email="bob@example.com", avatar=None),
+            User(id=strawberry.ID("3"), name="Carol Williams", email="carol@example.com", avatar="https://example.com/carol.jpg"),
+            User(id=strawberry.ID("4"), name="David Brown", email="david@example.com", avatar=None),
+            User(id=strawberry.ID("5"), name="Eve Davis", email="eve@example.com", avatar="https://example.com/eve.jpg"),
         ]
-        
+
         # Choose pagination strategy
         if offset is not None or limit is not None:
-            # Offset-based pagination
-            from {{ package_name }}.graphql_api.pagination import OffsetPagination
-            
-            offset = offset or 0
-            limit = limit or 20
+            offset = 0 if offset is None else offset
+            limit = 20 if limit is None else limit
             paginated_users, total_count = OffsetPagination.paginate(
                 mock_users,
                 offset=offset,
                 limit=limit,
                 max_limit=100,
             )
-            
+
             # Convert to connection format
             edges = [
-                Edge(
+                UserEdge(
                     cursor=f"cursor-{user.id}",
                     node=user,
                 )
                 for user in paginated_users
             ]
-            
+
             page_info = PageInfo(
-                has_next_page=offset + limit < total_count,
+                has_next_page=offset + len(paginated_users) < total_count,
                 has_previous_page=offset > 0,
                 start_cursor=edges[0].cursor if edges else None,
                 end_cursor=edges[-1].cursor if edges else None,
             )
-            
+
             return UserConnection(
                 edges=edges,
                 page_info=page_info,
                 total_count=total_count,
             )
-        else:
-            # Cursor-based pagination (default)
-            connection = create_connection(
-                items=mock_users,
-                first=first,
-                after=after,
-            )
-            
-            # Convert generic connection to UserConnection
-            user_edges = [
-                Edge(cursor=edge.cursor, node=edge.node)
-                for edge in connection.edges
-            ]
-            
-            return UserConnection(
-                edges=user_edges,
-                page_info=connection.page_info,
-                total_count=connection.total_count or len(mock_users),
-            )
+
+        connection = create_connection(mock_users, first=first, after=after)
+        return UserConnection(
+            edges=[UserEdge(cursor=edge.cursor, node=edge.node) for edge in connection.edges],
+            page_info=connection.page_info,
+            total_count=len(mock_users),
+        )
 {% endif %}

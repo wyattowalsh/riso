@@ -46,7 +46,7 @@ Please be respectful and constructive in all interactions. We welcome contributo
 1. Run quality checks:
 
    ```bash
-   make quality
+   just quality
    ```
 
 ## Development Workflow
@@ -72,7 +72,7 @@ Please be respectful and constructive in all interactions. We welcome contributo
 1. Run quality checks:
 
    ```bash
-   make quality
+   just quality
    ```
 
 1. Run tests:
@@ -128,7 +128,7 @@ docs: update installation instructions
 ### Testing Requirements
 
 - All new code must have tests
-- Maintain ≥80% coverage for scripts
+- Maintainer coverage floor is 70% (`just ci-full`); rendered Python packages enforce 90%
 - Use pytest markers for slow tests
 
 ### Type Hints

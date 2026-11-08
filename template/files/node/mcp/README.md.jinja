@@ -1,0 +1,38 @@
+{%- if mcp_module == 'enabled' and 'typescript' in mcp_languages -%}
+# {{ project_name }} MCP server
+
+Use Node.js 22.19 or later within the 22 series, or Node.js 24 and newer, with
+pnpm 9.15.
+
+Run package commands from `node/mcp`:
+
+- `pnpm start:stdio` uses standard input and output.
+- `pnpm start:http` serves streamable HTTP at `/mcp`.
+- `pnpm start:sse` serves legacy SSE at `/sse`, with messages at `/messages`.
+
+Both network choices use FastMCP's HTTP transport and expose both routes.
+The default listen address is `127.0.0.1:3000`.
+
+Run `pnpm typecheck`, `pnpm build`, `pnpm test`, and `pnpm lint` to validate
+the package. Build before using the start commands.
+{% if mcp_example_tools %}
+
+## HTTP tools
+
+`http_get`, `http_post`, and `http_head` connect directly to public HTTPS
+endpoints. Environment proxy settings are not used. Private, loopback,
+link-local, metadata, and reserved addresses are rejected, including mapped
+IPv6 addresses and DNS answers that mix public and blocked addresses. DNS
+addresses are checked by the connection resolver, and each request uses its
+own connection agent.
+
+URL credentials and caller `Host` header overrides are rejected. Other
+request headers are supported. Redirects are returned without following
+the destination. The timeout accepts 1–120 seconds and remains active
+through DNS resolution, connection setup, and response body consumption.
+
+GET and POST return the first 10,000 characters of the response text. GET's
+`contentLength` reports the full response's character count; HEAD's
+`contentLength` reports the server's header value or `unknown`.
+{% endif %}
+{%- endif %}

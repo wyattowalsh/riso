@@ -47,6 +47,8 @@ class SmokeResults(TypedDict):
 
 @dataclass
 class ModuleStats:
+    """Count module smoke outcomes."""
+
     passed: int = 0
     failed: int = 0
     errored: int = 0
@@ -84,6 +86,8 @@ class ModuleStats:
 
 @dataclass
 class CacheMetrics:
+    """Aggregate cache usage and runtime measurements across CI runs."""
+
     cache_hit_rate: float = 0.0
     average_runtime_with_cache_seconds: float | None = None
     average_runtime_without_cache_seconds: float | None = None
@@ -102,6 +106,8 @@ class CacheMetrics:
 
 @dataclass
 class ContainerMetrics:
+    """Count container-file and lint-validation outcomes."""
+
     total_checked: int = 0
     files_present: int = 0
     validated: int = 0

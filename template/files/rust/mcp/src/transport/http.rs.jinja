@@ -17,10 +17,9 @@ pub async fn serve_streamable_http(
 
     let app = axum::Router::new().fallback_service(service);
     let addr: SocketAddr = format!("{host}:{port}").parse()?;
-    tracing::info!("Streamable HTTP MCP server listening on {addr}");
-
     let listener = tokio::net::TcpListener::bind(addr).await?;
+    tracing::info!("Streamable HTTP MCP server listening on {addr}");
     axum::serve(listener, app).await?;
     Ok(())
 }
-{%- endif -%}
+{% endif -%}

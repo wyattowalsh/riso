@@ -1,9 +1,10 @@
 """Unit tests for track_doc_publish.py"""
 
 import json
-import pytest
 from datetime import datetime, timezone
 from unittest.mock import patch
+
+import pytest
 
 from track_doc_publish import load_existing, main
 

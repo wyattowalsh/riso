@@ -2,9 +2,12 @@
 """WebSocket connection wrapper with lifecycle management."""
 
 import asyncio
+import json
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Set
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
+from time import monotonic
+from typing import Any
 
 from fastapi import WebSocket
 from loguru import logger
@@ -13,6 +16,7 @@ from {{ package_name }}.websocket.config import get_config
 from {{ package_name }}.websocket.exceptions import (
     BackpressureError,
     ConnectionClosedError,
+    InvalidMessageFormatError,
     MessageTooLargeError,
 )
 from {{ package_name }}.websocket.models import ConnectionState, WebSocketConnectionModel
@@ -34,9 +38,9 @@ class WebSocketConnection:
         ```python
         connection = WebSocketConnection(websocket, user_id="user_123")
         await connection.accept()
-        
+
         await connection.send_json({"type": "message.text", "payload": {"text": "Hello"}})
-        
+
         await connection.close(code=1000, reason="Normal closure")
         ```
     """
@@ -44,9 +48,9 @@ class WebSocketConnection:
     def __init__(
         self,
         websocket: WebSocket,
-        connection_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        connection_id: str | None = None,
+        user_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ):
         """
         Initialize WebSocket connection.
@@ -60,23 +64,26 @@ class WebSocketConnection:
         self.websocket    = websocket
         self.config       = get_config()
         self._connection_id = connection_id or str(uuid.uuid4())
-        
+        client = websocket.client
+        self._client_ip = client.host if client else "unknown"
+
         # Connection model (serializable state)
         self._model = WebSocketConnectionModel(
             connection_id=self._connection_id,
             user_id=user_id,
             metadata=metadata or {},
         )
-        
+
         # Message queue (bounded for backpressure)
         self._message_queue: asyncio.Queue = asyncio.Queue(
             maxsize=self.config.message_queue_depth
         )
-        
+
         # Background tasks
-        self._send_task: Optional[asyncio.Task] = None
-        self._heartbeat_task: Optional[asyncio.Task] = None
-        
+        self._send_task: asyncio.Task | None = None
+        self._heartbeat_task: asyncio.Task | None = None
+        self._pending_ping: tuple[str, float] | None = None
+
         # Statistics
         self._messages_sent     = 0
         self._messages_received = 0
@@ -87,7 +94,12 @@ class WebSocketConnection:
         return self._connection_id
 
     @property
-    def user_id(self) -> Optional[str]:
+    def client_ip(self) -> str:
+        """Get the client IP used for connection limits and cleanup."""
+        return self._client_ip
+
+    @property
+    def user_id(self) -> str | None:
         """Get authenticated user ID."""
         return self._model.user_id
 
@@ -97,12 +109,12 @@ class WebSocketConnection:
         return self._model.state
 
     @property
-    def rooms(self) -> Set[str]:
+    def rooms(self) -> set[str]:
         """Get current room memberships."""
         return self._model.rooms
 
     @property
-    def metadata(self) -> Dict[str, Any]:
+    def metadata(self) -> dict[str, Any]:
         """Get connection metadata."""
         return self._model.metadata
 
@@ -122,10 +134,29 @@ class WebSocketConnection:
 
     def time_since_activity(self) -> float:
         """Get seconds since last activity."""
-        delta = datetime.now(timezone.utc) - self._model.last_activity_at
+        delta = datetime.now(UTC) - self._model.last_activity_at
         return delta.total_seconds()
 
-    async def accept(self) -> None:
+    @property
+    def pending_ping_since(self) -> float | None:
+        """Get the monotonic start of the current pong deadline, if any."""
+        return self._pending_ping[1] if self._pending_ping is not None else None
+
+    def expect_pong(self, message_id: str) -> None:
+        """Track the ping a client must acknowledge."""
+        self._pending_ping = (message_id, monotonic())
+
+    def record_pong(self, message_id: str) -> bool:
+        """Clear the deadline only for a pong matching the outstanding ping."""
+        if self._pending_ping is None or self._pending_ping[0] != message_id:
+            return False
+        self._pending_ping = None
+        self._update_activity()
+        return True
+
+    async def accept(
+        self, *, on_heartbeat_timeout: Callable[[], Awaitable[None]] | None = None
+    ) -> None:
         """
         Accept WebSocket connection and transition to CONNECTED state.
 
@@ -148,6 +179,12 @@ class WebSocketConnection:
 
         # Start background tasks
         self._send_task = asyncio.create_task(self._send_loop())
+        if self.config.enable_heartbeat:
+            from {{ package_name }}.websocket.utils import heartbeat_loop
+
+            self._heartbeat_task = asyncio.create_task(
+                heartbeat_loop(self, on_timeout=on_heartbeat_timeout)
+            )
 
         logger.info(
             f"WebSocket connected: {self._connection_id}",
@@ -158,7 +195,31 @@ class WebSocketConnection:
             },
         )
 
-    async def send_json(self, message: Dict[str, Any]) -> None:
+    async def receive_text(self) -> str:
+        """Receive a text frame, enforce its byte limit, and record activity."""
+        text = await self.websocket.receive_text()
+        self._check_message_size(len(text.encode("utf-8")))
+        self._messages_received += 1
+        self._update_activity()
+        return text
+
+    async def receive_json(self) -> Any:
+        """Check the wire size before decoding an incoming JSON frame."""
+        try:
+            return json.loads(await self.receive_text())
+        except json.JSONDecodeError as error:
+            raise InvalidMessageFormatError("Malformed WebSocket JSON message") from error
+
+    def _check_message_size(self, size: int) -> None:
+        """Reject frames that exceed the configured byte limit."""
+        if size > self.config.max_message_size:
+            raise MessageTooLargeError(
+                message=f"Message size {size} exceeds limit {self.config.max_message_size}",
+                max_size=self.config.max_message_size,
+                actual_size=size,
+            )
+
+    async def send_json(self, message: dict[str, Any]) -> None:
         """
         Queue JSON message for sending.
 
@@ -202,13 +263,7 @@ class WebSocketConnection:
             )
 
         # Check message size
-        size = len(text.encode("utf-8"))
-        if size > self.config.max_message_size:
-            raise MessageTooLargeError(
-                message=f"Message size {size} exceeds limit {self.config.max_message_size}",
-                max_size=self.config.max_message_size,
-                actual_size=size,
-            )
+        self._check_message_size(len(text.encode("utf-8")))
 
         try:
             self._message_queue.put_nowait(("text", text))
@@ -237,12 +292,7 @@ class WebSocketConnection:
             )
 
         # Check message size
-        if len(data) > self.config.max_message_size:
-            raise MessageTooLargeError(
-                message=f"Message size {len(data)} exceeds limit {self.config.max_message_size}",
-                max_size=self.config.max_message_size,
-                actual_size=len(data),
-            )
+        self._check_message_size(len(data))
 
         try:
             self._message_queue.put_nowait(("bytes", data))
@@ -270,20 +320,16 @@ class WebSocketConnection:
             self._model.state = ConnectionState.CLOSING
 
         try:
-            # Cancel background tasks
-            if self._send_task and not self._send_task.done():
-                self._send_task.cancel()
-                try:
-                    await self._send_task
-                except asyncio.CancelledError:
-                    pass
-
-            if self._heartbeat_task and not self._heartbeat_task.done():
-                self._heartbeat_task.cancel()
-                try:
-                    await self._heartbeat_task
-                except asyncio.CancelledError:
-                    pass
+            # The heartbeat task can initiate this close itself.
+            current = asyncio.current_task()
+            tasks = [
+                task for task in (self._send_task, self._heartbeat_task)
+                if task is not None and task is not current and not task.done()
+            ]
+            for task in tasks:
+                task.cancel()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
 
             # Close WebSocket
             await self.websocket.close(code=code, reason=reason)
@@ -324,7 +370,7 @@ class WebSocketConnection:
 
     def _update_activity(self) -> None:
         """Update last activity timestamp."""
-        self._model.last_activity_at = datetime.now(timezone.utc)
+        self._model.last_activity_at = datetime.now(UTC)
 
     async def _send_loop(self) -> None:
         """Background task that drains message queue and sends to WebSocket."""

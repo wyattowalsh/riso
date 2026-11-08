@@ -67,7 +67,7 @@ describe('public Copier answer round trips', () => {
       mcp_languages: ['go'],
       mcp_transport: 'http',
       mcp_example_tools: false,
-      go_version: '1.24',
+      go_version: '1.27',
       python_versions: ['3.13'],
     },
     {

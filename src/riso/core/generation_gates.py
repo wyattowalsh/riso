@@ -25,7 +25,6 @@ _MODULE_LANGUAGE_PAIRS: tuple[tuple[str, str], ...] = (
     ("cli_module", "cli_languages"),
     ("api_module", "api_languages"),
     ("mcp_module", "mcp_languages"),
-    ("docs_module", "docs_languages"),
 )
 
 
@@ -94,6 +93,42 @@ def _saas_errors(answers: Mapping[str, Any]) -> list[str]:
             "(or choose another realtime provider)."
         )
 
+    if _as_enabled(answers.get("saas_billing_module")) and not _as_enabled(
+        answers.get("saas_auth_module")
+    ):
+        errors.append(
+            "saas_billing_module requires saas_auth_module='enabled' "
+            "(enable auth before billing)."
+        )
+
+    if _as_enabled(answers.get("saas_app_module")) and not (
+        _as_enabled(answers.get("saas_auth_module"))
+        and _as_enabled(answers.get("saas_billing_module"))
+    ):
+        errors.append(
+            "saas_app_module requires saas_auth_module and saas_billing_module "
+            "to be enabled."
+        )
+
+    if (
+        _as_enabled(answers.get("saas_auth_module"))
+        and answers.get("saas_runtime") == "remix-2"
+        and answers.get("saas_auth_provider") == "authjs"
+    ):
+        errors.append(
+            "Remix runtime does not support Auth.js; choose "
+            "saas_auth_provider='clerk' or saas_runtime='nextjs-16'."
+        )
+
+    if answers.get("saas_file_upload") == "uploadthing" and not (
+        _as_enabled(answers.get("saas_auth_module"))
+        and answers.get("saas_runtime") == "nextjs-16"
+    ):
+        errors.append(
+            "Uploadthing requires saas_auth_module='enabled' "
+            "and saas_runtime='nextjs-16'."
+        )
+
     return errors
 
 
@@ -134,6 +169,23 @@ def _removed_key_errors(answers: Mapping[str, Any]) -> list[str]:
     ]
 
 
+def _python_mcp_package_errors(answers: Mapping[str, Any]) -> list[str]:
+    """Keep the generated application from shadowing the Python MCP SDK."""
+    languages = normalize_api_features(answers.get("mcp_languages", ["python"]))
+    if not _as_enabled(answers.get("mcp_module")) or "python" not in languages:
+        return []
+    project_slug = (
+        answers.get("project_slug")
+        or str(answers.get("project_name") or "").replace(" ", "-").lower()
+    )
+    package = answers.get("package_name") or str(project_slug).replace("-", "_")
+    if package == "mcp":
+        return [
+            "package_name: choose a different name; 'mcp' is reserved by the Python MCP SDK."
+        ]
+    return []
+
+
 def validate_answers_for_generation(answers: Mapping[str, Any]) -> GateResult:
     """Validate answers before project generation / update.
 
@@ -146,6 +198,7 @@ def validate_answers_for_generation(answers: Mapping[str, Any]) -> GateResult:
     errors.extend(_removed_key_errors(remapped))
     errors.extend(_saas_errors(remapped))
     errors.extend(_language_errors(remapped))
+    errors.extend(_python_mcp_package_errors(remapped))
 
     # api_features normalize is available for callers; warn on bare substring traps
     # is handled by normalize_api_features used elsewhere.

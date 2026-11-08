@@ -7,11 +7,12 @@ from {{ package_name }}.graphql_api.complexity import (
     calculate_query_complexity,
     calculate_query_depth,
 )
+from {{ package_name }}.graphql_api.schema import schema
 
 
 class TestQueryComplexity:
     """Test query complexity calculation and limits."""
-    
+
     def test_simple_query_low_complexity(self):
         """Test that simple queries have low complexity."""
         query = """
@@ -23,12 +24,12 @@ class TestQueryComplexity:
                 }
             }
         """
-        
+
         complexity = calculate_query_complexity(query, max_complexity=5000)
-        
+
         # Simple query should have low complexity
         assert complexity < 100
-    
+
     def test_list_query_multiplies_complexity(self):
         """Test that list queries multiply complexity."""
         query = """
@@ -43,12 +44,12 @@ class TestQueryComplexity:
                 }
             }
         """
-        
+
         complexity = calculate_query_complexity(query, max_complexity=5000)
-        
+
         # List query with large first should have higher complexity
         assert complexity > 100
-    
+
     def test_excessive_complexity_rejected(self):
         """Test that queries exceeding max complexity are rejected."""
         query = """
@@ -68,17 +69,17 @@ class TestQueryComplexity:
                 }
             }
         """
-        
+
         # Should raise error for excessive complexity
         with pytest.raises(Exception) as exc_info:
             calculate_query_complexity(query, max_complexity=5000)
-        
+
         assert "complexity" in str(exc_info.value).lower()
 
 
 class TestQueryDepth:
     """Test query depth limits."""
-    
+
     def test_simple_query_low_depth(self):
         """Test that simple queries have low depth."""
         query = """
@@ -89,12 +90,12 @@ class TestQueryDepth:
                 }
             }
         """
-        
+
         depth = calculate_query_depth(query, max_depth=15)
-        
+
         # Simple query should have depth of 2-3
         assert depth < 5
-    
+
     def test_nested_query_calculates_depth(self):
         """Test that nested queries calculate depth correctly."""
         query = """
@@ -110,20 +111,59 @@ class TestQueryDepth:
                 }
             }
         """
-        
+
         depth = calculate_query_depth(query, max_depth=15)
-        
+
         # Nested query should have depth > 3
         assert depth >= 3
-    
+
     def test_excessive_depth_rejected(self):
         """Test that queries exceeding max depth are rejected."""
         # Create deeply nested query (>15 levels)
         query = "query { " + "user { posts { " * 10 + "id" + " } }" * 10 + " }"
-        
+
         # Should raise error for excessive depth
         with pytest.raises(Exception) as exc_info:
             calculate_query_depth(query, max_depth=15)
-        
+
         assert "depth" in str(exc_info.value).lower()
+{% raw %}
+@pytest.mark.asyncio
+async def test_graphql_rejects_depth_hidden_in_named_fragments():
+    """The operation limit applies after fragment expansion."""
+    fragments = [
+        f"fragment Nested{index} on __Type {{ ofType {{ ...Nested{index + 1} }} }}"
+        for index in range(16)
+    ]
+    fragments.append("fragment Nested16 on __Type { kind }")
+    result = await schema.execute('query { __type(name: "User") { ...Nested0 } } ' + " ".join(fragments))
+
+    assert result.errors
+    assert any("Query depth" in error.message for error in result.errors)
+
+
+@pytest.mark.asyncio
+async def test_graphql_bounds_variable_page_size_cost():
+    """Child selections count once per potential item in a parameterized page."""
+    aliases = " ".join(f"field{index}: edges {{ node {{ id }} }}" for index in range(20))
+    query = (
+        "query List($size: Int!) { users(first: $size) { ...Selections } } "
+        f"fragment Selections on UserConnection {{ {aliases} }}"
+    )
+    result = await schema.execute(query, variable_values={"size": 100})
+
+    assert result.errors
+    assert any("Query complexity" in error.message for error in result.errors)
+
+
+@pytest.mark.asyncio
+async def test_graphql_rejects_cyclic_fragments():
+    """The limits check must terminate while the normal validation rejects cycles."""
+    result = await schema.execute(
+        'query { user(id: "1") { ...Cycle } } fragment Cycle on User { ...Cycle }'
+    )
+
+    assert result.errors
+    assert any("Cannot spread fragment" in error.message for error in result.errors)
+{% endraw %}
 {% endif -%}

@@ -1,6 +1,6 @@
 {% if desktop_module == "enabled" and desktop_framework == "electron-vite" %}
 {
-  "name": "{{ project_slug }}",
+  "name": "{{ project_slug }}-electron",
   "version": "0.1.0",
   "description": "{{ project_name }} - Native desktop application",
   "main": "./out/main/index.js",
@@ -10,7 +10,7 @@
   },
   "license": "MIT",
   "engines": {
-    "node": ">=20.0.0"
+    "node": "^22.13.0 || ^24.0.0 || >=26.0.0"
   },
   "scripts": {
     "dev": "electron-vite dev",
@@ -21,8 +21,8 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "pnpm typecheck:node && pnpm typecheck:web",
-    "lint": "ESLINT_USE_FLAT_CONFIG=false eslint . --ext .js,.jsx,.cjs,.mjs,.ts,.tsx",
-    "lint:fix": "ESLINT_USE_FLAT_CONFIG=false eslint . --ext .js,.jsx,.cjs,.mjs,.ts,.tsx --fix",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,html}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,html}\"",
     "test": "vitest run",
@@ -40,6 +40,7 @@
     {% endif %}
     "electron-log": "^5.2.4",
     "electron-store": "^10.0.0",
+    "ipaddr.js": "^2.5.0",
     "zustand": "^5.0.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -47,32 +48,30 @@
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
-    "@electron-toolkit/eslint-config-ts": "^3.0.0",
-    "@electron-toolkit/preload": "^3.0.1",
+    "@eslint-react/eslint-plugin": "^5.28.8",
+    "@eslint/js": "^10.0.1",
     "@electron-toolkit/utils": "^3.0.0",
-    "@types/node": "^22.10.5",
+    "@types/node": "^24.9.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^6.2.1",
+    "@vitest/coverage-v8": "5.1.0",
     "autoprefixer": "^10.4.20",
-    "electron": "^34.0.0",
+    "electron": "^45.2.3",
     "electron-builder": "^26.0.0",
-    "electron-vite": "^3.0.0",
-    "eslint": "^9.18.0",
-    "eslint-plugin-react": "^7.37.4",
-    "eslint-plugin-react-hooks": "^5.1.0",
-    "eslint-plugin-react-refresh": "^0.4.16",
-    "@typescript-eslint/parser": "^8.21.0",
-    "@typescript-eslint/eslint-plugin": "^8.21.0",
+    "electron-vite": "^6.0.0",
+    "eslint": "^10.14.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.14.0",
     "postcss": "^8.5.1",
     "prettier": "^3.4.2",
     "prettier-plugin-tailwindcss": "^0.6.6",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3",
-    "vite": "^6.0.7",
-    "vitest": "^2.1.8",
-    "@testing-library/react": "^16.1.0",
-    "@testing-library/jest-dom": "^6.6.3"
+    "typescript-eslint": "^8.72.1",
+    "vite": "^8.3.6",
+    "vitest": "5.1.0"
   }
 }
 {% endif %}

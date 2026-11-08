@@ -24,8 +24,8 @@ def _render_agents(context: dict[str, object]) -> str:
     return template.render(**context)
 
 
-@pytest.fixture
-def base_context() -> dict[str, object]:
+@pytest.fixture(name="base_context")
+def _base_context() -> dict[str, object]:
     """Minimal context shared by rendered variants."""
     return {
         "project_name": "Test Project",
@@ -107,6 +107,7 @@ class TestAgentsMdTemplate:
         """AI tools docs linked when harness module enabled."""
         output = _render_agents(base_context)
         assert "docs/ai-tools.md" in output
+        assert "/add-plugin github.com/wyattowalsh/agents" in output
 
     def test_ai_tools_section_hidden_when_disabled(
         self, base_context: dict[str, object]
@@ -115,6 +116,7 @@ class TestAgentsMdTemplate:
         base_context["ai_tools_module"] = "disabled"
         output = _render_agents(base_context)
         assert "docs/ai-tools.md" not in output
+        assert "wyattowalsh/agents" not in output
 
     def test_uv_run_execution_rule_when_python_enabled(
         self, base_context: dict[str, object]

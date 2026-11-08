@@ -1,23 +1,25 @@
 {% if (graphql_api_module == 'enabled' or 'graphql' in api_features) -%}
 """User Mutation Resolvers - Create, update, delete users."""
 
-from typing import Optional
-import strawberry
-from pydantic import EmailStr, ValidationError as PydanticValidationError
 
+import strawberry
+from pydantic import ValidationError as PydanticValidationError
+
+from {{ package_name }}.graphql_api.auth import auth_required
+from {{ package_name }}.graphql_api.errors import ValidationError
 from {{ package_name }}.graphql_api.types.user import (
-    User,
     CreateUserInput,
     UpdateUserInput,
+    User,
 )
-from {{ package_name }}.graphql_api.errors import ValidationError
 
 
 @strawberry.type
 class UserMutations:
     """User-related mutation operations."""
-    
+
     @strawberry.mutation
+    @auth_required
     async def create_user(
         self,
         info: strawberry.Info,
@@ -25,44 +27,44 @@ class UserMutations:
     ) -> User:
         """
         Create a new user.
-        
+
         Demonstrates:
         - Input validation with Pydantic
         - Error handling for invalid data
         - Flexible response field selection
-        - Authentication (add @auth decorator when ready)
-        
+        - Authentication for writes
+
         Args:
             info: GraphQL context
             input: User creation data
-        
+
         Returns:
             Created User
-        
+
         Raises:
             ValidationError: If input validation fails
         """
         # Validate email format
         try:
             from pydantic import BaseModel, field_validator
-            
+
             class EmailValidator(BaseModel):
                 email: str
-                
+
                 @field_validator("email")
                 @classmethod
                 def validate_email(cls, v: str) -> str:
                     if "@" not in v or "." not in v:
                         raise ValueError("Invalid email format")
                     return v
-            
+
             EmailValidator(email=input.email)
         except (ValueError, PydanticValidationError) as e:
             raise ValidationError(
                 message="Email format is invalid",
                 field="email",
             ) from e
-        
+
         # This is a placeholder implementation
         # In a real app, this would save to database:
         # db = info.context.db
@@ -71,64 +73,65 @@ class UserMutations:
         # await db.commit()
         # await db.refresh(user_model)
         # return User.from_orm(user_model)
-        
+
         # Mock implementation
         import uuid
-        
+
         new_user = User(
-            id=str(uuid.uuid4()),
+            id=strawberry.ID(str(uuid.uuid4())),
             name=input.name,
             email=input.email,
             avatar=input.avatar,
         )
-        
+
         return new_user
-    
+
     @strawberry.mutation
+    @auth_required
     async def update_user(
         self,
         info: strawberry.Info,
         id: strawberry.ID,
         input: UpdateUserInput,
-    ) -> Optional[User]:
+    ) -> User | None:
         """
         Update an existing user.
-        
-        Only updates fields provided in input (partial updates supported).
-        
+
+        Only updates fields provided in input. A null avatar clears the avatar.
+
         Args:
             info: GraphQL context
             id: User ID to update
             input: Fields to update
-        
+
         Returns:
             Updated User or None if not found
-        
+
         Raises:
             ValidationError: If input validation fails
         """
         # Validate email if provided
-        if input.email:
+        if input.email is not None:
             try:
                 from pydantic import BaseModel, field_validator
-                
+
                 class EmailValidator(BaseModel):
                     email: str
-                    
+
                     @field_validator("email")
                     @classmethod
                     def validate_email(cls, v: str) -> str:
                         if "@" not in v or "." not in v:
                             raise ValueError("Invalid email format")
                         return v
-                
+
                 EmailValidator(email=input.email)
             except (ValueError, PydanticValidationError) as e:
                 raise ValidationError(
                     message="Email format is invalid",
                     field="email",
                 ) from e
-        
+
         # This is a placeholder implementation
         # In a real app, this would update database:
         # db = info.context.db
@@ -142,43 +145,44 @@ class UserMutations:
         #     user_model.name = input.name
         # if input.email is not None:
         #     user_model.email = input.email
-        # if input.avatar is not None:
+        # if input.avatar is not strawberry.UNSET:
         #     user_model.avatar = input.avatar
         # await db.commit()
         # await db.refresh(user_model)
         # return User.from_orm(user_model)
-        
+
         # Mock implementation - fetch existing user
         mock_users = {
             "1": User(
-                id="1",
+                id=strawberry.ID("1"),
                 name="Alice Johnson",
                 email="alice@example.com",
                 avatar="https://example.com/alice.jpg",
             ),
             "2": User(
-                id="2",
+                id=strawberry.ID("2"),
                 name="Bob Smith",
                 email="bob@example.com",
                 avatar=None,
             ),
         }
-        
+
         user = mock_users.get(id)
         if not user:
             return None
-        
+
         # Update fields if provided
         if input.name is not None:
             user.name = input.name
         if input.email is not None:
             user.email = input.email
-        if input.avatar is not None:
+        if input.avatar is not strawberry.UNSET:
             user.avatar = input.avatar
-        
+
         return user
-    
+
     @strawberry.mutation
+    @auth_required
     async def delete_user(
         self,
         info: strawberry.Info,
@@ -186,11 +190,11 @@ class UserMutations:
     ) -> bool:
         """
         Delete a user.
-        
+
         Args:
             info: GraphQL context
             id: User ID to delete
-        
+
         Returns:
             True if deleted, False if not found
         """
@@ -206,7 +210,7 @@ class UserMutations:
         # await db.delete(user_model)
         # await db.commit()
         # return True
-        
+
         # Mock implementation
         mock_existing_ids = {"1", "2", "3"}
         return id in mock_existing_ids

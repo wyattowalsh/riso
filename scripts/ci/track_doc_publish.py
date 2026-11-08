@@ -10,12 +10,14 @@ from pathlib import Path
 
 
 def load_existing(path: Path) -> list[dict[str, object]]:
+    """Load prior documentation publication records when the file exists."""
     if not path.exists():
         return []
     return json.loads(path.read_text(encoding="utf-8"))
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Append a documentation publication result to the evidence log."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--site",

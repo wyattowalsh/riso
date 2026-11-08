@@ -15,6 +15,7 @@ from riso.core import (
     apply_removed_key_remaps,
     reject_removed_answer_keys,
 )
+from riso.core.answers import apply_then_reject_removed_keys
 from riso.core.errors import ValidationFailedError
 
 pytestmark = pytest.mark.unit
@@ -52,6 +53,7 @@ def _apply_then_reject(answers: dict[str, Any]) -> RemapResult:
 def test_wrap_api_language(
     before: str | list[str], expected_langs: list[str], action: str
 ) -> None:
+    """A removed API language becomes a canonical list with an auditable remap."""
     result = _apply({"api_language": before})
     assert result.answers["api_languages"] == expected_langs
     assert "api_language" not in result.answers
@@ -74,6 +76,7 @@ def test_wrap_api_language(
     ],
 )
 def test_wrap_mcp_language(before: str | list[str], expected_langs: list[str]) -> None:
+    """MCP language aliases normalize while retaining the wrap-list operation."""
     result = _apply({"mcp_language": before})
     assert result.answers["mcp_languages"] == expected_langs
     assert "mcp_language" not in result.answers
@@ -109,6 +112,7 @@ def test_wrap_mcp_language(before: str | list[str], expected_langs: list[str]) -
     ],
 )
 def test_derive_api_tracks(before: Any, expected: dict[str, Any]) -> None:
+    """API tracks derive both module activation and canonical language choices."""
     result = _apply({"api_tracks": before})
     for key, value in expected.items():
         assert result.answers[key] == value
@@ -143,6 +147,7 @@ def test_derive_api_tracks(before: Any, expected: dict[str, Any]) -> None:
     ],
 )
 def test_derive_docs_site(before: str, expected: dict[str, Any]) -> None:
+    """Docs choices derive module activation and the canonical framework."""
     result = _apply({"docs_site": before})
     for key, value in expected.items():
         assert result.answers[key] == value
@@ -161,6 +166,7 @@ def test_derive_docs_site(before: str, expected: dict[str, Any]) -> None:
     ],
 )
 def test_rename_saas_starter_module(before: Any, expected: str) -> None:
+    """The former SaaS starter switch maps to infrastructure activation."""
     result = _apply({"saas_starter_module": before})
     assert result.answers["saas_infra_module"] == expected
     assert "saas_starter_module" not in result.answers
@@ -186,6 +192,7 @@ def test_rename_saas_starter_module(before: Any, expected: str) -> None:
     ],
 )
 def test_split_saas_auth(before: str, expected: dict[str, Any]) -> None:
+    """Supported auth choices split into activation and provider answers."""
     result = _apply({"saas_auth": before})
     for key, value in expected.items():
         assert result.answers[key] == value
@@ -219,6 +226,7 @@ def test_split_saas_auth(before: str, expected: dict[str, Any]) -> None:
     ],
 )
 def test_split_saas_billing(before: str, expected: dict[str, Any]) -> None:
+    """Supported billing choices split into activation and provider answers."""
     result = _apply({"saas_billing": before})
     for key, value in expected.items():
         assert result.answers[key] == value
@@ -244,6 +252,7 @@ def test_split_saas_billing(before: str, expected: dict[str, Any]) -> None:
     ],
 )
 def test_rename_bool_include_admin(before: Any, expected: bool) -> None:
+    """Boolean-like admin inputs normalize to the canonical dashboard flag."""
     result = _apply({"include_admin": before})
     assert result.answers["saas_admin_dashboard"] is expected
     assert "include_admin" not in result.answers
@@ -252,6 +261,7 @@ def test_rename_bool_include_admin(before: Any, expected: bool) -> None:
 
 
 def test_remap_table_covers_removed_keys() -> None:
+    """Every removed answer key has the expected deterministic remap operator."""
     assert set(ANSWER_KEY_REMAPS) == set(REMOVED_ANSWER_KEYS)
     assert len(ANSWER_KEY_REMAPS) == 8
     assert ANSWER_KEY_REMAPS["api_language"].action == "wrap-list"
@@ -265,28 +275,38 @@ def test_remap_table_covers_removed_keys() -> None:
 
 
 def test_apply_does_not_mutate_input() -> None:
+    """Remapping returns new answers without mutating the input mapping."""
     original = {"api_language": "python"}
     _apply(original)
     assert original == {"api_language": "python"}
 
 
 def test_idempotent_second_apply_is_noop() -> None:
+    """Canonical answers remain unchanged and produce no second remap."""
     first = _apply({"api_language": "python", "mcp_language": "node"})
     second = _apply(first.answers)
     assert second.answers == first.answers
     assert second.ops == ()
 
 
+def test_wrap_api_language_unknown_sequence_token_fail_closed() -> None:
+    """A mixed language list retains unknown tokens for explicit rejection."""
+    result = _apply({"api_language": ["python", "fortran"]})
+    assert result.ops == ()
+    assert result.answers["api_language"] == ["python", "fortran"]
+    with pytest.raises(ValidationFailedError):
+        _apply_then_reject({"api_language": ["python", "fortran"]})
+
+
 def test_do_not_overwrite_dest_wrap_list() -> None:
+    """An explicit canonical language list wins over a removed scalar answer."""
     result = _apply({"api_language": "python", "api_languages": ["go"]})
     assert result.answers["api_languages"] == ["go"]
     assert "api_language" not in result.answers
 
 
 def test_lucia_saas_auth_fail_closes() -> None:
-    from riso.core.answers import apply_then_reject_removed_keys
-    from riso.core.errors import ValidationFailedError
-
+    """The unsupported Lucia auth choice cannot bypass leftover-key rejection."""
     with pytest.raises(ValidationFailedError) as exc:
         apply_then_reject_removed_keys({"saas_auth": "lucia"})
     assert exc.value.data is not None
@@ -294,6 +314,7 @@ def test_lucia_saas_auth_fail_closes() -> None:
 
 
 def test_do_not_overwrite_dest_split() -> None:
+    """Explicit canonical auth answers win over a removed provider choice."""
     result = _apply(
         {
             "saas_auth": "authjs",
@@ -307,6 +328,7 @@ def test_do_not_overwrite_dest_split() -> None:
 
 
 def test_do_not_overwrite_dest_derive() -> None:
+    """Explicit canonical API answers win over derived track defaults."""
     result = _apply(
         {
             "api_tracks": "node",
@@ -320,6 +342,7 @@ def test_do_not_overwrite_dest_derive() -> None:
 
 
 def test_unmapped_value_left_for_reject() -> None:
+    """Unrecognized removed values remain visible to fail-closed validation."""
     result = _apply({"saas_auth": "firebase"})
     assert result.answers["saas_auth"] == "firebase"
     assert result.ops == ()
@@ -331,6 +354,7 @@ def test_unmapped_value_left_for_reject() -> None:
 
 
 def test_unknown_leftover_raises_after_apply() -> None:
+    """Fixture resolution rejects removed answers that cannot be remapped."""
     leftover = _load_fixture("leftover.yml")
     with pytest.raises(ValidationFailedError) as exc:
         _apply_then_reject(leftover)
@@ -339,18 +363,21 @@ def test_unknown_leftover_raises_after_apply() -> None:
 
 
 def test_fixture_api_language() -> None:
+    """The API language fixture resolves to a canonical language list."""
     result = _apply_then_reject(_load_fixture("api_language.yml"))
     assert result.answers["api_languages"] == ["python"]
     assert "api_language" not in result.answers
 
 
 def test_fixture_mcp_language_node_to_typescript() -> None:
+    """The MCP fixture normalizes the Node alias to TypeScript."""
     result = _apply_then_reject(_load_fixture("mcp_language.yml"))
     assert result.answers["mcp_languages"] == ["typescript"]
     assert "mcp_language" not in result.answers
 
 
 def test_fixture_api_tracks() -> None:
+    """The track fixture enables the API with both canonical languages."""
     result = _apply_then_reject(_load_fixture("api_tracks.yml"))
     assert result.answers["api_module"] == "enabled"
     assert result.answers["api_languages"] == ["python", "node"]
@@ -358,6 +385,7 @@ def test_fixture_api_tracks() -> None:
 
 
 def test_fixture_docs_site() -> None:
+    """The docs fixture enables the canonical Sphinx framework."""
     result = _apply_then_reject(_load_fixture("docs_site.yml"))
     assert result.answers["docs_module"] == "enabled"
     assert result.answers["docs_framework"] == "sphinx-shibuya"
@@ -365,12 +393,14 @@ def test_fixture_docs_site() -> None:
 
 
 def test_fixture_saas_starter_module() -> None:
+    """The starter fixture enables canonical SaaS infrastructure."""
     result = _apply_then_reject(_load_fixture("saas_starter_module.yml"))
     assert result.answers["saas_infra_module"] == "enabled"
     assert "saas_starter_module" not in result.answers
 
 
 def test_fixture_saas_auth() -> None:
+    """The auth fixture enables its canonical provider and module."""
     result = _apply_then_reject(_load_fixture("saas_auth.yml"))
     assert result.answers["saas_auth_module"] == "enabled"
     assert result.answers["saas_auth_provider"] == "clerk"
@@ -378,6 +408,7 @@ def test_fixture_saas_auth() -> None:
 
 
 def test_fixture_saas_billing() -> None:
+    """The billing fixture enables its canonical provider and module."""
     result = _apply_then_reject(_load_fixture("saas_billing.yml"))
     assert result.answers["saas_billing_module"] == "enabled"
     assert result.answers["saas_billing_provider"] == "stripe"
@@ -385,12 +416,14 @@ def test_fixture_saas_billing() -> None:
 
 
 def test_fixture_include_admin() -> None:
+    """The admin fixture enables the canonical boolean dashboard answer."""
     result = _apply_then_reject(_load_fixture("include_admin.yml"))
     assert result.answers["saas_admin_dashboard"] is True
     assert "include_admin" not in result.answers
 
 
 def test_fixture_mixed() -> None:
+    """A mixed fixture canonicalizes every supported removed answer together."""
     result = _apply_then_reject(_load_fixture("mixed.yml"))
     assert result.answers["api_module"] == "enabled"
     assert result.answers["api_languages"] == ["python", "go"]
@@ -407,6 +440,7 @@ def test_fixture_mixed() -> None:
 
 
 def test_fixture_already_canonical_is_noop() -> None:
+    """Already canonical fixture answers retain values without remap operations."""
     original = _load_fixture("already_canonical.yml")
     result = _apply_then_reject(original)
     assert result.answers == original

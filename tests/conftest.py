@@ -1,9 +1,11 @@
 """Shared pytest fixtures for riso tests."""
 
+import logging
 import sys
 import tempfile
 from pathlib import Path
 from typing import Generator
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -32,7 +34,7 @@ def _setup_sys_path():
 _setup_sys_path()
 
 
-def pytest_configure(config):
+def pytest_configure():
     """Pytest hook: configure before test collection.
 
     Ensures sys.path is set up in xdist workers.
@@ -59,15 +61,15 @@ def temp_dir() -> Generator[Path, None, None]:
         yield Path(tmpdir)
 
 
-@pytest.fixture
-def caplog(caplog):
+@pytest.fixture(name="caplog")
+def _capture_loguru(caplog):
     """Enhance caplog to capture loguru logs.
 
     This fixture intercepts loguru's output and makes it available
     through pytest's caplog mechanism.
     """
-    from loguru import logger
-    import logging
+    # Loguru is loaded only when this capture fixture is requested.
+    from loguru import logger  # pylint: disable=import-outside-toplevel
 
     class PropagateHandler(logging.Handler):
         """Handler that propagates loguru records to Python logging."""
@@ -102,8 +104,6 @@ def sample_copier_answers() -> dict:
 @pytest.fixture
 def mock_subprocess(monkeypatch):
     """Mock subprocess.run for testing."""
-    from unittest.mock import MagicMock
-
     results = []
 
     def mock_run(*args, **kwargs):
@@ -129,24 +129,24 @@ def ci_scripts_path(monkeypatch):
     return scripts_path
 
 
-@pytest.fixture
-def hooks_path(monkeypatch):
+@pytest.fixture(name="hooks_path")
+def _hooks_path_fixture(monkeypatch):
     """Add template hooks to Python path for imports."""
     hooks_path = Path(__file__).parent.parent / "template" / "hooks"
     monkeypatch.syspath_prepend(str(hooks_path))
     return hooks_path
 
 
-@pytest.fixture
-def scripts_hooks_path(monkeypatch):
+@pytest.fixture(name="scripts_hooks_path")
+def _scripts_hooks_path_fixture(monkeypatch):
     """Add scripts/hooks to Python path for imports."""
     scripts_hooks_path = Path(__file__).parent.parent / "scripts" / "hooks"
     monkeypatch.syspath_prepend(str(scripts_hooks_path))
     return scripts_hooks_path
 
 
-@pytest.fixture
-def lib_path(monkeypatch):
+@pytest.fixture(name="lib_path")
+def _lib_path_fixture(monkeypatch):
     """Add scripts/lib to Python path for imports."""
     lib_path = Path(__file__).parent.parent / "scripts" / "lib"
     monkeypatch.syspath_prepend(str(lib_path))

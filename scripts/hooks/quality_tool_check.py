@@ -16,6 +16,8 @@ QUALITY_TOOLS = ["ruff", "ty", "pylint", "coverage"]
 
 @dataclass
 class ToolCheck:
+    """Describe a tool probe, provisioning result, and suggested next steps."""
+
     name: str
     status: str
     command: str
@@ -23,6 +25,7 @@ class ToolCheck:
     next_steps: str | None = None
 
     def to_dict(self) -> dict[str, object]:
+        """Serialize the probe while omitting absent optional fields."""
         payload = asdict(self)
         return {k: v for k, v in payload.items() if v is not None}
 
@@ -104,10 +107,12 @@ def _ensure_tool(tool: str, *, install: bool = True) -> ToolCheck:
 
 
 def ensure_python_quality_tools(*, install: bool = True) -> list[ToolCheck]:
+    """Probe Python quality tools and optionally provision missing tools."""
     return [_ensure_tool(tool, install=install) for tool in QUALITY_TOOLS]
 
 
 def ensure_node_quality_tools(required: bool) -> list[ToolCheck]:
+    """Provision Node quality dependencies when the Node track is enabled."""
     if not required:
         return [
             ToolCheck(
@@ -154,6 +159,7 @@ def ensure_node_quality_tools(required: bool) -> list[ToolCheck]:
 
 
 def write_metadata(destination: Path, checks: list[ToolCheck]) -> None:
+    """Persist tool-check results as UTF-8 JSON."""
     payload = [check.to_dict() for check in checks]
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(payload, indent=2), encoding="utf-8")

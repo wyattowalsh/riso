@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -67,6 +69,10 @@ def _base_context() -> dict[str, object]:
         "changelog_module": "disabled",
         "ci_platform": "github-actions",
         "saas_infra_module": "disabled",
+        "graphql_api_module": "disabled",
+        "websocket_module": "disabled",
+        "codegen_module": "disabled",
+        "api_features": [],
     }
 
 
@@ -84,6 +90,7 @@ def _excluded_task_runner_paths(task_runner: str) -> set[str]:
 
 
 def test_quality_justfile_and_makefile_share_targets() -> None:
+    """Keep Make and Just quality recipes aligned on commands and paths."""
     env = Environment(
         loader=FileSystemLoader(TEMPLATE_FILES), keep_trailing_newline=True
     )
@@ -101,9 +108,56 @@ def test_quality_justfile_and_makefile_share_targets() -> None:
     assert 'env("QUALITY_PROFILE"' in quality_just
     assert "uv --directory" in quality_just
     assert "UV_DIR" in quality_make
+    assert "typecheck:" in quality_make
+    assert "typecheck:" in quality_just
+
+
+def test_quality_recipes_include_optional_module_groups() -> None:
+    """Include enabled module dependency groups in each quality runner."""
+    env = Environment(
+        loader=FileSystemLoader(TEMPLATE_FILES), keep_trailing_newline=True
+    )
+    context = _base_context()
+    context.update(
+        {
+            "api_module": "enabled",
+            "api_languages": ["python"],
+            "api_features": ["graphql", "websocket"],
+            "graphql_api_module": "enabled",
+            "websocket_module": "enabled",
+            "mcp_module": "enabled",
+            "mcp_languages": ["python"],
+            "codegen_module": "enabled",
+        }
+    )
+    quality_make = env.get_template("quality/makefile.quality.jinja").render(**context)
+    quality_just = env.get_template("quality/justfile.quality.jinja").render(**context)
+    quality_uv = env.get_template("quality/uv_tasks/quality.py.jinja").render(**context)
+    for fragment in (
+        "--group graphql_api",
+        "--group websocket",
+        "--group mcp",
+        "--group codegen",
+        "--group api_python",
+    ):
+        assert fragment in quality_make
+        assert fragment in quality_just
+    assert '"graphql_api"' in quality_uv
+    assert '"websocket"' in quality_uv
+    assert '"mcp"' in quality_uv
+    assert '"codegen"' in quality_uv
+    just_src = (TEMPLATE_FILES / "quality" / "justfile.quality.jinja").read_text(
+        encoding="utf-8"
+    )
+    make_src = (TEMPLATE_FILES / "quality" / "makefile.quality.jinja").read_text(
+        encoding="utf-8"
+    )
+    assert "python/coverage.cfg" in just_src
+    assert "python/coverage.cfg" in make_src
 
 
 def test_quality_justfile_skips_python_recipe_without_python_track() -> None:
+    """Omit Python quality recipes when the rendered project has no Python track."""
     env = Environment(
         loader=FileSystemLoader(TEMPLATE_FILES), keep_trailing_newline=True
     )
@@ -126,6 +180,7 @@ def test_quality_justfile_skips_python_recipe_without_python_track() -> None:
 
 
 def test_root_delegators_reference_quality_modules() -> None:
+    """Delegate root and Python task runners to the shared quality modules."""
     env = Environment(
         loader=FileSystemLoader(TEMPLATE_FILES), keep_trailing_newline=True
     )
@@ -143,6 +198,7 @@ def test_root_delegators_reference_quality_modules() -> None:
 
 
 def test_copier_exclude_rules_reference_task_runner() -> None:
+    """Keep task-runner exclusions tied to the selected runner."""
     data = yaml.safe_load(COPIER_YML.read_text(encoding="utf-8"))
     excludes = data.get("_exclude", [])
     joined = "\n".join(str(item) for item in excludes)
@@ -180,6 +236,7 @@ def test_copier_exclude_rules_reference_task_runner() -> None:
 def test_task_runner_exclude_rules_by_mode(
     task_runner: str, excluded: set[str], present: set[str]
 ) -> None:
+    """Retain only the task-runner files requested by each mode."""
     paths = _excluded_task_runner_paths(task_runner)
     for path in excluded:
         assert path in paths, f"{task_runner}: expected {path} excluded"
@@ -188,6 +245,7 @@ def test_task_runner_exclude_rules_by_mode(
 
 
 def test_copier_defaults_task_runner_to_just() -> None:
+    """Keep prompt and Copier defaults aligned on Just."""
     data = yaml.safe_load(COPIER_YML.read_text(encoding="utf-8"))
     defaults = data.get("_defaults", {})
     prompts = data.get("task_runner", {})
@@ -196,7 +254,7 @@ def test_copier_defaults_task_runner_to_just() -> None:
 
 
 def test_package_json_mcp_typescript_is_valid_json() -> None:
-    import json
+    """Emit valid package metadata with the TypeScript MCP workspace."""
 
     env = Environment(
         loader=FileSystemLoader(TEMPLATE_FILES), keep_trailing_newline=True
@@ -219,7 +277,55 @@ def test_package_json_mcp_typescript_is_valid_json() -> None:
     assert payload["packageManager"] == "pnpm@9.15.0"
 
 
+def test_package_json_saas_workspace_when_enabled() -> None:
+    """Register the enabled SaaS package in both workspace manifests."""
+
+    env = Environment(
+        loader=FileSystemLoader(TEMPLATE_FILES), keep_trailing_newline=True
+    )
+    context = {
+        **_base_context(),
+        "cli_module": "disabled",
+        "api_module": "disabled",
+        "mcp_module": "disabled",
+        "docs_module": "disabled",
+        "changelog_module": "disabled",
+        "saas_infra_module": "enabled",
+        "desktop_module": "disabled",
+    }
+    rendered = env.get_template("package.json.jinja").render(**context)
+    payload = json.loads(rendered)
+    assert "node/saas" in payload["workspaces"]
+    workspace_yaml = env.get_template("pnpm-workspace.yaml.jinja").render(**context)
+    assert '- "node/saas"' in workspace_yaml
+
+
+def test_package_json_electron_workspace_when_electron_vite() -> None:
+    """Register the Electron Vite workspace in both package manifests."""
+
+    env = Environment(
+        loader=FileSystemLoader(TEMPLATE_FILES), keep_trailing_newline=True
+    )
+    context = {
+        **_base_context(),
+        "cli_module": "disabled",
+        "api_module": "disabled",
+        "mcp_module": "disabled",
+        "docs_module": "disabled",
+        "changelog_module": "disabled",
+        "saas_infra_module": "disabled",
+        "desktop_module": "enabled",
+        "desktop_framework": "electron-vite",
+    }
+    rendered = env.get_template("package.json.jinja").render(**context)
+    payload = json.loads(rendered)
+    assert "electron" in payload["workspaces"]
+    workspace_yaml = env.get_template("pnpm-workspace.yaml.jinja").render(**context)
+    assert '- "electron"' in workspace_yaml
+
+
 def test_package_json_setup_hooks_respects_task_runner_none() -> None:
+    """Avoid calling an absent task runner from package hook setup."""
     env = Environment(
         loader=FileSystemLoader(TEMPLATE_FILES), keep_trailing_newline=True
     )
@@ -240,9 +346,53 @@ def test_package_json_setup_hooks_respects_task_runner_none() -> None:
 
 
 def test_quality_task_ty_target_matches_aggregators() -> None:
+    """Point generated Python type checks at the same package as other runners."""
     env = Environment(
         loader=FileSystemLoader(TEMPLATE_FILES), keep_trailing_newline=True
     )
     context = _base_context()
     task = env.get_template("python/tasks/quality.py.jinja").render(**context)
     assert '"src/task_runner_test"' in task
+
+
+def test_strict_ruff_keeps_standard_checks_and_requires_network_timeouts(
+    tmp_path: Path,
+) -> None:
+    """Run Ruff against the generated configs with both correctness and security bugs."""
+    env = Environment(
+        loader=FileSystemLoader(TEMPLATE_FILES), keep_trailing_newline=True
+    )
+    for name in ("ruff.toml", "ruff-strict.toml"):
+        (tmp_path / name).write_text(
+            env.get_template(f"python/{name}.jinja").render(**_base_context()),
+            encoding="utf-8",
+        )
+    (tmp_path / "probe.py").write_text(
+        'import requests\n\nrequests.get("https://example.invalid")\nprint(undefined)\n',
+        encoding="utf-8",
+    )
+
+    def lint(config: str) -> set[str]:
+        result = subprocess.run(
+            [
+                "ruff",
+                "check",
+                "--config",
+                config,
+                "--output-format",
+                "json",
+                "probe.py",
+            ],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 1, result.stderr
+        return {entry["code"] for entry in json.loads(result.stdout)}
+
+    standard = lint("ruff.toml")
+    strict = lint("ruff-strict.toml")
+    assert "F821" in standard
+    assert "S113" not in standard
+    assert standard | {"S113"} <= strict

@@ -5,14 +5,20 @@ import asyncio
 import time
 import uuid
 from collections import defaultdict
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
+from typing import Any
+
 from fastapi import WebSocket
 from loguru import logger
 from pydantic import ValidationError
 
 from {{ package_name }}.websocket.config import get_config
-from {{ package_name }}.websocket.exceptions import InvalidMessageFormatError, RateLimitError
+from {{ package_name }}.websocket.connection import WebSocketConnection
+from {{ package_name }}.websocket.exceptions import (
+    InvalidMessageFormatError,
+    WebSocketError,
+)
 from {{ package_name }}.websocket.models import Message
 
 
@@ -36,17 +42,47 @@ def generate_message_id() -> str:
     return str(uuid.uuid4())
 
 
-def validate_websocket_origin(websocket: WebSocket, allowed_origins: List[str]) -> None:
-    """Reject connections whose Origin header is not in the allowlist."""
-    if not allowed_origins:
-        return
+def validate_websocket_origin(websocket: WebSocket, allowed_origins: list[str]) -> None:
+    """Reject connections whose Origin header is not in the allowlist.
+
+    Production is fail-closed: an empty allowlist, a missing Origin header, or a
+    wildcard entry rejects the handshake. Development may omit Origin when the
+    allowlist is empty.
+    """
+    config = get_config()
+    production = str(config.environment).lower() in {"prod", "production"}
     origin = websocket.headers.get("origin") or websocket.headers.get("Origin")
+    normalized_allowed = {
+        item.rstrip("/")
+        for item in (allowed_origins or [])
+        if item and item != "*"
+    }
+
+    if production:
+        if not normalized_allowed:
+            raise WebSocketError(
+                message="WebSocket origin allowlist is empty in production",
+                code="ORIGIN_FORBIDDEN",
+                details={"origin": origin},
+            )
+        if origin is None:
+            raise WebSocketError(
+                message="WebSocket Origin header required in production",
+                code="ORIGIN_FORBIDDEN",
+            )
+        if origin.rstrip("/") not in normalized_allowed:
+            raise WebSocketError(
+                message="WebSocket origin not allowed",
+                code="ORIGIN_FORBIDDEN",
+                details={"origin": origin},
+            )
+        return
+
+    if not allowed_origins or "*" in allowed_origins:
+        return
     if origin is None:
         return
-    normalized_allowed = {o.rstrip("/") for o in allowed_origins}
     if origin.rstrip("/") not in normalized_allowed:
-        from {{ package_name }}.websocket.exceptions import WebSocketError
-
         raise WebSocketError(
             message="WebSocket origin not allowed",
             code="ORIGIN_FORBIDDEN",
@@ -61,15 +97,15 @@ def get_utc_timestamp() -> datetime:
     Returns:
         datetime: Current time in UTC timezone
     """
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def format_error_message(
     code: str,
     message: str,
-    details: Optional[Dict[str, Any]] = None,
-    retry_after: Optional[int] = None,
-) -> Dict[str, Any]:
+    details: dict[str, Any] | None = None,
+    retry_after: int | None = None,
+) -> dict[str, Any]:
     """
     Format structured error message for WebSocket wire format.
 
@@ -82,26 +118,25 @@ def format_error_message(
     Returns:
         dict: Error message in standard format
     """
-    error_msg: Dict[str, Any] = {
+    payload: dict[str, str | int | dict[str, Any]] = {
+        "code": code,
+        "message": message,
+    }
+    if details:
+        payload["details"] = details
+    if retry_after is not None:
+        payload["retry_after"] = retry_after
+
+    return {
         "type":      "error",
         "message_id": generate_message_id(),
         "timestamp": get_utc_timestamp().isoformat(),
         "sender_id": "server",
-        "payload":   {
-            "code":    code,
-            "message": message,
-        },
+        "payload":   payload,
     }
 
-    if details:
-        error_msg["payload"]["details"] = details
-    if retry_after is not None:
-        error_msg["payload"]["retry_after"] = retry_after
 
-    return error_msg
-
-
-def validate_message(message_data: Dict[str, Any]) -> Message:
+def validate_message(message_data: dict[str, Any]) -> Message:
     """
     Validate message against Pydantic schema.
 
@@ -119,7 +154,7 @@ def validate_message(message_data: Dict[str, Any]) -> Message:
     except ValidationError as e:
         raise InvalidMessageFormatError(
             message="Message validation failed",
-            details={"errors": e.errors()},
+            details={"errors": e.errors(include_context=False, include_input=False)},
         ) from e
 
 
@@ -133,7 +168,7 @@ class RateLimiter:
     Example:
         ```python
         limiter = RateLimiter(max_messages=100, window=60)
-        
+
         if not limiter.check("conn_123"):
             raise RateLimitError(...)
         ```
@@ -141,8 +176,8 @@ class RateLimiter:
 
     def __init__(
         self,
-        max_messages: Optional[int] = None,
-        window: Optional[int] = None,
+        max_messages: int | None = None,
+        window: int | None = None,
     ):
         """
         Initialize rate limiter.
@@ -154,7 +189,7 @@ class RateLimiter:
         config = get_config()
         self.max_messages = max_messages or config.rate_limit_messages
         self.window       = window or config.rate_limit_window
-        self._buckets: Dict[str, List[float]] = defaultdict(list)
+        self._buckets: dict[str, list[float]] = defaultdict(list)
 
     def check(self, connection_id: str) -> bool:
         """
@@ -208,11 +243,10 @@ class RateLimiter:
         now    = time.time()
         bucket = self._buckets[connection_id]
 
-        if not bucket:
-            return 0
-
         # Find oldest timestamp in window
-        oldest = min(ts for ts in bucket if now - ts < self.window)
+        oldest = min((ts for ts in bucket if now - ts < self.window), default=None)
+        if oldest is None:
+            return 0
         return int((oldest + self.window) - now) + 1
 
     def reset(self, connection_id: str) -> None:
@@ -238,9 +272,12 @@ class RateLimiter:
 
 
 async def heartbeat_loop(
-    connection,
-    interval: Optional[int] = None,
-    timeout: Optional[int] = None,
+    connection: WebSocketConnection,
+    interval: int | None = None,
+    # This is a per-ping deadline, not the lifetime of the background task.
+    timeout: int | None = None,  # noqa: ASYNC109
+    *,
+    on_timeout: Callable[[], Awaitable[None]] | None = None,
 ) -> None:
     """
     Background task sending periodic heartbeat pings.
@@ -252,6 +289,7 @@ async def heartbeat_loop(
         connection: WebSocketConnection instance
         interval: Ping interval in seconds (default from config)
         timeout: Pong timeout in seconds (default from config)
+        on_timeout: Manager cleanup callback for a registered connection
 
     Example:
         ```python
@@ -262,8 +300,6 @@ async def heartbeat_loop(
     interval = interval or config.heartbeat_interval
     timeout  = timeout or config.heartbeat_timeout
 
-    last_pong = time.time()
-
     try:
         while connection.is_active():
             await asyncio.sleep(interval)
@@ -272,20 +308,26 @@ async def heartbeat_loop(
             if not connection.is_active():
                 break
 
-            # Check for heartbeat timeout
-            if time.time() - last_pong > timeout:
-                logger.warning(
-                    f"Heartbeat timeout for connection {connection.connection_id}",
-                    extra={"connection_id": connection.connection_id},
-                )
-                await connection.close(code=1000, reason="Heartbeat timeout")
-                break
+            # Keep one ping outstanding so delayed pongs can still match it.
+            waiting_since = connection.pending_ping_since
+            if waiting_since is not None:
+                if time.monotonic() - waiting_since >= timeout:
+                    logger.warning(
+                        "Heartbeat timeout for connection {}", connection.connection_id
+                    )
+                    if on_timeout is None:
+                        await connection.close(code=1000, reason="Heartbeat timeout")
+                    else:
+                        await on_timeout()
+                    break
+                continue
 
             # Send ping
             try:
+                ping_id = generate_message_id()
                 ping_message = {
                     "type":       "heartbeat.ping",
-                    "message_id": generate_message_id(),
+                    "message_id": ping_id,
                     "timestamp":  get_utc_timestamp().isoformat(),
                     "sender_id":  "server",
                     "payload":    {
@@ -293,9 +335,7 @@ async def heartbeat_loop(
                     },
                 }
                 await connection.send_json(ping_message)
-
-                # Update last_pong time (will be reset by actual pong handler)
-                # This is a fallback - real implementation should track pong responses
+                connection.expect_pong(ping_id)
 
             except Exception as e:
                 logger.error(

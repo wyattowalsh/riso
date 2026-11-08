@@ -1,0 +1,107 @@
+{%- if api_module != 'enabled' or 'python' not in api_languages %}
+"""HTTP rate-limit middleware disabled for this render."""
+
+{% else %}
+"""In-memory sliding-window HTTP rate-limit middleware.
+
+Wave B1: per-process limiter keyed by socket peer IP. Optional Redis and
+trusted-proxy X-Forwarded-For parsing are spec 011 residuals — do not trust
+X-Forwarded-For here (clients can spoof it).
+"""
+
+from __future__ import annotations
+
+import math
+import threading
+import time
+import uuid
+
+from fastapi import FastAPI
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
+
+from ..config import ApiConfig
+
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    """Reject excess HTTP requests with 429 and X-RateLimit-* headers."""
+
+    def __init__(self, app, config: ApiConfig) -> None:
+        super().__init__(app)
+        self._enabled: bool                = config.rate_limit_enabled
+        self._limit: int                   = config.rate_limit_requests
+        self._window: int                  = config.rate_limit_window_seconds
+        self._lock: threading.Lock         = threading.Lock()
+        self._hits: dict[str, list[float]] = {}
+
+    def _client_key(self, request: Request) -> str:
+        """Return the rate-limit key for this request.
+
+        Uses ``request.client.host`` only. X-Forwarded-For is ignored in
+        Wave B1 because untrusted clients can spoof it; trusted-proxy hop
+        parsing is a spec 011 residual.
+        """
+        client = request.client
+        if client is None or not client.host:
+            return "unknown"
+        return client.host
+
+    def _window_hits(self, key: str, now: float) -> list[float]:
+        cutoff     = now - self._window
+        timestamps = [ts for ts in self._hits.get(key, []) if ts > cutoff]
+        self._hits[key] = timestamps
+        return timestamps
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        if not self._enabled:
+            return await call_next(request)
+
+        key         = self._client_key(request)
+        now         = time.time()
+        denied      = False
+        remaining   = 0
+        reset_ts    = 0
+        retry_after = 0
+
+        with self._lock:
+            timestamps = self._window_hits(key, now)
+            if len(timestamps) >= self._limit:
+                denied      = True
+                oldest      = timestamps[0]
+                reset_ts    = int(oldest + self._window)
+                retry_after = max(1, math.ceil(oldest + self._window - now))
+            else:
+                timestamps.append(now)
+                remaining = self._limit - len(timestamps)
+                reset_ts  = int(timestamps[0] + self._window)
+
+        if denied:
+            request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "detail": "Rate limit exceeded",
+                    "status_code": 429,
+                    "request_id": request_id,
+                },
+                headers={
+                    "Retry-After": str(retry_after),
+                    "X-RateLimit-Limit": str(self._limit),
+                    "X-RateLimit-Remaining": "0",
+                    "X-RateLimit-Reset": str(reset_ts),
+                    "X-Request-ID": request_id,
+                },
+            )
+
+        response = await call_next(request)
+        response.headers["X-RateLimit-Limit"]     = str(self._limit)
+        response.headers["X-RateLimit-Remaining"] = str(remaining)
+        response.headers["X-RateLimit-Reset"]     = str(reset_ts)
+        return response
+
+
+def configure_rate_limit(app: FastAPI, config: ApiConfig) -> None:
+    """Register in-memory HTTP rate-limit middleware on the application."""
+    app.add_middleware(RateLimitMiddleware, config=config)
+{% endif %}

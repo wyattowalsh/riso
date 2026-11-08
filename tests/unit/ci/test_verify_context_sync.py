@@ -159,7 +159,7 @@ class TestMainFunction:
     @patch("verify_context_sync.logger")
     @patch("verify_context_sync.configure_logging")
     def test_main_source_directory_missing(
-        self, mock_config, mock_logger, tmp_path, monkeypatch
+        self, _mock_config, mock_logger, tmp_path, monkeypatch
     ):
         """Should exit with error if source directory is missing."""
         # Set up fake directories
@@ -175,7 +175,7 @@ class TestMainFunction:
     @patch("verify_context_sync.logger")
     @patch("verify_context_sync.configure_logging")
     def test_main_template_directory_missing(
-        self, mock_config, mock_logger, tmp_path, monkeypatch
+        self, _mock_config, mock_logger, tmp_path, monkeypatch
     ):
         """Should exit with error if template directory is missing."""
         # Create source but not template
@@ -196,7 +196,7 @@ class TestMainFunction:
     @patch("verify_context_sync.logger")
     @patch("verify_context_sync.configure_logging")
     def test_main_directories_in_sync(
-        self, mock_config, mock_logger, tmp_path, monkeypatch
+        self, _mock_config, mock_logger, tmp_path, monkeypatch
     ):
         """Should log success when directories are in sync."""
         # Create matching directories
@@ -219,7 +219,7 @@ class TestMainFunction:
     @patch("verify_context_sync.logger")
     @patch("verify_context_sync.configure_logging")
     def test_main_missing_files_in_template(
-        self, mock_config, mock_logger, tmp_path, monkeypatch
+        self, _mock_config, mock_logger, tmp_path, monkeypatch
     ):
         """Should report files missing from template."""
         source_dir = tmp_path / "source"
@@ -244,7 +244,7 @@ class TestMainFunction:
     @patch("verify_context_sync.logger")
     @patch("verify_context_sync.configure_logging")
     def test_main_extra_files_in_template(
-        self, mock_config, mock_logger, tmp_path, monkeypatch
+        self, _mock_config, mock_logger, tmp_path, monkeypatch
     ):
         """Should report unexpected files in template."""
         source_dir = tmp_path / "source"
@@ -269,7 +269,7 @@ class TestMainFunction:
     @patch("verify_context_sync.logger")
     @patch("verify_context_sync.configure_logging")
     def test_main_content_mismatch(
-        self, mock_config, mock_logger, tmp_path, monkeypatch
+        self, _mock_config, mock_logger, tmp_path, monkeypatch
     ):
         """Should report content mismatches."""
         source_dir = tmp_path / "source"
@@ -293,7 +293,7 @@ class TestMainFunction:
     @patch("verify_context_sync.logger")
     @patch("verify_context_sync.configure_logging")
     def test_main_multiple_errors(
-        self, mock_config, mock_logger, tmp_path, monkeypatch
+        self, _mock_config, mock_logger, tmp_path, monkeypatch
     ):
         """Should report all error types when multiple issues exist."""
         source_dir = tmp_path / "source"
@@ -324,7 +324,7 @@ class TestMainFunction:
     @patch("verify_context_sync.logger")
     @patch("verify_context_sync.configure_logging")
     def test_main_multiple_missing_files_sorted(
-        self, mock_config, mock_logger, tmp_path, monkeypatch
+        self, _mock_config, mock_logger, tmp_path, monkeypatch
     ):
         """Should report multiple missing files in sorted order."""
         source_dir = tmp_path / "source"
@@ -351,7 +351,7 @@ class TestMainFunction:
     @patch("verify_context_sync.logger")
     @patch("verify_context_sync.configure_logging")
     def test_main_configures_logging(
-        self, mock_config, mock_logger, tmp_path, monkeypatch
+        self, mock_config, _mock_logger, tmp_path, monkeypatch
     ):
         """Should configure logging on startup."""
         source_dir = tmp_path / "source"

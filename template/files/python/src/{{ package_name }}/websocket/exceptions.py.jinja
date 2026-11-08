@@ -1,7 +1,7 @@
 {% if (websocket_module == "enabled" or "websocket" in api_features) -%}
 """WebSocket exception hierarchy with structured error codes."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class WebSocketError(Exception):
@@ -19,8 +19,8 @@ class WebSocketError(Exception):
         self,
         message: str,
         code: str = "INTERNAL_ERROR",
-        details: Optional[Dict[str, Any]] = None,
-        retry_after: Optional[int] = None,
+        details: dict[str, Any] | None = None,
+        retry_after: int | None = None,
     ):
         super().__init__(message)
         self.message     = message
@@ -28,9 +28,9 @@ class WebSocketError(Exception):
         self.details     = details or {}
         self.retry_after = retry_after
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert exception to JSON-serializable dict for wire format."""
-        error_dict: Dict[str, Any] = {
+        error_dict: dict[str, Any] = {
             "code":    self.code,
             "message": self.message,
         }
@@ -56,7 +56,7 @@ class AuthenticationError(WebSocketError):
         self,
         message: str = "Authentication required",
         code: str = "AUTH_REQUIRED",
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ):
         super().__init__(message=message, code=code, details=details)
 
@@ -73,7 +73,7 @@ class AuthorizationError(WebSocketError):
         self,
         message: str = "Authorization failed",
         code: str = "AUTHZ_FAILED",
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ):
         super().__init__(message=message, code=code, details=details)
 
@@ -161,7 +161,7 @@ class InvalidMessageFormatError(WebSocketError):
     def __init__(
         self,
         message: str = "Invalid message format",
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ):
         super().__init__(
             message=message,
@@ -181,7 +181,7 @@ class RoomNotFoundError(WebSocketError):
     def __init__(
         self,
         room_id: str,
-        message: Optional[str] = None,
+        message: str | None = None,
     ):
         super().__init__(
             message=message or f"Room '{room_id}' not found",
@@ -250,6 +250,7 @@ class ErrorCode:
     ROOM_FULL        = "ROOM_FULL"
     INTERNAL_ERROR   = "INTERNAL_ERROR"
     CONNECTION_CLOSED = "CONNECTION_CLOSED"
+    ORIGIN_FORBIDDEN = "ORIGIN_FORBIDDEN"
 
 
 # WebSocket close codes (RFC 6455)

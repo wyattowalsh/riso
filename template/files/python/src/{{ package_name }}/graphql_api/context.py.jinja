@@ -1,22 +1,27 @@
 {% if (graphql_api_module == 'enabled' or 'graphql' in api_features) -%}
+{% set integrated_api = api_module == 'enabled' and 'python' in api_languages -%}
 """GraphQL Context - Request-scoped data passed to all resolvers."""
 
-from typing import Optional
+from contextlib import suppress
 from dataclasses import dataclass
+{%- if integrated_api %}
+from typing import Any
+{%- endif %}
 
-from fastapi import Request
-{% if api_module == 'enabled' and 'python' in api_languages %}
-from sqlalchemy.ext.asyncio import AsyncSession
-{% endif %}
+from fastapi import Request, WebSocket
+from starlette.requests import HTTPConnection
+from strawberry.fastapi import BaseContext
 
+from {{ package_name }}.graphql_api.auth import get_current_user_from_token
 from {{ package_name }}.graphql_api.dataloaders import DataLoaderContainer
+from {{ package_name }}.graphql_api.errors import AuthError
 
 
 @dataclass
-class GraphQLContext:
+class GraphQLContext(BaseContext):
     """
     GraphQL context provides request-scoped data to all resolvers.
-    
+
     Attributes:
         request: FastAPI request object
         current_user: Authenticated user (None if not authenticated)
@@ -24,54 +29,55 @@ class GraphQLContext:
         dataloaders: Container with DataLoader instances for efficient batching
         config: GraphQL runtime configuration
     """
-    
-    request: Request
-    current_user: Optional[dict] = None
-    {% if api_module == 'enabled' and 'python' in api_languages %}
-    db: Optional[AsyncSession] = None
-    {% endif %}
-    dataloaders: Optional[DataLoaderContainer] = None
-    config: Optional[dict] = None
+
+    request: Request | WebSocket | None
+    current_user: dict | None = None
+{%- if integrated_api %}
+    db: Any | None = None
+{%- endif %}
+    dataloaders: DataLoaderContainer | None = None
+    config: dict | None = None
+
+    def __post_init__(self) -> None:
+        """Initialize Strawberry's connection and response state."""
+        request = self.request
+        super().__init__()
+        self.request = request
 
 
 async def get_graphql_context(
-    request: Request,
-    {% if api_module == 'enabled' and 'python' in api_languages %}
-    db: Optional[AsyncSession] = None,
-    {% endif %}
+    request: HTTPConnection,
+{%- if integrated_api %}
+    db: Any | None = None,
+{%- endif %}
 ) -> GraphQLContext:
     """
     Create GraphQL context for each request.
-    
+
     This function is called for every GraphQL request and creates:
     - Fresh DataLoader instances (per-request batching/caching)
     - Current user from authentication headers
     - Database session
     - Configuration values
-    
+
     Args:
         request: FastAPI request object
         db: Async database session (optional)
-    
+
     Returns:
         GraphQLContext instance with all request-scoped data
     """
-    # Extract user from authentication (placeholder - implement your auth logic)
+    # The generated validator fails closed until the application supplies one.
     current_user = None
-    auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        # EXTENSION POINT: Implement JWT validation or your authentication logic
-        # token = auth_header.replace("Bearer ", "")
-        # current_user = await validate_token(token)
-        pass
-    
+    scheme, _, credentials = request.headers.get("Authorization", "").partition(" ")
+    if scheme.lower() == "bearer" and (token := credentials.strip()):
+        # Rejected credentials keep public fields available and writes denied.
+        with suppress(AuthError):
+            current_user = await get_current_user_from_token(token)
+
     # Create per-request DataLoaders
-    dataloaders = DataLoaderContainer(
-        {% if api_module == 'enabled' and 'python' in api_languages %}
-        db=db
-        {% endif %}
-    )
-    
+    dataloaders = DataLoaderContainer({% if integrated_api %}db=db{% endif %})
+
     # Load configuration (could be from settings, environment, etc.)
     config = {
         "max_query_depth": 15,
@@ -79,14 +85,19 @@ async def get_graphql_context(
         "default_page_size": 20,
         "max_page_size": 100,
     }
-    
+
     return GraphQLContext(
-        request=request,
+        request=request if isinstance(request, (Request, WebSocket)) else None,
         current_user=current_user,
-        {% if api_module == 'enabled' and 'python' in api_languages %}
+{%- if integrated_api %}
         db=db,
-        {% endif %}
+{%- endif %}
         dataloaders=dataloaders,
         config=config,
     )
+
+
+async def get_router_context(request: HTTPConnection) -> GraphQLContext:
+    """Build context for HTTP requests and subscription connections."""
+    return await get_graphql_context(request=request)
 {% endif %}

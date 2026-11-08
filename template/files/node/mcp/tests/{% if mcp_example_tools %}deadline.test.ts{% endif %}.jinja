@@ -1,0 +1,21 @@
+{%- if mcp_module == 'enabled' and 'typescript' in mcp_languages and mcp_example_tools -%}
+import { expect, it, vi } from "vitest";
+import { httpGet, httpHead, httpPost } from "../src/tools/http-fetch.js";
+
+const resolver = vi.hoisted(() => ({ lookup: vi.fn(() => new Promise(() => {})) }));
+vi.mock("node:dns/promises", () => ({ lookup: resolver.lookup }));
+
+it("aborts real Undici requests and destroys their agents while DNS is stalled", async () => {
+  // No DNS result is ever released, so these requests cannot open a TCP connection.
+  // Undici, its socket lookup integration, fetch abort handling, and cleanup stay real.
+  const started = performance.now();
+  const results = await Promise.all(
+    [httpGet, httpPost, httpHead].map((tool) => tool({ url: "https://example.com", timeout: 1 })),
+  );
+  for (const result of results) {
+    expect(result).toMatchObject({ success: false, error: "Request timed out" });
+  }
+  expect(resolver.lookup).toHaveBeenCalledTimes(3);
+  expect(performance.now() - started).toBeLessThan(2500);
+});
+{%- endif %}

@@ -5,7 +5,7 @@ Go implementation of the Model Context Protocol (MCP) server using the official 
 
 ## Features
 
-- **Language**: Go {{ go_version | default('1.24') }}+
+- **Language**: Go {{ go_version | default('1.27') }}+
 - **Transport**: {{ mcp_transport | upper }} (support for stdio, sse, http)
 - **SDK**: Official MCP Go SDK (`github.com/modelcontextprotocol/go-sdk`)
 - **Logging**: Structured logging with `slog` to stderr
@@ -92,7 +92,11 @@ Add to your `claude_desktop_config.json`:
 
 ### HTTP Tools
 
-- **http_fetch**: Fetch content from a URL with custom headers and methods
+- **http_fetch**: Fetch content from a public HTTPS URL with custom headers and methods.
+
+The tool validates all DNS answers before connecting to a checked address and still verifies TLS for the URL hostname. It rejects private and special addresses, URL credentials, and `Host` overrides. It does not use environment proxies or follow redirects.
+
+`timeout` is optional and accepts 1–120 seconds (default 30) for DNS, the connection, and the response body. The tool reads up to 10 KiB plus one byte to detect truncation. `body_length` counts the returned bytes, with a partial UTF-8 character removed at the cutoff when needed.
 
 ## Available Resources
 
@@ -231,7 +235,7 @@ go vet ./...
 
 ## MCP Protocol Version
 
-This server implements MCP specification version **2025-11-25**.
+The Go SDK negotiates the MCP protocol version with each client. SDK v1.8.0 supports **2026-07-28** and older revisions, including **2025-11-25**.
 
 ## License
 

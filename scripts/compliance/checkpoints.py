@@ -20,9 +20,7 @@ try:  # pragma: no cover - import resolution depends on invocation style
 except (
     ModuleNotFoundError
 ):  # pragma: no cover - fallback for `python path/to/script.py`
-    from pathlib import Path as _Path
-
-    sys.path.append(str(_Path(__file__).resolve().parents[1]))
+    sys.path.append(str(Path(__file__).resolve().parents[1]))
     from automation.render_client import APIError, RenderClient
 
 PRINCIPLES = [
@@ -37,6 +35,7 @@ STATUSES = ["pass", "fail", "needs_review"]
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
+    """Parse a compliance checkpoint and its evidence-submission options."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--principle", required=True, choices=PRINCIPLES, help="Governance principle."
@@ -72,6 +71,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 
 def load_metadata(path: str | None) -> Mapping[str, Any] | None:
+    """Read optional checkpoint metadata from a JSON file."""
     if not path:
         return None
     metadata_path = Path(path)
@@ -81,6 +81,7 @@ def load_metadata(path: str | None) -> Mapping[str, Any] | None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Submit a compliance checkpoint or print its dry-run payload."""
     args = parse_args(argv or sys.argv[1:])
     metadata = load_metadata(args.metadata)
 

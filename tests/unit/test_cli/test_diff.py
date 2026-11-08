@@ -12,6 +12,7 @@ import pytest
 
 from riso.cli.commands.diff import run_diff
 from riso.cli.config import CliConfig
+from riso.core.diff import compute_diff
 from riso.core.errors import ValidationFailedError
 from riso.core.paths import resolve_template_path
 
@@ -72,9 +73,6 @@ def test_diff_update_remaps_existing_answers(tmp_path: Path) -> None:
 
 
 def test_compute_diff_update_does_not_remerge_removed_keys(tmp_path: Path) -> None:
-    from riso.core.diff import compute_diff
-    from riso.core.paths import resolve_template_path
-
     dest = tmp_path / "proj"
     dest.mkdir()
     (dest / ".copier-answers.yml").write_text(
@@ -83,11 +81,11 @@ def test_compute_diff_update_does_not_remerge_removed_keys(tmp_path: Path) -> No
     )
     captured: dict = {}
 
-    def fake_timeout(fn, timeout, *args, **kwargs):
-        captured["data"] = kwargs.get("data")
-        Path(args[1]).mkdir(parents=True, exist_ok=True)
+    def fake_worker(_op: str, payload: dict, _timeout: int | None) -> None:
+        captured["data"] = payload.get("data")
+        Path(payload["destination"]).mkdir(parents=True, exist_ok=True)
 
-    with patch("riso.template.run_with_timeout", side_effect=fake_timeout):
+    with patch("riso.template._run_copier_worker", side_effect=fake_worker):
         compute_diff(
             answers={"project_name": "Demo", "api_languages": ["python"]},
             destination=dest,

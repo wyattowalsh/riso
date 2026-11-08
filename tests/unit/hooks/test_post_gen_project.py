@@ -5,6 +5,9 @@ focusing on setup functions, metadata recording, guidance rendering,
 and integration with quality tools.
 """
 
+# Imports stay local until pytest fixtures establish the script or hook paths.
+# pylint: disable=import-outside-toplevel
+
 import json
 from datetime import datetime
 
@@ -292,8 +295,9 @@ class TestCleanupEmptyScaffoldDirs:
         assert not empty_dir.exists()
 
 
+# Pytest groups this behavior in a focused test class.
 @pytest.mark.unit
-class TestCleanupEmptyRenderedFiles:
+class TestCleanupEmptyRenderedFiles:  # pylint: disable=too-few-public-methods
     """Tests for zero-byte conditional template stub cleanup."""
 
     def test_removes_empty_rendered_files(self, tmp_path):
@@ -605,6 +609,7 @@ class TestRenderGuidance:
 
         assert "AGENTS.md" in result
         assert "ai-tools.md" in result
+        assert "wyattowalsh/agents" in result
 
     def test_comprehensive_guidance_rendering(self):
         """Should render comprehensive guidance with all features."""
@@ -908,6 +913,7 @@ class TestCleanupLegacyRootPyproject:
     """Tests for cleanup_legacy_root_pyproject."""
 
     def test_removes_legacy_stub_when_python_pyproject_exists(self, tmp_path):
+        """The obsolete root stub is removed once the Python manifest exists."""
         from post_gen_project import cleanup_legacy_root_pyproject
 
         (tmp_path / "python").mkdir()
@@ -924,6 +930,7 @@ class TestCleanupLegacyRootPyproject:
         assert not (tmp_path / "pyproject.toml").exists()
 
     def test_keeps_valid_root_pyproject(self, tmp_path):
+        """Cleanup preserves a valid user-owned root manifest."""
         from post_gen_project import cleanup_legacy_root_pyproject
 
         (tmp_path / "python").mkdir()
@@ -990,23 +997,27 @@ class TestSanitizePackageName:
     """Tests for explicit package_name sanitization."""
 
     def test_sanitizes_explicit_package_name(self, tmp_path):
+        """An explicit package name is normalized for generated imports."""
         from post_gen_project import package_for_answers
 
         answers = {"package_name": "My Cool App!"}
         assert package_for_answers(tmp_path, answers) == "my_cool_app"
 
     def test_falls_back_when_sanitized_name_empty(self, tmp_path):
+        """An empty normalized package name uses the supported default."""
         from post_gen_project import package_for_answers
 
         answers = {"package_name": "!!!"}
         assert package_for_answers(tmp_path, answers) == tmp_path.name.replace("-", "_")
 
 
+# Pytest groups this behavior in a focused test class.
 @pytest.mark.unit
-class TestCleanupEmptyRenderedFilesSafety:
+class TestCleanupEmptyRenderedFilesSafety:  # pylint: disable=too-few-public-methods
     """Tests for symlink and path containment checks."""
 
     def test_skips_symlinks(self, tmp_path):
+        """Empty-file cleanup does not follow or remove symlinks."""
         from post_gen_project import cleanup_empty_rendered_files
 
         empty_target = tmp_path / "target.txt"
@@ -1026,12 +1037,14 @@ class TestShouldInstallNodeDependencies:
     """Tests for gating post-gen pnpm install."""
 
     def test_enabled_by_env_var(self, monkeypatch):
+        """The explicit environment gate enables Node dependency installation."""
         from post_gen_project import should_install_node_dependencies
 
         monkeypatch.setenv("RISO_POST_GEN_INSTALL_NODE", "1")
         assert should_install_node_dependencies({}) is True
 
     def test_enabled_by_copier_answer(self):
+        """An explicit Copier answer enables Node dependency installation."""
         from post_gen_project import should_install_node_dependencies
 
         assert (
@@ -1040,17 +1053,20 @@ class TestShouldInstallNodeDependencies:
         )
 
     def test_disabled_by_default(self, monkeypatch):
+        """Node dependency installation stays disabled by default."""
         from post_gen_project import should_install_node_dependencies
 
         monkeypatch.delenv("RISO_POST_GEN_INSTALL_NODE", raising=False)
         assert should_install_node_dependencies({}) is False
 
 
+# Pytest groups this behavior in a focused test class.
 @pytest.mark.unit
-class TestNodeInstallGating:
+class TestNodeInstallGating:  # pylint: disable=too-few-public-methods
     """Tests for skipping pnpm install unless explicitly enabled."""
 
     def test_skips_pnpm_install_without_gate(self, tmp_path, monkeypatch):
+        """Post-generation setup skips pnpm installation without authorization."""
         monkeypatch.chdir(tmp_path)
         monkeypatch.delenv("RISO_POST_GEN_INSTALL_NODE", raising=False)
 

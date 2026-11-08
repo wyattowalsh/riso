@@ -60,13 +60,13 @@ restore `api_tracks`, `api_language`, `docs_site`, `mcp_language`,
 ## Toolchain: mise (always-on)
 
 Generated projects always ship `mise.toml`. It is **not** a Copier extra and
-is **not** gated by `openspec_extra`. Generated Node floor stays **20+** (do
-not raise the pin to the maintainer 22 floor).
+is **not** gated by `openspec_extra`. Generated Node floor is **22** (major
+22; maintainer `.mise.toml` still pins a Node 22 patch).
 
 | Tool | Generated pin |
 | --- | --- |
 | Python | `3.11` |
-| Node | `20` |
+| Node | `22` |
 | pnpm | `9.15.0` |
 | uv | `0.4.30` |
 
@@ -128,7 +128,7 @@ Re-render with `openspec_extra=enabled` only if you want `openspec/**`.
 | `saas_billing_module` / `saas_billing_provider` | `{{ saas_billing_module | default('disabled') }}` / `{{ saas_billing_provider | default('none') }}` | Not `saas_billing`. |
 | `saas_admin_dashboard` | `{{ saas_admin_dashboard | default(false) }}` | Not `include_admin`. |
 | `openspec_extra` | `{{ openspec_extra | default('disabled') }}` | Optional; **default disabled**. Does not gate `mise.toml`. |
-| mise.toml | always-on | No Copier toggle. Pins Python 3.11, Node 20, pnpm, uv. |
+| mise.toml | always-on | No Copier toggle. Pins Python 3.11, Node 22, pnpm, uv. |
 
 Visual tokens, type, and Mermaid/chart palettes live in
 [DESIGN.md](../DESIGN.md). Agent command pointers (mise, OpenSpec extra, ty,
@@ -152,9 +152,11 @@ just, pnpm) live in [AGENTS.md](../AGENTS.md).
 - **Fastify (`api_module=enabled` and `api_languages` includes `node`)**
   - Install workspace deps: `pnpm install`
   - Execute tests: `pnpm --filter api-node test`
-- **FastMCP (`mcp_module=enabled`)**
-  - Install tooling: `uv sync --group mcp`
-  - Validate registry: `uv run python -c "from shared.mcp import tooling; print(tooling.list_tools())"`
+{% if mcp_module == 'enabled' and 'python' in mcp_languages -%}
+- **Python MCP**
+  - From `python/`, verify startup: `uv run --group mcp python -m {{ package_name }}.mcp --help`
+  - Refresh MCP client configuration to use the generated project package.
+{% endif -%}
 - **Notebook (`shared_logic=enabled` or notebooks used)**
   - Install notebook deps: `uv sync --group notebook`
   - Re-run notebooks with `nbclient`.

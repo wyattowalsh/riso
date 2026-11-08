@@ -1,5 +1,8 @@
 """Unit tests for scripts/hooks/quality_tool_check.py env hardening."""
 
+# Imports stay local until pytest fixtures establish the script or hook paths.
+# pylint: disable=import-outside-toplevel
+
 from __future__ import annotations
 
 import os

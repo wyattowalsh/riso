@@ -13,6 +13,7 @@ pytestmark = pytest.mark.usefixtures("ci_scripts_path")
 
 
 def test_expand_directory_walks_nested_jinja(tmp_path: Path) -> None:
+    """Directory expansion includes nested Jinja templates."""
     nested = tmp_path / "nested"
     nested.mkdir()
     jinja = nested / "ok.jinja"
@@ -23,6 +24,7 @@ def test_expand_directory_walks_nested_jinja(tmp_path: Path) -> None:
 
 
 def test_expand_keeps_explicit_files(tmp_path: Path) -> None:
+    """Explicit template paths remain selected during expansion."""
     jinja = tmp_path / "ok.jinja"
     jinja.write_text("{% if true %}ok{% endif %}\n", encoding="utf-8")
     missing = tmp_path / "missing.jinja"
@@ -33,6 +35,7 @@ def test_expand_keeps_explicit_files(tmp_path: Path) -> None:
 def test_main_accepts_directory_argument(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    """The syntax validator accepts a directory as its input."""
     (tmp_path / "ok.jinja").write_text("{% if true %}ok{% endif %}\n", encoding="utf-8")
     monkeypatch.setattr(sys, "argv", ["validate_jinja_templates.py", str(tmp_path)])
 

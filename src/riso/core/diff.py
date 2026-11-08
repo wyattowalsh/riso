@@ -14,6 +14,12 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from riso.core.answers import (
+    apply_then_reject_removed_keys,
+    prepare_copier_data,
+    strip_empty_lists_for_copier,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -396,7 +402,8 @@ def compute_diff(
     Exception
         If Copier operation fails or comparison fails
     """
-    from riso.core.answers import apply_then_reject_removed_keys, prepare_copier_data
+    # Pure file comparisons do not need to load the template operation layer.
+    from riso.template import _run_copier_worker  # pylint: disable=import-outside-toplevel
 
     if operation not in {"copy", "update", "recopy"}:
         raise ValueError(f"Unknown operation: {operation}")
@@ -410,42 +417,42 @@ def compute_diff(
         logger.debug("Temp directory: %s", temp_dest)
 
         try:
-            # File diffs are a copier.run_copy approximation. Remap ops are
+            # File diffs are a copier copy approximation. Remap ops are
             # the SSOT preview; live update/recopy still use Copier's own
             # operation (skip_answered / dest merge).
-            from copier import run_copy
-
-            preview_answers = prepare_copier_data(
-                apply_then_reject_removed_keys(answers).answers
+            preview_answers = strip_empty_lists_for_copier(
+                prepare_copier_data(apply_then_reject_removed_keys(answers).answers)
             )
             if operation in {"update", "recopy"}:
                 answers_path = destination / ".copier-answers.yml"
                 if answers_path.exists():
-                    import yaml
+                    # YAML is needed only when merging saved update/recopy answers.
+                    import yaml  # pylint: disable=import-outside-toplevel
 
                     stored = (
                         yaml.safe_load(answers_path.read_text(encoding="utf-8")) or {}
                     )
                     if isinstance(stored, dict):
-                        preview_answers = prepare_copier_data(
-                            apply_then_reject_removed_keys(
-                                {**stored, **preview_answers}
-                            ).answers
+                        preview_answers = strip_empty_lists_for_copier(
+                            prepare_copier_data(
+                                apply_then_reject_removed_keys(
+                                    {**stored, **preview_answers}
+                                ).answers
+                            )
                         )
 
-            from riso.template import run_with_timeout
-
-            run_with_timeout(
-                run_copy,
+            _run_copier_worker(
+                "copy",
+                {
+                    "template_path": str(template_path),
+                    "destination": str(temp_dest),
+                    "data": preview_answers,
+                    "unsafe": force_unsafe,
+                    "defaults": True,
+                    "overwrite": True,
+                    "skip_tasks": True,
+                },
                 timeout,
-                str(template_path),
-                str(temp_dest),
-                data=preview_answers,
-                unsafe=force_unsafe,
-                defaults=True,
-                overwrite=True,
-                skip_tasks=True,
-                quiet=True,
             )
 
             # Compare directories

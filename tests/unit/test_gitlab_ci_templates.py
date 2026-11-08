@@ -1,12 +1,13 @@
 """Tests for GitLab CI template generation."""
 
-import pytest
 from pathlib import Path
+
+import pytest
 from jinja2 import Environment, FileSystemLoader
 
 
-@pytest.fixture
-def jinja_env():
+@pytest.fixture(name="jinja_env")
+def _jinja_env():
     """Create Jinja2 environment for template rendering."""
     template_dir = Path(__file__).parent.parent.parent / "template" / "files"
     return Environment(loader=FileSystemLoader(str(template_dir)))
@@ -258,3 +259,62 @@ class TestGitLabCITemplate:
 
         assert "test:e2e" in result
         assert "pnpm run test:e2e" in result
+
+
+class TestGitLabDestRootStub:
+    """Dest-root `.gitlab-ci.yml` is an include stub; nested file remains SSOT."""
+
+    def test_dest_root_stub_exists(self) -> None:
+        """Ship the GitLab entry point at the generated repository root."""
+        stub = (
+            Path(__file__).parent.parent.parent
+            / "template"
+            / "files"
+            / ".gitlab-ci.yml.jinja"
+        )
+        assert stub.is_file()
+
+    def test_dest_root_stub_includes_nested_ssot(self, jinja_env):
+        """Delegate GitLab configuration to its maintained nested file."""
+        template = jinja_env.get_template(".gitlab-ci.yml.jinja")
+        result = template.render(ci_platform="gitlab-ci")
+        assert "include:" in result
+        assert "local: '.gitlab/.gitlab-ci.yml'" in result
+        assert "stages:" not in result
+        empty = template.render(ci_platform="github-actions")
+        assert not empty.strip()
+
+
+class TestGitLabUvInstallHardening:
+    """GitLab Python jobs must not curl|sh uv or put uv on ~/.cargo/bin."""
+
+    def test_templates_omit_uv_install_sh(self):
+        """Keep both GitLab templates free of shell-piped uv installation."""
+        files_dir = Path(__file__).parent.parent.parent / "template" / "files"
+        nested = (files_dir / ".gitlab" / ".gitlab-ci.yml.jinja").read_text(
+            encoding="utf-8"
+        )
+        stub = (files_dir / ".gitlab-ci.yml.jinja").read_text(encoding="utf-8")
+        assert "astral.sh/uv/install.sh" not in nested
+        assert "astral.sh/uv/install.sh" not in stub
+
+    def test_python_jobs_use_local_bin_not_cargo_bin(self, jinja_env):
+        """Install uv through pip and expose its user executable directory."""
+        template = jinja_env.get_template(".gitlab/.gitlab-ci.yml.jinja")
+        result = template.render(
+            ci_platform="gitlab-ci",
+            project_name="test-project",
+            package_name="test_project",
+            quality_profile="standard",
+            cli_module="enabled",
+            cli_languages=["python"],
+            api_module="disabled",
+            mcp_module="disabled",
+            docs_module="disabled",
+            saas_infra_module="disabled",
+            changelog_module="disabled",
+        )
+        assert "astral.sh/uv/install.sh" not in result
+        assert "$HOME/.cargo/bin" not in result
+        assert "$HOME/.local/bin" in result
+        assert "python -m pip install --user uv" in result

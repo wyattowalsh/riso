@@ -1,11 +1,20 @@
 {%- if docs_module == 'enabled' and docs_framework == 'fumadocs' and fumadocs_banner == 'enabled' -%}
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useSyncExternalStore, type ReactNode } from 'react';
+
+const dismissalListeners = new Set<() => void>();
+
+function subscribeToDismissals(onStoreChange: () => void) {
+  dismissalListeners.add(onStoreChange);
+  return () => {
+    dismissalListeners.delete(onStoreChange);
+  };
+}
 
 interface BannerProps {
   id?: string;
-  children: React.ReactNode;
+  children: ReactNode;
   variant?: 'info' | 'warning' | 'success';
   dismissible?: boolean;
 }
@@ -16,16 +25,16 @@ export function Banner({
   variant = 'info',
   dismissible = true,
 }: BannerProps) {
-  const [dismissed, setDismissed] = useState(true);
-
-  useEffect(() => {
-    const stored = localStorage.getItem(`banner-${id}`);
-    setDismissed(stored === 'dismissed');
-  }, [id]);
+  const dismissed = useSyncExternalStore(
+    subscribeToDismissals,
+    () => localStorage.getItem(`banner-${id}`) === 'dismissed',
+    // Keep the initial server and hydration output hidden until storage is read.
+    () => true,
+  );
 
   const handleDismiss = () => {
     localStorage.setItem(`banner-${id}`, 'dismissed');
-    setDismissed(true);
+    for (const notify of dismissalListeners) notify();
   };
 
   if (dismissed) return null;

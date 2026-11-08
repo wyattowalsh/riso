@@ -3,23 +3,30 @@ package tools
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/netip"
+	"net/url"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // HTTPFetchInput represents the input for http_fetch.
 type HTTPFetchInput struct {
-	URL     string            `json:"url" jsonschema:"URL to fetch"`
-	Method  string            `json:"method,omitempty" jsonschema:"HTTP method (GET, POST, etc.). Default: GET"`
-	Headers map[string]string `json:"headers,omitempty" jsonschema:"optional HTTP headers"`
-	Body    string            `json:"body,omitempty" jsonschema:"optional request body"`
-	Timeout int               `json:"timeout,omitempty" jsonschema:"request timeout in seconds (default: 30)"`
+	URL     string            `json:"url"`
+	Method  string            `json:"method,omitempty"`
+	Headers map[string]string `json:"headers,omitempty"`
+	Body    string            `json:"body,omitempty"`
+	Timeout *int              `json:"timeout,omitempty"`
 }
 
 // HTTPFetchOutput represents the output from http_fetch.
@@ -28,116 +35,331 @@ type HTTPFetchOutput struct {
 	StatusCode int               `json:"status_code,omitempty" jsonschema:"HTTP status code"`
 	Status     string            `json:"status,omitempty" jsonschema:"HTTP status text"`
 	Headers    map[string]string `json:"headers,omitempty" jsonschema:"response headers"`
-	Body       string            `json:"body,omitempty" jsonschema:"response body (truncated if > 10KB)"`
-	BodyLength int               `json:"body_length,omitempty" jsonschema:"total body length in bytes"`
+	Body       string            `json:"body,omitempty" jsonschema:"response body (truncated if over 10 KiB)"`
+	BodyLength int               `json:"body_length,omitempty" jsonschema:"returned body length in bytes"`
 	Truncated  bool              `json:"truncated,omitempty" jsonschema:"whether the body was truncated"`
 	Error      string            `json:"error,omitempty" jsonschema:"error message if fetch failed"`
 }
 
-const maxBodySize = 10 * 1024 // 10KB
+const maxBodySize = 10 * 1024
+
+// Public HTTPS only: block special ranges that IsGlobalUnicast alone permits.
+var blockedHTTPFetchIPs = []netip.Prefix{
+	netip.MustParsePrefix("0.0.0.0/8"),
+	netip.MustParsePrefix("10.0.0.0/8"),
+	netip.MustParsePrefix("100.64.0.0/10"),
+	netip.MustParsePrefix("127.0.0.0/8"),
+	netip.MustParsePrefix("168.63.129.16/32"), // Azure platform services
+	netip.MustParsePrefix("169.254.0.0/16"),
+	netip.MustParsePrefix("172.16.0.0/12"),
+	netip.MustParsePrefix("192.0.0.0/24"),
+	netip.MustParsePrefix("192.0.2.0/24"),
+	netip.MustParsePrefix("192.31.196.0/24"),
+	netip.MustParsePrefix("192.52.193.0/24"),
+	netip.MustParsePrefix("192.88.99.0/24"),
+	netip.MustParsePrefix("192.168.0.0/16"),
+	netip.MustParsePrefix("192.175.48.0/24"),
+	netip.MustParsePrefix("198.18.0.0/15"),
+	netip.MustParsePrefix("198.51.100.0/24"),
+	netip.MustParsePrefix("203.0.113.0/24"),
+	netip.MustParsePrefix("224.0.0.0/4"),
+	netip.MustParsePrefix("240.0.0.0/4"),
+	netip.MustParsePrefix("2001::/23"),
+	netip.MustParsePrefix("2001:db8::/32"),
+	netip.MustParsePrefix("2002::/16"),
+	netip.MustParsePrefix("2620:4f:8000::/48"),
+	netip.MustParsePrefix("3ffe::/16"),
+	netip.MustParsePrefix("3fff::/20"),
+}
+
+var publicHTTPFetchIPv6 = netip.MustParsePrefix("2000::/3")
+
+func isPublicHTTPFetchIP(addr netip.Addr) bool {
+	if addr.Zone() != "" {
+		return false
+	}
+	addr = addr.Unmap()
+	if !addr.IsGlobalUnicast() || (addr.Is6() && !publicHTTPFetchIPv6.Contains(addr)) {
+		return false
+	}
+	for _, blocked := range blockedHTTPFetchIPs {
+		if blocked.Contains(addr) {
+			return false
+		}
+	}
+	return true
+}
+
+func isNumericHTTPFetchAlias(name string) bool {
+	// Some resolvers interpret integer, short, octal, and hex IPv4 spellings.
+	for label := range strings.SplitSeq(name, ".") {
+		digits := "0123456789"
+		if strings.HasPrefix(label, "0x") {
+			label = label[2:]
+			digits = "0123456789abcdef"
+		}
+		if label == "" || strings.IndexFunc(label, func(r rune) bool {
+			return !strings.ContainsRune(digits, r)
+		}) >= 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// validateHTTPFetchHost returns a vetted literal IP, or a zero Addr for a DNS name.
+func validateHTTPFetchHost(host string) (netip.Addr, error) {
+	name := strings.ToLower(strings.TrimSuffix(host, "."))
+	if addr, err := netip.ParseAddr(name); err == nil {
+		if !isPublicHTTPFetchIP(addr) {
+			return netip.Addr{}, errors.New("IP address is not public")
+		}
+		return addr.Unmap(), nil
+	}
+	for _, blocked := range []string{
+		"localhost", "local", "internal", "home.arpa", "test", "invalid", "onion", "metadata",
+	} {
+		if name == blocked || strings.HasSuffix(name, "."+blocked) {
+			return netip.Addr{}, errors.New("local or metadata hostname is not allowed")
+		}
+	}
+	for label := range strings.SplitSeq(name, ".") {
+		if label == "" || strings.HasPrefix(label, "-") || strings.HasSuffix(label, "-") ||
+			strings.IndexFunc(label, func(r rune) bool {
+				return r != '-' && !unicode.IsLetter(r) && !unicode.IsDigit(r) && !unicode.IsMark(r)
+			}) >= 0 {
+			return netip.Addr{}, errors.New("invalid hostname")
+		}
+	}
+	if isNumericHTTPFetchAlias(name) {
+		return netip.Addr{}, errors.New("noncanonical numeric hostname is not allowed")
+	}
+	return netip.Addr{}, nil
+}
+
+func parseHTTPFetchURL(raw string) (*url.URL, error) {
+	if raw == "" {
+		return nil, errors.New("URL is required")
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Scheme != "https" || parsed.Opaque != "" || parsed.Hostname() == "" {
+		return nil, errors.New("an absolute https:// URL is required")
+	}
+	if parsed.User != nil {
+		return nil, errors.New("URL credentials are not allowed")
+	}
+	if _, err := validateHTTPFetchHost(parsed.Hostname()); err != nil {
+		return nil, fmt.Errorf("URL host is not allowed: %w", err)
+	}
+	return parsed, nil
+}
+
+type httpFetchNetwork struct {
+	lookupIP    func(context.Context, string) ([]netip.Addr, error)
+	dialContext func(context.Context, string, string) (net.Conn, error)
+}
+
+func (network httpFetchNetwork) resolve(ctx context.Context, host string) ([]netip.Addr, error) {
+	literal, err := validateHTTPFetchHost(host)
+	if err != nil {
+		return nil, err
+	}
+	if literal.IsValid() {
+		return []netip.Addr{literal}, nil
+	}
+	// net/http supplies the IDNA ASCII name to DialContext. If conversion
+	// failed, it can pass the raw name; do not let the resolver reinterpret it.
+	if strings.IndexFunc(host, func(r rune) bool { return r > unicode.MaxASCII }) >= 0 {
+		return nil, errors.New("invalid international hostname")
+	}
+	name := strings.TrimSuffix(host, ".")
+	if len(name) > 253 {
+		return nil, errors.New("hostname is too long")
+	}
+	for label := range strings.SplitSeq(name, ".") {
+		if len(label) > 63 {
+			return nil, errors.New("hostname label is too long")
+		}
+	}
+	addresses, err := network.lookupIP(ctx, host)
+	if err != nil {
+		return nil, fmt.Errorf("resolve hostname: %w", err)
+	}
+	if len(addresses) == 0 {
+		return nil, errors.New("hostname did not resolve to any addresses")
+	}
+	for _, addr := range addresses {
+		if !isPublicHTTPFetchIP(addr) {
+			return nil, errors.New("hostname resolved to a non-public address")
+		}
+	}
+	return addresses, nil
+}
+
+func newHTTPFetchClient(requestCtx context.Context, network httpFetchNetwork) *http.Client {
+	return &http.Client{
+		Transport: &http.Transport{
+			// A private transport has no ambient proxy and no shared connections.
+			ForceAttemptHTTP2: true,
+			DialContext: func(transportCtx context.Context, protocol, target string) (net.Conn, error) {
+				// The transport can detach dial cancellation from the request.
+				// Retain the request's deadline through DNS and the actual socket dial.
+				ctx, cancel := context.WithCancel(requestCtx)
+				defer cancel()
+				stop := context.AfterFunc(transportCtx, cancel)
+				defer stop()
+				host, port, err := net.SplitHostPort(target)
+				if err != nil {
+					return nil, err
+				}
+				addresses, err := network.resolve(ctx, host)
+				if err != nil {
+					return nil, err
+				}
+				// Only dial numeric addresses from this fully vetted DNS answer.
+				// The URL and TLS identity still use the original hostname.
+				for _, addr := range addresses {
+					if err := ctx.Err(); err != nil {
+						return nil, err
+					}
+					var conn net.Conn
+					conn, err = network.dialContext(ctx, protocol, net.JoinHostPort(addr.Unmap().String(), port))
+					if err != nil {
+						continue
+					}
+					// The same deadline also bounds TLS on this socket, even before
+					// net/http has attached it to the request.
+					if deadline, ok := ctx.Deadline(); ok {
+						if err = conn.SetDeadline(deadline); err != nil {
+							_ = conn.Close()
+							continue
+						}
+					}
+					context.AfterFunc(requestCtx, func() { _ = conn.Close() })
+					return conn, nil
+				}
+				return nil, err
+			},
+		},
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+}
+
+func boundedHTTPFetchBody(body []byte) ([]byte, bool) {
+	if len(body) <= maxBodySize {
+		return body, false
+	}
+	// Repair at most three bytes of a character cut at the boundary. Only one
+	// sentinel byte is available, so the rest of the character may be unread.
+	for trailing := 1; trailing < utf8.UTFMax; trailing++ {
+		end := maxBodySize - trailing
+		tail := body[end:]
+		_, size := utf8.DecodeRune(tail)
+		if (size > trailing || !utf8.FullRune(tail)) && utf8.Valid(body[:end]) {
+			return body[:end], true
+		}
+	}
+	return body[:maxBodySize], true
+}
+
+func executeHTTPFetch(
+	ctx context.Context, logger *slog.Logger, input HTTPFetchInput, newClient func(context.Context) *http.Client,
+) HTTPFetchOutput {
+	parsed, err := parseHTTPFetchURL(input.URL)
+	if err != nil {
+		return HTTPFetchOutput{Error: err.Error()}
+	}
+	for key := range input.Headers {
+		if strings.EqualFold(key, "Host") {
+			return HTTPFetchOutput{Error: "Host header overrides are not allowed"}
+		}
+	}
+	seconds := 30
+	if input.Timeout != nil {
+		seconds = *input.Timeout
+	}
+	if seconds < 1 || seconds > 120 {
+		return HTTPFetchOutput{Error: "timeout must be between 1 and 120 seconds"}
+	}
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(seconds)*time.Second)
+	defer cancel()
+	if input.Method == "" {
+		input.Method = http.MethodGet
+	}
+	var bodyReader io.Reader
+	if input.Body != "" {
+		bodyReader = strings.NewReader(input.Body)
+	}
+	req, err := http.NewRequestWithContext(ctx, input.Method, parsed.String(), bodyReader)
+	if err != nil {
+		return HTTPFetchOutput{Error: fmt.Sprintf("failed to create request: %v", err)}
+	}
+	for key, value := range input.Headers {
+		req.Header.Set(key, value)
+	}
+	if req.Header.Get("User-Agent") == "" {
+		req.Header.Set("User-Agent", "{{ package_name }}-mcp/1.0")
+	}
+	logger.Debug("executing http_fetch tool", "host", parsed.Host, "method", input.Method)
+
+	client := newClient(ctx)
+	defer client.CloseIdleConnections()
+	resp, err := client.Do(req)
+	if err != nil {
+		return HTTPFetchOutput{Error: fmt.Sprintf("request failed: %v", err)}
+	}
+	defer resp.Body.Close()
+	result := HTTPFetchOutput{Success: true, StatusCode: resp.StatusCode, Status: resp.Status}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBodySize+1))
+	if err != nil {
+		result.Error = fmt.Sprintf("failed to read body: %v", err)
+		return result
+	}
+	body, result.Truncated = boundedHTTPFetchBody(body)
+	result.Headers = make(map[string]string, len(resp.Header))
+	for key := range resp.Header {
+		result.Headers[key] = resp.Header.Get(key)
+	}
+	result.Body = string(body)
+	result.BodyLength = len(body)
+	return result
+}
 
 // RegisterHTTPTools registers all HTTP-related tools with the MCP server.
 func RegisterHTTPTools(srv *mcp.Server, logger *slog.Logger) {
+	registerHTTPTools(srv, logger, func(ctx context.Context) *http.Client {
+		return newHTTPFetchClient(ctx, httpFetchNetwork{
+			lookupIP: func(ctx context.Context, host string) ([]netip.Addr, error) {
+				return net.DefaultResolver.LookupNetIP(ctx, "ip", host)
+			},
+			dialContext: (&net.Dialer{}).DialContext,
+		})
+	})
+}
+
+func registerHTTPTools(srv *mcp.Server, logger *slog.Logger, newClient func(context.Context) *http.Client) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "http_fetch",
-		Description: "Fetch content from a URL. Supports GET, POST, and other HTTP methods with custom headers.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, input HTTPFetchInput) (*mcp.CallToolResult, HTTPFetchOutput, error) {
-		if input.URL == "" {
-			return nil, HTTPFetchOutput{Success: false, Error: "URL is required"}, nil
-		}
-		if !strings.HasPrefix(strings.ToLower(input.URL), "https://") {
-			return nil, HTTPFetchOutput{Success: false, Error: "only https:// URLs are allowed"}, nil
-		}
-		lower := strings.ToLower(input.URL)
-		for _, blocked := range []string{
-			"localhost", "127.0.0.1", "0.0.0.0", "::1",
-			"169.254.169.254", "metadata.google", "[::1]",
-			"10.", "192.168.", "172.16.", "172.17.", "172.18.",
-		} {
-			if strings.Contains(lower, blocked) {
-				return nil, HTTPFetchOutput{
-					Success: false,
-					Error:   "URL host is not allowed (SSRF protection)",
-				}, nil
+		Description: "Fetch content from a public HTTPS URL. Supports GET, POST, and other HTTP methods with custom headers.",
+		// Keep timeout an optional integer; the SDK would infer null from *int.
+		InputSchema: json.RawMessage(`{
+			"type": "object",
+			"required": ["url"],
+			"additionalProperties": false,
+			"properties": {
+				"url": {"type": "string", "description": "Public HTTPS URL to fetch"},
+				"method": {"type": "string", "description": "HTTP method (default: GET)"},
+				"headers": {"type": "object", "additionalProperties": {"type": "string"}},
+				"body": {"type": "string", "description": "Optional request body"},
+				"timeout": {"type": "integer", "description": "Request timeout in seconds, from 1 to 120 (default: 30)"}
 			}
-		}
-
-		if input.Method == "" {
-			input.Method = "GET"
-		}
-		if input.Timeout == 0 {
-			input.Timeout = 30
-		}
-
-		client := &http.Client{
-			Timeout: time.Duration(input.Timeout) * time.Second,
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				return http.ErrUseLastResponse
-			},
-		}
-
-		var bodyReader io.Reader
-		if input.Body != "" {
-			bodyReader = strings.NewReader(input.Body)
-		}
-
-		req, err := http.NewRequestWithContext(ctx, input.Method, input.URL, bodyReader)
-		if err != nil {
-			return nil, HTTPFetchOutput{
-				Success: false,
-				Error:   fmt.Sprintf("failed to create request: %v", err),
-			}, nil
-		}
-
-		for key, value := range input.Headers {
-			req.Header.Set(key, value)
-		}
-		if req.Header.Get("User-Agent") == "" {
-			req.Header.Set("User-Agent", "{{ package_name }}-mcp/1.0")
-		}
-
-		logger.Debug("executing http_fetch tool", "url", input.URL, "method", input.Method)
-
-		resp, err := client.Do(req)
-		if err != nil {
-			return nil, HTTPFetchOutput{
-				Success: false,
-				Error:   fmt.Sprintf("request failed: %v", err),
-			}, nil
-		}
-		defer resp.Body.Close()
-
-		body, err := io.ReadAll(io.LimitReader(resp.Body, maxBodySize+1))
-		if err != nil {
-			return nil, HTTPFetchOutput{
-				Success:    true,
-				StatusCode: resp.StatusCode,
-				Status:     resp.Status,
-				Error:      fmt.Sprintf("failed to read body: %v", err),
-			}, nil
-		}
-
-		truncated := len(body) > maxBodySize
-		if truncated {
-			body = body[:maxBodySize]
-		}
-
-		responseHeaders := make(map[string]string)
-		for key := range resp.Header {
-			responseHeaders[key] = resp.Header.Get(key)
-		}
-
-		return nil, HTTPFetchOutput{
-			Success:    true,
-			StatusCode: resp.StatusCode,
-			Status:     resp.Status,
-			Headers:    responseHeaders,
-			Body:       string(body),
-			BodyLength: len(body),
-			Truncated:  truncated,
-		}, nil
+		}`),
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input HTTPFetchInput) (*mcp.CallToolResult, HTTPFetchOutput, error) {
+		return nil, executeHTTPFetch(ctx, logger, input, newClient), nil
 	})
 
 	logger.Debug("registered HTTP tools")
 }
-{%- endif %}
+{% endif -%}

@@ -1,7 +1,7 @@
 {%- if mcp_module == 'enabled' and 'rust' in mcp_languages and mcp_example_tools -%}
 //! System resources — OS and environment snapshots.
 
-use rmcp::{ErrorData as McpError, model::*};
+use rmcp::{model::*, ErrorData as McpError};
 use serde::Serialize;
 use serde_json::json;
 
@@ -18,8 +18,8 @@ struct SystemInfo {
 
 pub fn list_resources() -> Vec<Resource> {
     vec![
-        RawResource::new(INFO_URI, "System Information").no_annotation(),
-        RawResource::new(ENV_URI, "Environment Variables").no_annotation(),
+        Resource::new(INFO_URI, "System Information"),
+        Resource::new(ENV_URI, "Environment Variables"),
     ]
 }
 
@@ -33,9 +33,7 @@ pub fn read_resource(uri: &str) -> Result<ReadResourceResult, McpError> {
                 server_name: crate::SERVER_NAME.to_string(),
             };
             let text = serde_json::to_string_pretty(&info).unwrap_or_else(|_| "{}".to_string());
-            Ok(ReadResourceResult {
-                contents: vec![ResourceContents::text(text, uri)],
-            })
+            Ok(ReadResourceResult::new(vec![ResourceContents::text(text, uri)]))
         }
         ENV_URI => {
             let safe = [
@@ -50,14 +48,9 @@ pub fn read_resource(uri: &str) -> Result<ReadResourceResult, McpError> {
             .filter_map(|(k, v)| v.map(|value| (k, value)))
             .collect::<std::collections::BTreeMap<_, _>>();
             let text = serde_json::to_string_pretty(&safe).unwrap_or_else(|_| "{}".to_string());
-            Ok(ReadResourceResult {
-                contents: vec![ResourceContents::text(text, uri)],
-            })
+            Ok(ReadResourceResult::new(vec![ResourceContents::text(text, uri)]))
         }
-        _ => Err(McpError::resource_not_found(
-            "resource_not_found",
-            Some(json!({ "uri": uri })),
-        )),
+        _ => Err(McpError::resource_not_found("resource_not_found", Some(json!({ "uri": uri })))),
     }
 }
 {%- endif %}

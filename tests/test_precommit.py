@@ -6,14 +6,15 @@ based on the template options (quality profile, API languages, etc.).
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
 import yaml
 
 
-@pytest.fixture
-def template_config_path() -> Path:
+@pytest.fixture(name="template_config_path")
+def _template_config_path() -> Path:
     """Return path to the template pre-commit config."""
     return (
         Path(__file__).parents[1]
@@ -23,8 +24,8 @@ def template_config_path() -> Path:
     )
 
 
-@pytest.fixture
-def root_config_path() -> Path:
+@pytest.fixture(name="root_config_path")
+def _root_config_path() -> Path:
     """Return path to the root pre-commit config."""
     return Path(__file__).parents[1] / ".pre-commit-config.yaml"
 
@@ -149,6 +150,47 @@ class TestRootPrecommitConfig:
             r for r in repos if "check-jsonschema" in str(r.get("repo", ""))
         ]
         assert len(jsonschema_repos) > 0, "Should have check-jsonschema pre-commit repo"
+
+    def test_root_config_excludes_goals(self, root_config_path: Path) -> None:
+        """Verify goals/ working papers are skipped by formatting/spelling hooks.
+
+        Only cosmetic hooks opt out: safety hooks (detect-private-key,
+        check-added-large-files, check-merge-conflict) must still scan goals/.
+        """
+        content = root_config_path.read_text(encoding="utf-8")
+        config = yaml.safe_load(content)
+
+        hooks = {
+            hook.get("id"): hook
+            for repo in config.get("repos", [])
+            for hook in repo.get("hooks", [])
+        }
+
+        samples = ("goals/riso-lane-cli/facts.md", "goals/riso-lane-cli/interview.json")
+        for hook_id in ("codespell", "mdformat", "check-json"):
+            assert hook_id in hooks, f"Root config should define {hook_id}"
+            exclude = hooks[hook_id].get("exclude", "")
+            assert "goals/" in exclude, (
+                f"{hook_id} exclude should skip goals/, got {exclude!r}"
+            )
+            pattern = re.compile(exclude)
+            for path in samples:
+                assert pattern.search(path), (
+                    f"{hook_id} exclude {exclude!r} should match {path}"
+                )
+
+        assert "exclude" not in config, (
+            "goals/ must not be excluded globally; safety hooks need to scan it"
+        )
+        for hook_id in (
+            "detect-private-key",
+            "check-added-large-files",
+            "check-merge-conflict",
+        ):
+            assert hook_id in hooks, f"Root config should define {hook_id}"
+            assert "goals/" not in hooks[hook_id].get("exclude", ""), (
+                f"{hook_id} must still scan goals/"
+            )
 
 
 class TestTemplatePrecommitConfig:
@@ -368,10 +410,12 @@ class TestJustfileIntegration:
 
     @pytest.fixture
     def root_justfile_jinja_path(self) -> Path:
+        """Return the root task-runner template path."""
         return Path(__file__).parents[1] / "template" / "files" / "justfile.jinja"
 
     @pytest.fixture
     def template_justfile_path(self) -> Path:
+        """Return the shared Just quality template path."""
         return (
             Path(__file__).parents[1]
             / "template"
@@ -387,6 +431,23 @@ class TestJustfileIntegration:
         assert "pre-commit run --all-files" in content, (
             "hooks recipe should run pre-commit"
         )
+
+    def test_root_justfile_drops_tui_and_uses_riso_copy(
+        self, justfile_path: Path
+    ) -> None:
+        """Maintainer generate recipes use riso copy; tui recipe is gone."""
+        content = justfile_path.read_text(encoding="utf-8")
+        assert "riso tui" not in content
+        assert not any(
+            line.startswith("tui ") or line.startswith("tui dest")
+            for line in content.splitlines()
+        )
+        assert 'uv run riso copy "$1" --answers-file "$2" --force' in content
+        assert 'uv run copier copy . "$1"' in content
+        assert (
+            "uv run riso copy {{ dest }} --answers-file "
+            "samples/default/copier-answers.yml --force"
+        ) in content
 
     def test_root_justfile_setup_installs_all_hook_types(
         self, justfile_path: Path
@@ -404,18 +465,21 @@ class TestJustfileIntegration:
     def test_template_root_justfile_imports_quality(
         self, root_justfile_jinja_path: Path
     ) -> None:
+        """Require the root Just template to import shared quality recipes."""
         content = root_justfile_jinja_path.read_text(encoding="utf-8")
         assert "quality/justfile.quality" in content
 
     def test_template_justfile_has_hooks_targets(
         self, template_justfile_path: Path
     ) -> None:
+        """Expose hook installation, execution, and update recipes."""
         content = template_justfile_path.read_text(encoding="utf-8")
         assert "hooks:" in content
         assert "hooks-run:" in content
         assert "hooks-update:" in content
 
     def test_template_python_justfile_imports_quality(self) -> None:
+        """Resolve shared quality recipes from the Python track directory."""
         python_justfile = (
             Path(__file__).parents[1]
             / "template"

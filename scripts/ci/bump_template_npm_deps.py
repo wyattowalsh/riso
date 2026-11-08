@@ -41,6 +41,7 @@ class NpmSurface:
 
 
 def load_surfaces_config() -> tuple[tuple[str, ...], tuple[NpmSurface, ...]]:
+    """Read npm surface definitions and packages excluded from upgrades."""
     data = json.loads(SURFACES_CONFIG.read_text(encoding="utf-8"))
     reject = tuple(data.get("ncu_reject", ["eslint"]))
     surfaces = tuple(
@@ -72,6 +73,7 @@ def _run(
 
 
 def render_sample(variant: str) -> Path:
+    """Render the sample variant that supplies a surface package manifest."""
     answers = REPO_ROOT / "samples" / variant / "copier-answers.yml"
     if not answers.exists():
         nested = list((REPO_ROOT / "samples").glob(f"**/{variant}/copier-answers.yml"))
@@ -96,6 +98,7 @@ def render_sample(variant: str) -> Path:
 
 
 def run_ncu(package_dir: Path, *, apply: bool) -> tuple[int, str]:
+    """Run npm-check-updates for a rendered package, optionally applying upgrades."""
     cmd = [
         "pnpm",
         "dlx",
@@ -116,10 +119,12 @@ def run_ncu(package_dir: Path, *, apply: bool) -> tuple[int, str]:
 
 
 def load_package_json(path: Path) -> dict[str, object]:
+    """Parse a package manifest as UTF-8 JSON."""
     return json.loads(path.read_text(encoding="utf-8"))
 
 
 def collect_dep_versions(package: dict[str, object]) -> dict[str, str]:
+    """Collect dependency pins across all supported manifest sections."""
     versions: dict[str, str] = {}
     for section in (
         "dependencies",
@@ -136,6 +141,7 @@ def collect_dep_versions(package: dict[str, object]) -> dict[str, str]:
 
 
 def sync_versions_to_jinja(jinja_path: Path, versions: dict[str, str]) -> list[str]:
+    """Write matching dependency versions back to a Jinja manifest."""
     content = jinja_path.read_text(encoding="utf-8")
     updated: list[str] = []
 
@@ -157,6 +163,7 @@ def process_surface(
     apply: bool,
     skip_render: bool,
 ) -> tuple[str, bool, str | None]:
+    """Audit or upgrade one rendered npm surface and its template pins."""
     print(f"\n== {surface.name} ==")
     if not skip_render:
         render_root = render_sample(surface.sample_variant)
@@ -211,6 +218,7 @@ def process_surface(
 
 
 def main() -> int:
+    """Select npm surfaces and coordinate dependency audits or requested upgrades."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--apply",

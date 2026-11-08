@@ -6,7 +6,6 @@ infrastructure for the scaffolding tool.
 
 from pathlib import Path
 from jinja2 import (
-    Environment,
     FileSystemLoader,
     select_autoescape,
     StrictUndefined,
@@ -18,28 +17,23 @@ from loguru import logger
 def create_jinja_environment(
     template_dir: Path,
     *,
-    sandboxed: bool = True,
     enable_bytecode_cache: bool = True,
-) -> Environment:
-    """Create a configured Jinja2 environment for code generation.
+) -> SandboxedEnvironment:
+    """Create a sandboxed Jinja2 environment for code generation.
     
     Args:
         template_dir: Directory containing template files
-        sandboxed: Use sandboxed environment for security
         enable_bytecode_cache: Enable bytecode caching for performance
         
     Returns:
-        Configured Jinja2 environment
+        Configured sandboxed Jinja2 environment
         
     Security:
-        - Uses SandboxedEnvironment by default to prevent code execution
+        - Always uses SandboxedEnvironment to prevent code execution
         - Disables dangerous filters (eval, exec, import)
         - Restricts access to Python built-ins
     """
-    env_class = SandboxedEnvironment if sandboxed else Environment
-    
-    # Create environment with file loader
-    env = env_class(
+    env = SandboxedEnvironment(
         loader=FileSystemLoader(str(template_dir)),
         autoescape=select_autoescape(enabled_extensions=("html", "xml")),
         undefined=StrictUndefined,  # Fail on undefined variables
@@ -68,7 +62,7 @@ def create_jinja_environment(
     return env
 
 
-def render_template(env: Environment, template_name: str, variables: dict) -> str:
+def render_template(env: SandboxedEnvironment, template_name: str, variables: dict) -> str:
     """Render a template with variables.
     
     Args:
@@ -88,7 +82,7 @@ def render_template(env: Environment, template_name: str, variables: dict) -> st
     return template.render(**variables)
 
 
-def validate_template_syntax(env: Environment, template_name: str) -> tuple[bool, str | None]:
+def validate_template_syntax(env: SandboxedEnvironment, template_name: str) -> tuple[bool, str | None]:
     """Validate template syntax without rendering.
     
     Args:

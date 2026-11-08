@@ -6,11 +6,11 @@ from pathlib import Path
 
 import pytest
 
-pytest.importorskip("yaml")
+yaml = pytest.importorskip("yaml")
 
 
-@pytest.fixture
-def samples_dir() -> Path:
+@pytest.fixture(name="samples_dir")
+def _samples_dir() -> Path:
     """Get the samples directory."""
     return Path(__file__).parents[2] / "samples"
 
@@ -26,8 +26,6 @@ class TestTauriSample:
 
     def test_tauri_sample_valid(self, samples_dir: Path):
         """Tauri sample should have valid configuration."""
-        import yaml
-
         answers_file = samples_dir / "tauri-app" / "copier-answers.yml"
         if not answers_file.exists():
             pytest.skip("Tauri sample not found")
@@ -61,8 +59,6 @@ class TestTauriSample:
 
     def test_tauri_sample_has_ci_platform(self, samples_dir: Path):
         """Tauri sample should specify CI platform."""
-        import yaml
-
         answers_file = samples_dir / "tauri-app" / "copier-answers.yml"
         if not answers_file.exists():
             pytest.skip("Tauri sample not found")
@@ -82,8 +78,6 @@ class TestGitLabCISample:
 
     def test_gitlab_ci_sample_valid(self, samples_dir: Path):
         """GitLab CI sample should have valid configuration."""
-        import yaml
-
         answers_file = samples_dir / "gitlab-ci-python" / "copier-answers.yml"
         if not answers_file.exists():
             pytest.skip("GitLab CI sample not found")
@@ -113,8 +107,6 @@ class TestGitLabCISample:
 
     def test_gitlab_ci_has_changelog_module(self, samples_dir: Path):
         """GitLab CI sample should have changelog module enabled."""
-        import yaml
-
         answers_file = samples_dir / "gitlab-ci-python" / "copier-answers.yml"
         if not answers_file.exists():
             pytest.skip("GitLab CI sample not found")
@@ -124,8 +116,6 @@ class TestGitLabCISample:
 
     def test_gitlab_ci_has_docs_module(self, samples_dir: Path):
         """GitLab CI sample should have documentation enabled."""
-        import yaml
-
         answers_file = samples_dir / "gitlab-ci-python" / "copier-answers.yml"
         if not answers_file.exists():
             pytest.skip("GitLab CI sample not found")
@@ -146,8 +136,6 @@ class TestRAGEnabledSample:
 
     def test_rag_sample_valid(self, samples_dir: Path):
         """RAG sample should have valid configuration."""
-        import yaml
-
         answers_file = samples_dir / "rag-enabled" / "copier-answers.yml"
         if not answers_file.exists():
             pytest.skip("RAG sample not found")
@@ -178,8 +166,6 @@ class TestRAGEnabledSample:
 
     def test_rag_sample_has_ai_features(self, samples_dir: Path):
         """RAG sample should have full AI features enabled."""
-        import yaml
-
         answers_file = samples_dir / "rag-enabled" / "copier-answers.yml"
         if not answers_file.exists():
             pytest.skip("RAG sample not found")
@@ -193,8 +179,6 @@ class TestRAGEnabledSample:
 
     def test_rag_sample_has_auth_and_billing(self, samples_dir: Path):
         """RAG sample should have auth and billing configured."""
-        import yaml
-
         answers_file = samples_dir / "rag-enabled" / "copier-answers.yml"
         if not answers_file.exists():
             pytest.skip("RAG sample not found")
@@ -209,8 +193,6 @@ class TestRAGEnabledSample:
 
     def test_rag_sample_has_observability(self, samples_dir: Path):
         """RAG sample should have observability features."""
-        import yaml
-
         answers_file = samples_dir / "rag-enabled" / "copier-answers.yml"
         if not answers_file.exists():
             pytest.skip("RAG sample not found")
@@ -224,8 +206,6 @@ class TestRAGEnabledSample:
 
     def test_rag_sample_has_tenancy_model(self, samples_dir: Path):
         """RAG sample should specify B2B teams tenancy model."""
-        import yaml
-
         answers_file = samples_dir / "rag-enabled" / "copier-answers.yml"
         if not answers_file.exists():
             pytest.skip("RAG sample not found")
@@ -239,8 +219,6 @@ class TestNewSamplesMetadata:
 
     def test_all_new_samples_have_required_fields(self, samples_dir: Path):
         """All new samples should have required fields."""
-        import yaml
-
         new_samples = ["tauri-app", "gitlab-ci-python", "rag-enabled"]
 
         for sample_name in new_samples:
@@ -259,8 +237,6 @@ class TestNewSamplesMetadata:
 
     def test_all_new_samples_use_valid_layout(self, samples_dir: Path):
         """All new samples should use valid project layout."""
-        import yaml
-
         new_samples = ["tauri-app", "gitlab-ci-python", "rag-enabled"]
         valid_layouts = ["single-package", "monorepo"]
 
@@ -274,8 +250,6 @@ class TestNewSamplesMetadata:
 
     def test_all_new_samples_have_ai_tools_module(self, samples_dir: Path):
         """All new samples should specify ai_tools_module setting."""
-        import yaml
-
         new_samples = ["tauri-app", "gitlab-ci-python", "rag-enabled"]
 
         for sample_name in new_samples:

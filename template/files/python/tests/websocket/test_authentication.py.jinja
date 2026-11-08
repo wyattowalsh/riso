@@ -1,0 +1,179 @@
+{% if (websocket_module == "enabled" or "websocket" in api_features) -%}
+"""Verify WebSocket JWT handling with real signed fixture tokens."""
+
+import secrets
+from datetime import UTC, datetime, timedelta
+from typing import Annotated
+
+import jwt
+import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.testclient import TestClient
+
+from {{ package_name }}.websocket import ConnectionManager
+from {{ package_name }}.websocket.decorators import (
+    get_current_user_websocket,
+    require_authentication,
+    websocket_endpoint,
+)
+from {{ package_name }}.websocket.exceptions import AuthenticationError
+
+
+@pytest.fixture(name="jwt_key")
+def _jwt_key(monkeypatch: pytest.MonkeyPatch) -> str:
+    """Use a generated fixture key independent of the developer environment."""
+    for name in ("WS_JWT_SECRET", "JWT_SECRET", "SECRET_KEY", "WS_JWT_ALGORITHM", "JWT_ALGORITHM"):
+        monkeypatch.delenv(name, raising=False)
+    key = secrets.token_urlsafe(64)
+    monkeypatch.setenv("WS_JWT_SECRET", key)
+    return key
+
+
+def _handshake() -> WebSocket:
+    """Build a real Starlette WebSocket whose transport must remain unused."""
+    async def receive():
+        pytest.fail("Authentication should not read an ASGI frame")
+
+    async def send(_frame):
+        pytest.fail("Authentication should not send an ASGI frame")
+
+    return WebSocket({"type": "websocket", "headers": []}, receive, send)
+
+
+@pytest.mark.parametrize("source", ["query", "header", "cookie"])
+def test_accepts_signed_token_from_each_existing_source(jwt_key: str, source: str) -> None:
+    """The query, Bearer and cookie sources keep their existing precedence."""
+    token = jwt.encode({"sub": "fixture-user", "exp": datetime.now(UTC) + timedelta(minutes=2)}, jwt_key)
+    app = FastAPI()
+
+    @app.websocket("/identity")
+    async def identity(
+        websocket: WebSocket,
+        user_id: Annotated[str | None, Depends(get_current_user_websocket)],
+    ) -> None:
+        await websocket.accept()
+        await websocket.send_json({"user_id": user_id})
+        await websocket.close()
+
+    path = "/identity"
+    headers = {"cookie": f"access_token={token if source == 'cookie' else 'malformed'}"}
+    if source != "cookie":
+        headers["authorization"] = f"Bearer {token if source == 'header' else 'malformed'}"
+    if source == "query":
+        path = f"{path}?token={token}"
+
+    with TestClient(app) as client, client.websocket_connect(path, headers=headers) as websocket:
+        assert websocket.receive_json() == {"user_id": "fixture-user"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["expired", "signature", "missing-subject", "invalid-expiry", "unsigned"])
+async def test_rejects_invalid_tokens(jwt_key: str, failure: str) -> None:
+    """Every invalid token raises a generic authentication error."""
+    payload = {"sub": "fixture-user", "exp": datetime.now(UTC) + timedelta(minutes=2)}
+    key = jwt_key
+    algorithm = "HS256"
+    if failure == "expired":
+        payload["exp"] = datetime.now(UTC) - timedelta(minutes=2)
+    elif failure == "signature":
+        key = secrets.token_urlsafe(64)
+    elif failure == "missing-subject":
+        del payload["sub"]
+    elif failure == "invalid-expiry":
+        payload["exp"] = None
+    else:
+        key = ""
+        algorithm = "none"
+    token = jwt.encode(payload, key, algorithm=algorithm)
+
+    with pytest.raises(AuthenticationError) as rejected:
+        await get_current_user_websocket(_handshake(), token=token)
+
+    assert rejected.value.code == "AUTH_FAILED"
+    assert not rejected.value.details
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("algorithm", ["HS384", "none", "not-supported"])
+async def test_refuses_tokens_when_configured_algorithm_does_not_verify(
+    jwt_key: str, algorithm: str, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A token cannot override the algorithm chosen by the server."""
+    monkeypatch.setenv("WS_JWT_ALGORITHM", algorithm)
+    token = jwt.encode({"sub": "fixture-user"}, jwt_key, algorithm="HS256")
+
+    with pytest.raises(AuthenticationError):
+        await get_current_user_websocket(_handshake(), token=token)
+
+
+@pytest.mark.asyncio
+async def test_asymmetric_algorithm_accepts_only_its_configured_key(
+    jwt_key: str, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An existing RSA deployment can verify a token with its configured public key."""
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    public_key = private_key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode()
+    monkeypatch.setenv("WS_JWT_ALGORITHM", "RS256")
+    monkeypatch.setenv("WS_JWT_SECRET", public_key)
+    token = jwt.encode({"sub": "fixture-user"}, private_key, algorithm="RS256")
+
+    assert await get_current_user_websocket(_handshake(), token=token) == "fixture-user"
+
+    monkeypatch.setenv("WS_JWT_SECRET", jwt_key)
+    with pytest.raises(AuthenticationError):
+        await get_current_user_websocket(_handshake(), token=token)
+
+
+@pytest.mark.asyncio
+async def test_token_with_no_key_fails_but_tokenless_connection_is_anonymous(
+    jwt_key: str, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Missing auth configuration cannot turn a supplied token into anonymous access."""
+    token = jwt.encode({"sub": "fixture-user"}, jwt_key)
+    monkeypatch.delenv("WS_JWT_SECRET")
+
+    assert await get_current_user_websocket(_handshake()) is None
+    with pytest.raises(AuthenticationError, match="secret is not configured"):
+        await get_current_user_websocket(_handshake(), token=token)
+
+
+@pytest.mark.parametrize("authenticated", [False, True])
+def test_required_identity_guards_a_real_decorated_handler(
+    isolated_manager: ConnectionManager, jwt_key: str, authenticated: bool,
+) -> None:
+    """A decorated route dispatches protected work only with a verified subject."""
+    app = FastAPI()
+    called: list[str] = []
+
+    @app.websocket("/protected")
+    @websocket_endpoint()
+    @require_authentication
+    async def protected(
+        websocket: WebSocket,
+        user_id: Annotated[str | None, Depends(get_current_user_websocket)],
+    ) -> None:
+        assert user_id is not None
+        called.append(user_id)
+        await websocket.send_json({"user_id": user_id})
+
+    headers = {}
+    if authenticated:
+        token = jwt.encode({"sub": "verified-user"}, jwt_key)
+        headers["authorization"] = f"Bearer {token}"
+    with TestClient(app) as client, client.websocket_connect("/protected", headers=headers) as ws:
+        response = ws.receive_json()
+        if authenticated:
+            assert response == {"user_id": "verified-user"}
+            assert called == ["verified-user"]
+        else:
+            assert response["payload"]["code"] == "AUTH_REQUIRED"
+            assert not called
+        with pytest.raises(WebSocketDisconnect) as closed:
+            ws.receive_json()
+        assert closed.value.code == (1000 if authenticated else 1008)
+    assert isolated_manager.get_connection_count() == 0
+{% endif -%}

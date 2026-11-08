@@ -1,4 +1,4 @@
-{% if desktop_module == "enabled" and desktop_framework == "tauri" %}
+{%- if desktop_module == "enabled" and desktop_framework == "tauri" -%}
 //! Tauri Command Handlers
 //!
 //! This module contains all the command handlers that can be invoked from the frontend.
@@ -9,16 +9,16 @@
 //! - Sensitive operations should check permissions
 //! - Never trust data from the frontend
 
-use log::{debug, error, info, warn};
+use log::info;
 use serde::{Deserialize, Serialize};
+{%- if desktop_features is defined and 'system_info' in desktop_features %}
+use sysinfo::System;
+{%- endif %}
 use tauri::command;
-{% if desktop_features is defined and 'auto_updater' in desktop_features %}
+{%- if desktop_features is defined and 'auto_updater' in desktop_features %}
 use tauri::AppHandle;
 use tauri_plugin_updater::UpdaterExt;
-{% endif %}
-{% if desktop_features is defined and 'system_info' in desktop_features %}
-use sysinfo::System;
-{% endif %}
+{%- endif %}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ApiResponse<T> {
@@ -50,11 +50,12 @@ impl<T> ApiResponse<T> {
 /// Example of a simple command that takes a parameter and returns a string.
 #[command]
 pub fn greet(name: &str) -> String {
-    info!("Greeting: {}", name);
-    format!("Hello, {}! You've been greeted from Rust!", name)
+    info!("Greeting: {name}");
+    format!("Hello, {name}! You've been greeted from Rust!")
 }
 
-{% if desktop_features is defined and 'system_info' in desktop_features %}
+{%- if desktop_features is defined and 'system_info' in desktop_features %}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SystemInfo {
     pub os: String,
@@ -71,7 +72,7 @@ pub struct SystemInfo {
 /// Returns information about the current system.
 #[command]
 pub fn get_system_info() -> ApiResponse<SystemInfo> {
-    debug!("Getting system info");
+    log::debug!("Getting system info");
 
     let mut sys = System::new_all();
     sys.refresh_all();
@@ -88,9 +89,10 @@ pub fn get_system_info() -> ApiResponse<SystemInfo> {
 
     ApiResponse::success(info)
 }
-{% endif %}
+{%- endif %}
 
-{% if desktop_features is defined and 'auto_updater' in desktop_features %}
+{%- if desktop_features is defined and 'auto_updater' in desktop_features %}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateInfo {
     pub available: bool,
@@ -138,13 +140,13 @@ pub async fn check_for_updates(app: AppHandle) -> Result<UpdateInfo, String> {
                 })
             }
             Err(e) => {
-                error!("Update check error: {}", e);
-                Err(format!("Failed to check for updates: {}", e))
+                log::error!("Update check error: {e}");
+                Err(format!("Failed to check for updates: {e}"))
             }
         },
         Err(e) => {
-            error!("Updater initialization error: {}", e);
-            Err(format!("Failed to initialize updater: {}", e))
+            log::error!("Updater initialization error: {e}");
+            Err(format!("Failed to initialize updater: {e}"))
         }
     }
 }
@@ -165,30 +167,50 @@ pub async fn install_update(app: AppHandle) -> Result<(), String> {
                 match update.download_and_install(|_, _| {}, || {}).await {
                     Ok(_) => {
                         info!("Update installed successfully, restarting...");
-                        app.restart();
-                        #[allow(unreachable_code)]
-                        Ok(())
+                        app.restart()
                     }
                     Err(e) => {
-                        error!("Failed to download/install update: {}", e);
-                        Err(format!("Failed to install update: {}", e))
+                        log::error!("Failed to download/install update: {e}");
+                        Err(format!("Failed to install update: {e}"))
                     }
                 }
             }
             Ok(None) => {
-                warn!("No update available to install");
+                log::warn!("No update available to install");
                 Err("No update available".to_string())
             }
             Err(e) => {
-                error!("Update check failed: {}", e);
-                Err(format!("Failed to check for updates: {}", e))
+                log::error!("Update check failed: {e}");
+                Err(format!("Failed to check for updates: {e}"))
             }
         },
         Err(e) => {
-            error!("Updater initialization error: {}", e);
-            Err(format!("Failed to initialize updater: {}", e))
+            log::error!("Updater initialization error: {e}");
+            Err(format!("Failed to initialize updater: {e}"))
         }
     }
 }
-{% endif %}
-{% endif %}
+{%- endif %}
+
+#[cfg(test)]
+mod tests {
+    use super::{greet, ApiResponse};
+
+    #[test]
+    fn greeting_preserves_user_text() {
+        assert_eq!(
+            greet("Riso <Guest>"),
+            "Hello, Riso <Guest>! You've been greeted from Rust!"
+        );
+    }
+
+    #[test]
+    fn ipc_error_serializes_without_a_success_payload() {
+        let response = ApiResponse::<()>::error("Unavailable");
+        assert_eq!(
+            serde_json::to_value(response).expect("IPC error serializes"),
+            serde_json::json!({"success": false, "data": null, "error": "Unavailable"})
+        );
+    }
+}
+{% endif -%}

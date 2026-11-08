@@ -12,82 +12,8 @@
  * - Use invoke/handle pattern for async operations
  */
 
-import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
-import { electronAPI } from '@electron-toolkit/preload';
-
-/**
- * Type definitions for the exposed API
- */
-export interface ElectronAPI {
-  // App information
-  getVersion: () => Promise<string>;
-  getAppInfo: () => Promise<{
-    name: string;
-    version: string;
-    electron: string;
-    chrome: string;
-    node: string;
-    platform: string;
-    arch: string;
-    isDev: boolean;
-  }>;
-  getPlatform: () => Promise<NodeJS.Platform>;
-
-  // Theme
-  getTheme: () => Promise<{
-    source: 'system' | 'light' | 'dark';
-    shouldUseDarkColors: boolean;
-  }>;
-  setTheme: (theme: 'system' | 'light' | 'dark') => Promise<{ success: boolean }>;
-  onThemeChanged: (
-    callback: (theme: { source: string; shouldUseDarkColors: boolean }) => void
-  ) => () => void;
-
-  // Window management
-  minimizeWindow: () => Promise<void>;
-  maximizeWindow: () => Promise<boolean>;
-  closeWindow: () => Promise<void>;
-  isMaximized: () => Promise<boolean>;
-
-  // Dialogs
-  showOpenDialog: (
-    options: Electron.OpenDialogOptions
-  ) => Promise<Electron.OpenDialogReturnValue>;
-  showSaveDialog: (
-    options: Electron.SaveDialogOptions
-  ) => Promise<Electron.SaveDialogReturnValue>;
-  showMessageBox: (
-    options: Electron.MessageBoxOptions
-  ) => Promise<Electron.MessageBoxReturnValue>;
-
-  // Shell
-  openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
-  showItemInFolder: (path: string) => Promise<{ success: boolean }>;
-
-  // Store
-  storeGet: <T>(key: string) => Promise<T>;
-  storeSet: <T>(key: string, value: T) => Promise<{ success: boolean }>;
-  storeDelete: (key: string) => Promise<{ success: boolean }>;
-
-  // Event listeners
-  onOpenSettings: (callback: () => void) => () => void;
-  onShowAbout: (callback: () => void) => () => void;
-  {% if 'auto_updater' in desktop_features %}
-  onCheckForUpdates: (callback: () => void) => () => void;
-  onUpdateAvailable: (
-    callback: (info: { version: string; releaseDate: string }) => void
-  ) => () => void;
-  onUpdateProgress: (
-    callback: (progress: { percent: number; bytesPerSecond: number }) => void
-  ) => () => void;
-  onUpdateDownloaded: (
-    callback: (info: { version: string }) => void
-  ) => () => void;
-  onUpdateError: (callback: (error: { message: string }) => void) => () => void;
-  checkForUpdates: () => Promise<{ success: boolean; updateInfo?: unknown }>;
-  quitAndInstall: () => Promise<void>;
-  {% endif %}
-}
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
+import type { ElectronAPI } from '../shared/types';
 
 /**
  * IPC Channel names - must match main process handlers
@@ -220,31 +146,11 @@ const api: ElectronAPI = {
   {% endif %}
 };
 
-// Use `contextBridge` APIs to expose Electron APIs to renderer
-// only if context isolation is enabled, otherwise just add to the DOM global
-if (process.contextIsolated) {
-  try {
-    // Expose electron-toolkit API
-    contextBridge.exposeInMainWorld('electron', electronAPI);
-    // Expose our custom API
-    contextBridge.exposeInMainWorld('api', api);
-  } catch (error) {
-    console.error('Failed to expose APIs:', error);
-  }
-} else {
-  // @ts-expect-error - fallback for non-isolated context (development only)
-  window.electron = electronAPI;
-  // @ts-expect-error
-  window.api = api;
+// Expose only the named app API in the isolated renderer.
+try {
+  contextBridge.exposeInMainWorld('api', api);
+} catch (error) {
+  console.error('Failed to expose app API:', error);
 }
 
-/**
- * Type declaration for the exposed API in renderer
- */
-declare global {
-  interface Window {
-    electron: typeof electronAPI;
-    api: ElectronAPI;
-  }
-}
 {% endif %}

@@ -1,65 +1,45 @@
 {% if (graphql_api_module == 'enabled' or 'graphql' in api_features) -%}
-"""GraphQL DataLoader Tests - N+1 query prevention."""
+"""Test per-request batching and caching with the actual DataLoader."""
+
+from datetime import timedelta
 
 import pytest
-from strawberry.test import BaseGraphQLTestClient
 
-from {{ package_name }}.graphql_api.schema import schema
-
-
-@pytest.fixture
-def graphql_client():
-    """Create GraphQL test client."""
-    return BaseGraphQLTestClient(schema)
+from {{ package_name }}.graphql_api.dataloaders import DataLoaderContainer, UserDataLoader
 
 
-class TestDataLoaders:
-    """Test DataLoader batching and caching."""
-    
-    def test_user_dataloader_batches_requests(self, graphql_client):
-        """Test that DataLoader batches multiple user requests."""
-        query = """
-            query {
-                users(first: 10) {
-                    edges {
-                        node {
-                            id
-                            name
-                            posts(first: 5) {
-                                edges {
-                                    node {
-                                        id
-                                        title
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        """
-        
-        result = graphql_client.query(query)
-        
-        assert result.errors is None
-    
-    def test_dataloader_caches_within_request(self, graphql_client):
-        """Test that DataLoader caches results within a single request."""
-        query = """
-            query {
-                user1: user(id: "1") {
-                    id
-                    name
-                }
-                user1Again: user(id: "1") {
-                    id
-                    name
-                }
-            }
-        """
-        
-        result = graphql_client.query(query)
-        
-        assert result.errors is None
-        assert result.data["user1"]["id"] == result.data["user1Again"]["id"]
+@pytest.mark.asyncio
+async def test_user_loader_batches_in_order_and_caches_per_context(monkeypatch):
+    calls = []
+    original = UserDataLoader.batch_load_users
+
+    async def record_batch(loader, ids):
+        calls.append(list(ids))
+        return await original(loader, ids)
+
+    monkeypatch.setattr(UserDataLoader, "batch_load_users", record_batch)
+    first = DataLoaderContainer().user_loader
+    users = await first.load_many(["2", "1", "2", "missing"])
+    assert [str(user.id) if user else None for user in users] == ["2", "1", "2", None]
+    assert calls == [["2", "1", "missing"]]
+
+    another = DataLoaderContainer().user_loader
+    assert (await another.load("2")).id == "2"
+    assert calls == [["2", "1", "missing"], ["2"]]
+
+
+@pytest.mark.asyncio
+async def test_posts_loader_preserves_author_order_and_utc_dates():
+    """Post batches retain empty author slots and serialize unambiguous timestamps."""
+    loader = DataLoaderContainer().posts_by_author_loader
+    batches = await loader.load_many(["2", "missing", "1", "2"])
+
+    assert [[str(post.id) for post in posts] for posts in batches] == [
+        ["p3"], [], ["p1", "p2"], ["p3"]
+    ]
+    assert all(
+        post.created_at is not None and post.created_at.utcoffset() == timedelta(0)
+        for posts in batches
+        for post in posts
+    )
 {% endif -%}

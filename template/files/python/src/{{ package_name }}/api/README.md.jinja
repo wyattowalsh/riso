@@ -107,14 +107,16 @@ Settings are loaded from environment variables with `RISO_API_` prefix:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `RISO_API_HOST` | `0.0.0.0` | Server bind address |
+| `RISO_API_HOST` | `127.0.0.1` | Server bind address |
 | `RISO_API_PORT` | `8000` | Server port |
-| `RISO_API_RELOAD` | `true` | Auto-reload (dev only) |
-| `RISO_API_CORS_ORIGINS` | `["http://localhost:3000"]` | CORS origins |
+| `RISO_API_RELOAD` | `false` | Auto-reload outside production |
+| `RISO_API_CORS_ORIGINS` | `["http://localhost:3000"]` outside production, `[]` in production | Allowed CORS origins |
 | `RISO_API_APP_NAME` | `{{ project_name }}` | App name |
 | `RISO_API_VERSION` | `0.1.0` | App version |
 | `RISO_API_LOG_LEVEL` | `INFO` | Log level |
 | `RISO_API_ENVIRONMENT` | `development` | Environment |
+
+Set `RISO_API_CORS_ORIGINS=[]` to disable cross-origin access in any environment.
 
 ### Example .env
 
@@ -226,7 +228,7 @@ docker-compose logs -f api-python
 ### Port in Use
 
 ```bash
-RISO_API_PORT=8001 uv run uvicorn {{ package_name }}.api.main:app
+RISO_API_PORT=8001 uv run --group api_python python -m {{ package_name }}.api.main
 ```
 
 ### CORS Errors
@@ -239,7 +241,7 @@ RISO_API_CORS_ORIGINS=["http://localhost:3000","https://yourdomain.com"]
 ### Import Errors
 
 ```bash
-uv sync --extra api_python
+uv sync --group api_python
 ```
 
 ## Next Steps

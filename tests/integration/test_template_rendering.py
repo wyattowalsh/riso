@@ -1,8 +1,9 @@
 """Integration tests for template rendering."""
 
-import pytest
 from pathlib import Path
 
+import pytest
+import yaml
 
 # Mark all tests in this module as integration tests
 pytestmark = pytest.mark.integration
@@ -25,8 +26,6 @@ class TestDefaultSampleRendering:
 
     def test_default_answers_valid_yaml(self, samples_dir):
         """Default sample answers should be valid YAML."""
-        import yaml
-
         answers_file = samples_dir / "default" / "copier-answers.yml"
         if not answers_file.exists():
             pytest.skip("Default sample not found")
@@ -66,8 +65,6 @@ class TestSampleConfiguration:
 
     def test_api_python_sample_has_correct_languages(self, samples_dir):
         """API Python sample should enable the Python API language."""
-        import yaml
-
         answers_file = samples_dir / "api-python" / "copier-answers.yml"
         if not answers_file.exists():
             pytest.skip("api-python sample not found")
@@ -78,8 +75,6 @@ class TestSampleConfiguration:
 
     def test_full_stack_sample_has_strict_quality(self, samples_dir):
         """Full stack sample should use strict quality profile."""
-        import yaml
-
         answers_file = samples_dir / "full-stack" / "copier-answers.yml"
         if not answers_file.exists():
             pytest.skip("full-stack sample not found")
@@ -89,8 +84,6 @@ class TestSampleConfiguration:
 
     def test_monorepo_samples_have_correct_layout(self, samples_dir):
         """Monorepo samples should have monorepo layout."""
-        import yaml
-
         for sample_name in ["api-monorepo", "changelog-monorepo"]:
             answers_file = samples_dir / sample_name / "copier-answers.yml"
             if not answers_file.exists():
@@ -118,8 +111,6 @@ class TestTemplateFiles:
 
     def test_copier_yml_valid_yaml(self, template_dir):
         """copier.yml should be valid YAML."""
-        import yaml
-
         copier_config = template_dir / "copier.yml"
         content = copier_config.read_text()
         data = yaml.safe_load(content)

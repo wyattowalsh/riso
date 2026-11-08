@@ -24,6 +24,8 @@ from pathlib import Path
 _REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_REPO))
 
+# Resolve repository modules only after the import-path bootstrap above.
+# pylint: disable-next=wrong-import-position
 from scripts.lib.paths import repo_root  # noqa: E402
 
 REPO_ROOT = repo_root()
@@ -49,7 +51,7 @@ except ModuleNotFoundError:
     )
 
 try:
-    import yaml  # noqa: F401 - imported to verify availability
+    __import__("yaml")
 except ImportError:
     logger.error("PyYAML not installed")
     logger.info("Install with: pip install pyyaml")

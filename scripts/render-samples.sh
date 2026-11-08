@@ -142,14 +142,31 @@ def resolve_node_cwd(destination: Path) -> Path | None:
 def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
     api_enabled = as_enabled(config.get("api_module"))
     api_languages = set(as_list(config.get("api_languages")))
+    api_python_enabled = api_enabled and "python" in api_languages
+    api_features = set(as_list(config.get("api_features")))
+    graphql_enabled = api_python_enabled and (
+        "graphql" in api_features or as_enabled(config.get("graphql_api_module"))
+    )
+    websocket_enabled = api_python_enabled and (
+        "websocket" in api_features or as_enabled(config.get("websocket_module"))
+    )
+    mcp_enabled = as_enabled(config.get("mcp_module"))
+    mcp_languages = set(as_list(config.get("mcp_languages")))
+    mcp_python_enabled = mcp_enabled and "python" in mcp_languages
+    mcp_typescript_enabled = mcp_enabled and "typescript" in mcp_languages
     docs_enabled = as_enabled(config.get("docs_module"))
     docs_framework = str(config.get("docs_framework", "none")).lower()
-    quality_profile = str(config.get("quality_profile", "standard")).lower()
-    quality_smoke_enabled = quality_profile != "strict"
     python_cwd = resolve_python_cwd(destination_path)
     node_cwd = resolve_node_cwd(destination_path)
     python_project_ready = python_cwd is not None
     node_install_ready = bool(node_cwd and (node_cwd / "node_modules").exists())
+
+    mcp_python_error = None
+    if mcp_python_enabled:
+        if python_cwd is None:
+            mcp_python_error = "Python MCP selected but no rendered Python project was found."
+        elif not (python_cwd / "tests" / "test_mcp.py").is_file():
+            mcp_python_error = "Python MCP selected but tests/test_mcp.py was not rendered."
 
     docs_command: list[str] | None
     docs_cwd: Path | None = None
@@ -211,7 +228,15 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
     ]
     if as_enabled(config.get("cli_module")):
         api_python_command.extend(["--group", "cli"])
+    if graphql_enabled:
+        api_python_command.extend(["--group", "graphql_api"])
+    if websocket_enabled:
+        api_python_command.extend(["--group", "websocket"])
     api_python_command.extend(["pytest", "tests/api/"])
+    if graphql_enabled:
+        api_python_command.append("tests/graphql/")
+    if websocket_enabled:
+        api_python_command.append("tests/websocket/")
 
     modules: list[dict[str, object]] = [
         {
@@ -232,7 +257,7 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
         },
         {
             "name": "api_python",
-            "enabled": api_enabled and "python" in api_languages and python_project_ready,
+            "enabled": api_python_enabled and python_project_ready,
             "command": api_python_command,
             "cwd": str(python_cwd) if python_cwd else None,
             "skip_reason": "Python API disabled or Python project not rendered.",
@@ -246,9 +271,23 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
         },
         {
             "name": "mcp_module",
-            "enabled": as_enabled(config.get("mcp_module")),
+            "enabled": mcp_enabled,
             "command": None,
-            "skip_reason": "MCP smoke tests pending implementation.",
+            "skip_reason": (
+                "MCP qualification is language-specific. "
+                "Go and Rust qualification remains separate."
+            ),
+        },
+        {
+            "name": "mcp_python_test",
+            "enabled": mcp_python_enabled,
+            "command": [
+                "uv", "run", "--group", "mcp", "--group", "test",
+                "pytest", "tests/test_mcp.py",
+            ],
+            "cwd": str(python_cwd or destination_path),
+            "skip_reason": "Python MCP disabled in prompt answers.",
+            "preflight_error": mcp_python_error,
         },
         {
             "name": "docs",
@@ -265,38 +304,36 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
         },
     ]
     modules.extend(
+        {
+            "name": f"mcp_typescript_{check}",
+            "enabled": mcp_typescript_enabled,
+            "command": [
+                "pnpm", "--filter", "./node/mcp", "--fail-if-no-match", "run", check,
+            ],
+            "cwd": str(node_cwd or destination_path),
+            "skip_reason": "TypeScript MCP disabled in prompt answers.",
+        }
+        for check in ("typecheck", "build", "test", "lint")
+    )
+    modules.extend(
         [
             {
                 "name": "quality_just",
-                "enabled": quality_smoke_enabled
-                and python_project_ready
-                and python_cwd is not None
-                and (python_cwd / "justfile").exists(),
+                "enabled": python_cwd is not None and (python_cwd / "justfile").exists(),
                 "command": ["just", "quality"],
                 "cwd": str(python_cwd),
-                "skip_reason": (
-                    "Strict quality profile skips render smoke; run `just quality` locally."
-                    if not quality_smoke_enabled
-                    else "Just quality scaffold not rendered for this variant."
-                ),
+                "skip_reason": "Just quality scaffold not rendered for this variant.",
             },
             {
                 "name": "quality_make",
-                "enabled": quality_smoke_enabled
-                and python_project_ready
-                and python_cwd is not None
-                and (python_cwd / "Makefile").exists(),
+                "enabled": python_cwd is not None and (python_cwd / "Makefile").exists(),
                 "command": ["make", "quality"],
                 "cwd": str(python_cwd),
-                "skip_reason": (
-                    "Strict quality profile skips render smoke; run `make quality` locally."
-                    if not quality_smoke_enabled
-                    else "Python quality scaffold not rendered for this variant."
-                ),
+                "skip_reason": "Make quality scaffold not rendered for this variant.",
             },
             {
                 "name": "quality_uv_task",
-                "enabled": quality_smoke_enabled and python_project_ready and python_cwd is not None,
+                "enabled": python_project_ready,
                 "command": [
                     "uv",
                     "run",
@@ -308,11 +345,7 @@ def collect_modules(config: dict[str, object]) -> list[dict[str, object]]:
                     "quality",
                 ],
                 "cwd": str(python_cwd) if python_cwd else None,
-                "skip_reason": (
-                    "Strict quality profile skips render smoke; run `uv run task quality` locally."
-                    if not quality_smoke_enabled
-                    else "Python quality scaffold not rendered for this variant."
-                ),
+                "skip_reason": "Python quality scaffold not rendered for this variant.",
             },
         ]
     )
@@ -331,12 +364,16 @@ def expand_command(cmd: list[str], cwd: Path) -> list[str]:
     return expanded
 
 
-def run_command(cmd: list[str], cwd: Path | None = None) -> tuple[str, dict[str, object], float]:
+def run_command(
+    cmd: list[str], cwd: Path | None = None, *, quality_profile: str | None = None
+) -> tuple[str, dict[str, object], float]:
     start_time = time.time()
     workdir = cwd or destination_path
     cmd = expand_command(cmd, workdir)
     child_env = os.environ.copy()
     child_env.pop("VIRTUAL_ENV", None)
+    if quality_profile is not None:
+        child_env["QUALITY_PROFILE"] = quality_profile
     try:
         proc = subprocess.run(
             cmd,
@@ -372,6 +409,7 @@ def run_command(cmd: list[str], cwd: Path | None = None) -> tuple[str, dict[str,
 config = load_answers(answers_file)
 docs_enabled = as_enabled(config.get("docs_module"))
 docs_framework = str(config.get("docs_framework", "none")).lower()
+quality_profile = str(config.get("quality_profile", "standard")).lower()
 modules = collect_modules(config)
 results_dict: dict[str, dict[str, object]] = {}
 
@@ -396,6 +434,7 @@ def module_needs_python(name: str) -> bool:
     if name in {
         "cli",
         "api_python",
+        "mcp_python_test",
         "quality_just",
         "quality_make",
         "quality_uv_task",
@@ -409,7 +448,7 @@ def module_needs_python(name: str) -> bool:
 
 
 def module_needs_node(name: str) -> bool:
-    if name == "api_node":
+    if name == "api_node" or name.startswith("mcp_typescript_"):
         return True
     return (
         name == "docs"
@@ -438,6 +477,9 @@ for module in modules:
             "reason": str(node_bootstrap.get("reason", "Node bootstrap failed")),
         }
         continue
+    if preflight_error := module.get("preflight_error"):
+        results_dict[module_name] = {"status": "error", "reason": preflight_error}
+        continue
     command = module.get("command")
     module_cwd = Path(module.get("cwd", destination_path))
     if not command:
@@ -446,7 +488,8 @@ for module in modules:
             "reason": module.get("skip_reason", "No smoke command configured."),
         }
         continue
-    status, payload, duration = run_command(command, module_cwd)
+    profile = quality_profile if module_name.startswith("quality_") else None
+    status, payload, duration = run_command(command, module_cwd, quality_profile=profile)
     entry: dict[str, object] = {"status": status, "duration": round(duration, 2)}
     # Only include command details for failed/error cases to keep output clean
     if status in ("failed", "error"):
@@ -532,7 +575,12 @@ doc_publish = {
     "recorded_at": completed_at,
 }
 
-write_json(variant_dir / "metadata.json", metadata)
+# Nested variants (saas-starter/<stack>/) keep catalog metadata.json.
+# Dest-smoke timing goes to render-metadata.json for those paths.
+if "/" in variant:
+    write_json(variant_dir / "render-metadata.json", metadata)
+else:
+    write_json(variant_dir / "metadata.json", metadata)
 write_json(variant_dir / "doc-publish.json", doc_publish)
 PY
 }

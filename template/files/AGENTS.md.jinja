@@ -22,8 +22,8 @@ Copier-rendered application scaffold (**{{ project_layout }}**).
 - **Quality profile**: {{ quality_profile }}
 - **Task runner**: {{ task_runner }}
 {% if _python %}- **Python**: 3.11+ via [uv](https://docs.astral.sh/uv/){% endif %}
-{% if _node %}- **Node.js**: 20 LTS via [pnpm](https://pnpm.io/){% endif %}
-- **Toolchain pins**: `mise.toml` always ships (not an extra). After clone: `mise install`. Generated pins: Python 3.11, Node **20** (do not raise to maintainer 22), pnpm, uv.
+{% if _node %}- **Node.js**: 22 LTS via [pnpm](https://pnpm.io/){% endif %}
+- **Toolchain pins**: `mise.toml` always ships (not an extra). After clone: `mise install`. Generated pins: Python 3.11, Node **22**, pnpm, uv.
 - **OpenSpec extra**: `{{ openspec_extra | default('disabled') }}` — optional; **default disabled**. Does not gate mise.
 - **Quality defaults**: **just** (`task_runner`), **ty** (not mypy), **pnpm** for Node. See [DESIGN.md](./DESIGN.md) Tooling table.
 - **CI platform**: {{ ci_platform }}
@@ -68,8 +68,7 @@ Copier-rendered application scaffold (**{{ project_layout }}**).
 | API dev | `uv run uvicorn {{ package_name }}.api.main:app --reload` |
 {% endif %}
 {% if mcp_module == 'enabled' and 'python' in mcp_languages %}
-| Python MCP server | `uv run python -m mcp` |
-| List MCP tools (registry) | `uv run python -c "from shared.mcp import tooling; print(tooling.list_tools())"` |
+| Python MCP server | `uv run --directory python --group mcp python -m {{ package_name }}.mcp` |
 {% endif %}
 {% if docs_module == 'enabled' and docs_framework == 'sphinx-shibuya' %}
 | Build docs | `uv run sphinx-build docs dist/docs` |
@@ -98,7 +97,8 @@ Read [docs/modules/prompt-reference.md](docs/modules/prompt-reference.md) for Co
 1.x → 2.0 answer remaps (`apply` then fail-closed): [docs/upgrade-guide.md](docs/upgrade-guide.md). Use `uv run riso migrate . --dry-run` then `uv run riso update .`. Do not restore removed keys.
 
 {% if ai_tools_module == 'enabled' %}
-Review [docs/ai-tools.md](docs/ai-tools.md) for MCP and multi-agent harness configuration.
+Review [docs/ai-tools.md](docs/ai-tools.md) for MCP, harness configuration, and the
+`wyattowalsh/agents` plugin (`/add-plugin github.com/wyattowalsh/agents`).
 {% endif %}
 
 ## Testing Instructions
@@ -274,7 +274,7 @@ Link out — do not duplicate full module docs here.
 
 {% if _python %}- Python 3.11+ (uv), ruff, **ty** (not mypy), pylint, pytest, coverage, taskipy
 {% endif %}
-{% if _node %}- Node.js 20 LTS, **pnpm**
+{% if _node %}- Node.js 22 LTS, **pnpm**
 {% endif %}
 - mise (`mise.toml` always-on; `mise install`)
 - Task runner: **just** by default (`{{ task_runner }}`); Makefile when selected
@@ -293,7 +293,7 @@ Link out — do not duplicate full module docs here.
 ## Recent Changes
 
 - **Riso 2.0 remaps**: `riso migrate` / `riso update` apply then reject leftovers. See [docs/upgrade-guide.md](docs/upgrade-guide.md).
-- **mise always-on**: generated `mise.toml` (Python 3.11, Node 20, pnpm, uv). Not a Copier extra.
+- **mise always-on**: generated `mise.toml` (Python 3.11, Node 22, pnpm, uv). Not a Copier extra.
 - **OpenSpec extra**: `openspec_extra` default **disabled**; opt in for `openspec/**`.
 - **AI tools module**: Optional MCP + bridge files when `ai_tools_module=enabled`; AGENTS.md is always the instruction SSOT.
 - **Component-first layout**: Enable CLI, API, MCP, docs, and SaaS modules independently via Copier answers.

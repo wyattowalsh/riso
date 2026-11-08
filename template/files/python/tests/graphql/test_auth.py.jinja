@@ -1,54 +1,125 @@
 {% if (graphql_api_module == 'enabled' or 'graphql' in api_features) -%}
-"""GraphQL Authentication Tests - Per-field auth and permissions."""
+"""Test the selected GraphQL routes through their real HTTP integration."""
+
+import runpy
 
 import pytest
-from strawberry.test import BaseGraphQLTestClient
+import strawberry
+import uvicorn
+from fastapi.testclient import TestClient
 
-from {{ package_name }}.graphql_api.schema import schema
+from {{ package_name }}.api import main as api_main
+from {{ package_name }}.api.config import ApiConfig
+from {{ package_name }}.graphql_api import context
+from {{ package_name }}.graphql_api import main as graphql_main
+from {{ package_name }}.graphql_api.auth import permission_required
+from {{ package_name }}.graphql_api.errors import AuthError
+
+_CREATE_USER = """
+    mutation {
+        createUser(input: {name: "Test", email: "test@example.com"}) { name }
+    }
+"""
 
 
-@pytest.fixture
-def graphql_client():
-    """Create GraphQL test client."""
-    return BaseGraphQLTestClient(schema)
+@pytest.mark.parametrize("app", [api_main.app, graphql_main.app], ids=["integrated", "standalone"])
+@pytest.mark.parametrize("headers", [{}, {"Authorization": "Bearer fixture-credential"}])
+def test_graphql_public_query_and_protected_mutation(app, headers):
+    """Both routers allow public fields and deny writes with unverified credentials."""
+    with TestClient(app) as client:
+        public = client.post(
+            "/graphql", json={"query": '{ user(id: "1") { id } }'}, headers=headers
+        )
+        denied = client.post("/graphql", json={"query": _CREATE_USER}, headers=headers)
+
+    assert public.status_code == 200
+    assert public.json() == {"data": {"user": {"id": "1"}}}
+    assert denied.status_code == 200
+    assert denied.json()["errors"][0]["extensions"]["code"] == "AUTH_ERROR"
 
 
-class TestAuthentication:
-    """Test authentication requirements on mutations."""
-    
-    def test_public_query_no_auth_required(self, graphql_client):
-        """Test that queries don't require authentication."""
-        query = """
-            query {
-                user(id: "1") {
-                    id
-                    name
-                }
-            }
-        """
-        
-        result = graphql_client.query(query)
-        
-        # Public queries should work without auth
+def test_graphql_mutation_uses_trusted_validator(monkeypatch):
+    """Only a user verified by the application token validator can execute a write."""
+    credentials = []
+
+    async def validate(credential):
+        credentials.append(credential)
+        if credential != "verified-fixture":
+            raise AuthError("Invalid fixture credentials")
+        return {"id": "fixture-user"}
+
+    monkeypatch.setattr(context, "get_current_user_from_token", validate)
+    with TestClient(api_main.app) as client:
+        responses = [
+            client.post(
+                "/graphql", json={"query": _CREATE_USER}, headers={"Authorization": header}
+            ).json()
+            for header in ("Basic verified-fixture", "bearer rejected-fixture", "Bearer verified-fixture")
+        ]
+
+    assert credentials == ["rejected-fixture", "verified-fixture"]
+    assert all(
+        result["errors"][0]["extensions"] == {"code": "AUTH_ERROR"} for result in responses[:2]
+    )
+    assert responses[2] == {"data": {"createUser": {"name": "Test"}}}
+
+
+@strawberry.type
+class PermissionQuery:
+    """An application field protected by the generated permission decorator."""
+
+    @strawberry.field
+    @permission_required("users:write")
+    async def protected_value(self, info: strawberry.Info) -> str:
+        """Return a value only when the current user has write permission."""
+        return "fixture"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("permissions", "allowed"),
+    [(None, False), (["users:read"], False), ("users:write", False), (["users:write"], True)],
+)
+async def test_graphql_permission_requires_trusted_membership(permissions, allowed):
+    """A trusted permission collection must explicitly contain the requested scope."""
+    user = {"id": "fixture-user"}
+    if permissions is not None:
+        user["permissions"] = permissions
+    result = await strawberry.Schema(query=PermissionQuery).execute(
+        "{ protectedValue }",
+        context_value=context.GraphQLContext(request=None, current_user=user),
+    )
+
+    if allowed:
         assert result.errors is None
-        assert result.data["user"]["id"] == "1"
-    
-    # NOTE: These tests would require auth middleware to be implemented
-    # For now, they serve as documentation of expected behavior
-    
-    # def test_mutation_requires_auth(self, graphql_client):
-    #     """Test that mutations require authentication."""
-    #     mutation = """
-    #         mutation {
-    #             createUser(input: {name: "Test", email: "test@example.com"}) {
-    #                 id
-    #             }
-    #         }
-    #     """
-    #     
-    #     result = graphql_client.query(mutation)
-    #     
-    #     # Should return auth error
-    #     assert result.errors is not None
-    #     assert any("auth" in str(error).lower() for error in result.errors)
+        assert result.data == {"protectedValue": "fixture"}
+    else:
+        assert result.data is None
+        assert result.errors[0].extensions == {"code": "AUTH_ERROR"}
+
+
+@pytest.mark.parametrize(("environment", "status"), [("development", 200), ("production", 404)])
+def test_graphql_playground_requires_development(monkeypatch, environment, status):
+    """A production application ignores the playground opt-in."""
+    monkeypatch.setenv("GRAPHIQL", "1")
+    monkeypatch.setattr(api_main, "get_config", lambda: ApiConfig(environment=environment))
+
+    with TestClient(api_main.create_app()) as client:
+        response = client.get("/graphql", headers={"Accept": "text/html"})
+
+    assert response.status_code == status
+    if status == 200:
+        assert "GraphiQL" in response.text
+
+
+def test_graphql_standalone_development_launch_binds_loopback(monkeypatch):
+    """Launching the development server limits access to the local machine."""
+    launches = []
+    monkeypatch.setattr(uvicorn, "run", lambda target, **options: launches.append((target, options)))
+
+    runpy.run_path(graphql_main.__file__, run_name="__main__")
+
+    assert launches == [
+        ("{{ package_name }}.graphql_api.main:app", {"host": "127.0.0.1", "port": 8000, "reload": True})
+    ]
 {% endif -%}

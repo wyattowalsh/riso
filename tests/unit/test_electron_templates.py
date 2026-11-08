@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -9,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-pytest.importorskip("jinja2")
+jinja2 = pytest.importorskip("jinja2")
 pytest.importorskip("yaml")
 
 
@@ -18,9 +19,7 @@ def create_jinja_env(template_path: Path):
 
     This mimics the filters that copier provides during template rendering.
     """
-    from jinja2 import Environment, FileSystemLoader
-
-    env = Environment(loader=FileSystemLoader(str(template_path)))
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader(str(template_path)))
 
     # Add the strftime filter that copier provides
     def strftime_filter(format_string: str) -> str:
@@ -31,20 +30,20 @@ def create_jinja_env(template_path: Path):
     return env
 
 
-@pytest.fixture
-def template_dir() -> Path:
+@pytest.fixture(name="template_dir")
+def _template_dir() -> Path:
     """Get the template directory."""
     return Path(__file__).parents[2] / "template"
 
 
-@pytest.fixture
-def electron_files_dir(template_dir: Path) -> Path:
+@pytest.fixture(name="electron_files_dir")
+def _electron_files_dir(template_dir: Path) -> Path:
     """Get the Electron template files directory."""
     return template_dir / "files" / "electron"
 
 
-@pytest.fixture
-def base_electron_context() -> dict[str, Any]:
+@pytest.fixture(name="base_electron_context")
+def _base_electron_context() -> dict[str, Any]:
     """Base context for Electron template rendering."""
     return {
         "project_name": "Test Electron App",
@@ -81,28 +80,25 @@ class TestElectronTemplateRendering:
         self, electron_files_dir: Path, base_electron_context: dict[str, Any]
     ):
         """electron.vite.config.ts should render correctly when enabled."""
-
         env = create_jinja_env(electron_files_dir)
         template = env.get_template("electron.vite.config.ts.jinja")
 
         result = template.render(base_electron_context)
 
         # Check for key configuration elements
-        assert "import { resolve } from 'path'" in result
+        assert "import { resolve } from 'node:path'" in result
         assert "defineConfig" in result
-        assert "externalizeDepsPlugin" in result
+        assert "externalizeDeps: { exclude: ['electron-store'] }" in result
+        assert "externalizeDeps: false" in result
         assert "@vitejs/plugin-react" in result
         assert "main:" in result
         assert "preload:" in result
         assert "renderer:" in result
-        assert "tailwindcss" in result
 
     def test_package_json_has_required_dependencies(
         self, electron_files_dir: Path, base_electron_context: dict[str, Any]
     ):
         """package.json should include required Electron dependencies."""
-        import json
-
         env = create_jinja_env(electron_files_dir)
         template = env.get_template("package.json.jinja")
 
@@ -116,7 +112,7 @@ class TestElectronTemplateRendering:
         data = json.loads(result)
 
         # Check basic metadata
-        assert data["name"] == "test-electron-app"
+        assert data["name"] == "test-electron-app-electron"
         assert data["version"] == "0.1.0"
         assert data["main"] == "./out/main/index.js"
 
@@ -183,7 +179,6 @@ class TestElectronTemplateRendering:
         expected_content: str,
     ):
         """auto_updater feature should include updater code."""
-
         env = create_jinja_env(electron_files_dir)
         context = {**base_electron_context, "desktop_features": [feature]}
 
@@ -203,7 +198,6 @@ class TestElectronTemplateRendering:
         self, electron_files_dir: Path, base_electron_context: dict[str, Any]
     ):
         """When auto_updater is not enabled, updater code should not render."""
-
         env = create_jinja_env(electron_files_dir)
         context = {**base_electron_context, "desktop_features": []}
 
@@ -233,7 +227,6 @@ class TestElectronTemplateRendering:
         expected_content: str,
     ):
         """tray_icon feature should include tray code."""
-
         env = create_jinja_env(electron_files_dir)
         context = {**base_electron_context, "desktop_features": [feature]}
 
@@ -253,7 +246,6 @@ class TestElectronTemplateRendering:
         self, electron_files_dir: Path, base_electron_context: dict[str, Any]
     ):
         """When tray_icon is not enabled, tray code should not render."""
-
         env = create_jinja_env(electron_files_dir)
         context = {**base_electron_context, "desktop_features": []}
 
@@ -284,7 +276,6 @@ class TestElectronTemplateRendering:
         component: str,
     ):
         """custom_titlebar feature should include TitleBar component."""
-
         env = create_jinja_env(electron_files_dir)
         context = {**base_electron_context, "desktop_features": [feature]}
 
@@ -298,7 +289,6 @@ class TestElectronTemplateRendering:
         self, electron_files_dir: Path, base_electron_context: dict[str, Any]
     ):
         """When custom_titlebar is not enabled, TitleBar should not render."""
-
         env = create_jinja_env(electron_files_dir)
         context = {**base_electron_context, "desktop_features": []}
 
@@ -311,7 +301,6 @@ class TestElectronTemplateRendering:
         self, electron_files_dir: Path, base_electron_context: dict[str, Any]
     ):
         """TitleBar component should use project name as default title."""
-
         env = create_jinja_env(electron_files_dir)
         context = {
             **base_electron_context,
@@ -329,7 +318,6 @@ class TestElectronTemplateRendering:
         self, electron_files_dir: Path, base_electron_context: dict[str, Any]
     ):
         """TitleBar should detect platform for traffic light positioning."""
-
         env = create_jinja_env(electron_files_dir)
         context = {**base_electron_context, "desktop_features": ["custom_titlebar"]}
 
@@ -352,7 +340,6 @@ class TestElectronBuilderConfiguration:
         self, electron_files_dir: Path, base_electron_context: dict[str, Any]
     ):
         """electron-builder.yml should have basic configuration."""
-
         env = create_jinja_env(electron_files_dir)
         template = env.get_template("electron-builder.yml.jinja")
 
@@ -368,7 +355,6 @@ class TestElectronBuilderConfiguration:
         self, electron_files_dir: Path, base_electron_context: dict[str, Any]
     ):
         """electron-builder.yml should include publish config when auto_updater is enabled."""
-
         env = create_jinja_env(electron_files_dir)
         context = {**base_electron_context, "desktop_features": ["auto_updater"]}
 
@@ -385,7 +371,6 @@ class TestElectronBuilderConfiguration:
         self, electron_files_dir: Path, base_electron_context: dict[str, Any]
     ):
         """electron-builder.yml should not include publish config without auto_updater."""
-
         env = create_jinja_env(electron_files_dir)
         context = {**base_electron_context, "desktop_features": []}
 
@@ -412,7 +397,6 @@ class TestElectronBuilderConfiguration:
         expected_content: str,
     ):
         """electron-builder.yml should include macOS configuration."""
-
         env = create_jinja_env(electron_files_dir)
         context = {**base_electron_context, "desktop_platforms": [platform]}
 
@@ -438,7 +422,6 @@ class TestElectronBuilderConfiguration:
         expected_content: str,
     ):
         """electron-builder.yml should include Windows configuration."""
-
         env = create_jinja_env(electron_files_dir)
         context = {**base_electron_context, "desktop_platforms": [platform]}
 
@@ -465,7 +448,6 @@ class TestElectronBuilderConfiguration:
         expected_content: str,
     ):
         """electron-builder.yml should include Linux configuration."""
-
         env = create_jinja_env(electron_files_dir)
         context = {**base_electron_context, "desktop_platforms": [platform]}
 
@@ -478,7 +460,6 @@ class TestElectronBuilderConfiguration:
         self, electron_files_dir: Path, base_electron_context: dict[str, Any]
     ):
         """electron-builder.yml should support multiple platforms."""
-
         env = create_jinja_env(electron_files_dir)
         context = {
             **base_electron_context,
@@ -501,7 +482,6 @@ class TestElectronFeatureCombinations:
         self, electron_files_dir: Path, base_electron_context: dict[str, Any]
     ):
         """All Electron features should work together."""
-
         env = create_jinja_env(electron_files_dir)
         context = {
             **base_electron_context,
@@ -529,7 +509,6 @@ class TestElectronFeatureCombinations:
         self, electron_files_dir: Path, base_electron_context: dict[str, Any]
     ):
         """Electron should work without optional features."""
-
         env = create_jinja_env(electron_files_dir)
         context = {
             **base_electron_context,
@@ -558,7 +537,6 @@ class TestElectronMainIndex:
         self, electron_files_dir: Path, base_electron_context: dict[str, Any]
     ):
         """Main index.ts should have proper structure."""
-
         env = create_jinja_env(electron_files_dir)
         template = env.get_template("src/main/index.ts.jinja")
 
@@ -580,7 +558,6 @@ class TestElectronMainIndex:
         self, electron_files_dir: Path, base_electron_context: dict[str, Any]
     ):
         """Main index.ts should include security configurations."""
-
         env = create_jinja_env(electron_files_dir)
         template = env.get_template("src/main/index.ts.jinja")
 
@@ -594,7 +571,6 @@ class TestElectronMainIndex:
         self, electron_files_dir: Path, base_electron_context: dict[str, Any]
     ):
         """Main index.ts should conditionally import features."""
-
         env = create_jinja_env(electron_files_dir)
 
         # With auto_updater
@@ -624,9 +600,8 @@ class TestElectronTemplateIntegration:
             mock_copy.return_value = None
             yield mock_copy
 
-    def test_electron_sample_rendering(self, tmp_path: Path):
+    def test_electron_sample_rendering(self):
         """Test that an Electron sample can be rendered successfully."""
-
         template_root = Path(__file__).parents[2] / "template" / "files" / "electron"
         env = create_jinja_env(template_root)
 
@@ -659,7 +634,6 @@ class TestElectronTemplateIntegration:
         self, electron_files_dir: Path, base_electron_context: dict[str, Any]
     ):
         """When desktop_module is disabled, templates should produce no output."""
-
         env = create_jinja_env(electron_files_dir)
         context = {**base_electron_context, "desktop_module": "disabled"}
 
@@ -675,3 +649,62 @@ class TestElectronTemplateIntegration:
             assert result.strip() == "", (
                 f"{template_name} should be empty when disabled"
             )
+
+
+class TestElectronCspAndNavigation:
+    """CSP must not rely on inline scripts; window-open uses the IPC denylist."""
+
+    def test_index_html_loads_theme_init_file(
+        self, electron_files_dir: Path, base_electron_context: dict[str, Any]
+    ) -> None:
+        """Theme bootstrap lives in theme-init.js, not an inline script."""
+        env = create_jinja_env(electron_files_dir)
+        html = env.get_template("src/renderer/index.html.jinja").render(
+            base_electron_context
+        )
+        assert "script-src 'self'" in html
+        assert "theme-init.js" in html
+        assert "localStorage.getItem('theme')" not in html
+
+    def test_theme_init_script_exists(
+        self, electron_files_dir: Path, base_electron_context: dict[str, Any]
+    ) -> None:
+        """External theme-init.js applies the saved theme before paint."""
+        env = create_jinja_env(electron_files_dir)
+        script = env.get_template("src/renderer/public/theme-init.js.jinja").render(
+            base_electron_context
+        )
+        assert "localStorage.getItem('theme')" in script
+        assert "classList.toggle('dark'" in script
+
+    def test_navigation_guard_and_its_runtime_suite_are_shipped(
+        self, electron_files_dir: Path, base_electron_context: dict[str, Any]
+    ) -> None:
+        """The emitted guard and executable regression suite remain wired together."""
+        env = create_jinja_env(electron_files_dir)
+        guard = env.get_template("src/main/url-guard.ts.jinja").render(
+            base_electron_context
+        )
+        assert "isBlockedNavigationUrl" in guard
+        suite = env.get_template("tests/navigation.test.ts.jinja").render(
+            base_electron_context
+        )
+        assert "../src/main/url-guard" in suite
+
+    def test_set_window_open_handler_uses_url_guard(
+        self, electron_files_dir: Path, base_electron_context: dict[str, Any]
+    ) -> None:
+        """Both window-open handlers deny blocked hosts via url-guard."""
+        env = create_jinja_env(electron_files_dir)
+        window = env.get_template("src/main/window.ts.jinja").render(
+            base_electron_context
+        )
+        index = env.get_template("src/main/index.ts.jinja").render(
+            base_electron_context
+        )
+        ipc = env.get_template("src/main/ipc.ts.jinja").render(base_electron_context)
+        for source in (window, index):
+            assert "setWindowOpenHandler" in source
+            assert "isBlockedNavigationUrl" in source
+        assert "navigationBlockReason" in ipc
+        assert "Internal hosts are not allowed" in ipc

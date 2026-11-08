@@ -1,7 +1,11 @@
 """Unit tests for quality_tool_check.py"""
 
-import pytest
+# Imports stay local until pytest fixtures establish the script or hook paths.
+# pylint: disable=import-outside-toplevel
+
 from unittest.mock import MagicMock
+
+import pytest
 
 
 pytestmark = pytest.mark.usefixtures("scripts_hooks_path")
@@ -44,10 +48,9 @@ class TestEnsurePythonQualityTools:
 
     def test_all_tools_present(self, monkeypatch):
         """Should return empty list when all tools present."""
-        from unittest.mock import MagicMock
         import subprocess
 
-        def mock_run(cmd, *args, **kwargs):
+        def mock_run(cmd, *_args, **_kwargs):
             result = MagicMock()
             result.returncode = 0
             result.stdout = "tool 1.0.0"
@@ -70,7 +73,7 @@ class TestEnsurePythonQualityTools:
 
         call_count = [0]
 
-        def mock_run(cmd, *args, **kwargs):
+        def mock_run(cmd, *_args, **_kwargs):
             result = MagicMock()
             call_count[0] += 1
             # First call (version check) fails, second call (install) also fails
@@ -108,7 +111,7 @@ class TestEnsureNodeQualityTools:
             shutil, "which", lambda x: "/usr/bin/pnpm" if x == "pnpm" else None
         )
 
-        def mock_run(cmd, *args, **kwargs):
+        def mock_run(cmd, *_args, **_kwargs):
             result = MagicMock()
             result.returncode = 0
             result.stdout = "8.0.0"
@@ -132,7 +135,7 @@ class TestEnsureNodeQualityTools:
 
         monkeypatch.setattr(shutil, "which", lambda x: None)
 
-        def mock_run(cmd, *args, **kwargs):
+        def mock_run(cmd, *_args, **_kwargs):
             result = MagicMock()
             result.returncode = 1
             result.stdout = ""

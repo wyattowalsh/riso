@@ -39,6 +39,19 @@ function isSaasStackActive(state: Partial<RisoConfig>): boolean {
   );
 }
 
+function shadowsPythonMcpSdk(state: Partial<RisoConfig>): boolean {
+  if (
+    state.mcp_module !== "enabled" ||
+    !(state.mcp_languages ?? ["python"]).includes("python")
+  ) {
+    return false;
+  }
+  const slug =
+    state.project_slug || (state.project_name ?? "").replace(/ /g, "-").toLowerCase();
+  const packageName = state.package_name || slug.replace(/-/g, "_");
+  return packageName === "mcp";
+}
+
 export interface ValidationRule {
   id: string;
   check: (state: Partial<RisoConfig>) => boolean; // true = violation
@@ -65,6 +78,13 @@ export interface ValidationResult {
 }
 
 export const VALIDATION_RULES: ValidationRule[] = [
+  {
+    id: "python-mcp-package-name",
+    check: shadowsPythonMcpSdk,
+    message: "Choose a different package name: mcp is reserved by the Python MCP SDK",
+    severity: "error",
+    affectedFields: ["project_name", "package_name", "mcp_languages"],
+  },
   // ========================================
   // MUTUAL EXCLUSIONS
   // ========================================
@@ -115,9 +135,41 @@ export const VALIDATION_RULES: ValidationRule[] = [
       "Remix works best on Cloudflare Pages/Workers with edge runtime. For Vercel, consider Next.js.",
   },
 
+  {
+    id: "remix-authjs-illegal",
+    check: (s) =>
+      s.saas_auth_module === "enabled" &&
+      s.saas_runtime === "remix-2" &&
+      s.saas_auth_provider === "authjs",
+    message:
+      "Remix does not support Auth.js; choose Clerk or switch to Next.js",
+    severity: "error",
+    affectedFields: ["saas_runtime", "saas_auth_provider"],
+    quickFix: {
+      label: "Use Clerk",
+      apply: () => ({ saas_auth_provider: "clerk" }),
+    },
+    details:
+      "The Remix Auth.js adapter is not shipped. Official Remix samples use Clerk.",
+  },
+
   // ========================================
   // DEPENDENCIES (HARD REQUIREMENTS)
   // ========================================
+  {
+    id: "uploadthing-requires-nextjs-auth",
+    check: (s) =>
+      s.saas_infra_module === "enabled" &&
+      s.saas_file_upload === "uploadthing" &&
+      (s.saas_auth_module !== "enabled" || s.saas_runtime !== "nextjs-16"),
+    message: "Uploadthing requires enabled authentication and Next.js 16",
+    severity: "error",
+    affectedFields: ["saas_file_upload", "saas_auth_module", "saas_runtime"],
+    quickFix: {
+      label: "Use authenticated Next.js",
+      apply: () => ({ saas_auth_module: "enabled", saas_runtime: "nextjs-16" }),
+    },
+  },
   {
     id: "billing-requires-auth",
     check: (s) =>

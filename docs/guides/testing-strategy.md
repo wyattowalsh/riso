@@ -4,7 +4,8 @@ This playbook keeps the template and rendered projects aligned on quality
 expectations. Coverage floors are **not** the same in both trees:
 
 - **Maintainer repo** (`riso/`): `--cov-fail-under=70` via `just ci-full`.
-- **Rendered Python packages**: `--cov-fail-under=90` (strict sample profiles).
+- **Rendered Python packages**: generated `coverage.cfg` currently selects 90%
+  with a Python CLI and 85% otherwise; explicit CI arguments can impose 90%.
 
 Treat the floor that applies to the tree you are changing as
 non-negotiable—changes that reduce coverage must ship with offsetting test
@@ -36,13 +37,14 @@ just quality
 uv run pytest --cov --cov-report=term-missing --cov-fail-under=70
 ```
 
-### Inside a rendered project (`samples/*/render/`)
+### Inside a rendered Python package
 
 ```bash
 # Render + sync env
-./scripts/render-samples.sh
-cd samples/default/render
-uv sync
+./scripts/render-samples.sh --variant api-python \
+  --answers samples/api-python/copier-answers.yml
+cd samples/api-python/render/python
+uv sync --group quality --group test --group api_python --group api_python_test
 
 # Fast feedback (lint + type + unit tests + coverage)
 just quality
@@ -50,8 +52,8 @@ just quality
 # or, when no aggregator is present
 QUALITY_PROFILE=standard uv run task quality
 
-# Explicit coverage visualization with hard gate
-uv run pytest --cov --cov-report=term-missing --cov-report=xml --cov-fail-under=90
+# Coverage visualization with the package's configured hard gate
+uv run pytest --cov --cov-config=coverage.cfg --cov-report=term-missing --cov-report=xml
 
 # Integration and e2e passes with coverage emitted for combination
 uv run coverage run -m pytest tests/integration
@@ -70,9 +72,76 @@ uv run coverage xml
   Typer changes stay tracked.
 - When excluding lines (e.g., platform guards), add inline comments explaining
   the rationale and confirm coverage stays above the floor.
-- Prefer `coverage.lcov` generation when Node tracks are enabled so browsers
-  (Vitest) and Python data can be combined via `coverage combine` and reported
-  through a single Cobertura file.
+- Keep Vitest and Python coverage reports separate. `coverage combine` accepts
+  coverage.py data files, not Node LCOV reports; combine cross-language reports
+  only with a reporting service that explicitly supports both formats.
+
+## Generated runtime qualification
+
+A successful render establishes that Copier emitted a project. Qualify each
+enabled runtime with its own compiler and tools, and record the actual toolchain
+version separately from a declared minimum version. A compiler-only `go test`
+result reporting `[no test files]` does not establish behavioral coverage.
+
+For a TypeScript MCP workspace, run these commands from the rendered root after
+installing its dependencies with the declared pnpm version:
+
+```bash
+pnpm --filter ./node/mcp --fail-if-no-match run typecheck
+pnpm --filter ./node/mcp --fail-if-no-match run build
+pnpm --filter ./node/mcp --fail-if-no-match run test
+pnpm --filter ./node/mcp --fail-if-no-match run lint
+pnpm audit
+```
+
+The MCP package currently requires at least 22.19 on Node 22. A workspace with release
+automation also has to satisfy semantic-release's declared Node range. Check the
+generated `engines` field rather than treating all Node 22 patch versions as
+equivalent.
+
+The Fastify workspace's test tooling requires at least 22.12 on Node 22. Its health
+tests run inside the process; also run the workspace's `typecheck` and `build`
+scripts, since a passing Vitest run does not check the production type build.
+Verify the built package entry with Node after `pnpm --filter api-node --prod deploy <output>` for both plain and shared-logic builds.
+
+When the Python API selects GraphQL or WebSocket support, the sample renderer
+runs the corresponding `tests/graphql/` or `tests/websocket/` suite with its
+dependency group. Check both GraphQL entry points and an in-memory WebSocket
+handshake when changing the routes. The sample renderer also runs generated
+quality with the sample's declared profile, including strict branch coverage.
+
+For Python MCP, run `uv run --group mcp python -m <package>.mcp --help` from
+`render/python/` and qualify an installed copy outside the source tree. The
+generated server lives under the project package and imports the separate MCP SDK.
+Choose a Python package name other than `mcp`. The Riso CLI and wizard enforce
+this; when using Copier directly, choose a project name that produces a different
+package name.
+
+In an enabled Go module, run `go work edit -json`, `gofmt -l .`, `go build ./...`,
+`go test ./...`, and `go vet ./...`. Formatter output must be empty. The Go MCP
+project is a nested module under `go/mcp/`; check it separately. Keep the
+generated workspace enabled during qualification.
+
+In each enabled Rust crate, run the following. Run the MCP crate under
+`rust/mcp/` separately. The selected build toolchain and Cargo's `rust-version`
+minimum serve different purposes; testing a newer compiler does not prove that
+minimum.
+
+```bash
+cargo fmt --all -- --check
+cargo check --all-targets
+cargo test --all-targets
+cargo clippy --all-targets -- -D warnings
+```
+
+For Fumadocs, use the `docs-fumadocs` workspace's `lint`, `typecheck`, and `build`
+scripts and audit its complete workspace dependency graph. Check the full-feature
+variant as well as the default, since OpenAPI, math, and diagram features add
+different dependency consumers.
+
+Keep partial sample results separate from full-matrix acceptance. Disabled,
+unavailable, or unimplemented checks must remain explicit skips; they cannot be
+reported as passed runtime qualification.
 
 ## Matrix and parity
 

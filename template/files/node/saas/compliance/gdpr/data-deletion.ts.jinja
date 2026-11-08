@@ -12,6 +12,16 @@ import { prisma } from '@/lib/prisma';
 import { db } from '@/lib/db';
 {% endif %}
 
+class GdprDrizzleNotImplementedError extends Error {
+  constructor(operation: string) {
+    super(
+      `GDPR ${operation} is implemented for Prisma only. ` +
+        'The Drizzle path is an EXTENSION POINT: implement db.select()/delete() here, or set saas_orm=prisma.'
+    );
+    this.name = 'GdprDrizzleNotImplementedError';
+  }
+}
+
 export interface DeletionOptions {
   gracePeriodDays?: number;      // Days before permanent deletion (default: 30)
   notifyUser?: boolean;            // Send deletion confirmation email
@@ -90,7 +100,7 @@ export async function deleteUserAccount(
     };
 {% elif saas_orm == "drizzle" %}
     // TODO: Implement with Drizzle ORM
-    throw new Error('Drizzle implementation pending');
+    throw new GdprDrizzleNotImplementedError('account deletion');
 {% endif %}
   } catch (error) {
     console.error('Account deletion request failed:', error);
@@ -150,7 +160,7 @@ export async function cancelDeletion(userId: string): Promise<DeletionResult> {
       message: 'Account deletion cancelled successfully',
     };
 {% elif saas_orm == "drizzle" %}
-    throw new Error('Drizzle implementation pending');
+    throw new GdprDrizzleNotImplementedError('account deletion');
 {% endif %}
   } catch (error) {
     console.error('Deletion cancellation failed:', error);
@@ -246,8 +256,7 @@ export async function executePermanentDeletion(
     });
   });
 {% elif saas_orm == "drizzle" %}
-  // TODO: Implement with Drizzle ORM
-  throw new Error('Drizzle implementation pending');
+  throw new GdprDrizzleNotImplementedError('permanent deletion');
 {% endif %}
 }
 

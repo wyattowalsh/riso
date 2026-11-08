@@ -5,8 +5,27 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from {{ package_name }}.websocket import ConnectionManager
+from {{ package_name }}.websocket import ConnectionManager, config
+from {{ package_name }}.websocket import manager as manager_module
 from {{ package_name }}.websocket.config import reset_config
+
+
+@pytest.fixture(name="isolated_manager")
+def _isolated_manager(monkeypatch: pytest.MonkeyPatch) -> ConnectionManager:
+    """Create a separate connection registry with deterministic test settings."""
+    monkeypatch.setattr(ConnectionManager, "_instance", None)
+    monkeypatch.setattr(manager_module, "_manager", None)
+    settings = config.WebSocketConfig(
+        _env_file=None,
+        environment="development",
+        websocket_origins=[],
+        enable_demo_endpoints=True,
+        enable_heartbeat=False,
+        enable_idle_timeout=False,
+        max_connections_per_ip=1,
+    )
+    monkeypatch.setattr(config, "_config", settings)
+    return ConnectionManager()
 
 
 @pytest.fixture

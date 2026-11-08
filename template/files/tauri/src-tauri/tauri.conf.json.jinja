@@ -1,4 +1,6 @@
 {% if desktop_module == "enabled" and desktop_framework == "tauri" %}
+{% set enable_updater = desktop_features is defined and 'auto_updater' in desktop_features %}
+{% set enable_deep_link = desktop_features is defined and 'deep_linking' in desktop_features %}
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "{{ project_name }}",
@@ -36,8 +38,7 @@
           "$RESOURCE/**"
         ]
       }
-    }{% if desktop_features is defined and 'deep_linking' in desktop_features %},
-    "macOSPrivateApi": true{% endif %}
+    }
   },
   "bundle": {
     "active": true,
@@ -68,15 +69,7 @@
       "exceptionDomain": "",
       "frameworks": [],
       "providerShortName": null,
-      "signingIdentity": null{% if desktop_features is defined and 'deep_linking' in desktop_features %},
-      "infoString": {
-        "CFBundleURLTypes": [
-          {
-            "CFBundleURLName": "{{ project_slug }}",
-            "CFBundleURLSchemes": ["{{ project_slug }}"]
-          }
-        ]
-      }{% endif %}
+      "signingIdentity": null
     },
     {% endif %}
     {% if 'windows' in desktop_platforms | default(['mac', 'windows', 'linux']) %}
@@ -111,13 +104,20 @@
     "shortDescription": "{{ project_description | default(project_name) }}",
     "longDescription": "{{ project_description | default(project_name ~ ' - A cross-platform desktop application built with Tauri') }}"{% if desktop_features is defined and 'auto_updater' in desktop_features %},
     "createUpdaterArtifacts": true{% endif %}
-  }{% if desktop_features is defined and 'auto_updater' in desktop_features %},
+  }{% if enable_updater or enable_deep_link %},
   "plugins": {
+    {% if enable_updater %}
     "updater": {
       {# Replace pubkey + endpoints before enabling production auto-update. #}
       "pubkey": "",
       "endpoints": []
+    }{% if enable_deep_link %},{% endif %}
+    {% endif %}
+    {% if enable_deep_link %}
+    "deep-link": {
+      "desktop": { "schemes": ["{{ project_slug }}"] }
     }
+    {% endif %}
   }{% endif %}
 }
 

@@ -1,4 +1,4 @@
-{% if cli_module == 'enabled' and 'rust' in cli_languages %}
+{% if cli_module == 'enabled' and 'rust' in cli_languages -%}
 //! CLI integration tests
 
 #[cfg(test)]
@@ -8,19 +8,22 @@ mod tests {
     #[test]
     fn test_cli_help() {
         let output = Command::new("cargo")
-            .args(&["run", "--bin", "{{ package_name }}", "--", "--help"])
+            .args(["run", "--bin", "{{ package_name }}", "--", "--help"])
             .output()
             .expect("Failed to execute command");
 
         assert!(output.status.success());
         let stdout = String::from_utf8_lossy(&output.stdout);
-        assert!(stdout.contains("{{ project_name }}"));
+        assert!(stdout.contains("Usage: {{ package_name }} [OPTIONS] <COMMAND>"));
+        assert!(stdout.contains("hello"));
+        assert!(stdout.contains("--help"));
+        assert!(stdout.contains("--version"));
     }
 
     #[test]
     fn test_cli_version() {
         let output = Command::new("cargo")
-            .args(&["run", "--bin", "{{ package_name }}", "--", "--version"])
+            .args(["run", "--bin", "{{ package_name }}", "--", "--version"])
             .output()
             .expect("Failed to execute command");
 
@@ -30,7 +33,7 @@ mod tests {
     #[test]
     fn test_hello_command() {
         let output = Command::new("cargo")
-            .args(&["run", "--bin", "{{ package_name }}", "--", "hello", "Test"])
+            .args(["run", "--bin", "{{ package_name }}", "--", "hello", "Test"])
             .output()
             .expect("Failed to execute command");
 
@@ -39,4 +42,4 @@ mod tests {
         assert!(stdout.contains("Hello"));
     }
 }
-{% endif %}
+{% endif -%}

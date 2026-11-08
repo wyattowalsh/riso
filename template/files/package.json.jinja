@@ -4,7 +4,6 @@
   "version": "0.1.0",
   "description": "{{ project_name }}",
   "private": true,
-{% if project_layout == "monorepo" or (mcp_module == "enabled" and "typescript" in mcp_languages) %}
 {%- set _ws = [] -%}
 {%- if api_module == 'enabled' and 'node' in api_languages -%}
 {%- set _ = _ws.append("node/apps/api-node") -%}
@@ -18,9 +17,19 @@
 {%- if mcp_module == "enabled" and "typescript" in mcp_languages -%}
 {%- set _ = _ws.append("node/mcp") -%}
 {%- endif -%}
+{%- if saas_infra_module == "enabled" -%}
+{%- set _ = _ws.append("node/saas") -%}
+{%- endif -%}
 {%- if project_layout == "monorepo" -%}
 {%- set _ = _ws.append("node/packages/*") -%}
+{%- endif -%}
+{%- if desktop_module == "enabled" and desktop_framework == "electron-vite" -%}
+{%- set _ = _ws.append("electron") -%}
+{%- endif -%}
+{%- if desktop_module == "enabled" and desktop_framework == "tauri" -%}
+{%- set _ = _ws.append("tauri") -%}
 {%- endif %}
+{% if _ws %}
   "workspaces": [
 {%- for member in _ws %}
     "{{ member }}"{% if not loop.last %},{% endif %}
@@ -84,9 +93,64 @@
     }
   },
 {% endif %}
+{# Use the highest enabled Node 22 floor. Node tests, docs and release exclude Node 23;
+   the desktop test runner also excludes Node 25. #}
+{% set _fumadocs = docs_module == 'enabled' and docs_framework == 'fumadocs' -%}
+{% set _docusaurus = docs_module == 'enabled' and docs_framework == 'docusaurus' -%}
+{% set _mcp_ts = mcp_module == 'enabled' and 'typescript' in mcp_languages -%}
+{% set _desktop = desktop_module == 'enabled' -%}
+{% set _release = changelog_module == 'enabled' -%}
+{% set _api_node = api_module == 'enabled' and 'node' in api_languages -%}
+{% set _node22 = ('22.22.0' if _fumadocs else '22.19.0' if _mcp_ts else '22.14.0' if _release
+                  else '22.13.0' if _docusaurus or _desktop else '22.12.0' if _api_node else '22.0.0') -%}
+{% set _node24 = '24.10.0' if _release else '24.0.0' -%}
+{% if _desktop -%}
+{% set _node_range = '^' ~ _node22 ~ ' || ^' ~ _node24 ~ ' || >=26.0.0' -%}
+{% elif _fumadocs or _docusaurus or _release or _api_node or _mcp_ts -%}
+{% set _node_range = '^' ~ _node22 ~ ' || >=' ~ _node24 -%}
+{% else -%}
+{% set _node_range = '>=' ~ _node22 -%}
+{% endif %}
   "engines": {
-    "node": ">=20.0.0",
+    "node": "{{ _node_range }}",
     "pnpm": ">=9.0.0"
+  },
+{# GHSA-g3hv-75wg-m249 has no patched minimatch 10.x. This lint consumer retains the 11.x APIs it uses. #}
+{# tsup 8's build API works with esbuild 0.28.2, which fixes GHSA-g7r4-m6w7-qqqr. #}
+  "pnpm": {
+    "overrides": {
+      "@typescript-eslint/typescript-estree@8>minimatch": "11.0.1",
+      "tsup@8>esbuild": "0.28.2",
+      "mermaid@11.17.2>katex": "0.18.2",
+      "rehype-katex@7.0.1>katex": "0.18.2",
+      "micromark-extension-math@3.1.0>katex": "0.18.2",
+      "@scalar/json-magic@0.13.5>undici": "7.30.2"
+{%- if docs_module == 'enabled' and docs_framework == 'docusaurus' %},
+      "@docusaurus/core@3.10.2>tinypool": "2.1.2",
+      "copy-webpack-plugin@11.0.0>serialize-javascript": "7.1.3",
+      "css-minimizer-webpack-plugin@5.0.1>serialize-javascript": "7.1.3",
+      "openapi-to-postmanv2@6.4.2>yaml": "1.10.3",
+      "oas-resolver-browser@2.5.6>yaml": "1.10.3",
+      "openapi-to-postmanv2@6.4.2>js-yaml": "4.3.2",
+      "postman-collection@5.3.1>uuid": "11.1.1",
+      "sockjs@0.3.24>uuid": "11.1.1",
+      "@docusaurus/lqip-loader@3.10.2>sharp": "0.35.5",
+      "@docusaurus/plugin-ideal-image@3.10.2>sharp": "0.35.5",
+      "docusaurus-plugin-llms@0.4.0>minimatch": "11.0.1",
+      "@svgr/plugin-svgo@8.1.0>deepmerge": "-"
+{%- endif %}
+{%- if _desktop %},
+      "eslint@10>minimatch": "11.0.1",
+      "@eslint/config-array@0.23>minimatch": "11.0.1",
+      "@electron/universal@2>minimatch": "11.0.1",
+      "app-builder-lib@26>minimatch": "11.0.1"
+{%- endif %}
+    }
+{# The published package already bundles the language index and declares the
+   runtime dependencies. Its postinstall starts independent unlocked installs. #}
+{%- if _docusaurus and docusaurus_openapi | default('disabled') == 'enabled' and api_module == 'enabled' and api_languages %},
+    "neverBuiltDependencies": ["postman-code-generators"]
+{%- endif %}
   },
   "packageManager": "pnpm@9.15.0"
 }

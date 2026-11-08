@@ -1,5 +1,8 @@
 """Unit tests for validate_workflows.py"""
 
+# Imports stay local until pytest fixtures establish the script or hook paths.
+# pylint: disable=import-outside-toplevel
+
 import json
 import subprocess
 from unittest.mock import MagicMock
@@ -27,7 +30,7 @@ jobs:
       - uses: actions/checkout@v4
 """)
 
-        def mock_run(*args, **kwargs):
+        def mock_run(*_args, **_kwargs):
             result = MagicMock()
             result.returncode = 0
             result.stdout = ""
@@ -57,7 +60,7 @@ jobs:
       - run: echo test
 """)
 
-        def mock_run(*args, **kwargs):
+        def mock_run(*_args, **_kwargs):
             result = MagicMock()
             result.returncode = 1
             result.stdout = json.dumps(
@@ -133,7 +136,7 @@ jobs:
             "name: Test\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n"
         )
 
-        def mock_run(*args, **kwargs):
+        def mock_run(*_args, **_kwargs):
             result = MagicMock()
             result.returncode = 1
             result.stdout = "Some error message that is not JSON"
@@ -160,7 +163,7 @@ class TestValidateWorkflows:
         workflows_dir.mkdir(parents=True)
         (workflows_dir / "test.yml").write_text("name: Test\n")
 
-        def mock_run(*args, **kwargs):
+        def mock_run(*_args, **_kwargs):
             result = MagicMock()
             result.returncode = 0
             result.stdout = ""
@@ -181,7 +184,7 @@ class TestValidateWorkflows:
         workflows_dir.mkdir(parents=True)
         (workflows_dir / "test.yaml").write_text("name: Test\n")
 
-        def mock_run(*args, **kwargs):
+        def mock_run(*_args, **_kwargs):
             result = MagicMock()
             result.returncode = 0
             result.stdout = ""
@@ -224,7 +227,7 @@ class TestValidateWorkflows:
 
         call_count = {"count": 0}
 
-        def mock_run(*args, **kwargs):
+        def mock_run(*_args, **_kwargs):
             result = MagicMock()
             # First call passes, second fails
             if call_count["count"] == 0:
@@ -253,7 +256,7 @@ class TestValidateWorkflows:
         workflows_dir.mkdir()
         (workflows_dir / "test.yml").write_text("name: Test\n")
 
-        def mock_run(*args, **kwargs):
+        def mock_run(*_args, **_kwargs):
             result = MagicMock()
             result.returncode = 0
             result.stdout = ""
@@ -282,7 +285,7 @@ class TestValidateWorkflows:
         (workflows_dir / "test1.yml").write_text("name: Test1\n")
         (workflows_dir / "test2.yaml").write_text("name: Test2\n")
 
-        def mock_run(*args, **kwargs):
+        def mock_run(*_args, **_kwargs):
             result = MagicMock()
             result.returncode = 0
             result.stdout = ""
@@ -304,7 +307,7 @@ class TestMain:
 
     def test_main_with_valid_dir(self, temp_dir, monkeypatch):
         """Should validate workflows in directory."""
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import patch
         import validate_workflows
 
         workflows_dir = temp_dir / "workflows"
@@ -313,7 +316,7 @@ class TestMain:
             "name: Test\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi"
         )
 
-        def mock_run(*args, **kwargs):
+        def mock_run(*_args, **_kwargs):
             result = MagicMock()
             result.returncode = 0
             result.stdout = ""
@@ -328,14 +331,14 @@ class TestMain:
 
     def test_main_with_json_output(self, temp_dir, monkeypatch):
         """Should output JSON when --json flag used."""
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import patch
         import validate_workflows
 
         workflows_dir = temp_dir / "workflows"
         workflows_dir.mkdir()
         (workflows_dir / "test.yml").write_text("name: Test")
 
-        def mock_run(*args, **kwargs):
+        def mock_run(*_args, **_kwargs):
             result = MagicMock()
             result.returncode = 0
             result.stdout = ""
@@ -349,18 +352,18 @@ class TestMain:
         assert result == 0
 
 
+# Pytest groups this behavior in a focused test class.
 @pytest.mark.unit
-class TestNonJsonErrors:
+class TestNonJsonErrors:  # pylint: disable=too-few-public-methods
     """Tests for non-JSON error handling."""
 
     def test_handles_non_json_actionlint_output(self, temp_dir, monkeypatch):
         """Should handle non-JSON actionlint output gracefully."""
-        from unittest.mock import MagicMock
 
         workflow = temp_dir / "test.yml"
         workflow.write_text("name: Test")
 
-        def mock_run(*args, **kwargs):
+        def mock_run(*_args, **_kwargs):
             result = MagicMock()
             result.returncode = 1
             result.stdout = "Some plain text error\nAnother error line"

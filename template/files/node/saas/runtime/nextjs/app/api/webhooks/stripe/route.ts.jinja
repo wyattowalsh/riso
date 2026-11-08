@@ -1,0 +1,20 @@
+{% if saas_infra_module == "enabled" and saas_billing_module == "enabled" and saas_billing_provider == "stripe" and saas_runtime == "nextjs-16" %}
+import { NextResponse } from 'next/server';
+import { processWebhook } from '@/integrations/billing/service';
+
+export async function POST(request: Request) {
+  const payload = await request.text();
+  const signature = request.headers.get('stripe-signature');
+
+  if (!signature) {
+    return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
+  }
+
+  try {
+    await processWebhook(payload, signature);
+    return NextResponse.json({ received: true });
+  } catch {
+    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 400 });
+  }
+}
+{% endif %}

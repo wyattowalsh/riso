@@ -27,12 +27,14 @@ WEB_OUTPUT = REPO_ROOT / "web" / "src" / "data" / "matrix-data.json"
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
+    """Read optional YAML data, returning an empty mapping when absent."""
     if not path.exists():
         raise FileNotFoundError(f"Missing required file: {path}")
     return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 
 
 def load_json(path: Path) -> dict[str, Any] | None:
+    """Read optional JSON data, returning an empty mapping when absent."""
     if not path.exists():
         return None
     return json.loads(path.read_text(encoding="utf-8"))
@@ -44,10 +46,12 @@ def template_defaults_block(copier_data: dict[str, Any]) -> dict[str, Any]:
 
 
 def template_metadata(copier_data: dict[str, Any]) -> dict[str, Any]:
+    """Extract the metadata block from the Copier configuration."""
     return dict(copier_data.get("_metadata", copier_data.get("metadata", {})) or {})
 
 
 def normalize_prompt(key: str, prompt: Any, defaults: dict[str, Any]) -> dict[str, Any]:
+    """Build a prompt row with effective defaults and consistent fields."""
     if not isinstance(prompt, dict):
         return {
             "key": key,
@@ -71,6 +75,7 @@ def normalize_prompt(key: str, prompt: Any, defaults: dict[str, Any]) -> dict[st
 
 
 def collect_prompts(template_path: Path) -> dict[str, Any]:
+    """Combine Copier prompts with evaluated defaults and template metadata."""
     copier_data = load_copier_config(template_path)
     raw_defaults = template_defaults_block(copier_data)
     effective_defaults = get_defaults(template_path)
@@ -94,6 +99,7 @@ def collect_prompts(template_path: Path) -> dict[str, Any]:
 
 
 def collect_samples(render_matrix: dict[str, Any] | None) -> dict[str, Any]:
+    """Use render evidence or discover sample answer files for matrix rows."""
     if render_matrix:
         return {
             "source": str(RENDER_MATRIX),
@@ -125,6 +131,7 @@ def collect_samples(render_matrix: dict[str, Any] | None) -> dict[str, Any]:
 
 
 def main() -> None:
+    """Generate the web matrix snapshot from template and sample metadata."""
     METADATA_DIR.mkdir(parents=True, exist_ok=True)
 
     render_matrix = load_json(RENDER_MATRIX)

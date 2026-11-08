@@ -5,6 +5,16 @@
 
 **Stack**: {{ saas_runtime | upper }} + {{ saas_hosting | upper }} + {{ saas_database | upper }} + {{ saas_orm | upper }}
 
+{% if saas_runtime == "remix-2" %}
+> [!WARNING]
+> Remix runtime is comparison/root only. Next.js is the supported SaaS UI.
+> `riso validate` rejects Remix + Auth.js; official Remix samples use Clerk.
+{% endif %}
+{% if saas_enterprise_bridge == "workos" %}
+> [!NOTE]
+> WorkOS is schema/dependency only in this template. SSO/SCIM UI is an extension point.
+{% endif %}
+
 ## Quick Start
 
 ```bash
@@ -116,8 +126,8 @@ Required environment variables are documented in `.env.example`. Copy it to `.en
 - `CLERK_SECRET_KEY`
 {% elif saas_auth_provider == "authjs" %}
 ### Auth.js
-- `NEXTAUTH_SECRET`
-- `NEXTAUTH_URL`
+- `AUTH_SECRET`
+- `AUTH_URL`
 {% endif %}
 
 ### Database

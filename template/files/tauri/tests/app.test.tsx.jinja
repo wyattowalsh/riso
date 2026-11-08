@@ -1,0 +1,49 @@
+{% if desktop_module == "enabled" and desktop_framework == "tauri" %}
+// @vitest-environment happy-dom
+import '@testing-library/jest-dom/vitest';
+import { invoke } from '@tauri-apps/api/core';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, it, vi } from 'vitest';
+import App from '../src/App';
+
+vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
+{% if desktop_features is defined and 'custom_titlebar' in desktop_features %}
+vi.mock('../src/components/TitleBar', () => ({ default: () => null }));
+{% endif %}
+{% if desktop_features is defined and 'auto_updater' in desktop_features %}
+vi.mock('../src/components/UpdateChecker', () => ({ default: () => null }));
+{% endif %}
+
+afterEach(() => {
+  cleanup();
+  vi.resetAllMocks();
+  vi.restoreAllMocks();
+});
+
+it('submits the entered name to the Rust command and announces the result', async () => {
+  vi.mocked(invoke).mockImplementation(async (command) =>
+    command === 'greet' ? 'Hello, Ada!' : { success: false },
+  );
+  render(<App />);
+  fireEvent.change(screen.getByLabelText('Enter your name'), { target: { value: 'Ada' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Greet from Rust!' }));
+
+  expect(invoke).toHaveBeenCalledWith('greet', { name: 'Ada' });
+  expect(await screen.findByRole('status')).toHaveTextContent('Hello, Ada!');
+});
+
+it('reports a rejected IPC request when submitting with Enter', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.mocked(invoke).mockImplementation(async (command) => {
+    if (command === 'greet') throw new Error('unavailable');
+    return { success: false };
+  });
+  render(<App />);
+  const input = screen.getByLabelText('Enter your name');
+  fireEvent.change(input, { target: { value: 'Ada' } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+
+  expect(invoke).toHaveBeenCalledWith('greet', { name: 'Ada' });
+  expect(await screen.findByRole('status')).toHaveTextContent('Failed to call Rust backend');
+});
+{% endif %}

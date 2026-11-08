@@ -16,6 +16,7 @@ pytestmark = pytest.mark.usefixtures("ci_scripts_path")
 
 
 def copy_skill_fixture(tmp_path):
+    """Create matching release-readiness skill trees for isolated checks."""
     source = tmp_path / ".agents" / "skills" / "riso-release-readiness"
     mirror = tmp_path / ".claude" / "skills" / "riso-release-readiness"
     for directory in (source, mirror):
@@ -46,12 +47,14 @@ def copy_skill_fixture(tmp_path):
 
 
 def test_validate_skill_mirror_accepts_matching_fixture(tmp_path):
+    """Matching skill trees pass the mirror validation."""
     source, mirror = copy_skill_fixture(tmp_path)
 
     assert validate_skill_mirror(source, mirror) == []
 
 
 def test_validate_skill_mirror_reports_mismatch(tmp_path):
+    """Changed mirror content is identified by its relative path."""
     source, mirror = copy_skill_fixture(tmp_path)
     (mirror / "references" / "release-gates.md").write_text("changed\n")
 
@@ -62,6 +65,7 @@ def test_validate_skill_mirror_reports_mismatch(tmp_path):
 
 
 def test_validate_frontmatter_requires_name(tmp_path):
+    """Missing skill identity produces an explicit frontmatter error."""
     skill = tmp_path / "SKILL.md"
     skill.write_text("---\ndescription: Missing name.\n---\n\n# Body\n")
 
@@ -71,10 +75,12 @@ def test_validate_frontmatter_requires_name(tmp_path):
 
 
 def test_repository_skill_mirror_is_valid():
+    """The checked-in release-readiness skill mirrors remain identical."""
     assert validate_skill_mirror() == []
 
 
 def test_validate_policy_contract_rejects_do_not_convert(tmp_path):
+    """Conflicting conversion policy and missing removed keys are rejected."""
     policy = tmp_path / "no-legacy-answer-policy.md"
     policy.write_text(
         "Do not convert removed keys into canonical keys.\n"

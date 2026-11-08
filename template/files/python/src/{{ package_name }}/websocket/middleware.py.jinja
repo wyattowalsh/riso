@@ -2,11 +2,12 @@
 """WebSocket middleware for cross-cutting concerns."""
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from importlib import import_module
 
-from fastapi import Request
 from loguru import logger
+from starlette.requests import HTTPConnection
 
+from {{ package_name }}.websocket.connection import WebSocketConnection
 from {{ package_name }}.websocket.models import Message
 
 
@@ -17,8 +18,9 @@ class ConnectionMiddleware(ABC):
     Middleware can intercept connection lifecycle events and messages
     for cross-cutting concerns like authentication, logging, metrics, etc.
 
-    Middleware is executed sequentially in registration order.
-    If any middleware raises an exception, the request is rejected.
+    Middleware hooks run sequentially in registration order and stop on failure.
+    Admission and message failures reject the operation. Errors in notification
+    or teardown hooks do not prevent connection cleanup.
 
     Example:
         ```python
@@ -26,7 +28,7 @@ class ConnectionMiddleware(ABC):
             async def on_connect(self, connection, request):
                 logger.info(f"Connection from {request.client.host}")
                 return {"ip": request.client.host}
-            
+
             async def on_message(self, connection, message):
                 logger.debug(f"Message: {message.type}")
                 return message
@@ -36,15 +38,15 @@ class ConnectionMiddleware(ABC):
     @abstractmethod
     async def on_connect(
         self,
-        connection: "WebSocketConnection",  # type: ignore  # Forward reference
-        request: Request,
-    ) -> Optional[dict]:
+        connection: WebSocketConnection,
+        request: HTTPConnection,
+    ) -> dict | None:
         """
         Called when connection is established (before accept()).
 
         Args:
             connection: WebSocketConnection instance
-            request: FastAPI Request instance
+            request: WebSocket handshake context with headers, cookies, and query parameters
 
         Returns:
             Optional[dict]: Metadata to merge into connection.metadata
@@ -57,12 +59,12 @@ class ConnectionMiddleware(ABC):
     @abstractmethod
     async def on_disconnect(
         self,
-        connection: "WebSocketConnection",  # type: ignore  # Forward reference
+        connection: WebSocketConnection,
         code: int,
         reason: str,
     ) -> None:
         """
-        Called when connection closes.
+        Called when a connection closes or a later admission step fails after this hook's on_connect completed.
 
         Args:
             connection: WebSocketConnection instance
@@ -73,7 +75,7 @@ class ConnectionMiddleware(ABC):
     @abstractmethod
     async def on_message(
         self,
-        connection: "WebSocketConnection",  # type: ignore  # Forward reference
+        connection: WebSocketConnection,
         message: Message,
     ) -> Message:
         """
@@ -95,7 +97,7 @@ class ConnectionMiddleware(ABC):
     @abstractmethod
     async def on_error(
         self,
-        connection: "WebSocketConnection",  # type: ignore  # Forward reference
+        connection: WebSocketConnection,
         error: Exception,
     ) -> None:
         """
@@ -117,8 +119,8 @@ class LoggingMiddleware(ConnectionMiddleware):
     async def on_connect(
         self,
         connection,
-        request: Request,
-    ) -> Optional[dict]:
+        request: HTTPConnection,
+    ) -> dict | None:
         """Log connection establishment."""
         logger.info(
             f"WebSocket connection established: {connection.connection_id}",
@@ -198,27 +200,27 @@ class MetricsMiddleware(ConnectionMiddleware):
     def __init__(self):
         """Initialize metrics collectors."""
         try:
-            from prometheus_client import Counter, Gauge, Histogram
+            prometheus = import_module("prometheus_client")
 
-            self.connections_total = Gauge(
+            self.connections_total = prometheus.Gauge(
                 "websocket_connections_total",
                 "Active WebSocket connections",
             )
-            self.messages_received = Counter(
+            self.messages_received = prometheus.Counter(
                 "websocket_messages_received_total",
                 "Total messages received",
                 ["message_type"],
             )
-            self.messages_sent = Counter(
+            self.messages_sent = prometheus.Counter(
                 "websocket_messages_sent_total",
                 "Total messages sent",
             )
-            self.errors_total = Counter(
+            self.errors_total = prometheus.Counter(
                 "websocket_errors_total",
                 "Total errors",
                 ["error_type"],
             )
-            self.connection_duration = Histogram(
+            self.connection_duration = prometheus.Histogram(
                 "websocket_connection_duration_seconds",
                 "Connection lifetime duration",
             )
@@ -236,8 +238,8 @@ class MetricsMiddleware(ConnectionMiddleware):
     async def on_connect(
         self,
         connection,
-        request: Request,
-    ) -> Optional[dict]:
+        request: HTTPConnection,
+    ) -> dict | None:
         """Increment connection counter."""
         if self.connections_total is not None:
             self.connections_total.inc()

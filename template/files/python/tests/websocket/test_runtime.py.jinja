@@ -1,0 +1,478 @@
+{% if (websocket_module == "enabled" or "websocket" in api_features) -%}
+"""Exercise WebSocket limits, delivery, and lifecycle on in-memory ASGI transports."""
+
+import asyncio
+import json
+import sys
+from types import SimpleNamespace
+from unittest.mock import Mock
+
+import pytest
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.testclient import TestClient
+from loguru import logger
+from starlette.types import Message as ASGIMessage
+from starlette.types import Scope
+
+{% if api_module == "enabled" and "python" in api_languages -%}
+from {{ package_name }}.api.websocket_endpoints import setup_websocket_routes
+{% endif -%}
+from {{ package_name }}.websocket import ConnectionManager, WebSocketConnection, config, utils
+from {{ package_name }}.websocket import connection as connection_module
+from {{ package_name }}.websocket.decorators import websocket_endpoint
+from {{ package_name }}.websocket.exceptions import (
+    AuthenticationError,
+    BackpressureError,
+    ConnectionClosedError,
+    MessageTooLargeError,
+    WebSocketError,
+)
+from {{ package_name }}.websocket.middleware import LoggingMiddleware, MetricsMiddleware
+
+
+class SocketProbe:
+    """A WebSocket and an ASGI frame queue with bounded test reads."""
+
+    def __init__(
+        self, host: str = "127.0.0.1", *, origin: str | None = None, block_send: bool = False,
+    ) -> None:
+        self.incoming: asyncio.Queue[ASGIMessage] = asyncio.Queue()
+        self.outgoing: asyncio.Queue[ASGIMessage] = asyncio.Queue()
+        self.entered = asyncio.Event()
+        self.release = asyncio.Event()
+        if not block_send:
+            self.release.set()
+        self.scope: Scope = {
+            "type": "websocket", "asgi": {"version": "3.0"}, "http_version": "1.1",
+            "scheme": "ws", "path": "/ws", "raw_path": b"/ws", "root_path": "",
+            "query_string": b"", "server": ("testserver", 80), "client": (host, 1234),
+            "headers": [(b"origin", origin.encode())] if origin is not None else [],
+            "subprotocols": [],
+        }
+        self.incoming.put_nowait({"type": "websocket.connect"})
+        self.websocket = WebSocket(self.scope, self.incoming.get, self.send)
+
+    async def send(self, frame: ASGIMessage) -> None:
+        """Record output, optionally holding application data in flight."""
+        if frame["type"] == "websocket.send":
+            self.entered.set()
+            await self.release.wait()
+        await self.outgoing.put(frame)
+
+    async def frame(self) -> ASGIMessage:
+        """Wait for a frame with a finite test deadline."""
+        return await asyncio.wait_for(self.outgoing.get(), timeout=2)
+
+    def send_json(self, payload: dict[str, object]) -> None:
+        """Deliver an actual encoded text frame to the endpoint."""
+        self.incoming.put_nowait({"type": "websocket.receive", "text": json.dumps(payload)})
+
+
+class TickClock:
+    """Advance background timers without wall-clock waits."""
+
+    def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self.now = 0.0
+        self.steps: asyncio.Queue[float] = asyncio.Queue()
+        monkeypatch.setattr(
+            utils, "asyncio", SimpleNamespace(sleep=self.sleep, CancelledError=asyncio.CancelledError),
+        )
+        monkeypatch.setattr(utils, "time", SimpleNamespace(time=self.read, monotonic=self.read))
+        monkeypatch.setattr(connection_module, "monotonic", self.read)
+
+    def read(self) -> float:
+        """Return the current controlled time."""
+        return self.now
+
+    async def sleep(self, _seconds: float) -> None:
+        """Advance only when the test supplies a tick."""
+        self.now += await self.steps.get()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("limit", ["global", "user", "ip", "id"])
+async def test_admission_limits_close_and_capacity_is_reusable(
+    isolated_manager: ConnectionManager, limit: str,
+) -> None:
+    """Every admission limit denies before acceptance and releases capacity on close."""
+    manager = isolated_manager
+    manager.config.max_connections_global = 1 if limit == "global" else 10
+    manager.config.max_connections_per_user = 1 if limit == "user" else 10
+    manager.config.max_connections_per_ip = 1 if limit == "ip" else 10
+    first = SocketProbe()
+    first_id = await manager.connect(first.websocket, connection_id="first", user_id="user")
+    assert (await first.frame())["type"] == "websocket.accept"
+    denied = SocketProbe()
+    other_id = "first" if limit == "id" else "second"
+    with pytest.raises(ConnectionError):
+        await manager.connect(denied.websocket, connection_id=other_id, user_id="user")
+    assert (await denied.frame())["code"] == 1008
+    assert manager.get_connections_by_user("user") == [first_id]
+
+    await manager.disconnect(first_id)
+    replacement = SocketProbe()
+    await manager.connect(replacement.websocket, connection_id=other_id, user_id="user")
+    assert (await replacement.frame())["type"] == "websocket.accept"
+    await manager.graceful_shutdown("Test shutdown")
+    assert (await replacement.frame())["reason"] == "Test shutdown"
+    assert manager.get_all_connections() == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("allowed", "origin", "reason"),
+    [
+        ([], "https://web.example", "allowlist is empty"),
+        (["*"], "https://web.example", "allowlist is empty"),
+        (["https://web.example"], None, "header required"),
+        (["https://web.example"], "https://other.example", "origin not allowed"),
+        (["https://web.example/"], "https://web.example", None),
+    ],
+)
+async def test_production_origin_admission_is_fail_closed(
+    isolated_manager: ConnectionManager, allowed: list[str], origin: str | None, reason: str | None,
+) -> None:
+    """A real WebSocket cannot bypass an explicit production Origin policy."""
+    isolated_manager.config.environment = "production"
+    isolated_manager.config.websocket_origins = allowed
+    socket = SocketProbe(origin=origin)
+    if reason is not None:
+        with pytest.raises(WebSocketError, match=reason):
+            await isolated_manager.connect(socket.websocket)
+        assert socket.outgoing.empty()
+        assert isolated_manager.get_connection_count() == 0
+    else:
+        connection_id = await isolated_manager.connect(socket.websocket)
+        assert (await socket.frame())["type"] == "websocket.accept"
+        await isolated_manager.disconnect(connection_id)
+
+
+@pytest.mark.asyncio
+async def test_backpressured_room_recipient_does_not_block_others(
+    isolated_manager: ConnectionManager,
+) -> None:
+    """A stalled ASGI send fills its own queue while other room members keep receiving."""
+    manager = isolated_manager
+    manager.config.message_queue_depth = 10
+    stalled = SocketProbe(block_send=True)
+    ready = SocketProbe("127.0.0.2")
+    stalled_id = await manager.connect(stalled.websocket)
+    ready_id = await manager.connect(ready.websocket)
+    await stalled.frame()
+    await ready.frame()
+    try:
+        await manager.join_room(stalled_id, "room")
+        await manager.join_room(ready_id, "room")
+        connection = manager.get_connection(stalled_id)
+        assert connection is not None
+        await connection.send_text("in-flight")
+        await asyncio.wait_for(stalled.entered.wait(), timeout=2)
+        for number in range(manager.config.message_queue_depth):
+            await connection.send_json({"index": number})
+        with pytest.raises(BackpressureError):
+            await connection.send_text("queue is full")
+        with pytest.raises(BackpressureError):
+            await connection.send_bytes(b"queue is full")
+
+        assert await manager.broadcast_to_room("room", {"body": "delivered"}) == 1
+        assert json.loads((await ready.frame())["text"]) == {"body": "delivered"}
+    finally:
+        await manager.graceful_shutdown()
+
+    assert (await stalled.frame())["code"] == 1001
+    assert (await ready.frame())["code"] == 1001
+    assert manager.get_connections_by_room("room") == []
+
+
+@pytest.mark.asyncio
+async def test_builtin_middleware_observes_admission_message_error_and_close(
+    isolated_manager: ConnectionManager, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Built-in observers receive the real connection lifecycle in registration order."""
+    counters: dict[str, Mock] = {}
+
+    def collector(name: str, *_options: object) -> Mock:
+        return counters.setdefault(name, Mock())
+
+    monkeypatch.setitem(
+        sys.modules, "prometheus_client",
+        SimpleNamespace(Gauge=collector, Counter=collector, Histogram=collector),
+    )
+    manager = isolated_manager
+    manager.add_middleware(LoggingMiddleware())
+    manager.add_middleware(MetricsMiddleware())
+    socket = SocketProbe()
+    socket.scope["headers"] = [(b"user-agent", b"in-memory-client")]
+    logs: list[str] = []
+    sink = logger.add(logs.append, format="{message}", level="DEBUG")
+    try:
+        connection_id = await manager.connect(socket.websocket)
+        await socket.frame()
+        try:
+            assert manager.get_all_connections()[0].metadata["user_agent"] == "in-memory-client"
+            await manager.process_message(connection_id, {"type": "message.text"})
+            await manager.notify_error(connection_id, AuthenticationError())
+        finally:
+            await manager.disconnect(connection_id)
+    finally:
+        logger.remove(sink)
+
+    active = counters["websocket_connections_total"]
+    active.inc.assert_called_once_with()
+    active.dec.assert_called_once_with()
+    received = counters["websocket_messages_received_total"]
+    received.labels.assert_called_once_with(message_type="message.text")
+    received.labels.return_value.inc.assert_called_once_with()
+    errors = counters["websocket_errors_total"]
+    errors.labels.assert_called_once_with(error_type="AuthenticationError")
+    errors.labels.return_value.inc.assert_called_once_with()
+    assert counters["websocket_connection_duration_seconds"].observe.call_count == 1
+    for stage in ("established", "message received", "error on connection", "connection closed"):
+        assert any(stage in log for log in logs)
+
+
+@pytest.mark.asyncio
+async def test_binary_delivery_and_byte_size_limit(isolated_manager: ConnectionManager) -> None:
+    """Binary output reaches ASGI unchanged and size checks count UTF-8 bytes."""
+    manager = isolated_manager
+    manager.config.max_message_size = 1024
+    socket = SocketProbe()
+    connection_id = await manager.connect(socket.websocket)
+    await socket.frame()
+    connection = manager.get_connection(connection_id)
+    assert connection is not None
+    try:
+        with pytest.raises(MessageTooLargeError) as rejected:
+            await connection.send_text("é" * 513)
+        assert rejected.value.details["actual_size_bytes"] == 1026
+        with pytest.raises(MessageTooLargeError):
+            await connection.send_bytes(b"a" * 1025)
+        await connection.send_bytes(bytes(range(256)) * 4)
+        assert (await socket.frame())["bytes"] == bytes(range(256)) * 4
+        assert manager.get_all_connections()[0].messages_sent == 1
+    finally:
+        await manager.disconnect(connection_id)
+    with pytest.raises(ConnectionClosedError):
+        await connection.send_bytes(b"closed")
+
+
+@pytest.mark.asyncio
+async def test_idle_timeout_and_shutdown_stop_background_work(
+    isolated_manager: ConnectionManager, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The idle checker closes only the idle socket and shutdown stops the checker."""
+    manager = isolated_manager
+    manager.config.enable_idle_timeout = True
+    clock = TickClock(monkeypatch)
+    idle = SocketProbe()
+    active = SocketProbe("127.0.0.2")
+    idle_id = await manager.connect(idle.websocket)
+    active_id = await manager.connect(active.websocket)
+    await idle.frame()
+    await active.frame()
+    connection = manager.get_connection(idle_id)
+    assert connection is not None
+    monkeypatch.setattr(connection, "time_since_activity", lambda: manager.config.idle_timeout + 1)
+    checker = manager._idle_timeout_task
+    assert checker is not None
+    try:
+        clock.steps.put_nowait(60)
+        assert (await idle.frame())["reason"] == "Idle timeout"
+        assert manager.get_all_connection_ids() == [active_id]
+    finally:
+        await manager.graceful_shutdown()
+    assert (await active.frame())["code"] == 1001
+    assert checker.done()
+
+
+@pytest.mark.asyncio
+async def test_standalone_connection_times_out_and_closes_once(
+    isolated_manager: ConnectionManager, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The public connection wrapper closes itself without a manager callback."""
+    isolated_manager.config.enable_heartbeat = True
+    isolated_manager.config.heartbeat_interval = 1
+    isolated_manager.config.heartbeat_timeout = 2
+    clock = TickClock(monkeypatch)
+    socket = SocketProbe()
+    connection = WebSocketConnection(socket.websocket)
+    await connection.accept()
+    assert (await socket.frame())["type"] == "websocket.accept"
+    try:
+        clock.steps.put_nowait(1)
+        assert json.loads((await socket.frame())["text"])["type"] == "heartbeat.ping"
+        clock.steps.put_nowait(2)
+        assert (await socket.frame())["reason"] == "Heartbeat timeout"
+        assert not connection.is_active()
+    finally:
+        await connection.close()
+    assert socket.outgoing.empty()
+
+
+@pytest.mark.parametrize("mode", ["success", "protocol", "unexpected", "auth"])
+def test_decorated_fastapi_route_injects_id_and_closes(
+    isolated_manager: ConnectionManager, mode: str,
+) -> None:
+    """FastAPI injects the real socket and the manager supplies the connection ID."""
+    app = FastAPI()
+
+    @app.websocket("/decorated/{scenario}")
+    @websocket_endpoint()
+    async def endpoint(socket: WebSocket, scenario: str, connection_id: str) -> None:
+        if scenario == "protocol":
+            raise WebSocketError("Retry", code="RATE_LIMIT", retry_after=3)
+        if scenario == "unexpected":
+            raise ValueError("Internal failure")
+        if scenario == "auth":
+            raise AuthenticationError()
+        await socket.send_json({"connection_id": connection_id, "scenario": scenario})
+
+    with TestClient(app) as client, client.websocket_connect(
+        f"/decorated/{mode}?connection_id=forged",
+    ) as websocket:
+        response = websocket.receive_json()
+        if mode == "success":
+            assert response["scenario"] == "success"
+            assert response["connection_id"] != "forged"
+        else:
+            assert response["payload"]["code"] == {
+                "protocol": "RATE_LIMIT", "unexpected": "INTERNAL_ERROR", "auth": "AUTH_REQUIRED",
+            }[mode]
+            if mode == "protocol":
+                assert response["payload"]["retry_after"] == 3
+        with pytest.raises(WebSocketDisconnect) as closed:
+            websocket.receive_json()
+        assert closed.value.code == (1008 if mode == "auth" else 1000)
+
+    assert isolated_manager.get_connection_count() == 0
+
+
+{% if api_module == "enabled" and "python" in api_languages %}
+@pytest.mark.parametrize("environment", ["prod", "PRODUCTION"])
+def test_production_aliases_disable_demo_endpoints(
+    isolated_manager: ConnectionManager, environment: str, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The same production environment names secure config and route registration."""
+    settings = isolated_manager.config
+    settings.environment = environment
+    settings.websocket_origins = ["http://localhost:3000"]
+    monkeypatch.setattr(config, "_config", None)
+    monkeypatch.setattr(config, "WebSocketConfig", lambda: settings)
+    app = FastAPI()
+    setup_websocket_routes(app)
+    assert not any(getattr(route, "path", "") in {"/ws", "/ws/echo"} for route in app.routes)
+    assert settings.websocket_origins == []
+
+
+def test_real_room_protocol_broadcasts_then_cleans_up(isolated_manager: ConnectionManager) -> None:
+    """Two generated routes join, broadcast with exclusion, leave, and release the room."""
+    isolated_manager.config.max_connections_per_ip = 2
+    app = FastAPI()
+    setup_websocket_routes(app)
+    room = {"room_id": "chat"}
+    with (
+        TestClient(app) as client,
+        client.websocket_connect("/ws") as first,
+        client.websocket_connect("/ws") as second,
+    ):
+        first_id = first.receive_json()["payload"]["connection_id"]
+        second_id = second.receive_json()["payload"]["connection_id"]
+        first.send_json({"type": "room.join", "payload": room})
+        assert first.receive_json()["payload"]["member_count"] == 1
+        second.send_json({"type": "room.join", "payload": room})
+        assert second.receive_json()["payload"]["member_count"] == 2
+        assert first.receive_json()["payload"]["connection_id"] == second_id
+
+        first.send_json({
+            "type": "room.broadcast",
+            "payload": {**room, "exclude_sender": True, "message": {"type": "message.text", "payload": {"text": "hello"}}},
+        })
+        assert second.receive_json()["sender_id"] == first_id
+        first.send_json({"type": "room.leave", "payload": room})
+        assert first.receive_json()["payload"]["member_count"] == 1
+        second.send_json({"type": "room.leave", "payload": room})
+        assert second.receive_json()["payload"]["member_count"] == 0
+        second.send_json({"type": "room.broadcast", "payload": {**room, "message": {}}})
+        assert second.receive_json()["payload"]["code"] == "ROOM_NOT_FOUND"
+
+    assert isolated_manager.get_connection_count() == 0
+
+
+def test_real_json_route_enforces_size_and_reports_retry_after(
+    isolated_manager: ConnectionManager, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Invalid and oversized frames never reach the handler or consume its rate budget."""
+    isolated_manager.config.max_message_size = 1024
+    isolated_manager.config.rate_limit_messages = 1
+    # A newly started app takes its rate window from its boot configuration.
+    monkeypatch.setattr(ConnectionManager, "_instance", None)
+    app = FastAPI()
+    setup_websocket_routes(app)
+    with TestClient(app) as client, client.websocket_connect("/ws") as websocket:
+        websocket.receive_json()
+        websocket.send_text("{broken json")
+        assert websocket.receive_json()["payload"]["code"] == "INVALID_FORMAT"
+        websocket.send_json({"type": "message.text", "payload": {"text": "é" * 513}})
+        assert websocket.receive_json()["payload"]["code"] == "MESSAGE_TOO_LARGE"
+        message = {"type": "message.text", "payload": {"text": "valid"}}
+        websocket.send_json(message)
+        assert websocket.receive_json()["payload"]["text"] == "Echo: valid"
+        websocket.send_json(message)
+        rejected = websocket.receive_json()["payload"]
+        assert rejected["code"] == "RATE_LIMIT"
+        assert rejected["retry_after"] > 0
+
+
+def test_real_text_route_closes_oversized_frames(isolated_manager: ConnectionManager) -> None:
+    """The raw text route sends 1009 for oversized UTF-8 input."""
+    isolated_manager.config.max_message_size = 1024
+    app = FastAPI()
+    setup_websocket_routes(app)
+    with TestClient(app) as client, client.websocket_connect("/ws/echo") as websocket:
+        websocket.send_text("é" * 513)
+        with pytest.raises(WebSocketDisconnect) as closed:
+            websocket.receive_text()
+        assert closed.value.code == 1009
+    assert isolated_manager.get_connection_count() == 0
+
+
+@pytest.mark.asyncio
+async def test_real_pong_clears_only_the_matching_heartbeat_deadline(
+    isolated_manager: ConnectionManager, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A matching pong keeps the route alive; a stale one cannot defer cleanup."""
+    manager = isolated_manager
+    manager.config.enable_heartbeat = True
+    manager.config.heartbeat_interval = 1
+    manager.config.heartbeat_timeout = 2
+    clock = TickClock(monkeypatch)
+    app = FastAPI()
+    setup_websocket_routes(app)
+    socket = SocketProbe()
+    task = asyncio.create_task(app(socket.scope, socket.incoming.get, socket.send))
+    try:
+        assert (await socket.frame())["type"] == "websocket.accept"
+        assert json.loads((await socket.frame())["text"])["type"] == "connection.connect"
+        clock.steps.put_nowait(1)
+        first_ping = json.loads((await socket.frame())["text"])
+        assert first_ping["type"] == "heartbeat.ping"
+        pong = {"type": "heartbeat.pong", "payload": {"ping_message_id": first_ping["message_id"]}}
+        socket.send_json(pong)
+        socket.send_json({"type": "message.text", "payload": {"text": "alive"}})
+        assert json.loads((await socket.frame())["text"])["payload"]["text"] == "Echo: alive"
+
+        clock.steps.put_nowait(1)
+        second_ping = json.loads((await socket.frame())["text"])
+        assert second_ping["message_id"] != first_ping["message_id"]
+        socket.send_json(pong)
+        socket.send_json({"type": "message.text", "payload": {"text": "stale"}})
+        assert json.loads((await socket.frame())["text"])["payload"]["text"] == "Echo: stale"
+        clock.steps.put_nowait(1)
+        clock.steps.put_nowait(1)
+        assert (await socket.frame())["reason"] == "Heartbeat timeout"
+        assert manager.get_connection_count() == 0
+    finally:
+        socket.incoming.put_nowait({"type": "websocket.disconnect", "code": 1000})
+        await asyncio.wait_for(task, timeout=2)
+{% endif %}
+{% endif -%}

@@ -17,7 +17,7 @@ edition = "2021"
 description = "{{ project_description }}"
 authors = ["{{ author_name|default('Riso Maintainer', true) }}"]
 license = "MIT"
-rust-version = "1.81"
+rust-version = "1.89"
 {% if _has_bins %}
 # Explicit [[bin]] entries below; do not auto-discover src/main.rs
 autobins = false
@@ -50,7 +50,9 @@ colored = "2.1"
 
 {% if _has_api %}
 # API dependencies (Actix-web + Tokio)
-actix-web = "4.9"
+# The generated server binds plain HTTP/1.1. Exclude the unused HTTP/2 stack
+# until the Actix HTTP dependency has a patched h2 release (RUSTSEC-2026-0258).
+actix-web = { version = "4.18.1", default-features = false, features = ["macros", "cookies", "compress-brotli", "compress-gzip", "compress-zstd", "unicode", "compat", "ws"] }
 actix-cors = "0.7"
 chrono = { version = "0.4", features = ["serde"] }
 {% endif %}

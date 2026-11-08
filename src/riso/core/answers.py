@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from riso.core.errors import ValidationFailedError
+from riso.core.generation_gates import normalize_api_features
 from riso.core.removed_answer_keys import (
     REMOVED_ANSWER_KEYS,
     RemapOp,
@@ -19,6 +20,7 @@ __all__ = [
     "apply_then_reject_removed_keys",
     "dump_answers_file",
     "load_answers_file",
+    "normalize_api_feature_modules",
     "persist_remapped_answers",
     "prepare_copier_data",
     "reject_removed_answer_keys",
@@ -38,7 +40,8 @@ def load_answers_file(path: Path) -> dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(path)
     try:
-        import yaml
+        # Preserve the answers-specific error when the YAML dependency is absent.
+        import yaml  # pylint: disable=import-outside-toplevel
     except ModuleNotFoundError as exc:  # pragma: no cover
         raise ValidationFailedError(
             ["PyYAML is required to load answers files"]
@@ -59,9 +62,39 @@ def load_answers_file(path: Path) -> dict[str, Any]:
     return data
 
 
+def normalize_api_feature_modules(context: Mapping[str, Any]) -> dict[str, Any]:
+    """Derive graphql/websocket flags and token-list api_features.
+
+    Explicit ``graphql_api_module`` / ``websocket_module`` answers win when set
+    to ``enabled``; otherwise ``api_features`` drives the derived state.
+    Rewrites ``api_features`` to a sorted token list so Jinja membership tests
+    are token-safe.
+    """
+    tokens = sorted(normalize_api_features(context.get("api_features")))
+    graphql = context.get("graphql_api_module", "disabled")
+    websocket = context.get("websocket_module", "disabled")
+
+    if graphql != "enabled" and "graphql" in tokens:
+        graphql = "enabled"
+    if websocket != "enabled" and "websocket" in tokens:
+        websocket = "enabled"
+
+    return {
+        "api_features": tokens,
+        "graphql_api_module": graphql,
+        "websocket_module": websocket,
+    }
+
+
 def prepare_copier_data(answers: dict[str, Any]) -> dict[str, Any]:
-    """Copy answers without dropping explicit selections before validation."""
-    return dict(answers)
+    """Normalize feature tokens without dropping empty lists before validation."""
+    prepared = dict(answers)
+    if any(
+        key in prepared
+        for key in ("api_features", "graphql_api_module", "websocket_module")
+    ):
+        prepared.update(normalize_api_feature_modules(prepared))
+    return prepared
 
 
 def strip_empty_lists_for_copier(answers: Mapping[str, Any]) -> dict[str, Any]:
@@ -107,7 +140,8 @@ def serialize_remap_ops(ops: Sequence[RemapOp]) -> list[dict[str, Any]]:
 def dump_answers_file(path: Path, answers: Mapping[str, Any]) -> None:
     """Write a Copier answers mapping as YAML."""
     try:
-        import yaml
+        # Preserve the answers-specific error when the YAML dependency is absent.
+        import yaml  # pylint: disable=import-outside-toplevel
     except ModuleNotFoundError as exc:  # pragma: no cover
         raise ValidationFailedError(
             ["PyYAML is required to write answers files"]

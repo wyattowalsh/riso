@@ -70,7 +70,7 @@ class ExampleCreateRequest(BaseModel):
 class ExampleUpdateRequest(BaseModel):
     """Example resource update request.
 
-    All fields are optional. At least one field must be provided.
+    At least one field must be provided. A null description or tags clears it.
 
     Attributes:
         name: Example name (1-100 characters, optional)
@@ -126,10 +126,13 @@ class ExampleUpdateRequest(BaseModel):
 
     @model_validator(mode="after")
     def at_least_one_field(self) -> ExampleUpdateRequest:
-        if not any(
-            value is not None
-            for value in (self.name, self.value, self.description, self.tags)
-        ):
+        """Distinguish omitted fields from fields explicitly cleared by the caller."""
+        provided = self.model_fields_set
+        if not provided:
             raise ValueError("At least one field must be provided")
+        if ("name" in provided and self.name is None) or (
+            "value" in provided and self.value is None
+        ):
+            raise ValueError("Name and value cannot be null when provided")
         return self
 {%- endif %}

@@ -11,11 +11,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, cast
 
 _REPO = Path(__file__).resolve().parents[2]
 if str(_REPO) not in sys.path:
@@ -253,19 +254,129 @@ def render_variant(variant: str, answers_file: Path) -> VariantResult:
     )
 
 
+def _validate_variant_entry(entry: object, index: int) -> VariantResult:
+    """Validate the complete record emitted by ``render_variant``."""
+    description = f"Invalid render matrix variant at index {index}"
+    if not isinstance(entry, dict):
+        raise ValueError(f"{description}: expected an object")
+    for field in (
+        "variant",
+        "answers",
+        "destination",
+        "workflow_validation",
+        "container_status",
+    ):
+        value = entry.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"{description}: {field} must be a nonempty string")
+    smoke_results = entry.get("smoke_results")
+    if "smoke_results" not in entry or (
+        smoke_results is not None and not isinstance(smoke_results, dict)
+    ):
+        raise ValueError(f"{description}: smoke_results must be an object or null")
+    status = entry.get("render_status")
+    if status not in ("ok", "failed"):
+        raise ValueError(f"{description}: render_status must be 'ok' or 'failed'")
+    returncode = entry.get("render_returncode")
+    if isinstance(returncode, bool) or not isinstance(returncode, int):
+        raise ValueError(f"{description}: render_returncode must be an integer")
+    if (status == "ok") != (returncode == 0):
+        raise ValueError(f"{description}: render_status contradicts render_returncode")
+    return cast(VariantResult, entry)
+
+
+def load_render_summary(path: Path) -> RenderSummary:
+    """Load nonempty render evidence before any derived metadata is rewritten."""
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("Invalid render matrix: expected an object")
+    variants = payload.get("variants")
+    if not isinstance(variants, list) or not variants:
+        raise ValueError("Invalid render matrix: variants must be a nonempty list")
+    names: set[str] = set()
+    for index, entry in enumerate(variants):
+        variant = _validate_variant_entry(entry, index)
+        name = variant["variant"]
+        if name in names:
+            raise ValueError(f"Invalid render matrix: duplicate variant {name!r}")
+        names.add(name)
+    return cast(RenderSummary, payload)
+
+
+def load_quality_runs(artifacts: list[str]) -> list[dict[str, object]]:
+    """Load completed maintainer profile results, rejecting missing evidence."""
+    runs: list[dict[str, object]] = []
+    for artifact in artifacts:
+        payload = json.loads(Path(artifact).read_text(encoding="utf-8"))
+        if not isinstance(payload, dict) or payload.get("profile") not in {
+            "standard",
+            "strict",
+        }:
+            raise ValueError(f"Invalid quality profile artifact: {artifact}")
+        durations = payload.get("durations")
+        if (
+            not isinstance(durations, dict)
+            or not durations
+            or any(
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(value)
+                or value < 0
+                for value in durations.values()
+            )
+        ):
+            raise ValueError(f"Invalid quality durations: {artifact}")
+        runs.append(payload)
+    return runs
+
+
 def main() -> None:
     """Orchestrate rendering of all discovered variants and aggregate metadata.
 
     Command-line arguments:
-        --skip-render: Skip rendering and reuse existing render_matrix.json if available.
+        --skip-render: Reuse an existing nonempty, valid render_matrix.json.
         --quality-artifacts: List of paths to quality run artifact JSON files.
         --retention-days: Number of days to retain quality artifacts (default: 90).
     """
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--skip-render", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--skip-render", action="store_true")
+    mode.add_argument(
+        "--quality-only",
+        action="store_true",
+        help="Consolidate quality artifacts without producing render evidence",
+    )
     parser.add_argument("--quality-artifacts", nargs="*", default=[])
     parser.add_argument("--retention-days", type=int, default=90)
     args = parser.parse_args()
+
+    if args.retention_days <= 0:
+        parser.error("--retention-days must be positive")
+    if args.quality_only:
+        if not args.quality_artifacts:
+            parser.error("--quality-only requires --quality-artifacts")
+        try:
+            runs = load_quality_runs(args.quality_artifacts)
+        except (OSError, ValueError) as exc:
+            parser.error(str(exc))
+        METADATA_DIR.mkdir(parents=True, exist_ok=True)
+        quality_file = METADATA_DIR / "quality_summary.json"
+        quality_file.write_text(
+            json.dumps(
+                {
+                    "kind": "quality-only",
+                    "quality_runs": runs,
+                    "quality_retention_days": args.retention_days,
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        logger.info(
+            "Quality artifacts consolidated without rendering: {}", quality_file
+        )
+        return
 
     output_file = METADATA_DIR / "render_matrix.json"
 
@@ -275,8 +386,11 @@ def main() -> None:
         )
     METADATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    if args.skip_render and output_file.exists():
-        summary: RenderSummary = json.loads(output_file.read_text(encoding="utf-8"))
+    if args.skip_render:
+        try:
+            summary: RenderSummary = load_render_summary(output_file)
+        except (OSError, ValueError) as exc:
+            parser.error(str(exc))
         recorder = ModuleSuccessRecorder()
         for variant_entry in summary.get("variants", []):
             results = variant_entry.get("smoke_results", {})

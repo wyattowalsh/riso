@@ -1,10 +1,15 @@
 {%- if mcp_module == 'enabled' and 'rust' in mcp_languages and mcp_example_tools -%}
-//! HTTP fetch tool helpers (https-only).
+//! HTTP fetch helpers for validated, pinned public HTTPS destinations.
 
+use reqwest::dns::{Addrs, Name, Resolve, Resolving};
 use rmcp::schemars;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::future::Future;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::time::Instant;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct HttpGetParams {
@@ -12,6 +17,7 @@ pub struct HttpGetParams {
     #[serde(default)]
     pub headers: HashMap<String, String>,
     #[serde(default = "default_timeout")]
+    #[schemars(range(min = 1, max = 120))]
     pub timeout: u64,
 }
 
@@ -29,51 +35,232 @@ pub struct HttpResult {
     pub error: Option<String>,
 }
 
-fn deny_url(url: &str) -> Option<&'static str> {
-    let lower = url.to_ascii_lowercase();
-    if !lower.starts_with("https://") {
-        return Some("only https:// URLs are allowed");
+fn get_failure(error: impl Into<String>) -> HttpResult {
+    HttpResult {
+        success: false,
+        status_code: None,
+        headers: None,
+        content: None,
+        content_length: None,
+        error: Some(error.into()),
     }
-    for blocked in [
-        "localhost",
-        "127.0.0.1",
-        "0.0.0.0",
-        "::1",
-        "169.254.169.254",
-        "metadata.google",
-        "[::1]",
-    ] {
-        if lower.contains(blocked) {
-            return Some("URL host is not allowed (SSRF protection)");
+}
+
+fn public_ipv4(address: Ipv4Addr) -> bool {
+    // General-purpose public unicast only; deny IANA special-purpose ranges.
+    // https://www.iana.org/assignments/iana-ipv4-special-registry/
+    !matches!(
+        address.octets(),
+        [0 | 10 | 127 | 224..=255, ..]
+            | [100, 64..=127, ..]
+            | [169, 254, ..]
+            | [172, 16..=31, ..]
+            | [192, 0, 0 | 2, _]
+            | [192, 31, 196, _]
+            | [192, 52, 193, _]
+            | [192, 88, 99, _]
+            | [192, 168, ..]
+            | [192, 175, 48, _]
+            | [198, 18..=19, ..]
+            | [198, 51, 100, _]
+            | [203, 0, 113, _]
+            | [168, 63, 129, 16] // Azure platform/metadata service.
+    )
+}
+
+fn public_address(address: IpAddr) -> bool {
+    match address {
+        IpAddr::V4(address) => public_ipv4(address),
+        IpAddr::V6(address) => {
+            if let Some(mapped) = address.to_ipv4_mapped() {
+                return public_ipv4(mapped);
+            }
+            let segments = address.segments();
+            // Restrict IPv6 to global unicast, excluding special/transition space.
+            // https://www.iana.org/assignments/iana-ipv6-special-registry/
+            segments[0] & 0xe000 == 0x2000
+                && !(segments[0] == 0x2001 && segments[1] & 0xfe00 == 0)
+                && !(segments[0] == 0x2001 && segments[1] == 0x0db8)
+                && segments[0] != 0x2002
+                && segments[0] != 0x3ffe
+                && !(segments[0] == 0x3fff && segments[1] & 0xf000 == 0)
+                && !(segments[0] == 0x2620 && segments[1] == 0x4f && segments[2] == 0x8000)
         }
     }
-    None
+}
+
+fn public_hostname(host: &str) -> bool {
+    if host.len() > 253 {
+        return false;
+    }
+    if ["metadata", "localhost", "local", "internal", "home.arpa", "test", "invalid", "onion"]
+        .iter()
+        .any(|suffix| host == *suffix || host.ends_with(&format!(".{suffix}")))
+    {
+        return false;
+    }
+    host.split('.').all(|label| {
+        !label.is_empty()
+            && label.len() <= 63
+            && !label.starts_with('-')
+            && !label.ends_with('-')
+            && label.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+    })
+}
+
+#[derive(Debug)]
+struct PublicTarget {
+    url: reqwest::Url,
+    resolver: PinnedResolver,
+}
+
+#[derive(Clone, Debug)]
+struct PinnedResolver {
+    host: String,
+    addresses: Vec<SocketAddr>,
+}
+
+impl Resolve for PinnedResolver {
+    fn resolve(&self, name: Name) -> Resolving {
+        let allowed = name.as_str().eq_ignore_ascii_case(&self.host);
+        let addresses = self.addresses.clone();
+        Box::pin(async move {
+            if !allowed {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "Unexpected DNS lookup for a pinned HTTPS request",
+                )
+                .into());
+            }
+            let addresses: Addrs = Box::new(addresses.into_iter());
+            Ok(addresses)
+        })
+    }
+}
+
+fn request_deadline(timeout: u64) -> Result<Instant, String> {
+    if !(1..=120).contains(&timeout) {
+        return Err("timeout must be between 1 and 120 seconds".to_string());
+    }
+    Ok(Instant::now() + Duration::from_secs(timeout))
+}
+
+async fn within_budget<F: Future>(deadline: Instant, operation: F) -> Result<F::Output, String> {
+    if Instant::now() >= deadline {
+        return Err("Request timed out".to_string());
+    }
+    tokio::time::timeout_at(deadline, operation).await.map_err(|_| "Request timed out".to_string())
+}
+
+async fn resolve_dns(host: String, port: u16) -> Result<Vec<SocketAddr>, String> {
+    tokio::net::lookup_host((host.as_str(), port))
+        .await
+        .map(|addresses| addresses.collect())
+        .map_err(|_| format!("Could not resolve host: {host}"))
+}
+
+async fn public_target_with<R, F>(
+    input: &str,
+    deadline: Instant,
+    resolve: R,
+) -> Result<PublicTarget, String>
+where
+    R: FnOnce(String, u16) -> F,
+    F: Future<Output = Result<Vec<SocketAddr>, String>>,
+{
+    let mut url = reqwest::Url::parse(input).map_err(|_| "Invalid URL".to_string())?;
+    if url.scheme() != "https" {
+        return Err("only https:// URLs are allowed".to_string());
+    }
+    if !url.username().is_empty() || url.password().is_some() {
+        return Err("URL credentials are not allowed".to_string());
+    }
+    let raw_host = url.host_str().ok_or("URL host is required")?;
+    let host =
+        raw_host.strip_prefix('[').and_then(|host| host.strip_suffix(']')).unwrap_or(raw_host);
+    let host = host.strip_suffix('.').unwrap_or(host).to_ascii_lowercase();
+    let port = url.port_or_known_default().ok_or("URL port is required")?;
+    let addresses = if let Ok(address) = host.parse::<IpAddr>() {
+        vec![SocketAddr::new(address, port)]
+    } else {
+        if !public_hostname(&host) {
+            return Err("URL host is not allowed (SSRF protection)".to_string());
+        }
+        url.set_host(Some(&host)).map_err(|_| "Invalid URL host".to_string())?;
+        within_budget(deadline, resolve(host.clone(), port)).await??
+    };
+    if addresses.is_empty() || addresses.iter().any(|address| !public_address(address.ip())) {
+        return Err("URL host is not allowed (SSRF protection)".to_string());
+    }
+    let addresses = addresses
+        .into_iter()
+        .map(|mut address| {
+            address.set_port(port);
+            address
+        })
+        .collect();
+    Ok(PublicTarget { url, resolver: PinnedResolver { host, addresses } })
+}
+
+fn pinned_client(target: &PublicTarget, deadline: Instant) -> reqwest::Result<reqwest::Client> {
+    reqwest::Client::builder()
+        .https_only(true)
+        .no_proxy()
+        .dns_resolver(Arc::new(target.resolver.clone()))
+        .timeout(deadline.saturating_duration_since(Instant::now()))
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+}
+
+fn check_headers(headers: &HashMap<String, String>) -> Result<(), String> {
+    if headers.keys().any(|name| name.eq_ignore_ascii_case("host")) {
+        return Err("The Host header is controlled by the validated URL".to_string());
+    }
+    Ok(())
+}
+
+fn request_error(error: reqwest::Error) -> String {
+    if error.is_timeout() {
+        "Request timed out".to_string()
+    } else {
+        error.to_string()
+    }
+}
+
+fn truncate_content(mut content: String) -> String {
+    const MAX_CONTENT_BYTES: usize = 10_000;
+    if content.len() > MAX_CONTENT_BYTES {
+        let mut cutoff = MAX_CONTENT_BYTES;
+        while !content.is_char_boundary(cutoff) {
+            cutoff -= 1;
+        }
+        content.truncate(cutoff);
+    }
+    content
 }
 
 pub async fn http_get(params: HttpGetParams) -> Result<HttpResult, String> {
-    if let Some(err) = deny_url(&params.url) {
-        return Ok(HttpResult {
-            success: false,
-            status_code: None,
-            headers: None,
-            content: None,
-            content_length: None,
-            error: Some(err.to_string()),
-        });
+    let deadline = match request_deadline(params.timeout) {
+        Ok(deadline) => deadline,
+        Err(error) => return Ok(get_failure(error)),
+    };
+    if let Err(error) = check_headers(&params.headers) {
+        return Ok(get_failure(error));
     }
-
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(params.timeout))
-        .redirect(reqwest::redirect::Policy::none())
-        .build()
-        .map_err(|e| e.to_string())?;
-
-    let mut request = client.get(&params.url);
+    let target = match public_target_with(&params.url, deadline, resolve_dns).await {
+        Ok(target) => target,
+        Err(error) => return Ok(get_failure(error)),
+    };
+    let client = pinned_client(&target, deadline).map_err(|error| error.to_string())?;
+    let mut request = client.get(target.url);
     for (key, value) in params.headers {
         request = request.header(&key, &value);
     }
 
-    match request.send().await {
+    match within_budget(deadline, request.send())
+        .await
+        .and_then(|result| result.map_err(request_error))
+    {
         Ok(response) => {
             let status = response.status().as_u16();
             let headers: HashMap<String, String> = response
@@ -82,14 +269,13 @@ pub async fn http_get(params: HttpGetParams) -> Result<HttpResult, String> {
                 .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
                 .collect();
 
-            match response.text().await {
+            match within_budget(deadline, response.text())
+                .await
+                .and_then(|result| result.map_err(request_error))
+            {
                 Ok(content) => {
                     let len = content.len();
-                    let truncated = if len > 10000 {
-                        content[..10000].to_string()
-                    } else {
-                        content
-                    };
+                    let truncated = truncate_content(content);
                     Ok(HttpResult {
                         success: true,
                         status_code: Some(status),
@@ -99,28 +285,17 @@ pub async fn http_get(params: HttpGetParams) -> Result<HttpResult, String> {
                         error: None,
                     })
                 }
-                Err(e) => Ok(HttpResult {
+                Err(error) => Ok(HttpResult {
                     success: false,
                     status_code: Some(status),
                     headers: Some(headers),
                     content: None,
                     content_length: None,
-                    error: Some(e.to_string()),
+                    error: Some(error),
                 }),
             }
         }
-        Err(e) => Ok(HttpResult {
-            success: false,
-            status_code: None,
-            headers: None,
-            content: None,
-            content_length: None,
-            error: Some(if e.is_timeout() {
-                "Request timed out".to_string()
-            } else {
-                e.to_string()
-            }),
-        }),
+        Err(error) => Ok(get_failure(error)),
     }
 }
 
@@ -130,6 +305,7 @@ pub struct HttpHeadParams {
     #[serde(default)]
     pub headers: HashMap<String, String>,
     #[serde(default = "default_timeout")]
+    #[schemars(range(min = 1, max = 120))]
     pub timeout: u64,
 }
 
@@ -143,30 +319,39 @@ pub struct HttpHeadResult {
     pub error: Option<String>,
 }
 
-pub async fn http_head(params: HttpHeadParams) -> Result<HttpHeadResult, String> {
-    if let Some(err) = deny_url(&params.url) {
-        return Ok(HttpHeadResult {
-            success: false,
-            status_code: None,
-            headers: None,
-            content_type: None,
-            content_length: None,
-            error: Some(err.to_string()),
-        });
+fn head_failure(error: impl Into<String>) -> HttpHeadResult {
+    HttpHeadResult {
+        success: false,
+        status_code: None,
+        headers: None,
+        content_type: None,
+        content_length: None,
+        error: Some(error.into()),
     }
+}
 
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(params.timeout))
-        .redirect(reqwest::redirect::Policy::none())
-        .build()
-        .map_err(|e| e.to_string())?;
-
-    let mut request = client.head(&params.url);
+pub async fn http_head(params: HttpHeadParams) -> Result<HttpHeadResult, String> {
+    let deadline = match request_deadline(params.timeout) {
+        Ok(deadline) => deadline,
+        Err(error) => return Ok(head_failure(error)),
+    };
+    if let Err(error) = check_headers(&params.headers) {
+        return Ok(head_failure(error));
+    }
+    let target = match public_target_with(&params.url, deadline, resolve_dns).await {
+        Ok(target) => target,
+        Err(error) => return Ok(head_failure(error)),
+    };
+    let client = pinned_client(&target, deadline).map_err(|error| error.to_string())?;
+    let mut request = client.head(target.url);
     for (key, value) in params.headers {
         request = request.header(&key, &value);
     }
 
-    match request.send().await {
+    match within_budget(deadline, request.send())
+        .await
+        .and_then(|result| result.map_err(request_error))
+    {
         Ok(response) => {
             let status = response.status().as_u16();
             let headers: HashMap<String, String> = response
@@ -185,14 +370,317 @@ pub async fn http_head(params: HttpHeadParams) -> Result<HttpHeadResult, String>
                 error: None,
             })
         }
-        Err(e) => Ok(HttpHeadResult {
-            success: false,
-            status_code: None,
-            headers: None,
-            content_type: None,
-            content_length: None,
-            error: Some(e.to_string()),
-        }),
+        Err(error) => Ok(head_failure(error)),
+    }
+}
+
+#[cfg(test)]
+mod truncation_tests {
+    use super::truncate_content;
+
+    #[test]
+    fn truncation_preserves_complete_multibyte_characters() {
+        for unit in ["é", "€", "🦀"] {
+            let truncated = truncate_content(unit.repeat(10_001));
+            assert_eq!(truncated, unit.repeat(10_000 / unit.len()));
+            assert!(truncated.len() <= 10_000);
+        }
+    }
+
+    #[test]
+    fn truncation_keeps_the_ascii_byte_limit_without_a_suffix() {
+        assert_eq!(truncate_content("a".repeat(10_001)), "a".repeat(10_000));
+    }
+
+    #[test]
+    fn truncation_preserves_content_at_or_below_the_byte_limit() {
+        for content in [String::new(), "short 🦀".to_string(), "€".repeat(3_333) + "a"] {
+            assert_eq!(truncate_content(content.clone()), content);
+        }
+    }
+}
+
+#[cfg(test)]
+mod address_tests {
+    use super::{public_address, public_hostname};
+
+    #[test]
+    fn blocks_special_private_metadata_and_mapped_addresses() {
+        for address in [
+            "0.0.0.0",
+            "10.0.0.1",
+            "100.64.0.1",
+            "100.100.100.200",
+            "127.0.0.2",
+            "169.254.169.254",
+            "172.16.0.1",
+            "172.31.255.255",
+            "192.0.0.9",
+            "192.0.2.1",
+            "192.88.99.2",
+            "192.168.1.1",
+            "198.18.0.1",
+            "198.19.0.1",
+            "198.51.100.1",
+            "203.0.113.1",
+            "192.31.196.1",
+            "192.52.193.1",
+            "192.175.48.1",
+            "224.0.0.1",
+            "240.0.0.1",
+            "255.255.255.255",
+            "168.63.129.16",
+            "::",
+            "::1",
+            "::8.8.8.8",
+            "::ffff:127.0.0.1",
+            "::ffff:7f00:1",
+            "::ffff:a00:1",
+            "::ffff:c0a8:101",
+            "64:ff9b::a00:1",
+            "64:ff9b:1::1",
+            "100::1",
+            "2001::1",
+            "2001:2::1",
+            "2001:db8::1",
+            "2002:a00:1::1",
+            "3ffe::1",
+            "3fff::1",
+            "5f00::1",
+            "fc00::1",
+            "2620:4f:8000::1",
+            "fd00::1",
+            "fe80::1",
+            "fec0::1",
+            "ff02::1",
+            "4000::1",
+        ] {
+            assert!(!public_address(address.parse().unwrap()), "{address}");
+        }
+    }
+
+    #[test]
+    fn accepts_general_public_unicast_and_public_mapped_ipv4() {
+        for address in [
+            "1.1.1.1",
+            "8.8.8.8",
+            "100.128.0.1",
+            "172.15.0.1",
+            "172.32.0.1",
+            "192.0.1.1",
+            "198.17.0.1",
+            "198.20.0.1",
+            "223.255.255.254",
+            "2001:200::1",
+            "2001:4860:4860::8888",
+            "2606:4700:4700::1111",
+            "::ffff:8.8.8.8",
+        ] {
+            assert!(public_address(address.parse().unwrap()), "{address}");
+        }
+    }
+
+    #[test]
+    fn validates_hostname_labels_without_substring_false_positives() {
+        for host in [
+            "localhost",
+            "metadata",
+            "metadata.google.internal",
+            "service.local",
+            "a.localhost",
+            "private.home.arpa",
+            "service.internal",
+            "bad_host.example",
+            "example.com..",
+            "-bad.example",
+            "bad-.example",
+            "host.invalid",
+            "service.test",
+            "service.onion",
+        ] {
+            assert!(!public_hostname(host), "{host}");
+        }
+        for host in ["ai", "public.example", "localhost.public.example", "metadata.public.example"]
+        {
+            assert!(public_hostname(host), "{host}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod request_tests {
+    use super::{
+        check_headers, pinned_client, public_target_with, request_deadline, within_budget,
+    };
+    use reqwest::dns::Resolve;
+    use std::cell::{Cell, RefCell};
+    use std::collections::HashMap;
+    use std::future::pending;
+    use std::net::SocketAddr;
+    use std::time::Duration;
+    use tokio::time::Instant;
+
+    fn public_answers() -> Vec<SocketAddr> {
+        vec!["8.8.8.8:443".parse().unwrap(), "[2606:4700:4700::1111]:443".parse().unwrap()]
+    }
+
+    #[tokio::test]
+    async fn canonical_urls_reject_numeric_private_ips_credentials_and_local_names() {
+        for url in [
+            "http://public.example",
+            "ftp://public.example",
+            "not a URL",
+            "https://user:password@public.example",
+            "https://localhost.",
+            "https://a.localhost",
+            "https://metadata.google.internal.",
+            "https://metadata.",
+            "https://service.local",
+            "https://2130706433",
+            "https://0x7f000001",
+            "https://0177.0.0.1",
+            "https://127.1",
+            "https://10.0.0.1",
+            "https://[::ffff:7f00:1]",
+            "https://[fd00::1]",
+            "https://[fe80::1]",
+            "https://168.63.129.16",
+            "https://[2001:db8::1]",
+        ] {
+            let result = public_target_with(url, request_deadline(1).unwrap(), |_, _| async {
+                Ok(public_answers())
+            })
+            .await;
+            assert!(result.is_err(), "{url}");
+        }
+    }
+
+    #[tokio::test]
+    async fn canonical_host_and_all_validated_addresses_are_retained() {
+        let target = public_target_with(
+            "HTTPS://PUBLIC.EXAMPLE.:8443/path/localhost?next=127.0.0.1",
+            request_deadline(1).unwrap(),
+            |host, port| async move {
+                assert_eq!(host, "public.example");
+                assert_eq!(port, 8443);
+                Ok(public_answers())
+            },
+        )
+        .await
+        .unwrap();
+        assert_eq!(target.url.host_str(), Some("public.example"));
+        assert_eq!(target.url.port(), Some(8443));
+        assert_eq!(target.resolver.addresses.len(), 2);
+        assert!(target.resolver.addresses.iter().all(|address| address.port() == 8443));
+        let client = pinned_client(&target, request_deadline(1).unwrap()).unwrap();
+        assert_eq!(client.get(target.url.clone()).build().unwrap().url(), &target.url);
+        assert_eq!(client.head(target.url.clone()).build().unwrap().url(), &target.url);
+    }
+
+    #[tokio::test]
+    async fn mixed_empty_and_failed_dns_answers_fail_closed() {
+        for answers in [
+            Vec::new(),
+            vec!["8.8.8.8:443".parse().unwrap(), "10.0.0.1:443".parse().unwrap()],
+            vec!["8.8.8.8:443".parse().unwrap(), "[::ffff:7f00:1]:443".parse().unwrap()],
+        ] {
+            assert!(public_target_with(
+                "https://public.example",
+                request_deadline(1).unwrap(),
+                |_, _| async { Ok(answers) },
+            )
+            .await
+            .is_err());
+        }
+        let failed = public_target_with(
+            "https://public.example",
+            request_deadline(1).unwrap(),
+            |_, _| async { Err("mock DNS failure".to_string()) },
+        )
+        .await;
+        assert_eq!(failed.unwrap_err(), "mock DNS failure");
+    }
+
+    #[tokio::test]
+    async fn transport_resolver_uses_only_pinned_answers_after_dns_rebinding() {
+        let answers = RefCell::new(public_answers());
+        let lookups = Cell::new(0);
+        let target =
+            public_target_with("https://public.example", request_deadline(1).unwrap(), |_, _| {
+                lookups.set(lookups.get() + 1);
+                let addresses = answers.borrow().clone();
+                async { Ok(addresses) }
+            })
+            .await
+            .unwrap();
+        answers.replace(vec!["10.0.0.1:443".parse().unwrap()]);
+        let connected = target
+            .resolver
+            .resolve("public.example".parse().unwrap())
+            .await
+            .unwrap()
+            .collect::<Vec<_>>();
+        assert_eq!(connected, public_answers());
+        assert_eq!(lookups.get(), 1);
+        assert!(target.resolver.resolve("other.example".parse().unwrap()).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn public_ip_literals_do_not_trigger_dns() {
+        for url in ["https://8.8.8.8", "https://[2606:4700:4700::1111]", "https://[::ffff:808:808]"]
+        {
+            let target = public_target_with(url, request_deadline(1).unwrap(), |_, _| async {
+                panic!("IP literals must never be resolved again")
+            })
+            .await;
+            assert!(target.is_ok(), "{url}");
+        }
+    }
+
+    #[tokio::test]
+    async fn dns_and_later_operations_share_the_same_total_deadline() {
+        let deadline = Instant::now() + Duration::from_millis(20);
+        let result = public_target_with("https://public.example", deadline, |_, _| {
+            pending::<Result<Vec<SocketAddr>, String>>()
+        })
+        .await;
+        assert_eq!(result.unwrap_err(), "Request timed out");
+        assert!(Instant::now() >= deadline);
+        assert_eq!(within_budget(deadline, async {}).await.unwrap_err(), "Request timed out");
+    }
+
+    #[test]
+    fn rejects_invalid_timeouts_and_host_header_overrides() {
+        for timeout in [0, 121, u64::MAX] {
+            assert!(request_deadline(timeout).is_err());
+        }
+        for timeout in [1, 30, 120] {
+            assert!(request_deadline(timeout).is_ok());
+        }
+        for name in ["Host", "HOST", "hOsT"] {
+            assert!(check_headers(&HashMap::from([(
+                name.to_string(),
+                "other.example".to_string()
+            )]))
+            .is_err());
+        }
+        assert!(check_headers(&HashMap::from([("Accept".to_string(), "text/plain".to_string())]))
+            .is_ok());
+    }
+
+    #[test]
+    fn get_and_head_futures_satisfy_the_rmcp_send_contract_without_network() {
+        fn require_send(_: impl Send) {}
+        require_send(super::http_get(super::HttpGetParams {
+            url: "https://public.example".to_string(),
+            headers: HashMap::new(),
+            timeout: 30,
+        }));
+        require_send(super::http_head(super::HttpHeadParams {
+            url: "https://public.example".to_string(),
+            headers: HashMap::new(),
+            timeout: 30,
+        }));
     }
 }
 {%- endif %}

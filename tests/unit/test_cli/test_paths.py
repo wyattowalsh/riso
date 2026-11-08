@@ -10,10 +10,53 @@ from riso.core.errors import PermissionDeniedError, TemplateNotFoundError
 from riso.core.paths import (
     bundled_template_path,
     is_bundled_template,
+    packaged_template_path,
     resolve_template_path,
     validate_destination,
 )
 from riso.template import get_template_path
+
+
+def test_is_bundled_template_matches_checkout() -> None:
+    """Trust checks recognize only the resolved checkout template."""
+    assert is_bundled_template(resolve_template_path())
+
+
+def test_is_bundled_template_rejects_other_path(tmp_path: Path) -> None:
+    """An arbitrary local directory does not acquire bundled-template trust."""
+    assert not is_bundled_template(tmp_path)
+
+
+def test_resolve_template_from_packaged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Wheel discovery remains available when there is no source checkout."""
+    packaged = tmp_path / "copier_template"
+    packaged.mkdir()
+    (packaged / "copier.yml").write_text("_min_copier_version: '9.1.0'\n")
+    monkeypatch.delenv("RISO_TEMPLATE_PATH", raising=False)
+    monkeypatch.setattr("riso.core.paths.checkout_root", lambda: None)
+    monkeypatch.setattr("riso.core.paths.packaged_template_path", lambda: packaged)
+    assert resolve_template_path() == packaged
+    assert bundled_template_path() == packaged
+    assert is_bundled_template(packaged)
+
+
+def test_resolve_template_missing_without_checkout_or_wheel(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A missing wheel payload is reported rather than guessed from another path."""
+    monkeypatch.delenv("RISO_TEMPLATE_PATH", raising=False)
+    monkeypatch.setattr("riso.core.paths.checkout_root", lambda: None)
+    monkeypatch.setattr("riso.core.paths.packaged_template_path", lambda: None)
+    monkeypatch.setattr("riso.core.paths.repo_root", lambda: tmp_path)
+    with pytest.raises(TemplateNotFoundError):
+        resolve_template_path()
+
+
+def test_packaged_template_path_none_in_src_checkout() -> None:
+    """Editable source installs use the checkout instead of a wheel data directory."""
+    assert packaged_template_path() is None
 
 
 def test_resolve_template_from_checkout() -> None:

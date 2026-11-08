@@ -15,6 +15,8 @@ if str(scripts_dir) not in sys.path:
 if str(scripts_dir / "hooks") not in sys.path:
     sys.path.insert(0, str(scripts_dir / "hooks"))
 
+# Resolve repository modules only after the import-path bootstrap above.
+# pylint: disable-next=wrong-import-position
 from workflow_validator import (  # noqa: E402
     check_actionlint_available,
     validate_workflow_file,
@@ -53,6 +55,7 @@ class TestValidateWorkflowFile:
         non_existent = tmp_path / "missing.yml"
         success, error = validate_workflow_file(non_existent)
         assert success is False
+        assert error is not None
         assert "not found" in error
 
     def test_returns_true_when_validation_succeeds(self, tmp_path: Path):
@@ -79,6 +82,7 @@ class TestValidateWorkflowFile:
             )
             success, error = validate_workflow_file(workflow)
             assert success is False
+            assert error is not None
             assert "invalid workflow" in error
 
     def test_returns_false_on_timeout(self, tmp_path: Path):
@@ -90,6 +94,7 @@ class TestValidateWorkflowFile:
             mock_run.side_effect = subprocess.TimeoutExpired("actionlint", 30)
             success, error = validate_workflow_file(workflow)
             assert success is False
+            assert error is not None
             assert "timed out" in error
 
     def test_returns_false_on_os_error(self, tmp_path: Path):
@@ -101,27 +106,47 @@ class TestValidateWorkflowFile:
             mock_run.side_effect = OSError("Permission denied")
             success, error = validate_workflow_file(workflow)
             assert success is False
+            assert error is not None
             assert "Unexpected error" in error
 
 
 class TestValidateWorkflowsDirectory:
     """Tests for validate_workflows_directory function."""
 
-    def test_returns_zero_when_actionlint_not_available_non_strict(self):
+    def test_returns_zero_when_actionlint_not_available_non_strict(
+        self, tmp_path: Path
+    ):
         """Test returns 0 when actionlint not available in non-strict mode."""
+        workflows_dir = tmp_path / "workflows"
+        workflows_dir.mkdir()
+
         with patch("workflow_validator.check_actionlint_available") as mock_check:
             mock_check.return_value = False
-            code, status = validate_workflows_directory(Path("/fake"), strict=False)
+            code, status = validate_workflows_directory(workflows_dir, strict=False)
             assert code == 0
             assert status == "tool_missing"
 
-    def test_returns_one_when_actionlint_not_available_strict(self):
+    def test_returns_one_when_actionlint_not_available_strict(self, tmp_path: Path):
         """Test returns 1 when actionlint not available in strict mode."""
+        workflows_dir = tmp_path / "workflows"
+        workflows_dir.mkdir()
+
         with patch("workflow_validator.check_actionlint_available") as mock_check:
             mock_check.return_value = False
-            code, status = validate_workflows_directory(Path("/fake"), strict=True)
+            code, status = validate_workflows_directory(workflows_dir, strict=True)
             assert code == 1
             assert status == "tool_missing"
+
+    def test_missing_dir_skips_without_actionlint_strict(self, tmp_path: Path):
+        """Test a missing workflows directory skips even in strict mode."""
+        with patch("workflow_validator.check_actionlint_available") as mock_check:
+            mock_check.return_value = False
+            code, status = validate_workflows_directory(
+                tmp_path / "nonexistent", strict=True
+            )
+            assert code == 0
+            assert status == "skipped"
+            mock_check.assert_not_called()
 
     def test_returns_zero_when_directory_not_exists(self, tmp_path: Path):
         """Test returns 0 when workflows directory doesn't exist."""

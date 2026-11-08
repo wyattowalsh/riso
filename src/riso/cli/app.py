@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 from typing import Annotated, Optional
@@ -10,6 +11,7 @@ import typer
 
 from riso.cli.commands import (
     catalog,
+    check_update,
     copy,
     diff,
     doctor,
@@ -22,7 +24,7 @@ from riso.cli.commands import (
     variants,
 )
 from riso.cli.config import CliConfig
-from riso.cli.output import CliContext, emit_success, handle_exception
+from riso.cli.output import CliContext, Envelope, emit_success, handle_exception
 from riso.core.errors import ExitCode
 
 app = typer.Typer(
@@ -149,10 +151,44 @@ def _cli(ctx: typer.Context, command: str) -> CliContext:
 @app.command("doctor")
 def doctor_cmd(ctx: typer.Context) -> None:
     """Verify tooling, template path, and environment."""
+    cli = _cli(ctx, "riso doctor")
+    try:
+        result = doctor.run_doctor(config=_config(ctx))
+    except BaseException as exc:
+        handle_exception(cli, exc)
+        return
+    warnings = (
+        result.get("warnings") if isinstance(result.get("warnings"), list) else None
+    )
+    if result.get("ready"):
+        emit_success(cli, data=result, warnings=warnings)
+        return
+    if cli.json_mode:
+        envelope = Envelope(
+            ok=False,
+            command=cli.command_name,
+            data=result,
+            errors=["Environment is not ready"],
+            warnings=warnings or [],
+        )
+        print(json.dumps(envelope.to_dict(), indent=2))
+    else:
+        emit_success(cli, data=result, warnings=warnings)
+        print("error: Environment is not ready", file=sys.stderr)
+    raise SystemExit(int(ExitCode.OPERATIONAL_FAILURE))
+
+
+@app.command("check-update")
+def check_update_cmd(
+    ctx: typer.Context,
+    destination: Annotated[str, typer.Argument(help="Existing Copier project.")],
+) -> None:
+    """Check whether the template used to generate DEST has a newer version."""
     _run(
-        doctor.run_doctor,
-        _cli(ctx, "riso doctor"),
+        check_update.run_check_update,
+        _cli(ctx, "riso check-update"),
         config=_config(ctx),
+        destination=destination,
     )
 
 
@@ -177,8 +213,15 @@ def validate_cmd(
         Optional[list[str]],
         typer.Option("--data", "-d", help="Answer key=value pairs."),
     ] = None,
+    schema_only: Annotated[
+        bool,
+        typer.Option(
+            "--schema-only",
+            help="Validate Copier prompt schema only (skip generation combo gates).",
+        ),
+    ] = False,
 ) -> None:
-    """Validate template answers."""
+    """Validate template answers (generation gates; --schema-only for prompts)."""
     if not answers_file and not data:
         handle_exception(
             _cli(ctx, "riso validate"),
@@ -190,6 +233,7 @@ def validate_cmd(
         config=_config(ctx),
         answers_file=answers_file,
         data_pairs=data,
+        schema_only=schema_only,
     )
 
 
@@ -403,7 +447,12 @@ def export_cli_cmd(
         str, typer.Option("--dest", help="Target destination path.")
     ] = "./my-project",
 ) -> None:
-    """Export shell commands for copier/riso copy."""
+    """Export shell commands for copier/riso copy.
+
+    The Copier command uses ``--data-file`` for answer YAML content (Copier's
+    ``--answers-file`` is a destination-relative answers path, not input) and
+    includes ``--overwrite``.
+    """
     _run(
         export.run_export_cli,
         _cli(ctx, "riso export cli"),
@@ -425,7 +474,10 @@ def export_cli_alias_cmd(
         str, typer.Option("--dest", help="Target destination path.")
     ] = "./my-project",
 ) -> None:
-    """Export shell commands for copier/riso copy (alias for export cli)."""
+    """Export shell commands for copier/riso copy (alias for export cli).
+
+    Copier uses ``--data-file`` for answer YAML, not ``--answers-file``.
+    """
     _run(
         export.run_export_cli,
         _cli(ctx, "riso export-cli"),

@@ -18,9 +18,13 @@ from run_quality_suite import (
 pytestmark = pytest.mark.usefixtures("ci_scripts_path")
 
 
+# Pytest groups this behavior in a focused test class.
 @pytest.mark.unit
-class TestWriteResults:
+class TestWriteResults:  # pylint: disable=too-few-public-methods
+    """Quality artifacts record the profile and measured command durations."""
+
     def test_writes_profile_and_durations_json(self, tmp_path: Path) -> None:
+        """The emitted JSON retains profile and duration values."""
         log_dir = tmp_path / "logs"
         write_results(log_dir, "standard", {"ruff": 1.25, "ty": 2.5})
 
@@ -34,7 +38,10 @@ class TestWriteResults:
 
 @pytest.mark.unit
 class TestProfileMatrix:
+    """Standard and strict quality profiles select their intended tools."""
+
     def test_standard_targets_include_scripts_and_src(self) -> None:
+        """The maintained target set covers scripts and source code."""
         assert "scripts" in PYTHON_TARGETS
         assert "src" in PYTHON_TARGETS
         assert "pylint" in STRICT_ONLY
@@ -45,6 +52,7 @@ class TestProfileMatrix:
     def test_standard_profile_skips_pylint(
         self, _log, mock_run, mock_write, tmp_path: Path
     ) -> None:
+        """Standard quality runs Ruff and ty while reserving Pylint for strict."""
         with patch(
             "sys.argv",
             [
@@ -70,6 +78,7 @@ class TestProfileMatrix:
     def test_strict_profile_runs_pylint(
         self, _log, mock_run, mock_write, tmp_path: Path
     ) -> None:
+        """Strict quality includes Pylint and records its profile."""
         with patch(
             "sys.argv",
             ["run_quality_suite.py", "--profile", "strict", "--log-dir", str(tmp_path)],

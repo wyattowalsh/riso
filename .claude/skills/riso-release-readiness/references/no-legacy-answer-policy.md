@@ -10,7 +10,7 @@ Apply then reject. Do not invert the order.
 
 1. `apply_removed_key_remaps(answers)` — remap every known key that has a mapped
    value.
-2. `reject_removed_answer_keys(answers)` — fail closed on leftovers (unknown
+1. `reject_removed_answer_keys(answers)` — fail closed on leftovers (unknown
    removed keys, or known keys whose values could not be remapped).
 
 Operator rules (SSOT: `src/riso/core/removed_answer_keys.py`):
@@ -37,16 +37,16 @@ These are the only remappable removed keys. The set is `REMOVED_ANSWER_KEYS`
 and `ANSWER_KEY_REMAPS` (8/8; same names in `scripts/lib` and
 `web/src/lib/removedAnswerKeys.ts`).
 
-| Old key | Operator | Canonical dest | Value rules |
-| --- | --- | --- | --- |
-| `api_tracks` | derive | `api_module` plus `api_languages` | empty/`none`/`disabled` → `api_module=disabled`; else `api_module=enabled` and languages = intersection of tokens with `{python,node,rust,go}` (also `fastapi`→python, `fastify`→node, `actix`→rust) |
-| `api_language` | wrap-list | `api_languages` | scalar `python`/`node`/`rust`/`go` → `[that]`; already-list → keep |
-| `docs_site` | derive | `docs_module` plus `docs_framework` | `none`/`false`/`disabled`/`off` → `docs_module=disabled`; `sphinx`/`sphinx-shibuya` → enabled + `sphinx-shibuya`; `docusaurus` / `fumadocs` → enabled + that framework |
-| `mcp_language` | wrap-list | `mcp_languages` | scalar `python`/`typescript`/`rust`/`go` → `[that]`; map `node`/`js` → `typescript`; already-list → keep the list shape, drop empty items, and still apply `node`/`js` → `typescript` |
-| `saas_starter_module` | rename | `saas_infra_module` | copy `enabled`/`disabled` |
-| `saas_auth` | split | `saas_auth_module` plus `saas_auth_provider` | `none`/`disabled`/`false`/`off` → `saas_auth_module=disabled`; `clerk`/`authjs` → module enabled + that provider; `lucia` is unmapped and fail-closes |
-| `saas_billing` | split | `saas_billing_module` plus `saas_billing_provider` | `none`/`disabled`/`false`/`off` → `saas_billing_module=disabled`; `stripe`/`paddle`/`lemonsqueezy` → module enabled + that provider |
-| `include_admin` | rename-bool | `saas_admin_dashboard` | truthy/falsey → bool |
+| Old key               | Operator    | Canonical dest                                     | Value rules                                                                                                                                                                                          |
+| --------------------- | ----------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `api_tracks`          | derive      | `api_module` plus `api_languages`                  | empty/`none`/`disabled` → `api_module=disabled`; else `api_module=enabled` and languages = intersection of tokens with `{python,node,rust,go}` (also `fastapi`→python, `fastify`→node, `actix`→rust) |
+| `api_language`        | wrap-list   | `api_languages`                                    | scalar `python`/`node`/`rust`/`go` → `[that]`; already-list → keep                                                                                                                                   |
+| `docs_site`           | derive      | `docs_module` plus `docs_framework`                | `none`/`false`/`disabled`/`off` → `docs_module=disabled`; `sphinx`/`sphinx-shibuya` → enabled + `sphinx-shibuya`; `docusaurus` / `fumadocs` → enabled + that framework                               |
+| `mcp_language`        | wrap-list   | `mcp_languages`                                    | scalar `python`/`typescript`/`rust`/`go` → `[that]`; map `node`/`js` → `typescript`; already-list → keep the list shape, drop empty items, and still apply `node`/`js` → `typescript`                |
+| `saas_starter_module` | rename      | `saas_infra_module`                                | copy `enabled`/`disabled`                                                                                                                                                                            |
+| `saas_auth`           | split       | `saas_auth_module` plus `saas_auth_provider`       | `none`/`disabled`/`false`/`off` → `saas_auth_module=disabled`; `clerk`/`authjs` → module enabled + that provider; `lucia` is unmapped and fail-closes                                                |
+| `saas_billing`        | split       | `saas_billing_module` plus `saas_billing_provider` | `none`/`disabled`/`false`/`off` → `saas_billing_module=disabled`; `stripe`/`paddle`/`lemonsqueezy` → module enabled + that provider                                                                  |
+| `include_admin`       | rename-bool | `saas_admin_dashboard`                             | truthy/falsey → bool                                                                                                                                                                                 |
 
 Do not add a ninth remappable key without updating the three-way SSOT and this
 table together.

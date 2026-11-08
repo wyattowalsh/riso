@@ -161,9 +161,6 @@ export function generateShareableURL(config: Partial<RisoConfig>): string {
   return `${window.location.origin}${window.location.pathname}?preset=${encodeURIComponent(compressed)}`
 }
 
-/**
- * Parse shareable URL to config
- */
 export function parseShareableURL(url: string): Partial<RisoConfig> | null {
   let urlObj: URL
   try {

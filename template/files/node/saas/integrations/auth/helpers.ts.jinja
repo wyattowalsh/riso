@@ -62,7 +62,7 @@ export async function hasRole(role: 'org:admin' | 'org:member') {
   return has({ role });
 }
 
-export async function requireAdminRole() {
+export async function requireAdminRole(): Promise<void> {
   const user = await currentUser();
   if (user?.publicMetadata?.role !== 'admin') {
     throw new ForbiddenError('Admin role required');
@@ -147,7 +147,7 @@ export async function hasRole(args: ClerkArgs, role: string) {
   return orgRole === role;
 }
 
-export async function requireAdminRole(args: ClerkArgs) {
+export async function requireAdminRole(args: ClerkArgs): Promise<void> {
   const user = await getUser(args);
   if (user?.publicMetadata?.role !== 'admin') {
     throw new ForbiddenError('Admin role required');
@@ -225,7 +225,7 @@ export async function hasRole(role: string) {
   return userRole === role;
 }
 
-export async function requireAdminRole() {
+export async function requireAdminRole(): Promise<void> {
   const allowed = await hasRole('admin');
   if (!allowed) {
     throw new ForbiddenError('Admin role required');

@@ -18,6 +18,8 @@ from typing import Callable, Literal, TypedDict
 _REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_REPO))
 
+# Resolve repository modules only after the import-path bootstrap above.
+# pylint: disable-next=wrong-import-position
 from scripts.lib.paths import repo_root  # noqa: E402
 
 REPO_ROOT = repo_root()
@@ -154,6 +156,7 @@ class ValidationIssue:
         self.message = message
 
     def to_dict(self) -> dict[str, str]:
+        """Serialize the severity, check name, and diagnostic message."""
         return {
             "severity": self.severity,
             "name": self.name,

@@ -62,6 +62,17 @@ variants = list_sample_variants(samples_dir)
 catalog = get_module_catalog(template_dir)
 ```
 
+`list_sample_variants` recursively discovers answer files under `samples/`.
+Names retain their relative path, such as `saas-starter/enterprise-ready`.
+The walk prunes renders, metadata, dependencies, virtual environments, Git data,
+and Python caches. Maintainer scripts discover the same nested presets with:
+
+```python
+from scripts.lib.paths import iter_sample_answer_files, samples_dir
+
+answer_files = iter_sample_answer_files(samples_dir())
+```
+
 ## Integration
 
 The template module integrates with:

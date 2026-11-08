@@ -1,0 +1,51 @@
+{% if desktop_module == "enabled" and desktop_framework == "electron-vite" %}
+/**
+ * Navigation / openExternal URL denylist.
+ *
+ * Blocks localhost, loopback, link-local (including 169.254.169.254),
+ * and non-http(s) schemes. Matches the IPC OPEN_EXTERNAL policy.
+ */
+
+import { isIP } from 'node:net';
+import ipaddr from 'ipaddr.js';
+
+export function isBlockedNavigationHost(hostname: string): boolean {
+  const host = hostname.replace(/^\[|\]$/g, '').replace(/\.$/, '').toLowerCase();
+
+  if (
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    host.endsWith('.local')
+  ) {
+    return true;
+  }
+
+  if (!isIP(host)) {
+    return false;
+  }
+  const range = ipaddr.process(host).range();
+  return range === 'unspecified' || range === 'loopback' || range === 'linkLocal';
+}
+
+export type NavigationBlockReason = 'invalid' | 'scheme' | 'internal' | null;
+
+export function navigationBlockReason(urlString: string): NavigationBlockReason {
+  let parsed: URL;
+  try {
+    parsed = new URL(urlString);
+  } catch {
+    return 'invalid';
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    return 'scheme';
+  }
+  if (isBlockedNavigationHost(parsed.hostname)) {
+    return 'internal';
+  }
+  return null;
+}
+
+export function isBlockedNavigationUrl(urlString: string): boolean {
+  return navigationBlockReason(urlString) !== null;
+}
+{% endif %}

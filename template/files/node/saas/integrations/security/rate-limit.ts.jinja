@@ -20,6 +20,9 @@ import { Redis } from '@upstash/redis';
 {% if saas_observability_structured_logging %}
 import { logger } from '@/lib/observability/logger';
 {% endif %}
+{% if saas_auth_module == 'enabled' and saas_runtime == 'nextjs-16' %}
+import { getUserId } from '@/lib/auth/helpers';
+{% endif %}
 
 // ============================================================================
 // Configuration
@@ -47,6 +50,29 @@ export const RATE_LIMITS = {
   /** File uploads */
   upload: { requests: 30, window: 60, prefix: 'upload' } as RateLimitConfig,
 } as const;
+
+function clientIp(req: Request): string {
+  const forwarded = req.headers.get('x-forwarded-for');
+  return (
+    forwarded?.split(',')[0]?.trim() ??
+    req.headers.get('x-real-ip') ??
+    'unknown'
+  );
+}
+
+async function rateLimitIdentifier(req: Request): Promise<string> {
+  {% if saas_auth_module == 'enabled' and saas_runtime == 'nextjs-16' %}
+  try {
+    const userId = await getUserId();
+    if (userId) {
+      return `user:${userId}`;
+    }
+  } catch {
+    // Unauthenticated: fall through to trusted proxy IP
+  }
+  {% endif %}
+  return `ip:${clientIp(req)}`;
+}
 
 // ============================================================================
 // Rate Limiter Implementation
@@ -269,13 +295,7 @@ export async function withRateLimit(
   req: NextRequest,
   config: RateLimitConfig = RATE_LIMITS.api
 ): Promise<NextResponse | null> {
-  // Get identifier (user ID from auth or IP address)
-  const userId = req.headers.get('x-user-id');
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0] ?? 
-             req.headers.get('x-real-ip') ?? 
-             'unknown';
-  
-  const identifier = userId || `ip:${ip}`;
+  const identifier = await rateLimitIdentifier(req);
   const result = await checkRateLimit(identifier, config);
   
   if (!result.success) {
@@ -322,13 +342,7 @@ export function withRateLimitHandler<T>(
   config: RateLimitConfig = RATE_LIMITS.api
 ) {
   return async (req: Request): Promise<Response> => {
-    // Get identifier from request
-    const userId = req.headers.get('x-user-id');
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0] ?? 
-               req.headers.get('x-real-ip') ?? 
-               'unknown';
-    
-    const identifier = userId || `ip:${ip}`;
+    const identifier = await rateLimitIdentifier(req);
     const result = await checkRateLimit(identifier, config);
     
     // Add rate limit headers to all responses

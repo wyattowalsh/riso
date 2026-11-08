@@ -528,7 +528,7 @@ class TestRenderClientIntegration:
         ]
         response_iter = iter(responses)
 
-        def create_response(*args, **kwargs):
+        def create_response(*_args, **_kwargs):
             mock_response = MagicMock()
             mock_response.read.return_value = next(response_iter)
             mock_response.__enter__ = Mock(return_value=mock_response)

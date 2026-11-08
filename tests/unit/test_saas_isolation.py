@@ -487,3 +487,171 @@ def test_saas_test_toolchain_uses_patched_compatible_versions(runtime: str) -> N
     else:
         assert "vite" not in dev
         assert manifest["dependencies"]["next"].startswith("^16.")
+
+
+def _paddle_source_with_installed_sdk() -> str:
+    """Use the existing sample SDK offline, without installing dependencies."""
+    sdk_entry = (
+        SAAS.parents[3]
+        / "samples/saas-starter/all-in-one/render/node/saas/node_modules"
+        / "@paddle/paddle-node-sdk/dist/cjs/index.js"
+    )
+    if not sdk_entry.is_file():
+        pytest.skip("Install the declared Paddle SaaS sample SDK for provider fixtures")
+    source = _render(
+        "integrations/billing/paddle/webhooks.ts.jinja",
+        saas_billing_provider="paddle",
+    )
+    sdk_import = next(
+        line for line in source.splitlines() if "from '@paddle/paddle-node-sdk'" in line
+    )
+    sdk_path = json.dumps(str(sdk_entry.resolve()))
+    source = source.replace(
+        sdk_import,
+        "import { createRequire } from 'node:module';\n"
+        f"const {{ Paddle, EventName }} = createRequire({sdk_path})({sdk_path});",
+    )
+    source = source.replace(
+        "import { prisma } from '@/lib/database/client';",
+        "const prisma = { subscription: { updateMany: async args => { "
+        "globalThis.paddleMutations.push(args); return { count: 1 }; } } };",
+    ).replace("process.env.PADDLE_API_KEY!", "'fixture-only-not-a-real-paddle-api-key'")
+    return (
+        "process.env.PADDLE_WEBHOOK_SECRET = 'fixture-only-webhook-secret';\n" + source
+    )
+
+
+def test_paddle_sdk_checks_provider_header_expiry_and_raw_body() -> None:
+    """Reject stale or tampered signatures before any database handler runs."""
+    _node(
+        _paddle_source_with_installed_sdk(),
+        """
+const { createHmac } = await import('node:crypto');
+const secret = 'fixture-only-webhook-secret';
+globalThis.paddleMutations = [];
+const payload = JSON.stringify({
+  event_id: 'evt_fixture_only', event_type: 'subscription.updated',
+  notification_id: 'ntf_fixture_only', occurred_at: '2026-01-01T00:00:00Z',
+  data: {
+    id: 'sub_fixture_only', customer_id: 'ctm_fixture_only', status: 'active',
+    currency_code: 'USD', items: [], billing_cycle: { interval: 'month', frequency: 1 },
+    current_billing_period: null, scheduled_change: null,
+  },
+});
+const timestamp = Math.floor(Date.now() / 1000);
+const sign = (body, seconds) => {
+  const digest = createHmac('sha256', secret).update(`${seconds}:${body}`).digest('hex');
+  return `ts=${seconds};h1=${digest}`;
+};
+const signature = sign(payload, timestamp);
+assert.equal(mod.verifyPaddleWebhook(payload, signature), true);
+assert.equal(mod.verifyPaddleWebhook(payload + ' ', signature), false);
+assert.equal(mod.verifyPaddleWebhook(payload, sign(payload, timestamp - 60)), false);
+assert.equal(mod.verifyPaddleWebhook(payload, 'malformed'), false);
+assert.equal(mod.verifyPaddleWebhook(payload, `ts=${timestamp};h1=not-a-valid-hash`), false);
+await mod.processWebhook(payload, signature);
+assert.equal(globalThis.paddleMutations.length, 1);
+assert.deepEqual(globalThis.paddleMutations[0].where, {
+  paddleSubscriptionId: 'sub_fixture_only',
+});
+assert.equal(globalThis.paddleMutations[0].data.status, 'active');
+await assert.rejects(mod.processWebhook(payload + ' ', signature), /signature/i);
+await assert.rejects(
+  mod.processWebhook(payload, sign(payload, timestamp - 60)), /signature/i
+);
+assert.equal(globalThis.paddleMutations.length, 1);
+delete process.env.PADDLE_WEBHOOK_SECRET;
+assert.throws(() => mod.verifyPaddleWebhook(payload, signature), /not set/);
+""",
+    )
+
+
+def test_paddle_route_passes_raw_body_and_single_signature_header() -> None:
+    """Preserve provider bytes and reject absent headers before dispatch."""
+    source = _render(
+        "runtime/nextjs/app/api/webhooks/paddle/route.ts.jinja",
+        saas_billing_provider="paddle",
+    ).replace(
+        "import { NextResponse } from 'next/server';",
+        "const NextResponse = { json: (body, options) => "
+        "new Response(JSON.stringify(body), options) };",
+    )
+    source = source.replace(
+        "import { processWebhook } from '@/integrations/billing/service';",
+        "const processWebhook = async (...args) => { "
+        "globalThis.paddleReceived.push(args); };",
+    )
+    _node(
+        source,
+        """
+globalThis.paddleReceived = [];
+const payload = '{ "event_type": "customer.updated" }';
+const signature = 'ts=123;h1=fixture-only-header';
+const response = await mod.POST(new Request('https://app.test/api/webhooks/paddle', {
+  method: 'POST', body: payload, headers: { 'paddle-signature': signature },
+}));
+assert.equal(response.status, 200);
+assert.deepEqual(globalThis.paddleReceived, [[payload, signature]]);
+const missing = await mod.POST(new Request('https://app.test/api/webhooks/paddle', {
+  method: 'POST', body: payload,
+}));
+assert.equal(missing.status, 400);
+assert.equal(globalThis.paddleReceived.length, 1);
+""",
+    )
+
+
+@pytest.mark.parametrize("runtime", ["nextjs-16", "remix-2"])
+@pytest.mark.parametrize("auth_module", ["enabled", "disabled"])
+def test_uploadthing_payload_requires_authenticated_next_runtime(
+    runtime: str, auth_module: str
+) -> None:
+    """Never emit upload server or client imports without supported auth."""
+    context = {
+        "saas_runtime": runtime,
+        "saas_auth_module": auth_module,
+        "saas_file_upload": "uploadthing",
+    }
+    expected = runtime == "nextjs-16" and auth_module == "enabled"
+    for path in (
+        "runtime/nextjs/app/api/uploadthing/core.ts.jinja",
+        "runtime/nextjs/app/api/uploadthing/route.ts.jinja",
+        "integrations/uploads/file-upload.tsx.jinja",
+    ):
+        assert bool(_render(path, **context).strip()) == expected, path
+    manifest = json.loads(
+        _render("package.json.jinja", project_name="Fixture", **context)
+    )
+    assert ("uploadthing" in manifest["dependencies"]) == expected
+    assert ("@uploadthing/react" in manifest["dependencies"]) == expected
+    typed_env = _render("config/env.ts.jinja", **context)
+    assert ("UPLOADTHING_SECRET" in typed_env) == expected
+    assert ("UPLOADTHING_APP_ID" in typed_env) == expected
+
+
+def test_uploadthing_middleware_rejects_unauthenticated_uploads() -> None:
+    """The emitted SDK middleware must propagate authentication rejection."""
+    source = _render(
+        "runtime/nextjs/app/api/uploadthing/core.ts.jinja",
+        saas_file_upload="uploadthing",
+    ).replace(
+        "import { createUploadthing, type FileRouter } from 'uploadthing/next';",
+        """
+const createUploadthing = () => () => ({
+  middleware(callback) { this.authenticate = callback; return this; },
+  onUploadComplete() { return this; },
+});
+""",
+    )
+    source = source.replace(
+        "import { requireUserId } from '@/lib/auth/helpers';",
+        "const requireUserId = async () => { throw new Error('Authentication required'); };",
+    )
+    _node(
+        source,
+        """
+await assert.rejects(
+  mod.ourFileRouter.imageUploader.authenticate(), /Authentication required/
+);
+""",
+    )

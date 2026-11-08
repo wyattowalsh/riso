@@ -234,15 +234,8 @@ class Generator:
         # Read template content
         template_content = file_path.read_text(encoding="utf-8")
         
-        # Render with Jinja2
-        from jinja2 import Template as JinjaTemplate
-        template = JinjaTemplate(
-            template_content,
-            undefined=self.jinja_env.undefined,
-            trim_blocks=self.jinja_env.trim_blocks,
-            lstrip_blocks=self.jinja_env.lstrip_blocks,
-        )
-        
+        # Render with the sandboxed environment (never unsandboxed jinja2.Template)
+        template = self.jinja_env.from_string(template_content)
         return template.render(**variables)
     
     def _render_path(self, path: Path, variables: dict) -> Path:
@@ -258,9 +251,8 @@ class Generator:
         parts = []
         for part in path.parts:
             if "{{ '{{' }}" in part or "{{ '{%' }}" in part:
-                # Render Jinja2 in path component
-                from jinja2 import Template as JinjaTemplate
-                template = JinjaTemplate(part)
+                # Render Jinja2 in path component via sandboxed env
+                template = self.jinja_env.from_string(part)
                 part = template.render(**variables)
             parts.append(part)
         

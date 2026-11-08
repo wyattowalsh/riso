@@ -109,11 +109,12 @@ All CI platforms use the same component-first architecture:
 
 ### Strict Profile
 
-- All standard checks plus:
-- ty static type analysis (`uv run ty check` / `just typecheck`)
-- pylint static analysis
-- Extended Ruff rules
-- Extended timeout for thorough checking
+- The standard Ruff rules plus async, timezone, correctness, and security checks
+  from `python/ruff-strict.toml`
+- ty static analysis with warnings treated as errors
+- Pylint error checks
+- pytest with branch coverage at the generated project's existing floor
+- Extended CI timeout for thorough checking
 
 ## Matrix Builds
 

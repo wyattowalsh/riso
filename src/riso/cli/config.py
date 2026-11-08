@@ -30,6 +30,7 @@ class CliConfig:
         force_unsafe: bool = False,
         skip_post_gen: bool = False,
     ) -> CliConfig:
+        """Normalize explicit path options while retaining operation defaults."""
         return cls(
             template_path_override=(
                 Path(str(template_path)).expanduser().resolve()

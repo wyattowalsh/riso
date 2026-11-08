@@ -55,7 +55,7 @@ function SidebarTree({ nodes, pathname, level = 0 }: SidebarTreeProps) {
             <SidebarFolder
               key={index}
               name={node.name}
-              children={node.children}
+              nodes={node.children}
               pathname={pathname}
               level={level}
               defaultOpen={pathname.startsWith(node.index?.url ?? '')}
@@ -82,13 +82,13 @@ function SidebarTree({ nodes, pathname, level = 0 }: SidebarTreeProps) {
 
 interface SidebarFolderProps {
   name: ReactNode;
-  children: Root['children'];
+  nodes: Root['children'];
   pathname: string;
   level: number;
   defaultOpen?: boolean;
 }
 
-function SidebarFolder({ name, children, pathname, level, defaultOpen }: SidebarFolderProps) {
+function SidebarFolder({ name, nodes, pathname, level, defaultOpen }: SidebarFolderProps) {
   const [open, setOpen] = useState(defaultOpen ?? true);
 
   return (
@@ -115,7 +115,7 @@ function SidebarFolder({ name, children, pathname, level, defaultOpen }: Sidebar
       </button>
       {open && (
         <div className="mt-1">
-          <SidebarTree nodes={children} pathname={pathname} level={level + 1} />
+          <SidebarTree nodes={nodes} pathname={pathname} level={level + 1} />
         </div>
       )}
     </div>

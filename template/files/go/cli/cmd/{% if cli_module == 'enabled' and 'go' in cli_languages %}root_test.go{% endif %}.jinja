@@ -1,0 +1,63 @@
+{% if cli_module == 'enabled' and 'go' in cli_languages -%}
+package cmd
+
+import (
+	"context"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/spf13/cobra"
+
+	"{{ project_slug }}/internal/config"
+)
+
+func TestCommandConfiguration(t *testing.T) {
+	previousFile := cfgFile
+	previousLogger := slog.Default()
+	t.Cleanup(func() {
+		cfgFile = previousFile
+		slog.SetDefault(previousLogger)
+	})
+
+	for _, tc := range []struct {
+		name    string
+		content string
+		missing bool
+		wantErr bool
+	}{
+		{name: "missing explicit file", missing: true, wantErr: true},
+		{name: "malformed explicit file", content: "server: [", wantErr: true},
+		{name: "valid explicit file", content: "server:\n  port: 8123\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfgFile = filepath.Join(t.TempDir(), "config.yaml")
+			if !tc.missing {
+				if err := os.WriteFile(cfgFile, []byte(tc.content), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			command := &cobra.Command{}
+			command.SetContext(context.Background())
+			err := rootCmd.PersistentPreRunE(command, nil)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("invalid explicit configuration must stop command execution")
+				}
+				if command.Context().Value(config.ContextKey) != nil {
+					t.Fatal("failed configuration must not be stored in command context")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("valid explicit configuration: %v", err)
+			}
+			cfg, ok := command.Context().Value(config.ContextKey).(*config.Config)
+			if !ok || cfg == nil || cfg.Server.Port != 8123 {
+				t.Fatalf("command must receive the loaded configuration, got %#v", cfg)
+			}
+		})
+	}
+}
+{% endif -%}

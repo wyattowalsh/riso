@@ -101,8 +101,8 @@ Pre-commit Commit-msg SSOT \<adr/precommit-commit-msg-ssot>
     </div>
     <h3 class="feature-title">Quality Gate</h3>
     <p class="feature-description">
-      Run <code>just quality</code> for the canonical lane: ruff, ty, pylint, pytest with coverage.
-      Maintainer floor is 70%; rendered Python packages enforce 90%.
+      Run <code>just quality</code> for the canonical lane: ruff, ty, pytest, and ssot.
+      Pylint is pre-commit/strict. Maintainer coverage is <code>just ci-full</code> at 70%; rendered Python packages enforce 90%.
     </p>
   </div>
 

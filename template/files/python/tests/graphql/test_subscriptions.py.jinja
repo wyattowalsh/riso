@@ -1,27 +1,20 @@
 {% if (graphql_api_module == 'enabled' or 'graphql' in api_features) -%}
-"""GraphQL Subscription Tests - Real-time updates via WebSocket."""
+"""Exercise the generated subscription against the actual schema."""
+
+import asyncio
+from contextlib import aclosing
 
 import pytest
-from strawberry.test import BaseGraphQLTestClient
 
 from {{ package_name }}.graphql_api.schema import schema
 
 
-@pytest.fixture
-def graphql_client():
-    """Create GraphQL test client."""
-    return BaseGraphQLTestClient(schema)
+@pytest.mark.asyncio
+async def test_user_created_subscription_delivers_selected_fields():
+    stream = await schema.subscribe("subscription { userCreated { id name } }")
+    async with aclosing(stream):
+        event = await asyncio.wait_for(anext(stream), timeout=5)
 
-
-class TestSubscriptions:
-    """Test GraphQL subscriptions for real-time updates."""
-    
-    @pytest.mark.asyncio
-    async def test_user_created_subscription(self, graphql_client):
-        """Test userCreated subscription delivers events."""
-        assert True
-    
-    def test_subscription_with_field_selection(self, graphql_client):
-        """Test subscriptions support flexible field selection."""
-        assert True
+    assert event.errors is None
+    assert event.data == {"userCreated": {"id": "new-user-id", "name": "New User"}}
 {% endif -%}

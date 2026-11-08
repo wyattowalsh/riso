@@ -1,0 +1,276 @@
+{% if (websocket_module == "enabled" or "websocket" in api_features) -%}
+"""Exercise middleware at the actual ASGI admission and message boundaries."""
+
+import asyncio
+
+import pytest
+{%- if api_module == "enabled" and "python" in api_languages %}
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.testclient import TestClient
+{%- else %}
+from fastapi import WebSocket
+{%- endif %}
+from starlette.requests import HTTPConnection
+from starlette.types import Message as ASGIMessage
+
+{% if api_module == "enabled" and "python" in api_languages -%}
+from {{ package_name }}.api.websocket_endpoints import setup_websocket_routes
+{% endif -%}
+from {{ package_name }}.websocket import ConnectionManager, WebSocketConnection
+from {{ package_name }}.websocket.exceptions import (
+    AuthenticationError,
+    AuthorizationError,
+    WebSocketError,
+)
+from {{ package_name }}.websocket.middleware import ConnectionMiddleware
+from {{ package_name }}.websocket.models import Message
+
+
+class RecordingMiddleware(ConnectionMiddleware):
+    """Record stage ordering and optionally fail a specific hook."""
+
+    def __init__(self, name: str, events: list[str], fail_at: str | None = None) -> None:
+        self.name = name
+        self.events = events
+        self.fail_at = fail_at
+        self.started = asyncio.Event()
+
+    async def on_connect(
+        self, connection: WebSocketConnection, request: HTTPConnection
+    ) -> dict[str, str]:
+        """Observe the real handshake context and earlier admission metadata."""
+        assert not connection.is_active()
+        previous = connection.metadata.get("stage", "start")
+        self.events.append(f"connect:{self.name}:{previous}")
+        if self.fail_at == "admission" and request.headers.get("x-deny") == "yes":
+            raise AuthenticationError()
+        if self.fail_at == "cancel":
+            self.started.set()
+            await asyncio.Future()
+        return {"stage": self.name, "ip_address": "203.0.113.1"}
+
+    async def on_message(self, connection: WebSocketConnection, message: Message) -> Message:
+        """Pass a transformed message to the next hook."""
+        assert message.sender_id == connection.connection_id
+        text = message.payload.get("text", "hello")
+        self.events.append(f"message:{self.name}:{text}")
+        if self.fail_at == "message":
+            raise AuthorizationError()
+        message.payload["text"] = f"{text}:{self.name}"
+        return message
+
+    async def on_error(self, connection: WebSocketConnection, error: Exception) -> None:
+        """Record notification of the original rejection."""
+        assert isinstance(error, WebSocketError)
+        self.events.append(f"error:{self.name}:{error.code}")
+        if self.fail_at == "error":
+            raise RuntimeError("Error observer failed")
+
+    async def on_disconnect(
+        self, connection: WebSocketConnection, code: int, reason: str
+    ) -> None:
+        """Use a real async checkpoint during cleanup."""
+        await asyncio.sleep(0)
+        self.events.append(f"disconnect:{self.name}")
+        if self.fail_at == "disconnect":
+            raise RuntimeError("Cleanup observer failed")
+
+
+@pytest.mark.asyncio
+async def test_cancelled_admission_rolls_back_completed_hooks(
+    isolated_manager: ConnectionManager,
+) -> None:
+    """Cancellation during admission leaves no accepted or registered socket."""
+    events: list[str] = []
+    blocked = RecordingMiddleware("blocked", events, "cancel")
+    for middleware in (RecordingMiddleware("first", events), blocked, RecordingMiddleware("later", events)):
+        isolated_manager.add_middleware(middleware)
+    sent: list[ASGIMessage] = []
+
+    async def receive() -> ASGIMessage:
+        return {"type": "websocket.connect"}
+
+    async def send(frame: ASGIMessage) -> None:
+        sent.append(frame)
+
+    socket = WebSocket({"type": "websocket", "headers": []}, receive, send)
+    task = asyncio.create_task(isolated_manager.connect(socket))
+    try:
+        await asyncio.wait_for(blocked.started.wait(), timeout=2)
+    finally:
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    assert not sent
+    assert isolated_manager.get_connection_count() == 0
+    assert events == ["connect:first:start", "connect:blocked:first", "disconnect:first"]
+
+
+@pytest.mark.asyncio
+async def test_failed_asgi_accept_rolls_back_successful_hooks(
+    isolated_manager: ConnectionManager,
+) -> None:
+    """A partial accept closes its socket and preserves the transport error."""
+    events: list[str] = []
+    for name in ("first", "second"):
+        isolated_manager.add_middleware(RecordingMiddleware(name, events))
+    sent: list[str] = []
+
+    async def receive() -> ASGIMessage:
+        return {"type": "websocket.connect"}
+
+    async def send(frame: ASGIMessage) -> None:
+        sent.append(frame["type"])
+        if frame["type"] == "websocket.accept":
+            raise OSError("ASGI transport failed")
+
+    socket = WebSocket({"type": "websocket", "headers": []}, receive, send)
+    with pytest.raises(OSError, match="ASGI transport failed"):
+        await isolated_manager.connect(socket)
+
+    assert sent == ["websocket.accept", "websocket.close"]
+    assert isolated_manager.get_connection_count() == 0
+    assert events == ["connect:first:start", "connect:second:first", "disconnect:first", "disconnect:second"]
+
+
+{% if api_module == "enabled" and "python" in api_languages %}
+@pytest.mark.parametrize("route", ["/ws", "/ws/echo"])
+@pytest.mark.parametrize("with_middleware", [False, True])
+def test_shipped_routes_preserve_wire_and_apply_ordered_transformations(
+    isolated_manager: ConnectionManager, route: str, with_middleware: bool,
+) -> None:
+    """Both shipped routes keep their wire format and use the admission snapshot."""
+    events: list[str] = []
+    if with_middleware:
+        for name in ("first", "second"):
+            isolated_manager.add_middleware(RecordingMiddleware(name, events))
+    app = FastAPI()
+    setup_websocket_routes(app)
+
+    with TestClient(app) as client, client.websocket_connect(route) as websocket:
+        # Registering a hook after admission must not run it without its on_connect.
+        isolated_manager.add_middleware(RecordingMiddleware("late", events))
+        expected = "Echo: hello:first:second" if with_middleware else "Echo: hello"
+        if route == "/ws":
+            assert websocket.receive_json()["type"] == "connection.connect"
+            data: dict[str, object] = {
+                "type": "message.text", "message_id": "input", "sender_id": "forged",
+            }
+            if not with_middleware:
+                data["payload"] = {"text": "hello"}
+            websocket.send_json(data)
+            response = websocket.receive_json()
+            assert response["correlation_id"] == "input"
+            assert response["payload"] == {"text": expected}
+        else:
+            websocket.send_text("hello")
+            assert websocket.receive_text() == expected
+
+    assert isolated_manager.get_connection_count() == 0
+    if with_middleware:
+        assert events == [
+            "connect:first:start", "connect:second:first", "message:first:hello",
+            "message:second:hello:first", "disconnect:first", "disconnect:second",
+        ]
+    else:
+        assert not events
+
+
+def test_rejected_admission_never_accepts_or_consumes_capacity(
+    isolated_manager: ConnectionManager,
+) -> None:
+    """An auth rejection yields policy close and rolls back only admitted hooks."""
+    events: list[str] = []
+    isolated_manager.add_middleware(RecordingMiddleware("first", events))
+    isolated_manager.add_middleware(RecordingMiddleware("guard", events, "admission"))
+    isolated_manager.add_middleware(RecordingMiddleware("later", events))
+    app = FastAPI()
+    setup_websocket_routes(app)
+
+    with TestClient(app) as client:
+        with (
+            pytest.raises(WebSocketDisconnect) as denied,
+            client.websocket_connect("/ws", headers={"x-deny": "yes"}),
+        ):
+            pytest.fail("Rejected middleware admission sent websocket.accept")
+        assert denied.value.code == 1008
+        assert isolated_manager.get_connection_count() == 0
+        assert events == ["connect:first:start", "connect:guard:first", "disconnect:first"]
+
+        # The same client can connect when its next admission succeeds.
+        with client.websocket_connect("/ws") as websocket:
+            assert websocket.receive_json()["type"] == "connection.connect"
+
+
+@pytest.mark.parametrize("error_observer_fails", [False, True])
+def test_shipped_json_route_stops_on_message_and_error_failures(
+    isolated_manager: ConnectionManager, error_observer_fails: bool,
+) -> None:
+    """A rejected message reaches neither later message hooks nor the echo handler."""
+    events: list[str] = []
+    isolated_manager.add_middleware(RecordingMiddleware("first", events, "error" if error_observer_fails else None))
+    isolated_manager.add_middleware(RecordingMiddleware("guard", events, "message"))
+    isolated_manager.add_middleware(RecordingMiddleware("later", events, "disconnect"))
+    isolated_manager.add_middleware(RecordingMiddleware("last", events))
+    app = FastAPI()
+    setup_websocket_routes(app)
+
+    with TestClient(app) as client, client.websocket_connect("/ws") as websocket:
+        assert websocket.receive_json()["type"] == "connection.connect"
+        websocket.send_json({"type": "message.text", "payload": {"text": "denied"}})
+        response = websocket.receive_json()
+        assert response["type"] == "error"
+        assert response["payload"]["code"] == "AUTHZ_FAILED"
+
+    assert [event for event in events if event.startswith("message:")] == [
+        "message:first:denied", "message:guard:denied:first",
+    ]
+    errors = [event for event in events if event.startswith("error:")]
+    assert errors == (
+        ["error:first:AUTHZ_FAILED"] if error_observer_fails
+        else [f"error:{name}:AUTHZ_FAILED" for name in ("first", "guard", "later", "last")]
+    )
+    assert [event for event in events if event.startswith("disconnect:")] == [
+        "disconnect:first", "disconnect:guard", "disconnect:later",
+    ]
+    assert isolated_manager.get_connection_count() == 0
+
+
+def test_validation_errors_are_serializable_and_halt_message_hooks(
+    isolated_manager: ConnectionManager,
+) -> None:
+    """Invalid message fields produce a structured error without echoing the input."""
+    events: list[str] = []
+    isolated_manager.add_middleware(RecordingMiddleware("guard", events))
+    app = FastAPI()
+    setup_websocket_routes(app)
+
+    with TestClient(app) as client, client.websocket_connect("/ws") as websocket:
+        assert websocket.receive_json()["type"] == "connection.connect"
+        websocket.send_json({"type": "INVALID-TYPE!", "payload": {"text": "input"}})
+        response = websocket.receive_json()["payload"]
+        assert response["code"] == "INVALID_FORMAT"
+        assert "input" not in response["details"]["errors"][0]
+
+    assert events == ["connect:guard:start", "error:guard:INVALID_FORMAT", "disconnect:guard"]
+
+
+def test_shipped_echo_route_stops_on_message_failure(isolated_manager: ConnectionManager) -> None:
+    """The raw-text route closes with policy violation before it can echo a denial."""
+    events: list[str] = []
+    isolated_manager.add_middleware(RecordingMiddleware("guard", events, "message"))
+    isolated_manager.add_middleware(RecordingMiddleware("later", events))
+    app = FastAPI()
+    setup_websocket_routes(app)
+
+    with TestClient(app) as client, client.websocket_connect("/ws/echo") as websocket:
+        websocket.send_text("denied")
+        with pytest.raises(WebSocketDisconnect) as denied:
+            websocket.receive_text()
+
+    assert denied.value.code == 1008
+    assert [event for event in events if event.startswith("message:")] == ["message:guard:denied"]
+    assert isolated_manager.get_connection_count() == 0
+{% endif %}
+{% endif -%}

@@ -31,6 +31,7 @@ class TestSetupBash:
             [str(SETUP_SH), "--help"],
             capture_output=True,
             text=True,
+            check=False,
         )
         assert result.returncode == 0
         assert "Usage:" in result.stdout or "USAGE:" in result.stdout
@@ -42,6 +43,7 @@ class TestSetupBash:
             [str(SETUP_SH), "-h"],
             capture_output=True,
             text=True,
+            check=False,
         )
         assert result.returncode == 0
         assert "Usage:" in result.stdout or "USAGE:" in result.stdout
@@ -52,6 +54,7 @@ class TestSetupBash:
             [str(SETUP_SH), "--check-only"],
             capture_output=True,
             text=True,
+            check=False,
         )
         # Should be 0 or 1, not 2 (script error)
         assert result.returncode in [0, 1], (
@@ -64,6 +67,7 @@ class TestSetupBash:
             [str(SETUP_SH)],
             capture_output=True,
             text=True,
+            check=False,
         )
         # Should exit 0 or 1, and not actually install anything
         assert result.returncode in [0, 1], (
@@ -78,6 +82,7 @@ class TestSetupBash:
             [str(SETUP_SH), "--invalid-flag-12345"],
             capture_output=True,
             text=True,
+            check=False,
         )
         # Should fail with error message
         assert result.returncode == 2, (
@@ -91,6 +96,7 @@ class TestSetupBash:
             [str(SETUP_SH), "--check-only", "--install"],
             capture_output=True,
             text=True,
+            check=False,
         )
         assert result.returncode == 2
         assert "Cannot use" in result.stderr or "ERROR" in result.stderr
@@ -101,6 +107,7 @@ class TestSetupBash:
             [str(SETUP_SH), "--yes"],
             capture_output=True,
             text=True,
+            check=False,
         )
         assert result.returncode == 2
         assert "can only be used with" in result.stderr or "ERROR" in result.stderr
@@ -112,6 +119,7 @@ class TestSetupBash:
             capture_output=True,
             text=True,
             env={"DEBUG": "1", **os.environ},
+            check=False,
         )
         # Just check it runs without error
         assert result.returncode == 0
@@ -123,6 +131,7 @@ class TestSetupBash:
             [str(SETUP_SH)],
             capture_output=True,
             text=True,
+            check=False,
         )
 
         # If default run shows all tools OK, check-only should succeed
@@ -131,6 +140,7 @@ class TestSetupBash:
                 [str(SETUP_SH), "--check-only"],
                 capture_output=True,
                 text=True,
+                check=False,
             )
             assert check_result.returncode == 0, "Should exit 0 when all tools present"
 
@@ -140,6 +150,7 @@ class TestSetupBash:
             [str(SETUP_SH), "--help"],
             capture_output=True,
             text=True,
+            check=False,
         )
         assert result.returncode == 0
         # Should show version number
@@ -147,7 +158,7 @@ class TestSetupBash:
 
 
 @pytest.mark.skipif(
-    subprocess.run(["which", "pwsh"], capture_output=True).returncode != 0,
+    subprocess.run(["which", "pwsh"], capture_output=True, check=False).returncode != 0,
     reason="PowerShell Core not installed",
 )
 class TestSetupPowerShell:
@@ -163,6 +174,7 @@ class TestSetupPowerShell:
             ["pwsh", "-File", str(SETUP_PS1), "-Help"],
             capture_output=True,
             text=True,
+            check=False,
         )
         # PowerShell may return 0 or display help to stdout/stderr
         # Just verify it doesn't crash
@@ -174,6 +186,7 @@ class TestSetupPowerShell:
             ["pwsh", "-File", str(SETUP_PS1), "-CheckOnly"],
             capture_output=True,
             text=True,
+            check=False,
         )
         assert result.returncode in [0, 1]
 
@@ -185,6 +198,7 @@ def docker_available() -> bool:
             ["docker", "info"],
             capture_output=True,
             timeout=5,
+            check=False,
         )
         return result.returncode == 0
     except (subprocess.TimeoutExpired, FileNotFoundError):
@@ -225,6 +239,7 @@ class TestSetupDocker:
             capture_output=True,
             text=True,
             timeout=60,
+            check=False,
         )
         # Container should run without crash (exit 0 from docker run)
         assert result.returncode == 0, f"Docker run failed for {image}"
@@ -246,6 +261,7 @@ class TestSetupDocker:
             capture_output=True,
             text=True,
             timeout=60,
+            check=False,
         )
         assert result.returncode == 0, f"Docker run failed for {image}"
         assert "Usage:" in result.stdout or "USAGE:" in result.stdout
@@ -261,6 +277,7 @@ class TestSetupScriptIntegration:
             [str(SETUP_SH), "--help"],
             capture_output=True,
             text=True,
+            check=False,
         )
         assert result.returncode == 0
         # Should not have shellcheck or sourcing errors in stderr
@@ -274,6 +291,7 @@ class TestSetupScriptIntegration:
             [str(SETUP_SH), "--check-only"],
             capture_output=True,
             text=True,
+            check=False,
         )
         # Script should complete (even if tools missing)
         assert result.returncode in [0, 1]
@@ -286,6 +304,7 @@ class TestSetupScriptIntegration:
             capture_output=True,
             text=True,
             env={"NO_COLOR": "1", **os.environ},
+            check=False,
         )
         assert result.returncode == 0
         # Output should not contain ANSI escape codes
@@ -298,6 +317,7 @@ class TestSetupScriptIntegration:
             capture_output=True,
             text=True,
             env={"VERBOSE": "1", **os.environ},
+            check=False,
         )
         assert result.returncode == 0
 
@@ -307,6 +327,7 @@ class TestSetupScriptIntegration:
             [str(SETUP_SH)],
             capture_output=True,
             text=True,
+            check=False,
         )
         # Should check for core tools
         expected_tools = ["python3", "uv", "node", "pnpm"]
@@ -326,6 +347,7 @@ class TestSetupDocumentation:
             [str(SETUP_SH), "--help"],
             capture_output=True,
             text=True,
+            check=False,
         )
         assert result.returncode == 0
         help_text = result.stdout
@@ -342,6 +364,7 @@ class TestSetupDocumentation:
             [str(SETUP_SH), "--help"],
             capture_output=True,
             text=True,
+            check=False,
         )
         assert result.returncode == 0
         help_text = result.stdout
@@ -356,6 +379,7 @@ class TestSetupDocumentation:
             [str(SETUP_SH), "--help"],
             capture_output=True,
             text=True,
+            check=False,
         )
         assert result.returncode == 0
         help_text = result.stdout
@@ -373,6 +397,7 @@ class TestSetupDocumentation:
             [str(SETUP_SH), "--help"],
             capture_output=True,
             text=True,
+            check=False,
         )
         assert result.returncode == 0
         help_text = result.stdout

@@ -1,17 +1,19 @@
 {% if (websocket_module == "enabled" or "websocket" in api_features) and api_module == "enabled" and "python" in api_languages -%}
 """Example WebSocket endpoints demonstrating basic usage."""
 
-import uuid
-from datetime import datetime, timezone
-from typing import Any, Dict
+from datetime import UTC, datetime
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, status
 from loguru import logger
+from starlette.websockets import WebSocketState
 
 from {{ package_name }}.websocket import ConnectionManager
 from {{ package_name }}.websocket.config import get_config as get_ws_config
-from {{ package_name }}.websocket.decorators import websocket_endpoint
-from {{ package_name }}.websocket.exceptions import WebSocketError
+from {{ package_name }}.websocket.exceptions import (
+    InvalidMessageFormatError,
+    MessageTooLargeError,
+    WebSocketError,
+)
 from {{ package_name }}.websocket.models import MessageType
 from {{ package_name }}.websocket.utils import format_error_message, generate_message_id
 
@@ -29,6 +31,17 @@ def setup_websocket_routes(app: FastAPI) -> None:
     if not ws_config.enable_demo_endpoints:
         return
 
+    async def connect_or_reject(websocket: WebSocket) -> str | None:
+        try:
+            return await manager.connect(websocket)
+        except Exception as error:
+            logger.warning("WebSocket admission failed: {}", type(error).__name__)
+            if websocket.application_state is WebSocketState.CONNECTING:
+                await websocket.close(
+                    code=status.WS_1008_POLICY_VIOLATION, reason="Connection rejected"
+                )
+            return None
+
     @app.websocket("/ws")
     async def websocket_basic_endpoint(websocket: WebSocket):
         """
@@ -43,31 +56,36 @@ def setup_websocket_routes(app: FastAPI) -> None:
 
         Connection URL: ws://localhost:8000/ws
         """
-        connection_id = await manager.connect(websocket)
+        connection_id = await connect_or_reject(websocket)
+        if connection_id is None:
+            return
 
         try:
+            connection = manager.get_connection(connection_id)
+            if connection is None:
+                return
             # Send welcome message
             welcome_msg = {
                 "type":       MessageType.CONNECTION_CONNECT.value,
                 "message_id": generate_message_id(),
-                "timestamp":  datetime.now(timezone.utc).isoformat(),
+                "timestamp":  datetime.now(UTC).isoformat(),
                 "sender_id":  "server",
                 "payload":    {
                     "connection_id":     connection_id,
-                    "server_time":       datetime.now(timezone.utc).isoformat(),
+                    "server_time":       datetime.now(UTC).isoformat(),
                     "heartbeat_interval": manager.config.heartbeat_interval,
                     "message":           "Welcome to the WebSocket server!",
                 },
             }
-            connection = manager.get_connection(connection_id)
-            if connection:
-                await connection.send_json(welcome_msg)
+            await connection.send_json(welcome_msg)
 
             # Message handling loop
             while True:
                 try:
-                    # Receive message
-                    data = await websocket.receive_json()
+                    # Receive message and enforce per-connection rate limit
+                    data = await connection.receive_json()
+                    manager.check_rate_limit(connection_id)
+                    data = await manager.process_message(connection_id, data)
 
                     # Handle different message types
                     message_type = data.get("type")
@@ -77,15 +95,14 @@ def setup_websocket_routes(app: FastAPI) -> None:
                         response = {
                             "type":          MessageType.MESSAGE_TEXT.value,
                             "message_id":    generate_message_id(),
-                            "timestamp":     datetime.now(timezone.utc).isoformat(),
+                            "timestamp":     datetime.now(UTC).isoformat(),
                             "sender_id":     "server",
                             "correlation_id": data.get("message_id"),
                             "payload":       {
                                 "text": f"Echo: {data['payload']['text']}",
                             },
                         }
-                        if connection:
-                            await connection.send_json(response)
+                        await connection.send_json(response)
 
                     elif message_type == "room.join":
                         # Join room
@@ -96,7 +113,7 @@ def setup_websocket_routes(app: FastAPI) -> None:
                         join_response = {
                             "type":          MessageType.ROOM_JOINED.value,
                             "message_id":    generate_message_id(),
-                            "timestamp":     datetime.now(timezone.utc).isoformat(),
+                            "timestamp":     datetime.now(UTC).isoformat(),
                             "sender_id":     "server",
                             "correlation_id": data.get("message_id"),
                             "payload":       {
@@ -104,14 +121,13 @@ def setup_websocket_routes(app: FastAPI) -> None:
                                 "member_count": len(manager.get_connections_by_room(room_id)),
                             },
                         }
-                        if connection:
-                            await connection.send_json(join_response)
+                        await connection.send_json(join_response)
 
                         # Notify other room members
                         member_joined_msg = {
                             "type":       MessageType.ROOM_MEMBER_JOINED.value,
                             "message_id": generate_message_id(),
-                            "timestamp":  datetime.now(timezone.utc).isoformat(),
+                            "timestamp":  datetime.now(UTC).isoformat(),
                             "sender_id":  "server",
                             "payload":    {
                                 "room_id":       room_id,
@@ -134,7 +150,7 @@ def setup_websocket_routes(app: FastAPI) -> None:
                         leave_response = {
                             "type":          MessageType.ROOM_LEFT.value,
                             "message_id":    generate_message_id(),
-                            "timestamp":     datetime.now(timezone.utc).isoformat(),
+                            "timestamp":     datetime.now(UTC).isoformat(),
                             "sender_id":     "server",
                             "correlation_id": data.get("message_id"),
                             "payload":       {
@@ -142,8 +158,7 @@ def setup_websocket_routes(app: FastAPI) -> None:
                                 "member_count": len(manager.get_connections_by_room(room_id)),
                             },
                         }
-                        if connection:
-                            await connection.send_json(leave_response)
+                        await connection.send_json(leave_response)
 
                     elif message_type == "room.broadcast":
                         # Broadcast to room
@@ -154,7 +169,7 @@ def setup_websocket_routes(app: FastAPI) -> None:
                         # Add metadata
                         broadcast_message["sender_id"] = connection_id
                         broadcast_message["message_id"] = generate_message_id()
-                        broadcast_message["timestamp"] = datetime.now(timezone.utc).isoformat()
+                        broadcast_message["timestamp"] = datetime.now(UTC).isoformat()
 
                         # Broadcast
                         await manager.broadcast_to_room(
@@ -164,14 +179,9 @@ def setup_websocket_routes(app: FastAPI) -> None:
                         )
 
                     elif message_type == "heartbeat.pong":
-                        # Handle heartbeat pong
-                        logger.debug(
-                            f"Received heartbeat pong from {connection_id}",
-                            extra={
-                                "connection_id":  connection_id,
-                                "ping_message_id": data["payload"].get("ping_message_id"),
-                            },
-                        )
+                        ping_id = data["payload"].get("ping_message_id")
+                        if isinstance(ping_id, str) and connection.record_pong(ping_id):
+                            logger.debug("Received heartbeat pong from {}", connection_id)
 
                     else:
                         # Unknown message type
@@ -180,32 +190,35 @@ def setup_websocket_routes(app: FastAPI) -> None:
                             message=f"Unknown message type: {message_type}",
                             details={"type": message_type},
                         )
-                        if connection:
-                            await connection.send_json(error_msg)
+                        await connection.send_json(error_msg)
+
+                except WebSocketDisconnect:
+                    raise
 
                 except WebSocketError as e:
+                    await manager.notify_error(connection_id, e)
                     # Send structured error response
                     error_msg = format_error_message(
                         code=e.code,
                         message=e.message,
                         details=e.details,
+                        retry_after=e.retry_after,
                     )
-                    if connection:
-                        await connection.send_json(error_msg)
+                    await connection.send_json(error_msg)
 
                 except Exception as e:
+                    await manager.notify_error(connection_id, e)
                     # Log unexpected errors
                     logger.error(
-                        f"Error processing WebSocket message: {e}",
-                        exc_info=True,
+                        "Error processing WebSocket message: {}",
+                        type(e).__name__,
                         extra={"connection_id": connection_id},
                     )
                     error_msg = format_error_message(
                         code="INTERNAL_ERROR",
                         message="Internal server error",
                     )
-                    if connection:
-                        await connection.send_json(error_msg)
+                    await connection.send_json(error_msg)
 
         except WebSocketDisconnect:
             logger.info(
@@ -227,20 +240,47 @@ def setup_websocket_routes(app: FastAPI) -> None:
 
         Connection URL: ws://localhost:8000/ws/echo
         """
-        connection_id = await manager.connect(websocket)
+        connection_id = await connect_or_reject(websocket)
+        if connection_id is None:
+            return
 
+        close_code = status.WS_1000_NORMAL_CLOSURE
+        close_reason = "Normal closure"
         try:
+            connection = manager.get_connection(connection_id)
+            if connection is None:
+                return
             while True:
-                # Receive and echo back
-                data = await websocket.receive_text()
-
-                connection = manager.get_connection(connection_id)
-                if connection:
+                try:
+                    data = await connection.receive_text()
+                    message = await manager.process_message(
+                        connection_id,
+                        {"type": MessageType.MESSAGE_TEXT.value, "payload": {"text": data}},
+                    )
+                    data = message.get("payload", {}).get("text")
+                    if not isinstance(data, str):
+                        raise InvalidMessageFormatError("Echo messages require a text payload")
                     await connection.send_text(f"Echo: {data}")
+                except WebSocketDisconnect:
+                    raise
+                except MessageTooLargeError as error:
+                    await manager.notify_error(connection_id, error)
+                    close_code = status.WS_1009_MESSAGE_TOO_BIG
+                    close_reason = "Message too large"
+                    break
+                except Exception as error:
+                    await manager.notify_error(connection_id, error)
+                    close_code = (
+                        status.WS_1008_POLICY_VIOLATION
+                        if isinstance(error, WebSocketError)
+                        else status.WS_1011_INTERNAL_ERROR
+                    )
+                    close_reason = "Message rejected"
+                    break
 
         except WebSocketDisconnect:
             pass
         finally:
-            await manager.disconnect(connection_id)
+            await manager.disconnect(connection_id, code=close_code, reason=close_reason)
 
 {% endif -%}

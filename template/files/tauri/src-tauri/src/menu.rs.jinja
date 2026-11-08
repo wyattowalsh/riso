@@ -1,4 +1,4 @@
-{% if desktop_module == "enabled" and desktop_framework == "tauri" and desktop_features is defined and 'menu' in desktop_features %}
+{%- if desktop_module == "enabled" and desktop_framework == "tauri" and desktop_features is defined and 'menu' in desktop_features -%}
 //! Application Menu
 //!
 //! This module defines the application menu structure.
@@ -41,23 +41,24 @@ pub fn init_menu(app: &App) -> Result<Menu<tauri::Wry>> {
     )?;
 
     // View menu
-    let view_menu = Submenu::with_items(
+    let fullscreen_item = MenuItem::with_id(
         app,
-        "View",
+        "toggle_fullscreen",
+        "Toggle Fullscreen",
         true,
-        &[
-            &MenuItem::with_id(app, "toggle_fullscreen", "Toggle Fullscreen", true, None::<&str>)?,
-        ],
+        None::<&str>,
     )?;
+    let view_menu = Submenu::with_items(app, "View", true, &[&fullscreen_item])?;
 
     // Help menu
-    let about_item = MenuItem::with_id(app, "about", "About {{ project_name }}", true, None::<&str>)?;
+    let about_label = "About {{ project_name }}";
+    let about_item = MenuItem::with_id(app, "about", about_label, true, None::<&str>)?;
     let help_menu = Submenu::with_items(app, "Help", true, &[&about_item])?;
 
     // Build and install the menu
     let menu = Menu::with_items(app, &[&file_menu, &edit_menu, &view_menu, &help_menu])?;
     app.set_menu(menu.clone())?;
-    app.on_menu_event(|app, event| handle_menu_event(app, event));
+    app.on_menu_event(handle_menu_event);
 
     Ok(menu)
 }
@@ -87,4 +88,4 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
         }
     }
 }
-{% endif %}
+{% endif -%}

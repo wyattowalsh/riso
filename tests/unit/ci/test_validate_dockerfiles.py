@@ -1,5 +1,8 @@
 """Unit tests for validate_dockerfiles.py"""
 
+# Imports stay local until pytest fixtures establish the script or hook paths.
+# pylint: disable=import-outside-toplevel
+
 import json
 from unittest.mock import MagicMock, patch
 
@@ -16,7 +19,7 @@ class TestCheckHadolintInstalled:
     def test_hadolint_installed(self, monkeypatch):
         """Should return True when hadolint is installed."""
 
-        def mock_run(*args, **kwargs):
+        def mock_run(*_args, **_kwargs):
             result = MagicMock()
             result.returncode = 0
             return result
@@ -226,7 +229,7 @@ def test_dockerfile_validation_parametrized(
         )
 
     # Mock hadolint
-    def mock_run(*args, **kwargs):
+    def mock_run(*_args, **_kwargs):
         result = MagicMock()
         result.returncode = 1 if expected_error_codes else 0
         result.stdout = json.dumps(issues)
@@ -271,7 +274,7 @@ def test_hadolint_error_levels(level, should_fail, temp_dir, monkeypatch):
     dockerfile.write_text("FROM python:3.11-slim\n")
 
     # Mock hadolint to return issue with specified level
-    def mock_run(*args, **kwargs):
+    def mock_run(*_args, **_kwargs):
         result = MagicMock()
         result.returncode = 1 if level == "error" else 0
         result.stdout = json.dumps(
@@ -359,7 +362,7 @@ CMD ["python", "main.py"]
 """)
 
         # Mock hadolint to return no issues
-        def mock_run(*args, **kwargs):
+        def mock_run(*_args, **_kwargs):
             result = MagicMock()
             result.returncode = 0
             result.stdout = "[]"  # No issues
@@ -385,7 +388,7 @@ CMD ["python", "main.py"]
         dockerfile.write_text("FROM python\n")  # Missing specific version tag
 
         # Mock hadolint to return errors
-        def mock_run(*args, **kwargs):
+        def mock_run(*_args, **_kwargs):
             result = MagicMock()
             result.returncode = 1
             result.stdout = json.dumps(
@@ -423,7 +426,7 @@ CMD ["python", "main.py"]
         dockerfile.write_text("FROM python:3.11-slim\nRUN apt-get update\n")
 
         # Mock hadolint to return warnings only
-        def mock_run(*args, **kwargs):
+        def mock_run(*_args, **_kwargs):
             result = MagicMock()
             result.returncode = 0
             result.stdout = json.dumps(
@@ -461,7 +464,7 @@ CMD ["python", "main.py"]
         dockerfile.write_text("FROM python:3.11-slim\n")
 
         # Mock hadolint to return mixed issues
-        def mock_run(*args, **kwargs):
+        def mock_run(*_args, **_kwargs):
             result = MagicMock()
             result.returncode = 1
             result.stdout = json.dumps(
@@ -520,7 +523,7 @@ CMD ["python", "main.py"]
         dockerfile = temp_dir / "Dockerfile"
         dockerfile.write_text("FROM python:3.11\n")
 
-        def mock_run(*args, **kwargs):
+        def mock_run(*_args, **_kwargs):
             result = MagicMock()
             result.returncode = 0
             result.stdout = "invalid json"
@@ -556,7 +559,7 @@ CMD ["python", "main.py"]
         dockerfile = temp_dir / "Dockerfile"
         dockerfile.write_text("FROM python:3.11-slim\n")
 
-        def mock_run(*args, **kwargs):
+        def mock_run(*_args, **_kwargs):
             result = MagicMock()
             result.returncode = 0
             result.stdout = ""  # Empty output

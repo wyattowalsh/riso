@@ -11,6 +11,7 @@ pytestmark = pytest.mark.unit
 
 
 def test_get_module_catalog_finds_modules_at_template_files_path() -> None:
+    """Catalog discovery reads the template payload and exposes its core modules."""
     template = resolve_template_path()
     catalog_path = template / "files" / "module_catalog.json.jinja"
     assert catalog_path.exists()

@@ -40,6 +40,7 @@ FIXTURES = REPO / "tests" / "fixtures" / "json_samples"
 
 
 def test_load_canonical_pass_fixture() -> None:
+    """The canonical passing smoke fixture loads with successful modules."""
     payload = load_smoke(FIXTURES / "smoke_results_pass.json")
     assert is_canonical(payload)
     assert failure_count(payload) == 0
@@ -47,6 +48,7 @@ def test_load_canonical_pass_fixture() -> None:
 
 
 def test_load_canonical_failures_fixture() -> None:
+    """The canonical failure fixture retains failing module outcomes."""
     payload = load_smoke(FIXTURES / "smoke_results_failures.json")
     assert is_canonical(payload)
     assert failure_count(payload) == 1
@@ -55,6 +57,7 @@ def test_load_canonical_failures_fixture() -> None:
 
 
 def test_iter_modules_legacy_results_list() -> None:
+    """Legacy result rows are exposed through the shared module iterator."""
     legacy = {
         "results": [
             {"module": "cli", "status": "passed"},
@@ -69,6 +72,7 @@ def test_iter_modules_legacy_results_list() -> None:
 
 
 def test_build_canonical() -> None:
+    """Canonical smoke output records the supplied module results."""
     payload = build_canonical(
         variant="x",
         timestamp="t",
@@ -83,6 +87,7 @@ def test_build_canonical() -> None:
 
 
 def test_load_smoke_rejects_non_object(tmp_path: Path) -> None:
+    """A non-object smoke payload is rejected."""
     path = tmp_path / "bad.json"
     path.write_text(json.dumps([1, 2, 3]), encoding="utf-8")
     with pytest.raises(ValueError, match="object"):

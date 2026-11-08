@@ -13,7 +13,9 @@ from riso.core.errors import (
     OperationTimeoutError,
     ValidationFailedError,
 )
-from riso.template import run_generator, run_recopy, run_update
+from riso.core.paths import resolve_template_path
+from riso.template import _evaluate_when, run_generator, run_recopy, run_update
+from riso.template._copier_worker import _run_copy
 
 
 @pytest.mark.parametrize(
@@ -153,6 +155,7 @@ def test_run_generator_calls_worker_with_skip_tasks_true(
     assert result.success is True
     assert captured["op"] == "copy"
     assert captured["payload"]["skip_tasks"] is True
+    assert captured["payload"]["defaults"] is True
     post.assert_called_once()
 
 
@@ -191,6 +194,39 @@ def test_run_update_validates_saved_source_without_overriding_worker_data(
     assert "defaults" not in captured["payload"] or isinstance(
         captured["payload"].get("defaults"), (bool, type(None))
     )
+
+
+@pytest.mark.parametrize("force_unsafe", [False, True])
+def test_run_update_bundled_template_requires_explicit_unsafe(
+    tmp_path: Path, force_unsafe: bool
+) -> None:
+    """A bundled selection never turns on unsafe independently of the caller."""
+    dest = tmp_path / "proj"
+    dest.mkdir()
+    (dest / ".copier-answers.yml").write_text(
+        f"_src_path: {resolve_template_path()}\n"
+        "cli_module: enabled\ncli_languages: [python]\n",
+        encoding="utf-8",
+    )
+    captured: dict[str, Any] = {}
+
+    def fake_worker(_op: str, payload: dict[str, Any], _timeout: int | None) -> None:
+        captured["payload"] = payload
+
+    bundled = resolve_template_path()
+    with (
+        patch("riso.template._run_copier_worker", side_effect=fake_worker),
+        patch("riso.template._maybe_run_post_gen"),
+    ):
+        run_update(
+            destination=dest,
+            template_path=bundled,
+            skip_post_gen=True,
+            force_unsafe=force_unsafe,
+        )
+    assert captured["payload"]["unsafe"] is force_unsafe
+    assert captured["payload"]["skip_tasks"] is True
+    assert captured["payload"]["overwrite"] is True
 
 
 def test_run_update_rejects_corrupt_answers_file(tmp_path: Path) -> None:
@@ -263,6 +299,42 @@ def test_worker_nonzero_raises_copier_operation_error(tmp_path: Path) -> None:
     assert "boom" in str(exc_info.value)
 
 
+def test_run_generator_runs_only_post_gen_by_default_keep_skip_tasks(
+    tmp_path: Path,
+) -> None:
+    """Default generation never invokes the provisioning pre-gen helper."""
+    dest = tmp_path / "out"
+    captured: dict[str, Any] = {}
+    order: list[str] = []
+
+    def fake_worker(_op: str, payload: dict[str, Any], _timeout: int | None) -> None:
+        captured["payload"] = payload
+        dest.mkdir()
+
+    def fake_pre(*_args: Any, **_kwargs: Any) -> None:
+        order.append("pre")
+
+    def fake_post(*_args: Any, **_kwargs: Any) -> None:
+        order.append("post")
+
+    with (
+        patch("riso.template._run_copier_worker", side_effect=fake_worker),
+        patch("riso.template.run_pre_gen", side_effect=fake_pre, create=True) as pre,
+        patch("riso.template.run_post_gen", side_effect=fake_post) as post,
+    ):
+        result = run_generator(
+            destination=dest,
+            data={"cli_module": "enabled", "cli_languages": ["python"]},
+            template_path=resolve_template_path(),
+            skip_post_gen=False,
+        )
+    assert result.success is True
+    assert captured["payload"]["skip_tasks"] is True
+    pre.assert_not_called()
+    post.assert_called_once()
+    assert order == ["post"]
+
+
 def test_post_gen_skipped_when_flag_set(tmp_path: Path) -> None:
     """An explicit skip flag suppresses the managed post-generation hook."""
     dest = tmp_path / "out"
@@ -272,6 +344,7 @@ def test_post_gen_skipped_when_flag_set(tmp_path: Path) -> None:
 
     with (
         patch("riso.template._run_copier_worker", side_effect=fake_worker),
+        patch("riso.template.run_pre_gen", create=True) as pre,
         patch("riso.template.run_post_gen") as post,
     ):
         run_generator(
@@ -280,4 +353,91 @@ def test_post_gen_skipped_when_flag_set(tmp_path: Path) -> None:
             template_path=tmp_path,
             skip_post_gen=True,
         )
+    pre.assert_not_called()
     post.assert_not_called()
+
+
+def test_post_gen_failure_is_not_reported_as_success(tmp_path: Path) -> None:
+    """A managed post-gen failure propagates through the operation result."""
+    dest = tmp_path / "out"
+
+    def fake_worker(_op: str, _payload: dict[str, Any], _timeout: int | None) -> None:
+        dest.mkdir()
+
+    with (
+        patch("riso.template._run_copier_worker", side_effect=fake_worker),
+        patch(
+            "riso.template.run_post_gen",
+            side_effect=CopierOperationError("post_gen", "hook failed"),
+        ) as post,
+    ):
+        with pytest.raises(CopierOperationError, match="post_gen") as exc_info:
+            run_generator(
+                destination=dest,
+                data={"cli_module": "enabled", "cli_languages": ["python"]},
+                template_path=resolve_template_path(),
+                skip_post_gen=False,
+            )
+    assert exc_info.value.data is not None
+    assert exc_info.value.data["operation"] == "post_gen"
+    post.assert_called_once()
+
+
+def test_evaluate_when_bool_literals_before_falsy_check() -> None:
+    """A YAML false condition stays disabled instead of being treated as absent."""
+    assert _evaluate_when(False, {}) is False
+    assert _evaluate_when(True, {}) is True
+    assert _evaluate_when(None, {}) is True
+    assert _evaluate_when("", {}) is True
+
+
+def test_run_recopy_payload_overwrite_defaults_skip_answered(tmp_path: Path) -> None:
+    """Recopy is noninteractive without overriding source metadata or trust."""
+    dest = tmp_path / "proj"
+    dest.mkdir()
+    (dest / ".copier-answers.yml").write_text(
+        f"_src_path: {tmp_path / 'template'}\nproject_name: Demo\n"
+    )
+    captured: dict[str, Any] = {}
+
+    def fake_worker(op: str, payload: dict[str, Any], _timeout: int | None) -> None:
+        captured["op"] = op
+        captured["payload"] = payload
+
+    with (
+        patch("riso.template._run_copier_worker", side_effect=fake_worker),
+        patch("riso.template._maybe_run_post_gen"),
+    ):
+        run_recopy(
+            destination=dest,
+            data={"project_name": "Demo"},
+            template_path=tmp_path / "template",
+            skip_post_gen=True,
+        )
+    assert captured["op"] == "recopy"
+    payload = captured["payload"]
+    assert payload["skip_tasks"] is True
+    assert payload["overwrite"] is True
+    assert payload["defaults"] is True
+    assert payload["skip_answered"] is True
+    assert payload["unsafe"] is False
+    assert "_src_path" not in payload["data"]
+
+
+def test_run_copy_defaults_true_when_payload_omits_defaults() -> None:
+    """Worker copy passes Copier defaults=True when the payload omits defaults."""
+    captured: dict[str, Any] = {}
+    payload: dict[str, Any] = {
+        "template_path": "/tmp/template",
+        "destination": "/tmp/dest",
+        "data": {"project_name": "x"},
+    }
+
+    def fake_run_copy(*_args: Any, **kwargs: Any) -> None:
+        captured["kwargs"] = kwargs
+
+    with patch("riso.template._copier_worker.run_copy", side_effect=fake_run_copy):
+        _run_copy(payload)
+
+    assert "defaults" not in payload
+    assert captured["kwargs"]["defaults"] is True

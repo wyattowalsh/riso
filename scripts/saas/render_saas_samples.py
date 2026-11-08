@@ -18,6 +18,8 @@ from pathlib import Path
 WORKSPACE_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(WORKSPACE_ROOT))
 
+# Resolve repository modules only after the import-path bootstrap above.
+# pylint: disable-next=wrong-import-position
 from scripts.lib.logger import logger, configure_logging  # noqa: E402
 
 SAMPLES_DIR = WORKSPACE_ROOT / "samples" / "saas-starter"

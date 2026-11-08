@@ -1,8 +1,12 @@
 """Shared fixtures for hooks unit tests."""
 
+# Imports stay local until pytest fixtures establish the script or hook paths.
+# pylint: disable=import-outside-toplevel
+
 import json
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 
 # ============================================================================
@@ -168,7 +172,7 @@ def mock_tool_check_success(mocker):
     """
     from pre_gen_project import ToolCheck
 
-    def _create_success_checks(*args, **kwargs):
+    def _create_success_checks(*_args, **_kwargs):
         return [
             ToolCheck(name="ruff", status="present", command="uv tool run"),
             ToolCheck(name="mypy", status="present", command="uv tool run"),
@@ -188,7 +192,7 @@ def mock_tool_check_failure(mocker):
     """
     from pre_gen_project import ToolCheck
 
-    def _create_failed_checks(*args, **kwargs):
+    def _create_failed_checks(*_args, **_kwargs):
         return [
             ToolCheck(name="ruff", status="present", command="uv tool run"),
             ToolCheck(

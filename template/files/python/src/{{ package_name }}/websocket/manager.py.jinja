@@ -2,21 +2,32 @@
 """WebSocket connection manager singleton."""
 
 import asyncio
-from typing import Any, Dict, List, Optional, Set
+from collections.abc import Sequence
+from functools import partial
+from typing import Any, Optional
 
+from anyio import CancelScope
 from fastapi import WebSocket
 from loguru import logger
+from starlette.websockets import WebSocketState
 
 from {{ package_name }}.websocket.config import get_config
 from {{ package_name }}.websocket.connection import WebSocketConnection
 from {{ package_name }}.websocket.exceptions import (
     ConnectionClosedError,
+    InvalidMessageFormatError,
+    RateLimitError,
     RoomFullError,
     RoomNotFoundError,
 )
 from {{ package_name }}.websocket.middleware import ConnectionMiddleware
-from {{ package_name }}.websocket.utils import validate_websocket_origin
-from {{ package_name }}.websocket.models import Room, WebSocketConnectionModel
+from {{ package_name }}.websocket.models import Message, Room, WebSocketConnectionModel
+from {{ package_name }}.websocket.utils import (
+    RateLimiter,
+    idle_timeout_checker,
+    validate_message,
+    validate_websocket_origin,
+)
 
 
 class ConnectionManager:
@@ -39,7 +50,7 @@ class ConnectionManager:
             connection_id = await manager.connect(websocket)
             try:
                 while True:
-                    data = await websocket.receive_json()
+                    data = await manager.process_message(connection_id, await websocket.receive_json())
                     await manager.broadcast_to_room("chat", data)
             except WebSocketDisconnect:
                 await manager.disconnect(connection_id)
@@ -47,12 +58,12 @@ class ConnectionManager:
     """
 
     _instance: Optional["ConnectionManager"] = None
+    _initialized = False
 
     def __new__(cls):
         """Ensure singleton pattern."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
         return cls._instance
 
     def __init__(self):
@@ -63,26 +74,32 @@ class ConnectionManager:
         self.config = get_config()
 
         # Connection registry
-        self._connections: Dict[str, WebSocketConnection] = {}
+        self._connections: dict[str, WebSocketConnection] = {}
         self._lock = asyncio.Lock()
 
         # Room registry
-        self._rooms: Dict[str, Room] = {}
+        self._rooms: dict[str, Room] = {}
 
         # Reverse lookup: connection_id -> set of room_ids
-        self._connection_rooms: Dict[str, Set[str]] = {}
+        self._connection_rooms: dict[str, set[str]] = {}
 
         # User tracking: user_id -> set of connection_ids
-        self._user_connections: Dict[str, Set[str]] = {}
+        self._user_connections: dict[str, set[str]] = {}
 
         # IP tracking: ip_address -> set of connection_ids
-        self._ip_connections: Dict[str, Set[str]] = {}
+        self._ip_connections: dict[str, set[str]] = {}
 
         # Middleware chain
-        self._middlewares: List[ConnectionMiddleware] = []
+        self._middlewares: list[ConnectionMiddleware] = []
+        self._connection_middlewares: dict[str, tuple[ConnectionMiddleware, ...]] = {}
 
         # Background tasks
-        self._idle_timeout_task: Optional[asyncio.Task] = None
+        self._idle_timeout_task: asyncio.Task | None = None
+
+        # Per-connection sliding-window limiter (wired when enable_rate_limiting)
+        self._rate_limiter: RateLimiter | None = (
+            RateLimiter() if self.config.enable_rate_limiting else None
+        )
 
         self._initialized = True
 
@@ -105,9 +122,9 @@ class ConnectionManager:
     async def connect(
         self,
         websocket: WebSocket,
-        connection_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        connection_id: str | None = None,
+        user_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """
         Register new WebSocket connection.
@@ -122,10 +139,50 @@ class ConnectionManager:
             str: Connection ID
 
         Raises:
-            ConnectionError: If connection limits exceeded
+            ConnectionError: If connection limits are exceeded or the ID is already active
+            Exception: If middleware rejects the admission
         """
         validate_websocket_origin(websocket, self.config.websocket_origins)
+        connection = WebSocketConnection(
+            websocket=websocket,
+            connection_id=connection_id,
+            user_id=user_id,
+            metadata=dict(metadata or {}),
+        )
+        connection.metadata["ip_address"] = connection.client_ip
 
+        completed: list[ConnectionMiddleware] = []
+        try:
+            # Run application hooks outside the registry lock, before sending accept.
+            for middleware in tuple(self._middlewares):
+                additions = await middleware.on_connect(connection, websocket)
+                completed.append(middleware)
+                if additions:
+                    connection.metadata.update(additions)
+                connection.metadata["ip_address"] = connection.client_ip
+            return await self._accept_connection(connection, tuple(completed))
+        except (Exception, asyncio.CancelledError):
+            # An interrupted ASGI accept can already have changed the socket state.
+            with CancelScope(shield=True):
+                try:
+                    if websocket.application_state is WebSocketState.CONNECTED:
+                        await connection.close(code=1011, reason="Connection setup failed")
+                finally:
+                    await self._run_disconnect_hooks(
+                        connection, completed, 1011, "Connection setup failed"
+                    )
+            raise
+
+    async def _accept_connection(
+        self,
+        connection: WebSocketConnection,
+        middlewares: tuple[ConnectionMiddleware, ...],
+    ) -> str:
+        """Enforce the latest limits and register the accepted socket atomically."""
+        websocket = connection.websocket
+        conn_id = connection.connection_id
+        user_id = connection.user_id
+        ip_address = connection.client_ip
         async with self._lock:
             # Check global connection limit
             if len(self._connections) >= self.config.max_connections_global:
@@ -146,7 +203,6 @@ class ConnectionManager:
                     raise ConnectionError("Per-user connection limit exceeded")
 
             # Check per-IP limit
-            ip_address = websocket.client.host if websocket.client else "unknown"
             ip_conn_count = len(self._ip_connections.get(ip_address, set()))
             if ip_conn_count >= self.config.max_connections_per_ip:
                 await websocket.close(
@@ -155,20 +211,20 @@ class ConnectionManager:
                 )
                 raise ConnectionError("Per-IP connection limit exceeded")
 
-            # Create connection
-            connection = WebSocketConnection(
-                websocket=websocket,
-                connection_id=connection_id,
-                user_id=user_id,
-                metadata=metadata,
-            )
+            if conn_id in self._connections:
+                await websocket.close(code=1008, reason="Connection ID already in use")
+                raise ConnectionError("Connection ID already in use")
 
             # Accept WebSocket
-            await connection.accept()
+            await connection.accept(
+                on_heartbeat_timeout=partial(
+                    self.disconnect, conn_id, code=1000, reason="Heartbeat timeout"
+                )
+            )
 
             # Register connection
-            conn_id = connection.connection_id
             self._connections[conn_id] = connection
+            self._connection_middlewares[conn_id] = middlewares
 
             # Track by user
             if user_id:
@@ -180,6 +236,14 @@ class ConnectionManager:
             # Initialize room tracking
             self._connection_rooms[conn_id] = set()
 
+            if (
+                self.config.enable_idle_timeout
+                and (self._idle_timeout_task is None or self._idle_timeout_task.done())
+            ):
+                self._idle_timeout_task = asyncio.create_task(
+                    idle_timeout_checker(self)
+                )
+
             logger.info(
                 f"Connection registered: {conn_id}",
                 extra={
@@ -190,6 +254,79 @@ class ConnectionManager:
             )
 
             return conn_id
+
+    async def process_message(
+        self, connection_id: str, data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Run incoming message hooks before dispatch, preserving raw input without hooks."""
+        connection = self._connections.get(connection_id)
+        if connection is None:
+            raise ConnectionClosedError(connection_id)
+        middlewares = self._connection_middlewares[connection_id]
+        if not middlewares:
+            return data
+
+        if not isinstance(data, dict):
+            raise InvalidMessageFormatError("WebSocket messages must be JSON objects")
+        message = validate_message({**data, "sender_id": connection_id})
+        for middleware in middlewares:
+            message = await middleware.on_message(connection, message)
+            if not isinstance(message, Message):
+                raise InvalidMessageFormatError("Middleware must return a WebSocket Message")
+        return message.model_dump(mode="json")
+
+    async def notify_error(self, connection_id: str, error: Exception) -> None:
+        """Notify the admitted hooks of a message error before the endpoint handles it."""
+        connection = self._connections.get(connection_id)
+        if connection is None:
+            return
+        try:
+            for middleware in self._connection_middlewares[connection_id]:
+                await middleware.on_error(connection, error)
+        except Exception as callback_error:
+            logger.warning(
+                "WebSocket error middleware failed for {}: {}",
+                connection_id,
+                type(callback_error).__name__,
+            )
+
+    @staticmethod
+    async def _run_disconnect_hooks(
+        connection: WebSocketConnection,
+        middlewares: Sequence[ConnectionMiddleware],
+        code: int,
+        reason: str,
+    ) -> None:
+        """Stop at the first teardown error without replacing the original failure."""
+        if not middlewares:
+            return
+        with CancelScope(shield=True):
+            try:
+                for middleware in middlewares:
+                    await middleware.on_disconnect(connection, code, reason)
+            except Exception as callback_error:
+                logger.warning(
+                    "WebSocket disconnect middleware failed for {}: {}",
+                    connection.connection_id,
+                    type(callback_error).__name__,
+                )
+
+    def check_rate_limit(self, connection_id: str) -> None:
+        """Raise RateLimitError when the connection exceeds the message window."""
+        if not self.config.enable_rate_limiting or self._rate_limiter is None:
+            return
+        if self._rate_limiter.check(connection_id):
+            return
+        raise RateLimitError(
+            message=(
+                f"Rate limit exceeded: {self.config.rate_limit_messages} "
+                f"messages per {self.config.rate_limit_window} seconds"
+            ),
+            current_rate=self._rate_limiter.get_current_rate(connection_id),
+            limit=self.config.rate_limit_messages,
+            window_seconds=self.config.rate_limit_window,
+            retry_after=self._rate_limiter.get_retry_after(connection_id),
+        )
 
     async def disconnect(
         self,
@@ -205,48 +342,57 @@ class ConnectionManager:
             code: WebSocket close code
             reason: Human-readable close reason
         """
-        async with self._lock:
-            connection = self._connections.get(connection_id)
-            if connection is None:
-                logger.warning(f"Attempted to disconnect unknown connection: {connection_id}")
-                return
+        connection = None
+        middlewares: tuple[ConnectionMiddleware, ...] = ()
+        try:
+            async with self._lock:
+                connection = self._connections.get(connection_id)
+                if connection is None:
+                    logger.warning(f"Attempted to disconnect unknown connection: {connection_id}")
+                    return
 
-            # Remove from all rooms
-            room_ids = self._connection_rooms.get(connection_id, set()).copy()
-            for room_id in room_ids:
-                await self._leave_room_internal(connection_id, room_id)
+                # Remove from all rooms.
+                room_ids = self._connection_rooms.get(connection_id, set()).copy()
+                for room_id in room_ids:
+                    await self._leave_room_internal(connection_id, room_id)
 
-            # Close connection
-            await connection.close(code=code, reason=reason)
+                middlewares = self._connection_middlewares[connection_id]
+                try:
+                    await connection.close(code=code, reason=reason)
+                finally:
+                    self._unregister_connection(connection)
+        finally:
+            # Run user callbacks after releasing the registry lock, even on cancellation.
+            if connection is not None:
+                await self._run_disconnect_hooks(connection, middlewares, code, reason)
 
-            # Unregister connection
-            del self._connections[connection_id]
+    def _unregister_connection(self, connection: WebSocketConnection) -> None:
+        """Release connection capacity and state without yielding to other tasks."""
+        connection_id = connection.connection_id
+        del self._connections[connection_id]
+        del self._connection_middlewares[connection_id]
 
-            # Remove from user tracking
-            if connection.user_id:
-                user_conns = self._user_connections.get(connection.user_id, set())
-                user_conns.discard(connection_id)
-                if not user_conns:
-                    del self._user_connections[connection.user_id]
+        if connection.user_id:
+            user_conns = self._user_connections[connection.user_id]
+            user_conns.discard(connection_id)
+            if not user_conns:
+                del self._user_connections[connection.user_id]
 
-            # Remove from IP tracking
-            ip_address = connection.metadata.get("ip_address", "unknown")
-            ip_conns = self._ip_connections.get(ip_address, set())
-            ip_conns.discard(connection_id)
-            if not ip_conns:
-                del self._ip_connections[ip_address]
+        ip_conns = self._ip_connections[connection.client_ip]
+        ip_conns.discard(connection_id)
+        if not ip_conns:
+            del self._ip_connections[connection.client_ip]
+        if self._rate_limiter is not None:
+            self._rate_limiter.reset(connection_id)
 
-            # Remove room tracking
-            if connection_id in self._connection_rooms:
-                del self._connection_rooms[connection_id]
-
-            logger.info(
-                f"Connection unregistered: {connection_id}",
-                extra={
-                    "connection_id":     connection_id,
-                    "total_connections": len(self._connections),
-                },
-            )
+        self._connection_rooms.pop(connection_id, None)
+        logger.info(
+            f"Connection unregistered: {connection_id}",
+            extra={
+                "connection_id": connection_id,
+                "total_connections": len(self._connections),
+            },
+        )
 
     async def join_room(self, connection_id: str, room_id: str) -> None:
         """
@@ -345,8 +491,8 @@ class ConnectionManager:
     async def broadcast_to_room(
         self,
         room_id: str,
-        message: Dict[str, Any],
-        exclude_sender: Optional[str] = None,
+        message: dict[str, Any],
+        exclude_sender: str | None = None,
     ) -> int:
         """
         Broadcast message to all connections in room.
@@ -397,7 +543,7 @@ class ConnectionManager:
     async def _send_safe(
         self,
         connection: WebSocketConnection,
-        message: Dict[str, Any],
+        message: dict[str, Any],
     ) -> bool:
         """
         Send message with error handling.
@@ -414,11 +560,11 @@ class ConnectionManager:
             )
             return False
 
-    def get_connection(self, connection_id: str) -> Optional[WebSocketConnection]:
+    def get_connection(self, connection_id: str) -> WebSocketConnection | None:
         """Get connection by ID."""
         return self._connections.get(connection_id)
 
-    def get_all_connection_ids(self) -> List[str]:
+    def get_all_connection_ids(self) -> list[str]:
         """Get all active connection IDs."""
         return list(self._connections.keys())
 
@@ -426,18 +572,18 @@ class ConnectionManager:
         """Get total active connection count."""
         return len(self._connections)
 
-    def get_connections_by_user(self, user_id: str) -> List[str]:
+    def get_connections_by_user(self, user_id: str) -> list[str]:
         """Get all connection IDs for a user."""
         return list(self._user_connections.get(user_id, set()))
 
-    def get_connections_by_room(self, room_id: str) -> List[str]:
+    def get_connections_by_room(self, room_id: str) -> list[str]:
         """Get all connection IDs in a room."""
         room = self._rooms.get(room_id)
         if room is None:
             return []
         return list(room.connection_ids)
 
-    def get_all_connections(self) -> List[WebSocketConnectionModel]:
+    def get_all_connections(self) -> list[WebSocketConnectionModel]:
         """Get all connection metadata (serializable)."""
         return [conn.to_model() for conn in self._connections.values()]
 
@@ -450,6 +596,12 @@ class ConnectionManager:
         """
         logger.info(f"Initiating graceful WebSocket shutdown: {reason}")
 
+        idle_task = self._idle_timeout_task
+        self._idle_timeout_task = None
+        if idle_task is not None and idle_task is not asyncio.current_task() and not idle_task.done():
+            idle_task.cancel()
+            await asyncio.gather(idle_task, return_exceptions=True)
+
         connection_ids = list(self._connections.keys())
 
         for conn_id in connection_ids:
@@ -459,7 +611,7 @@ class ConnectionManager:
 
 
 # Singleton instance
-_manager: Optional[ConnectionManager] = None
+_manager: ConnectionManager | None = None
 
 
 def get_manager() -> ConnectionManager:

@@ -23,7 +23,6 @@ import { eq } from 'drizzle-orm';
 {% if saas_observability_structured_logging %}
 import { logger } from '@/lib/observability/logger';
 {% endif %}
-import crypto from 'crypto';
 
 // Initialize Paddle client for verification
 const paddle = new Paddle(process.env.PADDLE_API_KEY!);
@@ -38,33 +37,22 @@ const paddle = new Paddle(process.env.PADDLE_API_KEY!);
  */
 export function verifyPaddleWebhook(
   rawBody: string,
-  signature: string,
-  timestamp: string
+  signature: string
 ): boolean {
+  const webhookSecret = requireWebhookSecret();
+  try {
+    return paddle.webhooks.isSignatureValid(rawBody, webhookSecret, signature);
+  } catch {
+    return false;
+  }
+}
+
+function requireWebhookSecret(): string {
   const webhookSecret = process.env.PADDLE_WEBHOOK_SECRET;
-  
   if (!webhookSecret) {
     throw new Error('PADDLE_WEBHOOK_SECRET is not set');
   }
-  
-  // Build the signed payload
-  const signedPayload = `${timestamp}:${rawBody}`;
-  
-  // Compute the expected signature
-  const expectedSignature = crypto
-    .createHmac('sha256', webhookSecret)
-    .update(signedPayload)
-    .digest('hex');
-  
-  // Compare signatures (constant-time)
-  const signatureBuffer = Buffer.from(signature);
-  const expectedBuffer = Buffer.from(expectedSignature);
-  
-  if (signatureBuffer.length !== expectedBuffer.length) {
-    return false;
-  }
-  
-  return crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
+  return webhookSecret;
 }
 
 // ============================================================================
@@ -322,35 +310,30 @@ function mapPaddleStatus(paddleStatus: string): string {
  * export async function POST(req: Request) {
  *   const payload = await req.text();
  *   const signature = req.headers.get('paddle-signature')!;
- *   const timestamp = req.headers.get('paddle-timestamp')!;
  *   
- *   await processWebhook(payload, signature, timestamp);
+ *   await processWebhook(payload, signature);
  *   return new Response('OK', { status: 200 });
  * }
  * ```
  */
 export async function processWebhook(
   payload: string, 
-  signature: string,
-  timestamp: string
+  signature: string
 ) {
-  // Verify signature
-  if (!verifyPaddleWebhook(payload, signature, timestamp)) {
-    throw new Error('Invalid Paddle webhook signature');
-  }
-  
-  const event = JSON.parse(payload);
+  // The SDK verifies the complete header and timestamp before decoding fields.
+  const event = paddle.webhooks.unmarshal(payload, requireWebhookSecret(), signature);
+  if (!event) return;
   
   {% if saas_observability_structured_logging %}
   logger.info({
     msg: 'Processing Paddle webhook',
-    eventType: event.event_type,
-    eventId: event.event_id,
+    eventType: event.eventType,
+    eventId: event.eventId,
   });
   {% endif %}
   
   // Route to appropriate handler
-  switch (event.event_type) {
+  switch (event.eventType) {
     case EventName.SubscriptionCreated:
       await handleSubscriptionCreated(event);
       break;
@@ -375,8 +358,8 @@ export async function processWebhook(
       {% if saas_observability_structured_logging %}
       logger.info({
         msg: 'Unhandled Paddle webhook event',
-        type: event.event_type,
-        eventId: event.event_id,
+        type: event.eventType,
+        eventId: event.eventId,
       });
       {% endif %}
   }

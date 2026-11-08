@@ -17,6 +17,7 @@ pytestmark = pytest.mark.unit
 
 
 def test_run_export_cli_quotes_paths_with_spaces(tmp_path: Path) -> None:
+    """Shell exports preserve template and destination paths containing spaces."""
     real_template = resolve_template_path()
     spaced_parent = tmp_path / "my templates"
     spaced_parent.mkdir()
@@ -41,7 +42,8 @@ def test_run_export_cli_quotes_paths_with_spaces(tmp_path: Path) -> None:
     assert dest_quoted in result["riso_command"]
 
 
-def test_run_export_cli_rejects_dangerous_destination(tmp_path: Path) -> None:
+def test_run_export_cli_rejects_dangerous_destination() -> None:
+    """Export rejects destinations blocked by the CLI path policy."""
     config = CliConfig.from_options(template_path=resolve_template_path())
     with pytest.raises(PermissionDeniedError):
         run_export_cli(
@@ -55,6 +57,7 @@ def test_run_export_cli_rejects_dangerous_destination(tmp_path: Path) -> None:
 def test_run_export_cli_includes_data_overrides_with_answers_file(
     tmp_path: Path,
 ) -> None:
+    """Copier and Riso commands retain explicit overrides alongside answer files."""
     config = CliConfig.from_options(template_path=resolve_template_path())
     answers_file = tmp_path / "copier-answers.yml"
     answers_file.write_text("project_name: Base\n", encoding="utf-8")
@@ -66,13 +69,17 @@ def test_run_export_cli_includes_data_overrides_with_answers_file(
         destination=str(tmp_path / "out"),
     )
 
-    assert "--answers-file" in result["copier_command"]
+    assert "--data-file" in result["copier_command"]
+    assert "--overwrite" in result["copier_command"]
+    assert "--answers-file" not in result["copier_command"]
+    assert "--answers-file" in result["riso_command"]
     assert "project_name=Override" in result["copier_command"]
     assert "--data" in result["riso_command"]
     assert "project_name=Override" in result["riso_command"]
 
 
 def test_export_cli_and_yaml_omit_removed_keys(tmp_path: Path) -> None:
+    """Both export formats contain canonical answers after removed-key remaps."""
     config = CliConfig.from_options(template_path=resolve_template_path())
     result = run_export_cli(
         config,
@@ -101,6 +108,7 @@ def test_export_cli_and_yaml_omit_removed_keys(tmp_path: Path) -> None:
 def test_export_cli_wrap_list_round_trips_through_parse_and_validate(
     tmp_path: Path,
 ) -> None:
+    """Exported language lists parse and validate without changing their shape."""
     config = CliConfig.from_options(template_path=resolve_template_path())
     result = run_export_cli(
         config,
@@ -129,9 +137,9 @@ def test_export_cli_wrap_list_round_trips_through_parse_and_validate(
 
 
 def test_run_export_yaml_does_not_write_stdout(
-    tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    """The command helper returns YAML without bypassing the output envelope."""
     config = CliConfig.from_options(template_path=resolve_template_path())
     run_export_yaml(
         config,

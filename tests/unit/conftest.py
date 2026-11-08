@@ -4,8 +4,9 @@ This module provides fixtures specific to unit tests, including mocking
 utilities for subprocess calls, logger functionality, and git repository setup.
 """
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 
 @pytest.fixture
@@ -18,8 +19,8 @@ def mock_logger(mocker):
     return mocker.patch("scripts.lib.logger.logger")
 
 
-@pytest.fixture
-def subprocess_success(mocker):
+@pytest.fixture(name="subprocess_success")
+def _subprocess_success(mocker):
     """Create a subprocess mock that returns success.
 
     Returns:
@@ -53,6 +54,8 @@ def temp_git_repo(tmp_path, subprocess_success):
     Returns:
         Path: Path to the temporary git repository directory
     """
+    # Fixture injection installs the subprocess mock before consumers run.
+    _ = subprocess_success
     git_dir = tmp_path / ".git"
     git_dir.mkdir()
     return tmp_path

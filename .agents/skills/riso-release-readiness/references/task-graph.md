@@ -5,7 +5,7 @@
 - **Template**: `template/copier.yml`, answer validation, generated answer file.
 - **Hooks**: `template/hooks/**`, post-gen metadata, cleanup behavior.
 - **Samples**: checked `samples/**/copier-answers.yml`; never hand-edit renders.
-- **MCP**: `src/riso/mcp/**`, MCP public docs, MCP tests.
+- **CLI**: `src/riso/cli/**`. Maintainer `riso-mcp` (`src/riso/mcp/**`) was removed; do not reintroduce it.
 - **Web**: `web/**`, wizard state, validation, presets, build/test gates.
 - **Docs**: `docs/**`, template docs mirrors, Sphinx warnings.
 - **CI/Release**: `.github/workflows/**`, package metadata, pnpm/mise alignment.

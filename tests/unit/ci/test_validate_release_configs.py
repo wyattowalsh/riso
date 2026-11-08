@@ -1,5 +1,8 @@
 """Unit tests for validate_release_configs.py"""
 
+# Imports stay local until pytest fixtures establish the script or hook paths.
+# pylint: disable=import-outside-toplevel
+
 import pytest
 
 

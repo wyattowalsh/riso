@@ -1,19 +1,16 @@
-{% if desktop_module == "enabled" and desktop_framework == "tauri" %}
+{%- if desktop_module == "enabled" and desktop_framework == "tauri" -%}
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod commands;
-{% if desktop_features is defined and 'tray_icon' in desktop_features %}
-mod tray;
-{% endif %}
-{% if desktop_features is defined and 'menu' in desktop_features %}
-mod menu;
-{% endif %}
-
 use log::{error, info};
-{% if desktop_features is defined and 'auto_updater' in desktop_features %}
-use tauri::Manager;
-{% endif %}
+
+use {{ project_slug | replace('-', '_') }}_lib::commands;
+{%- if desktop_features is defined and 'menu' in desktop_features %}
+use {{ project_slug | replace('-', '_') }}_lib::menu;
+{%- endif %}
+{%- if desktop_features is defined and 'tray_icon' in desktop_features %}
+use {{ project_slug | replace('-', '_') }}_lib::tray;
+{%- endif %}
 
 fn main() {
     // Initialize logging
@@ -25,55 +22,65 @@ fn main() {
 
     let result = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        {% if desktop_features is defined and 'auto_updater' in desktop_features %}
+        {%- if desktop_features is defined and 'deep_linking' in desktop_features %}
+        .plugin(tauri_plugin_deep_link::init())
+        {%- endif %}
+        {%- if desktop_features is defined and 'auto_updater' in desktop_features %}
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        {% endif %}
-        {% if desktop_features is defined and 'notifications' in desktop_features %}
+        {%- endif %}
+        {%- if desktop_features is defined and 'notifications' in desktop_features %}
         .plugin(tauri_plugin_notification::init())
-        {% endif %}
-        {% if desktop_features is defined and 'file_system' in desktop_features %}
+        {%- endif %}
+        {%- if desktop_features is defined and 'file_system' in desktop_features %}
         .plugin(tauri_plugin_fs::init())
-        {% endif %}
-        .setup(|app| {
-            {% if desktop_features is defined and 'tray_icon' in desktop_features %}
+        {%- endif %}
+        {%- if desktop_features is defined and ('tray_icon' in desktop_features or 'menu' in desktop_features or 'auto_updater' in desktop_features) %}
+        .setup(|_app| {
+            {%- if desktop_features is defined and 'tray_icon' in desktop_features %}
             // Initialize system tray
-            tray::init_tray(app)?;
-            {% endif %}
-            {% if desktop_features is defined and 'menu' in desktop_features %}
+            tray::init_tray(_app)?;
+            {%- endif %}
+            {%- if desktop_features is defined and 'menu' in desktop_features %}
             // Initialize application menu
-            menu::init_menu(app)?;
-            {% endif %}
-            {% if desktop_features is defined and 'auto_updater' in desktop_features %}
+            menu::init_menu(_app)?;
+            {%- endif %}
+            {%- if desktop_features is defined and 'auto_updater' in desktop_features %}
             // Check for updates on startup (production only)
             #[cfg(not(debug_assertions))]
             {
-                let handle = app.handle().clone();
+                let handle = _app.handle().clone();
                 tauri::async_runtime::spawn(async move {
                     match commands::check_for_updates(handle).await {
                         Ok(_) => info!("Update check completed"),
-                        Err(e) => error!("Update check failed: {}", e),
+                        Err(e) => error!("Update check failed: {e}"),
                     }
                 });
             }
-            {% endif %}
+            {%- endif %}
+
             Ok(())
         })
+        {%- endif %}
+        {%- if desktop_features is defined and ('system_info' in desktop_features or 'auto_updater' in desktop_features) %}
         .invoke_handler(tauri::generate_handler![
             commands::greet,
-            {% if desktop_features is defined and 'system_info' in desktop_features %}
+            {%- if desktop_features is defined and 'system_info' in desktop_features %}
             commands::get_system_info,
-            {% endif %}
-            {% if desktop_features is defined and 'auto_updater' in desktop_features %}
+            {%- endif %}
+            {%- if desktop_features is defined and 'auto_updater' in desktop_features %}
             commands::check_for_updates_cmd,
             commands::install_update,
-            {% endif %}
+            {%- endif %}
         ])
+        {%- else %}
+        .invoke_handler(tauri::generate_handler![commands::greet])
+        {%- endif %}
         .run(tauri::generate_context!());
 
     match result {
         Ok(_) => info!("{{ project_name }} exited successfully"),
-        Err(e) => error!("{{ project_name }} exited with error: {}", e),
+        Err(e) => error!("{{ project_name }} exited with error: {e}"),
     }
 }
-{% endif %}
+{% endif -%}

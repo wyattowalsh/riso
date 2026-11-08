@@ -1,0 +1,1 @@
+These files are a historical December 2025 audit snapshot (`AUDIT_REPORT.md`, `TASKS.md`, `CODEBASE_REVIEW_PLAN.md`). They were superseded in August 2026 and are retained only for reference; do not execute them as a live backlog, review plan, or task list.

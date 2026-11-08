@@ -87,7 +87,7 @@ api_python = [
 ]
 websocket = [
   "websockets>=14.0",
-  "python-jose[cryptography]>=3.3.0",
+  "PyJWT[crypto]>=2.15.1",
 ]
 api_python_test = [
   "httpx>=0.25.0",
@@ -95,7 +95,7 @@ api_python_test = [
 ]
 {% if (graphql_api_module == 'enabled' or 'graphql' in api_features) %}
 graphql_api = [
-  "strawberry-graphql[fastapi]>=0.200.0",
+  "strawberry-graphql[fastapi]>=0.340.0",
   "httpx>=0.25.0",
   "sqlalchemy[asyncio]>=2.0.0",
   "aiodataloader>=0.3.0",
@@ -103,6 +103,9 @@ graphql_api = [
 {% endif %}
 mcp = [
   "fastmcp>=3.4.0",
+{%- if mcp_module == 'enabled' and 'python' in mcp_languages and mcp_example_tools %}
+  "httpx>=0.28.1",
+{%- endif %}
 ]
 {% if codegen_module == 'enabled' %}
 codegen = [
@@ -110,7 +113,7 @@ codegen = [
   "typer>=0.20.0",
   "rich>=14.2.0",
   "merge3>=0.0.13",
-  "gitpython>=3.1.40",
+  "gitpython>=3.1.41",
   "pydantic>=2.12.3",
   "loguru>=0.7.3",
   "pyyaml>=6.0",
@@ -139,19 +142,9 @@ respect-ignore-files = true
 output-format = "full"
 {% if quality_profile == 'strict' %}error-on-warning = true{% endif %}
 
-{% if mcp_module == 'enabled' and 'python' in mcp_languages %}
-[tool.setuptools.packages.find]
-where = ["src", "."]
-include = ["{{ package_name }}*", "mcp*"]
-
-[tool.setuptools.package-dir]
-"" = "src"
-mcp = "mcp"
-{% else %}
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["{{ package_name }}*"]
 
 [tool.setuptools.package-dir]
 "" = "src"
-{% endif %}

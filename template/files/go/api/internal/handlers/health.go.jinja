@@ -1,24 +1,26 @@
-{% if api_module == 'enabled' and 'go' in api_languages %}
+{% if api_module == 'enabled' and 'go' in api_languages -%}
 // Package handlers provides HTTP request handlers.
 package handlers
 
 import (
+{%- if go_framework == 'chi' %}
+	"encoding/json"
+{%- endif %}
+{%- if go_framework | default('gin') == 'gin' or go_framework in ['echo', 'chi'] %}
+	"net/http"
+{%- endif %}
 	"runtime"
 	"time"
-{% if go_framework | default('gin') == 'gin' %}
-	"net/http"
+{%- if go_framework | default('gin') == 'gin' %}
 
 	"github.com/gin-gonic/gin"
-{% elif go_framework == 'fiber' %}
+{%- elif go_framework == 'fiber' %}
+
 	"github.com/gofiber/fiber/v2"
-{% elif go_framework == 'echo' %}
-	"net/http"
+{%- elif go_framework == 'echo' %}
 
 	"github.com/labstack/echo/v4"
-{% elif go_framework == 'chi' %}
-	"encoding/json"
-	"net/http"
-{% endif %}
+{%- endif %}
 )
 
 // HealthResponse represents the health check response.
@@ -44,7 +46,8 @@ type LivenessResponse struct {
 
 var startTime = time.Now()
 
-{% if go_framework | default('gin') == 'gin' %}
+{%- if go_framework | default('gin') == 'gin' %}
+
 // HealthCheck handles GET /health requests.
 // Returns the current health status of the API server.
 func HealthCheck(c *gin.Context) {
@@ -78,7 +81,8 @@ func LivenessCheck(c *gin.Context) {
 	})
 }
 
-{% elif go_framework == 'fiber' %}
+{%- elif go_framework == 'fiber' %}
+
 // HealthCheck handles GET /health requests.
 func HealthCheck(c *fiber.Ctx) error {
 	return c.JSON(HealthResponse{
@@ -108,7 +112,8 @@ func LivenessCheck(c *fiber.Ctx) error {
 	})
 }
 
-{% elif go_framework == 'echo' %}
+{%- elif go_framework == 'echo' %}
+
 // HealthCheck handles GET /health requests.
 func HealthCheck(c echo.Context) error {
 	return c.JSON(http.StatusOK, HealthResponse{
@@ -138,7 +143,8 @@ func LivenessCheck(c echo.Context) error {
 	})
 }
 
-{% elif go_framework == 'chi' %}
+{%- elif go_framework == 'chi' %}
+
 // HealthCheck handles GET /health requests.
 func HealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -173,5 +179,5 @@ func LivenessCheck(w http.ResponseWriter, r *http.Request) {
 		GoVersion: runtime.Version(),
 	})
 }
-{% endif %}
-{% endif %}
+{%- endif %}
+{% endif -%}

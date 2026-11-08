@@ -1,5 +1,8 @@
 """Unit tests for scripts.lib.validation module."""
 
+# Imports stay local until pytest fixtures establish the script or hook paths.
+# pylint: disable=import-outside-toplevel
+
 from io import StringIO
 import pytest
 
@@ -7,8 +10,8 @@ import pytest
 pytestmark = pytest.mark.usefixtures("lib_path")
 
 
-@pytest.fixture
-def capture_logs():
+@pytest.fixture(name="capture_logs")
+def _capture_logs_fixture():
     """Fixture to capture loguru logs."""
     from loguru import logger
 
@@ -58,6 +61,7 @@ settings:
 
         assert result["success"] is False
         assert result["data"] is None
+        assert result["error"] is not None
         assert "File not found" in result["error"]
 
     def test_load_directory_instead_of_file(self, temp_dir):
@@ -71,6 +75,7 @@ settings:
 
         assert result["success"] is False
         assert result["data"] is None
+        assert result["error"] is not None
         assert "not a file" in result["error"]
 
     def test_load_empty_yaml_file(self, temp_dir):
@@ -84,6 +89,7 @@ settings:
 
         assert result["success"] is False
         assert result["data"] is None
+        assert result["error"] is not None
         assert "empty" in result["error"].lower() or "null" in result["error"].lower()
 
     def test_load_yaml_with_null_content(self, temp_dir):
@@ -97,6 +103,7 @@ settings:
 
         assert result["success"] is False
         assert result["data"] is None
+        assert result["error"] is not None
         assert "null" in result["error"].lower() or "empty" in result["error"].lower()
 
     def test_load_yaml_with_invalid_syntax(self, temp_dir):
@@ -114,6 +121,7 @@ name: test
 
         assert result["success"] is False
         assert result["data"] is None
+        assert result["error"] is not None
         assert (
             "parsing error" in result["error"].lower()
             or "yaml" in result["error"].lower()
@@ -134,6 +142,7 @@ name: test
 
         assert result["success"] is False
         assert result["data"] is None
+        assert result["error"] is not None
         assert "Expected YAML dictionary" in result["error"]
         assert "list" in result["error"]
 
@@ -184,6 +193,7 @@ name: test
 
         assert result["success"] is False
         assert result["data"] is None
+        assert result["error"] is not None
         assert "Unexpected error" in result["error"]
 
 

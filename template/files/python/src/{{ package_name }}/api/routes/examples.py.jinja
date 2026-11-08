@@ -206,14 +206,10 @@ async def update_example(
     example = _examples_db[example_id]
 
     # Update only provided fields
-    if request.name is not None:
-        example["name"] = request.name
-    if request.value is not None:
-        example["value"] = request.value
-    if request.description is not None:
-        example["description"] = request.description
-    if request.tags is not None:
-        example["tags"] = request.tags
+    updates = request.model_dump(exclude_unset=True)
+    if "tags" in updates and updates["tags"] is None:
+        updates["tags"] = []
+    example.update(updates)
 
     example["updated_at"] = datetime.now(UTC).isoformat()
 

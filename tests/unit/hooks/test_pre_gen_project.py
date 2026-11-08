@@ -1,9 +1,13 @@
 """Unit tests for pre_gen_project.py hook."""
 
+# Imports stay local until pytest fixtures establish the script or hook paths.
+# pylint: disable=import-outside-toplevel
+
 import json
 import os
-import pytest
 from typing import Any
+
+import pytest
 
 
 pytestmark = pytest.mark.usefixtures("hooks_path")
@@ -115,6 +119,7 @@ class TestLoadCopierContext:
     """Tests for merged env + .copier-answers.yml loading."""
 
     def test_loads_answers_from_file_when_env_empty(self, tmp_path, monkeypatch):
+        """Missing environment context is loaded from the local answers file."""
         from pre_gen_project import _load_copier_context
 
         monkeypatch.chdir(tmp_path)
@@ -131,6 +136,7 @@ class TestLoadCopierContext:
         assert context["ci_platform"] == "none"
 
     def test_exits_when_no_env_and_no_answers_file(self, tmp_path, monkeypatch):
+        """Absent environment and file context produce a failing exit."""
         from pre_gen_project import _load_copier_context
 
         monkeypatch.chdir(tmp_path)
@@ -715,8 +721,9 @@ class TestReportFailuresAndExit:
 # ============================================================================
 
 
+# Pytest groups this behavior in a focused test class.
 @pytest.mark.unit
-class TestParametrizedDocsFrameworkValidation:
+class TestParametrizedDocsFrameworkValidation:  # pylint: disable=too-few-public-methods
     """Parametrized tests for docs framework validation."""
 
     @pytest.mark.parametrize(
@@ -769,8 +776,9 @@ class TestParametrizedDocsFrameworkValidation:
         assert result == expected
 
 
+# Pytest groups this behavior in a focused test class.
 @pytest.mark.unit
-class TestParametrizedCiPlatformValidation:
+class TestParametrizedCiPlatformValidation:  # pylint: disable=too-few-public-methods
     """Parametrized tests for CI platform validation."""
 
     @pytest.mark.parametrize(
@@ -802,8 +810,9 @@ class TestParametrizedCiPlatformValidation:
         assert result == expected
 
 
+# Pytest groups this behavior in a focused test class.
 @pytest.mark.unit
-class TestParametrizedSaasValidation:
+class TestParametrizedSaasValidation:  # pylint: disable=too-few-public-methods
     """Parametrized tests for SaaS starter validation."""
 
     @pytest.mark.parametrize(
@@ -891,8 +900,9 @@ class TestParametrizedSaasValidation:
         assert len(warnings) == expected_warning_count
 
 
+# Pytest groups this behavior in a focused test class.
 @pytest.mark.unit
-class TestParametrizedToolMatrix:
+class TestParametrizedToolMatrix:  # pylint: disable=too-few-public-methods
     """Parametrized tests for tool matrix building."""
 
     @pytest.mark.parametrize(
@@ -938,8 +948,9 @@ class TestParametrizedToolMatrix:
         assert uv_entry[2] == "uv@0.11.26"
 
 
+# Pytest groups this behavior in a focused test class.
 @pytest.mark.unit
-class TestParametrizedProvisionResult:
+class TestParametrizedProvisionResult:  # pylint: disable=too-few-public-methods
     """Parametrized tests for ProvisionResult creation."""
 
     @pytest.mark.parametrize(
@@ -1011,8 +1022,9 @@ class TestParametrizedProvisionResult:
         assert "timestamp" in result
 
 
+# Pytest groups this behavior in a focused test class.
 @pytest.mark.unit
-class TestParametrizedActionlintCheck:
+class TestParametrizedActionlintCheck:  # pylint: disable=too-few-public-methods
     """Parametrized tests for actionlint checking."""
 
     @pytest.mark.parametrize(
@@ -1059,8 +1071,9 @@ class TestParametrizedActionlintCheck:
             assert not log_file.exists()
 
 
+# Pytest groups this behavior in a focused test class.
 @pytest.mark.unit
-class TestParametrizedValidateAndReport:
+class TestParametrizedValidateAndReport:  # pylint: disable=too-few-public-methods
     """Parametrized tests for validate and report function."""
 
     @pytest.mark.parametrize(
@@ -1129,6 +1142,7 @@ class TestNormalizeApiFeatureModules:
     """Tests for api_features → module flag normalization."""
 
     def test_websocket_from_api_features(self):
+        """The WebSocket API feature activates its matching module."""
         from pre_gen_project import normalize_api_feature_modules
 
         result = normalize_api_feature_modules(
@@ -1142,6 +1156,7 @@ class TestNormalizeApiFeatureModules:
         assert result["graphql_api_module"] == "disabled"
 
     def test_graphql_and_websocket_combined(self):
+        """GraphQL and WebSocket features activate both matching modules."""
         from pre_gen_project import normalize_api_feature_modules
 
         result = normalize_api_feature_modules({"api_features": "graphql,websocket"})
@@ -1149,6 +1164,7 @@ class TestNormalizeApiFeatureModules:
         assert result["websocket_module"] == "enabled"
 
     def test_explicit_module_enabled_wins(self):
+        """An explicit module selection remains enabled during normalization."""
         from pre_gen_project import normalize_api_feature_modules
 
         result = normalize_api_feature_modules(
@@ -1160,11 +1176,13 @@ class TestNormalizeApiFeatureModules:
         assert result["websocket_module"] == "enabled"
 
 
+# Pytest groups this behavior in a focused test class.
 @pytest.mark.unit
-class TestWriteCopierContext:
+class TestWriteCopierContext:  # pylint: disable=too-few-public-methods
     """Tests for writing normalized context back to Copier env vars."""
 
     def test_updates_existing_copier_answers(self, monkeypatch):
+        """Updated context is persisted into an existing answers file."""
         from pre_gen_project import _write_copier_context
 
         monkeypatch.setenv("COPIER_ANSWERS", json.dumps({"api_features": "websocket"}))
@@ -1193,6 +1211,7 @@ class TestMainContextMerge:
         mock_subprocess_success,
         mock_tool_check_success,
     ):
+        """Derived feature modules are included in the exported hook context."""
         monkeypatch.chdir(tmp_path)
         monkeypatch.setenv(
             "COPIER_ANSWERS",
@@ -1223,6 +1242,7 @@ class TestMainContextMerge:
         mock_subprocess_success,
         mock_tool_check_success,
     ):
+        """Removed-key remaps are applied before context export."""
         monkeypatch.chdir(tmp_path)
         monkeypatch.setenv(
             "COPIER_ANSWERS",

@@ -52,8 +52,8 @@ This guide covers deploying your SaaS application to production.
    ```bash
    # Set each secret
    wrangler secret put DATABASE_URL
-   wrangler secret put{% if saas_auth_provider == "clerk" %} CLERK_SECRET_KEY{% else %} NEXTAUTH_SECRET{% endif %}
-   wrangler secret put{% if saas_billing_provider == "stripe" %} STRIPE_SECRET_KEY{% else %} PADDLE_API_KEY{% endif %}
+   wrangler secret put{% if saas_auth_provider == "clerk" %} CLERK_SECRET_KEY{% else %} AUTH_SECRET{% endif %}
+   wrangler secret put{% if saas_billing_provider == "stripe" %} STRIPE_SECRET_KEY{% elif saas_billing_provider == "paddle" %} PADDLE_API_KEY{% elif saas_billing_provider == "lemonsqueezy" %} LEMONSQUEEZY_API_KEY{% endif %}
    # ... add all secrets
    ```
 
@@ -72,6 +72,15 @@ This guide covers deploying your SaaS application to production.
 {% endif %}
 
 ---
+
+## Scheduled Jobs
+
+The starter does not register background schedules or provide cleanup/reporting
+jobs. Add an application-owned handler that authenticates scheduler requests,
+performs the intended work, and reports failures before registering a schedule
+in your hosting configuration. Verify the deployed handler and its side effects
+before enabling automatic calls. A successful HTTP response must mean the job
+actually ran.
 
 ## Pre-Deployment Checklist
 
@@ -103,8 +112,8 @@ cat wrangler.toml
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Clerk public key
 - `CLERK_SECRET_KEY` - Clerk secret key
 {% elif saas_auth_provider == "authjs" %}
-- `NEXTAUTH_SECRET` - Auth.js secret (min 32 chars)
-- `NEXTAUTH_URL` - Your app URL
+- `AUTH_SECRET` - Auth.js secret (min 32 chars)
+- `AUTH_URL` - Your app URL
 {% endif %}
 {% if saas_billing_provider == "stripe" %}
 - `STRIPE_SECRET_KEY` - Stripe secret key
@@ -227,14 +236,14 @@ Verify `runtime/nextjs/next.config.js` has security headers:
 
 ## Webhook Configuration
 
-### {% if saas_billing_provider == "stripe" %}Stripe{% elif saas_billing_provider == "paddle" %}Paddle{% endif %} Webhooks
+### {% if saas_billing_provider == "stripe" %}Stripe{% elif saas_billing_provider == "paddle" %}Paddle{% elif saas_billing_provider == "lemonsqueezy" %}LemonSqueezy{% endif %} Webhooks
 
 1. **Get Webhook URL**
    ```
    {% if saas_hosting == "vercel" %}
-   https://your-app.vercel.app/api/webhooks/{% if saas_billing_provider == "stripe" %}stripe{% else %}paddle{% endif %}
+   https://your-app.vercel.app/api/webhooks/{% if saas_billing_provider == "stripe" %}stripe{% elif saas_billing_provider == "paddle" %}paddle{% elif saas_billing_provider == "lemonsqueezy" %}lemonsqueezy{% endif %}
    {% elif saas_hosting == "cloudflare" %}
-   https://your-app.pages.dev/api/webhooks/{% if saas_billing_provider == "stripe" %}stripe{% else %}paddle{% endif %}
+   https://your-app.pages.dev/api/webhooks/{% if saas_billing_provider == "stripe" %}stripe{% elif saas_billing_provider == "paddle" %}paddle{% elif saas_billing_provider == "lemonsqueezy" %}lemonsqueezy{% endif %}
    {% endif %}
    ```
 
@@ -252,12 +261,29 @@ Verify `runtime/nextjs/next.config.js` has security headers:
    - Go to [Paddle Dashboard](https://vendors.paddle.com/webhooks)
    - Add webhook URL
    - Configure notification settings
+   {% elif saas_billing_provider == "lemonsqueezy" %}
+   - Go to [LemonSqueezy Dashboard](https://app.lemonsqueezy.com/settings/webhooks)
+   - Add webhook URL
+   - Select subscription and order events
    {% endif %}
 
 3. **Copy Webhook Secret**
    - Copy the signing secret
    - Add to environment variables:
-     - `{% if saas_billing_provider == "stripe" %}STRIPE_WEBHOOK_SECRET{% else %}PADDLE_WEBHOOK_SECRET{% endif %}`
+     - `{% if saas_billing_provider == "stripe" %}STRIPE_WEBHOOK_SECRET{% elif saas_billing_provider == "paddle" %}PADDLE_WEBHOOK_SECRET{% elif saas_billing_provider == "lemonsqueezy" %}LEMONSQUEEZY_WEBHOOK_SECRET{% endif %}`
+
+{% if saas_billing_provider == 'paddle' %}
+The Paddle handler passes the unchanged request body and complete
+`Paddle-Signature` header (`ts=...;h1=...`) to the declared Paddle SDK. The SDK
+verifies the signature and timestamp before decoding the event into camelCase
+fields. There is no separate timestamp header or third `processWebhook`
+argument. The SDK's default five-second timestamp tolerance rejects expired
+signed requests; it does not replace durable event-id deduplication.
+
+Before production billing, make the application handlers idempotent using
+persisted event IDs and transactions, and verify retries against your own
+database. See [Paddle signature verification](https://developer.paddle.com/webhooks/about/signature-verification/).
+{% endif %}
 
 {% if saas_auth_provider == "clerk" %}
 ### Clerk Webhooks

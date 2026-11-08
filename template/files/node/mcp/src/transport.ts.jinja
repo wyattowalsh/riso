@@ -1,0 +1,38 @@
+{%- if mcp_module == 'enabled' and 'typescript' in mcp_languages -%}
+import type { FastMCP } from "fastmcp";
+import type { Config } from "./config.js";
+
+export function parseArgs(
+  config: Config,
+  args = process.argv.slice(2),
+): { transport: Config["transport"]; host: string; port: number } {
+  let transport: string = config.transport;
+  let host = config.host;
+  let port = config.port;
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--transport" || args[i] === "-t") {
+      transport = args[++i] || transport;
+    } else if (args[i] === "--host" || args[i] === "-H") {
+      host = args[++i] || host;
+    } else if (args[i] === "--port" || args[i] === "-p") {
+      port = Number.parseInt(args[++i], 10) || port;
+    }
+  }
+  if (transport !== "stdio" && transport !== "sse" && transport !== "http") {
+    throw new Error(`Unknown transport: ${transport}`);
+  }
+  return { transport, host, port };
+}
+
+export function transportOptions(
+  transport: Config["transport"],
+  host: string,
+  port: number,
+): Parameters<FastMCP["start"]>[0] {
+  if (transport === "stdio") {
+    return { transportType: "stdio" };
+  }
+  // FastMCP's HTTP transport also exposes legacy SSE at /sse and /messages.
+  return { transportType: "httpStream", httpStream: { host, port, endpoint: "/mcp" } };
+}
+{%- endif %}

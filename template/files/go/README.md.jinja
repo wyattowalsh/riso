@@ -6,7 +6,7 @@
 
 ## Requirements
 
-- Go {{ go_version | default('1.24') }}+
+- Go {{ go_version | default('1.27') }}+
 - [golangci-lint v2.8+](https://golangci-lint.run/) for linting
 {% if api_module == 'enabled' and 'go' in api_languages %}
 - [air](https://github.com/air-verse/air) for hot reload (optional)
@@ -108,10 +108,10 @@ go mod download
 {% if api_module == 'enabled' and 'go' in api_languages %}
 ├── api/
 │   ├── main.go              # API entry point
+│   ├── server/              # Shared HTTP server setup (gin/fiber/echo/chi)
 │   └── internal/
 │       ├── handlers/        # HTTP request handlers
-│       ├── middleware/      # HTTP middleware (logging, CORS, recovery)
-│       └── server/          # HTTP server setup (gin/fiber/echo/chi)
+│       └── middleware/      # HTTP middleware (logging, CORS, recovery)
 {% endif %}
 {% if mcp_module == 'enabled' and 'go' in mcp_languages %}
 ├── mcp/                     # Nested MCP module (own go.mod)
@@ -154,6 +154,11 @@ Configuration is loaded from multiple sources (highest priority first):
 1. Environment variables (prefix: `{{ project_slug | upper | replace('-', '_') }}_`)
 2. Config file (`~/.{{ project_slug }}.yaml` or `./config.yaml`)
 3. Default values
+{% if cli_module == 'enabled' and 'go' in cli_languages %}
+
+If you pass `--config`, a missing or malformed file stops the CLI with an error.
+Leave the flag unset to use the usual config search and defaults.
+{% endif %}
 
 ### Environment Variables
 

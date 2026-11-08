@@ -9,11 +9,12 @@
 import {
   app,
   Menu,
-  MenuItemConstructorOptions,
-  BrowserWindow,
+  type MenuItemConstructorOptions,
+  type BrowserWindow,
   shell,
 } from 'electron';
 import { is } from '@electron-toolkit/utils';
+import { createMainWindow } from './window';
 {% if 'auto_updater' in desktop_features %}
 import { checkForUpdatesInteractive } from './updater';
 {% endif %}
@@ -61,7 +62,6 @@ export function setupMenu(mainWindow: BrowserWindow): void {
           label: 'New Window',
           accelerator: 'CmdOrCtrl+N',
           click: async (): Promise<void> => {
-            const { createMainWindow } = await import('./window');
             await createMainWindow({ id: `window-${Date.now()}` });
           },
         },

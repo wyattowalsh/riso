@@ -1,108 +1,113 @@
 {% if (graphql_api_module == 'enabled' or 'graphql' in api_features) -%}
 """Authentication & Authorization for GraphQL."""
 
-from typing import Callable, Any
+from collections.abc import Awaitable, Callable
 from functools import wraps
+from inspect import signature
+from typing import Any, ParamSpec, TypeVar
 
-import strawberry
 from strawberry.types import Info
 
 from {{ package_name }}.graphql_api.errors import AuthError
 
+P = ParamSpec("P")
+T = TypeVar("T")
 
-def auth_required(func: Callable) -> Callable:
+
+def _current_user(info: Info | None) -> dict[str, Any]:
+    """Require a user supplied by the application's trusted context."""
+    user = getattr(getattr(info, "context", None), "current_user", None)
+    if not user:
+        raise AuthError("Authentication required")
+    return user
+
+
+def auth_required(func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[T]]:
     """
     Decorator for requiring authentication on GraphQL fields.
-    
+
     Usage:
         @strawberry.mutation
         @auth_required
         async def create_user(self, info: Info, ...) -> User:
             # Only authenticated users can execute this
             ...
-    
+
     Args:
         func: Resolver function to wrap
-    
+
     Returns:
         Wrapped resolver that checks authentication
-    
+
     Raises:
         AuthError: If user is not authenticated
     """
+    resolver_signature = signature(func)
+
     @wraps(func)
-    async def wrapper(*args, **kwargs) -> Any:
-        # Extract info from args or kwargs
-        info: Info = kwargs.get("info") or args[1]
-        
-        # Check if user is authenticated
-        if not info.context.current_user:
-            raise AuthError("Authentication required to perform this operation")
-        
-        # Call original resolver
+    async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        info = resolver_signature.bind(*args, **kwargs).arguments.get("info")
+        _current_user(info)
         return await func(*args, **kwargs)
-    
+
     return wrapper
 
 
-def permission_required(permission: str) -> Callable:
+def permission_required(
+    permission: str,
+) -> Callable[[Callable[P, Awaitable[T]]], Callable[P, Awaitable[T]]]:
     """
     Decorator for requiring specific permissions on GraphQL fields.
-    
+
     Usage:
         @strawberry.mutation
         @permission_required("user:write")
         async def create_user(self, info: Info, ...) -> User:
             # Only users with "user:write" permission can execute this
             ...
-    
+
     Args:
         permission: Required permission string
-    
+
     Returns:
         Decorator function
-    
+
     Raises:
         AuthError: If user doesn't have required permission
     """
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[T]]:
+        resolver_signature = signature(func)
+
         @wraps(func)
-        async def wrapper(*args, **kwargs) -> Any:
-            # Extract info from args or kwargs
-            info: Info = kwargs.get("info") or args[1]
-            
-            # Check if user is authenticated
-            if not info.context.current_user:
-                raise AuthError("Authentication required")
-            
-            # Check permissions (example - customize based on your auth system)
-            user_permissions = info.context.current_user.get("permissions", [])
-            if permission not in user_permissions:
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            info = resolver_signature.bind(*args, **kwargs).arguments.get("info")
+            permissions = _current_user(info).get("permissions", ())
+            if not isinstance(permissions, (list, tuple, set, frozenset)) or (
+                permission not in permissions
+            ):
                 raise AuthError(
                     f"Insufficient permissions. Required: {permission}"
                 )
-            
-            # Call original resolver
             return await func(*args, **kwargs)
-        
+
         return wrapper
-    
+
     return decorator
 
 
 async def get_current_user_from_token(token: str) -> dict:
     """
     Extract and validate user from authentication token.
-    
+
     This is a placeholder implementation. Replace with your actual
     authentication logic (JWT validation, session lookup, etc.).
-    
+
     Args:
         token: Authentication token (e.g., JWT)
-    
+
     Returns:
         User dictionary with id, email, permissions, etc.
-    
+
     Raises:
         AuthError: If token is invalid or expired
     """
@@ -120,7 +125,7 @@ async def get_current_user_from_token(token: str) -> dict:
     #     }
     # except jwt.InvalidTokenError:
     #     raise AuthError("Invalid authentication token")
-    
+
     # Fail closed: no placeholder backdoor tokens in generated projects.
     # Wire JWT/session validation before enabling authenticated GraphQL mutations.
     raise AuthError(

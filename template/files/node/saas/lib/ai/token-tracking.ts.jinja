@@ -13,10 +13,11 @@
  */
 
 {% if saas_orm == "prisma" %}
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/integrations/orm/prisma/client';
 {% elif saas_orm == "drizzle" %}
 import { db } from '@/integrations/orm/drizzle/client';
-import { sql } from 'drizzle-orm';
+import { and, sql } from 'drizzle-orm';
 {% endif %}
 
 import type { TokenUsage, TokenTrackingEvent } from '@/integrations/ai/rag/types';
@@ -84,6 +85,21 @@ const MODEL_PRICING: Record<
   'voyage-large-2': { input: 0, output: 0, embedding: 0.00012 },
 };
 
+const TOKEN_OPERATIONS = Object.freeze([
+  'embedding',
+  'generation',
+  'rerank',
+] as const);
+
+type TokenOperation = (typeof TOKEN_OPERATIONS)[number];
+
+function assertTokenOperation(operation: string): TokenOperation {
+  if (!(TOKEN_OPERATIONS as readonly string[]).includes(operation)) {
+    throw new Error(`Invalid token operation: ${operation}`);
+  }
+  return operation as TokenOperation;
+}
+
 // ============================================================================
 // Tracking Functions
 // ============================================================================
@@ -111,6 +127,7 @@ const MODEL_PRICING: Record<
 export async function trackTokenUsage(
   event: TokenTrackingEvent
 ): Promise<void> {
+  const operation = assertTokenOperation(event.operation);
   try {
     const cost = calculateCost(event.usage);
 
@@ -121,7 +138,7 @@ export async function trackTokenUsage(
         organizationId: event.organizationId,
         conversationId: event.conversationId,
         messageId: event.messageId,
-        operation: event.operation,
+        operation,
         model: event.usage.model,
         inputTokens: event.usage.inputTokens,
         outputTokens: event.usage.outputTokens,
@@ -142,7 +159,7 @@ export async function trackTokenUsage(
         ${event.organizationId || null},
         ${event.conversationId || null},
         ${event.messageId || null},
-        ${event.operation},
+        ${operation},
         ${event.usage.model},
         ${event.usage.inputTokens},
         ${event.usage.outputTokens},
@@ -185,25 +202,25 @@ export async function getUserTokenUsage(params: {
   }>;
 }> {
   try {
-    const whereConditions: string[] = [`user_id = '${params.userId}'`];
-
-    if (params.startDate) {
-      whereConditions.push(
-        `created_at >= '${params.startDate.toISOString()}'`
-      );
-    }
-
-    if (params.endDate) {
-      whereConditions.push(`created_at <= '${params.endDate.toISOString()}'`);
-    }
-
-    if (params.operation) {
-      whereConditions.push(`operation = '${params.operation}'`);
-    }
-
-    const whereClause = whereConditions.join(' AND ');
+    const operation = params.operation
+      ? assertTokenOperation(params.operation)
+      : undefined;
 
     {% if saas_orm == "prisma" %}
+    const whereConditions: Prisma.Sql[] = [
+      Prisma.sql`user_id = ${params.userId}`,
+    ];
+    if (params.startDate) {
+      whereConditions.push(Prisma.sql`created_at >= ${params.startDate}`);
+    }
+    if (params.endDate) {
+      whereConditions.push(Prisma.sql`created_at <= ${params.endDate}`);
+    }
+    if (operation) {
+      whereConditions.push(Prisma.sql`operation = ${operation}`);
+    }
+    const whereSql = Prisma.join(whereConditions, ' AND ');
+
     const results = await prisma.$queryRaw<
       Array<{
         totalTokens: bigint;
@@ -220,7 +237,7 @@ export async function getUserTokenUsage(params: {
         SUM(embedding_tokens) as "embeddingTokens",
         SUM(cost) as "totalCost"
       FROM ai_token_usage
-      WHERE ${sql.raw(whereClause)}
+      WHERE ${whereSql}
     `;
 
     const breakdown = await prisma.$queryRaw<
@@ -237,11 +254,18 @@ export async function getUserTokenUsage(params: {
         SUM(total_tokens) as tokens,
         SUM(cost) as cost
       FROM ai_token_usage
-      WHERE ${sql.raw(whereClause)}
+      WHERE ${whereSql}
       GROUP BY operation, model
       ORDER BY cost DESC
     `;
     {% elif saas_orm == "drizzle" %}
+    const whereSql = and(
+      sql`user_id = ${params.userId}`,
+      params.startDate ? sql`created_at >= ${params.startDate}` : undefined,
+      params.endDate ? sql`created_at <= ${params.endDate}` : undefined,
+      operation ? sql`operation = ${operation}` : undefined,
+    );
+
     const results = await db.execute<{
       totalTokens: number;
       inputTokens: number;
@@ -256,7 +280,7 @@ export async function getUserTokenUsage(params: {
         SUM(embedding_tokens) as "embeddingTokens",
         SUM(cost) as "totalCost"
       FROM ai_token_usage
-      WHERE ${sql.raw(whereClause)}
+      WHERE ${whereSql}
     `);
 
     const breakdown = await db.execute<{
@@ -271,7 +295,7 @@ export async function getUserTokenUsage(params: {
         SUM(total_tokens) as tokens,
         SUM(cost) as cost
       FROM ai_token_usage
-      WHERE ${sql.raw(whereClause)}
+      WHERE ${whereSql}
       GROUP BY operation, model
       ORDER BY cost DESC
     `);
@@ -316,23 +340,18 @@ export async function getOrganizationTokenUsage(params: {
   }>;
 }> {
   try {
-    const whereConditions: string[] = [
-      `organization_id = '${params.organizationId}'`,
-    ];
-
-    if (params.startDate) {
-      whereConditions.push(
-        `created_at >= '${params.startDate.toISOString()}'`
-      );
-    }
-
-    if (params.endDate) {
-      whereConditions.push(`created_at <= '${params.endDate.toISOString()}'`);
-    }
-
-    const whereClause = whereConditions.join(' AND ');
-
     {% if saas_orm == "prisma" %}
+    const whereConditions: Prisma.Sql[] = [
+      Prisma.sql`organization_id = ${params.organizationId}`,
+    ];
+    if (params.startDate) {
+      whereConditions.push(Prisma.sql`created_at >= ${params.startDate}`);
+    }
+    if (params.endDate) {
+      whereConditions.push(Prisma.sql`created_at <= ${params.endDate}`);
+    }
+    const whereSql = Prisma.join(whereConditions, ' AND ');
+
     const results = await prisma.$queryRaw<
       Array<{ totalTokens: bigint; totalCost: number }>
     >`
@@ -340,7 +359,7 @@ export async function getOrganizationTokenUsage(params: {
         SUM(total_tokens) as "totalTokens",
         SUM(cost) as "totalCost"
       FROM ai_token_usage
-      WHERE ${sql.raw(whereClause)}
+      WHERE ${whereSql}
     `;
 
     let userBreakdown;
@@ -353,12 +372,18 @@ export async function getOrganizationTokenUsage(params: {
           SUM(total_tokens) as tokens,
           SUM(cost) as cost
         FROM ai_token_usage
-        WHERE ${sql.raw(whereClause)}
+        WHERE ${whereSql}
         GROUP BY user_id
         ORDER BY cost DESC
       `;
     }
     {% elif saas_orm == "drizzle" %}
+    const whereSql = and(
+      sql`organization_id = ${params.organizationId}`,
+      params.startDate ? sql`created_at >= ${params.startDate}` : undefined,
+      params.endDate ? sql`created_at <= ${params.endDate}` : undefined,
+    );
+
     const results = await db.execute<{
       totalTokens: number;
       totalCost: number;
@@ -367,7 +392,7 @@ export async function getOrganizationTokenUsage(params: {
         SUM(total_tokens) as "totalTokens",
         SUM(cost) as "totalCost"
       FROM ai_token_usage
-      WHERE ${sql.raw(whereClause)}
+      WHERE ${whereSql}
     `);
 
     let userBreakdown;
@@ -382,7 +407,7 @@ export async function getOrganizationTokenUsage(params: {
           SUM(total_tokens) as tokens,
           SUM(cost) as cost
         FROM ai_token_usage
-        WHERE ${sql.raw(whereClause)}
+        WHERE ${whereSql}
         GROUP BY user_id
         ORDER BY cost DESC
       `);

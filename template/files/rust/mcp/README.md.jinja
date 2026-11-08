@@ -5,7 +5,7 @@ Rust implementation of the Model Context Protocol (MCP) server.
 
 ## Features
 
-- **Language**: Rust 1.81+
+- **Language**: Rust 1.89+
 - **Transport**: {{ mcp_transport | upper }} (stdio, or streamable HTTP when sse/http is selected)
 - **SDK**: `rmcp` 0.11 (`ServerHandler`, `#[tool_router]`, `#[tool]`)
 
@@ -34,6 +34,28 @@ Streamable HTTP (JSON-RPC + SSE) via `rmcp` `StreamableHttpService`.
 cargo run -- --transport http --port 3000
 ```
 
+{% if mcp_example_tools -%}
+## HTTP tool destination policy
+
+The example GET and HEAD tools accept HTTPS URLs for general-purpose public
+unicast destinations. Private, loopback, link-local, multicast, documentation,
+reserved, transition, and metadata-service addresses are rejected, including
+IPv4-mapped IPv6 forms. Local and special-use DNS names and embedded URL
+credentials are also rejected. This conservative policy excludes special-purpose
+address blocks even when individual addresses may be globally reachable.
+
+Every DNS answer must pass the address policy. A per-request reqwest resolver
+pins those validated addresses for the connection while retaining the URL
+hostname for TLS verification. Redirects are not followed, ambient proxies are
+disabled, and caller-supplied `Host` headers are rejected.
+
+The timeout must be 1–120 seconds (default 30). One deadline covers DNS, connection,
+response headers, and the GET body read. GET retains the original decoded text's
+UTF-8 byte length in `content_length`; its returned text is limited to 10,000 bytes
+at a complete UTF-8 character boundary, without a suffix. The response is read fully
+before output truncation; this limit is not a download-size limit.
+
+{% endif -%}
 ## Adding Tools
 
 Add a `#[tool]` method on `McpServer` in `src/server.rs`. Keep request types in `src/tools/`.

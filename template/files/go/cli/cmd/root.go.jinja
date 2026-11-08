@@ -1,10 +1,9 @@
-{% if cli_module == 'enabled' and 'go' in cli_languages %}
+{% if cli_module == 'enabled' and 'go' in cli_languages -%}
 // Package cmd provides CLI command definitions using Cobra.
 package cmd
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -31,7 +30,7 @@ var (
 	rootCmd = &cobra.Command{
 		Use:   "{{ project_slug }}",
 		Short: "{{ project_name }} CLI",
-		Long: `{{ project_name }} - A command-line interface built with Go {{ go_version | default('1.24') }}.
+		Long: `{{ project_name }} - A command-line interface built with Go {{ go_version | default('1.27') }}.
 
 This CLI provides tools for managing and interacting with {{ project_name }}.`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -57,7 +56,7 @@ This CLI provides tools for managing and interacting with {{ project_name }}.`,
 			// Load configuration
 			cfg, err := config.Load(cfgFile)
 			if err != nil {
-				slog.Warn("Failed to load config file, using defaults", "error", err)
+				return err
 			}
 
 			// Store config in context
@@ -101,9 +100,9 @@ func init() {
 
 	// Add subcommands
 	rootCmd.AddCommand(versionCmd)
-{% if api_module == 'enabled' and 'go' in api_languages %}
+{%- if api_module == 'enabled' and 'go' in api_languages %}
 	rootCmd.AddCommand(serveCmd)
-{% endif %}
+{%- endif %}
 }
 
 // GetVersion returns the current version.
@@ -120,4 +119,4 @@ func GetBuildTime() string {
 func GetCommit() string {
 	return commit
 }
-{% endif %}
+{% endif -%}

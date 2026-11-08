@@ -17,6 +17,7 @@ pytestmark = pytest.mark.unit
 def run_hook(
     message: str, *, cwd: Path | None = None
 ) -> subprocess.CompletedProcess[str]:
+    """Execute the commit-message hook with isolated command lookup."""
     msg_file = (cwd or REPO_ROOT) / ".git" / "COMMIT_EDITMSG"
     msg_file.parent.mkdir(parents=True, exist_ok=True)
     msg_file.write_text(message, encoding="utf-8")
@@ -32,21 +33,27 @@ def run_hook(
 
 
 class TestCommitMsgHook:
+    """Commit-message validation works with and without external commitlint."""
+
     def test_hook_script_exists(self) -> None:
+        """The repository ships the expected commit-message hook script."""
         assert HOOK_SCRIPT.exists()
 
     def test_accepts_conventional_message_without_commitlint(
         self, tmp_path: Path
     ) -> None:
+        """The fallback validator accepts a conventional commit subject."""
         result = run_hook("feat(cli): add validate command\n", cwd=tmp_path)
         assert result.returncode == 0, result.stderr
 
     def test_rejects_invalid_message_without_commitlint(self, tmp_path: Path) -> None:
+        """The fallback validator rejects a nonconventional commit subject."""
         result = run_hook("bad commit message\n", cwd=tmp_path)
         assert result.returncode != 0
         assert "conventional" in (result.stderr + result.stdout).lower()
 
     def test_rejects_missing_argument(self) -> None:
+        """Calling the hook without a message file fails clearly."""
         result = subprocess.run(
             ["bash", str(HOOK_SCRIPT)],
             capture_output=True,

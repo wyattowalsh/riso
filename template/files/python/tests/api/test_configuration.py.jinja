@@ -1,0 +1,65 @@
+{%- if api_module != 'enabled' or 'python' not in api_languages %}
+"""API configuration tests disabled for this render."""
+{%- else %}
+"""Exercise generated settings at the HTTP boundary."""
+
+import pytest
+from fastapi.testclient import TestClient
+from pydantic import ValidationError
+
+from {{ package_name }}.api import main
+from {{ package_name }}.api.config import ApiConfig
+
+
+@pytest.mark.parametrize(
+    ("environment", "origins", "origin", "allowed"),
+    [
+        ("development", None, "http://localhost:3000", "http://localhost:3000"),
+        ("development", [], "http://localhost:3000", None),
+        ("production", None, "http://localhost:3000", None),
+        ("production", ["https://ui.example"], "https://ui.example", "https://ui.example"),
+    ],
+)
+def test_cors_uses_the_deployment_environment(
+    monkeypatch, environment, origins, origin, allowed
+):
+    """Only configured origins receive CORS headers in production."""
+    monkeypatch.delenv("RISO_API_CORS_ORIGINS", raising=False)
+    settings = {"cors_origins": origins} if origins is not None else {}
+    config = ApiConfig(_env_file=None, environment=environment, **settings)
+    monkeypatch.setattr(main, "get_config", lambda: config)
+
+    with TestClient(main.create_app()) as client:
+        response = client.get("/health/", headers={"Origin": origin})
+
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == allowed
+
+
+def test_reloads_are_rejected_in_production():
+    """The reload flag must not survive production settings validation."""
+    with pytest.raises(ValidationError, match="reload must be False"):
+        ApiConfig(_env_file=None, environment="production", reload=True)
+
+
+@pytest.mark.parametrize(
+    ("origins", "reason"),
+    [
+        (["https://ui.example", "*"], "Wildcard CORS origin"),
+        (["ftp://ui.example"], "Invalid CORS origin"),
+    ],
+)
+def test_invalid_origins_are_rejected(origins, reason):
+    """A bad entry fails closed even alongside a valid origin."""
+    with pytest.raises(ValidationError, match=reason):
+        ApiConfig(_env_file=None, cors_origins=origins)
+
+
+def test_standalone_binds_to_loopback_unless_configured(monkeypatch):
+    """The application uses an explicit bind setting when present."""
+    monkeypatch.delenv("RISO_API_HOST", raising=False)
+    assert ApiConfig(_env_file=None).host == "127.0.0.1"
+
+    monkeypatch.setenv("RISO_API_HOST", "192.0.2.10")
+    assert ApiConfig(_env_file=None).host == "192.0.2.10"
+{%- endif %}

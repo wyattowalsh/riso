@@ -286,7 +286,7 @@ def check_yaml_dependency() -> bool:
         ...     sys.exit(1)
     """
     try:
-        import yaml  # noqa: F401 - imported to verify availability
+        __import__("yaml")
 
         return True
     except ImportError:

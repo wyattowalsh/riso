@@ -401,6 +401,16 @@ html_baseurl = "http://localhost:8000/"
 sitemap_url_scheme = "{link}"
 
 linkcheck_ignore = [r"^http://localhost", r"^https://localhost"]
+# Hacker News rejects Sphinx's legacy browser identity with HTTP 419. Identify
+# this checker directly; responses and broken links still fail the normal gate.
+linkcheck_request_headers = {
+    "https://news.ycombinator.com/": {
+        "User-Agent": (
+            "Riso documentation link checker/1.0 "
+            "(+https://github.com/wyattowalsh/riso)"
+        ),
+    },
+}
 
 extlinks = {
     "issue": (f"https://github.com/{ORG_SLUG}/{PROJECT_SLUG}/issues/%s", "issue %s"),

@@ -2,21 +2,28 @@
 """GraphQL Mutation Tests - Create, update, delete operations."""
 
 import pytest
-from strawberry.test import BaseGraphQLTestClient
 
+from {{ package_name }}.graphql_api.context import GraphQLContext
 from {{ package_name }}.graphql_api.schema import schema
+
+_UPDATE_USER = """
+    mutation UpdateUser($id: ID!, $input: UpdateUserInput!) {
+        updateUser(id: $id, input: $input) { id name email avatar }
+    }
+"""
 
 
 @pytest.fixture
-def graphql_client():
-    """Create GraphQL test client."""
-    return BaseGraphQLTestClient(schema)
+def authenticated_context():
+    """Supply a trusted user without implementing an authentication provider."""
+    return GraphQLContext(request=None, current_user={"id": "fixture-user"})
 
 
 class TestUserMutations:
     """Test User mutation operations (create, update, delete)."""
 
-    def test_create_user(self, graphql_client):
+    @pytest.mark.asyncio
+    async def test_create_user(self, authenticated_context):
         mutation = """
             mutation CreateUser($input: CreateUserInput!) {
                 createUser(input: $input) {
@@ -34,17 +41,99 @@ class TestUserMutations:
                 "avatar": "https://example.com/avatar.jpg",
             }
         }
-        result = graphql_client.query(mutation, variables=variables)
+        result = await schema.execute(
+            mutation, variable_values=variables, context_value=authenticated_context
+        )
         assert result.errors is None
         assert result.data["createUser"]["name"] == "Test User"
 
-    def test_delete_user(self, graphql_client):
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("changes", "expected"),
+        [
+            (
+                {"name": "Updated Alice"},
+                {
+                    "id": "1",
+                    "name": "Updated Alice",
+                    "email": "alice@example.com",
+                    "avatar": "https://example.com/alice.jpg",
+                },
+            ),
+            (
+                {"email": "updated@example.com", "avatar": None},
+                {
+                    "id": "1",
+                    "name": "Alice Johnson",
+                    "email": "updated@example.com",
+                    "avatar": None,
+                },
+            ),
+        ],
+    )
+    async def test_update_user_distinguishes_omitted_and_null_fields(
+        self, authenticated_context, changes, expected
+    ):
+        """Unspecified data is preserved and an explicit null clears the avatar."""
+        result = await schema.execute(
+            _UPDATE_USER,
+            variable_values={"id": "1", "input": changes},
+            context_value=authenticated_context,
+        )
+
+        assert result.errors is None
+        assert result.data == {"updateUser": expected}
+
+    @pytest.mark.asyncio
+    async def test_update_missing_user_returns_null(self, authenticated_context):
+        """A valid update for an absent user returns a nullable result."""
+        result = await schema.execute(
+            _UPDATE_USER,
+            variable_values={"id": "missing", "input": {"name": "Updated"}},
+            context_value=authenticated_context,
+        )
+
+        assert result.errors is None
+        assert result.data == {"updateUser": None}
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("query", "variables", "field"),
+        [
+            (
+                """
+                mutation CreateUser($input: CreateUserInput!) {
+                    createUser(input: $input) { id }
+                }
+                """,
+                {"input": {"name": "Alice", "email": "invalid"}},
+                "createUser",
+            ),
+            (_UPDATE_USER, {"id": "1", "input": {"email": "invalid"}}, "updateUser"),
+        ],
+    )
+    async def test_write_reports_invalid_email(self, authenticated_context, query, variables, field):
+        """Both writes return the public field-level validation error."""
+        result = await schema.execute(
+            query, variable_values=variables, context_value=authenticated_context
+        )
+
+        assert result.errors
+        error = result.errors[0].formatted
+        assert error["message"] == "Email format is invalid"
+        assert error["path"] == [field]
+        assert error["extensions"] == {"code": "VALIDATION_ERROR", "field": "email"}
+
+    @pytest.mark.asyncio
+    async def test_delete_user(self, authenticated_context):
         mutation = """
             mutation DeleteUser($id: ID!) {
                 deleteUser(id: $id)
             }
         """
-        result = graphql_client.query(mutation, variables={"id": "1"})
+        result = await schema.execute(
+            mutation, variable_values={"id": "1"}, context_value=authenticated_context
+        )
         assert result.errors is None
         assert result.data["deleteUser"] is True
 {% endif -%}

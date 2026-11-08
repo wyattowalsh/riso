@@ -106,8 +106,7 @@
       "docs_path": "docs/modules/mcp.md",
       "ci_jobs": ["mcp-smoke"],
       "validation_commands": [
-        {% if mcp_module == 'enabled' and 'python' in mcp_languages %}"uv run python -m mcp --help",
-        "uv run python -c \"from shared.mcp import tooling; print(tooling.list_tools())\""{% elif mcp_module == 'enabled' and 'typescript' in mcp_languages %}"pnpm --filter @{{ package_name }}/mcp-server test"{% else %}"true"{% endif %}
+        {% if mcp_module == 'enabled' and 'python' in mcp_languages %}"uv run --directory python --group mcp python -m {{ package_name }}.mcp --help"{% elif mcp_module == 'enabled' and 'typescript' in mcp_languages %}"pnpm --filter @{{ package_name }}/mcp-server test"{% else %}"true"{% endif %}
       ]
     },
     {
@@ -116,7 +115,7 @@
       "default_state": "disabled",
       "selected_state": "{{ 'enabled' if (websocket_module | lower == 'enabled') or 'websocket' in api_features else 'disabled' }}",
       "description": "WebSocket real-time communication with connection management, heartbeats, broadcasting, and authentication.",
-      "dependencies": ["fastapi", "websockets", "python-jose"],
+      "dependencies": ["fastapi", "websockets", "PyJWT"],
       "docs_path": "docs/modules/websockets.md",
       "ci_jobs": ["websocket-smoke"],
       "validation_commands": [
@@ -215,7 +214,7 @@
       "prompt_key": "mise",
       "default_state": "enabled",
       "selected_state": "enabled",
-      "description": "Always-on generated mise.toml toolchain pins (python/node/pnpm/uv). Not a Copier extra; no toggle. Generated Node floor is 20+, not the maintainer 22 pin.",
+      "description": "Always-on generated mise.toml toolchain pins (python/node/pnpm/uv). Not a Copier extra; no toggle. Generated Node floor is 22 LTS (major 22).",
       "dependencies": ["mise"],
       "docs_path": "docs/modules/quality.md",
       "ci_jobs": [],

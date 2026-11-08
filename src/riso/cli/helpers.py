@@ -13,6 +13,7 @@ from riso.core.answers import (
     prepare_copier_data,
 )
 from riso.core.errors import ValidationFailedError
+from riso.core.generation_gates import validate_answers_for_generation
 from riso.template import (
     get_defaults,
     load_copier_config,
@@ -105,6 +106,12 @@ def validate_and_raise(
     answers.clear()
     answers.update(remapped)
     result = validate_answers(answers, template_path)
-    if not result.valid:
-        raise ValidationFailedError(result.errors)
-    return result.to_dict()
+    gate = validate_answers_for_generation(answers)
+    errors = list(result.errors) + list(gate.errors)
+    if errors:
+        raise ValidationFailedError(errors)
+    payload = result.to_dict()
+    payload["errors"] = errors
+    payload["warnings"] = list(result.warnings) + list(gate.warnings)
+    payload["valid"] = True
+    return payload

@@ -5,6 +5,8 @@ import {
   configToCopierArgs,
   shellEscapeString,
   resolveExportProjectName,
+  tryGenerateCliCommand,
+  tryGenerateYamlConfig,
 } from "../lib/exportConfig";
 import { REMOVED_ANSWER_KEYS } from "../lib/removedAnswerKeys";
 import type { RisoConfig } from "../lib/store";
@@ -106,6 +108,89 @@ describe("generateCliCommand", () => {
     ).toThrow(/saas_auth/);
   });
 
+  it("exports saas infra extras when saas_infra_module is enabled", () => {
+    const args = configToCopierArgs({
+      project_name: "saas-extras",
+      saas_infra_module: "enabled",
+      saas_multi_tenancy_level: "enterprise",
+      saas_tenancy_model: "b2c-users",
+      saas_search_provider: "meilisearch",
+      saas_compliance_level: "soc2",
+      saas_ai_features: "rag",
+      vector_db_provider: "qdrant",
+      embedding_provider: "cohere",
+    });
+    expect(args.saas_multi_tenancy_level).toBe("enterprise");
+    expect(args.saas_tenancy_model).toBe("b2c-users");
+    expect(args.saas_search_provider).toBe("meilisearch");
+    expect(args.saas_compliance_level).toBe("soc2");
+    expect(args.saas_ai_features).toBe("rag");
+    expect(args.vector_db_provider).toBe("qdrant");
+    expect(args.embedding_provider).toBe("cohere");
+  });
+
+  it("exports rbac, ui framework, and admin dashboard when saas infra is enabled", () => {
+    const args = configToCopierArgs({
+      project_name: "saas-rbac-ui",
+      saas_infra_module: "enabled",
+      saas_rbac_system: "custom-permissions",
+      saas_ui_framework: "headless-ui",
+      saas_admin_dashboard: true,
+    });
+    expect(args.saas_rbac_system).toBe("custom-permissions");
+    expect(args.saas_ui_framework).toBe("headless-ui");
+    expect(args.saas_admin_dashboard).toBe(true);
+  });
+
+  it("preserves dormant SaaS choices when infra is disabled", () => {
+    const args = configToCopierArgs({
+      project_name: "no-saas-extras",
+      saas_infra_module: "disabled",
+      saas_multi_tenancy_level: "enterprise",
+      saas_tenancy_model: "b2c-users",
+      saas_search_provider: "meilisearch",
+      saas_compliance_level: "soc2",
+      saas_ai_features: "rag",
+      vector_db_provider: "qdrant",
+      embedding_provider: "cohere",
+      saas_rbac_system: "custom-permissions",
+      saas_ui_framework: "headless-ui",
+      saas_admin_dashboard: true,
+    });
+    expect(args.saas_multi_tenancy_level).toBe("enterprise");
+    expect(args.saas_tenancy_model).toBe("b2c-users");
+    expect(args.saas_search_provider).toBe("meilisearch");
+    expect(args.saas_compliance_level).toBe("soc2");
+    expect(args.saas_ai_features).toBe("rag");
+    expect(args.vector_db_provider).toBe("qdrant");
+    expect(args.embedding_provider).toBe("cohere");
+    expect(args.saas_rbac_system).toBe("custom-permissions");
+    expect(args.saas_ui_framework).toBe("headless-ui");
+    expect(args.saas_admin_dashboard).toBe(true);
+  });
+
+  it("exports mcp_transport and mcp_example_tools when mcp_module is enabled", () => {
+    const args = configToCopierArgs({
+      project_name: "mcp-export",
+      mcp_module: "enabled",
+      mcp_languages: ["python"],
+      mcp_transport: "http",
+      mcp_example_tools: false,
+    });
+    expect(args.mcp_transport).toBe("http");
+    expect(args.mcp_example_tools).toBe(false);
+  });
+
+  it("exports desktop_framework when desktop_module is enabled", () => {
+    const args = configToCopierArgs({
+      project_name: "desktop-export",
+      desktop_module: "enabled",
+      desktop_framework: "tauri",
+    });
+    expect(args.desktop_module).toBe("enabled");
+    expect(args.desktop_framework).toBe("tauri");
+  });
+
   it("fail-closes unmapped lucia leftover saas_auth and never dest-exports lucia from dest choices", () => {
     expect(() =>
       generateYamlConfig({
@@ -122,5 +207,103 @@ describe("generateCliCommand", () => {
     });
     expect(yaml).toContain("saas_auth_provider: clerk");
     expect(yaml).not.toMatch(/lucia/i);
+  });
+
+  it("soft-fails CLI/YAML generate on invalid project_name instead of throwing from try helpers", () => {
+    expect(() => generateCliCommand({ project_name: "bad name" })).toThrow();
+    const cli = tryGenerateCliCommand({ project_name: "bad name" });
+    expect(cli.ok).toBe(false);
+    if (!cli.ok) {
+      expect(cli.error.length).toBeGreaterThan(0);
+    }
+    const yaml = tryGenerateYamlConfig({
+      project_name: "ok-project",
+      saas_auth: "firebase",
+    } as Record<string, unknown>);
+    expect(yaml.ok).toBe(false);
+  });
+
+  it("preserves explicit infra and app selections for Copier validation", () => {
+    const infra = configToCopierArgs({
+      project_name: "infra-when",
+      saas_infra_module: "enabled",
+      saas_storage: "r2",
+      saas_ai: "openai",
+      saas_observability_sentry: true,
+      saas_include_fixtures: true,
+      saas_auth_module: "enabled",
+      saas_jobs: "triggerdev",
+      saas_email: "resend",
+      saas_analytics: "posthog",
+    });
+    expect(infra.saas_storage).toBe("r2");
+    expect(infra.saas_ai).toBe("openai");
+    expect(infra.saas_observability_sentry).toBe(true);
+    expect(infra.saas_include_fixtures).toBe(true);
+    expect(infra.saas_auth_module).toBe("enabled");
+    expect(infra.saas_jobs).toBe("triggerdev");
+    expect(infra.saas_email).toBe("resend");
+    expect(infra.saas_analytics).toBe("posthog");
+
+    const appOnly = configToCopierArgs({
+      project_name: "app-when",
+      saas_infra_module: "disabled",
+      saas_app_module: "enabled",
+      saas_storage: "r2",
+      saas_auth_module: "enabled",
+      saas_jobs: "triggerdev",
+      saas_email: "resend",
+      saas_analytics: "posthog",
+    });
+    expect(appOnly.saas_storage).toBe("r2");
+    expect(appOnly.saas_auth_module).toBe("enabled");
+    expect(appOnly.saas_jobs).toBe("triggerdev");
+    expect(appOnly.saas_email).toBe("resend");
+    expect(appOnly.saas_analytics).toBe("posthog");
+  });
+
+  it("exports desktop/go/mcp/python_versions/include_databases when Copier when matches", () => {
+    const args = configToCopierArgs({
+      project_name: "extra-modules",
+      api_module: "enabled",
+      api_languages: ["go"],
+      mcp_module: "enabled",
+      mcp_languages: ["go"],
+      desktop_module: "enabled",
+      desktop_framework: "electron-vite",
+      desktop_features: "auto_updater",
+      desktop_platforms: "mac,windows,linux",
+      go_version: "1.27",
+      go_framework: "gin",
+      mcp_transport: "http",
+      mcp_example_tools: true,
+      include_databases: "yes",
+      ci_platform: "github-actions",
+      python_versions: ["3.11", "3.12"],
+    });
+    expect(args.desktop_module).toBe("enabled");
+    expect(args.desktop_framework).toBe("electron-vite");
+    expect(args.go_version).toBe("1.27");
+    expect(args.go_framework).toBe("gin");
+    expect(args.mcp_transport).toBe("http");
+    expect(args.mcp_example_tools).toBe(true);
+    expect(args.include_databases).toBe("yes");
+    expect(args.python_versions).toEqual(["3.11", "3.12"]);
+  });
+
+  it("never reintroduces the 8 removed live keys", () => {
+    const args = configToCopierArgs({
+      project_name: "no-removed",
+      saas_infra_module: "enabled",
+      saas_auth_module: "enabled",
+      saas_billing_module: "enabled",
+      saas_app_module: "enabled",
+    });
+    for (const key of Object.keys(REMOVED_ANSWER_KEYS)) {
+      expect(args).not.toHaveProperty(key);
+    }
+    expect(args).not.toHaveProperty("saas_auth");
+    expect(args).not.toHaveProperty("saas_billing");
+    expect(args).not.toHaveProperty("include_admin");
   });
 });

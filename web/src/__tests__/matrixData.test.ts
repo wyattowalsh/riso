@@ -26,4 +26,25 @@ describe("matrix dest lockstep (WIZ-P1-lucia-dest)", () => {
     expect(defaultRisoConfig.task_runner).toBe("just");
     expect(defaultRisoConfig.openspec_extra).toBe("disabled");
   });
+
+  it("desktop_framework dest choices are electron-vite|tauri only", () => {
+    const prompt = getPrompt("desktop_framework");
+    expect(prompt).toBeDefined();
+    expect(prompt?.choices).toEqual(["electron-vite", "tauri"]);
+    expect(prompt?.choices).not.toContain("electron-forge");
+    expect(prompt?.help ?? "").not.toMatch(/electron-forge/);
+    expect(defaultRisoConfig.desktop_framework).toBe("electron-vite");
+  });
+
+  it("api_features dest help is Python FastAPI only", () => {
+    const prompt = getPrompt("api_features");
+    expect(prompt).toBeDefined();
+    expect(prompt?.when).toBe(
+      "{{ api_module == 'enabled' and 'python' in api_languages }}",
+    );
+    expect(prompt?.help ?? "").toMatch(/Python-only/);
+    expect(prompt?.help ?? "").not.toMatch(
+      /GraphQL endpoint \(Strawberry\/Apollo\/async-graphql\)/,
+    );
+  });
 });

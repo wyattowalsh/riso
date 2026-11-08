@@ -23,21 +23,60 @@ def _load_bump_module():
     return module
 
 
+_PHANTOM_FRONTEND_VARIANTS = frozenset({"react-vite", "sveltekit", "vue-vite"})
+
+
 def test_npm_surfaces_config_loads() -> None:
     data = json.loads(SURFACES_CONFIG.read_text(encoding="utf-8"))
     names = {surface["name"] for surface in data["surfaces"]}
+    variants = {surface["sample_variant"] for surface in data["surfaces"]}
     assert "docs-fumadocs" in names
     assert "node-saas" in names
     assert "node-mcp-ts" in names
+    assert "api-node" in names
+    assert names.isdisjoint(_PHANTOM_FRONTEND_VARIANTS)
+    assert variants.isdisjoint(_PHANTOM_FRONTEND_VARIANTS)
     assert "eslint" in data["ncu_reject"]
+
+
+def test_npm_surfaces_have_real_samples_and_jinja() -> None:
+    data = json.loads(SURFACES_CONFIG.read_text(encoding="utf-8"))
+    samples_root = REPO_ROOT / "samples"
+    for surface in data["surfaces"]:
+        variant = surface["sample_variant"]
+        answers = samples_root / variant / "copier-answers.yml"
+        if not answers.exists():
+            nested = list(samples_root.glob(f"**/{variant}/copier-answers.yml"))
+            answers = nested[0] if nested else answers
+        name = surface["name"]
+        assert answers.exists(), f"missing sample answers for {name}: {variant}"
+        jinja = REPO_ROOT / surface["template_jinja"]
+        assert jinja.is_file(), f"missing template jinja for {name}: {jinja}"
+        assert "frontend/" not in surface["package_relpath"]
+        assert "template/files/frontend/" not in surface["template_jinja"]
+
+
+def test_frontend_template_tree_removed() -> None:
+    assert not (REPO_ROOT / "template" / "files" / "frontend").exists()
 
 
 def test_bump_script_imports_surfaces() -> None:
     module = _load_bump_module()
     assert len(module.SURFACES) >= 7
+    names = {surface.name for surface in module.SURFACES}
+    assert "api-node" in names
+    assert names.isdisjoint(_PHANTOM_FRONTEND_VARIANTS)
     saas = next(surface for surface in module.SURFACES if surface.name == "node-saas")
     assert saas.sample_variant == "rag-enabled"
     assert saas.package_relpath == "node/saas/package.json"
+    api_node = next(
+        surface for surface in module.SURFACES if surface.name == "api-node"
+    )
+    assert api_node.sample_variant == "circleci-node"
+    assert api_node.package_relpath == "node/apps/api-node/package.json"
+    assert api_node.template_jinja == (
+        "template/files/node/apps/api-node/package.json.jinja"
+    )
 
 
 @pytest.mark.parametrize(

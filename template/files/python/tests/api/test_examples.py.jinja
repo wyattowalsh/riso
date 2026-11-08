@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
 
@@ -130,4 +132,63 @@ def test_delete_example(client: TestClient) -> None:
     # Verify it's gone
     get_response = client.get(f"/examples/{example_id}")
     assert get_response.status_code == 404
+
+
+def test_update_clears_optional_fields_and_preserves_omitted_fields(client: TestClient) -> None:
+    """A client can explicitly clear nullable fields without replacing the whole record."""
+    created = client.post(
+        "/examples/", json={"name": "  Example  ", "value": 7, "description": "Keep", "tags": ["a"]}
+    ).json()
+    path = f"/examples/{created['id']}"
+
+    response = client.put(path, json={"description": None, "tags": None})
+
+    assert response.status_code == 200
+    data = client.get(path).json()
+    assert data["name"] == "Example"
+    assert data["value"] == 7
+    assert data["description"] is None
+    assert data["tags"] == []
+
+
+@pytest.mark.parametrize(
+    "update",
+    [{}, {"name": None}, {"value": None}, {"name": "   "}, {"tags": [""]}],
+)
+def test_invalid_update_preserves_existing_resource(client: TestClient, update) -> None:
+    """A rejected edit leaves the stored record intact."""
+    created = client.post("/examples/", json={"name": "Example", "value": 7}).json()
+    path = f"/examples/{created['id']}"
+
+    response = client.put(path, json=update)
+
+    assert response.status_code == 422
+    assert client.get(path).json() == created
+
+
+@pytest.mark.parametrize("payload", [{"name": "   "}, {"tags": [""]}])
+def test_invalid_create_does_not_store_data(client: TestClient, payload) -> None:
+    """Reject whitespace-only names and invalid tags before storing an example."""
+    response = client.post("/examples/", json={"name": "Example", "value": 7, **payload})
+
+    assert response.status_code == 422
+    assert client.get("/examples/").json() == []
+
+
+def test_list_examples_paginates_stored_data(client: TestClient) -> None:
+    """Offset and limit apply to the stored resources."""
+    for name in ("First", "Second", "Third"):
+        assert client.post("/examples/", json={"name": name, "value": 1}).status_code == 201
+
+    page = client.get("/examples/", params={"offset": 1, "limit": 1})
+
+    assert page.status_code == 200
+    assert [item["name"] for item in page.json()] == ["Second"]
+
+
+def test_missing_example_cannot_be_updated_or_deleted(client: TestClient) -> None:
+    """Updates and deletes on a missing ID return the same not-found status."""
+    path = "/examples/00000000-0000-0000-0000-000000000000"
+    assert client.put(path, json={"value": 1}).status_code == 404
+    assert client.delete(path).status_code == 404
 {% endif %}

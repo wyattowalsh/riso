@@ -20,7 +20,10 @@ pytestmark = pytest.mark.usefixtures("ci_scripts_path")
 
 @pytest.mark.unit
 class TestNormalizePrompt:
+    """Prompt rows retain effective defaults and a consistent field shape."""
+
     def test_dict_prompt_uses_defaults_fallback(self) -> None:
+        """Effective template defaults override a prompt-local default."""
         prompt = {
             "type": "str",
             "choices": ["a", "b"],
@@ -38,6 +41,7 @@ class TestNormalizePrompt:
         assert entry["multiselect"] is True
 
     def test_non_dict_prompt_shape(self) -> None:
+        """Scalar prompt definitions still produce the complete row shape."""
         entry = normalize_prompt("x", "not-a-dict", {"x": 1})
         assert entry == {
             "key": "x",
@@ -52,24 +56,32 @@ class TestNormalizePrompt:
 
 @pytest.mark.unit
 class TestTemplateBlocks:
+    """Copier metadata and defaults blocks use the maintained key names."""
+
     def test_defaults_block_prefers_underscore(self) -> None:
+        """The underscored defaults block takes precedence when both exist."""
         data = {"_defaults": {"a": 1}, "defaults": {"a": 2}}
         assert template_defaults_block(data) == {"a": 1}
 
     def test_metadata_block(self) -> None:
+        """Template metadata is extracted without losing its name."""
         data = {"_metadata": {"name": "riso"}}
         assert template_metadata(data)["name"] == "riso"
 
 
 @pytest.mark.unit
 class TestCollectSamples:
+    """Matrix data preserves render evidence and nested sample identities."""
+
     def test_from_render_matrix_passthrough(self) -> None:
+        """Existing render evidence is used without rebuilding variant rows."""
         matrix = {"variants": [{"variant": "default"}]}
         result = collect_samples(matrix)
         assert result["render_matrix"] == matrix
         assert "render_matrix.json" in result["source"]
 
     def test_from_answers_files(self, tmp_path: Path) -> None:
+        """Answer-file discovery retains sample configuration values."""
         sample = tmp_path / "demo"
         sample.mkdir()
         answers = {"project_name": "Demo", "quality_profile": "standard"}
@@ -88,6 +100,7 @@ class TestCollectSamples:
     def test_discovers_nested_saas_starter_without_flattening(
         self, tmp_path: Path
     ) -> None:
+        """Nested sample names retain their full relative paths."""
         nested = tmp_path / "saas-starter" / "vercel-starter"
         nested.mkdir(parents=True)
         (nested / "copier-answers.yml").write_text(

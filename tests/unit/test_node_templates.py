@@ -5,7 +5,10 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -19,6 +22,10 @@ SIDEBAR_JS_REQUIRE = "require('./docs/api-reference/sidebar.js')"
 STATIC_EXPORT = "output: 'export' as const"
 FORCE_STATIC = "export const dynamic = 'force-static'"
 NO_REVALIDATE = "export const revalidate = false"
+FUMADOCS_ESLINT_FILENAME = (
+    "{% if docs_module == 'enabled' and docs_framework == 'fumadocs' %}"
+    "eslint.config.mjs{% endif %}.jinja"
+)
 
 
 @pytest.fixture
@@ -192,6 +199,158 @@ class TestDocusaurusSidebarJs:
         assert "dirName: 'api-reference'" in rendered
 
 
+class TestDocusaurusTooling:
+    """The generated Docusaurus commands have their required config files."""
+
+    def test_typecheck_declares_shared_tsconfig(self, node_files_dir: Path) -> None:
+        """The package declares the base settings referenced by its tsconfig."""
+        docs = node_files_dir / "docs" / "docusaurus"
+        context = _dest_root_context(docs_module="enabled", docs_framework="docusaurus")
+        package = json.loads(_render(docs / "package.json.jinja", **context))
+        config = json.loads(_render(docs / "tsconfig.json.jinja", **context))
+        assert config["extends"] in package["devDependencies"]
+
+    def test_flat_config_replaces_legacy_file(self, node_files_dir: Path) -> None:
+        """The enabled docs package gets an ESLint 9 flat config filename."""
+        from jinja2 import Environment
+
+        docs = node_files_dir / "docs" / "docusaurus"
+        assert not (docs / ".eslintrc.js.jinja").exists()
+        configs = list(docs.glob("*eslint.config.mjs*.jinja"))
+        assert len(configs) == 1
+        name = Environment().from_string(configs[0].stem)
+        assert name.render(docs_module="enabled", docs_framework="docusaurus") == (
+            "eslint.config.mjs"
+        )
+        assert not name.render(docs_module="disabled", docs_framework="docusaurus")
+
+
+class TestFumadocsLint:
+    """Next 16 uses the ESLint CLI and a config emitted only for Fumadocs."""
+
+    def test_package_uses_eslint_cli(self, node_files_dir: Path) -> None:
+        """The lint script invokes the installed CLI instead of removed next lint."""
+        rendered = _render(
+            node_files_dir / "docs" / "fumadocs" / "package.json.jinja",
+            **_dest_root_context(docs_module="enabled", docs_framework="fumadocs"),
+        )
+        package = json.loads(rendered)
+        assert package["scripts"]["lint"] == "eslint ."
+        assert "eslint" in package["devDependencies"]
+        assert "eslint-config-next" in package["devDependencies"]
+
+    @pytest.mark.parametrize(
+        ("module", "framework", "expected"),
+        [
+            ("enabled", "fumadocs", "eslint.config.mjs"),
+            ("disabled", "fumadocs", ""),
+            ("enabled", "docusaurus", ""),
+        ],
+    )
+    def test_flat_config_filename_omits_inactive_docs(
+        self, node_files_dir: Path, module: str, framework: str, expected: str
+    ) -> None:
+        """Copier's empty-filename contract prevents inactive config artifacts."""
+        from jinja2 import Environment
+
+        path = node_files_dir / "docs" / "fumadocs" / FUMADOCS_ESLINT_FILENAME
+        assert path.is_file()
+        rendered_name = (
+            Environment()
+            .from_string(path.stem)
+            .render(docs_module=module, docs_framework=framework)
+        )
+        assert rendered_name == expected
+
+    def test_banner_store_preserves_ssr_and_dismissal(
+        self, node_files_dir: Path
+    ) -> None:
+        """Banner storage stays hidden on SSR and cleans up dismissal listeners."""
+        node = shutil.which("node")
+        repository = node_files_dir.parents[2]
+        compilers = [
+            repository / "web/node_modules/typescript",
+            repository
+            / "samples/docs-fumadocs-full/render/node/docs/fumadocs/node_modules/typescript",
+            repository
+            / "samples/default/render/node/docs/fumadocs/node_modules/typescript",
+        ]
+        compiler = next((path for path in compilers if path.is_dir()), None)
+        if node is None or compiler is None:
+            pytest.skip("Node and an existing local TypeScript compiler are required")
+        source = _render(
+            node_files_dir / "docs/fumadocs/components/banner/index.tsx.jinja",
+            docs_module="enabled",
+            docs_framework="fumadocs",
+            fumadocs_banner="enabled",
+        )
+        program = r"""
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const ts = require(process.argv[1]);
+const source = fs.readFileSync(0, 'utf8');
+const compiled = ts.transpileModule(source, {
+  compilerOptions: {
+    module: ts.ModuleKind.CommonJS,
+    jsx: ts.JsxEmit.ReactJSX,
+    target: ts.ScriptTarget.ES2022,
+  },
+}).outputText;
+const exportsObject = {};
+const storage = new Map();
+let server = true;
+let hook;
+const react = {
+  useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot) {
+    hook = { subscribe, getSnapshot, getServerSnapshot };
+    return server ? getServerSnapshot() : getSnapshot();
+  },
+};
+const element = (type, props) => ({ type, props });
+vm.runInNewContext(compiled, {
+  exports: exportsObject,
+  require(name) {
+    if (name === 'react') return react;
+    if (name === 'react/jsx-runtime') return { jsx: element, jsxs: element };
+    throw new Error(`Unexpected import: ${name}`);
+  },
+  localStorage: {
+    getItem: (key) => storage.get(key) ?? null,
+    setItem: (key, value) => storage.set(key, value),
+  },
+});
+const render = (id) => exportsObject.Banner({ id, children: 'Release' });
+assert.equal(render('first'), null);
+assert.equal(hook.getServerSnapshot(), true);
+server = false;
+const shown = render('first');
+assert.notEqual(shown, null);
+assert.equal(hook.getSnapshot(), false);
+let notifications = 0;
+const unsubscribe = hook.subscribe(() => { notifications += 1; });
+shown.props.children[1].props.onClick();
+assert.equal(storage.get('banner-first'), 'dismissed');
+assert.equal(notifications, 1);
+assert.equal(render('first'), null);
+assert.notEqual(render('second'), null);
+unsubscribe();
+render('second').props.children[1].props.onClick();
+assert.equal(notifications, 1);
+"""
+        result = subprocess.run(
+            [node, "-e", program, str(compiler)],
+            input=source,
+            cwd=repository,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+            env={**os.environ, "MISE_AUTO_INSTALL": "false"},
+        )
+        assert result.returncode == 0, result.stderr or result.stdout
+
+
 class TestFumadocsStaticExport:
     """Fumadocs static-export contracts (no middleware / rewrite path)."""
 
@@ -280,7 +439,7 @@ class TestApiNodePackage:
     def test_package_json_name_engines_fastify_vitest(
         self, node_files_dir: Path
     ) -> None:
-        """Rendered api-node package is named, node>=20, with fastify and vitest."""
+        """Rendered api-node package is named, node>=22, with fastify and vitest."""
         package_json = node_files_dir / "apps" / "api-node" / "package.json.jinja"
         rendered = _render(
             package_json,
@@ -291,7 +450,7 @@ class TestApiNodePackage:
         data = json.loads(rendered)
         assert data["name"] == "api-node"
         node_engine = data["engines"]["node"]
-        assert _node_engine_major(node_engine) >= 20
+        assert _node_engine_major(node_engine) >= 22
         assert "fastify" in data["dependencies"]
         assert "vitest" in data["devDependencies"]
 
@@ -418,3 +577,123 @@ class TestGitLabNodeTypecheckFilters:
         assert _DEST_ROOT_TYPECHECK not in rendered
         assert "pnpm --dir node/saas run typecheck" in rendered
         assert "pnpm --filter api-node" not in rendered
+
+
+class TestDestRootWorkspaces:
+    """Dest-root package.json / pnpm-workspace list electron, tauri, saas."""
+
+    def test_saas_listed_in_package_json_workspaces(self, files_dir: Path) -> None:
+        """SaaS-enabled dest-root package.json includes node/saas."""
+        rendered = _render(
+            files_dir / "package.json.jinja",
+            **_dest_root_context(saas_infra_module="enabled"),
+        )
+        data = json.loads(rendered)
+        assert "node/saas" in data["workspaces"]
+
+    def test_electron_listed_when_desktop_electron(self, files_dir: Path) -> None:
+        """Electron desktop is a workspace member, not implied under node/*."""
+        rendered = _render(
+            files_dir / "package.json.jinja",
+            **_dest_root_context(
+                desktop_module="enabled",
+                desktop_framework="electron-vite",
+            ),
+        )
+        data = json.loads(rendered)
+        assert "electron" in data["workspaces"]
+        assert "tauri" not in data["workspaces"]
+
+    def test_tauri_listed_when_desktop_tauri(self, files_dir: Path) -> None:
+        """Tauri desktop is a workspace member at dest-root tauri/."""
+        rendered = _render(
+            files_dir / "package.json.jinja",
+            **_dest_root_context(
+                desktop_module="enabled",
+                desktop_framework="tauri",
+            ),
+        )
+        data = json.loads(rendered)
+        assert "tauri" in data["workspaces"]
+        assert "electron" not in data["workspaces"]
+
+    def test_pnpm_workspace_includes_desktop_and_saas(self, files_dir: Path) -> None:
+        """pnpm-workspace.yaml keeps node/saas and adds electron when enabled."""
+        rendered = _render(
+            files_dir / "pnpm-workspace.yaml.jinja",
+            mcp_module="enabled",
+            mcp_languages=["typescript"],
+            saas_infra_module="enabled",
+            desktop_module="enabled",
+            desktop_framework="electron-vite",
+        )
+        assert '  - "node/saas"' in rendered
+        assert '  - "electron"' in rendered
+        assert '  - "tauri"' not in rendered
+
+
+class TestDestLayoutDockerAndMise:
+    """Dest layout prefixes (python/, node/, rust/) and canonical mise.toml."""
+
+    def test_dockerfile_copies_track_prefixes(self, files_dir: Path) -> None:
+        """Production Dockerfile copies python/, node/{apps,docs,saas}, rust/."""
+        text = _read(files_dir / ".docker" / "Dockerfile.jinja")
+        assert "COPY python/pyproject.toml python/uv.lock ./" in text
+        assert "COPY python/src/" in text
+        assert "COPY node/apps/" in text
+        assert "COPY node/docs/" in text
+        assert "COPY node/saas/" in text
+        assert "COPY rust/src/" in text
+        copy_lines = [
+            line.strip()
+            for line in text.splitlines()
+            if line.strip().startswith("COPY ") and "COPY --from=" not in line
+        ]
+        assert not any(line.startswith("COPY src/") for line in copy_lines)
+        assert not any(line.startswith("COPY apps/") for line in copy_lines)
+
+    def test_canonical_mise_toml_not_dotted(self, files_dir: Path) -> None:
+        """Dest mise config is mise.toml.jinja with Node 22; .mise.toml.jinja is gone."""
+        assert not (files_dir / ".mise.toml.jinja").exists()
+        mise = files_dir / "mise.toml.jinja"
+        assert mise.is_file()
+        text = _read(mise)
+        assert 'node = "22"' in text
+
+    def test_generated_docs_state_node_22_floor(self, files_dir: Path) -> None:
+        """Live generated prose must not still claim a Node 20 floor."""
+        agents = _read(files_dir / "AGENTS.md.jinja")
+        assert "Node **22**" in agents
+        assert "Node **20**" not in agents
+        assert "Node.js**: 22 LTS" in agents
+        design = _read(files_dir / "DESIGN.md.jinja")
+        assert "Node **22**" in design
+        assert "Node **20**" not in design
+        prompt_ref = _read(files_dir / "docs" / "modules" / "prompt-reference.md.jinja")
+        assert "Node **22**" in prompt_ref
+        assert "Node **20**" not in prompt_ref
+        upgrade = _read(files_dir / "docs" / "upgrade-guide.md.jinja")
+        assert "| Node | `22` |" in upgrade
+        assert "Generated Node floor is **22**" in upgrade
+        dockerfile = _read(files_dir / ".docker" / "Dockerfile.jinja")
+        assert "FROM node:22-alpine" in dockerfile
+        assert "FROM node:20-alpine" not in dockerfile
+        versions = _read(files_dir / "scripts" / "setup" / "lib" / "versions.sh.jinja")
+        assert 'NODE_MIN_VERSION="22"' in versions
+
+
+class TestNodeMcpHttpPolicy:
+    """HTTP example emission retains HTTPS-only, manual-redirect defaults."""
+
+    def test_example_http_tools_require_https_and_manual_redirects(
+        self, node_files_dir: Path
+    ) -> None:
+        """The emitted client disallows HTTP and automatic redirect following."""
+        rendered = _render(
+            node_files_dir / "mcp" / "src" / "tools" / "http-fetch.ts.jinja",
+            mcp_module="enabled",
+            mcp_languages=["typescript"],
+            mcp_example_tools=True,
+        )
+        assert "only https:// URLs are allowed" in rendered
+        assert 'redirect: "manual"' in rendered

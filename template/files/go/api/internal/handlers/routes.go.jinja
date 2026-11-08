@@ -1,22 +1,23 @@
-{% if api_module == 'enabled' and 'go' in api_languages %}
+{% if api_module == 'enabled' and 'go' in api_languages -%}
 package handlers
 
 import (
-{% if go_framework | default('gin') == 'gin' %}
+{%- if go_framework | default('gin') == 'gin' %}
 	"github.com/gin-gonic/gin"
-{% elif go_framework == 'fiber' %}
+{%- elif go_framework == 'fiber' %}
 	"github.com/gofiber/fiber/v2"
-{% elif go_framework == 'echo' %}
+{%- elif go_framework == 'echo' %}
 	"github.com/labstack/echo/v4"
-{% elif go_framework == 'chi' %}
+{%- elif go_framework == 'chi' %}
 	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-{% endif %}
+{%- endif %}
 )
 
-{% if go_framework | default('gin') == 'gin' %}
+{%- if go_framework | default('gin') == 'gin' %}
+
 // RegisterRoutes registers all HTTP routes.
 func RegisterRoutes(r *gin.Engine) {
 	// Health check routes (no auth required)
@@ -36,7 +37,8 @@ func RegisterRoutes(r *gin.Engine) {
 	}
 }
 
-{% elif go_framework == 'fiber' %}
+{%- elif go_framework == 'fiber' %}
+
 // RegisterRoutes registers all HTTP routes.
 func RegisterRoutes(app *fiber.App) {
 	// Health check routes (no auth required)
@@ -55,7 +57,8 @@ func RegisterRoutes(app *fiber.App) {
 	}
 }
 
-{% elif go_framework == 'echo' %}
+{%- elif go_framework == 'echo' %}
+
 // RegisterRoutes registers all HTTP routes.
 func RegisterRoutes(e *echo.Echo) {
 	// Health check routes (no auth required)
@@ -74,7 +77,8 @@ func RegisterRoutes(e *echo.Echo) {
 	}
 }
 
-{% elif go_framework == 'chi' %}
+{%- elif go_framework == 'chi' %}
+
 // RegisterRoutes registers all HTTP routes.
 func RegisterRoutes(r chi.Router) {
 	// Health check routes (no auth required)
@@ -93,5 +97,5 @@ func RegisterRoutes(r chi.Router) {
 		})
 	})
 }
-{% endif %}
-{% endif %}
+{%- endif %}
+{% endif -%}
