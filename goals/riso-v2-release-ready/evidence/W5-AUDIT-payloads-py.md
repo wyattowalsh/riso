@@ -3,7 +3,7 @@
 - Lane: `payloads-py`
 - Mode: **read-only** (this file only; no product edits)
 - Date: 2026-08-14
-- Repo: `/Users/ww/dev/projects/riso` (workspace = maintainer root)
+- Repo: `.` (workspace = maintainer root)
 - Branch: stay on current (`.git/HEAD` hook-denied this session)
 - `samples/*/render/**` writes: **0**
 - `uv.lock` / `pnpm-lock.yaml` / commit / tag / push: **none**

@@ -2,7 +2,7 @@
 
 - Wave: W6 / lane PY (exclusive-write)
 - Date: 2026-08-18
-- Repo: `/Users/ww/dev/projects/riso` · branch `main` · HEAD `f60fac8`
+- Repo: `.` · branch `main` · HEAD `f60fac8`
 - Exclusive writes: `template/files/python/pyproject.toml.jinja`, this file
 - `template/files/python/docs/conf.py.jinja` writes: **0** (`"linkify"` kept)
 - `tests/unit/**` writes: **0** (no existing unit test asserts live `python/pyproject.toml.jinja` docs extras)

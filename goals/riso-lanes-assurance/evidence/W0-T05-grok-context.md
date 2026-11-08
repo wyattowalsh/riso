@@ -1,7 +1,7 @@
 # W0-T05 evidence — grok-context packs
 
 - Captured (UTC): `2026-07-29T02:00:00Z`
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Task: W0-T05 Materialize/enrich `grok-context/*.md` prompt packs per lane
 - Inputs: `plan.md`, `facts.md`, `inventory-dirty.md`, `handoffs-board.md`, `plan.taskgraph.json`
 

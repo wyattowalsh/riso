@@ -2,7 +2,7 @@
 
 - **Mission:** `CLOSE-SYS-DESKTOP-MISE`
 - **Date:** 2026-08-14
-- **Repo:** `/Users/ww/dev/projects/riso`
+- **Repo:** `.`
 - **Branch:** `main` (unchanged; no checkout / stash / reset / rebase)
 - **HEAD:** `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
 - **Exclusive write roots:** `template/files/go/**`, `template/files/rust/**`, `template/files/electron/**`, `template/files/tauri/**`, `template/files/mise.toml.jinja`
@@ -62,7 +62,7 @@ Go/rust matrix `render_status=failed` is **fumadocs** `output: string` (NODE), n
 
 ```text
 git rev-parse --show-toplevel
-# /Users/ww/dev/projects/riso
+# .
 git rev-parse --abbrev-ref HEAD
 # main
 git rev-parse HEAD

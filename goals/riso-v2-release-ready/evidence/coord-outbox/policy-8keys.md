@@ -9,7 +9,7 @@ Published by **W1-OUT**. Release-readiness policy is remap-then-fail-closed on *
 | **status** | `applied` (skill body); `.claude` mirror **residualed** |
 | **source_handoff** | `goals/riso-v2-release-ready/evidence/W1-C08-policy.md` |
 | **wave** | W1-OUT |
-| **repo** | `/Users/ww/dev/projects/riso` (maintainer; branch `main`) |
+| **repo** | `.` (maintainer; branch `main`) |
 | **samples/\*/render/\*\* writes** | **0** |
 
 ---

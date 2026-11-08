@@ -9,7 +9,7 @@ Published by **W1-OUT**. W2 CLI / WEB / PLATFORM consume this; do not re-edit th
 | **status** | `applied` |
 | **source_handoff** | `goals/riso-v2-release-ready/evidence/W1-M01-remap.md`, `W1-M02-twin.md` |
 | **wave** | W1-OUT |
-| **repo** | `/Users/ww/dev/projects/riso` (maintainer; branch `main`) |
+| **repo** | `.` (maintainer; branch `main`) |
 | **samples/\*/render/\*\* writes** | **0** |
 
 ---

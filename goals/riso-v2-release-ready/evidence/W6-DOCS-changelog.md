@@ -4,7 +4,7 @@
 - Wave: W6
 - Lane: DOCS
 - Date: 2026-08-18T08:10:17Z
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `main` @ `f60fac8ea40e12fb0ad64f6d49ff6bf74b9a1b87`
 - Exclusive writes: `CHANGELOG.md`, this file
 - `samples/*/render/**` writes: **0**
@@ -52,7 +52,7 @@ Lockstep source (read-only): `docs/guides/v2-migration.md` L50–53;
 ## Verify
 
 ```text
-git rev-parse --show-toplevel   # /Users/ww/dev/projects/riso
+git rev-parse --show-toplevel   # .
 git rev-parse --abbrev-ref HEAD # main
 git rev-parse HEAD              # f60fac8ea40e12fb0ad64f6d49ff6bf74b9a1b87
 git tag -l 'v2.0.0' '2.0.0'     # empty

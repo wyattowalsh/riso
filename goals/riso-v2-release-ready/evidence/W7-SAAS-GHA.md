@@ -3,7 +3,7 @@
 - Wave: W7 / PAY-P1-saas-nested-gha
 - Task: in-place honesty fix for nested SaaS GitHub Actions templates
 - Date: 2026-08-18
-- Repo: `/Users/ww/dev/projects/riso` · branch `main` · HEAD `3213419a450e37a6c268382b3dc4de74350b07f0`
+- Repo: `.` · branch `main` · HEAD `3213419a450e37a6c268382b3dc4de74350b07f0`
 - Exclusive writes: `template/files/node/saas/.github/workflows/ci.yml.jinja`, `template/files/node/saas/.github/workflows/database.yml.jinja`, this file
 - Dest-root `.github/workflows/**` writes: **0** (COORD/GATES lock)
 - `samples/*/render/**` writes: **0**
@@ -57,7 +57,7 @@ In-place only. No dest-root workflow added or moved.
 ## Commands
 
 ```text
-git rev-parse --show-toplevel   # /Users/ww/dev/projects/riso
+git rev-parse --show-toplevel   # .
 git branch --show-current       # main
 git rev-parse HEAD              # 3213419a450e37a6c268382b3dc4de74350b07f0
 uv run python scripts/ci/validate_jinja_templates.py \

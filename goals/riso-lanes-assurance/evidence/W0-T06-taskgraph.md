@@ -1,7 +1,7 @@
 # W0-T06 evidence — plan.taskgraph.json
 
 - Captured (UTC): `2026-07-29T02:00:00Z`
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Task: W0-T06 Emit/refresh `plan.taskgraph.json` checksum of locks; JSON valid
 - Artifact: `goals/riso-lanes-assurance/plan.taskgraph.json`
 

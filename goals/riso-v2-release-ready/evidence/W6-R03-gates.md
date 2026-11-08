@@ -5,7 +5,7 @@
 - Lane: GOAL inspect-only; exclusive write is this file
 - Surface: gates (`scripts/ci/**`, `scripts/lib/**`, `scripts/render-samples.sh`, `justfile` `validate-agents` / `quality` / `ssot`, `.github/workflows/**`, skill mirrors, `samples/**/copier-answers.yml`)
 - Focus: `check_removed_key_ssot.py`, `validate_jinja_templates.py` dir walk, `scripts/lib/sphinx_smoke.py`, `mise trust` in `render-samples.sh`, `just validate-agents`
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Date: 2026-08-18
 - Prior blobs (`W4-R03-gates`, `W5-AUDIT-gates`, `W5-R1-gates`, `W5-R2-gates`, `W5-CLOSE-GATES`, `ASSURANCE.md`, `residuals/GATES.md`): **untrusted**. Every keep/drop re-read in the live tree.
 - `samples/*/render/**` writes: **0**

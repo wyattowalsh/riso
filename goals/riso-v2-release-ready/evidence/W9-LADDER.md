@@ -1,7 +1,7 @@
 # W9-LADDER — official ladder exits
 
 - Date (UTC): 2026-08-18T12:18:31Z → 2026-08-18T12:50:30Z
-- Cwd: `/Users/ww/dev/projects/riso`
+- Cwd: `.`
 - Branch: `main` @ start `dadb3cffad7139a67b5af8f8b3629b97c1817f73` / end `89882fff946e10692de1e1eb634ad4aa355ed694`
 - Python: `uv run` only
 - `render_matrix.py`: **not started**; no live process killed

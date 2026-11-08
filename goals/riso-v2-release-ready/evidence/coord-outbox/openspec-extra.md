@@ -9,7 +9,7 @@ Published by **W1-OUT**. OpenSpec is an optional generated extra, **default off*
 | **status** | `applied` |
 | **source_handoff** | `goals/riso-v2-release-ready/evidence/W1-C01-extras.md` |
 | **wave** | W1-OUT |
-| **repo** | `/Users/ww/dev/projects/riso` (maintainer; branch `main`) |
+| **repo** | `.` (maintainer; branch `main`) |
 | **samples/\*/render/\*\* writes** | **0** |
 
 ---

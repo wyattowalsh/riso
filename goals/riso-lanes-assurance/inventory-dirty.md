@@ -7,7 +7,7 @@ Map of every dirty path in the maintainer worktree → exactly one lane.
 | Field | Value |
 |-------|-------|
 | Captured (UTC) | `2026-07-29T01:21:58Z` |
-| Repo root | `/Users/ww/dev/projects/riso` |
+| Repo root | `.` |
 | Branch | `main` |
 | HEAD | `9b62b31` |
 | Commands | `git status --short`, `git diff --name-only`, `git ls-files --others --exclude-standard` |

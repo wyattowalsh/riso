@@ -2,7 +2,7 @@
 
 - Wave: W9 / remaining compiled SaaS next-build `@/lib` holes (same class as `@/lib/auth/helpers`)
 - Date: 2026-08-18
-- Repo: `/Users/ww/dev/projects/riso` · branch `main` · HEAD `314cd13c1f4fde91bc2c36caa40b0aceaabb5073`
+- Repo: `.` · branch `main` · HEAD `314cd13c1f4fde91bc2c36caa40b0aceaabb5073`
 - Exclusive writes: `template/files/node/saas/lib/**` (3 new thin re-exports) + this evidence
 - `samples/*/render/**` writes: **0**
 - Status: **green** (compiled `@/lib/health`, `@/lib/observability/logger`, `@/lib/env` now have dest-root modules)
@@ -47,7 +47,7 @@ Consumer files were **not** rewritten. Flatten dest-root `db/` was **not** remou
 ## Commands
 
 ```text
-git rev-parse --show-toplevel   # /Users/ww/dev/projects/riso
+git rev-parse --show-toplevel   # .
 git branch --show-current       # main
 git rev-parse HEAD              # 314cd13c1f4fde91bc2c36caa40b0aceaabb5073
 uv run python scripts/ci/validate_jinja_templates.py \

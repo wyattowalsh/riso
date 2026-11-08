@@ -8,7 +8,7 @@
 - Wave: W4
 - Lane: GOAL
 - Date (UTC): 2026-08-14
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `main` @ `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
 - Exclusive writes: `goals/riso-v2-release-ready/**` only
 - `samples/*/render/**` writes this task: **0**

@@ -4,7 +4,7 @@
 - **Task:** lock dest-root PostHog/Amplitude providers, ThemeToggle, and recopy dry-run dest
 - **Lane:** tests only (exclusive write `tests/unit/test_saas_template_clients.py`, this file)
 - **Date (UTC):** 2026-08-18T14:32:03Z
-- **Repo:** `/Users/ww/dev/projects/riso`
+- **Repo:** `.`
 - **Branch:** `main`
 - **HEAD:** `89882fff946e10692de1e1eb634ad4aa355ed694` (worktree dirty; this session did not commit)
 - **Product / template writes:** 0

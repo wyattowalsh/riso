@@ -4,7 +4,7 @@
 - Wave: W5
 - Lane: **docs**
 - Mode: inspect-only (this file is the only write)
-- Repo: `/Users/ww/dev/projects/riso` (`git rev-parse --show-toplevel` / `.git/HEAD` denied by hook; workspace + prior GOAL/W4 evidence)
+- Repo: `.` (`git rev-parse --show-toplevel` / `.git/HEAD` denied by hook; workspace + prior GOAL/W4 evidence)
 - Branch / HEAD (from `ASSURANCE.md` / `W4-PL-T08-sphinx.txt`, not re-checked via git): `main` · `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
 - Date: 2026-08-14
 - `samples/*/render/**` writes: **0**

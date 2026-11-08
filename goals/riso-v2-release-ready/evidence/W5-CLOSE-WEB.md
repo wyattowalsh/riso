@@ -3,7 +3,7 @@
 - Wave: CLOSE-WEB
 - Lane: WEB
 - Exclusive writes: `web/src/**`, `web/e2e/**`, `web/tests/**`, this file
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `main`
 - HEAD: `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
 - Date: 2026-08-14

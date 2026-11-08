@@ -3,7 +3,7 @@
 - Wave: W7 / PAY-P0 dest-root Node CI
 - Task: close GitLab + Circle dest-root `typecheck` / `test` / `build` on Node jobs
 - Date: 2026-08-18
-- Repo: `/Users/ww/dev/projects/riso` · branch `main` · HEAD `e4029ca8d8213a896bd9ca841525ce4d73bbca19`
+- Repo: `.` · branch `main` · HEAD `e4029ca8d8213a896bd9ca841525ce4d73bbca19`
 - Exclusive writes: `template/files/.gitlab/.gitlab-ci.yml.jinja`, `template/files/.circleci/config.yml.jinja`, this file
 - `samples/*/render/**` writes: **0**
 - Commits / tags / pushes: **0**
@@ -41,7 +41,7 @@ Split Node job **commands** by enabled surface. Keep job names. Keep Node 20 (`n
 ## Commands
 
 ```text
-git rev-parse --show-toplevel   # /Users/ww/dev/projects/riso
+git rev-parse --show-toplevel   # .
 git branch --show-current       # main
 git rev-parse HEAD              # e4029ca8d8213a896bd9ca841525ce4d73bbca19
 uv run python scripts/ci/validate_jinja_templates.py \

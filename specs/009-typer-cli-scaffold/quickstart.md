@@ -288,7 +288,7 @@ uv run pylint files/python/ --rcfile=files/python/.pylintrc
 ### 5.2 Render Test Sample
 
 ```bash
-cd /Users/ww/dev/projects/riso
+cd .
 
 # Render cli-docs sample
 ./scripts/render-samples.sh --variant cli-docs --answers samples/cli-docs/copier-answers.yml

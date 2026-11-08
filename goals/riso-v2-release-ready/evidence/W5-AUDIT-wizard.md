@@ -4,7 +4,7 @@
 - Wave: W5
 - Lane: **wizard** (inspect-only; this file only)
 - Surface: `web/src` remap twin, YAML import, export, presets, store defaults
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `.git/HEAD` read hook-denied; `.git/refs/heads/main` = `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b` (matches `ASSURANCE.md` / `W3-PL-T10-ssot.txt`)
 - Date: 2026-08-14
 - Product-code writes: **0**

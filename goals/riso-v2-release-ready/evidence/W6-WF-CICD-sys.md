@@ -3,7 +3,7 @@
 - Wave: W6 / SYS payload workflow
 - Task: close `PAY-P1-gitlab-circle-sys-cwd`
 - Date: 2026-08-18
-- Repo: `/Users/ww/dev/projects/riso` · branch `main` · HEAD `f60fac8ea40e12fb0ad64f6d49ff6bf74b9a1b87`
+- Repo: `.` · branch `main` · HEAD `f60fac8ea40e12fb0ad64f6d49ff6bf74b9a1b87`
 - Exclusive writes: `template/files/.gitlab/.gitlab-ci.yml.jinja`, `template/files/.circleci/config.yml.jinja`, this file
 - `samples/*/render/**` writes: **0**
 - Commits / tags / pushes: **0**
@@ -36,7 +36,7 @@ Match generated `go/{Makefile,justfile}.jinja` and `rust/{Makefile,justfile}.jin
 ## Commands
 
 ```text
-git rev-parse --show-toplevel   # /Users/ww/dev/projects/riso
+git rev-parse --show-toplevel   # .
 git branch --show-current       # main
 git rev-parse HEAD              # f60fac8ea40e12fb0ad64f6d49ff6bf74b9a1b87
 uv run python scripts/ci/validate_jinja_templates.py \

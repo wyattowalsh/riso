@@ -1,7 +1,7 @@
 # W5-CLOSE — official ladder rollup
 
 - Date (UTC): 2026-08-14T05:43:00Z
-- Cwd: `/Users/ww/dev/projects/riso`
+- Cwd: `.`
 - Branch: `main` @ `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
 - `render_matrix.py` live process: **none** (not started; not killed)
 - Python: `uv run` only

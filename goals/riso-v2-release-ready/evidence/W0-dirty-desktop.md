@@ -3,7 +3,7 @@
 - Task: W0-T01e
 - Wave: W0 / group W0A
 - Lane lock: `template/files/electron/**`, `template/files/tauri/**`
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `main` (`.git/refs/heads/main`)
 - HEAD: `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b` — last reflog commit `docs(docs): W4 ASSURANCE report and handoffs closeout` (2026-07-29)
 - When: 2026-08-13
@@ -15,7 +15,7 @@ This subagent has no shell (`git status` / `git diff` / `git rev-parse` not exec
 
 ```text
 # Intended (blocked here — no porcelain runner)
-git rev-parse --show-toplevel   # expected: /Users/ww/dev/projects/riso
+git rev-parse --show-toplevel   # expected: .
 git status --short
 git diff --name-only
 

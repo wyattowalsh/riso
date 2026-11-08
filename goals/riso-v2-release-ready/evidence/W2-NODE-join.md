@@ -3,7 +3,7 @@
 - Wave: W2 / lane NODE
 - Tasks: `NODE-T01`, `NODE-T02`, `NODE-T03`, `NODE-JOIN`
 - Status: **green**
-- Repo: `/Users/ww/dev/projects/riso` branch `main` HEAD `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
+- Repo: `.` branch `main` HEAD `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
 - Exclusive write root: `template/files/node/**` except `node/saas/**`
 - `samples/*/render/**` writes: **0**
 - Residual file: none (`residuals/NODE.md` not created)

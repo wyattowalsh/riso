@@ -5,8 +5,8 @@
 - Lane: GOAL evidence only (this file is the exclusive write)
 - Mode: inspect-only against the **live tree**
 - Date: 2026-08-14
-- Workspace: `/Users/ww/dev/projects/riso`
-- Git: `read_file` of `.git/HEAD` was hook-denied; no `run_terminal_command` in this harness. Workspace path matches `git rev-parse --show-toplevel` from sibling GOAL evidence (`W5-LADDER-sphinx.txt` L18: `/Users/ww/dev/projects/riso`, branch `main`, HEAD `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`). This session did not checkout / stash / reset / rebase / commit / tag / push.
+- Workspace: `.`
+- Git: `read_file` of `.git/HEAD` was hook-denied; no `run_terminal_command` in this harness. Workspace path matches `git rev-parse --show-toplevel` from sibling GOAL evidence (`W5-LADDER-sphinx.txt` L18: `.`, branch `main`, HEAD `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`). This session did not checkout / stash / reset / rebase / commit / tag / push.
 - `samples/*/render/**` writes: **0**
 - Product / template / docs source edits: **0**
 - Prior review blob: empty (untrusted). `ASSURANCE.md` / `W5-AUDIT-docs.md` / `W5-CLOSE-DOCS.md` used only as pointers, not as verdicts.

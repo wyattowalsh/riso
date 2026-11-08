@@ -3,7 +3,7 @@
 - **Task:** `W5-R1` · surface=`payloads`
 - **Mode:** read-only inspection of `template/files/**` and `template/hooks/**`
 - **Date:** 2026-08-14
-- **Repo / cwd:** `/Users/ww/dev/projects/riso` (workspace = maintainer root)
+- **Repo / cwd:** `.` (workspace = maintainer root)
 - **Git:** `.git/HEAD` hook-denied this session; no checkout / stash / reset / branch create. Workspace path matches prior closeout (`main`).
 - **Write root:** this file only
 - **Product / hook edits:** **0**

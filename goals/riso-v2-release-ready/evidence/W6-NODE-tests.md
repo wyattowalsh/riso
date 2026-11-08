@@ -4,7 +4,7 @@
 - **Task:** `CLOSE-NODE / test-node-templates`
 - **Lane:** GOAL (exclusive write `tests/unit/test_node_templates.py` + this file)
 - **Date (UTC):** 2026-08-18T07:34:00Z
-- **Repo:** `/Users/ww/dev/projects/riso`
+- **Repo:** `.`
 - **Branch:** `main`
 - **HEAD:** `ddc50a0081ed6a5159cd308594d5bfaad7c9971f` (worktree dirty; this session did not commit)
 - **`template/files/node/**` writes:** 0 (NODE lock; tests assert current contracts only)

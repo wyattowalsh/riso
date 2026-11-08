@@ -4,7 +4,7 @@
 - Wave: W6
 - Lane: GOAL (inspect-only; this file only)
 - Surface: wizard (`web/src/**`)
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Date: 2026-08-18
 - Prior review blobs: untrusted. Re-read live `web/src/**` plus Python remap SSOT. `W6-R03-wizard.md` / `W5-R1-wizard.md` / `W5-R2-wizard.md` / `W5-CLOSE-WEB.md` / `W5-AUDIT-wizard.md` were not used as verdicts.
 - Product-code writes: **0** (`web/src/**` not edited)

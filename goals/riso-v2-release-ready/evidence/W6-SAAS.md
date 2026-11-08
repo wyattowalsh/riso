@@ -2,7 +2,7 @@
 
 - Wave: W6 / lane SAAS (exclusive-write closeout)
 - Date: 2026-08-18
-- Repo: `/Users/ww/dev/projects/riso` · branch `main` · HEAD `ddc50a0081ed6a5159cd308594d5bfaad7c9971f`
+- Repo: `.` · branch `main` · HEAD `ddc50a0081ed6a5159cd308594d5bfaad7c9971f`
 - Exclusive writes: `template/files/node/saas/**`, `template/files/saas-starter/**`, this file
 - `samples/*/render/**` writes: **0**
 - Status: **green** (`@/db/schema` leftover rg empty)
@@ -59,7 +59,7 @@ Did **not** remount dest-root `next.config.js`, `middleware.ts`, `prisma/seed.ts
 ## Commands
 
 ```text
-git rev-parse --show-toplevel   # /Users/ww/dev/projects/riso
+git rev-parse --show-toplevel   # .
 git branch --show-current       # main
 git rev-parse HEAD              # ddc50a0081ed6a5159cd308594d5bfaad7c9971f
 rg -n "@/db/schema" template/files/node/saas   # empty

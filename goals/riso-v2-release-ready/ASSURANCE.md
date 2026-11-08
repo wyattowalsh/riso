@@ -66,7 +66,7 @@ ______________________________________________________________________
 
 **Generated:** 2026-08-18T07:36:00Z\
 **Branch:** `main` · **HEAD at verify:** `ddc50a0`\
-**Workspace:** `/Users/ww/dev/projects/riso`\
+**Workspace:** `.`\
 **Status:** **stale-doc vs W6** (kept for history)\
 **Task:** W5-R2 closeout
 

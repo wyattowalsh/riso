@@ -2,7 +2,7 @@
 
 - Task: `W1-C07`
 - Wave: W1
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `main` (no checkout / stash / reset)
 - Exclusive writes: `template/hooks/pre_gen_project.py`, `template/hooks/post_gen_project.py`, `tests/unit/hooks/test_pre_gen_project.py`, `tests/unit/hooks/test_post_gen_project.py` (companion; leftover reject test now uses unmapped `saas_auth`), this file
 - `samples/*/render/**` writes: **0**

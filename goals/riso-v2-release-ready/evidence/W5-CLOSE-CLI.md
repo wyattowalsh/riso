@@ -3,7 +3,7 @@
 - Wave: **CLOSE-CLI**
 - Lane: **CLI**
 - Date: 2026-08-14
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `main` · HEAD `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
 - Exclusive write roots: `src/riso/cli/**`, `src/riso/core/**`, `src/riso/template/**`, `tests/unit/test_cli/**`, `tests/integration/test_riso_cli.py`, `tests/integration/test_control_plane_gates.py`, this file, `residuals/CLI.md`
 - Product-code edits this session: **0**

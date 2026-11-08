@@ -4,7 +4,7 @@
 - Tasks: `OS-T01`, `OS-T02`, `OS-T03`
 - Wave: W2
 - Date: 2026-08-13
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `main` @ `f7951fe` (no checkout / stash / reset / commit)
 - Exclusive writes: `template/files/openspec/**`, `goals/riso-v2-release-ready/evidence/W2-OPENSPEC-*`, `goals/riso-v2-release-ready/residuals/OPENSPEC.md`
 - `samples/*/render/**` writes: **0**
@@ -13,7 +13,7 @@
 ## Filter / command
 
 ```text
-git rev-parse --show-toplevel   # /Users/ww/dev/projects/riso
+git rev-parse --show-toplevel   # .
 git rev-parse --abbrev-ref HEAD # main
 
 rg -n 'openspec/' template/copier.yml

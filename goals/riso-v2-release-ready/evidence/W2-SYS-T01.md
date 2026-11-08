@@ -12,7 +12,7 @@
 
 | Field | Value |
 | --- | --- |
-| CWD / toplevel | `/Users/ww/dev/projects/riso` (`git rev-parse --show-toplevel`) |
+| CWD / toplevel | `.` (`git rev-parse --show-toplevel`) |
 | Branch | `main` (unchanged; no checkout / stash / reset) |
 | HEAD | `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b` |
 

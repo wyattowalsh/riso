@@ -2,7 +2,7 @@
 
 - Lane: **CLI**
 - Wave: W2
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `main` (no checkout / stash / reset / commit)
 - Exclusive writes: `src/riso/**`, `tests/unit/test_cli/**`, this evidence, `residuals/CLI.md`
 - `samples/*/render/**` writes: **0**

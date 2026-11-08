@@ -1,7 +1,7 @@
 # W10-RECOPY-DRY-RUN
 
 - Date (UTC): 2026-08-18T15:06:58Z
-- Cwd: `/Users/ww/dev/projects/riso`
+- Cwd: `.`
 - Branch: `main` @ `89882ff`
 - Python: `uv run` only
 - Product dry-run: still calls `compute_diff` (`src/riso/cli/commands/recopy.py`)

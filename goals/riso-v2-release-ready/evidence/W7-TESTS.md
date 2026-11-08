@@ -4,7 +4,7 @@
 - **Task:** lock dest-root Node script aliases, GHA/GitLab typecheck filters, SaaS client barrels, nested SaaS CI pins
 - **Lane:** tests only (exclusive write `tests/unit/test_node_templates.py`, create `tests/unit/test_saas_template_clients.py`, this file)
 - **Date (UTC):** 2026-08-18T10:05:45Z
-- **Repo:** `/Users/ww/dev/projects/riso`
+- **Repo:** `.`
 - **Branch:** `main`
 - **HEAD:** `e4029ca8d8213a896bd9ca841525ce4d73bbca19` (worktree dirty; this session did not commit)
 - **Product / template writes:** 0

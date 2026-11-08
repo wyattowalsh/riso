@@ -2,7 +2,7 @@
 
 **Generated:** 2026-07-29\
 **Updated:** 2026-08-18 (W0–W4 re-orchestrate; PL-T06 official run exited)\
-**Branch:** `main` · **Workspace:** `/Users/ww/dev/projects/riso`\
+**Branch:** `main` · **Workspace:** `.`\
 **Status:** **residualed** (official `render_matrix` pid 70136 **exited** 2026-08-18T11:48:24Z with 7 dest fails; JSON rewritten; individual re-smokes in progress — no second matrix)\
 **Report tasks:** A-T01…A-T04
 
@@ -175,7 +175,7 @@ ______________________________________________________________________
 ## Commands rechecked at W4 (read-only)
 
 ```bash
-git rev-parse --show-toplevel   # /Users/ww/dev/projects/riso
+git rev-parse --show-toplevel   # .
 # 2026-08-17: in-process run_validate over 37 sample answers → evidence/W5-validate-37.json
 # uv run ruff check scripts template/hooks tests src
 # uv run --group docs sphinx-build -W -b html docs /tmp/riso-docs-build-release

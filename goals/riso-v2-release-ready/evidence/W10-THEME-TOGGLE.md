@@ -2,7 +2,7 @@
 
 - Wave: W10 / PAY-P0-saas-theme-toggle
 - Date: 2026-08-18
-- Repo: `/Users/ww/dev/projects/riso` · branch `main` · HEAD `89882fff946e10692de1e1eb634ad4aa355ed694`
+- Repo: `.` · branch `main` · HEAD `89882fff946e10692de1e1eb634ad4aa355ed694`
 - Exclusive writes: `template/files/node/saas/components/theme-toggle.tsx.jinja`, this file
 - `samples/*/render/**` writes: **0**
 - Commits / tags / pushes: **0**
@@ -38,7 +38,7 @@ Behavior:
 ## Commands
 
 ```text
-git rev-parse --show-toplevel   # /Users/ww/dev/projects/riso
+git rev-parse --show-toplevel   # .
 git branch --show-current       # main
 git rev-parse HEAD              # 89882fff946e10692de1e1eb634ad4aa355ed694
 uv run python scripts/ci/validate_jinja_templates.py \

@@ -5,7 +5,7 @@
 - Lane: GOAL evidence only (this file is the exclusive write)
 - Mode: inspect-only against the **live tree**
 - Date: 2026-08-18
-- Workspace: `/Users/ww/dev/projects/riso`
+- Workspace: `.`
 - Git: `read_file` of `.git/HEAD` was hook-denied; no checkout / stash / reset / rebase / commit / tag / push
 - `samples/*/render/**` writes: **0**
 - Product / template / docs source edits: **0**

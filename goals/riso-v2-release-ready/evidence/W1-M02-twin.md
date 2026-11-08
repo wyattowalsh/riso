@@ -3,7 +3,7 @@
 - Tasks: `W1-M02`, `W1-M03`
 - Wave: W1
 - Date: 2026-08-13
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `main` (no checkout / stash / reset / commit)
 - Exclusive writes: `scripts/lib/removed_answer_keys.py`, `tests/unit/test_cli/test_removed_keys_packaging.py`, this file
 - `samples/*/render/**` writes: **0**

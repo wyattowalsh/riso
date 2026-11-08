@@ -2,7 +2,7 @@
 
 - Task: W0-T02a
 - Wave: W0 / group W0A
-- Repo: `/Users/ww/dev/projects/riso` (workspace root; `read_file` / `grep` only — no `git` mutation)
+- Repo: `.` (workspace root; `read_file` / `grep` only — no `git` mutation)
 - Verify: exactly 8 keys; cite any value drift
 - Status: **green** — 8 keys, identical key set, **no value drift**
 

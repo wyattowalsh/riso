@@ -5,7 +5,7 @@
 - Surface: **CLI**
 - Mode: read-only inspection
 - Write root: this file only
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Date: 2026-08-18
 - Compared: `goals/riso-v2-release-ready/evidence/W6-R03-CLI.md` (P0 empty; P1 empty). Also noted `W5-R1-CLI.md` / `W5-R2-CLI.md`.
 - Product-code edits: **0**

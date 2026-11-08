@@ -2,7 +2,7 @@
 
 - **Lane:** `facts` (read-only; exclusive write = this file)
 - **Date (UTC):** 2026-08-14
-- **Repo:** `/Users/ww/dev/projects/riso` (cwd via `.git/HEAD` = `ref: refs/heads/main`)
+- **Repo:** `.` (cwd via `.git/HEAD` = `ref: refs/heads/main`)
 - **Branch:** `main`
 - **HEAD:** `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b` (`.git/refs/heads/main`)
 - **Sources:** `facts.md` / `facts.meta.json` (25 accepted ids). `ASSURANCE.md` was **read and not trusted**.

@@ -4,7 +4,7 @@
 - Wave: W4
 - Lane: GOAL (inspect-only; this file only)
 - Surface: gates (`scripts/ci/**`, `scripts/lib/**`, `scripts/render-samples.sh`, sample answers, release-readiness skill + Claude mirror, `justfile` quality wiring, `.github/workflows/quality.yml`)
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `main` (no checkout / stash / reset; `.git/HEAD` read denied by hook; prior W3 evidence + workspace path)
 - Date: 2026-08-13
 - Pass 1 blob: untrusted; every keep/drop re-read in-tree

@@ -2,7 +2,7 @@
 
 - Wave: CLOSE-SAAS / lane SAAS
 - Date: 2026-08-14
-- Repo: `/Users/ww/dev/projects/riso` · branch `main` · HEAD `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
+- Repo: `.` · branch `main` · HEAD `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
 - Exclusive writes: `template/files/node/saas/**`, `template/files/saas-starter/**`, this file
 - `samples/*/render/**` writes: **0**
 - Status: **green** (lock P0/P1 closed)
@@ -27,7 +27,7 @@ Did **not** add `@remix-run/cloudflare*`. Official dest refresh is PLATFORM (`re
 ## Commands
 
 ```text
-git rev-parse --show-toplevel   # /Users/ww/dev/projects/riso
+git rev-parse --show-toplevel   # .
 git branch --show-current       # main
 uv run python scripts/ci/validate_jinja_templates.py \
   template/files/node/saas/Dockerfile.jinja \

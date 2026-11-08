@@ -4,9 +4,9 @@
 - Wave: W5
 - Lane: **samples** (inspect-only; this file only)
 - Date (UTC): 2026-08-14
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: current (no checkout / stash / reset). `.git/HEAD` read denied by hook. `refs/heads/main` and last `logs/HEAD` entry: `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
-- `git rev-parse --show-toplevel`: not executed (no shell in this subagent). Workspace + `.git` confirm `/Users/ww/dev/projects/riso`
+- `git rev-parse --show-toplevel`: not executed (no shell in this subagent). Workspace + `.git` confirm `.`
 - Answers edited: **0**
 - `samples/*/render/**` writes: **0**
 - Product-code edits: **0**

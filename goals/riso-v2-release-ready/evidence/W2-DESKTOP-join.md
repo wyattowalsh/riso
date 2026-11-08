@@ -3,7 +3,7 @@
 - Wave: W2 / lane DESKTOP
 - Tasks: `DESK-T01`, `DESK-T02`, `DESK-T03`, `DESK-T04`, `DESK-JOIN`
 - Status: **green**
-- Repo: `/Users/ww/dev/projects/riso` branch `main` HEAD `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
+- Repo: `.` branch `main` HEAD `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
 - Exclusive writes: `template/files/electron/**`, `template/files/tauri/**`, this evidence set
 - `samples/*/render/**` writes: **0**
 - Residual file: none (`residuals/DESKTOP.md` not created)

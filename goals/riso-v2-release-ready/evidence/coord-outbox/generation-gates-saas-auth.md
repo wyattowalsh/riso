@@ -9,7 +9,7 @@ Published by **W1-OUT**. Shared generation gates no longer read leftover `saas_a
 | **status** | `applied` (old-key read dropped); apply-before-reject in gates still **CLI-T15** |
 | **source_handoff** | `goals/riso-v2-release-ready/evidence/W1-M01-remap.md` (W1-C06) |
 | **wave** | W1-OUT |
-| **repo** | `/Users/ww/dev/projects/riso` (maintainer; branch `main`) |
+| **repo** | `.` (maintainer; branch `main`) |
 | **samples/\*/render/\*\* writes** | **0** |
 
 ---

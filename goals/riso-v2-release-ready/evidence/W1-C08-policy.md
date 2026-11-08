@@ -3,7 +3,7 @@
 - Task: `W1-C08`
 - Wave: W1
 - Date: 2026-08-13
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `main` @ `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b` (no checkout / stash / reset / commit)
 - Exclusive writes: `.agents/skills/riso-release-readiness/references/no-legacy-answer-policy.md`, `.agents/skills/riso-release-readiness/SKILL.md`, this file, `residuals/SKILL.md`
 - `samples/*/render/**` writes: **0**

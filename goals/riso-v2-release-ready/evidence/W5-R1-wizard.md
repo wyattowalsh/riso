@@ -4,7 +4,7 @@
 - Wave: W5
 - Lane: GOAL (inspect-only; this file only)
 - Surface: wizard (`web/src/**` + live e2e at `web/tests/e2e/**`; `web/e2e/**` does not exist)
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `main` @ `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b` (`.git/refs/heads/main`; `.git/HEAD` hook-denied; no shell for `git rev-parse --show-toplevel`; tool cwd is the same repo root)
 - Date: 2026-08-14
 - Prior review blob: empty / untrusted. `ASSURANCE.md`, `W5-AUDIT-wizard.md`, `W5-CLOSE-WEB.md`, and `W2-WEB-join.md` were read then re-checked against the live tree.

@@ -4,7 +4,7 @@
 - Wave: W5
 - Lane: **openspec** (inspect-only)
 - Write root: this file only
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `main` (no checkout / stash / reset; `.git/HEAD` hook-denied; `.git/refs/heads/main` = `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`)
 - Date: 2026-08-14
 - `samples/*/render/**` writes: **0**

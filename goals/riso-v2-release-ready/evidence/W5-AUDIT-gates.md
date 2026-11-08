@@ -4,7 +4,7 @@
 - Wave: W5
 - Lane: GOAL inspect-only; exclusive write is this file
 - Surface: gates (`scripts/ci/**`, `justfile` quality/ssot, release-readiness skill + Claude mirror, generated container workflow jinja)
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Date: 2026-08-14
 - `samples/*/render/**` writes: **0** (dest workflows read only)
 - Product code edits: **0**

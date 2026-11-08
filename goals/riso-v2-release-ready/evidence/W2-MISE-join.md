@@ -3,7 +3,7 @@
 - Tasks: `MISE-T01`, `MISE-T02`, `MISE-T03`, `MISE-T04`
 - Wave: W2 / lane MISE
 - Deps: `W1-C02` (T01/T02/T04), `W1-OUT` (T03)
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `main` (no checkout / stash / reset / commit)
 - Exclusive writes: `template/files/mise.toml.jinja`; maintainer `.mise.toml` only if pin sync required (not required)
 - Also allowed: this file; `goals/riso-v2-release-ready/residuals/MISE.md` (not written — no residual)

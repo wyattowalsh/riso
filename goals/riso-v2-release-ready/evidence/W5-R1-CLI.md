@@ -5,7 +5,7 @@
 - Surface: **CLI**
 - Mode: read-only inspection
 - Write root: this file only
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Date: 2026-08-14
 - Product-code edits: **0**
 - `samples/*/render/**` writes: **0**
@@ -28,7 +28,7 @@ Inspected:
 - `tests/integration/test_control_plane_gates.py`
 - Lockstep probes: `template/copier.yml` dest prompts/defaults, `docs/guides/v2-migration.md`, `web/src/lib/removedAnswerKeys.ts` (`SAAS_AUTH_PROVIDERS`)
 
-Git confirm: `read_file` on `.git/HEAD` was **hook-denied**. This harness has no `run_terminal_command`, so `git rev-parse --show-toplevel` / `git tag -l` / pytest were **not** re-run. Workspace path is `/Users/ww/dev/projects/riso`. Do not treat W5-CLOSE HEAD `f7951fe` as re-verified.
+Git confirm: `read_file` on `.git/HEAD` was **hook-denied**. This harness has no `run_terminal_command`, so `git rev-parse --show-toplevel` / `git tag -l` / pytest were **not** re-run. Workspace path is `.`. Do not treat W5-CLOSE HEAD `f7951fe` as re-verified.
 
 ## Contract checked
 

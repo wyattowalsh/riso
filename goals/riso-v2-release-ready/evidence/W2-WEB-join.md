@@ -3,7 +3,7 @@
 - Wave: W2 / lane WEB
 - Tasks: `WEB-T01` `WEB-T02` `WEB-T03` `WEB-T04` `WEB-T05` `WEB-T06` `WEB-JOIN`
 - Status: **green**
-- Repo: `/Users/ww/dev/projects/riso` branch `main` HEAD `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
+- Repo: `.` branch `main` HEAD `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
 - Exclusive writes: `web/src/**`, `web/tests/**`, this evidence tree
 - `samples/*/render/**` writes: **0**
 - Residual file: none (`residuals/WEB.md` not created)

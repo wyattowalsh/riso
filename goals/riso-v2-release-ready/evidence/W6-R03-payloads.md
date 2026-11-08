@@ -4,7 +4,7 @@
 - **Mode:** read-only inspection of live source
 - **Scope:** `template/files/python/**`, `template/files/node/**` except `node/saas/**`, `template/files/go/**`, `template/files/rust/**`, `template/files/electron/**`, `template/files/tauri/**`, `template/hooks/**` (plus known-closed GHA / Circle / GitLab / quality justfile checks from W5-R1)
 - **Date:** 2026-08-18
-- **Repo / cwd:** `/Users/ww/dev/projects/riso`
+- **Repo / cwd:** `.`
 - **Prior blob:** `goals/riso-v2-release-ready/evidence/W5-R1-payloads.md` treated as a map, not truth. Live files re-verified.
 - **Product / hook edits:** **0**
 - **`samples/*/render/**` writes:** **0** (dests read as smoke evidence only)

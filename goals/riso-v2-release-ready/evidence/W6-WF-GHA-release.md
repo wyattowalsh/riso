@@ -3,7 +3,7 @@
 - Wave: W6 / GATES payload workflow
 - Task: close `PAY-P1-gha-release-uv-root`
 - Date: 2026-08-18
-- Repo: `/Users/ww/dev/projects/riso` · branch `main` · HEAD `f60fac8ea40e12fb0ad64f6d49ff6bf74b9a1b87`
+- Repo: `.` · branch `main` · HEAD `f60fac8ea40e12fb0ad64f6d49ff6bf74b9a1b87`
 - Exclusive writes: `template/files/.github/workflows/riso-release.yml.jinja`, this file
 - `samples/*/render/**` writes: **0**
 - Commits / tags / pushes: **0**
@@ -36,7 +36,7 @@ Match `riso-quality.yml.jinja` / `riso-matrix.yml.jinja`:
 ## Commands
 
 ```text
-git rev-parse --show-toplevel   # /Users/ww/dev/projects/riso
+git rev-parse --show-toplevel   # .
 git branch --show-current       # main
 git rev-parse HEAD              # f60fac8ea40e12fb0ad64f6d49ff6bf74b9a1b87
 uv run python scripts/ci/validate_jinja_templates.py \

@@ -3,7 +3,7 @@
 - Tasks: `PY-T01`, `PY-T02`, `PY-T03`, `PY-T04`, `PY-T05`, `PY-T06`, `PY-T07`, `PY-T08`, `PY-JOIN`
 - Wave: W2 / lane PY
 - Deps: `W1-OUT`
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `main` @ `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b` (no checkout / stash / reset / commit)
 - Exclusive writes: `template/files/python/**`
 - Also allowed: this file; `goals/riso-v2-release-ready/evidence/W2-PY-*`; `goals/riso-v2-release-ready/residuals/PY.md` (not written — no residual)

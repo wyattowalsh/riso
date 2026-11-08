@@ -16,13 +16,13 @@ The comparison page is automatically generated when you create a new SaaS projec
 
 ### Next.js Version
 
-- **Page Route**: `/Users/ww/dev/projects/riso/template/files/node/saas/runtime/nextjs/app/(marketing)/comparison/page.tsx.jinja`
-- **Layout**: `/Users/ww/dev/projects/riso/template/files/node/saas/runtime/nextjs/app/(marketing)/comparison/layout.tsx.jinja`
+- **Page Route**: `./template/files/node/saas/runtime/nextjs/app/(marketing)/comparison/page.tsx.jinja`
+- **Layout**: `./template/files/node/saas/runtime/nextjs/app/(marketing)/comparison/layout.tsx.jinja`
 - **URL**: `http://your-app.com/comparison`
 
 ### Remix Version
 
-- **Route Handler**: `/Users/ww/dev/projects/riso/template/files/node/saas/runtime/remix/app/routes/comparison.tsx.jinja`
+- **Route Handler**: `./template/files/node/saas/runtime/remix/app/routes/comparison.tsx.jinja`
 - **URL**: `http://your-app.com/comparison`
 
 ## Features

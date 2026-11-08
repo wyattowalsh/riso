@@ -3,7 +3,7 @@
 - **Mission:** `AUDIT-matrix-smoke` (read-only)
 - **Lane:** `matrix-smoke`
 - **Date:** 2026-08-14
-- **Repo:** `/Users/ww/dev/projects/riso` (workspace = maintainer root)
+- **Repo:** `.` (workspace = maintainer root)
 - **Branch / HEAD:** `refs/heads/main` = `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b` (`.git/HEAD` hook-denied; `git rev-parse --show-toplevel` not executed — no shell in this subagent)
 - **Write root:** this file only
 - **Product-code edits:** **0**

@@ -3,7 +3,7 @@
 - Wave: W7 / PAYLOAD Node CI
 - Task: close `PAY-P0-dest-root-node-ci-scripts` (GHA + dest-root package.json only)
 - Date: 2026-08-18
-- Repo: `/Users/ww/dev/projects/riso` · branch `main` · HEAD `e4029ca8d8213a896bd9ca841525ce4d73bbca19`
+- Repo: `.` · branch `main` · HEAD `e4029ca8d8213a896bd9ca841525ce4d73bbca19`
 - Exclusive writes: `template/files/package.json.jinja`, `template/files/.github/workflows/riso-quality.yml.jinja`, `template/files/.github/workflows/riso-deps-update.yml.jinja`, this file
 - `samples/*/render/**` writes: **0**
 - Commits / tags / pushes: **0**
@@ -40,7 +40,7 @@ GitLab / Circle not edited (sibling lock).
 ## Commands
 
 ```text
-git rev-parse --show-toplevel   # /Users/ww/dev/projects/riso
+git rev-parse --show-toplevel   # .
 git branch --show-current       # main
 git rev-parse HEAD              # e4029ca8d8213a896bd9ca841525ce4d73bbca19
 uv run python scripts/ci/validate_jinja_templates.py \

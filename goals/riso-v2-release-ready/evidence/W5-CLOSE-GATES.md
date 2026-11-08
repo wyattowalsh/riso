@@ -3,7 +3,7 @@
 Date: 2026-08-14
 Branch: `main`
 HEAD: `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
-Cwd: `/Users/ww/dev/projects/riso`
+Cwd: `.`
 No commit / tag / push / PyPI. `samples/*/render/**` written only via `./scripts/render-samples.sh`.
 
 ## Lock verdict

@@ -3,7 +3,7 @@
 - Wave: **CLOSE-PY**
 - Lane: **PY**
 - Date: 2026-08-14
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `main` · HEAD `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
 - Exclusive write roots: `template/files/python/**`, this file, `residuals/PY.md`
 - `samples/*/render/**` writes: **0**

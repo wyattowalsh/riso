@@ -4,7 +4,7 @@
 - Wave: W5
 - Lane: GOAL inspect-only; exclusive write is this file
 - Surface: gates (`scripts/ci/**`, `scripts/lib/**`, `scripts/render-samples.sh`, `justfile`, `.github/workflows/**`, `.agents/skills/riso-release-readiness/**`, `.claude/skills/riso-release-readiness/**`, `samples/**/copier-answers.yml`)
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Date: 2026-08-14
 - Prior review blobs (W4-R03-gates, W5-AUDIT-gates, W5-CLOSE-GATES, ASSURANCE): **untrusted**. Every keep/drop re-read in the live tree.
 - `samples/*/render/**` writes: **0** (dests read only)

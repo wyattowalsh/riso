@@ -2,7 +2,7 @@
 
 - Wave: W7 / PAY-P0-saas-next-missing-modules
 - Date: 2026-08-18
-- Repo: `/Users/ww/dev/projects/riso` · branch `main` · HEAD `e4029ca8d8213a896bd9ca841525ce4d73bbca19`
+- Repo: `.` · branch `main` · HEAD `e4029ca8d8213a896bd9ca841525ce4d73bbca19`
 - Exclusive writes: `template/files/node/saas/lib/auth/helpers.ts.jinja`, `template/files/node/saas/lib/database/client.ts.jinja`, this file
 - `samples/*/render/**` writes: **0**
 - Status: **green** (compiled `@/lib/database/client` and `@/lib/auth/helpers` now have payload modules)
@@ -37,7 +37,7 @@ Did **not** remount dest-root `db/`, `next.config.js`, `middleware.ts`, or `pris
 ## Commands
 
 ```text
-git rev-parse --show-toplevel   # /Users/ww/dev/projects/riso
+git rev-parse --show-toplevel   # .
 git branch --show-current       # main
 git rev-parse HEAD              # e4029ca8d8213a896bd9ca841525ce4d73bbca19
 uv run python scripts/ci/validate_jinja_templates.py \

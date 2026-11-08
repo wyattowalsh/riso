@@ -3,7 +3,7 @@
 - **Mission:** `AUDIT-payloads-node` (read-only)
 - **Lane:** `payloads-node`
 - **Date:** 2026-08-14
-- **Repo:** `/Users/ww/dev/projects/riso` (workspace; `.git/HEAD` `read_file` hook-denied)
+- **Repo:** `.` (workspace; `.git/HEAD` `read_file` hook-denied)
 - **Branch:** `main` (ASSURANCE / W0-T01b / W2-NODE-join; no checkout)
 - **HEAD (prior evidence):** `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
 - **Write root:** this file only

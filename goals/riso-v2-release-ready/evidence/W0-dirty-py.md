@@ -11,7 +11,7 @@
 
 | Field | Value |
 | --- | --- |
-| CWD / toplevel | `/Users/ww/dev/projects/riso` (workspace root; `.git` present) |
+| CWD / toplevel | `.` (workspace root; `.git` present) |
 | Branch | `main` (launch porcelain: `git rev-parse --abbrev-ref HEAD` → `main`; `main...origin/main [ahead 34, behind 1]`) |
 | HEAD | `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b` — `docs(docs): W4 ASSURANCE report and handoffs closeout` |
 | Filter | keep only `template/files/python/**` |

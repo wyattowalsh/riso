@@ -2,7 +2,7 @@
 
 - Tasks: `W1-M01`, `W1-M01b`, `W1-M01c`, `W1-M01d`, `W1-M01e`, `W1-C06`
 - Wave: W1
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `main` (no checkout / stash / reset)
 - Exclusive writes: `src/riso/core/removed_answer_keys.py`, `src/riso/core/__init__.py`, `src/riso/core/generation_gates.py`, `tests/unit/test_cli/test_remap.py`, `tests/unit/test_cli/fixtures/remap/`, `tests/unit/test_cli/test_generation_gates.py`, this file
 - `samples/*/render/**` writes: **0**

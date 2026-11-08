@@ -3,7 +3,7 @@
 - **Mission:** `AUDIT-payloads-sys-desktop`
 - **Lane:** `payloads-sys-desktop`
 - **Date:** 2026-08-14
-- **Repo:** `/Users/ww/dev/projects/riso` (workspace; `.git/HEAD` `read_file` hook-denied)
+- **Repo:** `.` (workspace; `.git/HEAD` `read_file` hook-denied)
 - **Branch:** `main` (`.git/refs/heads/main` → `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`; no checkout / stash / reset)
 - **HEAD:** `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b` (`.git/logs/HEAD` last commit `docs(docs): W4 ASSURANCE report and handoffs closeout`)
 - **Write root:** this file only

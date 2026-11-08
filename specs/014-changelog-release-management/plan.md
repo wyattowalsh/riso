@@ -335,9 +335,9 @@ Updated `.github/copilot-instructions.md`:
 
 **File Paths**:
 
-- Feature Directory: `/Users/ww/dev/projects/riso/specs/014-changelog-release-management/`
-- Implementation Plan: `/Users/ww/dev/projects/riso/specs/014-changelog-release-management/plan.md`
-- Specification: `/Users/ww/dev/projects/riso/specs/014-changelog-release-management/spec.md`
+- Feature Directory: `./specs/014-changelog-release-management/`
+- Implementation Plan: `./specs/014-changelog-release-management/plan.md`
+- Specification: `./specs/014-changelog-release-management/spec.md`
 - Branch: `014-changelog-release-management`
 
 ______________________________________________________________________

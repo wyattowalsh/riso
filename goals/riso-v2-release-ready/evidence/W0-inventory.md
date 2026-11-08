@@ -13,7 +13,7 @@ Companion: [`W0-keep-drop.md`](./W0-keep-drop.md) (W0-T03). Checksum: `plan.task
 
 | Field | Value |
 | --- | --- |
-| CWD / toplevel | `/Users/ww/dev/projects/riso` (`.git` present; `.git/refs/heads/main` readable) |
+| CWD / toplevel | `.` (`.git` present; `.git/refs/heads/main` readable) |
 | Branch | `main` (porcelain: `main...origin/main [ahead 34, behind 1]`) |
 | HEAD | `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b` — `docs(docs): W4 ASSURANCE report and handoffs closeout` |
 | `origin/main` | `6134759f78bdb2c8b160462d55e8b87b09d81291` (v1.2.11) |

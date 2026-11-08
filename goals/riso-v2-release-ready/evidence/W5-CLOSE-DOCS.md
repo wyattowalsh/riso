@@ -3,7 +3,7 @@
 - Task: `CLOSE-DOCS`
 - Wave: W5
 - Lane: **DOCS**
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `main`
 - HEAD: `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b` (no checkout / stash / reset / commit / tag / push)
 - Date: 2026-08-14
@@ -71,7 +71,7 @@ Kept as-is (already lockstep; not rewritten this session):
 ## Verify
 
 ```text
-git rev-parse --show-toplevel   # /Users/ww/dev/projects/riso
+git rev-parse --show-toplevel   # .
 git rev-parse --abbrev-ref HEAD # main
 git tag -l 'v2.0.0' '2.0.0'     # empty
 

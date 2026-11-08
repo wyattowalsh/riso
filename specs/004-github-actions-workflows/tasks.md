@@ -204,7 +204,7 @@ ______________________________________________________________________
 
 **Purpose**: Finalize governance, documentation, and validation scripts.
 
-- [x] T069 [P] Update `/Users/ww/dev/projects/riso/AGENTS.md` with GitHub Actions workflow patterns and required checks
+- [x] T069 [P] Update `./AGENTS.md` with GitHub Actions workflow patterns and required checks
 - [x] T070 [P] Update `template/docs/upgrade-guide.md.jinja` with workflow migration instructions for copier updates
 - [x] T071 [P] Create or update `.github/context/workflows.md` with workflow extension patterns
 - [x] T072 Run context sync script `python scripts/ci/verify_context_sync.py` and commit any updates

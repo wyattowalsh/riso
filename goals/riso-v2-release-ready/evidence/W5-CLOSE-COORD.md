@@ -3,7 +3,7 @@
 Date: 2026-08-14
 Wave: CLOSE-COORD
 Branch: `main` · HEAD: `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
-Cwd: `/Users/ww/dev/projects/riso` (`git rev-parse --show-toplevel`)
+Cwd: `.` (`git rev-parse --show-toplevel`)
 Exclusive writes this session: this file + `residuals/COORD.md`
 Product edits (`template/copier.yml`, hooks, `template/prompts/**`): **0** (already fixed)
 `samples/*/render/**` writes: **0**

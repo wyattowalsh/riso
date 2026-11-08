@@ -1,7 +1,7 @@
 # W4 A-T03 — Path-lock audit
 
 **When:** 2026-07-29\
-**Command:** `git rev-parse --show-toplevel` → `/Users/ww/dev/projects/riso`\
+**Command:** `git rev-parse --show-toplevel` → `.`\
 **Command:** `git status --short` → **93** dirty leaf paths\
 **Branch:** `main`
 

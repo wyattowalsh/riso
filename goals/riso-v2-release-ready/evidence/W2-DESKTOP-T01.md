@@ -12,7 +12,7 @@
 
 | Field | Value |
 | --- | --- |
-| CWD | `/Users/ww/dev/projects/riso` |
+| CWD | `.` |
 | Branch | `main` (unchanged) |
 | HEAD | `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b` |
 

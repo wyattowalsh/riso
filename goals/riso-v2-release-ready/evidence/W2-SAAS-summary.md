@@ -4,7 +4,7 @@
 - Barrier: W1-OUT (read; COORD outbox `generation-gates-saas-auth` honored — no leftover `saas_auth` collector)
 - Status: **green**
 - Date: 2026-08-13
-- Repo: `/Users/ww/dev/projects/riso` · branch `main` · HEAD `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b` (no checkout / stash / reset / commit / tag / push)
+- Repo: `.` · branch `main` · HEAD `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b` (no checkout / stash / reset / commit / tag / push)
 - Exclusive writes only: `template/files/node/saas/**`, `template/files/saas-starter/**`, `goals/riso-v2-release-ready/evidence/W2-SAAS-*`
 - `samples/*/render/**` writes: **0**
 - Residual: none (`residuals/SAAS.md` not required)
@@ -21,7 +21,7 @@
 ## Commands
 
 ```text
-git rev-parse --show-toplevel   # /Users/ww/dev/projects/riso
+git rev-parse --show-toplevel   # .
 git branch --show-current       # main
 test -d template/files/node/saas/runtime/nextjs
 test -d template/files/node/saas/runtime/remix

@@ -2,7 +2,7 @@
 
 - Tasks: `W1-C01`, `W1-C02`, `W1-C03`, `W1-C04`, `W1-C05`
 - Wave: W1
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `main` (no checkout / stash / reset)
 - Exclusive writes: `template/copier.yml`, `template/prompts/**`, `template/files/module_catalog.json.jinja`, `template/files/mise.toml.jinja` (C02 stub), `.github/context/**`, `template/files/.github/context/**`, this file
 - `samples/*/render/**` writes: **0**

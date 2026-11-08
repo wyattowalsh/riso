@@ -3,7 +3,7 @@
 - Task: `AUDIT-residuals`
 - Wave: W5
 - Lane: **residuals** (inspect-only; this file is the only write)
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Date: 2026-08-14
 - Branch: `main` (`.git/HEAD` hook-denied; `.git/refs/heads/main` = `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`)
 - `git rev-parse --show-toplevel`: not executed (no shell in this worker). Workspace + `.git/refs/heads/main` confirm this repo.

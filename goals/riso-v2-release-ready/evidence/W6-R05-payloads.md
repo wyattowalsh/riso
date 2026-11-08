@@ -4,7 +4,7 @@
 - **Mode:** read-only inspection of live source
 - **Scope:** `template/files/python/**`, `template/files/node/**` except `node/saas/**`, `template/files/go/**`, `template/files/rust/**`, `template/files/electron/**`, `template/files/tauri/**`, `template/hooks/**` (plus W6-R03/R04 GHA / Circle / GitLab / quality justfile follow-ups)
 - **Date:** 2026-08-18
-- **Repo / cwd:** `/Users/ww/dev/projects/riso`
+- **Repo / cwd:** `.`
 - **Prior blobs:** `W6-R04-payloads.md` + `W6-R03-payloads.md` + `W6-PY-linkify.md` + `W6-NODE-chat.md` treated as maps, not truth. Live files re-verified.
 - **Product / hook edits:** **0**
 - **`samples/*/render/**` writes:** **0** (dests read as smoke evidence only)

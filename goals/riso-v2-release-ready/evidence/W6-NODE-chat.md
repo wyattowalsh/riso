@@ -3,7 +3,7 @@
 - **Wave:** W6 / NODE
 - **Task:** `PAY-P1-fumadocs-ai-search-static-export`
 - **Date (UTC):** 2026-08-18T08:13:50Z
-- **Repo:** `/Users/ww/dev/projects/riso`
+- **Repo:** `.`
 - **Branch:** `main`
 - **HEAD:** `f60fac8ea40e12fb0ad64f6d49ff6bf74b9a1b87` (worktree dirty; this session did not commit)
 - **Exclusive writes:** `template/files/node/docs/fumadocs/**`; this file

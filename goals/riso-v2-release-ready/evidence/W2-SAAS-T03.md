@@ -7,7 +7,7 @@
 - Verify: no mixed Next+Remix at `node/saas` root
 - Status: **green**
 - Date: 2026-08-13
-- Repo: `/Users/ww/dev/projects/riso` · branch `main` · HEAD `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
+- Repo: `.` · branch `main` · HEAD `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
 - `samples/*/render/**` writes: **0**
 
 ## Flatten probes (`template/files/node/saas/`)

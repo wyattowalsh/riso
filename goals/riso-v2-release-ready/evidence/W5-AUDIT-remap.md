@@ -4,7 +4,7 @@
 - Wave: W5
 - Lane: **remap** (inspect-only)
 - Write root: this file only
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `main` (no checkout / stash / reset; `.git/HEAD` hook-denied, same as W4-R03)
 - Date: 2026-08-14
 - `samples/*/render/**` writes: **0**

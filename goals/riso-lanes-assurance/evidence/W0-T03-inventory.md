@@ -1,7 +1,7 @@
 # W0-T03 evidence — dirty inventory
 
 - Captured (UTC): `2026-07-29T01:21:58Z`
-- Repo: `/Users/ww/dev/projects/riso` branch `main` HEAD `9b62b31`
+- Repo: `.` branch `main` HEAD `9b62b31`
 - Task: W0-T03 map every dirty path → exactly one lane
 - Artifact: `goals/riso-lanes-assurance/inventory-dirty.md`
 

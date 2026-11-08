@@ -408,7 +408,7 @@ ______________________________________________________________________
 
 ```text
 You are Lane {LANE} executing task {ID} for Riso CLI finalization.
-Repo: /Users/ww/dev/projects/riso
+Repo: .
 Read first: specs/009-typer-cli-scaffold/finalization-plan.md (task {ID})
 Files you may edit: {FILES}
 Dependencies satisfied: {DEPS}

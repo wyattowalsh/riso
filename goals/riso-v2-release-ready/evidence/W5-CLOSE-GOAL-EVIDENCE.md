@@ -4,7 +4,7 @@
 - Wave: CLOSE-GOAL-EVIDENCE
 - Lane: GOAL (exclusive write `goals/riso-v2-release-ready/**`)
 - Date (UTC): 2026-08-14T05:43:00Z
-- Repo: `/Users/ww/dev/projects/riso`
+- Repo: `.`
 - Branch: `main` @ `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b`
 - `samples/*/render/**` writes this session: **0**
 - Product-code / lockfile / commit / tag / push / PyPI: **0**
@@ -17,7 +17,7 @@ Read `goal.md`, `facts.md`, `plan.md`, `ASSURANCE.md`, `residuals/*.md` first. R
 
 ## What this session did
 
-1. Confirmed cwd `/Users/ww/dev/projects/riso`, branch `main`, HEAD `f7951fe`.
+1. Confirmed cwd `.`, branch `main`, HEAD `f7951fe`.
 2. Re-read the goal package and residuals.
 3. Re-ran the official ladder (except `render_matrix.py`) into `evidence/W5-CLOSE-*`.
 4. After GATES officially restored `samples/default/render`, re-ran dest-dependent gates (`W5-CLOSE-dest-recheck.txt`).

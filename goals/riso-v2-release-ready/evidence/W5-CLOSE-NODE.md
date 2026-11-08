@@ -2,7 +2,7 @@
 
 - **Wave:** CLOSE-NODE
 - **Date:** 2026-08-14
-- **Repo:** `/Users/ww/dev/projects/riso`
+- **Repo:** `.`
 - **Branch:** `main`
 - **HEAD:** `f7951fe62e7c635f3a90d17811d3711c2a2d7c1b` (worktree dirty; this session did not commit)
 - **Exclusive writes:** `template/files/node/**` except `node/saas/**`; this file; `residuals/NODE.md`
