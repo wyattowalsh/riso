@@ -24,6 +24,7 @@ METADATA_DIR = SAMPLES_DIR / "metadata"
 RENDER_MATRIX = METADATA_DIR / "render_matrix.json"
 OUTPUT_FILE = METADATA_DIR / "matrix-data.json"
 WEB_OUTPUT = REPO_ROOT / "web" / "src" / "data" / "matrix-data.json"
+_STDIO_KEYS = frozenset({"stdout", "stderr"})
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
@@ -98,11 +99,51 @@ def collect_prompts(template_path: Path) -> dict[str, Any]:
     }
 
 
+def repo_relative_posix(path: Path, repo_root: Path | None = None) -> str:
+    """Return ``path`` relative to the repository using posix separators."""
+    root = REPO_ROOT if repo_root is None else repo_root
+    return path.relative_to(root).as_posix()
+
+
+def _string_repo_relative(value: str, repo_root: Path) -> str:
+    """Rewrite an absolute path under ``repo_root``; leave every other string."""
+    if not value.startswith("/"):
+        return value
+    path = Path(value)
+    if not path.is_absolute():
+        return value
+    try:
+        relative = path.relative_to(repo_root)
+    except ValueError:
+        return value
+    return relative.as_posix()
+
+
+def sanitize_payload(value: Any, repo_root: Path | None = None) -> Any:
+    """Drop stdout/stderr keys and rewrite absolute repo paths to relative posix.
+
+    A string is rewritten only when the whole value is an absolute path under
+    ``repo_root``. Relative paths and paths outside the repository stay as-is.
+    """
+    root = REPO_ROOT if repo_root is None else repo_root
+    if isinstance(value, str):
+        return _string_repo_relative(value, root)
+    if isinstance(value, list):
+        return [sanitize_payload(item, root) for item in value]
+    if isinstance(value, dict):
+        return {
+            key: sanitize_payload(item, root)
+            for key, item in value.items()
+            if key not in _STDIO_KEYS
+        }
+    return value
+
+
 def collect_samples(render_matrix: dict[str, Any] | None) -> dict[str, Any]:
     """Use render evidence or discover sample answer files for matrix rows."""
     if render_matrix:
         return {
-            "source": str(RENDER_MATRIX),
+            "source": repo_relative_posix(RENDER_MATRIX),
             "render_matrix": render_matrix,
         }
 
@@ -140,8 +181,10 @@ def main() -> None:
     payload: dict[str, Any] = {
         "generated_at": datetime.now(tz=timezone.utc).isoformat(),
         "sources": {
-            "template": str(TEMPLATE_COPIER),
-            "render_matrix": str(RENDER_MATRIX) if render_matrix else None,
+            "template": repo_relative_posix(TEMPLATE_COPIER),
+            "render_matrix": (
+                repo_relative_posix(RENDER_MATRIX) if render_matrix else None
+            ),
         },
         "template": {
             "metadata": template_metadata(load_copier_config(TEMPLATE_DIR)),
@@ -149,6 +192,7 @@ def main() -> None:
         },
         "samples": collect_samples(render_matrix),
     }
+    payload = sanitize_payload(payload)
 
     text = json.dumps(payload, indent=2) + "\n"
     OUTPUT_FILE.write_text(text, encoding="utf-8")

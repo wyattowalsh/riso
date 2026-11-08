@@ -11,6 +11,7 @@ import yaml
 from generate_matrix_data import (
     collect_samples,
     normalize_prompt,
+    sanitize_payload,
     template_defaults_block,
     template_metadata,
 )
@@ -78,7 +79,7 @@ class TestCollectSamples:
         matrix = {"variants": [{"variant": "default"}]}
         result = collect_samples(matrix)
         assert result["render_matrix"] == matrix
-        assert "render_matrix.json" in result["source"]
+        assert result["source"] == "samples/metadata/render_matrix.json"
 
     def test_from_answers_files(self, tmp_path: Path) -> None:
         """Answer-file discovery retains sample configuration values."""
@@ -118,3 +119,55 @@ class TestCollectSamples:
         assert "default" in names
         assert "saas-starter/vercel-starter" in names
         assert "vercel-starter" not in names
+
+
+@pytest.mark.unit
+class TestSanitizePayload:
+    """Published snapshots omit machine paths and captured stdio."""
+
+    def test_relativizes_repo_paths_and_drops_stdio(self, tmp_path: Path) -> None:
+        """Absolute repo paths become relative; stdio keys are removed."""
+        repo = tmp_path
+        payload = {
+            "sources": {
+                "template": str(repo / "template" / "copier.yml"),
+                "render_matrix": str(
+                    repo / "samples" / "metadata" / "render_matrix.json"
+                ),
+            },
+            "samples": {
+                "source": "samples/metadata/render_matrix.json",
+                "render_matrix": {
+                    "variants": [
+                        {
+                            "answers": str(
+                                repo / "samples" / "default" / "copier-answers.yml"
+                            ),
+                            "destination": str(repo / "samples" / "default" / "render"),
+                            "stdout": "build log",
+                            "stderr": "build err",
+                            "nested": {"stderr": "inner", "status": "ok"},
+                        }
+                    ]
+                },
+            },
+            "stdout": "top-level log",
+            "outside": str(repo.parent / "elsewhere.txt"),
+        }
+
+        cleaned = sanitize_payload(payload, repo)
+
+        assert cleaned["sources"]["template"] == "template/copier.yml"
+        assert (
+            cleaned["sources"]["render_matrix"] == "samples/metadata/render_matrix.json"
+        )
+        assert cleaned["samples"]["source"] == "samples/metadata/render_matrix.json"
+        variant = cleaned["samples"]["render_matrix"]["variants"][0]
+        assert variant["answers"] == "samples/default/copier-answers.yml"
+        assert variant["destination"] == "samples/default/render"
+        assert "stdout" not in variant
+        assert "stderr" not in variant
+        assert variant["nested"] == {"status": "ok"}
+        assert "stdout" not in cleaned
+        assert "stderr" not in cleaned
+        assert cleaned["outside"] == str(repo.parent / "elsewhere.txt")

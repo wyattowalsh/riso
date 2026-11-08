@@ -211,7 +211,7 @@ export const PRESETS: Preset[] = [
     ],
     tags: ['go', 'api', 'cli', 'backend', 'single-package', 'intermediate'],
     complexity: 'intermediate',
-    techStack: ['Go 1.24', 'Gin', 'Cobra', 'Docker', 'Docusaurus'],
+    techStack: ['Go 1.27', 'Gin', 'Cobra', 'Docker', 'Docusaurus'],
     fileTree: [
       {
         name: 'cmd/',
